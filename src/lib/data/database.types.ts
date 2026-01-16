@@ -99,6 +99,229 @@ export type Database = {
           },
         ]
       }
+      job: {
+        Row: {
+          account_id: string
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          progress: Json | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["job_status"]
+          type: Database["public"]["Enums"]["job_type"]
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          progress?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["job_status"]
+          type: Database["public"]["Enums"]["job_type"]
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          progress?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["job_status"]
+          type?: Database["public"]["Enums"]["job_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "account"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      liked_song: {
+        Row: {
+          account_id: string
+          created_at: string
+          id: string
+          liked_at: string
+          song_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          id?: string
+          liked_at: string
+          song_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          id?: string
+          liked_at?: string
+          song_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "liked_song_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "account"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "liked_song_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "song"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playlist: {
+        Row: {
+          account_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean | null
+          name: string
+          snapshot_id: string | null
+          spotify_id: string
+          track_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          name: string
+          snapshot_id?: string | null
+          spotify_id: string
+          track_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          name?: string
+          snapshot_id?: string | null
+          spotify_id?: string
+          track_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlist_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "account"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playlist_song: {
+        Row: {
+          added_at: string | null
+          created_at: string
+          id: string
+          playlist_id: string
+          position: number
+          song_id: string
+          updated_at: string
+        }
+        Insert: {
+          added_at?: string | null
+          created_at?: string
+          id?: string
+          playlist_id: string
+          position?: number
+          song_id: string
+          updated_at?: string
+        }
+        Update: {
+          added_at?: string | null
+          created_at?: string
+          id?: string
+          playlist_id?: string
+          position?: number
+          song_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlist_song_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlist"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playlist_song_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "song"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      song: {
+        Row: {
+          album_id: string | null
+          album_name: string | null
+          artists: Json
+          created_at: string
+          duration_ms: number | null
+          id: string
+          name: string
+          popularity: number | null
+          preview_url: string | null
+          spotify_id: string
+          updated_at: string
+        }
+        Insert: {
+          album_id?: string | null
+          album_name?: string | null
+          artists?: Json
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          name: string
+          popularity?: number | null
+          preview_url?: string | null
+          spotify_id: string
+          updated_at?: string
+        }
+        Update: {
+          album_id?: string | null
+          album_name?: string | null
+          artists?: Json
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          name?: string
+          popularity?: number | null
+          preview_url?: string | null
+          spotify_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -107,7 +330,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      job_status: "pending" | "running" | "completed" | "failed"
+      job_type: "sync_liked_songs" | "sync_playlists"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -237,7 +461,10 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {},
+    Enums: {
+      job_status: ["pending", "running", "completed", "failed"],
+      job_type: ["sync_liked_songs", "sync_playlists"],
+    },
   },
 } as const
 

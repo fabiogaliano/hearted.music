@@ -11,8 +11,12 @@
 
 ---
 
-## Requirements
+## Purpose
 
+Define the v2 database schema and service architecture for the Spotify liked songs sorting application. This migration establishes domain-friendly naming conventions, UUID primary keys, a unified job system, and functional query modules to replace repository classes.
+
+---
+## Requirements
 ### Requirement: Domain Language Naming
 
 The system SHALL use user-friendly domain terminology throughout the codebase.
@@ -186,6 +190,32 @@ The system SHALL provide LLM API keys at the app level (no BYOK).
 - **THEN** do not include a `provider_keys` table
 
 ---
+
+### Requirement: Core Spotify Tables
+The system SHALL define core Spotify domain tables for songs and playlists using migration v2 naming and constraints.
+
+#### Scenario: Song stored from Spotify
+- **WHEN** a Spotify song is ingested
+- **THEN** store it in `song` with a unique `spotify_id`
+
+#### Scenario: Liked song stored for account
+- **WHEN** a user likes a song
+- **THEN** create or update `liked_song` with `account_id`, `song_id`, and `liked_at`
+
+#### Scenario: Playlist song linkage
+- **WHEN** a playlist is synced
+- **THEN** upsert `playlist` and link songs via `playlist_song`
+
+### Requirement: Sync Checkpoint Tracking
+The system SHALL persist sync checkpoints in `job.progress` for incremental sync of liked songs and playlists.
+
+#### Scenario: Checkpoint recorded
+- **WHEN** a sync completes
+- **THEN** store the last cursor or timestamp in `job.progress` for that account and sync type
+
+#### Scenario: Sync resumes from checkpoint
+- **WHEN** a sync starts and a checkpoint exists
+- **THEN** continue from the stored cursor or timestamp in the latest sync job
 
 ## Migration Phases
 
