@@ -16,3 +16,13 @@ Use `@/openspec/AGENTS.md` to learn:
 Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
+
+## Required Skills
+
+Use these skills proactively when working on this project:
+
+- **`tanstack-start-react`** - Routes, loaders, server functions, SSE
+- **`react-best-practices`** - Component patterns, performance
+- **`web-interface-guidelines`** - UI review, accessibility
+
+See `openspec/project.md` for detailed trigger conditions.

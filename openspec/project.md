@@ -135,6 +135,26 @@ This app will integrate with the Spotify Web API to:
 - Modern browsers only (ES2022 target)
 - No IE11 support
 
+## AI Assistant Skills
+
+When working on this project, the AI assistant SHOULD use these skills when appropriate:
+
+| Skill | When to Use |
+|-------|-------------|
+| `tanstack-start-react` | Creating routes, loaders, server functions, search params, SSE streams |
+| `web-interface-guidelines` | Reviewing UI code, checking accessibility, auditing design patterns |
+| `react-best-practices` | Writing/reviewing React components, performance optimization |
+
+**How to invoke:**
+- Explicitly: `/tanstack-start-react` or ask "use the tanstack skill"
+- The AI should proactively use these skills when the task matches their description
+
+**Proactive skill triggers:**
+- Creating a new route → `tanstack-start-react`
+- Building UI components → `react-best-practices` + `web-interface-guidelines`
+- Implementing data fetching → `tanstack-start-react`
+- Reviewing PR/code → `web-interface-guidelines`
+
 ## External Dependencies
 
 ### Spotify Web API
