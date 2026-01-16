@@ -16,6 +16,9 @@ import {
 const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
 const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
 
+/** Per-account refresh promise map to dedupe concurrent refreshes. */
+const refreshPromises = new Map<string, Promise<AuthToken>>();
+
 export interface SpotifyUser {
 	id: string;
 	email: string;
@@ -43,17 +46,40 @@ export async function getSpotifyClient(
 
 	// Refresh if expired
 	if (isTokenExpired(token)) {
-		token = await refreshToken(accountId, token);
+		token = await refreshTokenWithCoordination(accountId, token);
 	}
 
 	return createClient(token.access_token);
 }
 
 /**
+ * Refreshes an expired token with coordination to prevent duplicate refreshes.
+ * For PKCE flow, only client_id is required (no client_secret).
+ */
+export async function refreshTokenWithCoordination(
+	accountId: string,
+	currentToken: AuthToken,
+): Promise<AuthToken> {
+	const existingPromise = refreshPromises.get(accountId);
+	if (existingPromise) {
+		return existingPromise;
+	}
+
+	const refreshPromise = performTokenRefresh(accountId, currentToken).finally(
+		() => {
+			refreshPromises.delete(accountId);
+		},
+	);
+
+	refreshPromises.set(accountId, refreshPromise);
+	return refreshPromise;
+}
+
+/**
  * Refreshes an expired token and updates the database.
  * For PKCE flow, only client_id is required (no client_secret).
  */
-async function refreshToken(accountId: string, currentToken: AuthToken) {
+async function performTokenRefresh(accountId: string, currentToken: AuthToken) {
 	const response = await fetch(SPOTIFY_TOKEN_URL, {
 		method: "POST",
 		headers: {

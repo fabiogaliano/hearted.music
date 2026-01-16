@@ -7,7 +7,17 @@ import { fileURLToPath, URL } from "url";
 import { defineConfig } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 
+const isTest = process.env.VITEST === "true";
+
 const config = defineConfig({
+	test: {
+		environment: "jsdom",
+		server: {
+			deps: {
+				inline: ["tiny-warning"],
+			},
+		},
+	},
 	server: {
 		host: "127.0.0.1",
 		port: 5173,
@@ -19,16 +29,17 @@ const config = defineConfig({
 	},
 	plugins: [
 		devtools(),
-		cloudflare({ viteEnvironment: { name: "ssr" } }),
-		// this is the plugin that enables path aliases
+		// Skip Cloudflare and TanStack Start plugins during tests - they use workers
+		// that can't handle CommonJS modules like tiny-warning
+		!isTest && cloudflare({ viteEnvironment: { name: "ssr" } }),
 		viteTsConfigPaths({
 			projects: ["./tsconfig.json"],
 		}),
 		tailwindcss(),
 		// @ts-expect-error - preset exists at runtime but missing from types
-		tanstackStart({ preset: "node-ws" }),
+		!isTest && tanstackStart({ preset: "node-ws" }),
 		viteReact(),
-	],
+	].filter(Boolean),
 });
 
 export default config;

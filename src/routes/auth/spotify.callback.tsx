@@ -16,7 +16,7 @@ import {
 } from "@/lib/auth/cookies";
 import { upsertAccount } from "@/lib/data/accounts";
 import { upsertToken } from "@/lib/data/auth-tokens";
-import { exchangeCodeForTokens, fetchSpotifyUser } from "@/lib/spotify/client";
+import { exchangeCodeForTokens, fetchSpotifyUser } from "@/lib/services/spotify/client";
 
 const callbackSearchSchema = z.object({
 	code: z.string().optional(),
