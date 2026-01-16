@@ -5,9 +5,14 @@ dist-ssr
 *.local
 count.txt
 .env
+.env.local
+.env.cloud
 .nitro
 .tanstack
 .wrangler
 .output
 .vinxi
 todos.json
+
+# Supabase local development
+supabase/
