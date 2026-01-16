@@ -3,13 +3,31 @@ import { env } from "@/env";
 import type { Database } from "./database.types";
 
 /**
- * Server-side Supabase client with full type safety.
- *
- * Uses the anon key for public operations. For authenticated operations,
- * pass the user's access token to create an authenticated client.
+ * Server-side Supabase client with anon key.
+ * Use for public operations that respect RLS.
  */
-export function createSupabaseClient() {
+export function createPublicSupabaseClient() {
 	return createClient<Database>(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
 }
 
-export type SupabaseClient = ReturnType<typeof createSupabaseClient>;
+/**
+ * Server-side Supabase client with service role key.
+ * Bypasses RLS - use for auth operations where we can't use auth.uid().
+ *
+ * IMPORTANT: Never expose this client to the browser.
+ */
+export function createAdminSupabaseClient() {
+	return createClient<Database>(
+		env.SUPABASE_URL,
+		env.SUPABASE_SERVICE_ROLE_KEY,
+		{
+			auth: {
+				autoRefreshToken: false,
+				persistSession: false,
+			},
+		},
+	);
+}
+
+export type SupabaseClient = ReturnType<typeof createPublicSupabaseClient>;
+export type AdminSupabaseClient = ReturnType<typeof createAdminSupabaseClient>;

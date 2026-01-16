@@ -13,6 +13,3 @@ count.txt
 .output
 .vinxi
 todos.json
-
-# Supabase local development
-supabase/

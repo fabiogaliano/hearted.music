@@ -1,17 +1,25 @@
 import { createEnv } from "@t3-oss/env-core";
 import { z } from "zod";
 
+/**
+ * Safe access to process.env - returns undefined on client where process doesn't exist.
+ * This is needed because runtimeEnv is evaluated at module load time.
+ */
+const serverEnv =
+	typeof process !== "undefined" ? process.env : ({} as NodeJS.ProcessEnv);
+
 export const env = createEnv({
 	server: {
-		SERVER_URL: z.string().url().optional(),
-		SUPABASE_URL: z.string().url(),
+		SERVER_URL: z.url().optional(),
+		SUPABASE_URL: z.url(),
 		SUPABASE_ANON_KEY: z.string().min(1),
+		SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+		SPOTIFY_CLIENT_ID: z.string().min(1),
+		SPOTIFY_CLIENT_SECRET: z.string().min(1),
+		SPOTIFY_REDIRECT_URI: z.url(),
+		SESSION_SECRET: z.string().min(32),
 	},
 
-	/**
-	 * The prefix that client-side variables must have. This is enforced both at
-	 * a type-level and at runtime.
-	 */
 	clientPrefix: "VITE_",
 
 	client: {
@@ -19,23 +27,26 @@ export const env = createEnv({
 	},
 
 	/**
-	 * What object holds the environment variables at runtime. This is usually
-	 * `process.env` or `import.meta.env`.
+	 * Tell t3-env when we're on the server so it knows when to validate server vars.
+	 * On client, server vars return a proxy that throws if accessed.
 	 */
-	runtimeEnv: import.meta.env,
+	isServer: typeof window === "undefined",
 
 	/**
-	 * By default, this library will feed the environment variables directly to
-	 * the Zod validator.
-	 *
-	 * This means that if you have an empty string for a value that is supposed
-	 * to be a number (e.g. `PORT=` in a ".env" file), Zod will incorrectly flag
-	 * it as a type mismatch violation. Additionally, if you have an empty string
-	 * for a value that is supposed to be a string with a default value (e.g.
-	 * `DOMAIN=` in an ".env" file), the default value will never be applied.
-	 *
-	 * In order to solve these issues, we recommend that all new projects
-	 * explicitly specify this option as true.
+	 * Server vars from process.env (TanStack Start loads .env on server).
+	 * Client vars from import.meta.env (Vite bundles VITE_* vars).
 	 */
+	runtimeEnv: {
+		SERVER_URL: serverEnv.SERVER_URL,
+		SUPABASE_URL: serverEnv.SUPABASE_URL,
+		SUPABASE_ANON_KEY: serverEnv.SUPABASE_ANON_KEY,
+		SUPABASE_SERVICE_ROLE_KEY: serverEnv.SUPABASE_SERVICE_ROLE_KEY,
+		SPOTIFY_CLIENT_ID: serverEnv.SPOTIFY_CLIENT_ID,
+		SPOTIFY_CLIENT_SECRET: serverEnv.SPOTIFY_CLIENT_SECRET,
+		SPOTIFY_REDIRECT_URI: serverEnv.SPOTIFY_REDIRECT_URI,
+		SESSION_SECRET: serverEnv.SESSION_SECRET,
+		VITE_APP_TITLE: import.meta.env.VITE_APP_TITLE,
+	},
+
 	emptyStringAsUndefined: true,
 });

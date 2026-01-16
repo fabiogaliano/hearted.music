@@ -85,6 +85,62 @@ src/
 - Route loaders for SSR data loading
 - SSR-Query integration for hydration (`setupRouterSsrQueryIntegration`)
 
+**Database & Type Safety (Supabase):**
+
+The project uses Supabase with end-to-end type safety via generated types.
+
+*Type Generation:*
+```bash
+bun run gen:types  # Regenerate after schema changes
+```
+
+*Client Setup (src/lib/data/client.ts):*
+```typescript
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
+
+// Generic parameter enables automatic type inference
+export function createAdminSupabaseClient() {
+  return createClient<Database>(url, key);
+}
+```
+
+*Data Layer Patterns:*
+| Pattern | Rule |
+|---------|------|
+| Return types | ❌ Don't annotate - let TS infer from Supabase queries |
+| Row types | Only export if external code needs them: `export type X = Tables<"x">` |
+| Insert types | Use `Pick<TablesInsert<"x">, "field1" \| "field2">` for partial inputs |
+| Type casts | ❌ Never use `as X` - indicates something is wrong |
+| External APIs | Manual interfaces OK (Spotify responses, etc.) |
+
+*Example - Correct Pattern:*
+```typescript
+import { createAdminSupabaseClient } from "./client";
+import type { TablesInsert } from "./database.types";
+
+// Only define what's needed for input transformation
+export type UpsertData = Pick<TablesInsert<"account">, "spotify_id" | "email">;
+
+// NO explicit return type - Supabase infers it automatically
+export async function getAccountById(id: string) {
+  const supabase = createAdminSupabaseClient();
+  const { data, error } = await supabase
+    .from("account")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) throw error;
+  return data;  // TypeScript knows this is Tables<"account">
+}
+```
+
+*Workflow:*
+1. Modify schema in `supabase/migrations/`
+2. Run `bun run gen:types`
+3. Types propagate everywhere automatically
+
 **Component Patterns:**
 - Functional components with TypeScript interfaces
 - CVA for component variants

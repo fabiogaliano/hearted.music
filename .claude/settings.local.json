@@ -3,5 +3,9 @@
     "allow": [
       "Bash(ls:*)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "anki-connect"
+  ],
+  "enableAllProjectMcpServers": true
 }
