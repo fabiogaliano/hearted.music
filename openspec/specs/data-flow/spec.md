@@ -194,6 +194,28 @@ export const markSongMatched = createServerFn()
 
 ## Error Handling Pattern
 
+**Data Layer**: Returns `Result<T, DbError>` - no throwing.
+
+```typescript
+// Data module returns Result
+export function getAccountById(id: string): Promise<Result<Account | null, DbError>> {
+  return fromSupabaseMaybe(supabase.from("account").select("*").eq("id", id).single());
+}
+```
+
+**Route Boundaries**: Translate Result errors to redirects or responses.
+
+```typescript
+// Server function handles Result at boundary
+const accountResult = await getAccountById(id);
+if (Result.isError(accountResult)) {
+  throw redirect({ to: "/login", search: { error: accountResult.error._tag } });
+}
+const account = accountResult.value;
+```
+
+**UI Layer**: Mutations use onError for user feedback.
+
 ```typescript
 // In mutation
 useMutation({

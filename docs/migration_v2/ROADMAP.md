@@ -8,17 +8,17 @@
 
 | Phase | Name | Status | Blocked By |
 |-------|------|--------|------------|
-| 0 | Foundation | ⬜ Not Started | — |
-| 1 | Schema | ⬜ Not Started | Phase 0 |
-| 2 | Extensions | ⬜ Not Started | Phase 1 |
-| 3 | Query Modules | ⬜ Not Started | Phase 2 |
+| 0 | Foundation | ✅ Complete | — |
+| 1 | Schema | 🟡 Partial (core tables) | Phase 0 |
+| 2 | Extensions | 🟡 Partial (types done) | Phase 1 |
+| 3 | Query Modules | 🟡 In Progress | Phase 2 |
 | 4a | Delete Factories | ⬜ Not Started | Phase 3 |
 | 4b | Song/Analysis Services | ⬜ Not Started | Phase 3 |
 | 4c | Playlist/Sync Services | ⬜ Not Started | Phase 3 |
 | 4d | DeepInfra Migration | ⬜ Not Started | Phase 3 |
 | 5 | SSE | ⬜ Not Started | Phase 4* |
 | 6 | Cleanup | ⬜ Not Started | Phase 5 |
-| 7 | UI Integration | ⬜ Not Started | Phase 6 |
+| 7 | UI Integration | 🟡 In Progress (auth flows) | Phase 6 |
 
 ---
 
@@ -28,13 +28,13 @@
 
 ### Tasks
 
-- [ ] **Create Supabase Cloud project**
+- [x] **Create Supabase Cloud project**
   - Go to [supabase.com](https://supabase.com) → New Project
   - Name: `spotify-v2` (or similar)
   - Region: Choose closest
   - Save URL + keys
 
-- [ ] **Configure environment**
+- [x] **Configure environment**
   - Add to `.env.local`:
     ```
     SUPABASE_URL=https://xxx.supabase.co
@@ -48,15 +48,15 @@
   - Prevents free tier pause
   - Options: GitHub Action, cron-job.org, or Cloudflare Worker
 
-- [ ] **Verify local Supabase**
+- [x] **Verify local Supabase**
   ```bash
   supabase status  # Should show running
   supabase db reset  # Fresh start
   ```
 
 ### Acceptance Criteria
-- [ ] Can connect to Supabase Cloud from app
-- [ ] Local Supabase running with empty DB
+- [x] Can connect to Supabase Cloud from app
+- [x] Local Supabase running with empty DB
 - [ ] Keep-alive scheduled
 
 ### References

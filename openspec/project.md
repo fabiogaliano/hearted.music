@@ -108,7 +108,8 @@ export function createAdminSupabaseClient() {
 *Data Layer Patterns:*
 | Pattern | Rule |
 |---------|------|
-| Return types | ❌ Don't annotate - let TS infer from Supabase queries |
+| Error handling | ✅ Return `Result<T, DbError>` - no throwing in data layer |
+| Return types | ✅ Annotate with Result type for explicit error contracts |
 | Row types | Only export if external code needs them: `export type X = Tables<"x">` |
 | Insert types | Use `Pick<TablesInsert<"x">, "field1" \| "field2">` for partial inputs |
 | Type casts | ❌ Never use `as X` - indicates something is wrong |
@@ -116,24 +117,34 @@ export function createAdminSupabaseClient() {
 
 *Example - Correct Pattern:*
 ```typescript
+import type { Result } from "better-result";
 import { createAdminSupabaseClient } from "./client";
-import type { TablesInsert } from "./database.types";
+import type { Tables, TablesInsert } from "./database.types";
+import type { DbError } from "@/lib/errors/data";
+import { fromSupabaseMaybe } from "@/lib/utils/result-wrappers/supabase";
 
-// Only define what's needed for input transformation
+export type Account = Tables<"account">;
 export type UpsertData = Pick<TablesInsert<"account">, "spotify_id" | "email">;
 
-// NO explicit return type - Supabase infers it automatically
-export async function getAccountById(id: string) {
+// Returns Result - callers decide how to handle errors
+export function getAccountById(
+  id: string
+): Promise<Result<Account | null, DbError>> {
   const supabase = createAdminSupabaseClient();
-  const { data, error } = await supabase
-    .from("account")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error) throw error;
-  return data;  // TypeScript knows this is Tables<"account">
+  return fromSupabaseMaybe(
+    supabase.from("account").select("*").eq("id", id).single()
+  );
 }
+```
+
+*Error Handling at Boundaries:*
+```typescript
+// Route boundary translates Result → redirect/response
+const accountResult = await getAccountById(id);
+if (Result.isError(accountResult)) {
+  throw redirect({ to: "/", search: { error: accountResult.error._tag } });
+}
+const account = accountResult.value;
 ```
 
 *Workflow:*
