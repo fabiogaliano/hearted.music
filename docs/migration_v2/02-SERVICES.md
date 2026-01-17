@@ -6,19 +6,19 @@
 
 ## Overview
 
-| Category | Current | v2 | Strategy |
-|----------|---------|-----|----------|
-| Factories | 6 files | 0 | DELETE all (#034) |
-| Job services | 2 files | 0 | DELETE → query module + SSE (#035) |
-| TrackService | 1 file | 0 | DELETE → query module (#032) |
-| UserService | 1 file | 0 | DELETE → query module |
-| VectorCache | 1 file | 0 | DELETE (DB-backed) |
-| ProviderKeyService | 1 file | 0 | DELETE (#016) |
-| Analysis pipeline | 4 files | 1 | MERGE → `pipeline.ts` (#033) |
-| PlaylistService | 1 file | 2 | SPLIT (DB → query, sync → service) (#032) |
-| Query modules | 0 files | 9 | NEW (domain-organized) (#030) |
-| SyncService | 1 file | 1 | RENAME → `SyncOrchestrator` |
-| Core services | ~30 files | ~25 | KEEP (minor simplification) |
+| Category           | Current   | v2  | Strategy                                  |
+| ------------------ | --------- | --- | ----------------------------------------- |
+| Factories          | 6 files   | 0   | DELETE all (#034)                         |
+| Job services       | 2 files   | 0   | DELETE → query module + SSE (#035)        |
+| TrackService       | 1 file    | 0   | DELETE → query module (#032)              |
+| UserService        | 1 file    | 0   | DELETE → query module                     |
+| VectorCache        | 1 file    | 0   | DELETE (DB-backed)                        |
+| ProviderKeyService | 1 file    | 0   | DELETE (#016)                             |
+| Analysis pipeline  | 4 files   | 1   | MERGE → `pipeline.ts` (#033)              |
+| PlaylistService    | 1 file    | 2   | SPLIT (DB → query, sync → service) (#032) |
+| Query modules      | 0 files   | 9   | NEW (domain-organized) (#030)             |
+| SyncService        | 1 file    | 1   | RENAME → `SyncOrchestrator`               |
+| Core services      | ~30 files | ~25 | KEEP (minor simplification)               |
 
 ---
 
@@ -26,37 +26,37 @@
 
 ### Factory Files (6) — #034
 
-| File | Reason |
-|------|--------|
-| `matching/factory.ts` | Direct imports; RR7 provides composition |
-| `reranker/factory.ts` | Direct imports |
-| `embedding/factory.ts` | Direct imports |
-| `genre/factory.ts` | Direct imports |
-| `profiling/factory.ts` | Direct imports |
-| `llm/LlmProviderManagerFactory.ts` | Direct imports |
+| File                               | Reason                                   |
+| ---------------------------------- | ---------------------------------------- |
+| `matching/factory.ts`              | Direct imports; RR7 provides composition |
+| `reranker/factory.ts`              | Direct imports                           |
+| `embedding/factory.ts`             | Direct imports                           |
+| `genre/factory.ts`                 | Direct imports                           |
+| `profiling/factory.ts`             | Direct imports                           |
+| `llm/LlmProviderManagerFactory.ts` | Direct imports                           |
 
 ### Job System (2) — #035
 
-| File | Replacement |
-|------|-------------|
-| `JobPersistenceService.ts` | → `data/jobs.ts` + SSE |
-| `JobSubscriptionManager.ts` | → SSE endpoint |
+| File                        | Replacement            |
+| --------------------------- | ---------------------- |
+| `JobPersistenceService.ts`  | → `data/jobs.ts` + SSE |
+| `JobSubscriptionManager.ts` | → SSE endpoint         |
 
 ### Thin Wrappers (4)
 
-| File | Replacement | Reason |
-|------|-------------|--------|
-| `TrackService.ts` | → `data/songs.ts` | Thin DB wrapper (#032) |
-| `UserService.ts` | → `data/accounts.ts` | Thin DB wrapper |
-| `vectorization/VectorCache.ts` | — | In-memory → DB-backed |
-| `llm/ProviderKeyService.ts` | — | Table dropped (#016) |
+| File                           | Replacement          | Reason                 |
+| ------------------------------ | -------------------- | ---------------------- |
+| `TrackService.ts`              | → `data/songs.ts`    | Thin DB wrapper (#032) |
+| `UserService.ts`               | → `data/accounts.ts` | Thin DB wrapper        |
+| `vectorization/VectorCache.ts` | —                    | In-memory → DB-backed  |
+| `llm/ProviderKeyService.ts`    | —                    | Table dropped (#016)   |
 
 ### Python Service (entire folder) — #056
 
-| File/Folder | Replacement | Reason |
-|-------------|-------------|--------|
-| `services/vectorization/` (Python) | → `DeepInfraService.ts` | DeepInfra hosts same models; no self-hosting needed |
-| `VectorizationService.ts` (TS client) | → `DeepInfraService.ts` | Single service for embeddings + reranking |
+| File/Folder                           | Replacement             | Reason                                              |
+| ------------------------------------- | ----------------------- | --------------------------------------------------- |
+| `services/vectorization/` (Python)    | → `DeepInfraService.ts` | DeepInfra hosts same models; no self-hosting needed |
+| `VectorizationService.ts` (TS client) | → `DeepInfraService.ts` | Single service for embeddings + reranking           |
 
 ---
 
@@ -85,14 +85,14 @@
 
 **Current:** `PlaylistService.ts` (607 lines, mixed concerns)
 
-| Concern | v2 Location |
-|---------|-------------|
-| `getPlaylists`, `getFlaggedPlaylists`, etc. | → `playlists.queries.ts` |
-| `getPlaylistTracks` | → `playlists.queries.ts` |
-| `updateSyncStatus`, `getLastSyncTime` | → `playlists.queries.ts` |
-| `syncPlaylistTracks` | → `PlaylistSyncService.ts` |
-| `processSpotifyPlaylists` | → `PlaylistSyncService.ts` |
-| `createAIPlaylist`, `updatePlaylistInfo` | → `PlaylistSyncService.ts` (Spotify API calls) |
+| Concern                                     | v2 Location                                    |
+| ------------------------------------------- | ---------------------------------------------- |
+| `getPlaylists`, `getFlaggedPlaylists`, etc. | → `data/playlists.ts`                          |
+| `getPlaylistTracks`                         | → `data/playlists.ts`                          |
+| `sync status + last sync tracking`          | → `jobs.ts` (job table)                        |
+| `syncPlaylistTracks`                        | → `PlaylistSyncService.ts`                     |
+| `processSpotifyPlaylists`                   | → `PlaylistSyncService.ts`                     |
+| `createAIPlaylist`, `updatePlaylistInfo`    | → `PlaylistSyncService.ts` (Spotify API calls) |
 
 ---
 
@@ -147,8 +147,7 @@ From: `trackAnalysisRepository`, `playlistAnalysisRepository`
 
 ```ts
 // Song analysis
-export function getSongAnalysis(songId: string)
-export function getLatestSongAnalyses(songIds: string[])
+export function getSongAnalysis(songIds: string | string[])
 export function insertSongAnalysis(analysis: SongAnalysisInsert)
 
 // Playlist analysis
@@ -169,10 +168,6 @@ From: `EmbeddingService` (DB ops), `embeddingRepository`
 export function getSongEmbedding(songId: string, kind: string, model: string)
 export function upsertSongEmbedding(embedding: SongEmbeddingInsert)
 export function getSongEmbeddingsByContentHash(songId: string, kind: string, contentHash: string)
-
-// Song genres
-export function getSongGenres(songId: string)
-export function upsertSongGenres(genres: SongGenreInsert)
 
 // Playlist profiles
 export function getPlaylistProfile(playlistId: string, kind: string)
@@ -223,8 +218,7 @@ From: `UserService`, `userRepository`
 export function getAccountById(id: string)
 export function getAccountBySpotifyId(spotifyId: string)
 export function upsertAccount(account: AccountInsert)
-export function updateAccountSetupComplete(id: string, complete: boolean)
-// Note: theme moved to preferences.ts (#044)
+// Note: theme + onboarding live in preferences.ts (#044)
 ```
 
 ### 8. `newness.ts`
@@ -249,9 +243,8 @@ export function markAllSeen(accountId: string, itemType: ItemType): Promise<void
 From: NEW (`user_preferences` table)
 
 ```ts
-// Get/create preferences (auto-creates on first access)
+// Get preferences (auto-creates on first access)
 export function getPreferences(accountId: string): Promise<UserPreferences>
-export function getOrCreatePreferences(accountId: string): Promise<UserPreferences>
 
 // Theme (color palette)
 export function updateTheme(accountId: string, theme: ThemeColor): Promise<void>
@@ -272,60 +265,60 @@ type OnboardingStep = 'welcome' | 'pick-color' | 'connecting' | 'syncing' | 'fla
 
 ### Core Algorithm (unchanged)
 
-| Service | Purpose |
-|---------|---------|
-| `matching/MatchingService.ts` | Core matching algorithm |
-| `matching/MatchCachingService.ts` | Cache-first orchestration |
-| `matching/matching.config.ts` | Algorithm weights & thresholds (keep separate) |
-| `semantic/SemanticMatcher.ts` | Theme/mood similarity |
-| `reranker/RerankerService.ts` | Two-stage reranking |
+| Service                           | Purpose                                        |
+| --------------------------------- | ---------------------------------------------- |
+| `matching/MatchingService.ts`     | Core matching algorithm                        |
+| `matching/MatchCachingService.ts` | Cache-first orchestration                      |
+| `matching/matching.config.ts`     | Algorithm weights & thresholds (keep separate) |
+| `semantic/SemanticMatcher.ts`     | Theme/mood similarity                          |
+| `reranker/RerankerService.ts`     | Two-stage reranking                            |
 
 ### API Clients (unchanged)
 
-| Service | Purpose |
-|---------|---------|
-| `SpotifyService.ts` | Spotify API client (#032) |
-| `lastfm/LastFmService.ts` | Last.fm API |
-| `lyrics/LyricsService.ts` | Genius API |
-| `reccobeats/ReccoBeatsService.ts` | ReccoBeats API |
+| Service                           | Purpose                   |
+| --------------------------------- | ------------------------- |
+| `SpotifyService.ts`               | Spotify API client (#032) |
+| `lastfm/LastFmService.ts`         | Last.fm API               |
+| `lyrics/LyricsService.ts`         | Genius API                |
+| `reccobeats/ReccoBeatsService.ts` | ReccoBeats API            |
 
 ### LLM (unchanged)
 
-| Service | Purpose |
-|---------|---------|
-| `llm/LlmProviderManager.ts` | Provider orchestration |
-| `llm/providers/GoogleProvider.ts` | Gemini |
-| `llm/providers/OpenAIProvider.ts` | GPT-4 |
-| `llm/providers/AnthropicProvider.ts` | Claude |
+| Service                              | Purpose                |
+| ------------------------------------ | ---------------------- |
+| `llm/LlmProviderManager.ts`          | Provider orchestration |
+| `llm/providers/GoogleProvider.ts`    | Gemini                 |
+| `llm/providers/OpenAIProvider.ts`    | GPT-4                  |
+| `llm/providers/AnthropicProvider.ts` | Claude                 |
 
 ### Analysis (simplified)
 
-| Service | v2 Change |
-|---------|-----------|
-| `analysis/SongAnalysisService.ts` | Keep (LLM calls) |
-| `analysis/PlaylistAnalysisService.ts` | Keep (LLM calls) |
-| `analysis/pipeline.ts` | NEW (merged orchestration) |
-| `analysis/RetryPolicy.ts` | Keep |
-| `analysis/RateLimitGate.ts` | Keep |
+| Service                               | v2 Change                  |
+| ------------------------------------- | -------------------------- |
+| `analysis/SongAnalysisService.ts`     | Keep (LLM calls)           |
+| `analysis/PlaylistAnalysisService.ts` | Keep (LLM calls)           |
+| `analysis/pipeline.ts`                | NEW (merged orchestration) |
+| `analysis/RetryPolicy.ts`             | Keep                       |
+| `analysis/RateLimitGate.ts`           | Keep                       |
 
 ### Vectorization (replaced by DeepInfra)
 
-| Service | v2 Change |
-|---------|-----------|
-| `embedding/EmbeddingService.ts` | UPDATE → calls `DeepInfraService` |
+| Service                                 | v2 Change                               |
+| --------------------------------------- | --------------------------------------- |
+| `embedding/EmbeddingService.ts`         | UPDATE → calls `DeepInfraService`       |
 | `vectorization/VectorizationService.ts` | DELETE → replaced by `DeepInfraService` |
-| `genre/GenreEnrichmentService.ts` | Keep (Last.fm API) |
-| `deepinfra/DeepInfraService.ts` | NEW (embeddings + reranking) |
+| `genre/GenreEnrichmentService.ts`       | Keep (Last.fm API)                      |
+| `deepinfra/DeepInfraService.ts`         | NEW (embeddings + reranking)            |
 
 ### Other
 
-| Service | v2 Change |
-|---------|-----------|
-| `SyncService.ts` | RENAME → `SyncOrchestrator.ts` (orchestrates songs + playlists sync) |
-| `AuthService.ts` | Keep |
-| `DatabaseService.ts` | → `data/client.ts` |
-| `profiling/PlaylistProfilingService.ts` | Keep |
-| `audio/AudioFeaturesService.ts` | Keep |
+| Service                                 | v2 Change                                                            |
+| --------------------------------------- | -------------------------------------------------------------------- |
+| `SyncService.ts`                        | RENAME → `SyncOrchestrator.ts` (orchestrates songs + playlists sync) |
+| `AuthService.ts`                        | Keep                                                                 |
+| `DatabaseService.ts`                    | → `data/client.ts`                                                   |
+| `profiling/PlaylistProfilingService.ts` | Keep                                                                 |
+| `audio/AudioFeaturesService.ts`         | Keep                                                                 |
 
 ---
 
@@ -507,12 +500,12 @@ lib/
 
 ## Resolved Decisions
 
-| # | Question | Decision |
-|---|----------|----------|
-| Q1 | Query module location? | `data/` — clear, doesn't conflict with client-side `queries/` |
-| Q2 | Merge SyncService + PlaylistSyncService? | Keep separate — SyncOrchestrator orchestrates both songs + playlists |
-| Q3 | Keep `matching-config.ts`? | Keep separate → `matching.config.ts` (tuning without touching algorithm) |
-| Q4 | Newness tracking? | `item_status` table — flexible for songs, matches, playlists |
+| #   | Question                                 | Decision                                                                 |
+| --- | ---------------------------------------- | ------------------------------------------------------------------------ |
+| Q1  | Query module location?                   | `data/` — clear, doesn't conflict with client-side `queries/`            |
+| Q2  | Merge SyncService + PlaylistSyncService? | Keep separate — SyncOrchestrator orchestrates both songs + playlists     |
+| Q3  | Keep `matching-config.ts`?               | Keep separate → `matching.config.ts` (tuning without touching algorithm) |
+| Q4  | Newness tracking?                        | `item_status` table — flexible for songs, matches, playlists             |
 
 ---
 

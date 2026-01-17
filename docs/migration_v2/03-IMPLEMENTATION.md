@@ -9,7 +9,7 @@
 ```
 Phase 0: Foundation ─────────────────────────────┐
     ↓                                            │
-Phase 1: Schema DDL (16 tables + RLS)            │ Sequential
+Phase 1: Schema DDL (17 tables + RLS)            │ Sequential
     ↓                                            │
 Phase 2: Extensions & Types                      │
     ↓                                            ┘
@@ -54,7 +54,7 @@ supabase status  # Should show local project info
 
 ## Phase 1: Schema DDL
 
-> Create all 17 tables with RLS policies inline. One migration file per table.
+> Create all 17 tables with RLS enabled (deny-all policies; service-role access only). One migration file per table.
 
 ### Migration Order (respects foreign keys)
 
@@ -71,7 +71,6 @@ Tier 2 (depends on Tier 1):
 ├── song_audio_feature  → song
 ├── song_analysis       → song
 ├── song_embedding      → song
-├── song_genre          → song
 └── job                 → account
 
 Tier 3 (depends on Tier 2):
@@ -99,23 +98,18 @@ Tier 4 (depends on Tier 3):
     spotify_id TEXT NOT NULL UNIQUE,
     email TEXT,
     display_name TEXT,
-    has_completed_setup BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
   );
 
   CREATE INDEX idx_account_spotify_id ON account(spotify_id);
 
-  -- RLS: Users can only access their own account
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE account ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Users can view own account"
-    ON account FOR SELECT
-    USING (id = auth.uid());
-
-  CREATE POLICY "Users can update own account"
-    ON account FOR UPDATE
-    USING (id = auth.uid());
+  CREATE POLICY "account_deny_all"
+    ON account FOR ALL
+    USING (false);
   ```
 
 - [ ] `002_create_song.sql`
@@ -126,24 +120,28 @@ Tier 4 (depends on Tier 3):
     spotify_id TEXT NOT NULL UNIQUE,
     isrc TEXT,
     name TEXT NOT NULL,
-    artist_name TEXT NOT NULL,
+    artists TEXT[] NOT NULL DEFAULT '{}',
     album_name TEXT,
+    album_id TEXT,
     image_url TEXT,
     duration_ms INTEGER,
-    created_at TIMESTAMPTZ DEFAULT now()
+    popularity INTEGER,
+    preview_url TEXT,
+    genres TEXT[] NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
   );
 
   CREATE INDEX idx_song_spotify_id ON song(spotify_id);
   CREATE INDEX idx_song_isrc ON song(isrc) WHERE isrc IS NOT NULL;
+  CREATE INDEX idx_song_genres ON song USING GIN(genres);
 
-  -- RLS: Global read, service-role write
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE song ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Anyone can read songs"
-    ON song FOR SELECT
-    USING (true);
-
-  -- INSERT/UPDATE/DELETE: service_role only (no policy = denied for anon/authenticated)
+  CREATE POLICY "song_deny_all"
+    ON song FOR ALL
+    USING (false);
   ```
 
 #### Tier 2: User-Owned & Song Extensions
@@ -158,6 +156,8 @@ Tier 4 (depends on Tier 3):
     liked_at TIMESTAMPTZ NOT NULL,
     unliked_at TIMESTAMPTZ,  -- NULL = active, non-NULL = soft deleted
     status TEXT,  -- NULL = pending, 'matched', 'ignored'
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(account_id, song_id)
   );
 
@@ -165,16 +165,12 @@ Tier 4 (depends on Tier 3):
   CREATE INDEX idx_liked_song_pending ON liked_song(account_id)
     WHERE unliked_at IS NULL AND status IS NULL;
 
-  -- RLS: User-owned
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE liked_song ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Users can view own liked songs"
-    ON liked_song FOR SELECT
-    USING (account_id = auth.uid());
-
-  CREATE POLICY "Users can manage own liked songs"
+  CREATE POLICY "liked_song_deny_all"
     ON liked_song FOR ALL
-    USING (account_id = auth.uid());
+    USING (false);
   ```
 
 - [ ] `004_create_playlist.sql`
@@ -186,6 +182,8 @@ Tier 4 (depends on Tier 3):
     spotify_id TEXT NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
+    snapshot_id TEXT,
+    is_public BOOLEAN DEFAULT false,
     is_destination BOOLEAN DEFAULT false,
     song_count INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT now(),
@@ -194,19 +192,16 @@ Tier 4 (depends on Tier 3):
   );
 
   CREATE INDEX idx_playlist_account ON playlist(account_id);
+  CREATE INDEX idx_playlist_spotify_id ON playlist(spotify_id);
   CREATE INDEX idx_playlist_destination ON playlist(account_id)
     WHERE is_destination = true;
 
-  -- RLS: User-owned
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE playlist ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Users can view own playlists"
-    ON playlist FOR SELECT
-    USING (account_id = auth.uid());
-
-  CREATE POLICY "Users can manage own playlists"
+  CREATE POLICY "playlist_deny_all"
     ON playlist FOR ALL
-    USING (account_id = auth.uid());
+    USING (false);
   ```
 
 - [ ] `005_create_song_audio_feature.sql`
@@ -223,18 +218,22 @@ Tier 4 (depends on Tier 3):
     loudness REAL,
     speechiness REAL,
     tempo REAL,
+    time_signature INTEGER,
+    key INTEGER,
+    mode INTEGER,
     valence REAL,
-    created_at TIMESTAMPTZ DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
   );
 
   CREATE INDEX idx_song_audio_feature_song ON song_audio_feature(song_id);
 
-  -- RLS: Global read (like song)
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE song_audio_feature ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Anyone can read audio features"
-    ON song_audio_feature FOR SELECT
-    USING (true);
+  CREATE POLICY "song_audio_feature_deny_all"
+    ON song_audio_feature FOR ALL
+    USING (false);
   ```
 
 - [ ] `006_create_song_analysis.sql`
@@ -248,17 +247,18 @@ Tier 4 (depends on Tier 3):
     prompt_version TEXT,
     tokens_used INTEGER,
     cost_cents INTEGER,
-    created_at TIMESTAMPTZ DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
   );
 
   CREATE INDEX idx_song_analysis_song_created ON song_analysis(song_id, created_at DESC);
 
-  -- RLS: Global read
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE song_analysis ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Anyone can read song analyses"
-    ON song_analysis FOR SELECT
-    USING (true);
+  CREATE POLICY "song_analysis_deny_all"
+    ON song_analysis FOR ALL
+    USING (false);
   ```
 
 - [ ] `007_create_song_embedding.sql`
@@ -282,38 +282,12 @@ Tier 4 (depends on Tier 3):
   CREATE INDEX idx_song_embedding_hnsw ON song_embedding
     USING hnsw (embedding vector_cosine_ops);
 
-  -- RLS: Global read
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE song_embedding ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Anyone can read song embeddings"
-    ON song_embedding FOR SELECT
-    USING (true);
-  ```
-
-- [ ] `008_create_song_genre.sql`
-  ```sql
-  -- song_genre (was track_genres) - Global
-  CREATE TABLE song_genre (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    song_id UUID NOT NULL REFERENCES song(id) ON DELETE CASCADE,
-    source TEXT NOT NULL,
-    source_level TEXT NOT NULL,
-    content_hash TEXT NOT NULL,
-    genres TEXT[],
-    scores JSONB,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now(),
-    UNIQUE(song_id, source, content_hash)
-  );
-
-  CREATE INDEX idx_song_genre_song ON song_genre(song_id);
-
-  -- RLS: Global read
-  ALTER TABLE song_genre ENABLE ROW LEVEL SECURITY;
-
-  CREATE POLICY "Anyone can read song genres"
-    ON song_genre FOR SELECT
-    USING (true);
+  CREATE POLICY "song_embedding_deny_all"
+    ON song_embedding FOR ALL
+    USING (false);
   ```
 
 - [ ] `009_create_job.sql`
@@ -321,14 +295,17 @@ Tier 4 (depends on Tier 3):
   -- job (unified, was analysis_jobs + inline sync statuses)
   -- Migrates: analysis_jobs.job_type='track_batch' → 'song_analysis'
   --           analysis_jobs.job_type='playlist' → 'playlist_analysis'
-  --           users.songs_sync_status → 'sync_songs'
+  --           users.songs_sync_status → 'sync_liked_songs'
   --           users.playlists_sync_status → 'sync_playlists'
   CREATE TABLE job (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     account_id UUID NOT NULL REFERENCES account(id) ON DELETE CASCADE,
-    type TEXT NOT NULL,  -- 'sync_songs', 'sync_playlists', 'song_analysis', 'playlist_analysis', 'matching'
-    status TEXT NOT NULL DEFAULT 'pending',  -- 'pending', 'running', 'completed', 'failed'
-    progress JSONB,  -- { total: 100, done: 50, succeeded: 48, failed: 2 }
+    type job_type NOT NULL,  -- 'sync_liked_songs', 'sync_playlists', 'song_analysis', 'playlist_analysis', 'matching'
+    status job_status NOT NULL DEFAULT 'pending',  -- 'pending', 'running', 'completed', 'failed'
+    progress JSONB DEFAULT '{}',  -- { total: 100, done: 50, succeeded: 48, failed: 2 }
+    error TEXT,
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
   );
@@ -336,16 +313,12 @@ Tier 4 (depends on Tier 3):
   CREATE INDEX idx_job_account ON job(account_id);
   CREATE INDEX idx_job_account_status ON job(account_id, status);
 
-  -- RLS: User-owned
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE job ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Users can view own jobs"
-    ON job FOR SELECT
-    USING (account_id = auth.uid());
-
-  CREATE POLICY "Users can manage own jobs"
+  CREATE POLICY "job_deny_all"
     ON job FOR ALL
-    USING (account_id = auth.uid());
+    USING (false);
   ```
 
 #### Tier 3: Dependent Tables
@@ -357,35 +330,23 @@ Tier 4 (depends on Tier 3):
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     playlist_id UUID NOT NULL REFERENCES playlist(id) ON DELETE CASCADE,
     song_id UUID NOT NULL REFERENCES song(id) ON DELETE CASCADE,
+    position INTEGER DEFAULT 0,
     added_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(playlist_id, song_id)
   );
 
   CREATE INDEX idx_playlist_song_playlist ON playlist_song(playlist_id);
   CREATE INDEX idx_playlist_song_song ON playlist_song(song_id);
+  CREATE INDEX idx_playlist_song_position ON playlist_song(playlist_id, position);
 
-  -- RLS: Via playlist ownership
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE playlist_song ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Users can view own playlist songs"
-    ON playlist_song FOR SELECT
-    USING (
-      EXISTS (
-        SELECT 1 FROM playlist
-        WHERE playlist.id = playlist_song.playlist_id
-        AND playlist.account_id = auth.uid()
-      )
-    );
-
-  CREATE POLICY "Users can manage own playlist songs"
+  CREATE POLICY "playlist_song_deny_all"
     ON playlist_song FOR ALL
-    USING (
-      EXISTS (
-        SELECT 1 FROM playlist
-        WHERE playlist.id = playlist_song.playlist_id
-        AND playlist.account_id = auth.uid()
-      )
-    );
+    USING (false);
   ```
 
 - [ ] `011_create_playlist_analysis.sql`
@@ -399,24 +360,19 @@ Tier 4 (depends on Tier 3):
     prompt_version TEXT,
     tokens_used INTEGER,
     cost_cents INTEGER,
-    created_at TIMESTAMPTZ DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
   );
 
   CREATE INDEX idx_playlist_analysis_playlist_created
     ON playlist_analysis(playlist_id, created_at DESC);
 
-  -- RLS: Via playlist ownership
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE playlist_analysis ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Users can view own playlist analyses"
-    ON playlist_analysis FOR SELECT
-    USING (
-      EXISTS (
-        SELECT 1 FROM playlist
-        WHERE playlist.id = playlist_analysis.playlist_id
-        AND playlist.account_id = auth.uid()
-      )
-    );
+  CREATE POLICY "playlist_analysis_deny_all"
+    ON playlist_analysis FOR ALL
+    USING (false);
   ```
 
 - [ ] `012_create_playlist_profile.sql`
@@ -433,7 +389,7 @@ Tier 4 (depends on Tier 3):
     audio_centroid JSONB,
     genre_distribution JSONB,
     emotion_distribution JSONB,
-    song_count INTEGER,
+    song_count INTEGER DEFAULT 0,
     song_ids UUID[],
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now(),
@@ -445,18 +401,12 @@ Tier 4 (depends on Tier 3):
     USING hnsw (embedding vector_cosine_ops)
     WHERE embedding IS NOT NULL;
 
-  -- RLS: Via playlist ownership
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE playlist_profile ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Users can view own playlist profiles"
-    ON playlist_profile FOR SELECT
-    USING (
-      EXISTS (
-        SELECT 1 FROM playlist
-        WHERE playlist.id = playlist_profile.playlist_id
-        AND playlist.account_id = auth.uid()
-      )
-    );
+  CREATE POLICY "playlist_profile_deny_all"
+    ON playlist_profile FOR ALL
+    USING (false);
   ```
 
 - [ ] `013_create_job_failure.sql`
@@ -475,18 +425,12 @@ Tier 4 (depends on Tier 3):
   CREATE INDEX idx_job_failure_job ON job_failure(job_id);
   CREATE INDEX idx_job_failure_job_type ON job_failure(job_id, item_type);
 
-  -- RLS: Via job ownership
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE job_failure ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Users can view own job failures"
-    ON job_failure FOR SELECT
-    USING (
-      EXISTS (
-        SELECT 1 FROM job
-        WHERE job.id = job_failure.job_id
-        AND job.account_id = auth.uid()
-      )
-    );
+  CREATE POLICY "job_failure_deny_all"
+    ON job_failure FOR ALL
+    USING (false);
   ```
 
 - [ ] `014_create_match_context.sql`
@@ -512,16 +456,12 @@ Tier 4 (depends on Tier 3):
   CREATE INDEX idx_match_context_account ON match_context(account_id);
   CREATE INDEX idx_match_context_hash ON match_context(context_hash);
 
-  -- RLS: User-owned
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE match_context ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Users can view own match contexts"
-    ON match_context FOR SELECT
-    USING (account_id = auth.uid());
-
-  CREATE POLICY "Users can manage own match contexts"
+  CREATE POLICY "match_context_deny_all"
     ON match_context FOR ALL
-    USING (account_id = auth.uid());
+    USING (false);
   ```
 
 - [ ] `015_create_item_status.sql`
@@ -543,16 +483,12 @@ Tier 4 (depends on Tier 3):
   CREATE INDEX idx_item_status_new ON item_status(account_id, item_type)
     WHERE is_new = true;
 
-  -- RLS: User-owned
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE item_status ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Users can view own item status"
-    ON item_status FOR SELECT
-    USING (account_id = auth.uid());
-
-  CREATE POLICY "Users can manage own item status"
+  CREATE POLICY "item_status_deny_all"
     ON item_status FOR ALL
-    USING (account_id = auth.uid());
+    USING (false);
   ```
 
 - [ ] `016_create_user_preferences.sql`
@@ -569,16 +505,12 @@ Tier 4 (depends on Tier 3):
 
   CREATE INDEX idx_user_preferences_account ON user_preferences(account_id);
 
-  -- RLS: User-owned
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Users can view own preferences"
-    ON user_preferences FOR SELECT
-    USING (account_id = auth.uid());
-
-  CREATE POLICY "Users can manage own preferences"
+  CREATE POLICY "user_preferences_deny_all"
     ON user_preferences FOR ALL
-    USING (account_id = auth.uid());
+    USING (false);
   ```
 
 #### Tier 4: Final Dependencies
@@ -602,28 +534,12 @@ Tier 4 (depends on Tier 3):
   CREATE INDEX idx_match_result_context_playlist_score
     ON match_result(context_id, playlist_id, score DESC);
 
-  -- RLS: Via context ownership
+  -- RLS: deny-all (service_role bypasses)
   ALTER TABLE match_result ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY "Users can view own match results"
-    ON match_result FOR SELECT
-    USING (
-      EXISTS (
-        SELECT 1 FROM match_context
-        WHERE match_context.id = match_result.context_id
-        AND match_context.account_id = auth.uid()
-      )
-    );
-
-  CREATE POLICY "Users can manage own match results"
+  CREATE POLICY "match_result_deny_all"
     ON match_result FOR ALL
-    USING (
-      EXISTS (
-        SELECT 1 FROM match_context
-        WHERE match_context.id = match_result.context_id
-        AND match_context.account_id = auth.uid()
-      )
-    );
+    USING (false);
   ```
 
 ### Verification
@@ -676,11 +592,8 @@ Create 8 query modules in `app/lib/data/`:
 
 - [x] `client.ts` — Supabase client setup
   ```typescript
-  // Service role client for backend operations
+  // Service role client for backend operations (deny-all RLS)
   export function getServiceClient() { ... }
-
-  // Authenticated client for RLS-protected reads
-  export function getAuthClient(request: Request) { ... }
   ```
 
 - [x] `songs.ts` — From `TrackService`, `trackRepository`
@@ -706,30 +619,36 @@ Create 8 query modules in `app/lib/data/`:
   - [x] `upsertPlaylistSongs(playlistSongs: PlaylistSongInsert[])`
   - [x] `removePlaylistSongs(playlistId: string, songIds: string[])`
 
-- [ ] `analysis.ts` — From `trackAnalysisRepository`, `playlistAnalysisRepository`
-  - [ ] `getSongAnalysis(songId: string)`
-  - [ ] `getLatestSongAnalyses(songIds: string[])`
-  - [ ] `insertSongAnalysis(analysis: SongAnalysisInsert)`
-  - [ ] `getPlaylistAnalysis(playlistId: string)`
-  - [ ] `insertPlaylistAnalysis(analysis: PlaylistAnalysisInsert)`
-  - [ ] `getSongAudioFeatures(songId: string)`
-  - [ ] `upsertSongAudioFeatures(features: SongAudioFeatureInsert[])`
+- [x] `analysis.ts` — From `trackAnalysisRepository`, `playlistAnalysisRepository`
+  - [x] `getSongAnalysis(songIds: string | string[])`
+  - [x] `insertSongAnalysis(analysis: SongAnalysisInsert)`
+  - [x] `getPlaylistAnalysis(playlistId: string)`
+  - [x] `insertPlaylistAnalysis(analysis: PlaylistAnalysisInsert)`
+  - [x] `getSongAudioFeatures(songId: string)`
+  - [x] `getSongAudioFeaturesBatch(songIds: string[])`
+  - [x] `upsertSongAudioFeatures(features: SongAudioFeatureInsert[])`
 
-- [ ] `vectors.ts` — From `EmbeddingService` (DB ops), `embeddingRepository`
-  - [ ] `getSongEmbedding(songId: string, kind: string, model: string)`
-  - [ ] `upsertSongEmbedding(embedding: SongEmbeddingInsert)`
-  - [ ] `getSongGenres(songId: string)`
-  - [ ] `upsertSongGenres(genres: SongGenreInsert)`
-  - [ ] `getPlaylistProfile(playlistId: string, kind: string)`
-  - [ ] `upsertPlaylistProfile(profile: PlaylistProfileInsert)`
+- [x] `vectors.ts` — From `EmbeddingService` (DB ops), `embeddingRepository`
+  - [x] `getSongEmbedding(songId: string, modelName: string)`
+  - [x] `getSongEmbeddings(songId: string)`
+  - [x] `getSongEmbeddingsBatch(songIds: string[], modelName: string)`
+  - [x] `upsertSongEmbedding(embedding: SongEmbeddingInsert)`
+  - [x] `upsertSongEmbeddings(embeddings: SongEmbeddingInsert[])`
+  - [x] `getPlaylistProfile(playlistId: string)`
+  - [x] `getPlaylistProfilesBatch(playlistIds: string[])`
+  - [x] `upsertPlaylistProfile(profile: PlaylistProfileInsert)`
 
-- [ ] `matching.ts` — From `matchContextRepository`, `matchResultRepository`
-  - [ ] `getMatchContext(contextHash: string)`
-  - [ ] `createMatchContext(context: MatchContextInsert)`
-  - [ ] `getMatchResults(contextId: string)`
-  - [ ] `getMatchResultsForSong(contextId: string, songId: string)`
-  - [ ] `insertMatchResults(results: MatchResultInsert[])`
-  - [ ] `getTopMatchesPerPlaylist(contextId: string, limit: number)`
+- [x] `matching.ts` — From `matchContextRepository`, `matchResultRepository`
+  - [x] `getMatchContext(contextId: string)`
+  - [x] `getLatestMatchContext(accountId: string)`
+  - [x] `getMatchContexts(accountId: string)`
+  - [x] `createMatchContext(context: MatchContextInsert)`
+  - [x] `getMatchResults(contextId: string)`
+  - [x] `getMatchResultsForSong(contextId: string, songId: string)`
+  - [x] `getMatchResultsForSongs(contextId: string, songIds: string[])`
+  - [x] `insertMatchResults(results: MatchResultInsert[])`
+  - [x] `getTopMatchesPerPlaylist(contextId: string, limit: number)`
+  - [x] `getBestMatchPerSong(contextId: string)`
 
 - [x] `jobs.ts` — From `JobPersistenceService`
   - [x] `getJobById(id: string)`
@@ -750,24 +669,29 @@ Create 8 query modules in `app/lib/data/`:
   - [x] `upsertAccount(account: AccountInsert)`
   - [ ] `updateAccountSetupComplete(id: string, complete: boolean)` — deferred
 
-- [ ] `newness.ts` — NEW for `item_status` table
-  - [ ] `getNewCounts(accountId: string)`
-  - [ ] `getNewItemIds(accountId: string, itemType: ItemType)`
-  - [ ] `markItemsNew(accountId: string, itemType: ItemType, itemIds: string[])`
-  - [ ] `markSeen(accountId: string, itemType: ItemType, itemIds: string[])`
-  - [ ] `markAllSeen(accountId: string, itemType: ItemType)`
+- [x] `newness.ts` — NEW for `item_status` table
+  - [x] `getNewCounts(accountId: string)`
+  - [x] `getNewItemIds(accountId: string, itemType: ItemType)`
+  - [x] `getItemStatuses(accountId: string, itemType?: ItemType)`
+  - [x] `markItemsNew(accountId: string, itemType: ItemType, itemIds: string[])`
+  - [x] `markSeen(accountId: string, itemType: ItemType, itemIds: string[])`
+  - [x] `markAllSeen(accountId: string, itemType: ItemType)`
+  - [x] `recordAction(accountId: string, itemId: string, itemType: ItemType, actionType: ActionType)`
+  - [x] `clearAction(accountId: string, itemId: string, itemType: ItemType)`
 
-- [ ] `preferences.ts` — NEW for `user_preferences` table
-  - [ ] `getPreferences(accountId: string)`
-  - [ ] `getOrCreatePreferences(accountId: string)`
-  - [ ] `updateTheme(accountId: string, theme: ThemeColor)`
-  - [ ] `getOnboardingStep(accountId: string)`
-  - [ ] `updateOnboardingStep(accountId: string, step: OnboardingStep)`
-  - [ ] `completeOnboarding(accountId: string)`
+- [x] `preferences.ts` — NEW for `user_preferences` table
+  - [x] `getPreferences(accountId: string)`
+  - [x] `getOrCreatePreferences(accountId: string)`
+  - [x] `updateTheme(accountId: string, theme: ThemeColor)`
+  - [x] `getOnboardingStep(accountId: string)`
+  - [x] `isOnboardingComplete(accountId: string)`
+  - [x] `updateOnboardingStep(accountId: string, step: OnboardingStep)`
+  - [x] `completeOnboarding(accountId: string)`
+  - [x] `resetOnboarding(accountId: string)`
 
 ### Verification
 
-- [ ] Each module compiles without errors
+- [x] Each module compiles without errors
 - [ ] Old repositories still work (temporarily call new query modules)
 
 ---
@@ -864,12 +788,12 @@ bun run typecheck  # No import errors
 
 ### Background
 
-| Current | New |
-|---------|-----|
-| Local Python service (~4GB RAM) | DeepInfra API calls |
-| `localhost:8000/embed` | `api.deepinfra.com/v1/openai/embeddings` |
-| `localhost:8000/rerank` | `api.deepinfra.com/v1/inference/Qwen/Qwen3-Reranker-0.6B` |
-| `localhost:8000/sentiment` | ❌ Drop (LLM handles emotions) |
+| Current                         | New                                                       |
+| ------------------------------- | --------------------------------------------------------- |
+| Local Python service (~4GB RAM) | DeepInfra API calls                                       |
+| `localhost:8000/embed`          | `api.deepinfra.com/v1/openai/embeddings`                  |
+| `localhost:8000/rerank`         | `api.deepinfra.com/v1/inference/Qwen/Qwen3-Reranker-0.6B` |
+| `localhost:8000/sentiment`      | ❌ Drop (LLM handles emotions)                             |
 
 ### Models (unchanged)
 
@@ -1083,12 +1007,12 @@ bun run build      # Builds successfully
 
 ### Rollback Points
 
-| Phase | Rollback Strategy |
-|-------|-------------------|
-| Phase 1 | `supabase db reset` to clear all tables |
+| Phase   | Rollback Strategy                                 |
+| ------- | ------------------------------------------------- |
+| Phase 1 | `supabase db reset` to clear all tables           |
 | Phase 3 | Keep old repositories, query modules are additive |
-| Phase 4 | Git revert, factories are just imports |
-| Phase 5 | Keep old job system until SSE proven |
+| Phase 4 | Git revert, factories are just imports            |
+| Phase 5 | Keep old job system until SSE proven              |
 
 ### Facade Pattern (Phase 3)
 
@@ -1112,38 +1036,38 @@ This allows incremental migration without breaking existing code.
 
 Update this section as phases complete:
 
-| Phase | Status | Started | Completed |
-|-------|--------|---------|-----------|
-| Phase 0 | ✅ Complete | Jan 2026 | Jan 2026 |
-| Phase 1 | 🟡 Partial | Jan 2026 | — |
-| Phase 2 | 🟡 Partial | Jan 2026 | — |
-| Phase 3 | 🟡 In Progress | Jan 2026 | — |
-| Phase 4a | ⬜ Not started | | |
-| Phase 4b | ⬜ Not started | | |
-| Phase 4c | ⬜ Not started | | |
-| Phase 4d | ⬜ Not started | | |
-| Phase 5 | ⬜ Not started | | |
-| Phase 6 | ⬜ Not started | | |
-| Phase 7 | 🟡 In Progress | Jan 2026 | — |
+| Phase    | Status        | Started  | Completed |
+| -------- | ------------- | -------- | --------- |
+| Phase 0  | ✅ Complete    | Jan 2026 | Jan 2026  |
+| Phase 1  | 🟡 Partial     | Jan 2026 | —         |
+| Phase 2  | 🟡 Partial     | Jan 2026 | —         |
+| Phase 3  | ✅ Complete    | Jan 2026 | Jan 2026  |
+| Phase 4a | ⬜ Not started |          |           |
+| Phase 4b | ⬜ Not started |          |           |
+| Phase 4c | ⬜ Not started |          |           |
+| Phase 4d | ⬜ Not started |          |           |
+| Phase 5  | ⬜ Not started |          |           |
+| Phase 6  | ⬜ Not started |          |           |
+| Phase 7  | 🟡 In Progress | Jan 2026 | —         |
 
 ### Progress Notes
 
-**Phase 1 (Schema)**: Core tables created - account, auth_token, song, playlist, liked_song, playlist_song, job, song_audio_feature, song_analysis, song_embedding, playlist_analysis, playlist_profile, job_failure, match_context, item_status, user_preferences, match_result. Added `is_destination` column to playlist table (migration `20260117030516`). Missing: song_genre.
+**Phase 1 (Schema)**: Core tables created - account, auth_token, song, playlist, liked_song, playlist_song, job, song_audio_feature, song_analysis, song_embedding, playlist_analysis, playlist_profile, job_failure, match_context, item_status, user_preferences, match_result. Added `is_destination` column to playlist table (migration `20260117030516`). Genres are stored on `song.genres`.
 
 **Phase 2 (Extensions)**: TypeScript types generated (database.types.ts). pgvector enabled.
 
-**Phase 3 (Query Modules)**: 6/10 modules complete with Result<T, DbError> pattern:
-- ✅ `client.ts` — Admin + user client factories
+**Phase 3 (Query Modules)**: ✅ Complete — All 11 modules implemented with Result<T, DbError> pattern:
+- ✅ `client.ts` — Service role client factory (deny-all RLS)
 - ✅ `accounts.ts` — Account CRUD
 - ✅ `auth-tokens.ts` — Token refresh support
 - ✅ `songs.ts` — Song + liked song operations
 - ✅ `playlists.ts` — Playlist + playlist-song + destination operations
 - ✅ `jobs.ts` — Job lifecycle management
-- ⬜ `analysis.ts` — Song/playlist analysis
-- ⬜ `vectors.ts` — Embeddings + genres + profiles
-- ⬜ `matching.ts` — Match context + results
-- ⬜ `newness.ts` — Item status tracking
-- ⬜ `preferences.ts` — User preferences
+- ✅ `analysis.ts` — Song/playlist LLM analysis + audio features
+- ✅ `vectors.ts` — Song embeddings + playlist profiles
+- ✅ `matching.ts` — Match context + results + aggregations
+- ✅ `newness.ts` — Item status tracking (new/seen/actioned)
+- ✅ `preferences.ts` — User preferences + onboarding state
 
 **Phase 7 (UI)**: Auth flows working (login, logout, callback routes). TanStack Start + Router configured.
 

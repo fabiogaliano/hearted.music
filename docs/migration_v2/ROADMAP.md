@@ -6,19 +6,19 @@
 
 ## Status Overview
 
-| Phase | Name | Status | Blocked By |
-|-------|------|--------|------------|
-| 0 | Foundation | ✅ Complete | — |
-| 1 | Schema | 🟡 Partial (core tables) | Phase 0 |
-| 2 | Extensions | 🟡 Partial (types done) | Phase 1 |
-| 3 | Query Modules | 🟡 In Progress | Phase 2 |
-| 4a | Delete Factories | ⬜ Not Started | Phase 3 |
-| 4b | Song/Analysis Services | ⬜ Not Started | Phase 3 |
-| 4c | Playlist/Sync Services | ⬜ Not Started | Phase 3 |
-| 4d | DeepInfra Migration | ⬜ Not Started | Phase 3 |
-| 5 | SSE | ⬜ Not Started | Phase 4* |
-| 6 | Cleanup | ⬜ Not Started | Phase 5 |
-| 7 | UI Integration | 🟡 In Progress (auth flows) | Phase 6 |
+| Phase | Name                   | Status                     | Blocked By |
+| ----- | ---------------------- | -------------------------- | ---------- |
+| 0     | Foundation             | ✅ Complete                 | —          |
+| 1     | Schema                 | 🟡 Partial (core tables)    | Phase 0    |
+| 2     | Extensions             | 🟡 Partial (types done)     | Phase 1    |
+| 3     | Query Modules          | ✅ Complete                 | Phase 2    |
+| 4a    | Delete Factories       | ⬜ Not Started              | Phase 3    |
+| 4b    | Song/Analysis Services | ⬜ Not Started              | Phase 3    |
+| 4c    | Playlist/Sync Services | ⬜ Not Started              | Phase 3    |
+| 4d    | DeepInfra Migration    | ⬜ Not Started              | Phase 3    |
+| 5     | SSE                    | ⬜ Not Started              | Phase 4*   |
+| 6     | Cleanup                | ⬜ Not Started              | Phase 5    |
+| 7     | UI Integration         | 🟡 In Progress (auth flows) | Phase 6    |
 
 ---
 
@@ -41,7 +41,7 @@
     SUPABASE_ANON_KEY=xxx
     SUPABASE_SERVICE_ROLE_KEY=xxx
     ```
-  - Ref: [Decision #052](/docs/architecture/migration_v2/00-DECISIONS.md)
+  - Ref: [Decision #052](/docs/migration_v2/00-DECISIONS.md)
 
 - [ ] **Set up DB keep-alive**
   - Create cron job to ping Supabase every 5 days
@@ -60,50 +60,49 @@
 - [ ] Keep-alive scheduled
 
 ### References
-- [00-DECISIONS.md #052](/docs/architecture/migration_v2/00-DECISIONS.md) — Supabase Cloud Free
+- [00-DECISIONS.md #052](/docs/migration_v2/00-DECISIONS.md) — Supabase Cloud Free
 
 ---
 
 ## Phase 1: Schema
 
-> Create all 17 tables with RLS policies.
+> Create all 17 tables with RLS enabled (deny-all; service-role access only).
 
 ### Tasks
 
 #### Tier 1: No Dependencies
-- [ ] `001_create_account.sql` — [Decision #001, #039](/docs/architecture/migration_v2/00-DECISIONS.md)
-- [ ] `002_create_song.sql` — [Decision #002, #040, #041, #042](/docs/architecture/migration_v2/00-DECISIONS.md)
+- [ ] `001_create_account.sql` — [Decision #001, #039](/docs/migration_v2/00-DECISIONS.md)
+- [ ] `002_create_song.sql` — [Decision #002, #040, #041, #042](/docs/migration_v2/00-DECISIONS.md)
 
 #### Tier 2: Depends on Tier 1
 - [ ] `003_create_song_audio_feature.sql`
 - [ ] `004_create_song_analysis.sql`
 - [ ] `005_create_song_embedding.sql`
-- [ ] `006_create_song_genre.sql`
-- [ ] `007_create_liked_song.sql` — [Decision #005, #043](/docs/architecture/migration_v2/00-DECISIONS.md)
-- [ ] `008_create_playlist.sql` — [Decision #006](/docs/architecture/migration_v2/00-DECISIONS.md)
-- [ ] `009_create_job.sql` — [Decision #008, #009](/docs/architecture/migration_v2/00-DECISIONS.md)
+- [ ] `007_create_liked_song.sql` — [Decision #005, #043](/docs/migration_v2/00-DECISIONS.md)
+- [ ] `008_create_playlist.sql` — [Decision #006](/docs/migration_v2/00-DECISIONS.md)
+- [ ] `009_create_job.sql` — [Decision #008, #009](/docs/migration_v2/00-DECISIONS.md)
 
 #### Tier 3: Depends on Tier 2
-- [ ] `010_create_playlist_song.sql` — [Decision #049](/docs/architecture/migration_v2/00-DECISIONS.md) (RLS subquery)
+- [ ] `010_create_playlist_song.sql` — [Decision #049](/docs/migration_v2/00-DECISIONS.md)
 - [ ] `011_create_playlist_analysis.sql`
 - [ ] `012_create_playlist_profile.sql`
 - [ ] `013_create_job_failure.sql`
 - [ ] `014_create_match_context.sql`
-- [ ] `015_create_item_status.sql` — [Decision #010](/docs/architecture/migration_v2/00-DECISIONS.md)
-- [ ] `016_create_user_preferences.sql` — [Decision #044, #045, #046](/docs/architecture/migration_v2/00-DECISIONS.md)
+- [ ] `015_create_item_status.sql` — [Decision #010](/docs/migration_v2/00-DECISIONS.md)
+- [ ] `016_create_user_preferences.sql` — [Decision #044, #045, #046](/docs/migration_v2/00-DECISIONS.md)
 
 #### Tier 4: Final
 - [ ] `017_create_match_result.sql`
 
 ### Acceptance Criteria
 - [ ] All 17 tables created
-- [ ] RLS enabled on all tables
+- [ ] RLS enabled with deny-all policies
 - [ ] Foreign keys valid
 - [ ] `supabase db reset` runs clean
 
 ### References
-- [01-SCHEMA.md](/docs/architecture/migration_v2/01-SCHEMA.md) — Full schema definitions
-- [03-IMPLEMENTATION.md Phase 1](/docs/architecture/migration_v2/03-IMPLEMENTATION.md) — SQL for each migration
+- [01-SCHEMA.md](/docs/migration_v2/01-SCHEMA.md) — Full schema definitions
+- [03-IMPLEMENTATION.md Phase 1](/docs/migration_v2/03-IMPLEMENTATION.md) — SQL for each migration
 
 ---
 
@@ -126,7 +125,7 @@
 - [ ] **Create Zod/Valibot schemas**
   - Location: `lib/schemas/`
   - One file per domain: `song.schema.ts`, `playlist.schema.ts`, etc.
-  - Ref: [Decision #036, #037](/docs/architecture/migration_v2/00-DECISIONS.md)
+  - Ref: [Decision #036, #037](/docs/migration_v2/00-DECISIONS.md)
 
 ### Acceptance Criteria
 - [ ] pgvector queries work (test with dummy vector)
@@ -134,8 +133,8 @@
 - [ ] Schemas validate sample data
 
 ### References
-- [01-SCHEMA.md](/docs/architecture/migration_v2/01-SCHEMA.md) — Type definitions
-- [Decision #021](/docs/architecture/migration_v2/00-DECISIONS.md) — Valibot for validation
+- [01-SCHEMA.md](/docs/migration_v2/01-SCHEMA.md) — Type definitions
+- [Decision #021](/docs/migration_v2/00-DECISIONS.md) — Valibot for validation
 
 ---
 
@@ -148,23 +147,23 @@
 - [x] `data/client.ts` — Supabase client setup
 - [x] `data/songs.ts` — [02-SERVICES.md](/docs/architecture/migration_v2/02-SERVICES.md)
 - [x] `data/playlists.ts`
-- [ ] `data/analysis.ts`
-- [ ] `data/vectors.ts`
-- [ ] `data/matching.ts`
+- [x] `data/analysis.ts` — Song/playlist LLM analysis + audio features
+- [x] `data/vectors.ts` — Song embeddings + playlist profiles
+- [x] `data/matching.ts` — Match context + results + aggregations
 - [x] `data/jobs.ts`
 - [x] `data/accounts.ts`
-- [ ] `data/newness.ts` — NEW for `item_status`
-- [ ] `data/preferences.ts` — NEW for `user_preferences`
+- [x] `data/newness.ts` — Item status tracking (new/seen/actioned)
+- [x] `data/preferences.ts` — User preferences + onboarding state
 - [x] `data/auth-tokens.ts` — (additional) Token refresh support
 
 ### Acceptance Criteria
-- [ ] Each module compiles
-- [ ] Each module has working CRUD functions
+- [x] Each module compiles
+- [x] Each module has working CRUD functions
 - [ ] Old repositories can delegate to new modules (facade pattern)
 
 ### References
-- [02-SERVICES.md Query Modules](/docs/architecture/migration_v2/02-SERVICES.md) — Function signatures
-- [Decision #030, #031, #032](/docs/architecture/migration_v2/00-DECISIONS.md) — Query module pattern
+- [02-SERVICES.md Query Modules](/docs/migration_v2/02-SERVICES.md) — Function signatures
+- [Decision #030, #031, #032](/docs/migration_v2/00-DECISIONS.md) — Query module pattern
 
 ---
 
@@ -188,7 +187,7 @@
 - [ ] `bun run typecheck` passes
 
 ### References
-- [Decision #034](/docs/architecture/migration_v2/00-DECISIONS.md) — No factories
+- [Decision #034](/docs/migration_v2/00-DECISIONS.md) — No factories
 
 ---
 
@@ -211,8 +210,8 @@
 - [ ] No duplicate code
 
 ### References
-- [02-SERVICES.md](/docs/architecture/migration_v2/02-SERVICES.md) — Service consolidation
-- [Decision #033](/docs/architecture/migration_v2/00-DECISIONS.md) — Merge analysis pipeline
+- [02-SERVICES.md](/docs/migration_v2/02-SERVICES.md) — Service consolidation
+- [Decision #033](/docs/migration_v2/00-DECISIONS.md) — Merge analysis pipeline
 
 ---
 
@@ -232,7 +231,7 @@
 - [ ] No duplicate DB code
 
 ### References
-- [02-SERVICES.md](/docs/architecture/migration_v2/02-SERVICES.md) — PlaylistSyncService spec
+- [02-SERVICES.md](/docs/migration_v2/02-SERVICES.md) — PlaylistSyncService spec
 
 ---
 
@@ -267,8 +266,8 @@
 - [ ] No Python service running
 
 ### References
-- [02-SERVICES.md DeepInfraService](/docs/architecture/migration_v2/02-SERVICES.md) — Service spec
-- [Decision #053, #054, #055, #056](/docs/architecture/migration_v2/00-DECISIONS.md) — DeepInfra decisions
+- [02-SERVICES.md DeepInfraService](/docs/migration_v2/02-SERVICES.md) — Service spec
+- [Decision #053, #054, #055, #056](/docs/migration_v2/00-DECISIONS.md) — DeepInfra decisions
 
 ---
 
@@ -299,8 +298,8 @@
 - [ ] Works in Cloudflare Workers (no WS support)
 
 ### References
-- [02-SERVICES.md SSE API Route](/docs/architecture/migration_v2/02-SERVICES.md)
-- [Decision #035](/docs/architecture/migration_v2/00-DECISIONS.md) — SSE over WebSocket
+- [02-SERVICES.md SSE API Route](/docs/migration_v2/02-SERVICES.md)
+- [Decision #035](/docs/migration_v2/00-DECISIONS.md) — SSE over WebSocket
 
 ---
 
@@ -368,9 +367,9 @@
 - [ ] Job progress shows in real-time
 
 ### References
-- [Decision #036](/docs/architecture/migration_v2/00-DECISIONS.md) — TanStack Start server functions
-- [ONBOARDING-FLOW.md](/docs/architecture/ONBOARDING-FLOW.md) — Onboarding spec
-- [DATA-FLOW-PATTERNS.md](/docs/architecture/DATA-FLOW-PATTERNS.md) — Data patterns
+- [Decision #036](/docs/migration_v2/00-DECISIONS.md) — TanStack Start server functions
+- [ONBOARDING-FLOW.md](/docs/ONBOARDING-FLOW.md) — Onboarding spec
+- [DATA-FLOW-PATTERNS.md](/docs/DATA-FLOW-PATTERNS.md) — Data patterns
 
 ---
 
@@ -404,18 +403,18 @@
 - [ ] **Custom domain** (optional)
 
 ### References
-- [Decision #051](/docs/architecture/migration_v2/00-DECISIONS.md) — Cloudflare Workers
+- [Decision #051](/docs/migration_v2/00-DECISIONS.md) — Cloudflare Workers
 
 ---
 
 ## Quick Links
 
-| Doc | Purpose |
-|-----|---------|
-| [00-DECISIONS.md](./00-DECISIONS.md) | All 56 architectural decisions |
-| [01-SCHEMA.md](./01-SCHEMA.md) | Database schema definitions |
-| [02-SERVICES.md](./02-SERVICES.md) | Service layer consolidation |
-| [03-IMPLEMENTATION.md](./03-IMPLEMENTATION.md) | Detailed SQL + code |
+| Doc                                            | Purpose                        |
+| ---------------------------------------------- | ------------------------------ |
+| [00-DECISIONS.md](./00-DECISIONS.md)           | All 56 architectural decisions |
+| [01-SCHEMA.md](./01-SCHEMA.md)                 | Database schema definitions    |
+| [02-SERVICES.md](./02-SERVICES.md)             | Service layer consolidation    |
+| [03-IMPLEMENTATION.md](./03-IMPLEMENTATION.md) | Detailed SQL + code            |
 
 ---
 

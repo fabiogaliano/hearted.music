@@ -55,7 +55,7 @@
 | 037 | Schema organization          | Per-domain (`playlist.schema.ts`)                                                   | Matches query module boundaries. Schemas reusable across routes. Fewer files, less duplication.                                                                                         |
 | 038 | Validation error handling    | Both: `parseFormData` (throws) + `safeParseFormData` (returns)                      | Throw for API routes (unexpected errors). Return errors for forms (inline validation display). Different contexts need different patterns.                                              |
 | 039 | `account.display_name`       | Add column                                                                          | Available from Spotify OAuth, useful for UI greetings.                                                                                                                                  |
-| 040 | `song` artists storage       | Keep as TEXT (primary artist only)                                                  | Simpler. Spotify returns array but we only display first.                                                                                                                               |
+| 040 | `song` artists storage       | Store as TEXT[] (multi-artist)                                                      | Preserve full artist list from Spotify for display and filtering.                                                                                                                       |
 | 041 | `song.isrc`                  | Add column                                                                          | ISRC enables future cross-platform matching (Apple Music, Tidal).                                                                                                                       |
 | 042 | `song.image_url`             | Add column                                                                          | Store album art URL to avoid extra API calls during render.                                                                                                                             |
 | 043 | `liked_song.status`          | Add column (NULL/matched/ignored)                                                   | Filter matching algorithm: exclude already-processed songs.                                                                                                                             |
@@ -86,7 +86,7 @@
 | `track_analyses`               | `song_analysis`                |
 | `playlist_analyses`            | `playlist_analysis`            |
 | `track_embeddings`             | `song_embedding`               |
-| `track_genres`                 | `song_genre`                   |
+| `track_genres`                 | `song.genres`                  |
 | `playlist_profiles`            | `playlist_profile`             |
 | `playlists.is_flagged`         | `playlist.is_destination`      |
 | `users`                        | `account`                      |

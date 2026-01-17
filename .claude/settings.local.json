@@ -1,11 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Skill(better-result)"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "anki-connect"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }
