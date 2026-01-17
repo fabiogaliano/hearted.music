@@ -1,5 +1,5 @@
-import type { AuthToken } from "@/lib/data/auth-tokens";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AuthToken } from "@/lib/data/auth-tokens";
 import { refreshTokenWithCoordination } from "./client";
 
 const authTokenMocks = vi.hoisted(() => ({

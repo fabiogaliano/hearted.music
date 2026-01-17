@@ -59,7 +59,9 @@ describe("SpotifyService", () => {
 					album: {
 						id: "album-1",
 						name: "Album",
-						images: [{ url: "https://example.com/cover.jpg", width: 300, height: 300 }],
+						images: [
+							{ url: "https://example.com/cover.jpg", width: 300, height: 300 },
+						],
 					},
 					duration_ms: 123000,
 					uri: "spotify:track:track-1",
@@ -74,7 +76,9 @@ describe("SpotifyService", () => {
 					album: {
 						id: "album-2",
 						name: "Older Album",
-						images: [{ url: "https://example.com/old.jpg", width: 300, height: 300 }],
+						images: [
+							{ url: "https://example.com/old.jpg", width: 300, height: 300 },
+						],
 					},
 					duration_ms: 222000,
 					uri: "spotify:track:track-2",
