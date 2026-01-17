@@ -6,6 +6,7 @@
  */
 
 import { Result } from "better-result";
+import { z } from "zod";
 import type { DbError } from "@/lib/errors/data";
 import { fromSupabaseMany, fromSupabaseSingle } from "@/lib/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
@@ -22,7 +23,8 @@ export type ItemStatus = Tables<"item_status">;
 export type ItemType = Enums<"item_type">;
 
 /** Action type values (TEXT column, not enum) */
-export type ActionType = "added_to_playlist" | "skipped" | "dismissed";
+export const ACTION_TYPES = z.enum(["added_to_playlist", "skipped", "dismissed"]);
+export type ActionType = z.infer<typeof ACTION_TYPES>;
 
 /** Counts of new items by type */
 export type NewCounts = {

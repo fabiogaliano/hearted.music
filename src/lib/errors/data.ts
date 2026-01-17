@@ -3,6 +3,11 @@
  */
 
 import { TaggedError } from "better-result";
+import { z } from "zod";
+
+/** Database operation types for RLS errors */
+export const DB_OPERATIONS = z.enum(["select", "insert", "update", "delete"]);
+export type DbOperation = z.infer<typeof DB_OPERATIONS>;
 
 // ============================================================================
 // Query Errors
@@ -40,14 +45,11 @@ export class ConstraintError extends TaggedError("ConstraintError")<{
 
 /** Row-level security policy blocked the operation */
 export class RLSError extends TaggedError("RLSError")<{
-	operation: "select" | "insert" | "update" | "delete";
+	operation: DbOperation;
 	table: string;
 	message: string;
 }>() {
-	constructor(
-		operation: "select" | "insert" | "update" | "delete",
-		table: string,
-	) {
+	constructor(operation: DbOperation, table: string) {
 		super({
 			operation,
 			table,

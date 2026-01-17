@@ -13,6 +13,7 @@ import {
 } from "@/lib/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
 import type { Enums, Tables } from "./database.types";
+import { z } from "zod";
 
 // ============================================================================
 // Type Exports
@@ -24,15 +25,18 @@ export type UserPreferences = Tables<"user_preferences">;
 /** Theme color enum from database */
 export type ThemeColor = Enums<"theme">;
 
-/** Onboarding step string values */
-export type OnboardingStep =
-	| "welcome"
-	| "pick-color"
-	| "connecting"
-	| "syncing"
-	| "flag-playlists"
-	| "ready"
-	| "complete";
+/** Onboarding steps enum */
+export const ONBOARDING_STEPS = z.enum([
+  "welcome",
+  "pick-color",
+  "connecting",
+  "syncing",
+  "flag-playlists",
+  "ready",
+  "complete",
+	]);
+
+export type OnboardingStep = z.infer<typeof ONBOARDING_STEPS>;
 
 // ============================================================================
 // Query Operations
@@ -80,7 +84,7 @@ export async function getOrCreatePreferences(
 			.insert({
 				account_id: accountId,
 				theme: "blue",
-				onboarding_step: "welcome",
+				onboarding_step: ONBOARDING_STEPS.enum.welcome,
 			})
 			.select()
 			.single(),
@@ -101,7 +105,7 @@ export async function getOnboardingStep(
 	}
 
 	return Result.ok(
-		(result.value?.onboarding_step as OnboardingStep) ?? "welcome",
+		(result.value?.onboarding_step as OnboardingStep) ?? ONBOARDING_STEPS.enum.welcome,
 	);
 }
 
@@ -211,7 +215,7 @@ export function resetOnboarding(
 			.upsert(
 				{
 					account_id: accountId,
-					onboarding_step: "welcome",
+					onboarding_step: ONBOARDING_STEPS.enum.welcome,
 					onboarding_completed_at: null,
 				},
 				{ onConflict: "account_id" },

@@ -3,6 +3,11 @@
  */
 
 import { TaggedError } from "better-result";
+import { z } from "zod";
+
+/** Reasons for Spotify authentication failures */
+export const SPOTIFY_AUTH_REASONS = z.enum(["expired", "invalid", "revoked"]);
+export type SpotifyAuthReason = z.infer<typeof SPOTIFY_AUTH_REASONS>;
 
 /** Spotify API rate limit exceeded (HTTP 429) */
 export class SpotifyRateLimitError extends TaggedError(
@@ -21,10 +26,10 @@ export class SpotifyRateLimitError extends TaggedError(
 
 /** Spotify access token expired or invalid */
 export class SpotifyAuthError extends TaggedError("SpotifyAuthError")<{
-	reason: "expired" | "invalid" | "revoked";
+	reason: SpotifyAuthReason;
 	message: string;
 }>() {
-	constructor(reason: "expired" | "invalid" | "revoked") {
+	constructor(reason: SpotifyAuthReason) {
 		super({
 			reason,
 			message: `Spotify auth failed: ${reason}`,

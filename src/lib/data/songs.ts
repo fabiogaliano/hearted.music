@@ -14,6 +14,7 @@ import {
 } from "@/lib/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
 import type { Tables, TablesInsert } from "./database.types";
+import type { ActionType } from "./newness";
 
 // ============================================================================
 // Type Exports
@@ -257,7 +258,7 @@ export async function getPendingLikedSongs(
 export function updateLikedSongStatus(
 	accountId: string,
 	songId: string,
-	actionType: "added_to_playlist" | "skipped" | "dismissed",
+	actionType: ActionType,
 ): Promise<Result<ItemStatus, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
