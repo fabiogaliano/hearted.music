@@ -52,3 +52,28 @@ export type {
 } from "./service";
 /** Re-export SpotifyService class and types */
 export { SpotifyService } from "./service";
+
+/** Re-export Result-based request helpers */
+export {
+	fetchWithRetry,
+	fetchOnce,
+	classifySpotifyError,
+	type RetryOptions,
+} from "./request";
+
+/** Re-export pagination helpers */
+export {
+	fetchAllPages,
+	fetchPagesIterator,
+	type PaginationOptions,
+} from "./pagination";
+
+/** Re-export mappers for Spotify -> DB shapes */
+export {
+	mapTrackToSongInsert,
+	mapTrackToLikedSongInsert,
+	mapPlaylistToPlaylistInsert,
+	mapTrackToPlaylistSongInsert,
+	mapTracksToSongInserts,
+	mapPlaylistsToPlaylistInserts,
+} from "./mappers";

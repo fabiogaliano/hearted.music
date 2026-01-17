@@ -1,4 +1,5 @@
 import type { SpotifyApi } from "@fostertheweb/spotify-web-sdk";
+import { Result } from "better-result";
 import { describe, expect, it, vi } from "vitest";
 import { SpotifyService } from "./service";
 
@@ -34,18 +35,48 @@ describe("SpotifyService", () => {
 		} as unknown as SpotifyApi;
 
 		const service = new SpotifyService(sdk);
-		const playlists = await service.getPlaylists();
+		const result = await service.getPlaylists();
 
+		expect(Result.isOk(result)).toBe(true);
 		expect(getUsersPlaylists).toHaveBeenCalledTimes(2);
-		expect(playlists).toEqual([
-			{
-				id: "playlist-1",
-				name: "Daily Mix",
-				description: null,
-				owner: { id: "user-1" },
-				track_count: 12,
+
+		if (Result.isOk(result)) {
+			expect(result.value).toEqual([
+				{
+					id: "playlist-1",
+					name: "Daily Mix",
+					description: null,
+					owner: { id: "user-1" },
+					track_count: 12,
+				},
+			]);
+		}
+	});
+
+	it("returns error after max retries exceeded", async () => {
+		const rateLimitError = {
+			status: 429,
+			headers: { get: () => "0" },
+		};
+
+		const getUsersPlaylists = vi.fn().mockRejectedValue(rateLimitError);
+
+		const sdk = {
+			currentUser: {
+				profile: vi.fn().mockResolvedValue({ id: "user-1" }),
 			},
-		]);
+			playlists: {
+				getUsersPlaylists,
+			},
+		} as unknown as SpotifyApi;
+
+		const service = new SpotifyService(sdk);
+		const result = await service.getPlaylists();
+
+		expect(Result.isError(result)).toBe(true);
+		if (Result.isError(result)) {
+			expect(result.error._tag).toBe("SpotifyRateLimitError");
+		}
 	});
 
 	it("stops pagination when filtered items drop", async () => {
@@ -97,9 +128,34 @@ describe("SpotifyService", () => {
 		} as unknown as SpotifyApi;
 
 		const service = new SpotifyService(sdk);
-		const tracks = await service.getLikedTracks("2024-01-01T00:00:00Z");
+		const result = await service.getLikedTracks("2024-01-01T00:00:00Z");
 
+		expect(Result.isOk(result)).toBe(true);
 		expect(savedTracks).toHaveBeenCalledTimes(1);
-		expect(tracks).toEqual([items[0]]);
+
+		if (Result.isOk(result)) {
+			expect(result.value).toEqual([items[0]]);
+		}
+	});
+
+	it("returns auth error for 401 response", async () => {
+		const authError = { status: 401 };
+
+		const sdk = {
+			currentUser: {
+				profile: vi.fn().mockRejectedValue(authError),
+			},
+			playlists: {
+				getUsersPlaylists: vi.fn(),
+			},
+		} as unknown as SpotifyApi;
+
+		const service = new SpotifyService(sdk);
+		const result = await service.getPlaylists();
+
+		expect(Result.isError(result)).toBe(true);
+		if (Result.isError(result)) {
+			expect(result.error._tag).toBe("SpotifyAuthError");
+		}
 	});
 });
