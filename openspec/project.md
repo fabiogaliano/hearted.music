@@ -106,14 +106,14 @@ export function createAdminSupabaseClient() {
 ```
 
 *Data Layer Patterns:*
-| Pattern | Rule |
-|---------|------|
-| Error handling | ✅ Return `Result<T, DbError>` - no throwing in data layer |
-| Return types | ✅ Annotate with Result type for explicit error contracts |
-| Row types | Only export if external code needs them: `export type X = Tables<"x">` |
-| Insert types | Use `Pick<TablesInsert<"x">, "field1" \| "field2">` for partial inputs |
-| Type casts | ❌ Never use `as X` - indicates something is wrong |
-| External APIs | Manual interfaces OK (Spotify responses, etc.) |
+| Pattern        | Rule                                                                   |
+| -------------- | ---------------------------------------------------------------------- |
+| Error handling | ✅ Return `Result<T, DbError>` - no throwing in data layer              |
+| Return types   | ✅ Annotate with Result type for explicit error contracts               |
+| Row types      | Only export if external code needs them: `export type X = Tables<"x">` |
+| Insert types   | Use `Pick<TablesInsert<"x">, "field1" \| "field2">` for partial inputs |
+| Type casts     | ❌ Never use `as X` - indicates something is wrong                      |
+| External APIs  | Manual interfaces OK (Spotify responses, etc.)                         |
 
 *Example - Correct Pattern:*
 ```typescript
@@ -179,11 +179,11 @@ This app will integrate with the Spotify Web API to:
 - Fetch user's "Liked Songs" (saved tracks)
 - Read track metadata (genre, tempo, mood, etc.)
 - Create and manage playlists
-- Potentially use Spotify's audio features API for sorting criteria
+- Fetch audio features from ReccoBeats for sorting criteria
 
 ### Key Domain Terms
 - **Hearted/Liked Songs**: Spotify's saved tracks collection
-- **Audio Features**: Spotify's analysis data (danceability, energy, valence, etc.)
+- **Audio Features**: ReccoBeats analysis data (danceability, energy, valence, etc.)
 - **Playlist**: User-created or auto-generated song collections
 
 ## Important Constraints
@@ -206,11 +206,11 @@ This app will integrate with the Spotify Web API to:
 
 When working on this project, the AI assistant SHOULD use these skills when appropriate:
 
-| Skill | When to Use |
-|-------|-------------|
-| `tanstack-start-react` | Creating routes, loaders, server functions, search params, SSE streams |
-| `web-interface-guidelines` | Reviewing UI code, checking accessibility, auditing design patterns |
-| `react-best-practices` | Writing/reviewing React components, performance optimization |
+| Skill                      | When to Use                                                            |
+| -------------------------- | ---------------------------------------------------------------------- |
+| `tanstack-start-react`     | Creating routes, loaders, server functions, search params, SSE streams |
+| `web-interface-guidelines` | Reviewing UI code, checking accessibility, auditing design patterns    |
+| `react-best-practices`     | Writing/reviewing React components, performance optimization           |
 
 **How to invoke:**
 - Explicitly: `/tanstack-start-react` or ask "use the tanstack skill"
