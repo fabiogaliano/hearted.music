@@ -3,11 +3,18 @@
  *
  * Stores Spotify OAuth tokens server-side for security.
  * Uses service role client to bypass RLS.
- * Types are inferred from createClient<Database>() - no explicit annotations needed.
+ * Returns Result<T, DbError> for composable error handling.
  */
 
+import { Result } from "better-result";
 import { createAdminSupabaseClient } from "./client";
 import type { Tables } from "./database.types";
+import type { DbError } from "@/lib/errors/data";
+import { DatabaseError } from "@/lib/errors/data";
+import {
+	fromSupabaseMaybe,
+	fromSupabaseSingle,
+} from "@/lib/utils/result-wrappers/supabase";
 
 /** Re-export for external use (e.g., spotify/client.ts needs this for isTokenExpired) */
 export type AuthToken = Tables<"auth_token">;
@@ -21,27 +28,25 @@ export interface UpsertTokenData {
 
 /**
  * Gets the auth token for an account.
+ * Returns null if not found (not an error).
  */
-export async function getTokenByAccountId(accountId: string) {
+export function getTokenByAccountId(
+	accountId: string,
+): Promise<Result<AuthToken | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase
-		.from("auth_token")
-		.select("*")
-		.eq("account_id", accountId)
-		.single();
-
-	if (error) {
-		if (error.code === "PGRST116") return null; // Not found
-		throw error;
-	}
-	return data;
+	return fromSupabaseMaybe(
+		supabase.from("auth_token").select("*").eq("account_id", accountId).single(),
+	);
 }
 
 /**
  * Creates or updates tokens for an account.
  * account_id has UNIQUE constraint, so this upserts.
  */
-export async function upsertToken(accountId: string, tokens: UpsertTokenData) {
+export function upsertToken(
+	accountId: string,
+	tokens: UpsertTokenData,
+): Promise<Result<AuthToken, DbError>> {
 	const supabase = createAdminSupabaseClient();
 
 	// Calculate expiry timestamp
@@ -49,35 +54,39 @@ export async function upsertToken(accountId: string, tokens: UpsertTokenData) {
 		Date.now() + tokens.expires_in * 1000,
 	).toISOString();
 
-	const { data, error } = await supabase
-		.from("auth_token")
-		.upsert(
-			{
-				account_id: accountId,
-				access_token: tokens.access_token,
-				refresh_token: tokens.refresh_token,
-				token_expires_at: expiresAt,
-			},
-			{ onConflict: "account_id" },
-		)
-		.select()
-		.single();
-
-	if (error) throw error;
-	return data;
+	return fromSupabaseSingle(
+		supabase
+			.from("auth_token")
+			.upsert(
+				{
+					account_id: accountId,
+					access_token: tokens.access_token,
+					refresh_token: tokens.refresh_token,
+					token_expires_at: expiresAt,
+				},
+				{ onConflict: "account_id" },
+			)
+			.select()
+			.single(),
+	);
 }
 
 /**
  * Deletes tokens for an account (used for logout/revocation).
  */
-export async function deleteToken(accountId: string): Promise<void> {
+export async function deleteToken(
+	accountId: string,
+): Promise<Result<void, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	const { error } = await supabase
 		.from("auth_token")
 		.delete()
 		.eq("account_id", accountId);
 
-	if (error) throw error;
+	if (error) {
+		return Result.err(new DatabaseError({ code: error.code, message: error.message }));
+	}
+	return Result.ok(undefined);
 }
 
 /**

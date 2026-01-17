@@ -6,12 +6,21 @@
  * - SDK factory creates instances for API calls
  * - SpotifyService wraps SDK with retry + pagination
  * - Refresh coordination prevents duplicate token refreshes
+ *
+ * Returns Result types for composable error handling.
  */
 
+import { Result } from "better-result";
+import type { AuthToken } from "@/lib/data/auth-tokens";
 import { getTokenByAccountId, isTokenExpired } from "@/lib/data/auth-tokens";
+import type { DbError } from "@/lib/errors/data";
+import { SpotifyAuthError } from "@/lib/errors/spotify";
 import { refreshTokenWithCoordination } from "./client";
 import { createSpotifyApi } from "./sdk";
 import { SpotifyService } from "./service";
+
+/** Errors that can occur when initializing SpotifyService */
+export type SpotifyServiceError = DbError | SpotifyAuthError;
 
 /**
  * Gets a SpotifyService instance for the given account.
@@ -22,26 +31,38 @@ import { SpotifyService } from "./service";
  *
  * @example
  * ```ts
- * const spotify = await getSpotifyService(accountId);
- * const tracks = await spotify.getLikedTracks();
+ * const result = await getSpotifyService(accountId);
+ * if (Result.isOk(result)) {
+ *   const tracks = await result.value.getLikedTracks();
+ * }
  * ```
  */
 export async function getSpotifyService(
 	accountId: string,
-): Promise<SpotifyService> {
-	let token = await getTokenByAccountId(accountId);
+): Promise<Result<SpotifyService, SpotifyServiceError>> {
+	const tokenResult = await getTokenByAccountId(accountId);
 
-	if (!token) {
-		throw new Error("No token found for account");
+	if (Result.isError(tokenResult)) {
+		return Result.err(tokenResult.error);
 	}
+
+	if (!tokenResult.value) {
+		return Result.err(new SpotifyAuthError("invalid"));
+	}
+
+	let token: AuthToken = tokenResult.value;
 
 	// Refresh if expired (with coordination)
 	if (isTokenExpired(token)) {
-		token = await refreshTokenWithCoordination(accountId, token);
+		const refreshResult = await refreshTokenWithCoordination(accountId, token);
+		if (Result.isError(refreshResult)) {
+			return Result.err(refreshResult.error);
+		}
+		token = refreshResult.value;
 	}
 
 	const sdk = createSpotifyApi(token.access_token);
-	return new SpotifyService(sdk);
+	return Result.ok(new SpotifyService(sdk));
 }
 
 /** Re-export token exchange functions for OAuth callback */

@@ -3,8 +3,11 @@
  *
  * Verifies state, exchanges code for tokens, creates/updates account,
  * and establishes session.
+ *
+ * Uses Result types at the route boundary to translate errors to redirects.
  */
 
+import { Result } from "better-result";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
@@ -67,19 +70,34 @@ const handleCallback = createServerFn({ method: "GET" })
 			// Fetch user profile
 			const spotifyUser = await fetchSpotifyUser(tokens.access_token);
 
-			// Create or update account
-			const account = await upsertAccount({
+			// Create or update account (Result-based)
+			const accountResult = await upsertAccount({
 				spotify_id: spotifyUser.id,
 				email: spotifyUser.email,
 				display_name: spotifyUser.display_name,
 			});
 
-			// Store tokens
-			await upsertToken(account.id, {
+			if (Result.isError(accountResult)) {
+				throw redirect({
+					to: "/",
+					search: { error: `db_error:${accountResult.error._tag}` },
+				});
+			}
+			const account = accountResult.value;
+
+			// Store tokens (Result-based)
+			const tokenResult = await upsertToken(account.id, {
 				access_token: tokens.access_token,
 				refresh_token: tokens.refresh_token,
 				expires_in: tokens.expires_in,
 			});
+
+			if (Result.isError(tokenResult)) {
+				throw redirect({
+					to: "/",
+					search: { error: `db_error:${tokenResult.error._tag}` },
+				});
+			}
 
 			// Set session and clear OAuth cookies
 			const sessionCookie = setSessionCookie(account.id);

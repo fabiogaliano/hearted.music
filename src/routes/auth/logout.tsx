@@ -1,5 +1,8 @@
 /**
  * POST /auth/logout - Clears session and redirects to home
+ *
+ * Uses Result types at the route boundary. Token deletion errors
+ * are ignored since the session will be cleared regardless.
  */
 
 import { createFileRoute, redirect } from "@tanstack/react-router";
@@ -13,12 +16,9 @@ const handleLogout = createServerFn({ method: "POST" }).handler(async () => {
 	const accountId = getSessionCookie(request);
 
 	// Delete tokens from database if we have a session
+	// Result errors are intentionally ignored - session will be cleared anyway
 	if (accountId) {
-		try {
-			await deleteToken(accountId);
-		} catch {
-			// Ignore errors - session will be cleared anyway
-		}
+		await deleteToken(accountId);
 	}
 
 	// Clear session cookie

@@ -108,12 +108,16 @@ async function resolveAccountId(args: string[]): Promise<string> {
 			fail("Missing Spotify ID after --spotify-id");
 			process.exit(1);
 		}
-		const account = await getAccountBySpotifyId(spotifyId);
-		if (!account) {
+		const accountResult = await getAccountBySpotifyId(spotifyId);
+		if (Result.isError(accountResult)) {
+			fail(`Database error: ${accountResult.error.message}`);
+			process.exit(1);
+		}
+		if (!accountResult.value) {
 			fail(`No account found for Spotify ID: ${spotifyId}`);
 			process.exit(1);
 		}
-		return account.id;
+		return accountResult.value.id;
 	}
 
 	const accountId = args[0];
@@ -127,14 +131,18 @@ ${colors.yellow}Usage:${colors.reset}
 		process.exit(1);
 	}
 
-	const account = await getAccountById(accountId);
-	if (!account) {
+	const accountResult = await getAccountById(accountId);
+	if (Result.isError(accountResult)) {
+		fail(`Database error: ${accountResult.error.message}`);
+		process.exit(1);
+	}
+	if (!accountResult.value) {
 		fail(`No account found for ID: ${accountId}`);
 		dim("Run with --list-accounts to see available accounts");
 		process.exit(1);
 	}
 
-	return account.id;
+	return accountResult.value.id;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -151,16 +159,15 @@ async function runTests(accountId: string): Promise<TestResult[]> {
 	const results: TestResult[] = [];
 
 	info("Initializing SpotifyService...");
-	let spotify: Awaited<ReturnType<typeof getSpotifyService>>;
 
-	try {
-		spotify = await getSpotifyService(accountId);
-		success("SpotifyService initialized");
-	} catch (err) {
-		fail(`Failed to initialize: ${err instanceof Error ? err.message : err}`);
+	const spotifyResult = await getSpotifyService(accountId);
+	if (Result.isError(spotifyResult)) {
+		fail(`Failed to initialize: ${spotifyResult.error.message}`);
 		dim("Token may be expired or revoked. Try logging in again.");
 		process.exit(1);
 	}
+	const spotify = spotifyResult.value;
+	success("SpotifyService initialized");
 
 	// Test 1: Get Liked Tracks
 	console.log("");

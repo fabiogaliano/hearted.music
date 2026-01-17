@@ -2,11 +2,20 @@
  * Account data operations.
  *
  * Uses service role client to bypass RLS since we use custom auth.
- * Types are inferred from createClient<Database>() - no explicit annotations needed.
+ * Returns Result<T, DbError> for composable error handling.
  */
 
+import type { Result } from "better-result";
 import { createAdminSupabaseClient } from "./client";
-import type { TablesInsert } from "./database.types";
+import type { Tables, TablesInsert } from "./database.types";
+import type { DbError } from "@/lib/errors/data";
+import {
+	fromSupabaseMaybe,
+	fromSupabaseSingle,
+} from "@/lib/utils/result-wrappers/supabase";
+
+/** Account row type */
+export type Account = Tables<"account">;
 
 /** Insert type - only the fields we use for upsert */
 export type UpsertAccountData = Pick<
@@ -16,59 +25,50 @@ export type UpsertAccountData = Pick<
 
 /**
  * Gets an account by its UUID.
+ * Returns null if not found (not an error).
  */
-export async function getAccountById(id: string) {
+export function getAccountById(
+	id: string,
+): Promise<Result<Account | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase
-		.from("account")
-		.select("*")
-		.eq("id", id)
-		.single();
-
-	if (error) {
-		if (error.code === "PGRST116") return null; // Not found
-		throw error;
-	}
-	return data;
+	return fromSupabaseMaybe(
+		supabase.from("account").select("*").eq("id", id).single(),
+	);
 }
 
 /**
  * Gets an account by Spotify user ID.
+ * Returns null if not found (not an error).
  */
-export async function getAccountBySpotifyId(spotifyId: string) {
+export function getAccountBySpotifyId(
+	spotifyId: string,
+): Promise<Result<Account | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase
-		.from("account")
-		.select("*")
-		.eq("spotify_id", spotifyId)
-		.single();
-
-	if (error) {
-		if (error.code === "PGRST116") return null; // Not found
-		throw error;
-	}
-	return data;
+	return fromSupabaseMaybe(
+		supabase.from("account").select("*").eq("spotify_id", spotifyId).single(),
+	);
 }
 
 /**
  * Creates or updates an account based on Spotify ID.
  * Returns the account (existing or newly created).
  */
-export async function upsertAccount(data: UpsertAccountData) {
+export function upsertAccount(
+	data: UpsertAccountData,
+): Promise<Result<Account, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const { data: account, error } = await supabase
-		.from("account")
-		.upsert(
-			{
-				spotify_id: data.spotify_id,
-				email: data.email,
-				display_name: data.display_name,
-			},
-			{ onConflict: "spotify_id" },
-		)
-		.select()
-		.single();
-
-	if (error) throw error;
-	return account;
+	return fromSupabaseSingle(
+		supabase
+			.from("account")
+			.upsert(
+				{
+					spotify_id: data.spotify_id,
+					email: data.email,
+					display_name: data.display_name,
+				},
+				{ onConflict: "spotify_id" },
+			)
+			.select()
+			.single(),
+	);
 }

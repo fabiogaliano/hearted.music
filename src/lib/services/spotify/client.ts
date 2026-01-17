@@ -3,8 +3,11 @@
  *
  * Handles token expiry transparently - calling code doesn't need
  * to worry about refresh logic.
+ *
+ * Returns Result types for composable error handling.
  */
 
+import { Result } from "better-result";
 import { env } from "@/env";
 import {
 	type AuthToken,
@@ -12,12 +15,17 @@ import {
 	isTokenExpired,
 	upsertToken,
 } from "@/lib/data/auth-tokens";
+import type { DbError } from "@/lib/errors/data";
+import { SpotifyAuthError } from "@/lib/errors/spotify";
 
 const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
 const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
 
+/** Errors that can occur during token operations */
+export type TokenError = DbError | SpotifyAuthError;
+
 /** Per-account refresh promise map to dedupe concurrent refreshes. */
-const refreshPromises = new Map<string, Promise<AuthToken>>();
+const refreshPromises = new Map<string, Promise<Result<AuthToken, TokenError>>>();
 
 export interface SpotifyUser {
 	id: string;
@@ -37,19 +45,29 @@ export interface SpotifyClient {
  */
 export async function getSpotifyClient(
 	accountId: string,
-): Promise<SpotifyClient> {
-	let token = await getTokenByAccountId(accountId);
+): Promise<Result<SpotifyClient, TokenError>> {
+	const tokenResult = await getTokenByAccountId(accountId);
 
-	if (!token) {
-		throw new Error("No token found for account");
+	if (Result.isError(tokenResult)) {
+		return Result.err(tokenResult.error);
 	}
+
+	if (!tokenResult.value) {
+		return Result.err(new SpotifyAuthError("invalid"));
+	}
+
+	let token: AuthToken = tokenResult.value;
 
 	// Refresh if expired
 	if (isTokenExpired(token)) {
-		token = await refreshTokenWithCoordination(accountId, token);
+		const refreshResult = await refreshTokenWithCoordination(accountId, token);
+		if (Result.isError(refreshResult)) {
+			return Result.err(refreshResult.error);
+		}
+		token = refreshResult.value;
 	}
 
-	return createClient(token.access_token);
+	return Result.ok(createClient(token.access_token));
 }
 
 /**
@@ -59,7 +77,7 @@ export async function getSpotifyClient(
 export async function refreshTokenWithCoordination(
 	accountId: string,
 	currentToken: AuthToken,
-): Promise<AuthToken> {
+): Promise<Result<AuthToken, TokenError>> {
 	const existingPromise = refreshPromises.get(accountId);
 	if (existingPromise) {
 		return existingPromise;
@@ -79,7 +97,10 @@ export async function refreshTokenWithCoordination(
  * Refreshes an expired token and updates the database.
  * For PKCE flow, only client_id is required (no client_secret).
  */
-async function performTokenRefresh(accountId: string, currentToken: AuthToken) {
+async function performTokenRefresh(
+	accountId: string,
+	currentToken: AuthToken,
+): Promise<Result<AuthToken, TokenError>> {
 	const response = await fetch(SPOTIFY_TOKEN_URL, {
 		method: "POST",
 		headers: {
@@ -93,8 +114,8 @@ async function performTokenRefresh(accountId: string, currentToken: AuthToken) {
 	});
 
 	if (!response.ok) {
-		const error = await response.text();
-		throw new Error(`Failed to refresh token: ${error}`);
+		// Token refresh failed - likely revoked or expired refresh token
+		return Result.err(new SpotifyAuthError("revoked"));
 	}
 
 	const data = await response.json();
