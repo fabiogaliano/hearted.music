@@ -8,25 +8,25 @@
 
 ## Schema Mapping
 
-| Old (v0) | New (v2) | Change |
-|----------|----------|--------|
-| `tracks` | `song` | Rename |
-| `audio_features` | `song_audio_feature` | Rename |
-| `saved_tracks` | `liked_song` | Rename + soft delete |
-| `playlist_tracks` | `playlist_song` | Drop `user_id` |
-| `track_analyses` | `song_analysis` | Rename + metadata |
-| `playlist_analyses` | `playlist_analysis` | Rename + metadata |
-| `track_embeddings` | `song_embedding` | Rename |
-| `track_genres` | `song_genre` | Rename |
-| `playlist_profiles` | `playlist_profile` | Rename |
-| `playlists.is_flagged` | `playlist.is_destination` | Rename |
-| `users` | `account` | Rename + simplify |
-| `user_preferences` | — | DROP (#017) |
-| `provider_keys` | — | DROP (#016) |
-| `analysis_jobs` | `job` | Unified (#021) |
-| `track_analysis_attempts` | `job_failure` | Rename |
-| — | `item_status` | NEW (newness) |
-| — | `user_preferences` | NEW (settings) |
+| Old (v0)                  | New (v2)                  | Change                       |
+| ------------------------- | ------------------------- | ---------------------------- |
+| `tracks`                  | `song`                    | Rename                       |
+| `audio_features`          | `song_audio_feature`      | Rename                       |
+| `saved_tracks`            | `liked_song`              | Rename + soft delete         |
+| `playlist_tracks`         | `playlist_song`           | Drop `user_id`               |
+| `track_analyses`          | `song_analysis`           | Rename + metadata            |
+| `playlist_analyses`       | `playlist_analysis`       | Rename + metadata            |
+| `track_embeddings`        | `song_embedding`          | Rename                       |
+| `track_genres`            | `song.genres`             | Moved into song genres array |
+| `playlist_profiles`       | `playlist_profile`        | Rename                       |
+| `playlists.is_flagged`    | `playlist.is_destination` | Rename                       |
+| `users`                   | `account`                 | Rename + simplify            |
+| `user_preferences`        | —                         | DROP (#017)                  |
+| `provider_keys`           | —                         | DROP (#016)                  |
+| `analysis_jobs`           | `job`                     | Unified (#021)               |
+| `track_analysis_attempts` | `job_failure`             | Rename                       |
+| —                         | `item_status`             | NEW (newness)                |
+| —                         | `user_preferences`        | NEW (settings)               |
 
 ---
 
@@ -34,39 +34,39 @@
 
 ### Data Layer
 
-| # | Decision | Rationale |
-|---|----------|-----------|
-| #030 | 9 query modules, no repository classes | Domain-organized functions with inferred types |
-| #031 | Supabase JS client (no ORM) | RLS works automatically; avoids schema sync overhead |
-| #029 | Query functions only (defer RPCs) | Fresh UI = unknown data needs. Start simple. |
+| #    | Decision                               | Rationale                                            |
+| ---- | -------------------------------------- | ---------------------------------------------------- |
+| #030 | 9 query modules, no repository classes | Domain-organized functions with inferred types       |
+| #031 | Supabase JS client (no ORM)            | RLS works automatically; avoids schema sync overhead |
+| #029 | Query functions only (defer RPCs)      | Fresh UI = unknown data needs. Start simple.         |
 
 ### Service Layer
 
-| # | Decision | Rationale |
-|---|----------|-----------|
-| #032 | Keep SpotifyService, delete TrackService | SpotifyService is API client. TrackService is thin wrapper. |
+| #    | Decision                                      | Rationale                                                        |
+| ---- | --------------------------------------------- | ---------------------------------------------------------------- |
+| #032 | Keep SpotifyService, delete TrackService      | SpotifyService is API client. TrackService is thin wrapper.      |
 | #033 | Merge batch+prefetch+progress → `pipeline.ts` | Tightly coupled orchestration. Keep retry/rate-limiter separate. |
-| #034 | Delete all factory files | Query modules are pure functions. Services are singletons. |
+| #034 | Delete all factory files                      | Query modules are pure functions. Services are singletons.       |
 
 ### Infrastructure
 
-| # | Decision | Rationale |
-|---|----------|-----------|
-| #035 | SSE replaces WebSocket | Simpler, auto-reconnects, Cloudflare Workers compatible |
-| #051 | Cloudflare Workers | Free tier (100K req/day), global edge, native SSR |
-| #052 | Supabase Cloud Free | Free tier with ping to prevent pause |
-| #053-054 | DeepInfra for embeddings/reranking | Same models as local, no reindexing needed |
-| #055-056 | Drop Python vectorization | Replaced by DeepInfra API calls |
+| #        | Decision                           | Rationale                                               |
+| -------- | ---------------------------------- | ------------------------------------------------------- |
+| #035     | SSE replaces WebSocket             | Simpler, auto-reconnects, Cloudflare Workers compatible |
+| #051     | Cloudflare Workers                 | Free tier (100K req/day), global edge, native SSR       |
+| #052     | Supabase Cloud Free                | Free tier with ping to prevent pause                    |
+| #053-054 | DeepInfra for embeddings/reranking | Same models as local, no reindexing needed              |
+| #055-056 | Drop Python vectorization          | Replaced by DeepInfra API calls                         |
 
 ### Data Model
 
-| # | Decision | Rationale |
-|---|----------|-----------|
-| #007 | UUID primary keys | Platform independence; Supabase RLS patterns |
-| #008 | Separate `song_audio_feature` table | Different source/lifecycle; keeps `song` lean |
-| #010 | Soft delete with `unliked_at` | Preserves timeline for archival |
-| #021-023 | Unified `job` + `job_failure` | Single query for "what's running?" |
-| #044-046 | Separate `user_preferences` table | Clean separation from account identity |
+| #        | Decision                            | Rationale                                     |
+| -------- | ----------------------------------- | --------------------------------------------- |
+| #007     | UUID primary keys                   | Platform independence; Supabase RLS patterns  |
+| #008     | Separate `song_audio_feature` table | Different source/lifecycle; keeps `song` lean |
+| #010     | Soft delete with `unliked_at`       | Preserves timeline for archival               |
+| #021-023 | Unified `job` + `job_failure`       | Single query for "what's running?"            |
+| #044-046 | Separate `user_preferences` table   | Clean separation from account identity        |
 
 ---
 
@@ -126,7 +126,7 @@ lib/services/
 Tier 1 (no deps):     account, song
 
 Tier 2:               liked_song, playlist, song_audio_feature,
-                      song_analysis, song_embedding, song_genre, job
+                      song_analysis, song_embedding, job
 
 Tier 3:               playlist_song, playlist_analysis, playlist_profile,
                       job_failure, match_context, item_status, user_preferences
@@ -214,16 +214,16 @@ export const Route = createAPIFileRoute('/api/jobs/$id/progress')({
 
 From `docs/LESSONS-LEARNED.md`:
 
-| Anti-Pattern | Solution |
-|--------------|----------|
-| N+1 queries in loops | Batch queries with `getByIds()` |
-| Giant 500+ line components | Compose small, focused pieces |
-| Type assertions (`as X`) | Typed transformer functions |
-| Mixed fetching strategies | Consistent TanStack Query |
-| Local interface definitions | Shared domain models |
-| Error swallowing | Explicit error states |
-| Hardcoded UI logic | Design system utilities |
-| Defensive guards | Validate at boundaries |
+| Anti-Pattern                | Solution                        |
+| --------------------------- | ------------------------------- |
+| N+1 queries in loops        | Batch queries with `getByIds()` |
+| Giant 500+ line components  | Compose small, focused pieces   |
+| Type assertions (`as X`)    | Typed transformer functions     |
+| Mixed fetching strategies   | Consistent TanStack Query       |
+| Local interface definitions | Shared domain models            |
+| Error swallowing            | Explicit error states           |
+| Hardcoded UI logic          | Design system utilities         |
+| Defensive guards            | Validate at boundaries          |
 
 ---
 

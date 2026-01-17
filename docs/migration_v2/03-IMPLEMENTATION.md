@@ -38,11 +38,11 @@ Phase 7: UI Integration Begins                   ┘
 
 ### Tasks
 
-- [ ] Create new Supabase project (or reset dev project)
-- [ ] Note project URL and keys in `.env.local`
-- [ ] Install Supabase CLI if not present (`bun add -D supabase`)
-- [ ] Initialize Supabase locally (`supabase init` if needed)
-- [ ] Verify `supabase/migrations/` directory exists
+- [x] Create new Supabase project (or reset dev project)
+- [x] Note project URL and keys in `.env.local`
+- [x] Install Supabase CLI if not present (`bun add -D supabase`)
+- [x] Initialize Supabase locally (`supabase init` if needed)
+- [x] Verify `supabase/migrations/` directory exists
 
 ### Verification
 
@@ -90,7 +90,7 @@ Tier 4 (depends on Tier 3):
 
 #### Tier 1: Core Entities
 
-- [ ] `001_create_account.sql`
+- [x] `001_create_account.sql`
   ```sql
   -- account (was users)
   CREATE TABLE account (
@@ -112,7 +112,7 @@ Tier 4 (depends on Tier 3):
     USING (false);
   ```
 
-- [ ] `002_create_song.sql`
+- [x] `002_create_song.sql`
   ```sql
   -- song (was tracks) - Global catalog, not user-owned
   CREATE TABLE song (
@@ -146,7 +146,7 @@ Tier 4 (depends on Tier 3):
 
 #### Tier 2: User-Owned & Song Extensions
 
-- [ ] `003_create_liked_song.sql`
+- [x] `003_create_liked_song.sql`
   ```sql
   -- liked_song (was saved_tracks)
   CREATE TABLE liked_song (
@@ -173,7 +173,7 @@ Tier 4 (depends on Tier 3):
     USING (false);
   ```
 
-- [ ] `004_create_playlist.sql`
+- [x] `004_create_playlist.sql`
   ```sql
   -- playlist
   CREATE TABLE playlist (
@@ -204,7 +204,7 @@ Tier 4 (depends on Tier 3):
     USING (false);
   ```
 
-- [ ] `005_create_song_audio_feature.sql`
+- [x] `005_create_song_audio_feature.sql`
   ```sql
   -- song_audio_feature (was audio_features)
   CREATE TABLE song_audio_feature (
@@ -236,7 +236,7 @@ Tier 4 (depends on Tier 3):
     USING (false);
   ```
 
-- [ ] `006_create_song_analysis.sql`
+- [x] `006_create_song_analysis.sql`
   ```sql
   -- song_analysis (was track_analyses) - Global, no user ownership
   CREATE TABLE song_analysis (
@@ -261,7 +261,7 @@ Tier 4 (depends on Tier 3):
     USING (false);
   ```
 
-- [ ] `007_create_song_embedding.sql`
+- [x] `007_create_song_embedding.sql`
   ```sql
   -- song_embedding (was track_embeddings) - Global
   CREATE TABLE song_embedding (
@@ -290,7 +290,7 @@ Tier 4 (depends on Tier 3):
     USING (false);
   ```
 
-- [ ] `009_create_job.sql`
+- [x] `009_create_job.sql`
   ```sql
   -- job (unified, was analysis_jobs + inline sync statuses)
   -- Migrates: analysis_jobs.job_type='track_batch' → 'song_analysis'
@@ -323,7 +323,7 @@ Tier 4 (depends on Tier 3):
 
 #### Tier 3: Dependent Tables
 
-- [ ] `010_create_playlist_song.sql`
+- [x] `010_create_playlist_song.sql`
   ```sql
   -- playlist_song (was playlist_tracks)
   CREATE TABLE playlist_song (
@@ -349,7 +349,7 @@ Tier 4 (depends on Tier 3):
     USING (false);
   ```
 
-- [ ] `011_create_playlist_analysis.sql`
+- [x] `011_create_playlist_analysis.sql`
   ```sql
   -- playlist_analysis (was playlist_analyses)
   CREATE TABLE playlist_analysis (
@@ -375,7 +375,7 @@ Tier 4 (depends on Tier 3):
     USING (false);
   ```
 
-- [ ] `012_create_playlist_profile.sql`
+- [x] `012_create_playlist_profile.sql`
   ```sql
   -- playlist_profile (was playlist_profiles)
   CREATE TABLE playlist_profile (
@@ -409,7 +409,7 @@ Tier 4 (depends on Tier 3):
     USING (false);
   ```
 
-- [ ] `013_create_job_failure.sql`
+- [x] `013_create_job_failure.sql`
   ```sql
   -- job_failure (was track_analysis_attempts)
   CREATE TABLE job_failure (
@@ -433,7 +433,7 @@ Tier 4 (depends on Tier 3):
     USING (false);
   ```
 
-- [ ] `014_create_match_context.sql`
+- [x] `014_create_match_context.sql`
   ```sql
   -- match_context
   CREATE TABLE match_context (
@@ -464,7 +464,7 @@ Tier 4 (depends on Tier 3):
     USING (false);
   ```
 
-- [ ] `015_create_item_status.sql`
+- [x] `015_create_item_status.sql`
   ```sql
   -- item_status (NEW - newness tracking)
   CREATE TABLE item_status (
@@ -491,7 +491,7 @@ Tier 4 (depends on Tier 3):
     USING (false);
   ```
 
-- [ ] `016_create_user_preferences.sql`
+- [x] `016_create_user_preferences.sql`
   ```sql
   -- user_preferences (NEW - separate from account for clean separation)
   CREATE TABLE user_preferences (
@@ -515,7 +515,7 @@ Tier 4 (depends on Tier 3):
 
 #### Tier 4: Final Dependencies
 
-- [ ] `017_create_match_result.sql`
+- [x] `017_create_match_result.sql`
   ```sql
   -- match_result
   CREATE TABLE match_result (
@@ -544,6 +544,7 @@ Tier 4 (depends on Tier 3):
 
 ### Verification
 
+✅ Complete:
 ```bash
 supabase db reset  # Apply all migrations
 supabase db lint   # Check for issues
@@ -557,19 +558,19 @@ supabase db lint   # Check for issues
 
 ### Tasks
 
-- [ ] Create `000_enable_extensions.sql` (runs before table migrations)
+- [x] Create `000_enable_extensions.sql` (runs before table migrations)
   ```sql
   -- Enable required extensions
   CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
   CREATE EXTENSION IF NOT EXISTS "vector";
   ```
 
-- [ ] Generate TypeScript types
+- [x] Generate TypeScript types
   ```bash
   supabase gen types typescript --local > app/types/database.types.ts
   ```
 
-- [ ] Verify vector column types work
+- [x] Verify vector column types work
   ```bash
   # Quick test in SQL editor
   SELECT embedding <=> embedding FROM song_embedding LIMIT 1;
@@ -577,8 +578,8 @@ supabase db lint   # Check for issues
 
 ### Verification
 
-- [ ] `database.types.ts` contains all 16 tables
-- [ ] No TypeScript errors when importing types
+- [x] `database.types.ts` contains all 17 tables
+- [x] No TypeScript errors when importing types
 
 ---
 
@@ -1039,8 +1040,8 @@ Update this section as phases complete:
 | Phase    | Status        | Started  | Completed |
 | -------- | ------------- | -------- | --------- |
 | Phase 0  | ✅ Complete    | Jan 2026 | Jan 2026  |
-| Phase 1  | 🟡 Partial     | Jan 2026 | —         |
-| Phase 2  | 🟡 Partial     | Jan 2026 | —         |
+| Phase 1  | ✅ Complete    | Jan 2026 | Jan 2026  |
+| Phase 2  | ✅ Complete    | Jan 2026 | Jan 2026  |
 | Phase 3  | ✅ Complete    | Jan 2026 | Jan 2026  |
 | Phase 4a | ⬜ Not started |          |           |
 | Phase 4b | ⬜ Not started |          |           |
@@ -1052,9 +1053,22 @@ Update this section as phases complete:
 
 ### Progress Notes
 
-**Phase 1 (Schema)**: Core tables created - account, auth_token, song, playlist, liked_song, playlist_song, job, song_audio_feature, song_analysis, song_embedding, playlist_analysis, playlist_profile, job_failure, match_context, item_status, user_preferences, match_result. Added `is_destination` column to playlist table (migration `20260117030516`). Genres are stored on `song.genres`.
+**Phase 1 (Schema)**: ✅ Complete — All 17 tables created with RLS deny-all policies. Schema aligned with v2 spec including:
+- `song.artists` as TEXT[] (multi-artist support)
+- `song.image_url` (renamed from `album_image_url`)
+- `song.isrc` for cross-platform matching
+- `liked_song.unliked_at` + `status` for soft delete
+- `playlist.song_count` (renamed from `track_count`)
+- `playlist.is_destination` in base migration
+- `job_type` enum expanded (5 values)
+- `song_analysis`/`playlist_analysis`: `model`, `prompt_version`, `tokens_used`, `cost_cents`
+- `song_embedding`: `kind`, `dims`, `content_hash` with content-hash UNIQUE constraint
+- `playlist_profile`: `kind`, `model_bundle_hash`, `dims`, `content_hash`, `song_ids`
+- `match_context`: Added hash fields (`config_hash`, `playlist_set_hash`, `candidate_set_hash`, `context_hash`)
+- `user_preferences.onboarding_step` as TEXT (semantic step names)
+- `item_status.action_type` as TEXT (not enum)
 
-**Phase 2 (Extensions)**: TypeScript types generated (database.types.ts). pgvector enabled.
+**Phase 2 (Extensions)**: ✅ Complete — TypeScript types generated (`database.types.ts`). pgvector enabled with HNSW indexes on embedding columns.
 
 **Phase 3 (Query Modules)**: ✅ Complete — All 11 modules implemented with Result<T, DbError> pattern:
 - ✅ `client.ts` — Service role client factory (deny-all RLS)

@@ -59,13 +59,11 @@ The system SHALL track all background jobs in a single `job` table.
 
 #### Scenario: Job types are distinguished by column
 - **WHEN** creating a new job
-- **THEN** set `type` column to one of: `sync_songs`, `sync_playlists`, `song_analysis`, `playlist_analysis`, `matching`
+- **THEN** set `type` column to one of: `sync_liked_songs`, `sync_playlists`, `song_analysis`, `playlist_analysis`, `matching`
 
 #### Scenario: Progress tracked as JSONB
 - **WHEN** updating job progress
 - **THEN** update `progress` JSONB column with `{ total, done, succeeded, failed }`
-
----
 
 ### Requirement: Soft Delete for Liked Songs
 
@@ -79,7 +77,9 @@ The system SHALL use soft delete for unliked songs to preserve timeline history.
 - **WHEN** fetching user's liked songs
 - **THEN** filter with `WHERE unliked_at IS NULL`
 
----
+#### Scenario: Sorting status preserved
+- **WHEN** a liked song is matched or ignored
+- **THEN** store status in `liked_song.status` (`matched` | `ignored` | NULL)
 
 ### Requirement: Newness Tracking
 
@@ -111,7 +111,7 @@ The system SHALL store user preferences in a separate table from account identit
 
 #### Scenario: Onboarding progress
 - **WHEN** user progresses through onboarding
-- **THEN** update `user_preferences.onboarding_step`
+- **THEN** store string step values in `user_preferences.onboarding_step` (e.g., `welcome`, `pick-color`, `connecting`, `syncing`, `flag-playlists`, `ready`, `complete`)
 
 #### Scenario: Preferences table exists
 - **WHEN** the schema is initialized
@@ -129,7 +129,33 @@ The system SHALL use functional query modules instead of repository classes.
 - **WHEN** organizing data access code
 - **THEN** create domain-focused modules: `songs.ts`, `playlists.ts`, `analysis.ts`, `vectors.ts`, `matching.ts`, `jobs.ts`, `accounts.ts`, `newness.ts`, `preferences.ts`
 
----
+#### Scenario: Analysis module provides song and playlist analysis access
+- **WHEN** services need to read or write LLM analysis data
+- **THEN** import from `data/analysis.ts` with functions: `getSongAnalysis` (latest, single or batch), `insertSongAnalysis`, `getSongAudioFeatures`, `upsertSongAudioFeatures`, `getPlaylistAnalysis`, `insertPlaylistAnalysis`
+
+#### Scenario: Vectors module provides embedding and profile access
+- **WHEN** services need to read or write vector embeddings
+- **THEN** import from `data/vectors.ts` with functions: `getSongEmbedding`, `upsertSongEmbedding`, `getPlaylistProfile`, `upsertPlaylistProfile`
+
+#### Scenario: Matching module provides match context and result access
+- **WHEN** services need to read or write matching data
+- **THEN** import from `data/matching.ts` with functions: `getMatchContext`, `createMatchContext`, `getMatchResults`, `getMatchResultsForSong`, `insertMatchResults`, `getTopMatchesPerPlaylist`
+
+#### Scenario: Newness module provides item status tracking
+- **WHEN** services need to track new/viewed/actioned items
+- **THEN** import from `data/newness.ts` with functions: `getNewCounts`, `getNewItemIds`, `markItemsNew`, `markSeen`, `markAllSeen`
+
+#### Scenario: Preferences module provides user preferences access
+- **WHEN** services need to read or write user preferences
+- **THEN** import from `data/preferences.ts` with functions: `getPreferences`, `updateTheme`, `getOnboardingStep`, `updateOnboardingStep`, `completeOnboarding`
+
+#### Scenario: All query modules return Result types
+- **WHEN** any query module function is called
+- **THEN** return `Result<T, DbError>` for composable error handling using `better-result`
+
+#### Scenario: Query modules use service role client
+- **WHEN** query modules access Supabase
+- **THEN** use `createAdminSupabaseClient()` to bypass RLS (custom auth pattern)
 
 ### Requirement: DeepInfra API for Vectorization
 
@@ -165,21 +191,15 @@ The system SHALL use Server-Sent Events instead of WebSockets for job progress.
 
 ### Requirement: Row Level Security
 
-The system SHALL enforce RLS policies on all user-owned tables.
+The system SHALL enable RLS on all tables and deny direct anon/authenticated access.
 
-#### Scenario: Direct ownership check
-- **WHEN** querying user-owned tables (account, liked_song, playlist, job)
-- **THEN** RLS policy checks `account_id = auth.uid()`
+#### Scenario: Direct client access blocked
+- **WHEN** querying any table with anon/authenticated roles
+- **THEN** access is denied (no read/write policies)
 
-#### Scenario: Junction table ownership via subquery
-- **WHEN** querying junction tables (playlist_song, match_result)
-- **THEN** RLS policy uses EXISTS subquery to verify parent ownership
-
-#### Scenario: Global catalog read access
-- **WHEN** querying global tables (song, song_analysis, song_embedding)
-- **THEN** anyone can read, only service_role can write
-
----
+#### Scenario: Service role access
+- **WHEN** using the service_role key
+- **THEN** operations bypass RLS as normal
 
 ### Requirement: App-Provided LLM Keys
 
@@ -196,19 +216,24 @@ The system SHALL provide LLM API keys at the app level (no BYOK).
 ---
 
 ### Requirement: Core Spotify Tables
+
 The system SHALL define core Spotify domain tables for songs and playlists using migration v2 naming and constraints.
 
 #### Scenario: Song stored from Spotify
 - **WHEN** a Spotify song is ingested
-- **THEN** store it in `song` with a unique `spotify_id`
+- **THEN** store `spotify_id`, `name`, `artists` (TEXT[]), `album_name`, `album_id`, `image_url`, `duration_ms`, `popularity`, `preview_url`, `isrc`, and `genres` on `song`
+
+#### Scenario: Song genres stored on song row
+- **WHEN** a Spotify song includes genre metadata retrieve via Last.fm API
+- **THEN** store the ordered genres array in `song.genres`
 
 #### Scenario: Liked song stored for account
 - **WHEN** a user likes a song
-- **THEN** create or update `liked_song` with `account_id`, `song_id`, and `liked_at`
+- **THEN** create or update `liked_song` with `account_id`, `song_id`, `liked_at`, `unliked_at`, and `status`
 
 #### Scenario: Playlist song linkage
 - **WHEN** a playlist is synced
-- **THEN** upsert `playlist` and link songs via `playlist_song`
+- **THEN** upsert `playlist` with `song_count` and `is_destination`, and link songs via `playlist_song`
 
 ### Requirement: Sync Checkpoint Tracking
 The system SHALL persist sync checkpoints in `job.progress` for incremental sync of liked songs and playlists.
@@ -231,15 +256,11 @@ The system SHALL store song metadata extensions in dedicated tables with global 
 
 #### Scenario: LLM analysis stored
 - **WHEN** LLM analyzes a song
-- **THEN** store in `song_analysis` with JSONB analysis, model name, and token usage
+- **THEN** store in `song_analysis` with JSONB analysis, model, prompt_version, tokens_used, and cost_cents
 
 #### Scenario: Embeddings stored with vector type
 - **WHEN** embedding is generated for a song
-- **THEN** store in `song_embedding` with `vector(1024)` column and HNSW index
-
-#### Scenario: Genre classifications stored
-- **WHEN** genres are classified for a song
-- **THEN** store in `song_genre` with source, genres array, and optional scores
+- **THEN** store in `song_embedding` with `kind`, `model`, `model_version`, `dims`, `content_hash`, and `vector(1024)` embedding
 
 ### Requirement: Playlist Extension Tables
 
@@ -247,11 +268,11 @@ The system SHALL store playlist analysis and profiles for matching.
 
 #### Scenario: Playlist LLM analysis stored
 - **WHEN** LLM analyzes a playlist
-- **THEN** store in `playlist_analysis` with JSONB analysis, model name, and token usage
+- **THEN** store in `playlist_analysis` with JSONB analysis, model, prompt_version, tokens_used, and cost_cents
 
 #### Scenario: Playlist profile stored with vector
 - **WHEN** playlist profile is computed
-- **THEN** store in `playlist_profile` with embedding vector, audio centroid, genre/emotion distributions
+- **THEN** store in `playlist_profile` with `kind`, `model_bundle_hash`, `dims`, `content_hash`, `embedding`, `audio_centroid`, `genre_distribution`, `emotion_distribution`, `song_count`, and `song_ids`
 
 ### Requirement: Matching Tables
 
@@ -259,7 +280,7 @@ The system SHALL store match contexts and results for reproducibility.
 
 #### Scenario: Match context captures configuration
 - **WHEN** matching is run
-- **THEN** create `match_context` with model versions, algorithm version, and content hashes
+- **THEN** create `match_context` with model versions, algorithm version, `config_hash`, `playlist_set_hash`, `candidate_set_hash`, and `context_hash`
 
 #### Scenario: Match results stored per song-playlist pair
 - **WHEN** a song is matched to a playlist
@@ -271,22 +292,22 @@ The system SHALL track individual item failures within jobs.
 
 #### Scenario: Failed item recorded
 - **WHEN** a song or playlist fails during a job
-- **THEN** create `job_failure` with item_type, item_id, error_type, and error_message
+- **THEN** create `job_failure` with item_type, item_id (UUID), error_type, and error_message
 
 ## Migration Phases
 
-| Phase | Name | Dependencies |
-|-------|------|--------------|
-| 0 | Foundation | — |
-| 1 | Schema DDL | Phase 0 |
-| 2 | Extensions & Types | Phase 1 |
-| 3 | Query Modules | Phase 2 |
-| 4a | Delete Factories | Phase 3 |
-| 4b | Merge Pipeline | Phase 3 |
-| 4c | Split PlaylistService | Phase 3 |
-| 4d | DeepInfra Migration | Phase 3 |
-| 5 | SSE Migration | Phase 4* |
-| 6 | Cleanup | Phase 5 |
-| 7 | UI Integration | Phase 6 |
+| Phase | Name                  | Dependencies |
+| ----- | --------------------- | ------------ |
+| 0     | Foundation            | —            |
+| 1     | Schema DDL            | Phase 0      |
+| 2     | Extensions & Types    | Phase 1      |
+| 3     | Query Modules         | Phase 2      |
+| 4a    | Delete Factories      | Phase 3      |
+| 4b    | Merge Pipeline        | Phase 3      |
+| 4c    | Split PlaylistService | Phase 3      |
+| 4d    | DeepInfra Migration   | Phase 3      |
+| 5     | SSE Migration         | Phase 4*     |
+| 6     | Cleanup               | Phase 5      |
+| 7     | UI Integration        | Phase 6      |
 
 See `docs/migration_v2/03-IMPLEMENTATION.md` for detailed tasks per phase.

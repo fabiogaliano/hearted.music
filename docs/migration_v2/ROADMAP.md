@@ -9,8 +9,8 @@
 | Phase | Name                   | Status                     | Blocked By |
 | ----- | ---------------------- | -------------------------- | ---------- |
 | 0     | Foundation             | ✅ Complete                 | —          |
-| 1     | Schema                 | 🟡 Partial (core tables)    | Phase 0    |
-| 2     | Extensions             | 🟡 Partial (types done)     | Phase 1    |
+| 1     | Schema                 | ✅ Complete                 | Phase 0    |
+| 2     | Extensions             | ✅ Complete                 | Phase 1    |
 | 3     | Query Modules          | ✅ Complete                 | Phase 2    |
 | 4a    | Delete Factories       | ⬜ Not Started              | Phase 3    |
 | 4b    | Song/Analysis Services | ⬜ Not Started              | Phase 3    |
@@ -71,34 +71,34 @@
 ### Tasks
 
 #### Tier 1: No Dependencies
-- [ ] `001_create_account.sql` — [Decision #001, #039](/docs/migration_v2/00-DECISIONS.md)
-- [ ] `002_create_song.sql` — [Decision #002, #040, #041, #042](/docs/migration_v2/00-DECISIONS.md)
+- [x] `001_create_account.sql` — [Decision #001, #039](/docs/migration_v2/00-DECISIONS.md)
+- [x] `002_create_song.sql` — [Decision #002, #040, #041, #042](/docs/migration_v2/00-DECISIONS.md)
 
 #### Tier 2: Depends on Tier 1
-- [ ] `003_create_song_audio_feature.sql`
-- [ ] `004_create_song_analysis.sql`
-- [ ] `005_create_song_embedding.sql`
-- [ ] `007_create_liked_song.sql` — [Decision #005, #043](/docs/migration_v2/00-DECISIONS.md)
-- [ ] `008_create_playlist.sql` — [Decision #006](/docs/migration_v2/00-DECISIONS.md)
-- [ ] `009_create_job.sql` — [Decision #008, #009](/docs/migration_v2/00-DECISIONS.md)
+- [x] `003_create_song_audio_feature.sql`
+- [x] `004_create_song_analysis.sql`
+- [x] `005_create_song_embedding.sql`
+- [x] `007_create_liked_song.sql` — [Decision #005, #043](/docs/migration_v2/00-DECISIONS.md)
+- [x] `008_create_playlist.sql` — [Decision #006](/docs/migration_v2/00-DECISIONS.md)
+- [x] `009_create_job.sql` — [Decision #008, #009](/docs/migration_v2/00-DECISIONS.md)
 
 #### Tier 3: Depends on Tier 2
-- [ ] `010_create_playlist_song.sql` — [Decision #049](/docs/migration_v2/00-DECISIONS.md)
-- [ ] `011_create_playlist_analysis.sql`
-- [ ] `012_create_playlist_profile.sql`
-- [ ] `013_create_job_failure.sql`
-- [ ] `014_create_match_context.sql`
-- [ ] `015_create_item_status.sql` — [Decision #010](/docs/migration_v2/00-DECISIONS.md)
-- [ ] `016_create_user_preferences.sql` — [Decision #044, #045, #046](/docs/migration_v2/00-DECISIONS.md)
+- [x] `010_create_playlist_song.sql` — [Decision #049](/docs/migration_v2/00-DECISIONS.md)
+- [x] `011_create_playlist_analysis.sql`
+- [x] `012_create_playlist_profile.sql`
+- [x] `013_create_job_failure.sql`
+- [x] `014_create_match_context.sql`
+- [x] `015_create_item_status.sql` — [Decision #010](/docs/migration_v2/00-DECISIONS.md)
+- [x] `016_create_user_preferences.sql` — [Decision #044, #045, #046](/docs/migration_v2/00-DECISIONS.md)
 
 #### Tier 4: Final
-- [ ] `017_create_match_result.sql`
+- [x] `017_create_match_result.sql`
 
 ### Acceptance Criteria
-- [ ] All 17 tables created
-- [ ] RLS enabled with deny-all policies
-- [ ] Foreign keys valid
-- [ ] `supabase db reset` runs clean
+- [x] All 17 tables created
+- [x] RLS enabled with deny-all policies
+- [x] Foreign keys valid
+- [x] `supabase db reset` runs clean
 
 ### References
 - [01-SCHEMA.md](/docs/migration_v2/01-SCHEMA.md) — Full schema definitions
@@ -112,25 +112,25 @@
 
 ### Tasks
 
-- [ ] **Enable pgvector extension**
+- [x] **Enable pgvector extension**
   ```sql
   CREATE EXTENSION IF NOT EXISTS vector;
   ```
 
-- [ ] **Generate TypeScript types**
+- [x] **Generate TypeScript types**
   ```bash
   supabase gen types typescript --local > lib/database.types.ts
   ```
 
-- [ ] **Create Zod/Valibot schemas**
+- [ ] **Create Zod/Valibot schemas** *(deferred — add when needed)*
   - Location: `lib/schemas/`
   - One file per domain: `song.schema.ts`, `playlist.schema.ts`, etc.
   - Ref: [Decision #036, #037](/docs/migration_v2/00-DECISIONS.md)
 
 ### Acceptance Criteria
-- [ ] pgvector queries work (test with dummy vector)
-- [ ] TypeScript types compile
-- [ ] Schemas validate sample data
+- [x] pgvector queries work (test with dummy vector)
+- [x] TypeScript types compile
+- [ ] Schemas validate sample data *(deferred)*
 
 ### References
 - [01-SCHEMA.md](/docs/migration_v2/01-SCHEMA.md) — Type definitions
