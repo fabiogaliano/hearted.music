@@ -393,6 +393,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_destination: boolean
           is_public: boolean | null
           name: string
           snapshot_id: string | null
@@ -405,6 +406,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_destination?: boolean
           is_public?: boolean | null
           name: string
           snapshot_id?: string | null
@@ -417,6 +419,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_destination?: boolean
           is_public?: boolean | null
           name?: string
           snapshot_id?: string | null
