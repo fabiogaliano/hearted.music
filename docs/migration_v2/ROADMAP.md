@@ -145,16 +145,17 @@
 
 ### Tasks
 
-- [ ] `data/client.ts` — Supabase client setup
-- [ ] `data/songs.ts` — [02-SERVICES.md](/docs/architecture/migration_v2/02-SERVICES.md)
-- [ ] `data/playlists.ts`
+- [x] `data/client.ts` — Supabase client setup
+- [x] `data/songs.ts` — [02-SERVICES.md](/docs/architecture/migration_v2/02-SERVICES.md)
+- [x] `data/playlists.ts`
 - [ ] `data/analysis.ts`
 - [ ] `data/vectors.ts`
 - [ ] `data/matching.ts`
-- [ ] `data/jobs.ts`
-- [ ] `data/accounts.ts`
+- [x] `data/jobs.ts`
+- [x] `data/accounts.ts`
 - [ ] `data/newness.ts` — NEW for `item_status`
 - [ ] `data/preferences.ts` — NEW for `user_preferences`
+- [x] `data/auth-tokens.ts` — (additional) Token refresh support
 
 ### Acceptance Criteria
 - [ ] Each module compiles

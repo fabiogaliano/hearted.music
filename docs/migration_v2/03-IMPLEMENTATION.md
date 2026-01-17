@@ -674,7 +674,7 @@ supabase db lint   # Check for issues
 
 Create 8 query modules in `app/lib/data/`:
 
-- [ ] `client.ts` — Supabase client setup
+- [x] `client.ts` — Supabase client setup
   ```typescript
   // Service role client for backend operations
   export function getServiceClient() { ... }
@@ -683,26 +683,28 @@ Create 8 query modules in `app/lib/data/`:
   export function getAuthClient(request: Request) { ... }
   ```
 
-- [ ] `songs.ts` — From `TrackService`, `trackRepository`
-  - [ ] `getSongById(id: string)`
-  - [ ] `getSongBySpotifyId(spotifyId: string)`
-  - [ ] `getSongsBySpotifyIds(spotifyIds: string[])`
-  - [ ] `upsertSongs(songs: SongInsert[])`
-  - [ ] `getLikedSongs(accountId: string)`
-  - [ ] `upsertLikedSongs(likedSongs: LikedSongInsert[])`
-  - [ ] `softDeleteLikedSong(accountId: string, songId: string)`
-  - [ ] `getUnmatchedLikedSongs(accountId: string)`
-  - [ ] `updateLikedSongStatus(accountId: string, songId: string, status)`
+- [x] `songs.ts` — From `TrackService`, `trackRepository`
+  - [x] `getSongById(id: string)`
+  - [x] `getSongBySpotifyId(spotifyId: string)`
+  - [x] `getSongsBySpotifyIds(spotifyIds: string[])`
+  - [x] `upsertSongs(songs: SongInsert[])`
+  - [x] `getLikedSongs(accountId: string)`
+  - [x] `upsertLikedSongs(likedSongs: LikedSongInsert[])`
+  - [ ] `softDeleteLikedSong(accountId: string, songId: string)` — deferred
+  - [ ] `getUnmatchedLikedSongs(accountId: string)` — deferred
+  - [ ] `updateLikedSongStatus(accountId: string, songId: string, status)` — deferred
 
-- [ ] `playlists.ts` — From `PlaylistService` (DB ops only)
-  - [ ] `getPlaylists(accountId: string)`
-  - [ ] `getPlaylistById(id: string)`
-  - [ ] `getDestinationPlaylists(accountId: string)`
-  - [ ] `upsertPlaylists(playlists: PlaylistInsert[])`
-  - [ ] `deletePlaylist(id: string)`
-  - [ ] `getPlaylistSongs(playlistId: string)`
-  - [ ] `upsertPlaylistSongs(playlistSongs: PlaylistSongInsert[])`
-  - [ ] `removePlaylistSongs(playlistId: string, songIds: string[])`
+- [x] `playlists.ts` — From `PlaylistService` (DB ops only)
+  - [x] `getPlaylists(accountId: string)`
+  - [x] `getPlaylistById(id: string)`
+  - [x] `getPlaylistBySpotifyId(accountId: string, spotifyId: string)`
+  - [x] `getDestinationPlaylists(accountId: string)`
+  - [x] `upsertPlaylists(playlists: PlaylistInsert[])`
+  - [x] `deletePlaylist(id: string)`
+  - [x] `setPlaylistDestination(id: string, isDestination: boolean)`
+  - [x] `getPlaylistSongs(playlistId: string)`
+  - [x] `upsertPlaylistSongs(playlistSongs: PlaylistSongInsert[])`
+  - [x] `removePlaylistSongs(playlistId: string, songIds: string[])`
 
 - [ ] `analysis.ts` — From `trackAnalysisRepository`, `playlistAnalysisRepository`
   - [ ] `getSongAnalysis(songId: string)`
@@ -729,21 +731,24 @@ Create 8 query modules in `app/lib/data/`:
   - [ ] `insertMatchResults(results: MatchResultInsert[])`
   - [ ] `getTopMatchesPerPlaylist(contextId: string, limit: number)`
 
-- [ ] `jobs.ts` — From `JobPersistenceService`
-  - [ ] `getActiveJob(accountId: string)`
-  - [ ] `getJobById(id: string)`
-  - [ ] `createJob(job: JobInsert)`
-  - [ ] `updateJobProgress(id: string, progress: JobProgress)`
-  - [ ] `markJobCompleted(id: string)`
-  - [ ] `markJobFailed(id: string)`
-  - [ ] `getJobFailures(jobId: string)`
-  - [ ] `insertJobFailure(failure: JobFailureInsert)`
+- [x] `jobs.ts` — From `JobPersistenceService`
+  - [x] `getJobById(id: string)`
+  - [x] `getActiveJob(accountId: string, type: JobType)`
+  - [x] `getLatestJob(accountId: string, type: JobType)`
+  - [x] `getJobs(accountId: string, type?: JobType)`
+  - [x] `createJob(accountId: string, type: JobType)`
+  - [x] `updateJobProgress(id: string, progress: JobProgress)`
+  - [x] `markJobRunning(id: string)`
+  - [x] `markJobCompleted(id: string)`
+  - [x] `markJobFailed(id: string, error?: string)`
+  - [ ] `getJobFailures(jobId: string)` — deferred
+  - [ ] `insertJobFailure(failure: JobFailureInsert)` — deferred
 
-- [ ] `accounts.ts` — From `UserService`
-  - [ ] `getAccountById(id: string)`
-  - [ ] `getAccountBySpotifyId(spotifyId: string)`
-  - [ ] `upsertAccount(account: AccountInsert)`
-  - [ ] `updateAccountSetupComplete(id: string, complete: boolean)`
+- [x] `accounts.ts` — From `UserService`
+  - [x] `getAccountById(id: string)`
+  - [x] `getAccountBySpotifyId(spotifyId: string)`
+  - [x] `upsertAccount(account: AccountInsert)`
+  - [ ] `updateAccountSetupComplete(id: string, complete: boolean)` — deferred
 
 - [ ] `newness.ts` — NEW for `item_status` table
   - [ ] `getNewCounts(accountId: string)`
@@ -1123,11 +1128,22 @@ Update this section as phases complete:
 
 ### Progress Notes
 
-**Phase 1 (Schema)**: Core tables created - account, auth_token, song, playlist, liked_song, playlist_song, job. Missing: song_audio_feature, song_analysis, song_embedding, song_genre, playlist_analysis, playlist_profile, job_failure, match_context, item_status, user_preferences, match_result.
+**Phase 1 (Schema)**: Core tables created - account, auth_token, song, playlist, liked_song, playlist_song, job, song_audio_feature, song_analysis, song_embedding, playlist_analysis, playlist_profile, job_failure, match_context, item_status, user_preferences, match_result. Added `is_destination` column to playlist table (migration `20260117030516`). Missing: song_genre.
 
-**Phase 2 (Extensions)**: TypeScript types generated (database.types.ts). pgvector status unknown.
+**Phase 2 (Extensions)**: TypeScript types generated (database.types.ts). pgvector enabled.
 
-**Phase 3 (Query Modules)**: `client.ts`, `accounts.ts`, `auth-tokens.ts` complete with Result<T, DbError> pattern. Missing: songs.ts, playlists.ts, analysis.ts, vectors.ts, matching.ts, jobs.ts, newness.ts, preferences.ts.
+**Phase 3 (Query Modules)**: 6/10 modules complete with Result<T, DbError> pattern:
+- ✅ `client.ts` — Admin + user client factories
+- ✅ `accounts.ts` — Account CRUD
+- ✅ `auth-tokens.ts` — Token refresh support
+- ✅ `songs.ts` — Song + liked song operations
+- ✅ `playlists.ts` — Playlist + playlist-song + destination operations
+- ✅ `jobs.ts` — Job lifecycle management
+- ⬜ `analysis.ts` — Song/playlist analysis
+- ⬜ `vectors.ts` — Embeddings + genres + profiles
+- ⬜ `matching.ts` — Match context + results
+- ⬜ `newness.ts` — Item status tracking
+- ⬜ `preferences.ts` — User preferences
 
 **Phase 7 (UI)**: Auth flows working (login, logout, callback routes). TanStack Start + Router configured.
 
