@@ -24,8 +24,15 @@ export type UserPreferences = Tables<"user_preferences">;
 /** Theme color enum from database */
 export type ThemeColor = Enums<"theme">;
 
-/** Onboarding step (0 = not started, 1-N = step number) */
-export type OnboardingStep = number;
+/** Onboarding step string values */
+export type OnboardingStep =
+	| "welcome"
+	| "pick-color"
+	| "connecting"
+	| "syncing"
+	| "flag-playlists"
+	| "ready"
+	| "complete";
 
 // ============================================================================
 // Query Operations
@@ -73,7 +80,7 @@ export async function getOrCreatePreferences(
 			.insert({
 				account_id: accountId,
 				theme: "blue",
-				onboarding_step: 0,
+				onboarding_step: "welcome",
 			})
 			.select()
 			.single(),
@@ -82,7 +89,7 @@ export async function getOrCreatePreferences(
 
 /**
  * Gets the current onboarding step for an account.
- * Returns 0 if no preferences exist.
+ * Returns 'welcome' if no preferences exist.
  */
 export async function getOnboardingStep(
 	accountId: string,
@@ -93,7 +100,9 @@ export async function getOnboardingStep(
 		return Result.err(result.error);
 	}
 
-	return Result.ok(result.value?.onboarding_step ?? 0);
+	return Result.ok(
+		(result.value?.onboarding_step as OnboardingStep) ?? "welcome",
+	);
 }
 
 /**
@@ -190,7 +199,7 @@ export function completeOnboarding(
 
 /**
  * Resets onboarding for an account.
- * Sets onboarding_step to 0 and clears onboarding_completed_at.
+ * Sets onboarding_step to 'welcome' and clears onboarding_completed_at.
  */
 export function resetOnboarding(
 	accountId: string,
@@ -202,7 +211,7 @@ export function resetOnboarding(
 			.upsert(
 				{
 					account_id: accountId,
-					onboarding_step: 0,
+					onboarding_step: "welcome",
 					onboarding_completed_at: null,
 				},
 				{ onConflict: "account_id" },

@@ -3,16 +3,19 @@
 CREATE TABLE playlist_profile (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   playlist_id UUID NOT NULL REFERENCES playlist(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,  -- 'semantic', 'audio', 'hybrid'
+  model_bundle_hash TEXT NOT NULL,  -- Hash of all model versions used
+  dims INTEGER NOT NULL,
+  content_hash TEXT NOT NULL,  -- Hash of input song_ids for deduplication
   embedding vector(1024),
   audio_centroid JSONB,
   genre_distribution JSONB,
   emotion_distribution JSONB,
-  model_name TEXT,
-  model_version TEXT,
-  song_count INTEGER NOT NULL DEFAULT 0,
+  song_count INTEGER DEFAULT 0,
+  song_ids UUID[],  -- Array of song IDs that contributed to this profile
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-  UNIQUE(playlist_id)
+  UNIQUE(playlist_id, kind, model_bundle_hash, content_hash)
 );
 
 -- audio_centroid JSONB structure (aggregated audio features):

@@ -1,11 +1,10 @@
--- Add is_destination column to playlist table
--- Used to mark playlists as destinations for auto-sorting liked songs
+-- Migration: add_playlist_is_destination
+-- Status: NO-OP (column now exists in base playlist migration)
+--
+-- This migration originally added is_destination to playlist table.
+-- After schema alignment, this column is now part of the base migration
+-- (20260116160001_create_playlist.sql). This file is kept for migration
+-- history consistency but performs no operations.
 
-ALTER TABLE playlist
-ADD COLUMN is_destination BOOLEAN DEFAULT false NOT NULL;
-
--- Index for efficient destination playlist queries
-CREATE INDEX idx_playlist_destination ON playlist(account_id) WHERE is_destination = true;
-
--- Comment for documentation
-COMMENT ON COLUMN playlist.is_destination IS 'When true, this playlist is a destination for auto-sorted liked songs';
+-- No-op: is_destination already exists in playlist table
+SELECT 1;

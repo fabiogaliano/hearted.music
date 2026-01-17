@@ -21,8 +21,8 @@ export type ItemStatus = Tables<"item_status">;
 /** Item type enum from database */
 export type ItemType = Enums<"item_type">;
 
-/** Action type enum from database */
-export type ActionType = Enums<"action_type">;
+/** Action type values (TEXT column, not enum) */
+export type ActionType = "added_to_playlist" | "skipped" | "dismissed";
 
 /** Counts of new items by type */
 export type NewCounts = {

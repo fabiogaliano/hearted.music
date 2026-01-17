@@ -22,7 +22,7 @@ export function mapTrackToSongInsert(dto: SpotifyTrackDTO): TablesInsert<"song">
 	return {
 		spotify_id: dto.track.id,
 		name: dto.track.name,
-		artists: dto.track.artists.map((a) => ({ id: a.id, name: a.name })),
+		artists: dto.track.artists.map((a) => a.name),
 		album_id: dto.track.album.id,
 		album_name: dto.track.album.name,
 		duration_ms: dto.track.duration_ms,
@@ -57,7 +57,7 @@ export function mapPlaylistToPlaylistInsert(
 		spotify_id: dto.id,
 		name: dto.name,
 		description: dto.description,
-		track_count: dto.track_count,
+		song_count: dto.track_count,
 	};
 }
 

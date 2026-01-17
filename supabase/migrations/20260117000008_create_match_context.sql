@@ -9,9 +9,12 @@ CREATE TABLE match_context (
   analysis_model TEXT,
   analysis_version TEXT,
   weights JSONB NOT NULL DEFAULT '{}',
-  playlist_hashes JSONB NOT NULL DEFAULT '{}',
-  song_count INTEGER NOT NULL DEFAULT 0,
+  config_hash TEXT NOT NULL,  -- Hash of algorithm configuration
+  playlist_set_hash TEXT NOT NULL,  -- Hash of destination playlist IDs
+  candidate_set_hash TEXT NOT NULL,  -- Hash of candidate song IDs
+  context_hash TEXT NOT NULL UNIQUE,  -- Unique identifier for this exact context
   playlist_count INTEGER NOT NULL DEFAULT 0,
+  song_count INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
@@ -23,17 +26,20 @@ CREATE TABLE match_context (
 --   "mood_alignment": 0.1
 -- }
 
--- playlist_hashes JSONB structure (content hashes for reproducibility):
--- {
---   "playlist_uuid_1": "sha256_hash_of_song_ids",
---   "playlist_uuid_2": "sha256_hash_of_song_ids"
--- }
+-- Hash strategy for reproducibility:
+-- config_hash = SHA256(algorithm_version + weights + model versions)
+-- playlist_set_hash = SHA256(sorted playlist IDs)
+-- candidate_set_hash = SHA256(sorted candidate song IDs)
+-- context_hash = SHA256(config_hash + playlist_set_hash + candidate_set_hash)
 
 -- Index for querying by account
 CREATE INDEX idx_match_context_account_id ON match_context(account_id);
 
 -- Index for querying latest context
 CREATE INDEX idx_match_context_latest ON match_context(account_id, created_at DESC);
+
+-- Index for context_hash lookups
+CREATE INDEX idx_match_context_hash ON match_context(context_hash);
 
 -- Enable RLS (service_role bypasses)
 ALTER TABLE match_context ENABLE ROW LEVEL SECURITY;

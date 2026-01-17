@@ -33,10 +33,10 @@ export type InsertSongAnalysis = Pick<
 	TablesInsert<"song_analysis">,
 	| "song_id"
 	| "analysis"
-	| "model_name"
-	| "model_version"
-	| "prompt_tokens"
-	| "completion_tokens"
+	| "model"
+	| "prompt_version"
+	| "tokens_used"
+	| "cost_cents"
 >;
 
 /** Insert type for song audio features */
@@ -62,10 +62,10 @@ export type InsertPlaylistAnalysis = Pick<
 	TablesInsert<"playlist_analysis">,
 	| "playlist_id"
 	| "analysis"
-	| "model_name"
-	| "model_version"
-	| "prompt_tokens"
-	| "completion_tokens"
+	| "model"
+	| "prompt_version"
+	| "tokens_used"
+	| "cost_cents"
 >;
 
 // ============================================================================
@@ -136,10 +136,10 @@ export function insertSongAnalysis(
 			.insert({
 				song_id: data.song_id,
 				analysis: data.analysis as Json,
-				model_name: data.model_name,
-				model_version: data.model_version ?? null,
-				prompt_tokens: data.prompt_tokens ?? null,
-				completion_tokens: data.completion_tokens ?? null,
+				model: data.model,
+				prompt_version: data.prompt_version ?? null,
+				tokens_used: data.tokens_used ?? null,
+				cost_cents: data.cost_cents ?? null,
 			})
 			.select()
 			.single(),
@@ -269,10 +269,10 @@ export function insertPlaylistAnalysis(
 			.insert({
 				playlist_id: data.playlist_id,
 				analysis: data.analysis as Json,
-				model_name: data.model_name,
-				model_version: data.model_version ?? null,
-				prompt_tokens: data.prompt_tokens ?? null,
-				completion_tokens: data.completion_tokens ?? null,
+				model: data.model,
+				prompt_version: data.prompt_version ?? null,
+				tokens_used: data.tokens_used ?? null,
+				cost_cents: data.cost_cents ?? null,
 			})
 			.select()
 			.single(),

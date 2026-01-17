@@ -102,7 +102,7 @@ export type Database = {
       item_status: {
         Row: {
           account_id: string
-          action_type: Database["public"]["Enums"]["action_type"] | null
+          action_type: string | null
           actioned_at: string | null
           created_at: string
           id: string
@@ -114,7 +114,7 @@ export type Database = {
         }
         Insert: {
           account_id: string
-          action_type?: Database["public"]["Enums"]["action_type"] | null
+          action_type?: string | null
           actioned_at?: string | null
           created_at?: string
           id?: string
@@ -126,7 +126,7 @@ export type Database = {
         }
         Update: {
           account_id?: string
-          action_type?: Database["public"]["Enums"]["action_type"] | null
+          action_type?: string | null
           actioned_at?: string | null
           created_at?: string
           id?: string
@@ -196,36 +196,30 @@ export type Database = {
       job_failure: {
         Row: {
           created_at: string
-          error_details: Json | null
           error_message: string | null
-          error_type: Database["public"]["Enums"]["error_type"]
+          error_type: string | null
           id: string
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           job_id: string
-          retry_count: number | null
         }
         Insert: {
           created_at?: string
-          error_details?: Json | null
           error_message?: string | null
-          error_type?: Database["public"]["Enums"]["error_type"]
+          error_type?: string | null
           id?: string
           item_id: string
           item_type: Database["public"]["Enums"]["item_type"]
           job_id: string
-          retry_count?: number | null
         }
         Update: {
           created_at?: string
-          error_details?: Json | null
           error_message?: string | null
-          error_type?: Database["public"]["Enums"]["error_type"]
+          error_type?: string | null
           id?: string
           item_id?: string
           item_type?: Database["public"]["Enums"]["item_type"]
           job_id?: string
-          retry_count?: number | null
         }
         Relationships: [
           {
@@ -244,6 +238,8 @@ export type Database = {
           id: string
           liked_at: string
           song_id: string
+          status: string | null
+          unliked_at: string | null
           updated_at: string
         }
         Insert: {
@@ -252,6 +248,8 @@ export type Database = {
           id?: string
           liked_at: string
           song_id: string
+          status?: string | null
+          unliked_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -260,6 +258,8 @@ export type Database = {
           id?: string
           liked_at?: string
           song_id?: string
+          status?: string | null
+          unliked_at?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -285,12 +285,15 @@ export type Database = {
           algorithm_version: string
           analysis_model: string | null
           analysis_version: string | null
+          candidate_set_hash: string
+          config_hash: string
+          context_hash: string
           created_at: string
           embedding_model: string | null
           embedding_version: string | null
           id: string
           playlist_count: number
-          playlist_hashes: Json
+          playlist_set_hash: string
           song_count: number
           weights: Json
         }
@@ -299,12 +302,15 @@ export type Database = {
           algorithm_version: string
           analysis_model?: string | null
           analysis_version?: string | null
+          candidate_set_hash: string
+          config_hash: string
+          context_hash: string
           created_at?: string
           embedding_model?: string | null
           embedding_version?: string | null
           id?: string
           playlist_count?: number
-          playlist_hashes?: Json
+          playlist_set_hash: string
           song_count?: number
           weights?: Json
         }
@@ -313,12 +319,15 @@ export type Database = {
           algorithm_version?: string
           analysis_model?: string | null
           analysis_version?: string | null
+          candidate_set_hash?: string
+          config_hash?: string
+          context_hash?: string
           created_at?: string
           embedding_model?: string | null
           embedding_version?: string | null
           id?: string
           playlist_count?: number
-          playlist_hashes?: Json
+          playlist_set_hash?: string
           song_count?: number
           weights?: Json
         }
@@ -393,12 +402,12 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
-          is_destination: boolean
+          is_destination: boolean | null
           is_public: boolean | null
           name: string
           snapshot_id: string | null
+          song_count: number | null
           spotify_id: string
-          track_count: number | null
           updated_at: string
         }
         Insert: {
@@ -406,12 +415,12 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          is_destination?: boolean
+          is_destination?: boolean | null
           is_public?: boolean | null
           name: string
           snapshot_id?: string | null
+          song_count?: number | null
           spotify_id: string
-          track_count?: number | null
           updated_at?: string
         }
         Update: {
@@ -419,12 +428,12 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          is_destination?: boolean
+          is_destination?: boolean | null
           is_public?: boolean | null
           name?: string
           snapshot_id?: string | null
+          song_count?: number | null
           spotify_id?: string
-          track_count?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -440,35 +449,35 @@ export type Database = {
       playlist_analysis: {
         Row: {
           analysis: Json
-          completion_tokens: number | null
+          cost_cents: number | null
           created_at: string
           id: string
-          model_name: string
-          model_version: string | null
+          model: string
           playlist_id: string
-          prompt_tokens: number | null
+          prompt_version: string | null
+          tokens_used: number | null
           updated_at: string
         }
         Insert: {
           analysis: Json
-          completion_tokens?: number | null
+          cost_cents?: number | null
           created_at?: string
           id?: string
-          model_name: string
-          model_version?: string | null
+          model: string
           playlist_id: string
-          prompt_tokens?: number | null
+          prompt_version?: string | null
+          tokens_used?: number | null
           updated_at?: string
         }
         Update: {
           analysis?: Json
-          completion_tokens?: number | null
+          cost_cents?: number | null
           created_at?: string
           id?: string
-          model_name?: string
-          model_version?: string | null
+          model?: string
           playlist_id?: string
-          prompt_tokens?: number | null
+          prompt_version?: string | null
+          tokens_used?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -484,48 +493,57 @@ export type Database = {
       playlist_profile: {
         Row: {
           audio_centroid: Json | null
+          content_hash: string
           created_at: string
+          dims: number
           embedding: string | null
           emotion_distribution: Json | null
           genre_distribution: Json | null
           id: string
-          model_name: string | null
-          model_version: string | null
+          kind: string
+          model_bundle_hash: string
           playlist_id: string
-          song_count: number
+          song_count: number | null
+          song_ids: string[] | null
           updated_at: string
         }
         Insert: {
           audio_centroid?: Json | null
+          content_hash: string
           created_at?: string
+          dims: number
           embedding?: string | null
           emotion_distribution?: Json | null
           genre_distribution?: Json | null
           id?: string
-          model_name?: string | null
-          model_version?: string | null
+          kind: string
+          model_bundle_hash: string
           playlist_id: string
-          song_count?: number
+          song_count?: number | null
+          song_ids?: string[] | null
           updated_at?: string
         }
         Update: {
           audio_centroid?: Json | null
+          content_hash?: string
           created_at?: string
+          dims?: number
           embedding?: string | null
           emotion_distribution?: Json | null
           genre_distribution?: Json | null
           id?: string
-          model_name?: string | null
-          model_version?: string | null
+          kind?: string
+          model_bundle_hash?: string
           playlist_id?: string
-          song_count?: number
+          song_count?: number | null
+          song_ids?: string[] | null
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "playlist_profile_playlist_id_fkey"
             columns: ["playlist_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "playlist"
             referencedColumns: ["id"]
           },
@@ -579,13 +597,14 @@ export type Database = {
       song: {
         Row: {
           album_id: string | null
-          album_image_url: string | null
           album_name: string | null
-          artists: Json
+          artists: string[]
           created_at: string
           duration_ms: number | null
           genres: string[]
           id: string
+          image_url: string | null
+          isrc: string | null
           name: string
           popularity: number | null
           preview_url: string | null
@@ -594,13 +613,14 @@ export type Database = {
         }
         Insert: {
           album_id?: string | null
-          album_image_url?: string | null
           album_name?: string | null
-          artists?: Json
+          artists?: string[]
           created_at?: string
           duration_ms?: number | null
           genres?: string[]
           id?: string
+          image_url?: string | null
+          isrc?: string | null
           name: string
           popularity?: number | null
           preview_url?: string | null
@@ -609,13 +629,14 @@ export type Database = {
         }
         Update: {
           album_id?: string | null
-          album_image_url?: string | null
           album_name?: string | null
-          artists?: Json
+          artists?: string[]
           created_at?: string
           duration_ms?: number | null
           genres?: string[]
           id?: string
+          image_url?: string | null
+          isrc?: string | null
           name?: string
           popularity?: number | null
           preview_url?: string | null
@@ -627,35 +648,35 @@ export type Database = {
       song_analysis: {
         Row: {
           analysis: Json
-          completion_tokens: number | null
+          cost_cents: number | null
           created_at: string
           id: string
-          model_name: string
-          model_version: string | null
-          prompt_tokens: number | null
+          model: string
+          prompt_version: string | null
           song_id: string
+          tokens_used: number | null
           updated_at: string
         }
         Insert: {
           analysis: Json
-          completion_tokens?: number | null
+          cost_cents?: number | null
           created_at?: string
           id?: string
-          model_name: string
-          model_version?: string | null
-          prompt_tokens?: number | null
+          model: string
+          prompt_version?: string | null
           song_id: string
+          tokens_used?: number | null
           updated_at?: string
         }
         Update: {
           analysis?: Json
-          completion_tokens?: number | null
+          cost_cents?: number | null
           created_at?: string
           id?: string
-          model_name?: string
-          model_version?: string | null
-          prompt_tokens?: number | null
+          model?: string
+          prompt_version?: string | null
           song_id?: string
+          tokens_used?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -735,28 +756,37 @@ export type Database = {
       }
       song_embedding: {
         Row: {
+          content_hash: string
           created_at: string
+          dims: number
           embedding: string
           id: string
-          model_name: string
+          kind: string
+          model: string
           model_version: string | null
           song_id: string
           updated_at: string
         }
         Insert: {
+          content_hash: string
           created_at?: string
+          dims: number
           embedding: string
           id?: string
-          model_name: string
+          kind: string
+          model: string
           model_version?: string | null
           song_id: string
           updated_at?: string
         }
         Update: {
+          content_hash?: string
           created_at?: string
+          dims?: number
           embedding?: string
           id?: string
-          model_name?: string
+          kind?: string
+          model?: string
           model_version?: string | null
           song_id?: string
           updated_at?: string
@@ -777,7 +807,7 @@ export type Database = {
           created_at: string
           id: string
           onboarding_completed_at: string | null
-          onboarding_step: number
+          onboarding_step: string
           theme: Database["public"]["Enums"]["theme"]
           updated_at: string
         }
@@ -786,7 +816,7 @@ export type Database = {
           created_at?: string
           id?: string
           onboarding_completed_at?: string | null
-          onboarding_step?: number
+          onboarding_step?: string
           theme?: Database["public"]["Enums"]["theme"]
           updated_at?: string
         }
@@ -795,7 +825,7 @@ export type Database = {
           created_at?: string
           id?: string
           onboarding_completed_at?: string | null
-          onboarding_step?: number
+          onboarding_step?: string
           theme?: Database["public"]["Enums"]["theme"]
           updated_at?: string
         }
@@ -817,18 +847,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      action_type: "add_to_playlist" | "dismiss" | "viewed"
-      error_type:
-        | "rate_limit"
-        | "not_found"
-        | "unauthorized"
-        | "network"
-        | "parse"
-        | "validation"
-        | "unknown"
       item_type: "song" | "playlist"
       job_status: "pending" | "running" | "completed" | "failed"
-      job_type: "sync_liked_songs" | "sync_playlists"
+      job_type:
+        | "sync_liked_songs"
+        | "sync_playlists"
+        | "song_analysis"
+        | "playlist_analysis"
+        | "matching"
       theme: "blue" | "green" | "rose" | "lavender"
     }
     CompositeTypes: {
@@ -960,19 +986,15 @@ export const Constants = {
   },
   public: {
     Enums: {
-      action_type: ["add_to_playlist", "dismiss", "viewed"],
-      error_type: [
-        "rate_limit",
-        "not_found",
-        "unauthorized",
-        "network",
-        "parse",
-        "validation",
-        "unknown",
-      ],
       item_type: ["song", "playlist"],
       job_status: ["pending", "running", "completed", "failed"],
-      job_type: ["sync_liked_songs", "sync_playlists"],
+      job_type: [
+        "sync_liked_songs",
+        "sync_playlists",
+        "song_analysis",
+        "playlist_analysis",
+        "matching",
+      ],
       theme: ["blue", "green", "rose", "lavender"],
     },
   },

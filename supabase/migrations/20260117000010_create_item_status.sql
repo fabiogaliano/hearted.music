@@ -1,21 +1,23 @@
 -- Create item_status table for tracking "new" status badges in UI
 
--- Action type enum for how item newness was cleared
-CREATE TYPE action_type AS ENUM ('add_to_playlist', 'dismiss', 'viewed');
-
 CREATE TABLE item_status (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   account_id UUID NOT NULL REFERENCES account(id) ON DELETE CASCADE,
-  item_type item_type NOT NULL,
+  item_type item_type NOT NULL,  -- Uses item_type enum from job_failure migration
   item_id UUID NOT NULL,
   is_new BOOLEAN NOT NULL DEFAULT true,
   viewed_at TIMESTAMPTZ,
   actioned_at TIMESTAMPTZ,
-  action_type action_type,
+  action_type TEXT,  -- 'added_to_playlist', 'skipped', 'dismissed'
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   UNIQUE(account_id, item_type, item_id)
 );
+
+-- action_type values:
+-- 'added_to_playlist' = item was added to a destination playlist
+-- 'skipped' = user explicitly skipped this item
+-- 'dismissed' = user dismissed the item from their queue
 
 -- item_id references either song.id or playlist.id based on item_type
 -- Note: We use UUID type and enforce referential integrity at app layer

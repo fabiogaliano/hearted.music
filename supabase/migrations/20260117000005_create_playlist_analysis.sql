@@ -1,16 +1,16 @@
--- Create playlist_analysis table for LLM playlist analysis results
+-- Create playlist_analysis table for LLM playlist analysis results (global)
+-- Multiple analyses can exist per playlist (different models, prompt versions, or re-runs)
 
 CREATE TABLE playlist_analysis (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   playlist_id UUID NOT NULL REFERENCES playlist(id) ON DELETE CASCADE,
   analysis JSONB NOT NULL,
-  model_name TEXT NOT NULL,
-  model_version TEXT,
-  prompt_tokens INTEGER,
-  completion_tokens INTEGER,
+  model TEXT NOT NULL,
+  prompt_version TEXT,
+  tokens_used INTEGER,
+  cost_cents INTEGER,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-  UNIQUE(playlist_id, model_name)
+  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
 -- analysis JSONB structure (example):
@@ -22,8 +22,9 @@ CREATE TABLE playlist_analysis (
 --   "description": "A collection of indie tracks perfect for..."
 -- }
 
--- Index for joins with playlist table
-CREATE INDEX idx_playlist_analysis_playlist_id ON playlist_analysis(playlist_id);
+-- Index for getting latest analysis per playlist (ordered by created_at DESC)
+CREATE INDEX idx_playlist_analysis_playlist_created
+  ON playlist_analysis(playlist_id, created_at DESC);
 
 -- Enable RLS (service_role bypasses)
 ALTER TABLE playlist_analysis ENABLE ROW LEVEL SECURITY;

@@ -162,8 +162,8 @@ const TEST_SONG: UpsertSongData = {
 	name: "Smoke Test Song",
 	album_id: "test_album_001",
 	album_name: "Test Album",
-	album_image_url: "https://example.com/album.jpg",
-	artists: [{ id: "test_artist_001", name: "Test Artist" }],
+	image_url: "https://example.com/album.jpg",
+	artists: ["Test Artist"],
 	duration_ms: 180000,
 	genres: ["test", "smoke"],
 	popularity: 50,
@@ -307,9 +307,9 @@ async function runTests(accountId: string): Promise<TestResult[]> {
 	console.log("");
 	info("Testing updateLikedSongStatus()...");
 
-	const updateStatusResult = await updateLikedSongStatus(accountId, testSongId, "viewed");
+	const updateStatusResult = await updateLikedSongStatus(accountId, testSongId, "dismissed");
 	if (Result.isOk(updateStatusResult)) {
-		success(`Updated status to "viewed"`);
+		success(`Updated status to "dismissed"`);
 		dim(`item_status.id: ${updateStatusResult.value.id}`);
 		results.push({ name: "updateLikedSongStatus", passed: true });
 	} else {

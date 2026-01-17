@@ -35,7 +35,8 @@ export type UpsertSongData = Pick<
 	| "name"
 	| "album_id"
 	| "album_name"
-	| "album_image_url"
+	| "image_url"
+	| "isrc"
 	| "artists"
 	| "duration_ms"
 	| "genres"
@@ -113,7 +114,8 @@ export function upsertSongs(
 					name: song.name,
 					album_id: song.album_id,
 					album_name: song.album_name,
-					album_image_url: song.album_image_url,
+					image_url: song.image_url,
+					isrc: song.isrc ?? null,
 					artists: song.artists,
 					duration_ms: song.duration_ms,
 					genres: song.genres ?? [],
@@ -176,20 +178,21 @@ export function upsertLikedSongs(
 }
 
 /**
- * Removes a liked song for an account.
- * Note: This is a hard delete since liked_song table lacks deleted_at column.
+ * Soft deletes a liked song for an account by setting unliked_at.
+ * Preserves timeline history for analytics.
  */
 export function softDeleteLikedSong(
 	accountId: string,
 	songId: string,
-): Promise<Result<null, DbError>> {
+): Promise<Result<LikedSong, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMaybe(
+	return fromSupabaseSingle(
 		supabase
 			.from("liked_song")
-			.delete()
+			.update({ unliked_at: new Date().toISOString() })
 			.eq("account_id", accountId)
 			.eq("song_id", songId)
+			.select()
 			.single(),
 	);
 }
@@ -254,7 +257,7 @@ export async function getPendingLikedSongs(
 export function updateLikedSongStatus(
 	accountId: string,
 	songId: string,
-	actionType: "add_to_playlist" | "dismiss" | "viewed",
+	actionType: "added_to_playlist" | "skipped" | "dismissed",
 ): Promise<Result<ItemStatus, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(

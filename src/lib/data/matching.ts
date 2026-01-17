@@ -34,10 +34,13 @@ export type InsertMatchContext = Pick<
 	| "analysis_version"
 	| "embedding_model"
 	| "embedding_version"
-	| "playlist_count"
-	| "playlist_hashes"
-	| "song_count"
 	| "weights"
+	| "config_hash"
+	| "playlist_set_hash"
+	| "candidate_set_hash"
+	| "context_hash"
+	| "playlist_count"
+	| "song_count"
 >;
 
 /** Insert type for match result */
@@ -127,10 +130,13 @@ export function createMatchContext(
 				analysis_version: data.analysis_version ?? null,
 				embedding_model: data.embedding_model ?? null,
 				embedding_version: data.embedding_version ?? null,
-				playlist_count: data.playlist_count ?? 0,
-				playlist_hashes: (data.playlist_hashes as Json) ?? {},
-				song_count: data.song_count ?? 0,
 				weights: (data.weights as Json) ?? {},
+				config_hash: data.config_hash,
+				playlist_set_hash: data.playlist_set_hash,
+				candidate_set_hash: data.candidate_set_hash,
+				context_hash: data.context_hash,
+				playlist_count: data.playlist_count ?? 0,
+				song_count: data.song_count ?? 0,
 			})
 			.select()
 			.single(),

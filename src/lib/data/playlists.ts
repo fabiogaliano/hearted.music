@@ -33,7 +33,7 @@ export type UpsertPlaylistData = Pick<
 	| "description"
 	| "snapshot_id"
 	| "is_public"
-	| "track_count"
+	| "song_count"
 	| "is_destination"
 >;
 
@@ -139,7 +139,7 @@ export function upsertPlaylists(
 					description: playlist.description,
 					snapshot_id: playlist.snapshot_id,
 					is_public: playlist.is_public,
-					track_count: playlist.track_count,
+					song_count: playlist.song_count,
 					is_destination: playlist.is_destination,
 				})),
 				{ onConflict: "account_id,spotify_id" },

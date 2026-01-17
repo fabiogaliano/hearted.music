@@ -8,15 +8,22 @@ CREATE TABLE playlist (
   description TEXT,
   snapshot_id TEXT,
   is_public BOOLEAN DEFAULT false,
-  track_count INTEGER DEFAULT 0,
+  is_destination BOOLEAN DEFAULT false,
+  song_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   UNIQUE(account_id, spotify_id)
 );
 
+-- is_destination: when true, this playlist is a destination for auto-sorted liked songs
+
 -- Indexes for common lookups
 CREATE INDEX idx_playlist_account_id ON playlist(account_id);
 CREATE INDEX idx_playlist_spotify_id ON playlist(spotify_id);
+
+-- Partial index for destination playlists (frequent query)
+CREATE INDEX idx_playlist_destination ON playlist(account_id)
+  WHERE is_destination = true;
 
 -- Enable RLS (service_role bypasses)
 ALTER TABLE playlist ENABLE ROW LEVEL SECURITY;

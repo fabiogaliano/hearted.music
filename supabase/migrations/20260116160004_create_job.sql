@@ -1,7 +1,13 @@
 -- Create job table for sync operations and checkpoint tracking
 
--- Job type enum for sync operations
-CREATE TYPE job_type AS ENUM ('sync_liked_songs', 'sync_playlists');
+-- Job type enum for all background job types
+CREATE TYPE job_type AS ENUM (
+  'sync_liked_songs',
+  'sync_playlists',
+  'song_analysis',
+  'playlist_analysis',
+  'matching'
+);
 
 -- Job status enum
 CREATE TYPE job_status AS ENUM ('pending', 'running', 'completed', 'failed');
@@ -19,13 +25,15 @@ CREATE TABLE job (
   updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
--- progress JSONB structure for sync checkpoints:
+-- progress JSONB structure (unified for all job types):
 -- {
---   "offset": 0,           -- current page offset
---   "total": 1000,         -- total items to sync
---   "processed": 500,      -- items processed so far
---   "cursor": "timestamp", -- last processed timestamp (for liked songs)
---   "checkpoint": "..."    -- opaque checkpoint data
+--   "total": 1000,      -- total items to process
+--   "done": 500,        -- items processed so far
+--   "succeeded": 490,   -- items processed successfully
+--   "failed": 10,       -- items that failed
+--   "offset": 0,        -- current page offset (sync jobs)
+--   "cursor": "...",    -- opaque checkpoint (sync jobs)
+--   "checkpoint": "..." -- additional checkpoint data
 -- }
 
 -- Indexes for common queries

@@ -28,20 +28,29 @@ export type PlaylistProfile = Tables<"playlist_profile">;
 /** Insert type for song embedding */
 export type UpsertSongEmbedding = Pick<
 	TablesInsert<"song_embedding">,
-	"song_id" | "embedding" | "model_name" | "model_version"
+	| "song_id"
+	| "embedding"
+	| "kind"
+	| "model"
+	| "model_version"
+	| "dims"
+	| "content_hash"
 >;
 
 /** Insert type for playlist profile */
 export type UpsertPlaylistProfile = Pick<
 	TablesInsert<"playlist_profile">,
 	| "playlist_id"
+	| "kind"
+	| "model_bundle_hash"
+	| "dims"
+	| "content_hash"
 	| "embedding"
-	| "model_name"
-	| "model_version"
-	| "song_count"
+	| "audio_centroid"
 	| "genre_distribution"
 	| "emotion_distribution"
-	| "audio_centroid"
+	| "song_count"
+	| "song_ids"
 >;
 
 // ============================================================================
@@ -53,11 +62,11 @@ export type UpsertPlaylistProfile = Pick<
  * Returns null if not found.
  *
  * @param songId - The song UUID
- * @param modelName - The embedding model name (e.g., "text-embedding-3-small")
+ * @param model - The embedding model name (e.g., "text-embedding-3-small")
  */
 export function getSongEmbedding(
 	songId: string,
-	modelName: string,
+	model: string,
 ): Promise<Result<SongEmbedding | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseMaybe(
@@ -65,7 +74,7 @@ export function getSongEmbedding(
 			.from("song_embedding")
 			.select("*")
 			.eq("song_id", songId)
-			.eq("model_name", modelName)
+			.eq("model", model)
 			.single(),
 	);
 }
@@ -92,7 +101,7 @@ export function getSongEmbeddings(
  */
 export async function getSongEmbeddingsBatch(
 	songIds: string[],
-	modelName: string,
+	model: string,
 ): Promise<Result<Map<string, SongEmbedding>, DbError>> {
 	if (songIds.length === 0) {
 		return Result.ok(new Map<string, SongEmbedding>());
@@ -104,7 +113,7 @@ export async function getSongEmbeddingsBatch(
 			.from("song_embedding")
 			.select("*")
 			.in("song_id", songIds)
-			.eq("model_name", modelName),
+			.eq("model", model),
 	);
 
 	if (Result.isError(result)) {
@@ -121,7 +130,7 @@ export async function getSongEmbeddingsBatch(
 
 /**
  * Upserts a song embedding.
- * Uses (song_id, model_name) as the conflict target.
+ * Uses (song_id, kind, model, model_version, content_hash) as the conflict target.
  */
 export function upsertSongEmbedding(
 	data: UpsertSongEmbedding,
@@ -133,11 +142,14 @@ export function upsertSongEmbedding(
 			.upsert(
 				{
 					song_id: data.song_id,
-					embedding: data.embedding,
-					model_name: data.model_name,
+					kind: data.kind,
+					model: data.model,
 					model_version: data.model_version ?? null,
+					dims: data.dims,
+					content_hash: data.content_hash,
+					embedding: data.embedding,
 				},
-				{ onConflict: "song_id,model_name" },
+				{ onConflict: "song_id,kind,model,model_version,content_hash" },
 			)
 			.select()
 			.single(),
@@ -146,7 +158,7 @@ export function upsertSongEmbedding(
 
 /**
  * Bulk upserts song embeddings.
- * Uses (song_id, model_name) as the conflict target.
+ * Uses (song_id, kind, model, model_version, content_hash) as the conflict target.
  */
 export function upsertSongEmbeddings(
 	embeddings: UpsertSongEmbedding[],
@@ -162,11 +174,14 @@ export function upsertSongEmbeddings(
 			.upsert(
 				embeddings.map((e) => ({
 					song_id: e.song_id,
-					embedding: e.embedding,
-					model_name: e.model_name,
+					kind: e.kind,
+					model: e.model,
 					model_version: e.model_version ?? null,
+					dims: e.dims,
+					content_hash: e.content_hash,
+					embedding: e.embedding,
 				})),
-				{ onConflict: "song_id,model_name" },
+				{ onConflict: "song_id,kind,model,model_version,content_hash" },
 			)
 			.select(),
 	);
@@ -224,7 +239,7 @@ export async function getPlaylistProfilesBatch(
 
 /**
  * Upserts a playlist profile.
- * Uses playlist_id as the conflict target (one-to-one relationship).
+ * Uses (playlist_id, kind, model_bundle_hash, content_hash) as the conflict target.
  */
 export function upsertPlaylistProfile(
 	data: UpsertPlaylistProfile,
@@ -236,15 +251,18 @@ export function upsertPlaylistProfile(
 			.upsert(
 				{
 					playlist_id: data.playlist_id,
+					kind: data.kind,
+					model_bundle_hash: data.model_bundle_hash,
+					dims: data.dims,
+					content_hash: data.content_hash,
 					embedding: data.embedding ?? null,
-					model_name: data.model_name ?? null,
-					model_version: data.model_version ?? null,
-					song_count: data.song_count ?? 0,
+					audio_centroid: (data.audio_centroid as Json) ?? null,
 					genre_distribution: (data.genre_distribution as Json) ?? null,
 					emotion_distribution: (data.emotion_distribution as Json) ?? null,
-					audio_centroid: (data.audio_centroid as Json) ?? null,
+					song_count: data.song_count ?? 0,
+					song_ids: data.song_ids ?? null,
 				},
-				{ onConflict: "playlist_id" },
+				{ onConflict: "playlist_id,kind,model_bundle_hash,content_hash" },
 			)
 			.select()
 			.single(),
