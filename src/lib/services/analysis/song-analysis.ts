@@ -340,10 +340,7 @@ Loudness: ${features.loudness ?? "unknown"} dB`;
 		llmOutput: SongAnalysisLlm,
 		audioFeatures?: SongAudioFeature | null,
 	): Record<string, unknown> {
-		const analysisData: Record<string, unknown> = {
-			analysis: llmOutput,
-		};
-
+		const analysisData: Record<string, unknown> = { ...llmOutput };
 		// Include audio features in stored analysis
 		if (audioFeatures) {
 			analysisData.audio_features = {
