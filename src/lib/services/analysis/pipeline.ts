@@ -173,8 +173,12 @@ export class AnalysisPipeline {
 			await this.updateProgress(job.id, progress, onProgress);
 		}
 
-		// 6. Mark job as completed
-		await jobs.markJobCompleted(job.id);
+		// 6. Mark job as completed or failed
+		if (progress.succeeded > 0) {
+			await jobs.markJobCompleted(job.id);
+		} else {
+			await jobs.markJobFailed(job.id, "All songs failed analysis");
+		}
 
 		return Result.ok({
 			jobId: job.id,
