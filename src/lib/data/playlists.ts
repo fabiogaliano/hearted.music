@@ -232,20 +232,24 @@ export function upsertPlaylistSongs(
  * Removes songs from a playlist by song IDs.
  * Note: This is a hard delete since playlist_song is a junction table.
  */
-export function removePlaylistSongs(
+export async function removePlaylistSongs(
 	playlistId: string,
 	songIds: string[],
 ): Promise<Result<null, DbError>> {
 	if (songIds.length === 0) {
-		return Promise.resolve(Result.ok<null, DbError>(null));
+		return Result.ok(null);
 	}
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMaybe(
+	const result = await fromSupabaseMany(
 		supabase
 			.from("playlist_song")
 			.delete()
 			.eq("playlist_id", playlistId)
 			.in("song_id", songIds)
-			.single(),
+			.select(),
 	);
+	if (Result.isError(result)) {
+		return Result.err(result.error);
+	}
+	return Result.ok(null);
 }

@@ -96,6 +96,22 @@ export function getSongsBySpotifyIds(
 }
 
 /**
+ * Gets multiple songs by their UUIDs.
+ * Returns empty array if none found.
+ */
+export function getSongsByIds(
+	ids: string[],
+): Promise<Result<Song[], DbError>> {
+	if (ids.length === 0) {
+		return Promise.resolve(Result.ok<Song[], DbError>([]));
+	}
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMany(
+		supabase.from("song").select("*").in("id", ids),
+	);
+}
+
+/**
  * Creates or updates songs based on Spotify ID.
  * Returns all upserted songs.
  */

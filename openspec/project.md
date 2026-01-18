@@ -152,6 +152,21 @@ const account = accountResult.value;
 2. Run `bun run gen:types`
 3. Types propagate everywhere automatically
 
+**Zod Usage:**
+
+Use Zod schemas as the **single source of truth** for runtime validation + type inference.
+
+| Use Case | Pattern |
+| -------- | ------- |
+| Enums (not from DB) | `const X = z.enum([...]); type X = z.infer<typeof X>;` |
+| API request/response | Define schema, infer type, validate at boundary |
+| Form inputs | Schema for validation, `z.infer` for types |
+| Config objects | Schema with defaults via `.default()` |
+
+❌ Don't use plain `type X = "a" | "b"` when runtime validation is needed.
+❌ Don't duplicate types (e.g., in class property AND constructor) - use Zod.
+✅ Do use `Enums<...>` for database-derived enums (already typed via Supabase).
+
 **Component Patterns:**
 - Functional components with TypeScript interfaces
 - CVA for component variants

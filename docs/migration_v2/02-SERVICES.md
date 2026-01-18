@@ -282,24 +282,30 @@ type OnboardingStep = 'welcome' | 'pick-color' | 'connecting' | 'syncing' | 'fla
 | `lyrics/LyricsService.ts`         | Genius API                |
 | `reccobeats/ReccoBeatsService.ts` | ReccoBeats API            |
 
-### LLM (unchanged)
+### LLM (v2 - AI SDK)
 
-| Service                              | Purpose                |
-| ------------------------------------ | ---------------------- |
-| `llm/LlmProviderManager.ts`          | Provider orchestration |
-| `llm/providers/GoogleProvider.ts`    | Gemini                 |
-| `llm/providers/OpenAIProvider.ts`    | GPT-4                  |
-| `llm/providers/AnthropicProvider.ts` | Claude                 |
+| Service                | Purpose                                     |
+| ---------------------- | ------------------------------------------- |
+| `llm/service.ts`       | AI SDK wrapper (Google/Anthropic/OpenAI)    |
 
-### Analysis (simplified)
+**v2 Implementation Notes:**
+- Uses `ai` package with `@ai-sdk/google`, `@ai-sdk/anthropic`, `@ai-sdk/openai`
+- Supports `generateText` and `generateObject` with Zod schemas for structured output
+- Provider abstraction via factory function `createLlmService(provider)`
 
-| Service                               | v2 Change                  |
-| ------------------------------------- | -------------------------- |
-| `analysis/SongAnalysisService.ts`     | Keep (LLM calls)           |
-| `analysis/PlaylistAnalysisService.ts` | Keep (LLM calls)           |
-| `analysis/pipeline.ts`                | NEW (merged orchestration) |
-| `analysis/RetryPolicy.ts`             | Keep                       |
-| `analysis/RateLimitGate.ts`           | Keep                       |
+### Analysis (v2 - with Zod schemas)
+
+| Service                             | v2 Change                                          |
+| ----------------------------------- | -------------------------------------------------- |
+| `analysis/song-analysis.ts`         | NEW - LLM analysis with Zod structured output      |
+| `analysis/playlist-analysis.ts`     | NEW - LLM analysis with Zod structured output      |
+| `analysis/pipeline.ts`              | NEW - Batch orchestrator with job tracking         |
+
+**v2 Implementation Notes:**
+- All analysis services use `LlmService.generateObject()` with Zod schemas
+- `SongAnalysisLlmSchema` and `PlaylistAnalysisLlmSchema` define structured LLM output
+- Pipeline creates jobs via `data/jobs.ts` and reports progress for SSE (Phase 5)
+- Old services (`RetryPolicy.ts`, `RateLimitGate.ts`) N/A for v1 fresh port
 
 ### Vectorization (replaced by DeepInfra)
 
@@ -400,101 +406,111 @@ export const Route = createAPIFileRoute('/api/jobs/$id/progress')({
 })
 ```
 
-### `DeepInfraService.ts`
+### `deepinfra/service.ts` (Implemented)
 
 Replaces local Python vectorization service. Calls DeepInfra-hosted models (#053, #054, #056).
 
 ```ts
-// lib/services/deepinfra/DeepInfraService.ts
-const EMBEDDING_URL = 'https://api.deepinfra.com/v1/openai/embeddings'
-const RERANKER_URL = 'https://api.deepinfra.com/v1/inference/Qwen/Qwen3-Reranker-0.6B'
+// src/lib/services/deepinfra/service.ts
+import { Result } from "better-result";
 
-export async function embedText(text: string): Promise<number[]> {
-  // POST to EMBEDDING_URL with:
-  // { input: "query: " + text, model: "intfloat/multilingual-e5-large-instruct", encoding_format: "float" }
-  // Note: Prefix with "query:" or "passage:" for optimal results
-}
+// Embedding (1024 dims via intfloat/multilingual-e5-large-instruct)
+export async function embedText(
+  text: string,
+  options?: { prefix?: "query:" | "passage:" }
+): Promise<Result<EmbeddingResult, DeepInfraServiceError>>
 
-export async function embedBatch(texts: string[]): Promise<number[][]> {
-  // POST with input as array of strings
-}
+export async function embedBatch(
+  texts: string[],
+  options?: { prefix?: "query:" | "passage:" }
+): Promise<Result<EmbeddingResult[], DeepInfraServiceError>>
 
-export async function rerank(query: string, documents: string[]): Promise<RerankResult[]> {
-  // POST to RERANKER_URL with: { queries: [query], documents }
-  // Returns: { scores: number[] }
-}
+// Reranking (Qwen/Qwen3-Reranker-0.6B)
+export async function rerank(
+  query: string,
+  documents: string[],
+  options?: { topN?: number }
+): Promise<Result<RerankResult, DeepInfraServiceError>>
+
+// Utilities
+export function getEmbeddingModel(): string  // "intfloat/multilingual-e5-large-instruct"
+export function getEmbeddingDims(): number   // 1024
+export function isAvailable(): Promise<boolean>
 ```
 
 **Environment:**
 - `DEEPINFRA_API_KEY` — API key for authentication
 
+**Notes:**
+- Uses E5 model prefixes: `query:` for search queries, `passage:` for documents
+- All functions return `Result<T, Error>` for composable error handling
+- Rate limiting handled via `RateLimitError` with retry-after extraction
+
 ---
 
-## Directory Structure (v2)
+## Directory Structure (v2 - Actual)
 
 ```
-lib/
-├── data/                       # Server-side DB access
-│   ├── client.ts               # Supabase client (from DatabaseService)
-│   ├── songs.ts
-│   ├── playlists.ts
-│   ├── analysis.ts
-│   ├── vectors.ts
-│   ├── matching.ts
-│   ├── jobs.ts
-│   ├── accounts.ts
-│   ├── newness.ts              # NEW (item_status table)
-│   └── preferences.ts          # NEW (user_preferences table)
+src/lib/
+├── data/                         # Server-side DB access (Result-based)
+│   ├── client.ts                 # Supabase admin client
+│   ├── songs.ts                  # Songs + liked songs
+│   ├── playlists.ts              # Playlists + playlist songs
+│   ├── analysis.ts               # Song/playlist LLM analysis + audio features
+│   ├── vectors.ts                # Song embeddings + playlist profiles
+│   ├── matching.ts               # Match context + results
+│   ├── jobs.ts                   # Job lifecycle management
+│   ├── accounts.ts               # Account CRUD
+│   ├── newness.ts                # Item status (new/seen/actioned)
+│   ├── preferences.ts            # User preferences
+│   ├── auth-tokens.ts            # Token refresh support
+│   └── database.types.ts         # Generated Supabase types
 ├── services/
-│   ├── sync/
-│   │   ├── SyncOrchestrator.ts # Renamed from SyncService
-│   │   └── PlaylistSyncService.ts
-│   ├── spotify/
-│   │   └── SpotifyService.ts
 │   ├── analysis/
-│   │   ├── SongAnalysisService.ts
-│   │   ├── PlaylistAnalysisService.ts
-│   │   ├── pipeline.ts         # NEW (merged)
-│   │   ├── RetryPolicy.ts
-│   │   └── RateLimitGate.ts
+│   │   ├── song-analysis.ts      # LLM song analysis (Zod schemas)
+│   │   ├── playlist-analysis.ts  # LLM playlist analysis (Zod schemas)
+│   │   └── pipeline.ts           # Batch orchestrator with job tracking
 │   ├── deepinfra/
-│   │   └── DeepInfraService.ts  # NEW (replaces Python vectorization)
-│   ├── matching/
-│   │   ├── MatchingService.ts
-│   │   ├── MatchCachingService.ts
-│   │   └── matching.config.ts  # Kept separate
-│   ├── llm/
-│   │   ├── LlmProviderManager.ts
-│   │   └── providers/...
+│   │   └── service.ts            # DeepInfra API (embeddings + reranking)
 │   ├── embedding/
-│   │   └── EmbeddingService.ts
-│   ├── semantic/
-│   │   └── SemanticMatcher.ts
+│   │   └── service.ts            # Song embedding with caching
+│   ├── llm/
+│   │   └── service.ts            # AI SDK wrapper (Google/Anthropic/OpenAI)
 │   ├── reranker/
-│   │   └── RerankerService.ts
-│   └── external/               # External API clients
-│       ├── LastFmService.ts
-│       ├── LyricsService.ts
-│       └── ReccoBeatsService.ts
-├── schemas/                    # Valibot schemas (#037)
-│   ├── song.schema.ts
-│   ├── playlist.schema.ts
-│   ├── analysis.schema.ts
-│   └── job.schema.ts
-└── auth/
-    └── AuthService.ts
+│   │   └── service.ts            # Cross-encoder reranking
+│   ├── spotify/
+│   │   └── service.ts            # Spotify API client
+│   └── sync/
+│       ├── orchestrator.ts       # Full sync coordinator
+│       └── playlist-sync.ts      # Playlist Spotify API sync
+├── errors/
+│   ├── data.ts                   # DbError types
+│   └── service.ts                # Service error types (TaggedError)
+└── utils/
+    └── result-wrappers/          # Supabase → Result adapters
+        └── supabase.ts
 ```
+
+**Notes:**
+- All services use `Result<T, Error>` from `better-result`
+- Error types follow `TaggedError` pattern for exhaustive matching
+- No barrel exports (index.ts) - use direct imports
+- Zod schemas colocated in service files (not separate schemas/ folder)
 
 ---
 
 ## Migration Sequence
 
-1. **Phase 1: Query modules** — Extract DB operations, keep old services as facades
-2. **Phase 2: Delete factories** — Update imports to direct
-3. **Phase 3: Merge pipeline** — Combine batch/prefetch/progress
-4. **Phase 4: Split PlaylistService** — Extract sync logic
-5. **Phase 5: SSE migration** — Replace JobSubscriptionManager
-6. **Phase 6: Cleanup** — Delete thin wrappers, unused files
+1. ✅ **Phase 1: Schema** — Create all 17 tables with RLS
+2. ✅ **Phase 2: Extensions** — Enable pgvector, generate TypeScript types
+3. ✅ **Phase 3: Query modules** — Create 9+ data modules with Result-based API
+4. ✅ **Phase 4: Service layer** — Port sync, analysis, embedding, reranking services
+   - 4a: Factory removal (N/A for v1 fresh port)
+   - 4b: Song/Analysis services with Zod schemas
+   - 4c: Playlist/Sync services
+   - 4d: DeepInfra migration
+5. ⬜ **Phase 5: SSE migration** — Replace WebSocket with Server-Sent Events
+6. ⬜ **Phase 6: Cleanup** — Delete old_app, unused dependencies
 
 ---
 
@@ -509,4 +525,4 @@ lib/
 
 ---
 
-*Next: 03-IMPLEMENTATION.md (phased tasks with checkboxes)*
+*Last updated: January 17, 2026 — Phase 4 complete*
