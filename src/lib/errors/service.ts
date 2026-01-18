@@ -172,7 +172,7 @@ export class MissingAnalysisError extends TaggedError("MissingAnalysisError")<{
 // ============================================================================
 
 /** All external API errors */
-export type ExternalApiError = DeepInfraError | RateLimitError;
+export type ExternalApiError = DeepInfraError | RateLimitError | LlmError;
 
 /** All analysis pipeline errors */
 export type AnalysisPipelineError = AnalysisError | NoLyricsError;
