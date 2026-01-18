@@ -58,15 +58,17 @@ export type UpsertPlaylistProfile = Pick<
 // ============================================================================
 
 /**
- * Gets the embedding for a song by model name.
+ * Gets the embedding for a song by model name and kind.
  * Returns null if not found.
  *
  * @param songId - The song UUID
  * @param model - The embedding model name (e.g., "text-embedding-3-small")
+ * @param kind - The embedding kind (full, theme, mood, context)
  */
 export function getSongEmbedding(
 	songId: string,
 	model: string,
+	kind: SongEmbedding["kind"],
 ): Promise<Result<SongEmbedding | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseMaybe(
@@ -75,6 +77,7 @@ export function getSongEmbedding(
 			.select("*")
 			.eq("song_id", songId)
 			.eq("model", model)
+			.eq("kind", kind)
 			.single(),
 	);
 }
@@ -96,12 +99,13 @@ export function getSongEmbeddings(
 }
 
 /**
- * Gets embeddings for multiple songs by model name.
+ * Gets embeddings for multiple songs by model name and kind.
  * Returns a map of songId -> embedding.
  */
 export async function getSongEmbeddingsBatch(
 	songIds: string[],
 	model: string,
+	kind: SongEmbedding["kind"],
 ): Promise<Result<Map<string, SongEmbedding>, DbError>> {
 	if (songIds.length === 0) {
 		return Result.ok(new Map<string, SongEmbedding>());
@@ -113,7 +117,8 @@ export async function getSongEmbeddingsBatch(
 			.from("song_embedding")
 			.select("*")
 			.in("song_id", songIds)
-			.eq("model", model),
+			.eq("model", model)
+			.eq("kind", kind),
 	);
 
 	if (Result.isError(result)) {

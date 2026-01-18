@@ -12,10 +12,10 @@
 | 1     | Schema                 | ✅ Complete                 | Phase 0    |
 | 2     | Extensions             | ✅ Complete                 | Phase 1    |
 | 3     | Query Modules          | ✅ Complete                 | Phase 2    |
-| 4a    | Delete Factories       | ⬜ Not Started              | Phase 3    |
-| 4b    | Song/Analysis Services | ⬜ Not Started              | Phase 3    |
-| 4c    | Playlist/Sync Services | ⬜ Not Started              | Phase 3    |
-| 4d    | DeepInfra Migration    | ⬜ Not Started              | Phase 3    |
+| 4a    | Delete Factories       | ✅ N/A (v1 fresh port)      | Phase 3    |
+| 4b    | Song/Analysis Services | ✅ Complete                 | Phase 3    |
+| 4c    | Playlist/Sync Services | ✅ Complete                 | Phase 3    |
+| 4d    | DeepInfra Migration    | ✅ Complete                 | Phase 3    |
 | 5     | SSE                    | ⬜ Not Started              | Phase 4*   |
 | 6     | Cleanup                | ⬜ Not Started              | Phase 5    |
 | 7     | UI Integration         | 🟡 In Progress (auth flows) | Phase 6    |
@@ -171,20 +171,22 @@
 
 > Remove factory pattern files.
 
+**Status**: ✅ N/A — v1 is a fresh port with no factories to delete. Using direct imports from the start.
+
 ### Tasks
 
-- [ ] Delete `matching/factory.ts`
-- [ ] Delete `reranker/factory.ts`
-- [ ] Delete `embedding/factory.ts`
-- [ ] Delete `genre/factory.ts`
-- [ ] Delete `profiling/factory.ts`
-- [ ] Delete `llm/LlmProviderManagerFactory.ts`
-- [ ] Update imports to use direct imports
+- [x] Delete `matching/factory.ts` — N/A (fresh v1 port)
+- [x] Delete `reranker/factory.ts` — N/A (fresh v1 port)
+- [x] Delete `embedding/factory.ts` — N/A (fresh v1 port)
+- [x] Delete `genre/factory.ts` — N/A (fresh v1 port)
+- [x] Delete `profiling/factory.ts` — N/A (fresh v1 port)
+- [x] Delete `llm/LlmProviderManagerFactory.ts` — N/A (fresh v1 port)
+- [x] Update imports to use direct imports — using direct imports from start
 
 ### Acceptance Criteria
-- [ ] No factory files remain
-- [ ] All imports updated
-- [ ] `bun run typecheck` passes
+- [x] No factory files remain
+- [x] All imports updated
+- [x] `bun run typecheck` passes
 
 ### References
 - [Decision #034](/docs/migration_v2/00-DECISIONS.md) — No factories
@@ -195,19 +197,29 @@
 
 > Consolidate song and analysis pipeline.
 
+**Status**: ✅ Complete
+
 ### Tasks
 
-- [ ] Merge analysis pipeline → `analysis/pipeline.ts`
-  - From: `TrackPrefetchService`, `PlaylistBatchProcessor`, `ProgressNotifier`
-  - To: Single orchestrator
-- [ ] Delete `TrackService.ts` → use `data/songs.ts`
-- [ ] Update `SongAnalysisService` to use query modules
-- [ ] Update `PlaylistAnalysisService` to use query modules
+- [x] Merge analysis pipeline → `analysis/pipeline.ts`
+  - Location: `src/lib/services/analysis/pipeline.ts`
+  - Orchestrates batch analysis with concurrency control and job tracking
+  - Uses `data/jobs.ts` for job lifecycle management
+- [x] Delete `TrackService.ts` → use `data/songs.ts`
+  - N/A for v1 fresh port; using `data/songs.ts` from start
+- [x] Create `SongAnalysisService` using query modules
+  - Location: `src/lib/services/analysis/song-analysis.ts`
+  - Uses AI SDK via `LlmService` with Zod schemas for structured output
+- [x] Create `PlaylistAnalysisService` using query modules
+  - Location: `src/lib/services/analysis/playlist-analysis.ts`
+  - Same pattern as SongAnalysisService
+- [x] Wire job progress updates via `data/jobs.ts`
+  - Pipeline creates jobs, updates progress, marks completion/failure
 
 ### Acceptance Criteria
-- [ ] Song sync works
-- [ ] Analysis pipeline works
-- [ ] No duplicate code
+- [x] Song sync works (via `data/songs.ts`)
+- [x] Analysis pipeline works
+- [x] No duplicate code
 
 ### References
 - [02-SERVICES.md](/docs/migration_v2/02-SERVICES.md) — Service consolidation
@@ -219,16 +231,24 @@
 
 > Split and consolidate playlist services.
 
+**Status**: ✅ Complete
+
 ### Tasks
 
-- [ ] Create `PlaylistSyncService.ts` (Spotify API operations)
-- [ ] Update `PlaylistService.ts` → use `data/playlists.ts` for DB
-- [ ] Rename `SyncService.ts` → `SyncOrchestrator.ts`
-- [ ] Delete `UserService.ts` → use `data/accounts.ts`
+- [x] Create `PlaylistSyncService.ts` (Spotify API operations)
+  - Location: `src/lib/services/sync/playlist-sync.ts`
+  - Implements: `syncPlaylists`, `syncPlaylistTracks`, `createPlaylist`, `updatePlaylist`
+- [x] Update `PlaylistService.ts` → use `data/playlists.ts` for DB
+  - DB operations now in `data/playlists.ts` (Phase 3)
+- [x] Rename `SyncService.ts` → `SyncOrchestrator.ts`
+  - Location: `src/lib/services/sync/orchestrator.ts`
+  - Implements: `syncLikedSongs`, `syncPlaylists`, `fullSync`
+- [x] Delete `UserService.ts` → use `data/accounts.ts`
+  - Replaced by `data/accounts.ts` (Phase 3)
 
 ### Acceptance Criteria
-- [ ] Playlist sync works
-- [ ] No duplicate DB code
+- [x] Playlist sync works
+- [x] No duplicate DB code
 
 ### References
 - [02-SERVICES.md](/docs/migration_v2/02-SERVICES.md) — PlaylistSyncService spec
@@ -239,31 +259,41 @@
 
 > Replace Python vectorization with DeepInfra API.
 
+**Status**: ✅ Complete
+
 ### Tasks
 
-- [ ] **Create DeepInfraService**
-  - Location: `lib/services/deepinfra/DeepInfraService.ts`
+- [x] **Create DeepInfraService**
+  - Location: `src/lib/services/deepinfra/service.ts`
   - Endpoints:
     - Embeddings: `https://api.deepinfra.com/v1/openai/embeddings`
     - Reranker: `https://api.deepinfra.com/v1/inference/Qwen/Qwen3-Reranker-0.6B`
+  - Model: `intfloat/multilingual-e5-large-instruct` (1024 dims)
+  - Uses E5 prefixes: `query:` for search, `passage:` for documents
 
-- [ ] **Add environment variable**
+- [x] **Add environment variable**
   ```
   DEEPINFRA_API_KEY=xxx
   ```
 
-- [ ] **Update EmbeddingService** → call DeepInfra
-- [ ] **Update RerankerService** → call DeepInfra
-- [ ] **Remove sentiment calls** (LLM handles emotions)
-- [ ] **Delete VectorizationService.ts**
-- [ ] **Delete `services/vectorization/` Python folder**
-- [ ] **Update docker-compose.yml** — remove vectorization service
+- [x] **Update EmbeddingService** → call DeepInfra
+  - Location: `src/lib/services/embedding/service.ts`
+  - Implements: `embedSong`, `embedBatch`, `getEmbedding`, `getEmbeddings`
+  - Content-hash caching to avoid re-embedding
+- [x] **Update RerankerService** → call DeepInfra
+  - Location: `src/lib/services/reranker/service.ts`
+  - Implements: `rerank` with score blending (70% original + 30% reranker)
+  - Two-stage pipeline: embedding similarity → cross-encoder reranking
+- [x] **Remove sentiment calls** (LLM handles emotions) — N/A for v1 fresh port
+- [x] **Delete VectorizationService.ts** — N/A for v1 fresh port
+- [x] **Delete `services/vectorization/` Python folder** — N/A for v1 fresh port
+- [x] **Update docker-compose.yml** — N/A for v1 fresh port
 
 ### Acceptance Criteria
-- [ ] Embeddings return 1024-dim vectors
-- [ ] Existing embeddings still compatible (no reindexing)
-- [ ] Reranking works
-- [ ] No Python service running
+- [x] Embeddings return 1024-dim vectors
+- [x] Existing embeddings still compatible (no reindexing)
+- [x] Reranking works
+- [x] No Python service running
 
 ### References
 - [02-SERVICES.md DeepInfraService](/docs/migration_v2/02-SERVICES.md) — Service spec
@@ -418,4 +448,4 @@
 
 ---
 
-*Last updated: January 2026*
+*Last updated: January 17, 2026*
