@@ -316,14 +316,24 @@ export class AnalysisPipeline {
 	 * Gets API key for provider from environment.
 	 */
 	private getApiKey(provider: LlmProviderName): string {
+		let key: string | undefined;
 		switch (provider) {
 			case "google":
-				return process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? process.env.GOOGLE_API_KEY ?? "";
+				key = process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? process.env.GOOGLE_API_KEY;
+				break;
 			case "anthropic":
-				return process.env.ANTHROPIC_API_KEY ?? "";
+				key = process.env.ANTHROPIC_API_KEY;
+				break;
 			case "openai":
-				return process.env.OPENAI_API_KEY ?? "";
+				key = process.env.OPENAI_API_KEY;
+				break;
 		}
+
+		if (!key || key.trim() === "") {
+			throw new Error(`Missing API key for LLM provider "${provider}". Please set the required environment variable.`);
+		}
+
+		return key;
 	}
 
 	/**
