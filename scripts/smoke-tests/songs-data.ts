@@ -18,18 +18,9 @@
 import { Result } from "better-result";
 import { getAccountById, getAccountBySpotifyId } from "@/lib/data/accounts";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import {
-	getSongById,
-	getSongBySpotifyId,
-	getSongsBySpotifyIds,
-	upsertSongs,
-	getLikedSongs,
-	upsertLikedSongs,
-	softDeleteLikedSong,
-	getPendingLikedSongs,
-	updateLikedSongStatus,
-	type UpsertSongData,
-} from "@/lib/data/songs";
+import * as songs from "@/lib/data/song";
+import * as likedSongs from "@/lib/data/liked-song";
+import type { UpsertData as UpsertSongData } from "@/lib/data/song";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -180,7 +171,7 @@ async function runTests(accountId: string): Promise<TestResult[]> {
 	console.log("");
 	info("Testing upsertSongs()...");
 
-	const upsertResult = await upsertSongs([TEST_SONG]);
+	const upsertResult = await songs.upsert([TEST_SONG]);
 	if (Result.isOk(upsertResult) && upsertResult.value.length > 0) {
 		testSongId = upsertResult.value[0].id;
 		success(`Upserted song with ID: ${testSongId}`);
@@ -199,7 +190,7 @@ async function runTests(accountId: string): Promise<TestResult[]> {
 	console.log("");
 	info("Testing getSongById()...");
 
-	const getByIdResult = await getSongById(testSongId);
+	const getByIdResult = await songs.getById(testSongId);
 	if (Result.isOk(getByIdResult) && getByIdResult.value) {
 		success(`Found song: "${getByIdResult.value.name}"`);
 		results.push({ name: "getSongById", passed: true });
@@ -215,7 +206,7 @@ async function runTests(accountId: string): Promise<TestResult[]> {
 	console.log("");
 	info("Testing getSongBySpotifyId()...");
 
-	const getBySpotifyIdResult = await getSongBySpotifyId(TEST_SPOTIFY_ID);
+	const getBySpotifyIdResult = await songs.getBySpotifyId(TEST_SPOTIFY_ID);
 	if (Result.isOk(getBySpotifyIdResult) && getBySpotifyIdResult.value) {
 		success(`Found song by Spotify ID: "${getBySpotifyIdResult.value.name}"`);
 		results.push({ name: "getSongBySpotifyId", passed: true });
@@ -231,7 +222,7 @@ async function runTests(accountId: string): Promise<TestResult[]> {
 	console.log("");
 	info("Testing getSongsBySpotifyIds()...");
 
-	const getBatchResult = await getSongsBySpotifyIds([TEST_SPOTIFY_ID, "nonexistent_id"]);
+	const getBatchResult = await songs.getBySpotifyIds([TEST_SPOTIFY_ID, "nonexistent_id"]);
 	if (Result.isOk(getBatchResult)) {
 		success(`Found ${getBatchResult.value.length} song(s) out of 2 requested`);
 		results.push({ name: "getSongsBySpotifyIds", passed: true, details: `${getBatchResult.value.length} found` });
@@ -246,7 +237,7 @@ async function runTests(accountId: string): Promise<TestResult[]> {
 	console.log("");
 	info("Testing upsertLikedSongs()...");
 
-	const upsertLikedResult = await upsertLikedSongs(accountId, [
+	const upsertLikedResult = await likedSongs.upsert(accountId, [
 		{ song_id: testSongId, liked_at: new Date().toISOString() },
 	]);
 	if (Result.isOk(upsertLikedResult) && upsertLikedResult.value.length > 0) {
@@ -265,7 +256,7 @@ async function runTests(accountId: string): Promise<TestResult[]> {
 	console.log("");
 	info("Testing getLikedSongs()...");
 
-	const getLikedResult = await getLikedSongs(accountId);
+	const getLikedResult = await likedSongs.getAll(accountId);
 	if (Result.isOk(getLikedResult)) {
 		const found = getLikedResult.value.some((ls) => ls.song_id === testSongId);
 		if (found) {
@@ -286,7 +277,7 @@ async function runTests(accountId: string): Promise<TestResult[]> {
 	console.log("");
 	info("Testing getPendingLikedSongs()...");
 
-	const pendingResult = await getPendingLikedSongs(accountId);
+	const pendingResult = await likedSongs.getPending(accountId);
 	if (Result.isOk(pendingResult)) {
 		const found = pendingResult.value.some((ls) => ls.song_id === testSongId);
 		if (found) {
@@ -307,7 +298,7 @@ async function runTests(accountId: string): Promise<TestResult[]> {
 	console.log("");
 	info("Testing updateLikedSongStatus()...");
 
-	const updateStatusResult = await updateLikedSongStatus(accountId, testSongId, "dismissed");
+	const updateStatusResult = await likedSongs.updateStatus(accountId, testSongId, "dismissed");
 	if (Result.isOk(updateStatusResult)) {
 		success(`Updated status to "dismissed"`);
 		dim(`item_status.id: ${updateStatusResult.value.id}`);
@@ -323,7 +314,7 @@ async function runTests(accountId: string): Promise<TestResult[]> {
 	console.log("");
 	info("Verifying song is no longer pending...");
 
-	const pendingAfterResult = await getPendingLikedSongs(accountId);
+	const pendingAfterResult = await likedSongs.getPending(accountId);
 	if (Result.isOk(pendingAfterResult)) {
 		const stillPending = pendingAfterResult.value.some((ls) => ls.song_id === testSongId);
 		if (!stillPending) {
@@ -354,7 +345,7 @@ async function runTests(accountId: string): Promise<TestResult[]> {
 		.eq("item_type", "song");
 
 	// Test softDeleteLikedSong
-	const deleteResult = await softDeleteLikedSong(accountId, testSongId);
+	const deleteResult = await likedSongs.softDelete(accountId, testSongId);
 	if (Result.isOk(deleteResult)) {
 		success("Deleted liked song (softDeleteLikedSong works)");
 		results.push({ name: "softDeleteLikedSong", passed: true });

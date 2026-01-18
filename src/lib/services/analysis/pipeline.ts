@@ -22,8 +22,10 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import * as jobs from "@/lib/data/jobs";
-import * as songs from "@/lib/data/songs";
-import * as analysis from "@/lib/data/analysis";
+import * as songs from "@/lib/data/song";
+import * as likedSongs from "@/lib/data/liked-song";
+import * as songAnalysis from "@/lib/data/song-analysis";
+import * as audioFeatures from "@/lib/data/song-audio-feature";
 import type { DbError } from "@/lib/errors/data";
 import type { JobProgress } from "@/lib/data/jobs";
 import { SongAnalysisService, type AnalyzeSongInput } from "./song-analysis";
@@ -136,7 +138,7 @@ export class AnalysisPipeline {
 
 		// 4. Prefetch audio features for all songs
 		const songIds = songsToAnalyze.map(s => s.songId);
-		const audioFeaturesResult = await analysis.getSongAudioFeaturesBatch(songIds);
+		const audioFeaturesResult = await audioFeatures.getBatch(songIds);
 		const audioFeaturesMap = Result.isOk(audioFeaturesResult)
 			? audioFeaturesResult.value
 			: new Map();
@@ -265,21 +267,20 @@ export class AnalysisPipeline {
 		limit = 100,
 	): Promise<Result<SongToAnalyze[], PipelineError>> {
 		// 1. Get liked songs for account
-		const likedSongsResult = await songs.getLikedSongs(accountId);
+		const likedSongsResult = await likedSongs.getAll(accountId);
 		if (Result.isError(likedSongsResult)) {
 			return Result.err(likedSongsResult.error);
 		}
 
 		// Apply limit
-		const likedSongs = likedSongsResult.value.slice(0, limit);
-		if (likedSongs.length === 0) {
+		const likedSongsList = likedSongsResult.value.slice(0, limit);
+		if (likedSongsList.length === 0) {
 			return Result.ok([]);
 		}
 
 		// 2. Get existing analyses
-		const songIds = likedSongs.map(ls => ls.song_id);
-		const analysesResult = await (analysis.getSongAnalysis(songIds) as unknown as
-			Promise<Result<Map<string, analysis.SongAnalysis>, DbError>>);
+		const songIds = likedSongsList.map(ls => ls.song_id);
+		const analysesResult = await songAnalysis.get(songIds);
 		if (Result.isError(analysesResult)) {
 			return Result.err(analysesResult.error);
 		}
@@ -289,16 +290,16 @@ export class AnalysisPipeline {
 		// 3. Filter to songs without analysis
 		// Note: This returns songs that need analysis, but lyrics need to be fetched separately
 		const needsAnalysis: SongToAnalyze[] = [];
-		for (const likedSong of likedSongs) {
+		for (const likedSong of likedSongsList) {
 			if (!existingAnalyses.has(likedSong.song_id)) {
 				// Get song details
-				const songResult = await songs.getSongById(likedSong.song_id);
+				const songResult = await songs.getById(likedSong.song_id);
 				if (Result.isOk(songResult) && songResult.value) {
-					const song = songResult.value;
+					const track = songResult.value;
 					needsAnalysis.push({
-						songId: song.id,
-						artist: song.artists[0] ?? "Unknown Artist",
-						title: song.name,
+						songId: track.id,
+						artist: track.artists[0] ?? "Unknown Artist",
+						title: track.name,
 						lyrics: "", // Lyrics need to be fetched separately (via lyrics service)
 					});
 				}

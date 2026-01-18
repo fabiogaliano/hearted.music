@@ -23,13 +23,15 @@ import {
 	type PlaylistSyncResult,
 	type PlaylistTrackSyncResult,
 } from "./playlist-sync";
-import * as songs from "@/lib/data/songs";
+import * as songs from "@/lib/data/song";
+import * as likedSongs from "@/lib/data/liked-song";
 import * as playlists from "@/lib/data/playlists";
 import * as jobs from "@/lib/data/jobs";
 import type { DbError } from "@/lib/errors/data";
 import type { SpotifyError } from "@/lib/errors/spotify";
 import { SyncError } from "@/lib/errors/service";
-import type { Song, LikedSong } from "@/lib/data/songs";
+import type { Song } from "@/lib/data/song";
+import type { LikedSong } from "@/lib/data/liked-song";
 import type { JobProgress } from "@/lib/data/jobs";
 import type { Playlist } from "@/lib/data/playlists";
 
@@ -105,7 +107,7 @@ export class SyncOrchestrator {
 		);
 
 		// 2. Get existing liked songs from database
-		const existingResult = await songs.getLikedSongs(accountId);
+		const existingResult = await likedSongs.getAll(accountId);
 		if (Result.isError(existingResult)) {
 			return Result.err(existingResult.error);
 		}
@@ -118,7 +120,7 @@ export class SyncOrchestrator {
 		let existingSongs: Song[] = [];
 		if (existingSongIds.length > 0) {
 			// We need to get songs by ID to find their spotify_ids
-			const songsResult = await songs.getSongsByIds(
+			const songsResult = await songs.getByIds(
 				existingSongIds.filter((id: string) => id.length > 0),
 			);
 			if (Result.isError(songsResult)) {
@@ -160,7 +162,7 @@ export class SyncOrchestrator {
 				preview_url: null,
 			}));
 
-			const upsertedResult = await songs.upsertSongs(songData);
+			const upsertedResult = await songs.upsert(songData);
 			if (Result.isError(upsertedResult)) {
 				return Result.err(upsertedResult.error);
 			}
@@ -175,15 +177,15 @@ export class SyncOrchestrator {
 				};
 			});
 
-			const likedResult = await songs.upsertLikedSongs(accountId, likedSongData);
+			const likedResult = await likedSongs.upsert(accountId, likedSongData);
 			if (Result.isError(likedResult)) {
 				return Result.err(likedResult.error);
 			}
 		}
 
 		// 7. Soft delete removed tracks
-		for (const song of toRemove) {
-			const deleteResult = await songs.softDeleteLikedSong(accountId, song.id);
+		for (const track of toRemove) {
+			const deleteResult = await likedSongs.softDelete(accountId, track.id);
 			if (Result.isError(deleteResult)) {
 				return Result.err(deleteResult.error);
 			}
