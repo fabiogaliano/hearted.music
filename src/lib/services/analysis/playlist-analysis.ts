@@ -15,10 +15,10 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import type { LlmService } from "../llm/service";
-import * as analysis from "@/lib/data/analysis";
+import * as playlistAnalysis from "@/lib/data/playlist-analysis";
 import type { DbError } from "@/lib/errors/data";
 import { AnalysisError, type LlmError, type RateLimitError } from "@/lib/errors/service";
-import type { PlaylistAnalysis, InsertPlaylistAnalysis } from "@/lib/data/analysis";
+import type { PlaylistAnalysis, InsertData as InsertPlaylistAnalysis } from "@/lib/data/playlist-analysis";
 
 // ============================================================================
 // Zod Schemas for Structured LLM Output
@@ -234,7 +234,7 @@ export class PlaylistAnalysisService {
 		const { playlistId, name, description, tracks } = input;
 
 		// 1. Check for existing analysis
-		const existingResult = await analysis.getPlaylistAnalysis(playlistId);
+		const existingResult = await playlistAnalysis.get(playlistId);
 		if (Result.isError(existingResult)) {
 			return Result.err(existingResult.error);
 		}
@@ -265,7 +265,7 @@ export class PlaylistAnalysisService {
 		}
 
 		// 5. Store in database
-		const storeResult = await analysis.insertPlaylistAnalysis({
+		const storeResult = await playlistAnalysis.insert({
 			playlist_id: playlistId,
 			analysis: output as unknown as InsertPlaylistAnalysis["analysis"],
 			model: llmResult.value.model,

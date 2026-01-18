@@ -15,10 +15,11 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import type { LlmService } from "../llm/service";
-import * as analysis from "@/lib/data/analysis";
+import * as songAnalysis from "@/lib/data/song-analysis";
 import type { DbError } from "@/lib/errors/data";
 import { AnalysisError, NoLyricsError, type LlmError, type RateLimitError } from "@/lib/errors/service";
-import type { SongAnalysis, SongAudioFeature } from "@/lib/data/analysis";
+import type { SongAnalysis } from "@/lib/data/song-analysis";
+import type { AudioFeature } from "@/lib/data/song-audio-feature";
 
 // ============================================================================
 // Zod Schemas for Structured LLM Output
@@ -144,7 +145,7 @@ export interface AnalyzeSongInput {
 	artist: string;
 	title: string;
 	lyrics: string;
-	audioFeatures?: SongAudioFeature | null;
+	audioFeatures?: AudioFeature | null;
 }
 
 /** Result of a song analysis */
@@ -215,7 +216,7 @@ export class SongAnalysisService {
 		const { songId, artist, title, lyrics, audioFeatures } = input;
 
 		// 1. Check for existing analysis
-		const existingResult = await analysis.getSongAnalysis(songId);
+		const existingResult = await songAnalysis.get(songId);
 		if (Result.isError(existingResult)) {
 			return Result.err(existingResult.error);
 		}
@@ -245,9 +246,9 @@ export class SongAnalysisService {
 		const analysisData = this.buildAnalysisData(llmResult.value.output, audioFeatures);
 
 		// 6. Store in database
-		const storeResult = await analysis.insertSongAnalysis({
+		const storeResult = await songAnalysis.insert({
 			song_id: songId,
-			analysis: analysisData as analysis.InsertSongAnalysis["analysis"],
+			analysis: analysisData as songAnalysis.InsertData["analysis"],
 			model: llmResult.value.model,
 			prompt_version: "1",
 			tokens_used: llmResult.value.tokens?.total ?? null,
@@ -305,7 +306,7 @@ export class SongAnalysisService {
 		artist: string,
 		title: string,
 		lyrics: string,
-		audioFeatures?: SongAudioFeature | null,
+		audioFeatures?: AudioFeature | null,
 	): string {
 		return SONG_ANALYSIS_PROMPT
 			.replace("{artist}", artist)
@@ -317,7 +318,7 @@ export class SongAnalysisService {
 	/**
 	 * Formats audio features as human-readable text.
 	 */
-	private formatAudioFeatures(features?: SongAudioFeature | null): string {
+	private formatAudioFeatures(features?: AudioFeature | null): string {
 		if (!features) {
 			return "Audio features not available - analyze based on lyrics only";
 		}
@@ -338,7 +339,7 @@ Loudness: ${features.loudness ?? "unknown"} dB`;
 	 */
 	private buildAnalysisData(
 		llmOutput: SongAnalysisLlm,
-		audioFeatures?: SongAudioFeature | null,
+		audioFeatures?: AudioFeature | null,
 	): Record<string, unknown> {
 		const analysisData: Record<string, unknown> = { ...llmOutput };
 		// Include audio features in stored analysis

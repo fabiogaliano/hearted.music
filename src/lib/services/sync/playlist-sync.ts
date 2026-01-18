@@ -16,12 +16,12 @@ import { Result } from "better-result";
 import { z } from "zod";
 import type { SpotifyService, SpotifyPlaylistDTO, SpotifyTrackDTO } from "../spotify";
 import * as playlists from "@/lib/data/playlists";
-import * as songs from "@/lib/data/songs";
+import * as songs from "@/lib/data/song";
 import type { DbError } from "@/lib/errors/data";
 import type { SpotifyError } from "@/lib/errors/spotify";
 import { SyncError } from "@/lib/errors/service";
 import type { Playlist, PlaylistSong } from "@/lib/data/playlists";
-import type { Song } from "@/lib/data/songs";
+import type { Song } from "@/lib/data/song";
 
 // ============================================================================
 // Zod Schemas (single source of truth)
@@ -240,7 +240,7 @@ export class PlaylistSyncService {
 			preview_url: null,
 		}));
 
-		const upsertedSongsResult = await songs.upsertSongs(spotifyTrackData);
+		const upsertedSongsResult = await songs.upsert(spotifyTrackData);
 		if (Result.isError(upsertedSongsResult)) {
 			return Result.err(upsertedSongsResult.error);
 		}

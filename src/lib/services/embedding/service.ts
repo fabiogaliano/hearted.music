@@ -16,12 +16,12 @@ import { Result } from "better-result";
 import { z } from "zod";
 import * as deepinfra from "../deepinfra/service";
 import * as vectors from "@/lib/data/vectors";
-import * as analysis from "@/lib/data/analysis";
+import * as songAnalysis from "@/lib/data/song-analysis";
 import type { DbError } from "@/lib/errors/data";
 import type { DeepInfraError, RateLimitError } from "@/lib/errors/service";
 import { MissingAnalysisError, DimensionMismatchError } from "@/lib/errors/service";
 import type { SongEmbedding } from "@/lib/data/vectors";
-import type { SongAnalysis } from "@/lib/data/analysis";
+import type { SongAnalysis } from "@/lib/data/song-analysis";
 
 // ============================================================================
 // Zod Schemas (single source of truth)
@@ -33,7 +33,7 @@ export type EmbeddingKind = z.infer<typeof EmbeddingKindSchema>;
 
 /** Result of embedding a song */
 export const EmbedSongResultSchema = z.object({
-	songId: z.string().uuid(),
+	songId: z.uuid(),
 	embedding: z.custom<SongEmbedding>(),
 	cached: z.boolean(),
 });
@@ -41,7 +41,7 @@ export type EmbedSongResult = z.infer<typeof EmbedSongResultSchema>;
 
 /** Failed embedding item */
 export const EmbedFailedItemSchema = z.object({
-	songId: z.string().uuid(),
+	songId: z.uuid(),
 	error: z.string(),
 });
 export type EmbedFailedItem = z.infer<typeof EmbedFailedItemSchema>;
@@ -103,7 +103,7 @@ export class EmbeddingService {
 		}
 
 		// 2. Get song analysis
-		const analysisResult = await analysis.getSongAnalysis(songId);
+		const analysisResult = await songAnalysis.get(songId);
 		if (Result.isError(analysisResult)) {
 			return Result.err(analysisResult.error);
 		}
@@ -208,9 +208,8 @@ export class EmbeddingService {
 		}
 
 		// 2. Get analyses for songs needing embedding
-		// Note: getSongAnalysis(string[]) returns Map<string, SongAnalysis>
-		const analysesResult = await (analysis.getSongAnalysis(needsEmbedding) as unknown as
-			Promise<Result<Map<string, SongAnalysis>, DbError>>);
+		// Note: songAnalysis.get(string[]) returns Map<string, SongAnalysis>
+		const analysesResult = await songAnalysis.get(needsEmbedding);
 		if (Result.isError(analysesResult)) {
 			return Result.err(analysesResult.error);
 		}
