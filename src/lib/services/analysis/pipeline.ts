@@ -5,7 +5,7 @@
  * - Create and manage analysis jobs via data/jobs.ts
  * - Orchestrate batch song analysis with concurrency control
  * - Report progress for SSE streaming (Phase 5)
- * - Handle rate limiting with exponential backoff
+ * - Finalize job status on completion or failure
  *
  * Merges functionality from old_app's:
  * - TrackPrefetchService (data prefetching)
@@ -40,12 +40,6 @@ import { LlmService, type LlmProviderName } from "../llm/service";
 export const PipelineConfigSchema = z.object({
 	/** Max concurrent LLM calls */
 	concurrency: z.number().min(1).max(10).default(5),
-	/** Max retries per item */
-	maxRetries: z.number().min(0).max(5).default(2),
-	/** Base delay for exponential backoff (ms) */
-	backoffBaseMs: z.number().min(100).max(5000).default(500),
-	/** Max delay cap (ms) */
-	backoffCapMs: z.number().min(1000).max(60000).default(30000),
 	/** LLM provider to use */
 	provider: z.enum(["google", "anthropic", "openai"]).default("google"),
 });
@@ -175,11 +169,14 @@ export class AnalysisPipeline {
 			await this.updateProgress(job.id, progress, onProgress);
 		}
 
-		// 6. Mark job as completed or failed
-		if (progress.succeeded > 0) {
-			await jobs.markJobCompleted(job.id);
-		} else {
-			await jobs.markJobFailed(job.id, "All songs failed analysis");
+		// 6. Finalize job status
+		const finalizeResult = await jobs.finalizeJob(
+			job.id,
+			progress,
+			"All songs failed analysis",
+		);
+		if (Result.isError(finalizeResult)) {
+			return Result.err(finalizeResult.error);
 		}
 
 		return Result.ok({
@@ -242,12 +239,14 @@ export class AnalysisPipeline {
 
 		await this.updateProgress(job.id, progress, onProgress);
 
-		// 6. Mark job as completed or failed
-		if (Result.isOk(result)) {
-			await jobs.markJobCompleted(job.id);
-		} else {
-			const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
-			await jobs.markJobFailed(job.id, errorMsg);
+		// 6. Finalize job status
+		const errorMsg = Result.isError(result)
+			? this.extractErrorMessage(result.error)
+			: undefined;
+
+		const finalizeResult = await jobs.finalizeJob(job.id, progress, errorMsg);
+		if (Result.isError(finalizeResult)) {
+			return Result.err(finalizeResult.error);
 		}
 
 		return Result.ok({
@@ -360,6 +359,15 @@ export class AnalysisPipeline {
 			chunks.push(array.slice(i, i + size));
 		}
 		return chunks;
+	}
+
+	/**
+	 * Extracts error message from unknown error types.
+	 */
+	private extractErrorMessage(error: unknown): string {
+		if (error instanceof Error) return error.message;
+		if (typeof error === "string") return error;
+		return String(error);
 	}
 }
 
