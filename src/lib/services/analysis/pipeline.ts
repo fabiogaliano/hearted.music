@@ -22,6 +22,7 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import * as jobs from "@/lib/data/jobs";
+import { startJob, finalizeJob } from "@/lib/services/job-lifecycle";
 import * as songs from "@/lib/data/song";
 import * as likedSongs from "@/lib/data/liked-song";
 import * as songAnalysis from "@/lib/data/song-analysis";
@@ -107,15 +108,15 @@ export class AnalysisPipeline {
 		songsToAnalyze: SongToAnalyze[],
 		onProgress?: ProgressCallback,
 	): Promise<Result<PipelineResult, PipelineError>> {
-		// 1. Create job
+		// 1. Create job (pending status)
 		const jobResult = await jobs.createJob(accountId, "song_analysis");
 		if (Result.isError(jobResult)) {
 			return Result.err(jobResult.error);
 		}
 		const job = jobResult.value;
 
-		// 2. Mark job as running
-		const runningResult = await jobs.markJobRunning(job.id);
+		// 2. Start job (pending → running, with cleanup on failure)
+		const runningResult = await startJob(job.id);
 		if (Result.isError(runningResult)) {
 			return Result.err(runningResult.error);
 		}
@@ -170,7 +171,7 @@ export class AnalysisPipeline {
 		}
 
 		// 6. Finalize job status
-		const finalizeResult = await jobs.finalizeJob(
+		const finalizeResult = await finalizeJob(
 			job.id,
 			progress,
 			"All songs failed analysis",
@@ -196,15 +197,15 @@ export class AnalysisPipeline {
 		playlist: PlaylistToAnalyze,
 		onProgress?: ProgressCallback,
 	): Promise<Result<PipelineResult, PipelineError>> {
-		// 1. Create job
+		// 1. Create job (pending status)
 		const jobResult = await jobs.createJob(accountId, "playlist_analysis");
 		if (Result.isError(jobResult)) {
 			return Result.err(jobResult.error);
 		}
 		const job = jobResult.value;
 
-		// 2. Mark job as running
-		const runningResult = await jobs.markJobRunning(job.id);
+		// 2. Start job (pending → running, with cleanup on failure)
+		const runningResult = await startJob(job.id);
 		if (Result.isError(runningResult)) {
 			return Result.err(runningResult.error);
 		}
@@ -244,7 +245,7 @@ export class AnalysisPipeline {
 			? this.extractErrorMessage(result.error)
 			: undefined;
 
-		const finalizeResult = await jobs.finalizeJob(job.id, progress, errorMsg);
+		const finalizeResult = await finalizeJob(job.id, progress, errorMsg);
 		if (Result.isError(finalizeResult)) {
 			return Result.err(finalizeResult.error);
 		}

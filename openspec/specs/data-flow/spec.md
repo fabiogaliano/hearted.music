@@ -229,3 +229,44 @@ useMutation({
   },
 })
 ```
+
+---
+
+## Job Lifecycle Pattern
+
+Jobs use a `pending → running → completed/failed` state machine. The `pending` state supports future SQS queue integration.
+
+**Service**: `lib/services/job-lifecycle.ts`
+
+| Function | Use When |
+|----------|----------|
+| `startJob(id)` | Transitioning pending → running (cleans up on failure) |
+| `finalizeJob(id, progress)` | Ending job with progress-based decision |
+| `failJob(id, msg)` | Explicit failure in error handlers |
+| `completeJob(id)` | Explicit completion without progress logic |
+
+```typescript
+const job = await jobs.createJob(accountId, type);  // pending
+await startJob(job.id);                              // → running
+// ... work ...
+await finalizeJob(job.id, progress);                 // → completed/failed
+```
+
+All functions include retry logic for transient `DatabaseError` failures.
+
+---
+
+## Retry Utility
+
+`withRetry()` in `lib/utils/result-wrappers/generic.ts` wraps Result-returning operations with exponential backoff.
+
+```typescript
+import { withRetry } from "@/lib/utils/result-wrappers/generic";
+
+await withRetry(() => someDbOperation(), {
+  maxRetries: 3,
+  isRetryable: (err) => err instanceof DatabaseError,
+});
+```
+
+Only `DatabaseError` (connection/timeout) is retryable. `NotFoundError`, `ConstraintError`, `RLSError` fail immediately.
