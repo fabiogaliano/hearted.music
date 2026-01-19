@@ -27,6 +27,7 @@ import * as songs from "@/lib/data/song";
 import * as likedSongs from "@/lib/data/liked-song";
 import * as playlists from "@/lib/data/playlists";
 import * as jobs from "@/lib/data/jobs";
+import { completeJob, failJob, startJob } from "@/lib/services/job-lifecycle";
 import type { DbError } from "@/lib/errors/data";
 import type { SpotifyError } from "@/lib/errors/spotify";
 import { SyncError } from "@/lib/errors/service";
@@ -281,7 +282,7 @@ export class SyncOrchestrator {
 		}
 		const job = jobResult.value;
 
-		const markRunningResult = await jobs.markJobRunning(job.id);
+		const markRunningResult = await startJob(job.id);
 		if (Result.isError(markRunningResult)) {
 			return Result.err(markRunningResult.error);
 		}
@@ -298,7 +299,7 @@ export class SyncOrchestrator {
 			onProgress?.(progress);
 			const likedSongsResult = await this.syncLikedSongs(accountId);
 			if (Result.isError(likedSongsResult)) {
-				await jobs.markJobFailed(job.id, likedSongsResult.error.message);
+				await failJob(job.id, likedSongsResult.error.message);
 				return Result.err(likedSongsResult.error);
 			}
 			progress.done++;
@@ -309,7 +310,7 @@ export class SyncOrchestrator {
 			// 3. Sync playlists
 			const playlistsResult = await this.syncPlaylists(accountId);
 			if (Result.isError(playlistsResult)) {
-				await jobs.markJobFailed(job.id, playlistsResult.error.message);
+				await failJob(job.id, playlistsResult.error.message);
 				return Result.err(playlistsResult.error);
 			}
 			progress.done++;
@@ -320,7 +321,7 @@ export class SyncOrchestrator {
 			// 4. Sync playlist tracks for destination playlists
 			const playlistTracksResult = await this.syncPlaylistTracks(accountId);
 			if (Result.isError(playlistTracksResult)) {
-				await jobs.markJobFailed(job.id, playlistTracksResult.error.message);
+				await failJob(job.id, playlistTracksResult.error.message);
 				return Result.err(playlistTracksResult.error);
 			}
 			progress.done++;
@@ -329,7 +330,7 @@ export class SyncOrchestrator {
 			onProgress?.(progress);
 
 			// 5. Mark job completed
-			await jobs.markJobCompleted(job.id);
+			await completeJob(job.id);
 
 			return Result.ok({
 				likedSongs: likedSongsResult.value,
@@ -338,7 +339,7 @@ export class SyncOrchestrator {
 			});
 		} catch (error) {
 			// Mark job failed
-			await jobs.markJobFailed(
+			await failJob(
 				job.id,
 				error instanceof Error ? error.message : "Unknown error",
 			);
