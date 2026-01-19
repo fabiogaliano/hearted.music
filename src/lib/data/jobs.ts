@@ -5,8 +5,8 @@
  * Returns Result<T, DbError> for composable error handling.
  */
 
-import type { Result } from "better-result";
-import type { DbError } from "@/lib/errors/data";
+import { Result } from "better-result";
+import { DatabaseError, type DbError } from "@/lib/errors/data";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
@@ -231,4 +231,62 @@ export function markJobFailed(
 			.select()
 			.single(),
 	);
+}
+
+// ============================================================================
+// Job Lifecycle Helpers
+// ============================================================================
+
+const DEFAULT_JOB_RETRY_OPTIONS = {
+	maxRetries: 2,
+	baseDelayMs: 500,
+	maxDelayMs: 30000,
+};
+
+/**
+ * Finalizes a job by marking it completed or failed with retry logic.
+ * Empty input or partial success = completed; all failures = failed.
+ */
+export async function finalizeJob(
+	jobId: string,
+	progress: JobProgress,
+	errorMessage?: string,
+): Promise<Result<Job, DbError>> {
+	const shouldComplete = progress.total === 0 || progress.succeeded > 0;
+	return retryJobOperation(() =>
+		shouldComplete
+			? markJobCompleted(jobId)
+			: markJobFailed(jobId, errorMessage ?? "All items failed"),
+	);
+}
+
+async function retryJobOperation<T>(
+	operation: () => Promise<Result<T, DbError>>,
+): Promise<Result<T, DbError>> {
+	const { maxRetries, baseDelayMs, maxDelayMs } = DEFAULT_JOB_RETRY_OPTIONS;
+	const totalAttempts = maxRetries + 1;
+
+	for (let attempt = 1; attempt <= totalAttempts; attempt++) {
+		const result = await operation();
+		if (Result.isOk(result)) {
+			return result;
+		}
+
+		if (!isRetryableDbError(result.error) || attempt === totalAttempts) {
+			return result;
+		}
+
+		const delay = Math.min(baseDelayMs * Math.pow(2, attempt - 1), maxDelayMs);
+		await sleep(delay);
+	}
+
+	throw new Error("Unreachable: retry loop exited without returning");
+}
+
+function isRetryableDbError(error: DbError): boolean {
+	return error instanceof DatabaseError;
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
 }
