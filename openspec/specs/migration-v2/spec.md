@@ -344,18 +344,23 @@ The system SHALL provide `DeepInfraService` to handle embeddings and reranking.
 
 ## Migration Phases
 
-| Phase | Name                  | Dependencies |
-| ----- | --------------------- | ------------ |
-| 0     | Foundation            | —            |
-| 1     | Schema DDL            | Phase 0      |
-| 2     | Extensions & Types    | Phase 1      |
-| 3     | Query Modules         | Phase 2      |
-| 4a    | Delete Factories      | Phase 3      |
-| 4b    | Merge Pipeline        | Phase 3      |
-| 4c    | Split PlaylistService | Phase 3      |
-| 4d    | DeepInfra Migration   | Phase 3      |
-| 5     | SSE Migration         | Phase 4*     |
-| 6     | Cleanup               | Phase 5      |
-| 7     | UI Integration        | Phase 6      |
+| Phase | Name                    | Dependencies | Status |
+| ----- | ----------------------- | ------------ | ------ |
+| 0     | Foundation              | —            | ✅     |
+| 1     | Schema DDL              | Phase 0      | ✅     |
+| 2     | Extensions & Types      | Phase 1      | ✅     |
+| 3     | Query Modules           | Phase 2      | ✅     |
+| 4a    | Delete Factories        | Phase 3      | ✅     |
+| 4b    | Merge Pipeline          | Phase 3      | ✅     |
+| 4c    | Split PlaylistService   | Phase 3      | ✅     |
+| 4d    | DeepInfra Migration     | Phase 3      | ✅     |
+| 4e    | **Matching Pipeline**   | Phase 4d     | ⬜     |
+| 4f    | **Genre Enrichment**    | Phase 4d     | ⬜     |
+| 4g    | **Playlist Profiling**  | Phase 4e     | ⬜     |
+| 5     | SSE Migration           | Phase 4g     | ⬜     |
+| 6     | Cleanup                 | Phase 5      | ⬜     |
+| 7     | UI Integration          | Phase 5      | 🟡     |
 
-See `docs/migration_v2/03-IMPLEMENTATION.md` for detailed tasks per phase.
+> **Frontend Note**: UI prototypes are ~85% complete in `old_app/prototypes/warm-pastel/` (88 files). Phase 7 involves wiring these to real APIs/data.
+
+See `docs/migration_v2/ROADMAP.md` for detailed tasks per phase.
