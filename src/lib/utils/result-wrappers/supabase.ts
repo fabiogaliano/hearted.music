@@ -10,7 +10,7 @@ import {
 	type DbError,
 	NotFoundError,
 	RLSError,
-} from "@/lib/errors/data";
+} from "@/lib/errors/database";
 
 /**
  * Wraps a Supabase query that returns a single row.

@@ -16,10 +16,12 @@ import { Result } from "better-result";
 import { z } from "zod";
 import type { LlmService } from "../llm/service";
 import * as songAnalysis from "@/lib/data/song-analysis";
-import type { DbError } from "@/lib/errors/data";
-import { AnalysisError, NoLyricsError, type LlmError, type RateLimitError } from "@/lib/errors/service";
+import type { DbError } from "@/lib/errors/database";
+import { AnalysisFailedError, NoLyricsAvailableError } from "@/lib/errors/domain/analysis";
+import { type LlmError } from "@/lib/errors/external/llm";
 import type { SongAnalysis } from "@/lib/data/song-analysis";
 import type { AudioFeature } from "@/lib/data/song-audio-feature";
+import { getLyricsFormatLegend } from "@/lib/services/lyrics/utils/lyrics-formatter";
 
 // ============================================================================
 // Zod Schemas for Structured LLM Output
@@ -167,7 +169,7 @@ export interface BatchAnalysisResult {
 	}>;
 }
 
-type SongAnalysisServiceError = DbError | LlmError | RateLimitError | AnalysisError | NoLyricsError;
+type SongAnalysisServiceError = DbError | LlmError | AnalysisFailedError | NoLyricsAvailableError;
 
 // ============================================================================
 // Prompt Template
@@ -178,7 +180,7 @@ const SONG_ANALYSIS_PROMPT = `You are an expert music analyst. Analyze this song
 Artist: {artist}
 Title: {title}
 
-Lyrics:
+Lyrics and Annotations:
 {lyrics}
 
 Audio Features:
@@ -230,7 +232,7 @@ export class SongAnalysisService {
 
 		// 2. Validate lyrics
 		if (!lyrics || lyrics.trim().length === 0) {
-			return Result.err(new NoLyricsError(songId, artist, title));
+			return Result.err(new NoLyricsAvailableError(songId, artist, title));
 		}
 
 		// 3. Build prompt
@@ -308,10 +310,11 @@ export class SongAnalysisService {
 		lyrics: string,
 		audioFeatures?: AudioFeature | null,
 	): string {
+		const lyricsWithLegend = `${getLyricsFormatLegend()}\n${lyrics}`;
 		return SONG_ANALYSIS_PROMPT
 			.replace("{artist}", artist)
 			.replace("{title}", title)
-			.replace("{lyrics}", lyrics)
+			.replace("{lyrics}", lyricsWithLegend)
 			.replace("{audio_features}", this.formatAudioFeatures(audioFeatures));
 	}
 

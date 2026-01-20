@@ -2,9 +2,9 @@
 
 ## Purpose
 
-**Hearted** is a web application for automatically sorting Spotify liked songs. It provides users with an interface to organize, categorize, and manage their Spotify "Liked Songs" library more effectively—likely enabling automatic playlist creation based on genres, moods, or other criteria.
+**Hearted** is a web application for automatically sorting Spotify liked songs. It provides users with an interface to organize, categorize, and manage their Spotify "Liked Songs" library through automatic playlist creation based on genres, moods, lyrics analysis, and audio features.
 
-This is `v1_hearted`, the first version of the app built with a modern TanStack-based architecture.
+This is `v1_hearted`, built with a modern TanStack-based architecture.
 
 ## Tech Stack
 
@@ -48,6 +48,7 @@ This is `v1_hearted`, the first version of the app built with a modern TanStack-
 - Strict mode enabled with all strict checks
 - `noUnusedLocals` and `noUnusedParameters` enforced
 - Path alias: `@/*` maps to `./src/*`
+- No barrel exports (`index.ts` re-exports) - use direct imports for better tree-shaking and traceability
 
 **Naming Conventions:**
 - React components: PascalCase (e.g., `Header.tsx`)
@@ -60,18 +61,65 @@ This is `v1_hearted`, the first version of the app built with a modern TanStack-
 **Directory Structure:**
 ```
 src/
-├── components/       # Reusable UI components
-├── data/            # Static data and fixtures
-├── integrations/    # Third-party service integrations
-│   └── tanstack-query/  # Query client setup
-├── lib/             # Utility functions
-├── routes/          # File-based routes (TanStack Router)
-│   ├── __root.tsx   # Root layout
-│   ├── index.tsx    # Home page
-│   └── demo/        # Demo routes (deletable)
-├── env.ts           # Environment configuration
-├── router.tsx       # Router instance creation
-└── styles.css       # Global Tailwind styles
+├── integrations/              # Third-party integrations
+│   └── tanstack-query/        # Query client setup
+├── lib/                       # Core business logic
+│   ├── auth/                  # Authentication utilities
+│   │   ├── cookies.ts         # Cookie management
+│   │   ├── oauth.ts           # OAuth flow helpers
+│   │   └── session.ts         # Session management
+│   ├── data/                  # Database access layer (Supabase)
+│   │   ├── client.ts          # Supabase client factory
+│   │   ├── database.types.ts  # Generated DB types
+│   │   ├── accounts.ts        # Account CRUD
+│   │   ├── auth-tokens.ts     # Token storage
+│   │   ├── jobs.ts            # Job queue operations
+│   │   ├── liked-song.ts      # Liked songs management
+│   │   ├── song.ts            # Song entities
+│   │   ├── song-analysis.ts   # Song analysis data
+│   │   ├── song-audio-feature.ts
+│   │   ├── playlists.ts       # Playlist operations
+│   │   ├── playlist-analysis.ts
+│   │   ├── preferences.ts     # User preferences
+│   │   ├── matching.ts        # Song matching logic
+│   │   ├── newness.ts         # New song detection
+│   │   └── vectors.ts         # Vector embeddings
+│   ├── errors/                # Typed error definitions
+│   │   ├── database.ts        # Database errors
+│   │   ├── validation.ts      # Validation errors
+│   │   ├── external/          # External API errors
+│   │   │   ├── spotify.ts
+│   │   │   ├── genius.ts
+│   │   │   ├── deepinfra.ts
+│   │   │   ├── llm.ts
+│   │   │   └── network.ts
+│   │   └── domain/            # Business logic errors
+│   │       ├── analysis.ts
+│   │       ├── embedding.ts
+│   │       ├── job.ts
+│   │       └── sync.ts
+│   ├── services/              # Business logic services
+│   │   ├── job-lifecycle.ts   # Job state management
+│   │   ├── analysis/          # Song/playlist analysis
+│   │   ├── deepinfra/         # DeepInfra API client
+│   │   ├── embedding/         # Vector embeddings
+│   │   ├── llm/               # LLM integrations
+│   │   ├── lyrics/            # Lyrics fetching (Genius)
+│   │   ├── reranker/          # Result reranking
+│   │   ├── spotify/           # Spotify API client
+│   │   └── sync/              # Library sync orchestration
+│   ├── utils/                 # Shared utilities
+│   │   ├── concurrency.ts     # Concurrency helpers
+│   │   └── result-wrappers/   # Result type adapters
+│   └── utils.ts               # General utilities (cn, etc.)
+├── routes/                    # File-based routes (TanStack Router)
+│   ├── __root.tsx             # Root layout
+│   ├── index.tsx              # Home page
+│   └── auth/                  # Auth flow routes
+├── env.ts                     # Environment configuration
+├── router.tsx                 # Router instance creation
+├── routeTree.gen.ts           # Generated route tree (auto)
+└── styles.css                 # Global Tailwind styles
 ```
 
 **Routing Patterns:**
@@ -120,7 +168,7 @@ export function createAdminSupabaseClient() {
 import type { Result } from "better-result";
 import { createAdminSupabaseClient } from "./client";
 import type { Tables, TablesInsert } from "./database.types";
-import type { DbError } from "@/lib/errors/data";
+import type { DbError } from "@/lib/errors/database";
 import { fromSupabaseMaybe } from "@/lib/utils/result-wrappers/supabase";
 
 export type Account = Tables<"account">;
@@ -147,6 +195,48 @@ if (Result.isError(accountResult)) {
 const account = accountResult.value;
 ```
 
+**Error Architecture:**
+
+All errors use `TaggedError` from `better-result`. Errors live in `src/lib/errors/` organized by layer:
+- `external/` - External API errors (Spotify, Genius, LLM, etc.)
+- `domain/` - Business logic errors (analysis, sync, jobs, etc.)
+- Root level - Infrastructure errors (database, validation, network)
+
+*Naming Convention:*
+| Category | Pattern | Example |
+| -------- | ------- | ------- |
+| External API | `{Service}{Problem}Error` | `GeniusNotFoundError`, `SpotifyRateLimitError` |
+| Domain | `{Domain}{State}Error` | `NoLyricsAvailableError`, `SyncFailedError` |
+| Infrastructure | `{Resource}Error` | `NetworkError`, `DatabaseError` |
+
+*Abstraction Boundaries:*
+
+Services translate low-level errors into domain concepts:
+```typescript
+// GeniusNotFoundError (external) → NoLyricsAvailableError (domain)
+if (Result.isError(lyricsResult)) {
+  return Result.err(new NoLyricsAvailableError(songId, artist, title));
+}
+```
+
+*Defining Errors:*
+```typescript
+import { TaggedError } from "better-result";
+
+export class MyError extends TaggedError("MyError")<{
+  reason: string;
+  message: string;  // Always include for logging
+}>() {
+  constructor(reason: string) {
+    super({ reason, message: `Failed: ${reason}` });
+  }
+}
+```
+
+*Rules:*
+- ✅ Service-specific errors (`LlmRateLimitError`, not generic `RateLimitError`)
+- ✅ Return `Result.err(new TypedError(...))` - never plain `throw new Error()`
+
 *Workflow:*
 1. Modify schema in `supabase/migrations/`
 2. Run `bun run gen:types`
@@ -167,10 +257,26 @@ Use Zod schemas as the **single source of truth** for runtime validation + type 
 ❌ Don't duplicate types (e.g., in class property AND constructor) - use Zod.
 ✅ Do use `Enums<...>` for database-derived enums (already typed via Supabase).
 
-**Component Patterns:**
-- Functional components with TypeScript interfaces
-- CVA for component variants
-- Composable utility functions in `lib/utils.ts`
+**Service Layer Patterns:**
+
+Services in `src/lib/services/` follow this structure:
+- Class with constructor injection + Zod-validated config
+- All async methods return `Promise<Result<T, ErrorUnion>>`
+- Factory function (e.g., `createMyService()`) handles env vars
+- Error union type defined at module level
+
+❌ Never throw in async methods — return `Result.err()`
+❌ Never read env vars inside class methods
+
+**Concurrency Patterns:**
+
+| Pattern | When to Use |
+|---------|-------------|
+| `ConcurrencyLimiter` | External APIs with rate limits (e.g., Genius) |
+| `Promise.all` | Independent ops, no rate limit concerns |
+| `Promise.allSettled` | Partial success is acceptable |
+
+See `src/lib/utils/concurrency.ts` for `ConcurrencyLimiter` implementation.
 
 ### Testing Strategy
 
@@ -184,21 +290,30 @@ Use Zod schemas as the **single source of truth** for runtime validation + type 
 - Feature branches for all development work
 - Conventional commits recommended
 - Main branch is protected
-- Demo files (prefixed with `demo`) can be safely deleted
 
 ## Domain Context
 
 ### Spotify Integration
-This app will integrate with the Spotify Web API to:
+The app integrates with the Spotify Web API to:
 - Authenticate users via Spotify OAuth
 - Fetch user's "Liked Songs" (saved tracks)
 - Read track metadata (genre, tempo, mood, etc.)
 - Create and manage playlists
-- Fetch audio features from ReccoBeats for sorting criteria
+
+Audio features (danceability, energy, etc.) come from ReccoBeats since Spotify deprecated their `/audio-features` endpoint.
+
+### External Services
+| Service | Purpose |
+|---------|---------|
+| Spotify API | Authentication, library access, playlist management |
+| ReccoBeats | Audio features (replaces deprecated Spotify audio-features endpoint) |
+| Genius API | Lyrics fetching for content analysis |
+| DeepInfra | LLM inference for song analysis |
 
 ### Key Domain Terms
-- **Hearted/Liked Songs**: Spotify's saved tracks collection
-- **Audio Features**: ReccoBeats analysis data (danceability, energy, valence, etc.)
+- **Liked Songs**: Spotify's saved tracks collection (the "heart" button)
+- **Audio Features**: ReccoBeats analysis data (danceability, energy, valence, tempo, etc.)
+- **Song Analysis**: LLM-generated metadata (themes, mood, genre tags)
 - **Playlist**: User-created or auto-generated song collections
 
 ## Important Constraints
@@ -217,32 +332,17 @@ This app will integrate with the Spotify Web API to:
 - Modern browsers only (ES2022 target)
 - No IE11 support
 
-## AI Assistant Skills
-
-When working on this project, the AI assistant SHOULD use these skills when appropriate:
-
-| Skill                      | When to Use                                                            |
-| -------------------------- | ---------------------------------------------------------------------- |
-| `tanstack-start-react`     | Creating routes, loaders, server functions, search params, SSE streams |
-| `web-interface-guidelines` | Reviewing UI code, checking accessibility, auditing design patterns    |
-| `react-best-practices`     | Writing/reviewing React components, performance optimization           |
-
-**How to invoke:**
-- Explicitly: `/tanstack-start-react` or ask "use the tanstack skill"
-- The AI should proactively use these skills when the task matches their description
-
-**Proactive skill triggers:**
-- Creating a new route → `tanstack-start-react`
-- Building UI components → `react-best-practices` + `web-interface-guidelines`
-- Implementing data fetching → `tanstack-start-react`
-- Reviewing PR/code → `web-interface-guidelines`
-
 ## External Dependencies
 
 ### Spotify Web API
 - **Auth**: OAuth 2.0 with PKCE flow (recommended for SPAs)
-- **Endpoints**: `/me/tracks`, `/audio-features`, `/playlists`
+- **Endpoints**: `/me/tracks`, `/playlists` (audio-features deprecated → use ReccoBeats)
 - **Docs**: https://developer.spotify.com/documentation/web-api
+
+### ReccoBeats API
+- **Purpose**: Audio features replacement for deprecated Spotify endpoint
+- **Data**: danceability, energy, valence, tempo, acousticness, etc.
+- **Docs**: https://reccobeats.com/docs/apis/reccobeats-api
 
 ### Cloudflare Workers
 - **Deployment**: `bun run deploy` or `wrangler deploy`

@@ -17,9 +17,9 @@ import { z } from "zod";
 import * as deepinfra from "../deepinfra/service";
 import * as vectors from "@/lib/data/vectors";
 import * as songAnalysis from "@/lib/data/song-analysis";
-import type { DbError } from "@/lib/errors/data";
-import type { DeepInfraError, RateLimitError } from "@/lib/errors/service";
-import { MissingAnalysisError, DimensionMismatchError } from "@/lib/errors/service";
+import type { DbError } from "@/lib/errors/database";
+import type { DeepInfraError } from "@/lib/errors/external/deepinfra";
+import { MissingAnalysisError, DimensionMismatchError } from "@/lib/errors/domain/embedding";
 import type { SongEmbedding } from "@/lib/data/vectors";
 import type { SongAnalysis } from "@/lib/data/song-analysis";
 
@@ -56,7 +56,6 @@ export type BatchEmbedResult = z.infer<typeof BatchEmbedResultSchema>;
 type EmbeddingServiceError =
 	| DbError
 	| DeepInfraError
-	| RateLimitError
 	| MissingAnalysisError
 	| DimensionMismatchError;
 

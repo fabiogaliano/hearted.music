@@ -1,0 +1,553 @@
+{
+	"metadata": {
+		"captureDate": "2025-12-28",
+		"artist": "Daniel Caesar",
+		"song": "Best Part"
+	},
+	"result": [
+		{
+			"type": "Intro: H.E.R.",
+			"lines": [
+				{
+					"id": 1,
+					"range": {
+						"start": 1,
+						"end": 1
+					},
+					"text": "Oh, hey"
+				}
+			]
+		},
+		{
+			"type": "Verse 1: H.E.R.",
+			"lines": [
+				{
+					"id": 1,
+					"text": "You don't know, babe",
+					"range": {
+						"start": 1,
+						"end": 1
+					},
+					"annotations": [
+						{
+							"text": "H.E.R’s lover has no clue of the positive impact his loving gestures have on her. She uses this song to express just how much she appreciates it.",
+							"verified": false,
+							"votes_total": 1,
+							"pinnedRole": null
+						}
+					]
+				},
+				{
+					"id": 2,
+					"range": {
+						"start": 2,
+						"end": 2
+					},
+					"text": "When you hold me"
+				},
+				{
+					"id": 3,
+					"range": {
+						"start": 3,
+						"end": 3
+					},
+					"text": "And kiss me slowly"
+				},
+				{
+					"id": 4,
+					"range": {
+						"start": 4,
+						"end": 4
+					},
+					"text": "It's the sweetest thing"
+				},
+				{
+					"id": 5,
+					"range": {
+						"start": 5,
+						"end": 5
+					},
+					"text": "And it don't change"
+				},
+				{
+					"id": 6,
+					"range": {
+						"start": 6,
+						"end": 6
+					},
+					"text": "If I had it my way"
+				},
+				{
+					"id": 7,
+					"range": {
+						"start": 7,
+						"end": 7
+					},
+					"text": "You would know that you are"
+				}
+			]
+		},
+		{
+			"type": "Pre-Chorus: H.E.R.",
+			"lines": [
+				{
+					"id": 1,
+					"text": "You're the coffee that I need in the morning",
+					"range": {
+						"start": 1,
+						"end": 1
+					},
+					"annotations": [
+						{
+							"text": "Coffee, effectively, is a large “wake up call” for people when they’re tired, feeling down or are really exhausted.\nH.E.R is saying to whoever she is referring to, most likely Daniel, that she needs Daniel every morning or at some point through the day, otherwise she will be really exhausted, or she won’t be in her best state.",
+							"verified": false,
+							"votes_total": 54,
+							"pinnedRole": null
+						}
+					]
+				},
+				{
+					"id": 2,
+					"text": "You're my sunshine in the rain when it's pouring",
+					"range": {
+						"start": 2,
+						"end": 2
+					},
+					"annotations": [
+						{
+							"text": "Rain as struggle or sadness: Rain often symbolizes tough times—emotions like isolation, stress, or pain.\n\nSunshine as relief and love: Calling someone “sunshine” in this context suggests they bring comfort, warmth, and light when things feel overwhelming.",
+							"verified": false,
+							"votes_total": 1,
+							"pinnedRole": null
+						}
+					]
+				},
+				{
+					"id": 3,
+					"text": "Won't you give yourself to me?",
+					"range": {
+						"start": 3,
+						"end": 3
+					},
+					"annotations": [
+						{
+							"text": "this lyric isn’t just about physical closeness—it’s a request for vulnerability and intimacy. It means, “Let me in. Share your whole self—the good, the flawed, the quiet parts.”\n\n“Give it all” amplifies this request. It’s not a half-hearted offering she wants—it’s everything. It’s a promise written in the purity of love.",
+							"verified": false,
+							"votes_total": 0,
+							"pinnedRole": null
+						}
+					]
+				},
+				{
+					"id": 4,
+					"range": {
+						"start": 4,
+						"end": 4
+					},
+					"text": "Give it all, oh"
+				}
+			]
+		},
+		{
+			"type": "Chorus: H.E.R. & Daniel Caesar",
+			"lines": [
+				{
+					"id": 1,
+					"text": "I just wanna see",
+					"range": {
+						"start": 1,
+						"end": 1
+					},
+					"annotations": [
+						{
+							"text": "The speaker isn’t asking for anything complicated just the chance to be near the person, to appreciate them, to take them in. It’s about cherishing their presence and beauty, both physical and emotional.",
+							"verified": false,
+							"votes_total": 0,
+							"pinnedRole": null
+						}
+					]
+				},
+				{
+					"id": 2,
+					"range": {
+						"start": 2,
+						"end": 2
+					},
+					"text": "I just wanna see how beautiful you are"
+				},
+				{
+					"id": 3,
+					"text": "You know that I see it, I know you're a star",
+					"range": {
+						"start": 3,
+						"end": 3
+					},
+					"annotations": [
+						{
+							"text": "Caesar compares his girl to the North Star, which is often considered to be the brightest star in the sky and is widely used as a navigational aid. Therefore, Caesar is implying that his girl is the brightest and most significant figure in this universe, and he is reliant on her to get through the obstacles of life.\n\n\n\nDaniel’s songwriting is heavily influenced by religion, suggesting that these lines could also be a reference to the star of Bethlehem. In the Bible, the three magi followed this star to reach Jesus Christ, suggesting Caesar’s girl is a godly figure to him.",
+							"verified": false,
+							"votes_total": 112,
+							"pinnedRole": null
+						}
+					]
+				},
+				{
+					"id": 4,
+					"range": {
+						"start": 4,
+						"end": 4
+					},
+					"text": "Where you go, I'll follow, no matter how far"
+				},
+				{
+					"id": 5,
+					"text": "If life is a movie, know you're the best part, oh-ooh",
+					"range": {
+						"start": 5,
+						"end": 5
+					},
+					"annotations": [
+						{
+							"text": "That lyric is pure romantic admiration — it’s saying that out of everything in life (the whole “movie”), the other person is the highlight — the scene that makes it all worthwhile.\n\n“If life is a movie” → Sets up a metaphor: life is like a story, full of ups and downs, moments of drama, joy, sadness.\n\n“Then you’re the best part” → You’re the most meaningful, joyful, and beautiful part of that story — the moment that makes everything else worth it.\n\nRepeating “best part” → Emphasizes how deeply the speaker feels this — it’s not casual, it’s heartfelt and almost dreamy.",
+							"verified": false,
+							"votes_total": 1,
+							"pinnedRole": null
+						}
+					]
+				},
+				{
+					"id": 6,
+					"range": {
+						"start": 6,
+						"end": 6
+					},
+					"text": "You're the best part, oh-ooh"
+				},
+				{
+					"id": 7,
+					"range": {
+						"start": 7,
+						"end": 7
+					},
+					"text": "Best part"
+				}
+			]
+		},
+		{
+			"type": "Verse 2: Daniel Caesar",
+			"lines": [
+				{
+					"id": 1,
+					"range": {
+						"start": 1,
+						"end": 1
+					},
+					"text": "It's this sunrise"
+				},
+				{
+					"id": 2,
+					"range": {
+						"start": 2,
+						"end": 2
+					},
+					"text": "And those brown eyes, yes"
+				},
+				{
+					"id": 3,
+					"range": {
+						"start": 3,
+						"end": 3
+					},
+					"text": "You're the one that I desire"
+				},
+				{
+					"id": 4,
+					"range": {
+						"start": 4,
+						"end": 4
+					},
+					"text": "When we wake up"
+				},
+				{
+					"id": 5,
+					"range": {
+						"start": 5,
+						"end": 5
+					},
+					"text": "And then we make love (Make love)"
+				},
+				{
+					"id": 6,
+					"range": {
+						"start": 6,
+						"end": 6
+					},
+					"text": "It makes me feel so nice"
+				}
+			]
+		},
+		{
+			"type": "Pre-Chorus: Daniel Caesar",
+			"lines": [
+				{
+					"id": 1,
+					"text": "You're my water when I'm stuck in the desert",
+					"range": {
+						"start": 1,
+						"end": 1
+					},
+					"annotations": [
+						{
+							"text": "That line is a metaphor for deep appreciation and emotional rescue.\n\n“You’re my water when I’m stuck in the desert” → Water in the desert means survival, relief, and hope when everything feels dry and hopeless. So the lyric means: you’re the thing that keeps me alive when life is at its hardest.",
+							"verified": false,
+							"votes_total": 1,
+							"pinnedRole": null
+						}
+					]
+				},
+				{
+					"id": 2,
+					"text": "You're the Tylenol I take when my head hurts",
+					"range": {
+						"start": 2,
+						"end": 2
+					},
+					"annotations": [
+						{
+							"text": "In the song, Daniel compares the girl to the feeling of relief that Tylenol brings when he has a headache. Tylenol is an over-the-counter pain reliever commonly used to alleviate the pain of a headache and other common pains.\n\n\n\nIn the next line, we see him compare the girl as the “sunshine in his life”, a widely used metaphor that means something important that brightens or enlightens one’s life.\n\nThese lyrics possibly took inspiration from Lemonade by Jeremy Passion, as the lyrics are similar.\n\nShe’s my sunshine in the rain\nMy Tylenol when I’m in pain yeah.\n\nDaniel even recorded a cover of the song when he was 15 years old.",
+							"verified": false,
+							"votes_total": 66,
+							"pinnedRole": null
+						}
+					]
+				},
+				{
+					"id": 3,
+					"range": {
+						"start": 3,
+						"end": 3
+					},
+					"text": "You're the sunshine on my life"
+				}
+			]
+		},
+		{
+			"type": "Chorus: Daniel Caesar & H.E.R.",
+			"lines": [
+				{
+					"id": 1,
+					"text": "I just wanna see how beautiful you are",
+					"range": {
+						"start": 1,
+						"end": 1
+					},
+					"annotations": [
+						{
+							"text": "The speaker isn’t asking for anything complicated just the chance to be near the person, to appreciate them, to take them in. It’s about cherishing their presence and beauty, both physical and emotional.",
+							"verified": false,
+							"votes_total": 0,
+							"pinnedRole": null
+						}
+					]
+				},
+				{
+					"id": 2,
+					"text": "You know that I see it, I know you're a star",
+					"range": {
+						"start": 2,
+						"end": 2
+					},
+					"annotations": [
+						{
+							"text": "Caesar compares his girl to the North Star, which is often considered to be the brightest star in the sky and is widely used as a navigational aid. Therefore, Caesar is implying that his girl is the brightest and most significant figure in this universe, and he is reliant on her to get through the obstacles of life.\n\n\n\nDaniel’s songwriting is heavily influenced by religion, suggesting that these lines could also be a reference to the star of Bethlehem. In the Bible, the three magi followed this star to reach Jesus Christ, suggesting Caesar’s girl is a godly figure to him.",
+							"verified": false,
+							"votes_total": 112,
+							"pinnedRole": null
+						}
+					]
+				},
+				{
+					"id": 3,
+					"range": {
+						"start": 3,
+						"end": 3
+					},
+					"text": "Where you go, I'll follow, no matter how far"
+				},
+				{
+					"id": 4,
+					"text": "If life is a movie, then you're the best part, oh",
+					"range": {
+						"start": 4,
+						"end": 4
+					},
+					"annotations": [
+						{
+							"text": "That lyric is pure romantic admiration — it’s saying that out of everything in life (the whole “movie”), the other person is the highlight — the scene that makes it all worthwhile.\n\n“If life is a movie” → Sets up a metaphor: life is like a story, full of ups and downs, moments of drama, joy, sadness.\n\n“Then you’re the best part” → You’re the most meaningful, joyful, and beautiful part of that story — the moment that makes everything else worth it.\n\nRepeating “best part” → Emphasizes how deeply the speaker feels this — it’s not casual, it’s heartfelt and almost dreamy.",
+							"verified": false,
+							"votes_total": 0,
+							"pinnedRole": null
+						}
+					]
+				},
+				{
+					"id": 5,
+					"range": {
+						"start": 5,
+						"end": 5
+					},
+					"text": "You're the best part, ooh"
+				},
+				{
+					"id": 6,
+					"range": {
+						"start": 6,
+						"end": 6
+					},
+					"text": "Best part"
+				}
+			]
+		},
+		{
+			"type": "Outro: Daniel Caesar & H.E.R.",
+			"lines": [
+				{
+					"id": 1,
+					"text": "If you love me, won't you say something?",
+					"range": {
+						"start": 1,
+						"end": 1
+					},
+					"annotations": [
+						{
+							"text": "This lyric is all about craving reassurance and emotional honesty.\n\nRepeating “If you love me, won’t you say something?” over and over drives home the desperation — the speaker doesn’t just want to feel love, they want to hear it confirmed out loud. It’s a plea for clarity in a relationship where the other person might be distant, quiet, or withholding.\n\nThe repetition of “won’t you?” and “love me, won’t you?” makes it almost like a mantra — showing how much this question is eating at them. It’s vulnerable, emotional, and a little bit anxious — that feeling of “I need to know if this is real.”",
+							"verified": false,
+							"votes_total": -2,
+							"pinnedRole": null
+						}
+					]
+				},
+				{
+					"id": 2,
+					"range": {
+						"start": 2,
+						"end": 2
+					},
+					"text": "If you love me, won't you?"
+				},
+				{
+					"id": 3,
+					"range": {
+						"start": 3,
+						"end": 3
+					},
+					"text": "Won't you?"
+				},
+				{
+					"id": 4,
+					"range": {
+						"start": 4,
+						"end": 4
+					},
+					"text": "If you love me, won't you say something?"
+				},
+				{
+					"id": 5,
+					"range": {
+						"start": 5,
+						"end": 5
+					},
+					"text": "If you love me, won't you?"
+				},
+				{
+					"id": 6,
+					"range": {
+						"start": 6,
+						"end": 6
+					},
+					"text": "Love me, won't you?"
+				},
+				{
+					"id": 7,
+					"range": {
+						"start": 7,
+						"end": 7
+					},
+					"text": "If you love me, won't you say something?"
+				},
+				{
+					"id": 8,
+					"range": {
+						"start": 8,
+						"end": 8
+					},
+					"text": "If you love me, won't you?"
+				},
+				{
+					"id": 9,
+					"range": {
+						"start": 9,
+						"end": 9
+					},
+					"text": "If you love me, won't you say something?"
+				},
+				{
+					"id": 10,
+					"range": {
+						"start": 10,
+						"end": 10
+					},
+					"text": "If you love me, won't you?"
+				},
+				{
+					"id": 11,
+					"range": {
+						"start": 11,
+						"end": 11
+					},
+					"text": "Love me, won't you?"
+				},
+				{
+					"id": 12,
+					"range": {
+						"start": 12,
+						"end": 12
+					},
+					"text": "If you love me, won't you say something?"
+				},
+				{
+					"id": 13,
+					"range": {
+						"start": 13,
+						"end": 13
+					},
+					"text": "If you love me, won't you?"
+				},
+				{
+					"id": 14,
+					"range": {
+						"start": 14,
+						"end": 14
+					},
+					"text": "If you love me, won't you say something?"
+				},
+				{
+					"id": 15,
+					"range": {
+						"start": 15,
+						"end": 15
+					},
+					"text": "If you love me, won't you?"
+				},
+				{
+					"id": 16,
+					"range": {
+						"start": 16,
+						"end": 16
+					},
+					"text": "Love me, won't you?"
+				}
+			]
+		}
+	]
+}

@@ -28,9 +28,9 @@ import * as likedSongs from "@/lib/data/liked-song";
 import * as playlists from "@/lib/data/playlists";
 import * as jobs from "@/lib/data/jobs";
 import { completeJob, failJob, startJob } from "@/lib/services/job-lifecycle";
-import type { DbError } from "@/lib/errors/data";
-import type { SpotifyError } from "@/lib/errors/spotify";
-import { SyncError } from "@/lib/errors/service";
+import type { DbError } from "@/lib/errors/database";
+import type { SpotifyError } from "@/lib/errors/external/spotify";
+import { SyncFailedError } from "@/lib/errors/domain/sync";
 import type { Song } from "@/lib/data/song";
 import type { LikedSong } from "@/lib/data/liked-song";
 import type { JobProgress } from "@/lib/data/jobs";
@@ -65,7 +65,7 @@ export type FullSyncResult = z.infer<typeof FullSyncResultSchema>;
 export type SyncProgressCallback = (progress: JobProgress) => void;
 
 /** All possible sync errors */
-export type SyncOrchestratorError = DbError | SpotifyError | SyncError;
+export type SyncOrchestratorError = DbError | SpotifyError | SyncFailedError;
 
 // ============================================================================
 // Service
@@ -91,7 +91,7 @@ export class SyncOrchestrator {
 
 		if (Result.isError(spotifyTracksResult)) {
 			return Result.err(
-				new SyncError(
+				new SyncFailedError(
 					"liked_songs",
 					accountId,
 					spotifyTracksResult.error.message,

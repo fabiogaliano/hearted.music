@@ -8,7 +8,7 @@
 import type { Result } from "better-result";
 import { createAdminSupabaseClient } from "./client";
 import type { Tables, TablesInsert } from "./database.types";
-import type { DbError } from "@/lib/errors/data";
+import type { DbError } from "@/lib/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
