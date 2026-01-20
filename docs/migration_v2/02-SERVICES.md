@@ -261,26 +261,67 @@ type OnboardingStep = 'welcome' | 'pick-color' | 'connecting' | 'syncing' | 'fla
 
 ---
 
-## Services to KEEP
+## Services to PORT (Phases 4e-4g)
 
-### Core Algorithm (unchanged)
+> ⚠️ **Status Clarification (2026-01-20)**: These services exist in `old_app/lib/services/` but have NOT been ported to v1 yet. They are required for the core matching functionality.
 
-| Service                           | Purpose                                        |
-| --------------------------------- | ---------------------------------------------- |
-| `matching/MatchingService.ts`     | Core matching algorithm                        |
-| `matching/MatchCachingService.ts` | Cache-first orchestration                      |
-| `matching/matching.config.ts`     | Algorithm weights & thresholds (keep separate) |
-| `semantic/SemanticMatcher.ts`     | Theme/mood similarity                          |
-| `reranker/RerankerService.ts`     | Two-stage reranking                            |
+### Core Matching Algorithm (Phase 4e) — ⬜ NOT PORTED
 
-### API Clients (unchanged)
+| Service                           | Lines | Purpose                                        | Status |
+| --------------------------------- | ----- | ---------------------------------------------- | ------ |
+| `matching/MatchingService.ts`     | 1493  | Core matching algorithm                        | ⬜     |
+| `matching/MatchCachingService.ts` | 534   | Cache-first orchestration                      | ⬜     |
+| `matching/matching-config.ts`     | 85    | Algorithm weights & thresholds                 | ⬜     |
+| `semantic/SemanticMatcher.ts`     | 306   | Theme/mood similarity                          | ⬜     |
+| `vectorization/analysis-extractors.ts` | 354 | Text extraction for embeddings              | ⬜     |
+| `vectorization/hashing.ts`        | 327   | Content hashing for cache                      | ⬜     |
 
-| Service                           | Purpose                   |
-| --------------------------------- | ------------------------- |
-| `SpotifyService.ts`               | Spotify API client (#032) |
-| `lastfm/LastFmService.ts`         | Last.fm API               |
-| `lyrics/LyricsService.ts`         | Genius API                |
-| `reccobeats/ReccoBeatsService.ts` | ReccoBeats API            |
+### Genre Enrichment (Phase 4f) — ⬜ NOT PORTED
+
+| Service                           | Lines | Purpose                   | Status |
+| --------------------------------- | ----- | ------------------------- | ------ |
+| `lastfm/LastFmService.ts`         | 311   | Last.fm API               | ⬜     |
+| `lastfm/utils/genre-whitelist.ts` | 469   | Genre taxonomy            | ⬜     |
+| `genre/GenreEnrichmentService.ts` | 477   | Genre fetching + caching  | ⬜     |
+
+### Playlist Profiling (Phase 4g) — ⬜ NOT PORTED
+
+| Service                             | Lines | Purpose                      | Status |
+| ----------------------------------- | ----- | ---------------------------- | ------ |
+| `profiling/PlaylistProfilingService.ts` | 770 | Playlist vector computation | ⬜     |
+| `reccobeats/ReccoBeatsService.ts`   | 226   | ReccoBeats API               | ⬜     |
+| `audio/AudioFeaturesService.ts`     | 45    | Audio feature utilities      | ⬜     |
+
+---
+
+## Services ALREADY PORTED (Phases 4a-4d) — ✅
+
+### Analysis (v1: `services/analysis/`)
+
+| Service                         | v1 Location                   | Status |
+| ------------------------------- | ----------------------------- | ------ |
+| `SongAnalysisService.ts`        | `analysis/song-analysis.ts`   | ✅     |
+| `PlaylistAnalysisService.ts`    | `analysis/playlist-analysis.ts` | ✅   |
+| Analysis pipeline (merged)      | `analysis/pipeline.ts`        | ✅     |
+
+### API Clients (v1: `services/`)
+
+| Service                     | v1 Location           | Status |
+| --------------------------- | --------------------- | ------ |
+| `SpotifyService.ts`         | `spotify/service.ts`  | ✅     |
+| `lyrics/LyricsService.ts`   | `lyrics/service.ts`   | ✅     |
+| `RerankerService.ts`        | `reranker/service.ts` | ✅     |
+
+### New Services (v1 only)
+
+| Service              | v1 Location             | Purpose                    | Status |
+| -------------------- | ----------------------- | -------------------------- | ------ |
+| DeepInfraService     | `deepinfra/service.ts`  | Embeddings + reranking API | ✅     |
+| EmbeddingService     | `embedding/service.ts`  | Song embedding with cache  | ✅     |
+| LlmService           | `llm/service.ts`        | AI SDK multi-provider      | ✅     |
+| SyncOrchestrator     | `sync/orchestrator.ts`  | Full sync coordination     | ✅     |
+| PlaylistSyncService  | `sync/playlist-sync.ts` | Playlist Spotify sync      | ✅     |
+| JobLifecycleService  | `job-lifecycle.ts`      | Job state transitions      | ✅     |
 
 ### LLM (v2 - AI SDK)
 
@@ -504,13 +545,18 @@ src/lib/
 1. ✅ **Phase 1: Schema** — Create all 17 tables with RLS
 2. ✅ **Phase 2: Extensions** — Enable pgvector, generate TypeScript types
 3. ✅ **Phase 3: Query modules** — Create 9+ data modules with Result-based API
-4. ✅ **Phase 4: Service layer** — Port sync, analysis, embedding, reranking services
-   - 4a: Factory removal (N/A for v1 fresh port)
-   - 4b: Song/Analysis services with Zod schemas
-   - 4c: Playlist/Sync services
-   - 4d: DeepInfra migration
+4. **Phase 4: Service layer** — Port all services
+   - 4a: ✅ Factory removal (N/A for v1 fresh port)
+   - 4b: ✅ Song/Analysis services with Zod schemas
+   - 4c: ✅ Playlist/Sync services
+   - 4d: ✅ DeepInfra migration
+   - 4e: ⬜ **Matching Pipeline** (~3,100 lines) — Core matching algorithm
+   - 4f: ⬜ **Genre Enrichment** (~1,260 lines) — Last.fm integration
+   - 4g: ⬜ **Playlist Profiling** (~1,040 lines) — Playlist vector computation
 5. ⬜ **Phase 5: SSE migration** — Replace WebSocket with Server-Sent Events
 6. ⬜ **Phase 6: Cleanup** — Delete old_app, unused dependencies
+
+> ⚠️ **Gap Note**: Phases 4e-4g contain ~5,400 lines of core business logic that was originally marked "KEEP" but not tracked for migration. Without these, the app can analyze songs but cannot match them to playlists.
 
 ---
 
@@ -525,4 +571,4 @@ src/lib/
 
 ---
 
-*Last updated: January 17, 2026 — Phase 4 complete*
+*Last updated: January 20, 2026 — Phases 4e-4g identified and documented*

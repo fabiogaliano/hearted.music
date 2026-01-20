@@ -6,19 +6,24 @@
 
 ## Status Overview
 
-| Phase | Name                   | Status                     | Blocked By |
-| ----- | ---------------------- | -------------------------- | ---------- |
-| 0     | Foundation             | ✅ Complete                 | —          |
-| 1     | Schema                 | ✅ Complete                 | Phase 0    |
-| 2     | Extensions             | ✅ Complete                 | Phase 1    |
-| 3     | Query Modules          | ✅ Complete                 | Phase 2    |
-| 4a    | Delete Factories       | ✅ N/A (v1 fresh port)      | Phase 3    |
-| 4b    | Song/Analysis Services | ✅ Complete                 | Phase 3    |
-| 4c    | Playlist/Sync Services | ✅ Complete                 | Phase 3    |
-| 4d    | DeepInfra Migration    | ✅ Complete                 | Phase 3    |
-| 5     | SSE                    | ⬜ Not Started              | Phase 4*   |
-| 6     | Cleanup                | ⬜ Not Started              | Phase 5    |
-| 7     | UI Integration         | 🟡 In Progress (auth flows) | Phase 6    |
+| Phase | Name                      | Status                      | Blocked By |
+| ----- | ------------------------- | --------------------------- | ---------- |
+| 0     | Foundation                | ✅ Complete                  | —          |
+| 1     | Schema                    | ✅ Complete                  | Phase 0    |
+| 2     | Extensions                | ✅ Complete                  | Phase 1    |
+| 3     | Query Modules             | ✅ Complete                  | Phase 2    |
+| 4a    | Delete Factories          | ✅ N/A (v1 fresh port)       | Phase 3    |
+| 4b    | Song/Analysis Services    | ✅ Complete                  | Phase 3    |
+| 4c    | Playlist/Sync Services    | ✅ Complete                  | Phase 3    |
+| 4d    | DeepInfra Migration       | ✅ Complete                  | Phase 3    |
+| 4e    | **Matching Pipeline**     | ⬜ Not Started               | Phase 4d   |
+| 4f    | **Genre Enrichment**      | ⬜ Not Started               | Phase 4d   |
+| 4g    | **Playlist Profiling**    | ⬜ Not Started               | Phase 4e   |
+| 5     | SSE                       | ⬜ Not Started               | Phase 4g   |
+| 6     | Cleanup                   | ⬜ Not Started               | Phase 5    |
+| 7     | UI Integration            | 🟡 Prototypes Ready          | Phase 5    |
+
+> **Frontend Note**: UI prototypes are ~85% complete in `old_app/prototypes/warm-pastel/` (88 files). Phase 7 involves wiring these to real APIs/data, not building from scratch.
 
 ---
 
@@ -301,6 +306,209 @@
 
 ---
 
+## Phase 4e: Matching Pipeline 🆕
+
+> Port the core song-to-playlist matching algorithm. This is the primary business logic that makes the app work.
+
+**Status**: ⬜ Not Started
+
+### Source Files (old_app)
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `matching/MatchingService.ts` | 1493 | Core matching algorithm (vector + semantic + audio + genre) |
+| `matching/MatchCachingService.ts` | 534 | Cache-first orchestration (Phase 8) |
+| `matching/matching-config.ts` | 85 | Algorithm weights & thresholds |
+| `semantic/SemanticMatcher.ts` | 306 | Theme/mood similarity matching |
+| `vectorization/analysis-extractors.ts` | 354 | Extract text from analysis for embedding |
+| `vectorization/hashing.ts` | 327 | Content hashing for cache invalidation |
+| `vectorization/model-bundle.ts` | 210 | Embedding model metadata |
+
+### Tasks
+
+- [ ] **Port `matching-config.ts`** → `services/matching/config.ts`
+  - Algorithm weights (semantic, vector, audio, genre)
+  - Score thresholds and normalization
+  - Configurable tuning without touching algorithm
+
+- [ ] **Port `analysis-extractors.ts`** → `services/embedding/extractors.ts`
+  - `extractSongText(analysis)` → text for embedding
+  - `extractPlaylistText(analysis)` → text for embedding
+  - Handle missing fields gracefully
+
+- [ ] **Port `hashing.ts`** → `services/embedding/hashing.ts`
+  - `hashContent(text)` → content hash for cache invalidation
+  - `hashModelBundle(model, version)` → model version hash
+  - Deterministic hashing for reproducibility
+
+- [ ] **Port `SemanticMatcher.ts`** → `services/matching/semantic.ts`
+  - Theme similarity (keyword overlap + embeddings)
+  - Mood compatibility scoring
+  - Caching layer for repeated comparisons
+
+- [ ] **Port `MatchingService.ts`** → `services/matching/service.ts`
+  - Multi-factor scoring: vector (cosine), semantic, audio features, genre
+  - Score normalization and weighting from config
+  - Batch matching for efficiency
+  - Use `data/matching.ts` for persistence
+
+- [ ] **Port `MatchCachingService.ts`** → `services/matching/cache.ts`
+  - Cache-first orchestration pattern
+  - Context hashing (playlist set + candidate set + config)
+  - Invalidation on new songs/playlists/config changes
+
+- [ ] **Create integration tests**
+  - Test matching accuracy with known song-playlist pairs
+  - Test cache hit/miss behavior
+  - Test score reproducibility
+
+### Acceptance Criteria
+- [ ] Can match a song to playlists and get ranked results
+- [ ] Scores are deterministic (same input = same output)
+- [ ] Cache invalidates correctly on changes
+- [ ] Matching completes in <5s for typical library (500 songs, 20 playlists)
+
+### Architecture Notes
+
+```
+Song Analysis → Extract Text → Embed → Match
+                    ↓
+            Content Hash → Cache Check
+                    ↓
+         Vector Similarity (cosine distance)
+         Semantic Similarity (theme/mood)
+         Audio Feature Compatibility
+         Genre Alignment
+                    ↓
+            Weighted Score → Rank → Results
+```
+
+### References
+- [matching-ui spec](/openspec/specs/matching-ui/spec.md) — UI for match results
+- [02-SERVICES.md](/docs/migration_v2/02-SERVICES.md) — Original service list (marked KEEP)
+
+---
+
+## Phase 4f: Genre Enrichment 🆕
+
+> Port Last.fm genre fetching and normalization for improved matching.
+
+**Status**: ⬜ Not Started
+
+### Source Files (old_app)
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `lastfm/LastFmService.ts` | 311 | Last.fm API client |
+| `lastfm/utils/genre-whitelist.ts` | 469 | 469-genre normalized taxonomy |
+| `lastfm/utils/normalize.ts` | 81 | Genre string normalization |
+| `genre/GenreEnrichmentService.ts` | 477 | Orchestrates genre fetching + caching |
+
+### Tasks
+
+- [ ] **Port `LastFmService.ts`** → `services/lastfm/service.ts`
+  - `getArtistTopTags(artist)` → genre tags
+  - Rate limiting (Last.fm allows 5 req/sec)
+  - Error handling for missing artists
+
+- [ ] **Port genre whitelist** → `services/lastfm/whitelist.ts`
+  - 469-genre canonical taxonomy
+  - Mapping from raw tags to canonical genres
+  - Export as `GENRE_WHITELIST: Set<string>`
+
+- [ ] **Port normalize utils** → `services/lastfm/normalize.ts`
+  - `normalizeGenre(raw)` → canonical genre or null
+  - Lowercase, trim, handle variations
+
+- [ ] **Port `GenreEnrichmentService.ts`** → `services/genre/service.ts`
+  - `enrichSong(song)` → fetch genres if missing
+  - `enrichBatch(songs)` → batch with rate limiting
+  - Store genres on `song.genres` column
+  - Use `data/songs.ts` for persistence
+
+- [ ] **Add environment variable**
+  ```
+  LASTFM_API_KEY=xxx
+  ```
+
+### Acceptance Criteria
+- [ ] Can fetch genres for artist from Last.fm
+- [ ] Genres normalized to canonical taxonomy
+- [ ] Genres persisted on song record
+- [ ] Rate limiting prevents API abuse
+
+### References
+- [song.genres column](/docs/migration_v2/01-SCHEMA.md) — Schema for genres array
+
+---
+
+## Phase 4g: Playlist Profiling 🆕
+
+> Port playlist profile computation for matching destination playlists.
+
+**Status**: ⬜ Not Started
+
+### Source Files (old_app)
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `profiling/PlaylistProfilingService.ts` | 770 | Compute playlist vectors from tracks |
+| `audio/AudioFeaturesService.ts` | 45 | Audio feature utilities |
+| `reccobeats/ReccoBeatsService.ts` | 226 | ReccoBeats API for audio features |
+
+### Tasks
+
+- [ ] **Port `ReccoBeatsService.ts`** → `services/reccobeats/service.ts`
+  - `getAudioFeatures(isrc)` → audio features
+  - Rate limiting
+  - Fallback to Spotify audio features if ReccoBeats unavailable
+  - Add `RECCOBEATS_API_URL` env var if needed
+
+- [ ] **Port `AudioFeaturesService.ts`** → `services/audio/service.ts`
+  - `normalizeFeatures(raw)` → 0-1 normalized values
+  - Centroid computation for playlist aggregation
+
+- [ ] **Port `PlaylistProfilingService.ts`** → `services/profiling/service.ts`
+  - `computeProfile(playlist)` → aggregate profile from songs
+  - Embedding centroid (average of song embeddings)
+  - Audio feature centroid (average of song features)
+  - Genre distribution (weighted by frequency)
+  - Emotion distribution (from song analyses)
+  - Use `data/vectors.ts` for persistence (`playlist_profile` table)
+
+- [ ] **Create integration tests**
+  - Profile changes when playlist songs change
+  - Profile is deterministic
+  - Handle empty playlists gracefully
+
+### Acceptance Criteria
+- [ ] Can compute profile for destination playlist
+- [ ] Profile includes: embedding centroid, audio centroid, genre distribution, emotion distribution
+- [ ] Profile persisted to `playlist_profile` table
+- [ ] Profile invalidates when playlist contents change
+
+### Architecture Notes
+
+```
+Destination Playlist
+        ↓
+    Get Songs → Get Embeddings → Compute Centroid
+        ↓
+    Get Audio Features → Compute Audio Centroid
+        ↓
+    Get Genres → Compute Distribution
+        ↓
+    Get Emotions (from analysis) → Compute Distribution
+        ↓
+    Store as playlist_profile
+```
+
+### References
+- [playlist_profile schema](/docs/migration_v2/01-SCHEMA.md) — Table definition
+- [02-SERVICES.md](/docs/migration_v2/02-SERVICES.md) — Original service list
+
+---
+
 ## Phase 5: SSE Migration
 
 > Replace WebSocket job subscriptions with Server-Sent Events.
@@ -364,42 +572,29 @@
 
 ## Phase 7: UI Integration
 
-> Connect new data layer to UI with TanStack Start.
+> Wire warm-pastel prototypes to real APIs and data.
+
+**Status**: 🟡 Prototypes Ready
+
+### Source
+
+UI prototypes are ~85% complete in `old_app/prototypes/warm-pastel/`:
+- 88 files across 6 features
+- Landing, Onboarding (6 steps), Dashboard, Matching, Liked Songs, Playlists, Settings
+- Full design system with 4 themes (blue, green, rose, lavender)
+- FLIP animations, infinite scroll, keyboard shortcuts
 
 ### Tasks
 
-- [ ] Initialize TanStack Start project
-  ```bash
-  bun create @tanstack/router@latest
-  ```
-- [ ] Set up route structure
-  ```
-  routes/
-  ├── __root.tsx        # Root layout with providers
-  ├── index.tsx         # Landing
-  ├── _app.tsx          # Authenticated layout
-  └── _app/
-      ├── index.tsx     # Home
-      ├── sort.tsx      # Matching
-      └── library/
-  ```
-- [ ] Configure TanStack Query in root layout
-- [ ] Set up Zustand stores
-- [ ] Create server functions (`lib/server/*.ts`)
-- [ ] Create query hooks (`lib/queries/*.ts`)
-- [ ] Implement SSE subscription hook
-- [ ] Build first route using `createFileRoute`
-- [ ] Implement onboarding flow with `user_preferences`
+- [ ] Set up TanStack Start routes using prototype structure
+- [ ] Create API routes/server functions for data fetching
+- [ ] Wire components to real Supabase data via query modules
+- [ ] Integrate SSE for job progress (after Phase 5)
+- [ ] Test all user flows end-to-end
 
 ### Acceptance Criteria
-- [ ] UI renders with real data
-- [ ] Onboarding saves theme preference
-- [ ] Job progress shows in real-time
-
-### References
-- [Decision #036](/docs/migration_v2/00-DECISIONS.md) — TanStack Start server functions
-- [ONBOARDING-FLOW.md](/docs/ONBOARDING-FLOW.md) — Onboarding spec
-- [DATA-FLOW-PATTERNS.md](/docs/DATA-FLOW-PATTERNS.md) — Data patterns
+- [ ] All prototype pages render with real data
+- [ ] User can complete full workflow: sync → analyze → match → sort
 
 ---
 
@@ -445,7 +640,8 @@
 | [01-SCHEMA.md](./01-SCHEMA.md)                 | Database schema definitions    |
 | [02-SERVICES.md](./02-SERVICES.md)             | Service layer consolidation    |
 | [03-IMPLEMENTATION.md](./03-IMPLEMENTATION.md) | Detailed SQL + code            |
+| [GAP-ANALYSIS.md](./GAP-ANALYSIS.md)           | Matching pipeline gap analysis |
 
 ---
 
-*Last updated: January 17, 2026*
+*Last updated: January 20, 2026 — Phases 4e-4g added, UI simplified (prototypes exist)*
