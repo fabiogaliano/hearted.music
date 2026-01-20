@@ -8,5 +8,8 @@
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "anki-connect"
-  ]
+  ],
+  "enabledPlugins": {
+    "oh-my-claude@oh-my-claude": true
+  }
 }
