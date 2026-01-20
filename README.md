@@ -1,301 +1,260 @@
-Welcome to your new TanStack app! 
+# Hearted
 
-# Getting Started
+**The stories inside your Liked Songs.**
 
-To run this application:
+---
+
+Your Liked Songs collection is a graveyard of good intentions. Hundreds of tracks, maybe thousands, accumulating in an infinite scroll you never revisit.
+
+Hearted analyzes that collection and matches songs to your existing playlists using AI—based on lyrics, mood, and audio characteristics. 
+
+## What It Does
+
+Hearted connects to Spotify, reads your library, and runs each Liked Song through a multi-signal analysis pipeline:
+
+- **Lyrics analysis** — LLM interprets themes, emotions, and narrative arc
+- **Audio features** — Energy, tempo, danceability, valence, acousticness
+- **Semantic matching** — Vector embeddings compare song characteristics against playlist signatures
+
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Client (React)                          │
+│                    TanStack Start + Router                      │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │
+┌─────────────────────────▼───────────────────────────────────────┐
+│                      Server Functions                           │
+│              (createServerFn, SSR, API routes)                  │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │
+        ┌─────────────────┼─────────────────┐
+        ▼                 ▼                 ▼
+┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+│   Supabase    │ │  Spotify API  │ │  LLM Provider │
+│  (Postgres)   │ │    (OAuth)    │ │               │
+└───────────────┘ └───────────────┘ └───────────────┘
+        │                                   │
+        │         ┌───────────────┐         │
+        │         │    Genius     │         │
+        │         │   (Lyrics)    │         │
+        │         └───────────────┘         │
+        │                 │                 │
+        ▼                 ▼                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Matching Pipeline                            │
+│  Sync → Enrich (lyrics, audio) → Analyze → Match → Commit      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## The Matching Pipeline
+
+### Stage 1: Sync
+Pull user's Liked Songs and playlists from Spotify. Tracks stored in Supabase with Spotify metadata.
+
+### Stage 2: Enrich
+- **Lyrics**: Fetched via Genius API search + scraping
+- **Audio features**: Retrieved from ReccoBeats (Spotify deprecated their audio features endpoint)
+
+### Stage 3: Analyze
+LLM processes each song:
+- Extracts mood, themes, energy level from lyrics
+- Generates semantic tags
+- Produces embedding-ready descriptors
+
+### Stage 4: Match
+Vector similarity comparison between song analysis and playlist signatures. Each playlist builds a "vibe profile" from its existing tracks.
+
+### Stage 5: Commit
+User reviews matches, confirms or rejects, songs added to Spotify playlists via API.
+
+## User Flow
+
+1. **Connect Spotify** — OAuth flow, read library and playlists
+2. **Flag playlists** — Select which playlists to sort into
+3. **Demo analysis** — One free song analysis to demonstrate matching
+4. **Bulk process** — Run analysis on full Liked Songs collection
+
+## Tech Stack
+
+| Layer      | Technology         | Notes                             |
+| ---------- | ------------------ | --------------------------------- |
+| Runtime    | Bun                | Fast JS runtime + package manager |
+| Framework  | TanStack Start     | Full-stack React with SSR         |
+| Routing    | TanStack Router    | File-based, type-safe             |
+| Database   | Supabase           | Postgres + Row Level Security     |
+| Auth       | Custom             | Spotify OAuth, session tokens     |
+| Styling    | Tailwind CSS       | Custom theme system               |
+| Deployment | Cloudflare Workers | Edge runtime                      |
+| Testing    | Vitest             | Unit + integration                |
+| Linting    | Biome              | Fast, opinionated                 |
+
+### External Services
+
+| Service            | Purpose                                  |
+| ------------------ | ---------------------------------------- |
+| Spotify Web API    | OAuth, library sync, playlist management |
+| Genius             | Lyrics search and retrieval              |
+| ReccoBeats         | Audio features (energy, tempo, etc.)     |
+| Google AI / OpenAI | LLM analysis (user-provided key)         |
+| DeepInfra          | Embeddings generation                    |
+
+## Project Structure
+
+```
+src/
+├── routes/              # File-based routing (TanStack Router)
+│   ├── __root.tsx       # Root layout
+│   ├── index.tsx        # Landing page
+│   ├── dashboard/       # Authenticated routes
+│   └── api/             # API endpoints
+├── components/          # React components
+│   ├── ui/              # Design system primitives
+│   └── features/        # Feature-specific components
+├── services/            # Business logic layer
+│   ├── spotify/         # Spotify API integration
+│   ├── matching/        # Analysis pipeline
+│   └── jobs/            # Background job management
+├── lib/                 # Utilities and configurations
+│   ├── supabase/        # Database client + types
+│   └── result/          # Result-based error handling
+└── styles/              # Global styles and theme tokens
+
+docs/                    # Architecture decisions and guides
+├── migration_v2/        # V2 migration documentation
+└── *.md                 # Feature-specific docs
+
+openspec/                # Feature specifications
+├── specs/               # Active specifications
+├── changes/             # Change proposals
+└── project.md           # Project overview
+
+supabase/
+├── migrations/          # Database migrations
+└── types.ts             # Generated TypeScript types
+```
+
+## Getting Started
+
+### Prerequisites
+
+- Bun 1.0+
+- Spotify Developer App ([developer.spotify.com](https://developer.spotify.com))
+- Supabase Project ([supabase.com](https://supabase.com))
+
+### Installation
 
 ```bash
-pnpm install
-pnpm dev
+git clone <repo>
+cd v1_hearted
+bun install
 ```
 
-# Building For Production
-
-To build this application for production:
+### Environment Configuration
 
 ```bash
-pnpm build
+cp .env.example .env
 ```
 
-## Testing
-
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
+Required variables:
 
 ```bash
-pnpm test
+# Spotify OAuth
+SPOTIFY_CLIENT_ID=your_client_id
+SPOTIFY_CLIENT_SECRET=your_client_secret
+SPOTIFY_REDIRECT_URI=http://localhost:3000/api/auth/callback/spotify
+
+# Supabase
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Genius (lyrics)
+GENIUS_ACCESS_TOKEN=your_genius_token
+
+# Optional: Default LLM for development
+GOOGLE_AI_API_KEY=your_google_ai_key
 ```
 
-## Styling
-
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
-
-
-## Linting & Formatting
-
-This project uses [Biome](https://biomejs.dev/) for linting and formatting. The following scripts are available:
-
+### Database Setup
 
 ```bash
-pnpm lint
-pnpm format
-pnpm check
+# Run migrations
+bunx supabase db push
+
+# Generate types
+bun run gen:types
 ```
 
-
-
-## Routing
-This project uses [TanStack Router](https://tanstack.com/router). The initial setup is a file based router. Which means that the routes are managed as files in `src/routes`.
-
-### Adding A Route
-
-To add a new route to your application just add another a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
-```
-
-Then anywhere in your JSX you can use it like so:
-
-```tsx
-<Link to="/about">About</Link>
-```
-
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you use the `<Outlet />` component.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { Outlet, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-
-import { Link } from "@tanstack/react-router";
-
-export const Route = createRootRoute({
-  component: () => (
-    <>
-      <header>
-        <nav>
-          <Link to="/">Home</Link>
-          <Link to="/about">About</Link>
-        </nav>
-      </header>
-      <Outlet />
-      <TanStackRouterDevtools />
-    </>
-  ),
-})
-```
-
-The `<TanStackRouterDevtools />` component is not required so you can remove it if you don't want it in your layout.
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-const peopleRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/people",
-  loader: async () => {
-    const response = await fetch("https://swapi.dev/api/people");
-    return response.json() as Promise<{
-      results: {
-        name: string;
-      }[];
-    }>;
-  },
-  component: () => {
-    const data = peopleRoute.useLoaderData();
-    return (
-      <ul>
-        {data.results.map((person) => (
-          <li key={person.name}>{person.name}</li>
-        ))}
-      </ul>
-    );
-  },
-});
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-### React-Query
-
-React-Query is an excellent addition or alternative to route loading and integrating it into you application is a breeze.
-
-First add your dependencies:
+### Development
 
 ```bash
-pnpm add @tanstack/react-query @tanstack/react-query-devtools
+bun dev
 ```
 
-Next we'll need to create a query client and provider. We recommend putting those in `main.tsx`.
+Runs at `http://localhost:5173` with HMR.
 
-```tsx
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-// ...
-
-const queryClient = new QueryClient();
-
-// ...
-
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
-
-  root.render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  );
-}
-```
-
-You can also add TanStack Query Devtools to the root route (optional).
-
-```tsx
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-
-const rootRoute = createRootRoute({
-  component: () => (
-    <>
-      <Outlet />
-      <ReactQueryDevtools buttonPosition="top-right" />
-      <TanStackRouterDevtools />
-    </>
-  ),
-});
-```
-
-Now you can use `useQuery` to fetch your data.
-
-```tsx
-import { useQuery } from "@tanstack/react-query";
-
-import "./App.css";
-
-function App() {
-  const { data } = useQuery({
-    queryKey: ["people"],
-    queryFn: () =>
-      fetch("https://swapi.dev/api/people")
-        .then((res) => res.json())
-        .then((data) => data.results as { name: string }[]),
-    initialData: [],
-  });
-
-  return (
-    <div>
-      <ul>
-        {data.map((person) => (
-          <li key={person.name}>{person.name}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-export default App;
-```
-
-You can find out everything you need to know on how to use React-Query in the [React-Query documentation](https://tanstack.com/query/latest/docs/framework/react/overview).
-
-## State Management
-
-Another common requirement for React applications is state management. There are many options for state management in React. TanStack Store provides a great starting point for your project.
-
-First you need to add TanStack Store as a dependency:
+### Production Build
 
 ```bash
-pnpm add @tanstack/store
+bun run build
+bun run preview  # Test production build locally
 ```
 
-Now let's create a simple counter in the `src/App.tsx` file as a demonstration.
+## Scripts
 
-```tsx
-import { useStore } from "@tanstack/react-store";
-import { Store } from "@tanstack/store";
-import "./App.css";
+| Command             | Description              |
+| ------------------- | ------------------------ |
+| `bun dev`           | Start development server |
+| `bun run build`     | Production build         |
+| `bun run preview`   | Preview production build |
+| `bun run test`      | Run test suite           |
+| `bun run lint`      | Lint with Biome          |
+| `bun run format`    | Format with Biome        |
+| `bun run check`     | Lint + format check      |
+| `bun run typecheck` | TypeScript type checking |
 
-const countStore = new Store(0);
+## Design System
 
-function App() {
-  const count = useStore(countStore);
-  return (
-    <div>
-      <button onClick={() => countStore.setState((n) => n + 1)}>
-        Increment - {count}
-      </button>
-    </div>
-  );
-}
+Typography-driven, editorial aesthetic:
 
-export default App;
-```
+- **Display**: Instrument Serif (Google Fonts)
+- **Body**: Geist (Vercel)
+- **Palette**: Monochromatic HSL themes (12-32% saturation)
+- **Themes**: Calm (blue), Fresh (green), Warm (rose), Dreamy (lavender)
 
-One of the many nice features of TanStack Store is the ability to derive state from other state. That derived state will update when the base state updates.
+See `old_app/prototypes/warm-pastel/DESIGN-GUIDANCE.md` for full specification.
 
-Let's check this out by doubling the count using derived state.
+## Future Ideas
 
-```tsx
-import { useStore } from "@tanstack/react-store";
-import { Store, Derived } from "@tanstack/store";
-import "./App.css";
+- [ ] **Listener Profile** — Aggregated emotional/thematic profile from your library
+- [ ] **Musical Timeline** — Chronological visualization of taste evolution with auto-detected "life chapters"
+- [ ] **Theme Clusters** — Visual clustering by meaning, not genre
+- [ ] **Insight Cards** — Shareable, social-media-ready cards for viral moments
+- [ ] **Taste Compatibility** — Compare profiles with friends or partners
+- [ ] **Last.fm Integration** — Import loved tracks as additional signal
+- [ ] **Cross-Platform Matching** — ISRC-based matching for Apple Music, Tidal, Deezer
+- [ ] **Multi-Service Accounts** — Connect multiple streaming services per user
+- [ ] **Playlist Auto-Sync** — Automatically re-sort when new songs are liked
+- [ ] **Smart Playlist Creation** — Generate new playlists from detected patterns
+- [ ] **Contextual Playlists** — Auto-generated playlists based on time, season, mood
+- [ ] **Musical Memory Lane** — Annotate songs with personal memories and life events
 
-const countStore = new Store(0);
+## Documentation
 
-const doubledStore = new Derived({
-  fn: () => countStore.state * 2,
-  deps: [countStore],
-});
-doubledStore.mount();
+| Document                       | Description                 |
+| ------------------------------ | --------------------------- |
+| `docs/migration_v2/ROADMAP.md` | Migration status and phases |
+| `docs/DATA-FLOW-PATTERNS.md`   | Data fetching conventions   |
+| `docs/ONBOARDING-FLOW.md`      | User onboarding design      |
+| `openspec/project.md`          | Project overview and goals  |
 
-function App() {
-  const count = useStore(countStore);
-  const doubledCount = useStore(doubledStore);
+## Contributing
 
-  return (
-    <div>
-      <button onClick={() => countStore.setState((n) => n + 1)}>
-        Increment - {count}
-      </button>
-      <div>Doubled - {doubledCount}</div>
-    </div>
-  );
-}
+Personal project. Issues and discussions welcome.
 
-export default App;
-```
+## License
 
-We use the `Derived` class to create a new store that is derived from another store. The `Derived` class has a `mount` method that will start the derived store updating.
-
-Once we've created the derived store we can use it in the `App` component just like we would any other store using the `useStore` hook.
-
-You can find out everything you need to know on how to use TanStack Store in the [TanStack Store documentation](https://tanstack.com/store/latest).
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
+MIT
