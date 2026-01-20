@@ -14,7 +14,7 @@ import {
 	SpotifyNotFoundError,
 	SpotifyRateLimitError,
 	type SpotifyError,
-} from "@/lib/errors/spotify";
+} from "@/lib/errors/external/spotify";
 
 /** Options for retry behavior */
 export interface RetryOptions {

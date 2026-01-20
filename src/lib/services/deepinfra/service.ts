@@ -10,7 +10,11 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
-import { DeepInfraError, RateLimitError } from "@/lib/errors/service";
+import {
+	DeepInfraApiError,
+	DeepInfraRateLimitError,
+	type DeepInfraError,
+} from "@/lib/errors/external/deepinfra";
 
 // ============================================================================
 // Configuration
@@ -76,7 +80,7 @@ export const RerankOptionsSchema = z.object({
 });
 export type RerankOptions = z.infer<typeof RerankOptionsSchema>;
 
-type DeepInfraServiceError = DeepInfraError | RateLimitError;
+type DeepInfraServiceError = DeepInfraError;
 
 // ============================================================================
 // API Response Schemas (external API validation)
@@ -191,7 +195,7 @@ export async function embedBatch(
 		const parseResult = EmbeddingApiResponseSchema.safeParse(rawData);
 		if (!parseResult.success) {
 			return Result.err(
-				new DeepInfraError("embeddings", undefined, `Invalid API response: ${parseResult.error.message}`),
+				new DeepInfraApiError("embeddings", undefined, `Invalid API response: ${parseResult.error.message}`),
 			);
 		}
 		const data = parseResult.data;
@@ -209,11 +213,11 @@ export async function embedBatch(
 	} catch (error) {
 		if (error instanceof Error && error.name === "TimeoutError") {
 			return Result.err(
-				new DeepInfraError("embeddings", undefined, "Request timed out"),
+				new DeepInfraApiError("embeddings", undefined, "Request timed out"),
 			);
 		}
 		return Result.err(
-			new DeepInfraError(
+			new DeepInfraApiError(
 				"embeddings",
 				undefined,
 				error instanceof Error ? error.message : "Unknown error",
@@ -265,7 +269,7 @@ export async function rerank(
 		const parseResult = RerankApiResponseSchema.safeParse(rawData);
 		if (!parseResult.success) {
 			return Result.err(
-				new DeepInfraError("rerank", undefined, `Invalid API response: ${parseResult.error.message}`),
+				new DeepInfraApiError("rerank", undefined, `Invalid API response: ${parseResult.error.message}`),
 			);
 		}
 		const data = parseResult.data;
@@ -285,11 +289,11 @@ export async function rerank(
 	} catch (error) {
 		if (error instanceof Error && error.name === "TimeoutError") {
 			return Result.err(
-				new DeepInfraError("rerank", undefined, "Request timed out"),
+				new DeepInfraApiError("rerank", undefined, "Request timed out"),
 			);
 		}
 		return Result.err(
-			new DeepInfraError(
+			new DeepInfraApiError(
 				"rerank",
 				undefined,
 				error instanceof Error ? error.message : "Unknown error",
@@ -359,7 +363,7 @@ async function handleErrorResponse<T>(
 	if (response.status === 429) {
 		const retryAfter = response.headers.get("Retry-After");
 		const retryAfterMs = retryAfter ? Number.parseInt(retryAfter) * 1000 : undefined;
-		return Result.err(new RateLimitError({ service: "DeepInfra", retryAfterMs }));
+		return Result.err(new DeepInfraRateLimitError(retryAfterMs));
 	}
 
 	let detail: string | undefined;
@@ -373,5 +377,5 @@ async function handleErrorResponse<T>(
 		detail = response.statusText;
 	}
 
-	return Result.err(new DeepInfraError(endpoint, response.status, detail));
+	return Result.err(new DeepInfraApiError(endpoint, response.status, detail));
 }

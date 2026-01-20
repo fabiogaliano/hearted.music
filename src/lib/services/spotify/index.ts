@@ -13,8 +13,8 @@
 import { Result } from "better-result";
 import type { AuthToken } from "@/lib/data/auth-tokens";
 import { getTokenByAccountId, isTokenExpired } from "@/lib/data/auth-tokens";
-import type { DbError } from "@/lib/errors/data";
-import { SpotifyAuthError } from "@/lib/errors/spotify";
+import type { DbError } from "@/lib/errors/database";
+import { SpotifyAuthError } from "@/lib/errors/external/spotify";
 import { refreshTokenWithCoordination } from "./client";
 import { createSpotifyApi } from "./sdk";
 import { SpotifyService } from "./service";

@@ -17,9 +17,9 @@ import { z } from "zod";
 import type { SpotifyService, SpotifyPlaylistDTO, SpotifyTrackDTO } from "../spotify";
 import * as playlists from "@/lib/data/playlists";
 import * as songs from "@/lib/data/song";
-import type { DbError } from "@/lib/errors/data";
-import type { SpotifyError } from "@/lib/errors/spotify";
-import { SyncError } from "@/lib/errors/service";
+import type { DbError } from "@/lib/errors/database";
+import type { SpotifyError } from "@/lib/errors/external/spotify";
+import { SyncFailedError } from "@/lib/errors/domain/sync";
 import type { Playlist, PlaylistSong } from "@/lib/data/playlists";
 import type { Song } from "@/lib/data/song";
 
@@ -84,7 +84,7 @@ export const PlaylistTrackSyncResultSchema = z.object({
 });
 export type PlaylistTrackSyncResult = z.infer<typeof PlaylistTrackSyncResultSchema>;
 
-type PlaylistSyncError = DbError | SpotifyError | SyncError;
+type PlaylistSyncFailedError = DbError | SpotifyError | SyncFailedError;
 
 // ============================================================================
 // Service
@@ -99,13 +99,13 @@ export class PlaylistSyncService {
 	 */
 	async syncPlaylists(
 		accountId: string,
-	): Promise<Result<PlaylistSyncResult, PlaylistSyncError>> {
+	): Promise<Result<PlaylistSyncResult, PlaylistSyncFailedError>> {
 		// 1. Fetch playlists from Spotify
 		const spotifyPlaylistsResult = await this.spotify.getPlaylists();
 
 		if (Result.isError(spotifyPlaylistsResult)) {
 			return Result.err(
-				new SyncError(
+				new SyncFailedError(
 					"playlists",
 					accountId,
 					spotifyPlaylistsResult.error.message,
@@ -195,7 +195,7 @@ export class PlaylistSyncService {
 	async syncPlaylistTracks(
 		accountId: string,
 		playlist: Playlist,
-	): Promise<Result<PlaylistTrackSyncResult, PlaylistSyncError>> {
+	): Promise<Result<PlaylistTrackSyncResult, PlaylistSyncFailedError>> {
 		// 1. Fetch tracks from Spotify
 		const spotifyTracksResult = await this.spotify.getPlaylistTracks(
 			playlist.spotify_id,
@@ -203,7 +203,7 @@ export class PlaylistSyncService {
 
 		if (Result.isError(spotifyTracksResult)) {
 			return Result.err(
-				new SyncError(
+				new SyncFailedError(
 					"playlist_tracks",
 					accountId,
 					spotifyTracksResult.error.message,
@@ -352,13 +352,13 @@ export class PlaylistSyncService {
 		accountId: string,
 		name: string,
 		description: string,
-	): Promise<Result<Playlist, PlaylistSyncError>> {
+	): Promise<Result<Playlist, PlaylistSyncFailedError>> {
 		// 1. Create on Spotify
 		const spotifyResult = await this.spotify.createPlaylist(name, description);
 
 		if (Result.isError(spotifyResult)) {
 			return Result.err(
-				new SyncError("playlists", accountId, spotifyResult.error.message),
+				new SyncFailedError("playlists", accountId, spotifyResult.error.message),
 			);
 		}
 
@@ -391,7 +391,7 @@ export class PlaylistSyncService {
 		playlistId: string,
 		name: string,
 		description: string,
-	): Promise<Result<void, PlaylistSyncError>> {
+	): Promise<Result<void, PlaylistSyncFailedError>> {
 		// 1. Get playlist from database
 		const playlistResult = await playlists.getPlaylistById(playlistId);
 		if (Result.isError(playlistResult)) {
@@ -400,7 +400,7 @@ export class PlaylistSyncService {
 
 		if (playlistResult.value === null) {
 			return Result.err(
-				new SyncError("playlists", accountId, `Playlist ${playlistId} not found`),
+				new SyncFailedError("playlists", accountId, `Playlist ${playlistId} not found`),
 			);
 		}
 		const dbPlaylist = playlistResult.value;
@@ -414,7 +414,7 @@ export class PlaylistSyncService {
 
 		if (Result.isError(spotifyResult)) {
 			return Result.err(
-				new SyncError("playlists", accountId, spotifyResult.error.message),
+				new SyncFailedError("playlists", accountId, spotifyResult.error.message),
 			);
 		}
 

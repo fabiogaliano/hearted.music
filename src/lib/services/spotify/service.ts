@@ -9,7 +9,7 @@
 
 import { Result } from "better-result";
 import type { Market, MaxInt, SpotifyApi } from "@fostertheweb/spotify-web-sdk";
-import type { SpotifyError } from "@/lib/errors/spotify";
+import type { SpotifyError } from "@/lib/errors/external/spotify";
 import { fetchWithRetry } from "./request";
 import { fetchAllPages } from "./pagination";
 

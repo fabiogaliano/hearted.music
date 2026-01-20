@@ -18,7 +18,11 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
-import { LlmError, RateLimitError } from "@/lib/errors/service";
+import {
+	LlmProviderError,
+	LlmRateLimitError,
+	type LlmError,
+} from "@/lib/errors/external/llm";
 
 // ============================================================================
 // Zod Schemas (single source of truth)
@@ -70,7 +74,7 @@ const DEFAULT_MODELS: Record<LlmProviderName, string> = {
 	openai: "gpt-4o-mini",
 };
 
-type LlmServiceError = LlmError | RateLimitError;
+type LlmServiceError = LlmError;
 
 // ============================================================================
 // Service
@@ -185,13 +189,13 @@ export class LlmService {
 			// Check for rate limiting
 			if (statusCode === 429 || message.toLowerCase().includes("rate limit")) {
 				const retryAfter = this.extractRetryAfter(error);
-				return new RateLimitError({
-					service: this.provider,
+				return new LlmRateLimitError({
+					provider: this.provider,
 					retryAfterMs: retryAfter,
 				});
 			}
 
-			return new LlmError({
+			return new LlmProviderError({
 				provider: this.provider,
 				model: this.model,
 				statusCode,
@@ -199,7 +203,7 @@ export class LlmService {
 			});
 		}
 
-		return new LlmError({
+		return new LlmProviderError({
 			provider: this.provider,
 			model: this.model,
 			message: String(error),

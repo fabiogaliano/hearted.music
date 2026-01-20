@@ -4,7 +4,7 @@ import {
 	SpotifyApiError,
 	SpotifyAuthError,
 	SpotifyRateLimitError,
-} from "@/lib/errors/spotify";
+} from "@/lib/errors/external/spotify";
 import { classifySpotifyError, fetchOnce, fetchWithRetry } from "./request";
 
 describe("classifySpotifyError", () => {

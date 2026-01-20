@@ -16,8 +16,9 @@ import { Result } from "better-result";
 import { z } from "zod";
 import type { LlmService } from "../llm/service";
 import * as playlistAnalysis from "@/lib/data/playlist-analysis";
-import type { DbError } from "@/lib/errors/data";
-import { AnalysisError, type LlmError, type RateLimitError } from "@/lib/errors/service";
+import type { DbError } from "@/lib/errors/database";
+import { AnalysisFailedError } from "@/lib/errors/domain/analysis";
+import { type LlmError } from "@/lib/errors/external/llm";
 import type { PlaylistAnalysis, InsertData as InsertPlaylistAnalysis } from "@/lib/data/playlist-analysis";
 
 // ============================================================================
@@ -191,7 +192,7 @@ export interface AnalyzePlaylistResult {
 	cached: boolean;
 }
 
-type PlaylistAnalysisServiceError = DbError | LlmError | RateLimitError | AnalysisError;
+type PlaylistAnalysisServiceError = DbError | LlmError | AnalysisFailedError;
 
 // ============================================================================
 // Prompt Template
@@ -258,7 +259,7 @@ export class PlaylistAnalysisService {
 		// 4. Validate required fields
 		const output = llmResult.value.output;
 		if (!output.meaning || !output.emotional || !output.context || !output.matching_profile) {
-			return Result.err(new AnalysisError({
+			return Result.err(new AnalysisFailedError({
 				playlistId,
 				reason: "Analysis response is missing required fields",
 			}));

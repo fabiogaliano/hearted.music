@@ -9,7 +9,7 @@
 
 import { Result } from "better-result";
 import type { MaxInt } from "@fostertheweb/spotify-web-sdk";
-import type { SpotifyError } from "@/lib/errors/spotify";
+import type { SpotifyError } from "@/lib/errors/external/spotify";
 import { fetchWithRetry, type RetryOptions } from "./request";
 
 /** Options for paginated fetch */

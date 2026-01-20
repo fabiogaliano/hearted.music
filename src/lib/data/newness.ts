@@ -7,7 +7,7 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
-import type { DbError } from "@/lib/errors/data";
+import type { DbError } from "@/lib/errors/database";
 import { fromSupabaseMany, fromSupabaseSingle } from "@/lib/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
 import type { Enums, Tables, TablesInsert } from "./database.types";

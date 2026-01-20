@@ -4,14 +4,21 @@ import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "url";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 
 const isTest = process.env.VITEST === "true";
 
+// Load env files for tests (Vitest doesn't auto-load non-VITE_ prefixed vars)
+if (isTest) {
+	const env = loadEnv("test", process.cwd(), "");
+	Object.assign(process.env, env);
+}
+
 const config = defineConfig({
 	test: {
 		environment: "jsdom",
+		exclude: ["**/node_modules/**", "**/old_app/**"],
 		server: {
 			deps: {
 				inline: ["tiny-warning"],

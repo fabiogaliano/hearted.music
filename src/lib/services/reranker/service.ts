@@ -17,7 +17,7 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import * as deepinfra from "../deepinfra/service";
-import type { DeepInfraError, RateLimitError } from "@/lib/errors/service";
+import type { DeepInfraError } from "@/lib/errors/external/deepinfra";
 
 // ============================================================================
 // Zod Schemas (single source of truth)
@@ -71,7 +71,7 @@ export const RerankResultSchema = z.object({
 });
 export type RerankResult = z.infer<typeof RerankResultSchema>;
 
-type RerankerServiceError = DeepInfraError | RateLimitError;
+type RerankerServiceError = DeepInfraError;
 
 // ============================================================================
 // Service

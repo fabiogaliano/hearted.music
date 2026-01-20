@@ -20,7 +20,7 @@ import { getSpotifyService } from "@/lib/services/spotify";
 import { mapTrackToSongInsert, mapPlaylistToPlaylistInsert } from "@/lib/services/spotify/mappers";
 import { getAccountById, getAccountBySpotifyId } from "@/lib/data/accounts";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { SpotifyError } from "@/lib/errors/spotify";
+import type { SpotifyError } from "@/lib/errors/external/spotify";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers

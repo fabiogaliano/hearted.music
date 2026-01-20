@@ -8,7 +8,7 @@ import {
 	SpotifyAuthError,
 	type SpotifyError,
 	SpotifyRateLimitError,
-} from "@/lib/errors/spotify";
+} from "@/lib/errors/external/spotify";
 
 /**
  * Wraps a Spotify SDK call and converts errors to typed SpotifyError values.

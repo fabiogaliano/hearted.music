@@ -10,7 +10,7 @@
  */
 
 import { Result } from "better-result";
-import { DatabaseError, type DbError } from "@/lib/errors/data";
+import { DatabaseError, type DbError } from "@/lib/errors/database";
 import { withRetry } from "@/lib/utils/result-wrappers/generic";
 import * as jobs from "@/lib/data/jobs";
 import type { Job, JobProgress } from "@/lib/data/jobs";

@@ -12,7 +12,9 @@
     "lint": "biome lint",
     "check": "biome check",
     "gen:types": "supabase gen types typescript --local > src/lib/data/database.types.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lyrics:snapshot": "bun src/lib/services/lyrics/__tests__/generate-snapshots.ts",
+    "lyrics:validate": "PARSER_VALIDATION=true vitest run lyrics-service.integration"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.15",
@@ -35,6 +37,10 @@
     "better-result": "^2.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "css-select": "^6.0.0",
+    "domhandler": "^5.0.3",
+    "domutils": "^3.2.2",
+    "htmlparser2": "^10.0.0",
     "lucide-react": "^0.561.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -42,6 +48,7 @@
     "tailwindcss": "^4.0.6",
     "tw-animate-css": "^1.3.6",
     "vite-tsconfig-paths": "^6.0.2",
+    "wretch": "^3.0.6",
     "zod": "^4.1.11"
   },
   "devDependencies": {

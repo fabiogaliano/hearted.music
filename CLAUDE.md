@@ -25,4 +25,4 @@ Use these skills proactively when working on this project:
 - **`react-best-practices`** - Component patterns, performance
 - **`web-interface-guidelines`** - UI review, accessibility
 
-See `openspec/project.md` for detailed trigger conditions.
+See `openspec/AGENTS.md` for detailed trigger conditions.

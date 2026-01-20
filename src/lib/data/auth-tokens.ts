@@ -9,8 +9,8 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "./client";
 import type { Tables } from "./database.types";
-import type { DbError } from "@/lib/errors/data";
-import { DatabaseError } from "@/lib/errors/data";
+import type { DbError } from "@/lib/errors/database";
+import { DatabaseError } from "@/lib/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,

@@ -6,7 +6,7 @@
  */
 
 import { Result } from "better-result";
-import type { DbError } from "@/lib/errors/data";
+import type { DbError } from "@/lib/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,

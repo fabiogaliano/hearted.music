@@ -3,7 +3,7 @@
  */
 
 import { Result } from "better-result";
-import { NetworkError } from "@/lib/errors/external";
+import { NetworkError } from "@/lib/errors/external/network";
 
 // ============================================================================
 // Retry Utilities

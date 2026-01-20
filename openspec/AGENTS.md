@@ -454,3 +454,23 @@ openspec archive <change-id> [--yes|-y]  # Mark complete (add --yes for automati
 ```
 
 Remember: Specs are truth. Changes are proposals. Keep them in sync.
+
+## Project-Specific Skills
+
+When working on this project, use these skills proactively:
+
+| Skill | Trigger | Purpose |
+|-------|---------|---------|
+| `tanstack-start-react` | Creating routes, loaders, server functions, search params, SSE | TanStack Start/Router patterns |
+| `react-best-practices` | Writing/reviewing React components | Performance, composition patterns |
+| `web-interface-guidelines` | Reviewing UI code, accessibility audits | Design quality, a11y compliance |
+
+**Invocation:**
+- Explicit: `/tanstack-start-react` or "use the tanstack skill"
+- Proactive: Use automatically when task matches trigger conditions
+
+**Trigger Examples:**
+- New route file → `tanstack-start-react`
+- UI components → `react-best-practices` + `web-interface-guidelines`
+- Data fetching patterns → `tanstack-start-react`
+- Code review → `web-interface-guidelines`
