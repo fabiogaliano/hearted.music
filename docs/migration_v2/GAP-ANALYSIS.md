@@ -11,15 +11,15 @@
 
 The migration from v0 (old_app) to v1 is **~60% complete** for the service layer. Critical business logic for song-to-playlist matching was marked "KEEP" in the original plan but had **no roadmap phase to actually port it**.
 
-| Category | old_app | v1 | Gap |
-|----------|---------|----|----|
-| Infrastructure (auth, sync, jobs) | ✅ | ✅ | None |
-| Analysis (LLM, lyrics) | ✅ | ✅ | None |
-| Embedding (vectors) | ✅ | ✅ | None |
-| **Matching (core algorithm)** | ✅ | ⬜ | **Critical** |
-| **Genre enrichment** | ✅ | ⬜ | **Required** |
-| **Playlist profiling** | ✅ | ⬜ | **Required** |
-| UI | ✅ | 🟡 | In progress |
+| Category                          | old_app | v1  | Gap          |
+| --------------------------------- | ------- | --- | ------------ |
+| Infrastructure (auth, sync, jobs) | ✅       | ✅   | None         |
+| Analysis (LLM, lyrics)            | ✅       | ✅   | None         |
+| Embedding (vectors)               | ✅       | ✅   | None         |
+| **Matching (core algorithm)**     | ✅       | ⬜   | **Critical** |
+| **Genre enrichment**              | ✅       | ⬜   | **Required** |
+| **Playlist profiling**            | ✅       | ⬜   | **Required** |
+| UI                                | ✅       | 🟡   | In progress  |
 
 ---
 
@@ -31,31 +31,31 @@ The migration from v0 (old_app) to v1 is **~60% complete** for the service layer
 
 #### Phase 4e: Core Matching (~3,100 lines)
 
-| File | Lines | Purpose | Priority |
-|------|-------|---------|----------|
-| `matching/MatchingService.ts` | 1493 | Multi-factor matching algorithm | 🔴 Critical |
-| `matching/MatchCachingService.ts` | 534 | Cache-first orchestration | 🔴 Critical |
-| `matching/matching-config.ts` | 85 | Algorithm weights | 🔴 Critical |
-| `semantic/SemanticMatcher.ts` | 306 | Theme/mood similarity | 🔴 Critical |
-| `vectorization/analysis-extractors.ts` | 354 | Text extraction for embeddings | 🟡 Required |
-| `vectorization/hashing.ts` | 327 | Content hashing | 🟡 Required |
+| File                                   | Lines | Purpose                         | Priority   |
+| -------------------------------------- | ----- | ------------------------------- | ---------- |
+| `matching/MatchingService.ts`          | 1493  | Multi-factor matching algorithm | 🔴 Critical |
+| `matching/MatchCachingService.ts`      | 534   | Cache-first orchestration       | 🔴 Critical |
+| `matching/matching-config.ts`          | 85    | Algorithm weights               | 🔴 Critical |
+| `semantic/SemanticMatcher.ts`          | 306   | Theme/mood similarity           | 🔴 Critical |
+| `vectorization/analysis-extractors.ts` | 354   | Text extraction for embeddings  | 🟡 Required |
+| `vectorization/hashing.ts`             | 327   | Content hashing                 | 🟡 Required |
 
 #### Phase 4f: Genre Enrichment (~1,260 lines)
 
-| File | Lines | Purpose | Priority |
-|------|-------|---------|----------|
-| `lastfm/LastFmService.ts` | 311 | Last.fm API client | 🟡 Required |
-| `lastfm/utils/genre-whitelist.ts` | 469 | 469-genre taxonomy | 🟡 Required |
-| `lastfm/utils/normalize.ts` | 81 | Genre normalization | 🟡 Required |
-| `genre/GenreEnrichmentService.ts` | 477 | Fetch + cache genres | 🟡 Required |
+| File                              | Lines | Purpose              | Priority   |
+| --------------------------------- | ----- | -------------------- | ---------- |
+| `lastfm/LastFmService.ts`         | 311   | Last.fm API client   | 🟡 Required |
+| `lastfm/utils/genre-whitelist.ts` | 469   | 469-genre taxonomy   | 🟡 Required |
+| `lastfm/utils/normalize.ts`       | 81    | Genre normalization  | 🟡 Required |
+| `genre/GenreEnrichmentService.ts` | 477   | Fetch + cache genres | 🟡 Required |
 
 #### Phase 4g: Playlist Profiling (~1,040 lines)
 
-| File | Lines | Purpose | Priority |
-|------|-------|---------|----------|
-| `profiling/PlaylistProfilingService.ts` | 770 | Playlist vector computation | 🟡 Required |
-| `reccobeats/ReccoBeatsService.ts` | 226 | Audio features API | 🟢 Optional |
-| `audio/AudioFeaturesService.ts` | 45 | Audio utilities | 🟢 Optional |
+| File                                    | Lines | Purpose                     | Priority   |
+| --------------------------------------- | ----- | --------------------------- | ---------- |
+| `profiling/PlaylistProfilingService.ts` | 770   | Playlist vector computation | 🟡 Required |
+| `reccobeats/ReccoBeatsService.ts`       | 226   | Audio features API          | 🟢 Optional |
+| `audio/AudioFeaturesService.ts`         | 45    | Audio utilities             | 🟢 Optional |
 
 ---
 
@@ -63,25 +63,26 @@ The migration from v0 (old_app) to v1 is **~60% complete** for the service layer
 
 ### ✅ Services Ported
 
-| Service | Location | Status |
-|---------|----------|--------|
-| SpotifyService | `spotify/service.ts` | ✅ Complete |
-| LlmService | `llm/service.ts` | ✅ Complete |
-| LyricsService | `lyrics/service.ts` | ✅ Complete |
-| SongAnalysisService | `analysis/song-analysis.ts` | ✅ Complete |
+| Service                 | Location                        | Status     |
+| ----------------------- | ------------------------------- | ---------- |
+| SpotifyService          | `spotify/service.ts`            | ✅ Complete |
+| LlmService              | `llm/service.ts`                | ✅ Complete |
+| LyricsService           | `lyrics/service.ts`             | ✅ Complete |
+| SongAnalysisService     | `analysis/song-analysis.ts`     | ✅ Complete |
 | PlaylistAnalysisService | `analysis/playlist-analysis.ts` | ✅ Complete |
-| AnalysisPipeline | `analysis/pipeline.ts` | ✅ Complete |
-| DeepInfraService | `deepinfra/service.ts` | ✅ Complete |
-| EmbeddingService | `embedding/service.ts` | ✅ Complete |
-| RerankerService | `reranker/service.ts` | ✅ Complete |
-| SyncOrchestrator | `sync/orchestrator.ts` | ✅ Complete |
-| PlaylistSyncService | `sync/playlist-sync.ts` | ✅ Complete |
-| JobLifecycleService | `job-lifecycle.ts` | ✅ Complete |
+| AnalysisPipeline        | `analysis/pipeline.ts`          | ✅ Complete |
+| DeepInfraService        | `deepinfra/service.ts`          | ✅ Complete |
+| EmbeddingService        | `embedding/service.ts`          | ✅ Complete |
+| RerankerService         | `reranker/service.ts`           | ✅ Complete |
+| SyncOrchestrator        | `sync/orchestrator.ts`          | ✅ Complete |
+| PlaylistSyncService     | `sync/playlist-sync.ts`         | ✅ Complete |
+| JobLifecycleService     | `job-lifecycle.ts`              | ✅ Complete |
 
 ### ✅ Data Layer Complete
 
-All 11 query modules implemented:
-- `songs.ts`, `liked-song.ts`, `playlists.ts`, `analysis.ts`
+All 13 query modules implemented (plus `client.ts` for Supabase clients):
+- `song.ts`, `liked-song.ts`, `playlists.ts`
+- `song-analysis.ts`, `playlist-analysis.ts`, `song-audio-feature.ts`
 - `vectors.ts`, `matching.ts`, `jobs.ts`, `accounts.ts`
 - `newness.ts`, `preferences.ts`, `auth-tokens.ts`
 
@@ -128,12 +129,12 @@ Phase 7: UI ──────────────────────�
 
 ## Effort Estimate
 
-| Phase | Lines | Complexity | Estimate |
-|-------|-------|------------|----------|
-| 4e Matching | ~3,100 | High (algorithm) | 2-3 days |
-| 4f Genre | ~1,260 | Medium (API) | 1 day |
-| 4g Profiling | ~1,040 | Medium (aggregation) | 1 day |
-| **Total** | **~5,400** | | **4-5 days** |
+| Phase        | Lines      | Complexity           | Estimate     |
+| ------------ | ---------- | -------------------- | ------------ |
+| 4e Matching  | ~3,100     | High (algorithm)     | 2-3 days     |
+| 4f Genre     | ~1,260     | Medium (API)         | 1 day        |
+| 4g Profiling | ~1,040     | Medium (aggregation) | 1 day        |
+| **Total**    | **~5,400** |                      | **4-5 days** |
 
 **Note**: Much of this is port work, not new development. The algorithms are battle-tested in old_app.
 
@@ -168,13 +169,13 @@ Phase 7: UI ──────────────────────�
 
 ## Documentation Updated
 
-| File | Change |
-|------|--------|
-| `docs/migration_v2/ROADMAP.md` | Added Phases 4e, 4f, 4g with tasks |
-| `docs/migration_v2/02-SERVICES.md` | Clarified PORT vs PORTED status |
-| `openspec/specs/migration-v2/spec.md` | Updated phase table with status |
-| `openspec/specs/matching-pipeline/spec.md` | NEW - Full matching spec |
-| `docs/migration_v2/GAP-ANALYSIS.md` | NEW - This document |
+| File                                       | Change                             |
+| ------------------------------------------ | ---------------------------------- |
+| `docs/migration_v2/ROADMAP.md`             | Added Phases 4e, 4f, 4g with tasks |
+| `docs/migration_v2/02-SERVICES.md`         | Clarified PORT vs PORTED status    |
+| `openspec/specs/migration-v2/spec.md`      | Updated phase table with status    |
+| `openspec/specs/matching-pipeline/spec.md` | NEW - Full matching spec           |
+| `docs/migration_v2/GAP-ANALYSIS.md`        | NEW - This document                |
 
 ---
 

@@ -110,19 +110,25 @@ The system SHALL compute aggregate profiles for destination playlists.
 
 ### Requirement: Genre Enrichment
 
-The system SHALL enrich songs with genre metadata from Last.fm.
+The system SHALL enrich songs with top 3 ranked genres from Last.fm.
 
 #### Scenario: Genre fetching
 - **WHEN** song lacks genres
 - **THEN** fetch top tags for song's artist from Last.fm API
 
+#### Scenario: Top 3 selection
+- **WHEN** raw tags are received from Last.fm
+- **THEN** select top 3 tags by count after normalization
+- **AND** preserve order: index 0 = primary, index 1 = secondary, index 2 = tertiary
+
 #### Scenario: Genre normalization
 - **WHEN** raw tags are received from Last.fm
 - **THEN** normalize against 469-genre canonical whitelist
+- **AND** skip tags that don't match the whitelist
 
 #### Scenario: Genre persistence
 - **WHEN** genres are normalized
-- **THEN** store on `song.genres` column (TEXT[])
+- **THEN** store ordered array on `song.genres` column (TEXT[], max 3 elements)
 
 #### Scenario: Rate limiting
 - **WHEN** fetching from Last.fm

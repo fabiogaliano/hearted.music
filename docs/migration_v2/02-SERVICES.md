@@ -16,7 +16,7 @@
 | ProviderKeyService | 1 file    | 0   | DELETE (#016)                             |
 | Analysis pipeline  | 4 files   | 1   | MERGE → `pipeline.ts` (#033)              |
 | PlaylistService    | 1 file    | 2   | SPLIT (DB → query, sync → service) (#032) |
-| Query modules      | 0 files   | 9   | NEW (domain-organized) (#030)             |
+| Query modules      | 0 files   | 13  | NEW (domain-organized) (#030)             |
 | SyncService        | 1 file    | 1   | RENAME → `SyncOrchestrator`               |
 | Core services      | ~30 files | ~25 | KEEP (minor simplification)               |
 
@@ -44,12 +44,12 @@
 
 ### Thin Wrappers (4)
 
-| File                           | Replacement          | Reason                 |
-| ------------------------------ | -------------------- | ---------------------- |
-| `TrackService.ts`              | → `data/songs.ts`    | Thin DB wrapper (#032) |
-| `UserService.ts`               | → `data/accounts.ts` | Thin DB wrapper        |
-| `vectorization/VectorCache.ts` | —                    | In-memory → DB-backed  |
-| `llm/ProviderKeyService.ts`    | —                    | Table dropped (#016)   |
+| File                           | Replacement                             | Reason                 |
+| ------------------------------ | --------------------------------------- | ---------------------- |
+| `TrackService.ts`              | → `data/song.ts` + `data/liked-song.ts` | Thin DB wrapper (#032) |
+| `UserService.ts`               | → `data/accounts.ts`                    | Thin DB wrapper        |
+| `vectorization/VectorCache.ts` | —                                       | In-memory → DB-backed  |
+| `llm/ProviderKeyService.ts`    | —                                       | Table dropped (#016)   |
 
 ### Python Service (entire folder) — #056
 
@@ -96,167 +96,182 @@
 
 ---
 
-## Query Modules (9 new files)
+## Query Modules (data layer)
 
 > Location: `data/`
+> All query modules return `Result<T, DbError>` (no throwing).
+> Supporting module: `client.ts` (Supabase public/admin clients)
 
-### 1. `songs.ts`
+### 1. `song.ts`
 
 From: `TrackService`, `trackRepository`
 
 ```ts
-// Core queries
-export function getSongById(id: string)
-export function getSongBySpotifyId(spotifyId: string)
-export function getSongsBySpotifyIds(spotifyIds: string[])
-export function upsertSongs(songs: SongInsert[])
-
-// Liked songs
-export function getLikedSongs(accountId: string)
-export function getLikedSongsWithAnalysis(accountId: string)
-export function upsertLikedSongs(likedSongs: LikedSongInsert[])
-export function softDeleteLikedSong(accountId: string, songId: string)
-
-// Filtering
-export function getUnmatchedLikedSongs(accountId: string)  // status IS NULL
-export function updateLikedSongStatus(accountId: string, songId: string, status: 'matched' | 'ignored')
+export function getById(id: string)
+export function getBySpotifyId(spotifyId: string)
+export function getBySpotifyIds(spotifyIds: string[])
+export function getByIds(ids: string[])
+export function upsert(data: UpsertData[])
 ```
 
-### 2. `playlists.ts`
+### 2. `liked-song.ts`
+
+From: `TrackService`, `trackRepository`
+
+```ts
+export function getAll(accountId: string)
+export function getPending(accountId: string)
+export function upsert(accountId: string, data: UpsertData[])
+export function softDelete(accountId: string, songId: string)
+export function updateStatus(accountId: string, songId: string, actionType: ActionType)
+```
+
+### 3. `playlists.ts`
 
 From: `PlaylistService` (DB ops), `playlistRepository`
 
 ```ts
-// Playlists
 export function getPlaylists(accountId: string)
 export function getPlaylistById(id: string)
-export function getDestinationPlaylists(accountId: string)  // is_destination = true
-export function upsertPlaylists(playlists: PlaylistInsert[])
+export function getPlaylistBySpotifyId(accountId: string, spotifyId: string)
+export function getDestinationPlaylists(accountId: string)
+export function upsertPlaylists(accountId: string, playlists: UpsertPlaylistData[])
 export function deletePlaylist(id: string)
+export function setPlaylistDestination(id: string, isDestination: boolean)
 
-// Playlist songs
 export function getPlaylistSongs(playlistId: string)
-export function getPlaylistSongsWithDetails(playlistId: string)
-export function upsertPlaylistSongs(playlistSongs: PlaylistSongInsert[])
+export function upsertPlaylistSongs(playlistId: string, songs: UpsertPlaylistSongData[])
 export function removePlaylistSongs(playlistId: string, songIds: string[])
 ```
 
-### 3. `analysis.ts`
+### 4. `song-analysis.ts`
 
-From: `trackAnalysisRepository`, `playlistAnalysisRepository`
+From: `trackAnalysisRepository`
 
 ```ts
-// Song analysis
-export function getSongAnalysis(songIds: string | string[])
-export function insertSongAnalysis(analysis: SongAnalysisInsert)
-
-// Playlist analysis
-export function getPlaylistAnalysis(playlistId: string)
-export function insertPlaylistAnalysis(analysis: PlaylistAnalysisInsert)
-
-// Audio features
-export function getSongAudioFeatures(songId: string)
-export function upsertSongAudioFeatures(features: SongAudioFeatureInsert[])
+export function get(songId: string | string[])
+export function insert(data: InsertData)
 ```
 
-### 4. `vectors.ts`
+### 5. `playlist-analysis.ts`
+
+From: `playlistAnalysisRepository`
+
+```ts
+export function get(playlistId: string)
+export function insert(data: InsertData)
+```
+
+### 6. `song-audio-feature.ts`
+
+From: `trackAnalysisRepository`
+
+```ts
+export function get(songId: string)
+export function getBatch(songIds: string[])
+export function upsert(features: UpsertData[])
+```
+
+### 7. `vectors.ts`
 
 From: `EmbeddingService` (DB ops), `embeddingRepository`
 
 ```ts
-// Song embeddings
-export function getSongEmbedding(songId: string, kind: string, model: string)
-export function upsertSongEmbedding(embedding: SongEmbeddingInsert)
-export function getSongEmbeddingsByContentHash(songId: string, kind: string, contentHash: string)
+export function getSongEmbedding(songId: string, model: string, kind: SongEmbedding["kind"])
+export function getSongEmbeddings(songId: string)
+export function getSongEmbeddingsBatch(songIds: string[], model: string, kind: SongEmbedding["kind"])
+export function upsertSongEmbedding(data: UpsertSongEmbedding)
+export function upsertSongEmbeddings(embeddings: UpsertSongEmbedding[])
 
-// Playlist profiles
-export function getPlaylistProfile(playlistId: string, kind: string)
-export function upsertPlaylistProfile(profile: PlaylistProfileInsert)
-export function getPlaylistProfilesByModelBundle(playlistId: string, modelBundleHash: string)
+export function getPlaylistProfile(playlistId: string)
+export function getPlaylistProfilesBatch(playlistIds: string[])
+export function upsertPlaylistProfile(data: UpsertPlaylistProfile)
 ```
 
-### 5. `matching.ts`
+### 8. `matching.ts`
 
 From: `matchContextRepository`, `matchResultRepository`
 
 ```ts
-// Match context
-export function getMatchContext(contextHash: string)
-export function createMatchContext(context: MatchContextInsert)
-export function getMatchContextsForAccount(accountId: string)
+export function getMatchContext(contextId: string)
+export function getLatestMatchContext(accountId: string)
+export function getMatchContexts(accountId: string)
+export function createMatchContext(data: InsertMatchContext)
 
-// Match results
 export function getMatchResults(contextId: string)
 export function getMatchResultsForSong(contextId: string, songId: string)
-export function insertMatchResults(results: MatchResultInsert[])
+export function getMatchResultsForSongs(contextId: string, songIds: string[])
+export function insertMatchResults(results: InsertMatchResult[])
 export function getTopMatchesPerPlaylist(contextId: string, limit: number)
+export function getBestMatchPerSong(contextId: string)
 ```
 
-### 6. `jobs.ts`
+### 9. `jobs.ts`
 
 From: `JobPersistenceService`, `analysisJobRepository`
 
 ```ts
-// Jobs
-export function getActiveJob(accountId: string)
 export function getJobById(id: string)
-export function createJob(job: JobInsert)
+export function getActiveJob(accountId: string, type: JobType)
+export function getLatestJob(accountId: string, type: JobType)
+export function getJobs(accountId: string, type?: JobType)
+export function createJob(accountId: string, type: JobType)
 export function updateJobProgress(id: string, progress: JobProgress)
+export function markJobRunning(id: string)
 export function markJobCompleted(id: string)
-export function markJobFailed(id: string)
-
-// Job failures
-export function getJobFailures(jobId: string)
-export function insertJobFailure(failure: JobFailureInsert)
+export function markJobFailed(id: string, error?: string)
 ```
 
-### 7. `accounts.ts`
+### 10. `accounts.ts`
 
 From: `UserService`, `userRepository`
 
 ```ts
 export function getAccountById(id: string)
 export function getAccountBySpotifyId(spotifyId: string)
-export function upsertAccount(account: AccountInsert)
+export function upsertAccount(data: UpsertAccountData)
 // Note: theme + onboarding live in preferences.ts (#044)
 ```
 
-### 8. `newness.ts`
+### 11. `newness.ts`
 
 From: NEW (`item_status` table)
 
 ```ts
-// Counts for UI badges
-export function getNewCounts(accountId: string): Promise<{ songs: number; matches: number; playlists: number }>
-export function getNewItemIds(accountId: string, itemType: ItemType): Promise<string[]>
-
-// Creating newness (called by sync/analysis services)
-export function markItemsNew(accountId: string, itemType: ItemType, itemIds: string[]): Promise<void>
-
-// Clearing newness
-export function markSeen(accountId: string, itemType: ItemType, itemIds: string[]): Promise<void>
-export function markAllSeen(accountId: string, itemType: ItemType): Promise<void>
+export function getNewCounts(accountId: string)
+export function getNewItemIds(accountId: string, itemType: ItemType)
+export function getItemStatuses(accountId: string, itemType?: ItemType)
+export function markItemsNew(accountId: string, itemType: ItemType, itemIds: string[])
+export function markSeen(accountId: string, itemType: ItemType, itemIds: string[])
+export function markAllSeen(accountId: string, itemType: ItemType)
+export function recordAction(accountId: string, itemId: string, itemType: ItemType, actionType: ActionType)
+export function clearAction(accountId: string, itemId: string, itemType: ItemType)
 ```
 
-### 9. `preferences.ts`
+### 12. `preferences.ts`
 
 From: NEW (`user_preferences` table)
 
 ```ts
-// Get preferences (auto-creates on first access)
-export function getPreferences(accountId: string): Promise<UserPreferences>
+export function getPreferences(accountId: string)
+export function getOrCreatePreferences(accountId: string)
+export function updateTheme(accountId: string, theme: ThemeColor)
+export function getOnboardingStep(accountId: string)
+export function isOnboardingComplete(accountId: string)
+export function updateOnboardingStep(accountId: string, step: OnboardingStep)
+export function completeOnboarding(accountId: string)
+export function resetOnboarding(accountId: string)
+```
 
-// Theme (color palette)
-export function updateTheme(accountId: string, theme: ThemeColor): Promise<void>
+### 13. `auth-tokens.ts`
 
-// Onboarding
-export function getOnboardingStep(accountId: string): Promise<OnboardingStep>
-export function updateOnboardingStep(accountId: string, step: OnboardingStep): Promise<void>
-export function completeOnboarding(accountId: string): Promise<void>  // Sets step to 'complete'
+From: NEW (`auth_token` table)
 
-// Types
-type ThemeColor = 'blue' | 'green' | 'rose' | 'lavender'
-type OnboardingStep = 'welcome' | 'pick-color' | 'connecting' | 'syncing' | 'flag-playlists' | 'ready' | 'complete'
+```ts
+export function getTokenByAccountId(accountId: string)
+export function upsertToken(accountId: string, tokens: UpsertTokenData)
+export function deleteToken(accountId: string)
+export function isTokenExpired(token: AuthToken)
 ```
 
 ---
@@ -267,30 +282,30 @@ type OnboardingStep = 'welcome' | 'pick-color' | 'connecting' | 'syncing' | 'fla
 
 ### Core Matching Algorithm (Phase 4e) — ⬜ NOT PORTED
 
-| Service                           | Lines | Purpose                                        | Status |
-| --------------------------------- | ----- | ---------------------------------------------- | ------ |
-| `matching/MatchingService.ts`     | 1493  | Core matching algorithm                        | ⬜     |
-| `matching/MatchCachingService.ts` | 534   | Cache-first orchestration                      | ⬜     |
-| `matching/matching-config.ts`     | 85    | Algorithm weights & thresholds                 | ⬜     |
-| `semantic/SemanticMatcher.ts`     | 306   | Theme/mood similarity                          | ⬜     |
-| `vectorization/analysis-extractors.ts` | 354 | Text extraction for embeddings              | ⬜     |
-| `vectorization/hashing.ts`        | 327   | Content hashing for cache                      | ⬜     |
+| Service                                | Lines | Purpose                        | Status |
+| -------------------------------------- | ----- | ------------------------------ | ------ |
+| `matching/MatchingService.ts`          | 1493  | Core matching algorithm        | ⬜      |
+| `matching/MatchCachingService.ts`      | 534   | Cache-first orchestration      | ⬜      |
+| `matching/matching-config.ts`          | 85    | Algorithm weights & thresholds | ⬜      |
+| `semantic/SemanticMatcher.ts`          | 306   | Theme/mood similarity          | ⬜      |
+| `vectorization/analysis-extractors.ts` | 354   | Text extraction for embeddings | ⬜      |
+| `vectorization/hashing.ts`             | 327   | Content hashing for cache      | ⬜      |
 
 ### Genre Enrichment (Phase 4f) — ⬜ NOT PORTED
 
-| Service                           | Lines | Purpose                   | Status |
-| --------------------------------- | ----- | ------------------------- | ------ |
-| `lastfm/LastFmService.ts`         | 311   | Last.fm API               | ⬜     |
-| `lastfm/utils/genre-whitelist.ts` | 469   | Genre taxonomy            | ⬜     |
-| `genre/GenreEnrichmentService.ts` | 477   | Genre fetching + caching  | ⬜     |
+| Service                           | Lines | Purpose                  | Status |
+| --------------------------------- | ----- | ------------------------ | ------ |
+| `lastfm/LastFmService.ts`         | 311   | Last.fm API              | ⬜      |
+| `lastfm/utils/genre-whitelist.ts` | 469   | Genre taxonomy           | ⬜      |
+| `genre/GenreEnrichmentService.ts` | 477   | Genre fetching + caching | ⬜      |
 
 ### Playlist Profiling (Phase 4g) — ⬜ NOT PORTED
 
-| Service                             | Lines | Purpose                      | Status |
-| ----------------------------------- | ----- | ---------------------------- | ------ |
-| `profiling/PlaylistProfilingService.ts` | 770 | Playlist vector computation | ⬜     |
-| `reccobeats/ReccoBeatsService.ts`   | 226   | ReccoBeats API               | ⬜     |
-| `audio/AudioFeaturesService.ts`     | 45    | Audio feature utilities      | ⬜     |
+| Service                                 | Lines | Purpose                     | Status |
+| --------------------------------------- | ----- | --------------------------- | ------ |
+| `profiling/PlaylistProfilingService.ts` | 770   | Playlist vector computation | ⬜      |
+| `reccobeats/ReccoBeatsService.ts`       | 226   | ReccoBeats API              | ⬜      |
+| `audio/AudioFeaturesService.ts`         | 45    | Audio feature utilities     | ⬜      |
 
 ---
 
@@ -298,36 +313,36 @@ type OnboardingStep = 'welcome' | 'pick-color' | 'connecting' | 'syncing' | 'fla
 
 ### Analysis (v1: `services/analysis/`)
 
-| Service                         | v1 Location                   | Status |
-| ------------------------------- | ----------------------------- | ------ |
-| `SongAnalysisService.ts`        | `analysis/song-analysis.ts`   | ✅     |
-| `PlaylistAnalysisService.ts`    | `analysis/playlist-analysis.ts` | ✅   |
-| Analysis pipeline (merged)      | `analysis/pipeline.ts`        | ✅     |
+| Service                      | v1 Location                     | Status |
+| ---------------------------- | ------------------------------- | ------ |
+| `SongAnalysisService.ts`     | `analysis/song-analysis.ts`     | ✅      |
+| `PlaylistAnalysisService.ts` | `analysis/playlist-analysis.ts` | ✅      |
+| Analysis pipeline (merged)   | `analysis/pipeline.ts`          | ✅      |
 
 ### API Clients (v1: `services/`)
 
-| Service                     | v1 Location           | Status |
-| --------------------------- | --------------------- | ------ |
-| `SpotifyService.ts`         | `spotify/service.ts`  | ✅     |
-| `lyrics/LyricsService.ts`   | `lyrics/service.ts`   | ✅     |
-| `RerankerService.ts`        | `reranker/service.ts` | ✅     |
+| Service                   | v1 Location           | Status |
+| ------------------------- | --------------------- | ------ |
+| `SpotifyService.ts`       | `spotify/service.ts`  | ✅      |
+| `lyrics/LyricsService.ts` | `lyrics/service.ts`   | ✅      |
+| `RerankerService.ts`      | `reranker/service.ts` | ✅      |
 
 ### New Services (v1 only)
 
-| Service              | v1 Location             | Purpose                    | Status |
-| -------------------- | ----------------------- | -------------------------- | ------ |
-| DeepInfraService     | `deepinfra/service.ts`  | Embeddings + reranking API | ✅     |
-| EmbeddingService     | `embedding/service.ts`  | Song embedding with cache  | ✅     |
-| LlmService           | `llm/service.ts`        | AI SDK multi-provider      | ✅     |
-| SyncOrchestrator     | `sync/orchestrator.ts`  | Full sync coordination     | ✅     |
-| PlaylistSyncService  | `sync/playlist-sync.ts` | Playlist Spotify sync      | ✅     |
-| JobLifecycleService  | `job-lifecycle.ts`      | Job state transitions      | ✅     |
+| Service             | v1 Location             | Purpose                    | Status |
+| ------------------- | ----------------------- | -------------------------- | ------ |
+| DeepInfraService    | `deepinfra/service.ts`  | Embeddings + reranking API | ✅      |
+| EmbeddingService    | `embedding/service.ts`  | Song embedding with cache  | ✅      |
+| LlmService          | `llm/service.ts`        | AI SDK multi-provider      | ✅      |
+| SyncOrchestrator    | `sync/orchestrator.ts`  | Full sync coordination     | ✅      |
+| PlaylistSyncService | `sync/playlist-sync.ts` | Playlist Spotify sync      | ✅      |
+| JobLifecycleService | `job-lifecycle.ts`      | Job state transitions      | ✅      |
 
 ### LLM (v2 - AI SDK)
 
-| Service                | Purpose                                     |
-| ---------------------- | ------------------------------------------- |
-| `llm/service.ts`       | AI SDK wrapper (Google/Anthropic/OpenAI)    |
+| Service          | Purpose                                  |
+| ---------------- | ---------------------------------------- |
+| `llm/service.ts` | AI SDK wrapper (Google/Anthropic/OpenAI) |
 
 **v2 Implementation Notes:**
 - Uses `ai` package with `@ai-sdk/google`, `@ai-sdk/anthropic`, `@ai-sdk/openai`
@@ -336,11 +351,11 @@ type OnboardingStep = 'welcome' | 'pick-color' | 'connecting' | 'syncing' | 'fla
 
 ### Analysis (v2 - with Zod schemas)
 
-| Service                             | v2 Change                                          |
-| ----------------------------------- | -------------------------------------------------- |
-| `analysis/song-analysis.ts`         | NEW - LLM analysis with Zod structured output      |
-| `analysis/playlist-analysis.ts`     | NEW - LLM analysis with Zod structured output      |
-| `analysis/pipeline.ts`              | NEW - Batch orchestrator with job tracking         |
+| Service                         | v2 Change                                     |
+| ------------------------------- | --------------------------------------------- |
+| `analysis/song-analysis.ts`     | NEW - LLM analysis with Zod structured output |
+| `analysis/playlist-analysis.ts` | NEW - LLM analysis with Zod structured output |
+| `analysis/pipeline.ts`          | NEW - Batch orchestrator with job tracking    |
 
 **v2 Implementation Notes:**
 - All analysis services use `LlmService.generateObject()` with Zod schemas
@@ -391,18 +406,25 @@ export class PlaylistSyncService {
 Replaces `JobSubscriptionManager.ts`. Server-Sent Events for job progress.
 
 ```ts
-// routes/api/jobs/$id/progress.tsx
-import { createAPIFileRoute } from '@tanstack/start/api'
+// routes/api.jobs.$id.progress.tsx
+import { createAPIFileRoute } from "@tanstack/start/api"
+import { Result } from "better-result"
+import { requireSession } from "@/lib/auth/session"
+import * as jobs from "@/lib/data/jobs"
 
-export const Route = createAPIFileRoute('/api/jobs/$id/progress')({
+export const Route = createAPIFileRoute("/api/jobs/$id/progress")({
   GET: async ({ request, params }) => {
-    const session = await requireUserSession(request)
+    const session = requireSession(request)
     const jobId = params.id
 
     // Verify user owns this job
-    const job = await jobsRepository.getById(jobId)
-    if (!job || job.account_id !== session.userId) {
-      return new Response('Not Found', { status: 404 })
+    const jobResult = await jobs.getJobById(jobId)
+    if (
+      Result.isError(jobResult) ||
+      !jobResult.value ||
+      jobResult.value.account_id !== session.accountId
+    ) {
+      return new Response("Not Found", { status: 404 })
     }
 
     // Create SSE stream
@@ -410,13 +432,15 @@ export const Route = createAPIFileRoute('/api/jobs/$id/progress')({
       start(controller) {
         const encoder = new TextEncoder()
 
-        // Subscribe to job progress updates
-        const unsubscribe = jobEventEmitter.subscribe(jobId, (progress) => {
-          const data = `data: ${JSON.stringify(progress)}\n\n`
+        // Subscribe to job events (progress/status/item/error)
+        const unsubscribe = jobEventEmitter.subscribe(jobId, (event) => {
+          const data = `data: ${JSON.stringify(event)}\n\n`
           controller.enqueue(encoder.encode(data))
 
-          // Close stream when job completes
-          if (progress.status === 'completed' || progress.status === 'failed') {
+          if (
+            event.type === "status" &&
+            (event.status === "completed" || event.status === "failed")
+          ) {
             controller.close()
           }
         })
@@ -429,7 +453,7 @@ export const Route = createAPIFileRoute('/api/jobs/$id/progress')({
 
         // Keep-alive ping
         const ping = setInterval(() => {
-          controller.enqueue(encoder.encode(': ping\n\n'))
+          controller.enqueue(encoder.encode(": ping\n\n"))
         }, 30000)
 
         request.signal.addEventListener('abort', () => clearInterval(ping))
@@ -438,14 +462,20 @@ export const Route = createAPIFileRoute('/api/jobs/$id/progress')({
 
     return new Response(stream, {
       headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
       }
     })
   }
 })
 ```
+
+**Event payloads:**
+- `type: "progress"` → `done`, `total`, `succeeded`, `failed`
+- `type: "status"` → `status` (`pending` | `running` | `completed` | `failed`)
+- `type: "item"` → `itemId`, `itemKind`, `status`, optional `label`/`index`
+- `type: "error"` → `message`
 
 ### `deepinfra/service.ts` (Implemented)
 
@@ -495,9 +525,12 @@ export function isAvailable(): Promise<boolean>
 src/lib/
 ├── data/                         # Server-side DB access (Result-based)
 │   ├── client.ts                 # Supabase admin client
-│   ├── songs.ts                  # Songs + liked songs
+│   ├── song.ts                   # Songs
+│   ├── liked-song.ts             # Liked songs + item status
 │   ├── playlists.ts              # Playlists + playlist songs
-│   ├── analysis.ts               # Song/playlist LLM analysis + audio features
+│   ├── song-analysis.ts          # Song LLM analysis
+│   ├── playlist-analysis.ts      # Playlist LLM analysis
+│   ├── song-audio-feature.ts     # Audio feature storage
 │   ├── vectors.ts                # Song embeddings + playlist profiles
 │   ├── matching.ts               # Match context + results
 │   ├── jobs.ts                   # Job lifecycle management

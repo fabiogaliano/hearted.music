@@ -589,65 +589,73 @@ supabase db lint   # Check for issues
 
 ### Tasks
 
-Create 8 query modules in `app/lib/data/`:
+Create data layer modules in `src/lib/data/`:
 
 - [x] `client.ts` — Supabase client setup
   ```typescript
-  // Service role client for backend operations (deny-all RLS)
-  export function getServiceClient() { ... }
+  // Public + service role clients for backend operations
+  export function createPublicSupabaseClient() { ... }
+  export function createAdminSupabaseClient() { ... }
   ```
 
-- [x] `songs.ts` — From `TrackService`, `trackRepository`
-  - [x] `getSongById(id: string)`
-  - [x] `getSongBySpotifyId(spotifyId: string)`
-  - [x] `getSongsBySpotifyIds(spotifyIds: string[])`
-  - [x] `upsertSongs(songs: SongInsert[])`
-  - [x] `getLikedSongs(accountId: string)`
-  - [x] `upsertLikedSongs(likedSongs: LikedSongInsert[])`
-  - [ ] `softDeleteLikedSong(accountId: string, songId: string)` — deferred
-  - [ ] `getUnmatchedLikedSongs(accountId: string)` — deferred
-  - [ ] `updateLikedSongStatus(accountId: string, songId: string, status)` — deferred
+- [x] `song.ts` — From `TrackService`, `trackRepository`
+  - [x] `getById(id: string)`
+  - [x] `getBySpotifyId(spotifyId: string)`
+  - [x] `getBySpotifyIds(spotifyIds: string[])`
+  - [x] `getByIds(ids: string[])`
+  - [x] `upsert(data: UpsertData[])`
+
+- [x] `liked-song.ts` — From `TrackService`, `trackRepository`
+  - [x] `getAll(accountId: string)`
+  - [x] `getPending(accountId: string)`
+  - [x] `upsert(accountId: string, data: UpsertData[])`
+  - [x] `softDelete(accountId: string, songId: string)`
+  - [x] `updateStatus(accountId: string, songId: string, actionType: ActionType)`
 
 - [x] `playlists.ts` — From `PlaylistService` (DB ops only)
   - [x] `getPlaylists(accountId: string)`
   - [x] `getPlaylistById(id: string)`
   - [x] `getPlaylistBySpotifyId(accountId: string, spotifyId: string)`
   - [x] `getDestinationPlaylists(accountId: string)`
-  - [x] `upsertPlaylists(playlists: PlaylistInsert[])`
+  - [x] `upsertPlaylists(accountId: string, playlists: UpsertPlaylistData[])`
   - [x] `deletePlaylist(id: string)`
   - [x] `setPlaylistDestination(id: string, isDestination: boolean)`
   - [x] `getPlaylistSongs(playlistId: string)`
-  - [x] `upsertPlaylistSongs(playlistSongs: PlaylistSongInsert[])`
+  - [x] `upsertPlaylistSongs(playlistId: string, songs: UpsertPlaylistSongData[])`
   - [x] `removePlaylistSongs(playlistId: string, songIds: string[])`
 
-- [x] `analysis.ts` — From `trackAnalysisRepository`, `playlistAnalysisRepository`
-  - [x] `getSongAnalysis(songIds: string | string[])`
-  - [x] `insertSongAnalysis(analysis: SongAnalysisInsert)`
-  - [x] `getPlaylistAnalysis(playlistId: string)`
-  - [x] `insertPlaylistAnalysis(analysis: PlaylistAnalysisInsert)`
-  - [x] `getSongAudioFeatures(songId: string)`
-  - [x] `getSongAudioFeaturesBatch(songIds: string[])`
-  - [x] `upsertSongAudioFeatures(features: SongAudioFeatureInsert[])`
+- [x] `song-analysis.ts` — From `trackAnalysisRepository`
+  - [x] `get(songId: string | string[])`
+  - [x] `insert(data: InsertData)`
+
+- [x] `playlist-analysis.ts` — From `playlistAnalysisRepository`
+  - [x] `get(playlistId: string)`
+  - [x] `insert(data: InsertData)`
+
+- [x] `song-audio-feature.ts` — From `trackAnalysisRepository`
+  - [x] `get(songId: string)`
+  - [x] `getBatch(songIds: string[])`
+  - [x] `upsert(features: UpsertData[])`
 
 - [x] `vectors.ts` — From `EmbeddingService` (DB ops), `embeddingRepository`
-  - [x] `getSongEmbedding(songId: string, modelName: string)`
+  - [x] `getSongEmbedding(songId: string, model: string, kind: SongEmbedding["kind"])`
   - [x] `getSongEmbeddings(songId: string)`
-  - [x] `getSongEmbeddingsBatch(songIds: string[], modelName: string)`
-  - [x] `upsertSongEmbedding(embedding: SongEmbeddingInsert)`
-  - [x] `upsertSongEmbeddings(embeddings: SongEmbeddingInsert[])`
+  - [x] `getSongEmbeddingsBatch(songIds: string[], model: string, kind: SongEmbedding["kind"])`
+  - [x] `upsertSongEmbedding(data: UpsertSongEmbedding)`
+  - [x] `upsertSongEmbeddings(embeddings: UpsertSongEmbedding[])`
   - [x] `getPlaylistProfile(playlistId: string)`
   - [x] `getPlaylistProfilesBatch(playlistIds: string[])`
-  - [x] `upsertPlaylistProfile(profile: PlaylistProfileInsert)`
+  - [x] `upsertPlaylistProfile(data: UpsertPlaylistProfile)`
 
 - [x] `matching.ts` — From `matchContextRepository`, `matchResultRepository`
   - [x] `getMatchContext(contextId: string)`
   - [x] `getLatestMatchContext(accountId: string)`
   - [x] `getMatchContexts(accountId: string)`
-  - [x] `createMatchContext(context: MatchContextInsert)`
+  - [x] `createMatchContext(data: InsertMatchContext)`
   - [x] `getMatchResults(contextId: string)`
   - [x] `getMatchResultsForSong(contextId: string, songId: string)`
   - [x] `getMatchResultsForSongs(contextId: string, songIds: string[])`
-  - [x] `insertMatchResults(results: MatchResultInsert[])`
+  - [x] `insertMatchResults(results: InsertMatchResult[])`
   - [x] `getTopMatchesPerPlaylist(contextId: string, limit: number)`
   - [x] `getBestMatchPerSong(contextId: string)`
 
@@ -661,14 +669,11 @@ Create 8 query modules in `app/lib/data/`:
   - [x] `markJobRunning(id: string)`
   - [x] `markJobCompleted(id: string)`
   - [x] `markJobFailed(id: string, error?: string)`
-  - [ ] `getJobFailures(jobId: string)` — deferred
-  - [ ] `insertJobFailure(failure: JobFailureInsert)` — deferred
 
 - [x] `accounts.ts` — From `UserService`
   - [x] `getAccountById(id: string)`
   - [x] `getAccountBySpotifyId(spotifyId: string)`
-  - [x] `upsertAccount(account: AccountInsert)`
-  - [ ] `updateAccountSetupComplete(id: string, complete: boolean)` — deferred
+  - [x] `upsertAccount(data: UpsertAccountData)`
 
 - [x] `newness.ts` — NEW for `item_status` table
   - [x] `getNewCounts(accountId: string)`
@@ -689,6 +694,12 @@ Create 8 query modules in `app/lib/data/`:
   - [x] `updateOnboardingStep(accountId: string, step: OnboardingStep)`
   - [x] `completeOnboarding(accountId: string)`
   - [x] `resetOnboarding(accountId: string)`
+
+- [x] `auth-tokens.ts` — NEW for `auth_token` table
+  - [x] `getTokenByAccountId(accountId: string)`
+  - [x] `upsertToken(accountId: string, tokens: UpsertTokenData)`
+  - [x] `deleteToken(accountId: string)`
+  - [x] `isTokenExpired(token: AuthToken)`
 
 ### Verification
 
@@ -835,37 +846,45 @@ bun run typecheck  # No import errors
 
 ### Tasks
 
-- [ ] Create SSE endpoint `routes/api/jobs/$id/progress.tsx`
+- [ ] Create SSE endpoint `routes/api.jobs.$id.progress.tsx`
   ```typescript
-  // routes/api/jobs/$id/progress.tsx
-  import { createAPIFileRoute } from '@tanstack/start/api'
+  // routes/api.jobs.$id.progress.tsx
+  import { createAPIFileRoute } from "@tanstack/start/api"
+  import { Result } from "better-result"
+  import { requireSession } from "@/lib/auth/session"
+  import * as jobs from "@/lib/data/jobs"
 
-  export const Route = createAPIFileRoute('/api/jobs/$id/progress')({
+  export const Route = createAPIFileRoute("/api/jobs/$id/progress")({
     GET: async ({ request, params }) => {
-      const session = await requireUserSession(request)
+      const session = requireSession(request)
       const jobId = params.id
 
-      // Verify user owns this job
-      const job = await jobsRepository.getById(jobId)
-      if (!job || job.account_id !== session.userId) {
-        return new Response('Not Found', { status: 404 })
+      const jobResult = await jobs.getJobById(jobId)
+      if (
+        Result.isError(jobResult) ||
+        !jobResult.value ||
+        jobResult.value.account_id !== session.accountId
+      ) {
+        return new Response("Not Found", { status: 404 })
       }
 
-      // Create SSE stream
       const stream = new ReadableStream({
         start(controller) {
           const encoder = new TextEncoder()
 
-          const unsubscribe = jobEventEmitter.subscribe(jobId, (progress) => {
-            const data = `data: ${JSON.stringify(progress)}\n\n`
+          const unsubscribe = jobEventEmitter.subscribe(jobId, (event) => {
+            const data = `data: ${JSON.stringify(event)}\n\n`
             controller.enqueue(encoder.encode(data))
 
-            if (progress.status === 'completed' || progress.status === 'failed') {
+            if (
+              event.type === "status" &&
+              (event.status === "completed" || event.status === "failed")
+            ) {
               controller.close()
             }
           })
 
-          request.signal.addEventListener('abort', () => {
+          request.signal.addEventListener("abort", () => {
             unsubscribe()
             controller.close()
           })
@@ -874,8 +893,9 @@ bun run typecheck  # No import errors
 
       return new Response(stream, {
         headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
         }
       })
     }
@@ -884,23 +904,55 @@ bun run typecheck  # No import errors
 
 - [ ] Create SSE client hook `hooks/useJobProgress.ts`
   ```typescript
-  export function useJobProgress(jobId: string) {
+  export function useJobProgress(jobId: string | null) {
     const queryClient = useQueryClient()
+    const [progress, setProgress] = useState(null)
+    const [items, setItems] = useState([])
+    const [currentItem, setCurrentItem] = useState(null)
+    const [status, setStatus] = useState(null)
+    const [error, setError] = useState(null)
+    const [isConnected, setIsConnected] = useState(false)
 
     useEffect(() => {
+      if (!jobId) return
       const eventSource = new EventSource(`/api/jobs/${jobId}/progress`)
 
+      eventSource.onopen = () => setIsConnected(true)
+      eventSource.onerror = () => setIsConnected(false)
+
       eventSource.onmessage = (event) => {
-        const progress = JSON.parse(event.data)
-        queryClient.setQueryData(['job', jobId], progress)
+        const payload = JSON.parse(event.data)
+
+        switch (payload.type) {
+          case "progress":
+            setProgress(payload)
+            queryClient.setQueryData(["job", jobId], payload)
+            break
+          case "status":
+            setStatus(payload.status)
+            break
+          case "item":
+            setItems((prev) => [...prev, payload])
+            if (payload.status === "in_progress") {
+              setCurrentItem(payload)
+            }
+            break
+          case "error":
+            setError(payload.message)
+            break
+        }
       }
 
       return () => eventSource.close()
     }, [jobId, queryClient])
+
+    return { progress, status, items, currentItem, error, isConnected }
   }
   ```
 
 - [ ] Migrate job services to emit SSE events:
+  - [ ] Emit job-level progress + status events
+  - [ ] Emit item-level status events with current item metadata
   - [ ] Update `SyncOrchestrator` (renamed from `SyncService`)
   - [ ] Update analysis pipeline
   - [ ] Update matching service
@@ -912,6 +964,7 @@ bun run typecheck  # No import errors
 ### Verification
 
 - [ ] Job progress shows in UI via SSE
+- [ ] Item-level events update current item + item status list
 - [ ] No WebSocket connections in network tab
 
 ---
@@ -924,7 +977,7 @@ bun run typecheck  # No import errors
 
 #### Cleanup
 
-- [ ] Delete `TrackService.ts` (→ `data/songs.ts`)
+- [ ] Delete `TrackService.ts` (→ `data/song.ts` + `data/liked-song.ts`)
 - [ ] Delete `UserService.ts` (→ `data/accounts.ts`)
 - [ ] Delete `vectorization/VectorCache.ts` (in-memory → DB)
 - [ ] Delete `llm/ProviderKeyService.ts` (table dropped)
@@ -1020,11 +1073,13 @@ bun run build      # Builds successfully
 During migration, old services can delegate to new query modules:
 
 ```typescript
+import * as likedSongs from "@/lib/data/liked-song"
+
 // Old: TrackService.ts (temporary facade)
 class TrackService {
-  async getTracks(userId: number) {
+  async getTracks(accountId: string) {
     // Delegate to new query module
-    return getSongsByAccountId(userId.toString())
+    return likedSongs.getAll(accountId)
   }
 }
 ```
@@ -1070,18 +1125,21 @@ Update this section as phases complete:
 
 **Phase 2 (Extensions)**: ✅ Complete — TypeScript types generated (`database.types.ts`). pgvector enabled with HNSW indexes on embedding columns.
 
-**Phase 3 (Query Modules)**: ✅ Complete — All 11 modules implemented with Result<T, DbError> pattern:
-- ✅ `client.ts` — Service role client factory (deny-all RLS)
-- ✅ `accounts.ts` — Account CRUD
-- ✅ `auth-tokens.ts` — Token refresh support
-- ✅ `songs.ts` — Song + liked song operations
+**Phase 3 (Query Modules)**: ✅ Complete — All 13 query modules implemented with Result<T, DbError> pattern (plus `client.ts` for Supabase clients):
+- ✅ `client.ts` — Supabase public/admin client factory
+- ✅ `song.ts` — Songs
+- ✅ `liked-song.ts` — Liked songs + item status
 - ✅ `playlists.ts` — Playlist + playlist-song + destination operations
-- ✅ `jobs.ts` — Job lifecycle management
-- ✅ `analysis.ts` — Song/playlist LLM analysis + audio features
+- ✅ `song-analysis.ts` — Song LLM analysis
+- ✅ `playlist-analysis.ts` — Playlist LLM analysis
+- ✅ `song-audio-feature.ts` — Audio feature storage
 - ✅ `vectors.ts` — Song embeddings + playlist profiles
 - ✅ `matching.ts` — Match context + results + aggregations
+- ✅ `jobs.ts` — Job lifecycle management
+- ✅ `accounts.ts` — Account CRUD
 - ✅ `newness.ts` — Item status tracking (new/seen/actioned)
 - ✅ `preferences.ts` — User preferences + onboarding state
+- ✅ `auth-tokens.ts` — Token refresh support
 
 **Phase 7 (UI)**: Auth flows working (login, logout, callback routes). TanStack Start + Router configured.
 

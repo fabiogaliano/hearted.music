@@ -6,22 +6,22 @@
 
 ## Status Overview
 
-| Phase | Name                      | Status                      | Blocked By |
-| ----- | ------------------------- | --------------------------- | ---------- |
-| 0     | Foundation                | ✅ Complete                  | —          |
-| 1     | Schema                    | ✅ Complete                  | Phase 0    |
-| 2     | Extensions                | ✅ Complete                  | Phase 1    |
-| 3     | Query Modules             | ✅ Complete                  | Phase 2    |
-| 4a    | Delete Factories          | ✅ N/A (v1 fresh port)       | Phase 3    |
-| 4b    | Song/Analysis Services    | ✅ Complete                  | Phase 3    |
-| 4c    | Playlist/Sync Services    | ✅ Complete                  | Phase 3    |
-| 4d    | DeepInfra Migration       | ✅ Complete                  | Phase 3    |
-| 4e    | **Matching Pipeline**     | ⬜ Not Started               | Phase 4d   |
-| 4f    | **Genre Enrichment**      | ⬜ Not Started               | Phase 4d   |
-| 4g    | **Playlist Profiling**    | ⬜ Not Started               | Phase 4e   |
-| 5     | SSE                       | ⬜ Not Started               | Phase 4g   |
-| 6     | Cleanup                   | ⬜ Not Started               | Phase 5    |
-| 7     | UI Integration            | 🟡 Prototypes Ready          | Phase 5    |
+| Phase | Name                   | Status                | Blocked By |
+| ----- | ---------------------- | --------------------- | ---------- |
+| 0     | Foundation             | ✅ Complete            | —          |
+| 1     | Schema                 | ✅ Complete            | Phase 0    |
+| 2     | Extensions             | ✅ Complete            | Phase 1    |
+| 3     | Query Modules          | ✅ Complete            | Phase 2    |
+| 4a    | Delete Factories       | ✅ N/A (v1 fresh port) | Phase 3    |
+| 4b    | Song/Analysis Services | ✅ Complete            | Phase 3    |
+| 4c    | Playlist/Sync Services | ✅ Complete            | Phase 3    |
+| 4d    | DeepInfra Migration    | ✅ Complete            | Phase 3    |
+| 4e    | **Matching Pipeline**  | ⬜ Not Started         | Phase 4d   |
+| 4f    | **Genre Enrichment**   | ⬜ Not Started         | Phase 4d   |
+| 4g    | **Playlist Profiling** | ⬜ Not Started         | Phase 4e   |
+| 5     | SSE                    | ⬜ Not Started         | Phase 4g   |
+| 6     | Cleanup                | ⬜ Not Started         | Phase 5    |
+| 7     | UI Integration         | 🟡 Prototypes Ready    | Phase 5    |
 
 > **Frontend Note**: UI prototypes are ~85% complete in `old_app/prototypes/warm-pastel/` (88 files). Phase 7 involves wiring these to real APIs/data, not building from scratch.
 
@@ -145,14 +145,17 @@
 
 ## Phase 3: Query Modules
 
-> Create 9 data access modules replacing repositories.
+> Create data access modules replacing repositories.
 
 ### Tasks
 
 - [x] `data/client.ts` — Supabase client setup
-- [x] `data/songs.ts` — [02-SERVICES.md](/docs/architecture/migration_v2/02-SERVICES.md)
+- [x] `data/song.ts` — Songs
+- [x] `data/liked-song.ts` — Liked songs + item status
 - [x] `data/playlists.ts`
-- [x] `data/analysis.ts` — Song/playlist LLM analysis + audio features
+- [x] `data/song-analysis.ts` — Song LLM analysis
+- [x] `data/playlist-analysis.ts` — Playlist LLM analysis
+- [x] `data/song-audio-feature.ts` — Audio feature storage
 - [x] `data/vectors.ts` — Song embeddings + playlist profiles
 - [x] `data/matching.ts` — Match context + results + aggregations
 - [x] `data/jobs.ts`
@@ -210,8 +213,8 @@
   - Location: `src/lib/services/analysis/pipeline.ts`
   - Orchestrates batch analysis with concurrency control and job tracking
   - Uses `data/jobs.ts` for job lifecycle management
-- [x] Delete `TrackService.ts` → use `data/songs.ts`
-  - N/A for v1 fresh port; using `data/songs.ts` from start
+- [x] Delete `TrackService.ts` → use `data/song.ts` + `data/liked-song.ts`
+  - N/A for v1 fresh port; using split query modules from start
 - [x] Create `SongAnalysisService` using query modules
   - Location: `src/lib/services/analysis/song-analysis.ts`
   - Uses AI SDK via `LlmService` with Zod schemas for structured output
@@ -222,7 +225,7 @@
   - Pipeline creates jobs, updates progress, marks completion/failure
 
 ### Acceptance Criteria
-- [x] Song sync works (via `data/songs.ts`)
+- [x] Song sync works (via `data/song.ts` + `data/liked-song.ts`)
 - [x] Analysis pipeline works
 - [x] No duplicate code
 
@@ -314,15 +317,15 @@
 
 ### Source Files (old_app)
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `matching/MatchingService.ts` | 1493 | Core matching algorithm (vector + semantic + audio + genre) |
-| `matching/MatchCachingService.ts` | 534 | Cache-first orchestration (Phase 8) |
-| `matching/matching-config.ts` | 85 | Algorithm weights & thresholds |
-| `semantic/SemanticMatcher.ts` | 306 | Theme/mood similarity matching |
-| `vectorization/analysis-extractors.ts` | 354 | Extract text from analysis for embedding |
-| `vectorization/hashing.ts` | 327 | Content hashing for cache invalidation |
-| `vectorization/model-bundle.ts` | 210 | Embedding model metadata |
+| File                                   | Lines | Purpose                                                     |
+| -------------------------------------- | ----- | ----------------------------------------------------------- |
+| `matching/MatchingService.ts`          | 1493  | Core matching algorithm (vector + semantic + audio + genre) |
+| `matching/MatchCachingService.ts`      | 534   | Cache-first orchestration (Phase 8)                         |
+| `matching/matching-config.ts`          | 85    | Algorithm weights & thresholds                              |
+| `semantic/SemanticMatcher.ts`          | 306   | Theme/mood similarity matching                              |
+| `vectorization/analysis-extractors.ts` | 354   | Extract text from analysis for embedding                    |
+| `vectorization/hashing.ts`             | 327   | Content hashing for cache invalidation                      |
+| `vectorization/model-bundle.ts`        | 210   | Embedding model metadata                                    |
 
 ### Tasks
 
@@ -397,12 +400,12 @@ Song Analysis → Extract Text → Embed → Match
 
 ### Source Files (old_app)
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `lastfm/LastFmService.ts` | 311 | Last.fm API client |
-| `lastfm/utils/genre-whitelist.ts` | 469 | 469-genre normalized taxonomy |
-| `lastfm/utils/normalize.ts` | 81 | Genre string normalization |
-| `genre/GenreEnrichmentService.ts` | 477 | Orchestrates genre fetching + caching |
+| File                              | Lines | Purpose                               |
+| --------------------------------- | ----- | ------------------------------------- |
+| `lastfm/LastFmService.ts`         | 311   | Last.fm API client                    |
+| `lastfm/utils/genre-whitelist.ts` | 469   | 469-genre normalized taxonomy         |
+| `lastfm/utils/normalize.ts`       | 81    | Genre string normalization            |
+| `genre/GenreEnrichmentService.ts` | 477   | Orchestrates genre fetching + caching |
 
 ### Tasks
 
@@ -423,8 +426,9 @@ Song Analysis → Extract Text → Embed → Match
 - [ ] **Port `GenreEnrichmentService.ts`** → `services/genre/service.ts`
   - `enrichSong(song)` → fetch genres if missing
   - `enrichBatch(songs)` → batch with rate limiting
-  - Store genres on `song.genres` column
-  - Use `data/songs.ts` for persistence
+  - **Top 3 only, ordered**: index 0 = primary, index 1 = secondary, index 2 = tertiary
+  - Store ordered genres on `song.genres` column (TEXT[], max 3)
+  - Use `data/song.ts` for persistence
 
 - [ ] **Add environment variable**
   ```
@@ -433,9 +437,10 @@ Song Analysis → Extract Text → Embed → Match
 
 ### Acceptance Criteria
 - [ ] Can fetch genres for artist from Last.fm
-- [ ] Genres normalized to canonical taxonomy
-- [ ] Genres persisted on song record
-- [ ] Rate limiting prevents API abuse
+- [ ] Returns max 3 genres, ordered by relevance (primary → secondary → tertiary)
+- [ ] Genres normalized to canonical 469-genre taxonomy
+- [ ] Genres persisted on `song.genres` as ordered TEXT[]
+- [ ] Rate limiting prevents API abuse (5 req/sec)
 
 ### References
 - [song.genres column](/docs/migration_v2/01-SCHEMA.md) — Schema for genres array
@@ -450,23 +455,28 @@ Song Analysis → Extract Text → Embed → Match
 
 ### Source Files (old_app)
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `profiling/PlaylistProfilingService.ts` | 770 | Compute playlist vectors from tracks |
-| `audio/AudioFeaturesService.ts` | 45 | Audio feature utilities |
-| `reccobeats/ReccoBeatsService.ts` | 226 | ReccoBeats API for audio features |
+| File                                    | Lines | Purpose                              |
+| --------------------------------------- | ----- | ------------------------------------ |
+| `profiling/PlaylistProfilingService.ts` | 770   | Compute playlist vectors from tracks |
+| `audio/AudioFeaturesService.ts`         | 45    | Audio feature utilities              |
+| `reccobeats/ReccoBeatsService.ts`       | 226   | ReccoBeats API for audio features    |
 
 ### Tasks
 
 - [ ] **Port `ReccoBeatsService.ts`** → `services/reccobeats/service.ts`
   - `getAudioFeatures(isrc)` → audio features
   - Rate limiting
-  - Fallback to Spotify audio features if ReccoBeats unavailable
+  - Graceful degradation if ReccoBeats unavailable (skip backfill)
   - Add `RECCOBEATS_API_URL` env var if needed
 
 - [ ] **Port `AudioFeaturesService.ts`** → `services/audio/service.ts`
   - `normalizeFeatures(raw)` → 0-1 normalized values
   - Centroid computation for playlist aggregation
+
+- [ ] **Backfill missing audio features** before profiling
+  - Fetch features for songs missing `song_audio_feature`
+  - Persist via `data/song-audio-feature.ts`
+  - Prefer existing rows; only fetch missing data
 
 - [ ] **Port `PlaylistProfilingService.ts`** → `services/profiling/service.ts`
   - `computeProfile(playlist)` → aggregate profile from songs
@@ -475,6 +485,7 @@ Song Analysis → Extract Text → Embed → Match
   - Genre distribution (weighted by frequency)
   - Emotion distribution (from song analyses)
   - Use `data/vectors.ts` for persistence (`playlist_profile` table)
+  - Ensure audio features are backfilled before centroid computation
 
 - [ ] **Create integration tests**
   - Profile changes when playlist songs change
@@ -484,6 +495,7 @@ Song Analysis → Extract Text → Embed → Match
 ### Acceptance Criteria
 - [ ] Can compute profile for destination playlist
 - [ ] Profile includes: embedding centroid, audio centroid, genre distribution, emotion distribution
+- [ ] Missing audio features are backfilled into `song_audio_feature`
 - [ ] Profile persisted to `playlist_profile` table
 - [ ] Profile invalidates when playlist contents change
 
@@ -515,23 +527,26 @@ Destination Playlist
 
 ### Tasks
 
-- [ ] Create SSE endpoint: `routes/api/jobs/$id/progress.tsx`
+- [ ] Create SSE endpoint: `routes/api.jobs.$id.progress.tsx`
   ```typescript
-  import { createAPIFileRoute } from '@tanstack/start/api'
+  import { createAPIFileRoute } from "@tanstack/start/api"
 
-  export const Route = createAPIFileRoute('/api/jobs/$id/progress')({
+  export const Route = createAPIFileRoute("/api/jobs/$id/progress")({
     GET: async ({ request, params }) => {
       // SSE stream implementation
     }
   })
   ```
 - [ ] Update job creation to emit SSE events
+  - Emit job-level progress and status events
+  - Emit per-item status events with current item metadata
 - [ ] Delete `JobSubscriptionManager.ts`
 - [ ] Delete `JobPersistenceService.ts` → use `data/jobs.ts`
-- [ ] Update UI to use EventSource
+- [ ] Update UI to use EventSource and track current item
 
 ### Acceptance Criteria
 - [ ] Job progress streams via SSE
+- [ ] Item-level events surface current item + status in UI
 - [ ] No WebSocket code remains
 - [ ] Works in Cloudflare Workers (no WS support)
 
