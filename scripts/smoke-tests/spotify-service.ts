@@ -16,11 +16,11 @@
  */
 
 import { Result, matchError } from "better-result";
-import { getSpotifyService } from "@/lib/services/spotify";
-import { mapTrackToSongInsert, mapPlaylistToPlaylistInsert } from "@/lib/services/spotify/mappers";
+import { getSpotifyService } from "@/lib/integrations/spotify";
+import { mapTrackToSongInsert, mapPlaylistToPlaylistInsert } from "@/lib/integrations/spotify/mappers";
 import { getAccountById, getAccountBySpotifyId } from "@/lib/data/accounts";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { SpotifyError } from "@/lib/errors/external/spotify";
+import type { SpotifyError } from "@/lib/shared/errors/external/spotify";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers

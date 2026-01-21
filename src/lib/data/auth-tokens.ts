@@ -9,12 +9,12 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "./client";
 import type { Tables } from "./database.types";
-import type { DbError } from "@/lib/errors/database";
-import { DatabaseError } from "@/lib/errors/database";
+import type { DbError } from "@/lib/shared/errors/database";
+import { DatabaseError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
-} from "@/lib/utils/result-wrappers/supabase";
+} from "@/lib/shared/utils/result-wrappers/supabase";
 
 /** Re-export for external use (e.g., spotify/client.ts needs this for isTokenExpired) */
 export type AuthToken = Tables<"auth_token">;
@@ -35,7 +35,11 @@ export function getTokenByAccountId(
 ): Promise<Result<AuthToken | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseMaybe(
-		supabase.from("auth_token").select("*").eq("account_id", accountId).single(),
+		supabase
+			.from("auth_token")
+			.select("*")
+			.eq("account_id", accountId)
+			.single(),
 	);
 }
 
@@ -84,7 +88,9 @@ export async function deleteToken(
 		.eq("account_id", accountId);
 
 	if (error) {
-		return Result.err(new DatabaseError({ code: error.code, message: error.message }));
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
 	}
 	return Result.ok(undefined);
 }

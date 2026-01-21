@@ -6,14 +6,18 @@
  */
 
 import { Result } from "better-result";
-import type { DbError } from "@/lib/errors/database";
+import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
-} from "@/lib/utils/result-wrappers/supabase";
+} from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
 import type { Enums, Tables } from "./database.types";
+import {
+	type JobProgress as JobProgressType,
+	JobProgressSchema as JobProgressSchemaImpl,
+} from "@/lib/jobs/progress/types";
 
 // ============================================================================
 // Type Exports
@@ -25,25 +29,15 @@ export type Job = Tables<"job">;
 /** Job type enum from database */
 export type JobType = Enums<"job_type">;
 
-/** Job status enum from database */
+/**
+ * Job status enum from database.
+ * Note: Should match JobStatusSchema in job-progress/types.ts
+ */
 export type JobStatus = Enums<"job_status">;
 
-/**
- * Job progress structure stored in JSONB.
- * Used for tracking sync progress and checkpoint data.
- */
-export type JobProgress = {
-	/** Total items to process */
-	total: number;
-	/** Items processed so far */
-	done: number;
-	/** Successfully processed items */
-	succeeded: number;
-	/** Failed items */
-	failed: number;
-	/** Cursor for pagination/resumption (e.g., timestamp, offset) */
-	cursor?: string;
-};
+// Re-export JobProgress from SSE types (single source of truth)
+export type JobProgress = JobProgressType;
+export const JobProgressSchema = JobProgressSchemaImpl;
 
 // ============================================================================
 // Job Query Operations
@@ -235,4 +229,3 @@ export function markJobFailed(
 			.single(),
 	);
 }
-

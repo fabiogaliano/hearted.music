@@ -6,12 +6,12 @@
  */
 
 import { Result } from "better-result";
-import type { DbError } from "@/lib/errors/database";
+import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
-} from "@/lib/utils/result-wrappers/supabase";
+} from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
 import type { Json, Tables, TablesInsert } from "./database.types";
 
@@ -61,6 +61,9 @@ export type UpsertPlaylistProfile = Pick<
  * Gets the embedding for a song by model name and kind.
  * Returns null if not found.
  *
+ * Returns the most recent embedding (by created_at) to handle model version changes.
+ * When model_version changes, multiple rows may exist - we want the latest one.
+ *
  * @param songId - The song UUID
  * @param model - The embedding model name (e.g., "text-embedding-3-small")
  * @param kind - The embedding kind (full, theme, mood, context)
@@ -78,7 +81,9 @@ export function getSongEmbedding(
 			.eq("song_id", songId)
 			.eq("model", model)
 			.eq("kind", kind)
-			.single(),
+			.order("created_at", { ascending: false })
+			.limit(1)
+			.maybeSingle(),
 	);
 }
 
@@ -101,6 +106,9 @@ export function getSongEmbeddings(
 /**
  * Gets embeddings for multiple songs by model name and kind.
  * Returns a map of songId -> embedding.
+ *
+ * Returns the most recent embedding (by created_at) for each song to handle model version changes.
+ * When model_version changes, multiple rows may exist per song - we want the latest one per song.
  */
 export async function getSongEmbeddingsBatch(
 	songIds: string[],
@@ -118,16 +126,20 @@ export async function getSongEmbeddingsBatch(
 			.select("*")
 			.in("song_id", songIds)
 			.eq("model", model)
-			.eq("kind", kind),
+			.eq("kind", kind)
+			.order("created_at", { ascending: false }),
 	);
 
 	if (Result.isError(result)) {
 		return Result.err(result.error);
 	}
 
+	// Keep only the latest embedding per song (first occurrence after ordering by created_at DESC)
 	const embeddingMap = new Map<string, SongEmbedding>();
 	for (const embedding of result.value) {
-		embeddingMap.set(embedding.song_id, embedding);
+		if (!embeddingMap.has(embedding.song_id)) {
+			embeddingMap.set(embedding.song_id, embedding);
+		}
 	}
 
 	return Result.ok(embeddingMap);
@@ -227,7 +239,10 @@ export async function getPlaylistProfilesBatch(
 
 	const supabase = createAdminSupabaseClient();
 	const result = await fromSupabaseMany(
-		supabase.from("playlist_profile").select("*").in("playlist_id", playlistIds),
+		supabase
+			.from("playlist_profile")
+			.select("*")
+			.in("playlist_id", playlistIds),
 	);
 
 	if (Result.isError(result)) {

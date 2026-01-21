@@ -6,11 +6,11 @@
  */
 
 import { Result } from "better-result";
-import type { DbError } from "@/lib/errors/database";
+import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
-} from "@/lib/utils/result-wrappers/supabase";
+} from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
 import type { Enums, Tables } from "./database.types";
 import { z } from "zod";
@@ -27,14 +27,14 @@ export type ThemeColor = Enums<"theme">;
 
 /** Onboarding steps enum */
 export const ONBOARDING_STEPS = z.enum([
-  "welcome",
-  "pick-color",
-  "connecting",
-  "syncing",
-  "flag-playlists",
-  "ready",
-  "complete",
-	]);
+	"welcome",
+	"pick-color",
+	"connecting",
+	"syncing",
+	"flag-playlists",
+	"ready",
+	"complete",
+]);
 
 export type OnboardingStep = z.infer<typeof ONBOARDING_STEPS>;
 
@@ -105,7 +105,8 @@ export async function getOnboardingStep(
 	}
 
 	return Result.ok(
-		(result.value?.onboarding_step as OnboardingStep) ?? ONBOARDING_STEPS.enum.welcome,
+		(result.value?.onboarding_step as OnboardingStep) ??
+			ONBOARDING_STEPS.enum.welcome,
 	);
 }
 

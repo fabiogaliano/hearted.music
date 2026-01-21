@@ -6,11 +6,11 @@
  */
 
 import { Result } from "better-result";
-import type { DbError } from "@/lib/errors/database";
+import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
-} from "@/lib/utils/result-wrappers/supabase";
+} from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
 import type { Tables, TablesInsert } from "./database.types";
 
@@ -127,4 +127,90 @@ export function upsert(data: UpsertData[]): Promise<Result<Song[], DbError>> {
 			)
 			.select(),
 	);
+}
+
+// ============================================================================
+// Genre Operations
+// ============================================================================
+
+/**
+ * Updates genres for a song.
+ * Genres should be lowercase and max 3 elements.
+ */
+export async function updateGenres(
+	songId: string,
+	genres: string[],
+): Promise<Result<void, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const result = await fromSupabaseMaybe(
+		supabase
+			.from("song")
+			.update({ genres: genres.slice(0, 3) })
+			.eq("id", songId)
+			.select("id")
+			.single(),
+	);
+
+	if (Result.isError(result)) {
+		return Result.err(result.error);
+	}
+
+	return Result.ok(undefined);
+}
+
+/**
+ * Gets songs that don't have genres set yet.
+ * Used for backfill operations.
+ */
+export function getSongsWithoutGenres(
+	accountId: string,
+	limit = 100,
+): Promise<Result<Song[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMany(
+		supabase
+			.from("song")
+			.select("*, account_song!inner(account_id)")
+			.eq("account_song.account_id", accountId)
+			.or("genres.is.null,genres.eq.{}")
+			.limit(limit),
+	);
+}
+
+/**
+ * Batch update genres for multiple songs.
+ * More efficient than individual updates.
+ */
+export async function updateGenresBatch(
+	updates: Array<{ songId: string; genres: string[] }>,
+): Promise<Result<void, DbError>> {
+	if (updates.length === 0) {
+		return Result.ok(undefined);
+	}
+
+	const supabase = createAdminSupabaseClient();
+
+	// Supabase doesn't support batch updates with different values per row,
+	// so we use Promise.all with individual updates (still more efficient than N+1 pattern)
+	const results = await Promise.all(
+		updates.map(({ songId, genres }) =>
+			fromSupabaseMaybe(
+				supabase
+					.from("song")
+					.update({ genres: genres.slice(0, 3) })
+					.eq("id", songId)
+					.select("id")
+					.single(),
+			),
+		),
+	);
+
+	// Check for any errors
+	for (const result of results) {
+		if (Result.isError(result)) {
+			return Result.err(result.error);
+		}
+	}
+
+	return Result.ok(undefined);
 }

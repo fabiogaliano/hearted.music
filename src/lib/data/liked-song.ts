@@ -6,11 +6,11 @@
  */
 
 import { Result } from "better-result";
-import type { DbError } from "@/lib/errors/database";
+import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseSingle,
-} from "@/lib/utils/result-wrappers/supabase";
+} from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
 import type { Tables, TablesInsert } from "./database.types";
 import type { ActionType } from "./newness";
@@ -26,7 +26,10 @@ export type LikedSong = Tables<"liked_song">;
 export type ItemStatus = Tables<"item_status">;
 
 /** Insert type for upserting liked songs */
-export type UpsertData = Pick<TablesInsert<"liked_song">, "song_id" | "liked_at">;
+export type UpsertData = Pick<
+	TablesInsert<"liked_song">,
+	"song_id" | "liked_at"
+>;
 
 // ============================================================================
 // Query Operations
@@ -36,7 +39,9 @@ export type UpsertData = Pick<TablesInsert<"liked_song">, "song_id" | "liked_at"
  * Gets all liked songs for an account.
  * Returns empty array if none found.
  */
-export function getAll(accountId: string): Promise<Result<LikedSong[], DbError>> {
+export function getAll(
+	accountId: string,
+): Promise<Result<LikedSong[], DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseMany(
 		supabase
