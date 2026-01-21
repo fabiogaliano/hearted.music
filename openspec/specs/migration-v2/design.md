@@ -91,31 +91,49 @@ lib/data/
 ## Service Layer Structure
 
 ```
-lib/services/
+lib/capabilities/
 ├── sync/
-│   ├── SyncOrchestrator.ts    # Orchestrates songs + playlists sync
-│   └── PlaylistSyncService.ts # Spotify API sync operations
-├── spotify/
-│   └── SpotifyService.ts      # Spotify API client
+│   ├── orchestrator.ts        # Orchestrates songs + playlists sync
+│   └── playlist-sync.ts       # Spotify API sync operations
 ├── analysis/
-│   ├── SongAnalysisService.ts
-│   ├── PlaylistAnalysisService.ts
+│   ├── song-analysis.ts
+│   ├── playlist-analysis.ts
 │   ├── pipeline.ts            # Merged batch orchestration
-│   ├── RetryPolicy.ts
-│   └── RateLimitGate.ts
-├── deepinfra/
-│   └── DeepInfraService.ts    # Embeddings + reranking API
+│   ├── retry-policy.ts
+│   └── rate-limit-gate.ts
 ├── matching/
-│   ├── MatchingService.ts
-│   ├── MatchCachingService.ts
-│   └── matching.config.ts
-├── llm/
-│   ├── LlmProviderManager.ts
-│   └── providers/...
-└── external/
-    ├── LastFmService.ts
-    ├── LyricsService.ts
-    └── ReccoBeatsService.ts
+│   ├── service.ts
+│   ├── cache.ts
+│   └── config.ts
+├── genre/
+│   └── service.ts
+└── profiling/
+    └── service.ts
+
+lib/integrations/
+├── spotify/
+│   └── service.ts             # Spotify API client
+├── deepinfra/
+│   └── service.ts             # Embeddings + reranking API
+├── lastfm/
+│   └── service.ts
+├── reccobeats/
+│   └── service.ts
+└── audio/
+    └── service.ts
+
+lib/ml/
+├── embedding/                 # Embedding helpers + service
+├── reranker/                  # Cross-encoder reranking
+└── llm/                       # AI SDK wrapper
+
+lib/jobs/
+├── lifecycle.ts               # Job state transitions
+└── progress/                  # SSE progress emitter/types
+
+lib/shared/
+├── errors/
+└── utils/
 ```
 
 ---

@@ -51,17 +51,15 @@ The system SHALL provide helpers for Spotify pagination and rate-limit retries.
 
 ### Requirement: Service module location
 
-The system SHALL place service modules under `src/lib/services`.
+The system SHALL place Spotify integration modules under `src/lib/integrations`.
 
 #### Scenario: Spotify service organization
 - **WHEN** Spotify service modules are created or updated
-- **THEN** they are located under `src/lib/services/spotify`
+- **THEN** they are located under `src/lib/integrations/spotify`
 
-#### Scenario: Existing service module relocation
-- **WHEN** a service module exists outside `src/lib/services`
-- **THEN** it is moved into `src/lib/services` and imports are updated
-
----
+#### Scenario: Existing integration module relocation
+- **WHEN** a Spotify integration module exists outside `src/lib/integrations`
+- **THEN** it is moved into `src/lib/integrations` and imports are updated
 
 ### Requirement: Refresh coordination
 

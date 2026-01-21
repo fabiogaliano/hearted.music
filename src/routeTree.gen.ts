@@ -14,6 +14,7 @@ import { Route as AuthSpotifyRouteImport } from './routes/auth/spotify'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthSpotifyIndexRouteImport } from './routes/auth/spotify.index'
 import { Route as AuthSpotifyCallbackRouteImport } from './routes/auth/spotify.callback'
+import { Route as ApiJobsIdProgressRouteImport } from './routes/api.jobs.$id.progress'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +41,11 @@ const AuthSpotifyCallbackRoute = AuthSpotifyCallbackRouteImport.update({
   path: '/callback',
   getParentRoute: () => AuthSpotifyRoute,
 } as any)
+const ApiJobsIdProgressRoute = ApiJobsIdProgressRouteImport.update({
+  id: '/api/jobs/$id/progress',
+  path: '/api/jobs/$id/progress',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,12 +53,14 @@ export interface FileRoutesByFullPath {
   '/auth/spotify': typeof AuthSpotifyRouteWithChildren
   '/auth/spotify/callback': typeof AuthSpotifyCallbackRoute
   '/auth/spotify/': typeof AuthSpotifyIndexRoute
+  '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/spotify/callback': typeof AuthSpotifyCallbackRoute
   '/auth/spotify': typeof AuthSpotifyIndexRoute
+  '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -61,6 +69,7 @@ export interface FileRoutesById {
   '/auth/spotify': typeof AuthSpotifyRouteWithChildren
   '/auth/spotify/callback': typeof AuthSpotifyCallbackRoute
   '/auth/spotify/': typeof AuthSpotifyIndexRoute
+  '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -70,8 +79,14 @@ export interface FileRouteTypes {
     | '/auth/spotify'
     | '/auth/spotify/callback'
     | '/auth/spotify/'
+    | '/api/jobs/$id/progress'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth/logout' | '/auth/spotify/callback' | '/auth/spotify'
+  to:
+    | '/'
+    | '/auth/logout'
+    | '/auth/spotify/callback'
+    | '/auth/spotify'
+    | '/api/jobs/$id/progress'
   id:
     | '__root__'
     | '/'
@@ -79,12 +94,14 @@ export interface FileRouteTypes {
     | '/auth/spotify'
     | '/auth/spotify/callback'
     | '/auth/spotify/'
+    | '/api/jobs/$id/progress'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
   AuthSpotifyRoute: typeof AuthSpotifyRouteWithChildren
+  ApiJobsIdProgressRoute: typeof ApiJobsIdProgressRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -124,6 +141,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSpotifyCallbackRouteImport
       parentRoute: typeof AuthSpotifyRoute
     }
+    '/api/jobs/$id/progress': {
+      id: '/api/jobs/$id/progress'
+      path: '/api/jobs/$id/progress'
+      fullPath: '/api/jobs/$id/progress'
+      preLoaderRoute: typeof ApiJobsIdProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -145,6 +169,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthLogoutRoute: AuthLogoutRoute,
   AuthSpotifyRoute: AuthSpotifyRouteWithChildren,
+  ApiJobsIdProgressRoute: ApiJobsIdProgressRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

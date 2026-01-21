@@ -4,7 +4,7 @@
 
 **Implementation Phases**: 4e (Matching), 4f (Genre), 4g (Profiling)
 **Source**: `old_app/lib/services/matching/`, `vectorization/`, `semantic/`, `genre/`, `profiling/`
-**Target**: `src/lib/services/matching/`, `genre/`, `profiling/`
+**Target**: `src/lib/capabilities/matching/`, `capabilities/genre/`, `capabilities/profiling/`, `integrations/lastfm/`, `integrations/reccobeats/`, `ml/embedding/`
 
 ---
 
@@ -13,9 +13,7 @@
 Define the matching pipeline that computes which playlists each liked song should be sorted into. This is the core business logic of the application - without it, songs can be analyzed but never sorted.
 
 ---
-
 ## Requirements
-
 ### Requirement: Multi-Factor Matching
 
 The system SHALL compute match scores using multiple complementary signals.
@@ -172,6 +170,26 @@ The system SHALL use content hashing for cache invalidation.
 
 ---
 
+### Requirement: Matching module locations
+
+The system SHALL organize matching pipeline modules under the capability, integration, and ML folders.
+
+#### Scenario: Matching service location
+- **WHEN** matching modules are created or updated
+- **THEN** they are located under `src/lib/capabilities/matching`
+
+#### Scenario: Genre and profiling locations
+- **WHEN** genre or profiling modules are created or updated
+- **THEN** they are located under `src/lib/capabilities/genre` and `src/lib/capabilities/profiling`
+
+#### Scenario: Embedding utilities location
+- **WHEN** embedding helpers are used by matching
+- **THEN** they are located under `src/lib/ml/embedding`
+
+#### Scenario: External provider locations
+- **WHEN** Last.fm or ReccoBeats integrations are referenced
+- **THEN** they are located under `src/lib/integrations/lastfm` and `src/lib/integrations/reccobeats`
+
 ## Data Flow
 
 ```
@@ -217,7 +235,7 @@ The system SHALL use content hashing for cache invalidation.
 
 ## Service Structure
 
-### `services/matching/config.ts`
+### `capabilities/matching/config.ts`
 ```typescript
 export const MATCHING_CONFIG = {
   weights: {
@@ -237,7 +255,7 @@ export const MATCHING_CONFIG = {
 }
 ```
 
-### `services/matching/service.ts`
+### `capabilities/matching/service.ts`
 ```typescript
 export class MatchingService {
   async matchSong(songId: string, playlistIds: string[]): Promise<MatchResult[]>
@@ -251,7 +269,7 @@ export class MatchingService {
 }
 ```
 
-### `services/matching/cache.ts`
+### `capabilities/matching/cache.ts`
 ```typescript
 export class MatchCachingService {
   async getOrComputeMatches(
@@ -266,7 +284,7 @@ export class MatchCachingService {
 }
 ```
 
-### `services/matching/semantic.ts`
+### `capabilities/matching/semantic.ts`
 ```typescript
 export class SemanticMatcher {
   computeThemeSimilarity(songThemes: string[], playlistThemes: string[]): number
@@ -275,7 +293,7 @@ export class SemanticMatcher {
 }
 ```
 
-### `services/genre/service.ts`
+### `capabilities/genre/service.ts`
 ```typescript
 export class GenreEnrichmentService {
   async enrichSong(song: Song): Promise<string[]>
@@ -283,14 +301,14 @@ export class GenreEnrichmentService {
 }
 ```
 
-### `services/lastfm/service.ts`
+### `integrations/lastfm/service.ts`
 ```typescript
 export class LastFmService {
   async getArtistTopTags(artist: string): Promise<string[]>
 }
 ```
 
-### `services/profiling/service.ts`
+### `capabilities/profiling/service.ts`
 ```typescript
 export class PlaylistProfilingService {
   async computeProfile(playlistId: string): Promise<PlaylistProfile>
@@ -343,16 +361,16 @@ interface GenreDistribution {
 
 ## Database Tables Used
 
-| Table | Purpose |
-|-------|---------|
-| `song.genres` | Enriched genre array |
-| `song_embedding` | Song vector embeddings |
-| `song_audio_feature` | Audio characteristics |
-| `song_analysis` | LLM-generated analysis |
-| `playlist_profile` | Aggregated playlist vectors |
-| `playlist_analysis` | LLM-generated playlist analysis |
-| `match_context` | Cache key + metadata |
-| `match_result` | Cached match scores |
+| Table                | Purpose                         |
+| -------------------- | ------------------------------- |
+| `song.genres`        | Enriched genre array            |
+| `song_embedding`     | Song vector embeddings          |
+| `song_audio_feature` | Audio characteristics           |
+| `song_analysis`      | LLM-generated analysis          |
+| `playlist_profile`   | Aggregated playlist vectors     |
+| `playlist_analysis`  | LLM-generated playlist analysis |
+| `match_context`      | Cache key + metadata            |
+| `match_result`       | Cached match scores             |
 
 ---
 

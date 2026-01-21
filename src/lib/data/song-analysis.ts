@@ -6,11 +6,11 @@
  */
 
 import { Result } from "better-result";
-import type { DbError } from "@/lib/errors/database";
+import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseSingle,
-} from "@/lib/utils/result-wrappers/supabase";
+} from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
 import type { Json, Tables, TablesInsert } from "./database.types";
 
@@ -97,7 +97,9 @@ export async function get(
  * Inserts a new song analysis record.
  * Multiple analyses can exist per song (different models/versions).
  */
-export function insert(data: InsertData): Promise<Result<SongAnalysis, DbError>> {
+export function insert(
+	data: InsertData,
+): Promise<Result<SongAnalysis, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
 		supabase

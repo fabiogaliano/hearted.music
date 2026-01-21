@@ -8,11 +8,11 @@
 import type { Result } from "better-result";
 import { createAdminSupabaseClient } from "./client";
 import type { Tables, TablesInsert } from "./database.types";
-import type { DbError } from "@/lib/errors/database";
+import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
-} from "@/lib/utils/result-wrappers/supabase";
+} from "@/lib/shared/utils/result-wrappers/supabase";
 
 /** Account row type */
 export type Account = Tables<"account">;

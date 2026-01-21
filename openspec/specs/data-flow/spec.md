@@ -2,6 +2,9 @@
 
 > Data fetching, caching, and state management patterns.
 
+## Purpose
+Define the canonical data-flow patterns for UI state, server state, and job progress in the v2 app.
+
 **Detailed design**: `docs/DATA-FLOW-PATTERNS.md`
 
 ---
@@ -23,9 +26,7 @@
 ```
 
 ---
-
 ## Requirements
-
 ### Requirement: TanStack Query for Server State
 
 The system SHALL use TanStack Query for all server-derived data.
@@ -144,6 +145,22 @@ The system SHALL provide optimistic updates for user actions.
 
 ---
 
+### Requirement: Job lifecycle module location
+
+The system SHALL define job lifecycle helpers under the jobs module.
+
+#### Scenario: Job lifecycle service location
+- **WHEN** job lifecycle helpers are referenced
+- **THEN** they reside in `src/lib/jobs/lifecycle.ts`
+
+### Requirement: Retry utility module location
+
+The system SHALL define Result retry utilities under shared utils.
+
+#### Scenario: Retry helper location
+- **WHEN** `withRetry` is referenced
+- **THEN** it resides in `src/lib/shared/utils/result-wrappers/generic.ts`
+
 ## Query Key Patterns
 
 ```typescript
@@ -181,14 +198,14 @@ export const markSongMatched = createServerFn()
 
 ## State Ownership
 
-| Data Type | Owner | Why |
-|-----------|-------|-----|
-| Songs, playlists, matches | TanStack Query | Server-derived, cached |
-| Job progress | TanStack Query + SSE | Real-time updates |
-| User preferences | TanStack Query | Server-persisted |
-| Current match index | Zustand | Ephemeral UI state |
-| Modal open/close | Zustand | Ephemeral UI state |
-| Form drafts | Local state | Not server-relevant |
+| Data Type                 | Owner                | Why                    |
+| ------------------------- | -------------------- | ---------------------- |
+| Songs, playlists, matches | TanStack Query       | Server-derived, cached |
+| Job progress              | TanStack Query + SSE | Real-time updates      |
+| User preferences          | TanStack Query       | Server-persisted       |
+| Current match index       | Zustand              | Ephemeral UI state     |
+| Modal open/close          | Zustand              | Ephemeral UI state     |
+| Form drafts               | Local state          | Not server-relevant    |
 
 ---
 
@@ -236,14 +253,14 @@ useMutation({
 
 Jobs use a `pending → running → completed/failed` state machine. The `pending` state supports future SQS queue integration.
 
-**Service**: `lib/services/job-lifecycle.ts`
+**Service**: `src/lib/jobs/lifecycle.ts`
 
-| Function | Use When |
-|----------|----------|
-| `startJob(id)` | Transitioning pending → running (cleans up on failure) |
-| `finalizeJob(id, progress)` | Ending job with progress-based decision |
-| `failJob(id, msg)` | Explicit failure in error handlers |
-| `completeJob(id)` | Explicit completion without progress logic |
+| Function                    | Use When                                               |
+| --------------------------- | ------------------------------------------------------ |
+| `startJob(id)`              | Transitioning pending → running (cleans up on failure) |
+| `finalizeJob(id, progress)` | Ending job with progress-based decision                |
+| `failJob(id, msg)`          | Explicit failure in error handlers                     |
+| `completeJob(id)`           | Explicit completion without progress logic             |
 
 ```typescript
 const job = await jobs.createJob(accountId, type);  // pending
@@ -258,10 +275,10 @@ All functions include retry logic for transient `DatabaseError` failures.
 
 ## Retry Utility
 
-`withRetry()` in `lib/utils/result-wrappers/generic.ts` wraps Result-returning operations with exponential backoff.
+`withRetry()` in `src/lib/shared/utils/result-wrappers/generic.ts` wraps Result-returning operations with exponential backoff.
 
 ```typescript
-import { withRetry } from "@/lib/utils/result-wrappers/generic";
+import { withRetry } from "@/lib/shared/utils/result-wrappers/generic";
 
 await withRetry(() => someDbOperation(), {
   maxRetries: 3,

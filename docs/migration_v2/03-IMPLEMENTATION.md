@@ -716,19 +716,19 @@ Create data layer modules in `src/lib/data/`:
 
 ### Tasks
 
-- [ ] Update `matching/` imports to direct
-- [ ] Update `reranker/` imports to direct
-- [ ] Update `embedding/` imports to direct
-- [ ] Update `genre/` imports to direct
-- [ ] Update `profiling/` imports to direct
-- [ ] Update `llm/` imports to direct
+- [ ] Update `capabilities/matching/` imports to direct
+- [ ] Update `ml/reranker/` imports to direct
+- [ ] Update `ml/embedding/` imports to direct
+- [ ] Update `capabilities/genre/` imports to direct
+- [ ] Update `capabilities/profiling/` imports to direct
+- [ ] Update `ml/llm/` imports to direct
 - [ ] Delete factory files:
-  - [ ] `matching/factory.ts`
-  - [ ] `reranker/factory.ts`
-  - [ ] `embedding/factory.ts`
-  - [ ] `genre/factory.ts`
-  - [ ] `profiling/factory.ts`
-  - [ ] `llm/LlmProviderManagerFactory.ts`
+  - [ ] `capabilities/matching/factory.ts`
+  - [ ] `ml/reranker/factory.ts`
+  - [ ] `ml/embedding/factory.ts`
+  - [ ] `capabilities/genre/factory.ts`
+  - [ ] `capabilities/profiling/factory.ts`
+  - [ ] `ml/llm/LlmProviderManagerFactory.ts`
 
 ### Verification
 
@@ -746,7 +746,7 @@ bun run typecheck  # No import errors
 
 ### Tasks
 
-- [ ] Create `analysis/pipeline.ts` combining:
+- [ ] Create `capabilities/analysis/pipeline.ts` combining:
   - `TrackPrefetchService.ts` logic
   - `PlaylistBatchProcessor.ts` logic
   - `ProgressNotifier.ts` logic
@@ -775,7 +775,7 @@ bun run typecheck  # No import errors
 ### Tasks
 
 - [ ] Move DB operations to `data/playlists.ts` (done in Phase 3)
-- [ ] Create `services/sync/PlaylistSyncService.ts`:
+- [ ] Create `capabilities/sync/playlist-sync.ts`:
   - [ ] `syncPlaylists(accountId: string)`
   - [ ] `syncPlaylistSongs(playlistId: string)`
   - [ ] `createPlaylist(name: string, description: string)`
@@ -814,7 +814,7 @@ bun run typecheck  # No import errors
 
 ### Tasks
 
-- [ ] Create `lib/services/deepinfra/DeepInfraService.ts`
+- [ ] Create `src/lib/integrations/deepinfra/service.ts`
   ```typescript
   // Core methods
   export async function embedText(text: string): Promise<number[]>
@@ -822,12 +822,12 @@ bun run typecheck  # No import errors
   export async function rerank(query: string, documents: string[]): Promise<RerankResult[]>
   ```
 
-- [ ] Update `EmbeddingService.ts` to call DeepInfra instead of Python
-- [ ] Update `RerankerService.ts` to call DeepInfra instead of Python
+- [ ] Update `src/lib/ml/embedding/service.ts` to call DeepInfra instead of Python
+- [ ] Update `src/lib/ml/reranker/service.ts` to call DeepInfra instead of Python
 - [ ] Remove `VectorizationService.ts` (calls to Python)
 - [ ] Remove `/sentiment` calls from codebase
 - [ ] Add `DEEPINFRA_API_KEY` to environment
-- [ ] Delete `services/vectorization/` Python service folder
+- [ ] Delete `old_app/lib/services/vectorization/` Python service folder
 - [ ] Update `docker-compose.yml` to remove vectorization service
 
 ### Verification
@@ -983,7 +983,7 @@ bun run typecheck  # No import errors
 - [ ] Delete `llm/ProviderKeyService.ts` (table dropped)
 - [ ] Rename `SyncService.ts` → `SyncOrchestrator.ts`
 - [ ] Delete old repository files once confirmed unused
-- [ ] Update `services/index.ts` exports
+- [ ] Update any barrel exports referencing old `services` paths
 
 #### Smoke Tests
 

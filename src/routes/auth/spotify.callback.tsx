@@ -19,7 +19,10 @@ import {
 } from "@/lib/auth/cookies";
 import { upsertAccount } from "@/lib/data/accounts";
 import { upsertToken } from "@/lib/data/auth-tokens";
-import { exchangeCodeForTokens, fetchSpotifyUser } from "@/lib/services/spotify/client";
+import {
+	exchangeCodeForTokens,
+	fetchSpotifyUser,
+} from "@/lib/integrations/spotify/client";
 
 const callbackSearchSchema = z.object({
 	code: z.string().optional(),
@@ -36,15 +39,16 @@ const handleCallback = createServerFn({ method: "GET" })
 			// Handle Spotify errors (user denied access, etc.)
 			if (data.error) {
 				throw redirect({
-					to: "/", search: { error: data.error },
-				})
+					to: "/",
+					search: { error: data.error },
+				});
 			}
 
 			if (!data.code || !data.state) {
 				throw redirect({
 					to: "/",
 					search: { error: "missing_params" },
-				})
+				});
 			}
 
 			// Verify state matches
@@ -54,14 +58,14 @@ const handleCallback = createServerFn({ method: "GET" })
 				throw redirect({
 					to: "/",
 					search: { error: "invalid_state" },
-				})
+				});
 			}
 
 			if (!codeVerifier) {
 				throw redirect({
 					to: "/",
 					search: { error: "missing_verifier" },
-				})
+				});
 			}
 
 			// Exchange code for tokens
@@ -125,7 +129,7 @@ const handleCallback = createServerFn({ method: "GET" })
 				search: { error: String(error) },
 			});
 		}
-	})
+	});
 
 export const Route = createFileRoute("/auth/spotify/callback")({
 	validateSearch: callbackSearchSchema,

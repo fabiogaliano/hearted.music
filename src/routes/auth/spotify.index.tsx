@@ -38,7 +38,7 @@ const initiateOAuth = createServerFn({ method: "GET" }).handler(async () => {
 		state,
 		code_challenge_method: "S256",
 		code_challenge: codeChallenge,
-	})
+	});
 
 	const authUrl = `${SPOTIFY_AUTH_URL}?${params}`;
 	const cookies = setOAuthCookies(state, codeVerifier);
@@ -52,7 +52,7 @@ const initiateOAuth = createServerFn({ method: "GET" }).handler(async () => {
 	throw redirect({
 		href: authUrl,
 		headers,
-	})
+	});
 });
 
 export const Route = createFileRoute("/auth/spotify/")({

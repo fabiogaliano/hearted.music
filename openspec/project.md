@@ -169,7 +169,7 @@ import type { Result } from "better-result";
 import { createAdminSupabaseClient } from "./client";
 import type { Tables, TablesInsert } from "./database.types";
 import type { DbError } from "@/lib/errors/database";
-import { fromSupabaseMaybe } from "@/lib/utils/result-wrappers/supabase";
+import { fromSupabaseMaybe } from "@/lib/shared/utils/result-wrappers/supabase";
 
 export type Account = Tables<"account">;
 export type UpsertData = Pick<TablesInsert<"account">, "spotify_id" | "email">;
@@ -203,11 +203,11 @@ All errors use `TaggedError` from `better-result`. Errors live in `src/lib/error
 - Root level - Infrastructure errors (database, validation, network)
 
 *Naming Convention:*
-| Category | Pattern | Example |
-| -------- | ------- | ------- |
-| External API | `{Service}{Problem}Error` | `GeniusNotFoundError`, `SpotifyRateLimitError` |
-| Domain | `{Domain}{State}Error` | `NoLyricsAvailableError`, `SyncFailedError` |
-| Infrastructure | `{Resource}Error` | `NetworkError`, `DatabaseError` |
+| Category       | Pattern                   | Example                                        |
+| -------------- | ------------------------- | ---------------------------------------------- |
+| External API   | `{Service}{Problem}Error` | `GeniusNotFoundError`, `SpotifyRateLimitError` |
+| Domain         | `{Domain}{State}Error`    | `NoLyricsAvailableError`, `SyncFailedError`    |
+| Infrastructure | `{Resource}Error`         | `NetworkError`, `DatabaseError`                |
 
 *Abstraction Boundaries:*
 
@@ -246,12 +246,12 @@ export class MyError extends TaggedError("MyError")<{
 
 Use Zod schemas as the **single source of truth** for runtime validation + type inference.
 
-| Use Case | Pattern |
-| -------- | ------- |
-| Enums (not from DB) | `const X = z.enum([...]); type X = z.infer<typeof X>;` |
-| API request/response | Define schema, infer type, validate at boundary |
-| Form inputs | Schema for validation, `z.infer` for types |
-| Config objects | Schema with defaults via `.default()` |
+| Use Case             | Pattern                                                |
+| -------------------- | ------------------------------------------------------ |
+| Enums (not from DB)  | `const X = z.enum([...]); type X = z.infer<typeof X>;` |
+| API request/response | Define schema, infer type, validate at boundary        |
+| Form inputs          | Schema for validation, `z.infer` for types             |
+| Config objects       | Schema with defaults via `.default()`                  |
 
 ❌ Don't use plain `type X = "a" | "b"` when runtime validation is needed.
 ❌ Don't duplicate types (e.g., in class property AND constructor) - use Zod.
@@ -259,7 +259,7 @@ Use Zod schemas as the **single source of truth** for runtime validation + type 
 
 **Service Layer Patterns:**
 
-Services in `src/lib/services/` follow this structure:
+Modules in `src/lib/capabilities/`, `src/lib/integrations/`, `src/lib/ml/`, and `src/lib/jobs/` follow this structure:
 - Class with constructor injection + Zod-validated config
 - All async methods return `Promise<Result<T, ErrorUnion>>`
 - Factory function (e.g., `createMyService()`) handles env vars
@@ -270,13 +270,13 @@ Services in `src/lib/services/` follow this structure:
 
 **Concurrency Patterns:**
 
-| Pattern | When to Use |
-|---------|-------------|
+| Pattern              | When to Use                                   |
+| -------------------- | --------------------------------------------- |
 | `ConcurrencyLimiter` | External APIs with rate limits (e.g., Genius) |
-| `Promise.all` | Independent ops, no rate limit concerns |
-| `Promise.allSettled` | Partial success is acceptable |
+| `Promise.all`        | Independent ops, no rate limit concerns       |
+| `Promise.allSettled` | Partial success is acceptable                 |
 
-See `src/lib/utils/concurrency.ts` for `ConcurrencyLimiter` implementation.
+See `src/lib/shared/utils/concurrency.ts` for `ConcurrencyLimiter` implementation.
 
 ### Testing Strategy
 
@@ -303,12 +303,16 @@ The app integrates with the Spotify Web API to:
 Audio features (danceability, energy, etc.) come from ReccoBeats since Spotify deprecated their `/audio-features` endpoint.
 
 ### External Services
-| Service | Purpose |
-|---------|---------|
-| Spotify API | Authentication, library access, playlist management |
-| ReccoBeats | Audio features (replaces deprecated Spotify audio-features endpoint) |
-| Genius API | Lyrics fetching for content analysis |
-| DeepInfra | LLM inference for song analysis |
+| Service     | Purpose                                                              |
+| ----------- | -------------------------------------------------------------------- |
+| Spotify API | Authentication, library access, playlist management                  |
+| ReccoBeats  | Audio features (replaces deprecated Spotify audio-features endpoint) |
+| Genius API  | Lyrics fetching for content analysis                                 |
+| Last.fm API | Genre enrichment (469-genre canonical taxonomy)                      |
+| DeepInfra   | ML embeddings (E5-instruct 1024d) + reranking (production default)  |
+| HuggingFace | ML embeddings (MiniLM 384d) fallback + local dev models             |
+
+**ML Provider Abstraction**: Multi-backend support for embeddings/reranking via `ml/provider/` factory. Selection: `ML_PROVIDER` override → DeepInfra if API key exists → HuggingFace fallback. Supports production (DeepInfra), dev (HuggingFace API), and local (Transformers.js) modes.
 
 ### Key Domain Terms
 - **Liked Songs**: Spotify's saved tracks collection (the "heart" button)

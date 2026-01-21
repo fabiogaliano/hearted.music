@@ -16,10 +16,10 @@
 | 4b    | Song/Analysis Services | ✅ Complete            | Phase 3    |
 | 4c    | Playlist/Sync Services | ✅ Complete            | Phase 3    |
 | 4d    | DeepInfra Migration    | ✅ Complete            | Phase 3    |
-| 4e    | **Matching Pipeline**  | ⬜ Not Started         | Phase 4d   |
-| 4f    | **Genre Enrichment**   | ⬜ Not Started         | Phase 4d   |
-| 4g    | **Playlist Profiling** | ⬜ Not Started         | Phase 4e   |
-| 5     | SSE                    | ⬜ Not Started         | Phase 4g   |
+| 4e    | **Matching Pipeline**  | ✅ Complete            | Phase 4d   |
+| 4f    | **Genre Enrichment**   | ✅ Complete            | Phase 4d   |
+| 4g    | **Playlist Profiling** | ✅ Complete            | Phase 4e   |
+| 5     | SSE                    | ✅ Complete (2026-01-21) | Phase 4g   |
 | 6     | Cleanup                | ⬜ Not Started         | Phase 5    |
 | 7     | UI Integration         | 🟡 Prototypes Ready    | Phase 5    |
 
@@ -209,17 +209,17 @@
 
 ### Tasks
 
-- [x] Merge analysis pipeline → `analysis/pipeline.ts`
-  - Location: `src/lib/services/analysis/pipeline.ts`
+- [x] Merge analysis pipeline → `capabilities/analysis/pipeline.ts`
+  - Location: `src/lib/capabilities/analysis/pipeline.ts`
   - Orchestrates batch analysis with concurrency control and job tracking
   - Uses `data/jobs.ts` for job lifecycle management
 - [x] Delete `TrackService.ts` → use `data/song.ts` + `data/liked-song.ts`
   - N/A for v1 fresh port; using split query modules from start
 - [x] Create `SongAnalysisService` using query modules
-  - Location: `src/lib/services/analysis/song-analysis.ts`
+  - Location: `src/lib/capabilities/analysis/song-analysis.ts`
   - Uses AI SDK via `LlmService` with Zod schemas for structured output
 - [x] Create `PlaylistAnalysisService` using query modules
-  - Location: `src/lib/services/analysis/playlist-analysis.ts`
+  - Location: `src/lib/capabilities/analysis/playlist-analysis.ts`
   - Same pattern as SongAnalysisService
 - [x] Wire job progress updates via `data/jobs.ts`
   - Pipeline creates jobs, updates progress, marks completion/failure
@@ -244,12 +244,12 @@
 ### Tasks
 
 - [x] Create `PlaylistSyncService.ts` (Spotify API operations)
-  - Location: `src/lib/services/sync/playlist-sync.ts`
+  - Location: `src/lib/capabilities/sync/playlist-sync.ts`
   - Implements: `syncPlaylists`, `syncPlaylistTracks`, `createPlaylist`, `updatePlaylist`
 - [x] Update `PlaylistService.ts` → use `data/playlists.ts` for DB
   - DB operations now in `data/playlists.ts` (Phase 3)
 - [x] Rename `SyncService.ts` → `SyncOrchestrator.ts`
-  - Location: `src/lib/services/sync/orchestrator.ts`
+  - Location: `src/lib/capabilities/sync/orchestrator.ts`
   - Implements: `syncLikedSongs`, `syncPlaylists`, `fullSync`
 - [x] Delete `UserService.ts` → use `data/accounts.ts`
   - Replaced by `data/accounts.ts` (Phase 3)
@@ -272,7 +272,7 @@
 ### Tasks
 
 - [x] **Create DeepInfraService**
-  - Location: `src/lib/services/deepinfra/service.ts`
+  - Location: `src/lib/integrations/deepinfra/service.ts`
   - Endpoints:
     - Embeddings: `https://api.deepinfra.com/v1/openai/embeddings`
     - Reranker: `https://api.deepinfra.com/v1/inference/Qwen/Qwen3-Reranker-0.6B`
@@ -285,16 +285,16 @@
   ```
 
 - [x] **Update EmbeddingService** → call DeepInfra
-  - Location: `src/lib/services/embedding/service.ts`
+  - Location: `src/lib/ml/embedding/service.ts`
   - Implements: `embedSong`, `embedBatch`, `getEmbedding`, `getEmbeddings`
   - Content-hash caching to avoid re-embedding
 - [x] **Update RerankerService** → call DeepInfra
-  - Location: `src/lib/services/reranker/service.ts`
+  - Location: `src/lib/ml/reranker/service.ts`
   - Implements: `rerank` with score blending (70% original + 30% reranker)
   - Two-stage pipeline: embedding similarity → cross-encoder reranking
 - [x] **Remove sentiment calls** (LLM handles emotions) — N/A for v1 fresh port
 - [x] **Delete VectorizationService.ts** — N/A for v1 fresh port
-- [x] **Delete `services/vectorization/` Python folder** — N/A for v1 fresh port
+- [x] **Delete `old_app/lib/services/vectorization/` Python folder** — N/A for v1 fresh port
 - [x] **Update docker-compose.yml** — N/A for v1 fresh port
 
 ### Acceptance Criteria
@@ -313,7 +313,7 @@
 
 > Port the core song-to-playlist matching algorithm. This is the primary business logic that makes the app work.
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 
 ### Source Files (old_app)
 
@@ -329,33 +329,33 @@
 
 ### Tasks
 
-- [ ] **Port `matching-config.ts`** → `services/matching/config.ts`
+- [x] **Port `matching-config.ts`** → `capabilities/matching/config.ts`
   - Algorithm weights (semantic, vector, audio, genre)
   - Score thresholds and normalization
   - Configurable tuning without touching algorithm
 
-- [ ] **Port `analysis-extractors.ts`** → `services/embedding/extractors.ts`
+- [x] **Port `analysis-extractors.ts`** → `ml/embedding/extractors.ts`
   - `extractSongText(analysis)` → text for embedding
   - `extractPlaylistText(analysis)` → text for embedding
   - Handle missing fields gracefully
 
-- [ ] **Port `hashing.ts`** → `services/embedding/hashing.ts`
+- [x] **Port `hashing.ts`** → `ml/embedding/hashing.ts`
   - `hashContent(text)` → content hash for cache invalidation
   - `hashModelBundle(model, version)` → model version hash
   - Deterministic hashing for reproducibility
 
-- [ ] **Port `SemanticMatcher.ts`** → `services/matching/semantic.ts`
+- [x] **Port `SemanticMatcher.ts`** → `capabilities/matching/semantic.ts`
   - Theme similarity (keyword overlap + embeddings)
   - Mood compatibility scoring
   - Caching layer for repeated comparisons
 
-- [ ] **Port `MatchingService.ts`** → `services/matching/service.ts`
+- [x] **Port `MatchingService.ts`** → `capabilities/matching/service.ts`
   - Multi-factor scoring: vector (cosine), semantic, audio features, genre
   - Score normalization and weighting from config
   - Batch matching for efficiency
   - Use `data/matching.ts` for persistence
 
-- [ ] **Port `MatchCachingService.ts`** → `services/matching/cache.ts`
+- [x] **Port `MatchCachingService.ts`** → `capabilities/matching/cache.ts`
   - Cache-first orchestration pattern
   - Context hashing (playlist set + candidate set + config)
   - Invalidation on new songs/playlists/config changes
@@ -366,9 +366,9 @@
   - Test score reproducibility
 
 ### Acceptance Criteria
-- [ ] Can match a song to playlists and get ranked results
-- [ ] Scores are deterministic (same input = same output)
-- [ ] Cache invalidates correctly on changes
+- [x] Can match a song to playlists and get ranked results
+- [x] Scores are deterministic (same input = same output)
+- [x] Cache invalidates correctly on changes
 - [ ] Matching completes in <5s for typical library (500 songs, 20 playlists)
 
 ### Architecture Notes
@@ -396,7 +396,7 @@ Song Analysis → Extract Text → Embed → Match
 
 > Port Last.fm genre fetching and normalization for improved matching.
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 
 ### Source Files (old_app)
 
@@ -409,38 +409,38 @@ Song Analysis → Extract Text → Embed → Match
 
 ### Tasks
 
-- [ ] **Port `LastFmService.ts`** → `services/lastfm/service.ts`
+- [x] **Port `LastFmService.ts`** → `integrations/lastfm/service.ts`
   - `getArtistTopTags(artist)` → genre tags
   - Rate limiting (Last.fm allows 5 req/sec)
   - Error handling for missing artists
 
-- [ ] **Port genre whitelist** → `services/lastfm/whitelist.ts`
-  - 469-genre canonical taxonomy
+- [x] **Port genre whitelist** → `integrations/lastfm/whitelist.ts`
+  - 397-genre canonical taxonomy (reduced from 469)
   - Mapping from raw tags to canonical genres
   - Export as `GENRE_WHITELIST: Set<string>`
 
-- [ ] **Port normalize utils** → `services/lastfm/normalize.ts`
+- [x] **Port normalize utils** → `integrations/lastfm/normalize.ts`
   - `normalizeGenre(raw)` → canonical genre or null
   - Lowercase, trim, handle variations
 
-- [ ] **Port `GenreEnrichmentService.ts`** → `services/genre/service.ts`
+- [x] **Port `GenreEnrichmentService.ts`** → `capabilities/genre/service.ts`
   - `enrichSong(song)` → fetch genres if missing
   - `enrichBatch(songs)` → batch with rate limiting
   - **Top 3 only, ordered**: index 0 = primary, index 1 = secondary, index 2 = tertiary
   - Store ordered genres on `song.genres` column (TEXT[], max 3)
   - Use `data/song.ts` for persistence
 
-- [ ] **Add environment variable**
+- [x] **Add environment variable**
   ```
   LASTFM_API_KEY=xxx
   ```
 
 ### Acceptance Criteria
-- [ ] Can fetch genres for artist from Last.fm
-- [ ] Returns max 3 genres, ordered by relevance (primary → secondary → tertiary)
-- [ ] Genres normalized to canonical 469-genre taxonomy
-- [ ] Genres persisted on `song.genres` as ordered TEXT[]
-- [ ] Rate limiting prevents API abuse (5 req/sec)
+- [x] Can fetch genres for artist from Last.fm
+- [x] Returns max 3 genres, ordered by relevance (primary → secondary → tertiary)
+- [x] Genres normalized to canonical genre taxonomy
+- [x] Genres persisted on `song.genres` as ordered TEXT[]
+- [x] Rate limiting prevents API abuse (5 req/sec via ConcurrencyLimiter)
 
 ### References
 - [song.genres column](/docs/migration_v2/01-SCHEMA.md) — Schema for genres array
@@ -451,7 +451,7 @@ Song Analysis → Extract Text → Embed → Match
 
 > Port playlist profile computation for matching destination playlists.
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 
 ### Source Files (old_app)
 
@@ -463,29 +463,28 @@ Song Analysis → Extract Text → Embed → Match
 
 ### Tasks
 
-- [ ] **Port `ReccoBeatsService.ts`** → `services/reccobeats/service.ts`
-  - `getAudioFeatures(isrc)` → audio features
-  - Rate limiting
-  - Graceful degradation if ReccoBeats unavailable (skip backfill)
-  - Add `RECCOBEATS_API_URL` env var if needed
+- [x] **Port `ReccoBeatsService.ts`** → `integrations/reccobeats/service.ts`
+  - `getAudioFeatures(spotifyId)` → audio features (two-step lookup)
+  - Rate limiting via ConcurrencyLimiter
+  - Graceful degradation if ReccoBeats unavailable
 
-- [ ] **Port `AudioFeaturesService.ts`** → `services/audio/service.ts`
-  - `normalizeFeatures(raw)` → 0-1 normalized values
-  - Centroid computation for playlist aggregation
+- [x] **Port `AudioFeaturesService.ts`** → `integrations/audio/service.ts`
+  - `getOrFetchFeatures(tracks)` → get from DB or fetch from ReccoBeats
+  - `backfillMissingFeatures(tracks)` → batch backfill
 
-- [ ] **Backfill missing audio features** before profiling
+- [x] **Backfill missing audio features** before profiling
   - Fetch features for songs missing `song_audio_feature`
   - Persist via `data/song-audio-feature.ts`
   - Prefer existing rows; only fetch missing data
 
-- [ ] **Port `PlaylistProfilingService.ts`** → `services/profiling/service.ts`
-  - `computeProfile(playlist)` → aggregate profile from songs
+- [x] **Port `PlaylistProfilingService.ts`** → `capabilities/profiling/service.ts`
+  - `computeProfile(playlist, songs)` → aggregate profile from songs
   - Embedding centroid (average of song embeddings)
   - Audio feature centroid (average of song features)
   - Genre distribution (weighted by frequency)
   - Emotion distribution (from song analyses)
   - Use `data/vectors.ts` for persistence (`playlist_profile` table)
-  - Ensure audio features are backfilled before centroid computation
+  - Content hashing for cache invalidation
 
 - [ ] **Create integration tests**
   - Profile changes when playlist songs change
@@ -493,11 +492,11 @@ Song Analysis → Extract Text → Embed → Match
   - Handle empty playlists gracefully
 
 ### Acceptance Criteria
-- [ ] Can compute profile for destination playlist
-- [ ] Profile includes: embedding centroid, audio centroid, genre distribution, emotion distribution
-- [ ] Missing audio features are backfilled into `song_audio_feature`
-- [ ] Profile persisted to `playlist_profile` table
-- [ ] Profile invalidates when playlist contents change
+- [x] Can compute profile for destination playlist
+- [x] Profile includes: embedding centroid, audio centroid, genre distribution, emotion distribution
+- [x] Missing audio features are backfilled into `song_audio_feature`
+- [x] Profile persisted to `playlist_profile` table
+- [x] Profile invalidates when playlist contents change (via content hash)
 
 ### Architecture Notes
 
@@ -566,7 +565,7 @@ Destination Playlist
 - [ ] Delete `vectorization/VectorCache.ts`
 - [ ] Delete `llm/ProviderKeyService.ts`
 - [ ] Delete old repository files
-- [ ] Update `services/index.ts` exports
+- [ ] Update any barrel exports referencing old `services` paths
 - [ ] Remove unused dependencies from `package.json`
 
 #### Smoke Tests
@@ -659,4 +658,4 @@ UI prototypes are ~85% complete in `old_app/prototypes/warm-pastel/`:
 
 ---
 
-*Last updated: January 20, 2026 — Phases 4e-4g added, UI simplified (prototypes exist)*
+*Last updated: January 21, 2026 — Phases 4e-4g and Phase 5 complete, all core services ported*

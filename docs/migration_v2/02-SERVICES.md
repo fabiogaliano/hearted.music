@@ -53,10 +53,10 @@
 
 ### Python Service (entire folder) — #056
 
-| File/Folder                           | Replacement             | Reason                                              |
-| ------------------------------------- | ----------------------- | --------------------------------------------------- |
-| `services/vectorization/` (Python)    | → `DeepInfraService.ts` | DeepInfra hosts same models; no self-hosting needed |
-| `VectorizationService.ts` (TS client) | → `DeepInfraService.ts` | Single service for embeddings + reranking           |
+| File/Folder                                    | Replacement             | Reason                                              |
+| ---------------------------------------------- | ----------------------- | --------------------------------------------------- |
+| `old_app/lib/services/vectorization/` (Python) | → `DeepInfraService.ts` | DeepInfra hosts same models; no self-hosting needed |
+| `VectorizationService.ts` (TS client)          | → `DeepInfraService.ts` | Single service for embeddings + reranking           |
 
 ---
 
@@ -280,63 +280,149 @@ export function isTokenExpired(token: AuthToken)
 
 > ⚠️ **Status Clarification (2026-01-20)**: These services exist in `old_app/lib/services/` but have NOT been ported to v1 yet. They are required for the core matching functionality.
 
-### Core Matching Algorithm (Phase 4e) — ⬜ NOT PORTED
+### Core Matching Algorithm (Phase 4e) — ✅ COMPLETE (2026-01-21)
 
-| Service                                | Lines | Purpose                        | Status |
-| -------------------------------------- | ----- | ------------------------------ | ------ |
-| `matching/MatchingService.ts`          | 1493  | Core matching algorithm        | ⬜      |
-| `matching/MatchCachingService.ts`      | 534   | Cache-first orchestration      | ⬜      |
-| `matching/matching-config.ts`          | 85    | Algorithm weights & thresholds | ⬜      |
-| `semantic/SemanticMatcher.ts`          | 306   | Theme/mood similarity          | ⬜      |
-| `vectorization/analysis-extractors.ts` | 354   | Text extraction for embeddings | ⬜      |
-| `vectorization/hashing.ts`             | 327   | Content hashing for cache      | ⬜      |
+| Service                                | Lines | Purpose                        | Status | v1 Location |
+| -------------------------------------- | ----- | ------------------------------ | ------ | ----------- |
+| `matching/MatchingService.ts`          | 1493  | Core matching algorithm        | ✅      | `capabilities/matching/service.ts` (440 lines) |
+| `matching/MatchCachingService.ts`      | 534   | Cache-first orchestration      | ✅      | `capabilities/matching/cache.ts` (507 lines) |
+| `matching/matching-config.ts`          | 85    | Algorithm weights & thresholds | ✅      | `capabilities/matching/config.ts` (173 lines) |
+| `semantic/SemanticMatcher.ts`          | 306   | Theme/mood similarity          | ✅      | `capabilities/matching/semantic.ts` (300 lines) |
+| `vectorization/analysis-extractors.ts` | 354   | Text extraction for embeddings | ✅      | `ml/embedding/extractors.ts` (354+ lines) |
+| `vectorization/hashing.ts`             | 327   | Content hashing for cache      | ✅      | `ml/embedding/hashing.ts` (327+ lines) |
 
-### Genre Enrichment (Phase 4f) — ⬜ NOT PORTED
+**Implementation Notes**:
+- More efficient than old_app (2,443 lines vs 3,139 lines) with additional SSE integration
+- Enhanced with SSE progress events for UI tracking
+- DB persistence via `data/matching.ts` (race-safe with unique constraints)
+- Adaptive weights based on data availability
+- Tiered scoring with deep analysis gate (0.1 threshold)
+- Scoring functions in `capabilities/matching/scoring.ts` (301 lines)
+- Type definitions in `capabilities/matching/types.ts` (222 lines)
 
-| Service                           | Lines | Purpose                  | Status |
-| --------------------------------- | ----- | ------------------------ | ------ |
-| `lastfm/LastFmService.ts`         | 311   | Last.fm API              | ⬜      |
-| `lastfm/utils/genre-whitelist.ts` | 469   | Genre taxonomy           | ⬜      |
-| `genre/GenreEnrichmentService.ts` | 477   | Genre fetching + caching | ⬜      |
+### Genre Enrichment (Phase 4f) — ✅ COMPLETE (2026-01-21)
 
-### Playlist Profiling (Phase 4g) — ⬜ NOT PORTED
+| Service                           | Lines | Purpose                  | Status | v1 Location |
+| --------------------------------- | ----- | ------------------------ | ------ | ----------- |
+| `lastfm/LastFmService.ts`         | 311   | Last.fm API              | ✅      | `integrations/lastfm/service.ts` (311+ lines) |
+| `lastfm/utils/genre-whitelist.ts` | 469   | Genre taxonomy           | ✅      | `integrations/lastfm/whitelist.ts` (469+ lines) |
+| `genre/GenreEnrichmentService.ts` | 477   | Genre fetching + caching | ✅      | `capabilities/genre/service.ts` (294 lines) |
 
-| Service                                 | Lines | Purpose                     | Status |
-| --------------------------------------- | ----- | --------------------------- | ------ |
-| `profiling/PlaylistProfilingService.ts` | 770   | Playlist vector computation | ⬜      |
-| `reccobeats/ReccoBeatsService.ts`       | 226   | ReccoBeats API              | ⬜      |
-| `audio/AudioFeaturesService.ts`         | 45    | Audio feature utilities     | ⬜      |
+**Implementation Notes**:
+- Graceful degradation when `LASTFM_API_KEY` unavailable
+- DB-first pattern (returns cached genres before API calls)
+- Batch operations with progress callbacks
+- Rate limiting via `ConcurrencyLimiter` (5 req/sec)
+- Additional normalization utils in `integrations/lastfm/normalize.ts`
+- Type definitions in `integrations/lastfm/types.ts`
+- Error handling in `shared/errors/external/lastfm.ts`
+
+### Playlist Profiling (Phase 4g) — ✅ COMPLETE (2026-01-21)
+
+| Service                                 | Lines | Purpose                     | Status | v1 Location |
+| --------------------------------------- | ----- | --------------------------- | ------ | ----------- |
+| `profiling/PlaylistProfilingService.ts` | 770   | Playlist vector computation | ✅      | `capabilities/profiling/service.ts` (253 lines) |
+| `reccobeats/ReccoBeatsService.ts`       | 226   | ReccoBeats API              | ✅      | `integrations/reccobeats/service.ts` (226+ lines) |
+| `audio/AudioFeaturesService.ts`         | 45    | Audio feature utilities     | ✅      | `integrations/audio/service.ts` (45+ lines) |
+
+**Implementation Notes**:
+- Computes 4 distributions: embedding centroid, audio centroid, genre distribution, emotion distribution
+- Content hash invalidation for automatic cache refresh
+- Integrates with `GenreEnrichmentService` for genre data
+- Audio feature backfill via ReccoBeats (no API key required)
+- Calculation utilities in `capabilities/profiling/calculations.ts`
+- Type definitions in `capabilities/profiling/types.ts`
+- Error handling in `shared/errors/external/reccobeats.ts`
 
 ---
 
 ## Services ALREADY PORTED (Phases 4a-4d) — ✅
 
-### Analysis (v1: `services/analysis/`)
+### Analysis (v1: `capabilities/analysis/`)
 
-| Service                      | v1 Location                     | Status |
-| ---------------------------- | ------------------------------- | ------ |
-| `SongAnalysisService.ts`     | `analysis/song-analysis.ts`     | ✅      |
-| `PlaylistAnalysisService.ts` | `analysis/playlist-analysis.ts` | ✅      |
-| Analysis pipeline (merged)   | `analysis/pipeline.ts`          | ✅      |
+| Service                      | v1 Location                                  | Status |
+| ---------------------------- | -------------------------------------------- | ------ |
+| `SongAnalysisService.ts`     | `capabilities/analysis/song-analysis.ts`     | ✅      |
+| `PlaylistAnalysisService.ts` | `capabilities/analysis/playlist-analysis.ts` | ✅      |
+| Analysis pipeline (merged)   | `capabilities/analysis/pipeline.ts`          | ✅      |
 
-### API Clients (v1: `services/`)
+### API + ML Clients (v1: `integrations/`, `ml/`, `capabilities/`)
 
-| Service                   | v1 Location           | Status |
-| ------------------------- | --------------------- | ------ |
-| `SpotifyService.ts`       | `spotify/service.ts`  | ✅      |
-| `lyrics/LyricsService.ts` | `lyrics/service.ts`   | ✅      |
-| `RerankerService.ts`      | `reranker/service.ts` | ✅      |
+| Service                   | v1 Location                       | Status |
+| ------------------------- | --------------------------------- | ------ |
+| `SpotifyService.ts`       | `integrations/spotify/service.ts` | ✅      |
+| `lyrics/LyricsService.ts` | `capabilities/lyrics/service.ts`  | ✅      |
+| `RerankerService.ts`      | `ml/reranker/service.ts`          | ✅      |
 
 ### New Services (v1 only)
 
-| Service             | v1 Location             | Purpose                    | Status |
-| ------------------- | ----------------------- | -------------------------- | ------ |
-| DeepInfraService    | `deepinfra/service.ts`  | Embeddings + reranking API | ✅      |
-| EmbeddingService    | `embedding/service.ts`  | Song embedding with cache  | ✅      |
-| LlmService          | `llm/service.ts`        | AI SDK multi-provider      | ✅      |
-| SyncOrchestrator    | `sync/orchestrator.ts`  | Full sync coordination     | ✅      |
-| PlaylistSyncService | `sync/playlist-sync.ts` | Playlist Spotify sync      | ✅      |
-| JobLifecycleService | `job-lifecycle.ts`      | Job state transitions      | ✅      |
+| Service             | v1 Location                          | Purpose                    | Status |
+| ------------------- | ------------------------------------ | -------------------------- | ------ |
+| DeepInfraService    | `integrations/deepinfra/service.ts`  | Embeddings + reranking API | ✅      |
+| EmbeddingService    | `ml/embedding/service.ts`            | Song embedding with cache  | ✅      |
+| LlmService          | `ml/llm/service.ts`                  | AI SDK multi-provider      | ✅      |
+| SyncOrchestrator    | `capabilities/sync/orchestrator.ts`  | Full sync coordination     | ✅      |
+| PlaylistSyncService | `capabilities/sync/playlist-sync.ts` | Playlist Spotify sync      | ✅      |
+| JobLifecycleService | `jobs/lifecycle.ts`                  | Job state transitions      | ✅      |
+
+### ML Provider Abstraction (2026-01-21) — ✅ COMPLETE
+
+**Purpose**: Abstract ML operations (embeddings, reranking) behind provider-agnostic interface for multi-backend support.
+
+**Providers**:
+- **DeepInfra** (production): E5-large-instruct (1024d), Qwen reranker - requires `DEEPINFRA_API_KEY`
+- **HuggingFace** (dev/fallback): all-MiniLM-L6-v2 (384d), no reranking - free tier, optional `HF_TOKEN`
+- **Local** (dev-only): Xenova models via @huggingface/transformers - gated by `ML_PROVIDER=local`
+
+**Selection Logic** (via `ML_PROVIDER` env):
+1. Explicit `ML_PROVIDER` override (deepinfra, huggingface, local)
+2. DeepInfra if `DEEPINFRA_API_KEY` exists (production default)
+3. HuggingFace (default fallback, free tier)
+
+**Key Files**:
+- `ml/provider/ports.ts` (80 lines) - `MLProvider` interface
+- `ml/provider/factory.ts` (133 lines) - Provider selection + lazy singleton
+- `ml/provider/types.ts` (105 lines) - Provider-agnostic types
+- `ml/adapters/deepinfra.ts` (171 lines) - DeepInfra adapter
+- `ml/adapters/huggingface.ts` (168 lines) - HuggingFace adapter
+- `ml/adapters/local.ts` (312 lines) - Local adapter with dynamic import
+- `shared/errors/domain/ml.ts` (141 lines) - Provider-agnostic errors
+- `integrations/huggingface/service.ts` (189 lines) - HuggingFace API client
+
+**Benefits**:
+- Multi-backend support (production, dev, local)
+- Provider-agnostic error handling
+- Dynamic import for local provider (no bundle bloat)
+- Cache-safe model bundle hashing with provider metadata
+- Graceful degradation when providers unavailable
+
+### SSE Job Progress (Phase 5, 2026-01-21) — ✅ COMPLETE
+
+**Purpose**: Real-time job progress updates via Server-Sent Events (replaces WebSocket).
+
+**Key Files**:
+- `routes/api.jobs.$id.progress.tsx` (156 lines) - SSE endpoint with auth, keep-alive, terminal handling
+- `lib/jobs/progress/types.ts` (152 lines) - Event types with Zod validation
+- `lib/jobs/progress/emitter.ts` (101 lines) - In-memory pub/sub event emitter
+- `lib/jobs/progress/helpers.ts` (127 lines) - Service helper functions for emitting events
+- `lib/hooks/useJobProgress.ts` (197 lines) - React hook with EventSource and TanStack Query
+
+**Architecture**:
+- Edge-compatible (no Node.js dependencies, uses Web Streams API)
+- Keep-alive ping every 30 seconds
+- Auto-cleanup on terminal status (completed, failed, cancelled)
+- Type-safe event system (progress, status, item, error events)
+
+**Service Integrations**:
+- ✅ `capabilities/sync/orchestrator.ts` - Emits sync progress
+- ✅ `capabilities/analysis/pipeline.ts` - Emits analysis progress
+- ✅ `capabilities/matching/service.ts` - Emits matching progress
+
+**Benefits**:
+- Simpler than WebSocket (HTTP-based, no upgrade handshake)
+- Auto-reconnect built into EventSource API
+- Cloudflare Workers compatible
+- Replaces 600 lines of WebSocket code with 200 lines of SSE
 
 ### LLM (v2 - AI SDK)
 
@@ -365,22 +451,22 @@ export function isTokenExpired(token: AuthToken)
 
 ### Vectorization (replaced by DeepInfra)
 
-| Service                                 | v2 Change                               |
-| --------------------------------------- | --------------------------------------- |
-| `embedding/EmbeddingService.ts`         | UPDATE → calls `DeepInfraService`       |
-| `vectorization/VectorizationService.ts` | DELETE → replaced by `DeepInfraService` |
-| `genre/GenreEnrichmentService.ts`       | Keep (Last.fm API)                      |
-| `deepinfra/DeepInfraService.ts`         | NEW (embeddings + reranking)            |
+| Service                                                      | v2 Change                               |
+| ------------------------------------------------------------ | --------------------------------------- |
+| `ml/embedding/service.ts`                                    | UPDATE → calls `integrations/deepinfra` |
+| `old_app/lib/services/vectorization/VectorizationService.ts` | DELETE → replaced by `DeepInfraService` |
+| `capabilities/genre/service.ts`                              | Keep (Last.fm API)                      |
+| `integrations/deepinfra/service.ts`                          | NEW (embeddings + reranking)            |
 
 ### Other
 
-| Service                                 | v2 Change                                                            |
-| --------------------------------------- | -------------------------------------------------------------------- |
-| `SyncService.ts`                        | RENAME → `SyncOrchestrator.ts` (orchestrates songs + playlists sync) |
-| `AuthService.ts`                        | Keep                                                                 |
-| `DatabaseService.ts`                    | → `data/client.ts`                                                   |
-| `profiling/PlaylistProfilingService.ts` | Keep                                                                 |
-| `audio/AudioFeaturesService.ts`         | Keep                                                                 |
+| Service                                 | v2 Change                                    |
+| --------------------------------------- | -------------------------------------------- |
+| `SyncService.ts`                        | RENAME → `capabilities/sync/orchestrator.ts` |
+| `AuthService.ts`                        | Keep                                         |
+| `DatabaseService.ts`                    | → `data/client.ts`                           |
+| `profiling/PlaylistProfilingService.ts` | Keep                                         |
+| `audio/AudioFeaturesService.ts`         | Keep                                         |
 
 ---
 
@@ -482,7 +568,7 @@ export const Route = createAPIFileRoute("/api/jobs/$id/progress")({
 Replaces local Python vectorization service. Calls DeepInfra-hosted models (#053, #054, #056).
 
 ```ts
-// src/lib/services/deepinfra/service.ts
+// src/lib/integrations/deepinfra/service.ts
 import { Result } from "better-result";
 
 // Embedding (1024 dims via intfloat/multilingual-e5-large-instruct)
@@ -539,30 +625,62 @@ src/lib/
 │   ├── preferences.ts            # User preferences
 │   ├── auth-tokens.ts            # Token refresh support
 │   └── database.types.ts         # Generated Supabase types
-├── services/
+├── capabilities/
 │   ├── analysis/
 │   │   ├── song-analysis.ts      # LLM song analysis (Zod schemas)
 │   │   ├── playlist-analysis.ts  # LLM playlist analysis (Zod schemas)
 │   │   └── pipeline.ts           # Batch orchestrator with job tracking
-│   ├── deepinfra/
-│   │   └── service.ts            # DeepInfra API (embeddings + reranking)
-│   ├── embedding/
-│   │   └── service.ts            # Song embedding with caching
-│   ├── llm/
-│   │   └── service.ts            # AI SDK wrapper (Google/Anthropic/OpenAI)
-│   ├── reranker/
-│   │   └── service.ts            # Cross-encoder reranking
-│   ├── spotify/
-│   │   └── service.ts            # Spotify API client
+│   ├── genre/
+│   │   └── service.ts            # Last.fm genre enrichment
+│   ├── lyrics/
+│   │   └── service.ts            # Genius lyrics fetching
+│   ├── matching/
+│   │   ├── cache.ts              # Match caching
+│   │   ├── config.ts             # Matching configuration
+│   │   ├── semantic.ts           # Semantic matcher
+│   │   └── service.ts            # Matching service
+│   ├── profiling/
+│   │   └── service.ts            # Playlist profiling
 │   └── sync/
 │       ├── orchestrator.ts       # Full sync coordinator
 │       └── playlist-sync.ts      # Playlist Spotify API sync
-├── errors/
-│   ├── data.ts                   # DbError types
-│   └── service.ts                # Service error types (TaggedError)
-└── utils/
-    └── result-wrappers/          # Supabase → Result adapters
-        └── supabase.ts
+├── integrations/
+│   ├── audio/
+│   │   └── service.ts            # Audio feature retrieval
+│   ├── deepinfra/
+│   │   └── service.ts            # DeepInfra API (embeddings + reranking)
+│   ├── lastfm/
+│   │   ├── normalize.ts          # Artist/album normalization
+│   │   ├── service.ts            # Last.fm API client
+│   │   └── whitelist.ts          # Genre whitelist
+│   ├── reccobeats/
+│   │   └── service.ts            # ReccoBeats audio features
+│   └── spotify/
+│       └── service.ts            # Spotify API client
+├── jobs/
+│   ├── lifecycle.ts              # Job state transitions
+│   └── progress/
+│       ├── emitter.ts            # Job progress event emitter
+│       ├── helpers.ts            # Emit helper utilities
+│       └── types.ts              # SSE event types
+├── ml/
+│   ├── embedding/
+│   │   ├── extractors.ts         # Embedding text extraction
+│   │   ├── hashing.ts            # Embedding hashing
+│   │   ├── service.ts            # Song embedding with caching
+│   │   └── versioning.ts         # Embedding versioning
+│   ├── llm/
+│   │   └── service.ts            # AI SDK wrapper (Google/Anthropic/OpenAI)
+│   └── reranker/
+│       └── service.ts            # Cross-encoder reranking
+└── shared/
+    ├── errors/
+    │   ├── data.ts               # DbError types
+    │   └── service.ts            # Service error types (TaggedError)
+    └── utils/
+        ├── concurrency.ts        # Concurrency limiter
+        └── result-wrappers/      # Supabase → Result adapters
+            └── supabase.ts
 ```
 
 **Notes:**

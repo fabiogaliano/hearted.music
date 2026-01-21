@@ -6,11 +6,11 @@
  */
 
 import { Result } from "better-result";
-import type { DbError } from "@/lib/errors/database";
+import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
-} from "@/lib/utils/result-wrappers/supabase";
+} from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
 import type { Json, Tables, TablesInsert } from "./database.types";
 
