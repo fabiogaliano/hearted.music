@@ -6,12 +6,12 @@
  */
 
 import { Result } from "better-result";
-import type { DbError } from "@/lib/errors/database";
+import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
-} from "@/lib/utils/result-wrappers/supabase";
+} from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
 import type { Json, Tables, TablesInsert } from "./database.types";
 
@@ -72,6 +72,30 @@ export function getMatchContext(
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseMaybe(
 		supabase.from("match_context").select("*").eq("id", contextId).single(),
+	);
+}
+
+/**
+ * Gets a match context by its context hash.
+ * Used for cache-first lookup before computing new matches.
+ * Returns null if not found.
+ */
+export function getMatchContextByHash(
+	contextHash: string,
+	accountId?: string,
+): Promise<Result<MatchContext | null, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	let query = supabase
+		.from("match_context")
+		.select("*")
+		.eq("context_hash", contextHash);
+
+	if (accountId) {
+		query = query.eq("account_id", accountId);
+	}
+
+	return fromSupabaseMaybe(
+		query.order("created_at", { ascending: false }).limit(1).single(),
 	);
 }
 
