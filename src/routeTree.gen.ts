@@ -9,21 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthSpotifyRouteImport } from './routes/auth/spotify'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
-import { Route as AuthSpotifyIndexRouteImport } from './routes/auth/spotify.index'
-import { Route as AuthSpotifyCallbackRouteImport } from './routes/auth/spotify.callback'
-import { Route as ApiJobsIdProgressRouteImport } from './routes/api.jobs.$id.progress'
+import { Route as ApiArtistImagesForTracksRouteImport } from './routes/api/artist-images-for-tracks'
+import { Route as AuthSpotifyRouteRouteImport } from './routes/auth/spotify/route'
+import { Route as AuthSpotifyIndexRouteImport } from './routes/auth/spotify/index'
+import { Route as AuthSpotifyCallbackRouteImport } from './routes/auth/spotify/callback'
+import { Route as ApiJobsIdProgressRouteImport } from './routes/api/jobs/$id/progress'
 
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthSpotifyRoute = AuthSpotifyRouteImport.update({
-  id: '/auth/spotify',
-  path: '/auth/spotify',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthLogoutRoute = AuthLogoutRouteImport.update({
@@ -31,15 +33,26 @@ const AuthLogoutRoute = AuthLogoutRouteImport.update({
   path: '/auth/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiArtistImagesForTracksRoute =
+  ApiArtistImagesForTracksRouteImport.update({
+    id: '/api/artist-images-for-tracks',
+    path: '/api/artist-images-for-tracks',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthSpotifyRouteRoute = AuthSpotifyRouteRouteImport.update({
+  id: '/auth/spotify',
+  path: '/auth/spotify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthSpotifyIndexRoute = AuthSpotifyIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthSpotifyRoute,
+  getParentRoute: () => AuthSpotifyRouteRoute,
 } as any)
 const AuthSpotifyCallbackRoute = AuthSpotifyCallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
-  getParentRoute: () => AuthSpotifyRoute,
+  getParentRoute: () => AuthSpotifyRouteRoute,
 } as any)
 const ApiJobsIdProgressRoute = ApiJobsIdProgressRouteImport.update({
   id: '/api/jobs/$id/progress',
@@ -49,14 +62,18 @@ const ApiJobsIdProgressRoute = ApiJobsIdProgressRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/onboarding': typeof OnboardingRoute
+  '/auth/spotify': typeof AuthSpotifyRouteRouteWithChildren
+  '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
-  '/auth/spotify': typeof AuthSpotifyRouteWithChildren
   '/auth/spotify/callback': typeof AuthSpotifyCallbackRoute
   '/auth/spotify/': typeof AuthSpotifyIndexRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/onboarding': typeof OnboardingRoute
+  '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/spotify/callback': typeof AuthSpotifyCallbackRoute
   '/auth/spotify': typeof AuthSpotifyIndexRoute
@@ -65,8 +82,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/onboarding': typeof OnboardingRoute
+  '/auth/spotify': typeof AuthSpotifyRouteRouteWithChildren
+  '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
-  '/auth/spotify': typeof AuthSpotifyRouteWithChildren
   '/auth/spotify/callback': typeof AuthSpotifyCallbackRoute
   '/auth/spotify/': typeof AuthSpotifyIndexRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
@@ -75,14 +94,18 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/auth/logout'
+    | '/onboarding'
     | '/auth/spotify'
+    | '/api/artist-images-for-tracks'
+    | '/auth/logout'
     | '/auth/spotify/callback'
     | '/auth/spotify/'
     | '/api/jobs/$id/progress'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/onboarding'
+    | '/api/artist-images-for-tracks'
     | '/auth/logout'
     | '/auth/spotify/callback'
     | '/auth/spotify'
@@ -90,8 +113,10 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/auth/logout'
+    | '/onboarding'
     | '/auth/spotify'
+    | '/api/artist-images-for-tracks'
+    | '/auth/logout'
     | '/auth/spotify/callback'
     | '/auth/spotify/'
     | '/api/jobs/$id/progress'
@@ -99,25 +124,27 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  OnboardingRoute: typeof OnboardingRoute
+  AuthSpotifyRouteRoute: typeof AuthSpotifyRouteRouteWithChildren
+  ApiArtistImagesForTracksRoute: typeof ApiArtistImagesForTracksRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
-  AuthSpotifyRoute: typeof AuthSpotifyRouteWithChildren
   ApiJobsIdProgressRoute: typeof ApiJobsIdProgressRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/spotify': {
-      id: '/auth/spotify'
-      path: '/auth/spotify'
-      fullPath: '/auth/spotify'
-      preLoaderRoute: typeof AuthSpotifyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/logout': {
@@ -127,19 +154,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLogoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/artist-images-for-tracks': {
+      id: '/api/artist-images-for-tracks'
+      path: '/api/artist-images-for-tracks'
+      fullPath: '/api/artist-images-for-tracks'
+      preLoaderRoute: typeof ApiArtistImagesForTracksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/spotify': {
+      id: '/auth/spotify'
+      path: '/auth/spotify'
+      fullPath: '/auth/spotify'
+      preLoaderRoute: typeof AuthSpotifyRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/spotify/': {
       id: '/auth/spotify/'
       path: '/'
       fullPath: '/auth/spotify/'
       preLoaderRoute: typeof AuthSpotifyIndexRouteImport
-      parentRoute: typeof AuthSpotifyRoute
+      parentRoute: typeof AuthSpotifyRouteRoute
     }
     '/auth/spotify/callback': {
       id: '/auth/spotify/callback'
       path: '/callback'
       fullPath: '/auth/spotify/callback'
       preLoaderRoute: typeof AuthSpotifyCallbackRouteImport
-      parentRoute: typeof AuthSpotifyRoute
+      parentRoute: typeof AuthSpotifyRouteRoute
     }
     '/api/jobs/$id/progress': {
       id: '/api/jobs/$id/progress'
@@ -151,24 +192,25 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthSpotifyRouteChildren {
+interface AuthSpotifyRouteRouteChildren {
   AuthSpotifyCallbackRoute: typeof AuthSpotifyCallbackRoute
   AuthSpotifyIndexRoute: typeof AuthSpotifyIndexRoute
 }
 
-const AuthSpotifyRouteChildren: AuthSpotifyRouteChildren = {
+const AuthSpotifyRouteRouteChildren: AuthSpotifyRouteRouteChildren = {
   AuthSpotifyCallbackRoute: AuthSpotifyCallbackRoute,
   AuthSpotifyIndexRoute: AuthSpotifyIndexRoute,
 }
 
-const AuthSpotifyRouteWithChildren = AuthSpotifyRoute._addFileChildren(
-  AuthSpotifyRouteChildren,
-)
+const AuthSpotifyRouteRouteWithChildren =
+  AuthSpotifyRouteRoute._addFileChildren(AuthSpotifyRouteRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  OnboardingRoute: OnboardingRoute,
+  AuthSpotifyRouteRoute: AuthSpotifyRouteRouteWithChildren,
+  ApiArtistImagesForTracksRoute: ApiArtistImagesForTracksRoute,
   AuthLogoutRoute: AuthLogoutRoute,
-  AuthSpotifyRoute: AuthSpotifyRouteWithChildren,
   ApiJobsIdProgressRoute: ApiJobsIdProgressRoute,
 }
 export const routeTree = rootRouteImport

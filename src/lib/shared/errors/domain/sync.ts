@@ -10,6 +10,7 @@ export const SyncTypeSchema = z.enum([
 	"liked_songs",
 	"playlists",
 	"playlist_tracks",
+	"full_sync",
 ]);
 export type SyncType = z.infer<typeof SyncTypeSchema>;
 
@@ -19,13 +20,20 @@ export class SyncFailedError extends TaggedError("SyncFailedError")<{
 	accountId: string;
 	reason: string;
 	message: string;
+	cause?: unknown;
 }>() {
-	constructor(syncType: SyncType, accountId: string, reason: string) {
+	constructor(
+		syncType: SyncType,
+		accountId: string,
+		reason: string,
+		cause?: unknown,
+	) {
 		super({
 			syncType,
 			accountId,
 			reason,
 			message: `${syncType} sync failed for account ${accountId}: ${reason}`,
+			cause,
 		});
 	}
 }

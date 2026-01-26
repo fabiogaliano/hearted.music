@@ -15,7 +15,7 @@ import { fetchWithRetry, type RetryOptions } from "./request";
 /** Options for paginated fetch */
 export interface PaginationOptions<T> {
 	/** Function to fetch a page of items */
-	fetchPage: (limit: MaxInt<50>, offset: number) => Promise<{ items: T[] }>;
+	fetchPage: (limit: MaxInt<50>, offset: number) => Promise<{ items: T[]; total?: number }>;
 	/** Items per page (max 50 for Spotify) */
 	limit: MaxInt<50>;
 	/** Optional filter function applied to each item */
@@ -28,6 +28,10 @@ export interface PaginationOptions<T> {
 	shouldStopEarly?: (originalItems: T[], filteredItems: T[]) => boolean;
 	/** Retry options for each page fetch */
 	retryOptions?: RetryOptions;
+	/** Optional callback for progress updates during fetch */
+	onProgress?: (fetched: number) => void;
+	/** Optional callback for total count once known */
+	onTotalDiscovered?: (total: number) => void;
 }
 
 /**
@@ -47,12 +51,13 @@ export interface PaginationOptions<T> {
 export async function fetchAllPages<T>(
 	options: PaginationOptions<T>,
 ): Promise<Result<T[], SpotifyError>> {
-	const { fetchPage, limit, filterFn, shouldStopEarly, retryOptions } = options;
+	const { fetchPage, limit, filterFn, shouldStopEarly, retryOptions, onProgress, onTotalDiscovered } = options;
 
 	return Result.gen(async function* () {
 		const allItems: T[] = [];
 		let offset = 0;
 		let shouldContinue = true;
+		let totalDiscovered = false;
 
 		while (shouldContinue) {
 			const response = yield* Result.await(
@@ -66,7 +71,16 @@ export async function fetchAllPages<T>(
 
 			allItems.push(...filteredItems);
 
-			// Check early-stop condition
+			// Notify total count once (first page gives us the total)
+			if (!totalDiscovered && response.total !== undefined && response.total > 0) {
+				onTotalDiscovered?.(response.total);
+				totalDiscovered = true;
+			}
+
+			// Report progress
+			onProgress?.(allItems.length);
+
+			// Check early-stop conditions
 			if (shouldStopEarly?.(originalItems, filteredItems)) {
 				shouldContinue = false;
 			} else if (originalItems.length < limit) {

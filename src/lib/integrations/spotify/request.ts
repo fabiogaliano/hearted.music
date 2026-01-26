@@ -15,6 +15,7 @@ import {
 	SpotifyRateLimitError,
 	type SpotifyError,
 } from "@/lib/shared/errors/external/spotify";
+import { SpotifyRateLimitHttpError } from "./sdk";
 
 /** Options for retry behavior */
 export interface RetryOptions {
@@ -29,10 +30,83 @@ const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
 	baseDelayMs: 1000,
 };
 
+/** Enable verbose Spotify error logging (set DEBUG_SPOTIFY_ERRORS=true in env) */
+const DEBUG_SPOTIFY_ERRORS = process.env.DEBUG_SPOTIFY_ERRORS === "true";
+
 /**
  * Classifies a raw error/response into a tagged SpotifyError.
  */
 export function classifySpotifyError(error: unknown): SpotifyError {
+	// Handle our custom rate limit error with actual Retry-After header
+	if (error instanceof SpotifyRateLimitHttpError) {
+		const retryAfterMs = error.retryAfterSeconds
+			? error.retryAfterSeconds * 1000
+			: 60000; // Default 60s if no header
+		console.warn(`[Spotify] Rate limit with Retry-After: ${error.retryAfterSeconds}s (${retryAfterMs}ms)`);
+		return new SpotifyRateLimitError(retryAfterMs);
+	}
+
+	// Verbose error logging (enable with DEBUG_SPOTIFY_ERRORS=true for rate limit debugging)
+	if (DEBUG_SPOTIFY_ERRORS) {
+		console.warn("[Spotify] ========== ERROR DETAILS ==========");
+
+		if (error instanceof Error) {
+			console.warn("[Spotify] Type: Error instance");
+			console.warn("[Spotify] Name:", error.name);
+			console.warn("[Spotify] Message:", error.message);
+			console.warn("[Spotify] Stack:", error.stack?.split("\n").slice(0, 3).join("\n"));
+
+			// Try to get all properties including non-enumerable
+			const allProps = Object.getOwnPropertyNames(error);
+			console.warn("[Spotify] All properties:", allProps);
+			for (const prop of allProps) {
+				if (!["name", "message", "stack"].includes(prop)) {
+					try {
+						console.warn(`[Spotify] error.${prop}:`, (error as unknown as Record<string, unknown>)[prop]);
+					} catch {
+						console.warn(`[Spotify] error.${prop}: <unreadable>`);
+					}
+				}
+			}
+
+			// Check for cause (Error.cause is standard in ES2022)
+			if ("cause" in error && error.cause) {
+				console.warn("[Spotify] Cause:", error.cause);
+			}
+		} else if (typeof error === "object" && error !== null) {
+			console.warn("[Spotify] Type: Object");
+			console.warn("[Spotify] Keys:", Object.keys(error));
+			console.warn("[Spotify] Full object:", JSON.stringify(error, null, 2));
+
+			// Check for headers (useful for debugging rate limits)
+			if ("headers" in error) {
+				const headers = (error as { headers: unknown }).headers;
+				console.warn("[Spotify] Headers found:", headers);
+				if (headers && typeof headers === "object" && "get" in headers) {
+					const h = headers as { get: (k: string) => string | null };
+					console.warn("[Spotify] Retry-After header:", h.get("Retry-After"));
+					console.warn("[Spotify] X-RateLimit-Limit:", h.get("X-RateLimit-Limit"));
+					console.warn("[Spotify] X-RateLimit-Remaining:", h.get("X-RateLimit-Remaining"));
+					console.warn("[Spotify] X-RateLimit-Reset:", h.get("X-RateLimit-Reset"));
+				}
+			}
+		} else {
+			console.warn("[Spotify] Type:", typeof error);
+			console.warn("[Spotify] Value:", error);
+		}
+
+		console.warn("[Spotify] ====================================");
+	}
+
+	// Handle Error instances with message containing rate limit info
+	if (error instanceof Error && (error.message.includes("rate limit") || error.message.includes("exceeded"))) {
+		// Development mode rate limits can last 5+ minutes - use 60s to reduce retry spam
+		if (DEBUG_SPOTIFY_ERRORS) {
+			console.warn("[Spotify] Detected rate limit from Error message, will retry in 60s");
+		}
+		return new SpotifyRateLimitError(60000);
+	}
+
 	// Handle response-like objects (from SDK)
 	if (typeof error === "object" && error !== null && "status" in error) {
 		const status = (error as { status: number }).status;
@@ -41,6 +115,7 @@ export function classifySpotifyError(error: unknown): SpotifyError {
 
 		if (status === 429) {
 			const retryAfterMs = extractRetryAfter(error);
+			console.warn(`[Spotify] Rate limited. Retry after: ${retryAfterMs}ms (${Math.ceil(retryAfterMs / 1000)}s)`);
 			return new SpotifyRateLimitError(retryAfterMs);
 		}
 
@@ -139,9 +214,13 @@ export async function fetchWithRetry<T>(
 
 		if (isRetryableError(result.error) && attempt < maxRetries) {
 			const delay = getRetryDelay(result.error, attempt, baseDelayMs);
+			console.warn(`[Spotify] Retry ${attempt + 1}/${maxRetries} after ${Math.ceil(delay / 1000)}s...`);
 			await sleep(delay);
 			attempt++;
 		} else {
+			if (attempt >= maxRetries) {
+				console.error(`[Spotify] Exhausted all ${maxRetries} retries. Giving up.`);
+			}
 			return result;
 		}
 	}

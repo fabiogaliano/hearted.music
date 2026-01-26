@@ -2,13 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(ls:*)",
-      "Skill(better-result)"
+      "Skill(better-result)",
+      "mcp__tanstack__search_docs",
+      "mcp__tanstack__doc"
     ]
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "anki-connect"
-  ],
   "enabledPlugins": {
     "oh-my-claude@oh-my-claude": true
   }

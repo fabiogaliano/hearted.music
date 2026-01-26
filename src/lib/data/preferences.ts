@@ -14,6 +14,7 @@ import {
 import { createAdminSupabaseClient } from "./client";
 import type { Enums, Tables } from "./database.types";
 import { z } from "zod";
+import type { PhaseJobIds } from "@/lib/jobs/progress/types";
 
 // ============================================================================
 // Type Exports
@@ -22,8 +23,15 @@ import { z } from "zod";
 /** User preferences row type */
 export type UserPreferences = Tables<"user_preferences">;
 
-/** Theme color enum from database */
-export type ThemeColor = Enums<"theme">;
+/**
+ * User's persisted theme preference.
+ * null = user hasn't chosen a theme yet (only during onboarding)
+ * Non-null = user's explicit choice
+ */
+export type UserThemePreference = Enums<"theme"> | null;
+
+/** Account ID validation schema */
+export const ACCOUNT_ID_SCHEMA = z.uuid();
 
 /** Onboarding steps enum */
 export const ONBOARDING_STEPS = z.enum([
@@ -61,29 +69,37 @@ export function getPreferences(
 
 /**
  * Gets or creates preferences for an account.
- * If no record exists, creates one with defaults (theme: blue, onboarding_step: 0).
+ * If no record exists, creates one with defaults (theme: null, onboarding_step: welcome).
+ * Note: theme is null until user explicitly chooses one during onboarding.
+ *
+ * IMPORTANT: Will fail with ConstraintError if account_id doesn't exist in the account table.
+ * This can happen when:
+ * - Database was reset (dev environment)
+ * - Account was deleted
+ * - Session cookie references a non-existent account (orphaned session)
+ *
+ * Callers should handle ConstraintError gracefully by clearing the invalid session.
  */
 export async function getOrCreatePreferences(
 	accountId: string,
 ): Promise<Result<UserPreferences, DbError>> {
+	// Try to get existing preferences first
 	const existing = await getPreferences(accountId);
 
-	if (Result.isError(existing)) {
-		return Result.err(existing.error);
-	}
-
-	if (existing.value !== null) {
+	// If found, return it
+	if (Result.isOk(existing) && existing.value !== null) {
 		return Result.ok(existing.value);
 	}
 
-	// Create with defaults
+	// If not found, create new preferences
+	// This will fail with ConstraintError if account doesn't exist (foreign key violation)
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
 		supabase
 			.from("user_preferences")
 			.insert({
 				account_id: accountId,
-				theme: "blue",
+				// theme is intentionally omitted - starts as null
 				onboarding_step: ONBOARDING_STEPS.enum.welcome,
 			})
 			.select()
@@ -94,6 +110,7 @@ export async function getOrCreatePreferences(
 /**
  * Gets the current onboarding step for an account.
  * Returns 'welcome' if no preferences exist.
+ * Validates the step using Zod instead of type assertion.
  */
 export async function getOnboardingStep(
 	accountId: string,
@@ -104,9 +121,15 @@ export async function getOnboardingStep(
 		return Result.err(result.error);
 	}
 
+	// Validate with Zod instead of type assertion
+	const stepValidation = ONBOARDING_STEPS.safeParse(
+		result.value?.onboarding_step,
+	);
+
 	return Result.ok(
-		(result.value?.onboarding_step as OnboardingStep) ??
-			ONBOARDING_STEPS.enum.welcome,
+		stepValidation.success
+			? stepValidation.data
+			: ONBOARDING_STEPS.enum.welcome,
 	);
 }
 
@@ -130,12 +153,13 @@ export async function isOnboardingComplete(
 // ============================================================================
 
 /**
- * Updates the theme for an account.
+ * Updates the theme for an account to a user's explicit choice.
  * Creates a preferences record if one doesn't exist.
+ * @param theme Must be a non-null theme color (user's explicit choice)
  */
 export function updateTheme(
 	accountId: string,
-	theme: ThemeColor,
+	theme: Enums<"theme">,
 ): Promise<Result<UserPreferences, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
@@ -224,4 +248,69 @@ export function resetOnboarding(
 			.select()
 			.single(),
 	);
+}
+
+// ============================================================================
+// Phase Job ID Operations
+// ============================================================================
+
+/**
+ * Updates the phase job IDs for an account.
+ * Called after creating sync jobs to enable refresh resilience.
+ */
+export function updatePhaseJobIds(
+	accountId: string,
+	phaseJobIds: PhaseJobIds,
+): Promise<Result<UserPreferences, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("user_preferences")
+			.update({ phase_job_ids: phaseJobIds })
+			.eq("account_id", accountId)
+			.select()
+			.single(),
+	);
+}
+
+/**
+ * Clears the phase job IDs for an account.
+ * Called when sync completes or user advances past syncing step.
+ */
+export function clearPhaseJobIds(
+	accountId: string,
+): Promise<Result<UserPreferences, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("user_preferences")
+			.update({ phase_job_ids: null })
+			.eq("account_id", accountId)
+			.select()
+			.single(),
+	);
+}
+
+/**
+ * Gets the phase job IDs for an account.
+ * Returns null if no active phase jobs are stored.
+ */
+export async function getPhaseJobIds(
+	accountId: string,
+): Promise<Result<PhaseJobIds | null, DbError>> {
+	const result = await getPreferences(accountId);
+
+	if (Result.isError(result)) {
+		return Result.err(result.error);
+	}
+
+	if (!result.value?.phase_job_ids) {
+		return Result.ok(null);
+	}
+
+	// Validate the stored JSONB matches PhaseJobIds schema
+	const { PhaseJobIdsSchema } = await import("@/lib/jobs/progress/types");
+	const parsed = PhaseJobIdsSchema.safeParse(result.value.phase_job_ids);
+
+	return Result.ok(parsed.success ? parsed.data : null);
 }

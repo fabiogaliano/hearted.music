@@ -8,6 +8,7 @@
  */
 
 import { Result } from "better-result";
+import { z } from "zod";
 import { env } from "@/env";
 import {
 	type AuthToken,
@@ -16,13 +17,36 @@ import {
 	upsertToken,
 } from "@/lib/data/auth-tokens";
 import type { DbError } from "@/lib/shared/errors/database";
-import { SpotifyAuthError } from "@/lib/shared/errors/external/spotify";
+import { SpotifyApiError, SpotifyAuthError } from "@/lib/shared/errors/external/spotify";
 
 const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
 const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
 
+/** Spotify user response validation schema */
+export const spotifyUserSchema = z.object({
+	id: z.string(),
+	email: z.email(),
+	display_name: z.string().nullable(),
+	images: z.array(
+		z.object({
+			url: z.url(),
+			width: z.number(),
+			height: z.number(),
+		}),
+	),
+});
+
+/** Spotify token refresh response validation schema */
+const tokenRefreshResponseSchema = z.object({
+	access_token: z.string(),
+	token_type: z.string(),
+	expires_in: z.number(),
+	refresh_token: z.string().optional(),
+	scope: z.string().optional(),
+});
+
 /** Errors that can occur during token operations */
-export type TokenError = DbError | SpotifyAuthError;
+export type TokenError = DbError | SpotifyAuthError | SpotifyApiError;
 
 /** Per-account refresh promise map to dedupe concurrent refreshes. */
 const refreshPromises = new Map<
@@ -33,12 +57,12 @@ const refreshPromises = new Map<
 export interface SpotifyUser {
 	id: string;
 	email: string;
-	display_name: string;
+	display_name: string | null;
 	images: Array<{ url: string; width: number; height: number }>;
 }
 
 export interface SpotifyClient {
-	getMe(): Promise<SpotifyUser>;
+	getMe(): Promise<Result<SpotifyUser, SpotifyApiError>>;
 	fetch(path: string, init?: RequestInit): Promise<Response>;
 }
 
@@ -122,13 +146,23 @@ async function performTokenRefresh(
 	}
 
 	const data = await response.json();
+	const parsed = tokenRefreshResponseSchema.safeParse(data);
+
+	if (!parsed.success) {
+		return Result.err(
+			new SpotifyApiError({
+				status: 500,
+				message: `Invalid token refresh response: ${parsed.error.message}`,
+			}),
+		);
+	}
 
 	// Update tokens in database
 	return upsertToken(accountId, {
-		access_token: data.access_token,
+		access_token: parsed.data.access_token,
 		// Spotify may or may not return a new refresh token
-		refresh_token: data.refresh_token || currentToken.refresh_token,
-		expires_in: data.expires_in,
+		refresh_token: parsed.data.refresh_token || currentToken.refresh_token,
+		expires_in: parsed.data.expires_in,
 	});
 }
 
@@ -157,12 +191,30 @@ function createClient(accessToken: string): SpotifyClient {
 	return {
 		fetch: apiFetch,
 
-		async getMe(): Promise<SpotifyUser> {
+		async getMe(): Promise<Result<SpotifyUser, SpotifyApiError>> {
 			const response = await apiFetch("/me");
 			if (!response.ok) {
-				throw new Error(`Spotify API error: ${response.status}`);
+				return Result.err(
+					new SpotifyApiError({
+						status: response.status,
+						message: `Failed to fetch user profile`,
+					}),
+				);
 			}
-			return response.json();
+
+			const data = await response.json();
+			const parsed = spotifyUserSchema.safeParse(data);
+
+			if (!parsed.success) {
+				return Result.err(
+					new SpotifyApiError({
+						status: 500,
+						message: `Invalid user profile response: ${parsed.error.message}`,
+					}),
+				);
+			}
+
+			return Result.ok(parsed.data);
 		},
 	};
 }
@@ -170,15 +222,21 @@ function createClient(accessToken: string): SpotifyClient {
 /**
  * Exchanges authorization code for tokens (used in callback).
  * Uses PKCE flow - no client_secret needed, only code_verifier.
+ * Returns Result type for composable error handling.
  */
 export async function exchangeCodeForTokens(
 	code: string,
 	codeVerifier: string,
-): Promise<{
-	access_token: string;
-	refresh_token: string;
-	expires_in: number;
-}> {
+): Promise<
+	Result<
+		{
+			access_token: string;
+			refresh_token: string;
+			expires_in: number;
+		},
+		SpotifyApiError | SpotifyAuthError
+	>
+> {
 	const response = await fetch(SPOTIFY_TOKEN_URL, {
 		method: "POST",
 		headers: {
@@ -194,20 +252,37 @@ export async function exchangeCodeForTokens(
 	});
 
 	if (!response.ok) {
-		const error = await response.text();
-		throw new Error(`Token exchange failed: ${error}`);
+		if (response.status === 400 || response.status === 401) {
+			return Result.err(new SpotifyAuthError("invalid"));
+		}
+		return Result.err(new SpotifyApiError({ status: response.status, message: "Token exchange failed" }));
 	}
 
-	return response.json();
+	const data = await response.json();
+	const parsed = tokenRefreshResponseSchema.safeParse(data);
+	if (!parsed.success) {
+		return Result.err(
+			new SpotifyApiError({
+				status: 500,
+				message: `Invalid token response: ${parsed.error.message}`,
+			}),
+		);
+	}
+	return Result.ok({
+		access_token: parsed.data.access_token,
+		refresh_token: parsed.data.refresh_token ?? "",
+		expires_in: parsed.data.expires_in,
+	});
 }
 
 /**
  * Fetches Spotify user profile with a raw access token.
  * Used during OAuth callback before we have a full client.
+ * Returns Result type with Zod validation of response structure.
  */
 export async function fetchSpotifyUser(
 	accessToken: string,
-): Promise<SpotifyUser> {
+): Promise<Result<SpotifyUser, SpotifyApiError | SpotifyAuthError>> {
 	const response = await fetch(`${SPOTIFY_API_BASE}/me`, {
 		headers: {
 			Authorization: `Bearer ${accessToken}`,
@@ -215,8 +290,21 @@ export async function fetchSpotifyUser(
 	});
 
 	if (!response.ok) {
-		throw new Error(`Failed to fetch user: ${response.status}`);
+		if (response.status === 401) {
+			return Result.err(new SpotifyAuthError("invalid"));
+		}
+		return Result.err(new SpotifyApiError({ status: response.status, message: "Failed to fetch user" }));
 	}
 
-	return response.json();
+	const data = await response.json();
+
+	// Validate response structure with Zod
+	const validation = spotifyUserSchema.safeParse(data);
+	if (!validation.success) {
+		return Result.err(
+			new SpotifyApiError({ status: 500, message: "Invalid Spotify user response format" }),
+		);
+	}
+
+	return Result.ok(validation.data);
 }
