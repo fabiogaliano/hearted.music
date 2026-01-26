@@ -97,6 +97,10 @@ export const JobItemEventSchema = z.object({
 	label: z.string().optional(),
 	/** Position in batch */
 	index: z.number().optional(),
+	/** Current progress count (e.g., songs fetched so far) */
+	count: z.number().optional(),
+	/** Total items for this phase (set once during discovery) */
+	total: z.number().optional(),
 });
 export type JobItemEvent = z.infer<typeof JobItemEventSchema>;
 
@@ -149,3 +153,19 @@ export function parseSSEEvent(data: string): JobEvent | null {
 		return null;
 	}
 }
+
+// ============================================================================
+// Phase Job IDs
+// ============================================================================
+
+/**
+ * Job IDs for each sync phase.
+ * Used by onboarding flow to track 3 separate jobs.
+ */
+export const PhaseJobIdsSchema = z.object({
+	liked_songs: z.uuid(),
+	playlists: z.uuid(),
+	playlist_tracks: z.uuid(),
+});
+
+export type PhaseJobIds = z.infer<typeof PhaseJobIdsSchema>;

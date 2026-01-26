@@ -6,7 +6,7 @@
  */
 
 import { Result } from "better-result";
-import type { DbError } from "@/lib/shared/errors/database";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseSingle,
@@ -50,6 +50,26 @@ export function getAll(
 			.eq("account_id", accountId)
 			.order("liked_at", { ascending: false }),
 	);
+}
+
+/**
+ * Counts liked songs for an account (efficient - no data transfer).
+ * Uses Supabase's count feature for O(1) DB operation.
+ */
+export async function getCount(
+	accountId: string,
+): Promise<Result<number, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { count, error } = await supabase
+		.from("liked_song")
+		.select("*", { count: "exact", head: true })
+		.eq("account_id", accountId);
+
+	if (error) {
+		return Result.err(new DatabaseError({ code: error.code, message: error.message }));
+	}
+
+	return Result.ok(count ?? 0);
 }
 
 /**
@@ -150,6 +170,29 @@ export function softDelete(
 			.eq("song_id", songId)
 			.select()
 			.single(),
+	);
+}
+
+/**
+ * Batch soft deletes liked songs for an account by setting unliked_at.
+ * O(1) DB call instead of O(n) sequential calls.
+ * Preserves timeline history for analytics.
+ */
+export function softDeleteBatch(
+	accountId: string,
+	songIds: string[],
+): Promise<Result<LikedSong[], DbError>> {
+	if (songIds.length === 0) {
+		return Promise.resolve(Result.ok<LikedSong[], DbError>([]));
+	}
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMany(
+		supabase
+			.from("liked_song")
+			.update({ unliked_at: new Date().toISOString() })
+			.eq("account_id", accountId)
+			.in("song_id", songIds)
+			.select(),
 	);
 }
 

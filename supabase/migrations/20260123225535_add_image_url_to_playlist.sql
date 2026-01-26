@@ -1,0 +1,1 @@
+ALTER TABLE playlist ADD COLUMN image_url TEXT DEFAULT NULL;

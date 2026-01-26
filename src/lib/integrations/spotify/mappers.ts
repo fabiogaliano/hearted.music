@@ -60,6 +60,7 @@ export function mapPlaylistToPlaylistInsert(
 		name: dto.name,
 		description: dto.description,
 		song_count: dto.track_count,
+		image_url: dto.image_url,
 	};
 }
 
@@ -99,4 +100,35 @@ export function mapPlaylistsToPlaylistInserts(
 	accountId: string,
 ): TablesInsert<"playlist">[] {
 	return dtos.map((dto) => mapPlaylistToPlaylistInsert(dto, accountId));
+}
+
+// ============================================================================
+// Anti-Corruption Layer: Data Normalization
+// ============================================================================
+
+/**
+ * Deduplicates Spotify tracks by spotify_id, keeping first occurrence.
+ *
+ * Business rule: Spotify allows duplicate songs in playlists; we keep first occurrence only.
+ * This is an Anti-Corruption Layer pattern - transform external data to our domain rules.
+ *
+ * Also filters out null tracks (local files, deleted tracks).
+ *
+ * @example
+ * ```ts
+ * const tracks = await spotify.getPlaylistTracks(playlistId);
+ * const uniqueTracks = dedupeTracksBySpotifyId(tracks);
+ * // uniqueTracks has no duplicates and no null tracks
+ * ```
+ */
+export function dedupeTracksBySpotifyId<
+	T extends { track: { id: string } | null },
+>(tracks: T[]): T[] {
+	const seen = new Set<string>();
+	return tracks.filter((t): t is T & { track: { id: string } } => {
+		if (!t.track) return false;
+		if (seen.has(t.track.id)) return false;
+		seen.add(t.track.id);
+		return true;
+	});
 }

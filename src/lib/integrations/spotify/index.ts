@@ -14,13 +14,13 @@ import { Result } from "better-result";
 import type { AuthToken } from "@/lib/data/auth-tokens";
 import { getTokenByAccountId, isTokenExpired } from "@/lib/data/auth-tokens";
 import type { DbError } from "@/lib/shared/errors/database";
-import { SpotifyAuthError } from "@/lib/shared/errors/external/spotify";
+import { SpotifyApiError, SpotifyAuthError } from "@/lib/shared/errors/external/spotify";
 import { refreshTokenWithCoordination } from "./client";
 import { createSpotifyApi } from "./sdk";
 import { SpotifyService } from "./service";
 
 /** Errors that can occur when initializing SpotifyService */
-export type SpotifyServiceError = DbError | SpotifyAuthError;
+export type SpotifyServiceError = DbError | SpotifyAuthError | SpotifyApiError;
 
 /**
  * Gets a SpotifyService instance for the given account.
@@ -64,37 +64,3 @@ export async function getSpotifyService(
 	const sdk = createSpotifyApi(token.access_token);
 	return Result.ok(new SpotifyService(sdk));
 }
-
-/** Re-export token exchange functions for OAuth callback */
-export { exchangeCodeForTokens, fetchSpotifyUser } from "./client";
-export type {
-	SpotifyPlaylistDTO,
-	SpotifyTrackDTO,
-} from "./service";
-/** Re-export SpotifyService class and types */
-export { SpotifyService } from "./service";
-
-/** Re-export Result-based request helpers */
-export {
-	fetchWithRetry,
-	fetchOnce,
-	classifySpotifyError,
-	type RetryOptions,
-} from "./request";
-
-/** Re-export pagination helpers */
-export {
-	fetchAllPages,
-	fetchPagesIterator,
-	type PaginationOptions,
-} from "./pagination";
-
-/** Re-export mappers for Spotify -> DB shapes */
-export {
-	mapTrackToSongInsert,
-	mapTrackToLikedSongInsert,
-	mapPlaylistToPlaylistInsert,
-	mapTrackToPlaylistSongInsert,
-	mapTracksToSongInserts,
-	mapPlaylistsToPlaylistInserts,
-} from "./mappers";

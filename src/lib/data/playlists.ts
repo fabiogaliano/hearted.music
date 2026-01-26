@@ -6,7 +6,7 @@
  */
 
 import { Result } from "better-result";
-import type { DbError } from "@/lib/shared/errors/database";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
@@ -35,6 +35,7 @@ export type UpsertPlaylistData = Pick<
 	| "is_public"
 	| "song_count"
 	| "is_destination"
+	| "image_url"
 >;
 
 /** Insert type for upserting playlist songs */
@@ -97,6 +98,26 @@ export function getPlaylists(
 }
 
 /**
+ * Counts playlists for an account (efficient - no data transfer).
+ * Uses Supabase's count feature for O(1) DB operation.
+ */
+export async function getPlaylistCount(
+	accountId: string,
+): Promise<Result<number, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { count, error } = await supabase
+		.from("playlist")
+		.select("*", { count: "exact", head: true })
+		.eq("account_id", accountId);
+
+	if (error) {
+		return Result.err(new DatabaseError({ code: error.code, message: error.message }));
+	}
+
+	return Result.ok(count ?? 0);
+}
+
+/**
  * Gets all destination playlists for an account.
  * Destination playlists are targets for auto-sorting liked songs.
  * Returns empty array if none found.
@@ -141,6 +162,7 @@ export function upsertPlaylists(
 					is_public: playlist.is_public,
 					song_count: playlist.song_count,
 					is_destination: playlist.is_destination,
+					image_url: playlist.image_url,
 				})),
 				{ onConflict: "account_id,spotify_id" },
 			)
@@ -155,7 +177,7 @@ export function upsertPlaylists(
 export function deletePlaylist(id: string): Promise<Result<null, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseMaybe(
-		supabase.from("playlist").delete().eq("id", id).single(),
+		supabase.from("playlist").delete().eq("id", id),
 	);
 }
 
