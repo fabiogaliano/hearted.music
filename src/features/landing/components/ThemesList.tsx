@@ -27,7 +27,9 @@ const THEME_DESCRIPTIONS: Record<string, string> = {
 }
 
 function getThemeDescription(name: string): string {
-	return THEME_DESCRIPTIONS[name] || 'A recurring thread that runs through your music.'
+	return Object.hasOwn(THEME_DESCRIPTIONS, name)
+		? THEME_DESCRIPTIONS[name]
+		: 'A recurring thread that runs through your music.'
 }
 
 export function ThemesList({ themes, theme: themeConfig }: ThemesListProps) {

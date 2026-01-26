@@ -248,7 +248,7 @@ export function LandingHero({
 									Every <AnimatedHeart theme={theme} shouldAutoPlay={hasRevealed} /> was a
 									feeling.
 									<br />
-									What do they say about you?
+									What do they all say about you?
 								</p>
 							</div>
 						</div>

@@ -171,6 +171,15 @@ export function AnimatedHeart({
 		return () => timeouts.forEach(clearTimeout)
 	}, [shouldAutoPlay, triggerAnimation, autoPlayDelayMs])
 
+	// Cleanup animation timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (animationTimeoutRef.current) {
+				clearTimeout(animationTimeoutRef.current)
+			}
+		}
+	}, [])
+
 	// Use pointer events for faster response than click
 	const handlePointerDown = useCallback(
 		(e: React.PointerEvent) => {

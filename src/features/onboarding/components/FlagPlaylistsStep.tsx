@@ -6,7 +6,7 @@
  * Playlists stack in max 3 rows, extending horizontally in columns.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { fonts } from "@/lib/theme/fonts";
@@ -17,11 +17,8 @@ import {
 } from "@/lib/server/onboarding.server";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import { useFlagPlaylistsScroll } from "../hooks/useFlagPlaylistsScroll";
-import { CDCaseTuner, type CDCaseConfig } from "@/lib/dev/CDCaseTuner";
+import { CDCase } from "@/components/ui/CDCase";
 import "../types"; // Ensure HistoryState augmentation is loaded
-
-// CD case positioning (tune with CDCaseTuner, press T)
-const DEFAULT_CD_CONFIG: CDCaseConfig = { top: 1, right: 1, bottom: 1, left: 10 };
 
 interface FlagPlaylistsStepProps {
 	theme: ThemeConfig;
@@ -41,12 +38,6 @@ export function FlagPlaylistsStep({
 		new Set(initialPlaylists.filter((p) => p.isDestination).map((p) => p.id)),
 	);
 	const [isSaving, setIsSaving] = useState(false);
-
-	// CD case positioning (tunable via CDCaseTuner - press T)
-	const [cdConfig, setCdConfig] = useState(DEFAULT_CD_CONFIG);
-	const handleConfigChange = useCallback((config: CDCaseConfig) => {
-		setCdConfig(config);
-	}, []);
 
 	// Dynamic row count based on viewport height
 	// Uses matchMedia to only react when crossing the 900px threshold
@@ -179,14 +170,7 @@ export function FlagPlaylistsStep({
 						>
 							{initialPlaylists.map((playlist) => {
 								const isSelected = selectedIds.has(playlist.id);
-								const imgStyle = {
-									top: `${cdConfig.top}%`,
-									right: `${cdConfig.right}%`,
-									bottom: `${cdConfig.bottom}%`,
-									left: `${cdConfig.left}%`,
-									width: `${100 - cdConfig.left - cdConfig.right}%`,
-									height: `${100 - cdConfig.top - cdConfig.bottom}%`,
-								};
+
 								return (
 									<button
 										key={playlist.id}
@@ -197,35 +181,31 @@ export function FlagPlaylistsStep({
 										title={playlist.name}
 										className="group relative overflow-hidden rounded-lg"
 									>
-										<div className="relative aspect-square overflow-hidden">
-											{/* Playlist image - sits behind the CD case */}
-											{playlist.imageUrl && (
-												<img
-													src={playlist.imageUrl}
-													alt={playlist.name}
-													className="absolute object-cover transition-all duration-300"
-													style={{
-														...imgStyle,
-														filter: isSelected ? "grayscale(0%)" : "grayscale(100%)",
-														opacity: isSelected ? 1 : 0.35,
-													}}
-												/>
-											)}
-											{/* CD case frame overlay */}
-											<img
-												src="/img_cd/1.png"
-												alt=""
-												aria-hidden="true"
-												className="pointer-events-none absolute inset-0 h-full w-full"
-											/>
-											{/* Playlist name - in CD case spine (left clear area) */}
+										<div className="relative">
+											{/* CDCase component wraps the album art */}
 											<div
-												className="absolute flex items-center justify-center overflow-hidden py-2"
+												className="transition-all duration-300"
 												style={{
-													top: `${cdConfig.top}%`,
-													bottom: `${cdConfig.bottom}%`,
+													filter: isSelected ? "grayscale(0%)" : "grayscale(100%)",
+													opacity: isSelected ? 1 : 0.35,
+												}}
+											>
+												{playlist.imageUrl && (
+													<CDCase
+														src={playlist.imageUrl}
+														alt={playlist.name}
+														theme={theme}
+													/>
+												)}
+											</div>
+											{/* Playlist name - positioned on the spine, avoiding hinge ridges */}
+											<div
+												className="absolute flex items-center justify-center overflow-hidden"
+												style={{
+													top: "8%",    // Below top ridges (end at ~6.4%)
+													bottom: "8%", // Above bottom ridges (start at ~92.7%)
 													left: 0,
-													width: `${cdConfig.left}%`,
+													width: "12.67%", // 95px spine / 750px total
 												}}
 											>
 												<p
@@ -306,14 +286,6 @@ export function FlagPlaylistsStep({
 					</button>
 				</footer>
 			</div>
-
-			{/* Dev tool for tuning CD case positioning - press T to toggle */}
-			{import.meta.env.DEV && (
-				<CDCaseTuner
-					onChange={handleConfigChange}
-					initialConfig={DEFAULT_CD_CONFIG}
-				/>
-			)}
 		</section>
 	);
 }

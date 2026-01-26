@@ -69,8 +69,8 @@ export function Landing({
 	const handlePreviewNext = () => {
 		setPreviewSongIndex(previewSongIndex < songs.length - 1 ? previewSongIndex + 1 : 0)
 	}
-	const handlePreviewSkip = () => {
-		// Skip behaves the same as next for the preview
+	const handlePreviewDiscard = () => {
+		// Discard behaves the same as next for the preview
 		handlePreviewNext()
 	}
 
@@ -139,7 +139,7 @@ export function Landing({
 								theme={theme}
 								addedTo={[]} // Fresh state for each song
 								onAdd={() => {}} // No-op for preview (would need more state to track)
-								onSkip={handlePreviewSkip}
+								onDiscard={handlePreviewDiscard}
 								onNext={handlePreviewNext}
 								isExpanded={false}
 							/>

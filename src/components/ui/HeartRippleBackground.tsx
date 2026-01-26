@@ -467,7 +467,14 @@ export const HeartRippleBackground = forwardRef<
 			}
 		}
 
-		window.addEventListener('resize', resizeBuffer)
+		const handleResize = () => {
+			resizeBuffer()
+			// Re-render static frame when animation is disabled
+			if (reducedMotionQuery.matches) {
+				renderFrame()
+			}
+		}
+		window.addEventListener('resize', handleResize)
 		document.addEventListener('visibilitychange', handleVisibilityChange)
 		if (typeof reducedMotionQuery.addEventListener === 'function') {
 			reducedMotionQuery.addEventListener('change', handleReducedMotionChange)
@@ -491,7 +498,7 @@ export const HeartRippleBackground = forwardRef<
 			glStateRef.current = null
 			updateMouseRef.current = null
 
-			window.removeEventListener('resize', resizeBuffer)
+			window.removeEventListener('resize', handleResize)
 			document.removeEventListener('visibilitychange', handleVisibilityChange)
 			if (typeof reducedMotionQuery.removeEventListener === 'function') {
 				reducedMotionQuery.removeEventListener('change', handleReducedMotionChange)
