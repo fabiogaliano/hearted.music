@@ -14,11 +14,9 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
-import type {
-	SpotifyService,
-	SpotifyPlaylistDTO,
-	SpotifyTrackDTO,
-} from "@/lib/integrations/spotify";
+import { SpotifyService } from "@/lib/integrations/spotify/service";
+import type { SpotifyPlaylistDTO, SpotifyTrackDTO } from "@/lib/integrations/spotify/service";
+import { dedupeTracksBySpotifyId } from "@/lib/integrations/spotify/mappers";
 import * as playlists from "@/lib/data/playlists";
 import * as songs from "@/lib/data/song";
 import type { DbError } from "@/lib/shared/errors/database";
@@ -93,6 +91,20 @@ export type PlaylistTrackSyncResult = z.infer<
 type PlaylistSyncFailedError = DbError | SpotifyError | SyncFailedError;
 
 // ============================================================================
+// Options
+// ============================================================================
+
+/** Options for syncPlaylists */
+export interface SyncPlaylistsOptions {
+	/** Pre-fetched playlists from discovery phase (skips API call) */
+	cachedPlaylists?: SpotifyPlaylistDTO[];
+	/** Progress callback (called with count of playlists processed) */
+	onProgress?: (count: number) => void;
+	/** Total discovered callback (called when total is known) */
+	onTotalDiscovered?: (total: number) => void;
+}
+
+// ============================================================================
 // Service
 // ============================================================================
 
@@ -102,23 +114,43 @@ export class PlaylistSyncService {
 	/**
 	 * Syncs all playlists from Spotify to database for an account.
 	 * Creates new playlists, updates existing ones, marks removed ones.
+	 *
+	 * If cachedPlaylists is provided (from discovery phase), uses those
+	 * directly without making any API calls - enabling zero-cost sync.
 	 */
 	async syncPlaylists(
 		accountId: string,
+		options: SyncPlaylistsOptions = {},
 	): Promise<Result<PlaylistSyncResult, PlaylistSyncFailedError>> {
-		// 1. Fetch playlists from Spotify
-		const spotifyPlaylistsResult = await this.spotify.getPlaylists();
+		const { cachedPlaylists, onProgress, onTotalDiscovered } = options;
 
-		if (Result.isError(spotifyPlaylistsResult)) {
-			return Result.err(
-				new SyncFailedError(
-					"playlists",
-					accountId,
-					spotifyPlaylistsResult.error.message,
-				),
+		let spotifyPlaylists: SpotifyPlaylistDTO[];
+
+		if (cachedPlaylists) {
+			// Use cached playlists from discovery - ZERO API calls!
+			spotifyPlaylists = cachedPlaylists;
+			// Emit total immediately since we already know it
+			onTotalDiscovered?.(cachedPlaylists.length);
+			// Emit progress immediately since we have all data
+			onProgress?.(cachedPlaylists.length);
+		} else {
+			// Fallback to fetching (for incremental sync use cases)
+			const spotifyPlaylistsResult = await this.spotify.getPlaylists(
+				onProgress,
+				onTotalDiscovered,
 			);
+
+			if (Result.isError(spotifyPlaylistsResult)) {
+				return Result.err(
+					new SyncFailedError(
+						"playlists",
+						accountId,
+						spotifyPlaylistsResult.error.message,
+					),
+				);
+			}
+			spotifyPlaylists = spotifyPlaylistsResult.value;
 		}
-		const spotifyPlaylists = spotifyPlaylistsResult.value;
 
 		// 2. Get existing playlists from database
 		const existingResult = await playlists.getPlaylists(accountId);
@@ -164,6 +196,7 @@ export class PlaylistSyncService {
 				is_public: true,
 				song_count: sp.track_count,
 				is_destination: existingBySpotifyId.get(sp.id)?.is_destination ?? false,
+				image_url: sp.image_url,
 			}));
 
 			const upsertResult = await playlists.upsertPlaylists(
@@ -227,9 +260,9 @@ export class PlaylistSyncService {
 				),
 			);
 		}
-		const spotifyTracks = spotifyTracksResult.value.filter(
-			(t: SpotifyTrackDTO) => t.track != null,
-		);
+
+		// Dedupe at boundary: Spotify allows duplicates, we keep first occurrence only
+		const spotifyTracks = dedupeTracksBySpotifyId(spotifyTracksResult.value);
 
 		// 2. Get existing playlist songs from database
 		const existingResult = await playlists.getPlaylistSongs(playlist.id);
@@ -242,8 +275,7 @@ export class PlaylistSyncService {
 		);
 
 		// 3. Ensure all Spotify tracks exist as songs in database
-		// Note: artists is stored as string[] of artist names in the database
-		const spotifyTrackData = spotifyTracks.map((t: SpotifyTrackDTO) => ({
+		const spotifyTrackData = spotifyTracks.map((t) => ({
 			spotify_id: t.track.id,
 			name: t.track.name,
 			album_id: t.track.album.id,
@@ -312,7 +344,7 @@ export class PlaylistSyncService {
 			}
 		}
 
-		// 5. Apply changes
+		// 5. Apply changes (data already deduped at boundary via dedupeTracksBySpotifyId)
 		const upsertData = [
 			...toAdd.map((item) => ({
 				song_id: item.song.id,
@@ -460,6 +492,7 @@ export class PlaylistSyncService {
 				is_public: dbPlaylist.is_public,
 				song_count: dbPlaylist.song_count,
 				is_destination: dbPlaylist.is_destination,
+				image_url: dbPlaylist.image_url,
 			},
 		]);
 		if (Result.isError(updateResult)) {
@@ -483,7 +516,8 @@ export class PlaylistSyncService {
 		return (
 			existing.name !== spotify.name ||
 			existing.description !== spotify.description ||
-			existing.song_count !== spotify.track_count
+			existing.song_count !== spotify.track_count ||
+			existing.image_url !== spotify.image_url
 		);
 	}
 }

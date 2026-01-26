@@ -36,13 +36,13 @@ const config = defineConfig({
 	},
 	plugins: [
 		devtools(),
-		// Skip Cloudflare and TanStack Start plugins during tests - they use workers
-		// that can't handle CommonJS modules like tiny-warning
-		!isTest && cloudflare({ viteEnvironment: { name: "ssr" } }),
 		viteTsConfigPaths({
 			projects: ["./tsconfig.json"],
 		}),
 		tailwindcss(),
+		// Cloudflare must come BEFORE tanstackStart per Cloudflare docs:
+		// https://developers.cloudflare.com/changelog/2025-10-24-tanstack-start/
+		!isTest && cloudflare({ viteEnvironment: { name: "ssr" } }),
 		// @ts-expect-error - preset exists at runtime but missing from types
 		!isTest && tanstackStart({ preset: "node-ws" }),
 		viteReact(),

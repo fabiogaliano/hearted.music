@@ -9,6 +9,7 @@
 
 import { Result } from "better-result";
 import type { Market, MaxInt, SpotifyApi } from "@fostertheweb/spotify-web-sdk";
+import { z } from "zod";
 import type { SpotifyError } from "@/lib/shared/errors/external/spotify";
 import { fetchWithRetry } from "./request";
 import { fetchAllPages } from "./pagination";
@@ -30,6 +31,47 @@ export interface SpotifyTrackDTO {
 	};
 }
 
+/** Zod schema for validating playlist track items.
+ * Note: track can be null for local files or deleted tracks. */
+const spotifyTrackItemSchema = z.object({
+	added_at: z.string(),
+	track: z
+		.object({
+			id: z.string(),
+			name: z.string(),
+			artists: z.array(z.object({ id: z.string(), name: z.string() })),
+			album: z.object({
+				id: z.string(),
+				name: z.string(),
+				images: z.array(
+					z.object({
+						url: z.string(),
+						width: z.number().optional(),
+						height: z.number().optional(),
+					}),
+				),
+			}),
+			duration_ms: z.number(),
+			uri: z.string(),
+		})
+		.nullable(),
+});
+
+/** Validates and filters playlist items, removing tracks that are null (local files, deleted). */
+function parsePlaylistTracks(items: unknown[]): SpotifyTrackDTO[] {
+	const validTracks: SpotifyTrackDTO[] = [];
+
+	for (const item of items) {
+		const parsed = spotifyTrackItemSchema.safeParse(item);
+		if (parsed.success && parsed.data.track !== null) {
+			// Track is validated and non-null, safe to cast
+			validTracks.push(parsed.data as SpotifyTrackDTO);
+		}
+	}
+
+	return validTracks;
+}
+
 /** Spotify playlist summary */
 export interface SpotifyPlaylistDTO {
 	id: string;
@@ -37,6 +79,7 @@ export interface SpotifyPlaylistDTO {
 	description: string | null;
 	owner: { id: string };
 	track_count: number;
+	image_url: string | null;
 }
 
 export class SpotifyService {
@@ -49,17 +92,24 @@ export class SpotifyService {
 	/**
 	 * Gets the current user's liked/saved tracks.
 	 * @param since - Optional ISO date string; only returns tracks added after this date
+	 * @param onProgress - Optional callback for fetch progress
+	 * @param onTotalDiscovered - Optional callback when total count is discovered
 	 */
 	getLikedTracks(
 		since?: string | null,
+		onProgress?: (fetched: number) => void,
+		onTotalDiscovered?: (total: number) => void,
 	): Promise<Result<SpotifyTrackDTO[], SpotifyError>> {
 		const sinceDate = since ? new Date(since) : null;
 
 		return fetchAllPages<SpotifyTrackDTO>({
-			fetchPage: (limit, offset) =>
-				this.sdk.currentUser.tracks.savedTracks(limit, offset) as Promise<{
-					items: SpotifyTrackDTO[];
-				}>,
+			fetchPage: async (limit, offset) => {
+				const response = await this.sdk.currentUser.tracks.savedTracks(limit, offset);
+				return {
+					items: parsePlaylistTracks(response.items),
+					total: response.total,
+				};
+			},
 			limit: 50,
 			filterFn: sinceDate
 				? (track) => new Date(track.added_at) > sinceDate
@@ -68,13 +118,31 @@ export class SpotifyService {
 				? (originalItems, filteredItems) =>
 						filteredItems.length < originalItems.length
 				: undefined,
+			onProgress,
+			onTotalDiscovered,
 		});
 	}
 
 	/**
-	 * Gets all playlists owned by the current user.
+	 * Gets the total count of liked/saved tracks without fetching all items.
+	 * Uses limit=1 to minimize API usage while still getting the total.
 	 */
-	async getPlaylists(): Promise<Result<SpotifyPlaylistDTO[], SpotifyError>> {
+	async getLikedSongsCount(): Promise<Result<number, SpotifyError>> {
+		const result = await fetchWithRetry(() =>
+			this.sdk.currentUser.tracks.savedTracks(1, 0),
+		);
+		return result.map((response) => response.total);
+	}
+
+	/**
+	 * Gets all playlists owned by the current user.
+	 * @param onProgress - Optional callback for fetch progress
+	 * @param onTotalDiscovered - Optional callback when total count is discovered
+	 */
+	async getPlaylists(
+		onProgress?: (fetched: number) => void,
+		onTotalDiscovered?: (total: number) => void,
+	): Promise<Result<SpotifyPlaylistDTO[], SpotifyError>> {
 		return Result.gen(
 			async function* (this: SpotifyService) {
 				const currentUser = yield* Result.await(
@@ -85,6 +153,7 @@ export class SpotifyService {
 				let offset = 0;
 				const allPlaylists: SpotifyPlaylistDTO[] = [];
 				let shouldContinue = true;
+				let totalDiscovered = false;
 
 				while (shouldContinue) {
 					const playlists = yield* Result.await(
@@ -97,6 +166,12 @@ export class SpotifyService {
 						),
 					);
 
+					// Notify total count once (first page gives us the total)
+					if (!totalDiscovered && playlists.total !== undefined) {
+						onTotalDiscovered?.(playlists.total);
+						totalDiscovered = true;
+					}
+
 					const filteredPlaylists = playlists.items
 						.filter((p) => p.owner.id === currentUser.id)
 						.map(
@@ -107,10 +182,12 @@ export class SpotifyService {
 									description: p.description,
 									owner: { id: p.owner.id },
 									track_count: p.tracks?.total ?? 0,
+									image_url: p.images?.[0]?.url ?? null,
 								}) satisfies SpotifyPlaylistDTO,
 						);
 
 					allPlaylists.push(...filteredPlaylists);
+					onProgress?.(allPlaylists.length);
 
 					if (playlists.items.length < LIMIT) {
 						shouldContinue = false;
@@ -154,7 +231,7 @@ export class SpotifyService {
 						),
 					);
 
-					allTracks.push(...(response.items as SpotifyTrackDTO[]));
+					allTracks.push(...parsePlaylistTracks(response.items));
 
 					if (response.items.length < LIMIT) {
 						shouldContinue = false;

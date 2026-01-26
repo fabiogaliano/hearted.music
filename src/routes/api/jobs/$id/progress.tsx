@@ -70,9 +70,9 @@ export const Route = createFileRoute("/api/jobs/$id/progress")({
 
 				const stream = new ReadableStream({
 					start(controller) {
-						// Send initial state immediately
+						// Send initial state immediately (but skip if total=0, meaning "not discovered yet")
 						const progress = job.progress as JobProgress | null;
-						if (progress) {
+						if (progress && progress.total > 0) {
 							const initialEvent: JobEvent = {
 								type: "progress",
 								done: progress.done,
@@ -147,6 +147,7 @@ export const Route = createFileRoute("/api/jobs/$id/progress")({
 						"Cache-Control": "no-cache, no-transform",
 						Connection: "keep-alive",
 						"X-Accel-Buffering": "no", // Nginx: disable buffering
+						"Content-Encoding": "Identity", // Wrangler/miniflare: prevent buffering
 					},
 				});
 			},

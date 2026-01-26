@@ -61,13 +61,20 @@ This is `v1_hearted`, built with a modern TanStack-based architecture.
 **Directory Structure:**
 ```
 src/
-├── integrations/              # Third-party integrations
+├── integrations/              # Top-level integrations
 │   └── tanstack-query/        # Query client setup
 ├── lib/                       # Core business logic
 │   ├── auth/                  # Authentication utilities
 │   │   ├── cookies.ts         # Cookie management
 │   │   ├── oauth.ts           # OAuth flow helpers
 │   │   └── session.ts         # Session management
+│   ├── capabilities/          # Domain-specific business logic
+│   │   ├── analysis/          # Song/playlist LLM analysis pipeline
+│   │   ├── genre/             # Genre enrichment service
+│   │   ├── lyrics/            # Lyrics fetching (Genius)
+│   │   ├── matching/          # Song-to-playlist matching algorithm
+│   │   ├── profiling/         # Playlist profile computation
+│   │   └── sync/              # Library sync orchestration
 │   ├── data/                  # Database access layer (Supabase)
 │   │   ├── client.ts          # Supabase client factory
 │   │   ├── database.types.ts  # Generated DB types
@@ -81,41 +88,38 @@ src/
 │   │   ├── playlists.ts       # Playlist operations
 │   │   ├── playlist-analysis.ts
 │   │   ├── preferences.ts     # User preferences
-│   │   ├── matching.ts        # Song matching logic
+│   │   ├── matching.ts        # Match results persistence
 │   │   ├── newness.ts         # New song detection
-│   │   └── vectors.ts         # Vector embeddings
-│   ├── errors/                # Typed error definitions
-│   │   ├── database.ts        # Database errors
-│   │   ├── validation.ts      # Validation errors
-│   │   ├── external/          # External API errors
-│   │   │   ├── spotify.ts
-│   │   │   ├── genius.ts
-│   │   │   ├── deepinfra.ts
-│   │   │   ├── llm.ts
-│   │   │   └── network.ts
-│   │   └── domain/            # Business logic errors
-│   │       ├── analysis.ts
-│   │       ├── embedding.ts
-│   │       ├── job.ts
-│   │       └── sync.ts
-│   ├── services/              # Business logic services
-│   │   ├── job-lifecycle.ts   # Job state management
-│   │   ├── analysis/          # Song/playlist analysis
+│   │   └── vectors.ts         # Vector embeddings & playlist profiles
+│   ├── hooks/                 # React hooks
+│   │   └── useJobProgress.ts  # SSE job progress hook
+│   ├── integrations/          # External service clients
+│   │   ├── audio/             # Audio features service
 │   │   ├── deepinfra/         # DeepInfra API client
-│   │   ├── embedding/         # Vector embeddings
-│   │   ├── llm/               # LLM integrations
-│   │   ├── lyrics/            # Lyrics fetching (Genius)
-│   │   ├── reranker/          # Result reranking
-│   │   ├── spotify/           # Spotify API client
-│   │   └── sync/              # Library sync orchestration
-│   ├── utils/                 # Shared utilities
-│   │   ├── concurrency.ts     # Concurrency helpers
-│   │   └── result-wrappers/   # Result type adapters
+│   │   ├── huggingface/       # HuggingFace API client
+│   │   ├── lastfm/            # Last.fm genre API
+│   │   ├── reccobeats/        # ReccoBeats audio features
+│   │   └── spotify/           # Spotify API client
+│   ├── jobs/                  # Job management
+│   │   └── progress/          # SSE progress emitter & types
+│   ├── ml/                    # Machine learning abstractions
+│   │   ├── adapters/          # Provider-specific adapters
+│   │   ├── embedding/         # Embedding service & extractors
+│   │   ├── llm/               # LLM service (AI SDK)
+│   │   ├── provider/          # Provider abstraction layer
+│   │   └── reranker/          # Cross-encoder reranking
+│   ├── shared/                # Cross-cutting concerns
+│   │   ├── cache/             # Caching utilities
+│   │   ├── errors/            # Typed error definitions
+│   │   │   ├── external/      # External API errors (spotify, genius, etc.)
+│   │   │   └── domain/        # Business logic errors
+│   │   └── utils/             # Shared utilities (concurrency, result-wrappers)
 │   └── utils.ts               # General utilities (cn, etc.)
 ├── routes/                    # File-based routes (TanStack Router)
 │   ├── __root.tsx             # Root layout
 │   ├── index.tsx              # Home page
-│   └── auth/                  # Auth flow routes
+│   ├── auth/                  # Auth flow routes
+│   └── api.jobs.$id.progress.tsx  # SSE endpoint
 ├── env.ts                     # Environment configuration
 ├── router.tsx                 # Router instance creation
 ├── routeTree.gen.ts           # Generated route tree (auto)

@@ -524,34 +524,44 @@ Destination Playlist
 
 > Replace WebSocket job subscriptions with Server-Sent Events.
 
+**Status**: ✅ Complete (2026-01-21)
+
 ### Tasks
 
-- [ ] Create SSE endpoint: `routes/api.jobs.$id.progress.tsx`
-  ```typescript
-  import { createAPIFileRoute } from "@tanstack/start/api"
-
-  export const Route = createAPIFileRoute("/api/jobs/$id/progress")({
-    GET: async ({ request, params }) => {
-      // SSE stream implementation
-    }
-  })
-  ```
-- [ ] Update job creation to emit SSE events
-  - Emit job-level progress and status events
-  - Emit per-item status events with current item metadata
-- [ ] Delete `JobSubscriptionManager.ts`
-- [ ] Delete `JobPersistenceService.ts` → use `data/jobs.ts`
-- [ ] Update UI to use EventSource and track current item
+- [x] Create SSE endpoint: `routes/api.jobs.$id.progress.tsx`
+  - Location: `src/routes/api.jobs.$id.progress.tsx`
+  - Uses `ReadableStream` (Web Streams API) for edge compatibility
+  - Session auth + job ownership verification
+  - Keep-alive pings every 30 seconds
+  - Initial state push on connection
+- [x] Create job progress types: `src/lib/jobs/progress/types.ts`
+  - `JobProgressEvent`, `JobStatusEvent`, `JobItemEvent`, `SSEMessage`
+  - Type discriminators for progress | status | item | error events
+- [x] Create job event emitter: `src/lib/jobs/progress/emitter.ts`
+  - In-memory pub/sub for edge runtime (no Node.js EventEmitter)
+  - Cleanup on job completion prevents memory leaks
+- [x] Create SSE helpers: `src/lib/jobs/progress/helpers.ts`
+  - `emitProgress`, `emitStatus`, `emitItem`, `emitError`
+- [x] Create client hook: `src/lib/hooks/useJobProgress.ts`
+  - EventSource connection management
+  - TanStack Query cache integration
+  - Auto-reconnection handling
+- [x] Integrate SSE into sync orchestrator (`capabilities/sync/orchestrator.ts`)
+- [x] Integrate SSE into analysis pipeline (`capabilities/analysis/pipeline.ts`)
+- [x] Integrate SSE into matching service (`capabilities/matching/service.ts`)
+- [x] Delete `JobSubscriptionManager.ts` — N/A for v1 fresh port
+- [x] Delete `JobPersistenceService.ts` — using `data/jobs.ts` from start
 
 ### Acceptance Criteria
-- [ ] Job progress streams via SSE
-- [ ] Item-level events surface current item + status in UI
-- [ ] No WebSocket code remains
-- [ ] Works in Cloudflare Workers (no WS support)
+- [x] Job progress streams via SSE
+- [x] Item-level events surface current item + status
+- [x] No WebSocket code remains
+- [x] Works in Cloudflare Workers (no WS support)
 
 ### References
 - [02-SERVICES.md SSE API Route](/docs/migration_v2/02-SERVICES.md)
 - [Decision #035](/docs/migration_v2/00-DECISIONS.md) — SSE over WebSocket
+- [openspec/changes/archive/2026-01-21/add-sse-job-progress](/openspec/changes/archive/2026-01-21/add-sse-job-progress/) — Full implementation spec
 
 ---
 

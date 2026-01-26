@@ -84,13 +84,32 @@ export function getBySpotifyIds(
 /**
  * Gets multiple songs by their UUIDs.
  * Returns empty array if none found.
+ * Batches queries to avoid "URI too long" errors (Supabase encodes .in() in URL).
  */
-export function getByIds(ids: string[]): Promise<Result<Song[], DbError>> {
+export async function getByIds(ids: string[]): Promise<Result<Song[], DbError>> {
 	if (ids.length === 0) {
-		return Promise.resolve(Result.ok<Song[], DbError>([]));
+		return Result.ok([]);
 	}
+
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(supabase.from("song").select("*").in("id", ids));
+	const BATCH_SIZE = 100; // Safe limit for URL length
+	const allSongs: Song[] = [];
+
+	// Process in batches to avoid URI length limits
+	for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+		const batch = ids.slice(i, i + BATCH_SIZE);
+		const result = await fromSupabaseMany(
+			supabase.from("song").select("*").in("id", batch),
+		);
+
+		if (Result.isError(result)) {
+			return result;
+		}
+
+		allSongs.push(...result.value);
+	}
+
+	return Result.ok(allSongs);
 }
 
 // ============================================================================

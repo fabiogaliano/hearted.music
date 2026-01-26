@@ -354,10 +354,10 @@ The system SHALL provide `DeepInfraService` to handle embeddings and reranking.
 | 4b    | Merge Pipeline          | Phase 3      | ✅     |
 | 4c    | Split PlaylistService   | Phase 3      | ✅     |
 | 4d    | DeepInfra Migration     | Phase 3      | ✅     |
-| 4e    | **Matching Pipeline**   | Phase 4d     | ⬜     |
-| 4f    | **Genre Enrichment**    | Phase 4d     | ⬜     |
-| 4g    | **Playlist Profiling**  | Phase 4e     | ⬜     |
-| 5     | SSE Migration           | Phase 4g     | ⬜     |
+| 4e    | Matching Pipeline       | Phase 4d     | ✅     |
+| 4f    | Genre Enrichment        | Phase 4d     | ✅     |
+| 4g    | Playlist Profiling      | Phase 4e     | ✅     |
+| 5     | SSE Migration           | Phase 4g     | ✅     |
 | 6     | Cleanup                 | Phase 5      | ⬜     |
 | 7     | UI Integration          | Phase 5      | 🟡     |
 

@@ -56,6 +56,9 @@ export function emitItem(
 		status: JobItemStatus;
 		label?: string;
 		index?: number;
+		count?: number;
+		/** Total items for this phase (set once during discovery) */
+		total?: number;
 	},
 ): void {
 	const event: JobItemEvent = {
@@ -65,6 +68,8 @@ export function emitItem(
 		status: item.status,
 		...(item.label && { label: item.label }),
 		...(item.index !== undefined && { index: item.index }),
+		...(item.count !== undefined && { count: item.count }),
+		...(item.total !== undefined && { total: item.total }),
 	};
 	emit(jobId, event);
 }
@@ -73,6 +78,7 @@ export function emitItem(
  * Emit an error event.
  */
 export function emitError(jobId: string, message: string): void {
+	console.error(`[SSE Error] Job ${jobId}: ${message}`);
 	const event: JobErrorEvent = {
 		type: "error",
 		message,
