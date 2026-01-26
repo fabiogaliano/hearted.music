@@ -19,6 +19,7 @@ export function HeartRipplePlaceholder({
 	const palette = useMemo(() => generatePalette(hue), [hue])
 
 	const bg = vec3ToRgbString(palette.background)
+	const bgTransparent = `rgba(${Math.round(palette.background[0] * 255)}, ${Math.round(palette.background[1] * 255)}, ${Math.round(palette.background[2] * 255)}, 0)`
 	const primary = vec3ToRgbString(palette.primary)
 	const secondary = vec3ToRgbString(palette.secondary)
 
@@ -50,7 +51,7 @@ export function HeartRipplePlaceholder({
 				style={{
 					position: 'absolute',
 					inset: 0,
-					background: `linear-gradient(135deg, ${bg}00 0%, ${bg} 100%)`,
+					background: `linear-gradient(135deg, ${bgTransparent} 0%, ${bg} 100%)`,
 					opacity: 0.4,
 				}}
 			/>

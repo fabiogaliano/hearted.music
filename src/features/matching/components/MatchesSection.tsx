@@ -10,7 +10,7 @@ interface MatchesSectionProps {
 	theme: ThemeConfig
 	addedTo: number[]
 	onAdd: (playlistId: number) => void
-	onSkip: () => void
+	onDiscard: () => void
 	onNext: () => void
 	isExpanded: boolean
 }
@@ -20,7 +20,7 @@ export function MatchesSection({
 	theme,
 	addedTo,
 	onAdd,
-	onSkip,
+	onDiscard,
 	onNext,
 	isExpanded,
 }: MatchesSectionProps) {
@@ -123,11 +123,11 @@ export function MatchesSection({
 				}}
 			>
 				<button
-					onClick={onSkip}
+					onClick={onDiscard}
 					className="text-sm tracking-widest uppercase"
 					style={{ fontFamily: fonts.body, color: theme.textMuted }}
 				>
-					Skip
+					Discard
 				</button>
 
 				<button
