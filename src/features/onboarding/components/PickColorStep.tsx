@@ -28,9 +28,7 @@ export function PickColorStep({
 	const handleContinue = async () => {
 		setIsSaving(true);
 		try {
-			// Save theme to server
 			await saveThemePreference({ data: { theme: currentTheme } });
-			// Navigate to next step
 			await goToStep("connecting");
 		} catch (error) {
 			console.error("Failed to save theme:", error);
