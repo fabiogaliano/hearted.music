@@ -22,10 +22,6 @@ import { ONBOARDING_STEPS } from "@/lib/data/preferences";
 import { Onboarding } from "@/features/onboarding/Onboarding";
 
 
-// ============================================================================
-// Search Params Schema
-// ============================================================================
-
 /**
  * Search params schema - URL is the source of truth for navigation
  * Theme and jobId are loaded from DB, not URL.
@@ -33,12 +29,8 @@ import { Onboarding } from "@/features/onboarding/Onboarding";
 const onboardingSearchSchema = z.object({
 	step: fallback(ONBOARDING_STEPS, "welcome").default("welcome"),
 });
-
 export type OnboardingSearch = z.infer<typeof onboardingSearchSchema>;
 
-// ============================================================================
-// Server Functions
-// ============================================================================
 
 /**
  * Server function to check auth and load onboarding data.
@@ -58,15 +50,12 @@ const getOnboardingPageData = createServerFn({ method: "GET" }).handler(
 		const request = getRequest();
 		const session = getSession(request);
 
-		// Not authenticated
 		if (!session) {
 			return { authenticated: false };
 		}
 
-		// Load onboarding data
 		const data = await getOnboardingData();
 
-		// Already complete
 		if (data.isComplete) {
 			return { authenticated: true, isComplete: true };
 		}
@@ -79,10 +68,6 @@ const getOnboardingPageData = createServerFn({ method: "GET" }).handler(
 		};
 	},
 );
-
-// ============================================================================
-// Route Definition
-// ============================================================================
 
 export const Route = createFileRoute("/onboarding")({
 	validateSearch: zodValidator(onboardingSearchSchema),
@@ -125,10 +110,6 @@ export const Route = createFileRoute("/onboarding")({
 	},
 	component: OnboardingPage,
 });
-
-// ============================================================================
-// Main Component
-// ============================================================================
 
 function OnboardingPage() {
 	const { step } = Route.useSearch();

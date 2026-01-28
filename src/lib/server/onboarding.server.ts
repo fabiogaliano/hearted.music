@@ -30,10 +30,6 @@ import { SyncOrchestrator } from "@/lib/capabilities/sync/orchestrator";
 import { getSpotifyService } from "@/lib/integrations/spotify";
 import { PhaseJobIdsSchema, type PhaseJobIds } from "@/lib/jobs/progress/types";
 
-// ============================================================================
-// Types
-// ============================================================================
-
 /** Playlist view model for onboarding UI (camelCase frontend format) */
 export interface OnboardingPlaylist {
 	id: string;
@@ -63,10 +59,7 @@ export interface OnboardingData {
 	syncStats: SyncStats;
 }
 
-// ============================================================================
 // Validators
-// ============================================================================
-
 const themeInputSchema = z.object({
 	theme: themeSchema,
 });
@@ -79,9 +72,6 @@ const playlistIdsInputSchema = z.object({
 	playlistIds: z.array(z.string().uuid()),
 });
 
-// ============================================================================
-// Data Loading
-// ============================================================================
 
 /**
  * Gets all onboarding data for the authenticated user.
@@ -155,9 +145,6 @@ export const getOnboardingData = createServerFn({ method: "GET" }).handler(
 	},
 );
 
-// ============================================================================
-// Theme Preferences
-// ============================================================================
 
 /**
  * Saves the user's theme preference.
@@ -177,10 +164,6 @@ export const saveThemePreference = createServerFn({ method: "POST" })
 
 		return { success: true };
 	});
-
-// ============================================================================
-// Job Management
-// ============================================================================
 
 /**
  * Creates 3 separate sync jobs (one per phase) for the user.
@@ -312,10 +295,7 @@ export const startSync = createServerFn({ method: "POST" })
 		return { success: true };
 	});
 
-// ============================================================================
 // Onboarding Step Tracking
-// ============================================================================
-
 /**
  * Saves the current onboarding step for resumability.
  * Clears phaseJobIds when transitioning past syncing step.
@@ -363,10 +343,6 @@ export const markOnboardingComplete = createServerFn({ method: "POST" }).handler
 		return { success: true };
 	},
 );
-
-// ============================================================================
-// Playlist Selection
-// ============================================================================
 
 /**
  * Saves playlist destinations (batch update).

@@ -1,10 +1,3 @@
-/**
- * CDCase - Album art wrapped in a jewel case frame
- *
- * Theme-aware component that renders album art inside a classic
- * jewel case frame with hinge ridges and glass glare effects.
- */
-
 import { type ThemeConfig } from '@/lib/theme/types'
 
 interface CDCaseProps {
@@ -31,10 +24,6 @@ const ART_TOP_PERCENT = (ART_Y / CASE_HEIGHT) * 100
 const ART_WIDTH_PERCENT = (ART_SIZE / CASE_WIDTH) * 100
 const ART_HEIGHT_PERCENT = (ART_SIZE / CASE_HEIGHT) * 100
 
-/**
- * Jewel case SVG frame - theme-aware inline rendering
- * Features: outer frame, spine area with hinge ridges, glass glare overlay
- */
 function CaseSVG({ theme }: { theme?: ThemeConfig }) {
 	const frameColor = '#1A1A1A'
 	const accentColor = theme?.text ?? '#1A1A1A'

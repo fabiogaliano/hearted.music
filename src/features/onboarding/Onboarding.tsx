@@ -29,14 +29,11 @@ const INDICATOR_STEPS = ONBOARDING_STEPS.options.filter((s) => !TRANSIENT_STEPS.
 
 export function Onboarding({ step, data }: OnboardingProps) {
 	const location = useLocation();
-	// Use DEFAULT_THEME as UI default when user hasn't chosen (null in DB)
 	const [localTheme, setLocalTheme] = useState<ThemeColor>(data.theme ?? DEFAULT_THEME);
 	const theme = themes[localTheme];
 
-	// FALLBACK PATTERN: Use navigation state if available, otherwise fall back to DB
-	// Navigation state = 0 API calls during flow, DB = fallback on refresh
+
 	const phaseJobIds = location.state?.phaseJobIds ?? data.phaseJobIds;
-	// syncStats always comes from DB (efficient count query) - no navigation state needed
 	const { syncStats } = data;
 
 	// Check if this step needs full-bleed layout
@@ -44,7 +41,6 @@ export function Onboarding({ step, data }: OnboardingProps) {
 
 	return (
 		<StepContainer theme={theme} fullBleed={fullBleed}>
-			{/* Step Router */}
 			{step === "welcome" && <WelcomeStep theme={theme} />}
 			{step === "pick-color" && (
 				<PickColorStep
@@ -62,7 +58,6 @@ export function Onboarding({ step, data }: OnboardingProps) {
 			)}
 			{step === "ready" && <ReadyStep theme={theme} syncStats={syncStats} />}
 
-			{/* Step indicator - minimal dots */}
 			{step !== "connecting" && step !== "syncing" && (
 				<StepIndicator currentStep={step} theme={theme} />
 			)}
