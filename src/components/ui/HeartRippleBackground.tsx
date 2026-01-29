@@ -211,13 +211,10 @@ export const HeartRippleBackground = forwardRef<
 	const rafRef = useRef<number | null>(null)
 	const renderOnceRef = useRef<(() => void) | null>(null)
 	const onReadyRef = useRef(onReady)
+	onReadyRef.current = onReady
 	const updateMouseRef = useRef<
 		((x: number, y: number, strength?: number) => void) | null
 	>(null)
-
-	useEffect(() => {
-		onReadyRef.current = onReady
-	}, [onReady])
 
 	// Expose imperative handle for parent-driven pointer updates
 	useImperativeHandle(

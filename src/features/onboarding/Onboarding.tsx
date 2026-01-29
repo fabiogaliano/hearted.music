@@ -34,6 +34,7 @@ export function Onboarding({ step, data }: OnboardingProps) {
 
 
 	const phaseJobIds = location.state?.phaseJobIds ?? data.phaseJobIds;
+	const librarySummary = location.state?.librarySummary ?? null;
 	const { syncStats } = data;
 
 	// Check if this step needs full-bleed layout
@@ -51,7 +52,7 @@ export function Onboarding({ step, data }: OnboardingProps) {
 			)}
 			{step === "connecting" && <ConnectingStep theme={theme} />}
 			{step === "syncing" && (
-				<SyncingStep theme={theme} phaseJobIds={phaseJobIds} />
+				<SyncingStep theme={theme} phaseJobIds={phaseJobIds} librarySummary={librarySummary} />
 			)}
 			{step === "flag-playlists" && (
 				<FlagPlaylistsStep theme={theme} playlists={data.playlists} />

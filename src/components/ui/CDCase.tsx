@@ -1,14 +1,16 @@
 import { type ThemeConfig } from '@/lib/theme/types'
 
 interface CDCaseProps {
-	/** Album art image URL */
-	src: string
+	/** Album art image URL (optional - shows placeholder if not provided) */
+	src?: string | null
 	/** Alt text for the image */
 	alt: string
 	/** Theme config for theme-aware styling */
 	theme?: ThemeConfig
 	/** Additional className for the container */
 	className?: string
+	/** Hide the placeholder when no image is provided */
+	hidePlaceholder?: boolean
 }
 
 // Case dimensions
@@ -23,6 +25,37 @@ const ART_LEFT_PERCENT = (ART_X / CASE_WIDTH) * 100
 const ART_TOP_PERCENT = (ART_Y / CASE_HEIGHT) * 100
 const ART_WIDTH_PERCENT = (ART_SIZE / CASE_WIDTH) * 100
 const ART_HEIGHT_PERCENT = (ART_SIZE / CASE_HEIGHT) * 100
+
+/**
+ * Theme-aware placeholder art shown when no album image is provided.
+ * Displays a music note icon on a subtle background.
+ */
+function PlaceholderArt({ theme }: { theme?: ThemeConfig }) {
+	const bgColor = theme?.surfaceDim ?? '#1a1a1a'
+	const iconColor = theme?.textMuted ?? '#666666'
+
+	return (
+		<svg
+			viewBox="0 0 100 100"
+			className="h-full w-full"
+			aria-hidden="true"
+		>
+			<rect width="100" height="100" fill={bgColor} fillOpacity="0.6" />
+			<text
+				x="50"
+				y="58"
+				textAnchor="middle"
+				dominantBaseline="middle"
+				fill={iconColor}
+				fillOpacity="0.5"
+				fontSize="32"
+				className="select-none"
+			>
+				♫
+			</text>
+		</svg>
+	)
+}
 
 function CaseSVG({ theme }: { theme?: ThemeConfig }) {
 	const frameColor = '#1A1A1A'
@@ -99,24 +132,40 @@ function CaseSVG({ theme }: { theme?: ThemeConfig }) {
 	)
 }
 
-export function CDCase({ src, alt, theme, className = '' }: CDCaseProps) {
+export function CDCase({ src, alt, theme, className = '', hidePlaceholder = false }: CDCaseProps) {
+	const showPlaceholder = !src && !hidePlaceholder
+
 	return (
 		<div
 			className={`relative ${className}`}
 			style={{ aspectRatio: `${CASE_WIDTH} / ${CASE_HEIGHT}` }}
 		>
 			{/* Album art - positioned within the transparent area */}
-			<img
-				src={src}
-				alt={alt}
-				className="absolute object-cover"
-				style={{
-					left: `${ART_LEFT_PERCENT}%`,
-					top: `${ART_TOP_PERCENT}%`,
-					width: `${ART_WIDTH_PERCENT}%`,
-					height: `${ART_HEIGHT_PERCENT}%`,
-				}}
-			/>
+			{src ? (
+				<img
+					src={src}
+					alt={alt}
+					className="absolute object-cover"
+					style={{
+						left: `${ART_LEFT_PERCENT}%`,
+						top: `${ART_TOP_PERCENT}%`,
+						width: `${ART_WIDTH_PERCENT}%`,
+						height: `${ART_HEIGHT_PERCENT}%`,
+					}}
+				/>
+			) : showPlaceholder ? (
+				<div
+					className="absolute"
+					style={{
+						left: `${ART_LEFT_PERCENT}%`,
+						top: `${ART_TOP_PERCENT}%`,
+						width: `${ART_WIDTH_PERCENT}%`,
+						height: `${ART_HEIGHT_PERCENT}%`,
+					}}
+				>
+					<PlaceholderArt theme={theme} />
+				</div>
+			) : null}
 
 			{/* CD case frame overlay */}
 			<CaseSVG theme={theme} />

@@ -9,114 +9,136 @@ import { fonts } from "@/lib/theme/fonts";
 import { type ThemeConfig } from "@/lib/theme/types";
 import { useJobProgress, type JobProgressState } from "@/lib/hooks/useJobProgress";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
-import { startSync } from "@/lib/server/onboarding.server";
+import { executeSync, type LibrarySummary } from "@/lib/server/onboarding.server";
 import type { PhaseJobIds } from "@/lib/jobs/progress/types";
 
-// ============================================================================
-// Smooth Progress Hook (Velocity-Based)
-// ============================================================================
-
 /**
- * Velocity-based smooth progress with damping.
+ * Smart smooth progress with predictive velocity and fast completion catch-up.
  *
- * Instead of calculating "where should progress BE" (which causes jumps when
- * estimation changes), we calculate "how fast should progress MOVE" and change
- * that velocity gradually.
+ * Problem: Spotify API returns progress in batches of 50 items, causing jumps.
+ * Old approach used slow velocity blending (98/2) that couldn't catch up at completion.
  *
- * Key principles:
- * - MIN_VELOCITY ensures progress NEVER stops (no pauses)
- * - MAX_VELOCITY ensures progress NEVER bursts (no jumps)
- * - Velocity smoothing means changes happen gradually over ~1 second
- * - Ceiling prevents getting too far ahead of actual progress
+ * New approach:
+ * 1. RATE TRACKING: Use exponential smoothing to estimate API batch arrival rate
+ * 2. PREDICTIVE VELOCITY: Set velocity to arrive at ~95% just before completion
+ * 3. PROPORTIONAL CATCH-UP: When complete, use LERP for fast but smooth finish
+ *
+ * Key insight: We know totals upfront, so we can predict when sync will finish
+ * based on batch arrival rate and adjust velocity accordingly.
  *
  * @param target - The actual progress from batch updates (0-100)
  * @param isComplete - Whether sync has finished
  */
 function useSmoothProgress(target: number, isComplete: boolean): number {
-	// Simple approach: steady velocity with very gradual adjustments
-	const BASE_VELOCITY = 0.033; // ~2%/sec - steady pace for ~50s total
-	const SOFT_CEILING = 5; // Start slowing when this far ahead
-	const HARD_CEILING = 8; // Never exceed this far ahead
-	const CRAWL_VELOCITY = 0.01; // ~0.6%/sec when at ceiling
+	// Algorithm tuning constants
+	const ALPHA = 0.4; // Exponential smoothing factor (0.4 = balanced responsiveness)
+	const MIN_VELOCITY = 0.02; // ~1.2%/sec minimum (never appear stuck)
+	const MAX_VELOCITY = 0.15; // ~9%/sec maximum (never jump too fast)
+	const CEILING_BUFFER = 6; // Stay this far behind actual progress
+	const COMPLETION_LERP = 0.08; // Fast LERP factor when complete (~5 frames to 95%)
 
 	const [display, setDisplay] = useState(0);
 	const displayRef = useRef(0);
-	const velocityRef = useRef(BASE_VELOCITY);
+	const velocityRef = useRef(MIN_VELOCITY);
 	const animationRef = useRef<number | null>(null);
 
-	// Refs for tracking
+	const lastTargetRef = useRef(0);
+	const lastTargetTimeRef = useRef(Date.now());
+	const smoothedRateRef = useRef(0); // Smoothed rate in %/ms
+
 	const targetRef = useRef(target);
 	const isCompleteRef = useRef(isComplete);
+	targetRef.current = target;
+	isCompleteRef.current = isComplete;
 
-	// Update refs when props change
-	useEffect(() => {
-		targetRef.current = target;
-	}, [target]);
-
-	useEffect(() => {
-		isCompleteRef.current = isComplete;
-	}, [isComplete]);
-
-	// Animation loop
 	useEffect(() => {
 		const animate = () => {
 			const prev = displayRef.current;
 			const actualTarget = targetRef.current;
 			const complete = isCompleteRef.current;
+			const now = Date.now();
 
-			// Done - stop animation
-			if (prev >= 100) {
+			if (prev >= 99.9) {
 				displayRef.current = 100;
 				setDisplay(100);
 				return;
 			}
 
-			const gap = actualTarget - prev;
-
-			// Very gentle velocity adjustments (98/2 blend - almost imperceptible)
-			let targetVelocity: number;
-			if (complete) {
-				targetVelocity = 0.2; // Finish smoothly
-			} else if (gap > 15) {
-				// Very far behind - slightly faster
-				targetVelocity = BASE_VELOCITY * 1.5;
-			} else if (gap > 5) {
-				// Behind - bit faster
-				targetVelocity = BASE_VELOCITY * 1.2;
-			} else if (gap < -2) {
-				// Ahead - slower
-				targetVelocity = BASE_VELOCITY * 0.7;
-			} else {
-				// On track
-				targetVelocity = BASE_VELOCITY;
+			if (actualTarget === 0 && !complete) {
+				animationRef.current = requestAnimationFrame(animate);
+				return;
 			}
 
-			// Ultra-smooth velocity changes (98/2 blend)
-			velocityRef.current = velocityRef.current * 0.98 + targetVelocity * 0.02;
+			if (actualTarget > lastTargetRef.current) {
+				const deltaTarget = actualTarget - lastTargetRef.current;
+				const deltaTime = Math.max(now - lastTargetTimeRef.current, 1);
+				const instantRate = deltaTarget / deltaTime; // %/ms
 
-			// Calculate ceiling (never reach 100% until complete)
-			const ceiling = complete ? 100 : Math.min(actualTarget + HARD_CEILING, 99);
+				// Exponential smoothing: rate = α × instant + (1-α) × previous
+				if (smoothedRateRef.current === 0) {
+					smoothedRateRef.current = instantRate; // Initialize
+				} else {
+					smoothedRateRef.current =
+						ALPHA * instantRate + (1 - ALPHA) * smoothedRateRef.current;
+				}
+
+				lastTargetRef.current = actualTarget;
+				lastTargetTimeRef.current = now;
+			}
 
 			let newDisplay: number;
 
-			if (prev >= actualTarget + SOFT_CEILING) {
-				// At soft ceiling - crawl slowly
-				newDisplay = prev + CRAWL_VELOCITY;
+			if (complete) {
+				// COMPLETION MODE: Fast LERP toward 100%
+				// LERP: display = display + (target - display) * factor
+				// With factor=0.08, reaches 95% of gap in ~35 frames (~0.6s)
+				const remaining = 100 - prev;
+				newDisplay = prev + remaining * COMPLETION_LERP;
 			} else {
-				// Normal steady movement
-				newDisplay = prev + velocityRef.current;
-			}
+				// TRACKING MODE: Predictive velocity based on API rate
+				const gap = actualTarget - prev;
 
-			// Apply ceiling
-			newDisplay = Math.min(newDisplay, ceiling);
+				let targetVelocity: number;
+
+				if (smoothedRateRef.current > 0) {
+					// Predict: match smoothed API rate, converted to per-frame
+					// Rate is %/ms, frame is ~16.67ms at 60fps
+					const ratePerFrame = smoothedRateRef.current * 16.67;
+					// Stay slightly behind (90%) to maintain smooth buffer
+					targetVelocity = ratePerFrame * 0.9;
+				} else {
+					// Fallback: use gap-based velocity
+					targetVelocity = MIN_VELOCITY;
+				}
+
+				// Adjust based on gap (catch up if behind, slow if ahead)
+				if (gap > 20) {
+					targetVelocity = Math.max(targetVelocity, MAX_VELOCITY);
+				} else if (gap > 10) {
+					targetVelocity = Math.max(targetVelocity * 1.3, MIN_VELOCITY * 2);
+				} else if (gap < 2) {
+					targetVelocity = Math.min(targetVelocity * 0.5, MIN_VELOCITY);
+				}
+
+				targetVelocity = Math.max(MIN_VELOCITY, Math.min(MAX_VELOCITY, targetVelocity));
+
+				// Smooth velocity changes (90/10 blend - responsive but not jarring)
+				velocityRef.current = velocityRef.current * 0.9 + targetVelocity * 0.1;
+
+				newDisplay = prev + velocityRef.current;
+
+				// Apply ceiling (never get too far ahead, never reach 100 until complete)
+				const ceiling = Math.min(actualTarget + CEILING_BUFFER, 99);
+				newDisplay = Math.min(newDisplay, ceiling);
+			}
 
 			// Never go backwards
 			newDisplay = Math.max(newDisplay, prev);
 
 			displayRef.current = newDisplay;
 
-			// Update React state
-			if (Math.abs(newDisplay - prev) > 0.005) {
+			// Update React state (throttle tiny changes)
+			if (Math.abs(newDisplay - prev) > 0.01) {
 				setDisplay(newDisplay);
 			}
 
@@ -135,10 +157,6 @@ function useSmoothProgress(target: number, isComplete: boolean): number {
 	return display;
 }
 
-// ============================================================================
-// Progress Calculation
-// ============================================================================
-
 /**
  * Calculate combined progress across 3 phase jobs with dynamic weights.
  * Weights are proportional to actual item counts once all totals are known.
@@ -155,7 +173,6 @@ function calculateCombinedProgress(
 		{ state: tracks, itemId: "playlist_tracks" },
 	];
 
-	// Get totals and counts for each phase
 	const phaseData = phases.map(({ state, itemId }) => {
 		const total = state.itemTotals.get(itemId) ?? 0;
 		const count = state.items.get(itemId)?.count ?? 0;
@@ -164,13 +181,10 @@ function calculateCombinedProgress(
 
 	const grandTotal = phaseData.reduce((sum, p) => sum + p.total, 0);
 
-	// No data yet - return 0
 	if (grandTotal === 0) return 0;
 
-	// Check if all totals are known (use dynamic weights only then)
 	const allTotalsKnown = phaseData.every((p) => p.total > 0);
 
-	// Calculate weighted progress
 	let weightedProgress = 0;
 
 	for (let i = 0; i < phaseData.length; i++) {
@@ -200,18 +214,18 @@ function calculateCombinedProgress(
 interface SyncingStepProps {
 	theme: ThemeConfig;
 	phaseJobIds: PhaseJobIds | null;
+	/** Discovery result from ConnectingStep - contains totals + cached playlists */
+	librarySummary: LibrarySummary | null;
 }
 
-export function SyncingStep({ theme, phaseJobIds }: SyncingStepProps) {
+export function SyncingStep({ theme, phaseJobIds, librarySummary }: SyncingStepProps) {
 	const { goToStep } = useOnboardingNavigation();
 	const syncStartedRef = useRef(false);
 
-	// Subscribe to all 3 jobs
 	const songs = useJobProgress(phaseJobIds?.liked_songs ?? null);
 	const playlists = useJobProgress(phaseJobIds?.playlists ?? null);
 	const tracks = useJobProgress(phaseJobIds?.playlist_tracks ?? null);
 
-	// Dynamic weighted progress based on actual item counts
 	const { percent, label, allComplete, isFailed, error, isDiscovering } = useMemo(() => {
 		const phases = [
 			{ state: songs, label: "Syncing songs..." },
@@ -219,7 +233,7 @@ export function SyncingStep({ theme, phaseJobIds }: SyncingStepProps) {
 			{ state: tracks, label: "Syncing tracks..." },
 		];
 
-		// Check if we have any totals yet (discovery phase sends all totals at once)
+		// Check if we have any totals yet (librarySummary phase sends all totals at once)
 		const hasAnyTotals =
 			(songs.itemTotals.get("liked_songs") ?? 0) > 0 ||
 			(playlists.itemTotals.get("playlists") ?? 0) > 0 ||
@@ -239,10 +253,13 @@ export function SyncingStep({ theme, phaseJobIds }: SyncingStepProps) {
 				? "Sync failed"
 				: current?.label ?? "Complete!";
 
+		const calculatedPercent = calculateCombinedProgress(songs, playlists, tracks);
+		const isComplete = completedCount === 3;
+
 		return {
-			percent: calculateCombinedProgress(songs, playlists, tracks),
+			percent: calculatedPercent,
 			label: currentLabel,
-			allComplete: completedCount === 3,
+			allComplete: isComplete,
 			isFailed: !!failed,
 			error: failed?.state.error ?? null,
 			isDiscovering: !hasAnyTotals,
@@ -282,16 +299,18 @@ export function SyncingStep({ theme, phaseJobIds }: SyncingStepProps) {
 	// Buffered progress - always one batch behind so we never stop moving
 	const syncProgress = useSmoothProgress(percent, allComplete);
 
-	// Start sync on mount
+
+	// Fire-and-forget on mount (similar to analytics-on-mount pattern).
+	// Sync starts because user reached this step, not from a specific interaction.
 	useEffect(() => {
-		if (!phaseJobIds || syncStartedRef.current) return;
+		if (!phaseJobIds || !librarySummary || syncStartedRef.current) return;
 		syncStartedRef.current = true;
 
-		startSync({ data: { phaseJobIds } }).catch((err) => {
-			console.error("Failed to start sync:", err);
+		executeSync({ data: { phaseJobIds, librarySummary } }).catch((err: unknown) => {
+			console.error("Failed to execute sync:", err);
 			toast.error("Failed to start sync. Please try again.");
 		});
-	}, [phaseJobIds]);
+	}, [phaseJobIds, librarySummary]);
 
 	// Event handler for auto-advance - reads latest values without re-triggering effect
 	const onSyncComplete = useEffectEvent(() => {
@@ -303,7 +322,6 @@ export function SyncingStep({ theme, phaseJobIds }: SyncingStepProps) {
 		});
 	});
 
-	// Auto-advance on complete
 	useEffect(() => {
 		if (allComplete) {
 			const timer = setTimeout(onSyncComplete, 1500); // 1.5 second delay to show final counts
@@ -420,7 +438,6 @@ export function SyncingStep({ theme, phaseJobIds }: SyncingStepProps) {
 				<em className="font-normal">library</em>
 			</h2>
 
-			{/* Large percentage display */}
 			<div className="mt-12 flex items-baseline justify-center">
 				<span
 					className="text-8xl font-light tabular-nums"
@@ -433,7 +450,7 @@ export function SyncingStep({ theme, phaseJobIds }: SyncingStepProps) {
 				</span>
 			</div>
 
-			{/* Progressive status messages */}
+
 			{isDiscovering ? (
 				<div
 					className="mt-8 space-y-1 text-sm animate-pulse"
@@ -458,24 +475,6 @@ export function SyncingStep({ theme, phaseJobIds }: SyncingStepProps) {
 					)}
 					<p className="mt-2">{label}</p>
 				</div>
-			)}
-
-			{/* Skip button for dev */}
-			{import.meta.env.DEV && (
-				<button
-					type="button"
-					onClick={async () => {
-						try {
-							await goToStep("flag-playlists", { syncStats: { songs: 0, playlists: 0 } });
-						} catch (error) {
-							console.error("Failed to skip:", error);
-						}
-					}}
-					className="mt-8 text-sm underline"
-					style={{ color: theme.textMuted }}
-				>
-					Skip (dev)
-				</button>
 			)}
 		</div>
 	);

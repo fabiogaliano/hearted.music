@@ -129,9 +129,9 @@ const handleCallback = createServerFn({ method: "GET" })
 			headers.append("Set-Cookie", cookie);
 		}
 
-		// Redirect to onboarding welcome step (job will be created later)
+		// Redirect to dashboard (it handles onboarding redirect if needed)
 		throw redirect({
-			to: "/onboarding",
+			to: "/dashboard",
 			headers,
 		});
 	});

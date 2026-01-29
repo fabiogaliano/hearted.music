@@ -66,11 +66,7 @@ export function useJobProgress(jobId: string | null): JobProgressState {
 	const queryClient = useQueryClient();
 	const eventSourceRef = useRef<EventSource | null>(null);
 	const queryClientRef = useRef(queryClient);
-
-	// Keep queryClient ref updated (avoids stale closure without causing effect re-runs)
-	useEffect(() => {
-		queryClientRef.current = queryClient;
-	}, [queryClient]);
+	queryClientRef.current = queryClient; // Update during render (no Effect needed)
 
 	// Handle incoming SSE event (stable reference - uses refs to avoid dependency changes)
 	const handleEvent = useCallback(
