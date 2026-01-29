@@ -77,11 +77,7 @@ describe("computeAudioFeatureScore", () => {
 			loudness: 0,
 		};
 		const centroid = { energy: 0.5 };
-		const score = computeAudioFeatureScore(
-			songFeatures,
-			centroid,
-			zeroWeights,
-		);
+		const score = computeAudioFeatureScore(songFeatures, centroid, zeroWeights);
 		expect(score).toBe(0);
 	});
 
@@ -128,7 +124,11 @@ describe("computeAudioFeatureScore", () => {
 		const centroid = { energy: 0.5, valence: 0.6 };
 		const weights = { energy: 1, valence: 1 };
 		const features = { energy: 0.7 } as MatchingAudioFeatures;
-		const score = computeAudioFeatureScore(features, centroid, weights as AudioFeatureWeights);
+		const score = computeAudioFeatureScore(
+			features,
+			centroid,
+			weights as AudioFeatureWeights,
+		);
 		// Only energy is present: diff = 0.2, score = 0.8
 		// Valence missing, so not counted
 		expect(score).toBeCloseTo(0.8);
@@ -232,9 +232,7 @@ describe("computeFlowScore", () => {
 	});
 
 	it("applies energy weighting of 30%", () => {
-		const recentSongs = [
-			{ dominantMood: null, energy: 0.8, valence: 0.5 },
-		];
+		const recentSongs = [{ dominantMood: null, energy: 0.8, valence: 0.5 }];
 		// Identical energy (diff = 0): score = 1.0 * 0.3 = 0.3
 		// Identical valence (diff = 0): score = 1.0 * 0.2 = 0.2
 		// combinedScore = 0.5, weightSum = 0.5
@@ -244,9 +242,7 @@ describe("computeFlowScore", () => {
 	});
 
 	it("applies valence weighting of 20%", () => {
-		const recentSongs = [
-			{ dominantMood: null, energy: 0.5, valence: 0.6 },
-		];
+		const recentSongs = [{ dominantMood: null, energy: 0.5, valence: 0.6 }];
 		// Identical energy (diff = 0): score = 1.0 * 0.3 = 0.3
 		// Identical valence (diff = 0): score = 1.0 * 0.2 = 0.2
 		// combinedScore = 0.5, weightSum = 0.5

@@ -12,29 +12,29 @@
  * - Released (default): Shows "Login with Spotify" for live product
  * - Pre-release: Shows waitlist email input for launch prep
  */
-import { useState } from 'react'
+import { useState } from "react";
 
-import { playlists, songs } from '@/lib/data/mock-data'
-import { useAlbumArt } from '@/lib/hooks/useAlbumArt'
-import { useArtistImage } from '@/lib/hooks/useArtistImage'
-import { type ThemeConfig } from '@/lib/theme/types'
-import { fonts } from '@/lib/theme/fonts'
-import { MatchesSection } from '@/features/matching/components/MatchesSection'
-import { SongSection } from '@/features/matching/components/SongSection'
-import { LandingHero } from './components/LandingHero'
-import { SpotifyLoginButton } from './components/SpotifyLoginButton'
-import { WaitlistInput } from './components/WaitlistInput'
+import { playlists, songs } from "@/lib/data/mock-data";
+import { useAlbumArt } from "@/lib/hooks/useAlbumArt";
+import { useArtistImage } from "@/lib/hooks/useArtistImage";
+import { type ThemeConfig } from "@/lib/theme/types";
+import { fonts } from "@/lib/theme/fonts";
+import { MatchesSection } from "@/features/matching/components/MatchesSection";
+import { SongSection } from "@/features/matching/components/SongSection";
+import { LandingHero } from "./components/LandingHero";
+import { SpotifyLoginButton } from "./components/SpotifyLoginButton";
+import { WaitlistInput } from "./components/WaitlistInput";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface LandingProps {
-	theme: ThemeConfig
+	theme: ThemeConfig;
 	/** Index of song to feature (default 0, can be randomized server-side) */
-	featuredSongIndex?: number
+	featuredSongIndex?: number;
 	/** Release mode - true for login, false for waitlist (controlled from PrototypeWrapper) */
-	isReleased?: boolean
+	isReleased?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -47,32 +47,38 @@ export function Landing({
 	isReleased = true,
 }: LandingProps) {
 	// Hero song selection state
-	const [selectedSongIndex, setSelectedSongIndex] = useState(featuredSongIndex)
-	const featuredSong = songs[selectedSongIndex] || songs[0]
-	const { getAlbumArt, isLoading } = useAlbumArt()
-	const albumArtUrl = getAlbumArt(featuredSong.spotifyTrackId, 300)
-	const { artistImageUrl } = useArtistImage(featuredSong.spotifyTrackId)
+	const [selectedSongIndex, setSelectedSongIndex] = useState(featuredSongIndex);
+	const featuredSong = songs[selectedSongIndex] || songs[0];
+	const { getAlbumArt, isLoading } = useAlbumArt();
+	const albumArtUrl = getAlbumArt(featuredSong.spotifyTrackId, 300);
+	const { artistImageUrl } = useArtistImage(featuredSong.spotifyTrackId);
 
 	// Preview song for Section 2 - separate state so it can cycle independently
-	const [previewSongIndex, setPreviewSongIndex] = useState(2) // Start with Frank Ocean
-	const previewSong = songs[previewSongIndex] || songs[0]
+	const [previewSongIndex, setPreviewSongIndex] = useState(2); // Start with Frank Ocean
+	const previewSong = songs[previewSongIndex] || songs[0];
 
 	// Navigation handlers for hero
 	const handlePrev = () => {
-		setSelectedSongIndex(selectedSongIndex > 0 ? selectedSongIndex - 1 : songs.length - 1)
-	}
+		setSelectedSongIndex(
+			selectedSongIndex > 0 ? selectedSongIndex - 1 : songs.length - 1,
+		);
+	};
 	const handleNext = () => {
-		setSelectedSongIndex(selectedSongIndex < songs.length - 1 ? selectedSongIndex + 1 : 0)
-	}
+		setSelectedSongIndex(
+			selectedSongIndex < songs.length - 1 ? selectedSongIndex + 1 : 0,
+		);
+	};
 
 	// Navigation handlers for Section 2 preview
 	const handlePreviewNext = () => {
-		setPreviewSongIndex(previewSongIndex < songs.length - 1 ? previewSongIndex + 1 : 0)
-	}
+		setPreviewSongIndex(
+			previewSongIndex < songs.length - 1 ? previewSongIndex + 1 : 0,
+		);
+	};
 	const handlePreviewDiscard = () => {
 		// Discard behaves the same as next for the preview
-		handlePreviewNext()
-	}
+		handlePreviewNext();
+	};
 
 	return (
 		<div
@@ -162,9 +168,11 @@ export function Landing({
 					What do they <span className="italic">say about you?</span>
 				</h3>
 				<div className="mt-10 flex justify-center">
-					{isReleased ?
+					{isReleased ? (
 						<SpotifyLoginButton theme={theme} />
-					:	<WaitlistInput theme={theme} />}
+					) : (
+						<WaitlistInput theme={theme} />
+					)}
 				</div>
 			</section>
 
@@ -173,7 +181,10 @@ export function Landing({
 			    ─────────────────────────────────────────────────────────────────── */}
 			<footer
 				className="px-8 py-8 text-center text-sm lg:px-16"
-				style={{ borderTop: `1px solid ${theme.border}`, color: theme.textMuted }}
+				style={{
+					borderTop: `1px solid ${theme.border}`,
+					color: theme.textMuted,
+				}}
 			>
 				<p>
 					<a
@@ -182,14 +193,14 @@ export function Landing({
 					>
 						FAQ
 					</a>
-					{' · '}
+					{" · "}
 					<a
 						href="/prototypes/warm-pastel/privacy"
 						className="underline-offset-2 hover:underline"
 					>
 						Privacy
 					</a>
-					{' · '}
+					{" · "}
 					<a
 						href="/prototypes/warm-pastel/terms"
 						className="underline-offset-2 hover:underline"
@@ -201,7 +212,7 @@ export function Landing({
 					className="mt-2 opacity-60"
 					style={{ fontFamily: fonts.display, fontWeight: 300 }}
 				>
-					hearted. by{' '}
+					hearted. by{" "}
 					<a
 						href="https://fabiogaliano.com"
 						target="_blank"
@@ -213,7 +224,7 @@ export function Landing({
 				</p>
 			</footer>
 		</div>
-	)
+	);
 }
 
-export default Landing
+export default Landing;

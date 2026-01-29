@@ -206,7 +206,10 @@ export function computeThematicScore(
  *
  * @returns Score 0-1
  */
-export function scoreMoodTransition(sourceMood: string, targetMood: string): number {
+export function scoreMoodTransition(
+	sourceMood: string,
+	targetMood: string,
+): number {
 	const normalizedSource = sourceMood.toLowerCase().trim();
 	const normalizedTarget = targetMood.toLowerCase().trim();
 

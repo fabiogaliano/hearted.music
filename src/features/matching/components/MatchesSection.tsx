@@ -1,18 +1,18 @@
-import { Playlist } from '@/lib/data/mock-data'
-import { ThemeConfig } from '@/lib/theme/types'
-import { fonts } from '@/lib/theme/fonts'
+import { Playlist } from "@/lib/data/mock-data";
+import { ThemeConfig } from "@/lib/theme/types";
+import { fonts } from "@/lib/theme/fonts";
 
-const COLLAPSED_ALBUM_SIZE_PX = '400px'
-const EXPANDED_ALBUM_SIZE_PX = '240px'
+const COLLAPSED_ALBUM_SIZE_PX = "400px";
+const EXPANDED_ALBUM_SIZE_PX = "240px";
 
 interface MatchesSectionProps {
-	playlists: Playlist[]
-	theme: ThemeConfig
-	addedTo: number[]
-	onAdd: (playlistId: number) => void
-	onDiscard: () => void
-	onNext: () => void
-	isExpanded: boolean
+	playlists: Playlist[];
+	theme: ThemeConfig;
+	addedTo: number[];
+	onAdd: (playlistId: number) => void;
+	onDiscard: () => void;
+	onNext: () => void;
+	isExpanded: boolean;
 }
 
 export function MatchesSection({
@@ -42,13 +42,13 @@ export function MatchesSection({
 			<div
 				className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-2 transition-[margin-top,gap] duration-500 ease-in-out"
 				style={{
-					marginTop: isExpanded ? '1rem' : '1.5rem',
-					gap: isExpanded ? '0.75rem' : '1.25rem',
+					marginTop: isExpanded ? "1rem" : "1.5rem",
+					gap: isExpanded ? "0.75rem" : "1.25rem",
 				}}
 			>
-				{playlists.map(playlist => {
-					const isAdded = addedTo.includes(playlist.id)
-					const isGoodMatch = playlist.matchScore >= 0.7
+				{playlists.map((playlist) => {
+					const isAdded = addedTo.includes(playlist.id);
+					const isGoodMatch = playlist.matchScore >= 0.7;
 
 					return (
 						<div
@@ -56,7 +56,7 @@ export function MatchesSection({
 							className="group transition-[padding-bottom] duration-500 ease-in-out"
 							style={{
 								borderBottom: `1px solid ${theme.border}`,
-								paddingBottom: isExpanded ? '0.75rem' : '1.25rem',
+								paddingBottom: isExpanded ? "0.75rem" : "1.25rem",
 							}}
 						>
 							<div className="flex items-start justify-between">
@@ -66,7 +66,7 @@ export function MatchesSection({
 										style={{
 											fontFamily: fonts.display,
 											color: isGoodMatch ? theme.text : theme.textMuted,
-											fontSize: isExpanded ? '1.5rem' : '2rem',
+											fontSize: isExpanded ? "1.5rem" : "2rem",
 										}}
 									>
 										{Math.round(playlist.matchScore * 100)}%
@@ -77,7 +77,7 @@ export function MatchesSection({
 											style={{
 												fontFamily: fonts.display,
 												color: theme.text,
-												fontSize: isExpanded ? '1rem' : '1.125rem',
+												fontSize: isExpanded ? "1rem" : "1.125rem",
 											}}
 										>
 											{playlist.name}
@@ -85,7 +85,10 @@ export function MatchesSection({
 										{playlist.description && (
 											<p
 												className="mt-0.5 text-xs"
-												style={{ fontFamily: fonts.body, color: theme.textMuted }}
+												style={{
+													fontFamily: fonts.body,
+													color: theme.textMuted,
+												}}
 											>
 												{playlist.description}
 											</p>
@@ -93,24 +96,25 @@ export function MatchesSection({
 									</div>
 								</div>
 
-								{isAdded ?
+								{isAdded ? (
 									<span
 										className="text-sm tracking-widest uppercase opacity-50"
 										style={{ fontFamily: fonts.body, color: theme.textMuted }}
 									>
 										Added
 									</span>
-								:	<button
+								) : (
+									<button
 										onClick={() => onAdd(playlist.id)}
 										className="text-sm tracking-widest uppercase opacity-0 transition-opacity group-hover:opacity-100"
 										style={{ fontFamily: fonts.body, color: theme.text }}
 									>
 										Add
 									</button>
-								}
+								)}
 							</div>
 						</div>
-					)
+					);
 				})}
 			</div>
 
@@ -118,8 +122,8 @@ export function MatchesSection({
 			<div
 				className="flex items-center justify-between transition-[margin-top,padding-top] duration-500 ease-in-out"
 				style={{
-					marginTop: isExpanded ? 'auto' : '2rem',
-					paddingTop: isExpanded ? '0.75rem' : '0rem',
+					marginTop: isExpanded ? "auto" : "2rem",
+					paddingTop: isExpanded ? "0.75rem" : "0rem",
 				}}
 			>
 				<button
@@ -137,9 +141,9 @@ export function MatchesSection({
 				>
 					<span
 						className={
-							isExpanded ?
-								'text-base font-medium tracking-wide'
-							:	'text-lg font-medium tracking-wide'
+							isExpanded
+								? "text-base font-medium tracking-wide"
+								: "text-lg font-medium tracking-wide"
 						}
 					>
 						Next Song
@@ -153,5 +157,5 @@ export function MatchesSection({
 				</button>
 			</div>
 		</div>
-	)
+	);
 }

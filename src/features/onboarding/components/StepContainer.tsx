@@ -19,7 +19,11 @@ export function StepContainer({
 }: StepContainerProps) {
 	return (
 		<div
-			className={fullBleed ? "h-screen overflow-hidden" : "min-h-screen overflow-x-hidden"}
+			className={
+				fullBleed
+					? "h-screen overflow-hidden"
+					: "min-h-screen overflow-x-hidden"
+			}
 			style={{ background: theme.bg }}
 		>
 			{/* Wrapper for non-full-bleed steps */}

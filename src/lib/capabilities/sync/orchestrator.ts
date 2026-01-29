@@ -58,7 +58,11 @@ export class SyncOrchestrator {
 			onTotalDiscovered?: (total: number) => void;
 		} = {},
 	): Promise<Result<LikedSongsSyncResult, SyncOrchestratorError>> {
-		const spotifyResult = await fetchLikedSongs(this.spotify, accountId, options);
+		const spotifyResult = await fetchLikedSongs(
+			this.spotify,
+			accountId,
+			options,
+		);
 		if (Result.isError(spotifyResult)) {
 			return spotifyResult;
 		}
@@ -102,7 +106,7 @@ export class SyncOrchestrator {
 
 	/**
 	 * Syncs tracks for specific playlists.
-	*/
+	 */
 	async syncPlaylistTracks(
 		accountId: string,
 		playlistIds?: string[],
@@ -172,7 +176,6 @@ export class SyncOrchestrator {
 
 		return Result.ok(results);
 	}
-
 
 	/**
 	 * Discovery phase: fetches all totals BEFORE sync starts.
@@ -292,20 +295,18 @@ export class SyncOrchestrator {
 			// ================================================================
 			// PHASE 2: Playlist Tracks (bulk of the work)
 			// ================================================================
-			const tracksResult = await runPhase(
-				phaseJobIds.playlist_tracks,
-				() =>
-					this.syncPlaylistTracks(accountId, undefined, {
-						syncAllPlaylists: true,
-						onProgress: (count) => {
-							emitItem(phaseJobIds.playlist_tracks, {
-								itemId: "playlist_tracks",
-								itemKind: "song",
-								status: "in_progress",
-								count,
-							});
-						},
-					}),
+			const tracksResult = await runPhase(phaseJobIds.playlist_tracks, () =>
+				this.syncPlaylistTracks(accountId, undefined, {
+					syncAllPlaylists: true,
+					onProgress: (count) => {
+						emitItem(phaseJobIds.playlist_tracks, {
+							itemId: "playlist_tracks",
+							itemKind: "song",
+							status: "in_progress",
+							count,
+						});
+					},
+				}),
 			);
 			if (Result.isError(tracksResult)) return tracksResult;
 
@@ -341,7 +342,6 @@ export class SyncOrchestrator {
 		}
 	}
 }
-
 
 /** Result of syncing liked songs */
 export const LikedSongsSyncResultSchema = z.object({

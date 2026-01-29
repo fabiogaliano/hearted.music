@@ -7,9 +7,15 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { fonts } from "@/lib/theme/fonts";
 import { type ThemeConfig } from "@/lib/theme/types";
-import { useJobProgress, type JobProgressState } from "@/lib/hooks/useJobProgress";
+import {
+	useJobProgress,
+	type JobProgressState,
+} from "@/lib/hooks/useJobProgress";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
-import { executeSync, type LibrarySummary } from "@/lib/server/onboarding.server";
+import {
+	executeSync,
+	type LibrarySummary,
+} from "@/lib/server/onboarding.server";
 import type { PhaseJobIds } from "@/lib/jobs/progress/types";
 
 /**
@@ -120,7 +126,10 @@ function useSmoothProgress(target: number, isComplete: boolean): number {
 					targetVelocity = Math.min(targetVelocity * 0.5, MIN_VELOCITY);
 				}
 
-				targetVelocity = Math.max(MIN_VELOCITY, Math.min(MAX_VELOCITY, targetVelocity));
+				targetVelocity = Math.max(
+					MIN_VELOCITY,
+					Math.min(MAX_VELOCITY, targetVelocity),
+				);
 
 				// Smooth velocity changes (90/10 blend - responsive but not jarring)
 				velocityRef.current = velocityRef.current * 0.9 + targetVelocity * 0.1;
@@ -218,7 +227,11 @@ interface SyncingStepProps {
 	librarySummary: LibrarySummary | null;
 }
 
-export function SyncingStep({ theme, phaseJobIds, librarySummary }: SyncingStepProps) {
+export function SyncingStep({
+	theme,
+	phaseJobIds,
+	librarySummary,
+}: SyncingStepProps) {
 	const { goToStep } = useOnboardingNavigation();
 	const syncStartedRef = useRef(false);
 
@@ -226,79 +239,110 @@ export function SyncingStep({ theme, phaseJobIds, librarySummary }: SyncingStepP
 	const playlists = useJobProgress(phaseJobIds?.playlists ?? null);
 	const tracks = useJobProgress(phaseJobIds?.playlist_tracks ?? null);
 
-	const { percent, label, allComplete, isFailed, error, isDiscovering } = useMemo(() => {
-		const phases = [
-			{ state: songs, label: "Syncing songs..." },
-			{ state: playlists, label: "Syncing playlists..." },
-			{ state: tracks, label: "Syncing tracks..." },
-		];
+	const { percent, label, allComplete, isFailed, error, isDiscovering } =
+		useMemo(() => {
+			const phases = [
+				{ state: songs, label: "Syncing songs..." },
+				{ state: playlists, label: "Syncing playlists..." },
+				{ state: tracks, label: "Syncing tracks..." },
+			];
 
-		// Check if we have any totals yet (librarySummary phase sends all totals at once)
-		const hasAnyTotals =
-			(songs.itemTotals.get("liked_songs") ?? 0) > 0 ||
-			(playlists.itemTotals.get("playlists") ?? 0) > 0 ||
-			(tracks.itemTotals.get("playlist_tracks") ?? 0) > 0;
+			// Check if we have any totals yet (librarySummary phase sends all totals at once)
+			const hasAnyTotals =
+				(songs.itemTotals.get("liked_songs") ?? 0) > 0 ||
+				(playlists.itemTotals.get("playlists") ?? 0) > 0 ||
+				(tracks.itemTotals.get("playlist_tracks") ?? 0) > 0;
 
-		const completedCount = phases.filter((p) => p.state.status === "completed")
-			.length;
-		const failed = phases.find((p) => p.state.status === "failed");
-		const current = phases.find(
-			(p) => p.state.status === "running" || p.state.status === "pending",
-		);
+			const completedCount = phases.filter(
+				(p) => p.state.status === "completed",
+			).length;
+			const failed = phases.find((p) => p.state.status === "failed");
+			const current = phases.find(
+				(p) => p.state.status === "running" || p.state.status === "pending",
+			);
 
-		// Show "Discovering..." when no totals received yet
-		const currentLabel = !hasAnyTotals
-			? "Discovering your library..."
-			: failed
-				? "Sync failed"
-				: current?.label ?? "Complete!";
+			// Show "Discovering..." when no totals received yet
+			const currentLabel = !hasAnyTotals
+				? "Discovering your library..."
+				: failed
+					? "Sync failed"
+					: (current?.label ?? "Complete!");
 
-		const calculatedPercent = calculateCombinedProgress(songs, playlists, tracks);
-		const isComplete = completedCount === 3;
+			const calculatedPercent = calculateCombinedProgress(
+				songs,
+				playlists,
+				tracks,
+			);
+			const isComplete = completedCount === 3;
 
-		return {
-			percent: calculatedPercent,
-			label: currentLabel,
-			allComplete: isComplete,
-			isFailed: !!failed,
-			error: failed?.state.error ?? null,
-			isDiscovering: !hasAnyTotals,
-		};
-	}, [songs.status, songs.items, songs.itemTotals, playlists.status, playlists.items, playlists.itemTotals, tracks.status, tracks.items, tracks.itemTotals, songs.error, playlists.error, tracks.error]);
+			return {
+				percent: calculatedPercent,
+				label: currentLabel,
+				allComplete: isComplete,
+				isFailed: !!failed,
+				error: failed?.state.error ?? null,
+				isDiscovering: !hasAnyTotals,
+			};
+		}, [
+			songs.status,
+			songs.items,
+			songs.itemTotals,
+			playlists.status,
+			playlists.items,
+			playlists.itemTotals,
+			tracks.status,
+			tracks.items,
+			tracks.itemTotals,
+			songs.error,
+			playlists.error,
+			tracks.error,
+		]);
 
 	// Extract counts and totals for stats
 	// When a phase is complete (succeeded), show total as count to avoid stale values
-	const phaseCounts = useMemo(
-		() => {
-			const songsItem = songs.items.get("liked_songs");
-			const playlistsItem = playlists.items.get("playlists");
-			const tracksItem = tracks.items.get("playlist_tracks");
+	const phaseCounts = useMemo(() => {
+		const songsItem = songs.items.get("liked_songs");
+		const playlistsItem = playlists.items.get("playlists");
+		const tracksItem = tracks.items.get("playlist_tracks");
 
-			const songsTotal = songs.itemTotals.get("liked_songs") ?? 0;
-			const playlistsTotal = playlists.itemTotals.get("playlists") ?? 0;
-			const tracksTotal = tracks.itemTotals.get("playlist_tracks") ?? 0;
+		const songsTotal = songs.itemTotals.get("liked_songs") ?? 0;
+		const playlistsTotal = playlists.itemTotals.get("playlists") ?? 0;
+		const tracksTotal = tracks.itemTotals.get("playlist_tracks") ?? 0;
 
-			return {
-				songs: {
-					count: songsItem?.status === "succeeded" ? songsTotal : (songsItem?.count ?? 0),
-					total: songsTotal,
-				},
-				playlists: {
-					count: playlistsItem?.status === "succeeded" ? playlistsTotal : (playlistsItem?.count ?? 0),
-					total: playlistsTotal,
-				},
-				playlistTracks: {
-					count: tracksItem?.status === "succeeded" ? tracksTotal : (tracksItem?.count ?? 0),
-					total: tracksTotal,
-				},
-			};
-		},
-		[songs.items, songs.itemTotals, playlists.items, playlists.itemTotals, tracks.items, tracks.itemTotals],
-	);
+		return {
+			songs: {
+				count:
+					songsItem?.status === "succeeded"
+						? songsTotal
+						: (songsItem?.count ?? 0),
+				total: songsTotal,
+			},
+			playlists: {
+				count:
+					playlistsItem?.status === "succeeded"
+						? playlistsTotal
+						: (playlistsItem?.count ?? 0),
+				total: playlistsTotal,
+			},
+			playlistTracks: {
+				count:
+					tracksItem?.status === "succeeded"
+						? tracksTotal
+						: (tracksItem?.count ?? 0),
+				total: tracksTotal,
+			},
+		};
+	}, [
+		songs.items,
+		songs.itemTotals,
+		playlists.items,
+		playlists.itemTotals,
+		tracks.items,
+		tracks.itemTotals,
+	]);
 
 	// Buffered progress - always one batch behind so we never stop moving
 	const syncProgress = useSmoothProgress(percent, allComplete);
-
 
 	// Fire-and-forget on mount (similar to analytics-on-mount pattern).
 	// Sync starts because user reached this step, not from a specific interaction.
@@ -306,10 +350,12 @@ export function SyncingStep({ theme, phaseJobIds, librarySummary }: SyncingStepP
 		if (!phaseJobIds || !librarySummary || syncStartedRef.current) return;
 		syncStartedRef.current = true;
 
-		executeSync({ data: { phaseJobIds, librarySummary } }).catch((err: unknown) => {
-			console.error("Failed to execute sync:", err);
-			toast.error("Failed to start sync. Please try again.");
-		});
+		executeSync({ data: { phaseJobIds, librarySummary } }).catch(
+			(err: unknown) => {
+				console.error("Failed to execute sync:", err);
+				toast.error("Failed to start sync. Please try again.");
+			},
+		);
 	}, [phaseJobIds, librarySummary]);
 
 	// Event handler for auto-advance - reads latest values without re-triggering effect
@@ -450,7 +496,6 @@ export function SyncingStep({ theme, phaseJobIds, librarySummary }: SyncingStepP
 				</span>
 			</div>
 
-
 			{isDiscovering ? (
 				<div
 					className="mt-8 space-y-1 text-sm animate-pulse"
@@ -464,14 +509,24 @@ export function SyncingStep({ theme, phaseJobIds, librarySummary }: SyncingStepP
 					style={{ fontFamily: fonts.body, color: theme.textMuted }}
 				>
 					{phaseCounts.playlists.total > 0 && (
-						<p>{phaseCounts.playlists.count.toLocaleString()}/{phaseCounts.playlists.total.toLocaleString()} playlists</p>
+						<p>
+							{phaseCounts.playlists.count.toLocaleString()}/
+							{phaseCounts.playlists.total.toLocaleString()} playlists
+						</p>
 					)}
 					{phaseCounts.playlistTracks.total > 0 && (
-						<p>{phaseCounts.playlistTracks.count.toLocaleString()}/{phaseCounts.playlistTracks.total.toLocaleString()} playlist tracks</p>
+						<p>
+							{phaseCounts.playlistTracks.count.toLocaleString()}/
+							{phaseCounts.playlistTracks.total.toLocaleString()} playlist
+							tracks
+						</p>
 					)}
 
 					{phaseCounts.songs.total > 0 && (
-						<p>{phaseCounts.songs.count.toLocaleString()}/{phaseCounts.songs.total.toLocaleString()} liked songs</p>
+						<p>
+							{phaseCounts.songs.count.toLocaleString()}/
+							{phaseCounts.songs.total.toLocaleString()} liked songs
+						</p>
 					)}
 					<p className="mt-2">{label}</p>
 				</div>

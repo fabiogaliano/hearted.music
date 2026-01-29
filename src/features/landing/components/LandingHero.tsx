@@ -1,31 +1,31 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from "react";
 
 import {
 	HeartRippleBackground,
 	type HeartRippleHandle,
-} from '@/components/ui/HeartRippleBackground'
-import { HeartRipplePlaceholder } from '@/components/ui/HeartRipplePlaceholder'
-import { songs } from '@/lib/data/mock-data'
-import { type ThemeConfig } from '@/lib/theme/types'
-import { fonts } from '@/lib/theme/fonts'
-import { extractHue, getPastelColor } from '@/lib/utils/color'
-import { AnimatedHeart } from './AnimatedHeart'
-import { SongPreviewPanel } from './SongPreviewPanel'
-import { SpotifyLoginButton } from './SpotifyLoginButton'
-import { WaitlistInput } from './WaitlistInput'
-import { heroStyles } from './heroStyles'
-import { useHeroAnimation } from './useHeroAnimation'
+} from "@/components/ui/HeartRippleBackground";
+import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
+import { songs } from "@/lib/data/mock-data";
+import { type ThemeConfig } from "@/lib/theme/types";
+import { fonts } from "@/lib/theme/fonts";
+import { extractHue, getPastelColor } from "@/lib/utils/color";
+import { AnimatedHeart } from "./AnimatedHeart";
+import { SongPreviewPanel } from "./SongPreviewPanel";
+import { SpotifyLoginButton } from "./SpotifyLoginButton";
+import { WaitlistInput } from "./WaitlistInput";
+import { heroStyles } from "./heroStyles";
+import { useHeroAnimation } from "./useHeroAnimation";
 
 export interface LandingHeroProps {
-	theme: ThemeConfig
-	featuredSong: (typeof songs)[0]
-	albumArtUrl: string
-	artistImageUrl: string | undefined
-	isLoading: boolean
-	onPrev: () => void
-	onNext: () => void
+	theme: ThemeConfig;
+	featuredSong: (typeof songs)[0];
+	albumArtUrl: string;
+	artistImageUrl: string | undefined;
+	isLoading: boolean;
+	onPrev: () => void;
+	onNext: () => void;
 	/** Whether the app is in released mode (shows login) vs pre-release (shows waitlist) */
-	isReleased?: boolean
+	isReleased?: boolean;
 }
 
 export function LandingHero({
@@ -39,25 +39,25 @@ export function LandingHero({
 	isReleased = true,
 }: LandingHeroProps) {
 	// Background ready state - controls WebGL fade-in and animation start
-	const [isBackgroundReady, setIsBackgroundReady] = useState(false)
+	const [isBackgroundReady, setIsBackgroundReady] = useState(false);
 
 	// Track when scroll reaches reveal point (for CTA/subtext animations)
-	const [hasRevealed, setHasRevealed] = useState(false)
+	const [hasRevealed, setHasRevealed] = useState(false);
 
 	// Refs for GSAP animation targets
-	const sectionRef = useRef<HTMLElement>(null)
-	const pinnedContentRef = useRef<HTMLDivElement>(null)
-	const heartRippleRef = useRef<HeartRippleHandle>(null)
-	const logoRef = useRef<HTMLHeadingElement>(null)
-	const headlineRef = useRef<HTMLHeadingElement>(null)
-	const backgroundRef = useRef<HTMLDivElement>(null)
-	const backgroundInnerRef = useRef<HTMLDivElement>(null)
-	const panelRef = useRef<HTMLDivElement>(null)
-	const panelCurtainRef = useRef<HTMLDivElement>(null)
-	const ctaRef = useRef<HTMLDivElement>(null)
-	const subtextRef = useRef<HTMLParagraphElement>(null)
-	const navBtnRef = useRef<HTMLButtonElement>(null)
-	const scrollIndicatorRef = useRef<HTMLDivElement>(null)
+	const sectionRef = useRef<HTMLElement>(null);
+	const pinnedContentRef = useRef<HTMLDivElement>(null);
+	const heartRippleRef = useRef<HeartRippleHandle>(null);
+	const logoRef = useRef<HTMLHeadingElement>(null);
+	const headlineRef = useRef<HTMLHeadingElement>(null);
+	const backgroundRef = useRef<HTMLDivElement>(null);
+	const backgroundInnerRef = useRef<HTMLDivElement>(null);
+	const panelRef = useRef<HTMLDivElement>(null);
+	const panelCurtainRef = useRef<HTMLDivElement>(null);
+	const ctaRef = useRef<HTMLDivElement>(null);
+	const subtextRef = useRef<HTMLParagraphElement>(null);
+	const navBtnRef = useRef<HTMLButtonElement>(null);
+	const scrollIndicatorRef = useRef<HTMLDivElement>(null);
 
 	// Initialize GSAP ScrollTrigger animation
 	useHeroAnimation(
@@ -79,51 +79,51 @@ export function LandingHero({
 			isBackgroundReady,
 			onRevealComplete: () => setHasRevealed(true),
 			onRevealReverse: () => setHasRevealed(false),
-		}
-	)
+		},
+	);
 
 	// Pointer tracking for WebGL background - uses RAF throttling to avoid re-renders
 	useEffect(() => {
-		const container = pinnedContentRef.current
-		if (!container) return
+		const container = pinnedContentRef.current;
+		if (!container) return;
 
 		// RAF-throttled pointer update
-		let pending: { x: number; y: number } | null = null
-		let rafId: number | null = null
+		let pending: { x: number; y: number } | null = null;
+		let rafId: number | null = null;
 
-		const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
+		const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 
 		const scheduleUpdate = () => {
-			if (rafId != null) return
+			if (rafId != null) return;
 			rafId = requestAnimationFrame(() => {
-				rafId = null
-				if (!pending) return
-				heartRippleRef.current?.setPointer(pending)
-				pending = null
-			})
-		}
+				rafId = null;
+				if (!pending) return;
+				heartRippleRef.current?.setPointer(pending);
+				pending = null;
+			});
+		};
 
 		const handlePointerMove = (ev: PointerEvent) => {
-			const rect = container.getBoundingClientRect()
-			const x = clamp01((ev.clientX - rect.left) / rect.width)
-			const y = clamp01(1 - (ev.clientY - rect.top) / rect.height)
-			pending = { x, y }
-			scheduleUpdate()
-		}
+			const rect = container.getBoundingClientRect();
+			const x = clamp01((ev.clientX - rect.left) / rect.width);
+			const y = clamp01(1 - (ev.clientY - rect.top) / rect.height);
+			pending = { x, y };
+			scheduleUpdate();
+		};
 
-		window.addEventListener('pointermove', handlePointerMove)
+		window.addEventListener("pointermove", handlePointerMove);
 
 		return () => {
-			window.removeEventListener('pointermove', handlePointerMove)
+			window.removeEventListener("pointermove", handlePointerMove);
 			if (rafId != null) {
-				cancelAnimationFrame(rafId)
+				cancelAnimationFrame(rafId);
 			}
-		}
-	}, [])
+		};
+	}, []);
 
 	// Compute pastel color for hero text (same as heart)
-	const themeHue = extractHue(theme.primary)
-	const pastelColor = getPastelColor(themeHue)
+	const themeHue = extractHue(theme.primary);
+	const pastelColor = getPastelColor(themeHue);
 
 	return (
 		<>
@@ -151,7 +151,7 @@ export function LandingHero({
 					<div
 						ref={backgroundRef}
 						className="hero-background absolute inset-y-0 left-0 z-0 overflow-hidden"
-						style={{ width: '100%' }}
+						style={{ width: "100%" }}
 					>
 						{/* Counter-scaled content wrapper to preserve aspect ratio during shrink */}
 						<div
@@ -164,7 +164,7 @@ export function LandingHero({
 							</div>
 							{/* WebGL background (fades in when ready) */}
 							<div
-								className={`absolute inset-0 z-10 transition-opacity duration-1000 ${isBackgroundReady ? 'opacity-100' : 'opacity-0'}`}
+								className={`absolute inset-0 z-10 transition-opacity duration-1000 ${isBackgroundReady ? "opacity-100" : "opacity-0"}`}
 							>
 								<HeartRippleBackground
 									ref={heartRippleRef}
@@ -179,7 +179,7 @@ export function LandingHero({
 					<div className="pointer-events-none relative z-10 grid min-h-screen lg:grid-cols-2">
 						{/* Left: Copy column - elements morph from center to here */}
 						<div
-							className={`hero-initial-fade ${isBackgroundReady ? 'is-ready' : ''} pointer-events-none relative flex flex-col justify-center overflow-visible px-8 py-20 lg:px-16`}
+							className={`hero-initial-fade ${isBackgroundReady ? "is-ready" : ""} pointer-events-none relative flex flex-col justify-center overflow-visible px-8 py-20 lg:px-16`}
 						>
 							{/* Navigation - logo morphs here, button fades in */}
 							<nav className="pointer-events-none absolute top-0 right-0 left-0 flex items-center justify-between px-8 py-5 lg:static lg:mb-16 lg:px-0">
@@ -188,8 +188,8 @@ export function LandingHero({
 									className="hero-logo text-2xl font-extralight tracking-tight"
 									style={{
 										fontFamily: fonts.display,
-										color: '#ffffff',
-										willChange: 'transform',
+										color: "#ffffff",
+										willChange: "transform",
 									}}
 								>
 									hearted.
@@ -198,10 +198,10 @@ export function LandingHero({
 									ref={navBtnRef}
 									className="hero-nav-btn pointer-events-auto px-5 py-2 text-sm tracking-widest uppercase transition-all duration-300 hover:scale-105 lg:hidden"
 									style={{
-										background: 'rgba(255,255,255,0.2)',
-										color: '#ffffff',
+										background: "rgba(255,255,255,0.2)",
+										color: "#ffffff",
 										fontFamily: fonts.body,
-										backdropFilter: 'blur(10px)',
+										backdropFilter: "blur(10px)",
 										opacity: 0, // Initial state, GSAP animates
 									}}
 								>
@@ -217,7 +217,7 @@ export function LandingHero({
 									style={{
 										fontFamily: fonts.display,
 										color: pastelColor,
-										willChange: 'transform, max-width',
+										willChange: "transform, max-width",
 									}}
 								>
 									<span>the stories inside&nbsp;</span>
@@ -228,11 +228,13 @@ export function LandingHero({
 								<div
 									ref={ctaRef}
 									className="pointer-events-auto mt-10"
-									style={{ opacity: 0, transform: 'translateY(10px)' }}
+									style={{ opacity: 0, transform: "translateY(10px)" }}
 								>
-									{isReleased ?
+									{isReleased ? (
 										<SpotifyLoginButton theme={theme} variant="dark" />
-									:	<WaitlistInput theme={theme} variant="dark" />}
+									) : (
+										<WaitlistInput theme={theme} variant="dark" />
+									)}
 								</div>
 
 								{/* Subtext - fades in late in scroll */}
@@ -242,11 +244,12 @@ export function LandingHero({
 									style={{
 										color: theme.textOnPrimary,
 										opacity: 0,
-										transform: 'translateY(10px)',
+										transform: "translateY(10px)",
 									}}
 								>
-									Every <AnimatedHeart theme={theme} shouldAutoPlay={hasRevealed} /> was a
-									feeling.
+									Every{" "}
+									<AnimatedHeart theme={theme} shouldAutoPlay={hasRevealed} />{" "}
+									was a feeling.
 									<br />
 									What do they all say about you?
 								</p>
@@ -294,7 +297,7 @@ export function LandingHero({
 					{/* Scroll indicator - fades out on first scroll */}
 					<div
 						ref={scrollIndicatorRef}
-						className={`pointer-events-none absolute bottom-8 left-1/2 z-20 -translate-x-1/2 transition-opacity duration-1000 ${isBackgroundReady ? 'opacity-100' : 'opacity-0'}`}
+						className={`pointer-events-none absolute bottom-8 left-1/2 z-20 -translate-x-1/2 transition-opacity duration-1000 ${isBackgroundReady ? "opacity-100" : "opacity-0"}`}
 					>
 						<div
 							className="scroll-indicator flex flex-col items-center gap-2"
@@ -321,5 +324,5 @@ export function LandingHero({
 				</div>
 			</section>
 		</>
-	)
+	);
 }

@@ -1,22 +1,22 @@
-import { type ThemeConfig } from '@/lib/theme/types'
-import { fonts } from '@/lib/theme/fonts'
+import { type ThemeConfig } from "@/lib/theme/types";
+import { fonts } from "@/lib/theme/fonts";
 
 // TODO: Wire up waitlist submission to Supabase waitlist table
 // Currently visual placeholder only
 
 export interface WaitlistInputProps {
-	theme: ThemeConfig
-	buttonText?: string
+	theme: ThemeConfig;
+	buttonText?: string;
 	/** 'light' for light backgrounds, 'dark' for dark/gradient backgrounds */
-	variant?: 'light' | 'dark'
+	variant?: "light" | "dark";
 }
 
 export function WaitlistInput({
 	theme,
-	buttonText = 'Show me mine',
-	variant = 'light',
+	buttonText = "Show me mine",
+	variant = "light",
 }: WaitlistInputProps) {
-	const isDark = variant === 'dark'
+	const isDark = variant === "dark";
 
 	return (
 		<div className="flex max-w-sm gap-3">
@@ -25,11 +25,11 @@ export function WaitlistInput({
 				placeholder="Your email"
 				className="flex-1 px-4 py-3 text-sm transition-all duration-300 focus:outline-none"
 				style={{
-					background: isDark ? 'rgba(255,255,255,0.15)' : theme.surface,
-					border: `1px solid ${isDark ? 'rgba(255,255,255,0.3)' : theme.border}`,
-					color: isDark ? '#ffffff' : theme.text,
+					background: isDark ? "rgba(255,255,255,0.15)" : theme.surface,
+					border: `1px solid ${isDark ? "rgba(255,255,255,0.3)" : theme.border}`,
+					color: isDark ? "#ffffff" : theme.text,
 					fontFamily: fonts.body,
-					backdropFilter: isDark ? 'blur(10px)' : undefined,
+					backdropFilter: isDark ? "blur(10px)" : undefined,
 				}}
 			/>
 			<button
@@ -43,5 +43,5 @@ export function WaitlistInput({
 				{buttonText}
 			</button>
 		</div>
-	)
+	);
 }

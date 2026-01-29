@@ -6,7 +6,12 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { themes } from "@/lib/theme/colors";
-import { type ThemeColor, type ThemeConfig, COLOR_LABELS, THEME_COLORS } from "@/lib/theme/types";
+import {
+	type ThemeColor,
+	type ThemeConfig,
+	COLOR_LABELS,
+	THEME_COLORS,
+} from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
 import { saveThemePreference } from "@/lib/server/onboarding.server";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";

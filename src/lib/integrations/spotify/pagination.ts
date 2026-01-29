@@ -15,7 +15,10 @@ import { fetchWithRetry, type RetryOptions } from "./request";
 /** Options for paginated fetch */
 export interface PaginationOptions<T> {
 	/** Function to fetch a page of items */
-	fetchPage: (limit: MaxInt<50>, offset: number) => Promise<{ items: T[]; total?: number }>;
+	fetchPage: (
+		limit: MaxInt<50>,
+		offset: number,
+	) => Promise<{ items: T[]; total?: number }>;
 	/** Items per page (max 50 for Spotify) */
 	limit: MaxInt<50>;
 	/** Optional filter function applied to each item */
@@ -51,7 +54,15 @@ export interface PaginationOptions<T> {
 export async function fetchAllPages<T>(
 	options: PaginationOptions<T>,
 ): Promise<Result<T[], SpotifyError>> {
-	const { fetchPage, limit, filterFn, shouldStopEarly, retryOptions, onProgress, onTotalDiscovered } = options;
+	const {
+		fetchPage,
+		limit,
+		filterFn,
+		shouldStopEarly,
+		retryOptions,
+		onProgress,
+		onTotalDiscovered,
+	} = options;
 
 	return Result.gen(async function* () {
 		const allItems: T[] = [];
@@ -72,7 +83,11 @@ export async function fetchAllPages<T>(
 			allItems.push(...filteredItems);
 
 			// Notify total count once (first page gives us the total)
-			if (!totalDiscovered && response.total !== undefined && response.total > 0) {
+			if (
+				!totalDiscovered &&
+				response.total !== undefined &&
+				response.total > 0
+			) {
 				onTotalDiscovered?.(response.total);
 				totalDiscovered = true;
 			}

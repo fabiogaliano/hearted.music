@@ -243,7 +243,9 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 			);
 
 			if (presentFeatures.length > 0) {
-				console.log(`   ✓ Audio features present: ${presentFeatures.join(", ")}`);
+				console.log(
+					`   ✓ Audio features present: ${presentFeatures.join(", ")}`,
+				);
 			} else {
 				console.log("   ⚠️  No audio features available for test songs");
 			}
@@ -267,8 +269,7 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 			];
 
 			for (const feature of normalized) {
-				const value =
-					audioCentroid[feature as keyof typeof audioCentroid];
+				const value = audioCentroid[feature as keyof typeof audioCentroid];
 				if (value !== undefined) {
 					expect(value).toBeGreaterThanOrEqual(0);
 					expect(value).toBeLessThanOrEqual(1);
@@ -479,14 +480,11 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 // Skipped Test Notice
 // ─────────────────────────────────────────────────────────────
 
-describe.skipIf(RUN_TEST)(
-	"Playlist Profiling Integration (Skipped)",
-	() => {
-		test("requires PROFILING_TEST=true to run", () => {
-			console.log("\n⏭️  Playlist Profiling Integration test skipped");
-			console.log("   Set PROFILING_TEST=true to run this integration test");
-			console.log("   Requires: Database access, Embedding service");
-			expect(true).toBe(true);
-		});
-	},
-);
+describe.skipIf(RUN_TEST)("Playlist Profiling Integration (Skipped)", () => {
+	test("requires PROFILING_TEST=true to run", () => {
+		console.log("\n⏭️  Playlist Profiling Integration test skipped");
+		console.log("   Set PROFILING_TEST=true to run this integration test");
+		console.log("   Requires: Database access, Embedding service");
+		expect(true).toBe(true);
+	});
+});

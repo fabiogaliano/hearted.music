@@ -57,9 +57,7 @@ function createSong(partial: Partial<Song> = {}): Song {
 	};
 }
 
-function createSongAnalysis(
-	partial: Partial<SongAnalysis> = {},
-): SongAnalysis {
+function createSongAnalysis(partial: Partial<SongAnalysis> = {}): SongAnalysis {
 	return {
 		id: partial.id ?? "test-analysis-id",
 		song_id: partial.song_id ?? "test-song-id",

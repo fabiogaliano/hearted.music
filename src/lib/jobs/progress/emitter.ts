@@ -46,7 +46,9 @@ export function subscribe(
 		subscribers.set(jobId, new Set());
 	}
 	subscribers.get(jobId)!.add(callback);
-	console.log(`[SSE] subscribe(${jobId}): Total subscribers now: ${subscribers.get(jobId)!.size}`);
+	console.log(
+		`[SSE] subscribe(${jobId}): Total subscribers now: ${subscribers.get(jobId)!.size}`,
+	);
 
 	// Return unsubscribe function
 	return () => {
@@ -67,7 +69,9 @@ export function subscribe(
 export function emit(jobId: string, event: JobEvent): void {
 	const callbacks = subscribers.get(jobId);
 	const subscriberCount = callbacks?.size ?? 0;
-	console.log(`[SSE] emit(${jobId}): ${event.type}, subscribers: ${subscriberCount}`);
+	console.log(
+		`[SSE] emit(${jobId}): ${event.type}, subscribers: ${subscriberCount}`,
+	);
 
 	if (callbacks) {
 		for (const callback of callbacks) {

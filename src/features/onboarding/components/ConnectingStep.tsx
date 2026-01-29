@@ -30,7 +30,8 @@ export function ConnectingStep({ theme }: ConnectingStepProps) {
 			const librarySummary = await getLibrarySummary();
 			await goToStep("syncing", { librarySummary });
 		} catch (e) {
-			const err = e instanceof Error ? e : new Error("Failed to fetch library summary");
+			const err =
+				e instanceof Error ? e : new Error("Failed to fetch library summary");
 			setError(err);
 			toast.error("Couldn't connect to Spotify. Please try again.");
 		} finally {

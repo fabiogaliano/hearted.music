@@ -15,7 +15,10 @@
 
 import { Result } from "better-result";
 import { env } from "@/env";
-import { MLConfigError, MLProviderUnavailableError } from "@/lib/shared/errors/domain/ml";
+import {
+	MLConfigError,
+	MLProviderUnavailableError,
+} from "@/lib/shared/errors/domain/ml";
 import type { MLProvider } from "./ports";
 import type { ProviderName } from "./types";
 import { createDeepInfraProvider } from "../adapters/deepinfra";

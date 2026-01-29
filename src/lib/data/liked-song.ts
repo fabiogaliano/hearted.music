@@ -66,7 +66,9 @@ export async function getCount(
 		.eq("account_id", accountId);
 
 	if (error) {
-		return Result.err(new DatabaseError({ code: error.code, message: error.message }));
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
 	}
 
 	return Result.ok(count ?? 0);

@@ -1,8 +1,8 @@
-import { songs } from '@/lib/data/mock-data'
-import { type ThemeConfig } from '@/lib/theme/types'
-import { fonts } from '@/lib/theme/fonts'
-import { extractHue } from '@/lib/utils/color'
-import { ThemesList } from './ThemesList'
+import { songs } from "@/lib/data/mock-data";
+import { type ThemeConfig } from "@/lib/theme/types";
+import { fonts } from "@/lib/theme/fonts";
+import { extractHue } from "@/lib/utils/color";
+import { ThemesList } from "./ThemesList";
 
 // Layout constants matching SongDetailPanel
 export const PANEL_LAYOUT = {
@@ -10,21 +10,26 @@ export const PANEL_LAYOUT = {
 	albumArtSize: 112,
 	paddingX: 20,
 	imagePositionY: 30,
-}
+};
 
 export interface NavButtonProps {
-	direction: 'prev' | 'next'
-	onClick: () => void
-	color: string
-	size?: number
+	direction: "prev" | "next";
+	onClick: () => void;
+	color: string;
+	size?: number;
 }
 
-export function NavButton({ direction, onClick, color, size = 16 }: NavButtonProps) {
+export function NavButton({
+	direction,
+	onClick,
+	color,
+	size = 16,
+}: NavButtonProps) {
 	return (
 		<button
 			onClick={onClick}
 			className="transition-opacity hover:opacity-70"
-			aria-label={direction === 'prev' ? 'Previous song' : 'Next song'}
+			aria-label={direction === "prev" ? "Previous song" : "Next song"}
 		>
 			<svg
 				width={size}
@@ -34,30 +39,31 @@ export function NavButton({ direction, onClick, color, size = 16 }: NavButtonPro
 				stroke={color}
 				strokeWidth="2"
 			>
-				{direction === 'prev' ?
+				{direction === "prev" ? (
 					<>
 						<path d="M6 6v12" />
 						<path d="M18 6l-8 6 8 6V6z" fill={color} />
 					</>
-				:	<>
+				) : (
+					<>
 						<path d="M6 6l8 6-8 6V6z" fill={color} />
 						<path d="M18 6v12" />
 					</>
-				}
+				)}
 			</svg>
 		</button>
-	)
+	);
 }
 
 export interface SongPreviewPanelProps {
-	song: (typeof songs)[0]
-	albumArtUrl: string
-	artistImageUrl: string | undefined
-	isLoading: boolean
-	theme: ThemeConfig
+	song: (typeof songs)[0];
+	albumArtUrl: string;
+	artistImageUrl: string | undefined;
+	isLoading: boolean;
+	theme: ThemeConfig;
 	/** Navigation props for integrated media controls */
-	onPrev: () => void
-	onNext: () => void
+	onPrev: () => void;
+	onNext: () => void;
 }
 
 export function SongPreviewPanel({
@@ -70,7 +76,7 @@ export function SongPreviewPanel({
 	onNext,
 }: SongPreviewPanelProps) {
 	// Extract hue for light-mode vignette gradient
-	const hue = extractHue(theme.primary)
+	const hue = extractHue(theme.primary);
 
 	return (
 		<div
@@ -78,15 +84,18 @@ export function SongPreviewPanel({
 			style={{ background: theme.bg }}
 		>
 			{/* Hero area - fixed height like SongDetailPanel */}
-			<div className="relative" style={{ height: `${PANEL_LAYOUT.heroHeight}px` }}>
+			<div
+				className="relative"
+				style={{ height: `${PANEL_LAYOUT.heroHeight}px` }}
+			>
 				{/* Artist image background - constrained to hero */}
-				{artistImageUrl ?
+				{artistImageUrl ? (
 					<>
 						<div
 							className="absolute inset-0"
 							style={{
 								backgroundImage: `url(${artistImageUrl})`,
-								backgroundSize: 'cover',
+								backgroundSize: "cover",
 								backgroundPosition: `center ${PANEL_LAYOUT.imagePositionY}%`,
 							}}
 						/>
@@ -102,10 +111,18 @@ export function SongPreviewPanel({
 							}}
 						/>
 					</>
-				:	<div className="absolute inset-0" style={{ background: theme.surface }} />}
+				) : (
+					<div
+						className="absolute inset-0"
+						style={{ background: theme.surface }}
+					/>
+				)}
 
 				{/* Top bar: Genre tag */}
-				<div className="absolute top-4" style={{ left: `${PANEL_LAYOUT.paddingX}px` }}>
+				<div
+					className="absolute top-4"
+					style={{ left: `${PANEL_LAYOUT.paddingX}px` }}
+				>
 					<span
 						className="px-2 py-1 text-[10px] tracking-[0.15em] uppercase"
 						style={{
@@ -130,17 +147,18 @@ export function SongPreviewPanel({
 						boxShadow: `0 4px 20px ${theme.primary}20`,
 					}}
 				>
-					{isLoading ?
+					{isLoading ? (
 						<div
 							className="h-full w-full animate-pulse"
 							style={{ background: theme.surface }}
 						/>
-					:	<img
+					) : (
+						<img
 							src={albumArtUrl}
 							alt={song.album}
 							className="h-full w-full object-cover"
 						/>
-					}
+					)}
 				</div>
 
 				{/* Title + artist + controls: ⏮ Title ⏭ layout */}
@@ -154,14 +172,24 @@ export function SongPreviewPanel({
 					}}
 				>
 					<div className="flex items-center gap-3">
-						<NavButton direction="prev" onClick={onPrev} color={theme.text} size={18} />
+						<NavButton
+							direction="prev"
+							onClick={onPrev}
+							color={theme.text}
+							size={18}
+						/>
 						<h3
 							className="text-2xl leading-tight font-light"
 							style={{ fontFamily: fonts.display, color: theme.text }}
 						>
 							{song.name}
 						</h3>
-						<NavButton direction="next" onClick={onNext} color={theme.text} size={18} />
+						<NavButton
+							direction="next"
+							onClick={onNext}
+							color={theme.text}
+							size={18}
+						/>
 					</div>
 					<p
 						className="mt-0.5 text-sm"
@@ -198,5 +226,5 @@ export function SongPreviewPanel({
 				</div>
 			</div>
 		</div>
-	)
+	);
 }
