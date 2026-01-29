@@ -22,66 +22,79 @@ We have a **production-ready prototype** in `old_app/prototypes/warm-pastel/` (5
 | `shared/utils/color.ts` | ~50 | HSL utilities, pastel generation |
 | `DESIGN-GUIDANCE.md` | — | Typography & spacing reference |
 
-### New Files to Create
+### New Files Created
 
 | Target Location | Purpose |
 |-----------------|---------|
-| `src/routes/onboarding.tsx` | Main onboarding route with search params state |
-| `src/routes/onboarding/-components/` | Step components (Welcome, PickColor, etc.) |
-| `src/lib/theme/` | Theme system (colors, fonts, provider) |
+| `src/routes/_authenticated/route.tsx` | Auth guard layout wrapping all protected routes |
+| `src/routes/_authenticated/onboarding.tsx` | Onboarding route with step search param |
+| `src/features/onboarding/Onboarding.tsx` | Main orchestrator component |
+| `src/features/onboarding/components/` | Step components (WelcomeStep, PickColorStep, etc.) |
+| `src/features/onboarding/hooks/useOnboardingNavigation.ts` | Step navigation helpers |
+| `src/lib/theme/` | Theme system (colors, fonts, types) |
+| `src/lib/server/onboarding.server.ts` | Server functions (createSyncJob, saveTheme, etc.) |
+| `src/components/ui/HeartRippleBackground.tsx` | WebGL heart ripple effect |
 | `src/components/ui/GrainOverlay.tsx` | Analog film grain texture |
-| `src/components/ui/HeartRipple.tsx` | WebGL background effect |
 
 ### Existing Integration Points
 
 | File | Integration |
 |------|-------------|
-| `src/routes/auth/spotify.callback.tsx` | Redirect to `/onboarding?step=syncing` after OAuth |
-| `src/routes/api.jobs.$id.progress.tsx` | SSE endpoint for sync progress |
+| `src/routes/auth/spotify/callback.tsx` | Redirect to `/dashboard` (which then redirects to onboarding if incomplete) |
+| `src/routes/_authenticated/dashboard.tsx` | Checks onboarding status, redirects to `/onboarding?step={currentStep}` |
+| `src/routes/api/jobs/$id/progress.tsx` | SSE endpoint for sync progress |
 | `src/lib/hooks/useJobProgress.ts` | Real-time progress updates in Syncing step |
 | `src/lib/data/playlists.ts` | Load user playlists for Flag step |
 
-## Architecture Decision: Search Params State
+## Architecture Decision: Hybrid State Management
 
-**Decision**: Use TanStack Router search params instead of nested routes.
+**Decision**: Use minimal search params (step only) + router state + database for different state lifetimes.
 
-### Why Search Params?
+### Why Hybrid Approach?
 
-| Aspect | Nested Routes | Search Params (Chosen) |
-|--------|---------------|------------------------|
-| State persistence | Route path | URL query string |
-| Back button | Each step is history entry | Configurable |
-| Shareable URLs | `/onboarding/syncing` | `/onboarding?step=syncing&theme=rose` |
-| File overhead | 7+ route files | 1 route file + components |
-| Prototype match | Requires refactor | Direct port (useState → useSearch) |
+| Data | Storage | Rationale |
+|------|---------|-----------|
+| Current step | URL search param (`?step=`) | Shareable, bookmarkable |
+| Theme selection | Database + local state | Persisted, not cluttering URL |
+| Job IDs | Router history state | Ephemeral, passed between steps |
+| Library summary | Router history state | Ephemeral, fetched fresh each flow |
+| Sync stats | Router history state | Forward from SyncingStep to ReadyStep |
 
-### Search Params Schema
+### Actual Search Params Schema
 
 ```typescript
 import { z } from 'zod'
-import { fallback, zodValidator } from '@tanstack/zod-adapter'
+import { zodValidator } from '@tanstack/zod-adapter'
 
-const onboardingStepSchema = z.enum([
-  'welcome',
-  'pick-color',
-  'connecting',
-  'syncing',
-  'flag-playlists',
-  'ready',
-  'complete'
-])
-
-const onboardingSearchSchema = z.object({
-  step: fallback(onboardingStepSchema, 'welcome').default('welcome'),
-  theme: fallback(z.enum(['blue', 'green', 'rose', 'lavender']), 'rose').default('rose'),
-  jobId: z.string().uuid().optional(), // For syncing step
-  skippedPlaylists: z.boolean().optional(),
+const searchSchema = z.object({
+  step: z.enum(ONBOARDING_STEPS).default('welcome'),
 })
 
-export const Route = createFileRoute('/onboarding')({
-  validateSearch: zodValidator(onboardingSearchSchema),
+export const Route = createFileRoute('/_authenticated/onboarding')({
+  validateSearch: zodValidator(searchSchema),
 })
 ```
+
+### Router History State (via navigate options)
+
+```typescript
+// Declared in src/features/onboarding/types.ts
+declare module '@tanstack/react-router' {
+  interface HistoryState {
+    phaseJobIds?: PhaseJobIds      // Job tracking for sync
+    theme?: string                  // Selected theme
+    syncStats?: SyncStats           // Song/playlist counts
+    librarySummary?: LibrarySummary // Pre-fetched totals
+  }
+}
+```
+
+### Authenticated Layout Pattern
+
+The onboarding route is wrapped in `_authenticated/route.tsx`:
+- Validates session via `requireAuth()` in `beforeLoad`
+- Provides `session` in route context for all child routes
+- Unauthenticated users are redirected to `/` (landing)
 
 ## Impact
 

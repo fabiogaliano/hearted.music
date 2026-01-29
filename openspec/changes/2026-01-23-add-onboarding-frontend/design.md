@@ -42,28 +42,39 @@ TanStack Router's search params are **first-class state management**:
 
 ## 2. Component Architecture
 
-### Directory Structure
+### Directory Structure (ACTUAL)
 
 ```
-src/routes/onboarding.tsx          # Route definition + search params
-src/routes/onboarding/
-  -components/                     # Co-located step components
+src/routes/_authenticated/
+  route.tsx                        # Auth guard layout (provides session)
+  onboarding.tsx                   # Route definition + step search param
+  dashboard.tsx                    # Dashboard (redirects to onboarding if incomplete)
+
+src/features/onboarding/
+  Onboarding.tsx                   # Main orchestrator component
+  types.ts                         # SyncStats, HistoryState extensions
+  components/
     WelcomeStep.tsx
     PickColorStep.tsx
     ConnectingStep.tsx
     SyncingStep.tsx
     FlagPlaylistsStep.tsx
     ReadyStep.tsx
-    StepIndicator.tsx
-  -hooks/
+    StepContainer.tsx              # Shared layout wrapper
+  hooks/
     useOnboardingNavigation.ts     # Step navigation helpers
+
+src/lib/server/
+  onboarding.server.ts             # Server functions (sync, preferences)
 ```
 
-### Why `-components/` Prefix?
+### Why Features Directory?
 
-TanStack Router file-based routing uses `-` prefix for non-route directories:
-- `onboarding/-components/` → NOT a route
-- `onboarding/step.tsx` → WOULD be a nested route (we don't want this)
+The implementation evolved to use a feature-based architecture:
+- **Separation of concerns**: Route files handle routing, feature folders handle UI
+- **Colocation**: Steps, hooks, types, and styles together
+- **Reusability**: Components can be used outside the route context if needed
+- **Testing**: Easier to test components in isolation
 
 ---
 
@@ -119,36 +130,43 @@ Theme tokens are applied as CSS variables on `:root`:
 
 ---
 
-## 4. State Synchronization
+## 4. State Synchronization (ACTUAL)
 
-### Three Sources of Truth
+### Four Sources of Truth
 
-1. **URL Search Params**: Current step, theme, jobId
-2. **Database**: `user_preferences.onboarding_step`, `theme_color`
-3. **React State**: Transient UI state (animations, loading)
+1. **URL Search Params**: Current step only (`?step=syncing`)
+2. **Router History State**: Ephemeral data (jobIds, librarySummary, syncStats, theme)
+3. **Database**: Persistent state (onboarding_step, theme_color, playlist destinations)
+4. **React State**: Transient UI state (animations, selections)
 
 ### Sync Strategy
 
 ```
-URL (primary for navigation)
-  ↑↓ (bidirectional sync)
-Database (persistence for resumability)
-  ↓ (read-only for UI)
-React State (derived/transient)
+URL ?step= (navigation source of truth)
+  ↓
+Route loader reads DB (current saved step, theme, playlists)
+  ↓
+Validate: URL step vs DB step (prevent skipping ahead)
+  ↓
+Router state passes ephemeral data between steps
+  ↓
+Server functions persist important state to DB
 ```
 
 **Rules:**
-1. URL change → update DB
-2. Page load → read DB if URL missing step param
-3. React state derived from URL + DB, never written back
+1. URL step must not exceed DB saved step (prevents manual URL hacking)
+2. Router state carries data forward through the flow
+3. Server functions called on "Continue" to persist progress
+4. Theme persisted immediately on selection (optimistic)
 
-### Edge Cases
+### Step Progression Guards
 
 | Scenario | Handling |
 |----------|----------|
-| URL says `syncing` but no jobId | Redirect to `connecting`, start new sync |
-| URL says `complete` but DB says `syncing` | Trust DB, redirect to actual step |
-| User manually edits URL to skip | Validate prerequisites, block or allow |
+| URL step > DB step | Redirect to DB step (no skipping) |
+| URL step = "welcome" but DB step > "welcome" | Auto-resume to DB step |
+| No playlists synced | Auto-skip "flag-playlists" → "ready" |
+| User manually edits URL | Step validation prevents progression |
 
 ---
 
