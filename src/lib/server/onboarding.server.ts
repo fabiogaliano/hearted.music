@@ -26,9 +26,16 @@ import { getPlaylists, getPlaylistCount, setPlaylistDestination } from "@/lib/da
 import { getCount as getLikedSongCount } from "@/lib/data/liked-song";
 import { createJob, getJobById } from "@/lib/data/jobs";
 import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
-import { SyncOrchestrator } from "@/lib/capabilities/sync/orchestrator";
+import {
+	SyncOrchestrator,
+	LibrarySummarySchema,
+	type LibrarySummary,
+} from "@/lib/capabilities/sync/orchestrator";
 import { getSpotifyService } from "@/lib/integrations/spotify";
 import { PhaseJobIdsSchema, type PhaseJobIds } from "@/lib/jobs/progress/types";
+
+// Re-export LibrarySummary for client use
+export type { LibrarySummary };
 
 /** Playlist view model for onboarding UI (camelCase frontend format) */
 export interface OnboardingPlaylist {
@@ -208,20 +215,56 @@ export const createSyncJob = createServerFn({ method: "POST" }).handler(
 	},
 );
 
-const startSyncInputSchema = z.object({
+/**
+ * Discovers Spotify library totals (songs, playlists, playlist tracks).
+ * Called from ConnectingStep to fetch totals before navigating to SyncingStep.
+ *
+ * Returns totals + cached playlists that are reused in executeSync to avoid
+ * duplicate API calls.
+ */
+export const getLibrarySummary = createServerFn({ method: "POST" }).handler(
+	async (): Promise<LibrarySummary> => {
+		const request = getRequest();
+		const session = requireSession(request);
+
+		// Get SpotifyService for this user
+		const spotifyResult = await getSpotifyService(session.accountId);
+		if (Result.isError(spotifyResult)) {
+			throw new OnboardingError("discovery", new Error("Spotify not connected"));
+		}
+
+		// Create orchestrator and run discovery
+		const orchestrator = new SyncOrchestrator(spotifyResult.value);
+		const discoveryResult = await orchestrator.getLibrarySummary(session.accountId);
+
+		if (Result.isError(discoveryResult)) {
+			throw new OnboardingError("discovery", discoveryResult.error);
+		}
+
+		return discoveryResult.value;
+	},
+);
+
+const executeSyncInputSchema = z.object({
 	phaseJobIds: PhaseJobIdsSchema,
+	librarySummary: LibrarySummarySchema,
 });
 
 /** Terminal job statuses that shouldn't be restarted */
 const TERMINAL_STATUSES = new Set(["completed", "failed"]);
 
 /**
- * Starts the sync process with 3 separate phase jobs.
+ * Executes the sync process with pre-discovered totals.
+ * Called from SyncingStep after ConnectingStep has completed discovery.
+ *
+ * The discovery data (totals + cached playlists) is passed from the client,
+ * avoiding duplicate API calls and enabling immediate progress display.
+ *
  * Idempotent: returns success if jobs are already running or completed.
  * Progress is streamed via SSE to /api/jobs/$id/progress for each job.
  */
-export const startSync = createServerFn({ method: "POST" })
-	.inputValidator(startSyncInputSchema)
+export const executeSync = createServerFn({ method: "POST" })
+	.inputValidator(executeSyncInputSchema)
 	.handler(async ({ data }): Promise<{ success: true }> => {
 		const request = getRequest();
 		const session = requireSession(request);
@@ -242,14 +285,14 @@ export const startSync = createServerFn({ method: "POST" })
 		for (const { phase, result } of jobResults) {
 			if (Result.isError(result)) {
 				throw new OnboardingError(
-					"start_sync",
+					"execute_sync",
 					new Error(`Failed to get ${phase} job`),
 				);
 			}
 			const job = result.value;
 			if (!job || job.account_id !== session.accountId) {
 				throw new OnboardingError(
-					"start_sync",
+					"execute_sync",
 					new Error(`${phase} job not found`),
 				);
 			}
@@ -278,18 +321,19 @@ export const startSync = createServerFn({ method: "POST" })
 		// Get SpotifyService for this user
 		const spotifyResult = await getSpotifyService(session.accountId);
 		if (Result.isError(spotifyResult)) {
-			throw new OnboardingError("start_sync", new Error("Spotify not connected"));
+			throw new OnboardingError("execute_sync", new Error("Spotify not connected"));
 		}
 
-		// Create orchestrator and run sync
+		// Create orchestrator and execute sync with pre-discovered data
 		const orchestrator = new SyncOrchestrator(spotifyResult.value);
-		const syncResult = await orchestrator.fullSync(
+		const syncResult = await orchestrator.execute(
 			session.accountId,
 			data.phaseJobIds,
+			data.librarySummary,
 		);
 
 		if (Result.isError(syncResult)) {
-			throw new OnboardingError("start_sync", syncResult.error);
+			throw new OnboardingError("execute_sync", syncResult.error);
 		}
 
 		return { success: true };

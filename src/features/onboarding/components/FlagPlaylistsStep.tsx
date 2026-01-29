@@ -34,13 +34,12 @@ export function FlagPlaylistsStep({
 	// FALLBACK PATTERN: Use navigation state if available, otherwise fallback to zeros
 	// Navigation state is lost on page refresh - this prevents crash
 	const syncStats = location.state?.syncStats ?? { songs: 0, playlists: 0 };
-	const [selectedIds, setSelectedIds] = useState<Set<string>>(
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
 		new Set(initialPlaylists.filter((p) => p.isDestination).map((p) => p.id)),
 	);
 	const [isSaving, setIsSaving] = useState(false);
 
-	// Dynamic row count based on viewport height
-	// Uses matchMedia to only react when crossing the 900px threshold
+	// 2 rows on short viewports (<900px), 3 rows otherwise
 	const [rowCount, setRowCount] = useState(3);
 
 	useEffect(() => {
@@ -50,7 +49,6 @@ export function FlagPlaylistsStep({
 			setRowCount(e.matches ? 2 : 3);
 		};
 
-		// Set initial value
 		handleChange(mediaQuery);
 
 		// Only fires when crossing the threshold — no debounce needed
@@ -58,13 +56,11 @@ export function FlagPlaylistsStep({
 		return () => mediaQuery.removeEventListener("change", handleChange);
 	}, []);
 
-	// Refs for horizontal scroll animation
 	const sectionRef = useRef<HTMLElement>(null);
 	const pinnedWrapperRef = useRef<HTMLDivElement>(null);
 	const viewportRef = useRef<HTMLDivElement>(null);
 	const trackRef = useRef<HTMLDivElement>(null);
 
-	// Initialize horizontal scroll
 	useFlagPlaylistsScroll(
 		{ sectionRef, pinnedWrapperRef, viewportRef, trackRef },
 		{ isReady: initialPlaylists.length > 0 },
@@ -85,11 +81,9 @@ export function FlagPlaylistsStep({
 	const handleContinue = async () => {
 		setIsSaving(true);
 		try {
-			// Save playlist selections to server
 			await savePlaylistDestinations({
 				data: { playlistIds: Array.from(selectedIds) },
 			});
-			// Navigate to next step
 			await goToStep("ready", { syncStats });
 		} catch (error) {
 			console.error("Failed to save playlist destinations:", error);
@@ -102,9 +96,8 @@ export function FlagPlaylistsStep({
 	const handleSkip = async () => {
 		setIsSaving(true);
 		try {
-			// Save empty array (skip playlists)
+			// Skip: save empty selection so user can configure later
 			await savePlaylistDestinations({ data: { playlistIds: [] } });
-			// Navigate to next step
 			await goToStep("ready", { syncStats });
 		} catch (error) {
 			console.error("Failed to skip playlists:", error);
@@ -122,10 +115,9 @@ export function FlagPlaylistsStep({
 		>
 			<div
 				ref={pinnedWrapperRef}
-				className="flex h-[100dvh] flex-col"
+				className="flex h-dvh flex-col"
 			>
-				{/* Header - pinned at top */}
-				<header className="flex-shrink-0 px-6 pt-12 md:px-12">
+				<header className="shrink-0 px-6 pt-12 md:px-12">
 					<p
 						className="text-xs uppercase tracking-widest"
 						style={{ fontFamily: fonts.body, color: theme.textMuted }}
@@ -158,12 +150,10 @@ export function FlagPlaylistsStep({
 					ref={viewportRef}
 					className="mt-8 flex-1 overflow-hidden"
 				>
-					{/* Track wrapper - flex container for grid + right spacer */}
 					<div
 						ref={trackRef}
 						className="flex h-full items-center"
 					>
-						{/* Playlist grid */}
 						<div
 							className="grid h-full auto-cols-[min(200px,40vw)] content-center gap-4 pl-6 md:pl-12"
 							style={{ gridAutoFlow: "column", gridTemplateRows: `repeat(${rowCount}, minmax(0, 1fr))` }}
@@ -182,7 +172,6 @@ export function FlagPlaylistsStep({
 										className="group relative overflow-hidden rounded-lg"
 									>
 										<div className="relative">
-											{/* CDCase component wraps the album art */}
 											<div
 												className="transition-all duration-300"
 												style={{
@@ -190,13 +179,11 @@ export function FlagPlaylistsStep({
 													opacity: isSelected ? 1 : 0.35,
 												}}
 											>
-												{playlist.imageUrl && (
-													<CDCase
-														src={playlist.imageUrl}
-														alt={playlist.name}
-														theme={theme}
-													/>
-												)}
+												<CDCase
+													src={playlist.imageUrl}
+													alt={playlist.name}
+													theme={theme}
+												/>
 											</div>
 											{/* Playlist name - positioned on the spine, avoiding hinge ridges */}
 											<div
@@ -226,13 +213,11 @@ export function FlagPlaylistsStep({
 								);
 							})}
 						</div>
-						{/* Right spacer - outside grid, respects its own width */}
-						<div className="h-full w-6 flex-shrink-0 md:w-12" aria-hidden="true" />
+						<div className="h-full w-6 shrink-0 md:w-12" aria-hidden="true" />
 					</div>
 				</div>
 
-				{/* Footer - pinned at bottom */}
-				<footer className="flex flex-shrink-0 gap-4 px-6 pb-12 pt-6 md:px-12">
+				<footer className="flex shrink-0 gap-4 px-6 pb-12 pt-6 md:px-12">
 					<button
 						type="button"
 						onClick={handleContinue}

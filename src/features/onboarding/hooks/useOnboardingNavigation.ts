@@ -35,7 +35,7 @@
 import { useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { saveOnboardingStep } from "@/lib/server/onboarding.server";
+import { saveOnboardingStep, type LibrarySummary } from "@/lib/server/onboarding.server";
 import { type OnboardingStep } from "@/lib/data/preferences";
 import type { PhaseJobIds } from "@/lib/jobs/progress/types";
 import "../types"; // Import to ensure HistoryState augmentation is loaded
@@ -49,6 +49,7 @@ export function useOnboardingNavigation() {
 			options?: {
 				phaseJobIds?: PhaseJobIds;
 				syncStats?: { songs: number; playlists: number };
+				librarySummary?: LibrarySummary;
 			},
 		) => {
 			try {
@@ -68,6 +69,9 @@ export function useOnboardingNavigation() {
 						}),
 						...(options?.syncStats !== undefined && {
 							syncStats: options.syncStats,
+						}),
+						...(options?.librarySummary !== undefined && {
+							librarySummary: options.librarySummary,
 						}),
 					}),
 				});

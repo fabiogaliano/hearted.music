@@ -22,9 +22,7 @@ export function ReadyStep({ theme, syncStats }: ReadyStepProps) {
 	const handleStart = async () => {
 		setIsCompleting(true);
 		try {
-			// Mark onboarding as complete
 			await markOnboardingComplete();
-			// Redirect to landing/app
 			await navigate({ to: "/" });
 		} catch (error) {
 			console.error("Failed to complete onboarding:", error);
@@ -59,7 +57,6 @@ export function ReadyStep({ theme, syncStats }: ReadyStepProps) {
 				Your library has been synced.
 			</p>
 
-			{/* Stats - editorial large numbers */}
 			<div className="mt-16 flex justify-center gap-16">
 				<div className="text-center">
 					<p
@@ -91,7 +88,6 @@ export function ReadyStep({ theme, syncStats }: ReadyStepProps) {
 				</div>
 			</div>
 
-			{/* Start button - still minimal but more prominent */}
 			<button
 				type="button"
 				onClick={handleStart}
@@ -104,7 +100,7 @@ export function ReadyStep({ theme, syncStats }: ReadyStepProps) {
 				}}
 			>
 				<span className="text-xl font-medium tracking-wide">
-					{isCompleting ? "Loading..." : "Start Sorting"}
+					{isCompleting ? "Loading..." : "Start Exploring"}
 				</span>
 				<span
 					className="inline-block transition-transform group-hover:translate-x-1"

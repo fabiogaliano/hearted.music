@@ -27,7 +27,7 @@ export function SongSection({
 		<div className={isExpanded ? 'flex items-start gap-6' : ''}>
 			{/* Album art in CD case - shrinks when details shown */}
 			<div
-				className="relative flex-shrink-0 origin-top transition-[width,max-width] duration-500 ease-in-out"
+				className="relative shrink-0 origin-top transition-[width,max-width] duration-500 ease-in-out"
 				style={{
 					maxWidth: isExpanded ? EXPANDED_ALBUM_SIZE_PX : COLLAPSED_ALBUM_SIZE_PX,
 					width: isExpanded ? EXPANDED_ALBUM_SIZE_PX : COLLAPSED_ALBUM_SIZE_PX,
