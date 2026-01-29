@@ -23,18 +23,26 @@ Hearted connects to Spotify, reads your library, and runs each Liked Song throug
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Client (React)                          │
 │                    TanStack Start + Router                      │
+│              ┌──────────────────────────────┐                   │
+│              │   Authenticated Route Tree   │                   │
+│              │  /onboarding  /dashboard     │                   │
+│              └──────────────────────────────┘                   │
 └─────────────────────────┬───────────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────────┐
 │                      Server Functions                           │
 │              (createServerFn, SSR, API routes)                  │
+│         ┌─────────────────────────────────┐                     │
+│         │   SSE Progress Streaming        │                     │
+│         │   /api/jobs/{id}/progress       │                     │
+│         └─────────────────────────────────┘                     │
 └─────────────────────────┬───────────────────────────────────────┘
                           │
         ┌─────────────────┼─────────────────┐
         ▼                 ▼                 ▼
 ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
 │   Supabase    │ │  Spotify API  │ │  LLM Provider │
-│  (Postgres)   │ │    (OAuth)    │ │               │
+│  (Postgres)   │ │ (OAuth/App)   │ │               │
 └───────────────┘ └───────────────┘ └───────────────┘
         │                                   │
         │         ┌───────────────┐         │
@@ -70,26 +78,21 @@ Vector similarity comparison between song analysis and playlist signatures. Each
 ### Stage 5: Commit
 User reviews matches, confirms or rejects, songs added to Spotify playlists via API.
 
-## User Flow
-
-1. **Connect Spotify** — OAuth flow, read library and playlists
-2. **Flag playlists** — Select which playlists to sort into
-3. **Demo analysis** — One free song analysis to demonstrate matching
-4. **Bulk process** — Run analysis on full Liked Songs collection
 
 ## Tech Stack
 
-| Layer      | Technology         | Notes                             |
-| ---------- | ------------------ | --------------------------------- |
-| Runtime    | Bun                | Fast JS runtime + package manager |
-| Framework  | TanStack Start     | Full-stack React with SSR         |
-| Routing    | TanStack Router    | File-based, type-safe             |
-| Database   | Supabase           | Postgres + Row Level Security     |
-| Auth       | Custom             | Spotify OAuth, session tokens     |
-| Styling    | Tailwind CSS       | Custom theme system               |
-| Deployment | Cloudflare Workers | Edge runtime                      |
-| Testing    | Vitest             | Unit + integration                |
-| Linting    | Biome              | Fast, opinionated                 |
+| Layer      | Technology         | Notes                                  |
+| ---------- | ------------------ | -------------------------------------- |
+| Runtime    | Bun                | Fast JS runtime + package manager      |
+| Framework  | TanStack Start     | Full-stack React with SSR              |
+| Routing    | TanStack Router    | File-based, type-safe + Zod validation |
+| Database   | Supabase           | Postgres + Row Level Security          |
+| Auth       | Custom             | Spotify OAuth, session tokens          |
+| Styling    | Tailwind CSS       | CSS variable theming                   |
+| Realtime   | SSE                | Server-Sent Events for job progress    |
+| Deployment | Cloudflare Workers | Edge runtime                           |
+| Testing    | Vitest             | Unit + integration                     |
+| Linting    | Biome              | Fast, opinionated                      |
 
 ### External Services
 
@@ -105,35 +108,40 @@ User reviews matches, confirms or rejects, songs added to Spotify playlists via 
 
 ```
 src/
-├── routes/              # File-based routing (TanStack Router)
-│   ├── __root.tsx       # Root layout
-│   ├── index.tsx        # Landing page
-│   ├── dashboard/       # Authenticated routes
-│   └── api/             # API endpoints
-├── components/          # React components
-│   ├── ui/              # Design system primitives
-│   └── features/        # Feature-specific components
-├── services/            # Business logic layer
-│   ├── spotify/         # Spotify API integration
-│   ├── matching/        # Analysis pipeline
-│   └── jobs/            # Background job management
-├── lib/                 # Utilities and configurations
-│   ├── supabase/        # Database client + types
-│   └── result/          # Result-based error handling
-└── styles/              # Global styles and theme tokens
+├── routes/                  # File-based routing (TanStack Router)
+│   ├── __root.tsx           # Root layout
+│   ├── index.tsx            # Landing page
+│   ├── _authenticated/      # Protected route tree
+│   │   ├── route.tsx        # Auth guard layout
+│   │   ├── onboarding.tsx   # Multi-step onboarding
+│   │   └── dashboard.tsx    # Main app
+│   ├── auth/                # OAuth flows
+│   │   └── spotify/         # Spotify OAuth callback
+│   └── api/                 # API endpoints
+│       └── jobs/$id/        # Job progress SSE
+├── features/                # Feature modules
+│   ├── onboarding/          # Onboarding wizard
+│   │   ├── components/      # Step components
+│   │   └── hooks/           # Navigation, scroll behavior
+│   ├── landing/             # Marketing landing page
+│   └── matching/            # Match review UI
+├── components/ui/           # Design system primitives
+├── lib/                     # Core utilities
+│   ├── capabilities/        # Business logic
+│   │   ├── sync/            # Spotify sync orchestration
+│   │   ├── matching/        # Analysis pipeline
+│   │   └── profiling/       # Playlist signatures
+│   ├── integrations/        # External service clients
+│   │   └── spotify/         # Spotify SDK wrapper
+│   ├── jobs/progress/       # SSE progress system
+│   ├── theme/               # Color theme system
+│   ├── data/                # Database operations
+│   └── server/              # Server functions
+└── styles/                  # Global styles
 
-docs/                    # Architecture decisions and guides
-├── migration_v2/        # V2 migration documentation
-└── *.md                 # Feature-specific docs
-
-openspec/                # Feature specifications
-├── specs/               # Active specifications
-├── changes/             # Change proposals
-└── project.md           # Project overview
-
-supabase/
-├── migrations/          # Database migrations
-└── types.ts             # Generated TypeScript types
+docs/                        # Architecture decisions
+openspec/                    # Feature specifications
+supabase/migrations/         # Database migrations
 ```
 
 ## Getting Started
@@ -223,9 +231,7 @@ Typography-driven, editorial aesthetic:
 - **Display**: Instrument Serif (Google Fonts)
 - **Body**: Geist (Vercel)
 - **Palette**: Monochromatic HSL themes (12-32% saturation)
-- **Themes**: Calm (blue), Fresh (green), Warm (rose), Dreamy (lavender)
-
-See `old_app/prototypes/warm-pastel/DESIGN-GUIDANCE.md` for full specification.
+- **Themes**: Warm (rose, default), Calm (blue), Fresh (green), Dreamy (lavender)
 
 ## Future Ideas
 
@@ -244,12 +250,13 @@ See `old_app/prototypes/warm-pastel/DESIGN-GUIDANCE.md` for full specification.
 
 ## Documentation
 
-| Document                       | Description                 |
-| ------------------------------ | --------------------------- |
-| `docs/migration_v2/ROADMAP.md` | Migration status and phases |
-| `docs/DATA-FLOW-PATTERNS.md`   | Data fetching conventions   |
-| `docs/ONBOARDING-FLOW.md`      | User onboarding design      |
-| `openspec/project.md`          | Project overview and goals  |
+| Document                       | Description                          |
+| ------------------------------ | ------------------------------------ |
+| `docs/migration_v2/ROADMAP.md` | Migration status and phases          |
+| `docs/DATA-FLOW-PATTERNS.md`   | Data fetching conventions            |
+| `docs/ONBOARDING-FLOW.md`      | User onboarding design               |
+| `src/routes/README.md`         | Route organization and file patterns |
+| `openspec/project.md`          | Project overview and goals           |
 
 ## Contributing
 

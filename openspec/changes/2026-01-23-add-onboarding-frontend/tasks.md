@@ -2,7 +2,7 @@
 
 Tasks ordered by dependency. Foundation first (theme, components), then route, then integration.
 
-**Status**: Phase 1-4 complete (MVP), Phase 5-8 pending
+**Status**: Phase 0-5 complete (MVP with real data), Phase 6-8 pending polish/testing
 
 ---
 
@@ -76,19 +76,20 @@ Tasks ordered by dependency. Foundation first (theme, components), then route, t
 
 ### 3.1 Route Setup
 
-- [x] 3.1.1 Create `src/routes/onboarding.tsx`
-  - Use `createFileRoute('/onboarding')`
-  - Add `validateSearch` with Zod schema (step, theme, jobId, skippedPlaylists)
-  - Use `zodValidator` and `fallback` from `@tanstack/zod-adapter`
+- [x] 3.1.1 Create `src/routes/_authenticated/onboarding.tsx`
+  - Use `createFileRoute('/_authenticated/onboarding')`
+  - Add `validateSearch` with Zod schema (step only - other state in router history)
+  - Inherits auth from `_authenticated/route.tsx` layout
+  - Loads onboarding data via `getOnboardingData()` server function
 
 - [x] 3.1.2 Add route component shell
-  - Theme-aware background via inline styles
-  - Conditional rendering based on `step` search param
-  - Step indicator dots (hidden during loading states)
+  - Renders `<Onboarding />` from features directory
+  - Passes loader data (theme, playlists, currentStep, syncStats, phaseJobIds)
+  - Handles step progression validation and auto-resume
 
 ### 3.2 Step Components
 
-All components in `src/routes/onboarding.tsx` (inline, not separate files):
+All components in `src/features/onboarding/components/` (feature-based organization):
 
 - [x] 3.2.1 Create `WelcomeStep`
   - Large editorial headline "hearted"
@@ -135,41 +136,52 @@ All components in `src/routes/onboarding.tsx` (inline, not separate files):
 
 ## 4. Auth Integration ✅ (Complete)
 
-### 4.1 OAuth Callback Update
+### 4.1 Two-Phase Redirect Flow
 
-- [x] 4.1.1 Update `src/routes/auth/spotify.callback.tsx`
-  - Create `sync_liked_songs` job after successful OAuth
-  - Redirect to `/onboarding?step=syncing&jobId={job.id}`
-  - Include session cookie in redirect headers
+- [x] 4.1.1 OAuth callback redirects to `/dashboard`
+  - `src/routes/auth/spotify/callback.tsx` handles OAuth exchange
+  - Sets session cookie and redirects to `/dashboard`
+  - Dashboard checks onboarding status via `getOnboardingData()`
 
-### 4.2 Session Check
+- [x] 4.1.2 Dashboard redirects to onboarding if incomplete
+  - `src/routes/_authenticated/dashboard.tsx` checks `data.isComplete`
+  - If incomplete, redirects to `/onboarding?step={data.currentStep}`
+  - This pattern allows dashboard to be the single entry point for authenticated users
 
-- [x] 4.2.1 ~~Add session loader to onboarding route~~ N/A
-  - Route-level `beforeLoad` already redirects unauthenticated users to `/`
-  - Per-step auth not needed: all of `/onboarding` requires authentication
+### 4.2 Authenticated Layout
+
+- [x] 4.2.1 Created `src/routes/_authenticated/route.tsx`
+  - Pathless layout route wrapping all protected routes
+  - Calls `requireAuth()` in `beforeLoad` hook
+  - Provides `session` in route context for child routes
+  - Renders `<Outlet />` - no visual wrapper
 
 ---
 
-## 5. Data Integration
+## 5. Data Integration ✅ (Complete)
 
 ### 5.1 Playlist Loading
 
-- [ ] 5.1.1 Add playlist query to FlagPlaylistsStep
-  - Use TanStack Query with route loader data
-  - Show loading skeleton while fetching
-  - Handle empty state (no playlists)
-  - Replace mock data with real API call
+- [x] 5.1.1 Real playlists loaded via route loader
+  - `getOnboardingData()` fetches playlists from DB (synced from Spotify)
+  - Passed to FlagPlaylistsStep as prop
+  - Auto-skips step if no playlists exist
 
-### 5.2 Preference Persistence
+### 5.2 Server Functions (src/lib/server/onboarding.server.ts)
 
-- [ ] 5.2.1 Create server function for updating preferences
-  - `updateOnboardingStep(step: OnboardingStep)`
-  - `updateThemePreference(theme: ThemeColor)`
-  - `updateFlaggedPlaylists(playlistIds: string[])`
+- [x] 5.2.1 `createSyncJob()` - Creates 3 phase jobs for sync
+- [x] 5.2.2 `getLibrarySummary()` - Pre-fetches totals from Spotify API
+- [x] 5.2.3 `executeSync()` - Runs full sync with job progress
+- [x] 5.2.4 `saveThemePreference()` - Persists theme to user_preferences
+- [x] 5.2.5 `savePlaylistDestinations()` - Saves selected playlists as destinations
+- [x] 5.2.6 `markOnboardingComplete()` - Sets onboarding_step to 'complete'
 
-- [ ] 5.2.2 Sync URL state with DB state
-  - On step change, update DB
-  - On page load, restore from DB if URL doesn't specify
+### 5.3 Real-Time Sync Progress
+
+- [x] 5.3.1 WelcomeStep creates sync jobs via `createSyncJob()`
+- [x] 5.3.2 ConnectingStep fetches library summary via `getLibrarySummary()`
+- [x] 5.3.3 SyncingStep uses `useJobProgress()` hook for SSE updates
+- [x] 5.3.4 Phase job IDs passed via router history state
 
 ---
 
@@ -245,7 +257,7 @@ UI Components (2) ✅
     ↓
 Route Setup (3.1) ✅
     ↓
-Step Components (3.2) ✅ ←── Data Integration (5) ⏳
+Step Components (3.2) ✅ ←── Data Integration (5) ✅
     ↓                         ↑
 Step Navigation (3.3) ✅       │
     ↓                         │
@@ -260,15 +272,15 @@ Testing (7) ⏳
 
 ## Summary
 
-| Phase               | Status     | Notes                             |
-| ------------------- | ---------- | --------------------------------- |
-| 0. Prerequisites    | ✅ Complete |                                   |
-| 1. Theme System     | ✅ Complete | 6 files in `src/lib/theme/`       |
-| 2. UI Components    | ✅ Complete | HeartRipple, color utils          |
-| 3. Onboarding Route | ✅ Complete | All 6 steps, navigation hook      |
-| 4. Auth Integration | ✅ Complete | Callback + route-level auth guard |
-| 5. Data Integration | ⏳ Pending  | Using mock data currently         |
-| 6. Polish           | ⏳ Pending  | Basic responsive done             |
-| 7. Testing          | ⏳ Pending  | Typecheck passing                 |
-| 8. Documentation    | ⏳ Pending  |                                   |
-| Bonus: Landing      | ✅ Complete | Full landing page ported          |
+| Phase               | Status     | Notes                                       |
+| ------------------- | ---------- | ------------------------------------------- |
+| 0. Prerequisites    | ✅ Complete |                                             |
+| 1. Theme System     | ✅ Complete | 6 files in `src/lib/theme/`                 |
+| 2. UI Components    | ✅ Complete | HeartRipple, color utils                    |
+| 3. Onboarding Route | ✅ Complete | All 6 steps in `src/features/onboarding/`   |
+| 4. Auth Integration | ✅ Complete | Two-phase redirect + authenticated layout   |
+| 5. Data Integration | ✅ Complete | All real data - server functions + SSE      |
+| 6. Polish           | ⏳ Pending  | Basic responsive done, animations pending   |
+| 7. Testing          | ⏳ Pending  | Typecheck passing                           |
+| 8. Documentation    | ⏳ Pending  |                                             |
+| Bonus: Landing      | ✅ Complete | Full landing page ported                    |
