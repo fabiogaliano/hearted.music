@@ -6,7 +6,11 @@
 import { useState } from "react";
 import { useLocation } from "@tanstack/react-router";
 import { themes } from "@/lib/theme/colors";
-import { type ThemeConfig, type ThemeColor, DEFAULT_THEME } from "@/lib/theme/types";
+import {
+	type ThemeConfig,
+	type ThemeColor,
+	DEFAULT_THEME,
+} from "@/lib/theme/types";
 import { ONBOARDING_STEPS, type OnboardingStep } from "@/lib/data/preferences";
 import { type OnboardingData } from "@/lib/server/onboarding.server";
 import { WelcomeStep } from "./components/WelcomeStep";
@@ -24,14 +28,21 @@ interface OnboardingProps {
 }
 
 /** Steps that show in the progress indicator (excludes transient steps) */
-const TRANSIENT_STEPS = new Set<OnboardingStep>(["connecting", "syncing", "complete"]);
-const INDICATOR_STEPS = ONBOARDING_STEPS.options.filter((s) => !TRANSIENT_STEPS.has(s));
+const TRANSIENT_STEPS = new Set<OnboardingStep>([
+	"connecting",
+	"syncing",
+	"complete",
+]);
+const INDICATOR_STEPS = ONBOARDING_STEPS.options.filter(
+	(s) => !TRANSIENT_STEPS.has(s),
+);
 
 export function Onboarding({ step, data }: OnboardingProps) {
 	const location = useLocation();
-	const [localTheme, setLocalTheme] = useState<ThemeColor>(data.theme ?? DEFAULT_THEME);
+	const [localTheme, setLocalTheme] = useState<ThemeColor>(
+		data.theme ?? DEFAULT_THEME,
+	);
 	const theme = themes[localTheme];
-
 
 	const phaseJobIds = location.state?.phaseJobIds ?? data.phaseJobIds;
 	const librarySummary = location.state?.librarySummary ?? null;
@@ -52,7 +63,11 @@ export function Onboarding({ step, data }: OnboardingProps) {
 			)}
 			{step === "connecting" && <ConnectingStep theme={theme} />}
 			{step === "syncing" && (
-				<SyncingStep theme={theme} phaseJobIds={phaseJobIds} librarySummary={librarySummary} />
+				<SyncingStep
+					theme={theme}
+					phaseJobIds={phaseJobIds}
+					librarySummary={librarySummary}
+				/>
 			)}
 			{step === "flag-playlists" && (
 				<FlagPlaylistsStep theme={theme} playlists={data.playlists} />

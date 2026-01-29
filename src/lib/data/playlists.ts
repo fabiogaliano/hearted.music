@@ -111,7 +111,9 @@ export async function getPlaylistCount(
 		.eq("account_id", accountId);
 
 	if (error) {
-		return Result.err(new DatabaseError({ code: error.code, message: error.message }));
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
 	}
 
 	return Result.ok(count ?? 0);
@@ -176,9 +178,7 @@ export function upsertPlaylists(
  */
 export function deletePlaylist(id: string): Promise<Result<null, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMaybe(
-		supabase.from("playlist").delete().eq("id", id),
-	);
+	return fromSupabaseMaybe(supabase.from("playlist").delete().eq("id", id));
 }
 
 /**

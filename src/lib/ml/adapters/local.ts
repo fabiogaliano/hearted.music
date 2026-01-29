@@ -62,8 +62,13 @@ export class LocalProvider implements MLProvider {
 				try {
 					// Dynamic import to avoid bundling in production
 					const { pipeline } = await import("@huggingface/transformers");
-					console.log(`[Local Provider] Loading embedding model: ${this.metadata.embeddingModel}`);
-					return await pipeline("feature-extraction", this.metadata.embeddingModel);
+					console.log(
+						`[Local Provider] Loading embedding model: ${this.metadata.embeddingModel}`,
+					);
+					return await pipeline(
+						"feature-extraction",
+						this.metadata.embeddingModel,
+					);
 				} catch (error) {
 					throw new Error(
 						`Failed to load embedding model: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -84,7 +89,9 @@ export class LocalProvider implements MLProvider {
 			this.rerankerPipeline = (async () => {
 				try {
 					const { pipeline } = await import("@huggingface/transformers");
-					console.log(`[Local Provider] Loading reranker model: ${this.metadata.rerankerModel} (~100MB, first time only)`);
+					console.log(
+						`[Local Provider] Loading reranker model: ${this.metadata.rerankerModel} (~100MB, first time only)`,
+					);
 					return await pipeline(
 						"text-classification",
 						this.metadata.rerankerModel,
@@ -124,10 +131,11 @@ export class LocalProvider implements MLProvider {
 		} catch (error) {
 			if (error instanceof Error) {
 				// Check for timeout-like errors
-				if (error.message.includes("timeout") || error.message.includes("timed out")) {
-					return Result.err(
-						new MLTimeoutError("local", "embed", 30000),
-					);
+				if (
+					error.message.includes("timeout") ||
+					error.message.includes("timed out")
+				) {
+					return Result.err(new MLTimeoutError("local", "embed", 30000));
 				}
 
 				// Model loading failure
@@ -137,14 +145,10 @@ export class LocalProvider implements MLProvider {
 					);
 				}
 
-				return Result.err(
-					new MLApiError("local", "embed", error.message),
-				);
+				return Result.err(new MLApiError("local", "embed", error.message));
 			}
 
-			return Result.err(
-				new MLApiError("local", "embed", "Unknown error"),
-			);
+			return Result.err(new MLApiError("local", "embed", "Unknown error"));
 		}
 	}
 
@@ -179,10 +183,11 @@ export class LocalProvider implements MLProvider {
 		} catch (error) {
 			if (error instanceof Error) {
 				// Check for timeout-like errors
-				if (error.message.includes("timeout") || error.message.includes("timed out")) {
-					return Result.err(
-						new MLTimeoutError("local", "embedBatch", 30000),
-					);
+				if (
+					error.message.includes("timeout") ||
+					error.message.includes("timed out")
+				) {
+					return Result.err(new MLTimeoutError("local", "embedBatch", 30000));
 				}
 
 				// Model loading failure
@@ -192,14 +197,10 @@ export class LocalProvider implements MLProvider {
 					);
 				}
 
-				return Result.err(
-					new MLApiError("local", "embedBatch", error.message),
-				);
+				return Result.err(new MLApiError("local", "embedBatch", error.message));
 			}
 
-			return Result.err(
-				new MLApiError("local", "embedBatch", "Unknown error"),
-			);
+			return Result.err(new MLApiError("local", "embedBatch", "Unknown error"));
 		}
 	}
 
@@ -231,8 +232,8 @@ export class LocalProvider implements MLProvider {
 					index,
 					// Reranker returns classification scores; use the "positive" class score
 					score: Array.isArray(result)
-						? result[0]?.score ?? 0
-						: result.score ?? 0,
+						? (result[0]?.score ?? 0)
+						: (result.score ?? 0),
 				}),
 			);
 
@@ -250,10 +251,11 @@ export class LocalProvider implements MLProvider {
 		} catch (error) {
 			if (error instanceof Error) {
 				// Check for timeout-like errors
-				if (error.message.includes("timeout") || error.message.includes("timed out")) {
-					return Result.err(
-						new MLTimeoutError("local", "rerank", 30000),
-					);
+				if (
+					error.message.includes("timeout") ||
+					error.message.includes("timed out")
+				) {
+					return Result.err(new MLTimeoutError("local", "rerank", 30000));
 				}
 
 				// Model loading failure
@@ -263,14 +265,10 @@ export class LocalProvider implements MLProvider {
 					);
 				}
 
-				return Result.err(
-					new MLApiError("local", "rerank", error.message),
-				);
+				return Result.err(new MLApiError("local", "rerank", error.message));
 			}
 
-			return Result.err(
-				new MLApiError("local", "rerank", "Unknown error"),
-			);
+			return Result.err(new MLApiError("local", "rerank", "Unknown error"));
 		}
 	}
 

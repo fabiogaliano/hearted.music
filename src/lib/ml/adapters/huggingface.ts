@@ -95,9 +95,7 @@ export class HuggingFaceProvider implements MLProvider {
 	): Promise<Result<RerankResult, MLProviderError>> {
 		// HuggingFace free tier doesn't support reranking models
 		// Return unsupported operation error for graceful degradation
-		return Result.err(
-			new MLUnsupportedOperationError("huggingface", "rerank"),
-		);
+		return Result.err(new MLUnsupportedOperationError("huggingface", "rerank"));
 	}
 
 	async isAvailable(): Promise<boolean> {

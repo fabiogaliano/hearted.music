@@ -38,8 +38,7 @@ const TEST_ACCOUNT_ID = process.env.TEST_ACCOUNT_ID; // Must be real account ID
 
 const HAS_GENIUS = !!process.env.GENIUS_CLIENT_TOKEN;
 const HAS_LLM =
-	!!process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
-	!!process.env.ANTHROPIC_API_KEY;
+	!!process.env.GOOGLE_GENERATIVE_AI_API_KEY || !!process.env.ANTHROPIC_API_KEY;
 const HAS_TEST_ACCOUNT = !!TEST_ACCOUNT_ID;
 
 // ─────────────────────────────────────────────────────────────
@@ -73,9 +72,7 @@ async function getOrCreateTestSongs(): Promise<SongToAnalyze[]> {
 	);
 
 	if (!Result.isOk(existingResult)) {
-		throw new Error(
-			`Failed to query songs: ${existingResult.error.message}`,
-		);
+		throw new Error(`Failed to query songs: ${existingResult.error.message}`);
 	}
 
 	const existing = existingResult.value;
@@ -107,9 +104,7 @@ async function getOrCreateTestSongs(): Promise<SongToAnalyze[]> {
 		);
 
 		if (!Result.isOk(createResult)) {
-			throw new Error(
-				`Failed to create songs: ${createResult.error.message}`,
-			);
+			throw new Error(`Failed to create songs: ${createResult.error.message}`);
 		}
 
 		// Add newly created songs to map
@@ -175,11 +170,11 @@ describe.skipIf(!RUN_TEST || !HAS_GENIUS || !HAS_LLM || !HAS_TEST_ACCOUNT)(
 			// Get or create test songs in database
 			try {
 				TEST_SONGS = await getOrCreateTestSongs();
-				console.log(
-					`\n✓ Prepared ${TEST_SONGS.length} real songs for testing`,
-				);
+				console.log(`\n✓ Prepared ${TEST_SONGS.length} real songs for testing`);
 				for (const song of TEST_SONGS) {
-					console.log(`   - ${song.artist} - ${song.title} (ID: ${song.songId})`);
+					console.log(
+						`   - ${song.artist} - ${song.title} (ID: ${song.songId})`,
+					);
 				}
 			} catch (error) {
 				console.error(`\n✗ Failed to prepare test songs: ${error}`);
@@ -198,9 +193,7 @@ describe.skipIf(!RUN_TEST || !HAS_GENIUS || !HAS_LLM || !HAS_TEST_ACCOUNT)(
 					`Test account ${TEST_ACCOUNT_ID} not found. Please set TEST_ACCOUNT_ID to a valid account ID.`,
 				);
 			}
-			console.log(
-				`✓ Using test account: ${accountResult.value.spotify_id}`,
-			);
+			console.log(`✓ Using test account: ${accountResult.value.spotify_id}`);
 
 			// Create pipeline
 			const pipelineCreation = createAnalysisPipeline();
@@ -227,7 +220,9 @@ describe.skipIf(!RUN_TEST || !HAS_GENIUS || !HAS_LLM || !HAS_TEST_ACCOUNT)(
 			);
 
 			if (Result.isOk(pipelineResult)) {
-				console.log(`   ✓ Completed: ${pipelineResult.value.succeeded} succeeded`);
+				console.log(
+					`   ✓ Completed: ${pipelineResult.value.succeeded} succeeded`,
+				);
 				console.log(`   ✓ Failed: ${pipelineResult.value.failed} failed`);
 			} else {
 				console.log(`   ✗ Pipeline failed: ${pipelineResult.error}`);
@@ -260,7 +255,8 @@ describe.skipIf(!RUN_TEST || !HAS_GENIUS || !HAS_LLM || !HAS_TEST_ACCOUNT)(
 		});
 
 		test("progress events show incremental updates", () => {
-			const progressEvents = progressTracker.getProgressEvents() as JobProgress[];
+			const progressEvents =
+				progressTracker.getProgressEvents() as JobProgress[];
 
 			// Should have multiple progress updates
 			expect(progressEvents.length).toBeGreaterThanOrEqual(1);
@@ -305,7 +301,9 @@ describe.skipIf(!RUN_TEST || !HAS_GENIUS || !HAS_LLM || !HAS_TEST_ACCOUNT)(
 							expect(analysis.analysis).toBeDefined();
 							expect(typeof analysis.analysis).toBe("object");
 
-							console.log(`   ✓ Analysis stored for: ${song.artist} - ${song.title}`);
+							console.log(
+								`   ✓ Analysis stored for: ${song.artist} - ${song.title}`,
+							);
 						}
 					}
 				}
@@ -423,25 +421,22 @@ describe.skipIf(!RUN_TEST || !HAS_GENIUS || !HAS_LLM || !HAS_TEST_ACCOUNT)(
 // Skipped Test Notice
 // ─────────────────────────────────────────────────────────────
 
-describe.skipIf(RUN_TEST)(
-	"Analysis Pipeline Full Flow (Skipped)",
-	() => {
-		test("requires FULL_FLOW_TEST=true and TEST_ACCOUNT_ID to run", () => {
-			console.log("\n⏭️  Analysis Pipeline Full Flow test skipped");
-			console.log(
-				"   Set FULL_FLOW_TEST=true and TEST_ACCOUNT_ID=<account-id> to run",
-			);
-			console.log("   Requires:");
-			console.log("     - GENIUS_CLIENT_TOKEN");
-			console.log("     - GOOGLE_GENERATIVE_AI_API_KEY or ANTHROPIC_API_KEY");
-			console.log("     - TEST_ACCOUNT_ID (real account from database)");
-			console.log("     - Database access");
+describe.skipIf(RUN_TEST)("Analysis Pipeline Full Flow (Skipped)", () => {
+	test("requires FULL_FLOW_TEST=true and TEST_ACCOUNT_ID to run", () => {
+		console.log("\n⏭️  Analysis Pipeline Full Flow test skipped");
+		console.log(
+			"   Set FULL_FLOW_TEST=true and TEST_ACCOUNT_ID=<account-id> to run",
+		);
+		console.log("   Requires:");
+		console.log("     - GENIUS_CLIENT_TOKEN");
+		console.log("     - GOOGLE_GENERATIVE_AI_API_KEY or ANTHROPIC_API_KEY");
+		console.log("     - TEST_ACCOUNT_ID (real account from database)");
+		console.log("     - Database access");
 
-			if (!HAS_GENIUS) console.log("   ✗ Missing: GENIUS_CLIENT_TOKEN");
-			if (!HAS_LLM) console.log("   ✗ Missing: LLM API key");
-			if (!HAS_TEST_ACCOUNT) console.log("   ✗ Missing: TEST_ACCOUNT_ID");
+		if (!HAS_GENIUS) console.log("   ✗ Missing: GENIUS_CLIENT_TOKEN");
+		if (!HAS_LLM) console.log("   ✗ Missing: LLM API key");
+		if (!HAS_TEST_ACCOUNT) console.log("   ✗ Missing: TEST_ACCOUNT_ID");
 
-			expect(true).toBe(true);
-		});
-	},
-);
+		expect(true).toBe(true);
+	});
+});

@@ -40,9 +40,7 @@ function isExpired(expiresAt: string): boolean {
 /**
  * Fetch a new app token from Spotify and store it in the database.
  */
-async function fetchAndStoreAppToken(): Promise<
-	Result<string, AppTokenError>
-> {
+async function fetchAndStoreAppToken(): Promise<Result<string, AppTokenError>> {
 	return Result.gen(async function* () {
 		// Fetch token from Spotify
 		const response = yield* Result.await(
@@ -90,19 +88,17 @@ async function fetchAndStoreAppToken(): Promise<
 
 		// Store in database (upsert - handles both insert and update)
 		const supabase = createAdminSupabaseClient();
-		const { error } = await supabase
-			.from("app_token")
-			.upsert(
-				{
-					id: "00000000-0000-0000-0000-000000000000", // Fixed UUID for singleton
-					access_token,
-					token_expires_at: expiresAt.toISOString(),
-					updated_at: new Date().toISOString(),
-				},
-				{
-					onConflict: "id",
-				},
-			);
+		const { error } = await supabase.from("app_token").upsert(
+			{
+				id: "00000000-0000-0000-0000-000000000000", // Fixed UUID for singleton
+				access_token,
+				token_expires_at: expiresAt.toISOString(),
+				updated_at: new Date().toISOString(),
+			},
+			{
+				onConflict: "id",
+			},
+		);
 
 		if (error) {
 			return Result.err(

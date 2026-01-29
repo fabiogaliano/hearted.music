@@ -34,8 +34,9 @@ export function FlagPlaylistsStep({
 	// FALLBACK PATTERN: Use navigation state if available, otherwise fallback to zeros
 	// Navigation state is lost on page refresh - this prevents crash
 	const syncStats = location.state?.syncStats ?? { songs: 0, playlists: 0 };
-	const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
-		new Set(initialPlaylists.filter((p) => p.isDestination).map((p) => p.id)),
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(
+		() =>
+			new Set(initialPlaylists.filter((p) => p.isDestination).map((p) => p.id)),
 	);
 	const [isSaving, setIsSaving] = useState(false);
 
@@ -108,15 +109,8 @@ export function FlagPlaylistsStep({
 	};
 
 	return (
-		<section
-			ref={sectionRef}
-			role="region"
-			aria-label="Playlist selection"
-		>
-			<div
-				ref={pinnedWrapperRef}
-				className="flex h-dvh flex-col"
-			>
+		<section ref={sectionRef} role="region" aria-label="Playlist selection">
+			<div ref={pinnedWrapperRef} className="flex h-dvh flex-col">
 				<header className="shrink-0 px-6 pt-12 md:px-12">
 					<p
 						className="text-xs uppercase tracking-widest"
@@ -141,22 +135,20 @@ export function FlagPlaylistsStep({
 
 					{/* Screen reader instruction for scroll behavior */}
 					<p className="sr-only">
-						Scroll down to browse playlists horizontally. Select playlists to mark them as destinations.
+						Scroll down to browse playlists horizontally. Select playlists to
+						mark them as destinations.
 					</p>
 				</header>
 
 				{/* Viewport - clips the horizontal track */}
-				<div
-					ref={viewportRef}
-					className="mt-8 flex-1 overflow-hidden"
-				>
-					<div
-						ref={trackRef}
-						className="flex h-full items-center"
-					>
+				<div ref={viewportRef} className="mt-8 flex-1 overflow-hidden">
+					<div ref={trackRef} className="flex h-full items-center">
 						<div
 							className="grid h-full auto-cols-[min(200px,40vw)] content-center gap-4 pl-6 md:pl-12"
-							style={{ gridAutoFlow: "column", gridTemplateRows: `repeat(${rowCount}, minmax(0, 1fr))` }}
+							style={{
+								gridAutoFlow: "column",
+								gridTemplateRows: `repeat(${rowCount}, minmax(0, 1fr))`,
+							}}
 						>
 							{initialPlaylists.map((playlist) => {
 								const isSelected = selectedIds.has(playlist.id);
@@ -175,7 +167,9 @@ export function FlagPlaylistsStep({
 											<div
 												className="transition-all duration-300"
 												style={{
-													filter: isSelected ? "grayscale(0%)" : "grayscale(100%)",
+													filter: isSelected
+														? "grayscale(0%)"
+														: "grayscale(100%)",
 													opacity: isSelected ? 1 : 0.35,
 												}}
 											>
@@ -189,7 +183,7 @@ export function FlagPlaylistsStep({
 											<div
 												className="absolute flex items-center justify-center overflow-hidden"
 												style={{
-													top: "8%",    // Below top ridges (end at ~6.4%)
+													top: "8%", // Below top ridges (end at ~6.4%)
 													bottom: "8%", // Above bottom ridges (start at ~92.7%)
 													left: 0,
 													width: "12.67%", // 95px spine / 750px total
@@ -244,13 +238,18 @@ export function FlagPlaylistsStep({
 
 					<button
 						type="button"
-						onClick={() => setSelectedIds(new Set(initialPlaylists.map((p) => p.id)))}
+						onClick={() =>
+							setSelectedIds(new Set(initialPlaylists.map((p) => p.id)))
+						}
 						disabled={isSaving || selectedIds.size === initialPlaylists.length}
 						className="text-sm underline"
 						style={{
 							fontFamily: fonts.body,
 							color: theme.textMuted,
-							opacity: isSaving || selectedIds.size === initialPlaylists.length ? 0.5 : 1,
+							opacity:
+								isSaving || selectedIds.size === initialPlaylists.length
+									? 0.5
+									: 1,
 						}}
 					>
 						Select all

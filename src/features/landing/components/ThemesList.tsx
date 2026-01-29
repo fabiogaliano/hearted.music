@@ -1,75 +1,76 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from "react";
 
-import { type ThemeConfig } from '@/lib/theme/types'
-import { fonts } from '@/lib/theme/fonts'
+import { type ThemeConfig } from "@/lib/theme/types";
+import { fonts } from "@/lib/theme/fonts";
 
 export interface ThemesListProps {
-	themes: Array<{ name: string; confidence: number }>
-	theme: ThemeConfig
+	themes: Array<{ name: string; confidence: number }>;
+	theme: ThemeConfig;
 }
 
 const THEME_DESCRIPTIONS: Record<string, string> = {
-	'Lost Love':
+	"Lost Love":
 		"The ache of what was and what could have been — a wound that time hasn't fully healed.",
-	'Personal Flaws':
+	"Personal Flaws":
 		"Confronting the parts of yourself that got in the way, the patterns you couldn't break.",
-	'Complexity of Connection':
+	"Complexity of Connection":
 		"Love isn't simple — it's messy, contradictory, and somehow worth it anyway.",
-	Codependency: 'When your sense of self becomes tangled with another person.',
-	'Emotional Distance': "The space between what's felt and what's said.",
-	'Wealth and Success': 'The pursuit that drives and sometimes consumes.',
-	'Street Hustle': 'Survival instincts sharpened by necessity.',
-	'Power and Influence': 'The weight of impact and the responsibility it carries.',
-	'Youthful Ambition': 'That early fire before life teaches you to temper it.',
-	'Self-Identity': 'The ongoing project of figuring out who you are.',
-	'Self-Reflection': 'Looking inward, sometimes uncomfortably.',
-	'Fear and Vulnerability': 'The courage it takes to be seen.',
-}
+	Codependency: "When your sense of self becomes tangled with another person.",
+	"Emotional Distance": "The space between what's felt and what's said.",
+	"Wealth and Success": "The pursuit that drives and sometimes consumes.",
+	"Street Hustle": "Survival instincts sharpened by necessity.",
+	"Power and Influence":
+		"The weight of impact and the responsibility it carries.",
+	"Youthful Ambition": "That early fire before life teaches you to temper it.",
+	"Self-Identity": "The ongoing project of figuring out who you are.",
+	"Self-Reflection": "Looking inward, sometimes uncomfortably.",
+	"Fear and Vulnerability": "The courage it takes to be seen.",
+};
 
 function getThemeDescription(name: string): string {
 	return Object.hasOwn(THEME_DESCRIPTIONS, name)
 		? THEME_DESCRIPTIONS[name]
-		: 'A recurring thread that runs through your music.'
+		: "A recurring thread that runs through your music.";
 }
 
 export function ThemesList({ themes, theme: themeConfig }: ThemesListProps) {
-	const [openIndex, setOpenIndex] = useState<number>(-1)
-	const [pinnedIndex, setPinnedIndex] = useState<number>(-1)
-	const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+	const [openIndex, setOpenIndex] = useState<number>(-1);
+	const [pinnedIndex, setPinnedIndex] = useState<number>(-1);
+	const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const handleHover = useCallback(
 		(index: number) => {
 			if (closeTimeoutRef.current) {
-				clearTimeout(closeTimeoutRef.current)
-				closeTimeoutRef.current = null
+				clearTimeout(closeTimeoutRef.current);
+				closeTimeoutRef.current = null;
 			}
 			if (pinnedIndex === -1) {
-				setOpenIndex(index)
+				setOpenIndex(index);
 			}
 		},
-		[pinnedIndex]
-	)
+		[pinnedIndex],
+	);
 
 	const handleClick = useCallback(
 		(index: number) => {
 			if (pinnedIndex === index) {
-				setPinnedIndex(-1)
-				setOpenIndex(-1)
+				setPinnedIndex(-1);
+				setOpenIndex(-1);
 			} else {
-				setPinnedIndex(index)
-				setOpenIndex(index)
+				setPinnedIndex(index);
+				setOpenIndex(index);
 			}
 		},
-		[pinnedIndex]
-	)
+		[pinnedIndex],
+	);
 
 	const handleListLeave = useCallback(() => {
 		if (pinnedIndex === -1) {
 			closeTimeoutRef.current = setTimeout(() => {
-				setOpenIndex(-1)
-			}, 150)
+				setOpenIndex(-1);
+			}, 150);
 		}
-	}, [pinnedIndex])
+	}, [pinnedIndex]);
 
 	return (
 		<div onMouseLeave={handleListLeave}>
@@ -87,7 +88,10 @@ export function ThemesList({ themes, theme: themeConfig }: ThemesListProps) {
 						onMouseEnter={() => handleHover(index)}
 						onClick={() => handleClick(index)}
 					>
-						<p className="text-sm font-medium" style={{ color: themeConfig.text }}>
+						<p
+							className="text-sm font-medium"
+							style={{ color: themeConfig.text }}
+						>
 							{themeItem.name}
 							{getThemeDescription(themeItem.name) && (
 								<span
@@ -104,9 +108,9 @@ export function ThemesList({ themes, theme: themeConfig }: ThemesListProps) {
 						<div
 							className="overflow-hidden transition-all duration-200"
 							style={{
-								maxHeight: openIndex === index ? '100px' : '0px',
+								maxHeight: openIndex === index ? "100px" : "0px",
 								opacity: openIndex === index ? 1 : 0,
-								marginTop: openIndex === index ? '6px' : '0px',
+								marginTop: openIndex === index ? "6px" : "0px",
 							}}
 						>
 							<p
@@ -120,5 +124,5 @@ export function ThemesList({ themes, theme: themeConfig }: ThemesListProps) {
 				))}
 			</div>
 		</div>
-	)
+	);
 }

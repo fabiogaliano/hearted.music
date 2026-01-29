@@ -1,18 +1,18 @@
-import { Song } from '@/lib/data/mock-data'
-import { ThemeConfig } from '@/lib/theme/types'
-import { fonts } from '@/lib/theme/fonts'
-import { CDCase } from '@/components/ui/CDCase'
+import { Song } from "@/lib/data/mock-data";
+import { ThemeConfig } from "@/lib/theme/types";
+import { fonts } from "@/lib/theme/fonts";
+import { CDCase } from "@/components/ui/CDCase";
 
-const COLLAPSED_ALBUM_SIZE_PX = '400px'
-const EXPANDED_ALBUM_SIZE_PX = '240px'
+const COLLAPSED_ALBUM_SIZE_PX = "400px";
+const EXPANDED_ALBUM_SIZE_PX = "240px";
 
 interface SongSectionProps {
-	song: Song
-	theme: ThemeConfig
-	isExpanded: boolean
-	metaVisible: boolean
-	albumArtUrl: string
-	isLoading: boolean
+	song: Song;
+	theme: ThemeConfig;
+	isExpanded: boolean;
+	metaVisible: boolean;
+	albumArtUrl: string;
+	isLoading: boolean;
 }
 
 export function SongSection({
@@ -24,39 +24,42 @@ export function SongSection({
 	isLoading,
 }: SongSectionProps) {
 	return (
-		<div className={isExpanded ? 'flex items-start gap-6' : ''}>
+		<div className={isExpanded ? "flex items-start gap-6" : ""}>
 			{/* Album art in CD case - shrinks when details shown */}
 			<div
 				className="relative shrink-0 origin-top transition-[width,max-width] duration-500 ease-in-out"
 				style={{
-					maxWidth: isExpanded ? EXPANDED_ALBUM_SIZE_PX : COLLAPSED_ALBUM_SIZE_PX,
+					maxWidth: isExpanded
+						? EXPANDED_ALBUM_SIZE_PX
+						: COLLAPSED_ALBUM_SIZE_PX,
 					width: isExpanded ? EXPANDED_ALBUM_SIZE_PX : COLLAPSED_ALBUM_SIZE_PX,
 				}}
 			>
-				{isLoading ?
+				{isLoading ? (
 					<div
 						className="aspect-square w-full animate-pulse"
 						style={{ background: theme.surface }}
 					/>
-				:	<CDCase
+				) : (
+					<CDCase
 						src={albumArtUrl}
 						alt={song.album}
 						className="w-full transition-all duration-500 ease-in-out"
 					/>
-				}
+				)}
 			</div>
 
 			{/* Song details */}
 			<div
-				className={`transition-[opacity,transform,margin-top] ease-in-out ${isExpanded ? 'mt-0 min-w-0 flex-1' : 'mt-6'}`}
+				className={`transition-[opacity,transform,margin-top] ease-in-out ${isExpanded ? "mt-0 min-w-0 flex-1" : "mt-6"}`}
 				style={{
 					opacity: metaVisible ? 1 : 0,
-					transform: metaVisible ? 'translateY(0px)' : 'translateY(12px)',
-					filter: metaVisible ? 'blur(0px)' : 'blur(10px)',
-					willChange: 'opacity, transform, filter',
-					transitionProperty: 'opacity, transform, filter, margin-top',
-					transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
-					transitionDuration: metaVisible ? '900ms' : '450ms',
+					transform: metaVisible ? "translateY(0px)" : "translateY(12px)",
+					filter: metaVisible ? "blur(0px)" : "blur(10px)",
+					willChange: "opacity, transform, filter",
+					transitionProperty: "opacity, transform, filter, margin-top",
+					transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
+					transitionDuration: metaVisible ? "900ms" : "450ms",
 				}}
 			>
 				<p
@@ -67,21 +70,21 @@ export function SongSection({
 				</p>
 				<h2
 					className={
-						isExpanded ?
-							'mt-2 text-2xl leading-tight font-extralight'
-						:	'mt-2 text-4xl leading-tight font-extralight'
+						isExpanded
+							? "mt-2 text-2xl leading-tight font-extralight"
+							: "mt-2 text-4xl leading-tight font-extralight"
 					}
 					style={{ fontFamily: fonts.display, color: theme.text }}
 				>
 					{song.name}
 				</h2>
 				<p
-					className={isExpanded ? 'mt-1 text-base' : 'mt-2 text-lg'}
+					className={isExpanded ? "mt-1 text-base" : "mt-2 text-lg"}
 					style={{ fontFamily: fonts.body, color: theme.textMuted }}
 				>
 					{song.artist}
 				</p>
 			</div>
 		</div>
-	)
+	);
 }

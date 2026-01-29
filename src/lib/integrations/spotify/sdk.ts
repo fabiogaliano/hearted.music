@@ -5,7 +5,10 @@
  * The SDK is used only for API calls - token refresh is handled by client.ts.
  */
 
-import { SpotifyApi, type IValidateResponses } from "@fostertheweb/spotify-web-sdk";
+import {
+	SpotifyApi,
+	type IValidateResponses,
+} from "@fostertheweb/spotify-web-sdk";
 import { env } from "@/env";
 
 /**
@@ -21,7 +24,9 @@ export class SpotifyRateLimitHttpError extends Error {
 			reset: string | null;
 		},
 	) {
-		const retryMsg = retryAfterSeconds ? ` Retry after ${retryAfterSeconds}s.` : "";
+		const retryMsg = retryAfterSeconds
+			? ` Retry after ${retryAfterSeconds}s.`
+			: "";
 		super(`Spotify rate limit (429).${retryMsg}`);
 		this.name = "SpotifyRateLimitHttpError";
 	}

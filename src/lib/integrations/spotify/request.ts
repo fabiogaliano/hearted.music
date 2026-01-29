@@ -42,7 +42,9 @@ export function classifySpotifyError(error: unknown): SpotifyError {
 		const retryAfterMs = error.retryAfterSeconds
 			? error.retryAfterSeconds * 1000
 			: 60000; // Default 60s if no header
-		console.warn(`[Spotify] Rate limit with Retry-After: ${error.retryAfterSeconds}s (${retryAfterMs}ms)`);
+		console.warn(
+			`[Spotify] Rate limit with Retry-After: ${error.retryAfterSeconds}s (${retryAfterMs}ms)`,
+		);
 		return new SpotifyRateLimitError(retryAfterMs);
 	}
 
@@ -54,7 +56,10 @@ export function classifySpotifyError(error: unknown): SpotifyError {
 			console.warn("[Spotify] Type: Error instance");
 			console.warn("[Spotify] Name:", error.name);
 			console.warn("[Spotify] Message:", error.message);
-			console.warn("[Spotify] Stack:", error.stack?.split("\n").slice(0, 3).join("\n"));
+			console.warn(
+				"[Spotify] Stack:",
+				error.stack?.split("\n").slice(0, 3).join("\n"),
+			);
 
 			// Try to get all properties including non-enumerable
 			const allProps = Object.getOwnPropertyNames(error);
@@ -62,7 +67,10 @@ export function classifySpotifyError(error: unknown): SpotifyError {
 			for (const prop of allProps) {
 				if (!["name", "message", "stack"].includes(prop)) {
 					try {
-						console.warn(`[Spotify] error.${prop}:`, (error as unknown as Record<string, unknown>)[prop]);
+						console.warn(
+							`[Spotify] error.${prop}:`,
+							(error as unknown as Record<string, unknown>)[prop],
+						);
 					} catch {
 						console.warn(`[Spotify] error.${prop}: <unreadable>`);
 					}
@@ -85,9 +93,18 @@ export function classifySpotifyError(error: unknown): SpotifyError {
 				if (headers && typeof headers === "object" && "get" in headers) {
 					const h = headers as { get: (k: string) => string | null };
 					console.warn("[Spotify] Retry-After header:", h.get("Retry-After"));
-					console.warn("[Spotify] X-RateLimit-Limit:", h.get("X-RateLimit-Limit"));
-					console.warn("[Spotify] X-RateLimit-Remaining:", h.get("X-RateLimit-Remaining"));
-					console.warn("[Spotify] X-RateLimit-Reset:", h.get("X-RateLimit-Reset"));
+					console.warn(
+						"[Spotify] X-RateLimit-Limit:",
+						h.get("X-RateLimit-Limit"),
+					);
+					console.warn(
+						"[Spotify] X-RateLimit-Remaining:",
+						h.get("X-RateLimit-Remaining"),
+					);
+					console.warn(
+						"[Spotify] X-RateLimit-Reset:",
+						h.get("X-RateLimit-Reset"),
+					);
 				}
 			}
 		} else {
@@ -99,10 +116,15 @@ export function classifySpotifyError(error: unknown): SpotifyError {
 	}
 
 	// Handle Error instances with message containing rate limit info
-	if (error instanceof Error && (error.message.includes("rate limit") || error.message.includes("exceeded"))) {
+	if (
+		error instanceof Error &&
+		(error.message.includes("rate limit") || error.message.includes("exceeded"))
+	) {
 		// Development mode rate limits can last 5+ minutes - use 60s to reduce retry spam
 		if (DEBUG_SPOTIFY_ERRORS) {
-			console.warn("[Spotify] Detected rate limit from Error message, will retry in 60s");
+			console.warn(
+				"[Spotify] Detected rate limit from Error message, will retry in 60s",
+			);
 		}
 		return new SpotifyRateLimitError(60000);
 	}
@@ -115,7 +137,9 @@ export function classifySpotifyError(error: unknown): SpotifyError {
 
 		if (status === 429) {
 			const retryAfterMs = extractRetryAfter(error);
-			console.warn(`[Spotify] Rate limited. Retry after: ${retryAfterMs}ms (${Math.ceil(retryAfterMs / 1000)}s)`);
+			console.warn(
+				`[Spotify] Rate limited. Retry after: ${retryAfterMs}ms (${Math.ceil(retryAfterMs / 1000)}s)`,
+			);
 			return new SpotifyRateLimitError(retryAfterMs);
 		}
 
@@ -214,12 +238,16 @@ export async function fetchWithRetry<T>(
 
 		if (isRetryableError(result.error) && attempt < maxRetries) {
 			const delay = getRetryDelay(result.error, attempt, baseDelayMs);
-			console.warn(`[Spotify] Retry ${attempt + 1}/${maxRetries} after ${Math.ceil(delay / 1000)}s...`);
+			console.warn(
+				`[Spotify] Retry ${attempt + 1}/${maxRetries} after ${Math.ceil(delay / 1000)}s...`,
+			);
 			await sleep(delay);
 			attempt++;
 		} else {
 			if (attempt >= maxRetries) {
-				console.error(`[Spotify] Exhausted all ${maxRetries} retries. Giving up.`);
+				console.error(
+					`[Spotify] Exhausted all ${maxRetries} retries. Giving up.`,
+				);
 			}
 			return result;
 		}

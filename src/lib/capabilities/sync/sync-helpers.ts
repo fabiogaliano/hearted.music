@@ -36,7 +36,12 @@ export async function fetchLikedSongs(
 		onProgress?: (count: number) => void;
 		onTotalDiscovered?: (total: number) => void;
 	},
-): Promise<Result<{ likedSongs: SpotifyTrackDTO[]; likedSongsIds: Set<string> }, SyncOperationError>> {
+): Promise<
+	Result<
+		{ likedSongs: SpotifyTrackDTO[]; likedSongsIds: Set<string> },
+		SyncOperationError
+	>
+> {
 	const likedSongsResult = await spotify.getLikedTracks(
 		options.since,
 		options.onProgress,

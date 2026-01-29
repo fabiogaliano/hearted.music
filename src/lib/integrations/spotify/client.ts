@@ -17,7 +17,10 @@ import {
 	upsertToken,
 } from "@/lib/data/auth-tokens";
 import type { DbError } from "@/lib/shared/errors/database";
-import { SpotifyApiError, SpotifyAuthError } from "@/lib/shared/errors/external/spotify";
+import {
+	SpotifyApiError,
+	SpotifyAuthError,
+} from "@/lib/shared/errors/external/spotify";
 
 const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
 const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
@@ -255,7 +258,12 @@ export async function exchangeCodeForTokens(
 		if (response.status === 400 || response.status === 401) {
 			return Result.err(new SpotifyAuthError("invalid"));
 		}
-		return Result.err(new SpotifyApiError({ status: response.status, message: "Token exchange failed" }));
+		return Result.err(
+			new SpotifyApiError({
+				status: response.status,
+				message: "Token exchange failed",
+			}),
+		);
 	}
 
 	const data = await response.json();
@@ -293,7 +301,12 @@ export async function fetchSpotifyUser(
 		if (response.status === 401) {
 			return Result.err(new SpotifyAuthError("invalid"));
 		}
-		return Result.err(new SpotifyApiError({ status: response.status, message: "Failed to fetch user" }));
+		return Result.err(
+			new SpotifyApiError({
+				status: response.status,
+				message: "Failed to fetch user",
+			}),
+		);
 	}
 
 	const data = await response.json();
@@ -302,7 +315,10 @@ export async function fetchSpotifyUser(
 	const validation = spotifyUserSchema.safeParse(data);
 	if (!validation.success) {
 		return Result.err(
-			new SpotifyApiError({ status: 500, message: "Invalid Spotify user response format" }),
+			new SpotifyApiError({
+				status: 500,
+				message: "Invalid Spotify user response format",
+			}),
 		);
 	}
 

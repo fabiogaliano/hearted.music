@@ -1,18 +1,24 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import {
+	forwardRef,
+	useEffect,
+	useImperativeHandle,
+	useMemo,
+	useRef,
+} from "react";
 
-import { type ThemeConfig } from '@/lib/theme/types'
-import { getThemeHue } from '@/lib/theme/colors'
-import { type ColorPalette, generatePalette } from '@/lib/utils/palette'
+import { type ThemeConfig } from "@/lib/theme/types";
+import { getThemeHue } from "@/lib/theme/colors";
+import { type ColorPalette, generatePalette } from "@/lib/utils/palette";
 
 interface HeartRippleBackgroundProps {
-	theme?: ThemeConfig
-	className?: string
-	style?: React.CSSProperties
-	onReady?: () => void
+	theme?: ThemeConfig;
+	className?: string;
+	style?: React.CSSProperties;
+	onReady?: () => void;
 }
 
 export interface HeartRippleHandle {
-	setPointer: (payload: { x: number; y: number; strength?: number }) => void
+	setPointer: (payload: { x: number; y: number; strength?: number }) => void;
 }
 
 const vertexShaderSource = `
@@ -22,7 +28,7 @@ const vertexShaderSource = `
 		vUv = aPosition * 0.5 + 0.5;
 		gl_Position = vec4(aPosition, 0.0, 1.0);
 	}
-`
+`;
 
 const fragmentShaderSource = `
 	precision highp float;
@@ -165,80 +171,88 @@ const fragmentShaderSource = `
 
 		gl_FragColor = vec4(color, 1.0);
 	}
-`
+`;
 
-function compileShader(gl: WebGLRenderingContext, type: number, source: string) {
-	const shader = gl.createShader(type)
-	if (!shader) throw new Error('Failed to create shader')
-	gl.shaderSource(shader, source)
-	gl.compileShader(shader)
+function compileShader(
+	gl: WebGLRenderingContext,
+	type: number,
+	source: string,
+) {
+	const shader = gl.createShader(type);
+	if (!shader) throw new Error("Failed to create shader");
+	gl.shaderSource(shader, source);
+	gl.compileShader(shader);
 	if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-		const err = gl.getShaderInfoLog(shader) || 'Unknown shader compile error'
-		gl.deleteShader(shader)
-		throw new Error(err)
+		const err = gl.getShaderInfoLog(shader) || "Unknown shader compile error";
+		gl.deleteShader(shader);
+		throw new Error(err);
 	}
-	return shader
+	return shader;
 }
 
-function createProgram(gl: WebGLRenderingContext, vsSource: string, fsSource: string) {
-	const vs = compileShader(gl, gl.VERTEX_SHADER, vsSource)
-	const fs = compileShader(gl, gl.FRAGMENT_SHADER, fsSource)
+function createProgram(
+	gl: WebGLRenderingContext,
+	vsSource: string,
+	fsSource: string,
+) {
+	const vs = compileShader(gl, gl.VERTEX_SHADER, vsSource);
+	const fs = compileShader(gl, gl.FRAGMENT_SHADER, fsSource);
 
-	const program = gl.createProgram()
-	if (!program) throw new Error('Failed to create program')
-	gl.attachShader(program, vs)
-	gl.attachShader(program, fs)
-	gl.linkProgram(program)
+	const program = gl.createProgram();
+	if (!program) throw new Error("Failed to create program");
+	gl.attachShader(program, vs);
+	gl.attachShader(program, fs);
+	gl.linkProgram(program);
 
-	gl.deleteShader(vs)
-	gl.deleteShader(fs)
+	gl.deleteShader(vs);
+	gl.deleteShader(fs);
 
 	if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-		const err = gl.getProgramInfoLog(program) || 'Unknown program link error'
-		gl.deleteProgram(program)
-		throw new Error(err)
+		const err = gl.getProgramInfoLog(program) || "Unknown program link error";
+		gl.deleteProgram(program);
+		throw new Error(err);
 	}
 
-	return program
+	return program;
 }
 
 export const HeartRippleBackground = forwardRef<
 	HeartRippleHandle,
 	HeartRippleBackgroundProps
 >(function HeartRippleBackground({ theme, className, style, onReady }, ref) {
-	const containerRef = useRef<HTMLDivElement>(null)
-	const timeRef = useRef(0)
-	const rafRef = useRef<number | null>(null)
-	const renderOnceRef = useRef<(() => void) | null>(null)
-	const onReadyRef = useRef(onReady)
-	onReadyRef.current = onReady
+	const containerRef = useRef<HTMLDivElement>(null);
+	const timeRef = useRef(0);
+	const rafRef = useRef<number | null>(null);
+	const renderOnceRef = useRef<(() => void) | null>(null);
+	const onReadyRef = useRef(onReady);
+	onReadyRef.current = onReady;
 	const updateMouseRef = useRef<
 		((x: number, y: number, strength?: number) => void) | null
-	>(null)
+	>(null);
 
 	// Expose imperative handle for parent-driven pointer updates
 	useImperativeHandle(
 		ref,
 		() => ({
 			setPointer: ({ x, y, strength }) => {
-				const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
-				updateMouseRef.current?.(clamp01(x), clamp01(y), strength)
+				const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+				updateMouseRef.current?.(clamp01(x), clamp01(y), strength);
 			},
 		}),
-		[]
-	)
+		[],
+	);
 
 	const glStateRef = useRef<{
-		gl: WebGLRenderingContext
-		program: WebGLProgram
-		uColorPrimary: WebGLUniformLocation | null
-		uColorSecondary: WebGLUniformLocation | null
-		uColorBackground: WebGLUniformLocation | null
-	} | null>(null)
+		gl: WebGLRenderingContext;
+		program: WebGLProgram;
+		uColorPrimary: WebGLUniformLocation | null;
+		uColorSecondary: WebGLUniformLocation | null;
+		uColorBackground: WebGLUniformLocation | null;
+	} | null>(null);
 
-	const hue = theme ? getThemeHue(theme) : 218
-	const palette = useMemo(() => generatePalette(hue), [hue])
-	const initialPaletteRef = useRef(palette)
+	const hue = theme ? getThemeHue(theme) : 218;
+	const palette = useMemo(() => generatePalette(hue), [hue]);
+	const initialPaletteRef = useRef(palette);
 
 	const mouseRef = useRef({
 		x: 0.5,
@@ -253,313 +267,340 @@ export const HeartRippleBackground = forwardRef<
 		],
 		historyStrength: [0, 0, 0, 0, 0] as number[],
 		lastUpdateTime: 0,
-	})
+	});
 
 	useEffect(() => {
-		const container = containerRef.current
-		if (!container) return
+		const container = containerRef.current;
+		if (!container) return;
 
-		const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
-		const maxPixelRatio = 1
-		const targetFrameMs = 1000 / 30
+		const reducedMotionQuery = window.matchMedia(
+			"(prefers-reduced-motion: reduce)",
+		);
+		const maxPixelRatio = 1;
+		const targetFrameMs = 1000 / 30;
 
-		const canvas = document.createElement('canvas')
-		canvas.style.width = '100%'
-		canvas.style.height = '100%'
-		canvas.style.display = 'block'
-		container.appendChild(canvas)
+		const canvas = document.createElement("canvas");
+		canvas.style.width = "100%";
+		canvas.style.height = "100%";
+		canvas.style.display = "block";
+		container.appendChild(canvas);
 
-		const gl = canvas.getContext('webgl', {
+		const gl = canvas.getContext("webgl", {
 			alpha: false,
 			antialias: false,
-			powerPreference: 'low-power',
+			powerPreference: "low-power",
 			depth: false,
 			stencil: false,
-		})
+		});
 		if (!gl) {
-			if (container.contains(canvas)) container.removeChild(canvas)
-			return
+			if (container.contains(canvas)) container.removeChild(canvas);
+			return;
 		}
 
-		let program: WebGLProgram
+		let program: WebGLProgram;
 		try {
-			program = createProgram(gl, vertexShaderSource, fragmentShaderSource)
+			program = createProgram(gl, vertexShaderSource, fragmentShaderSource);
 		} catch {
-			if (container.contains(canvas)) container.removeChild(canvas)
-			return
+			if (container.contains(canvas)) container.removeChild(canvas);
+			return;
 		}
-		gl.useProgram(program)
+		gl.useProgram(program);
 
-		const positionLocation = gl.getAttribLocation(program, 'aPosition')
-		const buffer = gl.createBuffer()
+		const positionLocation = gl.getAttribLocation(program, "aPosition");
+		const buffer = gl.createBuffer();
 		if (!buffer) {
-			gl.useProgram(null)
-			gl.deleteProgram(program)
-			if (container.contains(canvas)) container.removeChild(canvas)
-			return
+			gl.useProgram(null);
+			gl.deleteProgram(program);
+			if (container.contains(canvas)) container.removeChild(canvas);
+			return;
 		}
-		gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
 		gl.bufferData(
 			gl.ARRAY_BUFFER,
 			new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
-			gl.STATIC_DRAW
-		)
-		gl.enableVertexAttribArray(positionLocation)
-		gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0)
+			gl.STATIC_DRAW,
+		);
+		gl.enableVertexAttribArray(positionLocation);
+		gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
-		const uTime = gl.getUniformLocation(program, 'uTime')
-		const uResolution = gl.getUniformLocation(program, 'uResolution')
-		const uColorPrimary = gl.getUniformLocation(program, 'uColorPrimary')
-		const uColorSecondary = gl.getUniformLocation(program, 'uColorSecondary')
-		const uColorBackground = gl.getUniformLocation(program, 'uColorBackground')
-		const uMouse = gl.getUniformLocation(program, 'uMouse')
-		const uMouseStrength = gl.getUniformLocation(program, 'uMouseStrength')
-		const uMouseHistory0 = gl.getUniformLocation(program, 'uMouseHistory[0]')
+		const uTime = gl.getUniformLocation(program, "uTime");
+		const uResolution = gl.getUniformLocation(program, "uResolution");
+		const uColorPrimary = gl.getUniformLocation(program, "uColorPrimary");
+		const uColorSecondary = gl.getUniformLocation(program, "uColorSecondary");
+		const uColorBackground = gl.getUniformLocation(program, "uColorBackground");
+		const uMouse = gl.getUniformLocation(program, "uMouse");
+		const uMouseStrength = gl.getUniformLocation(program, "uMouseStrength");
+		const uMouseHistory0 = gl.getUniformLocation(program, "uMouseHistory[0]");
 		const uMouseHistoryStrength0 = gl.getUniformLocation(
 			program,
-			'uMouseHistoryStrength[0]'
-		)
+			"uMouseHistoryStrength[0]",
+		);
 
-		const mouseHistoryFlat = new Float32Array(10)
-		const mouseHistoryStrengthFlat = new Float32Array(5)
+		const mouseHistoryFlat = new Float32Array(10);
+		const mouseHistoryStrengthFlat = new Float32Array(5);
 
 		const applyColors = (p: ColorPalette) => {
 			if (uColorPrimary)
-				gl.uniform3f(uColorPrimary, p.primary[0], p.primary[1], p.primary[2])
+				gl.uniform3f(uColorPrimary, p.primary[0], p.primary[1], p.primary[2]);
 			if (uColorSecondary)
-				gl.uniform3f(uColorSecondary, p.secondary[0], p.secondary[1], p.secondary[2])
+				gl.uniform3f(
+					uColorSecondary,
+					p.secondary[0],
+					p.secondary[1],
+					p.secondary[2],
+				);
 			if (uColorBackground)
-				gl.uniform3f(uColorBackground, p.background[0], p.background[1], p.background[2])
-			gl.clearColor(p.background[0], p.background[1], p.background[2], 1)
-		}
+				gl.uniform3f(
+					uColorBackground,
+					p.background[0],
+					p.background[1],
+					p.background[2],
+				);
+			gl.clearColor(p.background[0], p.background[1], p.background[2], 1);
+		};
 
-		applyColors(initialPaletteRef.current)
-		glStateRef.current = { gl, program, uColorPrimary, uColorSecondary, uColorBackground }
+		applyColors(initialPaletteRef.current);
+		glStateRef.current = {
+			gl,
+			program,
+			uColorPrimary,
+			uColorSecondary,
+			uColorBackground,
+		};
 
 		const resizeBuffer = () => {
-			const dpr = Math.min(window.devicePixelRatio || 1, maxPixelRatio)
-			const width = window.innerWidth
-			const height = window.innerHeight
+			const dpr = Math.min(window.devicePixelRatio || 1, maxPixelRatio);
+			const width = window.innerWidth;
+			const height = window.innerHeight;
 
-			const newWidth = Math.max(1, Math.floor(width * dpr))
-			const newHeight = Math.max(1, Math.floor(height * dpr))
+			const newWidth = Math.max(1, Math.floor(width * dpr));
+			const newHeight = Math.max(1, Math.floor(height * dpr));
 
 			if (canvas.width !== newWidth || canvas.height !== newHeight) {
-				canvas.width = newWidth
-				canvas.height = newHeight
-				gl.viewport(0, 0, newWidth, newHeight)
+				canvas.width = newWidth;
+				canvas.height = newHeight;
+				gl.viewport(0, 0, newWidth, newHeight);
 			}
-		}
+		};
 
 		const updateResolution = () => {
-			const width = container.clientWidth
-			const height = container.clientHeight
-			if (uResolution) gl.uniform2f(uResolution, width, height)
-		}
+			const width = container.clientWidth;
+			const height = container.clientHeight;
+			if (uResolution) gl.uniform2f(uResolution, width, height);
+		};
 
 		// Initial setup
-		resizeBuffer()
-		updateResolution()
+		resizeBuffer();
+		updateResolution();
 
-		let lastFrameTime = 0
-		let lastClockTime = performance.now()
+		let lastFrameTime = 0;
+		let lastClockTime = performance.now();
 
 		const renderFrame = () => {
-			updateResolution()
+			updateResolution();
 
-			const now = performance.now()
-			const delta = Math.min((now - lastClockTime) / 1000, 0.1)
-			lastClockTime = now
-			timeRef.current += delta
+			const now = performance.now();
+			const delta = Math.min((now - lastClockTime) / 1000, 0.1);
+			lastClockTime = now;
+			timeRef.current += delta;
 
-			mouseRef.current.strength *= 0.96
+			mouseRef.current.strength *= 0.96;
 			for (let i = 0; i < 5; i++) {
-				mouseRef.current.historyStrength[i] *= 0.985
+				mouseRef.current.historyStrength[i] *= 0.985;
 			}
 
-			if (uTime) gl.uniform1f(uTime, timeRef.current)
-			if (uMouse) gl.uniform2f(uMouse, mouseRef.current.x, mouseRef.current.y)
-			if (uMouseStrength) gl.uniform1f(uMouseStrength, mouseRef.current.strength)
+			if (uTime) gl.uniform1f(uTime, timeRef.current);
+			if (uMouse) gl.uniform2f(uMouse, mouseRef.current.x, mouseRef.current.y);
+			if (uMouseStrength)
+				gl.uniform1f(uMouseStrength, mouseRef.current.strength);
 
 			for (let i = 0; i < 5; i++) {
-				mouseHistoryFlat[i * 2] = mouseRef.current.history[i].x
-				mouseHistoryFlat[i * 2 + 1] = mouseRef.current.history[i].y
-				mouseHistoryStrengthFlat[i] = mouseRef.current.historyStrength[i]
+				mouseHistoryFlat[i * 2] = mouseRef.current.history[i].x;
+				mouseHistoryFlat[i * 2 + 1] = mouseRef.current.history[i].y;
+				mouseHistoryStrengthFlat[i] = mouseRef.current.historyStrength[i];
 			}
-			if (uMouseHistory0) gl.uniform2fv(uMouseHistory0, mouseHistoryFlat)
+			if (uMouseHistory0) gl.uniform2fv(uMouseHistory0, mouseHistoryFlat);
 			if (uMouseHistoryStrength0)
-				gl.uniform1fv(uMouseHistoryStrength0, mouseHistoryStrengthFlat)
+				gl.uniform1fv(uMouseHistoryStrength0, mouseHistoryStrengthFlat);
 
-			gl.clear(gl.COLOR_BUFFER_BIT)
-			gl.drawArrays(gl.TRIANGLES, 0, 6)
-		}
-		renderOnceRef.current = renderFrame
+			gl.clear(gl.COLOR_BUFFER_BIT);
+			gl.drawArrays(gl.TRIANGLES, 0, 6);
+		};
+		renderOnceRef.current = renderFrame;
 
 		const stop = () => {
 			if (rafRef.current != null) {
-				cancelAnimationFrame(rafRef.current)
-				rafRef.current = null
+				cancelAnimationFrame(rafRef.current);
+				rafRef.current = null;
 			}
-		}
+		};
 
 		const animate = (t: number) => {
 			if (document.hidden || reducedMotionQuery.matches) {
-				rafRef.current = null
-				return
+				rafRef.current = null;
+				return;
 			}
-			rafRef.current = requestAnimationFrame(animate)
-			if (t - lastFrameTime < targetFrameMs) return
-			lastFrameTime = t
-			renderFrame()
-		}
+			rafRef.current = requestAnimationFrame(animate);
+			if (t - lastFrameTime < targetFrameMs) return;
+			lastFrameTime = t;
+			renderFrame();
+		};
 
 		const start = () => {
-			if (rafRef.current != null) return
-			lastFrameTime = performance.now()
-			lastClockTime = performance.now()
-			rafRef.current = requestAnimationFrame(animate)
-		}
+			if (rafRef.current != null) return;
+			lastFrameTime = performance.now();
+			lastClockTime = performance.now();
+			rafRef.current = requestAnimationFrame(animate);
+		};
 
 		const updateMouse = (x: number, y: number, strength?: number) => {
-			const now = Date.now()
+			const now = Date.now();
 			if (now - mouseRef.current.lastUpdateTime > 100) {
 				for (let i = 4; i > 0; i--) {
-					mouseRef.current.history[i] = { ...mouseRef.current.history[i - 1] }
+					mouseRef.current.history[i] = { ...mouseRef.current.history[i - 1] };
 					mouseRef.current.historyStrength[i] =
-						mouseRef.current.historyStrength[i - 1] * 0.8
+						mouseRef.current.historyStrength[i - 1] * 0.8;
 				}
-				mouseRef.current.history[0] = { x: mouseRef.current.x, y: mouseRef.current.y }
-				mouseRef.current.historyStrength[0] = mouseRef.current.strength
-				mouseRef.current.lastUpdateTime = now
+				mouseRef.current.history[0] = {
+					x: mouseRef.current.x,
+					y: mouseRef.current.y,
+				};
+				mouseRef.current.historyStrength[0] = mouseRef.current.strength;
+				mouseRef.current.lastUpdateTime = now;
 			}
-			mouseRef.current.x = x
-			mouseRef.current.y = y
+			mouseRef.current.x = x;
+			mouseRef.current.y = y;
 			mouseRef.current.strength =
-				strength !== undefined ? strength : Math.min(mouseRef.current.strength + 0.25, 1)
-		}
+				strength !== undefined
+					? strength
+					: Math.min(mouseRef.current.strength + 0.25, 1);
+		};
 
 		// Expose updateMouse for imperative handle
-		updateMouseRef.current = updateMouse
+		updateMouseRef.current = updateMouse;
 
 		const handleVisibilityChange = () => {
 			if (document.hidden) {
-				stop()
-				return
+				stop();
+				return;
 			}
 			if (reducedMotionQuery.matches) {
-				renderFrame()
-				return
+				renderFrame();
+				return;
 			}
-			start()
-		}
+			start();
+		};
 
 		const handleReducedMotionChange = () => {
 			if (reducedMotionQuery.matches) {
-				stop()
-				renderFrame()
-				return
+				stop();
+				renderFrame();
+				return;
 			}
 			if (!document.hidden) {
-				start()
+				start();
 			}
-		}
+		};
 
 		const handleResize = () => {
-			resizeBuffer()
+			resizeBuffer();
 			// Re-render static frame when animation is disabled
 			if (reducedMotionQuery.matches) {
-				renderFrame()
+				renderFrame();
 			}
-		}
-		window.addEventListener('resize', handleResize)
-		document.addEventListener('visibilitychange', handleVisibilityChange)
-		if (typeof reducedMotionQuery.addEventListener === 'function') {
-			reducedMotionQuery.addEventListener('change', handleReducedMotionChange)
+		};
+		window.addEventListener("resize", handleResize);
+		document.addEventListener("visibilitychange", handleVisibilityChange);
+		if (typeof reducedMotionQuery.addEventListener === "function") {
+			reducedMotionQuery.addEventListener("change", handleReducedMotionChange);
 		} else {
-			reducedMotionQuery.addListener(handleReducedMotionChange)
+			reducedMotionQuery.addListener(handleReducedMotionChange);
 		}
 
 		if (reducedMotionQuery.matches) {
-			renderFrame()
+			renderFrame();
 		} else {
-			start()
+			start();
 		}
 
 		if (onReadyRef.current) {
-			onReadyRef.current()
+			onReadyRef.current();
 		}
 
 		return () => {
-			stop()
-			renderOnceRef.current = null
-			glStateRef.current = null
-			updateMouseRef.current = null
+			stop();
+			renderOnceRef.current = null;
+			glStateRef.current = null;
+			updateMouseRef.current = null;
 
-			window.removeEventListener('resize', handleResize)
-			document.removeEventListener('visibilitychange', handleVisibilityChange)
-			if (typeof reducedMotionQuery.removeEventListener === 'function') {
-				reducedMotionQuery.removeEventListener('change', handleReducedMotionChange)
+			window.removeEventListener("resize", handleResize);
+			document.removeEventListener("visibilitychange", handleVisibilityChange);
+			if (typeof reducedMotionQuery.removeEventListener === "function") {
+				reducedMotionQuery.removeEventListener(
+					"change",
+					handleReducedMotionChange,
+				);
 			} else {
-				reducedMotionQuery.removeListener(handleReducedMotionChange)
+				reducedMotionQuery.removeListener(handleReducedMotionChange);
 			}
 
-			gl.bindBuffer(gl.ARRAY_BUFFER, null)
-			gl.deleteBuffer(buffer)
-			gl.useProgram(null)
-			gl.deleteProgram(program)
+			gl.bindBuffer(gl.ARRAY_BUFFER, null);
+			gl.deleteBuffer(buffer);
+			gl.useProgram(null);
+			gl.deleteProgram(program);
 
 			if (container.contains(canvas)) {
-				container.removeChild(canvas)
+				container.removeChild(canvas);
 			}
-		}
-	}, [])
+		};
+	}, []);
 
 	useEffect(() => {
-		const state = glStateRef.current
-		if (!state) return
-		state.gl.useProgram(state.program)
+		const state = glStateRef.current;
+		if (!state) return;
+		state.gl.useProgram(state.program);
 		if (state.uColorPrimary)
 			state.gl.uniform3f(
 				state.uColorPrimary,
 				palette.primary[0],
 				palette.primary[1],
-				palette.primary[2]
-			)
+				palette.primary[2],
+			);
 		if (state.uColorSecondary)
 			state.gl.uniform3f(
 				state.uColorSecondary,
 				palette.secondary[0],
 				palette.secondary[1],
-				palette.secondary[2]
-			)
+				palette.secondary[2],
+			);
 		if (state.uColorBackground)
 			state.gl.uniform3f(
 				state.uColorBackground,
 				palette.background[0],
 				palette.background[1],
-				palette.background[2]
-			)
+				palette.background[2],
+			);
 		state.gl.clearColor(
 			palette.background[0],
 			palette.background[1],
 			palette.background[2],
-			1
-		)
-		renderOnceRef.current?.()
-	}, [palette])
+			1,
+		);
+		renderOnceRef.current?.();
+	}, [palette]);
 
 	return (
 		<div
 			ref={containerRef}
 			className={className}
 			style={{
-				width: '100%',
-				height: '100%',
-				overflow: 'hidden',
+				width: "100%",
+				height: "100%",
+				overflow: "hidden",
 				...style,
 			}}
 		/>
-	)
-})
+	);
+});
 
-export default HeartRippleBackground
+export default HeartRippleBackground;

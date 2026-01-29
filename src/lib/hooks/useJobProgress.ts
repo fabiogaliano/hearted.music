@@ -118,7 +118,10 @@ export function useJobProgress(jobId: string | null): JobProgressState {
 						} else if (event.count != null) {
 							// Fallback: track max count as "discovered total" for smooth progress
 							const currentMax = newItemTotals.get(event.itemId) ?? 0;
-							newItemTotals.set(event.itemId, Math.max(currentMax, event.count));
+							newItemTotals.set(
+								event.itemId,
+								Math.max(currentMax, event.count),
+							);
 						}
 
 						const newCurrentItem =
@@ -127,12 +130,20 @@ export function useJobProgress(jobId: string | null): JobProgressState {
 								: event.itemId === prev.currentItem?.itemId
 									? null
 									: prev.currentItem;
-						return { ...prev, items: newItems, itemTotals: newItemTotals, currentItem: newCurrentItem };
+						return {
+							...prev,
+							items: newItems,
+							itemTotals: newItemTotals,
+							currentItem: newCurrentItem,
+						};
 					});
 					break;
 
 				case "error":
-					console.error(`[useJobProgress] Error event for job ${currentJobId}:`, event.message);
+					console.error(
+						`[useJobProgress] Error event for job ${currentJobId}:`,
+						event.message,
+					);
 					setState((prev) => ({ ...prev, error: event.message }));
 					break;
 			}
@@ -180,7 +191,8 @@ export function useJobProgress(jobId: string | null): JobProgressState {
 			setState((prev) => {
 				// Don't overwrite actual error from SSE error event
 				// Also don't show connection error if job already completed/failed
-				const isTerminal = prev.status === "completed" || prev.status === "failed";
+				const isTerminal =
+					prev.status === "completed" || prev.status === "failed";
 				const hasRealError = prev.error && !prev.error.includes("Connection");
 
 				if (isTerminal || hasRealError) {

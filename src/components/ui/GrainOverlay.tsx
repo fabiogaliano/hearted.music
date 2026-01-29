@@ -1,4 +1,4 @@
-import { type FC } from 'react'
+import { type FC } from "react";
 
 export const GrainOverlay: FC = () => {
 	return (
@@ -28,10 +28,10 @@ export const GrainOverlay: FC = () => {
       `}</style>
 			<div
 				className="animate-grain absolute inset-[-200%] h-[500%] w-[500%] bg-repeat"
-				style={{ backgroundImage: 'inherit' }}
+				style={{ backgroundImage: "inherit" }}
 			/>
 		</div>
-	)
-}
+	);
+};
 
-export default GrainOverlay
+export default GrainOverlay;

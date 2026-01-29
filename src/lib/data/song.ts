@@ -86,7 +86,9 @@ export function getBySpotifyIds(
  * Returns empty array if none found.
  * Batches queries to avoid "URI too long" errors (Supabase encodes .in() in URL).
  */
-export async function getByIds(ids: string[]): Promise<Result<Song[], DbError>> {
+export async function getByIds(
+	ids: string[],
+): Promise<Result<Song[], DbError>> {
 	if (ids.length === 0) {
 		return Result.ok([]);
 	}

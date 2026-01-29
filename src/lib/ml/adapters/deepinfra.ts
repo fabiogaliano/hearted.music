@@ -128,7 +128,10 @@ export class DeepInfraProvider implements MLProvider {
 
 			// Service unavailable
 			if (error.statusCode === 503) {
-				return new MLProviderUnavailableError("deepinfra", "Service unavailable");
+				return new MLProviderUnavailableError(
+					"deepinfra",
+					"Service unavailable",
+				);
 			}
 
 			// Generic API error

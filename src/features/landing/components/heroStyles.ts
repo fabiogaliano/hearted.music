@@ -148,4 +148,4 @@ export const heroStyles = `
 			opacity: 1 !important;
 		}
 	}
-`
+`;

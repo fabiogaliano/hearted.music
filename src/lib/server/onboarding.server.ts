@@ -22,7 +22,11 @@ import {
 	type OnboardingStep,
 } from "@/lib/data/preferences";
 import { themeSchema, type ThemeColor } from "@/lib/theme/types";
-import { getPlaylists, getPlaylistCount, setPlaylistDestination } from "@/lib/data/playlists";
+import {
+	getPlaylists,
+	getPlaylistCount,
+	setPlaylistDestination,
+} from "@/lib/data/playlists";
 import { getCount as getLikedSongCount } from "@/lib/data/liked-song";
 import { createJob, getJobById } from "@/lib/data/jobs";
 import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
@@ -79,7 +83,6 @@ const playlistIdsInputSchema = z.object({
 	playlistIds: z.array(z.string().uuid()),
 });
 
-
 /**
  * Gets all onboarding data for the authenticated user.
  * Loads theme, playlists, current step, and completion status in parallel.
@@ -92,14 +95,19 @@ export const getOnboardingData = createServerFn({ method: "GET" }).handler(
 		const session = requireSession(request);
 
 		// Load all data in parallel (including counts for ready step)
-		const [prefsResult, playlistsResult, completionResult, songsCountResult, playlistsCountResult] =
-			await Promise.all([
-				getOrCreatePreferences(session.accountId),
-				getPlaylists(session.accountId),
-				isOnboardingComplete(session.accountId),
-				getLikedSongCount(session.accountId),
-				getPlaylistCount(session.accountId),
-			]);
+		const [
+			prefsResult,
+			playlistsResult,
+			completionResult,
+			songsCountResult,
+			playlistsCountResult,
+		] = await Promise.all([
+			getOrCreatePreferences(session.accountId),
+			getPlaylists(session.accountId),
+			isOnboardingComplete(session.accountId),
+			getLikedSongCount(session.accountId),
+			getPlaylistCount(session.accountId),
+		]);
 
 		// Check for errors and throw as OnboardingError
 		if (Result.isError(prefsResult)) {
@@ -115,7 +123,10 @@ export const getOnboardingData = createServerFn({ method: "GET" }).handler(
 			throw new OnboardingError("load_songs_count", songsCountResult.error);
 		}
 		if (Result.isError(playlistsCountResult)) {
-			throw new OnboardingError("load_playlists_count", playlistsCountResult.error);
+			throw new OnboardingError(
+				"load_playlists_count",
+				playlistsCountResult.error,
+			);
 		}
 
 		// Transform playlists to frontend-friendly format
@@ -151,7 +162,6 @@ export const getOnboardingData = createServerFn({ method: "GET" }).handler(
 		};
 	},
 );
-
 
 /**
  * Saves the user's theme preference.
@@ -205,7 +215,10 @@ export const createSyncJob = createServerFn({ method: "POST" }).handler(
 		};
 
 		// Persist to DB for refresh resilience
-		const persistResult = await updatePhaseJobIds(session.accountId, phaseJobIds);
+		const persistResult = await updatePhaseJobIds(
+			session.accountId,
+			phaseJobIds,
+		);
 		if (Result.isError(persistResult)) {
 			// Log but don't fail - jobs are already created
 			console.warn("Failed to persist phaseJobIds:", persistResult.error);
@@ -230,12 +243,17 @@ export const getLibrarySummary = createServerFn({ method: "POST" }).handler(
 		// Get SpotifyService for this user
 		const spotifyResult = await getSpotifyService(session.accountId);
 		if (Result.isError(spotifyResult)) {
-			throw new OnboardingError("discovery", new Error("Spotify not connected"));
+			throw new OnboardingError(
+				"discovery",
+				new Error("Spotify not connected"),
+			);
 		}
 
 		// Create orchestrator and run discovery
 		const orchestrator = new SyncOrchestrator(spotifyResult.value);
-		const discoveryResult = await orchestrator.getLibrarySummary(session.accountId);
+		const discoveryResult = await orchestrator.getLibrarySummary(
+			session.accountId,
+		);
 
 		if (Result.isError(discoveryResult)) {
 			throw new OnboardingError("discovery", discoveryResult.error);
@@ -280,7 +298,14 @@ export const executeSync = createServerFn({ method: "POST" })
 		);
 
 		// Validate ownership and collect job statuses
-		const jobs: { phase: string; job: NonNullable<Awaited<ReturnType<typeof getJobById>> extends Result<infer T, unknown> ? T : never> }[] = [];
+		const jobs: {
+			phase: string;
+			job: NonNullable<
+				Awaited<ReturnType<typeof getJobById>> extends Result<infer T, unknown>
+					? T
+					: never
+			>;
+		}[] = [];
 
 		for (const { phase, result } of jobResults) {
 			if (Result.isError(result)) {
@@ -321,7 +346,10 @@ export const executeSync = createServerFn({ method: "POST" })
 		// Get SpotifyService for this user
 		const spotifyResult = await getSpotifyService(session.accountId);
 		if (Result.isError(spotifyResult)) {
-			throw new OnboardingError("execute_sync", new Error("Spotify not connected"));
+			throw new OnboardingError(
+				"execute_sync",
+				new Error("Spotify not connected"),
+			);
 		}
 
 		// Create orchestrator and execute sync with pre-discovered data
@@ -373,20 +401,20 @@ export const saveOnboardingStep = createServerFn({ method: "POST" })
  * Marks onboarding as complete.
  * Sets onboarding_completed_at timestamp in the database.
  */
-export const markOnboardingComplete = createServerFn({ method: "POST" }).handler(
-	async (): Promise<{ success: true }> => {
-		const request = getRequest();
-		const session = requireSession(request);
+export const markOnboardingComplete = createServerFn({
+	method: "POST",
+}).handler(async (): Promise<{ success: true }> => {
+	const request = getRequest();
+	const session = requireSession(request);
 
-		const result = await completeOnboarding(session.accountId);
+	const result = await completeOnboarding(session.accountId);
 
-		if (Result.isError(result)) {
-			throw new OnboardingError("complete_onboarding", result.error);
-		}
+	if (Result.isError(result)) {
+		throw new OnboardingError("complete_onboarding", result.error);
+	}
 
-		return { success: true };
-	},
-);
+	return { success: true };
+});
 
 /**
  * Saves playlist destinations (batch update).
@@ -418,7 +446,10 @@ export const savePlaylistDestinations = createServerFn({ method: "POST" })
 		// Check for any errors
 		const firstError = results.find(Result.isError);
 		if (firstError) {
-			throw new OnboardingError("update_playlist_destinations", firstError.error);
+			throw new OnboardingError(
+				"update_playlist_destinations",
+				firstError.error,
+			);
 		}
 
 		return { success: true };

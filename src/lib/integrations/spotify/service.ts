@@ -104,7 +104,10 @@ export class SpotifyService {
 
 		return fetchAllPages<SpotifyTrackDTO>({
 			fetchPage: async (limit, offset) => {
-				const response = await this.sdk.currentUser.tracks.savedTracks(limit, offset);
+				const response = await this.sdk.currentUser.tracks.savedTracks(
+					limit,
+					offset,
+				);
 				return {
 					items: parsePlaylistTracks(response.items),
 					total: response.total,

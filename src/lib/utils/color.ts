@@ -10,8 +10,8 @@
  * @example extractHue('hsl(218, 30%, 50%)') → 218
  */
 export function extractHue(hslColor: string): number {
-	const match = hslColor.match(/hsl\((\d+)/)
-	return match ? parseInt(match[1], 10) : 218
+	const match = hslColor.match(/hsl\((\d+)/);
+	return match ? parseInt(match[1], 10) : 218;
 }
 
 /**
@@ -20,5 +20,5 @@ export function extractHue(hslColor: string): number {
  * a true pastel feel - soft and muted, visible on dark backgrounds
  */
 export function getPastelColor(hue: number): string {
-	return `hsl(${hue}, 30%, 80%)`
+	return `hsl(${hue}, 30%, 80%)`;
 }
