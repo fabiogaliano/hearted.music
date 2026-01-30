@@ -17,7 +17,10 @@ describe("SpotifyService", () => {
 			headers: { get: () => "0" },
 		};
 
-		const apiPlaylist = toSpotifyApiPlaylist(PLAYLISTS.lofiCityPop, TEST_ACCOUNT.spotify_id);
+		const apiPlaylist = toSpotifyApiPlaylist(
+			PLAYLISTS.lofiCityPop,
+			TEST_ACCOUNT.spotify_id,
+		);
 
 		const getUsersPlaylists = vi
 			.fn()
@@ -69,8 +72,14 @@ describe("SpotifyService", () => {
 	});
 
 	it("stops pagination when filtered items drop", async () => {
-		const newTrack = toSpotifyApiSavedTrack(SONGS.fancy, "2024-02-01T00:00:00Z");
-		const oldTrack = toSpotifyApiSavedTrack(SONGS.goneBaby, "2023-01-01T00:00:00Z");
+		const newTrack = toSpotifyApiSavedTrack(
+			SONGS.fancy,
+			"2024-02-01T00:00:00Z",
+		);
+		const oldTrack = toSpotifyApiSavedTrack(
+			SONGS.goneBaby,
+			"2023-01-01T00:00:00Z",
+		);
 		const items = [newTrack, oldTrack];
 
 		const savedTracks = vi.fn().mockResolvedValue({ items });

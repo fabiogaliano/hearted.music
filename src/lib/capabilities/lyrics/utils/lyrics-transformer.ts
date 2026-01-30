@@ -52,7 +52,10 @@ export class LyricsTransformer {
 		annotationMap: Record<string, AnnotationInfo[]>,
 	): TransformedLyricsBySection {
 		const groupedLines = LyricsTransformer.groupLines(section, annotationMap);
-		const transformedLines = LyricsTransformer.buildTransformedLines(section, groupedLines);
+		const transformedLines = LyricsTransformer.buildTransformedLines(
+			section,
+			groupedLines,
+		);
 
 		return {
 			type: section.type,
@@ -111,7 +114,9 @@ export class LyricsTransformer {
 				);
 				sequentialId++;
 			} else if (line.text) {
-				transformedLines.push(LyricsTransformer.createSingleLine(line, sequentialId++));
+				transformedLines.push(
+					LyricsTransformer.createSingleLine(line, sequentialId++),
+				);
 			}
 		});
 

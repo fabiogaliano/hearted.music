@@ -31,7 +31,7 @@ export function MatchesSection({
 				opacity: isExpanded ? 0.6 : 1,
 				height: isExpanded ? EXPANDED_ALBUM_SIZE_PX : COLLAPSED_ALBUM_SIZE_PX,
 			}}
-	>
+		>
 			<p
 				className="text-xs tracking-widest uppercase"
 				style={{ fontFamily: fonts.body, color: theme.textMuted }}
@@ -118,12 +118,12 @@ export function MatchesSection({
 				})}
 			</div>
 
-		<div
-			className="flex items-center justify-between transition-[margin-top,padding-top] duration-500 ease-in-out"
-		style={{
-			marginTop: isExpanded ? "auto" : "2rem",
-			paddingTop: isExpanded ? "0.75rem" : "0rem",
-		}}
+			<div
+				className="flex items-center justify-between transition-[margin-top,padding-top] duration-500 ease-in-out"
+				style={{
+					marginTop: isExpanded ? "auto" : "2rem",
+					paddingTop: isExpanded ? "0.75rem" : "0rem",
+				}}
 			>
 				<button
 					onClick={onDiscard}

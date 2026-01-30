@@ -24,13 +24,18 @@ import { FlagPlaylistsStep } from "../components/FlagPlaylistsStep";
 
 const mockSavePlaylistDestinations = vi.fn();
 
-vi.mock("../hooks/useOnboardingNavigation", () => setupOnboardingNavigationMock());
-vi.mock("../hooks/useFlagPlaylistsScroll", () => setupFlagPlaylistsScrollMock());
+vi.mock("../hooks/useOnboardingNavigation", () =>
+	setupOnboardingNavigationMock(),
+);
+vi.mock("../hooks/useFlagPlaylistsScroll", () =>
+	setupFlagPlaylistsScrollMock(),
+);
 vi.mock("@/lib/keyboard/useListNavigation", () => setupListNavigationMock());
 vi.mock("@/lib/keyboard/useShortcut", () => setupShortcutMock());
 
 vi.mock("@/lib/server/onboarding.server", () => ({
-	savePlaylistDestinations: (args: unknown) => mockSavePlaylistDestinations(args),
+	savePlaylistDestinations: (args: unknown) =>
+		mockSavePlaylistDestinations(args),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -97,7 +102,9 @@ describe("FlagPlaylistsStep", () => {
 		await user.click(lofiButton);
 		await user.click(focusButton);
 
-		const continueButtons = screen.getAllByRole("button", { name: /Continue with/i });
+		const continueButtons = screen.getAllByRole("button", {
+			name: /Continue with/i,
+		});
 		await user.click(continueButtons[0]);
 
 		await waitFor(() => {
@@ -125,7 +132,12 @@ describe("FlagPlaylistsStep", () => {
 			toOnboardingPlaylist(PLAYLISTS.years2009to2013), // already true in fixture
 		];
 
-		render(<FlagPlaylistsStep theme={mockTheme} playlists={playlistsWithDestinations} />);
+		render(
+			<FlagPlaylistsStep
+				theme={mockTheme}
+				playlists={playlistsWithDestinations}
+			/>,
+		);
 
 		const lofiBtn = document.querySelector(
 			`[data-playlist-id="${PLAYLISTS.lofiCityPop.id}"]`,
@@ -147,8 +159,12 @@ describe("FlagPlaylistsStep", () => {
 			<FlagPlaylistsStep theme={mockTheme} playlists={testPlaylists} />,
 		);
 
-		const skipButtons = screen.getAllByRole("button", { name: /Skip for now/i });
-		const enabledSkipButton = skipButtons.find((btn) => !btn.hasAttribute("disabled"));
+		const skipButtons = screen.getAllByRole("button", {
+			name: /Skip for now/i,
+		});
+		const enabledSkipButton = skipButtons.find(
+			(btn) => !btn.hasAttribute("disabled"),
+		);
 		expect(enabledSkipButton).toBeDefined();
 
 		await user.click(enabledSkipButton!);

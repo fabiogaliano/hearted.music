@@ -26,14 +26,19 @@ import type { OnboardingData } from "@/lib/server/onboarding.server";
 const mockSavePlaylistDestinations = vi.fn();
 const mockSaveTheme = vi.fn();
 
-vi.mock("../hooks/useOnboardingNavigation", () => setupOnboardingNavigationMock());
-vi.mock("../hooks/useFlagPlaylistsScroll", () => setupFlagPlaylistsScrollMock());
+vi.mock("../hooks/useOnboardingNavigation", () =>
+	setupOnboardingNavigationMock(),
+);
+vi.mock("../hooks/useFlagPlaylistsScroll", () =>
+	setupFlagPlaylistsScrollMock(),
+);
 vi.mock("@/lib/keyboard/useListNavigation", () => setupListNavigationMock());
 vi.mock("@/lib/keyboard/useShortcut", () => setupShortcutMock());
 vi.mock("@/lib/hooks/useJobProgress", () => setupJobProgressMock());
 
 vi.mock("@/lib/server/onboarding.server", () => ({
-	savePlaylistDestinations: (args: unknown) => mockSavePlaylistDestinations(args),
+	savePlaylistDestinations: (args: unknown) =>
+		mockSavePlaylistDestinations(args),
 	saveTheme: (args: unknown) => mockSaveTheme(args),
 }));
 
@@ -68,9 +73,7 @@ describe("Onboarding Flow", () => {
 	});
 
 	it("renders welcome step with app branding", () => {
-		render(
-			<Onboarding step="welcome" data={createMockOnboardingData()} />,
-		);
+		render(<Onboarding step="welcome" data={createMockOnboardingData()} />);
 
 		const stepContainer = document.querySelector('[data-step="welcome"]');
 		expect(stepContainer).toBeInTheDocument();
@@ -80,9 +83,7 @@ describe("Onboarding Flow", () => {
 	});
 
 	it("renders pick-color step with theme options", () => {
-		render(
-			<Onboarding step="pick-color" data={createMockOnboardingData()} />,
-		);
+		render(<Onboarding step="pick-color" data={createMockOnboardingData()} />);
 
 		const stepContainer = document.querySelector('[data-step="pick-color"]');
 		expect(stepContainer).toBeInTheDocument();
@@ -94,16 +95,20 @@ describe("Onboarding Flow", () => {
 	it("renders flag-playlists step with playlist selection", async () => {
 		const data = createMockOnboardingData();
 
-		const { user } = render(
-			<Onboarding step="flag-playlists" data={data} />,
-		);
+		const { user } = render(<Onboarding step="flag-playlists" data={data} />);
 
-		const stepContainer = document.querySelector('[data-step="flag-playlists"]');
+		const stepContainer = document.querySelector(
+			'[data-step="flag-playlists"]',
+		);
 		expect(stepContainer).toBeInTheDocument();
 
 		const container = within(stepContainer as HTMLElement);
-		const lofiButton = container.getByRole("button", { name: /lo-fi tokyo City Pop/i });
-		const rockButton = container.getByRole("button", { name: /old rock - coding zone/i });
+		const lofiButton = container.getByRole("button", {
+			name: /lo-fi tokyo City Pop/i,
+		});
+		const rockButton = container.getByRole("button", {
+			name: /old rock - coding zone/i,
+		});
 
 		expect(lofiButton).toBeInTheDocument();
 		expect(rockButton).toBeInTheDocument();
