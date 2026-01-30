@@ -1,6 +1,13 @@
 import type { SpotifyApi } from "@fostertheweb/spotify-web-sdk";
-import { Result } from "better-result";
 import { describe, expect, it, vi } from "vitest";
+import {
+	PLAYLISTS,
+	SONGS,
+	TEST_ACCOUNT,
+	toSpotifyApiPlaylist,
+	toSpotifyApiSavedTrack,
+	toSpotifyPlaylistDTO,
+} from "@/test/fixtures";
 import { SpotifyService } from "./service";
 
 describe("SpotifyService", () => {
@@ -10,24 +17,16 @@ describe("SpotifyService", () => {
 			headers: { get: () => "0" },
 		};
 
+		const apiPlaylist = toSpotifyApiPlaylist(PLAYLISTS.lofiCityPop, TEST_ACCOUNT.spotify_id);
+
 		const getUsersPlaylists = vi
 			.fn()
 			.mockRejectedValueOnce(rateLimitError)
-			.mockResolvedValueOnce({
-				items: [
-					{
-						id: "playlist-1",
-						name: "Daily Mix",
-						description: null,
-						owner: { id: "user-1" },
-						tracks: { total: 12 },
-					},
-				],
-			});
+			.mockResolvedValueOnce({ items: [apiPlaylist] });
 
 		const sdk = {
 			currentUser: {
-				profile: vi.fn().mockResolvedValue({ id: "user-1" }),
+				profile: vi.fn().mockResolvedValue({ id: TEST_ACCOUNT.spotify_id }),
 			},
 			playlists: {
 				getUsersPlaylists,
@@ -37,20 +36,10 @@ describe("SpotifyService", () => {
 		const service = new SpotifyService(sdk);
 		const result = await service.getPlaylists();
 
-		expect(Result.isOk(result)).toBe(true);
+		expect(result).toHaveOkValue([
+			toSpotifyPlaylistDTO(PLAYLISTS.lofiCityPop, TEST_ACCOUNT.spotify_id),
+		]);
 		expect(getUsersPlaylists).toHaveBeenCalledTimes(2);
-
-		if (Result.isOk(result)) {
-			expect(result.value).toEqual([
-				{
-					id: "playlist-1",
-					name: "Daily Mix",
-					description: null,
-					owner: { id: "user-1" },
-					track_count: 12,
-				},
-			]);
-		}
 	});
 
 	it("returns error after max retries exceeded", async () => {
@@ -73,49 +62,16 @@ describe("SpotifyService", () => {
 		const service = new SpotifyService(sdk);
 		const result = await service.getPlaylists();
 
-		expect(Result.isError(result)).toBe(true);
-		if (Result.isError(result)) {
-			expect(result.error._tag).toBe("SpotifyRateLimitError");
-		}
+		expect(result).toBeErr();
+		expect(result).toHaveErrValue(
+			expect.objectContaining({ _tag: "SpotifyRateLimitError" }),
+		);
 	});
 
 	it("stops pagination when filtered items drop", async () => {
-		const items = [
-			{
-				added_at: "2024-02-01T00:00:00Z",
-				track: {
-					id: "track-1",
-					name: "New Track",
-					artists: [{ id: "artist-1", name: "Artist" }],
-					album: {
-						id: "album-1",
-						name: "Album",
-						images: [
-							{ url: "https://example.com/cover.jpg", width: 300, height: 300 },
-						],
-					},
-					duration_ms: 123000,
-					uri: "spotify:track:track-1",
-				},
-			},
-			{
-				added_at: "2023-01-01T00:00:00Z",
-				track: {
-					id: "track-2",
-					name: "Old Track",
-					artists: [{ id: "artist-2", name: "Legacy" }],
-					album: {
-						id: "album-2",
-						name: "Older Album",
-						images: [
-							{ url: "https://example.com/old.jpg", width: 300, height: 300 },
-						],
-					},
-					duration_ms: 222000,
-					uri: "spotify:track:track-2",
-				},
-			},
-		];
+		const newTrack = toSpotifyApiSavedTrack(SONGS.fancy, "2024-02-01T00:00:00Z");
+		const oldTrack = toSpotifyApiSavedTrack(SONGS.goneBaby, "2023-01-01T00:00:00Z");
+		const items = [newTrack, oldTrack];
 
 		const savedTracks = vi.fn().mockResolvedValue({ items });
 
@@ -130,12 +86,8 @@ describe("SpotifyService", () => {
 		const service = new SpotifyService(sdk);
 		const result = await service.getLikedTracks("2024-01-01T00:00:00Z");
 
-		expect(Result.isOk(result)).toBe(true);
+		expect(result).toHaveOkValue([newTrack]);
 		expect(savedTracks).toHaveBeenCalledTimes(1);
-
-		if (Result.isOk(result)) {
-			expect(result.value).toEqual([items[0]]);
-		}
 	});
 
 	it("returns auth error for 401 response", async () => {
@@ -153,9 +105,9 @@ describe("SpotifyService", () => {
 		const service = new SpotifyService(sdk);
 		const result = await service.getPlaylists();
 
-		expect(Result.isError(result)).toBe(true);
-		if (Result.isError(result)) {
-			expect(result.error._tag).toBe("SpotifyAuthError");
-		}
+		expect(result).toBeErr();
+		expect(result).toHaveErrValue(
+			expect.objectContaining({ _tag: "SpotifyAuthError" }),
+		);
 	});
 });

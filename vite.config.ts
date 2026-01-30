@@ -18,6 +18,7 @@ if (isTest) {
 const config = defineConfig({
 	test: {
 		environment: "jsdom",
+		setupFiles: ["./src/test/setup.tsx"],
 		exclude: ["**/node_modules/**", "**/old_app/**"],
 		server: {
 			deps: {
