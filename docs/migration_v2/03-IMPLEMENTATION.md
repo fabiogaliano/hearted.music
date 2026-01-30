@@ -1098,13 +1098,17 @@ Update this section as phases complete:
 | Phase 1  | ✅ Complete    | Jan 2026 | Jan 2026  |
 | Phase 2  | ✅ Complete    | Jan 2026 | Jan 2026  |
 | Phase 3  | ✅ Complete    | Jan 2026 | Jan 2026  |
-| Phase 4a | ⬜ Not started |          |           |
-| Phase 4b | ⬜ Not started |          |           |
-| Phase 4c | ⬜ Not started |          |           |
-| Phase 4d | ⬜ Not started |          |           |
-| Phase 5  | ⬜ Not started |          |           |
+| Phase 4a | ✅ N/A         | —        | —         |
+| Phase 4b | ✅ Complete    | Jan 2026 | Jan 2026  |
+| Phase 4c | ✅ Complete    | Jan 2026 | Jan 2026  |
+| Phase 4d | ✅ Complete    | Jan 2026 | Jan 2026  |
+| Phase 4e | ✅ Complete    | Jan 2026 | Jan 2026  |
+| Phase 4f | ✅ Complete    | Jan 2026 | Jan 2026  |
+| Phase 4g | ✅ Complete    | Jan 2026 | Jan 2026  |
+| Phase 5  | ✅ Complete    | Jan 2026 | Jan 2026  |
 | Phase 6  | ⬜ Not started |          |           |
-| Phase 7  | 🟡 In Progress | Jan 2026 | —         |
+| Phase 7a | ✅ Complete    | Jan 2026 | Jan 2026  |
+| Phase 7b | 🟡 Prototypes  | —        | —         |
 
 ### Progress Notes
 
@@ -1141,8 +1145,10 @@ Update this section as phases complete:
 - ✅ `preferences.ts` — User preferences + onboarding state
 - ✅ `auth-tokens.ts` — Token refresh support
 
-**Phase 7 (UI)**: Auth flows working (login, logout, callback routes). TanStack Start + Router configured.
+**Phase 7a (Onboarding UI)**: ✅ Complete — Full 6-step flow with real data, SSE progress, keyboard nav, animations.
+
+**Phase 7b (Dashboard/Matching UI)**: Prototypes ready in `old_app/prototypes/warm-pastel/`.
 
 ---
 
-*Last updated: January 17, 2026*
+*Last updated: January 30, 2026*

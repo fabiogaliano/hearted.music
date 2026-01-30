@@ -21,7 +21,8 @@ The migration from v0 (old_app) to v1 is **~98% complete** for the service layer
 | **Playlist profiling**            | ✅       | ✅   | **None**          |
 | **SSE job progress**              | ✅       | ✅   | **None**          |
 | **ML provider abstraction**       | ❌       | ✅   | v1 improvement    |
-| UI                                | ✅       | 🟡   | In progress       |
+| UI (Onboarding)                   | ✅       | ✅   | None              |
+| UI (Dashboard/Matching)           | ✅       | 🟡   | In progress       |
 
 **Status Update (2026-01-21)**:
 - ✅ All matching pipeline services (Phases 4e-4g) implemented
@@ -29,7 +30,8 @@ The migration from v0 (old_app) to v1 is **~98% complete** for the service layer
 - ✅ ML provider abstraction added (not in v0, new capability)
 - ✅ Cache persistence to DB complete
 - ✅ Smoke tests validate full pipeline functionality
-- 🟡 Remaining work: UI integration (Phase 7) and cleanup (Phase 6)
+- ✅ Phase 7a (Onboarding UI) complete (2026-01-30)
+- 🟡 Remaining work: Phase 7b (Dashboard/Matching UI) and Phase 6 (cleanup)
 
 ---
 
@@ -148,7 +150,8 @@ Phase 0-3: Foundation ───────────────────�
 
 Phase 5: SSE ──────────────────────────────────────► ✅ Complete
 Phase 6: Cleanup ──────────────────────────────────► ⬜ Ready to start
-Phase 7: UI ───────────────────────────────────────► 🟡 Auth flows done
+Phase 7a: Onboarding UI ───────────────────────────► ✅ Complete
+Phase 7b: Dashboard/Matching UI ───────────────────► 🟡 Prototypes ready
 ```
 
 ---

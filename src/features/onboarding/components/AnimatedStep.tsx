@@ -36,17 +36,13 @@ export function AnimatedStep({ children, stepKey }: AnimatedStepProps) {
 	const shouldReduceMotion = useReducedMotion();
 
 	if (shouldReduceMotion) {
-		// Key still needed for AnimatePresence tracking even without animation
-		return (
-			<div key={stepKey} data-step={stepKey}>
-				{children}
-			</div>
-		);
+		return <div data-step={stepKey}>{children}</div>;
 	}
 
+	// Note: AnimatePresence tracks identity via key on THIS component in parent JSX,
+	// not via key on internal elements. Parent must use <AnimatedStep key={step}>.
 	return (
 		<motion.div
-			key={stepKey}
 			data-step={stepKey}
 			variants={stepVariants}
 			initial="initial"

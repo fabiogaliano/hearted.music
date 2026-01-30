@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
@@ -37,6 +37,12 @@ export function ThemesList({ themes, theme: themeConfig }: ThemesListProps) {
 	const [openIndex, setOpenIndex] = useState<number>(-1);
 	const [pinnedIndex, setPinnedIndex] = useState<number>(-1);
 	const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	// Reset interaction state when themes change (e.g., song navigation)
+	useEffect(() => {
+		setOpenIndex(-1);
+		setPinnedIndex(-1);
+	}, [themes]);
 
 	const handleHover = useCallback(
 		(index: number) => {

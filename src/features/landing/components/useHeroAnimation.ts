@@ -102,17 +102,25 @@ function measureMorphPositions(
 	const rem =
 		Number.isFinite(rootFontSize) && rootFontSize > 0 ? rootFontSize : 16;
 
-	// Temporarily disable transforms to measure final positions
+	// Temporarily disable transforms and text layout to measure final positions.
+	// Must reset ALL properties that the timeline animates, otherwise measurements
+	// taken mid-animation (e.g., on resize) will be incorrect.
 	const elements = [logoEl, headlineEl];
 	const originalStyles = elements.map((el) => ({
 		transform: el.style.transform,
 		fontSize: el.style.fontSize,
+		maxWidth: el.style.maxWidth,
+		whiteSpace: el.style.whiteSpace,
+		flexWrap: el.style.flexWrap,
 	}));
 
-	// Reset to final state for measurement
+	// Reset to initial state for measurement (before timeline runs)
 	elements.forEach((el) => {
 		el.style.transform = "none";
 		el.style.fontSize = "";
+		el.style.maxWidth = "";
+		el.style.whiteSpace = "nowrap";
+		el.style.flexWrap = "";
 	});
 
 	// Force reflow to ensure measurements are accurate
@@ -131,6 +139,9 @@ function measureMorphPositions(
 	elements.forEach((el, i) => {
 		el.style.transform = originalStyles[i].transform;
 		el.style.fontSize = originalStyles[i].fontSize;
+		el.style.maxWidth = originalStyles[i].maxWidth;
+		el.style.whiteSpace = originalStyles[i].whiteSpace;
+		el.style.flexWrap = originalStyles[i].flexWrap;
 	});
 
 	// Calculate start positions (centered in viewport)

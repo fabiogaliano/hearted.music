@@ -21,7 +21,8 @@
 | 4g    | **Playlist Profiling** | ✅ Complete            | Phase 4e   |
 | 5     | SSE                    | ✅ Complete (2026-01-21) | Phase 4g   |
 | 6     | Cleanup                | ⬜ Not Started         | Phase 5    |
-| 7     | UI Integration         | 🟡 Prototypes Ready    | Phase 5    |
+| 7a    | Onboarding UI          | ✅ Complete            | Phase 5    |
+| 7b    | Dashboard/Matching UI  | 🟡 Prototypes Ready    | Phase 7a   |
 
 > **Frontend Note**: UI prototypes are ~85% complete in `old_app/prototypes/warm-pastel/` (88 files). Phase 7 involves wiring these to real APIs/data, not building from scratch.
 
@@ -594,30 +595,50 @@ Destination Playlist
 
 ---
 
-## Phase 7: UI Integration
+## Phase 7a: Onboarding UI
 
-> Wire warm-pastel prototypes to real APIs and data.
+> Port onboarding flow from prototype to production.
+
+**Status**: ✅ Complete
+
+### Completed
+
+- [x] Theme system (4 themes, dark mode, HSL-based)
+- [x] Landing page with GSAP animations
+- [x] Onboarding route with 6 steps (Welcome → PickColor → Connecting → Syncing → FlagPlaylists → Ready)
+- [x] Real data integration (playlists, sync jobs, SSE progress)
+- [x] Keyboard navigation (h/l, j/k, arrows, roving tabindex)
+- [x] Animations (Framer Motion, reduced-motion support)
+- [x] Mobile responsive with safe-area insets
+
+### References
+- [openspec/changes/2026-01-23-add-onboarding-frontend](/openspec/changes/2026-01-23-add-onboarding-frontend/) — Full spec
+
+---
+
+## Phase 7b: Dashboard/Matching UI
+
+> Wire remaining prototypes to real APIs and data.
 
 **Status**: 🟡 Prototypes Ready
 
 ### Source
 
-UI prototypes are ~85% complete in `old_app/prototypes/warm-pastel/`:
-- 88 files across 6 features
-- Landing, Onboarding (6 steps), Dashboard, Matching, Liked Songs, Playlists, Settings
-- Full design system with 4 themes (blue, green, rose, lavender)
-- FLIP animations, infinite scroll, keyboard shortcuts
+Remaining prototypes in `old_app/prototypes/warm-pastel/`:
+- Dashboard, Matching, Liked Songs, Playlists, Settings
+- FLIP animations, infinite scroll
 
 ### Tasks
 
-- [ ] Set up TanStack Start routes using prototype structure
-- [ ] Create API routes/server functions for data fetching
-- [ ] Wire components to real Supabase data via query modules
-- [ ] Integrate SSE for job progress (after Phase 5)
+- [ ] Port Dashboard page
+- [ ] Port Matching UI with real match results
+- [ ] Port Liked Songs with infinite scroll
+- [ ] Port Playlists management
+- [ ] Port Settings page
 - [ ] Test all user flows end-to-end
 
 ### Acceptance Criteria
-- [ ] All prototype pages render with real data
+- [ ] All remaining pages render with real data
 - [ ] User can complete full workflow: sync → analyze → match → sort
 
 ---
@@ -668,4 +689,4 @@ UI prototypes are ~85% complete in `old_app/prototypes/warm-pastel/`:
 
 ---
 
-*Last updated: January 21, 2026 — Phases 4e-4g and Phase 5 complete, all core services ported*
+*Last updated: January 30, 2026 — Phase 7a (Onboarding UI) complete*
