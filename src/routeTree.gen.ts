@@ -23,6 +23,7 @@ import { Route as AuthenticatedDashboardSettingsRouteImport } from './routes/_au
 import { Route as AuthenticatedDashboardPlaylistsRouteImport } from './routes/_authenticated/dashboard/playlists'
 import { Route as AuthenticatedDashboardMatchRouteImport } from './routes/_authenticated/dashboard/match'
 import { Route as AuthenticatedDashboardLikedRouteImport } from './routes/_authenticated/dashboard/liked'
+import { Route as AuthenticatedDashboardLikedSongsRouteImport } from './routes/_authenticated/dashboard/liked-songs'
 import { Route as ApiJobsIdProgressRouteImport } from './routes/api/jobs/$id/progress'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -100,6 +101,12 @@ const AuthenticatedDashboardLikedRoute =
     path: '/liked',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
+const AuthenticatedDashboardLikedSongsRoute =
+  AuthenticatedDashboardLikedSongsRouteImport.update({
+    id: '/liked-songs',
+    path: '/liked-songs',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
 const ApiJobsIdProgressRoute = ApiJobsIdProgressRouteImport.update({
   id: '/api/jobs/$id/progress',
   path: '/api/jobs/$id/progress',
@@ -114,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/dashboard/liked': typeof AuthenticatedDashboardLikedRoute
+  '/dashboard/liked-songs': typeof AuthenticatedDashboardLikedSongsRoute
   '/dashboard/match': typeof AuthenticatedDashboardMatchRoute
   '/dashboard/playlists': typeof AuthenticatedDashboardPlaylistsRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
@@ -128,6 +136,7 @@ export interface FileRoutesByTo {
   '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/dashboard/liked': typeof AuthenticatedDashboardLikedRoute
+  '/dashboard/liked-songs': typeof AuthenticatedDashboardLikedSongsRoute
   '/dashboard/match': typeof AuthenticatedDashboardMatchRoute
   '/dashboard/playlists': typeof AuthenticatedDashboardPlaylistsRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
@@ -146,6 +155,7 @@ export interface FileRoutesById {
   '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/_authenticated/dashboard/liked': typeof AuthenticatedDashboardLikedRoute
+  '/_authenticated/dashboard/liked-songs': typeof AuthenticatedDashboardLikedSongsRoute
   '/_authenticated/dashboard/match': typeof AuthenticatedDashboardMatchRoute
   '/_authenticated/dashboard/playlists': typeof AuthenticatedDashboardPlaylistsRoute
   '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/api/artist-images-for-tracks'
     | '/auth/logout'
     | '/dashboard/liked'
+    | '/dashboard/liked-songs'
     | '/dashboard/match'
     | '/dashboard/playlists'
     | '/dashboard/settings'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/api/artist-images-for-tracks'
     | '/auth/logout'
     | '/dashboard/liked'
+    | '/dashboard/liked-songs'
     | '/dashboard/match'
     | '/dashboard/playlists'
     | '/dashboard/settings'
@@ -195,6 +207,7 @@ export interface FileRouteTypes {
     | '/api/artist-images-for-tracks'
     | '/auth/logout'
     | '/_authenticated/dashboard/liked'
+    | '/_authenticated/dashboard/liked-songs'
     | '/_authenticated/dashboard/match'
     | '/_authenticated/dashboard/playlists'
     | '/_authenticated/dashboard/settings'
@@ -313,6 +326,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardLikedRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
     }
+    '/_authenticated/dashboard/liked-songs': {
+      id: '/_authenticated/dashboard/liked-songs'
+      path: '/liked-songs'
+      fullPath: '/dashboard/liked-songs'
+      preLoaderRoute: typeof AuthenticatedDashboardLikedSongsRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
     '/api/jobs/$id/progress': {
       id: '/api/jobs/$id/progress'
       path: '/api/jobs/$id/progress'
@@ -325,6 +345,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedDashboardRouteChildren {
   AuthenticatedDashboardLikedRoute: typeof AuthenticatedDashboardLikedRoute
+  AuthenticatedDashboardLikedSongsRoute: typeof AuthenticatedDashboardLikedSongsRoute
   AuthenticatedDashboardMatchRoute: typeof AuthenticatedDashboardMatchRoute
   AuthenticatedDashboardPlaylistsRoute: typeof AuthenticatedDashboardPlaylistsRoute
   AuthenticatedDashboardSettingsRoute: typeof AuthenticatedDashboardSettingsRoute
@@ -334,6 +355,7 @@ interface AuthenticatedDashboardRouteChildren {
 const AuthenticatedDashboardRouteChildren: AuthenticatedDashboardRouteChildren =
   {
     AuthenticatedDashboardLikedRoute: AuthenticatedDashboardLikedRoute,
+    AuthenticatedDashboardLikedSongsRoute: AuthenticatedDashboardLikedSongsRoute,
     AuthenticatedDashboardMatchRoute: AuthenticatedDashboardMatchRoute,
     AuthenticatedDashboardPlaylistsRoute: AuthenticatedDashboardPlaylistsRoute,
     AuthenticatedDashboardSettingsRoute: AuthenticatedDashboardSettingsRoute,
