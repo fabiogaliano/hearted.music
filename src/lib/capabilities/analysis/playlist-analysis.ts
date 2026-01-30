@@ -18,15 +18,11 @@ import type { LlmService } from "@/lib/ml/llm/service";
 import * as playlistAnalysis from "@/lib/data/playlist-analysis";
 import type { DbError } from "@/lib/shared/errors/database";
 import { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
-import { type LlmError } from "@/lib/shared/errors/external/llm";
+import type { LlmError } from "@/lib/shared/errors/external/llm";
 import type {
 	PlaylistAnalysis,
 	InsertData as InsertPlaylistAnalysis,
 } from "@/lib/data/playlist-analysis";
-
-// ============================================================================
-// Zod Schemas for Structured LLM Output
-// ============================================================================
 
 /** Core theme in a playlist */
 const CoreThemeSchema = z.object({
@@ -169,10 +165,6 @@ export const PlaylistAnalysisLlmSchema = z.object({
 });
 export type PlaylistAnalysisLlm = z.infer<typeof PlaylistAnalysisLlmSchema>;
 
-// ============================================================================
-// Types
-// ============================================================================
-
 /** Track info for playlist analysis */
 export interface PlaylistTrackInfo {
 	name: string;
@@ -197,10 +189,6 @@ export interface AnalyzePlaylistResult {
 
 type PlaylistAnalysisServiceError = DbError | LlmError | AnalysisFailedError;
 
-// ============================================================================
-// Prompt Template
-// ============================================================================
-
 const PLAYLIST_ANALYSIS_PROMPT = `You are an expert music curator. Analyze this playlist to understand its purpose and cohesive elements. Only identify cultural significance when it's explicitly present and central to the playlist's theme.
 
 Playlist Name: {playlist_name}
@@ -221,10 +209,6 @@ IMPORTANT: For all numeric scores, provide a decimal number between 0.0 and 1.0 
 
 Provide your analysis as a structured JSON response.`;
 
-// ============================================================================
-// Service
-// ============================================================================
-
 export class PlaylistAnalysisService {
 	constructor(private readonly llm: LlmService) {}
 
@@ -237,7 +221,6 @@ export class PlaylistAnalysisService {
 	): Promise<Result<AnalyzePlaylistResult, PlaylistAnalysisServiceError>> {
 		const { playlistId, name, description, tracks } = input;
 
-		// 1. Check for existing analysis
 		const existingResult = await playlistAnalysis.get(playlistId);
 		if (Result.isError(existingResult)) {
 			return Result.err(existingResult.error);
@@ -250,10 +233,8 @@ export class PlaylistAnalysisService {
 			});
 		}
 
-		// 2. Build prompt
 		const prompt = this.buildPrompt(name, description, tracks);
 
-		// 3. Call LLM
 		const llmResult = await this.llm.generateObject(
 			prompt,
 			PlaylistAnalysisLlmSchema,
@@ -262,7 +243,6 @@ export class PlaylistAnalysisService {
 			return Result.err(llmResult.error);
 		}
 
-		// 4. Validate required fields
 		const output = llmResult.value.output;
 		if (
 			!output.meaning ||
@@ -278,7 +258,6 @@ export class PlaylistAnalysisService {
 			);
 		}
 
-		// 5. Store in database
 		const storeResult = await playlistAnalysis.insert({
 			playlist_id: playlistId,
 			analysis: output as unknown as InsertPlaylistAnalysis["analysis"],
@@ -299,10 +278,6 @@ export class PlaylistAnalysisService {
 			cached: false,
 		});
 	}
-
-	// ============================================================================
-	// Private Helpers
-	// ============================================================================
 
 	/**
 	 * Builds the analysis prompt from input data.

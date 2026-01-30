@@ -6,7 +6,7 @@ import {
 	useRef,
 } from "react";
 
-import { type ThemeConfig } from "@/lib/theme/types";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { getThemeHue } from "@/lib/theme/colors";
 import { type ColorPalette, generatePalette } from "@/lib/utils/palette";
 
@@ -230,7 +230,6 @@ export const HeartRippleBackground = forwardRef<
 		((x: number, y: number, strength?: number) => void) | null
 	>(null);
 
-	// Expose imperative handle for parent-driven pointer updates
 	useImperativeHandle(
 		ref,
 		() => ({
@@ -389,7 +388,6 @@ export const HeartRippleBackground = forwardRef<
 			if (uResolution) gl.uniform2f(uResolution, width, height);
 		};
 
-		// Initial setup
 		resizeBuffer();
 		updateResolution();
 
@@ -476,7 +474,6 @@ export const HeartRippleBackground = forwardRef<
 					: Math.min(mouseRef.current.strength + 0.25, 1);
 		};
 
-		// Expose updateMouse for imperative handle
 		updateMouseRef.current = updateMouse;
 
 		const handleVisibilityChange = () => {
@@ -504,7 +501,6 @@ export const HeartRippleBackground = forwardRef<
 
 		const handleResize = () => {
 			resizeBuffer();
-			// Re-render static frame when animation is disabled
 			if (reducedMotionQuery.matches) {
 				renderFrame();
 			}

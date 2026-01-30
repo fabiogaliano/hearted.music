@@ -15,7 +15,7 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
-import { SpotifyService } from "../../integrations/spotify/service";
+import type { SpotifyService } from "../../integrations/spotify/service";
 import type { SpotifyPlaylistDTO } from "../../integrations/spotify/service";
 import {
 	PlaylistSyncService,

@@ -33,7 +33,7 @@ export interface CollaboratorInfo {
  */
 export function extractCollaborators(title: string): CollaboratorInfo | null {
 	// Check for "(with X)" or "[with X]" - these are collaborations
-	const withMatch = title.match(/[\(\[]with\s+([^\)\]]+)[\)\]]/i);
+	const withMatch = title.match(/[([]with\s+([^)\]]+)[)\]]/i);
 	if (withMatch) {
 		return {
 			artists: withMatch[1]
@@ -46,7 +46,7 @@ export function extractCollaborators(title: string): CollaboratorInfo | null {
 
 	// Check for "(feat. X)" patterns - these are features
 	const featMatch = title.match(
-		/[\(\[](?:feat\.?|ft\.?|featuring)\s*([^\)\]]+)[\)\]]/i,
+		/[([](?:feat\.?|ft\.?|featuring)\s*([^)\]]+)[)\]]/i,
 	);
 	if (featMatch) {
 		return {
@@ -112,7 +112,7 @@ export function generateQueryVariants(artist: string, title: string): string[] {
 	// 1. CLEAN TITLE FIRST - 83% success rate at position 1
 	// Remove parentheticals AND dash suffixes
 	const cleanTitle = title
-		.replace(/\s*[\(\[][^\)\]]+[\)\]]\s*/g, "") // Remove (content) and [content]
+		.replace(/\s*[([][^)\]]+[)\]]\s*/g, "") // Remove (content) and [content]
 		.replace(dashPattern, "") // Remove " - suffix"
 		.trim();
 
@@ -121,7 +121,7 @@ export function generateQueryVariants(artist: string, title: string): string[] {
 	}
 
 	// 2. Remove just parentheticals (if different from clean)
-	const withoutParens = title.replace(/\s*[\(\[][^\)\]]+[\)\]]\s*/g, "").trim();
+	const withoutParens = title.replace(/\s*[([][^)\]]+[)\]]\s*/g, "").trim();
 	if (withoutParens !== cleanTitle) {
 		addQuery(`${artist} ${withoutParens}`);
 	}
@@ -137,14 +137,14 @@ export function generateQueryVariants(artist: string, title: string): string[] {
 
 	// 5. Featured artist variants - last resort, often hurts more than helps
 	// Only try if we have a featured artist pattern
-	const withMatch = title.match(/[\(\[]with\s+([^\)\]]+)[\)\]]/i);
+	const withMatch = title.match(/[([]with\s+([^)\]]+)[)\]]/i);
 	if (withMatch) {
 		const featuredArtist = withMatch[1].split(/\s*[,&]\s*/)[0].trim();
 		addQuery(`${artist} and ${featuredArtist} ${cleanTitle}`);
 	}
 
 	const featMatch = title.match(
-		/[\(\[](?:feat\.?|ft\.?|featuring)\s*([^\)\]]+)[\)\]]/i,
+		/[([](?:feat\.?|ft\.?|featuring)\s*([^)\]]+)[)\]]/i,
 	);
 	if (featMatch) {
 		const featuredArtist = featMatch[1].split(/\s*[,&]\s*/)[0].trim();
@@ -247,7 +247,7 @@ function normalizeForComparison(title: string): string {
 			// This handles: "Song - 128 BPM mix", "Song - Remastered", "Song - Radio Edit"
 			.replace(/\s*[-–—]\s*.+$/i, "")
 			// Remove parenthetical and bracket content
-			.replace(/\s*[\(\[][^\)\]]*[\)\]]\s*/g, " ")
+			.replace(/\s*[([][^)\]]*[)\]]\s*/g, " ")
 			// Clean up whitespace
 			.replace(/\s+/g, " ")
 			.trim()

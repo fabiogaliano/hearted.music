@@ -5,7 +5,7 @@
  * Returns Result<T, DbError> for composable error handling.
  */
 
-import { Result } from "better-result";
+import type { Result } from "better-result";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,
@@ -13,10 +13,6 @@ import {
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
 import type { Json, Tables, TablesInsert } from "./database.types";
-
-// ============================================================================
-// Type Exports
-// ============================================================================
 
 /** Playlist analysis row type */
 export type PlaylistAnalysis = Tables<"playlist_analysis">;
@@ -31,10 +27,6 @@ export type InsertData = Pick<
 	| "tokens_used"
 	| "cost_cents"
 >;
-
-// ============================================================================
-// Query Operations
-// ============================================================================
 
 /**
  * Gets the latest playlist analysis.
@@ -54,10 +46,6 @@ export async function get(
 			.single(),
 	);
 }
-
-// ============================================================================
-// Mutation Operations
-// ============================================================================
 
 /**
  * Inserts a new playlist analysis record.

@@ -21,9 +21,9 @@ export class LyricsTransformer {
 		lyrics: LyricsSection[],
 		referents: ResponseReferents[],
 	): TransformedLyricsBySection[] {
-		const annotationMap = this.buildAnnotationMap(referents);
+		const annotationMap = LyricsTransformer.buildAnnotationMap(referents);
 		return lyrics.map((section) =>
-			this.transformSection(section, annotationMap),
+			LyricsTransformer.transformSection(section, annotationMap),
 		);
 	}
 
@@ -51,8 +51,8 @@ export class LyricsTransformer {
 		section: LyricsSection,
 		annotationMap: Record<string, AnnotationInfo[]>,
 	): TransformedLyricsBySection {
-		const groupedLines = this.groupLines(section, annotationMap);
-		const transformedLines = this.buildTransformedLines(section, groupedLines);
+		const groupedLines = LyricsTransformer.groupLines(section, annotationMap);
+		const transformedLines = LyricsTransformer.buildTransformedLines(section, groupedLines);
 
 		return {
 			type: section.type,
@@ -102,7 +102,7 @@ export class LyricsTransformer {
 
 			const group = groupedLines[line.id];
 			if (group) {
-				this.processGroupedLine(
+				LyricsTransformer.processGroupedLine(
 					group,
 					section,
 					transformedLines,
@@ -111,7 +111,7 @@ export class LyricsTransformer {
 				);
 				sequentialId++;
 			} else if (line.text) {
-				transformedLines.push(this.createSingleLine(line, sequentialId++));
+				transformedLines.push(LyricsTransformer.createSingleLine(line, sequentialId++));
 			}
 		});
 
@@ -126,7 +126,7 @@ export class LyricsTransformer {
 		sequentialId: number,
 	) {
 		const sortedLineIds = group.lineIds.sort((a, b) => a - b);
-		const mergedText = this.getMergedText(sortedLineIds, section);
+		const mergedText = LyricsTransformer.getMergedText(sortedLineIds, section);
 
 		if (mergedText) {
 			transformedLines.push({

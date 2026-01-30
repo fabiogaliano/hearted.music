@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { type ThemeConfig } from "@/lib/theme/types";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { extractHue, getPastelColor } from "@/lib/utils/color";
 
 // Mix of musical notes and tiny hearts - music + feelings
@@ -26,11 +26,9 @@ export function AnimatedHeart({
 		null,
 	);
 
-	// Get soft pastel color from theme hue
 	const themeHue = extractHue(theme.primary);
 	const pastelColor = getPastelColor(themeHue);
 
-	// Create floating notes & hearts that drift upward
 	const createParticles = useCallback(() => {
 		const container = containerRef.current;
 		if (!container) return;
@@ -87,7 +85,6 @@ export function AnimatedHeart({
 		}
 	}, [pastelColor]);
 
-	// Create expanding ring effect
 	const createRing = useCallback(() => {
 		const container = containerRef.current;
 		if (!container) return;
@@ -120,7 +117,6 @@ export function AnimatedHeart({
 	}, [pastelColor]);
 
 	const triggerAnimation = useCallback(() => {
-		// Set animating state for color change
 		setIsAnimating(true);
 
 		const heart = heartRef.current;
@@ -142,22 +138,18 @@ export function AnimatedHeart({
 			);
 		}
 
-		// Trigger particle effects
 		createRing();
 		createParticles();
 
-		// Clear existing timeout
 		if (animationTimeoutRef.current) {
 			clearTimeout(animationTimeoutRef.current);
 		}
 
-		// Reset color after animation
 		animationTimeoutRef.current = setTimeout(() => {
 			setIsAnimating(false);
 		}, 600);
 	}, [createParticles, createRing]);
 
-	// Auto-play effect
 	useEffect(() => {
 		if (!shouldAutoPlay) return;
 
@@ -173,7 +165,6 @@ export function AnimatedHeart({
 		return () => timeouts.forEach(clearTimeout);
 	}, [shouldAutoPlay, triggerAnimation, autoPlayDelayMs]);
 
-	// Cleanup animation timeout on unmount
 	useEffect(() => {
 		return () => {
 			if (animationTimeoutRef.current) {
@@ -182,7 +173,6 @@ export function AnimatedHeart({
 		};
 	}, []);
 
-	// Use pointer events for faster response than click
 	const handlePointerDown = useCallback(
 		(e: React.PointerEvent) => {
 			// Prevent text selection from double-click

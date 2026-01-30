@@ -14,7 +14,7 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
-import { SpotifyService } from "@/lib/integrations/spotify/service";
+import type { SpotifyService } from "@/lib/integrations/spotify/service";
 import type {
 	SpotifyPlaylistDTO,
 	SpotifyTrackDTO,
@@ -27,10 +27,6 @@ import type { SpotifyError } from "@/lib/shared/errors/external/spotify";
 import { SyncFailedError } from "@/lib/shared/errors/domain/sync";
 import type { Playlist, PlaylistSong } from "@/lib/data/playlists";
 import type { Song } from "@/lib/data/song";
-
-// ============================================================================
-// Zod Schemas (single source of truth)
-// ============================================================================
 
 /** Playlist change entry */
 export const PlaylistChangeEntrySchema = z.object({
@@ -93,10 +89,6 @@ export type PlaylistTrackSyncResult = z.infer<
 
 type PlaylistSyncFailedError = DbError | SpotifyError | SyncFailedError;
 
-// ============================================================================
-// Options
-// ============================================================================
-
 /** Options for syncPlaylists */
 export interface SyncPlaylistsOptions {
 	/** Pre-fetched playlists from discovery phase (skips API call) */
@@ -106,10 +98,6 @@ export interface SyncPlaylistsOptions {
 	/** Total discovered callback (called when total is known) */
 	onTotalDiscovered?: (total: number) => void;
 }
-
-// ============================================================================
-// Service
-// ============================================================================
 
 export class PlaylistSyncService {
 	constructor(private spotify: SpotifyService) {}
@@ -155,7 +143,6 @@ export class PlaylistSyncService {
 			spotifyPlaylists = spotifyPlaylistsResult.value;
 		}
 
-		// 2. Get existing playlists from database
 		const existingResult = await playlists.getPlaylists(accountId);
 		if (Result.isError(existingResult)) {
 			return Result.err(existingResult.error);
@@ -165,7 +152,6 @@ export class PlaylistSyncService {
 			existingPlaylists.map((p: Playlist) => [p.spotify_id, p]),
 		);
 
-		// 3. Determine changes
 		const spotifyIds = new Set(
 			spotifyPlaylists.map((p: SpotifyPlaylistDTO) => p.id),
 		);
@@ -188,7 +174,6 @@ export class PlaylistSyncService {
 			}
 		}
 
-		// 4. Apply creates and updates via upsert
 		const toUpsert = [...toCreate, ...toUpdate];
 		if (toUpsert.length > 0) {
 			const upsertData = toUpsert.map((sp: SpotifyPlaylistDTO) => ({
@@ -211,7 +196,6 @@ export class PlaylistSyncService {
 			}
 		}
 
-		// 5. Remove playlists no longer in Spotify
 		for (const playlist of toRemove) {
 			const deleteResult = await playlists.deletePlaylist(playlist.id);
 			if (Result.isError(deleteResult)) {
@@ -219,7 +203,6 @@ export class PlaylistSyncService {
 			}
 		}
 
-		// 6. Build result
 		const result: PlaylistSyncResult = {
 			total: spotifyPlaylists.length,
 			created: toCreate.length,
@@ -249,7 +232,6 @@ export class PlaylistSyncService {
 		accountId: string,
 		playlist: Playlist,
 	): Promise<Result<PlaylistTrackSyncResult, PlaylistSyncFailedError>> {
-		// 1. Fetch tracks from Spotify
 		const spotifyTracksResult = await this.spotify.getPlaylistTracks(
 			playlist.spotify_id,
 		);
@@ -267,7 +249,6 @@ export class PlaylistSyncService {
 		// Dedupe at boundary: Spotify allows duplicates, we keep first occurrence only
 		const spotifyTracks = dedupeTracksBySpotifyId(spotifyTracksResult.value);
 
-		// 2. Get existing playlist songs from database
 		const existingResult = await playlists.getPlaylistSongs(playlist.id);
 		if (Result.isError(existingResult)) {
 			return Result.err(existingResult.error);
@@ -277,7 +258,6 @@ export class PlaylistSyncService {
 			existingSongs.map((ps: PlaylistSong) => [ps.song_id, ps]),
 		);
 
-		// 3. Ensure all Spotify tracks exist as songs in database
 		const spotifyTrackData = spotifyTracks.map((t) => ({
 			spotify_id: t.track.id,
 			name: t.track.name,
@@ -303,7 +283,6 @@ export class PlaylistSyncService {
 			upsertedSongs.map((s: Song) => [s.spotify_id, s]),
 		);
 
-		// 4. Determine tracks to add/remove
 		const spotifyTrackIds = new Set(
 			spotifyTracks.map((t: SpotifyTrackDTO) => t.track.id),
 		);
@@ -347,7 +326,6 @@ export class PlaylistSyncService {
 			}
 		}
 
-		// 5. Apply changes (data already deduped at boundary via dedupeTracksBySpotifyId)
 		const upsertData = [
 			...toAdd.map((item) => ({
 				song_id: item.song.id,
@@ -381,7 +359,6 @@ export class PlaylistSyncService {
 			}
 		}
 
-		// 6. Build result
 		const result: PlaylistTrackSyncResult = {
 			playlistId: playlist.id,
 			playlistName: playlist.name,
@@ -405,7 +382,6 @@ export class PlaylistSyncService {
 		name: string,
 		description: string,
 	): Promise<Result<Playlist, PlaylistSyncFailedError>> {
-		// 1. Create on Spotify
 		const spotifyResult = await this.spotify.createPlaylist(name, description);
 
 		if (Result.isError(spotifyResult)) {
@@ -418,7 +394,6 @@ export class PlaylistSyncService {
 			);
 		}
 
-		// 2. Save to database
 		const playlistData = [
 			{
 				spotify_id: spotifyResult.value.id,
@@ -451,7 +426,6 @@ export class PlaylistSyncService {
 		name: string,
 		description: string,
 	): Promise<Result<void, PlaylistSyncFailedError>> {
-		// 1. Get playlist from database
 		const playlistResult = await playlists.getPlaylistById(playlistId);
 		if (Result.isError(playlistResult)) {
 			return Result.err(playlistResult.error);
@@ -468,7 +442,6 @@ export class PlaylistSyncService {
 		}
 		const dbPlaylist = playlistResult.value;
 
-		// 2. Update on Spotify
 		const spotifyResult = await this.spotify.updatePlaylist(
 			dbPlaylist.spotify_id,
 			name,
@@ -485,7 +458,6 @@ export class PlaylistSyncService {
 			);
 		}
 
-		// 3. Update in database
 		const updateResult = await playlists.upsertPlaylists(accountId, [
 			{
 				spotify_id: dbPlaylist.spotify_id,
@@ -504,10 +476,6 @@ export class PlaylistSyncService {
 
 		return Result.ok(undefined);
 	}
-
-	// ============================================================================
-	// Private Helpers
-	// ============================================================================
 
 	/**
 	 * Checks if a playlist needs to be updated based on Spotify data.

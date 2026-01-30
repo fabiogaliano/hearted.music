@@ -18,17 +18,13 @@ import type { LlmService } from "../../ml/llm/service";
 import * as songAnalysis from "@/lib/data/song-analysis";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
-	AnalysisFailedError,
+	type AnalysisFailedError,
 	NoLyricsAvailableError,
 } from "@/lib/shared/errors/domain/analysis";
-import { type LlmError } from "@/lib/shared/errors/external/llm";
+import type { LlmError } from "@/lib/shared/errors/external/llm";
 import type { SongAnalysis } from "@/lib/data/song-analysis";
 import type { AudioFeature } from "@/lib/data/song-audio-feature";
 import { getLyricsFormatLegend } from "../lyrics/utils/lyrics-formatter";
-
-// ============================================================================
-// Zod Schemas for Structured LLM Output
-// ============================================================================
 
 /** Theme identified in a song */
 const ThemeSchema = z.object({
@@ -140,10 +136,6 @@ export const SongAnalysisLlmSchema = z.object({
 });
 export type SongAnalysisLlm = z.infer<typeof SongAnalysisLlmSchema>;
 
-// ============================================================================
-// Types
-// ============================================================================
-
 /** Input for analyzing a single song */
 export interface AnalyzeSongInput {
 	songId: string;
@@ -178,10 +170,6 @@ type SongAnalysisServiceError =
 	| AnalysisFailedError
 	| NoLyricsAvailableError;
 
-// ============================================================================
-// Prompt Template
-// ============================================================================
-
 const SONG_ANALYSIS_PROMPT = `You are an expert music analyst. Analyze this song comprehensively using both lyrics and audio features.
 
 Artist: {artist}
@@ -208,10 +196,6 @@ IMPORTANT STYLE GUIDELINES:
 
 Provide your analysis as a structured JSON response.`;
 
-// ============================================================================
-// Service
-// ============================================================================
-
 export class SongAnalysisService {
 	constructor(private readonly llm: LlmService) {}
 
@@ -224,7 +208,6 @@ export class SongAnalysisService {
 	): Promise<Result<AnalyzeSongResult, SongAnalysisServiceError>> {
 		const { songId, artist, title, lyrics, audioFeatures } = input;
 
-		// 1. Check for existing analysis
 		const existingResult = await songAnalysis.get(songId);
 		if (Result.isError(existingResult)) {
 			return Result.err(existingResult.error);
@@ -237,15 +220,12 @@ export class SongAnalysisService {
 			});
 		}
 
-		// 2. Validate lyrics
 		if (!lyrics || lyrics.trim().length === 0) {
 			return Result.err(new NoLyricsAvailableError(songId, artist, title));
 		}
 
-		// 3. Build prompt
 		const prompt = this.buildPrompt(artist, title, lyrics, audioFeatures);
 
-		// 4. Call LLM
 		const llmResult = await this.llm.generateObject(
 			prompt,
 			SongAnalysisLlmSchema,
@@ -254,13 +234,11 @@ export class SongAnalysisService {
 			return Result.err(llmResult.error);
 		}
 
-		// 5. Build final analysis with audio features
 		const analysisData = this.buildAnalysisData(
 			llmResult.value.output,
 			audioFeatures,
 		);
 
-		// 6. Store in database
 		const storeResult = await songAnalysis.insert({
 			song_id: songId,
 			analysis: analysisData as songAnalysis.InsertData["analysis"],
@@ -317,10 +295,6 @@ export class SongAnalysisService {
 
 		return Result.ok({ succeeded, failed });
 	}
-
-	// ============================================================================
-	// Private Helpers
-	// ============================================================================
 
 	/**
 	 * Builds the analysis prompt from input data.

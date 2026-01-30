@@ -6,9 +6,9 @@
  */
 
 import { Result } from "better-result";
-import {
-	type SpotifyTrackDTO,
-	type SpotifyService,
+import type {
+	SpotifyTrackDTO,
+	SpotifyService,
 } from "../../integrations/spotify/service";
 import * as songs from "@/lib/data/song";
 import * as likedSongsData from "@/lib/data/liked-song";
@@ -206,9 +206,6 @@ export async function incrementalSync(
 /**
  * Runs a sync operation with job lifecycle management.
  * Handles job start, execution, and completion/failure.
- *
- * @param jobId - The job ID for progress tracking
- * @param syncFn - The sync operation to execute
  */
 export async function runPhase<T>(
 	jobId: string,

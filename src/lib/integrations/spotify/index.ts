@@ -15,7 +15,7 @@ import type { AuthToken } from "@/lib/data/auth-tokens";
 import { getTokenByAccountId, isTokenExpired } from "@/lib/data/auth-tokens";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
-	SpotifyApiError,
+	type SpotifyApiError,
 	SpotifyAuthError,
 } from "@/lib/shared/errors/external/spotify";
 import { refreshTokenWithCoordination } from "./client";

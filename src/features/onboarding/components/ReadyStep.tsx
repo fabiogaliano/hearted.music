@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { fonts } from "@/lib/theme/fonts";
 import { type ThemeConfig } from "@/lib/theme/types";
 import { markOnboardingComplete } from "@/lib/server/onboarding.server";
+import { useShortcut } from "@/lib/keyboard/useShortcut";
+import { Kbd } from "@/components/ui/kbd";
 
 interface ReadyStepProps {
 	theme: ThemeConfig;
@@ -31,6 +33,14 @@ export function ReadyStep({ theme, syncStats }: ReadyStepProps) {
 			setIsCompleting(false);
 		}
 	};
+
+	useShortcut({
+		key: "enter",
+		handler: handleStart,
+		description: "Start Exploring",
+		scope: "onboarding-ready",
+		enabled: !isCompleting,
+	});
 
 	return (
 		<div className="text-center">
@@ -92,8 +102,9 @@ export function ReadyStep({ theme, syncStats }: ReadyStepProps) {
 				type="button"
 				onClick={handleStart}
 				disabled={isCompleting}
-				className="group mt-20 inline-flex items-center gap-3"
+				className="group mt-20 inline-flex min-h-11 items-center gap-3 rounded outline-2 outline-offset-2 outline-transparent focus-visible:outline-(--focus-color)"
 				style={{
+					["--focus-color" as string]: theme.text,
 					fontFamily: fonts.body,
 					color: theme.text,
 					opacity: isCompleting ? 0.5 : 1,
@@ -109,6 +120,25 @@ export function ReadyStep({ theme, syncStats }: ReadyStepProps) {
 					→
 				</span>
 			</button>
+
+			<div className="mt-4 flex items-center justify-center gap-1.5">
+				<span
+					className="text-xs"
+					style={{ color: theme.textMuted, opacity: 0.6 }}
+				>
+					or press
+				</span>
+				<Kbd
+					style={{
+						color: theme.textMuted,
+						backgroundColor: `${theme.text}10`,
+						border: `1px solid ${theme.textMuted}30`,
+						boxShadow: `0 1px 0 ${theme.textMuted}20`,
+					}}
+				>
+					⏎
+				</Kbd>
+			</div>
 		</div>
 	);
 }

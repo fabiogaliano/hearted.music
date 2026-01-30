@@ -58,12 +58,12 @@ export class LyricsParser {
 		// Extract all lines with annotation info
 		const allLines: LineData[] = [];
 		for (const container of containers) {
-			const lines = this.extractLinesFromContainer(container);
+			const lines = LyricsParser.extractLinesFromContainer(container);
 			allLines.push(...lines);
 		}
 
 		// Parse into sections
-		return this.buildSections(allLines);
+		return LyricsParser.buildSections(allLines);
 	}
 
 	private static extractLinesFromContainer(container: Element): LineData[] {

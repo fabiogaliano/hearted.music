@@ -9,7 +9,7 @@
 import { useEffect, useEffectEvent, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { fonts } from "@/lib/theme/fonts";
-import { type ThemeConfig } from "@/lib/theme/types";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import { getLibrarySummary } from "@/lib/server/onboarding.server";
 
@@ -43,7 +43,6 @@ export function ConnectingStep({ theme }: ConnectingStepProps) {
 		handleFetchSummary();
 	});
 
-	// Fire-and-forget on mount — fetches immediately when user reaches this step
 	useEffect(() => {
 		onMount();
 	}, []);

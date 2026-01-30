@@ -1,4 +1,4 @@
-import { type ThemeConfig } from "@/lib/theme/types";
+import type { ThemeConfig } from "@/lib/theme/types";
 
 interface CDCaseProps {
 	/** Album art image URL (optional - shows placeholder if not provided) */
@@ -67,7 +67,6 @@ function CaseSVG({ theme }: { theme?: ThemeConfig }) {
 			className="pointer-events-none absolute inset-0 h-full w-full"
 			aria-hidden="true"
 		>
-			{/* Main Case Background */}
 			<rect
 				x="0"
 				y="0"
@@ -78,7 +77,6 @@ function CaseSVG({ theme }: { theme?: ThemeConfig }) {
 				fillOpacity="0.05"
 			/>
 
-			{/* Main Case Outline */}
 			<rect
 				x="0.5"
 				y="0.5"
@@ -90,7 +88,6 @@ function CaseSVG({ theme }: { theme?: ThemeConfig }) {
 				strokeWidth="2"
 			/>
 
-			{/* Spine Background */}
 			<rect
 				x="1"
 				y="1"
@@ -101,7 +98,6 @@ function CaseSVG({ theme }: { theme?: ThemeConfig }) {
 				fillOpacity="0.05"
 			/>
 
-			{/* Vertical Divider - spine edge */}
 			<line
 				x1="95"
 				y1="0"
@@ -112,7 +108,6 @@ function CaseSVG({ theme }: { theme?: ThemeConfig }) {
 				strokeWidth="2"
 			/>
 
-			{/* Hinge Ridges - Top cluster */}
 			{[0, 1, 2, 3, 4].map((i) => (
 				<line
 					key={`top-${i}`}
@@ -127,7 +122,6 @@ function CaseSVG({ theme }: { theme?: ThemeConfig }) {
 				/>
 			))}
 
-			{/* Hinge Ridges - Bottom cluster */}
 			{[0, 1, 2, 3, 4].map((i) => (
 				<line
 					key={`bot-${i}`}
@@ -142,7 +136,6 @@ function CaseSVG({ theme }: { theme?: ThemeConfig }) {
 				/>
 			))}
 
-			{/* Spine center accent line */}
 			<line
 				x1="48"
 				y1="60"
@@ -154,7 +147,6 @@ function CaseSVG({ theme }: { theme?: ThemeConfig }) {
 				strokeDasharray="2 8"
 			/>
 
-			{/* Inner glow on spine */}
 			<rect
 				x="4"
 				y="50"
@@ -165,7 +157,6 @@ function CaseSVG({ theme }: { theme?: ThemeConfig }) {
 				fillOpacity="0.03"
 			/>
 
-			{/* Cover Glass Glare - diagonal sweep */}
 			<path
 				d="M100 650 L280 10 H740 L560 650 H100 Z"
 				fill="white"
@@ -173,7 +164,6 @@ function CaseSVG({ theme }: { theme?: ThemeConfig }) {
 				style={{ mixBlendMode: "overlay" }}
 			/>
 
-			{/* Subtle highlight on top edge of cover */}
 			<line
 				x1="100"
 				y1="10"
@@ -184,7 +174,6 @@ function CaseSVG({ theme }: { theme?: ThemeConfig }) {
 				strokeWidth="1"
 			/>
 
-			{/* Corner accents - subtle catch light */}
 			<circle cx="108" cy="18" r="2" fill="white" fillOpacity="0.06" />
 			<circle cx="732" cy="18" r="2" fill="white" fillOpacity="0.04" />
 		</svg>
@@ -205,7 +194,6 @@ export function CDCase({
 			className={`relative ${className}`}
 			style={{ aspectRatio: `${CASE_WIDTH} / ${CASE_HEIGHT}` }}
 		>
-			{/* Album art - positioned within the transparent area */}
 			{src ? (
 				<img
 					src={src}
@@ -232,7 +220,6 @@ export function CDCase({
 				</div>
 			) : null}
 
-			{/* CD case frame overlay */}
 			<CaseSVG theme={theme} />
 		</div>
 	);

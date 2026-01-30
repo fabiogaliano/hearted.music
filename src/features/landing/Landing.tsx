@@ -17,17 +17,13 @@ import { useState } from "react";
 import { playlists, songs } from "@/lib/data/mock-data";
 import { useAlbumArt } from "@/lib/hooks/useAlbumArt";
 import { useArtistImage } from "@/lib/hooks/useArtistImage";
-import { type ThemeConfig } from "@/lib/theme/types";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
 import { MatchesSection } from "@/features/matching/components/MatchesSection";
 import { SongSection } from "@/features/matching/components/SongSection";
 import { LandingHero } from "./components/LandingHero";
 import { SpotifyLoginButton } from "./components/SpotifyLoginButton";
 import { WaitlistInput } from "./components/WaitlistInput";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
 
 interface LandingProps {
 	theme: ThemeConfig;
@@ -37,16 +33,11 @@ interface LandingProps {
 	isReleased?: boolean;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main Component
-// ─────────────────────────────────────────────────────────────────────────────
-
 export function Landing({
 	theme,
 	featuredSongIndex = 0,
 	isReleased = true,
 }: LandingProps) {
-	// Hero song selection state
 	const [selectedSongIndex, setSelectedSongIndex] = useState(featuredSongIndex);
 	const featuredSong = songs[selectedSongIndex] || songs[0];
 	const { getAlbumArt, isLoading } = useAlbumArt();
@@ -54,10 +45,9 @@ export function Landing({
 	const { artistImageUrl } = useArtistImage(featuredSong.spotifyTrackId);
 
 	// Preview song for Section 2 - separate state so it can cycle independently
-	const [previewSongIndex, setPreviewSongIndex] = useState(2); // Start with Frank Ocean
+	const [previewSongIndex, setPreviewSongIndex] = useState(2);
 	const previewSong = songs[previewSongIndex] || songs[0];
 
-	// Navigation handlers for hero
 	const handlePrev = () => {
 		setSelectedSongIndex(
 			selectedSongIndex > 0 ? selectedSongIndex - 1 : songs.length - 1,
@@ -69,7 +59,6 @@ export function Landing({
 		);
 	};
 
-	// Navigation handlers for Section 2 preview
 	const handlePreviewNext = () => {
 		setPreviewSongIndex(
 			previewSongIndex < songs.length - 1 ? previewSongIndex + 1 : 0,
@@ -86,9 +75,6 @@ export function Landing({
 			className="h-screen snap-y snap-proximity overflow-y-auto overscroll-none"
 			style={{ fontFamily: fonts.body, background: theme.bg }}
 		>
-			{/* ───────────────────────────────────────────────────────────────────
-			    SECTION 1: HERO (100vh) - Cinematic Morph Reveal
-			    ─────────────────────────────────────────────────────────────────── */}
 			<LandingHero
 				theme={theme}
 				featuredSong={featuredSong}
@@ -100,16 +86,11 @@ export function Landing({
 				isReleased={isReleased}
 			/>
 
-			{/* ───────────────────────────────────────────────────────────────────
-			    SECTION 2: MATCHING PROPOSITION (Full viewport height)
-			    Uses real matching UI components for 1:1 preview
-			    ─────────────────────────────────────────────────────────────────── */}
 			<section
 				className="flex min-h-screen snap-start snap-always items-center px-8 lg:px-16"
 				style={{ background: theme.surface }}
 			>
 				<div className="mx-auto w-full max-w-7xl py-16 lg:py-24">
-					{/* Section intro copy */}
 					<div className="mb-12 max-w-2xl">
 						<p className="mb-4 text-lg" style={{ color: theme.textMuted }}>
 							It found you. You kept it.
@@ -122,7 +103,7 @@ export function Landing({
 						</h3>
 					</div>
 
-					{/* UI Preview Container — clean frame for the matching interface */}
+					{/* UI Preview Container */}
 					<div
 						className="rounded-sm p-6 lg:p-8"
 						style={{
@@ -141,10 +122,10 @@ export function Landing({
 								isLoading={isLoading}
 							/>
 							<MatchesSection
-								playlists={playlists.slice(0, 3)} // Top 3 matches — fits without scroll
+								playlists={playlists.slice(0, 3)}
 								theme={theme}
-								addedTo={[]} // Fresh state for each song
-								onAdd={() => {}} // No-op for preview (would need more state to track)
+								addedTo={[]}
+								onAdd={() => {}}
 								onDiscard={handlePreviewDiscard}
 								onNext={handlePreviewNext}
 								isExpanded={false}
@@ -154,9 +135,6 @@ export function Landing({
 				</div>
 			</section>
 
-			{/* ───────────────────────────────────────────────────────────────────
-			    SECTION 3: SIMPLE CTA
-			    ─────────────────────────────────────────────────────────────────── */}
 			<section className="flex flex-col items-center justify-center px-8 py-24 lg:px-16 lg:py-32">
 				<p className="mb-4 text-lg" style={{ color: theme.textMuted }}>
 					Your songs have been trying to tell you something.
@@ -176,9 +154,6 @@ export function Landing({
 				</div>
 			</section>
 
-			{/* ───────────────────────────────────────────────────────────────────
-			    FOOTER
-			    ─────────────────────────────────────────────────────────────────── */}
 			<footer
 				className="px-8 py-8 text-center text-sm lg:px-16"
 				style={{

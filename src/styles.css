@@ -52,6 +52,11 @@ code {
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.871 0.006 286.286);
+
+    /* Kbd component theming - can be overridden by setting these on a parent element */
+  --kbd-text-color: var(--muted-foreground);
+  --kbd-bg-color: color-mix(in oklch, var(--foreground) 10%, transparent);
+  --kbd-border-color: color-mix(in oklch, var(--muted-foreground) 30%, transparent);
 }
 
 .dark {
@@ -134,5 +139,25 @@ code {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  /* Solid outline focus - for buttons and interactive elements */
+  .focus-outline-solid {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+  .focus-outline-solid:focus-visible {
+    outline-color: var(--focus-color, currentColor);
+  }
+
+  /* Dashed outline focus - for selectable items in lists/grids */
+  .focus-outline-dashed {
+    outline: 2px dashed transparent;
+    outline-offset: 2px;
+  }
+  .focus-outline-dashed:focus-visible {
+    outline-color: var(--focus-color, currentColor);
   }
 }

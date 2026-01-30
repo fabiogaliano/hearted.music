@@ -12,6 +12,7 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { Toaster } from "sonner";
 
+import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import {
 	HeartRippleBackground,
@@ -71,16 +72,19 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 });
 
 function RootComponent() {
-	return <Outlet />;
+	return (
+		<KeyboardShortcutProvider>
+			<Outlet />
+		</KeyboardShortcutProvider>
+	);
 }
 
 function NotFoundPage() {
-	const theme = themes.rose; // Default theme for 404
+	const theme = themes.rose;
 	const [isBackgroundReady, setIsBackgroundReady] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const heartRippleRef = useRef<HeartRippleHandle>(null);
 
-	// Pointer tracking for WebGL background
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
@@ -143,11 +147,9 @@ function NotFoundPage() {
 				/>
 			</div>
 
-			{/* Content */}
 			<div
 				className={`relative z-20 px-8 text-center transition-opacity duration-700 ${isBackgroundReady ? "opacity-100" : "opacity-0"}`}
 			>
-				{/* 404 number - editorial large */}
 				<p
 					className="text-[12rem] leading-none font-extralight tracking-tight md:text-[16rem]"
 					style={{
@@ -159,7 +161,6 @@ function NotFoundPage() {
 					404
 				</p>
 
-				{/* Headline */}
 				<h1
 					className="-mt-8 text-4xl leading-tight font-extralight md:text-5xl lg:text-6xl"
 					style={{
@@ -170,7 +171,6 @@ function NotFoundPage() {
 					this song got <span className="italic">lost</span>
 				</h1>
 
-				{/* Subtext */}
 				<p
 					className="mt-6 text-lg leading-relaxed lg:text-xl"
 					style={{
@@ -183,7 +183,6 @@ function NotFoundPage() {
 					Maybe it was never meant to be found.
 				</p>
 
-				{/* CTA */}
 				<Link
 					to="/"
 					className="group mt-10 inline-flex items-center gap-3"

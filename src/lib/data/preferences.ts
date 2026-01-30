@@ -16,11 +16,6 @@ import type { Enums, Tables } from "./database.types";
 import { z } from "zod";
 import type { PhaseJobIds } from "@/lib/jobs/progress/types";
 
-// ============================================================================
-// Type Exports
-// ============================================================================
-
-/** User preferences row type */
 export type UserPreferences = Tables<"user_preferences">;
 
 /**
@@ -30,10 +25,8 @@ export type UserPreferences = Tables<"user_preferences">;
  */
 export type UserThemePreference = Enums<"theme"> | null;
 
-/** Account ID validation schema */
 export const ACCOUNT_ID_SCHEMA = z.uuid();
 
-/** Onboarding steps enum */
 export const ONBOARDING_STEPS = z.enum([
 	"welcome",
 	"pick-color",
@@ -45,10 +38,6 @@ export const ONBOARDING_STEPS = z.enum([
 ]);
 
 export type OnboardingStep = z.infer<typeof ONBOARDING_STEPS>;
-
-// ============================================================================
-// Query Operations
-// ============================================================================
 
 /**
  * Gets preferences for an account.
@@ -83,10 +72,8 @@ export function getPreferences(
 export async function getOrCreatePreferences(
 	accountId: string,
 ): Promise<Result<UserPreferences, DbError>> {
-	// Try to get existing preferences first
 	const existing = await getPreferences(accountId);
 
-	// If found, return it
 	if (Result.isOk(existing) && existing.value !== null) {
 		return Result.ok(existing.value);
 	}
@@ -121,7 +108,6 @@ export async function getOnboardingStep(
 		return Result.err(result.error);
 	}
 
-	// Validate with Zod instead of type assertion
 	const stepValidation = ONBOARDING_STEPS.safeParse(
 		result.value?.onboarding_step,
 	);
@@ -133,9 +119,6 @@ export async function getOnboardingStep(
 	);
 }
 
-/**
- * Checks if onboarding is complete for an account.
- */
 export async function isOnboardingComplete(
 	accountId: string,
 ): Promise<Result<boolean, DbError>> {
@@ -148,18 +131,14 @@ export async function isOnboardingComplete(
 	return Result.ok(result.value?.onboarding_completed_at !== null);
 }
 
-// ============================================================================
-// Mutation Operations
-// ============================================================================
-
 /**
- * Updates the theme for an account to a user's explicit choice.
+ * Updates the theme for an account.
  * Creates a preferences record if one doesn't exist.
- * @param theme Must be a non-null theme color (user's explicit choice)
+ * @param theme Theme color, or null to clear (for reset/dev purposes)
  */
 export function updateTheme(
 	accountId: string,
-	theme: Enums<"theme">,
+	theme: Enums<"theme"> | null,
 ): Promise<Result<UserPreferences, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
@@ -177,10 +156,6 @@ export function updateTheme(
 	);
 }
 
-/**
- * Updates the onboarding step for an account.
- * Creates a preferences record if one doesn't exist.
- */
 export function updateOnboardingStep(
 	accountId: string,
 	step: OnboardingStep,
@@ -201,10 +176,6 @@ export function updateOnboardingStep(
 	);
 }
 
-/**
- * Marks onboarding as complete for an account.
- * Sets onboarding_completed_at to the current timestamp.
- */
 export function completeOnboarding(
 	accountId: string,
 ): Promise<Result<UserPreferences, DbError>> {
@@ -226,10 +197,6 @@ export function completeOnboarding(
 	);
 }
 
-/**
- * Resets onboarding for an account.
- * Sets onboarding_step to 'welcome' and clears onboarding_completed_at.
- */
 export function resetOnboarding(
 	accountId: string,
 ): Promise<Result<UserPreferences, DbError>> {
@@ -249,10 +216,6 @@ export function resetOnboarding(
 			.single(),
 	);
 }
-
-// ============================================================================
-// Phase Job ID Operations
-// ============================================================================
 
 /**
  * Updates the phase job IDs for an account.
@@ -291,10 +254,6 @@ export function clearPhaseJobIds(
 	);
 }
 
-/**
- * Gets the phase job IDs for an account.
- * Returns null if no active phase jobs are stored.
- */
 export async function getPhaseJobIds(
 	accountId: string,
 ): Promise<Result<PhaseJobIds | null, DbError>> {
@@ -308,7 +267,6 @@ export async function getPhaseJobIds(
 		return Result.ok(null);
 	}
 
-	// Validate the stored JSONB matches PhaseJobIds schema
 	const { PhaseJobIdsSchema } = await import("@/lib/jobs/progress/types");
 	const parsed = PhaseJobIdsSchema.safeParse(result.value.phase_job_ids);
 

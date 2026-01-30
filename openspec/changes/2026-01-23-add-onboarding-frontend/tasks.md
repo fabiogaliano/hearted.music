@@ -2,7 +2,7 @@
 
 Tasks ordered by dependency. Foundation first (theme, components), then route, then integration.
 
-**Status**: Phase 0-5 complete (MVP with real data), Phase 6-8 pending polish/testing
+**Status**: Phase 0-6.3.1 complete, only 6.3.2 (screen reader) and Phase 7-8 pending
 
 ---
 
@@ -187,28 +187,38 @@ All components in `src/features/onboarding/components/` (feature-based organizat
 
 ## 6. Polish & Accessibility
 
-### 6.1 Animations
+### 6.1 Animations ✅
 
-- [ ] 6.1.1 Add step transition animations
-  - Fade in/out between steps
-  - Consider CSS transitions or Framer Motion
+- [x] 6.1.1 Add step transition animations
+  - Framer Motion with AnimatePresence for enter/exit
+  - AnimatedStep wrapper: fade + subtle slide (250ms enter, 200ms exit)
+  - StaggeredContent for orchestrated child animations
+  - PickColorStep selection ring with spring animation
+  - StepIndicator dots animate width with layout prop
+  - Full prefers-reduced-motion support via useReducedMotion()
 
-### 6.2 Responsive Design
+### 6.2 Responsive Design ✅
 
 - [x] 6.2.1 Basic mobile layout working
   - Playlist grid uses responsive widths
   - Text scales appropriately
 
-- [ ] 6.2.2 Fine-tune mobile experience
-  - Touch-friendly tap targets
-  - Safe area insets
+- [x] 6.2.2 Fine-tune mobile experience
+  - Touch-friendly tap targets (44px minimum via min-h-11 min-w-11)
+  - Safe area insets via env(safe-area-inset-*) in StepContainer, FlagPlaylistsStep
+  - Responsive spacing (gap-4 on mobile, gap-8 on desktop)
 
 ### 6.3 Accessibility
 
-- [ ] 6.3.1 Keyboard navigation
-  - Tab through color options
-  - Enter to select
-  - Focus management between steps
+- [x] 6.3.1 Keyboard navigation
+  - Ported keyboard system from old_app to src/lib/keyboard/
+  - KeyboardShortcutProvider wrapped at app root
+  - h/l and ←/→ for PickColorStep (horizontal navigation)
+  - j/k and ↑/↓ for FlagPlaylistsStep (vertical navigation)
+  - Enter/Space to select/toggle
+  - Roving tabindex pattern (only focused item gets tabIndex=0)
+  - Visual focus indicators (ring + dashed border)
+  - Auto-scroll respects prefers-reduced-motion
 
 - [ ] 6.3.2 Screen reader support
   - ARIA labels on color options
@@ -263,7 +273,7 @@ Step Navigation (3.3) ✅       │
     ↓                         │
 Auth Integration (4) ✅ ───────┘
     ↓
-Polish (6) ⏳
+Polish (6) ✅
     ↓
 Testing (7) ⏳
 ```
@@ -280,7 +290,7 @@ Testing (7) ⏳
 | 3. Onboarding Route | ✅ Complete | All 6 steps in `src/features/onboarding/`   |
 | 4. Auth Integration | ✅ Complete | Two-phase redirect + authenticated layout   |
 | 5. Data Integration | ✅ Complete | All real data - server functions + SSE      |
-| 6. Polish           | ⏳ Pending  | Basic responsive done, animations pending   |
+| 6. Polish           | ✅ Complete | Animations, mobile, keyboard nav done       |
 | 7. Testing          | ⏳ Pending  | Typecheck passing                           |
 | 8. Documentation    | ⏳ Pending  |                                             |
 | Bonus: Landing      | ✅ Complete | Full landing page ported                    |
