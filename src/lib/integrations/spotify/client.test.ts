@@ -1,3 +1,4 @@
+import { Result } from "better-result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthToken } from "@/lib/data/auth-tokens";
 import { refreshTokenWithCoordination } from "./client";
@@ -46,11 +47,12 @@ describe("refreshTokenWithCoordination", () => {
 			token_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 		} as AuthToken;
 
-		authTokenMocks.upsertToken.mockResolvedValue(updatedToken);
+		authTokenMocks.upsertToken.mockResolvedValue(Result.ok(updatedToken));
 
 		const responsePayload = {
 			access_token: "new-access",
 			refresh_token: "new-refresh",
+			token_type: "Bearer",
 			expires_in: 3600,
 		};
 
@@ -73,8 +75,8 @@ describe("refreshTokenWithCoordination", () => {
 
 		const [firstResult, secondResult] = await Promise.all([first, second]);
 
-		expect(firstResult).toEqual(updatedToken);
-		expect(secondResult).toEqual(updatedToken);
+		expect(firstResult).toHaveOkValue(updatedToken);
+		expect(secondResult).toHaveOkValue(updatedToken);
 		expect(authTokenMocks.upsertToken).toHaveBeenCalledTimes(1);
 	});
 });
