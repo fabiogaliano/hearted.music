@@ -84,10 +84,7 @@ export function StaggeredContent({
 		>
 			{Children.map(children, (child, index) => (
 				// biome-ignore lint/suspicious/noArrayIndexKey: Static list of children without stable IDs
-				<motion.div
-					key={`stagger-${index}`}
-					variants={itemVariants}
-				>
+				<motion.div key={`stagger-${index}`} variants={itemVariants}>
 					{child}
 				</motion.div>
 			))}

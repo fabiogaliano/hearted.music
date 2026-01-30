@@ -40,7 +40,10 @@ function normalizeKeyString(key: string): string {
 }
 
 /** Maps human-friendly key names to actual event.key values */
-const KEY_ALIASES: Record<string, string | ((event: KeyboardEvent) => boolean)> = {
+const KEY_ALIASES: Record<
+	string,
+	string | ((event: KeyboardEvent) => boolean)
+> = {
 	escape: "escape",
 	enter: "enter",
 	space: (e) => e.key === " " || e.code === "Space",
@@ -51,7 +54,10 @@ const KEY_ALIASES: Record<string, string | ((event: KeyboardEvent) => boolean)> 
 };
 
 /** Checks if a keyboard event matches a shortcut key definition */
-function eventMatchesShortcut(event: KeyboardEvent, shortcutKey: string): boolean {
+function eventMatchesShortcut(
+	event: KeyboardEvent,
+	shortcutKey: string,
+): boolean {
 	const key = normalizeKeyString(shortcutKey);
 	const eventKey = event.key.toLowerCase();
 

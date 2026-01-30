@@ -7,7 +7,11 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@/test/utils/render";
-import { mockGoToStep, mockTheme, setupOnboardingNavigationMock } from "@/test/mocks";
+import {
+	mockGoToStep,
+	mockTheme,
+	setupOnboardingNavigationMock,
+} from "@/test/mocks";
 import { SyncingStep } from "../components/SyncingStep";
 import type { JobProgressState } from "@/lib/hooks/useJobProgress";
 import type { PhaseJobIds } from "@/lib/jobs/progress/types";
@@ -16,7 +20,9 @@ import type { LibrarySummary } from "@/lib/server/onboarding.server";
 const mockExecuteSync = vi.fn();
 const mockUseJobProgress = vi.fn<(jobId: string | null) => JobProgressState>();
 
-vi.mock("../hooks/useOnboardingNavigation", () => setupOnboardingNavigationMock());
+vi.mock("../hooks/useOnboardingNavigation", () =>
+	setupOnboardingNavigationMock(),
+);
 
 vi.mock("@/lib/server/onboarding.server", () => ({
 	executeSync: (args: unknown) => mockExecuteSync(args),
@@ -101,7 +107,12 @@ describe("SyncingStep", () => {
 				return createProgressWithCounts("playlists", 5, 10, "running");
 			}
 			if (jobId === "job-tracks-789") {
-				return createProgressWithCounts("playlist_tracks", 500, 1000, "running");
+				return createProgressWithCounts(
+					"playlist_tracks",
+					500,
+					1000,
+					"running",
+				);
 			}
 			return createJobProgressState();
 		});
