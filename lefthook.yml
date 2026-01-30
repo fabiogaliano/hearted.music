@@ -1,0 +1,10 @@
+# Lefthook configuration
+# Runs format check on pre-commit
+
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: "*.{ts,tsx,js,jsx,json,css,md}"
+      run: bun biome format --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
