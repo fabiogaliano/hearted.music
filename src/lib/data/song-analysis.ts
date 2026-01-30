@@ -6,7 +6,7 @@
  */
 
 import { Result } from "better-result";
-import type { DbError } from "@/lib/shared/errors/database";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseSingle,
@@ -92,6 +92,32 @@ export async function get(
 // ============================================================================
 // Mutation Operations
 // ============================================================================
+
+/**
+ * Counts distinct songs that have been analyzed for an account.
+ * Uses liked_song join to scope to account's songs.
+ */
+export async function getAnalyzedCount(
+	accountId: string,
+): Promise<Result<number, DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { count, error } = await supabase
+		.from("song_analysis")
+		.select("song_id, liked_song!inner(account_id)", {
+			count: "exact",
+			head: true,
+		})
+		.eq("liked_song.account_id", accountId);
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok(count ?? 0);
+}
 
 /**
  * Inserts a new song analysis record.

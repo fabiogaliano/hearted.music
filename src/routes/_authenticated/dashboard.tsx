@@ -3,49 +3,39 @@
  *
  * Entry point for logged-in users. Checks onboarding completion:
  * - Incomplete onboarding → redirect to /onboarding
- * - Complete → show dashboard
+ * - Complete → show dashboard shell with child routes
  *
  * Auth is handled by parent _authenticated layout.
  */
 
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { getOnboardingData } from "@/lib/server/onboarding.server";
-import { themes } from "@/lib/theme/colors";
-import { DEFAULT_THEME } from "@/lib/theme/types";
+import { getDashboardData } from "@/lib/server/dashboard.server";
+import { Dashboard } from "@/features/dashboard/Dashboard";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
 	beforeLoad: async () => {
-		const data = await getOnboardingData();
+		const onboardingData = await getOnboardingData();
 
-		if (!data.isComplete) {
+		if (!onboardingData.isComplete) {
 			throw redirect({
 				to: "/onboarding",
-				search: { step: data.currentStep },
+				search: { step: onboardingData.currentStep },
 			});
 		}
 
-		return { theme: data.theme };
+		const dashboardData = await getDashboardData();
+		return { dashboardData };
 	},
-	component: DashboardPage,
+	component: DashboardLayout,
 });
 
-function DashboardPage() {
-	const { theme: themeColor } = Route.useRouteContext();
-	const theme = themes[themeColor ?? DEFAULT_THEME];
+function DashboardLayout() {
+	const { dashboardData } = Route.useRouteContext();
 
 	return (
-		<div
-			className="relative min-h-screen"
-			style={{ background: theme.bg, color: theme.text }}
-		>
-			<div className="flex items-center justify-center min-h-screen">
-				<div className="text-center">
-					<h1 className="text-3xl font-semibold mb-2">Dashboard</h1>
-					<p style={{ color: theme.textMuted }}>
-						Your music sorting home - coming soon
-					</p>
-				</div>
-			</div>
-		</div>
+		<Dashboard data={dashboardData}>
+			<Outlet />
+		</Dashboard>
 	);
 }

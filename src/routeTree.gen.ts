@@ -17,7 +17,12 @@ import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authentic
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthSpotifyRouteRouteImport } from './routes/auth/spotify/route'
 import { Route as AuthSpotifyIndexRouteImport } from './routes/auth/spotify/index'
+import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthSpotifyCallbackRouteImport } from './routes/auth/spotify/callback'
+import { Route as AuthenticatedDashboardSettingsRouteImport } from './routes/_authenticated/dashboard/settings'
+import { Route as AuthenticatedDashboardPlaylistsRouteImport } from './routes/_authenticated/dashboard/playlists'
+import { Route as AuthenticatedDashboardMatchRouteImport } from './routes/_authenticated/dashboard/match'
+import { Route as AuthenticatedDashboardLikedRouteImport } from './routes/_authenticated/dashboard/liked'
 import { Route as ApiJobsIdProgressRouteImport } from './routes/api/jobs/$id/progress'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -60,11 +65,41 @@ const AuthSpotifyIndexRoute = AuthSpotifyIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthSpotifyRouteRoute,
 } as any)
+const AuthenticatedDashboardIndexRoute =
+  AuthenticatedDashboardIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
 const AuthSpotifyCallbackRoute = AuthSpotifyCallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
   getParentRoute: () => AuthSpotifyRouteRoute,
 } as any)
+const AuthenticatedDashboardSettingsRoute =
+  AuthenticatedDashboardSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardPlaylistsRoute =
+  AuthenticatedDashboardPlaylistsRouteImport.update({
+    id: '/playlists',
+    path: '/playlists',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardMatchRoute =
+  AuthenticatedDashboardMatchRouteImport.update({
+    id: '/match',
+    path: '/match',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardLikedRoute =
+  AuthenticatedDashboardLikedRouteImport.update({
+    id: '/liked',
+    path: '/liked',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
 const ApiJobsIdProgressRoute = ApiJobsIdProgressRouteImport.update({
   id: '/api/jobs/$id/progress',
   path: '/api/jobs/$id/progress',
@@ -74,21 +109,30 @@ const ApiJobsIdProgressRoute = ApiJobsIdProgressRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth/spotify': typeof AuthSpotifyRouteRouteWithChildren
-  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/dashboard/liked': typeof AuthenticatedDashboardLikedRoute
+  '/dashboard/match': typeof AuthenticatedDashboardMatchRoute
+  '/dashboard/playlists': typeof AuthenticatedDashboardPlaylistsRoute
+  '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/auth/spotify/callback': typeof AuthSpotifyCallbackRoute
+  '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/auth/spotify/': typeof AuthSpotifyIndexRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dashboard': typeof AuthenticatedDashboardRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/dashboard/liked': typeof AuthenticatedDashboardLikedRoute
+  '/dashboard/match': typeof AuthenticatedDashboardMatchRoute
+  '/dashboard/playlists': typeof AuthenticatedDashboardPlaylistsRoute
+  '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/auth/spotify/callback': typeof AuthSpotifyCallbackRoute
+  '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/auth/spotify': typeof AuthSpotifyIndexRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
@@ -97,11 +141,16 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth/spotify': typeof AuthSpotifyRouteRouteWithChildren
-  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/_authenticated/dashboard/liked': typeof AuthenticatedDashboardLikedRoute
+  '/_authenticated/dashboard/match': typeof AuthenticatedDashboardMatchRoute
+  '/_authenticated/dashboard/playlists': typeof AuthenticatedDashboardPlaylistsRoute
+  '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/auth/spotify/callback': typeof AuthSpotifyCallbackRoute
+  '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/auth/spotify/': typeof AuthSpotifyIndexRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
@@ -114,17 +163,26 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/api/artist-images-for-tracks'
     | '/auth/logout'
+    | '/dashboard/liked'
+    | '/dashboard/match'
+    | '/dashboard/playlists'
+    | '/dashboard/settings'
     | '/auth/spotify/callback'
+    | '/dashboard/'
     | '/auth/spotify/'
     | '/api/jobs/$id/progress'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/dashboard'
     | '/onboarding'
     | '/api/artist-images-for-tracks'
     | '/auth/logout'
+    | '/dashboard/liked'
+    | '/dashboard/match'
+    | '/dashboard/playlists'
+    | '/dashboard/settings'
     | '/auth/spotify/callback'
+    | '/dashboard'
     | '/auth/spotify'
     | '/api/jobs/$id/progress'
   id:
@@ -136,7 +194,12 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding'
     | '/api/artist-images-for-tracks'
     | '/auth/logout'
+    | '/_authenticated/dashboard/liked'
+    | '/_authenticated/dashboard/match'
+    | '/_authenticated/dashboard/playlists'
+    | '/_authenticated/dashboard/settings'
     | '/auth/spotify/callback'
+    | '/_authenticated/dashboard/'
     | '/auth/spotify/'
     | '/api/jobs/$id/progress'
   fileRoutesById: FileRoutesById
@@ -208,12 +271,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSpotifyIndexRouteImport
       parentRoute: typeof AuthSpotifyRouteRoute
     }
+    '/_authenticated/dashboard/': {
+      id: '/_authenticated/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
     '/auth/spotify/callback': {
       id: '/auth/spotify/callback'
       path: '/callback'
       fullPath: '/auth/spotify/callback'
       preLoaderRoute: typeof AuthSpotifyCallbackRouteImport
       parentRoute: typeof AuthSpotifyRouteRoute
+    }
+    '/_authenticated/dashboard/settings': {
+      id: '/_authenticated/dashboard/settings'
+      path: '/settings'
+      fullPath: '/dashboard/settings'
+      preLoaderRoute: typeof AuthenticatedDashboardSettingsRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/playlists': {
+      id: '/_authenticated/dashboard/playlists'
+      path: '/playlists'
+      fullPath: '/dashboard/playlists'
+      preLoaderRoute: typeof AuthenticatedDashboardPlaylistsRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/match': {
+      id: '/_authenticated/dashboard/match'
+      path: '/match'
+      fullPath: '/dashboard/match'
+      preLoaderRoute: typeof AuthenticatedDashboardMatchRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/liked': {
+      id: '/_authenticated/dashboard/liked'
+      path: '/liked'
+      fullPath: '/dashboard/liked'
+      preLoaderRoute: typeof AuthenticatedDashboardLikedRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
     }
     '/api/jobs/$id/progress': {
       id: '/api/jobs/$id/progress'
@@ -225,13 +323,35 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedDashboardRouteChildren {
+  AuthenticatedDashboardLikedRoute: typeof AuthenticatedDashboardLikedRoute
+  AuthenticatedDashboardMatchRoute: typeof AuthenticatedDashboardMatchRoute
+  AuthenticatedDashboardPlaylistsRoute: typeof AuthenticatedDashboardPlaylistsRoute
+  AuthenticatedDashboardSettingsRoute: typeof AuthenticatedDashboardSettingsRoute
+  AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
+}
+
+const AuthenticatedDashboardRouteChildren: AuthenticatedDashboardRouteChildren =
+  {
+    AuthenticatedDashboardLikedRoute: AuthenticatedDashboardLikedRoute,
+    AuthenticatedDashboardMatchRoute: AuthenticatedDashboardMatchRoute,
+    AuthenticatedDashboardPlaylistsRoute: AuthenticatedDashboardPlaylistsRoute,
+    AuthenticatedDashboardSettingsRoute: AuthenticatedDashboardSettingsRoute,
+    AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
+  }
+
+const AuthenticatedDashboardRouteWithChildren =
+  AuthenticatedDashboardRoute._addFileChildren(
+    AuthenticatedDashboardRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRouteWithChildren
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRouteWithChildren,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
 }
 
