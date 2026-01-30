@@ -1,5 +1,9 @@
 # Change: Add Onboarding Frontend (Phase 7a)
 
+**Status**: ✅ Implemented (2026-01-30)
+
+Acceptance criteria 1-8 complete. Remaining: 9 (screen reader ARIA labels).
+
 ## Why
 
 The backend infrastructure is complete (auth, sync, analysis, SSE progress), but users have no way to experience the app. The onboarding flow is the **first user-facing feature** that will:
