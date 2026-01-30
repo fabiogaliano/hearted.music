@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
-import { type ThemeConfig } from "@/lib/theme/types";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
 
 export interface ThemesListProps {

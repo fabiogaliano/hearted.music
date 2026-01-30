@@ -10,7 +10,7 @@
  * - light: For light backgrounds (uses theme.primary bg)
  * - dark: For dark/gradient backgrounds (uses light bg for contrast)
  */
-import { type ThemeConfig } from "@/lib/theme/types";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
 
 export interface SpotifyLoginButtonProps {

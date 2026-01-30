@@ -1,8 +1,5 @@
-import { type ThemeConfig } from "@/lib/theme/types";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
-
-// TODO: Wire up waitlist submission to Supabase waitlist table
-// Currently visual placeholder only
 
 export interface WaitlistInputProps {
 	theme: ThemeConfig;

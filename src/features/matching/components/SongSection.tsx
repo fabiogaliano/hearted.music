@@ -1,7 +1,6 @@
-import { Song } from "@/lib/data/mock-data";
-import { ThemeConfig } from "@/lib/theme/types";
+import type { Song } from "@/lib/data/mock-data";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
-import { CDCase } from "@/components/ui/CDCase";
 
 const COLLAPSED_ALBUM_SIZE_PX = "400px";
 const EXPANDED_ALBUM_SIZE_PX = "240px";
@@ -25,7 +24,6 @@ export function SongSection({
 }: SongSectionProps) {
 	return (
 		<div className={isExpanded ? "flex items-start gap-6" : ""}>
-			{/* Album art in CD case - shrinks when details shown */}
 			<div
 				className="relative shrink-0 origin-top transition-[width,max-width] duration-500 ease-in-out"
 				style={{
@@ -41,15 +39,14 @@ export function SongSection({
 						style={{ background: theme.surface }}
 					/>
 				) : (
-					<CDCase
+					<img
 						src={albumArtUrl}
 						alt={song.album}
-						className="w-full transition-all duration-500 ease-in-out"
+						className="aspect-square w-full object-cover transition-all duration-500 ease-in-out"
 					/>
 				)}
 			</div>
 
-			{/* Song details */}
 			<div
 				className={`transition-[opacity,transform,margin-top] ease-in-out ${isExpanded ? "mt-0 min-w-0 flex-1" : "mt-6"}`}
 				style={{

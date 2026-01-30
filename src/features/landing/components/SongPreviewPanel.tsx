@@ -1,5 +1,5 @@
-import { songs } from "@/lib/data/mock-data";
-import { type ThemeConfig } from "@/lib/theme/types";
+import type { songs } from "@/lib/data/mock-data";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
 import { extractHue } from "@/lib/utils/color";
 import { ThemesList } from "./ThemesList";
@@ -118,7 +118,6 @@ export function SongPreviewPanel({
 					/>
 				)}
 
-				{/* Top bar: Genre tag */}
 				<div
 					className="absolute top-4"
 					style={{ left: `${PANEL_LAYOUT.paddingX}px` }}
@@ -202,7 +201,6 @@ export function SongPreviewPanel({
 				</div>
 			</div>
 
-			{/* Content below hero */}
 			<div
 				className="px-5 pt-12 pb-8"
 				style={{
@@ -210,7 +208,6 @@ export function SongPreviewPanel({
 					paddingRight: `${PANEL_LAYOUT.paddingX}px`,
 				}}
 			>
-				{/* Mood description */}
 				{song.keyLines[0] && (
 					<p
 						className="max-w-md text-sm leading-relaxed italic"
@@ -220,7 +217,6 @@ export function SongPreviewPanel({
 					</p>
 				)}
 
-				{/* Themes with hover */}
 				<div className="mt-8">
 					<ThemesList themes={song.themes} theme={theme} />
 				</div>

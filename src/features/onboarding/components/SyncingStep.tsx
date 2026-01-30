@@ -6,7 +6,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { fonts } from "@/lib/theme/fonts";
-import { type ThemeConfig } from "@/lib/theme/types";
+import type { ThemeConfig } from "@/lib/theme/types";
 import {
 	useJobProgress,
 	type JobProgressState,
@@ -31,9 +31,6 @@ import type { PhaseJobIds } from "@/lib/jobs/progress/types";
  *
  * Key insight: We know totals upfront, so we can predict when sync will finish
  * based on batch arrival rate and adjust velocity accordingly.
- *
- * @param target - The actual progress from batch updates (0-100)
- * @param isComplete - Whether sync has finished
  */
 function useSmoothProgress(target: number, isComplete: boolean): number {
 	// Algorithm tuning constants

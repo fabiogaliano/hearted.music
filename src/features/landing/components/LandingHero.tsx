@@ -5,8 +5,8 @@ import {
 	type HeartRippleHandle,
 } from "@/components/ui/HeartRippleBackground";
 import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
-import { songs } from "@/lib/data/mock-data";
-import { type ThemeConfig } from "@/lib/theme/types";
+import type { songs } from "@/lib/data/mock-data";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
 import { extractHue, getPastelColor } from "@/lib/utils/color";
 import { AnimatedHeart } from "./AnimatedHeart";
@@ -38,13 +38,11 @@ export function LandingHero({
 	onNext,
 	isReleased = true,
 }: LandingHeroProps) {
-	// Background ready state - controls WebGL fade-in and animation start
 	const [isBackgroundReady, setIsBackgroundReady] = useState(false);
 
 	// Track when scroll reaches reveal point (for CTA/subtext animations)
 	const [hasRevealed, setHasRevealed] = useState(false);
 
-	// Refs for GSAP animation targets
 	const sectionRef = useRef<HTMLElement>(null);
 	const pinnedContentRef = useRef<HTMLDivElement>(null);
 	const heartRippleRef = useRef<HeartRippleHandle>(null);
@@ -127,7 +125,6 @@ export function LandingHero({
 
 	return (
 		<>
-			{/* Base styles (non-scroll-timeline) */}
 			<style>{heroStyles}</style>
 
 			{/* ───────────────────────────────────────────────────────────────────
@@ -158,11 +155,9 @@ export function LandingHero({
 							ref={backgroundInnerRef}
 							className="hero-background-inner absolute inset-0"
 						>
-							{/* Static background (always visible initially) */}
 							<div className="absolute inset-0 z-0">
 								<HeartRipplePlaceholder theme={theme} />
 							</div>
-							{/* WebGL background (fades in when ready) */}
 							<div
 								className={`absolute inset-0 z-10 transition-opacity duration-1000 ${isBackgroundReady ? "opacity-100" : "opacity-0"}`}
 							>
@@ -175,7 +170,6 @@ export function LandingHero({
 						</div>
 					</div>
 
-					{/* Grid layout for final state (left copy, right panel) */}
 					<div className="pointer-events-none relative z-10 grid min-h-screen lg:grid-cols-2">
 						{/* Left: Copy column - elements morph from center to here */}
 						<div
@@ -209,7 +203,6 @@ export function LandingHero({
 								</button>
 							</nav>
 
-							{/* Main content container */}
 							<div className="pointer-events-none max-w-lg">
 								<h2
 									ref={headlineRef}

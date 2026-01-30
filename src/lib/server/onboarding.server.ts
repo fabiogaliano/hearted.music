@@ -70,7 +70,6 @@ export interface OnboardingData {
 	syncStats: SyncStats;
 }
 
-// Validators
 const themeInputSchema = z.object({
 	theme: themeSchema,
 });
@@ -94,7 +93,6 @@ export const getOnboardingData = createServerFn({ method: "GET" }).handler(
 		const request = getRequest();
 		const session = requireSession(request);
 
-		// Load all data in parallel (including counts for ready step)
 		const [
 			prefsResult,
 			playlistsResult,
@@ -109,7 +107,6 @@ export const getOnboardingData = createServerFn({ method: "GET" }).handler(
 			getPlaylistCount(session.accountId),
 		]);
 
-		// Check for errors and throw as OnboardingError
 		if (Result.isError(prefsResult)) {
 			throw new OnboardingError("load_preferences", prefsResult.error);
 		}
@@ -129,7 +126,6 @@ export const getOnboardingData = createServerFn({ method: "GET" }).handler(
 			);
 		}
 
-		// Transform playlists to frontend-friendly format
 		const playlists = playlistsResult.value.map((p) => ({
 			id: p.id,
 			name: p.name,
@@ -144,7 +140,6 @@ export const getOnboardingData = createServerFn({ method: "GET" }).handler(
 			prefsResult.value.onboarding_step,
 		);
 
-		// Parse phaseJobIds from JSONB (validate structure)
 		const phaseJobIdsParse = PhaseJobIdsSchema.safeParse(
 			prefsResult.value.phase_job_ids,
 		);
@@ -240,7 +235,6 @@ export const getLibrarySummary = createServerFn({ method: "POST" }).handler(
 		const request = getRequest();
 		const session = requireSession(request);
 
-		// Get SpotifyService for this user
 		const spotifyResult = await getSpotifyService(session.accountId);
 		if (Result.isError(spotifyResult)) {
 			throw new OnboardingError(
@@ -249,7 +243,6 @@ export const getLibrarySummary = createServerFn({ method: "POST" }).handler(
 			);
 		}
 
-		// Create orchestrator and run discovery
 		const orchestrator = new SyncOrchestrator(spotifyResult.value);
 		const discoveryResult = await orchestrator.getLibrarySummary(
 			session.accountId,
@@ -287,7 +280,6 @@ export const executeSync = createServerFn({ method: "POST" })
 		const request = getRequest();
 		const session = requireSession(request);
 
-		// Fetch all 3 jobs in parallel
 		const jobEntries = Object.entries(data.phaseJobIds) as [string, string][];
 		const jobResults = await Promise.all(
 			jobEntries.map(async ([phase, jobId]) => ({
@@ -297,7 +289,6 @@ export const executeSync = createServerFn({ method: "POST" })
 			})),
 		);
 
-		// Validate ownership and collect job statuses
 		const jobs: {
 			phase: string;
 			job: NonNullable<
@@ -343,7 +334,6 @@ export const executeSync = createServerFn({ method: "POST" })
 			return { success: true };
 		}
 
-		// Get SpotifyService for this user
 		const spotifyResult = await getSpotifyService(session.accountId);
 		if (Result.isError(spotifyResult)) {
 			throw new OnboardingError(
@@ -352,7 +342,6 @@ export const executeSync = createServerFn({ method: "POST" })
 			);
 		}
 
-		// Create orchestrator and execute sync with pre-discovered data
 		const orchestrator = new SyncOrchestrator(spotifyResult.value);
 		const syncResult = await orchestrator.execute(
 			session.accountId,
@@ -367,7 +356,6 @@ export const executeSync = createServerFn({ method: "POST" })
 		return { success: true };
 	});
 
-// Onboarding Step Tracking
 /**
  * Saves the current onboarding step for resumability.
  * Clears phaseJobIds when transitioning past syncing step.
@@ -427,23 +415,19 @@ export const savePlaylistDestinations = createServerFn({ method: "POST" })
 		const request = getRequest();
 		const session = requireSession(request);
 
-		// Get all user's playlists
 		const playlistsResult = await getPlaylists(session.accountId);
 
 		if (Result.isError(playlistsResult)) {
 			throw new OnboardingError("get_playlists", playlistsResult.error);
 		}
 
-		// Update each playlist's destination status
 		const updates = playlistsResult.value.map((playlist) => {
 			const shouldBeDestination = data.playlistIds.includes(playlist.id);
 			return setPlaylistDestination(playlist.id, shouldBeDestination);
 		});
 
-		// Execute all updates in parallel
 		const results = await Promise.all(updates);
 
-		// Check for any errors
 		const firstError = results.find(Result.isError);
 		if (firstError) {
 			throw new OnboardingError(

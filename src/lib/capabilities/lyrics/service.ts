@@ -18,10 +18,10 @@ import {
 	type GeniusError,
 } from "@/lib/shared/errors/external/genius";
 
-import {
-	type ResponseHitsResult,
-	type ResponseReferents,
-	type SearchResponse,
+import type {
+	ResponseHitsResult,
+	ResponseReferents,
+	SearchResponse,
 } from "./types/genius.types";
 import { LyricsParser } from "./utils/lyrics-parser";
 import {
@@ -35,15 +35,11 @@ import {
 	generateQueryVariants,
 } from "./utils/search-strategy";
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export interface LyricsServiceConfig {
 	accessToken: string;
 }
 
-export { type TransformedLyricsBySection } from "./utils/lyrics-transformer";
+export type { TransformedLyricsBySection } from "./utils/lyrics-transformer";
 
 // Re-export errors for consumers
 export {
@@ -53,10 +49,6 @@ export {
 	GeniusConfigError,
 	type GeniusError,
 };
-
-// ============================================================================
-// Service
-// ============================================================================
 
 export class LyricsService {
 	private readonly baseUrl = "https://api.genius.com";
@@ -269,10 +261,6 @@ export class LyricsService {
 		}
 	}
 }
-
-// ============================================================================
-// Factory
-// ============================================================================
 
 /**
  * Creates a LyricsService with token from environment.

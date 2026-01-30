@@ -17,7 +17,7 @@ import { Result } from "better-result";
 import { env } from "@/env";
 import {
 	MLConfigError,
-	MLProviderUnavailableError,
+	type MLProviderUnavailableError,
 } from "@/lib/shared/errors/domain/ml";
 import type { MLProvider } from "./ports";
 import type { ProviderName } from "./types";

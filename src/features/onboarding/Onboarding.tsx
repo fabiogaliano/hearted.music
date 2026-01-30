@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import { useLocation } from "@tanstack/react-router";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { themes } from "@/lib/theme/colors";
 import {
 	type ThemeConfig,
@@ -12,7 +13,11 @@ import {
 	DEFAULT_THEME,
 } from "@/lib/theme/types";
 import { ONBOARDING_STEPS, type OnboardingStep } from "@/lib/data/preferences";
-import { type OnboardingData } from "@/lib/server/onboarding.server";
+import type {
+	OnboardingData,
+	LibrarySummary,
+} from "@/lib/server/onboarding.server";
+import type { PhaseJobIds } from "@/lib/jobs/progress/types";
 import { WelcomeStep } from "./components/WelcomeStep";
 import { PickColorStep } from "./components/PickColorStep";
 import { ConnectingStep } from "./components/ConnectingStep";
@@ -20,6 +25,7 @@ import { SyncingStep } from "./components/SyncingStep";
 import { FlagPlaylistsStep } from "./components/FlagPlaylistsStep";
 import { ReadyStep } from "./components/ReadyStep";
 import { StepContainer } from "./components/StepContainer";
+import { AnimatedStep } from "./components/AnimatedStep";
 import "./types"; // Import to ensure HistoryState augmentation is loaded
 
 interface OnboardingProps {
@@ -27,14 +33,67 @@ interface OnboardingProps {
 	data: OnboardingData;
 }
 
-/** Steps that show in the progress indicator (excludes transient steps) */
-const TRANSIENT_STEPS = new Set<OnboardingStep>([
-	"connecting",
-	"syncing",
-	"complete",
-]);
+interface StepContext {
+	theme: ThemeConfig;
+	localTheme: ThemeColor;
+	setLocalTheme: (theme: ThemeColor) => void;
+	phaseJobIds: PhaseJobIds | null;
+	librarySummary: LibrarySummary | null;
+	playlists: OnboardingData["playlists"];
+	syncStats: OnboardingData["syncStats"];
+}
+
+interface StepConfig {
+	render: (ctx: StepContext) => React.ReactNode;
+	fullBleed?: boolean;
+	hideIndicator?: boolean;
+}
+
+const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
+	welcome: {
+		render: (ctx) => <WelcomeStep theme={ctx.theme} />,
+	},
+	"pick-color": {
+		render: (ctx) => (
+			<PickColorStep
+				theme={ctx.theme}
+				currentTheme={ctx.localTheme}
+				setTheme={ctx.setLocalTheme}
+			/>
+		),
+	},
+	connecting: {
+		render: (ctx) => <ConnectingStep theme={ctx.theme} />,
+		hideIndicator: true,
+	},
+	syncing: {
+		render: (ctx) => (
+			<SyncingStep
+				theme={ctx.theme}
+				phaseJobIds={ctx.phaseJobIds}
+				librarySummary={ctx.librarySummary}
+			/>
+		),
+		hideIndicator: true,
+	},
+	"flag-playlists": {
+		render: (ctx) => (
+			<FlagPlaylistsStep theme={ctx.theme} playlists={ctx.playlists} />
+		),
+		fullBleed: true,
+	},
+	ready: {
+		render: (ctx) => <ReadyStep theme={ctx.theme} syncStats={ctx.syncStats} />,
+	},
+	complete: {
+		render: () => null, // Handled by redirect
+		hideIndicator: true,
+	},
+};
+
+/** Steps that show in the progress indicator */
 const INDICATOR_STEPS = ONBOARDING_STEPS.options.filter(
-	(s) => !TRANSIENT_STEPS.has(s),
+	(s) => !STEP_CONFIG[s].hideIndicator,
 );
 
 export function Onboarding({ step, data }: OnboardingProps) {
@@ -46,40 +105,38 @@ export function Onboarding({ step, data }: OnboardingProps) {
 
 	const phaseJobIds = location.state?.phaseJobIds ?? data.phaseJobIds;
 	const librarySummary = location.state?.librarySummary ?? null;
-	const { syncStats } = data;
 
-	// Check if this step needs full-bleed layout
-	const fullBleed = step === "flag-playlists";
+	const stepContext: StepContext = {
+		theme,
+		localTheme,
+		setLocalTheme,
+		phaseJobIds,
+		librarySummary,
+		playlists: data.playlists,
+		syncStats: data.syncStats,
+	};
+
+	const config = STEP_CONFIG[step];
 
 	return (
-		<StepContainer theme={theme} fullBleed={fullBleed}>
-			{step === "welcome" && <WelcomeStep theme={theme} />}
-			{step === "pick-color" && (
-				<PickColorStep
-					theme={theme}
-					currentTheme={localTheme}
-					setTheme={setLocalTheme}
-				/>
-			)}
-			{step === "connecting" && <ConnectingStep theme={theme} />}
-			{step === "syncing" && (
-				<SyncingStep
-					theme={theme}
-					phaseJobIds={phaseJobIds}
-					librarySummary={librarySummary}
-				/>
-			)}
-			{step === "flag-playlists" && (
-				<FlagPlaylistsStep theme={theme} playlists={data.playlists} />
-			)}
-			{step === "ready" && <ReadyStep theme={theme} syncStats={syncStats} />}
+		<StepContainer theme={theme} fullBleed={config.fullBleed}>
+			<AnimatePresence mode="wait">
+				<AnimatedStep stepKey={step}>{config.render(stepContext)}</AnimatedStep>
+			</AnimatePresence>
 
-			{step !== "connecting" && step !== "syncing" && (
+			{!config.hideIndicator && (
 				<StepIndicator currentStep={step} theme={theme} />
 			)}
 		</StepContainer>
 	);
 }
+
+/** Editorial tween for indicator - deliberate, no bounce */
+const indicatorTransition = {
+	type: "tween" as const,
+	duration: 0.3,
+	ease: [0.25, 0.1, 0.25, 1] as const, // ease-out-quart: elegant deceleration
+};
 
 function StepIndicator({
 	currentStep,
@@ -89,13 +146,16 @@ function StepIndicator({
 	theme: ThemeConfig;
 }) {
 	const stepIndex = INDICATOR_STEPS.indexOf(currentStep);
+	const shouldReduceMotion = useReducedMotion();
 
 	return (
 		<div className="mt-20 flex justify-center gap-3">
 			{INDICATOR_STEPS.map((s, i) => (
-				<div
+				<motion.div
 					key={s}
-					className="h-1.5 rounded-full transition-all"
+					layout={!shouldReduceMotion}
+					transition={shouldReduceMotion ? undefined : indicatorTransition}
+					className="h-1.5 rounded-full"
 					style={{
 						width: currentStep === s ? "2rem" : "0.375rem",
 						background: stepIndex >= i ? theme.text : theme.border,

@@ -5,10 +5,6 @@
 import { Result } from "better-result";
 import { NetworkError } from "@/lib/shared/errors/external/network";
 
-// ============================================================================
-// Retry Utilities
-// ============================================================================
-
 export interface RetryOptions<E> {
 	/** Maximum retry attempts (default: 2) */
 	maxRetries?: number;
@@ -61,7 +57,7 @@ export async function withRetry<T, E>(
 			return result;
 		}
 
-		const delay = Math.min(baseDelayMs * Math.pow(2, attempt - 1), maxDelayMs);
+		const delay = Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
 		await sleep(delay);
 	}
 

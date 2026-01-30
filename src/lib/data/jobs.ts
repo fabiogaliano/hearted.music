@@ -5,7 +5,7 @@
  * Returns Result<T, DbError> for composable error handling.
  */
 
-import { Result } from "better-result";
+import type { Result } from "better-result";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
@@ -18,10 +18,6 @@ import {
 	type JobProgress as JobProgressType,
 	JobProgressSchema as JobProgressSchemaImpl,
 } from "@/lib/jobs/progress/types";
-
-// ============================================================================
-// Type Exports
-// ============================================================================
 
 /** Job row type */
 export type Job = Tables<"job">;
@@ -38,10 +34,6 @@ export type JobStatus = Enums<"job_status">;
 // Re-export JobProgress from SSE types (single source of truth)
 export type JobProgress = JobProgressType;
 export const JobProgressSchema = JobProgressSchemaImpl;
-
-// ============================================================================
-// Job Query Operations
-// ============================================================================
 
 /**
  * Gets a job by its UUID.
@@ -120,10 +112,6 @@ export function getJobs(
 
 	return fromSupabaseMany(query);
 }
-
-// ============================================================================
-// Job Mutation Operations
-// ============================================================================
 
 /**
  * Creates a new job for an account in 'pending' status.

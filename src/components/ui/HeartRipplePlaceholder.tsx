@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { type ThemeConfig } from "@/lib/theme/types";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { getThemeHue } from "@/lib/theme/colors";
 import { generatePalette, vec3ToRgbString } from "@/lib/utils/palette";
 
