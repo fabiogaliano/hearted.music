@@ -889,7 +889,10 @@ export type Database = {
 			[_ in never]: never;
 		};
 		Functions: {
-			[_ in never]: never;
+			count_analyzed_songs_for_account: {
+				Args: { p_account_id: string };
+				Returns: number;
+			};
 		};
 		Enums: {
 			item_type: "song" | "playlist";

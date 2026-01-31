@@ -13,7 +13,11 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as ApiArtistImagesForTracksRouteImport } from './routes/api/artist-images-for-tracks'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedPlaylistsRouteImport } from './routes/_authenticated/playlists'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedMatchRouteImport } from './routes/_authenticated/match'
+import { Route as AuthenticatedLikedSongsRouteImport } from './routes/_authenticated/liked-songs'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthSpotifyRouteRouteImport } from './routes/auth/spotify/route'
 import { Route as AuthSpotifyIndexRouteImport } from './routes/auth/spotify/index'
@@ -40,9 +44,29 @@ const ApiArtistImagesForTracksRoute =
     path: '/api/artist-images-for-tracks',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPlaylistsRoute = AuthenticatedPlaylistsRouteImport.update({
+  id: '/playlists',
+  path: '/playlists',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMatchRoute = AuthenticatedMatchRouteImport.update({
+  id: '/match',
+  path: '/match',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLikedSongsRoute = AuthenticatedLikedSongsRouteImport.update({
+  id: '/liked-songs',
+  path: '/liked-songs',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -75,7 +99,11 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth/spotify': typeof AuthSpotifyRouteRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/liked-songs': typeof AuthenticatedLikedSongsRoute
+  '/match': typeof AuthenticatedMatchRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/playlists': typeof AuthenticatedPlaylistsRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/spotify/callback': typeof AuthSpotifyCallbackRoute
@@ -85,7 +113,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/liked-songs': typeof AuthenticatedLikedSongsRoute
+  '/match': typeof AuthenticatedMatchRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/playlists': typeof AuthenticatedPlaylistsRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/spotify/callback': typeof AuthSpotifyCallbackRoute
@@ -98,7 +130,11 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth/spotify': typeof AuthSpotifyRouteRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/liked-songs': typeof AuthenticatedLikedSongsRoute
+  '/_authenticated/match': typeof AuthenticatedMatchRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/_authenticated/playlists': typeof AuthenticatedPlaylistsRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/spotify/callback': typeof AuthSpotifyCallbackRoute
@@ -111,7 +147,11 @@ export interface FileRouteTypes {
     | '/'
     | '/auth/spotify'
     | '/dashboard'
+    | '/liked-songs'
+    | '/match'
     | '/onboarding'
+    | '/playlists'
+    | '/settings'
     | '/api/artist-images-for-tracks'
     | '/auth/logout'
     | '/auth/spotify/callback'
@@ -121,7 +161,11 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard'
+    | '/liked-songs'
+    | '/match'
     | '/onboarding'
+    | '/playlists'
+    | '/settings'
     | '/api/artist-images-for-tracks'
     | '/auth/logout'
     | '/auth/spotify/callback'
@@ -133,7 +177,11 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth/spotify'
     | '/_authenticated/dashboard'
+    | '/_authenticated/liked-songs'
+    | '/_authenticated/match'
     | '/_authenticated/onboarding'
+    | '/_authenticated/playlists'
+    | '/_authenticated/settings'
     | '/api/artist-images-for-tracks'
     | '/auth/logout'
     | '/auth/spotify/callback'
@@ -180,11 +228,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiArtistImagesForTracksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/playlists': {
+      id: '/_authenticated/playlists'
+      path: '/playlists'
+      fullPath: '/playlists'
+      preLoaderRoute: typeof AuthenticatedPlaylistsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/onboarding': {
       id: '/_authenticated/onboarding'
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/match': {
+      id: '/_authenticated/match'
+      path: '/match'
+      fullPath: '/match'
+      preLoaderRoute: typeof AuthenticatedMatchRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/liked-songs': {
+      id: '/_authenticated/liked-songs'
+      path: '/liked-songs'
+      fullPath: '/liked-songs'
+      preLoaderRoute: typeof AuthenticatedLikedSongsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -227,12 +303,20 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedLikedSongsRoute: typeof AuthenticatedLikedSongsRoute
+  AuthenticatedMatchRoute: typeof AuthenticatedMatchRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
+  AuthenticatedPlaylistsRoute: typeof AuthenticatedPlaylistsRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedLikedSongsRoute: AuthenticatedLikedSongsRoute,
+  AuthenticatedMatchRoute: AuthenticatedMatchRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
+  AuthenticatedPlaylistsRoute: AuthenticatedPlaylistsRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

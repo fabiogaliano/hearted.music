@@ -1,51 +1,63 @@
-/**
- * /dashboard - Authenticated app home
- *
- * Entry point for logged-in users. Checks onboarding completion:
- * - Incomplete onboarding → redirect to /onboarding
- * - Complete → show dashboard
- *
- * Auth is handled by parent _authenticated layout.
- */
-
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { getOnboardingData } from "@/lib/server/onboarding.server";
-import { themes } from "@/lib/theme/colors";
+import { createFileRoute } from "@tanstack/react-router";
+import { Dashboard } from "@/features/dashboard/Dashboard";
+import {
+	getDashboardStats,
+	getRecentActivity,
+} from "@/lib/server/dashboard.server";
+import { formatRelativeTime } from "@/lib/shared/utils/format-time";
+import { getTheme } from "@/lib/theme/useTheme";
 import { DEFAULT_THEME } from "@/lib/theme/types";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-	beforeLoad: async () => {
-		const data = await getOnboardingData();
-
-		if (!data.isComplete) {
-			throw redirect({
-				to: "/onboarding",
-				search: { step: data.currentStep },
-			});
-		}
-
-		return { theme: data.theme };
+	loader: async () => {
+		const [stats, recentActivity] = await Promise.all([
+			getDashboardStats(),
+			getRecentActivity(),
+		]);
+		return { stats, recentActivity };
 	},
-	component: DashboardPage,
+	component: DashboardHome,
 });
 
-function DashboardPage() {
-	const { theme: themeColor } = Route.useRouteContext();
-	const theme = themes[themeColor ?? DEFAULT_THEME];
+function DashboardHome() {
+	const { theme: themeColor, account } = Route.useRouteContext();
+	const { stats, recentActivity } = Route.useLoaderData();
+	const theme = getTheme(themeColor ?? DEFAULT_THEME);
+	const displayName = account?.display_name ?? account?.email ?? null;
+
+	const lastSyncText = stats.lastSyncAt
+		? formatRelativeTime(stats.lastSyncAt)
+		: "Never";
+
+	const mockMatchPreviews = [
+		{
+			id: 1,
+			image: "https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36",
+		},
+		{
+			id: 2,
+			image: "https://i.scdn.co/image/ab67616d0000b273bd26ede1ae69327010d49946",
+		},
+		{
+			id: 3,
+			image: "https://i.scdn.co/image/ab67616d0000b273712701c5e263efc8726b1464",
+		},
+	];
 
 	return (
-		<div
-			className="relative min-h-screen"
-			style={{ background: theme.bg, color: theme.text }}
-		>
-			<div className="flex items-center justify-center min-h-screen">
-				<div className="text-center">
-					<h1 className="text-3xl font-semibold mb-2">Dashboard</h1>
-					<p style={{ color: theme.textMuted }}>
-						Your music sorting home - coming soon
-					</p>
-				</div>
-			</div>
-		</div>
+		<Dashboard
+			theme={theme}
+			displayName={displayName}
+			stats={{
+				totalSongs: stats.totalSongs,
+				analyzedPercent: stats.analyzedPercent,
+				matchedCount: 421,
+				playlistCount: 4,
+				reviewCount: 5,
+			}}
+			lastSyncText={lastSyncText}
+			matchPreviews={mockMatchPreviews}
+			recentActivity={recentActivity}
+		/>
 	);
 }

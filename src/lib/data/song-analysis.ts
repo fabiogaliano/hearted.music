@@ -6,7 +6,7 @@
  */
 
 import { Result } from "better-result";
-import type { DbError } from "@/lib/shared/errors/database";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseSingle,
@@ -115,4 +115,32 @@ export function insert(
 			.select()
 			.single(),
 	);
+}
+
+/**
+ * Counts how many of a user's liked songs have analysis records.
+ * Used for "X% analyzed" stat on dashboard.
+ *
+ * Uses RPC function to perform the count in a single query with JOIN,
+ * avoiding large IN clauses for users with many liked songs.
+ */
+export async function getAnalyzedCountForAccount(
+	accountId: string,
+): Promise<Result<number, DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase.rpc(
+		"count_analyzed_songs_for_account",
+		{
+			p_account_id: accountId,
+		},
+	);
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok(data ?? 0);
 }

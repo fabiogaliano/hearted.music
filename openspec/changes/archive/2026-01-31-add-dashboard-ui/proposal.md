@@ -19,7 +19,7 @@ We have a production-ready prototype in `old_app/prototypes/warm-pastel/dashboar
 WarmPastelDashboard (dashboard.tsx)
 ├── KeyboardShortcutProvider
 ├── Sidebar (264px, sticky)
-│   ├── Logo ("sorted.music")
+│   ├── Logo ("hearted.")
 │   ├── NavItems (Home, Match Songs[badge], Liked Songs, Playlists, Settings)
 │   └── UserSection (name, plan)
 ├── Main Content (flex-1, px-12 py-8)
@@ -29,13 +29,13 @@ WarmPastelDashboard (dashboard.tsx)
 
 ### Views
 
-| View | Component | Key Sub-Components |
-|------|-----------|-------------------|
-| `home` | `Home` | HomeHeader, NewSongsCTA, MatchingPlaylistsSection, ActivityFeed |
-| `sort` | `Matching` | *(out of scope - Phase 7b.3)* |
-| `liked` | `LikedSongsPage` | *(out of scope - separate change)* |
-| `playlists` | `Playlists` | ActivePlaylistsPanel, PlaylistLibrary, PlaylistDetailView |
-| `settings` | `SettingsPage` | Account, Connected Services, Appearance, Sorting Preferences, Data |
+| View        | Component        | Key Sub-Components                                                 |
+| ----------- | ---------------- | ------------------------------------------------------------------ |
+| `home`      | `Home`           | HomeHeader, NewSongsCTA, MatchingPlaylistsSection, ActivityFeed    |
+| `sort`      | `Matching`       | *(out of scope - Phase 7b.3)*                                      |
+| `liked`     | `LikedSongsPage` | *(out of scope - separate change)*                                 |
+| `playlists` | `Playlists`      | ActivePlaylistsPanel, PlaylistLibrary, PlaylistDetailView          |
+| `settings`  | `SettingsPage`   | Account, Connected Services, Appearance, Sorting Preferences, Data |
 
 ### Home View Deep-Dive
 
@@ -92,22 +92,22 @@ interface RecentActivityItem {
 
 ### State Management
 
-| State | Location | Usage |
-|-------|----------|-------|
-| `activeView` | URL search param | Which view to render |
-| `color` | URL search param → theme | Theme color selection |
-| `userPlaylists` | useState | Playlist list with flagged toggle |
-| `selectedSongSlug` | URL search param | Deep link to specific song |
-| `isHelpOpen` | KeyboardShortcutProvider | Shortcuts modal visibility |
+| State              | Location                 | Usage                             |
+| ------------------ | ------------------------ | --------------------------------- |
+| `activeView`       | URL search param         | Which view to render              |
+| `color`            | URL search param → theme | Theme color selection             |
+| `userPlaylists`    | useState                 | Playlist list with flagged toggle |
+| `selectedSongSlug` | URL search param         | Deep link to specific song        |
+| `isHelpOpen`       | KeyboardShortcutProvider | Shortcuts modal visibility        |
 
 ### Keyboard Shortcuts
 
-| Key | Scope | Description |
-|-----|-------|-------------|
-| `?` | global | Toggle shortcuts help modal |
-| `j` / `k` | list views | Navigate up/down in lists |
-| `Enter` | list views | Select focused item |
-| `Escape` | modal | Close modal |
+| Key       | Scope      | Description                 |
+| --------- | ---------- | --------------------------- |
+| `?`       | global     | Toggle shortcuts help modal |
+| `j` / `k` | list views | Navigate up/down in lists   |
+| `Enter`   | list views | Select focused item         |
+| `Escape`  | modal      | Close modal                 |
 
 **Note**: The prototype uses scope-based priority (modal > detail > list > global).
 
@@ -115,37 +115,37 @@ interface RecentActivityItem {
 
 ### New Files
 
-| Target Location | Source | Lines |
-|-----------------|--------|-------|
-| `src/features/dashboard/Dashboard.tsx` | Port from `dashboard.tsx` | ~150 |
-| `src/features/dashboard/components/Sidebar.tsx` | Extract from `dashboard.tsx` | ~80 |
-| `src/features/dashboard/components/NavItem.tsx` | New | ~40 |
-| `src/features/dashboard/views/HomeView.tsx` | Port from `features/home/Home.tsx` | ~50 |
-| `src/features/dashboard/components/HomeHeader.tsx` | Port from `sections/HomeHeader.tsx` | ~70 |
-| `src/features/dashboard/components/NewSongsCTA.tsx` | Port from `sections/NewSongsCTA.tsx` | ~60 |
-| `src/features/dashboard/components/MatchingPlaylistsSection.tsx` | Port from `sections/MatchingPlaylistsSection.tsx` | ~70 |
-| `src/features/dashboard/components/ActivityFeed.tsx` | Port from `components/ActivityFeed.tsx` | ~45 |
-| `src/features/dashboard/components/ActivityItem.tsx` | Port from `components/ActivityItem.tsx` | ~65 |
-| `src/features/dashboard/components/FanSpreadAlbumArt.tsx` | Port from `components/FanSpreadAlbumArt.tsx` | ~50 |
-| `src/features/dashboard/hooks/useFanSpreadComposition.ts` | Port from `hooks/useFanSpreadComposition.ts` | ~30 |
-| `src/lib/server/dashboard.server.ts` | New | ~80 |
+| Target Location                                                  | Source                                            | Lines |
+| ---------------------------------------------------------------- | ------------------------------------------------- | ----- |
+| `src/features/dashboard/Dashboard.tsx`                           | Port from `dashboard.tsx`                         | ~150  |
+| `src/features/dashboard/components/Sidebar.tsx`                  | Extract from `dashboard.tsx`                      | ~80   |
+| `src/features/dashboard/components/NavItem.tsx`                  | New                                               | ~40   |
+| `src/features/dashboard/views/HomeView.tsx`                      | Port from `features/home/Home.tsx`                | ~50   |
+| `src/features/dashboard/components/HomeHeader.tsx`               | Port from `sections/HomeHeader.tsx`               | ~70   |
+| `src/features/dashboard/components/NewSongsCTA.tsx`              | Port from `sections/NewSongsCTA.tsx`              | ~60   |
+| `src/features/dashboard/components/MatchingPlaylistsSection.tsx` | Port from `sections/MatchingPlaylistsSection.tsx` | ~70   |
+| `src/features/dashboard/components/ActivityFeed.tsx`             | Port from `components/ActivityFeed.tsx`           | ~45   |
+| `src/features/dashboard/components/ActivityItem.tsx`             | Port from `components/ActivityItem.tsx`           | ~65   |
+| `src/features/dashboard/components/FanSpreadAlbumArt.tsx`        | Port from `components/FanSpreadAlbumArt.tsx`      | ~50   |
+| `src/features/dashboard/hooks/useFanSpreadComposition.ts`        | Port from `hooks/useFanSpreadComposition.ts`      | ~30   |
+| `src/lib/server/dashboard.server.ts`                             | New                                               | ~80   |
 
 ### Modified Files
 
-| File | Changes |
-|------|---------|
+| File                                      | Changes                            |
+| ----------------------------------------- | ---------------------------------- |
 | `src/routes/_authenticated/dashboard.tsx` | Add loader, render Dashboard shell |
 
 ### Existing Integration Points
 
-| File | Integration |
-|------|-------------|
-| `src/routes/_authenticated/route.tsx` | Auth guard (exists) |
-| `src/lib/data/liked-song.ts` | `getCount()`, `getPending()` |
-| `src/lib/data/playlists.ts` | `getPlaylistCount()`, `getDestinationPlaylists()` |
-| `src/lib/data/matching.ts` | `getLatestMatchContext()`, match stats |
-| `src/lib/theme/colors.ts` | Theme system (exists, same as prototype) |
-| `src/lib/theme/types.ts` | ThemeColor, ThemeConfig types (exists) |
+| File                                  | Integration                                       |
+| ------------------------------------- | ------------------------------------------------- |
+| `src/routes/_authenticated/route.tsx` | Auth guard (exists)                               |
+| `src/lib/data/liked-song.ts`          | `getCount()`, `getPending()`                      |
+| `src/lib/data/playlists.ts`           | `getPlaylistCount()`, `getDestinationPlaylists()` |
+| `src/lib/data/matching.ts`            | `getLatestMatchContext()`, match stats            |
+| `src/lib/theme/colors.ts`             | Theme system (exists, same as prototype)          |
+| `src/lib/theme/types.ts`              | ThemeColor, ThemeConfig types (exists)            |
 
 ## Architecture
 
@@ -231,6 +231,32 @@ Theme is selected during onboarding and stored in `preference` table.
 - Settings view (Phase 7b.5)
 - Mobile bottom nav (can be added in polish)
 - Sync button functionality (requires Spotify API integration)
+
+## Implementation Status
+
+**Status**: ✅ Core Complete (polish deferred)
+
+### Completed
+- Dashboard shell with Sidebar + NavItem
+- Home view: DashboardHeader, MatchReviewCTA, FanSpreadAlbumArt, ActivityFeed, ActivityItem
+- Server functions with parallel data loading
+- Types with discriminated union for ActivityItem
+- Empty states for CTA and ActivityFeed
+
+### Deferred
+- **MatchingPlaylistsSection** → Phase 7b.4 (Playlists view)
+- **Keyboard shortcuts** → Future polish
+- **Loading states / Skeletons** → Future polish
+- **Error boundary** → Future polish
+- **Mobile responsive** → Future polish
+
+### Design Adjustments
+- `HomeView.tsx` merged into `Dashboard.tsx` (simpler)
+- `useFanSpreadComposition.ts` inlined as `getComposition()` function
+- Sidebar/NavItem placed in `routes/_authenticated/-components/` (TanStack Router convention)
+- Added RPC migration for efficient analyzed count query
+
+See `tasks.md` for detailed task completion status.
 
 ## References
 

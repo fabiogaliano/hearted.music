@@ -15,10 +15,6 @@ import { createAdminSupabaseClient } from "./client";
 import type { Tables, TablesInsert } from "./database.types";
 import type { ActionType } from "./newness";
 
-// ============================================================================
-// Type Exports
-// ============================================================================
-
 /** Liked song row type */
 export type LikedSong = Tables<"liked_song">;
 
@@ -31,9 +27,17 @@ export type UpsertData = Pick<
 	"song_id" | "liked_at"
 >;
 
-// ============================================================================
-// Query Operations
-// ============================================================================
+/** Liked song with joined song details for activity feed */
+export interface LikedSongWithDetails {
+	id: string;
+	liked_at: string;
+	song: {
+		id: string;
+		name: string;
+		artists: string[];
+		image_url: string | null;
+	};
+}
 
 /**
  * Gets all liked songs for an account.
@@ -72,6 +76,49 @@ export async function getCount(
 	}
 
 	return Result.ok(count ?? 0);
+}
+
+/**
+ * Gets recent liked songs with song details for activity feed.
+ * Uses Supabase foreign key join to fetch song name, artists, and image.
+ */
+export async function getRecentWithDetails(
+	accountId: string,
+	limit = 10,
+): Promise<Result<LikedSongWithDetails[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase
+		.from("liked_song")
+		.select(
+			`
+			id,
+			liked_at,
+			song:song_id (
+				id,
+				name,
+				artists,
+				image_url
+			)
+		`,
+		)
+		.eq("account_id", accountId)
+		.is("unliked_at", null)
+		.order("liked_at", { ascending: false })
+		.limit(limit);
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	// Supabase returns song as object or null; filter out nulls and cast
+	const filtered = (data ?? []).filter(
+		(row): row is LikedSongWithDetails => row.song !== null,
+	);
+
+	return Result.ok(filtered);
 }
 
 /**
@@ -122,10 +169,6 @@ export async function getPending(
 
 	return Result.ok(pending);
 }
-
-// ============================================================================
-// Mutation Operations
-// ============================================================================
 
 /**
  * Creates or updates liked songs for an account.
