@@ -10,13 +10,13 @@
  */
 
 import { Result } from "better-result";
-import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
 import { getMlProvider } from "@/lib/ml/provider/factory";
+import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
 import {
-	EXTRACTOR_VERSION,
 	EMBEDDING_SCHEMA_VERSION,
-	PLAYLIST_PROFILE_VERSION,
+	EXTRACTOR_VERSION,
 	MATCHING_ALGO_VERSION,
+	PLAYLIST_PROFILE_VERSION,
 } from "./versioning";
 
 // ─────────────────────────────────────────────────────────────────────────────

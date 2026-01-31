@@ -25,11 +25,11 @@
  * dependency: profile computation for song-to-playlist matching.
  */
 
-import { beforeAll, describe, expect, test } from "vitest";
 import { Result } from "better-result";
-import { PlaylistProfilingService } from "../service";
-import { EmbeddingService } from "@/lib/ml/embedding/service";
+import { beforeAll, describe, expect, test } from "vitest";
 import type { Song } from "@/lib/data/song";
+import { EmbeddingService } from "@/lib/ml/embedding/service";
+import { PlaylistProfilingService } from "../service";
 import type { ComputedPlaylistProfile } from "../types";
 
 // ─────────────────────────────────────────────────────────────

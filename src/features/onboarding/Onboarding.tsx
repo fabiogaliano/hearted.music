@@ -3,29 +3,29 @@
  * Routes between steps and manages shared state (theme).
  */
 
-import { useState } from "react";
 import { useLocation } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useState } from "react";
+import { ONBOARDING_STEPS, type OnboardingStep } from "@/lib/data/preferences";
+import type { PhaseJobIds } from "@/lib/jobs/progress/types";
+import type {
+	LibrarySummary,
+	OnboardingData,
+} from "@/lib/server/onboarding.server";
 import { themes } from "@/lib/theme/colors";
 import {
-	type ThemeConfig,
-	type ThemeColor,
 	DEFAULT_THEME,
+	type ThemeColor,
+	type ThemeConfig,
 } from "@/lib/theme/types";
-import { ONBOARDING_STEPS, type OnboardingStep } from "@/lib/data/preferences";
-import type {
-	OnboardingData,
-	LibrarySummary,
-} from "@/lib/server/onboarding.server";
-import type { PhaseJobIds } from "@/lib/jobs/progress/types";
-import { WelcomeStep } from "./components/WelcomeStep";
-import { PickColorStep } from "./components/PickColorStep";
+import { AnimatedStep } from "./components/AnimatedStep";
 import { ConnectingStep } from "./components/ConnectingStep";
-import { SyncingStep } from "./components/SyncingStep";
 import { FlagPlaylistsStep } from "./components/FlagPlaylistsStep";
+import { PickColorStep } from "./components/PickColorStep";
 import { ReadyStep } from "./components/ReadyStep";
 import { StepContainer } from "./components/StepContainer";
-import { AnimatedStep } from "./components/AnimatedStep";
+import { SyncingStep } from "./components/SyncingStep";
+import { WelcomeStep } from "./components/WelcomeStep";
 import "./types"; // Import to ensure HistoryState augmentation is loaded
 
 interface OnboardingProps {

@@ -14,9 +14,9 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { getOnboardingData } from "@/lib/server/onboarding.server";
-import { ONBOARDING_STEPS } from "@/lib/data/preferences";
 import { Onboarding } from "@/features/onboarding/Onboarding";
+import { ONBOARDING_STEPS } from "@/lib/data/preferences";
+import { getOnboardingData } from "@/lib/server/onboarding.server";
 
 /**
  * Search params schema - URL is the source of truth for navigation

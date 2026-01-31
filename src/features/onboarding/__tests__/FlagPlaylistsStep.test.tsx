@@ -6,7 +6,11 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@/test/utils/render";
+import {
+	ONBOARDING_PLAYLISTS,
+	PLAYLISTS,
+	toOnboardingPlaylist,
+} from "@/test/fixtures";
 import {
 	mockGoToStep,
 	mockTheme,
@@ -15,11 +19,7 @@ import {
 	setupOnboardingNavigationMock,
 	setupShortcutMock,
 } from "@/test/mocks";
-import {
-	ONBOARDING_PLAYLISTS,
-	toOnboardingPlaylist,
-	PLAYLISTS,
-} from "@/test/fixtures";
+import { render, screen, waitFor } from "@/test/utils/render";
 import { FlagPlaylistsStep } from "../components/FlagPlaylistsStep";
 
 const mockSavePlaylistDestinations = vi.fn();

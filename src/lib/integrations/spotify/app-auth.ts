@@ -10,8 +10,8 @@ import { z } from "zod";
 import { env } from "@/env";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import {
-	SpotifyAuthError,
 	SpotifyApiError,
+	SpotifyAuthError,
 } from "@/lib/shared/errors/external/spotify";
 
 const SPOTIFY_API_BASE = "https://api.spotify.com/v1";

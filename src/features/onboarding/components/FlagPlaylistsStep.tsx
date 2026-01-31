@@ -6,21 +6,21 @@
  * Playlists stack in max 3 rows, extending horizontally in columns.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "@tanstack/react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useListNavigation } from "@/lib/keyboard/useListNavigation";
-import { useShortcut } from "@/lib/keyboard/useShortcut";
-import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
-import {
-	savePlaylistDestinations,
-	type OnboardingPlaylist,
-} from "@/lib/server/onboarding.server";
-import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
-import { useFlagPlaylistsScroll } from "../hooks/useFlagPlaylistsScroll";
 import { CDCase } from "@/components/ui/CDCase";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { useListNavigation } from "@/lib/keyboard/useListNavigation";
+import { useShortcut } from "@/lib/keyboard/useShortcut";
+import {
+	type OnboardingPlaylist,
+	savePlaylistDestinations,
+} from "@/lib/server/onboarding.server";
+import { fonts } from "@/lib/theme/fonts";
+import type { ThemeConfig } from "@/lib/theme/types";
+import { useFlagPlaylistsScroll } from "../hooks/useFlagPlaylistsScroll";
+import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import "../types"; // Ensure HistoryState augmentation is loaded
 
 interface FlagPlaylistsStepProps {

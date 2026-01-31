@@ -6,13 +6,13 @@
  */
 
 import type { Result } from "better-result";
-import { createAdminSupabaseClient } from "./client";
-import type { Tables, TablesInsert } from "./database.types";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
+import { createAdminSupabaseClient } from "./client";
+import type { Tables, TablesInsert } from "./database.types";
 
 /** Account row type */
 export type Account = Tables<"account">;

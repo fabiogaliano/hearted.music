@@ -5,12 +5,12 @@
  * Prefixes hashes with type and version for traceability.
  */
 
+import type { ModelBundle } from "./model-bundle";
 import {
 	EXTRACTOR_VERSION,
 	MATCHING_ALGO_VERSION,
 	PLAYLIST_PROFILE_VERSION,
 } from "./versioning";
-import type { ModelBundle } from "./model-bundle";
 
 // ============================================================================
 // Core Primitives

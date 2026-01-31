@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import { type Enums, Constants } from "@/lib/data/database.types";
+import { Constants, type Enums } from "@/lib/data/database.types";
 
 // ============================================================================
 // Types (derived from database enum)

@@ -12,16 +12,16 @@
  * - Result<T, Error> for composable error handling
  */
 
-import { Result } from "better-result";
-import { generateObject, generateText } from "ai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
+import { generateObject, generateText } from "ai";
+import { Result } from "better-result";
 import { z } from "zod";
 import {
+	type LlmError,
 	LlmProviderError,
 	LlmRateLimitError,
-	type LlmError,
 } from "@/lib/shared/errors/external/llm";
 
 // ============================================================================

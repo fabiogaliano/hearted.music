@@ -5,9 +5,9 @@
  * focused unit testing without service orchestration complexity.
  */
 
+import type { Song } from "@/lib/data/song";
 import type * as songAnalysisData from "@/lib/data/song-analysis";
 import type * as audioFeatureData from "@/lib/data/song-audio-feature";
-import type { Song } from "@/lib/data/song";
 import type {
 	AudioCentroid,
 	EmotionDistribution,

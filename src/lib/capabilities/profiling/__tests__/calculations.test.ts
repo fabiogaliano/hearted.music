@@ -3,15 +3,15 @@
  */
 
 import { describe, expect, it } from "vitest";
-import {
-	calculateCentroid,
-	calculateAudioCentroid,
-	computeGenreDistribution,
-	computeEmotionDistribution,
-} from "../calculations";
 import type { Song } from "@/lib/data/song";
 import type { SongAnalysis } from "@/lib/data/song-analysis";
 import type { AudioFeature } from "@/lib/data/song-audio-feature";
+import {
+	calculateAudioCentroid,
+	calculateCentroid,
+	computeEmotionDistribution,
+	computeGenreDistribution,
+} from "../calculations";
 
 // ============================================================================
 // Test Helpers

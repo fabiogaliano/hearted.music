@@ -6,13 +6,13 @@
  */
 
 import { describe, expect, it } from "vitest";
+import type { ResponseHitsResult } from "../types/genius.types";
 import {
+	extractCollaborators,
+	findBestMatch,
 	generateQueryVariants,
 	scoreResult,
-	findBestMatch,
-	extractCollaborators,
 } from "../utils/search-strategy";
-import type { ResponseHitsResult } from "../types/genius.types";
 
 // ============================================================================
 // Query Variant Generation

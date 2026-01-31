@@ -1,5 +1,5 @@
-import type { ThemeConfig } from "@/lib/theme/types";
 import { vi } from "vitest";
+import type { ThemeConfig } from "@/lib/theme/types";
 
 export const mockGoToStep = vi.fn();
 

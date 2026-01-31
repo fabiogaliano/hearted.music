@@ -6,15 +6,15 @@ import {
 } from "@/components/ui/HeartRippleBackground";
 import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
 import type { songs } from "@/lib/data/mock-data";
-import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { extractHue, getPastelColor } from "@/lib/utils/color";
 import { AnimatedHeart } from "./AnimatedHeart";
+import { heroStyles } from "./heroStyles";
 import { SongPreviewPanel } from "./SongPreviewPanel";
 import { SpotifyLoginButton } from "./SpotifyLoginButton";
-import { WaitlistInput } from "./WaitlistInput";
-import { heroStyles } from "./heroStyles";
 import { useHeroAnimation } from "./useHeroAnimation";
+import { WaitlistInput } from "./WaitlistInput";
 
 export interface LandingHeroProps {
 	theme: ThemeConfig;

@@ -7,14 +7,14 @@
  */
 
 import { Result } from "better-result";
-import { createAdminSupabaseClient } from "./client";
-import type { Tables } from "./database.types";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
+import { createAdminSupabaseClient } from "./client";
+import type { Tables } from "./database.types";
 
 /** Re-export for external use (e.g., spotify/client.ts needs this for isTokenExpired) */
 export type AuthToken = Tables<"auth_token">;

@@ -26,8 +26,8 @@ import {
 } from "@/lib/shared/errors/domain/ml";
 import type { MLProvider } from "../provider/ports";
 import type {
-	EmbedOptions,
 	EmbeddingResult,
+	EmbedOptions,
 	ProviderMetadata,
 	RerankOptions,
 	RerankResult,

@@ -6,16 +6,16 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@/test/utils/render";
+import type { JobProgressState } from "@/lib/hooks/useJobProgress";
+import type { PhaseJobIds } from "@/lib/jobs/progress/types";
+import type { LibrarySummary } from "@/lib/server/onboarding.server";
 import {
 	mockGoToStep,
 	mockTheme,
 	setupOnboardingNavigationMock,
 } from "@/test/mocks";
+import { render, screen, waitFor } from "@/test/utils/render";
 import { SyncingStep } from "../components/SyncingStep";
-import type { JobProgressState } from "@/lib/hooks/useJobProgress";
-import type { PhaseJobIds } from "@/lib/jobs/progress/types";
-import type { LibrarySummary } from "@/lib/server/onboarding.server";
 
 const mockExecuteSync = vi.fn();
 const mockUseJobProgress = vi.fn<(jobId: string | null) => JobProgressState>();

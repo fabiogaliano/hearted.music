@@ -14,19 +14,19 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
-import type { SpotifyService } from "@/lib/integrations/spotify/service";
+import type { Playlist, PlaylistSong } from "@/lib/data/playlists";
+import * as playlists from "@/lib/data/playlists";
+import type { Song } from "@/lib/data/song";
+import * as songs from "@/lib/data/song";
+import { dedupeTracksBySpotifyId } from "@/lib/integrations/spotify/mappers";
 import type {
 	SpotifyPlaylistDTO,
+	SpotifyService,
 	SpotifyTrackDTO,
 } from "@/lib/integrations/spotify/service";
-import { dedupeTracksBySpotifyId } from "@/lib/integrations/spotify/mappers";
-import * as playlists from "@/lib/data/playlists";
-import * as songs from "@/lib/data/song";
 import type { DbError } from "@/lib/shared/errors/database";
-import type { SpotifyError } from "@/lib/shared/errors/external/spotify";
 import { SyncFailedError } from "@/lib/shared/errors/domain/sync";
-import type { Playlist, PlaylistSong } from "@/lib/data/playlists";
-import type { Song } from "@/lib/data/song";
+import type { SpotifyError } from "@/lib/shared/errors/external/spotify";
 
 /** Playlist change entry */
 export const PlaylistChangeEntrySchema = z.object({

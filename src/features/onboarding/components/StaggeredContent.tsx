@@ -6,9 +6,9 @@
  * Content simply materializes without drawing attention to itself.
  */
 
+import { motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
 import { Children, useMemo } from "react";
-import { motion, useReducedMotion } from "framer-motion";
 
 interface StaggeredContentProps {
 	children: ReactNode;

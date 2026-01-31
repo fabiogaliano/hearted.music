@@ -14,8 +14,8 @@
 import type { Result } from "better-result";
 import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
 import type {
-	EmbedOptions,
 	EmbeddingResult,
+	EmbedOptions,
 	ProviderMetadata,
 	RerankOptions,
 	RerankResult,

@@ -7,13 +7,13 @@
 
 import { Result } from "better-result";
 import * as songData from "@/lib/data/song";
-import type { DbError } from "@/lib/shared/errors/database";
-import type { LastFmError } from "@/lib/shared/errors/external/lastfm";
 import {
 	createLastFmService,
 	type LastFmService,
 } from "@/lib/integrations/lastfm/service";
 import type { GenreSourceLevel } from "@/lib/integrations/lastfm/types";
+import type { DbError } from "@/lib/shared/errors/database";
+import type { LastFmError } from "@/lib/shared/errors/external/lastfm";
 
 // ============================================================================
 // Types

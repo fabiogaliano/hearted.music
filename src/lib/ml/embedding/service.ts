@@ -18,13 +18,13 @@ import type { SongAnalysis } from "@/lib/data/song-analysis";
 import * as songAnalysis from "@/lib/data/song-analysis";
 import type { SongEmbedding } from "@/lib/data/vectors";
 import * as vectors from "@/lib/data/vectors";
+import { getMlProvider } from "@/lib/ml/provider/factory";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	DimensionMismatchError,
 	MissingAnalysisError,
 } from "@/lib/shared/errors/domain/embedding";
 import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
-import { getMlProvider } from "@/lib/ml/provider/factory";
 import { getModelBundleHash } from "./versioning";
 
 // ============================================================================

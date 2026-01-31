@@ -23,31 +23,31 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
+import type { JobProgress } from "@/lib/data/jobs";
 import * as jobs from "@/lib/data/jobs";
-import { startJob, finalizeJob } from "@/lib/jobs/lifecycle";
-import {
-	emitProgress,
-	emitStatus,
-	emitError,
-	emitItem,
-} from "@/lib/jobs/progress/helpers";
-import * as songs from "@/lib/data/song";
 import * as likedSongs from "@/lib/data/liked-song";
+import * as songs from "@/lib/data/song";
 import * as songAnalysis from "@/lib/data/song-analysis";
 import * as audioFeatures from "@/lib/data/song-audio-feature";
-import type { DbError } from "@/lib/shared/errors/database";
-import type { JobProgress } from "@/lib/data/jobs";
-import { SongAnalysisService, type AnalyzeSongInput } from "./song-analysis";
+import { finalizeJob, startJob } from "@/lib/jobs/lifecycle";
 import {
-	PlaylistAnalysisService,
-	type AnalyzePlaylistInput,
-} from "./playlist-analysis";
-import { LlmService, type LlmProviderName } from "../../ml/llm/service";
-import { LyricsService, type GeniusError } from "../lyrics/service";
+	emitError,
+	emitItem,
+	emitProgress,
+	emitStatus,
+} from "@/lib/jobs/progress/helpers";
+import type { DbError } from "@/lib/shared/errors/database";
 import {
 	NoLyricsAvailableError,
 	PipelineConfigError,
 } from "@/lib/shared/errors/domain/analysis";
+import { type LlmProviderName, LlmService } from "../../ml/llm/service";
+import { type GeniusError, LyricsService } from "../lyrics/service";
+import {
+	type AnalyzePlaylistInput,
+	PlaylistAnalysisService,
+} from "./playlist-analysis";
+import { type AnalyzeSongInput, SongAnalysisService } from "./song-analysis";
 
 // Re-export error for consumers
 export { PipelineConfigError };

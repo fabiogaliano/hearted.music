@@ -11,32 +11,32 @@ import { Result } from "better-result";
 import { z } from "zod";
 import { requireSession } from "@/lib/auth/session";
 import {
-	getOrCreatePreferences,
-	updateTheme,
-	updateOnboardingStep,
-	completeOnboarding,
-	isOnboardingComplete,
-	updatePhaseJobIds,
-	clearPhaseJobIds,
-	ONBOARDING_STEPS,
-	type OnboardingStep,
-} from "@/lib/data/preferences";
-import { themeSchema, type ThemeColor } from "@/lib/theme/types";
+	type LibrarySummary,
+	LibrarySummarySchema,
+	SyncOrchestrator,
+} from "@/lib/capabilities/sync/orchestrator";
+import { createJob, getJobById } from "@/lib/data/jobs";
+import { getCount as getLikedSongCount } from "@/lib/data/liked-song";
 import {
-	getPlaylists,
 	getPlaylistCount,
+	getPlaylists,
 	setPlaylistDestination,
 } from "@/lib/data/playlists";
-import { getCount as getLikedSongCount } from "@/lib/data/liked-song";
-import { createJob, getJobById } from "@/lib/data/jobs";
-import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
 import {
-	SyncOrchestrator,
-	LibrarySummarySchema,
-	type LibrarySummary,
-} from "@/lib/capabilities/sync/orchestrator";
+	clearPhaseJobIds,
+	completeOnboarding,
+	getOrCreatePreferences,
+	isOnboardingComplete,
+	ONBOARDING_STEPS,
+	type OnboardingStep,
+	updateOnboardingStep,
+	updatePhaseJobIds,
+	updateTheme,
+} from "@/lib/data/preferences";
 import { getSpotifyService } from "@/lib/integrations/spotify";
-import { PhaseJobIdsSchema, type PhaseJobIds } from "@/lib/jobs/progress/types";
+import { type PhaseJobIds, PhaseJobIdsSchema } from "@/lib/jobs/progress/types";
+import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
+import { type ThemeColor, themeSchema } from "@/lib/theme/types";
 
 // Re-export LibrarySummary for client use
 export type { LibrarySummary };

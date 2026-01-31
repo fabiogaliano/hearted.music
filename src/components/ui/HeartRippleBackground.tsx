@@ -5,9 +5,8 @@ import {
 	useMemo,
 	useRef,
 } from "react";
-
-import type { ThemeConfig } from "@/lib/theme/types";
 import { getThemeHue } from "@/lib/theme/colors";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { type ColorPalette, generatePalette } from "@/lib/utils/palette";
 
 interface HeartRippleBackgroundProps {

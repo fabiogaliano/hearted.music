@@ -6,8 +6,6 @@
  */
 
 import { Result } from "better-result";
-import type { DbError } from "@/lib/shared/errors/database";
-import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
 import {
 	hashCandidateSet,
 	hashMatchContext,
@@ -15,6 +13,9 @@ import {
 	hashPlaylistSet,
 } from "@/lib/ml/embedding/hashing";
 import { getModelBundleHash } from "@/lib/ml/embedding/versioning";
+import type { DbError } from "@/lib/shared/errors/database";
+import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
+import { DEFAULT_MATCHING_CONFIG } from "./config";
 import type { MatchingService } from "./service";
 import type {
 	BatchMatchResult,
@@ -24,7 +25,6 @@ import type {
 	MatchingSong,
 	MatchResult,
 } from "./types";
-import { DEFAULT_MATCHING_CONFIG } from "./config";
 
 // ============================================================================
 // Types

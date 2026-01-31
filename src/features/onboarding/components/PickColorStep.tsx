@@ -3,22 +3,22 @@
  * Saves theme preference to DB.
  */
 
+import { useReducedMotion } from "framer-motion";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import { useReducedMotion } from "framer-motion";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
+import { saveThemePreference } from "@/lib/server/onboarding.server";
 import { themes } from "@/lib/theme/colors";
+import { fonts } from "@/lib/theme/fonts";
 import {
-	type ThemeColor,
-	type ThemeConfig,
 	COLOR_LABELS,
 	THEME_COLORS,
+	type ThemeColor,
+	type ThemeConfig,
 } from "@/lib/theme/types";
-import { fonts } from "@/lib/theme/fonts";
-import { saveThemePreference } from "@/lib/server/onboarding.server";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { StaggeredContent } from "./StaggeredContent";
 import { THEME_TRANSITION_MS } from "./StepContainer";
 

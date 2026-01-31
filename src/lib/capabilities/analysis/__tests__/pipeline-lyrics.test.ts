@@ -7,8 +7,8 @@
  * Uses mocked LyricsService to avoid hitting the Genius API.
  */
 
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import { Result } from "better-result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the lyrics service module with real GeniusNotFoundError for error testing
 vi.mock("@/lib/capabilities/lyrics/service", async (importOriginal) => {

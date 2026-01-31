@@ -1,6 +1,6 @@
 import type { Playlist } from "@/lib/data/mock-data";
-import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
+import type { ThemeConfig } from "@/lib/theme/types";
 
 const COLLAPSED_ALBUM_SIZE_PX = "400px";
 const EXPANDED_ALBUM_SIZE_PX = "240px";

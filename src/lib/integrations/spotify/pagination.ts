@@ -7,8 +7,8 @@
  * - Composable Result types
  */
 
-import { Result } from "better-result";
 import type { MaxInt } from "@fostertheweb/spotify-web-sdk";
+import { Result } from "better-result";
 import type { SpotifyError } from "@/lib/shared/errors/external/spotify";
 import { fetchWithRetry, type RetryOptions } from "./request";
 

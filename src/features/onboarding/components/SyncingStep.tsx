@@ -5,18 +5,18 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
 import {
-	useJobProgress,
 	type JobProgressState,
+	useJobProgress,
 } from "@/lib/hooks/useJobProgress";
-import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
+import type { PhaseJobIds } from "@/lib/jobs/progress/types";
 import {
 	executeSync,
 	type LibrarySummary,
 } from "@/lib/server/onboarding.server";
-import type { PhaseJobIds } from "@/lib/jobs/progress/types";
+import { fonts } from "@/lib/theme/fonts";
+import type { ThemeConfig } from "@/lib/theme/types";
+import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 
 /**
  * Smart smooth progress with predictive velocity and fast completion catch-up.

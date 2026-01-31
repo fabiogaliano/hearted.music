@@ -14,22 +14,22 @@
  */
 
 import { Result } from "better-result";
-import type { EmbeddingService } from "@/lib/ml/embedding/service";
 import type { PlaylistProfilingService } from "@/lib/capabilities/profiling/service";
-import { emitProgress, emitItem } from "@/lib/jobs/progress/helpers";
 import type { JobProgress } from "@/lib/data/jobs";
+import { emitItem, emitProgress } from "@/lib/jobs/progress/helpers";
+import type { EmbeddingService } from "@/lib/ml/embedding/service";
 import {
 	computeAdaptiveWeights,
-	DEFAULT_MATCHING_CONFIG,
 	type DataAvailability,
+	DEFAULT_MATCHING_CONFIG,
 } from "./config";
-import { cosineSimilarity } from "./semantic";
 import {
 	computeAudioFeatureScore,
 	computeContextScore,
-	computeThematicScore,
 	computeFlowScore,
+	computeThematicScore,
 } from "./scoring";
+import { cosineSimilarity } from "./semantic";
 import type {
 	BatchMatchResult,
 	MatchingConfig,

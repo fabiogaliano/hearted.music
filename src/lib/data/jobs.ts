@@ -6,6 +6,10 @@
  */
 
 import type { Result } from "better-result";
+import {
+	JobProgressSchema as JobProgressSchemaImpl,
+	type JobProgress as JobProgressType,
+} from "@/lib/jobs/progress/types";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
@@ -14,10 +18,6 @@ import {
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
 import type { Enums, Tables } from "./database.types";
-import {
-	type JobProgress as JobProgressType,
-	JobProgressSchema as JobProgressSchemaImpl,
-} from "@/lib/jobs/progress/types";
 
 /** Job row type */
 export type Job = Tables<"job">;

@@ -7,28 +7,28 @@
  * - Search strategy with 0.6 threshold, 55/45 title/artist weights
  */
 
-import wretch from "wretch";
 import { Result } from "better-result";
-import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
+import wretch from "wretch";
 import {
-	GeniusNotFoundError,
-	GeniusParseError,
-	GeniusFetchError,
 	GeniusConfigError,
 	type GeniusError,
+	GeniusFetchError,
+	GeniusNotFoundError,
+	GeniusParseError,
 } from "@/lib/shared/errors/external/genius";
+import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
 
 import type {
 	ResponseHitsResult,
 	ResponseReferents,
 	SearchResponse,
 } from "./types/genius.types";
+import { formatLyricsCompact } from "./utils/lyrics-formatter";
 import { LyricsParser } from "./utils/lyrics-parser";
 import {
 	LyricsTransformer,
 	type TransformedLyricsBySection,
 } from "./utils/lyrics-transformer";
-import { formatLyricsCompact } from "./utils/lyrics-formatter";
 import {
 	debugCandidates,
 	findBestMatch,

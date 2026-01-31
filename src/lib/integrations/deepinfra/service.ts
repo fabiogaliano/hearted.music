@@ -12,8 +12,8 @@ import { Result } from "better-result";
 import { z } from "zod";
 import {
 	DeepInfraApiError,
-	DeepInfraRateLimitError,
 	type DeepInfraError,
+	DeepInfraRateLimitError,
 } from "@/lib/shared/errors/external/deepinfra";
 
 // ============================================================================

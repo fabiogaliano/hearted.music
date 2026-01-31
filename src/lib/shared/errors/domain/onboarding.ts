@@ -3,8 +3,8 @@
  */
 
 import { TaggedError } from "better-result";
-import type { DbError } from "../database";
 import type { SpotifyServiceError } from "@/lib/integrations/spotify";
+import type { DbError } from "../database";
 
 /** All possible onboarding error causes */
 export type OnboardingErrorCause = DbError | SpotifyServiceError | Error;

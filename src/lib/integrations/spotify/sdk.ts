@@ -6,8 +6,8 @@
  */
 
 import {
-	SpotifyApi,
 	type IValidateResponses,
+	SpotifyApi,
 } from "@fostertheweb/spotify-web-sdk";
 import { env } from "@/env";
 

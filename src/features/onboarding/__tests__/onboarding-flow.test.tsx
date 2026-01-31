@@ -6,7 +6,12 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, within } from "@/test/utils/render";
+import type { OnboardingData } from "@/lib/server/onboarding.server";
+import {
+	ONBOARDING_PLAYLISTS,
+	PLAYLISTS,
+	toOnboardingPlaylist,
+} from "@/test/fixtures";
 import {
 	mockGoToStep,
 	setupFlagPlaylistsScrollMock,
@@ -15,13 +20,8 @@ import {
 	setupOnboardingNavigationMock,
 	setupShortcutMock,
 } from "@/test/mocks";
-import {
-	ONBOARDING_PLAYLISTS,
-	toOnboardingPlaylist,
-	PLAYLISTS,
-} from "@/test/fixtures";
+import { render, within } from "@/test/utils/render";
 import { Onboarding } from "../Onboarding";
-import type { OnboardingData } from "@/lib/server/onboarding.server";
 
 const mockSavePlaylistDestinations = vi.fn();
 const mockSaveTheme = vi.fn();

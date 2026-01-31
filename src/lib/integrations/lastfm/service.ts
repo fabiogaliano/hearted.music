@@ -18,10 +18,10 @@ import { extractPrimaryArtist, normalizeAlbumName } from "./normalize";
 import {
 	type GenreLookupResult,
 	type GenreSourceLevel,
-	type LastFmTag,
 	LastFmAlbumTopTagsResponseSchema,
 	LastFmArtistTopTagsResponseSchema,
 	LastFmErrorResponseSchema,
+	type LastFmTag,
 } from "./types";
 import { isGenre } from "./whitelist";
 

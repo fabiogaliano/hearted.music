@@ -19,11 +19,11 @@ import {
 	MLConfigError,
 	type MLProviderUnavailableError,
 } from "@/lib/shared/errors/domain/ml";
-import type { MLProvider } from "./ports";
-import type { ProviderName } from "./types";
 import { createDeepInfraProvider } from "../adapters/deepinfra";
 import { createHuggingFaceProvider } from "../adapters/huggingface";
 import { createLocalProvider } from "../adapters/local";
+import type { MLProvider } from "./ports";
+import type { ProviderName } from "./types";
 
 /**
  * Determines which ML provider to use based on environment configuration.

@@ -22,12 +22,12 @@
  * user-facing feature: analyzing songs with lyrics and storing results.
  */
 
-import { beforeAll, describe, expect, test } from "vitest";
 import { Result } from "better-result";
-import { createAnalysisPipeline, type SongToAnalyze } from "../pipeline";
-import type { PipelineResult } from "../pipeline";
-import type { JobProgress } from "@/lib/jobs/progress/types";
+import { beforeAll, describe, expect, test } from "vitest";
 import * as jobsData from "@/lib/data/jobs";
+import type { JobProgress } from "@/lib/jobs/progress/types";
+import type { PipelineResult } from "../pipeline";
+import { createAnalysisPipeline, type SongToAnalyze } from "../pipeline";
 
 // ─────────────────────────────────────────────────────────────
 // Test Configuration

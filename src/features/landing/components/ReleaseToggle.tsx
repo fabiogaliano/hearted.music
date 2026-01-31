@@ -4,8 +4,9 @@
  * Allows switching between "released" (login) and "pre-release" (waitlist) modes.
  * Positioned fixed in bottom-right corner.
  */
-import type { ThemeConfig } from "@/lib/theme/types";
+
 import { fonts } from "@/lib/theme/fonts";
+import type { ThemeConfig } from "@/lib/theme/types";
 
 export interface ReleaseToggleProps {
 	theme: ThemeConfig;

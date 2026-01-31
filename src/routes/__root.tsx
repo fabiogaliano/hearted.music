@@ -1,31 +1,29 @@
 // react-scan must be imported before React
-import { scan } from "react-scan";
-import { useEffect, useRef, useState } from "react";
+
+import { TanStackDevtools } from "@tanstack/react-devtools";
+import type { QueryClient } from "@tanstack/react-query";
 import {
+	createRootRouteWithContext,
 	HeadContent,
 	Link,
 	Outlet,
 	Scripts,
-	createRootRouteWithContext,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-import { TanStackDevtools } from "@tanstack/react-devtools";
+import { useEffect, useRef, useState } from "react";
+import { scan } from "react-scan";
 import { Toaster } from "sonner";
-
-import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
-import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import {
 	HeartRippleBackground,
 	type HeartRippleHandle,
 } from "@/components/ui/HeartRippleBackground";
 import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
+import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { extractHue, getPastelColor } from "@/lib/utils/color";
-
+import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import appCss from "../styles.css?url";
-
-import type { QueryClient } from "@tanstack/react-query";
 
 interface MyRouterContext {
 	queryClient: QueryClient;

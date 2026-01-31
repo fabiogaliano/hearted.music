@@ -7,12 +7,12 @@
  * - Composable Result types instead of throwing
  */
 
-import { Result } from "better-result";
 import type { Market, MaxInt, SpotifyApi } from "@fostertheweb/spotify-web-sdk";
+import { Result } from "better-result";
 import { z } from "zod";
 import type { SpotifyError } from "@/lib/shared/errors/external/spotify";
-import { fetchWithRetry } from "./request";
 import { fetchAllPages } from "./pagination";
+import { fetchWithRetry } from "./request";
 
 /** Spotify track from saved tracks endpoint */
 export interface SpotifyTrackDTO {

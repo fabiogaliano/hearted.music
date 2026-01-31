@@ -1,6 +1,6 @@
 import type { songs } from "@/lib/data/mock-data";
-import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { extractHue } from "@/lib/utils/color";
 import { ThemesList } from "./ThemesList";
 

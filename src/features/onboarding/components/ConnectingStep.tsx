@@ -6,12 +6,12 @@
  * - Cached playlists reused in sync (no duplicate API calls)
  */
 
-import { useEffect, useEffectEvent, useState, useCallback } from "react";
+import { useCallback, useEffect, useEffectEvent, useState } from "react";
 import { toast } from "sonner";
+import { getLibrarySummary } from "@/lib/server/onboarding.server";
 import { fonts } from "@/lib/theme/fonts";
 import type { ThemeConfig } from "@/lib/theme/types";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
-import { getLibrarySummary } from "@/lib/server/onboarding.server";
 
 interface ConnectingStepProps {
 	theme: ThemeConfig;

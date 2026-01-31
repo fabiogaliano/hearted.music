@@ -14,15 +14,15 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
-import type { LlmService } from "@/lib/ml/llm/service";
+import type {
+	InsertData as InsertPlaylistAnalysis,
+	PlaylistAnalysis,
+} from "@/lib/data/playlist-analysis";
 import * as playlistAnalysis from "@/lib/data/playlist-analysis";
+import type { LlmService } from "@/lib/ml/llm/service";
 import type { DbError } from "@/lib/shared/errors/database";
 import { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
 import type { LlmError } from "@/lib/shared/errors/external/llm";
-import type {
-	PlaylistAnalysis,
-	InsertData as InsertPlaylistAnalysis,
-} from "@/lib/data/playlist-analysis";
 
 /** Core theme in a playlist */
 const CoreThemeSchema = z.object({

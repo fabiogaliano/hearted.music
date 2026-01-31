@@ -14,11 +14,11 @@
  * - 0.80–1.00: Subtext fade in
  * - 0.85–1.00: CTA fade in
  */
-import type { RefObject } from "react";
 
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import type { RefObject } from "react";
 
 // Register plugins once at module level
 if (typeof window !== "undefined") {

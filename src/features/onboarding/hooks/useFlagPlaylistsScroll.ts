@@ -14,9 +14,9 @@
  * - Respects prefers-reduced-motion (instant movement, no animation)
  * - Disabled on mobile (< 768px) for native touch scroll
  */
-import { useEffect, useRef, type RefObject } from "react";
 
 import gsap from "gsap";
+import { type RefObject, useEffect, useRef } from "react";
 
 export interface FlagPlaylistsScrollRefs {
 	/** The outer section that captures wheel events */

@@ -6,19 +6,19 @@
  */
 
 import { Result } from "better-result";
-import type {
-	SpotifyTrackDTO,
-	SpotifyService,
-} from "../../integrations/spotify/service";
-import * as songs from "@/lib/data/song";
-import * as likedSongsData from "@/lib/data/liked-song";
-import { completeJob, failJob, startJob } from "@/lib/jobs/lifecycle";
-import { emitStatus, emitError } from "@/lib/jobs/progress/helpers";
-import type { Song } from "@/lib/data/song";
 import type { LikedSong } from "@/lib/data/liked-song";
+import * as likedSongsData from "@/lib/data/liked-song";
+import type { Song } from "@/lib/data/song";
+import * as songs from "@/lib/data/song";
+import { completeJob, failJob, startJob } from "@/lib/jobs/lifecycle";
+import { emitError, emitStatus } from "@/lib/jobs/progress/helpers";
 import type { DbError } from "@/lib/shared/errors/database";
-import type { SpotifyError } from "@/lib/shared/errors/external/spotify";
 import { SyncFailedError } from "@/lib/shared/errors/domain/sync";
+import type { SpotifyError } from "@/lib/shared/errors/external/spotify";
+import type {
+	SpotifyService,
+	SpotifyTrackDTO,
+} from "../../integrations/spotify/service";
 import type { LikedSongsSyncResult } from "./orchestrator";
 
 /** Errors that can occur during sync operations (infrastructure + domain) */

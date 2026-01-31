@@ -10,10 +10,10 @@
  */
 
 import { Result } from "better-result";
+import type { Job, JobProgress } from "@/lib/data/jobs";
+import * as jobs from "@/lib/data/jobs";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { withRetry } from "@/lib/shared/utils/result-wrappers/generic";
-import * as jobs from "@/lib/data/jobs";
-import type { Job, JobProgress } from "@/lib/data/jobs";
 
 const RETRY_OPTIONS = {
 	isRetryable: (err: DbError) => err instanceof DatabaseError,

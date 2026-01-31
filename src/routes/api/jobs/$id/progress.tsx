@@ -11,16 +11,16 @@
  * - error: { type: "error", message }
  */
 
-import { Result } from "better-result";
 import { createFileRoute } from "@tanstack/react-router";
+import { Result } from "better-result";
 import { getSession } from "@/lib/auth/session";
 import { getJobById, type JobProgress } from "@/lib/data/jobs";
 import { subscribe, unsubscribeAll } from "@/lib/jobs/progress/emitter";
 import {
+	type JobEvent,
 	serializeSSEEvent,
 	serializeSSEPing,
 	TERMINAL_JOB_STATUSES,
-	type JobEvent,
 } from "@/lib/jobs/progress/types";
 
 /** Keep-alive ping interval (30 seconds) */

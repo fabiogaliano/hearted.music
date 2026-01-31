@@ -14,16 +14,16 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
-import type { LlmService } from "../../ml/llm/service";
+import type { SongAnalysis } from "@/lib/data/song-analysis";
 import * as songAnalysis from "@/lib/data/song-analysis";
+import type { AudioFeature } from "@/lib/data/song-audio-feature";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	type AnalysisFailedError,
 	NoLyricsAvailableError,
 } from "@/lib/shared/errors/domain/analysis";
 import type { LlmError } from "@/lib/shared/errors/external/llm";
-import type { SongAnalysis } from "@/lib/data/song-analysis";
-import type { AudioFeature } from "@/lib/data/song-audio-feature";
+import type { LlmService } from "../../ml/llm/service";
 import { getLyricsFormatLegend } from "../lyrics/utils/lyrics-formatter";
 
 /** Theme identified in a song */

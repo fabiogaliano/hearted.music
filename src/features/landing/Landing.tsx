@@ -13,14 +13,13 @@
  * - Pre-release: Shows waitlist email input for launch prep
  */
 import { useState } from "react";
-
+import { MatchesSection } from "@/features/matching/components/MatchesSection";
+import { SongSection } from "@/features/matching/components/SongSection";
 import { playlists, songs } from "@/lib/data/mock-data";
 import { useAlbumArt } from "@/lib/hooks/useAlbumArt";
 import { useArtistImage } from "@/lib/hooks/useArtistImage";
-import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
-import { MatchesSection } from "@/features/matching/components/MatchesSection";
-import { SongSection } from "@/features/matching/components/SongSection";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { LandingHero } from "./components/LandingHero";
 import { SpotifyLoginButton } from "./components/SpotifyLoginButton";
 import { WaitlistInput } from "./components/WaitlistInput";

@@ -7,8 +7,8 @@
  * Used for testing/development when DEEPINFRA_API_KEY is not available.
  */
 
-import { Result } from "better-result";
 import { InferenceClient } from "@huggingface/inference";
+import { Result } from "better-result";
 import { env } from "@/env";
 import {
 	DeepInfraApiError,

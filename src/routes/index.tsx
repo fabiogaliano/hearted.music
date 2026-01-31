@@ -7,9 +7,9 @@
  */
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Landing } from "@/features/landing/Landing";
+import { checkAuth } from "@/lib/auth/guards";
 import { themes } from "@/lib/theme/colors";
 import { DEFAULT_THEME } from "@/lib/theme/types";
-import { checkAuth } from "@/lib/auth/guards";
 
 export const Route = createFileRoute("/")({
 	beforeLoad: async () => {

@@ -15,10 +15,6 @@
 import { Result } from "better-result";
 import * as huggingface from "@/lib/integrations/huggingface/service";
 import {
-	DeepInfraApiError,
-	DeepInfraRateLimitError,
-} from "@/lib/shared/errors/external/deepinfra";
-import {
 	MLApiError,
 	type MLProviderError,
 	MLProviderUnavailableError,
@@ -26,10 +22,14 @@ import {
 	MLTimeoutError,
 	MLUnsupportedOperationError,
 } from "@/lib/shared/errors/domain/ml";
+import {
+	DeepInfraApiError,
+	DeepInfraRateLimitError,
+} from "@/lib/shared/errors/external/deepinfra";
 import type { MLProvider } from "../provider/ports";
 import type {
-	EmbedOptions,
 	EmbeddingResult,
+	EmbedOptions,
 	ProviderMetadata,
 	RerankOptions,
 	RerankResult,

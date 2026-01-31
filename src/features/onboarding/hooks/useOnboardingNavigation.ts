@@ -32,15 +32,15 @@
  * @see Onboarding.tsx for the fallback pattern implementation
  */
 
-import { useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useCallback } from "react";
 import { toast } from "sonner";
-import {
-	saveOnboardingStep,
-	type LibrarySummary,
-} from "@/lib/server/onboarding.server";
 import type { OnboardingStep } from "@/lib/data/preferences";
 import type { PhaseJobIds } from "@/lib/jobs/progress/types";
+import {
+	type LibrarySummary,
+	saveOnboardingStep,
+} from "@/lib/server/onboarding.server";
 import "../types"; // Import to ensure HistoryState augmentation is loaded
 
 export function useOnboardingNavigation() {

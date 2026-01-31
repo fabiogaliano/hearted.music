@@ -5,8 +5,8 @@
 import { describe, expect, it } from "vitest";
 import {
 	computeAudioFeatureScore,
-	scoreMoodTransition,
 	computeFlowScore,
+	scoreMoodTransition,
 } from "../scoring";
 import type { AudioFeatureWeights, MatchingAudioFeatures } from "../types";
 

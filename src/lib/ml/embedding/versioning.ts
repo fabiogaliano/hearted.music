@@ -26,8 +26,8 @@ export const MODEL_BUNDLE_VERSION = `e${EXTRACTOR_VERSION}_s${EMBEDDING_SCHEMA_V
 
 import { Result } from "better-result";
 import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
-import { getActiveModelBundle } from "./model-bundle";
 import { hashModelBundle } from "./hashing";
+import { getActiveModelBundle } from "./model-bundle";
 
 /** Cached model bundle hash - computed once per process */
 let cachedModelBundleHash: string | null = null;

@@ -11,9 +11,9 @@ import { Result } from "better-result";
 import {
 	SpotifyApiError,
 	SpotifyAuthError,
+	type SpotifyError,
 	SpotifyNotFoundError,
 	SpotifyRateLimitError,
-	type SpotifyError,
 } from "@/lib/shared/errors/external/spotify";
 import { SpotifyRateLimitHttpError } from "./sdk";
 

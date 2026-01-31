@@ -14,13 +14,14 @@
  * To regenerate snapshots after intentional changes:
  *   bun run lyrics:snapshot
  */
-import { readFileSync, readdirSync } from "fs";
+
+import { Result } from "better-result";
+import { readdirSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { beforeAll, describe, expect, test } from "vitest";
-import { Result } from "better-result";
 
-import { LyricsService, GeniusConfigError, type GeniusError } from "../service";
+import { GeniusConfigError, type GeniusError, LyricsService } from "../service";
 import type { TransformedLyricsBySection } from "../utils/lyrics-transformer";
 import type { Snapshot } from "./generate-snapshots";
 

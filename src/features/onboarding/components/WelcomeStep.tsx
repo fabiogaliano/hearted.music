@@ -5,12 +5,12 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { fonts } from "@/lib/theme/fonts";
-import { useShortcut } from "@/lib/keyboard/useShortcut";
-import type { ThemeConfig } from "@/lib/theme/types";
-import { createSyncJob } from "@/lib/server/onboarding.server";
-import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import { Kbd } from "@/components/ui/kbd";
+import { useShortcut } from "@/lib/keyboard/useShortcut";
+import { createSyncJob } from "@/lib/server/onboarding.server";
+import { fonts } from "@/lib/theme/fonts";
+import type { ThemeConfig } from "@/lib/theme/types";
+import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 
 interface WelcomeStepProps {
 	theme: ThemeConfig;

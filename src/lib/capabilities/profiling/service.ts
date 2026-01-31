@@ -13,6 +13,12 @@ import * as audioFeatureData from "@/lib/data/song-audio-feature";
 import * as vectorsData from "@/lib/data/vectors";
 import type { EmbeddingService } from "@/lib/ml/embedding/service";
 import { getModelBundleHash } from "@/lib/ml/embedding/versioning";
+import {
+	calculateAudioCentroid,
+	calculateCentroid,
+	computeEmotionDistribution,
+	computeGenreDistribution,
+} from "./calculations";
 import type {
 	AudioCentroid,
 	ComputedPlaylistProfile,
@@ -22,12 +28,6 @@ import type {
 	ProfilingError,
 	ProfilingOptions,
 } from "./types";
-import {
-	calculateCentroid,
-	calculateAudioCentroid,
-	computeGenreDistribution,
-	computeEmotionDistribution,
-} from "./calculations";
 
 // ============================================================================
 // Constants

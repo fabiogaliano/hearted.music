@@ -12,10 +12,6 @@
 import { Result } from "better-result";
 import * as deepinfra from "@/lib/integrations/deepinfra/service";
 import {
-	DeepInfraApiError,
-	DeepInfraRateLimitError,
-} from "@/lib/shared/errors/external/deepinfra";
-import {
 	MLApiError,
 	MLConfigError,
 	type MLProviderError,
@@ -23,10 +19,14 @@ import {
 	MLRateLimitError,
 	MLTimeoutError,
 } from "@/lib/shared/errors/domain/ml";
+import {
+	DeepInfraApiError,
+	DeepInfraRateLimitError,
+} from "@/lib/shared/errors/external/deepinfra";
 import type { MLProvider } from "../provider/ports";
 import type {
-	EmbedOptions,
 	EmbeddingResult,
+	EmbedOptions,
 	ProviderMetadata,
 	RerankOptions,
 	RerankResult,

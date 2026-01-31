@@ -7,10 +7,10 @@
  * Uses Result types at the route boundary to translate errors to redirects.
  */
 
-import { Result } from "better-result";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { Result } from "better-result";
 import { z } from "zod";
 import {
 	clearOAuthCookies,

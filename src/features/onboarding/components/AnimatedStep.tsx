@@ -6,8 +6,8 @@
  * like turning a page in a high-end magazine. Confident, unhurried.
  */
 
-import type { ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import type { ReactNode } from "react";
 
 interface AnimatedStepProps {
 	children: ReactNode;
