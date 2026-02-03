@@ -13,11 +13,8 @@ import type {
 	OnboardingData,
 } from "@/lib/server/onboarding.server";
 import { themes } from "@/lib/theme/colors";
-import {
-	DEFAULT_THEME,
-	type ThemeColor,
-	type ThemeConfig,
-} from "@/lib/theme/types";
+import { useRegisterTheme, useTheme } from "@/lib/theme/ThemeHueProvider";
+import { DEFAULT_THEME, type ThemeColor } from "@/lib/theme/types";
 import { AnimatedStep } from "./components/AnimatedStep";
 import { ConnectingStep } from "./components/ConnectingStep";
 import { FlagPlaylistsStep } from "./components/FlagPlaylistsStep";
@@ -34,7 +31,6 @@ interface OnboardingProps {
 }
 
 interface StepContext {
-	theme: ThemeConfig;
 	localTheme: ThemeColor;
 	setLocalTheme: (theme: ThemeColor) => void;
 	phaseJobIds: PhaseJobIds | null;
@@ -51,25 +47,23 @@ interface StepConfig {
 
 const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 	welcome: {
-		render: (ctx) => <WelcomeStep theme={ctx.theme} />,
+		render: () => <WelcomeStep />,
 	},
 	"pick-color": {
 		render: (ctx) => (
 			<PickColorStep
-				theme={ctx.theme}
 				currentTheme={ctx.localTheme}
 				setTheme={ctx.setLocalTheme}
 			/>
 		),
 	},
 	connecting: {
-		render: (ctx) => <ConnectingStep theme={ctx.theme} />,
+		render: () => <ConnectingStep />,
 		hideIndicator: true,
 	},
 	syncing: {
 		render: (ctx) => (
 			<SyncingStep
-				theme={ctx.theme}
 				phaseJobIds={ctx.phaseJobIds}
 				librarySummary={ctx.librarySummary}
 			/>
@@ -77,13 +71,11 @@ const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 		hideIndicator: true,
 	},
 	"flag-playlists": {
-		render: (ctx) => (
-			<FlagPlaylistsStep theme={ctx.theme} playlists={ctx.playlists} />
-		),
+		render: (ctx) => <FlagPlaylistsStep playlists={ctx.playlists} />,
 		fullBleed: true,
 	},
 	ready: {
-		render: (ctx) => <ReadyStep theme={ctx.theme} syncStats={ctx.syncStats} />,
+		render: (ctx) => <ReadyStep syncStats={ctx.syncStats} />,
 	},
 	complete: {
 		render: () => null, // Handled by redirect
@@ -101,13 +93,15 @@ export function Onboarding({ step, data }: OnboardingProps) {
 	const [localTheme, setLocalTheme] = useState<ThemeColor>(
 		data.theme ?? DEFAULT_THEME,
 	);
-	const theme = themes[localTheme];
+
+	// Onboarding owns theme registration - starts with default (rose),
+	// updates live as user picks colors in PickColorStep
+	useRegisterTheme(themes[localTheme]);
 
 	const phaseJobIds = location.state?.phaseJobIds ?? data.phaseJobIds;
 	const librarySummary = location.state?.librarySummary ?? null;
 
 	const stepContext: StepContext = {
-		theme,
 		localTheme,
 		setLocalTheme,
 		phaseJobIds,
@@ -119,14 +113,12 @@ export function Onboarding({ step, data }: OnboardingProps) {
 	const config = STEP_CONFIG[step];
 
 	return (
-		<StepContainer theme={theme} fullBleed={config.fullBleed}>
+		<StepContainer fullBleed={config.fullBleed}>
 			<AnimatePresence mode="wait">
 				<AnimatedStep stepKey={step}>{config.render(stepContext)}</AnimatedStep>
 			</AnimatePresence>
 
-			{!config.hideIndicator && (
-				<StepIndicator currentStep={step} theme={theme} />
-			)}
+			{!config.hideIndicator && <StepIndicator currentStep={step} />}
 		</StepContainer>
 	);
 }
@@ -138,13 +130,8 @@ const indicatorTransition = {
 	ease: [0.25, 0.1, 0.25, 1] as const, // ease-out-quart: elegant deceleration
 };
 
-function StepIndicator({
-	currentStep,
-	theme,
-}: {
-	currentStep: OnboardingStep;
-	theme: ThemeConfig;
-}) {
+function StepIndicator({ currentStep }: { currentStep: OnboardingStep }) {
+	const theme = useTheme();
 	const stepIndex = INDICATOR_STEPS.indexOf(currentStep);
 	const shouldReduceMotion = useReducedMotion();
 

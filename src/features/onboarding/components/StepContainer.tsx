@@ -4,22 +4,21 @@
  */
 
 import type { ReactNode } from "react";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 /** Shared duration for theme color transitions (background + selection ring) */
 export const THEME_TRANSITION_MS = 500;
 
 interface StepContainerProps {
-	theme: ThemeConfig;
 	children: ReactNode;
 	fullBleed?: boolean;
 }
 
 export function StepContainer({
-	theme,
 	children,
 	fullBleed = false,
 }: StepContainerProps) {
+	const theme = useTheme();
 	return (
 		<div
 			className={

@@ -10,14 +10,14 @@ import { Kbd } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { markOnboardingComplete } from "@/lib/server/onboarding.server";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 interface ReadyStepProps {
-	theme: ThemeConfig;
 	syncStats: { songs: number; playlists: number };
 }
 
-export function ReadyStep({ theme, syncStats }: ReadyStepProps) {
+export function ReadyStep({ syncStats }: ReadyStepProps) {
+	const theme = useTheme();
 	const navigate = useNavigate();
 	const [isCompleting, setIsCompleting] = useState(false);
 
@@ -102,9 +102,8 @@ export function ReadyStep({ theme, syncStats }: ReadyStepProps) {
 				type="button"
 				onClick={handleStart}
 				disabled={isCompleting}
-				className="group mt-20 inline-flex min-h-11 items-center gap-3 rounded outline-2 outline-offset-2 outline-transparent focus-visible:outline-(--focus-color)"
+				className="group mt-20 inline-flex min-h-11 items-center gap-3"
 				style={{
-					["--focus-color" as string]: theme.text,
 					fontFamily: fonts.body,
 					color: theme.text,
 					opacity: isCompleting ? 0.5 : 1,

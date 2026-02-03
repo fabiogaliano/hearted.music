@@ -1,21 +1,20 @@
 /** Only rendered when reviewCount > 0. */
 import { Link } from "@tanstack/react-router";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
 import type { MatchPreview } from "../types";
 import { FanSpreadAlbumArt } from "../components/FanSpreadAlbumArt";
 
 interface MatchReviewCTAProps {
-	theme: ThemeConfig;
 	reviewCount: number;
 	matchPreviews: MatchPreview[];
 }
 
 export function MatchReviewCTA({
-	theme,
 	reviewCount,
 	matchPreviews,
 }: MatchReviewCTAProps) {
+	const theme = useTheme();
 	if (reviewCount === 0) return null;
 
 	return (

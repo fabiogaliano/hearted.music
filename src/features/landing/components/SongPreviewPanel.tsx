@@ -1,6 +1,7 @@
+import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import type { songs } from "@/lib/data/mock-data";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { extractHue } from "@/lib/utils/color";
 import { ThemesList } from "./ThemesList";
 
@@ -57,10 +58,9 @@ export function NavButton({
 
 export interface SongPreviewPanelProps {
 	song: (typeof songs)[0];
-	albumArtUrl: string;
+	albumArtUrl?: string;
 	artistImageUrl: string | undefined;
 	isLoading: boolean;
-	theme: ThemeConfig;
 	/** Navigation props for integrated media controls */
 	onPrev: () => void;
 	onNext: () => void;
@@ -71,10 +71,10 @@ export function SongPreviewPanel({
 	albumArtUrl,
 	artistImageUrl,
 	isLoading,
-	theme,
 	onPrev,
 	onNext,
 }: SongPreviewPanelProps) {
+	const theme = useTheme();
 	// Extract hue for light-mode vignette gradient
 	const hue = extractHue(theme.primary);
 
@@ -151,12 +151,14 @@ export function SongPreviewPanel({
 							className="h-full w-full animate-pulse"
 							style={{ background: theme.surface }}
 						/>
-					) : (
+					) : albumArtUrl ? (
 						<img
 							src={albumArtUrl}
 							alt={song.album}
 							className="h-full w-full object-cover"
 						/>
+					) : (
+						<AlbumPlaceholder />
 					)}
 				</div>
 
@@ -218,7 +220,7 @@ export function SongPreviewPanel({
 				)}
 
 				<div className="mt-8">
-					<ThemesList themes={song.themes} theme={theme} />
+					<ThemesList themes={song.themes} />
 				</div>
 			</div>
 		</div>

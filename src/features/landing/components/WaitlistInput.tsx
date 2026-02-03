@@ -1,18 +1,17 @@
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 export interface WaitlistInputProps {
-	theme: ThemeConfig;
 	buttonText?: string;
 	/** 'light' for light backgrounds, 'dark' for dark/gradient backgrounds */
 	variant?: "light" | "dark";
 }
 
 export function WaitlistInput({
-	theme,
 	buttonText = "Show me mine",
 	variant = "light",
 }: WaitlistInputProps) {
+	const theme = useTheme();
 	const isDark = variant === "dark";
 
 	return (

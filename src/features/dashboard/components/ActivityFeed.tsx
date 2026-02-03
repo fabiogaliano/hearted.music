@@ -1,15 +1,16 @@
 /** Timeline feed showing recent activity, sorted by timestamp descending. */
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
 import type { ActivityItem as ActivityItemType } from "../types";
 import { ActivityItem } from "./ActivityItem";
 
 interface ActivityFeedProps {
-	theme: ThemeConfig;
 	activities: ActivityItemType[];
 }
 
-export function ActivityFeed({ theme, activities }: ActivityFeedProps) {
+export function ActivityFeed({ activities }: ActivityFeedProps) {
+	const theme = useTheme();
+
 	if (activities.length === 0) return null;
 
 	return (
@@ -22,12 +23,7 @@ export function ActivityFeed({ theme, activities }: ActivityFeedProps) {
 			</p>
 
 			{activities.map((item, idx) => (
-				<ActivityItem
-					key={item.id}
-					theme={theme}
-					item={item}
-					showBorder={idx > 0}
-				/>
+				<ActivityItem key={item.id} item={item} showBorder={idx > 0} />
 			))}
 
 			{/* <Link

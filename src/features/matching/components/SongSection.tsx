@@ -1,27 +1,27 @@
+import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import type { Song } from "@/lib/data/mock-data";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 const COLLAPSED_ALBUM_SIZE_PX = "400px";
 const EXPANDED_ALBUM_SIZE_PX = "240px";
 
 interface SongSectionProps {
 	song: Song;
-	theme: ThemeConfig;
 	isExpanded: boolean;
 	metaVisible: boolean;
-	albumArtUrl: string;
+	albumArtUrl?: string;
 	isLoading: boolean;
 }
 
 export function SongSection({
 	song,
-	theme,
 	isExpanded,
 	metaVisible,
 	albumArtUrl,
 	isLoading,
 }: SongSectionProps) {
+	const theme = useTheme();
 	return (
 		<div className={isExpanded ? "flex items-start gap-6" : ""}>
 			<div
@@ -38,12 +38,16 @@ export function SongSection({
 						className="aspect-square w-full animate-pulse"
 						style={{ background: theme.surface }}
 					/>
-				) : (
+				) : albumArtUrl ? (
 					<img
 						src={albumArtUrl}
 						alt={song.album}
 						className="aspect-square w-full object-cover transition-all duration-500 ease-in-out"
 					/>
+				) : (
+					<div className="aspect-square w-full">
+						<AlbumPlaceholder />
+					</div>
 				)}
 			</div>
 

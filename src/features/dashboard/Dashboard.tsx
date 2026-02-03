@@ -8,7 +8,6 @@ import { MatchReviewCTA } from "./sections/MatchReviewCTA";
 import type { DashboardProps } from "./types";
 
 export function Dashboard({
-	theme,
 	displayName,
 	recentActivity,
 	matchPreviews,
@@ -18,19 +17,17 @@ export function Dashboard({
 	return (
 		<div className="max-w-4xl">
 			<DashboardHeader
-				theme={theme}
 				stats={stats}
 				displayName={displayName}
 				lastSyncText={lastSyncText}
 			/>
 
 			<MatchReviewCTA
-				theme={theme}
 				reviewCount={stats.reviewCount}
 				matchPreviews={matchPreviews}
 			/>
 
-			<ActivityFeed theme={theme} activities={recentActivity} />
+			<ActivityFeed activities={recentActivity} />
 		</div>
 	);
 }

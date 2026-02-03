@@ -6,11 +6,10 @@ import {
 	useRef,
 } from "react";
 import { getThemeHue } from "@/lib/theme/colors";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { type ColorPalette, generatePalette } from "@/lib/utils/palette";
 
 interface HeartRippleBackgroundProps {
-	theme?: ThemeConfig;
 	className?: string;
 	style?: React.CSSProperties;
 	onReady?: () => void;
@@ -218,7 +217,8 @@ function createProgram(
 export const HeartRippleBackground = forwardRef<
 	HeartRippleHandle,
 	HeartRippleBackgroundProps
->(function HeartRippleBackground({ theme, className, style, onReady }, ref) {
+>(function HeartRippleBackground({ className, style, onReady }, ref) {
+	const theme = useTheme();
 	const containerRef = useRef<HTMLDivElement>(null);
 	const timeRef = useRef(0);
 	const rafRef = useRef<number | null>(null);
@@ -248,7 +248,7 @@ export const HeartRippleBackground = forwardRef<
 		uColorBackground: WebGLUniformLocation | null;
 	} | null>(null);
 
-	const hue = theme ? getThemeHue(theme) : 218;
+	const hue = getThemeHue(theme);
 	const palette = useMemo(() => generatePalette(hue), [hue]);
 	const initialPaletteRef = useRef(palette);
 

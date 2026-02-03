@@ -5,11 +5,10 @@
 
 import { useMatchRoute } from "@tanstack/react-router";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { NavItem } from "./NavItem";
 
 interface SidebarProps {
-	theme: ThemeConfig;
 	unsortedCount: number;
 	userName: string | null;
 	userPlan: string;
@@ -29,12 +28,8 @@ const NAV_ITEMS: NavItemConfig[] = [
 	{ to: "/settings", label: "Settings" },
 ];
 
-export function Sidebar({
-	theme,
-	unsortedCount,
-	userName,
-	userPlan,
-}: SidebarProps) {
+export function Sidebar({ unsortedCount, userName, userPlan }: SidebarProps) {
+	const theme = useTheme();
 	const matchRoute = useMatchRoute();
 
 	const isRouteActive = (to: string) => {
@@ -65,7 +60,6 @@ export function Sidebar({
 							label={item.label}
 							badge={item.hasBadge ? unsortedCount : undefined}
 							isActive={isRouteActive(item.to)}
-							theme={theme}
 						/>
 					))}
 				</div>

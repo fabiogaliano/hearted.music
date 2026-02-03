@@ -9,14 +9,11 @@ import { Kbd } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { createSyncJob } from "@/lib/server/onboarding.server";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 
-interface WelcomeStepProps {
-	theme: ThemeConfig;
-}
-
-export function WelcomeStep({ theme }: WelcomeStepProps) {
+export function WelcomeStep() {
+	const theme = useTheme();
 	const { goToStep } = useOnboardingNavigation();
 	const [isCreatingJob, setIsCreatingJob] = useState(false);
 
@@ -62,9 +59,8 @@ export function WelcomeStep({ theme }: WelcomeStepProps) {
 				onClick={handleContinue}
 				disabled={isCreatingJob}
 				type="button"
-				className="group mt-16 inline-flex min-h-11 items-center gap-3 rounded-lg border border-transparent px-4 py-2 outline-2 outline-offset-2 outline-transparent transition-all duration-200 focus-visible:outline-(--focus-color)"
+				className="group mt-16 inline-flex min-h-11 items-center gap-3 border border-transparent px-4 py-2 transition-all duration-200"
 				style={{
-					["--focus-color" as string]: theme.text,
 					fontFamily: fonts.body,
 					color: theme.text,
 					opacity: isCreatingJob ? 0.5 : 1,

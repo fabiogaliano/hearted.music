@@ -12,27 +12,19 @@ import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { saveThemePreference } from "@/lib/server/onboarding.server";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
-import {
-	COLOR_LABELS,
-	THEME_COLORS,
-	type ThemeColor,
-	type ThemeConfig,
-} from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
+import { COLOR_LABELS, THEME_COLORS, type ThemeColor } from "@/lib/theme/types";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import { StaggeredContent } from "./StaggeredContent";
 import { THEME_TRANSITION_MS } from "./StepContainer";
 
 interface PickColorStepProps {
-	theme: ThemeConfig;
 	currentTheme: ThemeColor;
 	setTheme: (theme: ThemeColor) => void;
 }
 
-export function PickColorStep({
-	theme,
-	currentTheme,
-	setTheme,
-}: PickColorStepProps) {
+export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
+	const theme = useTheme();
 	const { goToStep } = useOnboardingNavigation();
 	const [isSaving, setIsSaving] = useState(false);
 	const shouldReduceMotion = useReducedMotion();
@@ -44,7 +36,7 @@ export function PickColorStep({
 		[setTheme],
 	);
 
-	const { focusedIndex, getItemProps } = useListNavigation({
+	const { getItemProps } = useListNavigation({
 		items: THEME_COLORS,
 		scope: "onboarding-colors",
 		enabled: !isSaving,
@@ -100,7 +92,6 @@ export function PickColorStep({
 					<em className="font-normal">palette</em>
 				</h2>
 
-				{/* Color options - no initialDelay since outer stagger handles sequencing */}
 				<StaggeredContent
 					className="mt-16 grid grid-cols-2 gap-x-8 gap-y-4 sm:gap-x-12 sm:gap-y-8"
 					role="listbox"
@@ -110,8 +101,8 @@ export function PickColorStep({
 					{THEME_COLORS.map((colorId, index) => {
 						const optionTheme = themes[colorId];
 						const isSelected = currentTheme === colorId;
-						const isFocused = focusedIndex === index;
 						const itemProps = getItemProps(colorId, index);
+						const isFocused = itemProps["data-focused"];
 						return (
 							<button
 								key={colorId}
@@ -119,18 +110,16 @@ export function PickColorStep({
 								ref={itemProps.ref}
 								tabIndex={itemProps.tabIndex}
 								data-focused={itemProps["data-focused"]}
+								data-nav-engaged={itemProps["data-nav-engaged"]}
+								onPointerDown={itemProps.onPointerDown}
+								onFocus={itemProps.onFocus}
+								onBlur={itemProps.onBlur}
 								onClick={() => setTheme(colorId)}
 								aria-pressed={isSelected}
 								aria-label={`Select ${COLOR_LABELS[colorId]} theme`}
-								className="group flex min-h-11 cursor-pointer items-center gap-4 rounded-lg text-left outline-none ring-offset-2 focus-visible:ring-2"
-								style={{
-									["--tw-ring-color" as string]: theme.text,
-									["--tw-ring-offset-color" as string]: theme.bg,
-								}}
+								className="group flex min-h-11 cursor-pointer items-center gap-4 text-left"
 							>
-								{/* Color swatch - min 44px for touch targets */}
 								<div className="relative h-11 w-11 shrink-0 sm:h-12 sm:w-12">
-									{/* Selection/hover ring - uses shared theme transition timing */}
 									<div
 										className={`absolute -inset-1 rounded-full transition-opacity ease-out ${
 											isSelected
@@ -144,7 +133,6 @@ export function PickColorStep({
 												: `${THEME_TRANSITION_MS}ms`,
 										}}
 									/>
-									{/* Keyboard focus indicator - shows on any focused item */}
 									{isFocused && (
 										<div
 											className="absolute -inset-1 rounded-full"
@@ -192,9 +180,8 @@ export function PickColorStep({
 					type="button"
 					onClick={handleContinue}
 					disabled={isSaving}
-					className="group mt-16 inline-flex min-h-11 items-center gap-3 rounded outline-2 outline-offset-2 outline-transparent focus-visible:outline-(--focus-color) sm:mt-20"
+					className="group mt-16 inline-flex min-h-11 items-center gap-3 sm:mt-20"
 					style={{
-						["--focus-color" as string]: theme.text,
 						fontFamily: fonts.body,
 						color: theme.text,
 						opacity: isSaving ? 0.5 : 1,

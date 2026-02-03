@@ -6,19 +6,15 @@
  */
 
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 export interface ReleaseToggleProps {
-	theme: ThemeConfig;
 	isReleased: boolean;
 	onToggle: () => void;
 }
 
-export function ReleaseToggle({
-	theme,
-	isReleased,
-	onToggle,
-}: ReleaseToggleProps) {
+export function ReleaseToggle({ isReleased, onToggle }: ReleaseToggleProps) {
+	const theme = useTheme();
 	return (
 		<div
 			className="fixed right-6 bottom-6 z-50 flex items-center gap-3 rounded-full px-4 py-2 shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-105"

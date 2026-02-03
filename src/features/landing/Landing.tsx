@@ -16,16 +16,26 @@ import { useState } from "react";
 import { MatchesSection } from "@/features/matching/components/MatchesSection";
 import { SongSection } from "@/features/matching/components/SongSection";
 import { playlists, songs } from "@/lib/data/mock-data";
-import { useAlbumArt } from "@/lib/hooks/useAlbumArt";
 import { useArtistImage } from "@/lib/hooks/useArtistImage";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { LandingHero } from "./components/LandingHero";
 import { SpotifyLoginButton } from "./components/SpotifyLoginButton";
 import { WaitlistInput } from "./components/WaitlistInput";
 
+const albumArtMap: Record<string, string> = {};
+for (const song of songs) {
+	albumArtMap[song.spotifyTrackId] = song.albumArtUrl;
+}
+
+const getAlbumArt = (
+	spotifyTrackId: string,
+	_size?: number,
+): string | undefined => {
+	return albumArtMap[spotifyTrackId];
+};
+
 interface LandingProps {
-	theme: ThemeConfig;
 	/** Index of song to feature (default 0, can be randomized server-side) */
 	featuredSongIndex?: number;
 	/** Release mode - true for login, false for waitlist (controlled from PrototypeWrapper) */
@@ -33,13 +43,13 @@ interface LandingProps {
 }
 
 export function Landing({
-	theme,
 	featuredSongIndex = 0,
 	isReleased = true,
 }: LandingProps) {
+	const theme = useTheme();
 	const [selectedSongIndex, setSelectedSongIndex] = useState(featuredSongIndex);
 	const featuredSong = songs[selectedSongIndex] || songs[0];
-	const { getAlbumArt, isLoading } = useAlbumArt();
+	const isLoading = false;
 	const albumArtUrl = getAlbumArt(featuredSong.spotifyTrackId, 300);
 	const { artistImageUrl } = useArtistImage(featuredSong.spotifyTrackId);
 
@@ -75,7 +85,6 @@ export function Landing({
 			style={{ fontFamily: fonts.body, background: theme.bg }}
 		>
 			<LandingHero
-				theme={theme}
 				featuredSong={featuredSong}
 				albumArtUrl={albumArtUrl}
 				artistImageUrl={artistImageUrl}
@@ -114,7 +123,6 @@ export function Landing({
 						<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
 							<SongSection
 								song={previewSong}
-								theme={theme}
 								isExpanded={false}
 								metaVisible={true}
 								albumArtUrl={getAlbumArt(previewSong.spotifyTrackId, 640)}
@@ -122,7 +130,6 @@ export function Landing({
 							/>
 							<MatchesSection
 								playlists={playlists.slice(0, 3)}
-								theme={theme}
 								addedTo={[]}
 								onAdd={() => {}}
 								onDiscard={handlePreviewDiscard}
@@ -145,11 +152,7 @@ export function Landing({
 					What do they <span className="italic">say about you?</span>
 				</h3>
 				<div className="mt-10 flex justify-center">
-					{isReleased ? (
-						<SpotifyLoginButton theme={theme} />
-					) : (
-						<WaitlistInput theme={theme} />
-					)}
+					{isReleased ? <SpotifyLoginButton /> : <WaitlistInput />}
 				</div>
 			</section>
 
