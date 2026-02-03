@@ -12,7 +12,7 @@ import {
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
-import type { Tables, TablesInsert } from "./database.types";
+import type { Database, Tables, TablesInsert } from "./database.types";
 import type { ActionType } from "./newness";
 
 /** Liked song row type */
@@ -38,6 +38,22 @@ export interface LikedSongWithDetails {
 		image_url: string | null;
 	};
 }
+
+/** Row returned from get_liked_songs_page RPC function (inferred from DB types) */
+export type LikedSongPageRow =
+	Database["public"]["Functions"]["get_liked_songs_page"]["Returns"][number];
+
+/** Stats row returned from get_liked_songs_stats RPC function */
+export type LikedSongsStatsRow =
+	Database["public"]["Functions"]["get_liked_songs_stats"]["Returns"][number];
+
+/** Filter options for liked songs page */
+export type LikedSongFilter =
+	| "all"
+	| "unsorted"
+	| "sorted"
+	| "ignored"
+	| "analyzed";
 
 /**
  * Gets all liked songs for an account.
@@ -119,6 +135,67 @@ export async function getRecentWithDetails(
 	);
 
 	return Result.ok(filtered);
+}
+
+/**
+ * Gets a page of liked songs with full details (song + analysis) for the UI.
+ * Uses RPC function for efficient single-query fetch with JOINs.
+ * Cursor-based pagination using liked_at timestamp.
+ */
+export async function getPageWithDetails(
+	accountId: string,
+	options: {
+		cursor?: string;
+		limit?: number;
+		filter?: LikedSongFilter;
+	} = {},
+): Promise<
+	Result<{ items: LikedSongPageRow[]; nextCursor: string | null }, DbError>
+> {
+	const supabase = createAdminSupabaseClient();
+	const limit = options.limit ?? 50;
+
+	const { data, error } = await supabase.rpc("get_liked_songs_page", {
+		p_account_id: accountId,
+		p_cursor: options.cursor,
+		p_limit: limit,
+		p_filter: options.filter ?? "all",
+	});
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	const rows = (data ?? []) as LikedSongPageRow[];
+	const hasMore = rows.length > limit;
+	const items = hasMore ? rows.slice(0, limit) : rows;
+	const nextCursor = hasMore ? items[items.length - 1].liked_at : null;
+
+	return Result.ok({ items, nextCursor });
+}
+
+/**
+ * Gets aggregate stats for liked songs (total, analyzed, sorted, unsorted).
+ * Single efficient query independent of pagination.
+ */
+export async function getStats(
+	accountId: string,
+): Promise<Result<LikedSongsStatsRow, DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase
+		.rpc("get_liked_songs_stats", { p_account_id: accountId })
+		.single();
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok(data);
 }
 
 /**

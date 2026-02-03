@@ -622,6 +622,7 @@ export type Database = {
 				Row: {
 					album_id: string | null;
 					album_name: string | null;
+					artist_ids: string[];
 					artists: string[];
 					created_at: string;
 					duration_ms: number | null;
@@ -638,6 +639,7 @@ export type Database = {
 				Insert: {
 					album_id?: string | null;
 					album_name?: string | null;
+					artist_ids?: string[];
 					artists?: string[];
 					created_at?: string;
 					duration_ms?: number | null;
@@ -654,6 +656,7 @@ export type Database = {
 				Update: {
 					album_id?: string | null;
 					album_name?: string | null;
+					artist_ids?: string[];
 					artists?: string[];
 					created_at?: string;
 					duration_ms?: number | null;
@@ -892,6 +895,39 @@ export type Database = {
 			count_analyzed_songs_for_account: {
 				Args: { p_account_id: string };
 				Returns: number;
+			};
+			get_liked_songs_page: {
+				Args: {
+					p_account_id: string;
+					p_cursor?: string;
+					p_filter?: string;
+					p_limit?: number;
+				};
+				Returns: {
+					analysis_content: Json;
+					analysis_created_at: string;
+					analysis_id: string;
+					analysis_model: string;
+					id: string;
+					liked_at: string;
+					song_album_name: string;
+					song_artist_ids: string[];
+					song_artists: string[];
+					song_id: string;
+					song_image_url: string;
+					song_name: string;
+					song_spotify_id: string;
+					status: string;
+				}[];
+			};
+			get_liked_songs_stats: {
+				Args: { p_account_id: string };
+				Returns: {
+					analyzed: number;
+					sorted: number;
+					total: number;
+					unsorted: number;
+				}[];
 			};
 		};
 		Enums: {
