@@ -276,9 +276,7 @@ export function createLlmService(
 function getApiKeyForProvider(provider: LlmProviderName): string | undefined {
 	switch (provider) {
 		case "google":
-			return (
-				process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? process.env.GOOGLE_API_KEY
-			);
+			return process.env.GEMINI_API_KEY;
 		case "anthropic":
 			return process.env.ANTHROPIC_API_KEY;
 		case "openai":

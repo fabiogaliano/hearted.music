@@ -1,26 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getTheme } from "@/lib/theme/useTheme";
-import { DEFAULT_THEME } from "@/lib/theme/types";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
-export const Route = createFileRoute("/_authenticated/liked-songs")({
-	component: LikedSongsPage,
+import { LikedSongsPage } from "@/features/liked-songs/LikedSongsPage";
+import { likedSongsInfiniteQueryOptions } from "@/features/liked-songs/queries";
+
+const searchSchema = z.object({
+	filter: fallback(z.enum(["all", "unsorted", "sorted", "analyzed"]), "all"),
+	song: z.string().optional(),
 });
 
-function LikedSongsPage() {
-	const { theme: themeColor } = Route.useRouteContext();
-	const theme = getTheme(themeColor ?? DEFAULT_THEME);
+export const Route = createFileRoute("/_authenticated/liked-songs")({
+	validateSearch: zodValidator(searchSchema),
+	loaderDeps: ({ search }) => ({ filter: search.filter }),
+	loader: async ({ deps, context }) => {
+		await context.queryClient.ensureInfiniteQueryData(
+			likedSongsInfiniteQueryOptions(deps.filter),
+		);
+	},
+	component: LikedSongsRoute,
+});
 
-	return (
-		<div className="flex items-center justify-center min-h-[60vh]">
-			<div className="text-center">
-				<h1
-					className="text-2xl font-semibold mb-2"
-					style={{ color: theme.text }}
-				>
-					Liked Songs
-				</h1>
-				<p style={{ color: theme.textMuted }}>Coming Soon</p>
-			</div>
-		</div>
-	);
+function LikedSongsRoute() {
+	const { song } = Route.useSearch();
+	const { session } = Route.useRouteContext();
+
+	return <LikedSongsPage selectedSlug={song} accountId={session.accountId} />;
 }
