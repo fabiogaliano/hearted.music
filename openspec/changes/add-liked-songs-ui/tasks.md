@@ -1,298 +1,182 @@
 # Implementation Tasks
 
-**Status**: Not started
+**Status**: ✅ Core Complete
+**Approach**: Direct copy from v0 + adapt in place
+**Last Updated**: 2026-02-03
 
 ---
 
-## 1. Types
+## Phase 1: Infrastructure ✅
 
-- [ ] 1.1 Create `src/features/liked-songs/types.ts`
-  - Port from `warm-pastel/features/liked-songs/types.ts` (144 lines)
-  - Types: `SortingStatus`, `UIAnalysisStatus`, `FilterOption`
-  - Interfaces: `LikedSong`, `SongAnalysis`, `AnalysisContent` (full nested structure)
-  - Props: `LikedSongsPageProps`, `SongListProps`, `SongDetailPanelProps`
-  - Helpers: `isNewSong(likedAt)`, `formatRelativeTime(dateString)`
+### 1.1 Create TaggedErrors
+- [x] Create `src/lib/shared/errors/domain/liked-songs.ts`
+  - Errors: `LikedSongsLoadError`, `SongNotFoundError`, `AlbumArtBatchError`
+  - Export union type `LikedSongsError`
 
----
+### 1.2 Create Query Key Factory
+- [x] Create `src/features/liked-songs/queries.ts` (41 lines)
+  - `likedSongsKeys` factory pattern
+  - `likedSongsInfiniteQueryOptions()` for paginated list
+  - `likedSongsStatsQueryOptions()` for header stats
 
-## 2. Server Functions
-
-- [ ] 2.1 Create `src/lib/server/liked-songs.server.ts`
-  - `getLikedSongsPage({ cursor, limit, filter })` - paginated fetch
-    - Uses `liked-song.ts` getAll + `song-analysis.ts` get (batch)
-    - Joins liked_song with track and analysis data
-    - Returns `{ songs: LikedSong[], nextCursor: string | null }`
-  - `getTrackImages(ids: string[])` - batch album art fetch
-    - Endpoint for useVisibleSongsAlbumArt hook
-    - Returns `{ images: Record<string, string> }`
+### 1.3 Create Server Functions
+- [x] Create `src/lib/server/liked-songs.server.ts` (245 lines)
+  - Cursor-based pagination for liked songs
+  - Stats aggregation function
 
 ---
 
-## 3. Route Setup
+## Phase 2: Bulk Copy ✅
 
-- [ ] 3.1 Create `src/routes/_authenticated/dashboard/liked-songs.tsx`
-  - Loader fetches initial page (50 songs with analysis)
-  - Search params: `?filter=all|unsorted|sorted|analyzed`
-  - Dynamic segment for slug: `$songSlug` optional param
-  - Pass `songs`, `initialFilter`, `selectedSlug` to component
+### 2.1 Copy All v0 Files
+- [x] Copy directory structure to `src/features/liked-songs/`
+- [x] 15 files total (~3,150 lines)
 
 ---
 
-## 4. Hooks
+## Phase 3: Import Path Adaptations ✅
 
-### 4.1 Infinite Scroll
+### 3.1 Fix Import Paths
+- [x] Update import aliases (`~/` → `@/`)
+- [x] Update theme imports to use `useTheme()` hook
+- [x] Update keyboard imports to v1 location
 
-- [ ] 4.1.1 Create `src/features/liked-songs/hooks/useInfiniteScroll.ts`
-  - Port from warm-pastel (57 lines)
-  - IntersectionObserver with configurable `rootMargin` threshold (default 100px)
-  - Returns `{ sentinelRef }` to attach to bottom element
-  - Stabilize callback via ref to prevent effect re-runs
+### 3.2 Adapt types.ts
+- [x] Create `src/features/liked-songs/types.ts` (149 lines)
+- [x] `LikedSong`, `SongAnalysis`, `UIAnalysisStatus` types
 
-### 4.2 Song Expansion (View Transitions)
-
-- [ ] 4.2.1 Create `src/features/liked-songs/hooks/useSongExpansion.ts`
-  - Port from warm-pastel (237 lines)
-  - **View Transitions helper**:
-    - `supportsViewTransitions` check
-    - `withViewTransition(callback)` wraps with flushSync, returns `.finished` promise
-  - **State**: `selectedSongId`, `isExpanded`, `startRect`, `closingToSongId`
-  - **URL Sync**:
-    - `updateUrl(slug)` uses `window.history.pushState` (shallow routing)
-    - `popstate` listener for browser back/forward
-  - **Handlers**:
-    - `handleExpand(song, event)` - capture rect, set state, push URL
-    - `handleClose()` - View Transition with closingToSongId handoff
-    - `handleNext()` / `handlePrevious()` - navigate within list
-  - **Deep linking**: `initialSlug` prop opens panel on mount
-
-### 4.3 Album Art Loading
-
-- [ ] 4.3.1 Create `src/features/liked-songs/hooks/useVisibleSongsAlbumArt.ts`
-  - Port from warm-pastel (101 lines)
-  - Input: `visibleSongs: LikedSong[]`
-  - Extract unique `spotify_track_id`s
-  - Batch into groups of 50
-  - TanStack Query `useQueries` for parallel fetching
-  - Query key: `['album-art', 'batch', ids.sort().join(',')]`
-  - Stale time: 1 hour, GC time: 2 hours
-  - Returns `{ albumArt, isLoading, getAlbumArt(id) }`
-  - Fallback: picsum.photos placeholder
+### 3.3 Adapt detail/utils.ts
+- [x] Pure utility functions (45 lines)
 
 ---
 
-## 5. Song Card
+## Phase 4: Hook Adaptations ✅
 
-- [ ] 5.1 Create `src/features/liked-songs/components/SongCard.tsx`
-  - Port from warm-pastel (116 lines)
-  - Props: `song`, `albumArtUrl`, `isSelected`, `isFocused`, `onClick`, `isAnimatingTo`
-  - Album art: 48x48, gradient placeholder if no URL
-  - "New" indicator dot (< 7 days)
-  - Track name, artist, relative time
-  - Selection state: background color
-  - Focus state: left border accent
-  - **View Transition names** (only when `isAnimatingTo`):
-    - `viewTransitionName: 'song-album'`
-    - `viewTransitionName: 'song-title'`
-    - `viewTransitionName: 'song-artist'`
+### 4.1 Adapt useInfiniteScroll.ts
+- [x] IntersectionObserver-based pagination (60 lines)
 
----
+### 4.2 Adapt useSongExpansion.ts
+- [x] FLIP animation + URL sync via `window.history.pushState` (210 lines)
+- [x] Accept `initialSlug` from route search params
+- **Deviation**: Uses `history.pushState` directly (simpler than TanStack navigate)
 
-## 6. Detail Panel
+### 4.3 ~~useVisibleSongsAlbumArt.ts~~
+- [x] **SKIPPED** - Album art handled inline via simpler approach
 
-### 6.1 Main Panel
+### 4.4 Create useArtistImage.ts
+- [x] TanStack Query wrapper for artist images (50 lines)
 
-- [ ] 6.1.1 Create `src/features/liked-songs/components/SongDetailPanel.tsx`
-  - Port from warm-pastel (921 lines) - this is the largest component
-  - Props: `song`, `albumArtUrl`, `artistImageUrl`, `isExpanded`, `startRect`, `onClose`, `onNext`, `onPrevious`, `hasNext`, `hasPrevious`, `isDark`
-  - **Theme derivation**: `getThemedDarkColors(theme)` generates HSL-based dark palette
-  - **Slide animation**: `translateX(100%) → translateX(0)` on `isExpanded`
-  - **Responsive width**: `clamp(380px, 45vw, calc(100vw - 280px))`
-  - **View Transition names** (when `isExpanded`): song-album, song-title, song-artist
-  - Renders: header, hero, content sections
-
-### 6.2 Scroll-Driven Hero Collapse
-
-- [ ] 6.2.1 Implement hero collapse animation in SongDetailPanel
-  - **Layout constants**: heroHeight=450, collapsedHeaderHeight=108, albumArtExpanded=112, albumArtCollapsed=56
-  - **Refs**: scrollRef, headerRef, heroRef, artistImageRef, vignetteRef, bottomFadeRef, albumArtRef, textBlockRef, titleRef, metaRef, contentRef
-  - **Wheel event interception**:
-    - Track `collapseOffset` (0 to 342)
-    - Consume wheel delta until fully collapsed, then allow scroll
-    - On scroll up at top, reverse collapse
-  - **Apply progress**:
-    - `lerp(from, to, progress)` for smooth interpolation
-    - `smoothstep(t)` for easing: `t * t * (3 - 2 * t)`
-    - Snap states with hysteresis (< 0.02 snaps to 0, > 0.96 snaps to 1)
-  - **Animated properties**:
-    - Hero height: 450px → 108px
-    - Album art: 112px → 56px, position shifts
-    - Title font: 24px → 16px
-    - Artist font: 14px → 12px
-    - Artist image opacity: 1 → 0
-    - Bottom fade opacity: 0 → 1
-    - Header border opacity: 0 → 1
-  - **Reduced motion**: Instant collapse if `prefers-reduced-motion`
-  - **Song change**: Reset scroll and collapse state
-
-### 6.3 Detail Subcomponents
-
-- [ ] 6.3.1 Create `src/features/liked-songs/components/detail/index.ts`
-  - Export all subcomponents and utils
-
-- [ ] 6.3.2 Create `src/features/liked-songs/components/detail/utils.ts`
-  - Port from warm-pastel (54 lines)
-  - `getMatchQuality(score)` → { label, showProminent }
-  - `getIntensityLabel(intensity)` → 'Hits hard' | 'Builds intensity' | etc.
-  - `getAudioQualityLabel(value, type)` for energy/valence/danceability/acousticness
-  - `getTempoFeel(tempo)` → 'Racing' | 'Driving' | 'Steady' | etc.
-
-- [ ] 6.3.3 Create `src/features/liked-songs/components/detail/Nav.tsx`
-  - Port from warm-pastel (82 lines)
-  - Previous/Next/Close buttons with SVG icons
-  - Disabled state when no prev/next
-  - Dark/light mode color adaptation
-
-- [ ] 6.3.4 Create `src/features/liked-songs/components/detail/AudioInfo.tsx`
-  - Port from warm-pastel (61 lines)
-  - Compact display: Energy, Mood, BPM
-  - Labels: High/Med/Low for energy, Bright/Balanced/Melancholic for valence
-
-- [ ] 6.3.5 Create `src/features/liked-songs/components/detail/MeaningSection.tsx`
-  - Port from warm-pastel (303 lines)
-  - **EmotionalHook**: mood_description (italic), dominant_mood tag, intensity label
-  - **ThemesList**: Coordinated hover (only one theme expanded at a time)
-    - `openIndex` state, `pinnedIndex` for click-to-pin
-    - Hover opens, mouse leave closes after 150ms delay
-  - **JourneyTimeline**: Collapsed by default
-    - Toggle button shows section count
-    - Timeline: section label (10px uppercase) + mood + description
-
-- [ ] 6.3.6 Create `src/features/liked-songs/components/detail/ContextSection.tsx`
-  - Port from warm-pastel (39 lines)
-  - "Perfect For" heading
-  - Pill tags from `analysis.context.best_moments[]`
-
-- [ ] 6.3.7 Create `src/features/liked-songs/components/detail/PlaylistsSection.tsx`
-  - Port from warm-pastel (260 lines)
-  - **PlaylistRow**: Full (prominent) vs compact (other) variants
-    - Match quality label from `getMatchQuality(score)`
-    - Add button / "Added" state
-  - **Prominent matches**: score >= 0.6, full display
-  - **Other matches**: Collapsed by default, expandable
-  - **AddedSummary**: "Added to X playlist(s)"
-  - **Footer actions**: "Skip this song" / "Mark as sorted"
+### 4.5 ~~Extract useHeroCollapse.ts~~
+- [x] **SKIPPED** - Collapse logic kept inline in SongDetailPanel (YAGNI)
+- Rationale: Extraction adds indirection without reuse benefit
 
 ---
 
-## 7. Page Component
+## Phase 5: Component Adaptations ✅
 
-- [ ] 7.1 Create `src/features/liked-songs/LikedSongsPage.tsx`
-  - Port from warm-pastel (317 lines)
-  - Props: `theme`, `songs`, `isLoading`, `initialFilter`, `selectedSlug`, `isDarkMode`
-  - **Filter state**: 'all' | 'unsorted' | 'sorted' | 'analyzed'
-  - **Filtering logic**:
-    - unsorted: `sorting_status === 'unsorted' || null`
-    - sorted: `sorting_status === 'sorted'`
-    - analyzed: `uiAnalysisStatus === 'analyzed'`
-  - **Pagination**: `loadedCount` state, reset on filter change
-  - **Hooks integration**:
-    - `useInfiniteScroll({ onLoadMore, hasMore })`
-    - `useSongExpansion(filteredSongs, { initialSlug })`
-    - `useVisibleSongsAlbumArt(displayedSongs)`
-    - `useArtistImage(selectedSong?.spotify_track_id)` for panel background
-  - **Stats**: total, analyzed, unsorted counts
-  - **Dark mode toggle**: Cmd+D shortcut
+### 5.1 Adapt SongCard.tsx
+- [x] List item component (136 lines)
+- [x] Uses `useTheme()` hook
 
-- [ ] 7.2 Integrate with route loader data
-  - Replace mock data with loader data
-  - Wire up server function for pagination when `loadedCount` exceeds loaded data
+### 5.2 Adapt SongDetailPanel.tsx
+- [x] Full detail overlay (925 lines)
+- [x] Hero collapse logic inline (not extracted)
+- [x] Uses `useArtistImage` hook
+- [x] Dark mode support via `useThemeWithOverride`
 
----
+### 5.3 Adapt detail/*.tsx (5 components)
+- [x] AudioInfo.tsx (57 lines)
+- [x] ContextSection.tsx (40 lines)
+- [x] MeaningSection.tsx (302 lines)
+- [x] Nav.tsx (81 lines)
+- [x] PlaylistsSection.tsx (265 lines)
 
-## 8. Keyboard Navigation
-
-- [ ] 8.1 Add list navigation (scope: 'liked-list')
-  - Use existing `useListNavigation` hook
-  - j/k to move focus
-  - Enter to expand
-  - Sync focus with selected song when panel navigates
-
-- [ ] 8.2 Add panel navigation (scope: 'liked-detail')
-  - `useShortcut` for Escape → close
-  - `useShortcut` for j/k and Up/Down → next/prev song
-  - `useShortcut` for Cmd+D → toggle dark mode
+### 5.4 Create PanelSkeleton.tsx
+- [x] Loading placeholder (71 lines)
 
 ---
 
-## 9. Filtering
+## Phase 6: Page & Route ✅
 
-- [ ] 9.1 Implement filter tabs UI
-  - Tabs: All, Unsorted, Sorted, Analyzed
-  - Active state styling
-  - Click handler updates filter
+### 6.1 Adapt LikedSongsPage.tsx
+- [x] Main page component (356 lines)
+- [x] Infinite scroll pagination
+- [x] Filter tabs (all/unsorted/sorted/analyzed)
+- [x] Stats header integration
 
-- [ ] 9.2 URL sync for filter
-  - Read `?filter=` from search params
-  - Update URL on filter change (shallow or full navigation TBD)
-  - Reset `loadedCount` to `INITIAL_LOAD_SIZE` on filter change
+### 6.2 Update Route
+- [x] `src/routes/_authenticated/liked-songs.tsx` (29 lines)
+- [x] Search params: `filter`, `song`
+- [x] Uses `ensureInfiniteQueryData` in loader
+
+### 6.3 ~~Feature Index~~
+- [x] **SKIPPED** - Direct imports used (no barrel file needed)
 
 ---
 
-## 10. Polish
+## Phase 7: Keyboard Integration ⏳
 
-- [ ] 10.1 Loading states
-  - Skeleton cards during initial load
-  - "Loading more..." text at sentinel
-  - Spinner for album art loading
+### 7.1 Wire List Navigation
+- [x] Uses `useListNavigation` hook
+- [x] j/k moves focus, Enter expands
 
-- [ ] 10.2 Empty states
-  - No songs yet: "Like songs on Spotify to see them here"
-  - No matches for filter: "No {filter} songs"
+### 7.2 Wire Panel Navigation
+- [ ] Verify Escape closes panel
+- [ ] Verify j/k navigates between songs
+- [ ] Verify Cmd+D toggles dark mode
 
-- [ ] 10.3 Error handling
-  - Failed loads with retry button
-  - Toast for failed playlist add
+---
 
-- [ ] 10.4 Reduced motion support
-  - Detect `prefers-reduced-motion`
-  - Skip View Transitions → simple state change
-  - Instant hero collapse (no animation)
+## Phase 8: Database ✅
 
-- [ ] 10.5 Mobile responsiveness
-  - Full-screen panel (100vw)
-  - Touch-friendly tap targets
-  - Swipe to close (optional)
+### 8.1 Migrations
+- [x] `20260116160002_create_liked_song.sql`
+- [x] `20260202082559_add_liked_songs_page_function.sql`
+- [x] `20260202133656_update_liked_songs_page_function.sql`
+- [x] `20260202204006_add_liked_songs_stats_function.sql`
+
+---
+
+## Phase 9: Polish & Verification ⏳
+
+### 9.1 Loading States
+- [x] PanelSkeleton for detail panel
+- [ ] Skeleton cards for initial load
+- [ ] "Loading more..." at sentinel
+
+### 9.2 Empty States
+- [ ] No songs state
+- [ ] No matches for filter state
+
+### 9.3 Error Handling
+- [ ] Route errorComponent
+- [ ] Deep link 404 handling
+
+### 9.4 Visual Parity Verification
+- [x] Compare v0 and v1 side-by-side
+- [x] Verify animations match
 
 ---
 
 ## Summary
 
-| Phase | Tasks | Complexity |
-|-------|-------|------------|
-| 1. Types | 1 | Low |
-| 2. Server | 1 | Medium |
-| 3. Route | 1 | Low |
-| 4. Hooks | 3 | Medium |
-| 5. Card | 1 | Low |
-| 6. Panel | 7 | High (921 lines + subcomponents) |
-| 7. Page | 2 | Medium |
-| 8. Keyboard | 2 | Low |
-| 9. Filter | 2 | Low |
-| 10. Polish | 5 | Medium |
-| **Total** | **25** | |
+| Phase             | Status | Files                        |
+| ----------------- | ------ | ---------------------------- |
+| 1. Infrastructure | ✅      | 3 files created              |
+| 2. Bulk Copy      | ✅      | 15 files copied              |
+| 3. Import Paths   | ✅      | All adapted                  |
+| 4. Hooks          | ✅      | 3 adapted (2 skipped)        |
+| 5. Components     | ✅      | All 8 complete               |
+| 6. Page & Route   | ✅      | Route wired                  |
+| 7. Keyboard       | ⏳      | Partial - needs verification |
+| 8. Database       | ✅      | 4 migrations                 |
+| 9. Polish         | ⏳      | Loading/empty/error states   |
 
-## Implementation Order
+## Deviations from Original Plan
 
-Recommended sequence for minimal dependencies:
-
-1. **Types** (1.1) - Foundation
-2. **Server functions** (2.1) - Data layer
-3. **Route** (3.1) - Wire up loader
-4. **Hooks** (4.1-4.3) - Reusable logic
-5. **Card** (5.1) - List item
-6. **Panel subcomponents** (6.3.1-6.3.7) - Smallest to largest
-7. **Panel main** (6.1.1, 6.2.1) - Compose subcomponents
-8. **Page** (7.1, 7.2) - Compose everything
-9. **Keyboard** (8.1, 8.2) - Enhancement
-10. **Filtering** (9.1, 9.2) - Enhancement
-11. **Polish** (10.x) - Final touches
+| Planned                        | Actual              | Rationale               |
+| ------------------------------ | ------------------- | ----------------------- |
+| `useVisibleSongsAlbumArt` hook | Skipped             | Simpler inline approach |
+| `useHeroCollapse` extraction   | Kept inline         | YAGNI - no reuse case   |
+| TanStack `navigate()` for URLs | `history.pushState` | Simpler, works fine     |
+| `index.ts` barrel export       | Direct imports      | Less indirection        |

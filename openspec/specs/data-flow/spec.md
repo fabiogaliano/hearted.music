@@ -184,9 +184,9 @@ import { updateLikedSongStatus } from '~/data/songs'
 
 export const markSongMatched = createServerFn()
   .validator(z.object({
-    accountId: z.string().uuid(),
-    songId: z.string().uuid(),
-    playlistId: z.string().uuid(),
+    accountId: z.uuid(),
+    songId: z.uuid(),
+    playlistId: z.uuid(),
   }))
   .handler(async ({ data }) => {
     await updateLikedSongStatus(data.accountId, data.songId, 'matched')

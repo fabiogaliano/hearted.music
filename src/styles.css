@@ -19,6 +19,10 @@ code {
 }
 
 :root {
+  /* Theme hue - override this to change focus ring color globally */
+  /* Default: 340 (rose) - matches DEFAULT_THEME */
+  --theme-hue: 340;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
@@ -37,7 +41,8 @@ code {
   --destructive-foreground: oklch(0.577 0.245 27.325);
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.871 0.006 286.286);
+  /* Focus ring derives from theme hue - matches light theme primary pattern */
+  --ring: hsl(var(--theme-hue), 25%, 30%);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -78,7 +83,8 @@ code {
   --destructive-foreground: oklch(0.637 0.237 25.331);
   --border: oklch(0.274 0.006 286.033);
   --input: oklch(0.274 0.006 286.033);
-  --ring: oklch(0.442 0.017 285.786);
+  /* Focus ring derives from theme hue - matches dark theme primary pattern */
+  --ring: hsl(var(--theme-hue), 45%, 65%);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -135,10 +141,27 @@ code {
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--border);
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
+  /* Global keyboard focus indicator - ring style */
+  :is(button, input, textarea, select, a, [role="button"], [role="option"], [tabindex]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Hide browser focus ring when custom navigation indicator is active */
+  [data-focused="true"]:focus-visible {
+    outline: none;
+  }
+
+  /* Hide browser focus ring for keyboard-engaged list navigation (prevents flicker during focus moves) */
+  [data-nav-engaged="true"]:focus-visible {
+    outline: none;
   }
 }
 
@@ -159,5 +182,10 @@ code {
   }
   .focus-outline-dashed:focus-visible {
     outline-color: var(--focus-color, currentColor);
+  }
+
+  /* Theme-aware hover for song cards (variable set inline from JS) */
+  .song-card:hover {
+    background: var(--hover-bg);
   }
 }

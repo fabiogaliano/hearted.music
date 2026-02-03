@@ -4,288 +4,155 @@
 
 Users need to browse their liked songs library, see analysis status, and access detailed song information. This is the **primary data view** - everything flows from here.
 
-Key features:
-1. **Infinite scroll** - Handle 1000+ songs efficiently
-2. **View Transitions** - Smooth card-to-panel shared element animation
-3. **Filtering** - All, unsorted, sorted, analyzed
-4. **Detail panel** - Full analysis with themes, emotions, audio features
-5. **Scroll-driven hero collapse** - Dynamic header that shrinks on scroll
+## Approach: Direct Copy & Adapt
 
-We have a production-ready prototype in `old_app/prototypes/warm-pastel/features/liked-songs/` (~2,000 lines including subcomponents).
+We have a **production-ready prototype** at `v0/services/web/app/prototypes/warm-pastel/features/liked-songs/` with pixel-perfect UI. Rather than rewriting, we **copy files directly and adapt in place** to preserve 1:1 fidelity.
 
-## What Changes
+**Benefits:**
+- Preserves exact styling (HSL colors, spacing, typography)
+- Keeps animation timing unchanged (0.35s cubic-bezier, smoothstep easing)
+- Maintains same component structure
+- Reduces translation errors
 
-### Source: Warm-Pastel Prototype
+## Source Files (v0 Prototype)
 
-| File | Lines | What We Use |
-|------|-------|-------------|
-| `features/liked-songs/LikedSongsPage.tsx` | 317 | Main page, filtering, scroll |
-| `features/liked-songs/components/SongCard.tsx` | 116 | List item with view-transition-name |
-| `features/liked-songs/components/SongDetailPanel.tsx` | 921 | Slide-out panel with collapse animation |
-| `features/liked-songs/components/detail/AudioInfo.tsx` | 61 | Energy/Mood/BPM display |
-| `features/liked-songs/components/detail/MeaningSection.tsx` | 303 | Themes, emotional hook, journey |
-| `features/liked-songs/components/detail/ContextSection.tsx` | 39 | "Perfect For" tags |
-| `features/liked-songs/components/detail/PlaylistsSection.tsx` | 260 | Playlist matching + actions |
-| `features/liked-songs/components/detail/Nav.tsx` | 82 | Prev/Next/Close buttons |
-| `features/liked-songs/components/detail/utils.ts` | 54 | Label helpers |
-| `features/liked-songs/hooks/useInfiniteScroll.ts` | 57 | IntersectionObserver pagination |
-| `features/liked-songs/hooks/useSongExpansion.ts` | 237 | View Transitions + URL sync |
-| `features/liked-songs/hooks/useVisibleSongsAlbumArt.ts` | 101 | Lazy album art with TanStack Query |
-| `features/liked-songs/types.ts` | 144 | Type definitions |
+```
+v0/services/web/app/prototypes/warm-pastel/features/liked-songs/
+├── index.ts                    (539 B)   → Public exports
+├── LikedSongsPage.tsx          (9.1 KB)  → Main page
+├── types.ts                    (3.3 KB)  → Type definitions
+├── components/
+│   ├── SongCard.tsx            (3.2 KB)  → List item
+│   ├── SongDetailPanel.tsx     (30 KB)   → Detail panel (largest)
+│   └── detail/
+│       ├── index.ts            (305 B)   → Subcomponent exports
+│       ├── AudioInfo.tsx       (1.6 KB)
+│       ├── ContextSection.tsx  (877 B)
+│       ├── MeaningSection.tsx  (9.1 KB)
+│       ├── Nav.tsx             (1.6 KB)
+│       ├── PlaylistsSection.tsx(7.8 KB)
+│       └── utils.ts            (1.4 KB)
+└── hooks/
+    ├── useInfiniteScroll.ts    (1.5 KB)
+    ├── useSongExpansion.ts     (7.1 KB)
+    └── useVisibleSongsAlbumArt.ts (2.8 KB)
+```
 
-### New Files
+**Total: 15 files, ~67 KB**
 
-| Target Location | Purpose |
-|-----------------|---------|
-| `src/routes/_authenticated/dashboard/liked-songs.tsx` | Route with loader |
-| `src/features/liked-songs/LikedSongsPage.tsx` | Main page component |
-| `src/features/liked-songs/components/SongCard.tsx` | List item |
-| `src/features/liked-songs/components/SongDetailPanel.tsx` | Slide-out detail panel |
-| `src/features/liked-songs/components/detail/` | 5 subcomponents + utils |
-| `src/features/liked-songs/hooks/useInfiniteScroll.ts` | IntersectionObserver hook |
-| `src/features/liked-songs/hooks/useSongExpansion.ts` | View Transitions + state |
-| `src/features/liked-songs/hooks/useVisibleSongsAlbumArt.ts` | Batched album art fetching |
-| `src/features/liked-songs/types.ts` | LikedSong, AnalysisContent types |
-| `src/lib/server/liked-songs.server.ts` | Paginated data fetching |
+## Target Location (v1)
 
-### Existing Integration Points
+```
+src/features/liked-songs/
+├── index.ts                    ← Copy + adapt exports
+├── LikedSongsPage.tsx          ← Copy + adapt
+├── types.ts                    ← Copy (minimal changes)
+├── components/
+│   ├── SongCard.tsx            ← Copy + adapt
+│   ├── SongDetailPanel.tsx     ← Copy + adapt
+│   ├── PanelSkeleton.tsx       ← NEW (Suspense fallback)
+│   └── detail/
+│       ├── index.ts            ← Copy
+│       ├── AudioInfo.tsx       ← Copy
+│       ├── ContextSection.tsx  ← Copy
+│       ├── MeaningSection.tsx  ← Copy
+│       ├── Nav.tsx             ← Copy
+│       ├── PlaylistsSection.tsx← Copy + adapt (server fn)
+│       └── utils.ts            ← Copy
+└── hooks/
+    ├── useInfiniteScroll.ts    ← Copy
+    ├── useSongExpansion.ts     ← Copy + adapt (TanStack Router)
+    ├── useVisibleSongsAlbumArt.ts ← Copy + adapt
+    ├── useHeroCollapse.ts      ← Extract from SongDetailPanel
+    └── useArtistImage.ts       ← NEW (fetch artist background)
+```
 
-| File | Integration |
-|------|-------------|
-| `src/lib/data/liked-song.ts` | Query liked songs (getAll, getPending) |
-| `src/lib/data/song-analysis.ts` | Get analysis for detail panel |
+## Integration Points (v1 Codebase)
+
+| v1 Location | Purpose |
+|-------------|---------|
+| `src/routes/_authenticated/liked-songs.tsx` | Route exists, needs loader |
+| `src/lib/keyboard/useShortcut.ts` | Keyboard hooks (exists) |
+| `src/lib/keyboard/useListNavigation.ts` | List nav (exists) |
 | `src/lib/theme/` | Theme system (exists) |
-| `src/lib/keyboard/` | Keyboard navigation (exists) |
+| `src/lib/shared/errors/` | TaggedError pattern |
+| `src/lib/server/` | Server functions home |
 
-## Architecture
+## Adaptations Required
 
-### Data Flow
+### 1. Import Paths
+- `~/` → `@/` (if different alias)
+- Theme imports from v1 location
+- Utility imports from v1 lib
 
-```
-Route Loader (initial 50 songs with analysis)
-    ↓
-LikedSongsPage (display first 10, client-side filter)
-    ↓
-useInfiniteScroll (IntersectionObserver on sentinel)
-    ↓
-loadedCount increases → slice more from filteredSongs
-    ↓
-(If need more data) → Server function for next page
-```
+### 2. URL Routing (v0 → v1)
+- v0: `history.pushState` (manual)
+- v1: TanStack Router `useNavigate({ search })`
+- Both: shallow routing via search params
 
-### View Transitions Animation (NOT FLIP)
+### 3. Server Functions
+- v0: Direct API calls
+- v1: TanStack Start server functions with `createServerFn`
+- Add Result type wrapping
 
-The prototype uses the **View Transitions API** for shared element animation, not traditional FLIP:
+### 4. Error Handling
+- v0: Try/catch with console
+- v1: TaggedError + Result types
 
-1. **Open**: User clicks card
-   - `useSongExpansion` captures card's bounding rect
-   - Sets `selectedSongId`, `isExpanded = true`
-   - Panel slides in from right (`translateX(100%) → translateX(0)`)
-   - Panel elements have `viewTransitionName: 'song-album' | 'song-title' | 'song-artist'`
-   - Browser morphs from card position to panel position
+### 5. Theme Type Alignment
+- Verify `ThemeConfig` interface matches
+- Extract hue utility for dark mode
 
-2. **Close**: User presses Escape or clicks X
-   - `withViewTransition()` wraps state update with `flushSync`
-   - Sets `closingToSongId` so **card** gets the view-transition-name
-   - Sets `isExpanded = false` so **panel** loses the name
-   - Browser captures snapshots and morphs panel elements back to card
-   - After `transition.finished`, clear state
+## UI Specifications (Preserve Exactly)
 
-3. **Fallback**: If View Transitions not supported
-   - Simple slide animation, no morphing
+### Typography
+| Element | Font | Size | Weight |
+|---------|------|------|--------|
+| Page title | Instrument Serif | 48px | 200 |
+| Stats number | Instrument Serif | 30px | 200 |
+| Song title (card) | Instrument Serif | 16px | 300/400 |
+| Panel title | Instrument Serif | 24px→16px | 300 |
+| Body text | Geist | 14px | 400 |
+| Labels | Geist | 12px | 400 (tracking-widest uppercase) |
 
-### Scroll-Driven Hero Collapse
-
-The detail panel has a sophisticated scroll-collapse mechanism:
-
-```
-┌─────────────────────────────┐
-│  Genre                   ✕  │  ← Sticky header (108px collapsed)
-│  ┌───┐ Title                │
-│  │Art│ Artist · Album       │  ← Hero (450px expanded → 108px)
-│  └───┘                      │
-├─────────────────────────────┤
-│  Content scrolls here...    │
-│                             │
-└─────────────────────────────┘
-```
-
-**Collapse Mechanism**:
-- Intercepts wheel events on scroll container
-- Tracks `collapseOffset` (0 to 342px = 450 - 108)
-- Interpolates all values with `lerp()` and `smoothstep()`
-- Album art: 112px → 56px, repositions
-- Snap states at 0% and 100% with hysteresis
-- Bottom fade gradient masks the clip edge
-- Respects `prefers-reduced-motion`
-
-### Type Definitions
-
+### Layout Constants (Do Not Change)
 ```typescript
-// Core types from prototype
-type SortingStatus = 'unsorted' | 'sorted' | 'ignored'
-type UIAnalysisStatus = 'not_analyzed' | 'analyzing' | 'analyzed' | 'failed'
-type FilterOption = 'all' | 'unsorted' | 'sorted' | 'analyzed'
-
-interface LikedSong {
-  liked_at: string
-  sorting_status: SortingStatus | null
-  track: {
-    id: number
-    spotify_track_id: string
-    name: string
-    artist: string
-    album: string | null
-  }
-  analysis: SongAnalysis | null
-  uiAnalysisStatus: UIAnalysisStatus
-}
-
-interface SongAnalysis {
-  id: number
-  track_id: number
-  analysis: AnalysisContent
-  model_name: string
-  version: number
-  created_at: string | null
-}
-
-interface AnalysisContent {
-  meaning?: {
-    themes?: Array<{ name: string; confidence: number; description: string }>
-    interpretation?: {
-      metaphors?: Array<{ text: string; meaning: string }>
-      deeper_meaning?: string
-      surface_meaning?: string
-      cultural_significance?: string
-    }
-  }
-  emotional?: {
-    energy?: number
-    valence?: number
-    intensity?: number
-    dominant_mood?: string
-    mood_description?: string
-    journey?: Array<{ mood: string; section: string; description: string }>
-  }
-  context?: {
-    audience?: { resonates_with?: string[]; universal_appeal?: number; primary_demographic?: string }
-    best_moments?: string[]
-    listening_contexts?: Record<string, number>
-  }
-  musical_style?: {
-    vocal_style?: string
-    genre_primary?: string
-    sonic_texture?: string
-    production_style?: string
-  }
-  audio_features?: {
-    tempo?: number
-    energy?: number
-    valence?: number
-    liveness?: number
-    loudness?: number
-    speechiness?: number
-    acousticness?: number
-    danceability?: number
-    instrumentalness?: number
-  }
-  matching_profile?: {
-    theme_cohesion?: number
-    mood_consistency?: number
-    sonic_similarity?: number
-    energy_flexibility?: number
-  }
+const LAYOUT = {
+  heroHeight: 450,
+  collapsedHeaderHeight: 108,
+  albumArtExpanded: 112,
+  albumArtCollapsed: 56,
+  imagePositionY: 30,
+  paddingX: 20,
 }
 ```
 
-### Detail Panel Sections
+### Animation Timing (Do Not Change)
+```css
+/* Panel slide */
+transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease-out
 
-The panel renders these sections in order:
+/* Collapse elements */
+transition: all 0.1s ease-out
 
-1. **Hero Header**
-   - Artist background image (fetched separately via useArtistImage)
-   - Vignette overlay gradient
-   - Genre tag (top-left)
-   - Floating album art (view-transition-name: song-album)
-   - Title + Artist · Album (view-transition-name: song-title, song-artist)
-   - Nav controls (top-right): prev/next/close
+/* Smoothstep easing */
+t * t * (3 - 2 * t)
+```
 
-2. **Meta Row**
-   - "Liked X days ago"
-   - "New" badge (if < 7 days)
-
-3. **AudioInfo**
-   - Energy: High/Med/Low
-   - Mood: Bright/Balanced/Melancholic
-   - XXX BPM
-
-4. **Mood Description**
-   - Italic quote from `analysis.emotional.mood_description`
-
-5. **MeaningSection** (3 sub-sections)
-   - **Emotional Hook**: mood_description, dominant_mood, intensity label
-   - **Themes List**: Theme names with hover-to-expand descriptions (coordinated hover - only one open)
-   - **Journey Timeline**: Collapsed by default, expandable, shows section→mood→description
-
-6. **ContextSection**
-   - "Perfect For" heading
-   - Pill tags from `analysis.context.best_moments`
-
-7. **PlaylistsSection**
-   - "Add to Your Playlists" heading
-   - Prominent matches (score >= 0.6): full row with Add button
-   - Other matches: collapsed, expandable
-   - Added summary count
-   - Footer: "Skip this song" / "Mark as sorted"
-
-### Keyboard Navigation
-
-**List scope** (`liked-list`):
-- j/k: Move focus indicator
-- Enter: Expand focused song
-- Focus syncs with selected song when panel navigates
-
-**Panel scope** (`liked-detail`):
-- Escape: Close panel
-- j/k or Up/Down: Navigate to prev/next song
-- Cmd+D: Toggle dark mode
-
-### Album Art Loading
-
-Uses `useVisibleSongsAlbumArt` hook:
-- Input: `displayedSongs` (only rendered subset)
-- Extracts unique spotify_track_ids
-- Batches into groups of 50 (API limit)
-- Parallel fetch via TanStack Query `useQueries`
-- Endpoint: `/api/track-images?ids=...`
-- Stale time: 1 hour, GC time: 2 hours
-- Fallback: picsum.photos placeholder
-
-### URL Sync Strategy
-
-Uses **shallow routing** (pushState) for smooth animations:
-- Panel open: `pushState({ slug }, '/dashboard/liked-songs/{slug}')`
-- Panel close: `pushState(null, '/dashboard/liked-songs')`
-- Browser back: `popstate` listener reopens/closes panel
-- Deep linking: `initialSlug` prop from URL opens panel on mount
+### Color System
+- Theme-based: `ThemeConfig` provides base colors
+- Dark mode: Generated from primary hue extraction
+- Vignette gradients preserved exactly
 
 ## Acceptance Criteria
 
-1. Initial load shows first 10 songs
-2. Scrolling loads more (infinite scroll via IntersectionObserver)
-3. Filter tabs work: All, Unsorted, Sorted, Analyzed
-4. Clicking song opens detail panel with View Transition morph
-5. Detail panel shows all sections: hero, audio info, meaning, context, playlists
-6. Hero collapses smoothly on scroll (450px → 108px)
-7. j/k navigation within detail panel
-8. Escape closes panel with reverse View Transition
-9. Deep linking: `/dashboard/liked-songs/{slug}` opens detail
-10. Album art lazy-loads as cards enter viewport
-11. Mobile: full-screen detail panel
-12. Reduced motion: Skip transitions, instant collapse
+1. **Visual Parity**: Side-by-side comparison shows identical UI
+2. **Animation Parity**: Collapse, transitions, hover effects match exactly
+3. **Keyboard Parity**: j/k/Enter/Escape work identically
+4. **State Parity**: Filter, selection, expansion states work same
+5. **Responsive Parity**: Panel width clamping, mobile behavior matches
 
 ## References
 
-- [warm-pastel/features/liked-songs/](/old_app/prototypes/warm-pastel/features/liked-songs/)
-- [ROADMAP Phase 7b](/docs/migration_v2/ROADMAP.md)
+- [v0 Prototype](/app/v0/services/web/app/prototypes/warm-pastel/features/liked-songs/)
+- [v1 Keyboard System](/app/v1_hearted/src/lib/keyboard/)
