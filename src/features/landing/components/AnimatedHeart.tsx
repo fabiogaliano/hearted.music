@@ -1,23 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { extractHue, getPastelColor } from "@/lib/utils/color";
 
 // Mix of musical notes and tiny hearts - music + feelings
 const PARTICLE_SYMBOLS = ["♪", "♥", "♫", "♥", "♩", "♥"];
 
 export interface AnimatedHeartProps {
-	theme: ThemeConfig;
 	shouldAutoPlay?: boolean;
 	/** Delay in ms before auto-play triggers (default 1500) */
 	autoPlayDelayMs?: number;
 }
 
 export function AnimatedHeart({
-	theme,
 	shouldAutoPlay,
 	autoPlayDelayMs = 1500,
 }: AnimatedHeartProps) {
+	const theme = useTheme();
 	const [isHovered, setIsHovered] = useState(false);
 	const [isAnimating, setIsAnimating] = useState(false);
 	const containerRef = useRef<HTMLSpanElement>(null);

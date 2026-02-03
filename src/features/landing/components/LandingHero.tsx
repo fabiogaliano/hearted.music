@@ -7,7 +7,7 @@ import {
 import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
 import type { songs } from "@/lib/data/mock-data";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { extractHue, getPastelColor } from "@/lib/utils/color";
 import { AnimatedHeart } from "./AnimatedHeart";
 import { heroStyles } from "./heroStyles";
@@ -17,9 +17,8 @@ import { useHeroAnimation } from "./useHeroAnimation";
 import { WaitlistInput } from "./WaitlistInput";
 
 export interface LandingHeroProps {
-	theme: ThemeConfig;
 	featuredSong: (typeof songs)[0];
-	albumArtUrl: string;
+	albumArtUrl?: string;
 	artistImageUrl: string | undefined;
 	isLoading: boolean;
 	onPrev: () => void;
@@ -29,7 +28,6 @@ export interface LandingHeroProps {
 }
 
 export function LandingHero({
-	theme,
 	featuredSong,
 	albumArtUrl,
 	artistImageUrl,
@@ -38,6 +36,7 @@ export function LandingHero({
 	onNext,
 	isReleased = true,
 }: LandingHeroProps) {
+	const theme = useTheme();
 	const [isBackgroundReady, setIsBackgroundReady] = useState(false);
 
 	// Track when scroll reaches reveal point (for CTA/subtext animations)
@@ -156,14 +155,13 @@ export function LandingHero({
 							className="hero-background-inner absolute inset-0"
 						>
 							<div className="absolute inset-0 z-0">
-								<HeartRipplePlaceholder theme={theme} />
+								<HeartRipplePlaceholder />
 							</div>
 							<div
 								className={`absolute inset-0 z-10 transition-opacity duration-1000 ${isBackgroundReady ? "opacity-100" : "opacity-0"}`}
 							>
 								<HeartRippleBackground
 									ref={heartRippleRef}
-									theme={theme}
 									onReady={() => setIsBackgroundReady(true)}
 								/>
 							</div>
@@ -224,9 +222,9 @@ export function LandingHero({
 									style={{ opacity: 0, transform: "translateY(10px)" }}
 								>
 									{isReleased ? (
-										<SpotifyLoginButton theme={theme} variant="dark" />
+										<SpotifyLoginButton variant="dark" />
 									) : (
-										<WaitlistInput theme={theme} variant="dark" />
+										<WaitlistInput variant="dark" />
 									)}
 								</div>
 
@@ -240,9 +238,8 @@ export function LandingHero({
 										transform: "translateY(10px)",
 									}}
 								>
-									Every{" "}
-									<AnimatedHeart theme={theme} shouldAutoPlay={hasRevealed} />{" "}
-									was a feeling.
+									Every <AnimatedHeart shouldAutoPlay={hasRevealed} /> was a
+									feeling.
 									<br />
 									What do they all say about you?
 								</p>
@@ -267,7 +264,6 @@ export function LandingHero({
 								albumArtUrl={albumArtUrl}
 								artistImageUrl={artistImageUrl}
 								isLoading={isLoading}
-								theme={theme}
 								onPrev={onPrev}
 								onNext={onNext}
 							/>
@@ -280,7 +276,6 @@ export function LandingHero({
 								albumArtUrl={albumArtUrl}
 								artistImageUrl={artistImageUrl}
 								isLoading={isLoading}
-								theme={theme}
 								onPrev={onPrev}
 								onNext={onNext}
 							/>

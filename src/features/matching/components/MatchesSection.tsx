@@ -1,13 +1,12 @@
 import type { Playlist } from "@/lib/data/mock-data";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 const COLLAPSED_ALBUM_SIZE_PX = "400px";
 const EXPANDED_ALBUM_SIZE_PX = "240px";
 
 interface MatchesSectionProps {
 	playlists: Playlist[];
-	theme: ThemeConfig;
 	addedTo: number[];
 	onAdd: (playlistId: number) => void;
 	onDiscard: () => void;
@@ -17,13 +16,13 @@ interface MatchesSectionProps {
 
 export function MatchesSection({
 	playlists,
-	theme,
 	addedTo,
 	onAdd,
 	onDiscard,
 	onNext,
 	isExpanded,
 }: MatchesSectionProps) {
+	const theme = useTheme();
 	return (
 		<div
 			className="flex flex-col transition-[height,opacity] duration-500 ease-in-out"

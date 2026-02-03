@@ -5,12 +5,12 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import type { ActivityItem as ActivityItemType } from "../types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { fonts } from "@/lib/theme/fonts";
 import type { ThemeConfig } from "@/lib/theme/types";
 import { formatRelativeTime } from "@/lib/shared/utils/format-time";
 
 interface ActivityItemProps {
-	theme: ThemeConfig;
 	item: ActivityItemType;
 	showBorder: boolean;
 }
@@ -37,7 +37,8 @@ function renderDescription(
 	}
 }
 
-export function ActivityItem({ theme, item, showBorder }: ActivityItemProps) {
+export function ActivityItem({ item, showBorder }: ActivityItemProps) {
+	const theme = useTheme();
 	const imageUrl = item.imageUrl ?? "";
 	const songName = item.songName;
 

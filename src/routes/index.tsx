@@ -9,6 +9,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Landing } from "@/features/landing/Landing";
 import { checkAuth } from "@/lib/auth/guards";
 import { themes } from "@/lib/theme/colors";
+import { useRegisterTheme } from "@/lib/theme/ThemeHueProvider";
 import { DEFAULT_THEME } from "@/lib/theme/types";
 
 export const Route = createFileRoute("/")({
@@ -25,9 +26,11 @@ export const Route = createFileRoute("/")({
 function LandingPage() {
 	const theme = themes[DEFAULT_THEME];
 
+	useRegisterTheme(theme);
+
 	return (
 		<div className="relative min-h-screen" style={{ background: theme.bg }}>
-			<Landing theme={theme} featuredSongIndex={0} isReleased={true} />
+			<Landing featuredSongIndex={0} isReleased={true} />
 		</div>
 	);
 }

@@ -15,7 +15,7 @@ import {
 	type LibrarySummary,
 } from "@/lib/server/onboarding.server";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 
 /**
@@ -218,17 +218,13 @@ function calculateCombinedProgress(
 }
 
 interface SyncingStepProps {
-	theme: ThemeConfig;
 	phaseJobIds: PhaseJobIds | null;
 	/** Discovery result from ConnectingStep - contains totals + cached playlists */
 	librarySummary: LibrarySummary | null;
 }
 
-export function SyncingStep({
-	theme,
-	phaseJobIds,
-	librarySummary,
-}: SyncingStepProps) {
+export function SyncingStep({ phaseJobIds, librarySummary }: SyncingStepProps) {
+	const theme = useTheme();
 	const { goToStep } = useOnboardingNavigation();
 	const syncStartedRef = useRef(false);
 

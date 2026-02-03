@@ -1,16 +1,16 @@
 import { Link } from "@tanstack/react-router";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 interface NavItemProps {
 	to: string;
 	label: string;
 	badge?: number;
 	isActive: boolean;
-	theme: ThemeConfig;
 }
 
-export function NavItem({ to, label, badge, isActive, theme }: NavItemProps) {
+export function NavItem({ to, label, badge, isActive }: NavItemProps) {
+	const theme = useTheme();
 	return (
 		<Link
 			to={to}

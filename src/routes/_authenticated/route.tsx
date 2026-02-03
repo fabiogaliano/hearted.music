@@ -8,10 +8,16 @@
  *   - theme: ThemeColor
  */
 
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	Outlet,
+	redirect,
+	useLocation,
+} from "@tanstack/react-router";
 import { Sidebar } from "./-components/Sidebar";
 import { requireAuth } from "@/lib/auth/guards";
 import { getOnboardingData } from "@/lib/server/onboarding.server";
+import { useRegisterTheme } from "@/lib/theme/ThemeHueProvider";
 import { getTheme } from "@/lib/theme/useTheme";
 import { DEFAULT_THEME } from "@/lib/theme/types";
 
@@ -38,14 +44,26 @@ export const Route = createFileRoute("/_authenticated")({
 function AuthenticatedLayout() {
 	const { theme: themeColor, account } = Route.useRouteContext();
 	const theme = getTheme(themeColor ?? DEFAULT_THEME);
+	const location = useLocation();
+	const isOnboarding = location.pathname.startsWith("/onboarding");
+
+	// Onboarding owns theme registration (user picks color live)
+	// Other routes use the DB-persisted theme
+	useRegisterTheme(isOnboarding ? null : theme);
+
+	if (isOnboarding) {
+		return <Outlet />;
+	}
 
 	return (
 		<div
 			className="flex min-h-screen"
-			style={{ background: theme.bg, color: theme.text }}
+			style={{
+				background: theme.bg,
+				color: theme.text,
+			}}
 		>
 			<Sidebar
-				theme={theme}
 				unsortedCount={5}
 				userName={account?.display_name ?? account?.email ?? null}
 				userPlan="Free Plan"

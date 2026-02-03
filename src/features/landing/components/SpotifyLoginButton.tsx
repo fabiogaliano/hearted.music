@@ -12,20 +12,19 @@
  */
 
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 export interface SpotifyLoginButtonProps {
-	theme: ThemeConfig;
 	buttonText?: string;
 	/** 'light' for light backgrounds, 'dark' for dark/gradient backgrounds */
 	variant?: "light" | "dark";
 }
 
 export function SpotifyLoginButton({
-	theme,
 	buttonText = "Continue with Spotify",
 	variant = "light",
 }: SpotifyLoginButtonProps) {
+	const theme = useTheme();
 	const isDark = variant === "dark";
 
 	return (

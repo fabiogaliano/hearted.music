@@ -10,14 +10,11 @@ import { useCallback, useEffect, useEffectEvent, useState } from "react";
 import { toast } from "sonner";
 import { getLibrarySummary } from "@/lib/server/onboarding.server";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 
-interface ConnectingStepProps {
-	theme: ThemeConfig;
-}
-
-export function ConnectingStep({ theme }: ConnectingStepProps) {
+export function ConnectingStep() {
+	const theme = useTheme();
 	const { goToStep } = useOnboardingNavigation();
 	const [isFetchingSummary, setIsFetchingSummary] = useState(true);
 	const [error, setError] = useState<Error | null>(null);
@@ -80,7 +77,7 @@ export function ConnectingStep({ theme }: ConnectingStepProps) {
 					<button
 						onClick={handleFetchSummary}
 						disabled={isFetchingSummary}
-						className="rounded-lg px-6 py-3 text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+						className="px-6 py-3 text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
 						style={{
 							fontFamily: fonts.body,
 							background: theme.text,

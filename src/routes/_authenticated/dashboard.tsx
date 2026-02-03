@@ -5,8 +5,6 @@ import {
 	getRecentActivity,
 } from "@/lib/server/dashboard.server";
 import { formatRelativeTime } from "@/lib/shared/utils/format-time";
-import { getTheme } from "@/lib/theme/useTheme";
-import { DEFAULT_THEME } from "@/lib/theme/types";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
 	loader: async () => {
@@ -20,9 +18,8 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 function DashboardHome() {
-	const { theme: themeColor, account } = Route.useRouteContext();
+	const { account } = Route.useRouteContext();
 	const { stats, recentActivity } = Route.useLoaderData();
-	const theme = getTheme(themeColor ?? DEFAULT_THEME);
 	const displayName = account?.display_name ?? account?.email ?? null;
 
 	const lastSyncText = stats.lastSyncAt
@@ -46,7 +43,6 @@ function DashboardHome() {
 
 	return (
 		<Dashboard
-			theme={theme}
 			displayName={displayName}
 			stats={{
 				totalSongs: stats.totalSongs,

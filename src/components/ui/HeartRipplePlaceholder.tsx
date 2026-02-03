@@ -1,20 +1,19 @@
 import { useMemo } from "react";
 import { getThemeHue } from "@/lib/theme/colors";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { generatePalette, vec3ToRgbString } from "@/lib/utils/palette";
 
 interface HeartRipplePlaceholderProps {
-	theme?: ThemeConfig;
 	className?: string;
 	style?: React.CSSProperties;
 }
 
 export function HeartRipplePlaceholder({
-	theme,
 	className,
 	style,
 }: HeartRipplePlaceholderProps) {
-	const hue = theme ? getThemeHue(theme) : 218;
+	const theme = useTheme();
+	const hue = getThemeHue(theme);
 	const palette = useMemo(() => generatePalette(hue), [hue]);
 
 	const bg = vec3ToRgbString(palette.background);

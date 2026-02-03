@@ -1,5 +1,3 @@
-import type { ThemeConfig } from "@/lib/theme/types";
-
 export interface UserPlaylist {
 	id: number;
 	name: string;
@@ -58,7 +56,6 @@ export interface MatchPreview {
 }
 
 export interface DashboardProps {
-	theme: ThemeConfig;
 	displayName: string | null;
 	recentActivity: ActivityItem[];
 	matchPreviews: MatchPreview[];

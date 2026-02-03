@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 export interface ThemesListProps {
 	themes: Array<{ name: string; confidence: number }>;
-	theme: ThemeConfig;
 }
 
 const THEME_DESCRIPTIONS: Record<string, string> = {
@@ -32,7 +31,8 @@ function getThemeDescription(name: string): string {
 		: "A recurring thread that runs through your music.";
 }
 
-export function ThemesList({ themes, theme: themeConfig }: ThemesListProps) {
+export function ThemesList({ themes }: ThemesListProps) {
+	const themeConfig = useTheme();
 	const [openIndex, setOpenIndex] = useState<number>(-1);
 	const [pinnedIndex, setPinnedIndex] = useState<number>(-1);
 	const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);

@@ -1,22 +1,21 @@
 /** Welcome greeting with stats and sync button. */
 
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
 import type { DashboardStats } from "../types";
 
 interface DashboardHeaderProps {
-	theme: ThemeConfig;
 	stats: DashboardStats;
 	displayName: string | null;
 	lastSyncText: string;
 }
 
 export function DashboardHeader({
-	theme,
 	stats,
 	displayName,
 	lastSyncText,
 }: DashboardHeaderProps) {
+	const theme = useTheme();
 	return (
 		<div className="mb-8 flex items-start justify-between">
 			<div>

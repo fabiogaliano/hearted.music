@@ -18,13 +18,12 @@ import {
 	savePlaylistDestinations,
 } from "@/lib/server/onboarding.server";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useFlagPlaylistsScroll } from "../hooks/useFlagPlaylistsScroll";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import "../types"; // Ensure HistoryState augmentation is loaded
 
 interface FlagPlaylistsStepProps {
-	theme: ThemeConfig;
 	playlists: OnboardingPlaylist[];
 }
 
@@ -32,9 +31,9 @@ interface FlagPlaylistsStepProps {
 const EMPTY_SYNC_STATS = { songs: 0, playlists: 0 } as const;
 
 export function FlagPlaylistsStep({
-	theme,
 	playlists: initialPlaylists,
 }: FlagPlaylistsStepProps) {
+	const theme = useTheme();
 	const { goToStep } = useOnboardingNavigation();
 	const location = useLocation();
 	const syncStats = location.state?.syncStats ?? EMPTY_SYNC_STATS;
@@ -98,7 +97,7 @@ export function FlagPlaylistsStep({
 		[togglePlaylist],
 	);
 
-	const { focusedIndex, getItemProps } = useListNavigation({
+	const { getItemProps } = useListNavigation({
 		items: initialPlaylists,
 		scope: "onboarding-playlists",
 		enabled: !isSaving && initialPlaylists.length > 0,
@@ -191,8 +190,8 @@ export function FlagPlaylistsStep({
 						>
 							{initialPlaylists.map((playlist, index) => {
 								const isSelected = selectedIds.has(playlist.id);
-								const isFocused = focusedIndex === index;
 								const itemProps = getItemProps(playlist, index);
+								const isFocused = itemProps["data-focused"];
 
 								return (
 									<button
@@ -201,15 +200,17 @@ export function FlagPlaylistsStep({
 										ref={itemProps.ref}
 										tabIndex={itemProps.tabIndex}
 										data-focused={itemProps["data-focused"]}
+										data-nav-engaged={itemProps["data-nav-engaged"]}
+										onPointerDown={itemProps.onPointerDown}
+										onFocus={itemProps.onFocus}
+										onBlur={itemProps.onBlur}
 										data-playlist-id={playlist.id}
 										onClick={handlePlaylistClick}
 										aria-pressed={isSelected}
 										aria-label={`${isSelected ? "Deselect" : "Select"} playlist ${playlist.name}`}
 										title={playlist.name}
-										className="group relative h-fit min-h-11 min-w-11 rounded-[2px] outline-none ring-offset-2 focus-visible:ring-2"
+										className="group relative h-fit min-h-11 min-w-11"
 										style={{
-											["--tw-ring-color" as string]: theme.text,
-											["--tw-ring-offset-color" as string]: theme.bg,
 											...(isFocused && {
 												outline: `2px dashed ${theme.textMuted}`,
 												outlineOffset: "2px",
@@ -226,11 +227,7 @@ export function FlagPlaylistsStep({
 													opacity: isSelected ? 1 : 0.35,
 												}}
 											>
-												<CDCase
-													src={playlist.imageUrl}
-													alt={playlist.name}
-													theme={theme}
-												/>
+												<CDCase src={playlist.imageUrl} alt={playlist.name} />
 											</div>
 											{/* Spine text: 8% inset avoids CD case hinge ridges (top ends ~6.4%, bottom starts ~92.7%) */}
 											<div
@@ -269,9 +266,8 @@ export function FlagPlaylistsStep({
 						type="button"
 						onClick={handleContinue}
 						disabled={isSaving || selectedIds.size === 0}
-						className="group inline-flex min-h-11 items-center gap-3 rounded outline-2 outline-offset-2 outline-transparent focus-visible:outline-(--focus-color)"
+						className="group inline-flex min-h-11 items-center gap-3"
 						style={{
-							["--focus-color" as string]: theme.text,
 							fontFamily: fonts.body,
 							color: theme.text,
 							opacity: isSaving || selectedIds.size === 0 ? 0.5 : 1,
@@ -296,9 +292,8 @@ export function FlagPlaylistsStep({
 							setSelectedIds(new Set(initialPlaylists.map((p) => p.id)))
 						}
 						disabled={isSaving || selectedIds.size === initialPlaylists.length}
-						className="min-h-11 rounded text-sm underline outline-2 outline-offset-2 outline-transparent focus-visible:outline-(--focus-color)"
+						className="min-h-11 text-sm underline"
 						style={{
-							["--focus-color" as string]: theme.text,
 							fontFamily: fonts.body,
 							color: theme.textMuted,
 							opacity:
@@ -314,9 +309,8 @@ export function FlagPlaylistsStep({
 						type="button"
 						onClick={handleSkip}
 						disabled={isSaving}
-						className="min-h-11 rounded text-sm underline outline-2 outline-offset-2 outline-transparent focus-visible:outline-(--focus-color)"
+						className="min-h-11 text-sm underline"
 						style={{
-							["--focus-color" as string]: theme.text,
 							fontFamily: fonts.body,
 							color: theme.textMuted,
 							opacity: isSaving ? 0.5 : 1,
