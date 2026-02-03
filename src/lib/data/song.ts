@@ -14,10 +14,6 @@ import {
 import { createAdminSupabaseClient } from "./client";
 import type { Tables, TablesInsert } from "./database.types";
 
-// ============================================================================
-// Type Exports
-// ============================================================================
-
 /** Song row type */
 export type Song = Tables<"song">;
 
@@ -31,15 +27,12 @@ export type UpsertData = Pick<
 	| "image_url"
 	| "isrc"
 	| "artists"
+	| "artist_ids"
 	| "duration_ms"
 	| "genres"
 	| "popularity"
 	| "preview_url"
 >;
-
-// ============================================================================
-// Query Operations
-// ============================================================================
 
 /**
  * Gets a song by its UUID.
@@ -114,10 +107,6 @@ export async function getByIds(
 	return Result.ok(allSongs);
 }
 
-// ============================================================================
-// Mutation Operations
-// ============================================================================
-
 /**
  * Creates or updates songs based on Spotify ID.
  * Returns all upserted songs.
@@ -149,10 +138,6 @@ export function upsert(data: UpsertData[]): Promise<Result<Song[], DbError>> {
 			.select(),
 	);
 }
-
-// ============================================================================
-// Genre Operations
-// ============================================================================
 
 /**
  * Updates genres for a song.

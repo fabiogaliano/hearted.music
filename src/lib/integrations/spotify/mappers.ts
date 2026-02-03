@@ -25,6 +25,7 @@ export function mapTrackToSongInsert(
 		spotify_id: dto.track.id,
 		name: dto.track.name,
 		artists: dto.track.artists.map((a) => a.name),
+		artist_ids: dto.track.artists.map((a) => a.id),
 		album_id: dto.track.album.id,
 		album_name: dto.track.album.name,
 		duration_ms: dto.track.duration_ms,
@@ -101,10 +102,6 @@ export function mapPlaylistsToPlaylistInserts(
 ): TablesInsert<"playlist">[] {
 	return dtos.map((dto) => mapPlaylistToPlaylistInsert(dto, accountId));
 }
-
-// ============================================================================
-// Anti-Corruption Layer: Data Normalization
-// ============================================================================
 
 /**
  * Deduplicates Spotify tracks by spotify_id, keeping first occurrence.
