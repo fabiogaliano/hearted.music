@@ -6,20 +6,20 @@ Refactor `fullSync` to use 3 separate jobs (one per phase). Simplified from V2.
 
 ## What Changed from V2
 
-| Removed | Reason |
-|---------|--------|
-| `usePhaseJobsProgress` hook | Inline 3x `useJobProgress` in SyncingStep |
-| `phases.ts` file | Inline types, hardcode labels in UI |
-| `SyncPhaseSchema` | Plain TypeScript type is sufficient |
-| `PhaseWeightSchema` | Use simple 33/33/33 progress |
-| `fullSyncWithNewJobs` | YAGNI - no cron/CLI caller exists |
-| `safeParse` navigation state | DB step is source of truth |
+| Removed                      | Reason                                    |
+| ---------------------------- | ----------------------------------------- |
+| `usePhaseJobsProgress` hook  | Inline 3x `useJobProgress` in SyncingStep |
+| `phases.ts` file             | Inline types, hardcode labels in UI       |
+| `SyncPhaseSchema`            | Plain TypeScript type is sufficient       |
+| `PhaseWeightSchema`          | Use simple 33/33/33 progress              |
+| `fullSyncWithNewJobs`        | YAGNI - no cron/CLI caller exists         |
+| `safeParse` navigation state | DB step is source of truth                |
 
-| Kept | Reason |
-|------|--------|
-| 3 separate jobs | Core feature |
-| `PhaseJobIdsSchema` | Server function input validation |
-| `runPhase` helper | Reduces duplication in orchestrator |
+| Kept                | Reason                              |
+| ------------------- | ----------------------------------- |
+| 3 separate jobs     | Core feature                        |
+| `PhaseJobIdsSchema` | Server function input validation    |
+| `runPhase` helper   | Reduces duplication in orchestrator |
 
 ---
 
@@ -36,9 +36,9 @@ import { z } from "zod";
  * Job IDs for each sync phase.
  */
 export const PhaseJobIdsSchema = z.object({
-  liked_songs: z.string().uuid(),
-  playlists: z.string().uuid(),
-  playlist_tracks: z.string().uuid(),
+  liked_songs: z.uuid(),
+  playlists: z.uuid(),
+  playlist_tracks: z.uuid(),
 });
 
 export type PhaseJobIds = z.infer<typeof PhaseJobIdsSchema>;
@@ -470,16 +470,16 @@ export function Onboarding() {
 
 ## Files Summary
 
-| File | Change |
-|------|--------|
-| `src/lib/jobs/progress/types.ts` | **ADD** `PhaseJobIdsSchema` + `PhaseJobIds` type |
-| `src/lib/server/onboarding.server.ts` | **UPDATE** `createSyncJob` (3 jobs), `startSync` (new schema) |
-| `src/lib/capabilities/sync/orchestrator.ts` | **UPDATE** `fullSync` + add `runPhase` helper |
-| `src/features/onboarding/types.ts` | **UPDATE** Add `phaseJobIds` to HistoryState |
-| `src/features/onboarding/components/SyncingStep.tsx` | **UPDATE** Inline 3x `useJobProgress` |
-| `src/features/onboarding/components/WelcomeStep.tsx` | **UPDATE** Call updated `createSyncJob` |
-| `src/features/onboarding/hooks/useOnboardingNavigation.ts` | **UPDATE** Pass `phaseJobIds` |
-| `src/features/onboarding/Onboarding.tsx` | **UPDATE** Read `phaseJobIds` from state |
+| File                                                       | Change                                                        |
+| ---------------------------------------------------------- | ------------------------------------------------------------- |
+| `src/lib/jobs/progress/types.ts`                           | **ADD** `PhaseJobIdsSchema` + `PhaseJobIds` type              |
+| `src/lib/server/onboarding.server.ts`                      | **UPDATE** `createSyncJob` (3 jobs), `startSync` (new schema) |
+| `src/lib/capabilities/sync/orchestrator.ts`                | **UPDATE** `fullSync` + add `runPhase` helper                 |
+| `src/features/onboarding/types.ts`                         | **UPDATE** Add `phaseJobIds` to HistoryState                  |
+| `src/features/onboarding/components/SyncingStep.tsx`       | **UPDATE** Inline 3x `useJobProgress`                         |
+| `src/features/onboarding/components/WelcomeStep.tsx`       | **UPDATE** Call updated `createSyncJob`                       |
+| `src/features/onboarding/hooks/useOnboardingNavigation.ts` | **UPDATE** Pass `phaseJobIds`                                 |
+| `src/features/onboarding/Onboarding.tsx`                   | **UPDATE** Read `phaseJobIds` from state                      |
 
 **Total: 8 files** (down from 11 in V2)
 
@@ -499,11 +499,11 @@ export function Onboarding() {
 
 ## Comparison: V2 vs V3
 
-| Metric | V2 | V3 |
-|--------|----|----|
-| Files changed | 11 | 8 |
-| New files | 2 (`phases.ts`, `usePhaseJobsProgress.ts`) | 0 |
-| Zod schemas | 4 | 1 |
-| Lines of code | ~400 | ~250 |
-| Progress calculation | Weighted (0-40-60-100) | Simple (33/33/33) |
-| Abstractions | Hook + constants file | Inline in component |
+| Metric               | V2                                         | V3                  |
+| -------------------- | ------------------------------------------ | ------------------- |
+| Files changed        | 11                                         | 8                   |
+| New files            | 2 (`phases.ts`, `usePhaseJobsProgress.ts`) | 0                   |
+| Zod schemas          | 4                                          | 1                   |
+| Lines of code        | ~400                                       | ~250                |
+| Progress calculation | Weighted (0-40-60-100)                     | Simple (33/33/33)   |
+| Abstractions         | Hook + constants file                      | Inline in component |
