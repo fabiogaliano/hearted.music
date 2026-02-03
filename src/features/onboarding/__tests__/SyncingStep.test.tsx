@@ -9,11 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { JobProgressState } from "@/lib/hooks/useJobProgress";
 import type { PhaseJobIds } from "@/lib/jobs/progress/types";
 import type { LibrarySummary } from "@/lib/server/onboarding.server";
-import {
-	mockGoToStep,
-	mockTheme,
-	setupOnboardingNavigationMock,
-} from "@/test/mocks";
+import { mockGoToStep, setupOnboardingNavigationMock } from "@/test/mocks";
 import { render, screen, waitFor } from "@/test/utils/render";
 import { SyncingStep } from "../components/SyncingStep";
 
@@ -87,7 +83,6 @@ describe("SyncingStep", () => {
 
 		render(
 			<SyncingStep
-				theme={mockTheme}
 				phaseJobIds={mockPhaseJobIds}
 				librarySummary={mockLibrarySummary}
 			/>,
@@ -119,7 +114,6 @@ describe("SyncingStep", () => {
 
 		render(
 			<SyncingStep
-				theme={mockTheme}
 				phaseJobIds={mockPhaseJobIds}
 				librarySummary={mockLibrarySummary}
 			/>,
@@ -161,7 +155,6 @@ describe("SyncingStep", () => {
 
 		render(
 			<SyncingStep
-				theme={mockTheme}
 				phaseJobIds={mockPhaseJobIds}
 				librarySummary={mockLibrarySummary}
 			/>,
@@ -179,11 +172,7 @@ describe("SyncingStep", () => {
 
 	it("shows error state when phaseJobIds is null", () => {
 		render(
-			<SyncingStep
-				theme={mockTheme}
-				phaseJobIds={null}
-				librarySummary={mockLibrarySummary}
-			/>,
+			<SyncingStep phaseJobIds={null} librarySummary={mockLibrarySummary} />,
 		);
 
 		expect(screen.getByText(/Sync interrupted/i)).toBeInTheDocument();

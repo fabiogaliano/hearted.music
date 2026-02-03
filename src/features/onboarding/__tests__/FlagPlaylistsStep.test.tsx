@@ -13,7 +13,6 @@ import {
 } from "@/test/fixtures";
 import {
 	mockGoToStep,
-	mockTheme,
 	setupFlagPlaylistsScrollMock,
 	setupListNavigationMock,
 	setupOnboardingNavigationMock,
@@ -56,7 +55,7 @@ describe("FlagPlaylistsStep", () => {
 	});
 
 	it("renders playlist grid with correct names", () => {
-		render(<FlagPlaylistsStep theme={mockTheme} playlists={testPlaylists} />);
+		render(<FlagPlaylistsStep playlists={testPlaylists} />);
 
 		expect(
 			screen.getByRole("button", { name: /lo-fi tokyo City Pop/i }),
@@ -70,9 +69,7 @@ describe("FlagPlaylistsStep", () => {
 	});
 
 	it("toggles selection on click", async () => {
-		const { user } = render(
-			<FlagPlaylistsStep theme={mockTheme} playlists={testPlaylists} />,
-		);
+		const { user } = render(<FlagPlaylistsStep playlists={testPlaylists} />);
 
 		const playlistButton = document.querySelector(
 			`[data-playlist-id="${ONBOARDING_PLAYLISTS.lofiCityPop.id}"]`,
@@ -88,9 +85,7 @@ describe("FlagPlaylistsStep", () => {
 	});
 
 	it("calls save with selected playlist IDs on continue", async () => {
-		const { user } = render(
-			<FlagPlaylistsStep theme={mockTheme} playlists={testPlaylists} />,
-		);
+		const { user } = render(<FlagPlaylistsStep playlists={testPlaylists} />);
 
 		const lofiButton = document.querySelector(
 			`[data-playlist-id="${ONBOARDING_PLAYLISTS.lofiCityPop.id}"]`,
@@ -132,12 +127,7 @@ describe("FlagPlaylistsStep", () => {
 			toOnboardingPlaylist(PLAYLISTS.years2009to2013), // already true in fixture
 		];
 
-		render(
-			<FlagPlaylistsStep
-				theme={mockTheme}
-				playlists={playlistsWithDestinations}
-			/>,
-		);
+		render(<FlagPlaylistsStep playlists={playlistsWithDestinations} />);
 
 		const lofiBtn = document.querySelector(
 			`[data-playlist-id="${PLAYLISTS.lofiCityPop.id}"]`,
@@ -155,9 +145,7 @@ describe("FlagPlaylistsStep", () => {
 	});
 
 	it("skip saves empty array and navigates", async () => {
-		const { user } = render(
-			<FlagPlaylistsStep theme={mockTheme} playlists={testPlaylists} />,
-		);
+		const { user } = render(<FlagPlaylistsStep playlists={testPlaylists} />);
 
 		const skipButtons = screen.getAllByRole("button", {
 			name: /Skip for now/i,

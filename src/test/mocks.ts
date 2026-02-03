@@ -26,10 +26,16 @@ export function setupListNavigationMock() {
 	return {
 		useListNavigation: () => ({
 			focusedIndex: -1,
+			focusFocusedItem: () => {},
+			getFocusedElement: () => null,
 			getItemProps: (_item: unknown, index: number) => ({
-				ref: { current: null },
+				ref: () => {},
 				tabIndex: index === 0 ? 0 : -1,
 				"data-focused": false,
+				"data-nav-engaged": false,
+				onPointerDown: () => {},
+				onFocus: () => {},
+				onBlur: () => {},
 			}),
 		}),
 	};

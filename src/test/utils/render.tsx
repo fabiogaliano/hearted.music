@@ -2,9 +2,14 @@ import { type RenderOptions, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement, ReactNode } from "react";
 import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
+import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
 
 function TestProviders({ children }: { children: ReactNode }) {
-	return <KeyboardShortcutProvider>{children}</KeyboardShortcutProvider>;
+	return (
+		<ThemeHueProvider>
+			<KeyboardShortcutProvider>{children}</KeyboardShortcutProvider>
+		</ThemeHueProvider>
+	);
 }
 
 function renderWithProviders(
