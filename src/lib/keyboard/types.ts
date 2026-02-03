@@ -85,12 +85,18 @@ export interface ListNavigationOptions<T> {
 export interface ListNavigationResult<T> {
 	focusedIndex: number;
 	setFocusedIndex: (index: number) => void;
+	getFocusedElement: () => HTMLElement | null;
+	focusFocusedItem: (options?: { engage?: boolean; scroll?: boolean }) => void;
 	getItemProps: (
 		item: T,
 		index: number,
 	) => {
 		ref: (el: HTMLElement | null) => void;
 		"data-focused": boolean;
+		"data-nav-engaged": boolean;
+		onPointerDown?: import("react").PointerEventHandler<HTMLElement>;
+		onFocus?: import("react").FocusEventHandler<HTMLElement>;
+		onBlur?: import("react").FocusEventHandler<HTMLElement>;
 		tabIndex: number;
 	};
 	focusedItem: T | null;
