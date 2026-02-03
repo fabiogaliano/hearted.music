@@ -79,7 +79,7 @@ const stepInputSchema = z.object({
 });
 
 const playlistIdsInputSchema = z.object({
-	playlistIds: z.array(z.string().uuid()),
+	playlistIds: z.array(z.uuid()),
 });
 
 /**

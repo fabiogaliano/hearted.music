@@ -44,6 +44,7 @@ function createSong(partial: Partial<Song> = {}): Song {
 		spotify_id: partial.spotify_id ?? "test-spotify-id",
 		name: partial.name ?? "Test Song",
 		artists: partial.artists ?? ["Test Artist"],
+		artist_ids: partial.artist_ids ?? ["test-artist-id"],
 		genres: partial.genres ?? [],
 		album_id: partial.album_id ?? null,
 		album_name: partial.album_name ?? null,
