@@ -115,6 +115,18 @@ function smoothstep(t: number) {
 	return t * t * (3 - 2 * t);
 }
 
+/**
+ * Spring interpolation for organic motion.
+ * Attempt critically-damped spring (tension: 170, friction: 26).
+ * Creates natural deceleration that feels like physical mass settling.
+ */
+function springInterpolate(t: number): number {
+	const omega = 13.04; // sqrt(170) - natural frequency
+	const time = t * 0.6; // scale factor for desired duration
+	const decay = Math.exp(-omega * time);
+	return clamp01(1 - decay * (1 + omega * time));
+}
+
 const useIsomorphicLayoutEffect =
 	typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
@@ -352,12 +364,27 @@ export function SongDetailPanel({
 	const metaRef = useRef<HTMLDivElement | null>(null);
 	const contentRef = useRef<HTMLDivElement | null>(null);
 	const rafIdRef = useRef<number | null>(null);
+	const wheelRafIdRef = useRef<number | null>(null);
 	const lastProgressRef = useRef<number | null>(null);
 	const snapStateRef = useRef<0 | 1 | null>(null);
 	const collapseOffsetRef = useRef(0);
+	const pendingDeltaRef = useRef(0);
+	const reducedMotionTweenRef = useRef<number | null>(null);
 	const [reduceMotion, setReduceMotion] = useState(false);
 	// Track the current song to reset collapse state on song change
 	const currentSongIdRef = useRef<string | null>(null);
+
+	// Animation refs for content stagger and crossfade
+	const staggerRefs = useRef<(HTMLDivElement | null)[]>([]);
+	const staggerAnimationRef = useRef<number | null>(null);
+	const contentWrapperRef = useRef<HTMLDivElement | null>(null);
+	const crossfadeRafRef = useRef<number | null>(null);
+
+	// Animation timing constants
+	const STAGGER_DELAY = 60; // ms between sections
+	const STAGGER_DURATION = 250; // ms per section fade
+	const CROSSFADE_DURATION = 180; // ms total for song navigation crossfade
+	const PARALLAX_RATIO = 0.4; // artist image moves at 40% of scroll speed
 
 	useEffect(() => {
 		if (typeof window === "undefined") return;
@@ -368,23 +395,77 @@ export function SongDetailPanel({
 		return () => media.removeEventListener("change", handler);
 	}, []);
 
+	// Trigger stagger animation when panel expands
+	useEffect(() => {
+		if (isExpanded) {
+			// Delay slightly to let panel slide-in begin first
+			const id = setTimeout(animateStaggerIn, 80);
+			return () => clearTimeout(id);
+		}
+	}, [isExpanded]);
+
 	// Reset collapse state when DISPLAYED song changes (after transition completes)
 	// Using song instead of song prevents scroll jump during transition animation
 	useEffect(() => {
 		if (song.track.id !== currentSongIdRef.current) {
-			currentSongIdRef.current = song.track.id;
-			// Reset to fully expanded state
-			collapseOffsetRef.current = 0;
-			snapStateRef.current = 0;
-			lastProgressRef.current = null;
-			// Reset scroll position
-			if (scrollRef.current) {
-				scrollRef.current.scrollTop = 0;
+			const hadPrevious = currentSongIdRef.current !== null;
+
+			if (hadPrevious && isExpanded) {
+				// Crossfade to new song with smooth transition
+				animateCrossfade(() => {
+					currentSongIdRef.current = song.track.id;
+					// Reset to fully expanded state
+					collapseOffsetRef.current = 0;
+					snapStateRef.current = 0;
+					lastProgressRef.current = null;
+					// Reset scroll position
+					if (scrollRef.current) {
+						scrollRef.current.scrollTop = 0;
+					}
+					// Apply the expanded state immediately
+					applyProgress(0);
+					// Re-trigger stagger for new content
+					setTimeout(animateStaggerIn, 50);
+				});
+			} else {
+				// First open - no crossfade needed
+				currentSongIdRef.current = song.track.id;
+				// Reset to fully expanded state
+				collapseOffsetRef.current = 0;
+				snapStateRef.current = 0;
+				lastProgressRef.current = null;
+				// Reset scroll position
+				if (scrollRef.current) {
+					scrollRef.current.scrollTop = 0;
+				}
+				// Apply the expanded state immediately
+				applyProgress(0);
 			}
-			// Apply the expanded state immediately
-			applyProgress(0);
 		}
-	}, [song.track.id]);
+	}, [song.track.id, isExpanded]);
+
+	// Toggle willChange to optimize GPU memory (only promote layers during animation)
+	const setWillChange = (active: boolean) => {
+		const value = active ? "transform, opacity" : "auto";
+		const sizeValue = active
+			? "transform, top, width, height, opacity"
+			: "auto";
+		const fontValue = active ? "font-size" : "auto";
+
+		if (heroRef.current)
+			heroRef.current.style.willChange = active ? "height" : "auto";
+		// Artist image needs transform for parallax effect
+		if (artistImageRef.current)
+			artistImageRef.current.style.willChange = active
+				? "transform, opacity"
+				: "auto";
+		if (vignetteRef.current) vignetteRef.current.style.willChange = value;
+		if (bottomFadeRef.current) bottomFadeRef.current.style.willChange = value;
+		if (albumArtRef.current) albumArtRef.current.style.willChange = sizeValue;
+		if (textBlockRef.current) textBlockRef.current.style.willChange = value;
+		if (titleRef.current) titleRef.current.style.willChange = fontValue;
+		if (metaRef.current) metaRef.current.style.willChange = fontValue;
+	};
 
 	const applyProgress = (progress: number) => {
 		if (
@@ -438,8 +519,13 @@ export function SongDetailPanel({
 				.padStart(2, "0")}`;
 		}
 		if (heroRef.current) heroRef.current.style.height = `${heroHeight}px`;
-		if (artistImageRef.current)
+		// Parallax: artist image moves slower during scroll collapse
+		const parallaxOffset =
+			progress * (expandedHeroHeight - collapsedHeaderHeight) * PARALLAX_RATIO;
+		if (artistImageRef.current) {
 			artistImageRef.current.style.opacity = `${imageOpacity}`;
+			artistImageRef.current.style.transform = `translateY(-${parallaxOffset}px)`;
+		}
 		if (vignetteRef.current)
 			vignetteRef.current.style.opacity = `${imageOpacity}`;
 		if (genreRef.current) genreRef.current.style.opacity = `${imageOpacity}`;
@@ -492,10 +578,13 @@ export function SongDetailPanel({
 		);
 		if (reduceMotion) {
 			applyProgress(smoothstep(raw > 0 ? 1 : 0));
+			setWillChange(false);
 			return collapseDistance;
 		}
 
 		let stepped = raw;
+		const wasSnapped = snapStateRef.current !== null;
+
 		if (snapStateRef.current === 1) {
 			if (stepped < 0.85) snapStateRef.current = null;
 			else stepped = 1;
@@ -511,7 +600,17 @@ export function SongDetailPanel({
 				stepped = 0;
 			}
 		}
-		applyProgress(smoothstep(stepped));
+
+		const isSnapped = snapStateRef.current !== null;
+
+		// Toggle willChange based on animation state
+		if (!wasSnapped && isSnapped) {
+			setWillChange(false);
+		} else if (wasSnapped && !isSnapped) {
+			setWillChange(true);
+		}
+
+		applyProgress(springInterpolate(stepped));
 		return collapseDistance;
 	};
 
@@ -528,25 +627,30 @@ export function SongDetailPanel({
 		}
 		applyFromCollapseOffset();
 
-		const wheelHandler = (e: WheelEvent) => {
-			const deltaY = e.deltaY;
+		const processWheelFrame = () => {
+			wheelRafIdRef.current = null;
+			const deltaY = pendingDeltaRef.current;
+			pendingDeltaRef.current = 0;
 			if (!deltaY) return;
 
 			const { collapseDistance } = getCollapseMetrics();
-			const atTop = el.scrollTop <= 0;
-			const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
 
 			if (el.scrollTop > 0 && collapseOffsetRef.current < collapseDistance) {
 				collapseOffsetRef.current = collapseDistance;
 				snapStateRef.current = 1;
 				applyFromCollapseOffset();
+				return;
 			}
 
 			if (deltaY > 0) {
 				if (collapseOffsetRef.current < collapseDistance) {
-					e.preventDefault();
+					// Reduced motion: soft tween to collapsed state
+					if (reduceMotion) {
+						tweenToTarget(collapseDistance);
+						return;
+					}
 					const start = collapseOffsetRef.current;
-					const next = reduceMotion ? collapseDistance : start + deltaY;
+					const next = start + deltaY;
 					if (next >= collapseDistance) {
 						const leftover = next - collapseDistance;
 						collapseOffsetRef.current = collapseDistance;
@@ -563,30 +667,54 @@ export function SongDetailPanel({
 					}
 					return;
 				}
-
-				if (atBottom) e.preventDefault();
 				return;
 			}
 
 			if (deltaY < 0) {
-				if (atTop) {
-					e.preventDefault();
-					if (collapseOffsetRef.current > 0) {
-						const start = collapseOffsetRef.current;
-						const next = reduceMotion ? 0 : start + deltaY;
-						if (next <= 0) {
-							collapseOffsetRef.current = 0;
-							snapStateRef.current = 0;
-							applyFromCollapseOffset();
-						} else {
-							collapseOffsetRef.current = next;
-							snapStateRef.current = null;
-							applyFromCollapseOffset();
-						}
+				const atTop = el.scrollTop <= 0;
+				if (atTop && collapseOffsetRef.current > 0) {
+					// Reduced motion: soft tween to expanded state
+					if (reduceMotion) {
+						tweenToTarget(0);
+						return;
 					}
-					return;
+					const start = collapseOffsetRef.current;
+					const next = start + deltaY;
+					if (next <= 0) {
+						collapseOffsetRef.current = 0;
+						snapStateRef.current = 0;
+						applyFromCollapseOffset();
+					} else {
+						collapseOffsetRef.current = next;
+						snapStateRef.current = null;
+						applyFromCollapseOffset();
+					}
 				}
-				return;
+			}
+		};
+
+		const wheelHandler = (e: WheelEvent) => {
+			const deltaY = e.deltaY;
+			if (!deltaY) return;
+
+			const { collapseDistance } = getCollapseMetrics();
+			const atTop = el.scrollTop <= 0;
+			const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+
+			// Determine if we need to prevent default (intercept scroll for collapse)
+			const shouldIntercept =
+				(deltaY > 0 && collapseOffsetRef.current < collapseDistance) ||
+				(deltaY < 0 && atTop && collapseOffsetRef.current > 0) ||
+				(deltaY > 0 && atBottom);
+
+			if (shouldIntercept) {
+				e.preventDefault();
+			}
+
+			// Accumulate delta and schedule RAF if not already scheduled
+			pendingDeltaRef.current += deltaY;
+			if (wheelRafIdRef.current === null) {
+				wheelRafIdRef.current = requestAnimationFrame(processWheelFrame);
 			}
 		};
 
@@ -599,8 +727,113 @@ export function SongDetailPanel({
 	useEffect(() => {
 		return () => {
 			if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
+			if (wheelRafIdRef.current != null)
+				cancelAnimationFrame(wheelRafIdRef.current);
+			if (reducedMotionTweenRef.current != null)
+				cancelAnimationFrame(reducedMotionTweenRef.current);
+			if (staggerAnimationRef.current != null)
+				cancelAnimationFrame(staggerAnimationRef.current);
+			if (crossfadeRafRef.current != null)
+				cancelAnimationFrame(crossfadeRafRef.current);
 		};
 	}, []);
+
+	// Soft tween for reduced motion users (150ms instead of instant)
+	const tweenToTarget = (target: number, duration = 150) => {
+		const start = collapseOffsetRef.current;
+		const startTime = performance.now();
+
+		const tick = (now: number) => {
+			const elapsed = now - startTime;
+			const t = Math.min(1, elapsed / duration);
+			collapseOffsetRef.current = start + (target - start) * t;
+			applyFromCollapseOffset();
+
+			if (t < 1) {
+				reducedMotionTweenRef.current = requestAnimationFrame(tick);
+			} else {
+				reducedMotionTweenRef.current = null;
+				snapStateRef.current = target === 0 ? 0 : 1;
+			}
+		};
+
+		if (reducedMotionTweenRef.current != null) {
+			cancelAnimationFrame(reducedMotionTweenRef.current);
+		}
+		reducedMotionTweenRef.current = requestAnimationFrame(tick);
+	};
+
+	// Animate content sections fading in sequentially after panel opens
+	const animateStaggerIn = () => {
+		if (reduceMotion) {
+			staggerRefs.current.forEach((el) => el && (el.style.opacity = "1"));
+			return;
+		}
+
+		const startTime = performance.now();
+		const elements = staggerRefs.current.filter(Boolean) as HTMLDivElement[];
+
+		// Set initial state
+		elements.forEach((el) => {
+			el.style.opacity = "0";
+			el.style.transform = "translateY(8px)";
+		});
+
+		const tick = (now: number) => {
+			const elapsed = now - startTime;
+			elements.forEach((el, i) => {
+				const elementStart = i * STAGGER_DELAY;
+				const progress = clamp01((elapsed - elementStart) / STAGGER_DURATION);
+				const eased = springInterpolate(progress);
+				el.style.opacity = `${eased}`;
+				el.style.transform = `translateY(${lerp(8, 0, eased)}px)`;
+			});
+
+			const total = (elements.length - 1) * STAGGER_DELAY + STAGGER_DURATION;
+			if (elapsed < total) {
+				staggerAnimationRef.current = requestAnimationFrame(tick);
+			}
+		};
+
+		staggerAnimationRef.current = requestAnimationFrame(tick);
+	};
+
+	// Smooth crossfade for song navigation (j/k keys)
+	const animateCrossfade = (onMidpoint: () => void) => {
+		if (reduceMotion || !contentWrapperRef.current) {
+			onMidpoint();
+			return;
+		}
+
+		const el = contentWrapperRef.current;
+		const startTime = performance.now();
+		const half = CROSSFADE_DURATION / 2;
+		let swapped = false;
+
+		const tick = (now: number) => {
+			const elapsed = now - startTime;
+
+			if (elapsed < half) {
+				// Fade out
+				el.style.opacity = `${1 - elapsed / half}`;
+			} else if (!swapped) {
+				// At midpoint, swap content
+				swapped = true;
+				onMidpoint();
+			} else {
+				// Fade in
+				el.style.opacity = `${(elapsed - half) / half}`;
+			}
+
+			if (elapsed < CROSSFADE_DURATION) {
+				crossfadeRafRef.current = requestAnimationFrame(tick);
+			} else {
+				el.style.opacity = "1";
+			}
+		};
+
+		crossfadeRafRef.current = requestAnimationFrame(tick);
+	};
 
 	const onScroll = () => {
 		const el = scrollRef.current;
@@ -652,9 +885,9 @@ export function SongDetailPanel({
 			style={{
 				position: "fixed",
 				borderLeft: isDark ? "none" : `1px solid ${baseTheme.border}`,
-				// Slide in from right, GPU-accelerated
+				// Slide in/out synced with View Transition timing (300ms ease-out-quart)
 				transition:
-					"transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease-out",
+					"transform 300ms cubic-bezier(0.165, 0.84, 0.44, 1), opacity 300ms cubic-bezier(0.165, 0.84, 0.44, 1)",
 				top: 0,
 				right: 0,
 				// Responsive width: min 380px, preferred 45%, max full-width minus sidebar
@@ -691,8 +924,6 @@ export function SongDetailPanel({
 								style={{
 									height: `${LAYOUT.heroHeight}px`,
 									pointerEvents: "none",
-									transition: "height 0.1s ease-out",
-									willChange: "height",
 								}}
 							>
 								{/* Artist image background */}
@@ -705,8 +936,6 @@ export function SongDetailPanel({
 												backgroundImage: `url(${artistImageUrl})`,
 												backgroundSize: "cover",
 												backgroundPosition: `center ${LAYOUT.imagePositionY}%`,
-												transition: "opacity 0.12s ease-out",
-												willChange: "opacity",
 											}}
 										/>
 										{/* Vignette overlay */}
@@ -715,8 +944,6 @@ export function SongDetailPanel({
 											className="absolute inset-0"
 											style={{
 												background: vignetteGradient,
-												transition: "opacity 0.12s ease-out",
-												willChange: "opacity",
 											}}
 										/>
 									</>
@@ -737,8 +964,6 @@ export function SongDetailPanel({
 										height: "50%",
 										background: `linear-gradient(to bottom, transparent 0%, ${colors.bg} 100%)`,
 										opacity: 0,
-										transition: "opacity 0.12s ease-out",
-										willChange: "opacity",
 									}}
 								/>
 
@@ -775,10 +1000,6 @@ export function SongDetailPanel({
 											boxShadow: isDark
 												? `0 8px 32px ${colors.bg}`
 												: `0 4px 20px ${baseTheme.primary}20`,
-											transition:
-												"transform 0.1s ease-out, top 0.1s ease-out, width 0.1s ease-out, height 0.1s ease-out, opacity 0.1s ease-out",
-											willChange:
-												"transform, top, left, width, height, opacity",
 											viewTransitionName: isExpanded ? "song-album" : "none",
 										}}
 									>
@@ -800,9 +1021,6 @@ export function SongDetailPanel({
 										left: `${LAYOUT.paddingX + LAYOUT.albumArtExpanded + 16}px`,
 										top: `${LAYOUT.heroHeight - LAYOUT.albumArtExpanded - 18 + 6}px`,
 										transform: `translateY(${LAYOUT.albumArtExpanded / 3}px)`,
-										transition:
-											"transform 0.1s ease-out, top 0.1s ease-out, left 0.1s ease-out",
-										willChange: "transform, top, left, right",
 									}}
 								>
 									{/* Title */}
@@ -813,8 +1031,6 @@ export function SongDetailPanel({
 											fontFamily: fonts.display,
 											fontSize: "24px",
 											color: colors.text,
-											transition: "font-size 0.1s ease-out",
-											// View Transition: panel has the name when expanded
 											viewTransitionName: isExpanded ? "song-title" : "none",
 										}}
 									>
@@ -829,8 +1045,6 @@ export function SongDetailPanel({
 											fontFamily: fonts.body,
 											fontSize: "14px",
 											color: colors.text,
-											transition: "font-size 0.1s ease-out",
-											// View Transition: panel has the name when expanded
 											viewTransitionName: isExpanded ? "song-artist" : "none",
 										}}
 									>
@@ -867,53 +1081,82 @@ export function SongDetailPanel({
 							paddingRight: "20px",
 						}}
 					>
-						{/* Album + meta */}
-						<div
-							className="mb-4 flex items-center gap-2 text-xs"
-							style={{ fontFamily: fonts.body, color: colors.textDim }}
-						>
-							<span>Liked {formatRelativeTime(song.liked_at)}</span>
-							{isNew && (
-								<>
-									<span>·</span>
-									<span
-										className="text-[9px] tracking-widest uppercase"
-										style={{ color: colors.accent }}
-									>
-										New
-									</span>
-								</>
-							)}
-						</div>
-
-						{/* Audio info */}
-						<div className="mb-4">
-							<AudioInfo
-								audioFeatures={analysis?.audio_features}
-								isDark={isDark}
-							/>
-						</div>
-
-						{/* Mood */}
-						{analysis?.emotional?.mood_description && (
-							<p
-								className="text-sm leading-relaxed italic"
-								style={{ fontFamily: fonts.body, color: colors.textMuted }}
+						{/* Crossfade wrapper for song navigation transitions */}
+						<div ref={contentWrapperRef}>
+							{/* Album + meta - stagger[0] */}
+							<div
+								ref={(el) => {
+									staggerRefs.current[0] = el;
+								}}
+								className="mb-4 flex items-center gap-2 text-xs"
+								style={{
+									fontFamily: fonts.body,
+									color: colors.textDim,
+									opacity: 0,
+								}}
 							>
-								"{analysis.emotional.mood_description}"
-							</p>
-						)}
+								<span>Liked {formatRelativeTime(song.liked_at)}</span>
+								{isNew && (
+									<>
+										<span>·</span>
+										<span
+											className="text-[9px] tracking-widest uppercase"
+											style={{ color: colors.accent }}
+										>
+											New
+										</span>
+									</>
+								)}
+							</div>
 
-						{/* Full analysis sections */}
-						<div className="mt-8">
-							<AnalysisSections
-								analysis={analysis}
-								expandedSections={expandedSections}
-								toggleSection={toggleSection}
-								addedTo={addedTo}
-								onAddToPlaylist={handleAddToPlaylist}
-								onClose={onClose}
-							/>
+							{/* Audio info - stagger[1] */}
+							<div
+								ref={(el) => {
+									staggerRefs.current[1] = el;
+								}}
+								className="mb-4"
+								style={{ opacity: 0 }}
+							>
+								<AudioInfo
+									audioFeatures={analysis?.audio_features}
+									isDark={isDark}
+								/>
+							</div>
+
+							{/* Mood - stagger[2] */}
+							{analysis?.emotional?.mood_description && (
+								<div
+									ref={(el) => {
+										staggerRefs.current[2] = el;
+									}}
+									style={{ opacity: 0 }}
+								>
+									<p
+										className="text-sm leading-relaxed italic"
+										style={{ fontFamily: fonts.body, color: colors.textMuted }}
+									>
+										"{analysis.emotional.mood_description}"
+									</p>
+								</div>
+							)}
+
+							{/* Full analysis sections - stagger[3] */}
+							<div
+								ref={(el) => {
+									staggerRefs.current[3] = el;
+								}}
+								className="mt-8"
+								style={{ opacity: 0 }}
+							>
+								<AnalysisSections
+									analysis={analysis}
+									expandedSections={expandedSections}
+									toggleSection={toggleSection}
+									addedTo={addedTo}
+									onAddToPlaylist={handleAddToPlaylist}
+									onClose={onClose}
+								/>
+							</div>
 						</div>
 					</div>
 				</div>

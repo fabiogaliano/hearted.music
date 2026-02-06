@@ -189,3 +189,57 @@ code {
     background: var(--hover-bg);
   }
 }
+
+/* View Transitions - Song Detail Panel shared element morphing */
+::view-transition-group(song-album),
+::view-transition-group(song-title),
+::view-transition-group(song-artist) {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.165, 0.84, 0.44, 1); /* ease-out-quart */
+}
+
+::view-transition-old(song-album),
+::view-transition-new(song-album) {
+  /* Album art: no cross-fade, just position/size morph */
+  animation: none;
+  mix-blend-mode: normal;
+  /* Prevent size distortion during morph */
+  object-fit: cover;
+}
+
+::view-transition-old(song-title),
+::view-transition-old(song-artist) {
+  animation: vt-fade-out 300ms cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+::view-transition-new(song-title),
+::view-transition-new(song-artist) {
+  animation: vt-fade-in 300ms cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+@keyframes vt-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes vt-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Accessibility: disable View Transition animations for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* Fallback for browsers without View Transitions API (Firefox, Safari) */
+@supports not (view-transition-name: none) {
+  /* Provide basic crossfade on panel open/close */
+  [data-panel-animating="true"] {
+    transition: opacity 300ms cubic-bezier(0.165, 0.84, 0.44, 1);
+  }
+}
