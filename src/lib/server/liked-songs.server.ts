@@ -10,14 +10,14 @@ import { appFetch } from "@/lib/integrations/spotify/app-auth";
 import type { FilterOption } from "@/features/liked-songs/queries";
 import type {
 	LikedSong,
-	SortingStatus,
+	MatchingStatus,
 	AnalysisContent,
 } from "@/features/liked-songs/types";
 
 // ─── Input Validation Schemas ───────────────────────────────────────────────
 
 const LikedSongsPageSchema = z.object({
-	filter: z.enum(["all", "unsorted", "sorted", "analyzed"]),
+	filter: z.enum(["all", "pending", "matched", "analyzed"]),
 	cursor: z.string().optional(),
 	limit: z.number().int().min(1).max(100).optional(),
 });
@@ -71,7 +71,7 @@ export const getLikedSongsPage = createServerFn({ method: "GET" })
 
 		const songs: LikedSong[] = items.map((row: LikedSongPageRow) => ({
 			liked_at: row.liked_at,
-			sorting_status: (row.status as SortingStatus) ?? null,
+			matching_status: (row.matching_status as MatchingStatus) ?? null,
 			track: {
 				id: row.song_id,
 				spotify_track_id: row.song_spotify_id,
@@ -102,8 +102,8 @@ export type LikedSongsStatsResult =
 			success: true;
 			total: number;
 			analyzed: number;
-			sorted: number;
-			unsorted: number;
+			matched: number;
+			pending: number;
 	  }
 	| { success: false; error: string };
 
@@ -123,8 +123,8 @@ export const getLikedSongsStats = createServerFn({ method: "GET" }).handler(
 			success: true,
 			total: Number(row.total),
 			analyzed: Number(row.analyzed),
-			sorted: Number(row.sorted),
-			unsorted: Number(row.unsorted),
+			matched: Number(row.matched),
+			pending: Number(row.pending),
 		};
 	},
 );

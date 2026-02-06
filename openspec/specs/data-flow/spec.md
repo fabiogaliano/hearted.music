@@ -177,19 +177,20 @@ queryKey: ['preferences', accountId]
 ## Server Function Pattern
 
 ```typescript
-// lib/server/songs.ts
+// lib/server/liked-songs.server.ts
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { updateLikedSongStatus } from '~/data/songs'
+import { updateStatus } from '~/lib/data/liked-song'
 
-export const markSongMatched = createServerFn()
+export const addSongToPlaylist = createServerFn()
   .validator(z.object({
-    accountId: z.uuid(),
     songId: z.uuid(),
-    playlistId: z.uuid(),
+    spotifyTrackId: z.string().min(1),
+    spotifyPlaylistId: z.string().min(1),
   }))
   .handler(async ({ data }) => {
-    await updateLikedSongStatus(data.accountId, data.songId, 'matched')
+    // Matching status is derived from item_status records
+    await updateStatus(session.accountId, data.songId, 'added_to_playlist')
     return { success: true }
   })
 ```

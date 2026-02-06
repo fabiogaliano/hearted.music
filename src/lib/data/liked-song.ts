@@ -50,8 +50,8 @@ export type LikedSongsStatsRow =
 /** Filter options for liked songs page */
 export type LikedSongFilter =
 	| "all"
-	| "unsorted"
-	| "sorted"
+	| "pending"
+	| "matched"
 	| "ignored"
 	| "analyzed";
 

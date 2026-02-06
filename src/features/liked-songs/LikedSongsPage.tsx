@@ -64,22 +64,7 @@ export function LikedSongsPage({
 		[data?.pages],
 	);
 
-	const filteredSongs = useMemo(() => {
-		switch (filter) {
-			case "unsorted":
-				return songs.filter(
-					(s) => s.sorting_status === "unsorted" || s.sorting_status === null,
-				);
-			case "sorted":
-				return songs.filter((s) => s.sorting_status === "sorted");
-			case "analyzed":
-				return songs.filter((s) => s.uiAnalysisStatus === "analyzed");
-			default:
-				return songs;
-		}
-	}, [songs, filter]);
-
-	const displayedSongs = filteredSongs;
+	const displayedSongs = songs;
 	const hasMore = hasNextPage ?? false;
 
 	const handleLoadMore = useCallback(() => {
@@ -108,7 +93,7 @@ export function LikedSongsPage({
 		handlePrevious,
 		handleClose,
 		closingToSongId,
-	} = useSongExpansion(filteredSongs, {
+	} = useSongExpansion(displayedSongs, {
 		initialSlug: selectedSlug,
 	});
 
@@ -244,7 +229,7 @@ export function LikedSongsPage({
 						className="text-sm tabular-nums"
 						style={{ fontFamily: fonts.body, color: theme.textMuted }}
 					>
-						{stats?.success ? stats.unsorted : "—"} unsorted
+						{stats?.success ? stats.pending : "—"} pending
 					</span>
 				</div>
 			</div>
@@ -260,7 +245,7 @@ export function LikedSongsPage({
 							Loading your liked songs...
 						</p>
 					</div>
-				) : filteredSongs.length === 0 ? (
+				) : displayedSongs.length === 0 ? (
 					<div className="py-12 text-center">
 						<p
 							className="text-sm"

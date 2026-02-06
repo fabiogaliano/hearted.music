@@ -11,3 +11,10 @@ CREATE UNIQUE INDEX app_token_singleton ON app_token ((true));
 
 -- RLS: Only service role can access
 ALTER TABLE app_token ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "service_role_only"
+  ON app_token
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);

@@ -6,7 +6,8 @@ CREATE TYPE job_type AS ENUM (
   'sync_playlists',
   'song_analysis',
   'playlist_analysis',
-  'matching'
+  'matching',
+  'sync_playlist_tracks'
 );
 
 -- Job status enum

@@ -10,6 +10,7 @@ CREATE TABLE playlist (
   is_public BOOLEAN DEFAULT false,
   is_destination BOOLEAN DEFAULT false,
   song_count INTEGER DEFAULT 0,
+  image_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   UNIQUE(account_id, spotify_id)

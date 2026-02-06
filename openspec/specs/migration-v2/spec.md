@@ -59,7 +59,7 @@ The system SHALL track all background jobs in a single `job` table.
 
 #### Scenario: Job types are distinguished by column
 - **WHEN** creating a new job
-- **THEN** set `type` column to one of: `sync_liked_songs`, `sync_playlists`, `song_analysis`, `playlist_analysis`, `matching`
+- **THEN** set `type` column to one of: `sync_liked_songs`, `sync_playlists`, `song_analysis`, `playlist_analysis`, `matching`, `sync_playlist_tracks`
 
 #### Scenario: Progress tracked as JSONB
 - **WHEN** updating job progress
@@ -77,9 +77,10 @@ The system SHALL use soft delete for unliked songs to preserve timeline history.
 - **WHEN** fetching user's liked songs
 - **THEN** filter with `WHERE unliked_at IS NULL`
 
-#### Scenario: Sorting status preserved
+#### Scenario: Matching status derived from item_status
 - **WHEN** a liked song is matched or ignored
-- **THEN** store status in `liked_song.status` (`matched` | `ignored` | NULL)
+- **THEN** the matching status is recorded in `item_status` (not `liked_song.status`)
+- **AND** `liked_song` table SHALL NOT have a `status` column
 
 ### Requirement: Newness Tracking
 
@@ -221,7 +222,7 @@ The system SHALL define core Spotify domain tables for songs and playlists using
 
 #### Scenario: Song stored from Spotify
 - **WHEN** a Spotify song is ingested
-- **THEN** store `spotify_id`, `name`, `artists` (TEXT[]), `album_name`, `album_id`, `image_url`, `duration_ms`, `popularity`, `preview_url`, `isrc`, and `genres` on `song`
+- **THEN** store `spotify_id`, `name`, `artists` (TEXT[]), `artist_ids` (TEXT[]), `album_name`, `album_id`, `image_url`, `duration_ms`, `popularity`, `preview_url`, `isrc`, and `genres` on `song`
 
 #### Scenario: Song genres stored on song row
 - **WHEN** a Spotify song includes genre metadata retrieve via Last.fm API
@@ -229,11 +230,11 @@ The system SHALL define core Spotify domain tables for songs and playlists using
 
 #### Scenario: Liked song stored for account
 - **WHEN** a user likes a song
-- **THEN** create or update `liked_song` with `account_id`, `song_id`, `liked_at`, `unliked_at`, and `status`
+- **THEN** create or update `liked_song` with `account_id`, `song_id`, `liked_at`, and `unliked_at`
 
 #### Scenario: Playlist song linkage
 - **WHEN** a playlist is synced
-- **THEN** upsert `playlist` with `song_count` and `is_destination`, and link songs via `playlist_song`
+- **THEN** upsert `playlist` with `song_count`, `is_destination`, and `image_url`, and link songs via `playlist_song`
 
 ### Requirement: Sync Checkpoint Tracking
 The system SHALL persist sync checkpoints in `job.progress` for incremental sync of liked songs and playlists.
@@ -257,6 +258,10 @@ The system SHALL store song metadata extensions in dedicated tables with global 
 #### Scenario: LLM analysis stored
 - **WHEN** LLM analyzes a song
 - **THEN** store in `song_analysis` with JSONB analysis, model, prompt_version, tokens_used, and cost_cents
+
+#### Scenario: Multiple analyses per song allowed
+- **WHEN** querying the latest analysis for a song
+- **THEN** use `ORDER BY created_at DESC LIMIT 1` (not a unique constraint on song_id)
 
 #### Scenario: Embeddings stored with vector type
 - **WHEN** embedding is generated for a song

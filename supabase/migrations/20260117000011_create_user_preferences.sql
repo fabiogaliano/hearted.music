@@ -6,9 +6,10 @@ CREATE TYPE theme AS ENUM ('blue', 'green', 'rose', 'lavender');
 CREATE TABLE user_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   account_id UUID NOT NULL REFERENCES account(id) ON DELETE CASCADE,
-  theme theme NOT NULL DEFAULT 'blue',
+  theme theme,
   onboarding_step TEXT NOT NULL DEFAULT 'welcome',
   onboarding_completed_at TIMESTAMPTZ,
+  phase_job_ids JSONB,
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   UNIQUE(account_id)

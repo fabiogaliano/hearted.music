@@ -6,6 +6,7 @@ CREATE TABLE song (
   isrc TEXT,
   name TEXT NOT NULL,
   artists TEXT[] NOT NULL DEFAULT '{}',
+  artist_ids TEXT[] NOT NULL DEFAULT '{}',
   album_name TEXT,
   album_id TEXT,
   image_url TEXT,
