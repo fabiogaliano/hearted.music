@@ -11,8 +11,8 @@ The application SHALL provide a paginated list view of the user's liked songs wi
 **Acceptance Criteria:**
 - Songs display with album art, title, artist, and analysis status
 - Infinite scroll loads more songs as user scrolls
-- Filter tabs: All, Unsorted, Sorted, Analyzed
-- Stats header shows total/analyzed/unsorted counts
+- Filter tabs: All, Pending, Matched, Analyzed
+- Stats header shows total/analyzed/pending counts
 
 #### Scenario: User views liked songs list
 
@@ -20,7 +20,7 @@ The application SHALL provide a paginated list view of the user's liked songs wi
 Given a user navigates to /liked-songs
 When the page loads
 Then the first page of liked songs is displayed
-And stats show total, analyzed, and unsorted counts
+And stats show total, analyzed, and pending counts
 And filter is set to "all" by default
 ```
 
@@ -37,7 +37,7 @@ And a loading indicator shows during fetch
 
 ```gherkin
 Given the user is viewing the liked songs list
-When they click a filter tab (unsorted/sorted/analyzed)
+When they click a filter tab (pending/matched/analyzed)
 Then the list updates to show only matching songs
 And the URL updates with the filter parameter
 ```

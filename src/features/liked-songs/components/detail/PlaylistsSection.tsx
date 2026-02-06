@@ -257,7 +257,7 @@ export function PlaylistsSection({
 						color: theme.text,
 					}}
 				>
-					Mark as sorted
+					Mark as matched
 				</button>
 			</div>
 		</>

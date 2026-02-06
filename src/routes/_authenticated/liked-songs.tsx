@@ -6,7 +6,7 @@ import { LikedSongsPage } from "@/features/liked-songs/LikedSongsPage";
 import { likedSongsInfiniteQueryOptions } from "@/features/liked-songs/queries";
 
 const searchSchema = z.object({
-	filter: fallback(z.enum(["all", "unsorted", "sorted", "analyzed"]), "all"),
+	filter: fallback(z.enum(["all", "pending", "matched", "analyzed"]), "all"),
 	song: z.string().optional(),
 });
 
@@ -22,6 +22,7 @@ export const Route = createFileRoute("/_authenticated/liked-songs")({
 });
 
 function LikedSongsRoute() {
+	// TODO: pass filter to LikedSongsPage when filter UI is built
 	const { song } = Route.useSearch();
 	const { session } = Route.useRouteContext();
 

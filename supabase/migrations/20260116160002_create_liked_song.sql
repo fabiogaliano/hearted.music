@@ -6,16 +6,10 @@ CREATE TABLE liked_song (
   song_id UUID NOT NULL REFERENCES song(id) ON DELETE CASCADE,
   liked_at TIMESTAMPTZ NOT NULL,
   unliked_at TIMESTAMPTZ,  -- NULL = active, non-NULL = soft deleted
-  status TEXT,  -- NULL = pending, 'matched', 'ignored'
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   UNIQUE(account_id, song_id)
 );
-
--- status values:
--- NULL = pending (not yet matched to a playlist)
--- 'matched' = song has been added to a destination playlist
--- 'ignored' = user explicitly skipped this song
 
 -- Indexes for common queries
 CREATE INDEX idx_liked_song_account_id ON liked_song(account_id);
@@ -24,7 +18,7 @@ CREATE INDEX idx_liked_song_liked_at ON liked_song(account_id, liked_at DESC);
 
 -- Partial index for pending songs (active and not yet matched)
 CREATE INDEX idx_liked_song_pending ON liked_song(account_id)
-  WHERE unliked_at IS NULL AND status IS NULL;
+  WHERE unliked_at IS NULL;
 
 -- Enable RLS (service_role bypasses)
 ALTER TABLE liked_song ENABLE ROW LEVEL SECURITY;

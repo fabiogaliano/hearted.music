@@ -6,7 +6,7 @@
 import type { ThemeConfig } from "@/lib/theme/types";
 
 // Re-export the API types for convenience
-export type SortingStatus = "unsorted" | "sorted" | "ignored";
+export type MatchingStatus = "pending" | "matched" | "ignored";
 export type UIAnalysisStatus =
 	| "not_analyzed"
 	| "analyzing"
@@ -15,7 +15,7 @@ export type UIAnalysisStatus =
 
 export interface LikedSong {
 	liked_at: string;
-	sorting_status: SortingStatus | null;
+	matching_status: MatchingStatus | null;
 	track: {
 		id: string;
 		spotify_track_id: string;

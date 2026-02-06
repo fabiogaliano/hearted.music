@@ -5,7 +5,7 @@ import {
 	getLikedSongsStats,
 } from "@/lib/server/liked-songs.server";
 
-export type FilterOption = "all" | "unsorted" | "sorted" | "analyzed";
+export type FilterOption = "all" | "pending" | "matched" | "analyzed";
 
 export const PAGE_SIZE = 15;
 

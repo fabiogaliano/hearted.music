@@ -259,7 +259,6 @@ export type Database = {
 					id: string;
 					liked_at: string;
 					song_id: string;
-					status: string | null;
 					unliked_at: string | null;
 					updated_at: string;
 				};
@@ -269,7 +268,6 @@ export type Database = {
 					id?: string;
 					liked_at: string;
 					song_id: string;
-					status?: string | null;
 					unliked_at?: string | null;
 					updated_at?: string;
 				};
@@ -279,7 +277,6 @@ export type Database = {
 					id?: string;
 					liked_at?: string;
 					song_id?: string;
-					status?: string | null;
 					unliked_at?: string | null;
 					updated_at?: string;
 				};
@@ -910,6 +907,7 @@ export type Database = {
 					analysis_model: string;
 					id: string;
 					liked_at: string;
+					matching_status: string;
 					song_album_name: string;
 					song_artist_ids: string[];
 					song_artists: string[];
@@ -917,16 +915,15 @@ export type Database = {
 					song_image_url: string;
 					song_name: string;
 					song_spotify_id: string;
-					status: string;
 				}[];
 			};
 			get_liked_songs_stats: {
 				Args: { p_account_id: string };
 				Returns: {
 					analyzed: number;
-					sorted: number;
+					matched: number;
+					pending: number;
 					total: number;
-					unsorted: number;
 				}[];
 			};
 		};
