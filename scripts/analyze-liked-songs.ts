@@ -9,7 +9,11 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import { LlmService } from "@/lib/ml/llm/service";
 import { SongAnalysisService } from "@/lib/capabilities/analysis/song-analysis";
 import { LyricsService } from "@/lib/capabilities/lyrics/service";
-import * as audioFeatureData from "@/lib/data/song-audio-feature";
+import * as songData from "@/lib/data/song";
+import { LastFmService } from "@/lib/integrations/lastfm/service";
+import type { AudioFeature } from "@/lib/data/song-audio-feature";
+import { AudioFeaturesService } from "@/lib/integrations/audio/service";
+import { ReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 
 const username = process.argv[2] || "kapran0s";
 const limit = parseInt(process.argv[3] || "5", 10);
@@ -19,6 +23,7 @@ async function main() {
 	// Check env vars upfront
 	const geminiKey = process.env.GEMINI_API_KEY;
 	const geniusToken = process.env.GENIUS_CLIENT_TOKEN;
+	const lastfmKey = process.env.LASTFM_API_KEY;
 
 	if (!dryRun) {
 		if (!geminiKey) {
@@ -30,7 +35,13 @@ async function main() {
 			process.exit(1);
 		}
 		console.log(`✓ GEMINI_API_KEY: ${geminiKey.substring(0, 8)}...`);
-		console.log(`✓ GENIUS_CLIENT_TOKEN: ${geniusToken.substring(0, 8)}...\n`);
+		console.log(`✓ GENIUS_CLIENT_TOKEN: ${geniusToken.substring(0, 8)}...`);
+		if (lastfmKey) {
+			console.log(`✓ LASTFM_API_KEY: ${lastfmKey.substring(0, 8)}...`);
+		} else {
+			console.log(`⚠ LASTFM_API_KEY not set — genre lookup disabled`);
+		}
+		console.log();
 	}
 
 	console.log(`🎵 Analyzing liked songs for ${username}...\n`);
@@ -89,6 +100,33 @@ async function main() {
 	const llm = new LlmService({ provider: "google", apiKey: geminiKey! });
 	const analysisService = new SongAnalysisService(llm);
 	const lyricsService = new LyricsService({ accessToken: geniusToken! });
+	const lastfm = lastfmKey ? new LastFmService(lastfmKey) : null;
+	const reccobeats = new ReccoBeatsService();
+	const audioService = new AudioFeaturesService(reccobeats);
+
+	// Prefetch song records for genres
+	const songIds = toAnalyze.map((s) => s.song_id);
+	const songsResult = await songData.getByIds(songIds);
+	const genresMap = new Map<string, string[]>();
+	if (Result.isOk(songsResult)) {
+		for (const s of songsResult.value) {
+			if (s.genres && s.genres.length > 0) {
+				genresMap.set(s.id, s.genres);
+			}
+		}
+	}
+
+	// Prefetch audio features (DB first, then ReccoBeats for missing → persisted)
+	const tracks = toAnalyze.map((s) => ({
+		songId: s.song_id,
+		spotifyTrackId: s.song_spotify_id,
+	}));
+	const audioResult = await audioService.getOrFetchFeatures(tracks);
+	const audioMap = Result.isOk(audioResult)
+		? audioResult.value
+		: new Map<string, AudioFeature>();
+	const audioFetched = audioMap.size;
+	console.log(`✓ Audio features: ${audioFetched}/${toAnalyze.length} songs\n`);
 
 	let succeeded = 0;
 	let failed = 0;
@@ -98,28 +136,39 @@ async function main() {
 		const title = song.song_name;
 		process.stdout.write(`📝 ${artist} - ${title}... `);
 
-		// 1. Fetch lyrics from Genius
+		// 1. Fetch lyrics from Genius (missing lyrics → instrumental path)
+		let lyrics: string | null = null;
 		const lyricsResult = await lyricsService.getLyricsText(artist, title);
-		if (Result.isError(lyricsResult)) {
-			const err = lyricsResult.error as Error;
-			console.log(`❌ Genius: ${err.message}`);
-			failed++;
-			continue;
+		if (Result.isOk(lyricsResult) && lyricsResult.value) {
+			lyrics = lyricsResult.value;
+			process.stdout.write(`lyrics ✓ `);
+		} else {
+			process.stdout.write(`no lyrics (instrumental) `);
 		}
 
-		const lyrics = lyricsResult.value;
-		if (!lyrics) {
-			console.log(`❌ No lyrics found`);
-			failed++;
-			continue;
+		// 2. Get audio features (prefetched + persisted via ReccoBeats)
+		const audioFeatures = audioMap.get(song.song_id) ?? null;
+
+		// 3. Resolve genres: DB first, then Last.fm fallback (persisted)
+		let genres = genresMap.get(song.song_id);
+		if (!genres && lastfm) {
+			const tagResult = await lastfm.getTagsWithFallback(artist, title);
+			if (Result.isOk(tagResult) && tagResult.value) {
+				genres = tagResult.value.tags;
+				const saveResult = await songData.updateGenres(song.song_id, genres);
+				if (Result.isOk(saveResult)) {
+					process.stdout.write(`genres(${tagResult.value.sourceLevel}→db) ✓ `);
+				} else {
+					process.stdout.write(`genres(${tagResult.value.sourceLevel}) ✓ `);
+				}
+			} else {
+				process.stdout.write(`no genres `);
+			}
+		} else if (genres) {
+			process.stdout.write(`genres(db) ✓ `);
 		}
-		process.stdout.write(`lyrics ✓ `);
 
-		// 2. Get audio features (optional)
-		const audioResult = await audioFeatureData.get(song.song_id);
-		const audioFeatures = Result.isOk(audioResult) ? audioResult.value : null;
-
-		// 3. Analyze with LLM
+		// 4. Analyze with LLM
 		process.stdout.write(`analyzing... `);
 		const analysisResult = await analysisService.analyzeSong({
 			songId: song.song_id,
@@ -127,6 +176,8 @@ async function main() {
 			title,
 			lyrics,
 			audioFeatures,
+			genres,
+			instrumentalness: audioFeatures?.instrumentalness ?? undefined,
 		});
 
 		if (Result.isError(analysisResult)) {

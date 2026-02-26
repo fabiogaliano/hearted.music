@@ -1,0 +1,2288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prompt Lab Report &mdash; 2026-02-10 15:35:51</title>
+<style>
+:root {
+	--bg: #f8f7f5;
+	--surface: #ffffff;
+	--border: #e2e0dc;
+	--border-light: #edecea;
+	--text: #1a1918;
+	--text-secondary: #6b6862;
+	--text-tertiary: #9b978f;
+	--accent: #4a6fa5;
+	--error-bg: #fef2f2;
+	--error-border: #e8b4b4;
+	--error-text: #9b2c2c;
+	--font-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+	--font-mono: "JetBrains Mono", "Fira Code", "SF Mono", "Consolas", monospace;
+	--radius: 6px;
+	--shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+*, *::before, *::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	font-family: var(--font-body);
+	background: var(--bg);
+	color: var(--text);
+	line-height: 1.6;
+	padding: 2rem 2.5rem;
+	max-width: 100%;
+}
+
+.report-header {
+	margin-bottom: 2.5rem;
+	padding-bottom: 1.5rem;
+	border-bottom: 1px solid var(--border);
+}
+
+.report-header h1 {
+	font-size: 1.5rem;
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	margin-bottom: 0.5rem;
+}
+
+.report-meta {
+	display: flex;
+	gap: 1.5rem;
+	color: var(--text-secondary);
+	font-size: 0.85rem;
+}
+
+.report-meta span {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.summary-section {
+	margin-bottom: 3rem;
+}
+
+.summary-section h3 {
+	font-size: 0.8rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--text-tertiary);
+	margin-bottom: 0.75rem;
+}
+
+.summary-table {
+	width: 100%;
+	border-collapse: collapse;
+	background: var(--surface);
+	border-radius: var(--radius);
+	overflow: hidden;
+	box-shadow: var(--shadow-card);
+	font-size: 0.875rem;
+}
+
+.summary-table thead {
+	background: #fafaf8;
+}
+
+.summary-table th {
+	padding: 0.65rem 1rem;
+	text-align: left;
+	font-weight: 600;
+	font-size: 0.75rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--text-secondary);
+	border-bottom: 1px solid var(--border);
+}
+
+.summary-table td {
+	padding: 0.65rem 1rem;
+	border-bottom: 1px solid var(--border-light);
+}
+
+.summary-table tbody tr:last-child td {
+	border-bottom: none;
+}
+
+.cell-name {
+	font-weight: 600;
+}
+
+.cell-mono {
+	font-family: var(--font-mono);
+	font-size: 0.8rem;
+}
+
+.cell-errors {
+	font-family: var(--font-mono);
+	font-size: 0.8rem;
+}
+
+.error-count {
+	background: var(--error-bg);
+	color: var(--error-text);
+	padding: 0.1rem 0.45rem;
+	border-radius: 3px;
+	font-weight: 600;
+}
+
+.song-section {
+	margin-bottom: 3rem;
+}
+
+.song-header {
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	background: var(--bg);
+	padding: 0.75rem 0;
+	margin-bottom: 1rem;
+	border-bottom: 2px solid var(--border);
+}
+
+.song-header h2 {
+	font-size: 1.15rem;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+.song-album {
+	display: inline-block;
+	margin-top: 0.15rem;
+	font-size: 0.8rem;
+	color: var(--text-tertiary);
+	font-style: italic;
+}
+
+.variants-grid {
+	display: grid;
+	gap: 1rem;
+}
+
+.card {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow-card);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.card-header {
+	padding: 0.6rem 1rem;
+	font-weight: 700;
+	font-size: 0.8rem;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	background: #fafaf8;
+	border-bottom: 1px solid var(--border-light);
+	color: var(--text-secondary);
+}
+
+.card-body {
+	padding: 1rem;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 0.85rem;
+}
+
+.card-footer {
+	padding: 0.5rem 1rem;
+	border-top: 1px solid var(--border-light);
+	background: #fafaf8;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-family: var(--font-mono);
+	font-size: 0.7rem;
+	color: var(--text-tertiary);
+}
+
+.tokens {
+	display: flex;
+	align-items: center;
+	gap: 0.2rem;
+}
+
+.token-detail {
+	background: var(--bg);
+	padding: 0.05rem 0.35rem;
+	border-radius: 3px;
+}
+
+.token-sep {
+	color: var(--border);
+}
+
+.timing {
+	font-weight: 600;
+	color: var(--text-secondary);
+}
+
+.field-headline {
+	font-size: 1.05rem;
+	font-weight: 600;
+	line-height: 1.45;
+	color: var(--text);
+}
+
+.mood-pill {
+	display: inline-block;
+	padding: 0.2rem 0.7rem;
+	border-radius: 100px;
+	font-size: 0.8rem;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	background: hsl(var(--pill-hue), 45%, 93%);
+	color: hsl(var(--pill-hue), 50%, 32%);
+	border: 1px solid hsl(var(--pill-hue), 35%, 85%);
+	align-self: flex-start;
+}
+
+.field-mood-desc {
+	font-style: italic;
+	color: var(--text-secondary);
+	line-height: 1.55;
+}
+
+.field-section h4 {
+	font-size: 0.7rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--text-tertiary);
+	margin-bottom: 0.4rem;
+}
+
+.field-section p {
+	line-height: 1.6;
+	font-size: 0.9rem;
+}
+
+.field-section ul {
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+}
+
+.field-section ul li {
+	font-size: 0.875rem;
+	line-height: 1.5;
+	padding-left: 0.85rem;
+	position: relative;
+}
+
+.field-section ul li::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 0.55em;
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: var(--border);
+}
+
+.journey-list {
+	list-style: none;
+	counter-reset: journey;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.journey-list li {
+	counter-increment: journey;
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	font-size: 0.875rem;
+	line-height: 1.5;
+	padding-left: 1.8rem;
+	position: relative;
+}
+
+.journey-list li::before {
+	content: counter(journey);
+	position: absolute;
+	left: 0;
+	top: 0.15rem;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.3rem;
+	height: 1.3rem;
+	border-radius: 50%;
+	background: var(--bg);
+	border: 1px solid var(--border);
+	font-size: 0.65rem;
+	font-weight: 700;
+	color: var(--text-tertiary);
+}
+
+.journey-header {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.journey-section {
+	font-weight: 600;
+	font-size: 0.8rem;
+	color: var(--text);
+}
+
+.journey-mood {
+	font-size: 0.7rem;
+	font-weight: 600;
+	padding: 0.1rem 0.5rem;
+	border-radius: 100px;
+	background: var(--bg);
+	border: 1px solid var(--border);
+	color: var(--text-secondary);
+	white-space: nowrap;
+}
+
+.journey-desc {
+	color: var(--text-secondary);
+	font-size: 0.85rem;
+	margin: 0;
+}
+
+.key-line {
+	margin-bottom: 0.5rem;
+}
+
+.key-line:last-child {
+	margin-bottom: 0;
+}
+
+.key-line blockquote {
+	border-left: 3px solid var(--border);
+	padding: 0.3rem 0.75rem;
+	font-style: italic;
+	font-size: 0.9rem;
+	color: var(--text);
+	line-height: 1.5;
+	margin-bottom: 0.25rem;
+}
+
+.key-line-insight {
+	font-size: 0.8rem;
+	color: var(--text-secondary);
+	padding-left: 0.95rem;
+	line-height: 1.5;
+}
+
+.card--error .card-header {
+	background: var(--error-bg);
+	color: var(--error-text);
+	border-bottom-color: var(--error-border);
+}
+
+.error-banner {
+	padding: 1rem;
+	background: var(--error-bg);
+	color: var(--error-text);
+	font-size: 0.875rem;
+	line-height: 1.5;
+	border-bottom: 1px solid var(--error-border);
+	flex: 1;
+}
+
+.card--error .card-footer {
+	background: var(--error-bg);
+	border-top-color: var(--error-border);
+}
+
+.card--empty .empty-notice,
+.card--missing .empty-notice {
+	padding: 2rem 1rem;
+	text-align: center;
+	color: var(--text-tertiary);
+	font-size: 0.85rem;
+	font-style: italic;
+	flex: 1;
+}
+
+.song-tabs {
+	display: flex;
+	gap: 0.4rem;
+	padding: 0.5rem 0;
+	margin-bottom: 2rem;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+.song-tab {
+	flex-shrink: 0;
+	padding: 0.4rem 0.85rem;
+	border: 1px solid var(--border);
+	border-radius: 100px;
+	background: transparent;
+	font-family: var(--font-body);
+	font-size: 0.8rem;
+	font-weight: 500;
+	color: var(--text-secondary);
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.song-tab:hover {
+	background: var(--bg);
+	color: var(--text);
+}
+
+.song-tab--active {
+	background: var(--surface);
+	color: var(--text);
+	border-color: var(--accent);
+	font-weight: 600;
+	box-shadow: var(--shadow-card);
+}
+</style>
+</head>
+<body>
+
+<header class="report-header">
+	<h1>Prompt Lab Report</h1>
+	<div class="report-meta">
+		<span>Generated 2026-02-10 15:35:51 UTC</span>
+		<span>4 variants</span>
+		<span>5 songs</span>
+		<span>20 total runs</span>
+	</div>
+</header>
+
+<section class="summary-section">
+	<h3>Summary</h3>
+	
+	<table class="summary-table">
+		<thead>
+			<tr>
+				<th>Variant</th>
+				<th>Prompt Tokens</th>
+				<th>Completion Tokens</th>
+				<th>Total Tokens</th>
+				<th>Avg / Song</th>
+				<th>Avg Latency</th>
+				<th>Errors</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+			<td class="cell-name">Guided</td>
+			<td class="cell-mono">13,132</td>
+			<td class="cell-mono">3,411</td>
+			<td class="cell-mono">16,543</td>
+			<td class="cell-mono">3,309</td>
+			<td class="cell-mono">6.8s</td>
+			<td class="cell-errors">0</td>
+		</tr>
+<tr>
+			<td class="cell-name">Brand Voice</td>
+			<td class="cell-mono">13,587</td>
+			<td class="cell-mono">3,550</td>
+			<td class="cell-mono">17,137</td>
+			<td class="cell-mono">3,427</td>
+			<td class="cell-mono">6.1s</td>
+			<td class="cell-errors">0</td>
+		</tr>
+<tr>
+			<td class="cell-name">Prose</td>
+			<td class="cell-mono">13,422</td>
+			<td class="cell-mono">3,762</td>
+			<td class="cell-mono">17,184</td>
+			<td class="cell-mono">3,437</td>
+			<td class="cell-mono">6.0s</td>
+			<td class="cell-errors">0</td>
+		</tr>
+<tr>
+			<td class="cell-name">Prose Narrative</td>
+			<td class="cell-mono">15,968</td>
+			<td class="cell-mono">4,203</td>
+			<td class="cell-mono">20,171</td>
+			<td class="cell-mono">4,034</td>
+			<td class="cell-mono">7.4s</td>
+			<td class="cell-errors">0</td>
+		</tr>
+		</tbody>
+	</table>
+</section>
+
+<nav class="song-tabs">
+	<button class="song-tab song-tab--active" data-song-index="0">The Weeknd &mdash; Blinding Lights</button>
+		<button class="song-tab" data-song-index="1">Queen &mdash; Bohemian Rhapsody</button>
+		<button class="song-tab" data-song-index="2">Bon Iver &mdash; Skinny Love</button>
+		<button class="song-tab" data-song-index="3">Kendrick Lamar &mdash; HUMBLE.</button>
+		<button class="song-tab" data-song-index="4">Lorde &mdash; Ribs</button>
+</nav>
+
+
+		<section class="song-section" id="song-0">
+			<div class="song-header">
+				<h2>The Weeknd &mdash; Blinding Lights</h2>
+				<span class="song-album">After Hours</span>
+			</div>
+			<div class="variants-grid" style="grid-template-columns: repeat(4, 1fr)">
+				
+	<div class="card">
+		<div class="card-header">Guided</div>
+		<div class="card-body">
+			<p class="field-headline">Desperate for connection amidst neon-lit isolation.</p>
+<span class="mood-pill" style="--pill-hue: 275">Frantic Longing</span>
+<p class="field-mood-desc">The city glitters, but feels cavernous and cold. A high-speed chase through empty streets reflects a desperate search for intimacy. Every flashing light is a reminder of what's missing.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>The song captures the disorienting experience of craving intimacy while simultaneously being caught in a cycle of self-destructive behavior. It is about the push and pull between wanting genuine connection and being drawn to the fleeting highs of a hedonistic lifestyle, realizing that the dazzling distractions of 'Sin City' ultimately amplify the loneliness.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>withdrawal symptoms</strong> &mdash; The physical and emotional pain of separation fuels the urgent need for connection.</li>
+<li><strong>city as isolation</strong> &mdash; The glittering cityscape amplifies the feeling of being alone and lost.</li>
+<li><strong>overdrive as escape</strong> &mdash; Speed and recklessness become a temporary fix, a way to outrun the feelings of emptiness.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Vulnerable craving</span>
+					</div>
+					<p class="journey-desc">He admits his loneliness and hints at the dependency taking hold.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Pre-Chorus</span>
+						<span class="journey-mood">Empty revelation</span>
+					</div>
+					<p class="journey-desc">The glittering facade of the city fades, revealing the emptiness within.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Blinded obsession</span>
+					</div>
+					<p class="journey-desc">The need for touch overrides everything, a drowning sensation in the dark.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Bridge</span>
+						<span class="journey-mood">Pleading reassurance</span>
+					</div>
+					<p class="journey-desc">He insists on his commitment, promising never to let go again.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Outro</span>
+						<span class="journey-mood">Echoing desperation</span>
+					</div>
+					<p class="journey-desc">The plea fades into the night, leaving a lingering sense of unfulfilled longing.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>I'm going through withdrawals</blockquote>
+					<p class="key-line-insight">The absence of love is as palpable and painful as the absence of a substance.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Sin City's cold and empty</blockquote>
+					<p class="key-line-insight">The pursuit of pleasure doesn't fill the void; it amplifies it.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">2249p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">630c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">2879t</span></span>
+			<span class="timing">8.2s</span>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="card-header">Brand Voice</div>
+		<div class="card-body">
+			<p class="field-headline">A desperate plea masked by neon lights and a pulsing beat. It's about the intoxicating danger of needing someone too much.</p>
+<span class="mood-pill" style="--pill-hue: 4">Desperate Euphoria</span>
+<p class="field-mood-desc">Synths shimmer like city lights reflecting on wet asphalt. A driving beat pushes forward, but the vocals are strained, reaching for something just out of grasp. You're moving fast, but going nowhere.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>&quot;Blinding Lights&quot; captures the intense push and pull of addiction, both to a person and a lifestyle. The vibrant, energetic soundscape clashes with the lyrics, highlighting the internal conflict: a desire for connection battling against self-destructive tendencies. It's about the illusion of control when you're spiraling.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>destructive love</strong> &mdash; The subject is acutely aware that their reliance on another person is unhealthy but cannot break free.</li>
+<li><strong>city as escape</strong> &mdash; Las Vegas and its allure of sin and anonymity provide a temporary distraction from inner turmoil.</li>
+<li><strong>chasing highs</strong> &mdash; The constant need for a 'touch' becomes a metaphor for seeking fleeting moments of intense sensation.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Vulnerable Yearning</span>
+					</div>
+					<p class="journey-desc">A raw admission of loneliness and a fragile hope for connection.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Pre-Chorus</span>
+						<span class="journey-mood">Isolated Glamour</span>
+					</div>
+					<p class="journey-desc">The glittering facade of Sin City hides a chilling emptiness.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Desperate Dependence</span>
+					</div>
+					<p class="journey-desc">Drowning in the overwhelming need for another's presence.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 2</span>
+						<span class="journey-mood">Frantic Escape</span>
+					</div>
+					<p class="journey-desc">Speeding through the night, chasing a fleeting moment of clarity.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Bridge</span>
+						<span class="journey-mood">Pleading Return</span>
+					</div>
+					<p class="journey-desc">A promise whispered, hinting at a deeper commitment beyond fleeting encounters.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>I'm going through withdrawals</blockquote>
+					<p class="key-line-insight">The dependency is both physical and emotional, blurring the lines between love and addiction.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Sin City's cold and empty</blockquote>
+					<p class="key-line-insight">The promised escape offers no solace, amplifying the internal void.</p>
+				</div>
+<div class="key-line">
+					<blockquote>No, I can't sleep until I feel your touch</blockquote>
+					<p class="key-line-insight">The physical absence triggers a profound sense of unease and longing.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">2340p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">699c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">3039t</span></span>
+			<span class="timing">6.7s</span>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="card-header">Prose</div>
+		<div class="card-body">
+			<p class="field-headline">The glittering, desperate feeling of needing someone to feel real. Outrunning the sunrise to escape the comedown.</p>
+<span class="mood-pill" style="--pill-hue: 59">Euphoric Longing</span>
+<p class="field-mood-desc">City lights blur into streaks of color. High-speed synths and a dark, insistent beat. The night is almost over, but the feeling is just getting started.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>It's about craving connection, even when lost in the haze of city nightlife. There's a push and pull between wanting to escape and needing someone to ground you. It's the paradox of seeking oblivion while simultaneously searching for meaning in someone else's touch. The high tempo and bright synths mask a vulnerability, a fear of being alone with oneself when the lights come up.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>fleeting intimacy</strong> &mdash; The intense but temporary connections forged in nightlife offer solace from loneliness.</li>
+<li><strong>chasing oblivion</strong> &mdash; Using the thrill of speed and the allure of the city to outrun inner demons.</li>
+<li><strong>vulnerability in excess</strong> &mdash; Moments of raw honesty surface amidst a lifestyle of partying and indulgence.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Intro</span>
+						<span class="journey-mood">Anticipatory Edge</span>
+					</div>
+					<p class="journey-desc">A breath before the plunge.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Raw Confession</span>
+					</div>
+					<p class="journey-desc">Admitting a need, a vulnerability, beneath the surface.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Pre-Chorus</span>
+						<span class="journey-mood">Cold Isolation</span>
+					</div>
+					<p class="journey-desc">The emptiness of the city amplifies the absence of connection.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Blinding Dependence</span>
+					</div>
+					<p class="journey-desc">Drowning in the need for someone, anyone, to anchor the moment.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Bridge</span>
+						<span class="journey-mood">Desperate Reassurance</span>
+					</div>
+					<p class="journey-desc">Pleading for a connection that feels like it's slipping away.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Outro</span>
+						<span class="journey-mood">Lingering Craving</span>
+					</div>
+					<p class="journey-desc">The echo of dependence, a hollow need stretching into dawn.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>Maybe you can show me how to love, maybe</blockquote>
+					<p class="key-line-insight">A longing for genuine connection, masked as a casual request.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Sin City's cold and empty</blockquote>
+					<p class="key-line-insight">The glittering facade of the city can't mask the hollowness within.</p>
+				</div>
+<div class="key-line">
+					<blockquote>I'm blinded by the lights</blockquote>
+					<p class="key-line-insight">Sensory overload and emotional disorientation become indistinguishable.</p>
+				</div>
+<div class="key-line">
+					<blockquote>When I'm like this, you're the one I trust</blockquote>
+					<p class="key-line-insight">Confessing a reliance that's both comforting and terrifying.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">2470p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">789c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">3259t</span></span>
+			<span class="timing">7.7s</span>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="card-header">Prose Narrative</div>
+		<div class="card-body">
+			<p class="field-headline">Driving way too fast, trying to outrun the flashing neon. The night is closing in, and only one thing feels real.</p>
+<span class="mood-pill" style="--pill-hue: 285">Desperate Exuberance</span>
+<p class="field-mood-desc">Glittering synth-pop masks raw urgency. Every beat is a race against the dark, a frantic search for connection in the electric glow.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>Clinging to a person as the only anchor in a sea of chaos. It's the high of knowing someone gets you, mixed with the fear of what happens when they're gone. The pounding beat is pure adrenaline, but underneath it's a plea — don't let me crash.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>lost in the city</strong> &mdash; The glittering promise of Las Vegas reveals itself as cold and isolating.</li>
+<li><strong>chemical haze</strong> &mdash; Numbness and need become impossible to separate.</li>
+<li><strong>last chance</strong> &mdash; A final shot at making a broken connection work, or going down in flames.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Intro</span>
+						<span class="journey-mood">Anticipatory Hum</span>
+					</div>
+					<p class="journey-desc">A breath before the plunge. The engine revs, ready to launch into the night.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Vulnerable Wanting</span>
+					</div>
+					<p class="journey-desc">Confessing a deep need. Admitting to withdrawals, desperate for the comfort of a single touch.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Pre-Chorus</span>
+						<span class="journey-mood">Emptying Out</span>
+					</div>
+					<p class="journey-desc">The glitz fades, leaving the stark reality of loneliness. The city lights mock the internal void.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Euphoric Fixation</span>
+					</div>
+					<p class="journey-desc">Drowning in the sensory overload, eyes locked on the one source of light. A desperate mantra against the encroaching darkness.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 2</span>
+						<span class="journey-mood">Racing Thoughts</span>
+					</div>
+					<p class="journey-desc">Pushing the limit, fueled by desperation and a need to escape. The sun rises, a reminder that time is running out.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Bridge</span>
+						<span class="journey-mood">Raw Honesty</span>
+					</div>
+					<p class="journey-desc">Cutting through the noise to deliver a simple truth. A promise to hold on, even when it hurts.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Outro</span>
+						<span class="journey-mood">Repeating Echo</span>
+					</div>
+					<p class="journey-desc">The mantra fades, the lights dim. Only the echo of need remains, a haunting reminder of what's at stake.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>Maybe you can show me how to love, maybe</blockquote>
+					<p class="key-line-insight">A raw admission of being lost, unsure how to navigate intimacy.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Sin City's cold and empty</blockquote>
+					<p class="key-line-insight">The glittering facade crumbles, revealing a hollow core.</p>
+				</div>
+<div class="key-line">
+					<blockquote>I'm blinded by the lights</blockquote>
+					<p class="key-line-insight">Overwhelmed and unable to see clearly, reality is distorted by intense emotions.</p>
+				</div>
+<div class="key-line">
+					<blockquote>When I'm like this, you're the one I trust</blockquote>
+					<p class="key-line-insight">Complete dependence on another person in moments of vulnerability.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">2980p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">865c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">3845t</span></span>
+			<span class="timing">8.6s</span>
+		</div>
+	</div>
+			</div>
+		</section>
+
+		<section class="song-section" id="song-1" style="display: none">
+			<div class="song-header">
+				<h2>Queen &mdash; Bohemian Rhapsody</h2>
+				<span class="song-album">A Night at the Opera</span>
+			</div>
+			<div class="variants-grid" style="grid-template-columns: repeat(4, 1fr)">
+				
+	<div class="card">
+		<div class="card-header">Guided</div>
+		<div class="card-body">
+			<p class="field-headline">Confession, opera, and hard rock crash into a single act of self-exorcism.</p>
+<span class="mood-pill" style="--pill-hue: 167">Theatrical Despair</span>
+<p class="field-mood-desc">The stage lights flare as the protagonist confesses his sins. Echoes bounce off the walls as demons and angels battle for his soul. He fights, but the weight of his actions pulls him under.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>This song stages a battle between guilt and acceptance. The protagonist confesses to a murder, grappling with the consequences and seeking redemption. The operatic interlude embodies the internal turmoil, while the hard rock section channels defiance against judgment. Ultimately, the return to the opening theme suggests a resigned acceptance of fate, even as the internal conflict rages.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>burden of guilt</strong> &mdash; A past action weighs heavily on the protagonist, driving the song's narrative.</li>
+<li><strong>internal conflict</strong> &mdash; The operatic section gives a voice to conflicting emotions and identities.</li>
+<li><strong>fight for redemption</strong> &mdash; A desperate plea for forgiveness is juxtaposed against the acceptance of damnation.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Intro</span>
+						<span class="journey-mood">Dreamy Uncertainty</span>
+					</div>
+					<p class="journey-desc">A questioning voice floats in a void, unsure if reality is real.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Guilty Confession</span>
+					</div>
+					<p class="journey-desc">The protagonist admits to murder, seeking absolution from 'Mama'.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Operatic Interlude</span>
+						<span class="journey-mood">Chaotic Judgment</span>
+					</div>
+					<p class="journey-desc">Voices clash and swirl in a theatrical depiction of internal conflict.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Bridge</span>
+						<span class="journey-mood">Defiant Rage</span>
+					</div>
+					<p class="journey-desc">Hard rock guitars scream as the protagonist questions his accusers.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Outro</span>
+						<span class="journey-mood">Resigned Acceptance</span>
+					</div>
+					<p class="journey-desc">The opening theme returns, bringing a quiet sense of fatalism.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>Mama, just killed a man</blockquote>
+					<p class="key-line-insight">This blunt confession establishes the song's central conflict and sets the stage for the emotional journey.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Beelzebub has a devil put aside for me</blockquote>
+					<p class="key-line-insight">Acceptance of eternal damnation reveals the depth of the protagonist's despair.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">3191p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">678c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">3869t</span></span>
+			<span class="timing">6.9s</span>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="card-header">Brand Voice</div>
+		<div class="card-body">
+			<p class="field-headline">A rock opera in miniature, complete with dramatic shifts and theatrical flair. &quot;Bohemian Rhapsody&quot; grapples with guilt, identity, and the search for redemption amidst life's absurdities.</p>
+<span class="mood-pill" style="--pill-hue: 151">Anxious Grandeur</span>
+<p class="field-mood-desc">Sweeping and operatic, yet tinged with a dark, unsettling energy. A piano ballad transforms into a hard rock anthem, then dissolves into a quiet, reflective outro. The song is both grandiose and deeply personal, creating a sense of epic vulnerability.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>Queen's masterpiece is a journey through the protagonist's internal turmoil as he confesses to a murder and confronts his mortality. The song explores themes of guilt, redemption, and the search for meaning in a chaotic world. The shifts in musical style mirror the protagonist's fluctuating emotions, from despair and regret to defiance and resignation.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>confession and absolution</strong> &mdash; The act of confessing a dark deed as a plea for forgiveness.</li>
+<li><strong>identity crisis</strong> &mdash; The struggle to define oneself in the face of societal expectations and personal demons.</li>
+<li><strong>the absurdity of life</strong> &mdash; A resigned acceptance of the chaotic and unpredictable nature of existence.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Intro</span>
+						<span class="journey-mood">Dreamlike Uncertainty</span>
+					</div>
+					<p class="journey-desc">A disoriented questioning of reality, caught between fantasy and inescapable truth.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Guilty Confession</span>
+					</div>
+					<p class="journey-desc">A desperate plea to a maternal figure after committing an irreversible act.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 3</span>
+						<span class="journey-mood">Frightened Confrontation</span>
+					</div>
+					<p class="journey-desc">A descent into madness, haunted by figures of authority and demonic forces.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Bridge</span>
+						<span class="journey-mood">Defiant Accusation</span>
+					</div>
+					<p class="journey-desc">A surge of anger and resentment directed towards those who have judged and betrayed him.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Outro</span>
+						<span class="journey-mood">Accepting Resignation</span>
+					</div>
+					<p class="journey-desc">A quiet surrender to fate, acknowledging the ultimate insignificance of it all.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>Mama, just killed a man</blockquote>
+					<p class="key-line-insight">The weight of the confession hangs heavy, a burden of guilt seeking solace.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Beelzebub has a devil put aside for me</blockquote>
+					<p class="key-line-insight">The protagonist feels marked for damnation, his fate sealed by a higher power.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Nothing really matters, anyone can see</blockquote>
+					<p class="key-line-insight">A final acceptance of life's inherent meaninglessness, a release from the struggle.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">3282p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">743c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">4025t</span></span>
+			<span class="timing">5.8s</span>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="card-header">Prose</div>
+		<div class="card-body">
+			<p class="field-headline">A fever dream of regret, bargaining with fate in operatic swells.</p>
+<span class="mood-pill" style="--pill-hue: 10">Defiant Grief</span>
+<p class="field-mood-desc">A slow, heavy march into the unknown, then a spiraling freefall. Bombastic piano chords and layered vocals claw at the heavens, before collapsing into a quiet sense of finality.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>This is a reckoning with mortality, played out on a grand scale. It's a desperate attempt to negotiate with a higher power, a plea for forgiveness, and a final acceptance of the inevitable. The song cycles through denial, rage, bargaining, and acceptance, mirroring the stages of grief. But even in the face of death, there's a spark of defiance, a refusal to go quietly.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>identity crisis</strong> &mdash; The struggle to reconcile who one was with who one is becoming.</li>
+<li><strong>bargaining with fate</strong> &mdash; A desperate attempt to change the course of destiny through promises and pleas.</li>
+<li><strong>defiance in the face of death</strong> &mdash; Refusing to surrender to the inevitable, even in the final moments.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Intro</span>
+						<span class="journey-mood">Dreamlike Uncertainty</span>
+					</div>
+					<p class="journey-desc">A slow, questioning piano, lost in a fog of doubt.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Guilty Confession</span>
+					</div>
+					<p class="journey-desc">Heavy chords ring out, the weight of a life-altering act.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 3</span>
+						<span class="journey-mood">Fevered Bargaining</span>
+					</div>
+					<p class="journey-desc">Voices clash, a chaotic swirl of pleas and accusations.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Bridge</span>
+						<span class="journey-mood">Raging Defiance</span>
+					</div>
+					<p class="journey-desc">A wall of sound explodes, pushing against an impossible fate.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Outro</span>
+						<span class="journey-mood">Quiet Acceptance</span>
+					</div>
+					<p class="journey-desc">The storm subsides, leaving only a fragile peace.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>Mama, just killed a man</blockquote>
+					<p class="key-line-insight">Acknowledging the gravity of the situation, the point of no return.</p>
+				</div>
+<div class="key-line">
+					<blockquote>I don't wanna die</blockquote>
+					<p class="key-line-insight">Stripping away the bravado, a raw and vulnerable plea.</p>
+				</div>
+<div class="key-line">
+					<blockquote>So you think you can love me and leave me to die?</blockquote>
+					<p class="key-line-insight">Turning the accusatory finger outward, a desperate search for blame.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Nothing really matters, anyone can see</blockquote>
+					<p class="key-line-insight">The final surrender, a hollow echo of resignation.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">3209p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">721c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">3930t</span></span>
+			<span class="timing">4.6s</span>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="card-header">Prose Narrative</div>
+		<div class="card-body">
+			<p class="field-headline">A spiraling operatic dream. Bargaining for a life already slipping away.</p>
+<span class="mood-pill" style="--pill-hue: 310">Frantic Absurdity</span>
+<p class="field-mood-desc">Racing between terror and mania. Each shift feels like a different stage of grief, played out in hypercolor.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>Confronting death and desperately pleading for a second chance. It's the story of a man looking back on his life, grappling with the choices he's made and the consequences that have led him to this moment. The theatricality isn't just for show—it's the sound of someone fighting for their soul, turning to any means necessary to avoid the inevitable. The constant shifts in tone and style mirror the inner turmoil of facing mortality. Each section is a different negotiation with fate, a desperate attempt to rewrite the past and secure a future.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>fate and free will</strong> &mdash; Trapped between destiny and choice, begging for control when it's already gone.</li>
+<li><strong>guilt and redemption</strong> &mdash; Haunted by past actions, desperate for forgiveness that may never come.</li>
+<li><strong>theatrics as defense</strong> &mdash; Hiding raw emotion behind layers of performance, turning pain into spectacle.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Intro</span>
+						<span class="journey-mood">Dazed Questioning</span>
+					</div>
+					<p class="journey-desc">Lost in the fog, trying to ground in reality. A sense of unreality takes over, like floating between worlds.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Quiet Confession</span>
+					</div>
+					<p class="journey-desc">The crime revealed. Quiet, personal, like whispering a secret that changes everything.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 2</span>
+						<span class="journey-mood">Growing Panic</span>
+					</div>
+					<p class="journey-desc">Time running out, the body failing. Barely holding it together while facing what comes next.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 3</span>
+						<span class="journey-mood">Manic Bargaining</span>
+					</div>
+					<p class="journey-desc">A madcap swirl of characters and voices. Pleading, mocking, anything to escape the inevitable.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Bridge</span>
+						<span class="journey-mood">Defiant Fury</span>
+					</div>
+					<p class="journey-desc">Pure fury. A final stand against the forces closing in.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Outro</span>
+						<span class="journey-mood">Empty Acceptance</span>
+					</div>
+					<p class="journey-desc">Emptying out. Accepting that nothing matters after all, as the sound fades to silence.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>Mama, just killed a man</blockquote>
+					<p class="key-line-insight">The shocking admission, delivered like a gut punch in a moment of vulnerability.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Goodbye, everybody, I've got to go</blockquote>
+					<p class="key-line-insight">A final farewell that feels both intimate and performative.</p>
+				</div>
+<div class="key-line">
+					<blockquote>I sometimes wish I'd never been born at all</blockquote>
+					<p class="key-line-insight">Regret distilled to its purest, most painful form.</p>
+				</div>
+<div class="key-line">
+					<blockquote>So you think you can love me and leave me to die?</blockquote>
+					<p class="key-line-insight">Accusation flung at the uncaring void, demanding answers that won't come.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">3718p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">834c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">4552t</span></span>
+			<span class="timing">7.0s</span>
+		</div>
+	</div>
+			</div>
+		</section>
+
+		<section class="song-section" id="song-2" style="display: none">
+			<div class="song-header">
+				<h2>Bon Iver &mdash; Skinny Love</h2>
+				<span class="song-album">For Emma, Forever Ago</span>
+			</div>
+			<div class="variants-grid" style="grid-template-columns: repeat(4, 1fr)">
+				
+	<div class="card">
+		<div class="card-header">Guided</div>
+		<div class="card-body">
+			<p class="field-headline">A desperate plea to salvage a failing relationship, masked by self-deprecating honesty.</p>
+<span class="mood-pill" style="--pill-hue: 105">Fragile Yearning</span>
+<p class="field-mood-desc">Bare emotions hang in the air, stripped bare by the stark acoustic setting. Vulnerability seeps from every strained vocal and repeated phrase. The feeling is intimate, like eavesdropping on a raw, painful conversation.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>&quot;Skinny Love&quot; lays bare the self-destructive tendencies within a relationship on its last legs. It's about recognizing the toxicity and imbalance, yet clinging to the fading embers of what once was. The narrator, caught between wanting to escape and a desperate need for connection, reveals a cycle of dependence and blame, ultimately questioning the worth of holding on when love becomes a battle.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>self-sabotage</strong> &mdash; The narrator seems to actively push the relationship towards collapse, acknowledging their destructive behavior while simultaneously pleading for it to last.</li>
+<li><strong>unhealthy dependence</strong> &mdash; Both partners appear to be clinging to a relationship that is clearly damaging, driven by a fear of being alone rather than genuine affection.</li>
+<li><strong>blame and responsibility</strong> &mdash; The lyrics oscillate between taking responsibility for the relationship's failure and placing blame on the partner, highlighting the blurred lines in a toxic dynamic.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Desperate Pleading</span>
+					</div>
+					<p class="journey-desc">A raw request for the strained love to endure, even when acknowledging its fragility.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Ironic Instruction</span>
+					</div>
+					<p class="journey-desc">The narrator's commands reveal an imbalance, highlighting the controlling nature within the relationship.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 2</span>
+						<span class="journey-mood">Weary Questioning</span>
+					</div>
+					<p class="journey-desc">The speaker wonders how things decayed, only to fall back into past patterns.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Bitter Resignation</span>
+					</div>
+					<p class="journey-desc">Acknowledgement that efforts have been in vain, the speaker now recognizes the wasted love.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Outro</span>
+						<span class="journey-mood">Lonely Inquest</span>
+					</div>
+					<p class="journey-desc">Questions linger, the future uncertain, speaker lost in the rubble.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>I tell my love to wreck it all</blockquote>
+					<p class="key-line-insight">The paradox of wanting connection while subconsciously pushing it away.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Now all your love is wasted</blockquote>
+					<p class="key-line-insight">The crushing realization that one's efforts to nurture the relationship have been in vain.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Who will love you?</blockquote>
+					<p class="key-line-insight">The raw vulnerability of questioning one's lovability and future after a failed relationship.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">2037p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">748c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">2785t</span></span>
+			<span class="timing">7.5s</span>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="card-header">Brand Voice</div>
+		<div class="card-body">
+			<p class="field-headline">A raw, aching plea for a dying love to somehow survive. The singer bargains with heartbreak, offering empty promises in exchange for fleeting comfort.</p>
+<span class="mood-pill" style="--pill-hue: 138">Fragile Desperation</span>
+<p class="field-mood-desc">Acoustic guitar trembles beneath fragile vocals. The air is thick with unspoken resentment and the lingering scent of what used to be. You're trapped in a cycle of wanting to leave but clinging to the familiar ache.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>&quot;Skinny Love&quot; exposes the raw vulnerability of a relationship on its last legs. It's a portrait of self-sabotage, where empty words and broken promises mask a deeper inability to let go. The song captures the painful irony of clinging to a love that's already starving.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>self-sabotage</strong> &mdash; The narrator actively pushes the relationship towards its end, despite claiming to want it to last.</li>
+<li><strong>empty promises</strong> &mdash; The lyrics are filled with hollow assurances, highlighting the lack of genuine effort to salvage the relationship.</li>
+<li><strong>unacknowledged resentment</strong> &mdash; Underneath the surface of longing simmers a layer of bitterness and unspoken anger.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Fading Hope</span>
+					</div>
+					<p class="journey-desc">A desperate wish for the failing relationship to endure, despite the clear signs of decay.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">False Reassurance</span>
+					</div>
+					<p class="journey-desc">Empty promises of patience and kindness offer a temporary shield against the inevitable collapse.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 2</span>
+						<span class="journey-mood">Numb Disappointment</span>
+					</div>
+					<p class="journey-desc">A hollow connection built on fleeting physical intimacy, masking a deeper emotional void.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Wasted Affection</span>
+					</div>
+					<p class="journey-desc">Regret surfaces as the narrator realizes the imbalance of effort and the emptiness of their pleas.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Outro</span>
+						<span class="journey-mood">Existential Questioning</span>
+					</div>
+					<p class="journey-desc">Stripped bare, the narrator confronts the daunting prospect of finding love and purpose after the fallout.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>I tell my love to wreck it all</blockquote>
+					<p class="key-line-insight">The narrator's desire for the relationship to end is masked as a plea for the other person to take control.</p>
+				</div>
+<div class="key-line">
+					<blockquote>And now all your love is wasted, and then who the hell was I?</blockquote>
+					<p class="key-line-insight">The realization dawns that the narrator's actions have drained their partner, leaving them questioning their own identity.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Who will love you? Who will fight?</blockquote>
+					<p class="key-line-insight">The final questions echo the uncertainty of what remains after the relationship implodes.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">2128p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">741c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">2869t</span></span>
+			<span class="timing">6.8s</span>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="card-header">Prose</div>
+		<div class="card-body">
+			<p class="field-headline">A skeletal relationship, clinging to the last vestiges of hope, even as it crumbles into dust.</p>
+<span class="mood-pill" style="--pill-hue: 54">Fragile Longing</span>
+<p class="field-mood-desc">Raw, exposed nerves vibrating through the air. Each strum of the guitar echoes a hollow ache, a whispered plea in an empty room.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>This is about the agonizing realization that love isn't always enough. It's a raw, unflinching look at a relationship teetering on the brink, held together by desperation and denial. There's a refusal to let go, even as the cracks widen and the foundation crumbles, leading to a heartbreaking confrontation with the question of who will pick up the pieces.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>malnourished love</strong> &mdash; A relationship starved of genuine connection, clinging to fleeting moments of intimacy.</li>
+<li><strong>cowardly endings</strong> &mdash; Yearning for release but too afraid to initiate the final cut.</li>
+<li><strong>wasted affection</strong> &mdash; Regret over pouring love into a void, the painful awareness of reciprocity lost.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Desperate Plea</span>
+					</div>
+					<p class="journey-desc">Begging for endurance, even in decay.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Insistent Guidance</span>
+					</div>
+					<p class="journey-desc">Offering advice that rings hollow in the face of inevitable collapse.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 2</span>
+						<span class="journey-mood">Haunted Questioning</span>
+					</div>
+					<p class="journey-desc">Wondering how the light faded, grasping at the ghost of intimacy.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Wasted Confession</span>
+					</div>
+					<p class="journey-desc">Realizing too late the damage done, acknowledging the imbalance of devotion.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Outro</span>
+						<span class="journey-mood">Lonely Inquiries</span>
+					</div>
+					<p class="journey-desc">Echoing questions in the silence, facing the aftermath of a love gone sour.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>Come on, skinny love, just last the year</blockquote>
+					<p class="key-line-insight">Clinging to the fleeting hope that time can heal a broken foundation.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Staring at the sink of blood and crushed veneer</blockquote>
+					<p class="key-line-insight">Inability to move forward, trapped in the wreckage of past mistakes.</p>
+				</div>
+<div class="key-line">
+					<blockquote>I tell my love to wreck it all</blockquote>
+					<p class="key-line-insight">A passive desire for destruction, waiting for someone else to pull the trigger.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Now all your love is wasted</blockquote>
+					<p class="key-line-insight">The crushing weight of unreciprocated affection, the devastating realization of imbalance.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Who will love you?</blockquote>
+					<p class="key-line-insight">Facing the unknown, a stark question of the future alone.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">2054p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">770c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">2824t</span></span>
+			<span class="timing">5.3s</span>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="card-header">Prose Narrative</div>
+		<div class="card-body">
+			<p class="field-headline">A skeletal relationship, clinging to the last vestiges of hope, even as it crumbles into dust.</p>
+<span class="mood-pill" style="--pill-hue: 105">Fragile Yearning</span>
+<p class="field-mood-desc">Aching for a connection that can't be sustained. Every note is a prayer for something that's already gone.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>Love becomes a bargaining chip when intimacy fades. Each partner knows it's unsustainable, yet neither can fully let go. The raw acoustic setting strips away any pretense, exposing the hollow core of a relationship built on desperation rather than genuine affection.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>malnourished love</strong> &mdash; A relationship starved of genuine care, fueled by fleeting moments and base desires.</li>
+<li><strong>cowardly endings</strong> &mdash; Too afraid to initiate a breakup, hoping the other person will do it for them.</li>
+<li><strong>wasted potential</strong> &mdash; Regret over investing energy into a relationship that ultimately leads nowhere.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Desperate Plea</span>
+					</div>
+					<p class="journey-desc">Begging for a dying love to endure, knowing it's a futile wish.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Resigned Instruction</span>
+					</div>
+					<p class="journey-desc">Offering empty advice, masking the pain of impending loss with hollow words.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 2</span>
+						<span class="journey-mood">Empty Longing</span>
+					</div>
+					<p class="journey-desc">Wondering where the spark went, clinging to physical intimacy as a substitute for emotional depth.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Bitter Regret</span>
+					</div>
+					<p class="journey-desc">Acknowledging the imbalance of affection, realizing that the well has run dry.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Outro</span>
+						<span class="journey-mood">Existential Questioning</span>
+					</div>
+					<p class="journey-desc">Alone with uncertainty, wondering who will ever truly care amidst the ruins of a failed connection.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>Come on, skinny love, just last the year</blockquote>
+					<p class="key-line-insight">Acknowledging the relationship's fragility while desperately trying to prolong the inevitable.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Staring at the sink of blood and crushed veneer</blockquote>
+					<p class="key-line-insight">Unable to cleanse the mess from a past relationship, tainting the present with unresolved pain.</p>
+				</div>
+<div class="key-line">
+					<blockquote>And now all your love is wasted</blockquote>
+					<p class="key-line-insight">Realizing the imbalance in the relationship, feeling guilt over the other's unreciprocated efforts.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Who will love you?</blockquote>
+					<p class="key-line-insight">Facing the daunting prospect of starting over, questioning whether genuine affection is attainable.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">2563p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">722c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">3285t</span></span>
+			<span class="timing">6.3s</span>
+		</div>
+	</div>
+			</div>
+		</section>
+
+		<section class="song-section" id="song-3" style="display: none">
+			<div class="song-header">
+				<h2>Kendrick Lamar &mdash; HUMBLE.</h2>
+				<span class="song-album">DAMN.</span>
+			</div>
+			<div class="variants-grid" style="grid-template-columns: repeat(4, 1fr)">
+				
+	<div class="card">
+		<div class="card-header">Guided</div>
+		<div class="card-body">
+			<p class="field-headline">A defiant demand for authenticity delivered with effortless swagger.</p>
+<span class="mood-pill" style="--pill-hue: 165">Arrogant Humility</span>
+<p class="field-mood-desc">A heavyweight champion in his prime, coolly assessing the challengers. Every boast is a challenge, every command a self-reminder. The bass hits like a knockout punch.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>Beneath the surface of bravado and boastful rhymes lies a deeper call for self-awareness and authenticity. Kendrick critiques superficiality and the trappings of fame while simultaneously asserting his dominance in the rap game. The track is a complex interplay of humility and confidence, pushing listeners to examine their own motivations and pretensions while acknowledging Kendrick's undeniable talent.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>authenticity over image</strong> &mdash; The song champions raw, unfiltered reality against the polished facade of fame and Photoshop.</li>
+<li><strong>self-awareness</strong> &mdash; Humility becomes a form of self-mastery, a check against ego inflation.</li>
+<li><strong>the price of success</strong> &mdash; With elevated status comes the pressure to maintain an image, which Kendrick rejects.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Intro</span>
+						<span class="journey-mood">Isolated defiance</span>
+					</div>
+					<p class="journey-desc">A lone voice declares independence from prayer.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Flashy boasting</span>
+					</div>
+					<p class="journey-desc">A cascade of luxury signifiers and boasts of sexual prowess.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Forceful command</span>
+					</div>
+					<p class="journey-desc">The mantra of humility is repeated with increasing intensity.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 2</span>
+						<span class="journey-mood">Direct challenge</span>
+					</div>
+					<p class="journey-desc">A pointed critique of fakeness and unrealistic beauty standards.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Unwavering insistence</span>
+					</div>
+					<p class="journey-desc">The demand for humility becomes an inescapable decree.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>Show me somethin' natural like ass with some stretch marks</blockquote>
+					<p class="key-line-insight">The imperfections are more valuable than the airbrushed ideal.</p>
+				</div>
+<div class="key-line">
+					<blockquote>If I kill a nigga, it won't be the alcohol, ayy</blockquote>
+					<p class="key-line-insight">The artist’s power is innate, not dependent on external influences.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">3352p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">653c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">4005t</span></span>
+			<span class="timing">6.3s</span>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="card-header">Brand Voice</div>
+		<div class="card-body">
+			<p class="field-headline">A demanding call for humility delivered with swagger. Kendrick weaponizes the very arrogance he critiques.</p>
+<span class="mood-pill" style="--pill-hue: 116">Confident Provocation</span>
+<p class="field-mood-desc">A slow-burning, cocky stare-down. The beat struts with unflinching self-assurance. Each verse is a precise, confrontational jab.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>&quot;HUMBLE.&quot; isn't just a directive; it's a performance. Kendrick challenges rivals and listeners alike while showcasing his own mastery. The song's power lies in this tension: a display of skill wrapped in a message of restraint.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>ironic boasting</strong> &mdash; Using success as a weapon to preach humility, blurring the lines between critique and self-aggrandizement.</li>
+<li><strong>challenging artifice</strong> &mdash; Demanding authenticity and naturalness in a world saturated with manufactured images.</li>
+<li><strong>self-awareness</strong> &mdash; Acknowledging his own potential for arrogance while urging others to check their egos.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Intro</span>
+						<span class="journey-mood">Solemn Invocation</span>
+					</div>
+					<p class="journey-desc">A stark declaration of independence from external validation.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Arrogant Flex</span>
+					</div>
+					<p class="journey-desc">Casually flaunting wealth and sexual prowess with effortless wordplay.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Forceful Command</span>
+					</div>
+					<p class="journey-desc">The demand for humility delivered with escalating intensity.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 2</span>
+						<span class="journey-mood">Direct Confrontation</span>
+					</div>
+					<p class="journey-desc">Calling out rivals and the media for their superficiality.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Unwavering Assertion</span>
+					</div>
+					<p class="journey-desc">The command repeated, hammering home the central message.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>I'm so fuckin' sick and tired of the Photoshop</blockquote>
+					<p class="key-line-insight">A longing for unfiltered reality in a world of curated perfection.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Bitch, be humble</blockquote>
+					<p class="key-line-insight">The disarming delivery of a harsh truth, forcing self-reflection.</p>
+				</div>
+<div class="key-line">
+					<blockquote>If I quit this season, I still be the greatest, funk</blockquote>
+					<p class="key-line-insight">Cementing his confidence that he'll remain legendary, no matter what.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">3443p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">664c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">4107t</span></span>
+			<span class="timing">5.2s</span>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="card-header">Prose</div>
+		<div class="card-body">
+			<p class="field-headline">Aggression as a defense against vulnerability. A demand for respect masking a fragile ego.</p>
+<span class="mood-pill" style="--pill-hue: 162">Arrogant Anxiety</span>
+<p class="field-mood-desc">A relentless, driving beat. Every hit is precise and forceful. An undercurrent of tension vibrates beneath the surface.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>This is an anthem of self-affirmation built on a foundation of insecurity. The insistence on humility from others reveals a deep-seated fear of being exposed as inadequate. The swagger is a shield, deflecting criticism before it can land. It's a paradox: demanding respect while simultaneously fearing judgment.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>fragile masculinity</strong> &mdash; Hyper-masculine posturing barely concealing self-doubt.</li>
+<li><strong>materialism as compensation</strong> &mdash; Using displays of wealth to mask emotional shortcomings.</li>
+<li><strong>performative wokeness</strong> &mdash; Superficial gestures of social awareness that are ultimately self-serving.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Intro</span>
+						<span class="journey-mood">Vulnerable Plea</span>
+					</div>
+					<p class="journey-desc">A bare, raw request for support that nobody answers.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Braggadocious Flashback</span>
+					</div>
+					<p class="journey-desc">From poverty to wealth, a dizzying ascent fueled by past struggles.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Ironic Command</span>
+					</div>
+					<p class="journey-desc">The 'humble' refrain becomes an aggressive power play.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 2</span>
+						<span class="journey-mood">Defensive Outburst</span>
+					</div>
+					<p class="journey-desc">Lashing out at perceived threats, paranoia creeping in.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Forceful Echo</span>
+					</div>
+					<p class="journey-desc">The demand repeats, louder and more insistent, revealing desperation.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>Nobody pray for me</blockquote>
+					<p class="key-line-insight">Isolation is the starting point, a plea unanswered.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Parmesan where my accountant lives, in fact, I'm downin' this</blockquote>
+					<p class="key-line-insight">Obscene wealth as a coping mechanism, swallowing success to feel something.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Show me somethin' natural like afro on Richard Pryor</blockquote>
+					<p class="key-line-insight">Longing for authenticity, even while performing inauthentically.</p>
+				</div>
+<div class="key-line">
+					<blockquote>If I kill a nigga, it won't be the alcohol, ayy</blockquote>
+					<p class="key-line-insight">Denying responsibility, projecting violence outward.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">3369p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">701c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">4070t</span></span>
+			<span class="timing">5.2s</span>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="card-header">Prose Narrative</div>
+		<div class="card-body">
+			<p class="field-headline">Demanding respect with a swagger that's both playful and menacing. It's a tightrope walk between dominance and self-awareness.</p>
+<span class="mood-pill" style="--pill-hue: 116">Confident Provocation</span>
+<p class="field-mood-desc">Head-nodding swagger mixed with a dare. Someone's in your face, but you can't help but respect their audacity.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>It's not just about being the best, but calling out the fakes. The double standard of celebrating image over substance gets exposed, demanding something real beyond the filters and manufactured hype. Even while flexing, there's a challenge to the listener: are you truly authentic, or just another pretender?</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>authenticity vs. artifice</strong> &mdash; The demand for something real in a world of Photoshop and manufactured personas.</li>
+<li><strong>humble swagger</strong> &mdash; Boasting about success while simultaneously preaching humility creates a compelling tension.</li>
+<li><strong>materialism critique</strong> &mdash; Flaunting wealth as a means to expose the emptiness of chasing status.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Intro</span>
+						<span class="journey-mood">Isolated Request</span>
+					</div>
+					<p class="journey-desc">Alone with his thoughts, beyond needing anyone's blessings. The world's been on his shoulders, every single day.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Reflective Flex</span>
+					</div>
+					<p class="journey-desc">From struggle to success, casually dropping boasts about his current status. Remembering the climb while enjoying the view from the top.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Direct Command</span>
+					</div>
+					<p class="journey-desc">No more games, just a blunt demand for respect. A taunt with a tight grip.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 2</span>
+						<span class="journey-mood">Provocative Critique</span>
+					</div>
+					<p class="journey-desc">Calling out the competition, but widening the lens to society's obsession with superficiality. Demanding something real, something natural.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Unwavering Command</span>
+					</div>
+					<p class="journey-desc">The same demand, amplified by the previous verse's revelations. It's not just about him; it's a call for everyone to check themselves.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>Parmesan where my accountant lives, in fact, I'm downin' this</blockquote>
+					<p class="key-line-insight">Luxury isn't just a reward, it's fuel.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Show me somethin' natural like ass with some stretch marks</blockquote>
+					<p class="key-line-insight">Normalizing flaws is a radical act.</p>
+				</div>
+<div class="key-line">
+					<blockquote>If I kill a nigga, it won't be the alcohol, ayy</blockquote>
+					<p class="key-line-insight">Taking responsibility for his actions, no excuses.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Bitch, be humble</blockquote>
+					<p class="key-line-insight">Cutting through the noise with a demand that feels both aggressive and necessary.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">3878p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">784c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">4662t</span></span>
+			<span class="timing">7.0s</span>
+		</div>
+	</div>
+			</div>
+		</section>
+
+		<section class="song-section" id="song-4" style="display: none">
+			<div class="song-header">
+				<h2>Lorde &mdash; Ribs</h2>
+				<span class="song-album">Pure Heroine</span>
+			</div>
+			<div class="variants-grid" style="grid-template-columns: repeat(4, 1fr)">
+				
+	<div class="card">
+		<div class="card-header">Guided</div>
+		<div class="card-body">
+			<p class="field-headline">A haunting exploration of the bittersweet anxiety of growing up, set against a backdrop of fading youth and fleeting connections.</p>
+<span class="mood-pill" style="--pill-hue: 318">Bittersweet Nostalgia</span>
+<p class="field-mood-desc">A hazy recollection of carefree days, tinged with the unsettling awareness of time slipping away. The music throbs with a nervous energy, like a heart racing against the inevitable.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>&quot;Ribs&quot; encapsulates the disorienting feeling of adolescence, grappling with the desire to hold onto the past while confronting the uncertainties of the future. It's about the fear of losing innocence and the realization that cherished moments are transient, a poignant reflection on the passage of time and the longing for simpler days.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>fear of aging</strong> &mdash; The lyrics convey a deep-seated anxiety about growing older and losing the carefree spirit of youth.</li>
+<li><strong>fleeting connections</strong> &mdash; The song explores the transient nature of relationships and the fear of drifting apart from loved ones.</li>
+<li><strong>nostalgia for innocence</strong> &mdash; There's a palpable longing for the simplicity and unburdened joy of childhood.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Reflective unease</span>
+					</div>
+					<p class="journey-desc">Familiar comforts provide only temporary solace as the reality of growing up sets in.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Pre-Chorus</span>
+						<span class="journey-mood">Hopeful delusion</span>
+					</div>
+					<p class="journey-desc">Empty promises mask the underlying fear of change.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Anxious repetition</span>
+					</div>
+					<p class="journey-desc">Childhood memories become a mantra against the encroaching future.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Bridge</span>
+						<span class="journey-mood">Desperate longing</span>
+					</div>
+					<p class="journey-desc">A fervent plea to reclaim the lost innocence of youth.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Refrain</span>
+						<span class="journey-mood">Fragile comfort</span>
+					</div>
+					<p class="journey-desc">Clinging to friendship as a shield against the uncertainties of growing up, knowing it's ultimately not enough.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Outro</span>
+						<span class="journey-mood">Lingering acceptance</span>
+					</div>
+					<p class="journey-desc">A quiet acknowledgement that some things are destined to fade.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>This dream isn't feeling sweet</blockquote>
+					<p class="key-line-insight">The anticipated joys of growing up turn into a disturbing nightmare.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Laughing till our ribs get tough, but that will never be enough</blockquote>
+					<p class="key-line-insight">Shared memories and laughter offer momentary respite, but they cannot halt the relentless march of time.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">2303p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">702c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">3005t</span></span>
+			<span class="timing">5.1s</span>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="card-header">Brand Voice</div>
+		<div class="card-body">
+			<p class="field-headline">Yearning for simpler times, caught in the disorienting swirl of growing up. It's a desperate grasp at fleeting youth, knowing the feeling can't last.</p>
+<span class="mood-pill" style="--pill-hue: 161">Anxious Nostalgia</span>
+<p class="field-mood-desc">A hazy memory, slightly out of focus. The sounds echo and stretch, creating a cavernous space. The beat throbs with a quiet urgency, a race against an unknown clock.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>This song captures the unique pain of growing up, that specific moment when the future becomes less exciting and more terrifying. It's the isolating realization that growing up means growing apart, and a desperate plea to hold onto the innocence of childhood before it slips away completely.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>fleeting youth</strong> &mdash; The desperate attempt to hold onto childhood innocence as it fades away.</li>
+<li><strong>disillusionment</strong> &mdash; The crushing weight of reality as childhood dreams turn into adult anxieties.</li>
+<li><strong>fragile connection</strong> &mdash; The comfort found in close friendships amidst the turmoil of growing up.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Wistful Echoes</span>
+					</div>
+					<p class="journey-desc">Familiar comforts are juxtaposed with the creeping dread of aging.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Pre-Chorus</span>
+						<span class="journey-mood">Hopeful Pretension</span>
+					</div>
+					<p class="journey-desc">A forced optimism, masking the underlying fear.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Recurring Anxiety</span>
+					</div>
+					<p class="journey-desc">Memories repeat, a desperate attempt to rewrite the present.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Bridge</span>
+						<span class="journey-mood">Desperate Longing</span>
+					</div>
+					<p class="journey-desc">A raw, unfiltered cry for the past.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Refrain</span>
+						<span class="journey-mood">Bittersweet Closeness</span>
+					</div>
+					<p class="journey-desc">Clinging to friendship as a shield against the unknown.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>&quot;It drives you crazy, getting old&quot;</blockquote>
+					<p class="key-line-insight">The simple, unavoidable truth that time is passing, and with it, innocence is lost.</p>
+				</div>
+<div class="key-line">
+					<blockquote>&quot;I want 'em back, I want 'em back / The minds we had, the minds we had&quot;</blockquote>
+					<p class="key-line-insight">Mourning the loss of carefree thought and unburdened perspectives.</p>
+				</div>
+<div class="key-line">
+					<blockquote>&quot;Laughing till our ribs get tough / But that will never be enough&quot;</blockquote>
+					<p class="key-line-insight">The poignant realization that even the strongest bonds can't fully protect from the inevitable changes of time.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">2394p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">703c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">3097t</span></span>
+			<span class="timing">5.8s</span>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="card-header">Prose</div>
+		<div class="card-body">
+			<p class="field-headline">Yearning for the simplicity of childhood as the beat drops.</p>
+<span class="mood-pill" style="--pill-hue: 318">Bittersweet Nostalgia</span>
+<p class="field-mood-desc">Synth-pop pulses with the ache of time passing too quickly. Echoes of laughter and late nights hang in the air, fragile and fading. Everything feels like a memory even as it's happening.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>It's a desperate grasp at fleeting youth. The song juxtaposes the fear of growing older with the desire to hold onto the present, reveling in the intensity of friendship as a shield against the unknown. The repeated lyrics create a cyclical feeling, trapped in a loop of longing and anxiety, knowing these moments won't last, even as they are lived.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>fleeting youth</strong> &mdash; The pain of knowing that carefree moments are finite and fading.</li>
+<li><strong>shared nostalgia</strong> &mdash; Clinging to the bond of friendship as a sanctuary against the uncertainties of the future.</li>
+<li><strong>fear of time</strong> &mdash; The anxiety of getting older warps the present moment, making it feel like a memory before it's even gone.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Wistful Recollection</span>
+					</div>
+					<p class="journey-desc">A hazy memory flickers, fragments of a familiar night.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Pre-Chorus</span>
+						<span class="journey-mood">Hopeful Delusion</span>
+					</div>
+					<p class="journey-desc">Dreaming up an impossible escape, clinging to the feeling of the moment.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Anxious Repetition</span>
+					</div>
+					<p class="journey-desc">Repeating the details like a mantra, trying to freeze them in time.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 2</span>
+						<span class="journey-mood">Lonely Disconnect</span>
+					</div>
+					<p class="journey-desc">The dream sours, isolating even among a crowd.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Bridge</span>
+						<span class="journey-mood">Desperate Yearning</span>
+					</div>
+					<p class="journey-desc">Pleading for lost innocence, the rawness of unfiltered thought.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Outro</span>
+						<span class="journey-mood">Accepting Resignation</span>
+					</div>
+					<p class="journey-desc">A quiet acknowledgement that nothing can last forever.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>It drives you crazy, getting old</blockquote>
+					<p class="key-line-insight">The real madness isn't aging, it's the loss of control.</p>
+				</div>
+<div class="key-line">
+					<blockquote>And I've never felt more alone</blockquote>
+					<p class="key-line-insight">Growing up can mean feeling invisible, even among friends.</p>
+				</div>
+<div class="key-line">
+					<blockquote>I want 'em back, I want 'em back</blockquote>
+					<p class="key-line-insight">Mourning the purity of past thoughts before they became complicated.</p>
+				</div>
+<div class="key-line">
+					<blockquote>But that will never be enough</blockquote>
+					<p class="key-line-insight">No amount of nostalgia can fill the void of what's been lost.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">2320p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">781c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">3101t</span></span>
+			<span class="timing">7.0s</span>
+		</div>
+	</div>
+
+	<div class="card">
+		<div class="card-header">Prose Narrative</div>
+		<div class="card-body">
+			<p class="field-headline">Desperate clinging to fleeting moments of youth, even as the clock keeps ticking.</p>
+<span class="mood-pill" style="--pill-hue: 318">Bittersweet Nostalgia</span>
+<p class="field-mood-desc">That sinking feeling when the party's winding down. Everything feels fragile, on the verge of disappearing, but trying to hold on anyway.</p>
+<div class="field-section">
+				<h4>Interpretation</h4>
+				<p>Yearning for simpler times, not quite grasping what's been lost. Childhood is idealized, adulthood dreaded. It's the fear of growing apart from friends, the knowledge that nothing stays the same. The repetition and circularity of the lyrics mirrors the feeling of being stuck, unable to move forward or go back. The song doesn't offer a resolution, just an acknowledgement of the unease.</p>
+			</div>
+<div class="field-section">
+				<h4>Themes</h4>
+				<ul><li><strong>fear of aging</strong> &mdash; Growing up is something to be dreaded, not anticipated.</li>
+<li><strong>fleeting youth</strong> &mdash; Trying to hold on to the last moments of childhood before they disappear.</li>
+<li><strong>idealized past</strong> &mdash; Nostalgia is a powerful drug, distorting memories into something sweeter than they were.</li>
+<li><strong>fragile friendship</strong> &mdash; The fear of growing apart from the people closest to you, knowing that change is inevitable.</li></ul>
+			</div>
+<div class="field-section">
+				<h4>Journey</h4>
+				<ol class="journey-list"><li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 1</span>
+						<span class="journey-mood">Wistful Reflection</span>
+					</div>
+					<p class="journey-desc">Remembering shared moments, small details magnified by the passage of time. The comfort of home, a familiar song on repeat. Everything feels safe, for now.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Pre-Chorus</span>
+						<span class="journey-mood">Hopeful Dreaming</span>
+					</div>
+					<p class="journey-desc">Clinging to the possibility of escape through imagination. The desire to freeze time, to stay in this moment forever. Delusion that words can change reality.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Chorus</span>
+						<span class="journey-mood">Anxious Repetition</span>
+					</div>
+					<p class="journey-desc">Repeating the same memories, like a mantra against the fear of growing old. A desperate attempt to rewrite the present by reliving the past.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Verse 2</span>
+						<span class="journey-mood">Lonely Awareness</span>
+					</div>
+					<p class="journey-desc">The dream turns sour. Recognizing the illusion, feeling isolated even in a crowd. The unsettling feeling of time slipping away.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Bridge</span>
+						<span class="journey-mood">Frantic Yearning</span>
+					</div>
+					<p class="journey-desc">Pleading for what's been lost, a desperate attempt to reclaim the past. Mourning the innocence of childhood, regretting the passage of time.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Refrain</span>
+						<span class="journey-mood">Desperate Comfort</span>
+					</div>
+					<p class="journey-desc">Clinging to friendship as the only anchor in a changing world. Sharing intimacy, but aware that it's not enough to stop the inevitable.</p>
+				</li>
+<li>
+					<div class="journey-header">
+						<span class="journey-section">Outro</span>
+						<span class="journey-mood">Resigned Acceptance</span>
+					</div>
+					<p class="journey-desc">Repeating the mantra again, but with less conviction. A quiet surrender to the passage of time, acknowledging that nothing lasts forever.</p>
+				</li></ol>
+			</div>
+<div class="field-section">
+				<h4>Key Lines</h4>
+				<div class="key-line">
+					<blockquote>It drives you crazy, getting old</blockquote>
+					<p class="key-line-insight">The creeping awareness that time is finite.</p>
+				</div>
+<div class="key-line">
+					<blockquote>This dream isn't feeling sweet</blockquote>
+					<p class="key-line-insight">The crushing realization that expectations don't always match reality.</p>
+				</div>
+<div class="key-line">
+					<blockquote>I want 'em back, I want 'em back</blockquote>
+					<p class="key-line-insight">The raw, visceral need to undo the changes that have occurred.</p>
+				</div>
+<div class="key-line">
+					<blockquote>Laughing till our ribs get tough</blockquote>
+					<p class="key-line-insight">Shared experience builds resilience, but cannot stop progress.</p>
+				</div>
+<div class="key-line">
+					<blockquote>But that will never be enough</blockquote>
+					<p class="key-line-insight">Facing the inadequacy of the present to fill the void of the past.</p>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer">
+			<span class="tokens"><span class="token-detail">2829p</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">998c</span>
+		   <span class="token-sep">/</span>
+		   <span class="token-detail">3827t</span></span>
+			<span class="timing">8.1s</span>
+		</div>
+	</div>
+			</div>
+		</section>
+
+<script>
+(function () {
+	var tabs = document.querySelectorAll(".song-tab");
+	var sections = document.querySelectorAll(".song-section");
+
+	tabs.forEach(function (tab) {
+		tab.addEventListener("click", function () {
+			var index = tab.getAttribute("data-song-index");
+
+			tabs.forEach(function (t) { t.classList.remove("song-tab--active"); });
+			tab.classList.add("song-tab--active");
+
+			sections.forEach(function (s) { s.style.display = "none"; });
+			var target = document.getElementById("song-" + index);
+			if (target) target.style.display = "block";
+		});
+	});
+})();
+</script>
+
+</body>
+</html>
