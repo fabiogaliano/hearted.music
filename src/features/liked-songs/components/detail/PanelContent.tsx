@@ -234,6 +234,7 @@ export function PanelContent({
 									style={{ opacity: 0 }}
 								>
 									<HorizontalJourney
+										key={song.track.id}
 										journey={analysis.journey}
 										colors={colorProps}
 									/>
