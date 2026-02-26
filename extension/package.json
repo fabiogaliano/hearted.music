@@ -1,0 +1,20 @@
+{
+	"name": "hearted-extension",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "bun run scripts/build.ts",
+		"dev": "bun run scripts/build.ts --watch"
+	},
+	"dependencies": {
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0"
+	},
+	"devDependencies": {
+		"@types/chrome": "^0.0.304",
+		"@types/react": "^19.0.0",
+		"@types/react-dom": "^19.0.0",
+		"esbuild": "^0.25.0",
+		"typescript": "^5.7.0"
+	}
+}
