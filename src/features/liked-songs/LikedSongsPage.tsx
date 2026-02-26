@@ -23,7 +23,7 @@ import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 import { SongCard } from "./components/SongCard";
-import { SongDetailPanelNew as SongDetailPanel } from "./components/SongDetailPanelNew";
+import { SongDetailPanel } from "./components/SongDetailPanel";
 import { useArtistImage } from "./hooks/useArtistImage";
 import { useInfiniteScroll } from "./hooks/useInfiniteScroll";
 import { useSongExpansion } from "./hooks/useSongExpansion";

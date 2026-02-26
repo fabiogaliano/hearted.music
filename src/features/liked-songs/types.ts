@@ -91,16 +91,6 @@ export interface SongListProps {
 	onSelectSong: (song: LikedSong) => void;
 }
 
-export interface SongDetailPanelProps {
-	theme: ThemeConfig;
-	song: LikedSong;
-	onClose: () => void;
-	onNext?: () => void;
-	onPrevious?: () => void;
-	hasNext?: boolean;
-	hasPrevious?: boolean;
-}
-
 // Helper to check if a song is "new" (liked in last 7 days)
 export function isNewSong(likedAt: string): boolean {
 	const likedDate = new Date(likedAt);
