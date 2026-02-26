@@ -14,3 +14,6 @@ count.txt
 .vinxi
 todos.json
 old_app
+docs/brand
+scripts/prompt-lab/.cache
+scripts/prompt-lab/report.html
