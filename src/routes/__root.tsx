@@ -216,7 +216,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				enabled: true,
 				showToolbar: true, // Bottom-right toolbar with FPS counter
 				log: true, // Console output for render events (disable if too noisy)
-				trackUnnecessaryRenders: true, // Gray outlines for renders with no DOM changes
 				animationSpeed: "fast", // "slow" | "fast" | "off"
 			});
 		}

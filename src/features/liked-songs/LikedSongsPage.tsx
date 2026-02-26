@@ -8,7 +8,14 @@
  * animations without React Router navigation overhead.
  */
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
@@ -16,7 +23,7 @@ import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 import { SongCard } from "./components/SongCard";
-import { SongDetailPanel } from "./components/SongDetailPanel";
+import { SongDetailPanelNew as SongDetailPanel } from "./components/SongDetailPanelNew";
 import { useArtistImage } from "./hooks/useArtistImage";
 import { useInfiniteScroll } from "./hooks/useInfiniteScroll";
 import { useSongExpansion } from "./hooks/useSongExpansion";
@@ -26,6 +33,9 @@ import {
 	likedSongsStatsQueryOptions,
 } from "./queries";
 import type { LikedSong } from "./types";
+
+const useIsomorphicLayoutEffect =
+	typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 interface LikedSongsPageProps {
 	initialFilter?: FilterOption;
@@ -109,7 +119,7 @@ export function LikedSongsPage({
 	// Keyboard list navigation using centralized shortcut system
 	const {
 		focusedIndex,
-		setFocusedIndex,
+		syncFocusedIndex,
 		getFocusedElement,
 		focusFocusedItem,
 		getItemProps,
@@ -127,6 +137,7 @@ export function LikedSongsPage({
 		getId: (song) => song.track.id,
 		onLoadMore: handleLoadMore,
 		hasMore,
+		scrollBlock: "center",
 	});
 
 	// Enter to select focused song (useListNavigation only binds Space by default)
@@ -154,16 +165,16 @@ export function LikedSongsPage({
 	// - Panel opens (focus moves to clicked song)
 	// - j/k navigation in panel (focus follows to new song)
 	// - Panel closes (focus stays on last viewed song)
-	useEffect(() => {
+	useIsomorphicLayoutEffect(() => {
 		if (selectedSongId) {
 			const index = displayedSongs.findIndex(
 				(s) => s.track.id === selectedSongId,
 			);
 			if (index >= 0) {
-				setFocusedIndex(index);
+				syncFocusedIndex(index, { focus: false, scroll: true });
 			}
 		}
-	}, [selectedSongId, displayedSongs, setFocusedIndex]);
+	}, [selectedSongId, displayedSongs, syncFocusedIndex]);
 
 	// After the panel fully closes (selectedSongId cleared), restore focus to the current cursor item
 	// and engage list navigation visuals (no native outline flicker).

@@ -209,23 +209,18 @@ code {
 
 ::view-transition-old(song-title),
 ::view-transition-old(song-artist) {
-  animation: vt-fade-out 300ms cubic-bezier(0.165, 0.84, 0.44, 1);
+  /* Hide old snapshot immediately — panel and card have different font sizes
+     and dark/light color schemes, so a crossfade produces visible ghosts */
+  animation: none;
+  opacity: 0;
 }
 
 ::view-transition-new(song-title),
 ::view-transition-new(song-artist) {
-  animation: vt-fade-in 300ms cubic-bezier(0.165, 0.84, 0.44, 1);
+  /* Show new snapshot immediately — the group morph handles the movement */
+  animation: none;
 }
 
-@keyframes vt-fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
-
-@keyframes vt-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
 
 /* Accessibility: disable View Transition animations for reduced motion */
 @media (prefers-reduced-motion: reduce) {

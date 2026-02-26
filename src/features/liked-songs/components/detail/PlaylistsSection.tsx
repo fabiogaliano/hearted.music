@@ -5,6 +5,7 @@
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { getMatchQuality } from "./utils";
+import type { ColorProps } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Type definitions
@@ -26,11 +27,13 @@ function PlaylistRow({
 	isAdded,
 	isOther,
 	onAdd,
+	colors,
 }: {
 	playlist: Playlist;
 	isAdded: boolean;
 	isOther: boolean;
 	onAdd: () => void;
+	colors?: ColorProps;
 }) {
 	const theme = useTheme();
 	if (isOther) {
@@ -40,13 +43,19 @@ function PlaylistRow({
 				<div>
 					<span
 						className="text-sm"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						style={{
+							fontFamily: fonts.body,
+							color: colors ? colors.textMuted : theme.textMuted,
+						}}
 					>
 						{playlist.name}
 					</span>
 					<span
 						className="ml-3 text-xs"
-						style={{ fontFamily: fonts.body, color: theme.border }}
+						style={{
+							fontFamily: fonts.body,
+							color: colors ? colors.border : theme.border,
+						}}
 					>
 						{playlist.reason}
 					</span>
@@ -55,7 +64,10 @@ function PlaylistRow({
 					<button
 						onClick={onAdd}
 						className="text-xs opacity-50 transition-opacity hover:opacity-100"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						style={{
+							fontFamily: fonts.body,
+							color: colors ? colors.textMuted : theme.textMuted,
+						}}
 					>
 						Add anyway
 					</button>
@@ -73,20 +85,29 @@ function PlaylistRow({
 				<div className="flex items-center gap-3">
 					<h5
 						className="text-base font-light"
-						style={{ fontFamily: fonts.display, color: theme.text }}
+						style={{
+							fontFamily: fonts.display,
+							color: colors ? colors.text : theme.text,
+						}}
 					>
 						{playlist.name}
 					</h5>
 					<span
 						className="text-xs tracking-wide"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						style={{
+							fontFamily: fonts.body,
+							color: colors ? colors.textMuted : theme.textMuted,
+						}}
 					>
 						{quality.label}
 					</span>
 				</div>
 				<p
 					className="mt-1 truncate text-xs"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					style={{
+						fontFamily: fonts.body,
+						color: colors ? colors.textMuted : theme.textMuted,
+					}}
 				>
 					{playlist.reason}
 				</p>
@@ -97,8 +118,8 @@ function PlaylistRow({
 					className="ml-4 px-4 py-2 text-xs tracking-widest uppercase"
 					style={{
 						fontFamily: fonts.body,
-						color: theme.textMuted,
-						background: theme.surfaceDim,
+						color: colors ? colors.textMuted : theme.textMuted,
+						background: colors ? colors.surface : theme.surfaceDim,
 					}}
 				>
 					Added
@@ -109,8 +130,8 @@ function PlaylistRow({
 					className="ml-4 px-4 py-2 text-xs tracking-widest uppercase opacity-60 transition-all hover:opacity-100"
 					style={{
 						fontFamily: fonts.body,
-						color: theme.textOnPrimary,
-						background: theme.primary,
+						color: colors ? colors.bg : theme.textOnPrimary,
+						background: colors ? colors.accent : theme.primary,
 					}}
 				>
 					Add
@@ -124,15 +145,27 @@ function PlaylistRow({
 // Internal: Summary of added playlists
 // ─────────────────────────────────────────────────────────────────────────
 
-function AddedSummary({ addedCount }: { addedCount: number }) {
+function AddedSummary({
+	addedCount,
+	colors,
+}: {
+	addedCount: number;
+	colors?: ColorProps;
+}) {
 	const theme = useTheme();
 	if (addedCount === 0) return null;
 
 	return (
-		<div className="mt-6 border-t pt-4" style={{ borderColor: theme.border }}>
+		<div
+			className="mt-6 border-t pt-4"
+			style={{ borderColor: colors ? colors.border : theme.border }}
+		>
 			<span
 				className="text-sm"
-				style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				style={{
+					fontFamily: fonts.body,
+					color: colors ? colors.textMuted : theme.textMuted,
+				}}
 			>
 				Added to {addedCount} playlist{addedCount > 1 ? "s" : ""}
 			</span>
@@ -152,6 +185,7 @@ interface PlaylistsSectionProps {
 	onToggleOther: () => void;
 	onSkip: () => void;
 	onMarkSorted: () => void;
+	colors?: ColorProps;
 }
 
 export function PlaylistsSection({
@@ -162,6 +196,7 @@ export function PlaylistsSection({
 	onToggleOther,
 	onSkip,
 	onMarkSorted,
+	colors,
 }: PlaylistsSectionProps) {
 	const theme = useTheme();
 	// Separate prominent and other matches
@@ -178,10 +213,16 @@ export function PlaylistsSection({
 	return (
 		<>
 			{/* Add to Playlists Section */}
-			<section className="border-t pt-6" style={{ borderColor: theme.border }}>
+			<section
+				className="border-t pt-6"
+				style={{ borderColor: colors ? colors.border : theme.border }}
+			>
 				<h4
 					className="mb-5 text-xs tracking-widest uppercase"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					style={{
+						fontFamily: fonts.body,
+						color: colors ? colors.textMuted : theme.textMuted,
+					}}
 				>
 					Add to Your Playlists
 				</h4>
@@ -195,6 +236,7 @@ export function PlaylistsSection({
 							isAdded={addedTo.includes(playlist.id)}
 							isOther={false}
 							onAdd={() => onAdd(playlist.id)}
+							colors={colors}
 						/>
 					))}
 
@@ -206,7 +248,10 @@ export function PlaylistsSection({
 						>
 							<span
 								className="text-xs tracking-wide"
-								style={{ fontFamily: fonts.body, color: theme.textMuted }}
+								style={{
+									fontFamily: fonts.body,
+									color: colors ? colors.textMuted : theme.textMuted,
+								}}
 							>
 								{otherMatches.length} other playlist
 								{otherMatches.length > 1 ? "s" : ""}
@@ -227,24 +272,28 @@ export function PlaylistsSection({
 									isAdded={addedTo.includes(playlist.id)}
 									isOther={true}
 									onAdd={() => onAdd(playlist.id)}
+									colors={colors}
 								/>
 							))}
 						</div>
 					)}
 				</div>
 
-				<AddedSummary addedCount={addedTo.length} />
+				<AddedSummary addedCount={addedTo.length} colors={colors} />
 			</section>
 
 			{/* Footer actions */}
 			<div
 				className="mt-10 flex items-center justify-between border-t pt-8"
-				style={{ borderColor: theme.border }}
+				style={{ borderColor: colors ? colors.border : theme.border }}
 			>
 				<button
 					onClick={onSkip}
 					className="text-xs tracking-wide transition-opacity hover:opacity-70"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					style={{
+						fontFamily: fonts.body,
+						color: colors ? colors.textMuted : theme.textMuted,
+					}}
 				>
 					Skip this song
 				</button>
@@ -253,8 +302,8 @@ export function PlaylistsSection({
 					className="px-5 py-2.5 text-xs tracking-widest uppercase transition-opacity hover:opacity-80"
 					style={{
 						fontFamily: fonts.body,
-						background: theme.surface,
-						color: theme.text,
+						background: colors ? colors.surface : theme.surface,
+						color: colors ? colors.text : theme.text,
 					}}
 				>
 					Mark as matched
