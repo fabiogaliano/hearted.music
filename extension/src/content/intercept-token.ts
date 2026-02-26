@@ -55,4 +55,41 @@ window.fetch = function (...args: Parameters<typeof fetch>) {
 	return origFetch.apply(this, args);
 };
 
-console.log("[hearted.] Fetch interceptor installed");
+// Also log all pathfinder requests to help discover operation hashes
+const pfLog: Array<{ op: string; hash: string; vars: string }> = [];
+(window as any).__pfLog = pfLog;
+
+const _origFetch = origFetch;
+// Re-wrap to also capture pathfinder bodies (the token interceptor above only looks at headers)
+const tokenFetch = window.fetch;
+window.fetch = function (...args: Parameters<typeof fetch>) {
+	const [input, init] = args;
+	const url =
+		typeof input === "string"
+			? input
+			: input instanceof Request
+				? input.url
+				: "";
+
+	if (
+		url.includes("pathfinder") &&
+		init?.body &&
+		typeof init.body === "string"
+	) {
+		try {
+			const parsed = JSON.parse(init.body);
+			const entry = {
+				op: parsed.operationName || "unknown",
+				hash: parsed.extensions?.persistedQuery?.sha256Hash || "none",
+				vars: JSON.stringify(parsed.variables || {}).substring(0, 300),
+			};
+			pfLog.push(entry);
+			console.log(
+				`[hearted.pf] ${entry.op} | ${entry.hash.substring(0, 16)}... | ${entry.vars.substring(0, 100)}`,
+			);
+		} catch {}
+	}
+	return tokenFetch.apply(this, args);
+};
+
+console.log("[hearted.] Fetch interceptor installed (with pathfinder logging)");
