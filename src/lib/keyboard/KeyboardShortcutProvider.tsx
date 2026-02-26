@@ -99,6 +99,7 @@ const SCOPE_PRIORITY: Record<ShortcutScope, number> = {
 	global: 0,
 	"liked-list": 1,
 	"liked-detail": 2,
+	"liked-detail-analysis": 2.5,
 	"playlists-list": 1,
 	"playlists-detail": 2,
 	matching: 2,

@@ -43,6 +43,16 @@ function prefersReducedMotion(): boolean {
 	return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+// Smooth scroll causes a visible "ghost trail" when scrollBlock is "center"
+// because the browser animates the entire viewport to re-center the target.
+function resolveScrollBehavior(
+	scrollBlock: ScrollLogicalPosition,
+): ScrollBehavior {
+	if (prefersReducedMotion()) return "auto";
+	if (scrollBlock === "center") return "auto";
+	return "smooth";
+}
+
 export function useListNavigation<T>(
 	options: ListNavigationOptions<T>,
 ): ListNavigationResult<T> {
@@ -58,6 +68,7 @@ export function useListNavigation<T>(
 		direction = "vertical",
 		columns = 1,
 		rows,
+		scrollBlock = "nearest",
 	} = options;
 
 	const [focusedIndex, setFocusedIndex] = useState<number>(-1);
@@ -65,6 +76,7 @@ export function useListNavigation<T>(
 	const [hasFocusWithin, setHasFocusWithin] = useState<boolean>(false);
 	const itemRefs = useRef<Map<string | number, HTMLElement>>(new Map());
 	const prevFocusedIndexRef = useRef<number>(-1);
+	const isProgrammaticFocusRef = useRef<boolean>(false);
 
 	const focusedItem =
 		focusedIndex >= 0 && focusedIndex < items.length
@@ -77,6 +89,36 @@ export function useListNavigation<T>(
 		const id = getId(item);
 		return itemRefs.current.get(id) || null;
 	}, [focusedIndex, items, getId]);
+
+	const getElementAtIndex = useCallback(
+		(index: number): HTMLElement | null => {
+			if (index < 0 || index >= items.length) return null;
+			const item = items[index];
+			const id = getId(item);
+			return itemRefs.current.get(id) || null;
+		},
+		[items, getId],
+	);
+
+	const scrollElementIntoView = useCallback(
+		(element: HTMLElement) => {
+			element.scrollIntoView({
+				behavior: resolveScrollBehavior(scrollBlock),
+				block: scrollBlock,
+				inline: "nearest",
+			});
+		},
+		[scrollBlock],
+	);
+
+	const scrollIndexIntoView = useCallback(
+		(index: number) => {
+			const element = getElementAtIndex(index);
+			if (!element) return;
+			scrollElementIntoView(element);
+		},
+		[getElementAtIndex, scrollElementIntoView],
+	);
 
 	// Shared by both horizontal and vertical handlers
 	const moveFocus = useCallback(
@@ -223,23 +265,18 @@ export function useListNavigation<T>(
 
 			if (opts?.engage) setIsEngaged(true);
 
-			const item = items[index];
-			const id = getId(item);
-			const element = itemRefs.current.get(id);
+			const element = getElementAtIndex(index);
 			if (!element) return;
 
 			requestAnimationFrame(() => {
+				isProgrammaticFocusRef.current = true;
 				element.focus({ preventScroll: true });
+				isProgrammaticFocusRef.current = false;
 				if (opts?.scroll === false) return;
-				const behavior = prefersReducedMotion() ? "auto" : "smooth";
-				element.scrollIntoView({
-					behavior,
-					block: "nearest",
-					inline: "nearest",
-				});
+				scrollElementIntoView(element);
 			});
 		},
-		[enabled, items, getId],
+		[enabled, items.length, getElementAtIndex, scrollElementIntoView],
 	);
 
 	const focusFocusedItem = useCallback(
@@ -249,16 +286,40 @@ export function useListNavigation<T>(
 		[focusIndex, focusedIndex],
 	);
 
+	const syncFocusedIndex = useCallback(
+		(
+			index: number,
+			opts?: { engage?: boolean; focus?: boolean; scroll?: boolean },
+		) => {
+			if (index < 0 || index >= items.length) return;
+
+			const { engage = false, focus = false, scroll = true } = opts ?? {};
+
+			if (engage) setIsEngaged(true);
+			setFocusedIndex(index);
+
+			if (!scroll) return;
+
+			if (focus && enabled) {
+				focusIndex(index, { engage, scroll: true });
+				return;
+			}
+
+			scrollIndexIntoView(index);
+		},
+		[items.length, enabled, focusIndex, scrollIndexIntoView],
+	);
+
 	useEffect(() => {
 		const indexChanged = prevFocusedIndexRef.current !== focusedIndex;
 		prevFocusedIndexRef.current = focusedIndex;
 
 		if (!indexChanged) return;
 
-		// Only claim focus/scroll when the user has started navigating the list
-		// with j/k/arrows. Tab/click should rely on native focus behavior.
-		if (!enabled || !isEngaged) return;
-		focusIndex(focusedIndex);
+		// Active mode: focus + scroll when user navigates with j/k/arrows
+		if (enabled && isEngaged) {
+			focusIndex(focusedIndex);
+		}
 	}, [focusedIndex, isEngaged, enabled, focusIndex]);
 
 	useEffect(() => {
@@ -293,7 +354,7 @@ export function useListNavigation<T>(
 					setFocusedIndex(index);
 				},
 				onFocus: () => {
-					if (!hasFocusWithin) {
+					if (!hasFocusWithin && !isProgrammaticFocusRef.current) {
 						setIsEngaged(false);
 					}
 					setHasFocusWithin(true);
@@ -322,6 +383,7 @@ export function useListNavigation<T>(
 	return {
 		focusedIndex,
 		setFocusedIndex,
+		syncFocusedIndex,
 		getFocusedElement,
 		focusFocusedItem,
 		getItemProps,

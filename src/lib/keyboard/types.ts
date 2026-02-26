@@ -11,6 +11,7 @@ export type ShortcutScope =
 	| "global" // Always active (lowest priority)
 	| "liked-list" // Liked songs list view
 	| "liked-detail" // Liked songs detail view
+	| "liked-detail-analysis" // Analysis layer within detail panel
 	| "playlists-list" // Playlists list view
 	| "playlists-detail" // Playlists detail view
 	| "matching" // Sort/matching flow
@@ -80,11 +81,21 @@ export interface ListNavigationOptions<T> {
 	columns?: number;
 	/** For column-major grids: left/right skips by this amount */
 	rows?: number;
+	/** Scroll alignment for focused item — "center" for Vim scrolloff=999 behavior (default: "nearest") */
+	scrollBlock?: "nearest" | "center";
 }
 
 export interface ListNavigationResult<T> {
 	focusedIndex: number;
 	setFocusedIndex: (index: number) => void;
+	/**
+	 * Programmatic cursor sync for external navigation sources (e.g., detail panel).
+	 * Uses the same scroll policy as keyboard navigation.
+	 */
+	syncFocusedIndex: (
+		index: number,
+		options?: { engage?: boolean; focus?: boolean; scroll?: boolean },
+	) => void;
 	getFocusedElement: () => HTMLElement | null;
 	focusFocusedItem: (options?: { engage?: boolean; scroll?: boolean }) => void;
 	getItemProps: (
