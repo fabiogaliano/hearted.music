@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DevPlaygroundRouteImport } from './routes/dev-playground'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
@@ -24,6 +25,11 @@ import { Route as AuthSpotifyIndexRouteImport } from './routes/auth/spotify/inde
 import { Route as AuthSpotifyCallbackRouteImport } from './routes/auth/spotify/callback'
 import { Route as ApiJobsIdProgressRouteImport } from './routes/api/jobs/$id/progress'
 
+const DevPlaygroundRoute = DevPlaygroundRouteImport.update({
+  id: '/dev-playground',
+  path: '/dev-playground',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -97,6 +103,7 @@ const ApiJobsIdProgressRoute = ApiJobsIdProgressRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dev-playground': typeof DevPlaygroundRoute
   '/auth/spotify': typeof AuthSpotifyRouteRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/liked-songs': typeof AuthenticatedLikedSongsRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dev-playground': typeof DevPlaygroundRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/liked-songs': typeof AuthenticatedLikedSongsRoute
   '/match': typeof AuthenticatedMatchRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/dev-playground': typeof DevPlaygroundRoute
   '/auth/spotify': typeof AuthSpotifyRouteRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/liked-songs': typeof AuthenticatedLikedSongsRoute
@@ -145,6 +154,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/dev-playground'
     | '/auth/spotify'
     | '/dashboard'
     | '/liked-songs'
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/dev-playground'
     | '/dashboard'
     | '/liked-songs'
     | '/match'
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/dev-playground'
     | '/auth/spotify'
     | '/_authenticated/dashboard'
     | '/_authenticated/liked-songs'
@@ -192,6 +204,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  DevPlaygroundRoute: typeof DevPlaygroundRoute
   AuthSpotifyRouteRoute: typeof AuthSpotifyRouteRouteWithChildren
   ApiArtistImagesForTracksRoute: typeof ApiArtistImagesForTracksRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
@@ -200,6 +213,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/dev-playground': {
+      id: '/dev-playground'
+      path: '/dev-playground'
+      fullPath: '/dev-playground'
+      preLoaderRoute: typeof DevPlaygroundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -338,6 +358,7 @@ const AuthSpotifyRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  DevPlaygroundRoute: DevPlaygroundRoute,
   AuthSpotifyRouteRoute: AuthSpotifyRouteRouteWithChildren,
   ApiArtistImagesForTracksRoute: ApiArtistImagesForTracksRoute,
   AuthLogoutRoute: AuthLogoutRoute,
