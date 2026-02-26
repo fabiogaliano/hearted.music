@@ -1,5 +1,5 @@
 import type { PhaseJobIds } from "@/lib/jobs/progress/types";
-import type { LibrarySummary } from "@/lib/server/onboarding.server";
+import type { LibrarySummary } from "@/lib/server/onboarding.functions";
 
 /**
  * Statistics from sync operation, passed through router state.

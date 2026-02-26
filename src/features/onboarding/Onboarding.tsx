@@ -11,7 +11,7 @@ import type { PhaseJobIds } from "@/lib/jobs/progress/types";
 import type {
 	LibrarySummary,
 	OnboardingData,
-} from "@/lib/server/onboarding.server";
+} from "@/lib/server/onboarding.functions";
 import { themes } from "@/lib/theme/colors";
 import { useRegisterTheme, useTheme } from "@/lib/theme/ThemeHueProvider";
 import { DEFAULT_THEME, type ThemeColor } from "@/lib/theme/types";

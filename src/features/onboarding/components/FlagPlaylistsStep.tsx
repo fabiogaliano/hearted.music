@@ -16,7 +16,7 @@ import { useShortcut } from "@/lib/keyboard/useShortcut";
 import {
 	type OnboardingPlaylist,
 	savePlaylistDestinations,
-} from "@/lib/server/onboarding.server";
+} from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useFlagPlaylistsScroll } from "../hooks/useFlagPlaylistsScroll";

@@ -8,7 +8,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Kbd } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
-import { markOnboardingComplete } from "@/lib/server/onboarding.server";
+import { markOnboardingComplete } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 

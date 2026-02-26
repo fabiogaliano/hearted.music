@@ -6,7 +6,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { OnboardingData } from "@/lib/server/onboarding.server";
+import type { OnboardingData } from "@/lib/server/onboarding.functions";
 import {
 	ONBOARDING_PLAYLISTS,
 	PLAYLISTS,
@@ -36,7 +36,7 @@ vi.mock("@/lib/keyboard/useListNavigation", () => setupListNavigationMock());
 vi.mock("@/lib/keyboard/useShortcut", () => setupShortcutMock());
 vi.mock("@/lib/hooks/useJobProgress", () => setupJobProgressMock());
 
-vi.mock("@/lib/server/onboarding.server", () => ({
+vi.mock("@/lib/server/onboarding.functions", () => ({
 	savePlaylistDestinations: (args: unknown) =>
 		mockSavePlaylistDestinations(args),
 	saveTheme: (args: unknown) => mockSaveTheme(args),

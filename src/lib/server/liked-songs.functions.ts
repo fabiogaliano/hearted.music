@@ -80,6 +80,17 @@ export const getLikedSongsPage = createServerFn({ method: "GET" })
 				artist_id: row.song_artist_ids?.[0] ?? null,
 				album: row.song_album_name,
 				image_url: row.song_image_url,
+				genres: row.song_genres ?? [],
+				audio_features:
+					row.audio_tempo != null ||
+					row.audio_energy != null ||
+					row.audio_valence != null
+						? {
+								tempo: row.audio_tempo,
+								energy: row.audio_energy,
+								valence: row.audio_valence,
+							}
+						: null,
 			},
 			analysis: row.analysis_id
 				? {

@@ -13,7 +13,7 @@ import type { PhaseJobIds } from "@/lib/jobs/progress/types";
 import {
 	executeSync,
 	type LibrarySummary,
-} from "@/lib/server/onboarding.server";
+} from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";

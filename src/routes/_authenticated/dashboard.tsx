@@ -3,7 +3,7 @@ import { Dashboard } from "@/features/dashboard/Dashboard";
 import {
 	getDashboardStats,
 	getRecentActivity,
-} from "@/lib/server/dashboard.server";
+} from "@/lib/server/dashboard.functions";
 import { formatRelativeTime } from "@/lib/shared/utils/format-time";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({

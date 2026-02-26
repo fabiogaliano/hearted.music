@@ -9,7 +9,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 
-import { getArtistImageById } from "@/lib/server/liked-songs.server";
+import { getArtistImageById } from "@/lib/server/liked-songs.functions";
 
 import { likedSongsKeys } from "../queries";
 

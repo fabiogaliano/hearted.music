@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
-import { saveThemePreference } from "@/lib/server/onboarding.server";
+import { saveThemePreference } from "@/lib/server/onboarding.functions";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";

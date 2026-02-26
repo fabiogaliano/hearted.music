@@ -3,7 +3,7 @@ import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import {
 	getLikedSongsPage,
 	getLikedSongsStats,
-} from "@/lib/server/liked-songs.server";
+} from "@/lib/server/liked-songs.functions";
 
 export type FilterOption = "all" | "pending" | "matched" | "analyzed";
 

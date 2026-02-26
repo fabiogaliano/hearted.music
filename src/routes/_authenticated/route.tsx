@@ -16,7 +16,7 @@ import {
 } from "@tanstack/react-router";
 import { Sidebar } from "./-components/Sidebar";
 import { requireAuth } from "@/lib/auth/guards";
-import { getOnboardingData } from "@/lib/server/onboarding.server";
+import { getOnboardingData } from "@/lib/server/onboarding.functions";
 import { useRegisterTheme } from "@/lib/theme/ThemeHueProvider";
 import { getTheme } from "@/lib/theme/useTheme";
 import { DEFAULT_THEME } from "@/lib/theme/types";

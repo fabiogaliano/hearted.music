@@ -7,7 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Kbd } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
-import { createSyncJob } from "@/lib/server/onboarding.server";
+import { createSyncJob } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";

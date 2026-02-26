@@ -32,7 +32,7 @@ vi.mock("../hooks/useFlagPlaylistsScroll", () =>
 vi.mock("@/lib/keyboard/useListNavigation", () => setupListNavigationMock());
 vi.mock("@/lib/keyboard/useShortcut", () => setupShortcutMock());
 
-vi.mock("@/lib/server/onboarding.server", () => ({
+vi.mock("@/lib/server/onboarding.functions", () => ({
 	savePlaylistDestinations: (args: unknown) =>
 		mockSavePlaylistDestinations(args),
 }));

@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useEffectEvent, useState } from "react";
 import { toast } from "sonner";
-import { getLibrarySummary } from "@/lib/server/onboarding.server";
+import { getLibrarySummary } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";

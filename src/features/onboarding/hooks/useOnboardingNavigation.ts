@@ -40,7 +40,7 @@ import type { PhaseJobIds } from "@/lib/jobs/progress/types";
 import {
 	type LibrarySummary,
 	saveOnboardingStep,
-} from "@/lib/server/onboarding.server";
+} from "@/lib/server/onboarding.functions";
 import "../types"; // Import to ensure HistoryState augmentation is loaded
 
 export function useOnboardingNavigation() {

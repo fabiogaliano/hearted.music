@@ -8,7 +8,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { JobProgressState } from "@/lib/hooks/useJobProgress";
 import type { PhaseJobIds } from "@/lib/jobs/progress/types";
-import type { LibrarySummary } from "@/lib/server/onboarding.server";
+import type { LibrarySummary } from "@/lib/server/onboarding.functions";
 import { mockGoToStep, setupOnboardingNavigationMock } from "@/test/mocks";
 import { render, screen, waitFor } from "@/test/utils/render";
 import { SyncingStep } from "../components/SyncingStep";
@@ -20,7 +20,7 @@ vi.mock("../hooks/useOnboardingNavigation", () =>
 	setupOnboardingNavigationMock(),
 );
 
-vi.mock("@/lib/server/onboarding.server", () => ({
+vi.mock("@/lib/server/onboarding.functions", () => ({
 	executeSync: (args: unknown) => mockExecuteSync(args),
 }));
 
