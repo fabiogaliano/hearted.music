@@ -5,10 +5,6 @@
 import type { DbError } from "@/lib/shared/errors/database";
 import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
 
-// ============================================================================
-// Profile Types
-// ============================================================================
-
 /** Profile computation method */
 export type ProfileKind = "content_v1" | "context_v1";
 
@@ -28,9 +24,6 @@ export interface AudioCentroid {
 /** Genre frequency distribution */
 export type GenreDistribution = Readonly<Record<string, number>>;
 
-/** Emotion frequency distribution */
-export type EmotionDistribution = Readonly<Record<string, number>>;
-
 /** Computed playlist profile result */
 export interface ComputedPlaylistProfile {
 	readonly playlistId: string;
@@ -38,17 +31,12 @@ export interface ComputedPlaylistProfile {
 	readonly embedding: number[] | null;
 	readonly audioCentroid: AudioCentroid;
 	readonly genreDistribution: GenreDistribution;
-	readonly emotionDistribution: EmotionDistribution;
 	readonly songIds: string[];
 	readonly songCount: number;
 	readonly contentHash: string;
 	readonly modelBundleHash: string;
 	readonly fromCache: boolean;
 }
-
-// ============================================================================
-// Options and Progress Types
-// ============================================================================
 
 /** Options for profile computation */
 export interface ProfilingOptions {
@@ -83,10 +71,6 @@ export interface BatchProfilingResult {
 		readonly failed: number;
 	};
 }
-
-// ============================================================================
-// Error Types
-// ============================================================================
 
 /** All profiling-related errors */
 export type ProfilingError = DbError | MLProviderError;

@@ -905,12 +905,16 @@ export type Database = {
 					analysis_created_at: string;
 					analysis_id: string;
 					analysis_model: string;
+					audio_energy: number;
+					audio_tempo: number;
+					audio_valence: number;
 					id: string;
 					liked_at: string;
 					matching_status: string;
 					song_album_name: string;
 					song_artist_ids: string[];
 					song_artists: string[];
+					song_genres: string[];
 					song_id: string;
 					song_image_url: string;
 					song_name: string;

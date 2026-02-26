@@ -6,17 +6,8 @@
  */
 
 import type { Song } from "@/lib/data/song";
-import type * as songAnalysisData from "@/lib/data/song-analysis";
 import type * as audioFeatureData from "@/lib/data/song-audio-feature";
-import type {
-	AudioCentroid,
-	EmotionDistribution,
-	GenreDistribution,
-} from "./types";
-
-// ============================================================================
-// Vector Calculations
-// ============================================================================
+import type { AudioCentroid, GenreDistribution } from "./types";
 
 /**
  * Calculate vector centroid (mean).
@@ -35,10 +26,6 @@ export function calculateCentroid(vectors: number[][]): number[] {
 	}
 	return centroid.map((v) => v / vectors.length);
 }
-
-// ============================================================================
-// Audio Feature Calculations
-// ============================================================================
 
 /**
  * Calculate audio features centroid.
@@ -78,10 +65,6 @@ export function calculateAudioCentroid(
 	return centroid as AudioCentroid;
 }
 
-// ============================================================================
-// Distribution Calculations
-// ============================================================================
-
 /**
  * Compute genre distribution from songs.
  * Accumulates counts for each genre across all songs.
@@ -96,43 +79,6 @@ export function computeGenreDistribution(songs: Song[]): GenreDistribution {
 			for (const genre of song.genres) {
 				counts[genre] = (counts[genre] ?? 0) + 1;
 			}
-		}
-	}
-	return counts;
-}
-
-/**
- * Compute emotion distribution from analyses.
- * Extracts dominant_mood from analysis.emotional or analysis.emotional_profile.
- *
- * @param analyses - Array of song analyses
- * @returns Emotion counts { mood: count }
- */
-export function computeEmotionDistribution(
-	analyses: songAnalysisData.SongAnalysis[],
-): EmotionDistribution {
-	const counts: Record<string, number> = {};
-	for (const analysisRow of analyses) {
-		// The analysis field contains the full LLM response JSON
-		const analysisData = analysisRow.analysis as Record<string, unknown> | null;
-		if (!analysisData) continue;
-
-		// Try different paths where emotional profile might be stored
-		const emotional =
-			(analysisData.emotional as { dominant_mood?: string } | undefined) ??
-			(analysisData.emotional_profile as
-				| { dominant_mood?: string }
-				| undefined) ??
-			((analysisData.analysis as Record<string, unknown> | undefined)
-				?.emotional as
-				| {
-						dominant_mood?: string;
-				  }
-				| undefined);
-
-		if (emotional?.dominant_mood) {
-			const mood = emotional.dominant_mood;
-			counts[mood] = (counts[mood] ?? 0) + 1;
 		}
 	}
 	return counts;

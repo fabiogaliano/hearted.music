@@ -27,14 +27,6 @@ import {
 import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
 import { getModelBundleHash } from "./versioning";
 
-// ============================================================================
-// Zod Schemas (single source of truth)
-// ============================================================================
-
-/** Kind of embedding content */
-export const EmbeddingKindSchema = z.enum(["full", "theme", "mood", "context"]);
-export type EmbeddingKind = z.infer<typeof EmbeddingKindSchema>;
-
 /** Result of embedding a song */
 export const EmbedSongResultSchema = z.object({
 	songId: z.uuid(),
@@ -63,10 +55,6 @@ type EmbeddingServiceError =
 	| MissingAnalysisError
 	| DimensionMismatchError;
 
-// ============================================================================
-// Service
-// ============================================================================
-
 export class EmbeddingService {
 	private readonly model: string;
 	private readonly dims: number;
@@ -87,18 +75,16 @@ export class EmbeddingService {
 	 * Uses the song's analysis text as the embedding content.
 	 *
 	 * @param songId - The song UUID
-	 * @param kind - Type of embedding content (full, theme, mood, context)
 	 * @returns The embedding result or error
 	 */
 	async embedSong(
 		songId: string,
-		kind: EmbeddingKind = "full",
 	): Promise<Result<EmbedSongResult, EmbeddingServiceError>> {
 		// 1. Check for cached embedding
 		const cachedResult = await vectors.getSongEmbedding(
 			songId,
 			this.model,
-			kind,
+			"full",
 		);
 		if (Result.isError(cachedResult)) {
 			return Result.err(cachedResult.error);
@@ -121,15 +107,11 @@ export class EmbeddingService {
 		}
 
 		// 3. Build embedding text from analysis
-		const text = this.buildEmbeddingText(analysisResult.value, kind);
+		const text = this.buildEmbeddingText(analysisResult.value);
 		const contentHash = await this.hashContent(text);
 
 		// 4. Check if embedding exists for this content hash
-		const existingResult = await this.getByContentHash(
-			songId,
-			kind,
-			contentHash,
-		);
+		const existingResult = await this.getByContentHash(songId, contentHash);
 		if (Result.isError(existingResult)) {
 			return Result.err(existingResult.error);
 		}
@@ -168,7 +150,7 @@ export class EmbeddingService {
 
 		const storeResult = await vectors.upsertSongEmbedding({
 			song_id: songId,
-			kind,
+			kind: "full",
 			model: this.model,
 			model_version: modelBundleHashResult.value,
 			dims: this.dims,
@@ -192,12 +174,10 @@ export class EmbeddingService {
 	 * Optimizes by batching DeepInfra calls.
 	 *
 	 * @param songIds - Song UUIDs to embed
-	 * @param kind - Type of embedding content
 	 * @returns Batch result with succeeded and failed items
 	 */
 	async embedBatch(
 		songIds: string[],
-		kind: EmbeddingKind = "full",
 	): Promise<Result<BatchEmbedResult, EmbeddingServiceError>> {
 		if (songIds.length === 0) {
 			return Result.ok({ succeeded: [], failed: [] });
@@ -207,7 +187,7 @@ export class EmbeddingService {
 		const existingResult = await vectors.getSongEmbeddingsBatch(
 			songIds,
 			this.model,
-			kind,
+			"full",
 		);
 		if (Result.isError(existingResult)) {
 			return Result.err(existingResult.error);
@@ -250,7 +230,7 @@ export class EmbeddingService {
 				continue;
 			}
 
-			const text = this.buildEmbeddingText(songAnalysis, kind);
+			const text = this.buildEmbeddingText(songAnalysis);
 			const hash = await this.hashContent(text);
 			toEmbed.push({ songId, text, hash });
 		}
@@ -321,7 +301,7 @@ export class EmbeddingService {
 
 			embeddings.push({
 				song_id: item.songId,
-				kind,
+				kind: "full",
 				model: this.model,
 				model_version: modelBundleHashResult.value,
 				dims: this.dims,
@@ -399,9 +379,8 @@ export class EmbeddingService {
 	 */
 	async getEmbedding(
 		songId: string,
-		kind: EmbeddingKind = "full",
 	): Promise<Result<SongEmbedding | null, DbError>> {
-		return vectors.getSongEmbedding(songId, this.model, kind);
+		return vectors.getSongEmbedding(songId, this.model, "full");
 	}
 
 	/**
@@ -409,9 +388,8 @@ export class EmbeddingService {
 	 */
 	async getEmbeddings(
 		songIds: string[],
-		kind: EmbeddingKind = "full",
 	): Promise<Result<Map<string, SongEmbedding>, DbError>> {
-		return vectors.getSongEmbeddingsBatch(songIds, this.model, kind);
+		return vectors.getSongEmbeddingsBatch(songIds, this.model, "full");
 	}
 
 	/**
@@ -428,169 +406,40 @@ export class EmbeddingService {
 		return this.model;
 	}
 
-	// ============================================================================
-	// Private Helpers
-	// ============================================================================
-
 	/**
-	 * Builds the text content to embed from a song analysis.
+	 * Builds embedding text from a song analysis.
+	 * Composes from flat schema fields for rich semantic representation.
 	 */
-	private buildEmbeddingText(
-		songAnalysis: SongAnalysis,
-		_kind: EmbeddingKind,
-	): string {
-		// analysis field contains the LLM-generated analysis JSON
-		const analysisData = songAnalysis.analysis as Record<string, unknown>;
-		const analysis = analysisData?.analysis as
-			| Record<string, unknown>
-			| undefined;
-
-		if (!analysis) {
-			return `Song analysis for track`;
-		}
-
-		switch (_kind) {
-			case "full":
-				return this.buildFullText(analysis);
-			case "theme":
-				return this.buildThemeText(analysis);
-			case "mood":
-				return this.buildMoodText(analysis);
-			case "context":
-				return this.buildContextText(analysis);
-			default:
-				return this.buildFullText(analysis);
-		}
-	}
-
-	private buildFullText(analysis: Record<string, unknown>): string {
-		const parts: string[] = [];
-
-		// Meaning
-		const meaning = analysis.meaning as Record<string, unknown> | undefined;
-		if (meaning) {
-			const themes = meaning.themes as
-				| Array<{ name: string; description?: string }>
-				| undefined;
-			if (themes) {
-				parts.push(`Themes: ${themes.map((t) => t.name).join(", ")}`);
-			}
-			const interpretation = meaning.interpretation as
-				| Record<string, unknown>
-				| undefined;
-			if (interpretation?.surface_meaning) {
-				parts.push(`Meaning: ${interpretation.surface_meaning}`);
-			}
-		}
-
-		// Emotional
-		const emotional = analysis.emotional as Record<string, unknown> | undefined;
-		if (emotional) {
-			if (emotional.dominant_mood) {
-				parts.push(`Mood: ${emotional.dominant_mood}`);
-			}
-			if (emotional.mood_description) {
-				parts.push(`${emotional.mood_description}`);
-			}
-		}
-
-		// Context
-		const context = analysis.context as Record<string, unknown> | undefined;
-		if (context?.best_moments) {
-			const moments = context.best_moments as string[];
-			parts.push(`Best for: ${moments.join(", ")}`);
-		}
-
-		// Musical style
-		const style = analysis.musical_style as Record<string, unknown> | undefined;
-		if (style) {
-			if (style.genre_primary) {
-				parts.push(`Genre: ${style.genre_primary}`);
-			}
-			if (style.sonic_texture) {
-				parts.push(`Sound: ${style.sonic_texture}`);
-			}
-		}
-
-		return parts.join(". ");
-	}
-
-	private buildThemeText(analysis: Record<string, unknown>): string {
-		const meaning = analysis.meaning as Record<string, unknown> | undefined;
-		if (!meaning) return "";
+	private buildEmbeddingText(analysis: SongAnalysis): string {
+		const data = analysis.analysis as Record<string, unknown>;
+		if (!data) return "Song analysis for track";
 
 		const parts: string[] = [];
-		const themes = meaning.themes as
-			| Array<{ name: string; description?: string }>
+
+		if (data.headline) parts.push(String(data.headline));
+		if (data.compound_mood) parts.push(String(data.compound_mood));
+		if (data.mood_description) parts.push(String(data.mood_description));
+
+		if (data.interpretation) parts.push(String(data.interpretation));
+
+		const themes = data.themes as
+			| Array<{ name: string; description: string }>
 			| undefined;
 		if (themes) {
 			for (const theme of themes) {
 				parts.push(theme.name);
-				if (theme.description) {
-					parts.push(theme.description);
-				}
+				if (theme.description) parts.push(theme.description);
 			}
 		}
 
-		const interpretation = meaning.interpretation as
-			| Record<string, unknown>
-			| undefined;
-		if (interpretation) {
-			if (interpretation.surface_meaning) {
-				parts.push(String(interpretation.surface_meaning));
-			}
-			if (interpretation.deeper_meaning) {
-				parts.push(String(interpretation.deeper_meaning));
-			}
-		}
-
-		return parts.join(". ");
-	}
-
-	private buildMoodText(analysis: Record<string, unknown>): string {
-		const emotional = analysis.emotional as Record<string, unknown> | undefined;
-		if (!emotional) return "";
-
-		const parts: string[] = [];
-		if (emotional.dominant_mood) {
-			parts.push(`Dominant mood: ${emotional.dominant_mood}`);
-		}
-		if (emotional.mood_description) {
-			parts.push(String(emotional.mood_description));
-		}
-
-		const journey = emotional.journey as
-			| Array<{ section: string; mood: string }>
+		const journey = data.journey as
+			| Array<{ section: string; mood: string; description: string }>
 			| undefined;
 		if (journey) {
-			const moods = journey.map((j) => j.mood).join(", ");
-			parts.push(`Emotional journey: ${moods}`);
+			parts.push(journey.map((j) => j.mood).join(", "));
 		}
 
-		return parts.join(". ");
-	}
-
-	private buildContextText(analysis: Record<string, unknown>): string {
-		const context = analysis.context as Record<string, unknown> | undefined;
-		if (!context) return "";
-
-		const parts: string[] = [];
-		if (context.primary_setting) {
-			parts.push(`Setting: ${context.primary_setting}`);
-		}
-
-		const situations = context.situations as
-			| Record<string, unknown>
-			| undefined;
-		if (situations?.perfect_for) {
-			const perfectFor = situations.perfect_for as string[];
-			parts.push(`Perfect for: ${perfectFor.join(", ")}`);
-		}
-
-		const bestMoments = context.best_moments as string[] | undefined;
-		if (bestMoments) {
-			parts.push(`Best moments: ${bestMoments.join(", ")}`);
-		}
+		if (data.sonic_texture) parts.push(String(data.sonic_texture));
 
 		return parts.join(". ");
 	}
@@ -616,11 +465,9 @@ export class EmbeddingService {
 	 */
 	private async getByContentHash(
 		songId: string,
-		kind: EmbeddingKind,
 		contentHash: string,
 	): Promise<Result<SongEmbedding | null, DbError>> {
-		// Get the latest embedding for this (songId, model, kind)
-		const result = await vectors.getSongEmbedding(songId, this.model, kind);
+		const result = await vectors.getSongEmbedding(songId, this.model, "full");
 		if (Result.isError(result)) {
 			return result;
 		}

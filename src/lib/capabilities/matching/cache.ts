@@ -269,13 +269,12 @@ export class MatchCachingService {
 
 			const availability = {
 				hasEmbedding: !!songEmbedding,
-				hasGenres: song.genres !== null && song.genres.length > 0,
 				hasAudioFeatures: !!song.audioFeatures,
-				hasAnalysis: !!song.analysis,
+				hasGenres: song.genres !== null && song.genres.length > 0,
 			};
 
 			const availableCount = Object.values(availability).filter(Boolean).length;
-			const confidence = availableCount / 5; // 5 total factors checked
+			const confidence = availableCount / 3;
 
 			matchesMap.set(
 				songId,

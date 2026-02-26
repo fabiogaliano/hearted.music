@@ -8,7 +8,7 @@
  * 1. Building playlist profile from songs
  * 2. Embedding centroid calculation
  * 3. Audio centroid calculation (mean of Spotify audio features)
- * 4. Genre and emotion distributions
+ * 4. Genre distribution
  * 5. Cache behavior (content hash)
  *
  * SKIPPED BY DEFAULT - This test requires database access and
@@ -332,37 +332,6 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 			for (const count of Object.values(genreDistribution)) {
 				expect(Number.isInteger(count)).toBe(true);
 				expect(count).toBeGreaterThan(0);
-			}
-		});
-	});
-
-	describe("Emotion distribution", () => {
-		test("emotion distribution is computed", () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const profile = profileResult.value;
-			expect(profile.emotionDistribution).toBeDefined();
-			expect(typeof profile.emotionDistribution).toBe("object");
-		});
-
-		test("emotion counts are valid", () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const profile = profileResult.value;
-			const { emotionDistribution } = profile;
-
-			// May be empty if no analyses exist
-			for (const count of Object.values(emotionDistribution)) {
-				expect(Number.isInteger(count)).toBe(true);
-				expect(count).toBeGreaterThan(0);
-			}
-
-			if (Object.keys(emotionDistribution).length > 0) {
-				console.log(
-					`   ✓ Emotion distribution: ${JSON.stringify(emotionDistribution)}`,
-				);
-			} else {
-				console.log("   ⚠️  No emotion data available (songs not analyzed)");
 			}
 		});
 	});

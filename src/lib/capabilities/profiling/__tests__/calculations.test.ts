@@ -4,12 +4,10 @@
 
 import { describe, expect, it } from "vitest";
 import type { Song } from "@/lib/data/song";
-import type { SongAnalysis } from "@/lib/data/song-analysis";
 import type { AudioFeature } from "@/lib/data/song-audio-feature";
 import {
 	calculateAudioCentroid,
 	calculateCentroid,
-	computeEmotionDistribution,
 	computeGenreDistribution,
 } from "../calculations";
 
@@ -53,20 +51,6 @@ function createSong(partial: Partial<Song> = {}): Song {
 		duration_ms: partial.duration_ms ?? null,
 		popularity: partial.popularity ?? null,
 		preview_url: partial.preview_url ?? null,
-		created_at: new Date().toISOString(),
-		updated_at: new Date().toISOString(),
-	};
-}
-
-function createSongAnalysis(partial: Partial<SongAnalysis> = {}): SongAnalysis {
-	return {
-		id: partial.id ?? "test-analysis-id",
-		song_id: partial.song_id ?? "test-song-id",
-		analysis: partial.analysis ?? null,
-		model: partial.model ?? "test-model",
-		prompt_version: partial.prompt_version ?? null,
-		tokens_used: partial.tokens_used ?? null,
-		cost_cents: partial.cost_cents ?? null,
 		created_at: new Date().toISOString(),
 		updated_at: new Date().toISOString(),
 	};
@@ -389,132 +373,6 @@ describe("computeGenreDistribution", () => {
 		expect(distribution).toEqual({
 			rock: 1,
 			indie: 1,
-		});
-	});
-});
-
-// ============================================================================
-// computeEmotionDistribution
-// ============================================================================
-
-describe("computeEmotionDistribution", () => {
-	it("returns empty object for empty analyses", () => {
-		const distribution = computeEmotionDistribution([]);
-		expect(distribution).toEqual({});
-	});
-
-	it("extracts dominant_mood from emotional field", () => {
-		const analyses: SongAnalysis[] = [
-			createSongAnalysis({
-				song_id: "1",
-				analysis: {
-					emotional: {
-						dominant_mood: "happy",
-					},
-				},
-			}),
-			createSongAnalysis({
-				song_id: "2",
-				analysis: {
-					emotional: {
-						dominant_mood: "sad",
-					},
-				},
-			}),
-		];
-		const distribution = computeEmotionDistribution(analyses);
-		expect(distribution).toEqual({
-			happy: 1,
-			sad: 1,
-		});
-	});
-
-	it("extracts dominant_mood from emotional_profile field", () => {
-		const analyses: SongAnalysis[] = [
-			createSongAnalysis({
-				song_id: "1",
-				analysis: {
-					emotional_profile: {
-						dominant_mood: "happy",
-					},
-				},
-			}),
-		];
-		const distribution = computeEmotionDistribution(analyses);
-		expect(distribution).toEqual({
-			happy: 1,
-		});
-	});
-
-	it("extracts dominant_mood from nested analysis.emotional path", () => {
-		const analyses: SongAnalysis[] = [
-			createSongAnalysis({
-				song_id: "1",
-				analysis: {
-					analysis: {
-						emotional: {
-							dominant_mood: "euphoric",
-						},
-					},
-				},
-			}),
-		];
-		const distribution = computeEmotionDistribution(analyses);
-		expect(distribution).toEqual({
-			euphoric: 1,
-		});
-	});
-
-	it("accumulates mood counts correctly", () => {
-		const analyses: SongAnalysis[] = [
-			createSongAnalysis({
-				song_id: "1",
-				analysis: {
-					emotional: { dominant_mood: "happy" },
-				},
-			}),
-			createSongAnalysis({
-				song_id: "2",
-				analysis: {
-					emotional: { dominant_mood: "happy" },
-				},
-			}),
-			createSongAnalysis({
-				song_id: "3",
-				analysis: {
-					emotional: { dominant_mood: "sad" },
-				},
-			}),
-		];
-		const distribution = computeEmotionDistribution(analyses);
-		expect(distribution).toEqual({
-			happy: 2,
-			sad: 1,
-		});
-	});
-
-	it("ignores analyses without dominant_mood", () => {
-		const analyses: SongAnalysis[] = [
-			createSongAnalysis({
-				song_id: "1",
-				analysis: {
-					emotional: {},
-				},
-			}),
-			createSongAnalysis({
-				song_id: "2",
-				analysis: null,
-			}),
-			createSongAnalysis({
-				song_id: "3",
-				analysis: {
-					emotional: { dominant_mood: "happy" },
-				},
-			}),
-		];
-		const distribution = computeEmotionDistribution(analyses);
-		expect(distribution).toEqual({
-			happy: 1,
 		});
 	});
 });

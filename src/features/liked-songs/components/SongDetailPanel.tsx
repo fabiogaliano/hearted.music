@@ -26,7 +26,6 @@ import { extractHue } from "@/lib/utils/color";
 import type { AnalysisContent, LikedSong } from "../types";
 import { formatRelativeTime, isNewSong } from "../types";
 import { AudioInfo } from "./detail/AudioInfo";
-import { ContextSection } from "./detail/ContextSection";
 import { MeaningSection } from "./detail/MeaningSection";
 import { Nav } from "./detail/Nav";
 import { PlaylistsSection } from "./detail/PlaylistsSection";
@@ -204,18 +203,14 @@ function AnalysisSections({
 	return (
 		<div className="space-y-10">
 			{/* Themes + Journey */}
-			{analysis.meaning?.themes && analysis.meaning.themes.length > 0 && (
+			{analysis.themes && analysis.themes.length > 0 && (
 				<MeaningSection
-					emotional={undefined}
-					themes={analysis.meaning?.themes}
-					journey={analysis.emotional?.journey || []}
+					themes={analysis.themes}
+					journey={analysis.journey || []}
 					isJourneyExpanded={expandedSections.has("journey")}
 					onToggleJourney={() => toggleSection("journey")}
 				/>
 			)}
-
-			{/* Context section (Perfect For) */}
-			<ContextSection bestMoments={analysis.context?.best_moments} />
 
 			{/* Playlists section */}
 			<PlaylistsSection
@@ -967,24 +962,12 @@ export function SongDetailPanel({
 									}}
 								/>
 
-								{/* Genre top left */}
-								{analysis?.musical_style?.genre_primary && isExpanded && (
-									<div
-										ref={genreRef}
-										className="absolute top-3 left-5"
-										style={{ left: "20px" }}
-									>
-										<span
-											className="text-[10px] tracking-[0.15em] uppercase"
-											style={{
-												fontFamily: fonts.body,
-												color: colors.textMuted,
-											}}
-										>
-											{analysis.musical_style.genre_primary}
-										</span>
-									</div>
-								)}
+								{/* Genre ref anchor (genre data now lives on song, not analysis) */}
+								<div
+									ref={genreRef}
+									className="absolute top-3 left-5"
+									style={{ left: "20px" }}
+								/>
 
 								{/* Floating album art */}
 								{albumArtUrl && isExpanded && (
@@ -1124,7 +1107,7 @@ export function SongDetailPanel({
 							</div>
 
 							{/* Mood - stagger[2] */}
-							{analysis?.emotional?.mood_description && (
+							{analysis?.mood_description && (
 								<div
 									ref={(el) => {
 										staggerRefs.current[2] = el;
@@ -1135,7 +1118,7 @@ export function SongDetailPanel({
 										className="text-sm leading-relaxed italic"
 										style={{ fontFamily: fonts.body, color: colors.textMuted }}
 									>
-										"{analysis.emotional.mood_description}"
+										"{analysis.mood_description}"
 									</p>
 								</div>
 							)}

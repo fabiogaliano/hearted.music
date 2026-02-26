@@ -36,8 +36,6 @@ export interface Song {
 	mood: string;
 	tempo: number;
 	energy: number;
-	bestMoments: string[];
-	culturalNote: string;
 	journey: JourneyStep[];
 }
 
@@ -82,13 +80,6 @@ export const songs: Song[] = [
 		mood: "Anxious Nostalgia",
 		tempo: 108,
 		energy: 0.65,
-		bestMoments: [
-			"Late night existential spirals",
-			"3am thoughts",
-			"Driving home from parties",
-		],
-		culturalNote:
-			"A generation-defining anthem about the terror and beauty of youth.",
 		journey: [
 			{
 				section: "Intro",
@@ -148,13 +139,6 @@ export const songs: Song[] = [
 		mood: "Confident",
 		tempo: 123,
 		energy: 0.82,
-		bestMoments: [
-			"Getting ready to go out",
-			"Post-breakup empowerment",
-			"Dance floor moments",
-		],
-		culturalNote:
-			"Part of Dua's evolution into disco-pop territory with a defiant edge.",
 		journey: [
 			{
 				section: "Intro",
@@ -213,13 +197,6 @@ export const songs: Song[] = [
 		mood: "Wistful",
 		tempo: 68,
 		energy: 0.35,
-		bestMoments: [
-			"Missing someone at 2am",
-			"Rainy day reflection",
-			"Quiet heartache",
-		],
-		culturalNote:
-			"A masterclass in falsetto vulnerability that redefined R&B intimacy.",
 		journey: [
 			{
 				section: "Intro",
@@ -278,13 +255,6 @@ export const songs: Song[] = [
 		mood: "Bittersweet Anger",
 		tempo: 98,
 		energy: 0.45,
-		bestMoments: [
-			"Processing toxic relationships",
-			"Late night venting",
-			"Angry crying",
-		],
-		culturalNote:
-			"Helped establish the sad-girl indie sound with sharp, specific lyrics.",
 		journey: [
 			{
 				section: "Intro",
@@ -343,13 +313,6 @@ export const songs: Song[] = [
 		mood: "Wry Tenderness",
 		tempo: 78,
 		energy: 0.42,
-		bestMoments: [
-			"Morning-after clarity",
-			"Knowing when to walk away",
-			"Bittersweet goodbyes",
-		],
-		culturalNote:
-			"2024 viral comeback that showed Hozier's gift for intimate storytelling.",
 		journey: [
 			{
 				section: "Intro",
@@ -408,12 +371,6 @@ export const songs: Song[] = [
 		mood: "Brooding Desire",
 		tempo: 85,
 		energy: 0.58,
-		bestMoments: [
-			"2am texts you shouldn't send",
-			"Seeing an ex",
-			"Drunk confessions",
-		],
-		culturalNote: "The riff that launched a thousand moody playlists.",
 		journey: [
 			{
 				section: "Intro",
@@ -472,13 +429,6 @@ export const songs: Song[] = [
 		mood: "Unhinged Sweetness",
 		tempo: 89,
 		energy: 0.48,
-		bestMoments: [
-			"Seeing your ex with someone new",
-			"Intrusive thoughts",
-			"Venting to friends",
-		],
-		culturalNote:
-			"A Tarantino-referencing revenge fantasy wrapped in velvet vocals.",
 		journey: [
 			{
 				section: "Intro",
@@ -537,9 +487,6 @@ export const songs: Song[] = [
 		mood: "Triumphant Aggression",
 		tempo: 104,
 		energy: 0.88,
-		bestMoments: ["Victory laps", "Making a point", "When you're proven right"],
-		culturalNote:
-			"The Drake diss that became the song of 2024, redefining hip-hop beefs.",
 		journey: [
 			{
 				section: "Intro",
@@ -598,13 +545,6 @@ export const songs: Song[] = [
 		mood: "Theatrical Despair",
 		tempo: 142,
 		energy: 0.78,
-		bestMoments: [
-			"Tax season meltdowns",
-			"Questioning adulthood",
-			"Absurdist rage",
-		],
-		culturalNote:
-			"2025 breakout that turned paperwork into existential theater.",
 		journey: [
 			{
 				section: "Intro",
@@ -663,13 +603,6 @@ export const songs: Song[] = [
 		mood: "Anxious Gratitude",
 		tempo: 108,
 		energy: 0.62,
-		bestMoments: [
-			"When things are finally going well",
-			"Praying nothing changes",
-			"Counting blessings",
-		],
-		culturalNote:
-			"A prayer disguised as a pop song that resonated with millions.",
 		journey: [
 			{
 				section: "Intro",
@@ -728,13 +661,6 @@ export const songs: Song[] = [
 		mood: "Tender Devotion",
 		tempo: 105,
 		energy: 0.52,
-		bestMoments: [
-			"Deep conversations",
-			"Found family moments",
-			"Quiet love confessions",
-		],
-		culturalNote:
-			"#2 song globally in both 2024 and 2025 — a modern love anthem.",
 		journey: [
 			{
 				section: "Intro",
@@ -793,13 +719,6 @@ export const songs: Song[] = [
 		mood: "Devastating Sadness",
 		tempo: 72,
 		energy: 0.38,
-		bestMoments: [
-			"Crying in your car",
-			"Driving past their house",
-			"First major breakup",
-		],
-		culturalNote:
-			"The breakup ballad that broke Spotify records and launched a career.",
 		journey: [
 			{
 				section: "Intro",
@@ -858,12 +777,6 @@ export const songs: Song[] = [
 		mood: "Euphoric Liberation",
 		tempo: 128,
 		energy: 0.85,
-		bestMoments: [
-			"Coming out moments",
-			"Pride celebrations",
-			"Choosing yourself",
-		],
-		culturalNote: "The queer anthem that made Chappell Roan a superstar.",
 		journey: [
 			{
 				section: "Intro",
@@ -922,13 +835,6 @@ export const songs: Song[] = [
 		mood: "Tender Desperation",
 		tempo: 79,
 		energy: 0.45,
-		bestMoments: [
-			"Realizing you're in deep",
-			"Making yourself smaller for love",
-			"Soft boy hours",
-		],
-		culturalNote:
-			"Tyler's pivot to vulnerable love songs that redefined his artistry.",
 		journey: [
 			{
 				section: "Intro",
@@ -987,9 +893,6 @@ export const songs: Song[] = [
 		mood: "Euphoric Desperation",
 		tempo: 171,
 		energy: 0.8,
-		bestMoments: ["Night drives", "Chasing memories", "Reliving the past"],
-		culturalNote:
-			"The most streamed song in Spotify history — 5+ billion plays.",
 		journey: [
 			{
 				section: "Intro",
@@ -1048,12 +951,6 @@ export const songs: Song[] = [
 		mood: "Melancholic Joy",
 		tempo: 174,
 		energy: 0.73,
-		bestMoments: [
-			"Reflecting on how things changed",
-			"Dancing through sadness",
-			"Missing simpler times",
-		],
-		culturalNote: "Harry's biggest hit — a deceptively upbeat song about loss.",
 		journey: [
 			{
 				section: "Intro",
@@ -1112,13 +1009,6 @@ export const songs: Song[] = [
 		mood: "Sardonic Frustration",
 		tempo: 112,
 		energy: 0.68,
-		bestMoments: [
-			"Post-bad-date venting",
-			"Realizing someone's not worth it",
-			"Girl talk",
-		],
-		culturalNote:
-			"2025 song of the summer — sharp, funny, and devastatingly relatable.",
 		journey: [
 			{
 				section: "Intro",
@@ -1177,13 +1067,6 @@ export const songs: Song[] = [
 		mood: "Humble Triumph",
 		tempo: 77,
 		energy: 0.45,
-		bestMoments: [
-			"Counting blessings",
-			"Reflecting on success",
-			"Keeping perspective",
-		],
-		culturalNote:
-			"The video gave away nearly a million dollars — generosity as content.",
 		journey: [
 			{
 				section: "Intro",
@@ -1242,13 +1125,6 @@ export const songs: Song[] = [
 		mood: "Proud Nostalgia",
 		tempo: 95,
 		energy: 0.72,
-		bestMoments: [
-			"Missing home",
-			"Cultural celebrations",
-			"Remembering where you came from",
-		],
-		culturalNote:
-			"The biggest streaming week for a Latin song in Spotify history.",
 		journey: [
 			{
 				section: "Intro",
@@ -1307,13 +1183,6 @@ export const songs: Song[] = [
 		mood: "Sardonic Clarity",
 		tempo: 103,
 		energy: 0.55,
-		bestMoments: [
-			"Realizing someone was fake",
-			"Venting with friends",
-			"Having receipts",
-		],
-		culturalNote:
-			"Her first billion-stream song — scathing honesty that went viral.",
 		journey: [
 			{
 				section: "Intro",

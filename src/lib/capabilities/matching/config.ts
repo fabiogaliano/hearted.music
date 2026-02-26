@@ -7,26 +7,19 @@
 
 import type {
 	AudioFeatureWeights,
+	DataAvailability,
 	MatchingConfig,
 	MatchingWeights,
 } from "./types";
 
-// ============================================================================
-// Default Weights
-// ============================================================================
-
 /**
  * Default weights for score factors.
  * Sum should equal 1.0 for interpretable scores.
- * Based on old matching-config.ts "fullDataAvailable" profile.
  */
 export const DEFAULT_MATCHING_WEIGHTS: MatchingWeights = {
-	vector: 0.25, // Embedding similarity
-	genre: 0.15, // Genre/metadata match
-	audio: 0.25, // Audio features for "feel" matching
-	semantic: 0.15, // Thematic alignment
-	context: 0.15, // Listening context fit
-	flow: 0.05, // Flow compatibility with recent songs
+	embedding: 0.5,
+	audio: 0.3,
+	genre: 0.2,
 };
 
 /**
@@ -34,139 +27,74 @@ export const DEFAULT_MATCHING_WEIGHTS: MatchingWeights = {
  * Higher weights = more influence on audio score.
  */
 export const DEFAULT_AUDIO_FEATURE_WEIGHTS: AudioFeatureWeights = {
-	energy: 1.0, // Very important for playlist cohesion
-	valence: 1.0, // Mood consistency
-	danceability: 0.8, // Rhythm feel
-	acousticness: 0.6, // Production style
-	instrumentalness: 0.5, // Vocal preference
-	speechiness: 0.4, // Speech vs music
-	liveness: 0.3, // Studio vs live feel
-	tempo: 0.7, // BPM matching (normalized)
-	loudness: 0.3, // Dynamic range (less important)
+	energy: 1.0,
+	valence: 1.0,
+	danceability: 0.8,
+	acousticness: 0.6,
+	instrumentalness: 0.5,
+	speechiness: 0.4,
+	liveness: 0.3,
+	tempo: 0.7,
+	loudness: 0.3,
 };
-
-// ============================================================================
-// Default Configuration
-// ============================================================================
 
 /** Default matching configuration */
 export const DEFAULT_MATCHING_CONFIG: MatchingConfig = {
 	weights: DEFAULT_MATCHING_WEIGHTS,
 	audioWeights: DEFAULT_AUDIO_FEATURE_WEIGHTS,
-	minScoreThreshold: 0.3, // Minimum score to include
-	maxResultsPerSong: 10, // Max playlists per song
+	minScoreThreshold: 0.3,
+	maxResultsPerSong: 10,
 	skipVectorScoring: false,
-	deepAnalysisThreshold: 0.1, // ~15% of max early score to run deep analysis
-	vetoThreshold: 0.2, // Scores below this are vetoed
+	vetoThreshold: 0.2,
 };
-
-// ============================================================================
-// Adaptive Weights
-// ============================================================================
-
-/** Data availability for adaptive weight computation */
-export interface DataAvailability {
-	hasEmbedding: boolean;
-	hasGenres: boolean;
-	hasAudioFeatures: boolean;
-	hasAnalysis: boolean;
-	hasRecentSongs: boolean;
-}
 
 /**
  * Compute adaptive weights based on available data.
- * Redistributes weight from missing factors to available ones.
- * Based on old matching-config.ts weight profiles.
+ * Redistributes weight from missing factors to available ones proportionally.
  */
 export function computeAdaptiveWeights(
 	availability: DataAvailability,
 ): MatchingWeights {
 	const base = { ...DEFAULT_MATCHING_WEIGHTS };
 
-	// Collect unavailable weight to redistribute
 	let unavailableWeight = 0;
-	let availableFactors = 0;
+	const available: (keyof typeof base)[] = [];
 
 	if (!availability.hasEmbedding) {
-		unavailableWeight += base.vector;
-		base.vector = 0;
+		unavailableWeight += base.embedding;
+		base.embedding = 0;
 	} else {
-		availableFactors++;
-	}
-
-	if (!availability.hasGenres) {
-		unavailableWeight += base.genre;
-		base.genre = 0;
-	} else {
-		availableFactors++;
+		available.push("embedding");
 	}
 
 	if (!availability.hasAudioFeatures) {
 		unavailableWeight += base.audio;
 		base.audio = 0;
 	} else {
-		availableFactors++;
+		available.push("audio");
 	}
 
-	if (!availability.hasAnalysis) {
-		unavailableWeight += base.semantic + base.context;
-		base.semantic = 0;
-		base.context = 0;
+	if (!availability.hasGenres) {
+		unavailableWeight += base.genre;
+		base.genre = 0;
 	} else {
-		availableFactors += 2;
+		available.push("genre");
 	}
 
-	if (!availability.hasRecentSongs) {
-		unavailableWeight += base.flow;
-		base.flow = 0;
-	} else {
-		availableFactors++;
+	if (available.length > 0 && unavailableWeight > 0) {
+		const totalAvailable = available.reduce((sum, key) => sum + base[key], 0);
+		for (const key of available) {
+			base[key] += unavailableWeight * (base[key] / totalAvailable);
+		}
 	}
 
-	// Redistribute unavailable weight proportionally
-	if (availableFactors > 0 && unavailableWeight > 0) {
-		const redistribution = unavailableWeight / availableFactors;
-
-		if (base.vector > 0) base.vector += redistribution;
-		if (base.genre > 0) base.genre += redistribution;
-		if (base.audio > 0) base.audio += redistribution;
-		if (base.semantic > 0) base.semantic += redistribution / 2;
-		if (base.context > 0) base.context += redistribution / 2;
-		if (base.flow > 0) base.flow += redistribution / 4;
-	}
-
-	return {
-		vector: base.vector,
-		genre: base.genre,
-		audio: base.audio,
-		semantic: base.semantic,
-		context: base.context,
-		flow: base.flow,
-	};
+	return base;
 }
-
-// ============================================================================
-// Thresholds
-// ============================================================================
-
-/** Semantic similarity thresholds */
-export const SEMANTIC_THRESHOLDS = {
-	/** Minimum similarity for "related" */
-	related: 0.5,
-	/** Minimum similarity for "similar" */
-	similar: 0.65,
-	/** Minimum similarity for "very similar" */
-	verySimilar: 0.8,
-} as const;
 
 /** Score tier boundaries */
 export const SCORE_TIERS = {
-	/** Excellent match */
 	excellent: 0.8,
-	/** Good match */
 	good: 0.6,
-	/** Fair match */
 	fair: 0.4,
-	/** Poor match */
 	poor: 0.2,
 } as const;

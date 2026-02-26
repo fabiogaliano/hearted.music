@@ -2,13 +2,12 @@
  * Playlist profiling service.
  *
  * Computes playlist profiles from track embeddings, audio features,
- * genre distributions, and emotion distributions.
+ * and genre distributions.
  */
 
 import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
 import type { Song } from "@/lib/data/song";
-import * as songAnalysisData from "@/lib/data/song-analysis";
 import * as audioFeatureData from "@/lib/data/song-audio-feature";
 import * as vectorsData from "@/lib/data/vectors";
 import type { EmbeddingService } from "@/lib/ml/embedding/service";
@@ -16,29 +15,19 @@ import { getModelBundleHash } from "@/lib/ml/embedding/versioning";
 import {
 	calculateAudioCentroid,
 	calculateCentroid,
-	computeEmotionDistribution,
 	computeGenreDistribution,
 } from "./calculations";
 import type {
 	AudioCentroid,
 	ComputedPlaylistProfile,
-	EmotionDistribution,
 	GenreDistribution,
 	ProfileKind,
 	ProfilingError,
 	ProfilingOptions,
 } from "./types";
 
-// ============================================================================
-// Constants
-// ============================================================================
-
 /** Default profile kind */
 const PROFILE_KIND: ProfileKind = "content_v1";
-
-// ============================================================================
-// Service
-// ============================================================================
 
 export class PlaylistProfilingService {
 	constructor(private readonly embeddingService: EmbeddingService) {}
@@ -68,8 +57,6 @@ export class PlaylistProfilingService {
 			audioCentroid: (profile.audio_centroid as AudioCentroid) ?? {},
 			genreDistribution:
 				(profile.genre_distribution as GenreDistribution) ?? {},
-			emotionDistribution:
-				(profile.emotion_distribution as EmotionDistribution) ?? {},
 			songIds: profile.song_ids ?? [],
 			songCount: profile.song_count ?? 0,
 			contentHash: profile.content_hash,
@@ -86,7 +73,6 @@ export class PlaylistProfilingService {
 	 * - Embedding centroid (mean of track embeddings)
 	 * - Audio centroid (mean of 9 audio features)
 	 * - Genre distribution from song.genres
-	 * - Emotion distribution from song_analysis.emotional_profile
 	 */
 	async computeProfile(
 		playlistId: string,
@@ -121,10 +107,7 @@ export class PlaylistProfilingService {
 		}
 
 		// Get embeddings for all songs
-		const embeddingsResult = await this.embeddingService.getEmbeddings(
-			songIds,
-			"full",
-		);
+		const embeddingsResult = await this.embeddingService.getEmbeddings(songIds);
 		if (Result.isError(embeddingsResult)) {
 			return Result.err(embeddingsResult.error);
 		}
@@ -147,22 +130,12 @@ export class PlaylistProfilingService {
 		// Compute genre distribution from song.genres
 		const genreDistribution = computeGenreDistribution(songs);
 
-		// Get song analyses for emotion distribution
-		const analysesResult = await songAnalysisData.get(songIds);
-		if (Result.isError(analysesResult)) {
-			return Result.err(analysesResult.error);
-		}
-		const emotionDistribution = computeEmotionDistribution(
-			Array.from(analysesResult.value.values()),
-		);
-
 		const profile: ComputedPlaylistProfile = {
 			playlistId,
 			kind: PROFILE_KIND,
 			embedding: embeddingCentroid.length > 0 ? embeddingCentroid : null,
 			audioCentroid,
 			genreDistribution,
-			emotionDistribution,
 			songIds,
 			songCount: songs.length,
 			contentHash,
@@ -181,7 +154,7 @@ export class PlaylistProfilingService {
 				embedding: profile.embedding ? JSON.stringify(profile.embedding) : null,
 				audio_centroid: profile.audioCentroid as Json,
 				genre_distribution: profile.genreDistribution as Json,
-				emotion_distribution: profile.emotionDistribution as Json,
+				emotion_distribution: {} as Json,
 				song_count: profile.songCount,
 				song_ids: profile.songIds,
 			});
@@ -200,14 +173,8 @@ export class PlaylistProfilingService {
 	async invalidateProfile(
 		_playlistId: string,
 	): Promise<Result<void, ProfilingError>> {
-		// Note: vectors.ts needs a delete function for explicit invalidation
-		// For now, we rely on content hash change to invalidate
 		return Result.ok(undefined);
 	}
-
-	// ============================================================================
-	// Private Helpers
-	// ============================================================================
 
 	/**
 	 * Parse embedding from string or array format.
@@ -237,10 +204,6 @@ export class PlaylistProfilingService {
 			.slice(0, 16);
 	}
 }
-
-// ============================================================================
-// Factory
-// ============================================================================
 
 /**
  * Factory to create PlaylistProfilingService.

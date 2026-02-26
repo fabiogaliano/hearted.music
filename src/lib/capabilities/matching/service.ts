@@ -5,12 +5,6 @@
  * - Vector similarity (embeddings)
  * - Genre overlap
  * - Audio feature similarity
- * - Semantic/thematic alignment
- * - Context compatibility
- * - Flow compatibility
- *
- * Implements the full scoring algorithm from the old MatchingService,
- * adapted to use Result-based error handling and modern patterns.
  */
 
 import { Result } from "better-result";
@@ -18,20 +12,12 @@ import type { PlaylistProfilingService } from "@/lib/capabilities/profiling/serv
 import type { JobProgress } from "@/lib/data/jobs";
 import { emitItem, emitProgress } from "@/lib/jobs/progress/helpers";
 import type { EmbeddingService } from "@/lib/ml/embedding/service";
-import {
-	computeAdaptiveWeights,
-	type DataAvailability,
-	DEFAULT_MATCHING_CONFIG,
-} from "./config";
-import {
-	computeAudioFeatureScore,
-	computeContextScore,
-	computeFlowScore,
-	computeThematicScore,
-} from "./scoring";
+import { computeAdaptiveWeights, DEFAULT_MATCHING_CONFIG } from "./config";
+import { computeAudioFeatureScore } from "./scoring";
 import { cosineSimilarity } from "./semantic";
 import type {
 	BatchMatchResult,
+	DataAvailability,
 	MatchingConfig,
 	MatchingError,
 	MatchingPlaylistProfile,
@@ -48,10 +34,6 @@ export interface BatchMatchOptions {
 	/** Progress callback (optional) */
 	onProgress?: (progress: JobProgress) => void;
 }
-
-// ============================================================================
-// Service
-// ============================================================================
 
 export class MatchingService {
 	private readonly config: MatchingConfig;
@@ -220,43 +202,26 @@ export class MatchingService {
 		});
 	}
 
-	// ============================================================================
-	// Private - Scoring
-	// ============================================================================
-
 	/**
 	 * Score a song against a playlist profile.
-	 * Implements tiered scoring with deep analysis gate.
 	 */
 	private async scoreSongToPlaylist(
 		song: MatchingSong,
 		profile: MatchingPlaylistProfile,
 		songEmbedding: number[] | null,
 	): Promise<Result<MatchResult, MatchingError>> {
-		// Determine data availability for adaptive weights
 		const availability: DataAvailability = {
 			hasEmbedding: !!songEmbedding && !!profile.embedding,
 			hasGenres: !!song.genres && song.genres.length > 0,
 			hasAudioFeatures:
 				!!song.audioFeatures && Object.keys(profile.audioCentroid).length > 0,
-			hasAnalysis: !!song.analysis,
-			hasRecentSongs: !!profile.recentSongs && profile.recentSongs.length > 0,
 		};
 
-		// Compute adaptive weights based on available data
 		const weights = computeAdaptiveWeights(availability);
 
-		// ========================================
-		// Tier 1: Early scoring (always computed)
-		// ========================================
-
-		const vectorScore = this.computeVectorScore(
+		const embeddingScore = this.computeVectorScore(
 			songEmbedding,
 			profile.embedding,
-		);
-		const genreScore = this.computeGenreScore(
-			song.genres,
-			profile.genreDistribution,
 		);
 		const audioScore = availability.hasAudioFeatures
 			? computeAudioFeatureScore(
@@ -265,85 +230,31 @@ export class MatchingService {
 					this.config.audioWeights,
 				)
 			: 0;
-
-		// Calculate weighted early score for deep analysis gate
-		const earlyScore =
-			weights.vector * vectorScore +
-			weights.genre * genreScore +
-			weights.audio * audioScore;
-
-		// ========================================
-		// Tier 2: Deep analysis (if gate passes)
-		// ========================================
-
-		let semanticScore = 0;
-		let contextScore = 0;
-		let flowScore = 0;
-
-		// Only run expensive deep analysis if early score is promising
-		if (
-			availability.hasAnalysis &&
-			earlyScore > this.config.deepAnalysisThreshold
-		) {
-			// Thematic alignment
-			if (song.analysis?.themes && profile.themes) {
-				semanticScore = computeThematicScore(
-					song.analysis.themes,
-					profile.themes,
-				);
-			}
-
-			// Context alignment
-			if (song.analysis?.listeningContexts && profile.listeningContexts) {
-				contextScore = computeContextScore(
-					song.analysis.listeningContexts,
-					profile.listeningContexts,
-				);
-			}
-
-			// Flow compatibility
-			if (availability.hasRecentSongs && profile.recentSongs) {
-				const energy = song.audioFeatures?.energy ?? null;
-				const valence = song.audioFeatures?.valence ?? null;
-				flowScore = computeFlowScore(
-					song.analysis?.dominantMood ?? null,
-					energy,
-					valence,
-					profile.recentSongs,
-				);
-			}
-		}
-
-		// ========================================
-		// Final Score Calculation
-		// ========================================
+		const genreScore = this.computeGenreScore(
+			song.genres,
+			profile.genreDistribution,
+		);
 
 		const factors: ScoreFactors = {
-			vector: vectorScore,
-			genre: genreScore,
+			embedding: embeddingScore,
 			audio: audioScore,
-			semantic: semanticScore,
-			context: contextScore,
-			flow: flowScore,
+			genre: genreScore,
 		};
 
 		const finalScore = this.computeFinalScore(factors, weights);
 
-		// Compute confidence based on data availability
 		const availableCount = Object.values(availability).filter(Boolean).length;
-		const confidence = availableCount / 5; // 5 total factors
+		const confidence = availableCount / 3;
 
-		const result: MatchResult = {
+		return Result.ok({
 			songId: song.id,
 			playlistId: profile.playlistId,
 			score: Math.max(0, Math.min(1, finalScore)),
-			rank: 0, // Will be set after sorting
+			rank: 0,
 			factors,
 			confidence,
 			fromCache: false,
-		};
-
-		return Result.ok(result);
+		});
 	}
 
 	/**
@@ -354,12 +265,9 @@ export class MatchingService {
 		weights: MatchingWeights,
 	): number {
 		return (
-			factors.vector * weights.vector +
-			factors.genre * weights.genre +
+			factors.embedding * weights.embedding +
 			factors.audio * weights.audio +
-			factors.semantic * weights.semantic +
-			factors.context * weights.context +
-			factors.flow * weights.flow
+			factors.genre * weights.genre
 		);
 	}
 
@@ -422,10 +330,6 @@ export class MatchingService {
 		return weightedMatch / totalWeight;
 	}
 }
-
-// ============================================================================
-// Factory
-// ============================================================================
 
 /**
  * Create MatchingService instance.

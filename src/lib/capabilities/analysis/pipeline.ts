@@ -37,10 +37,7 @@ import {
 	emitStatus,
 } from "@/lib/jobs/progress/helpers";
 import type { DbError } from "@/lib/shared/errors/database";
-import {
-	NoLyricsAvailableError,
-	PipelineConfigError,
-} from "@/lib/shared/errors/domain/analysis";
+import { PipelineConfigError } from "@/lib/shared/errors/domain/analysis";
 import { type LlmProviderName, LlmService } from "../../ml/llm/service";
 import { type GeniusError, LyricsService } from "../lyrics/service";
 import {
@@ -198,9 +195,10 @@ export class AnalysisPipeline {
 		});
 		const songIds = songsToAnalyze.map((s) => s.songId);
 
-		const [lyricsCache, audioFeaturesResult] = await Promise.all([
+		const [lyricsCache, audioFeaturesResult, songsResult] = await Promise.all([
 			this.prefetchLyrics(songsToAnalyze),
 			audioFeatures.getBatch(songIds),
+			songs.getByIds(songIds),
 		]);
 
 		emitItem(job.id, {
@@ -215,6 +213,15 @@ export class AnalysisPipeline {
 			? audioFeaturesResult.value
 			: new Map();
 
+		const genresMap = new Map<string, string[]>();
+		if (Result.isOk(songsResult)) {
+			for (const s of songsResult.value) {
+				if (s.genres && s.genres.length > 0) {
+					genresMap.set(s.id, s.genres);
+				}
+			}
+		}
+
 		// 5. Process songs with concurrency control
 		const chunks = this.chunkArray(songsToAnalyze, this.config.concurrency);
 		let songIndex = 1; // Start at 1 (prefetch was 0)
@@ -224,49 +231,31 @@ export class AnalysisPipeline {
 				const currentIndex = songIndex++;
 				const songLabel = `${song.artist} - ${song.title}`;
 
-				// Emit: song analysis starting
+				const cachedLyrics = lyricsCache.get(song.songId);
+				const lyrics = cachedLyrics?.lyrics ?? song.lyrics;
+				const af = audioFeaturesMap.get(song.songId) ?? null;
+				const isInstrumental = this.detectInstrumentalPath(
+					lyrics,
+					af?.instrumentalness,
+				);
+
+				// Emit: song analysis starting (with instrumental hint)
 				emitItem(job.id, {
 					itemId: song.songId,
 					itemKind: "song",
 					status: "in_progress",
-					label: songLabel,
+					label: isInstrumental ? `${songLabel} (instrumental)` : songLabel,
 					index: currentIndex,
 				});
-
-				// Get lyrics from cache (may be null if not found)
-				const cachedLyrics = lyricsCache.get(song.songId);
-				const lyrics = cachedLyrics?.lyrics ?? song.lyrics;
-
-				// Skip songs without lyrics (they can't be analyzed)
-				if (!lyrics || lyrics.trim().length === 0) {
-					const noGeniusError = new NoLyricsAvailableError(
-						song.songId,
-						song.artist,
-						song.title,
-					);
-					console.warn(`[Pipeline] ${noGeniusError.message}`);
-
-					// Emit: song failed (no lyrics)
-					emitItem(job.id, {
-						itemId: song.songId,
-						itemKind: "song",
-						status: "failed",
-						label: `${songLabel} (no lyrics)`,
-						index: currentIndex,
-					});
-
-					return {
-						songId: song.songId,
-						result: Result.err(noGeniusError),
-					};
-				}
 
 				const input: AnalyzeSongInput = {
 					songId: song.songId,
 					artist: song.artist,
 					title: song.title,
 					lyrics,
-					audioFeatures: audioFeaturesMap.get(song.songId) ?? null,
+					audioFeatures: af,
+					genres: genresMap.get(song.songId),
+					instrumentalness: af?.instrumentalness ?? undefined,
 				};
 
 				const result = await this.songAnalysis.analyzeSong(input);
@@ -276,7 +265,7 @@ export class AnalysisPipeline {
 					itemId: song.songId,
 					itemKind: "song",
 					status: Result.isOk(result) ? "succeeded" : "failed",
-					label: songLabel,
+					label: isInstrumental ? `${songLabel} (instrumental)` : songLabel,
 					index: currentIndex,
 				});
 
@@ -562,6 +551,20 @@ export class AnalysisPipeline {
 		if (onProgress) {
 			await onProgress(progress);
 		}
+	}
+
+	/**
+	 * Quick instrumental check for SSE labeling.
+	 * Mirrors SongAnalysisService.detectInstrumental() logic.
+	 */
+	private detectInstrumentalPath(
+		lyrics: string | null | undefined,
+		instrumentalness: number | null | undefined,
+	): boolean {
+		if (!lyrics || lyrics.trim().length === 0) return true;
+		if (instrumentalness != null && instrumentalness > 0.5) return true;
+		if (lyrics.trim().split(/\s+/).length < 50) return true;
+		return false;
 	}
 
 	/**

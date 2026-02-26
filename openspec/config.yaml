@@ -1,0 +1,33 @@
+schema: spec-driven
+
+context: |
+  Hearted (liked.music) — web app that reveals what your Liked Songs are really about.
+  Sorts Spotify liked songs into playlists via AI analysis + matching.
+
+  Tech: TanStack Start, React 19, Tailwind v4, Zod v4, TypeScript 5.7, Biome, Vitest
+  Deploy: Cloudflare Workers | DB: Supabase | Runtime: Bun
+  External: Spotify API, ReccoBeats (audio features), Genius (lyrics), Last.fm (genres),
+  DeepInfra (embeddings), HuggingFace (fallback embeddings)
+
+  Architecture: src/lib/capabilities/ (analysis, matching, genre, lyrics, sync),
+  src/lib/integrations/ (spotify, deepinfra, lastfm, reccobeats),
+  src/lib/ml/ (embedding, llm, reranker), src/lib/data/ (Supabase data layer)
+
+  Patterns: Result<T, Error> everywhere (no throwing), TaggedError from better-result,
+  factory functions for services, Zod as single source of truth for validation + types.
+  No barrel exports. Tabs, double quotes. Path alias @/* → ./src/*
+
+  Brand voice: Curious, observant, warm, confident, playful.
+  Songs have agency. Compound moods. Poetic minimalism. Evocative fragments.
+  See docs/brand/ for full voice guide.
+
+rules:
+  proposal:
+    - Reference relevant existing specs when proposing changes
+    - Include "Affected specs" section listing which specs need delta updates
+  design:
+    - Follow existing service patterns (class + factory function + Result returns)
+    - Reference actual file paths in the codebase
+  tasks:
+    - Each task should be independently testable
+    - Include file paths for files being created or modified

@@ -6,68 +6,17 @@ import { useCallback, useRef, useState } from "react";
 
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import type { AnalysisContent } from "../../types";
-import { getIntensityLabel } from "./utils";
 
-// Type aliases for nested types
 type Theme = {
 	name: string;
-	confidence: number;
+	confidence?: number;
 	description: string;
 };
-type Emotional = NonNullable<AnalysisContent["emotional"]>;
 type JourneySegment = {
 	mood: string;
 	section: string;
 	description: string;
 };
-
-// ─────────────────────────────────────────────────────────────────────────
-// Internal: The Hook - Emotional truth
-// ─────────────────────────────────────────────────────────────────────────
-
-function EmotionalHook({ emotional }: { emotional: Emotional }) {
-	const theme = useTheme();
-	return (
-		<section className="border-y py-8" style={{ borderColor: theme.border }}>
-			{emotional.mood_description && (
-				<p
-					className="text-lg leading-relaxed"
-					style={{
-						fontFamily: fonts.display,
-						color: theme.text,
-						fontStyle: "italic",
-					}}
-				>
-					{emotional.mood_description}
-				</p>
-			)}
-
-			{/* Quick tags */}
-			<div className="mt-5 flex flex-wrap items-center gap-3">
-				{emotional.dominant_mood && (
-					<span
-						className="text-xs tracking-wide"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
-					>
-						{emotional.dominant_mood}
-					</span>
-				)}
-				{emotional.intensity !== undefined && (
-					<>
-						<span style={{ color: theme.border }}>·</span>
-						<span
-							className="text-xs tracking-wide"
-							style={{ fontFamily: fonts.body, color: theme.textMuted }}
-						>
-							{getIntensityLabel(emotional.intensity)}
-						</span>
-					</>
-				)}
-			</div>
-		</section>
-	);
-}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Internal: Theme item (controlled - parent manages which is open)
@@ -244,7 +193,6 @@ function JourneyTimeline({ journey }: { journey: JourneySegment[] }) {
 // ─────────────────────────────────────────────────────────────────────────
 
 interface MeaningSectionProps {
-	emotional?: Emotional;
 	themes?: Theme[];
 	journey?: JourneySegment[];
 	isJourneyExpanded: boolean;
@@ -252,7 +200,6 @@ interface MeaningSectionProps {
 }
 
 export function MeaningSection({
-	emotional,
 	themes,
 	journey,
 	isJourneyExpanded,
@@ -260,16 +207,11 @@ export function MeaningSection({
 }: MeaningSectionProps) {
 	const theme = useTheme();
 	const hasContent =
-		emotional ||
-		(themes && themes.length > 0) ||
-		(journey && journey.length > 0);
+		(themes && themes.length > 0) || (journey && journey.length > 0);
 	if (!hasContent) return null;
 
 	return (
 		<>
-			{/* THE HOOK - Emotional truth */}
-			{emotional && <EmotionalHook emotional={emotional} />}
-
 			{/* WHAT IT'S ABOUT - Theme names visible, descriptions on hover */}
 			{themes && themes.length > 0 && <ThemesList themes={themes} />}
 

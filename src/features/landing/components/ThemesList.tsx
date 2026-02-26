@@ -3,7 +3,7 @@ import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 export interface ThemesListProps {
-	themes: Array<{ name: string; confidence: number }>;
+	themes: Array<{ name: string; confidence?: number }>;
 }
 
 const THEME_DESCRIPTIONS: Record<string, string> = {

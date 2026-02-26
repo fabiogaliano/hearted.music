@@ -24,6 +24,12 @@ export interface LikedSong {
 		artist_id: string | null;
 		album: string | null;
 		image_url: string | null;
+		genres: string[];
+		audio_features: {
+			tempo: number | null;
+			energy: number | null;
+			valence: number | null;
+		} | null;
 	};
 	analysis: SongAnalysis | null;
 	uiAnalysisStatus: UIAnalysisStatus;
@@ -40,49 +46,25 @@ export interface SongAnalysis {
 }
 
 export interface AnalysisContent {
-	meaning?: {
-		themes?: Array<{
-			name: string;
-			confidence: number;
-			description: string;
-		}>;
-		interpretation?: {
-			metaphors?: Array<{
-				text: string;
-				meaning: string;
-			}>;
-			deeper_meaning?: string;
-			surface_meaning?: string;
-			cultural_significance?: string;
-		};
-	};
-	emotional?: {
-		energy?: number;
-		valence?: number;
-		intensity?: number;
-		dominant_mood?: string;
-		mood_description?: string;
-		journey?: Array<{
-			mood: string;
-			section: string;
-			description: string;
-		}>;
-	};
-	context?: {
-		audience?: {
-			resonates_with?: string[];
-			universal_appeal?: number;
-			primary_demographic?: string;
-		};
-		best_moments?: string[];
-		listening_contexts?: Record<string, number>;
-	};
-	musical_style?: {
-		vocal_style?: string;
-		genre_primary?: string;
-		sonic_texture?: string;
-		production_style?: string;
-	};
+	headline?: string;
+	compound_mood?: string;
+	mood_description?: string;
+	interpretation?: string;
+	themes?: Array<{
+		name: string;
+		confidence?: number;
+		description: string;
+	}>;
+	journey?: Array<{
+		section: string;
+		mood: string;
+		description: string;
+	}>;
+	key_lines?: Array<{
+		line: string;
+		insight: string;
+	}>;
+	sonic_texture?: string;
 	audio_features?: {
 		tempo?: number;
 		energy?: number;
@@ -93,12 +75,6 @@ export interface AnalysisContent {
 		acousticness?: number;
 		danceability?: number;
 		instrumentalness?: number;
-	};
-	matching_profile?: {
-		theme_cohesion?: number;
-		mood_consistency?: number;
-		sonic_similarity?: number;
-		energy_flexibility?: number;
 	};
 }
 

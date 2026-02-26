@@ -2,8 +2,6 @@
 
 > Core song-to-playlist matching algorithm that enables sorting liked songs into destination playlists.
 
-**Implementation Phases**: 4e (Matching), 4f (Genre), 4g (Profiling)
-**Source**: `old_app/lib/services/matching/`, `vectorization/`, `semantic/`, `genre/`, `profiling/`
 **Target**: `src/lib/capabilities/matching/`, `capabilities/genre/`, `capabilities/profiling/`, `integrations/lastfm/`, `integrations/reccobeats/`, `ml/embedding/`
 
 ---
@@ -14,21 +12,19 @@ Define the matching pipeline that computes which playlists each liked song shoul
 
 ---
 ## Requirements
-### Requirement: Multi-Factor Matching
+### Requirement: Three-Signal Matching
 
-The system SHALL compute match scores using multiple complementary signals.
+The system SHALL compute match scores using three complementary signals: embedding similarity, audio feature compatibility, and genre alignment.
 
-#### Scenario: Vector similarity computed
+#### Scenario: Embedding similarity computed
 - **WHEN** matching a song to playlists
 - **THEN** compute cosine similarity between song embedding and playlist profile embedding
-
-#### Scenario: Semantic similarity computed
-- **WHEN** matching a song to playlists
-- **THEN** compute theme/mood overlap using structured analysis fields
+- **AND** use `cosineSimilarity()` from `capabilities/matching/semantic.ts`
 
 #### Scenario: Audio feature compatibility computed
 - **WHEN** matching a song to playlists
-- **THEN** compare audio feature centroids (energy, danceability, valence, etc.)
+- **THEN** compare song audio features against playlist audio centroid using weighted Euclidean distance
+- **AND** weight individual features via `AudioFeatureWeights` config
 
 #### Scenario: Genre alignment computed
 - **WHEN** matching a song to playlists
@@ -36,7 +32,11 @@ The system SHALL compute match scores using multiple complementary signals.
 
 #### Scenario: Weighted score aggregation
 - **WHEN** all factor scores are computed
-- **THEN** aggregate using configurable weights from `matching-config.ts`
+- **THEN** aggregate using configurable weights: `{ embedding: 0.5, audio: 0.3, genre: 0.2 }`
+
+#### Scenario: Adaptive weights for missing data
+- **WHEN** a song is missing one or more data sources (embedding, audio features, genres)
+- **THEN** redistribute missing factor weight proportionally to available factors via `computeAdaptiveWeights()`
 
 ---
 
@@ -46,15 +46,16 @@ The system SHALL allow tuning matching algorithm without code changes.
 
 #### Scenario: Weight configuration
 - **WHEN** deploying the application
-- **THEN** read weights from config: `{ vector: 0.4, semantic: 0.25, audio: 0.2, genre: 0.15 }`
+- **THEN** read weights from `DEFAULT_MATCHING_WEIGHTS`: `{ embedding: 0.5, audio: 0.3, genre: 0.2 }`
 
 #### Scenario: Threshold configuration
 - **WHEN** determining minimum match quality
 - **THEN** use configurable threshold (default: 0.3 minimum score)
+- **AND** use veto threshold (default: 0.2) for poor matches
 
 #### Scenario: Top-K configuration
 - **WHEN** returning match results
-- **THEN** return configurable number of top matches (default: 5)
+- **THEN** return configurable number of top matches (default: 10)
 
 ---
 
@@ -96,10 +97,6 @@ The system SHALL compute aggregate profiles for destination playlists.
 - **WHEN** computing playlist profile
 - **THEN** compute genre frequency distribution across playlist songs
 
-#### Scenario: Emotion distribution
-- **WHEN** computing playlist profile
-- **THEN** compute emotion frequency from song analyses (joy, sadness, energy, etc.)
-
 #### Scenario: Profile persistence
 - **WHEN** profile is computed
 - **THEN** store in `playlist_profile` table with `content_hash` for invalidation
@@ -134,13 +131,13 @@ The system SHALL enrich songs with top 3 ranked genres from Last.fm.
 
 ---
 
-### Requirement: Text Extraction for Embeddings
+### Requirement: Embedding Text Composition
 
-The system SHALL extract meaningful text from structured analyses.
+The system SHALL build a single embedding text per song by concatenating descriptive analysis fields and genre metadata. See [analysis-schema spec](/openspec/specs/analysis-schema/spec.md) for composition details.
 
-#### Scenario: Song text extraction
+#### Scenario: Song embedding text
 - **WHEN** embedding a song
-- **THEN** extract: themes, mood descriptors, emotional journey, musical style, context
+- **THEN** compose text from flat analysis fields: headline, compound_mood, mood_description, interpretation, themes, journey moods, sonic_texture, and genres
 
 #### Scenario: Playlist text extraction
 - **WHEN** embedding a playlist
@@ -197,35 +194,33 @@ The system SHALL organize matching pipeline modules under the capability, integr
 │                        MATCHING PIPELINE                             │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
-│  1. GENRE ENRICHMENT (Phase 4f)                                     │
+│  1. GENRE ENRICHMENT                                                │
 │     Song → Last.fm API → Normalize → Store song.genres              │
 │                                                                      │
-│  2. TEXT EXTRACTION                                                  │
-│     Song Analysis → Extract themes/mood/style → Text for embedding  │
+│  2. EMBEDDING TEXT COMPOSITION                                      │
+│     Flat Analysis Fields + Genres → Single text → Embedding         │
 │                                                                      │
-│  3. EMBEDDING (Already implemented in Phase 4d)                     │
+│  3. EMBEDDING                                                       │
 │     Text → DeepInfra API → 1024-dim vector → Store song_embedding   │
 │                                                                      │
-│  4. PLAYLIST PROFILING (Phase 4g)                                   │
+│  4. PLAYLIST PROFILING                                              │
 │     Destination Playlist → Aggregate songs → Store playlist_profile │
 │       • Embedding centroid (avg of song embeddings)                 │
 │       • Audio centroid (avg of audio features)                      │
 │       • Genre distribution (frequency counts)                       │
-│       • Emotion distribution (from analyses)                        │
 │                                                                      │
-│  5. MATCHING (Phase 4e)                                             │
+│  5. MATCHING (3 signals)                                            │
 │     For each (song, playlist) pair:                                 │
-│       • Vector score: cosine(song_embedding, playlist_centroid)     │
-│       • Semantic score: theme/mood overlap                          │
-│       • Audio score: feature distance                               │
-│       • Genre score: Jaccard similarity                             │
-│       • Final score: weighted sum                                   │
+│       • Embedding score: cosine(song_embedding, playlist_centroid)  │
+│       • Audio score: weighted feature distance                      │
+│       • Genre score: distribution overlap                           │
+│       • Final score: adaptive weighted sum                          │
 │                                                                      │
 │  6. CACHING                                                         │
 │     Context hash → match_context                                    │
 │     Results → match_result (song_id, playlist_id, score, rank)      │
 │                                                                      │
-│  7. RERANKING (Already implemented)                                 │
+│  7. RERANKING                                                       │
 │     Top-N matches → DeepInfra reranker → Refined ranking            │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
@@ -237,60 +232,47 @@ The system SHALL organize matching pipeline modules under the capability, integr
 
 ### `capabilities/matching/config.ts`
 ```typescript
-export const MATCHING_CONFIG = {
-  weights: {
-    vector: 0.40,    // Embedding similarity
-    semantic: 0.25,  // Theme/mood overlap
-    audio: 0.20,     // Audio feature compatibility
-    genre: 0.15,     // Genre alignment
-  },
-  thresholds: {
-    minimum: 0.30,   // Minimum score to show
-    confident: 0.70, // High-confidence match
-  },
-  limits: {
-    topK: 5,         // Max matches per song
-    batchSize: 50,   // Songs per batch
-  },
+export const DEFAULT_MATCHING_WEIGHTS: MatchingWeights = {
+  embedding: 0.5,
+  audio: 0.3,
+  genre: 0.2,
 }
+
+export const DEFAULT_MATCHING_CONFIG: MatchingConfig = {
+  weights: DEFAULT_MATCHING_WEIGHTS,
+  audioWeights: DEFAULT_AUDIO_FEATURE_WEIGHTS,
+  minScoreThreshold: 0.3,
+  maxResultsPerSong: 10,
+  skipVectorScoring: false,
+  vetoThreshold: 0.2,
+}
+
+export function computeAdaptiveWeights(availability: DataAvailability): MatchingWeights
 ```
 
 ### `capabilities/matching/service.ts`
 ```typescript
 export class MatchingService {
-  async matchSong(songId: string, playlistIds: string[]): Promise<MatchResult[]>
-  async matchBatch(songIds: string[], playlistIds: string[]): Promise<Map<string, MatchResult[]>>
-
-  private computeVectorScore(songEmb: number[], playlistEmb: number[]): number
-  private computeSemanticScore(songAnalysis: SongAnalysis, playlistAnalysis: PlaylistAnalysis): number
-  private computeAudioScore(songFeatures: AudioFeatures, playlistCentroid: AudioFeatures): number
-  private computeGenreScore(songGenres: string[], playlistDistribution: GenreDistribution): number
-  private aggregateScores(factors: ScoreFactors): number
+  async matchSong(song: MatchingSong, profiles: MatchingPlaylistProfile[], embedding?: number[]): Promise<Result<MatchResult[], MatchingError>>
+  async matchBatch(songs: MatchingSong[], profiles: MatchingPlaylistProfile[], ...): Promise<BatchMatchResult>
 }
+```
+
+### `capabilities/matching/scoring.ts`
+```typescript
+export function computeAudioFeatureScore(songFeatures: MatchingAudioFeatures, playlistCentroid: Record<string, number>, weights: AudioFeatureWeights): number
 ```
 
 ### `capabilities/matching/cache.ts`
 ```typescript
 export class MatchCachingService {
-  async getOrComputeMatches(
-    accountId: string,
-    songIds: string[],
-    playlistIds: string[]
-  ): Promise<Map<string, MatchResult[]>>
-
-  private computeContextHash(playlistIds: string[], songIds: string[], config: MatchingConfig): string
-  private getCachedResults(contextHash: string): Promise<MatchResult[] | null>
-  private cacheResults(contextHash: string, results: MatchResult[]): Promise<void>
+  async getOrComputeMatches(accountId: string, songIds: string[], playlistIds: string[]): Promise<Map<string, MatchResult[]>>
 }
 ```
 
 ### `capabilities/matching/semantic.ts`
 ```typescript
-export class SemanticMatcher {
-  computeThemeSimilarity(songThemes: string[], playlistThemes: string[]): number
-  computeMoodCompatibility(songMood: MoodProfile, playlistMood: MoodProfile): number
-  computeOverallSemantic(songAnalysis: SongAnalysis, playlistAnalysis: PlaylistAnalysis): number
-}
+export function cosineSimilarity(a: number[], b: number[]): number
 ```
 
 ### `capabilities/genre/service.ts`
@@ -311,13 +293,9 @@ export class LastFmService {
 ### `capabilities/profiling/service.ts`
 ```typescript
 export class PlaylistProfilingService {
-  async computeProfile(playlistId: string): Promise<PlaylistProfile>
-  async computeProfiles(playlistIds: string[]): Promise<Map<string, PlaylistProfile>>
-
-  private computeEmbeddingCentroid(embeddings: number[][]): number[]
-  private computeAudioCentroid(features: AudioFeatures[]): AudioFeatures
-  private computeGenreDistribution(genres: string[][]): GenreDistribution
-  private computeEmotionDistribution(analyses: SongAnalysis[]): EmotionDistribution
+  async getProfile(playlistId: string): Promise<Result<ComputedPlaylistProfile | null, ProfilingError>>
+  async computeProfile(playlistId: string, songs: ...): Promise<Result<ComputedPlaylistProfile, ProfilingError>>
+  async invalidateProfile(playlistId: string): Promise<void>
 }
 ```
 
@@ -326,34 +304,49 @@ export class PlaylistProfilingService {
 ## Types
 
 ```typescript
+interface ScoreFactors {
+  embedding: number
+  audio: number
+  genre: number
+}
+
 interface MatchResult {
   songId: string
   playlistId: string
   score: number
   rank: number
   factors: ScoreFactors
+  confidence: number
+  fromCache: boolean
 }
 
-interface ScoreFactors {
-  vector: number
-  semantic: number
-  audio: number
-  genre: number
+interface MatchingWeights {
+  embedding: number  // default 0.5
+  audio: number      // default 0.3
+  genre: number      // default 0.2
 }
 
-interface PlaylistProfile {
+interface MatchingPlaylistProfile {
   playlistId: string
-  embedding: number[]           // 1024-dim centroid
-  audioCentroid: AudioFeatures  // Avg audio features
-  genreDistribution: Record<string, number>  // genre → weight
-  emotionDistribution: Record<string, number> // emotion → weight
-  songCount: number
-  songIds: string[]
-  contentHash: string
+  embedding: number[] | null
+  audioCentroid: Record<string, number>
+  genreDistribution: Record<string, number>
+  method?: "learned_from_songs" | "from_description"
 }
 
-interface GenreDistribution {
-  [genre: string]: number  // Normalized 0-1 weight
+interface MatchingSong {
+  id: string
+  spotifyId: string
+  name: string
+  artists: string[]
+  genres: string[] | null
+  audioFeatures?: MatchingAudioFeatures | null
+}
+
+interface DataAvailability {
+  hasEmbedding: boolean
+  hasGenres: boolean
+  hasAudioFeatures: boolean
 }
 ```
 
@@ -385,11 +378,11 @@ RECCOBEATS_API_URL=xxx      # ReccoBeats for audio features (optional)
 
 ## References
 
-- [ROADMAP.md Phases 4e-4g](/docs/migration_v2/ROADMAP.md) — Implementation tasks
-- [02-SERVICES.md](/docs/migration_v2/02-SERVICES.md) — Service inventory
+- [analysis-schema spec](/openspec/specs/analysis-schema/spec.md) — Upstream analysis output contract
 - [matching-ui spec](/openspec/specs/matching-ui/spec.md) — UI for match results
-- [01-SCHEMA.md](/docs/migration_v2/01-SCHEMA.md) — Database tables
+- [lyrics spec](/openspec/specs/lyrics/spec.md) — Lyrics retrieval feeding analysis input
 
 ---
 
-*Created: January 20, 2026 — Gap analysis identified missing core business logic*
+*Created: January 20, 2026*
+*Updated: February 26, 2026 — Simplified to 3 scoring signals (embedding, audio, genre), removed emotion distribution from profiling*

@@ -40,6 +40,10 @@ vi.mock("@/lib/data/song-audio-feature", () => ({
 	getBatch: vi.fn().mockResolvedValue(Result.ok(new Map())),
 }));
 
+vi.mock("@/lib/data/song", () => ({
+	getByIds: vi.fn().mockResolvedValue(Result.ok([])),
+}));
+
 // Mock LLM service
 vi.mock("../../ml/llm/service", () => ({
 	LlmService: vi.fn().mockImplementation(() => ({})),
@@ -156,9 +160,9 @@ describe("Pipeline Lyrics Integration", () => {
 
 			expect(Result.isOk(result)).toBe(true);
 			if (Result.isOk(result)) {
-				// Song should be counted as failed (no lyrics)
-				expect(result.value.failed).toBe(1);
-				expect(result.value.succeeded).toBe(0);
+				// Song routes to instrumental analysis path when lyrics unavailable
+				expect(result.value.succeeded).toBe(1);
+				expect(result.value.failed).toBe(0);
 			}
 		});
 

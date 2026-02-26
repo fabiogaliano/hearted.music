@@ -326,12 +326,11 @@ describe.skipIf(!RUN_TEST || !HAS_GENIUS || !HAS_LLM || !HAS_TEST_ACCOUNT)(
 				expect(analysis.analysis).toBeDefined();
 				expect(typeof analysis.analysis).toBe("object");
 
-				// The analysis field contains the structured LLM output
+				// The analysis field contains the structured LLM output (flat schema)
 				const analysisData = analysis.analysis as any;
-				expect(analysisData.meaning).toBeDefined();
-				expect(analysisData.emotional).toBeDefined();
-				expect(analysisData.context).toBeDefined();
-				expect(analysisData.musical_style).toBeDefined();
+				expect(analysisData.headline).toBeDefined();
+				expect(analysisData.compound_mood).toBeDefined();
+				expect(analysisData.mood_description).toBeDefined();
 			});
 		});
 
