@@ -18,6 +18,12 @@ const commonOptions: BuildOptions = {
 const configs: BuildOptions[] = [
   {
     ...commonOptions,
+    entryPoints: [resolve(srcDir, "content/intercept-token.ts")],
+    outfile: resolve(distDir, "content/intercept-token.js"),
+    format: "iife",
+  },
+  {
+    ...commonOptions,
     entryPoints: [resolve(srcDir, "content/spotify-token.ts")],
     outfile: resolve(distDir, "content/spotify-token.js"),
     format: "iife",

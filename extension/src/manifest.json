@@ -12,8 +12,14 @@
 	"content_scripts": [
 		{
 			"matches": ["https://open.spotify.com/*"],
+			"js": ["content/intercept-token.js"],
+			"world": "MAIN",
+			"run_at": "document_start"
+		},
+		{
+			"matches": ["https://open.spotify.com/*"],
 			"js": ["content/spotify-token.js"],
-			"run_at": "document_idle"
+			"run_at": "document_start"
 		}
 	],
 	"action": {
