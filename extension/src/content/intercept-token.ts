@@ -55,12 +55,13 @@ window.fetch = function (...args: Parameters<typeof fetch>) {
 	return origFetch.apply(this, args);
 };
 
-// Also log all pathfinder requests to help discover operation hashes
+// Also log all pathfinder requests and dispatch hash update events
 const pfLog: Array<{ op: string; hash: string; vars: string }> = [];
 (window as any).__pfLog = pfLog;
 
-const _origFetch = origFetch;
-// Re-wrap to also capture pathfinder bodies (the token interceptor above only looks at headers)
+const HASH_EVENT_NAME = "__hearted_hash";
+const lastSeenHashes = new Map<string, string>();
+
 const tokenFetch = window.fetch;
 window.fetch = function (...args: Parameters<typeof fetch>) {
 	const [input, init] = args;
@@ -78,15 +79,23 @@ window.fetch = function (...args: Parameters<typeof fetch>) {
 	) {
 		try {
 			const parsed = JSON.parse(init.body);
-			const entry = {
-				op: parsed.operationName || "unknown",
-				hash: parsed.extensions?.persistedQuery?.sha256Hash || "none",
-				vars: JSON.stringify(parsed.variables || {}).substring(0, 300),
-			};
-			pfLog.push(entry);
+			const op = parsed.operationName || "unknown";
+			const hash = parsed.extensions?.persistedQuery?.sha256Hash || "none";
+			const vars = JSON.stringify(parsed.variables || {}).substring(0, 300);
+
+			pfLog.push({ op, hash, vars });
 			console.log(
-				`[hearted.pf] ${entry.op} | ${entry.hash.substring(0, 16)}... | ${entry.vars.substring(0, 100)}`,
+				`[hearted.pf] ${op} | ${hash.substring(0, 16)}... | ${vars.substring(0, 100)}`,
 			);
+
+			if (hash !== "none" && lastSeenHashes.get(op) !== hash) {
+				lastSeenHashes.set(op, hash);
+				window.dispatchEvent(
+					new CustomEvent(HASH_EVENT_NAME, {
+						detail: { operationName: op, sha256Hash: hash },
+					}),
+				);
+			}
 		} catch {}
 	}
 	return tokenFetch.apply(this, args);

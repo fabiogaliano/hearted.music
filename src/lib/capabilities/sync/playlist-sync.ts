@@ -226,7 +226,7 @@ export class PlaylistSyncService {
 
 	/**
 	 * Syncs tracks for a specific playlist from Spotify to database.
-	 * Adds new tracks, removes tracks no longer in playlist.
+	 * Fetches tracks from Spotify API, then delegates to syncPlaylistTracksFromData.
 	 */
 	async syncPlaylistTracks(
 		accountId: string,
@@ -246,8 +246,23 @@ export class PlaylistSyncService {
 			);
 		}
 
-		// Dedupe at boundary: Spotify allows duplicates, we keep first occurrence only
-		const spotifyTracks = dedupeTracksBySpotifyId(spotifyTracksResult.value);
+		return this.syncPlaylistTracksFromData(
+			accountId,
+			playlist,
+			spotifyTracksResult.value,
+		);
+	}
+
+	/**
+	 * Syncs pre-fetched tracks for a playlist to database.
+	 * Accepts tracks from any source (OAuth API or extension pathfinder).
+	 */
+	async syncPlaylistTracksFromData(
+		_accountId: string,
+		playlist: Playlist,
+		rawTracks: SpotifyTrackDTO[],
+	): Promise<Result<PlaylistTrackSyncResult, PlaylistSyncFailedError>> {
+		const spotifyTracks = dedupeTracksBySpotifyId(rawTracks);
 
 		const existingResult = await playlists.getPlaylistSongs(playlist.id);
 		if (Result.isError(existingResult)) {
@@ -278,7 +293,6 @@ export class PlaylistSyncService {
 		}
 		const upsertedSongs = upsertedSongsResult.value;
 
-		// Build map of spotify_id -> song for lookup
 		const songBySpotifyId = new Map(
 			upsertedSongs.map((s: Song) => [s.spotify_id, s]),
 		);
@@ -298,7 +312,6 @@ export class PlaylistSyncService {
 		}> = [];
 		const toRemove: PlaylistSong[] = [];
 
-		// Find new tracks to add
 		spotifyTracks.forEach((st: SpotifyTrackDTO, index: number) => {
 			const song = songBySpotifyId.get(st.track.id);
 			if (!song) {
@@ -318,7 +331,6 @@ export class PlaylistSyncService {
 			}
 		});
 
-		// Find tracks to remove (in DB but not in Spotify)
 		for (const existing of existingSongs) {
 			const song = upsertedSongs.find((s: Song) => s.id === existing.song_id);
 			if (!song || !spotifyTrackIds.has(song.spotify_id)) {
