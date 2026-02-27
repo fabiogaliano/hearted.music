@@ -17,9 +17,12 @@ Content Script (open.spotify.com)     Background Service Worker          hearted
   │                                     ├─ GET /v1/me/playlists            │
   │                                     ├─ GET /v1/playlists/{id}/items    │
   │                                     │                                  │
-  │                                     ├─ chrome.cookies.get(session_id)  │
+  │                                     │                                  │
+hearted. App (externally_connectable)   │                                  │
+  ├─ User clicks "Connect Extension" ──→│ stores API token in storage      │
+  │  chrome.runtime.sendMessage(extId)  │                                  │
   │                                     ├─ POST /api/extension/sync ──────→├─ importLikedTracks()
-  │                                     │                                  ├─ incrementalSync()
+  │                                     │  Authorization: Bearer <token>   ├─ incrementalSync()
   │                                     │                                  ├─ playlist sync
   │                                     │←── { ok, total, added, removed } │
   │                                     │                                  │
@@ -83,7 +86,7 @@ src/routes/api/extension/
 | `getAccountById(accountId)` | `src/lib/data/accounts.ts` | Validate accountId from extension |
 | `likedSongsData.getAll(accountId)` | `src/lib/data/liked-song.ts` | Existing liked songs for diff |
 | `likedSongsData.getCount(accountId)` | `src/lib/data/liked-song.ts` | Track count for status |
-| Session cookie: `"session_id"` | `src/lib/auth/cookies.ts:9` | Extension reads via chrome.cookies.get() |
+| ~~Session cookie~~ | ~~`src/lib/auth/cookies.ts:9`~~ | ~~Replaced by bearer token via externally_connectable~~ |
 | API route pattern | `src/routes/api/artist-images-for-tracks.tsx` | createFileRoute + server.handlers + Zod |
 | Playlist sync service | `src/lib/capabilities/sync/playlist-sync.ts` | Playlist + playlist track upsert logic |
 
@@ -157,25 +160,53 @@ src/routes/api/extension/
 
 ---
 
-### Milestone 5: End-to-end liked songs sync (extension → backend)
+### Milestone 5: Extension ↔ App auth handoff (externally_connectable)
 
-- [ ] Background worker reads session_id cookie via chrome.cookies.get()
-- [ ] After fetching liked tracks, POST to /api/extension/sync with session header
-- [ ] Handle response, update SyncState in storage
+> **BLOCKED**: Requires new auth system. Cookie-based auth won't work — `SameSite=Lax`
+> blocks cross-origin POST from extension origin. Implement bearer token handoff instead.
+
+**Auth flow**:
+1. Extension declares `externally_connectable` with hearted. app origin in manifest.json
+2. App onboarding includes "Install Extension" step
+3. App detects extension via `chrome.runtime.sendMessage(EXTENSION_ID, { type: "PING" })`
+4. User clicks "Connect" → app generates API token → sends to extension via `chrome.runtime.sendMessage`
+5. Extension stores token in `chrome.storage.local`
+6. All `postToBackend()` calls use `Authorization: Bearer <token>` instead of `credentials: "include"`
+7. Backend sync endpoint validates bearer token instead of session cookie
+
+- [ ] Add `externally_connectable` to manifest.json with app origins
+- [ ] Add CONNECT message handler in service worker (receives + stores API token)
+- [ ] Add PING message handler for extension detection from app page
+- [ ] Replace `credentials: "include"` with `Authorization: Bearer` header in `postToBackend()`
+- [ ] Backend: generate + store API tokens for extension connections
+- [ ] Backend: update `/api/extension/sync` to validate bearer token → resolve accountId
+- [ ] Adapt sync services for extension flow: make `SpotifyService` optional in `PlaylistSyncService` (currently uses `null as unknown` cast in sync.tsx — works but bypasses type safety)
+- [ ] Decide on `userProfile` in sync payload: extension sends it but backend ignores it (Zod strips it). Either add to schema for display ("Syncing as...") or remove from payload if bearer token already identifies the user
+- [ ] App onboarding: "Connect Extension" step with detection + token handoff
 - [ ] Wire up GET_STATUS message handler
+- [ ] Handle response, update SyncState in storage
 
-**Test**: Open spotify.com → open hearted. in another tab (logged in) → trigger sync from background console → liked songs appear in hearted. UI.
+**Test**: Open hearted. → connect extension → open spotify.com → trigger sync → liked songs appear in hearted. UI.
 
 ---
 
 ### Milestone 6: Popup UI
 
+> Currently a static placeholder ("hearted. / Spotify sync extension"). Needs to become
+> the user's live window into sync activity.
+
 - [ ] Build popup index.html with dark theme (inline CSS matching hearted. aesthetic)
-- [ ] Build App.tsx with: status dot, track count, sync button, progress, last sync time, errors
+- [ ] Build App.tsx with:
+  - Connection status (token detected / no Spotify tab open)
+  - Live sync progress bar ("Fetching tracks... 1,200 / 2,340")
+  - Last sync timestamp + track count
+  - "Sync Now" button (disabled while syncing or no token)
+  - Error state with message
 - [ ] Wire up GET_STATUS on mount, TRIGGER_SYNC on button click
 - [ ] Wire up chrome.storage.local.onChanged for live progress during sync
+- [ ] Consider: show "Syncing as **username**..." from cachedProfile for multi-account clarity
 
-**Test**: Click extension icon → popup shows status → click "Sync Now" → progress updates live → shows "✓ 2,340 tracks synced".
+**Test**: Click extension icon → popup shows status → click "Sync Now" → progress updates live → shows "2,340 tracks synced".
 
 ---
 
@@ -225,8 +256,15 @@ src/routes/api/extension/
 ### Token Extraction
 The Spotify web player exposes `https://open.spotify.com/get_access_token` which returns the current session's OAuth token. Content script runs on spotify.com origin, so this is a same-origin fetch with cookies included automatically. Returns `{ accessToken, accessTokenExpirationTimestampMs, isAnonymous }`.
 
-### Session Cookie
-hearted. stores session as HTTP-only `session_id` cookie containing raw accountId UUID. In dev: not Secure, SameSite=Lax. Extension reads it via `chrome.cookies.get({ url: BACKEND_URL, name: "session_id" })` (requires `cookies` permission + host_permissions for backend URL).
+### Extension ↔ Backend Auth
+~~Cookie-based auth won't work: `SameSite=Lax` blocks cookies on cross-origin POST from extension origin.~~
+
+Uses `externally_connectable` token handoff instead:
+- Extension declares app origin in `externally_connectable.matches`
+- App page sends API token to extension via `chrome.runtime.sendMessage(extensionId, ...)`
+- Extension stores token in `chrome.storage.local`, sends as `Authorization: Bearer` header
+- Backend validates token to resolve accountId (no cookies involved)
+- `cookies` permission is NOT needed for backend auth (still needed for Spotify if used)
 
 ### Build
 esbuild with 3 entry points:
