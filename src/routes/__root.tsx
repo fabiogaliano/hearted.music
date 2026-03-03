@@ -209,14 +209,13 @@ function NotFoundPage() {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-	// Initialize react-scan only in development (after hydration)
 	useEffect(() => {
-		if (import.meta.env.DEV) {
+		if (import.meta.env.DEV && import.meta.env.VITE_DEVTOOLS !== "false") {
 			scan({
 				enabled: true,
-				showToolbar: true, // Bottom-right toolbar with FPS counter
-				log: true, // Console output for render events (disable if too noisy)
-				animationSpeed: "fast", // "slow" | "fast" | "off"
+				showToolbar: true,
+				log: true,
+				animationSpeed: "fast",
 			});
 		}
 	}, []);
@@ -229,18 +228,20 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			<body>
 				{children}
 				<Toaster richColors position="top-right" />
-				<TanStackDevtools
-					config={{
-						position: "bottom-right",
-					}}
-					plugins={[
-						{
-							name: "Tanstack Router",
-							render: <TanStackRouterDevtoolsPanel />,
-						},
-						TanStackQueryDevtools,
-					]}
-				/>
+				{import.meta.env.VITE_DEVTOOLS !== "false" && (
+					<TanStackDevtools
+						config={{
+							position: "bottom-right",
+						}}
+						plugins={[
+							{
+								name: "Tanstack Router",
+								render: <TanStackRouterDevtoolsPanel />,
+							},
+							TanStackQueryDevtools,
+						]}
+					/>
+				)}
 				<Scripts />
 			</body>
 		</html>
