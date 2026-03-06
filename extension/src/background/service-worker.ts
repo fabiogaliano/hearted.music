@@ -154,7 +154,9 @@ async function fetchAllLikedTracks(
 		const items = tracks?.items ?? [];
 		total = tracks?.totalCount ?? items.length;
 
-		const mapped = items.map(mapPathfinderTrack);
+		const mapped = items
+			.map(mapPathfinderTrack)
+			.filter((t): t is SpotifyTrackDTO => t !== null);
 		allTracks.push(...mapped);
 		offset += limit;
 
@@ -401,8 +403,29 @@ async function performSync(): Promise<SyncResult> {
 	return tracks;
 };
 
-chrome.runtime.onInstalled.addListener((details) => {
+chrome.runtime.onInstalled.addListener(async (details) => {
 	console.log("[hearted.] Extension installed:", details.reason);
+
+	// Re-inject content scripts into existing Spotify tabs so token
+	// interception resumes without requiring a manual page refresh.
+	try {
+		const tabs = await chrome.tabs.query({ url: "https://open.spotify.com/*" });
+		for (const tab of tabs) {
+			if (!tab.id) continue;
+			await chrome.scripting.executeScript({
+				target: { tabId: tab.id },
+				files: ["content/intercept-token.js"],
+				world: "MAIN",
+			});
+			await chrome.scripting.executeScript({
+				target: { tabId: tab.id },
+				files: ["content/spotify-token.js"],
+			});
+			console.log("[hearted.] Re-injected content scripts into tab", tab.id);
+		}
+	} catch (err) {
+		console.warn("[hearted.] Failed to re-inject content scripts:", err);
+	}
 });
 
 chrome.runtime.onMessageExternal.addListener(
@@ -487,8 +510,11 @@ chrome.runtime.onMessageExternal.addListener(
 					clearSpotifyTokenCache();
 				}
 
-				// Step 2 should mirror Spotify auth session state, not stale local token TTL.
-				sendResponse({ type: "SPOTIFY_STATUS", hasToken: true });
+				sendResponse({
+					type: "SPOTIFY_STATUS",
+					hasToken: hasUsableToken,
+					hasSession: true,
+				});
 			})();
 			return true;
 		}
@@ -541,13 +567,19 @@ chrome.runtime.onMessage.addListener(
 			}
 
 			case "GET_STATUS": {
-				getSyncState().then((state) => {
+				(async () => {
+					if (!cachedToken) {
+						const { spotifyToken } =
+							await chrome.storage.local.get("spotifyToken");
+						if (spotifyToken) cachedToken = spotifyToken as SpotifyTokenPayload;
+					}
+					const state = await getSyncState();
 					const response: StatusResponse = {
 						hasToken: isTokenValid(),
 						tokenExpiresAtMs: cachedToken?.expiresAtMs ?? null,
 					};
 					sendResponse({ ...response, sync: state });
-				});
+				})();
 				return true;
 			}
 

@@ -11,7 +11,8 @@ import { fonts } from "@/lib/theme/fonts";
 import type { ThemeColor, ThemeConfig } from "@/lib/theme/types";
 import { ExtensionSetupTrail } from "@/features/onboarding/components/ExtensionSetupTrail";
 
-const SPOTIFY_LOGIN_URL = "https://accounts.spotify.com/login";
+const SPOTIFY_LOGIN_URL =
+	"https://accounts.spotify.com/en-GB/login?continue=https%3A%2F%2Fopen.spotify.com%2F";
 const EXTENSION_STORE_URL =
 	"https://chrome.google.com/webstore/detail/hearted-spotify-sync/EXTENSION_ID";
 

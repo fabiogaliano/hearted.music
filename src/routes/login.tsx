@@ -29,7 +29,11 @@ function LoginPage() {
 		setError(null);
 		setLoading("google");
 		try {
-			await signIn.social({ provider: "google", callbackURL: "/dashboard" });
+			await signIn.social({
+				provider: "google",
+				callbackURL: "/dashboard",
+				newUserCallbackURL: "/onboarding",
+			});
 		} catch {
 			setError("Failed to sign in with Google. Please try again.");
 			setLoading(null);

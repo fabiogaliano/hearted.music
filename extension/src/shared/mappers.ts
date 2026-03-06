@@ -6,7 +6,9 @@ export function extractId(uri: string): string {
 
 /** Maps a pathfinder liked-track item (fetchLibraryTracks response).
  *  URI is on the wrapper (`item.track._uri`), not on `item.track.data`. */
-export function mapPathfinderTrack(item: any): SpotifyTrackDTO {
+export function mapPathfinderTrack(item: any): SpotifyTrackDTO | null {
+	if (!item.track?._uri?.startsWith("spotify:track:")) return null;
+
 	const trackUri: string = item.track._uri;
 	const track = item.track.data;
 

@@ -5,10 +5,12 @@
  * and Supabase transaction pooler on Cloudflare Workers).
  * Drizzle is ONLY used for Better Auth — app data stays on @supabase/supabase-js.
  *
- * Lazy singleton: reused within a CF Workers isolate, recreated if evicted.
+ * Per-request: each call creates a fresh postgres connection to avoid
+ * Cloudflare Workers' cross-request I/O isolation errors.
  */
 
 import { betterAuth } from "better-auth";
+import { Result } from "better-result";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import postgres from "postgres";
@@ -16,7 +18,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { env } from "@/env";
 import * as authSchema from "@/lib/auth-schema";
 
-function createAuth() {
+export function getAuth() {
 	const sql = postgres(env.DATABASE_URL, {
 		prepare: false,
 		max: 1,
@@ -53,25 +55,21 @@ function createAuth() {
 						const { createAccountForBetterAuthUser } = await import(
 							"@/lib/data/accounts"
 						);
-						await createAccountForBetterAuthUser({
+						const result = await createAccountForBetterAuthUser({
 							better_auth_user_id: user.id,
 							email: user.email,
 							display_name: user.name,
 						});
+						if (Result.isError(result)) {
+							throw new Error(
+								`Failed to create app account for user ${user.id}: ${result.error}`,
+							);
+						}
 					},
 				},
 			},
 		},
 	});
-}
-
-let authInstance: ReturnType<typeof createAuth> | null = null;
-
-export function getAuth() {
-	if (!authInstance) {
-		authInstance = createAuth();
-	}
-	return authInstance;
 }
 
 export type Auth = ReturnType<typeof getAuth>;
