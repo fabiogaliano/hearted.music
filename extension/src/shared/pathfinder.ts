@@ -6,6 +6,7 @@ export async function queryPathfinder<T>(
 	token: string,
 	operationName: string,
 	variables: Record<string, unknown>,
+	retries = 3,
 ): Promise<T> {
 	const sha256Hash = await getHash(operationName);
 
@@ -23,10 +24,15 @@ export async function queryPathfinder<T>(
 	});
 
 	if (res.status === 429) {
+		if (retries <= 0) {
+			throw new Error(
+				`Spotify rate limit: max retries exceeded for ${operationName}`,
+			);
+		}
 		const retryAfter = Number(res.headers.get("Retry-After")) || 5;
 		console.log(`[hearted.] Rate limited, retrying in ${retryAfter}s`);
 		await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
-		return queryPathfinder<T>(token, operationName, variables);
+		return queryPathfinder<T>(token, operationName, variables, retries - 1);
 	}
 
 	if (!res.ok) {

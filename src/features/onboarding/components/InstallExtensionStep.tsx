@@ -23,7 +23,8 @@ import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 
 const EXTENSION_STORE_URL =
 	"https://chrome.google.com/webstore/detail/hearted-spotify-sync/EXTENSION_ID";
-const SPOTIFY_LOGIN_URL = "https://accounts.spotify.com/login";
+const SPOTIFY_LOGIN_URL =
+	"https://accounts.spotify.com/en-GB/login?continue=https%3A%2F%2Fopen.spotify.com%2F";
 
 // ── Action content — right column ─────────────────────────────────────────
 

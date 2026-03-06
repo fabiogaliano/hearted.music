@@ -3,7 +3,7 @@
 	"name": "everything you ever hearted.",
 	"version": "0.1.0",
 	"description": "reads your library from Spotify. sends them to hearted. nothing else.",
-	"permissions": ["storage", "cookies", "alarms"],
+	"permissions": ["storage", "cookies", "alarms", "scripting"],
 	"host_permissions": [
 		"https://*.spotify.com/*",
 		"http://localhost/*",
