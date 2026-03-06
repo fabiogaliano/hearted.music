@@ -6,16 +6,9 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
 import { Result } from "better-result";
 import { z } from "zod";
-import { requireSession } from "@/lib/auth/session";
-import {
-	type LibrarySummary,
-	LibrarySummarySchema,
-	SyncOrchestrator,
-} from "@/lib/capabilities/sync/orchestrator";
-import { createJob, getJobById } from "@/lib/data/jobs";
+import { requireAuthSession } from "@/lib/auth.server";
 import { getCount as getLikedSongCount } from "@/lib/data/liked-song";
 import {
 	getPlaylistCount,
@@ -26,20 +19,16 @@ import {
 	clearPhaseJobIds,
 	completeOnboarding,
 	getOrCreatePreferences,
+	getPhaseJobIds,
 	isOnboardingComplete,
 	ONBOARDING_STEPS,
 	type OnboardingStep,
 	updateOnboardingStep,
-	updatePhaseJobIds,
 	updateTheme,
 } from "@/lib/data/preferences";
-import { getSpotifyService } from "@/lib/integrations/spotify";
 import { type PhaseJobIds, PhaseJobIdsSchema } from "@/lib/jobs/progress/types";
 import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
 import { type ThemeColor, themeSchema } from "@/lib/theme/types";
-
-// Re-export LibrarySummary for client use
-export type { LibrarySummary };
 
 /** Playlist view model for onboarding UI (camelCase frontend format) */
 export interface OnboardingPlaylist {
@@ -90,8 +79,7 @@ const playlistIdsInputSchema = z.object({
  */
 export const getOnboardingData = createServerFn({ method: "GET" }).handler(
 	async (): Promise<OnboardingData> => {
-		const request = getRequest();
-		const session = requireSession(request);
+		const { session } = await requireAuthSession();
 
 		const [
 			prefsResult,
@@ -165,8 +153,7 @@ export const getOnboardingData = createServerFn({ method: "GET" }).handler(
 export const saveThemePreference = createServerFn({ method: "POST" })
 	.inputValidator(themeInputSchema)
 	.handler(async ({ data }): Promise<{ success: true }> => {
-		const request = getRequest();
-		const session = requireSession(request);
+		const { session } = await requireAuthSession();
 
 		const result = await updateTheme(session.accountId, data.theme);
 
@@ -178,183 +165,75 @@ export const saveThemePreference = createServerFn({ method: "POST" })
 	});
 
 /**
- * Creates 3 separate sync jobs (one per phase) for the user.
- * Persists the job IDs to DB for refresh resilience.
- * Called from WelcomeStep when the user clicks "Continue".
+ * Returns library summary counts from DB (populated by extension sync).
+ * Replaces the old Spotify API-based discovery that required OAuth tokens.
  */
-export const createSyncJob = createServerFn({ method: "POST" }).handler(
-	async (): Promise<PhaseJobIds> => {
-		const request = getRequest();
-		const session = requireSession(request);
+export const getLibrarySummary = createServerFn({ method: "GET" }).handler(
+	async (): Promise<{ songs: number; playlists: number }> => {
+		const { session } = await requireAuthSession();
 
-		const [songsResult, playlistsResult, tracksResult] = await Promise.all([
-			createJob(session.accountId, "sync_liked_songs"),
-			createJob(session.accountId, "sync_playlists"),
-			createJob(session.accountId, "sync_playlist_tracks"),
+		const [songsResult, playlistsResult] = await Promise.all([
+			getLikedSongCount(session.accountId),
+			getPlaylistCount(session.accountId),
 		]);
 
 		if (Result.isError(songsResult)) {
-			throw new OnboardingError("create_sync_jobs", songsResult.error);
+			throw new OnboardingError("load_songs_count", songsResult.error);
 		}
 		if (Result.isError(playlistsResult)) {
-			throw new OnboardingError("create_sync_jobs", playlistsResult.error);
-		}
-		if (Result.isError(tracksResult)) {
-			throw new OnboardingError("create_sync_jobs", tracksResult.error);
+			throw new OnboardingError("load_playlists_count", playlistsResult.error);
 		}
 
-		const phaseJobIds: PhaseJobIds = {
-			liked_songs: songsResult.value.id,
-			playlists: playlistsResult.value.id,
-			playlist_tracks: tracksResult.value.id,
+		return {
+			songs: songsResult.value,
+			playlists: playlistsResult.value,
 		};
-
-		// Persist to DB for refresh resilience
-		const persistResult = await updatePhaseJobIds(
-			session.accountId,
-			phaseJobIds,
-		);
-		if (Result.isError(persistResult)) {
-			// Log but don't fail - jobs are already created
-			console.warn("Failed to persist phaseJobIds:", persistResult.error);
-		}
-
-		return phaseJobIds;
 	},
 );
 
 /**
- * Discovers Spotify library totals (songs, playlists, playlist tracks).
- * Called from ConnectingStep to fetch totals before navigating to SyncingStep.
- *
- * Returns totals + cached playlists that are reused in executeSync to avoid
- * duplicate API calls.
- */
-export const getLibrarySummary = createServerFn({ method: "POST" }).handler(
-	async (): Promise<LibrarySummary> => {
-		const request = getRequest();
-		const session = requireSession(request);
-
-		const spotifyResult = await getSpotifyService(session.accountId);
-		if (Result.isError(spotifyResult)) {
-			throw new OnboardingError(
-				"discovery",
-				new Error("Spotify not connected"),
-			);
-		}
-
-		const orchestrator = new SyncOrchestrator(spotifyResult.value);
-		const discoveryResult = await orchestrator.getLibrarySummary(
-			session.accountId,
-		);
-
-		if (Result.isError(discoveryResult)) {
-			throw new OnboardingError("discovery", discoveryResult.error);
-		}
-
-		return discoveryResult.value;
-	},
-);
-
-const executeSyncInputSchema = z.object({
-	phaseJobIds: PhaseJobIdsSchema,
-	librarySummary: LibrarySummarySchema,
-});
-
-/** Terminal job statuses that shouldn't be restarted */
-const TERMINAL_STATUSES = new Set(["completed", "failed"]);
-
-/**
- * Executes the sync process with pre-discovered totals.
- * Called from SyncingStep after ConnectingStep has completed discovery.
- *
- * The discovery data (totals + cached playlists) is passed from the client,
- * avoiding duplicate API calls and enabling immediate progress display.
- *
- * Idempotent: returns success if jobs are already running or completed.
- * Progress is streamed via SSE to /api/jobs/$id/progress for each job.
+ * No-op sync executor - sync is now handled externally by the Chrome extension.
+ * Kept for type compatibility; the extension POSTs data directly via /api/extension/sync.
  */
 export const executeSync = createServerFn({ method: "POST" })
-	.inputValidator(executeSyncInputSchema)
-	.handler(async ({ data }): Promise<{ success: true }> => {
-		const request = getRequest();
-		const session = requireSession(request);
-
-		const jobEntries = Object.entries(data.phaseJobIds) as [string, string][];
-		const jobResults = await Promise.all(
-			jobEntries.map(async ([phase, jobId]) => ({
-				phase,
-				jobId,
-				result: await getJobById(jobId),
-			})),
-		);
-
-		const jobs: {
-			phase: string;
-			job: NonNullable<
-				Awaited<ReturnType<typeof getJobById>> extends Result<infer T, unknown>
-					? T
-					: never
-			>;
-		}[] = [];
-
-		for (const { phase, result } of jobResults) {
-			if (Result.isError(result)) {
-				throw new OnboardingError(
-					"execute_sync",
-					new Error(`Failed to get ${phase} job`),
-				);
-			}
-			const job = result.value;
-			if (!job || job.account_id !== session.accountId) {
-				throw new OnboardingError(
-					"execute_sync",
-					new Error(`${phase} job not found`),
-				);
-			}
-			jobs.push({ phase, job });
-		}
-
-		// Idempotency check: if all jobs are terminal (completed/failed), return early
-		const allTerminal = jobs.every((j) => TERMINAL_STATUSES.has(j.job.status));
-		if (allTerminal) {
-			return { success: true };
-		}
-
-		// If any job is already running, return early (sync in progress)
-		const anyRunning = jobs.some((j) => j.job.status === "running");
-		if (anyRunning) {
-			return { success: true };
-		}
-
-		// Only proceed if at least one job is pending
-		const anyPending = jobs.some((j) => j.job.status === "pending");
-		if (!anyPending) {
-			// All jobs are in unexpected state - shouldn't happen
-			return { success: true };
-		}
-
-		const spotifyResult = await getSpotifyService(session.accountId);
-		if (Result.isError(spotifyResult)) {
-			throw new OnboardingError(
-				"execute_sync",
-				new Error("Spotify not connected"),
-			);
-		}
-
-		const orchestrator = new SyncOrchestrator(spotifyResult.value);
-		const syncResult = await orchestrator.execute(
-			session.accountId,
-			data.phaseJobIds,
-			data.librarySummary,
-		);
-
-		if (Result.isError(syncResult)) {
-			throw new OnboardingError("execute_sync", syncResult.error);
-		}
-
+	.inputValidator(z.object({ phaseJobIds: PhaseJobIdsSchema }))
+	.handler(async (): Promise<{ success: true }> => {
+		await requireAuthSession();
 		return { success: true };
 	});
+
+/**
+ * Clears phaseJobIds so SyncingStep starts fresh when a new sync is triggered.
+ * Called from InstallExtensionStep before navigating to the syncing step.
+ */
+export const resetSyncJobs = createServerFn({ method: "POST" }).handler(
+	async (): Promise<{ success: true }> => {
+		const { session } = await requireAuthSession();
+		const result = await clearPhaseJobIds(session.accountId);
+		if (Result.isError(result)) {
+			console.warn("Failed to reset sync jobs:", result.error);
+		}
+		return { success: true };
+	},
+);
+
+/**
+ * Polls for phaseJobIds from the database.
+ * Used by SyncingStep when waiting for the extension to trigger sync.
+ * Returns null if no active sync jobs exist yet.
+ */
+export const pollPhaseJobIds = createServerFn({ method: "GET" }).handler(
+	async (): Promise<PhaseJobIds | null> => {
+		const { session } = await requireAuthSession();
+
+		const result = await getPhaseJobIds(session.accountId);
+		if (Result.isError(result)) {
+			throw new OnboardingError("poll_phase_job_ids", result.error);
+		}
+
+		return result.value;
+	},
+);
 
 /**
  * Saves the current onboarding step for resumability.
@@ -364,8 +243,7 @@ export const executeSync = createServerFn({ method: "POST" })
 export const saveOnboardingStep = createServerFn({ method: "POST" })
 	.inputValidator(stepInputSchema)
 	.handler(async ({ data }): Promise<{ success: true }> => {
-		const request = getRequest();
-		const session = requireSession(request);
+		const { session } = await requireAuthSession();
 
 		const result = await updateOnboardingStep(session.accountId, data.step);
 
@@ -392,8 +270,7 @@ export const saveOnboardingStep = createServerFn({ method: "POST" })
 export const markOnboardingComplete = createServerFn({
 	method: "POST",
 }).handler(async (): Promise<{ success: true }> => {
-	const request = getRequest();
-	const session = requireSession(request);
+	const { session } = await requireAuthSession();
 
 	const result = await completeOnboarding(session.accountId);
 
@@ -412,8 +289,7 @@ export const markOnboardingComplete = createServerFn({
 export const savePlaylistDestinations = createServerFn({ method: "POST" })
 	.inputValidator(playlistIdsInputSchema)
 	.handler(async ({ data }): Promise<{ success: true }> => {
-		const request = getRequest();
-		const session = requireSession(request);
+		const { session } = await requireAuthSession();
 
 		const playlistsResult = await getPlaylists(session.accountId);
 

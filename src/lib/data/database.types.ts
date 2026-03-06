@@ -36,30 +36,82 @@ export type Database = {
 		Tables: {
 			account: {
 				Row: {
+					better_auth_user_id: string | null;
 					created_at: string;
 					display_name: string | null;
 					email: string | null;
 					id: string;
-					spotify_id: string;
+					image_url: string | null;
+					spotify_id: string | null;
 					updated_at: string;
 				};
 				Insert: {
+					better_auth_user_id?: string | null;
 					created_at?: string;
 					display_name?: string | null;
 					email?: string | null;
 					id?: string;
-					spotify_id: string;
+					image_url?: string | null;
+					spotify_id?: string | null;
 					updated_at?: string;
 				};
 				Update: {
+					better_auth_user_id?: string | null;
 					created_at?: string;
 					display_name?: string | null;
 					email?: string | null;
 					id?: string;
-					spotify_id?: string;
+					image_url?: string | null;
+					spotify_id?: string | null;
 					updated_at?: string;
 				};
-				Relationships: [];
+				Relationships: [
+					{
+						foreignKeyName: "account_better_auth_user_id_fkey";
+						columns: ["better_auth_user_id"];
+						isOneToOne: true;
+						referencedRelation: "user";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			api_token: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					id: string;
+					last_used_at: string | null;
+					name: string | null;
+					revoked_at: string | null;
+					token_hash: string;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					id?: string;
+					last_used_at?: string | null;
+					name?: string | null;
+					revoked_at?: string | null;
+					token_hash: string;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					id?: string;
+					last_used_at?: string | null;
+					name?: string | null;
+					revoked_at?: string | null;
+					token_hash?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "api_token_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
 			};
 			app_token: {
 				Row: {
@@ -81,44 +133,6 @@ export type Database = {
 					updated_at?: string;
 				};
 				Relationships: [];
-			};
-			auth_token: {
-				Row: {
-					access_token: string;
-					account_id: string;
-					created_at: string;
-					id: string;
-					refresh_token: string;
-					token_expires_at: string;
-					updated_at: string;
-				};
-				Insert: {
-					access_token: string;
-					account_id: string;
-					created_at?: string;
-					id?: string;
-					refresh_token: string;
-					token_expires_at: string;
-					updated_at?: string;
-				};
-				Update: {
-					access_token?: string;
-					account_id?: string;
-					created_at?: string;
-					id?: string;
-					refresh_token?: string;
-					token_expires_at?: string;
-					updated_at?: string;
-				};
-				Relationships: [
-					{
-						foreignKeyName: "auth_token_account_id_fkey";
-						columns: ["account_id"];
-						isOneToOne: true;
-						referencedRelation: "account";
-						referencedColumns: ["id"];
-					},
-				];
 			};
 			item_status: {
 				Row: {
@@ -414,6 +428,56 @@ export type Database = {
 					},
 				];
 			};
+			oauth_account: {
+				Row: {
+					access_token: string | null;
+					access_token_expires_at: string | null;
+					account_id: string;
+					created_at: string;
+					id: string;
+					id_token: string | null;
+					provider_id: string;
+					refresh_token: string | null;
+					scope: string | null;
+					updated_at: string;
+					user_id: string;
+				};
+				Insert: {
+					access_token?: string | null;
+					access_token_expires_at?: string | null;
+					account_id: string;
+					created_at?: string;
+					id: string;
+					id_token?: string | null;
+					provider_id: string;
+					refresh_token?: string | null;
+					scope?: string | null;
+					updated_at?: string;
+					user_id: string;
+				};
+				Update: {
+					access_token?: string | null;
+					access_token_expires_at?: string | null;
+					account_id?: string;
+					created_at?: string;
+					id?: string;
+					id_token?: string | null;
+					provider_id?: string;
+					refresh_token?: string | null;
+					scope?: string | null;
+					updated_at?: string;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "oauth_account_user_id_fkey";
+						columns: ["user_id"];
+						isOneToOne: false;
+						referencedRelation: "user";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			playlist: {
 				Row: {
 					account_id: string;
@@ -611,6 +675,47 @@ export type Database = {
 						columns: ["song_id"];
 						isOneToOne: false;
 						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			session: {
+				Row: {
+					created_at: string;
+					expires_at: string;
+					id: string;
+					ip_address: string | null;
+					token: string;
+					updated_at: string;
+					user_agent: string | null;
+					user_id: string;
+				};
+				Insert: {
+					created_at?: string;
+					expires_at: string;
+					id: string;
+					ip_address?: string | null;
+					token: string;
+					updated_at?: string;
+					user_agent?: string | null;
+					user_id: string;
+				};
+				Update: {
+					created_at?: string;
+					expires_at?: string;
+					id?: string;
+					ip_address?: string | null;
+					token?: string;
+					updated_at?: string;
+					user_agent?: string | null;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "session_user_id_fkey";
+						columns: ["user_id"];
+						isOneToOne: false;
+						referencedRelation: "user";
 						referencedColumns: ["id"];
 					},
 				];
@@ -825,6 +930,36 @@ export type Database = {
 					},
 				];
 			};
+			user: {
+				Row: {
+					created_at: string;
+					email: string;
+					email_verified: boolean;
+					id: string;
+					image: string | null;
+					name: string;
+					updated_at: string;
+				};
+				Insert: {
+					created_at?: string;
+					email: string;
+					email_verified?: boolean;
+					id: string;
+					image?: string | null;
+					name: string;
+					updated_at?: string;
+				};
+				Update: {
+					created_at?: string;
+					email?: string;
+					email_verified?: boolean;
+					id?: string;
+					image?: string | null;
+					name?: string;
+					updated_at?: string;
+				};
+				Relationships: [];
+			};
 			user_preferences: {
 				Row: {
 					account_id: string;
@@ -866,6 +1001,33 @@ export type Database = {
 					},
 				];
 			};
+			verification: {
+				Row: {
+					created_at: string | null;
+					expires_at: string;
+					id: string;
+					identifier: string;
+					updated_at: string | null;
+					value: string;
+				};
+				Insert: {
+					created_at?: string | null;
+					expires_at: string;
+					id: string;
+					identifier: string;
+					updated_at?: string | null;
+					value: string;
+				};
+				Update: {
+					created_at?: string | null;
+					expires_at?: string;
+					id?: string;
+					identifier?: string;
+					updated_at?: string | null;
+					value?: string;
+				};
+				Relationships: [];
+			};
 			waitlist: {
 				Row: {
 					created_at: string;
@@ -905,16 +1067,12 @@ export type Database = {
 					analysis_created_at: string;
 					analysis_id: string;
 					analysis_model: string;
-					audio_energy: number;
-					audio_tempo: number;
-					audio_valence: number;
 					id: string;
 					liked_at: string;
 					matching_status: string;
 					song_album_name: string;
 					song_artist_ids: string[];
 					song_artists: string[];
-					song_genres: string[];
 					song_id: string;
 					song_image_url: string;
 					song_name: string;

@@ -15,7 +15,27 @@ import {
 	SpotifyNotFoundError,
 	SpotifyRateLimitError,
 } from "@/lib/shared/errors/external/spotify";
-import { SpotifyRateLimitHttpError } from "./sdk";
+
+/**
+ * Custom error that includes rate limit details from HTTP headers.
+ */
+export class SpotifyRateLimitHttpError extends Error {
+	constructor(
+		public readonly status: number,
+		public readonly retryAfterSeconds: number | null,
+		public readonly rateLimitInfo: {
+			limit: string | null;
+			remaining: string | null;
+			reset: string | null;
+		},
+	) {
+		const retryMsg = retryAfterSeconds
+			? ` Retry after ${retryAfterSeconds}s.`
+			: "";
+		super(`Spotify rate limit (429).${retryMsg}`);
+		this.name = "SpotifyRateLimitHttpError";
+	}
+}
 
 /** Options for retry behavior */
 export interface RetryOptions {

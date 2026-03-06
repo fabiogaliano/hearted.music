@@ -1,150 +1,96 @@
 # auth Specification
 
 ## Purpose
-TBD - created by archiving change add-spotify-auth. Update Purpose after archive.
+Authenticate users via Better Auth with social OAuth providers (Google) and manage DB-backed sessions.
+
 ## Requirements
-### Requirement: Spotify OAuth Login
 
-The system SHALL authenticate users via Spotify OAuth using PKCE flow.
+### Requirement: Social OAuth Login
 
-#### Scenario: User initiates login
-- **WHEN** user visits `/auth/spotify`
-- **THEN** system generates PKCE code verifier and challenge
-- **AND** stores code verifier in HTTP-only cookie
-- **AND** redirects to Spotify authorization URL with code challenge
+The system SHALL authenticate users via Better Auth with Google social OAuth.
 
-#### Scenario: User approves access
-- **WHEN** Spotify redirects to `/auth/callback` with authorization code
-- **THEN** system verifies state parameter matches
-- **AND** exchanges code for access token using code verifier
-- **AND** creates or updates account in database
-- **AND** creates session cookie
-- **AND** redirects to dashboard
+#### Scenario: User initiates Google login
+- **WHEN** user clicks "Sign in with Google" on the login page
+- **THEN** `authClient.signIn.social({ provider: "google" })` redirects to Google consent screen
+- **AND** after approval, Google redirects to `/api/auth/callback/google`
+- **AND** Better Auth creates or links user record
+- **AND** Better Auth sets session cookie
+- **AND** user is redirected to dashboard (or onboarding if first login)
 
-#### Scenario: User denies access
-- **WHEN** Spotify redirects with error parameter
-- **THEN** system displays error message
-- **AND** redirects to home page
-
-#### Scenario: State mismatch detected
-- **WHEN** callback state does not match stored state
-- **THEN** system rejects the request
-- **AND** redirects to home with error
-
----
-
-### Requirement: Token Security
-
-The system SHALL store Spotify tokens securely server-side.
-
-#### Scenario: Tokens stored securely
-- **WHEN** user completes OAuth flow
-- **THEN** access_token is stored in auth_token table
-- **AND** refresh_token is stored in auth_token table
-- **AND** token_expires_at is calculated and stored
-- **AND** tokens are never exposed to client-side code
-- **AND** tokens are only accessible via service_role
-
-#### Scenario: Tokens isolated from identity
-- **WHEN** tokens are stored
-- **THEN** account table contains only identity (spotify_id, email, display_name)
-- **AND** auth_token table contains only credentials (tokens, expiry)
-- **AND** separation enables token rotation without touching account
-
----
-
-### Requirement: Automatic Token Refresh
-
-The system SHALL automatically refresh expired tokens.
-
-#### Scenario: Token expired before API call
-- **WHEN** Spotify API call is needed
-- **AND** access_token has expired (token_expires_at < now)
-- **THEN** system uses refresh_token to obtain new access_token
-- **AND** updates tokens in database
-- **AND** proceeds with original API call
-
-#### Scenario: Refresh token invalid
-- **WHEN** refresh token request fails
-- **THEN** system clears session
-- **AND** redirects user to login
+#### Scenario: User denies OAuth access
+- **WHEN** user denies access on the provider's consent screen
+- **THEN** Better Auth handles the error callback
+- **AND** user is redirected to login page with error message
 
 ---
 
 ### Requirement: Session Management
 
-The system SHALL manage user sessions via HTTP-only cookies.
+The system SHALL manage user sessions via Better Auth's DB-backed sessions.
 
 #### Scenario: Session created on login
-- **WHEN** OAuth flow completes successfully
-- **THEN** session ID is stored in HTTP-only cookie
-- **AND** cookie is marked Secure (in production)
+- **WHEN** social OAuth flow completes successfully
+- **THEN** Better Auth creates a `session` record in the database
+- **AND** sets an HTTP-only session cookie (`better-auth.session_token`)
+- **AND** cookie is marked Secure in production
 - **AND** cookie has SameSite=Lax attribute
 
 #### Scenario: Session validated on request
-- **WHEN** authenticated route is accessed
-- **THEN** system extracts session from cookie
-- **AND** verifies session is valid
-- **AND** loads associated account
+- **WHEN** an authenticated route or server function is accessed
+- **THEN** system calls `auth.api.getSession({ headers })` with request headers
+- **AND** Better Auth looks up the session token in the database
+- **AND** verifies session has not expired
+- **AND** returns the associated user data
+
+#### Scenario: Session expired
+- **WHEN** session token references an expired session
+- **THEN** `auth.api.getSession()` returns null
+- **AND** user is redirected to login
 
 #### Scenario: Session destroyed on logout
-- **WHEN** user submits POST to `/auth/logout`
-- **THEN** session cookie is cleared
-- **AND** user is redirected to home
+- **WHEN** user triggers logout via `authClient.signOut()`
+- **THEN** Better Auth deletes the session record from database
+- **AND** clears the session cookie
+- **AND** user is redirected to landing page
+
+---
+
+### Requirement: Account Record Creation
+
+The system SHALL create an app account record when a user first authenticates.
+
+#### Scenario: New user first login
+- **WHEN** a user completes social OAuth for the first time
+- **THEN** Better Auth creates a `user` record (email, name, image)
+- **AND** the system creates an `account` record with `better_auth_user_id` referencing the Better Auth user
+- **AND** `spotify_id` is left NULL (populated on first extension sync)
+- **AND** `display_name` and `email` are copied from the Better Auth user
+
+#### Scenario: Returning user login
+- **WHEN** an existing user logs in again
+- **THEN** Better Auth finds the existing user record
+- **AND** creates a new session
+- **AND** the `account` record is not modified
+
+---
+
+### Requirement: Auth Route Handler
+
+The system SHALL expose Better Auth endpoints via a catch-all API route.
+
+#### Scenario: Auth API requests
+- **WHEN** any request hits `/api/auth/*`
+- **THEN** the catch-all route at `src/routes/api/auth/$.ts` forwards it to `auth.handler(request)`
+- **AND** Better Auth handles sign-in, sign-up, callback, session, and sign-out endpoints
 
 ---
 
 ### Requirement: Logout
 
-The system SHALL allow users to log out.
+The system SHALL allow users to log out via Better Auth.
 
 #### Scenario: User logs out
-- **WHEN** user submits POST to `/auth/logout`
-- **THEN** session is destroyed
-- **AND** session cookie is cleared
+- **WHEN** user triggers `authClient.signOut()`
+- **THEN** Better Auth deletes the session from the database
+- **AND** clears the session cookie
 - **AND** user is redirected to landing page
-
----
-
-### Requirement: Account Record
-
-The system SHALL maintain an account record for each authenticated user.
-
-#### Scenario: New user login
-- **WHEN** user logs in for the first time
-- **THEN** new account record is created
-- **AND** spotify_id is stored (unique identifier)
-- **AND** email is stored (if provided)
-- **AND** display_name is stored (if provided)
-
-#### Scenario: Returning user login
-- **WHEN** existing user logs in again
-- **THEN** account record is updated
-- **AND** tokens are refreshed in auth_token table
-- **AND** profile info is updated (email, display_name)
-
----
-
-### Requirement: Auth Token Storage
-
-The system SHALL store authentication tokens in a separate auth_token table.
-
-#### Scenario: Tokens stored on login
-- **WHEN** OAuth flow completes successfully
-- **THEN** auth_token record is created or updated
-- **AND** account_id links to the account
-- **AND** access_token, refresh_token, token_expires_at are stored
-- **AND** only one token set exists per account (UNIQUE constraint)
-
-#### Scenario: Tokens updated on refresh
-- **WHEN** token refresh occurs
-- **THEN** existing auth_token record is updated
-- **AND** new access_token replaces old
-- **AND** new refresh_token replaces old (if provided by Spotify)
-- **AND** token_expires_at is recalculated
-
-#### Scenario: Tokens deleted on logout
-- **WHEN** user logs out
-- **THEN** auth_token record MAY be retained (for re-auth)
-- **OR** auth_token record MAY be deleted (if revocation requested)
-

@@ -13,7 +13,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
-import { getSession } from "@/lib/auth/session";
+import { getAuthSession } from "@/lib/auth.server";
 import { getJobById, type JobProgress } from "@/lib/data/jobs";
 import { subscribe, unsubscribeAll } from "@/lib/jobs/progress/emitter";
 import {
@@ -46,8 +46,8 @@ export const Route = createFileRoute("/api/jobs/$id/progress")({
 				}
 
 				// Check authentication - return 404 to not reveal endpoint existence
-				const session = getSession(request);
-				if (!session) {
+				const authContext = await getAuthSession();
+				if (!authContext) {
 					return new Response("Not found", { status: 404 });
 				}
 
@@ -58,7 +58,7 @@ export const Route = createFileRoute("/api/jobs/$id/progress")({
 				}
 
 				const job = jobResult.value;
-				if (!job || job.account_id !== session.accountId) {
+				if (!job || job.account_id !== authContext.session.accountId) {
 					// Return 404 for both not found and not owned (security)
 					return new Response("Not found", { status: 404 });
 				}

@@ -20,11 +20,12 @@ import {
 	setupOnboardingNavigationMock,
 	setupShortcutMock,
 } from "@/test/mocks";
-import { render, within } from "@/test/utils/render";
+import { render, screen, within } from "@/test/utils/render";
 import { Onboarding } from "../Onboarding";
 
 const mockSavePlaylistDestinations = vi.fn();
 const mockSaveTheme = vi.fn();
+const mockUseLocation = vi.fn(() => ({ state: {} }));
 
 vi.mock("../hooks/useOnboardingNavigation", () =>
 	setupOnboardingNavigationMock(),
@@ -42,8 +43,16 @@ vi.mock("@/lib/server/onboarding.functions", () => ({
 	saveTheme: (args: unknown) => mockSaveTheme(args),
 }));
 
+vi.mock("../components/SyncingStep", () => ({
+	SyncingStep: ({ phaseJobIds }: { phaseJobIds: unknown }) => (
+		<div data-testid="syncing-step-phase-job-ids">
+			{phaseJobIds === null ? "null" : "non-null"}
+		</div>
+	),
+}));
+
 vi.mock("@tanstack/react-router", () => ({
-	useLocation: () => ({ state: {} }),
+	useLocation: () => mockUseLocation(),
 	useNavigate: () => vi.fn(),
 }));
 
@@ -67,9 +76,33 @@ const createMockOnboardingData = (
 describe("Onboarding Flow", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockUseLocation.mockReturnValue({ state: {} });
 		mockGoToStep.mockResolvedValue(undefined);
 		mockSavePlaylistDestinations.mockResolvedValue(undefined);
 		mockSaveTheme.mockResolvedValue(undefined);
+	});
+
+	it("uses explicit null phaseJobIds from navigation state over DB fallback", () => {
+		mockUseLocation.mockReturnValue({
+			state: { phaseJobIds: null },
+		});
+
+		render(
+			<Onboarding
+				step="syncing"
+				data={createMockOnboardingData({
+					phaseJobIds: {
+						liked_songs: "db-liked",
+						playlists: "db-playlists",
+						playlist_tracks: "db-tracks",
+					},
+				})}
+			/>,
+		);
+
+		expect(screen.getByTestId("syncing-step-phase-job-ids")).toHaveTextContent(
+			"null",
+		);
 	});
 
 	it("renders welcome step with app branding", () => {

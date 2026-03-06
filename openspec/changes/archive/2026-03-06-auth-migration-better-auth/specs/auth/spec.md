@@ -2,20 +2,12 @@
 
 ### Requirement: Social OAuth Login
 
-The system SHALL authenticate users via Better Auth with social OAuth providers (Google, Apple).
+The system SHALL authenticate users via Better Auth with Google social OAuth.
 
 #### Scenario: User initiates Google login
 - **WHEN** user clicks "Sign in with Google" on the login page
 - **THEN** `authClient.signIn.social({ provider: "google" })` redirects to Google consent screen
 - **AND** after approval, Google redirects to `/api/auth/callback/google`
-- **AND** Better Auth creates or links user record
-- **AND** Better Auth sets session cookie
-- **AND** user is redirected to dashboard (or onboarding if first login)
-
-#### Scenario: User initiates Apple login
-- **WHEN** user clicks "Sign in with Apple" on the login page
-- **THEN** `authClient.signIn.social({ provider: "apple" })` redirects to Apple authorization
-- **AND** after approval, Apple redirects to `/api/auth/callback/apple`
 - **AND** Better Auth creates or links user record
 - **AND** Better Auth sets session cookie
 - **AND** user is redirected to dashboard (or onboarding if first login)
@@ -101,8 +93,8 @@ The system SHALL allow users to log out via Better Auth.
 ## REMOVED Requirements
 
 ### Requirement: Spotify OAuth Login
-**Reason**: Spotify is revoking API access. Authentication moves to Better Auth with social providers (Google, Apple).
-**Migration**: All Spotify OAuth code deleted. Users authenticate via social login instead.
+**Reason**: Spotify is revoking API access. Authentication moves to Better Auth with Google social login.
+**Migration**: All Spotify OAuth code deleted. Users authenticate via Google social login instead.
 
 ### Requirement: Token Security
 **Reason**: Spotify OAuth tokens are no longer stored server-side. Better Auth manages its own session tokens internally.

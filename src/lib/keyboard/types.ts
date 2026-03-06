@@ -18,6 +18,7 @@ export type ShortcutScope =
 	| "modal" // Any modal (highest priority)
 	| "onboarding-welcome" // Onboarding welcome step
 	| "onboarding-colors" // Onboarding color picker step
+	| "onboarding-extension" // Onboarding extension install step
 	| "onboarding-playlists" // Onboarding playlists step
 	| "onboarding-ready"; // Onboarding ready/complete step
 

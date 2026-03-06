@@ -5,40 +5,44 @@
  * Mocking: useJobProgress hook to control progress states without SSE.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { JobProgressState } from "@/lib/hooks/useJobProgress";
 import type { PhaseJobIds } from "@/lib/jobs/progress/types";
-import type { LibrarySummary } from "@/lib/server/onboarding.functions";
 import { mockGoToStep, setupOnboardingNavigationMock } from "@/test/mocks";
 import { render, screen, waitFor } from "@/test/utils/render";
 import { SyncingStep } from "../components/SyncingStep";
 
-const mockExecuteSync = vi.fn();
-const mockUseJobProgress = vi.fn<(jobId: string | null) => JobProgressState>();
+const DEFAULT_PROGRESS: JobProgressState = {
+	progress: null,
+	status: null,
+	items: new Map(),
+	itemTotals: new Map(),
+	currentItem: null,
+	error: null,
+	isConnected: false,
+};
+
+const mockUseJobProgress = vi
+	.fn<(jobId: string | null) => JobProgressState>()
+	.mockReturnValue(DEFAULT_PROGRESS);
 
 vi.mock("../hooks/useOnboardingNavigation", () =>
 	setupOnboardingNavigationMock(),
 );
 
-vi.mock("@/lib/server/onboarding.functions", () => ({
-	executeSync: (args: unknown) => mockExecuteSync(args),
+vi.mock("@/lib/hooks/useJobProgress", () => ({
+	useJobProgress: (jobId: string | null) =>
+		mockUseJobProgress(jobId) ?? DEFAULT_PROGRESS,
 }));
 
-vi.mock("@/lib/hooks/useJobProgress", () => ({
-	useJobProgress: (jobId: string | null) => mockUseJobProgress(jobId),
+vi.mock("@/lib/server/onboarding.functions", () => ({
+	pollPhaseJobIds: vi.fn().mockResolvedValue(null),
 }));
 
 const mockPhaseJobIds: PhaseJobIds = {
 	liked_songs: "job-songs-123",
 	playlists: "job-playlists-456",
 	playlist_tracks: "job-tracks-789",
-};
-
-const mockLibrarySummary: LibrarySummary = {
-	songsTotal: 500,
-	playlistsTotal: 10,
-	tracksTotal: 1000,
-	cachedPlaylists: [],
 };
 
 const createJobProgressState = (
@@ -70,9 +74,12 @@ const createProgressWithCounts = (
 };
 
 describe("SyncingStep", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockExecuteSync.mockResolvedValue(undefined);
 		mockGoToStep.mockResolvedValue(undefined);
 
 		mockUseJobProgress.mockReturnValue(createJobProgressState());
@@ -81,12 +88,7 @@ describe("SyncingStep", () => {
 	it("shows discovering state when no totals received", () => {
 		mockUseJobProgress.mockReturnValue(createJobProgressState());
 
-		render(
-			<SyncingStep
-				phaseJobIds={mockPhaseJobIds}
-				librarySummary={mockLibrarySummary}
-			/>,
-		);
+		render(<SyncingStep phaseJobIds={mockPhaseJobIds} />);
 
 		expect(
 			screen.getByText(/Counting your songs and playlists/i),
@@ -112,12 +114,7 @@ describe("SyncingStep", () => {
 			return createJobProgressState();
 		});
 
-		render(
-			<SyncingStep
-				phaseJobIds={mockPhaseJobIds}
-				librarySummary={mockLibrarySummary}
-			/>,
-		);
+		render(<SyncingStep phaseJobIds={mockPhaseJobIds} />);
 
 		expect(screen.getByText(/250\/500 liked songs/i)).toBeInTheDocument();
 		expect(screen.getByText(/5\/10 playlists/i)).toBeInTheDocument();
@@ -153,12 +150,7 @@ describe("SyncingStep", () => {
 			return createJobProgressState();
 		});
 
-		render(
-			<SyncingStep
-				phaseJobIds={mockPhaseJobIds}
-				librarySummary={mockLibrarySummary}
-			/>,
-		);
+		render(<SyncingStep phaseJobIds={mockPhaseJobIds} />);
 
 		await waitFor(
 			() => {
@@ -170,17 +162,10 @@ describe("SyncingStep", () => {
 		);
 	}, 10000);
 
-	it("shows error state when phaseJobIds is null", () => {
-		render(
-			<SyncingStep phaseJobIds={null} librarySummary={mockLibrarySummary} />,
-		);
+	it("shows waiting for extension state when phaseJobIds is null", () => {
+		render(<SyncingStep phaseJobIds={null} />);
 
-		expect(screen.getByText(/Sync interrupted/i)).toBeInTheDocument();
-		expect(
-			screen.getByText(/Please start over to sync your library/i),
-		).toBeInTheDocument();
-		expect(
-			screen.getByRole("button", { name: /Start Over/i }),
-		).toBeInTheDocument();
+		expect(screen.getByText(/Waiting for/i)).toBeInTheDocument();
+		expect(screen.getByText(/Spotify/i)).toBeInTheDocument();
 	});
 });

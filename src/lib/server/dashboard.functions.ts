@@ -1,9 +1,8 @@
 /** Uses parallel fetching to eliminate request waterfalls. */
 
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
 import { Result } from "better-result";
-import { requireSession } from "@/lib/auth/session";
+import { requireAuthSession } from "@/lib/auth.server";
 import { getLastCompletedSync } from "@/lib/data/jobs";
 import {
 	getCount as getLikedSongCount,
@@ -20,8 +19,7 @@ export interface DashboardStats {
 
 export const getDashboardStats = createServerFn({ method: "GET" }).handler(
 	async (): Promise<DashboardStats> => {
-		const request = getRequest();
-		const session = requireSession(request);
+		const { session } = await requireAuthSession();
 
 		const [totalResult, analyzedResult, lastSyncResult] = await Promise.all([
 			getLikedSongCount(session.accountId),
@@ -47,8 +45,7 @@ export const getDashboardStats = createServerFn({ method: "GET" }).handler(
 /** Currently returns liked songs only; will merge match/analyze events later. */
 export const getRecentActivity = createServerFn({ method: "GET" }).handler(
 	async (): Promise<ActivityItem[]> => {
-		const request = getRequest();
-		const session = requireSession(request);
+		const { session } = await requireAuthSession();
 
 		const [likedResult] = await Promise.allSettled([
 			getRecentWithDetails(session.accountId, 5),

@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as DevPlaygroundRouteImport } from './routes/dev-playground'
+import { Route as DevExtensionStepRouteImport } from './routes/dev-extension-step'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
@@ -20,16 +22,25 @@ import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authentic
 import { Route as AuthenticatedMatchRouteImport } from './routes/_authenticated/match'
 import { Route as AuthenticatedLikedSongsRouteImport } from './routes/_authenticated/liked-songs'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthSpotifyRouteRouteImport } from './routes/auth/spotify/route'
-import { Route as AuthSpotifyIndexRouteImport } from './routes/auth/spotify/index'
-import { Route as AuthSpotifyCallbackRouteImport } from './routes/auth/spotify/callback'
+import { Route as ApiExtensionTokenRouteImport } from './routes/api/extension/token'
 import { Route as ApiExtensionSyncRouteImport } from './routes/api/extension/sync'
 import { Route as ApiExtensionStatusRouteImport } from './routes/api/extension/status'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiJobsIdProgressRouteImport } from './routes/api/jobs/$id/progress'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DevPlaygroundRoute = DevPlaygroundRouteImport.update({
   id: '/dev-playground',
   path: '/dev-playground',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevExtensionStepRoute = DevExtensionStepRouteImport.update({
+  id: '/dev-extension-step',
+  path: '/dev-extension-step',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -82,20 +93,10 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthSpotifyRouteRoute = AuthSpotifyRouteRouteImport.update({
-  id: '/auth/spotify',
-  path: '/auth/spotify',
+const ApiExtensionTokenRoute = ApiExtensionTokenRouteImport.update({
+  id: '/api/extension/token',
+  path: '/api/extension/token',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AuthSpotifyIndexRoute = AuthSpotifyIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthSpotifyRouteRoute,
-} as any)
-const AuthSpotifyCallbackRoute = AuthSpotifyCallbackRouteImport.update({
-  id: '/callback',
-  path: '/callback',
-  getParentRoute: () => AuthSpotifyRouteRoute,
 } as any)
 const ApiExtensionSyncRoute = ApiExtensionSyncRouteImport.update({
   id: '/api/extension/sync',
@@ -107,6 +108,11 @@ const ApiExtensionStatusRoute = ApiExtensionStatusRouteImport.update({
   path: '/api/extension/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiJobsIdProgressRoute = ApiJobsIdProgressRouteImport.update({
   id: '/api/jobs/$id/progress',
   path: '/api/jobs/$id/progress',
@@ -115,8 +121,9 @@ const ApiJobsIdProgressRoute = ApiJobsIdProgressRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dev-extension-step': typeof DevExtensionStepRoute
   '/dev-playground': typeof DevPlaygroundRoute
-  '/auth/spotify': typeof AuthSpotifyRouteRouteWithChildren
+  '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/liked-songs': typeof AuthenticatedLikedSongsRoute
   '/match': typeof AuthenticatedMatchRoute
@@ -125,15 +132,17 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
-  '/auth/spotify/callback': typeof AuthSpotifyCallbackRoute
-  '/auth/spotify/': typeof AuthSpotifyIndexRoute
+  '/api/extension/token': typeof ApiExtensionTokenRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dev-extension-step': typeof DevExtensionStepRoute
   '/dev-playground': typeof DevPlaygroundRoute
+  '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/liked-songs': typeof AuthenticatedLikedSongsRoute
   '/match': typeof AuthenticatedMatchRoute
@@ -142,18 +151,19 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
-  '/auth/spotify/callback': typeof AuthSpotifyCallbackRoute
-  '/auth/spotify': typeof AuthSpotifyIndexRoute
+  '/api/extension/token': typeof ApiExtensionTokenRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/dev-extension-step': typeof DevExtensionStepRoute
   '/dev-playground': typeof DevPlaygroundRoute
-  '/auth/spotify': typeof AuthSpotifyRouteRouteWithChildren
+  '/login': typeof LoginRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/liked-songs': typeof AuthenticatedLikedSongsRoute
   '/_authenticated/match': typeof AuthenticatedMatchRoute
@@ -162,18 +172,19 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
-  '/auth/spotify/callback': typeof AuthSpotifyCallbackRoute
-  '/auth/spotify/': typeof AuthSpotifyIndexRoute
+  '/api/extension/token': typeof ApiExtensionTokenRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/dev-extension-step'
     | '/dev-playground'
-    | '/auth/spotify'
+    | '/login'
     | '/dashboard'
     | '/liked-songs'
     | '/match'
@@ -182,15 +193,17 @@ export interface FileRouteTypes {
     | '/settings'
     | '/api/artist-images-for-tracks'
     | '/auth/logout'
+    | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
-    | '/auth/spotify/callback'
-    | '/auth/spotify/'
+    | '/api/extension/token'
     | '/api/jobs/$id/progress'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/dev-extension-step'
     | '/dev-playground'
+    | '/login'
     | '/dashboard'
     | '/liked-songs'
     | '/match'
@@ -199,17 +212,18 @@ export interface FileRouteTypes {
     | '/settings'
     | '/api/artist-images-for-tracks'
     | '/auth/logout'
+    | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
-    | '/auth/spotify/callback'
-    | '/auth/spotify'
+    | '/api/extension/token'
     | '/api/jobs/$id/progress'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/dev-extension-step'
     | '/dev-playground'
-    | '/auth/spotify'
+    | '/login'
     | '/_authenticated/dashboard'
     | '/_authenticated/liked-songs'
     | '/_authenticated/match'
@@ -218,32 +232,49 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/api/artist-images-for-tracks'
     | '/auth/logout'
+    | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
-    | '/auth/spotify/callback'
-    | '/auth/spotify/'
+    | '/api/extension/token'
     | '/api/jobs/$id/progress'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  DevExtensionStepRoute: typeof DevExtensionStepRoute
   DevPlaygroundRoute: typeof DevPlaygroundRoute
-  AuthSpotifyRouteRoute: typeof AuthSpotifyRouteRouteWithChildren
+  LoginRoute: typeof LoginRoute
   ApiArtistImagesForTracksRoute: typeof ApiArtistImagesForTracksRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiExtensionStatusRoute: typeof ApiExtensionStatusRoute
   ApiExtensionSyncRoute: typeof ApiExtensionSyncRoute
+  ApiExtensionTokenRoute: typeof ApiExtensionTokenRoute
   ApiJobsIdProgressRoute: typeof ApiJobsIdProgressRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dev-playground': {
       id: '/dev-playground'
       path: '/dev-playground'
       fullPath: '/dev-playground'
       preLoaderRoute: typeof DevPlaygroundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev-extension-step': {
+      id: '/dev-extension-step'
+      path: '/dev-extension-step'
+      fullPath: '/dev-extension-step'
+      preLoaderRoute: typeof DevExtensionStepRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -316,26 +347,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/auth/spotify': {
-      id: '/auth/spotify'
-      path: '/auth/spotify'
-      fullPath: '/auth/spotify'
-      preLoaderRoute: typeof AuthSpotifyRouteRouteImport
+    '/api/extension/token': {
+      id: '/api/extension/token'
+      path: '/api/extension/token'
+      fullPath: '/api/extension/token'
+      preLoaderRoute: typeof ApiExtensionTokenRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/auth/spotify/': {
-      id: '/auth/spotify/'
-      path: '/'
-      fullPath: '/auth/spotify/'
-      preLoaderRoute: typeof AuthSpotifyIndexRouteImport
-      parentRoute: typeof AuthSpotifyRouteRoute
-    }
-    '/auth/spotify/callback': {
-      id: '/auth/spotify/callback'
-      path: '/callback'
-      fullPath: '/auth/spotify/callback'
-      preLoaderRoute: typeof AuthSpotifyCallbackRouteImport
-      parentRoute: typeof AuthSpotifyRouteRoute
     }
     '/api/extension/sync': {
       id: '/api/extension/sync'
@@ -349,6 +366,13 @@ declare module '@tanstack/react-router' {
       path: '/api/extension/status'
       fullPath: '/api/extension/status'
       preLoaderRoute: typeof ApiExtensionStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/jobs/$id/progress': {
@@ -382,28 +406,18 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
-interface AuthSpotifyRouteRouteChildren {
-  AuthSpotifyCallbackRoute: typeof AuthSpotifyCallbackRoute
-  AuthSpotifyIndexRoute: typeof AuthSpotifyIndexRoute
-}
-
-const AuthSpotifyRouteRouteChildren: AuthSpotifyRouteRouteChildren = {
-  AuthSpotifyCallbackRoute: AuthSpotifyCallbackRoute,
-  AuthSpotifyIndexRoute: AuthSpotifyIndexRoute,
-}
-
-const AuthSpotifyRouteRouteWithChildren =
-  AuthSpotifyRouteRoute._addFileChildren(AuthSpotifyRouteRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  DevExtensionStepRoute: DevExtensionStepRoute,
   DevPlaygroundRoute: DevPlaygroundRoute,
-  AuthSpotifyRouteRoute: AuthSpotifyRouteRouteWithChildren,
+  LoginRoute: LoginRoute,
   ApiArtistImagesForTracksRoute: ApiArtistImagesForTracksRoute,
   AuthLogoutRoute: AuthLogoutRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiExtensionStatusRoute: ApiExtensionStatusRoute,
   ApiExtensionSyncRoute: ApiExtensionSyncRoute,
+  ApiExtensionTokenRoute: ApiExtensionTokenRoute,
   ApiJobsIdProgressRoute: ApiJobsIdProgressRoute,
 }
 export const routeTree = rootRouteImport

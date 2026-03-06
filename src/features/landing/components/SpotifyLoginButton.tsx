@@ -21,7 +21,7 @@ export interface SpotifyLoginButtonProps {
 }
 
 export function SpotifyLoginButton({
-	buttonText = "Continue with Spotify",
+	buttonText = "SIGN In",
 	variant = "light",
 }: SpotifyLoginButtonProps) {
 	const theme = useTheme();
@@ -29,7 +29,7 @@ export function SpotifyLoginButton({
 
 	return (
 		<a
-			href="/auth/spotify"
+			href="/login"
 			className="relative inline-block px-6 py-3 text-sm tracking-widest uppercase transition-all duration-200 hover:scale-105"
 			style={{
 				background: isDark ? theme.textOnPrimary : theme.primary,

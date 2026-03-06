@@ -8,16 +8,13 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useState } from "react";
 import { ONBOARDING_STEPS, type OnboardingStep } from "@/lib/data/preferences";
 import type { PhaseJobIds } from "@/lib/jobs/progress/types";
-import type {
-	LibrarySummary,
-	OnboardingData,
-} from "@/lib/server/onboarding.functions";
+import type { OnboardingData } from "@/lib/server/onboarding.functions";
 import { themes } from "@/lib/theme/colors";
 import { useRegisterTheme, useTheme } from "@/lib/theme/ThemeHueProvider";
 import { DEFAULT_THEME, type ThemeColor } from "@/lib/theme/types";
 import { AnimatedStep } from "./components/AnimatedStep";
-import { ConnectingStep } from "./components/ConnectingStep";
 import { FlagPlaylistsStep } from "./components/FlagPlaylistsStep";
+import { InstallExtensionStep } from "./components/InstallExtensionStep";
 import { PickColorStep } from "./components/PickColorStep";
 import { ReadyStep } from "./components/ReadyStep";
 import { StepContainer } from "./components/StepContainer";
@@ -34,7 +31,6 @@ interface StepContext {
 	localTheme: ThemeColor;
 	setLocalTheme: (theme: ThemeColor) => void;
 	phaseJobIds: PhaseJobIds | null;
-	librarySummary: LibrarySummary | null;
 	playlists: OnboardingData["playlists"];
 	syncStats: OnboardingData["syncStats"];
 }
@@ -57,17 +53,11 @@ const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 			/>
 		),
 	},
-	connecting: {
-		render: () => <ConnectingStep />,
-		hideIndicator: true,
+	"install-extension": {
+		render: () => <InstallExtensionStep />,
 	},
 	syncing: {
-		render: (ctx) => (
-			<SyncingStep
-				phaseJobIds={ctx.phaseJobIds}
-				librarySummary={ctx.librarySummary}
-			/>
-		),
+		render: (ctx) => <SyncingStep phaseJobIds={ctx.phaseJobIds} />,
 		hideIndicator: true,
 	},
 	"flag-playlists": {
@@ -98,14 +88,14 @@ export function Onboarding({ step, data }: OnboardingProps) {
 	// updates live as user picks colors in PickColorStep
 	useRegisterTheme(themes[localTheme]);
 
-	const phaseJobIds = location.state?.phaseJobIds ?? data.phaseJobIds;
-	const librarySummary = location.state?.librarySummary ?? null;
+	const locationPhaseJobIds = location.state?.phaseJobIds;
+	const phaseJobIds =
+		locationPhaseJobIds !== undefined ? locationPhaseJobIds : data.phaseJobIds;
 
 	const stepContext: StepContext = {
 		localTheme,
 		setLocalTheme,
 		phaseJobIds,
-		librarySummary,
 		playlists: data.playlists,
 		syncStats: data.syncStats,
 	};

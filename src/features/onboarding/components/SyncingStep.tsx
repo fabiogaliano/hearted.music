@@ -1,22 +1,57 @@
 /**
  * Syncing step - shows real-time progress from 3 separate phase jobs.
  * Auto-advances to flag-playlists on completion.
+ *
+ * PhaseJobIds are created by the extension sync endpoint (/api/extension/sync).
+ * If not yet available (extension hasn't triggered), polls DB until they appear.
  */
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
 import {
 	type JobProgressState,
 	useJobProgress,
 } from "@/lib/hooks/useJobProgress";
 import type { PhaseJobIds } from "@/lib/jobs/progress/types";
-import {
-	executeSync,
-	type LibrarySummary,
-} from "@/lib/server/onboarding.functions";
+import { pollPhaseJobIds } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
+
+const WAVEFORM_HEIGHTS = [4, 7, 11, 15, 18, 20, 18, 15, 11, 7, 4];
+
+function WaitingWaveform({ color }: { color: string }) {
+	return (
+		<>
+			<style>{`
+				@keyframes wfSync {
+					0%, 100% { transform: scaleY(0.15); }
+					50% { transform: scaleY(1); }
+				}
+				@media (prefers-reduced-motion: reduce) {
+					.wf-sync { animation: none !important; transform: scaleY(0.4) !important; }
+				}
+			`}</style>
+			<div
+				className="flex items-center justify-center"
+				style={{ gap: 2, height: 20, opacity: 0.4 }}
+			>
+				{WAVEFORM_HEIGHTS.map((h, i) => (
+					<div
+						key={i}
+						className="wf-sync"
+						style={{
+							width: 1.5,
+							height: h,
+							background: color,
+							transformOrigin: "center",
+							animation: `wfSync 2.2s cubic-bezier(0.4, 0, 0.2, 1) ${i * 100}ms infinite`,
+						}}
+					/>
+				))}
+			</div>
+		</>
+	);
+}
 
 /**
  * Smart smooth progress with predictive velocity and fast completion catch-up.
@@ -187,7 +222,12 @@ function calculateCombinedProgress(
 
 	const grandTotal = phaseData.reduce((sum, p) => sum + p.total, 0);
 
-	if (grandTotal === 0) return 0;
+	if (grandTotal === 0) {
+		// No item totals received yet. If all phases are already complete by job
+		// status (late subscriber missed initial emits), treat as 100% so
+		// allComplete can trigger navigation.
+		return phaseData.every((p) => p.state.status === "completed") ? 100 : 0;
+	}
 
 	const allTotalsKnown = phaseData.every((p) => p.total > 0);
 
@@ -217,16 +257,65 @@ function calculateCombinedProgress(
 	return weightedProgress * 100;
 }
 
-interface SyncingStepProps {
-	phaseJobIds: PhaseJobIds | null;
-	/** Discovery result from ConnectingStep - contains totals + cached playlists */
-	librarySummary: LibrarySummary | null;
+const POLL_INTERVAL_MS = 2_000;
+
+/**
+ * Polls for phaseJobIds when they're not yet available.
+ * Used when the extension hasn't triggered sync yet — the sync endpoint
+ * persists phaseJobIds to user_preferences, so we poll until they appear.
+ */
+function usePolledPhaseJobIds(
+	initialJobIds: PhaseJobIds | null,
+): PhaseJobIds | null {
+	const [jobIds, setJobIds] = useState<PhaseJobIds | null>(initialJobIds);
+	const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+	useEffect(() => {
+		if (initialJobIds) {
+			setJobIds(initialJobIds);
+			return;
+		}
+
+		const poll = async () => {
+			try {
+				const result = await pollPhaseJobIds();
+				if (result) {
+					setJobIds(result);
+					if (pollingRef.current) {
+						clearInterval(pollingRef.current);
+						pollingRef.current = null;
+					}
+				}
+			} catch {
+				// Polling failure is non-critical — will retry on next interval
+			}
+		};
+
+		poll();
+		pollingRef.current = setInterval(poll, POLL_INTERVAL_MS);
+
+		return () => {
+			if (pollingRef.current) {
+				clearInterval(pollingRef.current);
+				pollingRef.current = null;
+			}
+		};
+	}, [initialJobIds]);
+
+	return jobIds;
 }
 
-export function SyncingStep({ phaseJobIds, librarySummary }: SyncingStepProps) {
+interface SyncingStepProps {
+	phaseJobIds: PhaseJobIds | null;
+}
+
+export function SyncingStep({
+	phaseJobIds: initialPhaseJobIds,
+}: SyncingStepProps) {
 	const theme = useTheme();
 	const { goToStep } = useOnboardingNavigation();
-	const syncStartedRef = useRef(false);
+
+	const phaseJobIds = usePolledPhaseJobIds(initialPhaseJobIds);
 
 	const songs = useJobProgress(phaseJobIds?.liked_songs ?? null);
 	const playlists = useJobProgress(phaseJobIds?.playlists ?? null);
@@ -337,20 +426,6 @@ export function SyncingStep({ phaseJobIds, librarySummary }: SyncingStepProps) {
 	// Buffered progress - always one batch behind so we never stop moving
 	const syncProgress = useSmoothProgress(percent, allComplete);
 
-	// Fire-and-forget on mount (similar to analytics-on-mount pattern).
-	// Sync starts because user reached this step, not from a specific interaction.
-	useEffect(() => {
-		if (!phaseJobIds || !librarySummary || syncStartedRef.current) return;
-		syncStartedRef.current = true;
-
-		executeSync({ data: { phaseJobIds, librarySummary } }).catch(
-			(err: unknown) => {
-				console.error("Failed to execute sync:", err);
-				toast.error("Failed to start sync. Please try again.");
-			},
-		);
-	}, [phaseJobIds, librarySummary]);
-
 	// Event handler for auto-advance - reads latest values without re-triggering effect
 	const onSyncComplete = useEffectEvent(() => {
 		goToStep("flag-playlists", {
@@ -368,7 +443,7 @@ export function SyncingStep({ phaseJobIds, librarySummary }: SyncingStepProps) {
 		}
 	}, [allComplete]);
 
-	// Handle missing phaseJobIds (refresh during sync)
+	// Waiting for extension to trigger sync — polling for phaseJobIds
 	if (!phaseJobIds) {
 		return (
 			<div className="text-center">
@@ -376,39 +451,21 @@ export function SyncingStep({ phaseJobIds, librarySummary }: SyncingStepProps) {
 					className="text-xs tracking-widest uppercase"
 					style={{ fontFamily: fonts.body, color: theme.textMuted }}
 				>
-					Error
+					Syncing
 				</p>
 
 				<h2
 					className="mt-4 text-5xl leading-tight font-extralight"
 					style={{ fontFamily: fonts.display, color: theme.text }}
 				>
-					Sync interrupted
+					Waiting for
+					<br />
+					<em className="font-normal">Spotify</em>
 				</h2>
 
-				<p
-					className="mt-6 text-lg font-light"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
-				>
-					Please start over to sync your library.
-				</p>
-
-				<button
-					type="button"
-					onClick={() => {
-						window.location.href = "/onboarding?step=welcome";
-					}}
-					className="group mt-16 inline-flex items-center gap-3"
-					style={{ fontFamily: fonts.body, color: theme.text }}
-				>
-					<span className="text-lg font-medium tracking-wide">Start Over</span>
-					<span
-						className="inline-block transition-transform group-hover:translate-x-1"
-						style={{ color: theme.textMuted }}
-					>
-						→
-					</span>
-				</button>
+				<div className="mt-12">
+					<WaitingWaveform color={theme.textMuted} />
+				</div>
 			</div>
 		);
 	}

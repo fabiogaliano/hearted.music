@@ -42,7 +42,13 @@ function isExpired(expiresAt: string): boolean {
  */
 async function fetchAndStoreAppToken(): Promise<Result<string, AppTokenError>> {
 	return Result.gen(async function* () {
-		// Fetch token from Spotify
+		if (!env.SPOTIFY_CLIENT_ID || !env.SPOTIFY_CLIENT_SECRET) {
+			return Result.err(new SpotifyAuthError("invalid"));
+		}
+
+		const clientId = env.SPOTIFY_CLIENT_ID;
+		const clientSecret = env.SPOTIFY_CLIENT_SECRET;
+
 		const response = yield* Result.await(
 			Result.tryPromise({
 				try: () =>
@@ -50,7 +56,7 @@ async function fetchAndStoreAppToken(): Promise<Result<string, AppTokenError>> {
 						method: "POST",
 						headers: {
 							"Content-Type": "application/x-www-form-urlencoded",
-							Authorization: `Basic ${btoa(`${env.SPOTIFY_CLIENT_ID}:${env.SPOTIFY_CLIENT_SECRET}`)}`,
+							Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
 						},
 						body: new URLSearchParams({
 							grant_type: "client_credentials",
