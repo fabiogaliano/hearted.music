@@ -3,8 +3,8 @@ import type { Song } from "@/lib/data/mock-data";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
-const COLLAPSED_ALBUM_SIZE_PX = "400px";
-const EXPANDED_ALBUM_SIZE_PX = "240px";
+const COLLAPSED_ALBUM_SIZE = "min(100%, clamp(280px, 30vw, 560px))";
+const EXPANDED_ALBUM_SIZE = "clamp(220px, 18vw, 320px)";
 
 interface SongSectionProps {
 	song: Song;
@@ -27,10 +27,8 @@ export function SongSection({
 			<div
 				className="relative shrink-0 origin-top transition-[width,max-width] duration-500 ease-in-out"
 				style={{
-					maxWidth: isExpanded
-						? EXPANDED_ALBUM_SIZE_PX
-						: COLLAPSED_ALBUM_SIZE_PX,
-					width: isExpanded ? EXPANDED_ALBUM_SIZE_PX : COLLAPSED_ALBUM_SIZE_PX,
+					maxWidth: isExpanded ? EXPANDED_ALBUM_SIZE : COLLAPSED_ALBUM_SIZE,
+					width: isExpanded ? EXPANDED_ALBUM_SIZE : COLLAPSED_ALBUM_SIZE,
 				}}
 			>
 				{isLoading ? (

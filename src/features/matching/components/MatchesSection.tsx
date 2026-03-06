@@ -2,8 +2,8 @@ import type { Playlist } from "@/lib/data/mock-data";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
-const COLLAPSED_ALBUM_SIZE_PX = "400px";
-const EXPANDED_ALBUM_SIZE_PX = "240px";
+const COLLAPSED_ALBUM_SIZE = "clamp(300px, 30vw, 560px)";
+const EXPANDED_ALBUM_SIZE = "clamp(220px, 18vw, 320px)";
 
 interface MatchesSectionProps {
 	playlists: Playlist[];
@@ -25,10 +25,10 @@ export function MatchesSection({
 	const theme = useTheme();
 	return (
 		<div
-			className="flex flex-col transition-[height,opacity] duration-500 ease-in-out"
+			className="flex flex-col transition-[min-height,opacity] duration-500 ease-in-out"
 			style={{
 				opacity: isExpanded ? 0.6 : 1,
-				height: isExpanded ? EXPANDED_ALBUM_SIZE_PX : COLLAPSED_ALBUM_SIZE_PX,
+				minHeight: isExpanded ? EXPANDED_ALBUM_SIZE : COLLAPSED_ALBUM_SIZE,
 			}}
 		>
 			<p
@@ -39,7 +39,7 @@ export function MatchesSection({
 			</p>
 
 			<div
-				className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-2 transition-[margin-top,gap] duration-500 ease-in-out"
+				className="flex min-h-0 flex-1 flex-col transition-[margin-top,gap] duration-500 ease-in-out"
 				style={{
 					marginTop: isExpanded ? "1rem" : "1.5rem",
 					gap: isExpanded ? "0.75rem" : "1.25rem",
@@ -120,7 +120,7 @@ export function MatchesSection({
 			<div
 				className="flex items-center justify-between transition-[margin-top,padding-top] duration-500 ease-in-out"
 				style={{
-					marginTop: isExpanded ? "auto" : "2rem",
+					marginTop: isExpanded ? "1.5rem" : "2rem",
 					paddingTop: isExpanded ? "0.75rem" : "0rem",
 				}}
 			>
