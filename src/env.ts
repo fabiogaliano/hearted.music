@@ -14,10 +14,15 @@ export const env = createEnv({
 		SUPABASE_URL: z.url(),
 		SUPABASE_ANON_KEY: z.string().min(1),
 		SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-		SPOTIFY_CLIENT_ID: z.string().min(1),
-		SPOTIFY_CLIENT_SECRET: z.string().min(1),
-		SPOTIFY_REDIRECT_URI: z.url(),
-		SESSION_SECRET: z.string().min(32),
+		// Better Auth
+		BETTER_AUTH_SECRET: z.string().min(32),
+		BETTER_AUTH_URL: z.url(),
+		DATABASE_URL: z.string().min(1),
+		GOOGLE_CLIENT_ID: z.string().min(1),
+		GOOGLE_CLIENT_SECRET: z.string().min(1),
+		// Spotify Client Credentials (optional - used for album art fetching, not user auth)
+		SPOTIFY_CLIENT_ID: z.string().min(1).optional(),
+		SPOTIFY_CLIENT_SECRET: z.string().min(1).optional(),
 		// Matching pipeline services (optional - graceful degradation)
 		LASTFM_API_KEY: z.string().min(1).optional(),
 		DEEPINFRA_API_KEY: z.string().min(1).optional(),
@@ -31,6 +36,7 @@ export const env = createEnv({
 
 	client: {
 		VITE_APP_TITLE: z.string().min(1).optional(),
+		VITE_CHROME_EXTENSION_ID: z.string().min(1).optional(),
 	},
 
 	/**
@@ -48,16 +54,20 @@ export const env = createEnv({
 		SUPABASE_URL: serverEnv.SUPABASE_URL,
 		SUPABASE_ANON_KEY: serverEnv.SUPABASE_ANON_KEY,
 		SUPABASE_SERVICE_ROLE_KEY: serverEnv.SUPABASE_SERVICE_ROLE_KEY,
+		BETTER_AUTH_SECRET: serverEnv.BETTER_AUTH_SECRET,
+		BETTER_AUTH_URL: serverEnv.BETTER_AUTH_URL,
+		DATABASE_URL: serverEnv.DATABASE_URL,
+		GOOGLE_CLIENT_ID: serverEnv.GOOGLE_CLIENT_ID,
+		GOOGLE_CLIENT_SECRET: serverEnv.GOOGLE_CLIENT_SECRET,
 		SPOTIFY_CLIENT_ID: serverEnv.SPOTIFY_CLIENT_ID,
 		SPOTIFY_CLIENT_SECRET: serverEnv.SPOTIFY_CLIENT_SECRET,
-		SPOTIFY_REDIRECT_URI: serverEnv.SPOTIFY_REDIRECT_URI,
-		SESSION_SECRET: serverEnv.SESSION_SECRET,
 		LASTFM_API_KEY: serverEnv.LASTFM_API_KEY,
 		DEEPINFRA_API_KEY: serverEnv.DEEPINFRA_API_KEY,
 		HF_TOKEN: serverEnv.HF_TOKEN,
 		GENIUS_CLIENT_TOKEN: serverEnv.GENIUS_CLIENT_TOKEN,
 		ML_PROVIDER: serverEnv.ML_PROVIDER,
 		VITE_APP_TITLE: import.meta.env.VITE_APP_TITLE,
+		VITE_CHROME_EXTENSION_ID: import.meta.env.VITE_CHROME_EXTENSION_ID,
 	},
 
 	emptyStringAsUndefined: true,

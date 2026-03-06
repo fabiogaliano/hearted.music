@@ -6,17 +6,23 @@
  * - Logged in: Redirect to /dashboard (which handles onboarding check)
  */
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import { Landing } from "@/features/landing/Landing";
-import { checkAuth } from "@/lib/auth/guards";
+import { getAuthSession } from "@/lib/auth.server";
 import { themes } from "@/lib/theme/colors";
 import { useRegisterTheme } from "@/lib/theme/ThemeHueProvider";
 import { DEFAULT_THEME } from "@/lib/theme/types";
+
+const checkAuth = createServerFn({ method: "GET" }).handler(async () => {
+	const session = await getAuthSession();
+	return { authenticated: session !== null };
+});
 
 export const Route = createFileRoute("/")({
 	beforeLoad: async () => {
 		const result = await checkAuth();
 
-		if (result.status === "authenticated") {
+		if (result.authenticated) {
 			throw redirect({ to: "/dashboard" });
 		}
 	},

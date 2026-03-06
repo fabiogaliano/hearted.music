@@ -21,10 +21,11 @@
  *   - item_status (UI state)
  *   - playlist_profile, playlist_analysis, playlist_song, playlist (playlists)
  *   - liked_song (liked songs)
+ *   - api_token (extension API tokens — forces re-auth)
  *
  * What gets preserved:
  *   - account (the user account itself)
- *   - auth_token (so user stays logged in)
+ *   - session, oauth_account (Better Auth — so user stays logged in)
  *   - song data (shared across users)
  *
  * What gets reset:
@@ -80,7 +81,7 @@ ${colors.cyan}Examples:${colors.reset}
 interface Account {
 	id: string;
 	email: string | null;
-	spotify_id: string;
+	spotify_id: string | null;
 	display_name: string | null;
 }
 
@@ -130,6 +131,7 @@ interface DeleteCounts {
 	playlist_songs: number;
 	playlists: number;
 	liked_songs: number;
+	api_tokens: number;
 }
 
 async function resetOnboarding(
@@ -147,6 +149,7 @@ async function resetOnboarding(
 		playlist_songs: 0,
 		playlists: 0,
 		liked_songs: 0,
+		api_tokens: 0,
 	};
 
 	const { data: contexts } = await supabase
@@ -247,6 +250,14 @@ async function resetOnboarding(
 		counts.liked_songs = count ?? 0;
 	}
 
+	{
+		const { count } = await supabase
+			.from("api_token")
+			.delete({ count: "exact" })
+			.eq("account_id", accountId);
+		counts.api_tokens = count ?? 0;
+	}
+
 	await supabase
 		.from("user_preferences")
 		.update({
@@ -273,7 +284,7 @@ async function main() {
 	info(`Found account:`);
 	console.log(`   ${colors.dim}ID:${colors.reset}       ${account.id}`);
 	console.log(`   ${colors.dim}Email:${colors.reset}    ${account.email ?? "(none)"}`);
-	console.log(`   ${colors.dim}Spotify:${colors.reset}  ${account.spotify_id}`);
+	console.log(`   ${colors.dim}Spotify:${colors.reset}  ${account.spotify_id ?? "(none)"}`);
 	console.log(`   ${colors.dim}Name:${colors.reset}     ${account.display_name ?? "(none)"}`);
 	console.log();
 
@@ -294,6 +305,7 @@ async function main() {
 	if (counts.playlist_songs > 0) console.log(`     - ${counts.playlist_songs} playlist songs`);
 	if (counts.playlists > 0) console.log(`     - ${counts.playlists} playlists`);
 	if (counts.liked_songs > 0) console.log(`     - ${counts.liked_songs} liked songs`);
+	if (counts.api_tokens > 0) console.log(`     - ${counts.api_tokens} API tokens`);
 
 	const totalDeleted = Object.values(counts).reduce((a, b) => a + b, 0);
 	if (totalDeleted === 0) {

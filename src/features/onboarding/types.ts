@@ -1,5 +1,4 @@
 import type { PhaseJobIds } from "@/lib/jobs/progress/types";
-import type { LibrarySummary } from "@/lib/server/onboarding.functions";
 
 /**
  * Statistics from sync operation, passed through router state.
@@ -15,10 +14,8 @@ export interface SyncStats {
  */
 declare module "@tanstack/react-router" {
 	interface HistoryState {
-		phaseJobIds?: PhaseJobIds;
+		phaseJobIds?: PhaseJobIds | null;
 		theme?: string;
 		syncStats?: SyncStats;
-		/** Discovery result from ConnectingStep, passed to SyncingStep */
-		librarySummary?: LibrarySummary;
 	}
 }

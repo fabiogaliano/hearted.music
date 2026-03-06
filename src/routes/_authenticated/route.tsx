@@ -15,7 +15,7 @@ import {
 	useLocation,
 } from "@tanstack/react-router";
 import { Sidebar } from "./-components/Sidebar";
-import { requireAuth } from "@/lib/auth/guards";
+import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getOnboardingData } from "@/lib/server/onboarding.functions";
 import { useRegisterTheme } from "@/lib/theme/ThemeHueProvider";
 import { getTheme } from "@/lib/theme/useTheme";
@@ -23,7 +23,7 @@ import { DEFAULT_THEME } from "@/lib/theme/types";
 
 export const Route = createFileRoute("/_authenticated")({
 	beforeLoad: async ({ location }) => {
-		const { session, account } = await requireAuth();
+		const { session, account } = await requireAuthSession();
 		const onboarding = await getOnboardingData();
 
 		// Skip onboarding check if already heading there (prevents redirect loop)

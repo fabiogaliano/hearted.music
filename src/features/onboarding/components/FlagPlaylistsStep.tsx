@@ -156,7 +156,7 @@ export function FlagPlaylistsStep({
 						className="text-xs uppercase tracking-widest"
 						style={{ fontFamily: fonts.body, color: theme.textMuted }}
 					>
-						Step 02
+						Step 03
 					</p>
 
 					<h2

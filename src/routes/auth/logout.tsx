@@ -1,35 +1,18 @@
 /**
- * POST /auth/logout - Clears session and redirects to home
- *
- * Uses Result types at the route boundary. Token deletion errors
- * are ignored since the session will be cleared regardless.
+ * POST /auth/logout - Destroys Better Auth session and redirects to home
  */
 
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { clearSessionCookie, getSessionCookie } from "@/lib/auth/cookies";
-import { deleteToken } from "@/lib/data/auth-tokens";
+import { getAuth } from "@/lib/auth";
 
 const handleLogout = createServerFn({ method: "POST" }).handler(async () => {
 	const request = getRequest();
-	const accountId = getSessionCookie(request);
 
-	// Delete tokens from database if we have a session
-	// Result errors are intentionally ignored - session will be cleared anyway
-	if (accountId) {
-		await deleteToken(accountId);
-	}
+	await getAuth().api.signOut({ headers: request.headers });
 
-	// Clear session cookie
-	const clearCookie = clearSessionCookie();
-
-	throw redirect({
-		to: "/",
-		headers: {
-			"Set-Cookie": clearCookie,
-		},
-	});
+	throw redirect({ to: "/" });
 });
 
 // Export the server function for use in forms/buttons

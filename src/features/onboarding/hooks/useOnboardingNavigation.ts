@@ -14,19 +14,22 @@
  *
  * ### Data Flow
  * ```
- * Happy Path (client-side state):
- * welcome → createSyncJob() → phaseJobIds (also saved to DB)
+ * Happy Path (extension-driven):
+ * welcome → pick-color → install-extension → syncing
  *    ↓
- * navigate({ state: { phaseJobIds } })
+ * Extension POSTs to /api/extension/sync → creates phaseJobIds (saved to DB)
  *    ↓
- * next step reads: location.state.phaseJobIds ✅
+ * SyncingStep polls DB via usePolledPhaseJobIds() → discovers phaseJobIds ✅
  *
  * Refresh Path (DB fallback):
  * User refreshes → location.state = undefined
  *    ↓
  * beforeLoad fetches from DB → data.phaseJobIds ✅
  *    ↓
- * Component uses: location.state.phaseJobIds ?? data.phaseJobIds
+ * Component uses:
+ *   location.state.phaseJobIds !== undefined
+ *     ? location.state.phaseJobIds
+ *     : data.phaseJobIds
  * ```
  *
  * @see Onboarding.tsx for the fallback pattern implementation
@@ -37,10 +40,7 @@ import { useCallback } from "react";
 import { toast } from "sonner";
 import type { OnboardingStep } from "@/lib/data/preferences";
 import type { PhaseJobIds } from "@/lib/jobs/progress/types";
-import {
-	type LibrarySummary,
-	saveOnboardingStep,
-} from "@/lib/server/onboarding.functions";
+import { saveOnboardingStep } from "@/lib/server/onboarding.functions";
 import "../types"; // Import to ensure HistoryState augmentation is loaded
 
 export function useOnboardingNavigation() {
@@ -50,9 +50,8 @@ export function useOnboardingNavigation() {
 		async (
 			step: OnboardingStep,
 			options?: {
-				phaseJobIds?: PhaseJobIds;
+				phaseJobIds?: PhaseJobIds | null;
 				syncStats?: { songs: number; playlists: number };
-				librarySummary?: LibrarySummary;
 			},
 		) => {
 			try {
@@ -72,9 +71,6 @@ export function useOnboardingNavigation() {
 						}),
 						...(options?.syncStats !== undefined && {
 							syncStats: options.syncStats,
-						}),
-						...(options?.librarySummary !== undefined && {
-							librarySummary: options.librarySummary,
 						}),
 					}),
 				});

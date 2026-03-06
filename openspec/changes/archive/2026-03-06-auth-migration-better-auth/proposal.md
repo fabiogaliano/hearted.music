@@ -4,7 +4,7 @@ Spotify is revoking API access in 5 days. The app currently uses Spotify OAuth a
 
 ## What Changes
 
-- **BREAKING** Replace Spotify OAuth PKCE flow with Better Auth (Google/Apple social login)
+- **BREAKING** Replace Spotify OAuth PKCE flow with Better Auth (Google social login)
 - **BREAKING** Replace custom session management (cookie with account UUID) with Better Auth's session system
 - **BREAKING** Decouple identity from `spotify_id` — Better Auth's `user` table becomes the identity source, `spotify_id` becomes linked metadata populated on first extension sync
 - **BREAKING** Remove `auth_token` table (Spotify OAuth tokens for login) — no longer needed
@@ -40,7 +40,7 @@ Spotify is revoking API access in 5 days. The app currently uses Spotify OAuth a
 
 **Extension**: Auth mechanism changes from `credentials: "include"` (session cookies) to bearer token via `externally_connectable`. Extension receives API token from web app during connection handoff, stores in `chrome.storage.local`, sends as `Authorization: Bearer` header. `postToBackend()` updated accordingly.
 
-**Dependencies**: Add `better-auth`, `drizzle-orm`, `@neondatabase/serverless` packages. Remove `@fostertheweb/spotify-web-sdk` if all user-scoped API access moves to extension. Keep `@supabase/supabase-js` (still used for DB via service_role).
+**Dependencies**: Add `better-auth`, `drizzle-orm`, `postgres` (postgres.js) packages. Remove `@fostertheweb/spotify-web-sdk` if all user-scoped API access moves to extension. Keep `@supabase/supabase-js` (still used for DB via service_role).
 
 **RLS**: No changes — current "deny all + service_role bypass" strategy is auth-provider-agnostic.
 

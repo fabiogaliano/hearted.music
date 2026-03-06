@@ -30,7 +30,7 @@ export const ACCOUNT_ID_SCHEMA = z.uuid();
 export const ONBOARDING_STEPS = z.enum([
 	"welcome",
 	"pick-color",
-	"connecting",
+	"install-extension",
 	"syncing",
 	"flag-playlists",
 	"ready",

@@ -136,12 +136,20 @@ SET row_security = off;
 
 
 --
+-- Data for Name: user; Type: TABLE DATA; Schema: public; Owner: postgres
+-- (Better Auth user table — must be inserted before account due to FK)
+--
+
+INSERT INTO "public"."user" ("id", "name", "email", "email_verified", "image", "created_at", "updated_at") VALUES
+	('ba-seed-user-1', 'fabiogaliano', 'fbkzdev@gmail.com', true, NULL, '2026-01-26 16:04:03.611491+00', '2026-01-26 16:04:03.611491+00');
+
+--
 -- Data for Name: account; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO "public"."account" ("id", "spotify_id", "email", "display_name", "created_at", "updated_at") VALUES
-	('98809f67-0d00-4421-b6d9-1bdcddedd51d', 'kapran0s', 'fbkzyeu@gmail.com', 'fabiogaliano', '2026-01-26 16:04:03.611491+00', '2026-01-26 16:04:03.611491+00'),
-	('dfd2cee3-910a-4c14-8326-740b1af9ec73', 'jyf5tzsee6604e021wdibcwsy', 'a587wuo45jj@163.com', 'ghr', '2026-01-30 00:43:52.576393+00', '2026-02-02 09:38:02.540587+00');
+INSERT INTO "public"."account" ("id", "spotify_id", "email", "display_name", "created_at", "updated_at", "better_auth_user_id") VALUES
+	('98809f67-0d00-4421-b6d9-1bdcddedd51d', 'kapran0s', 'fbkzdev@gmail.com', 'fabiogaliano', '2026-01-26 16:04:03.611491+00', '2026-01-26 16:04:03.611491+00', 'ba-seed-user-1'),
+	('dfd2cee3-910a-4c14-8326-740b1af9ec73', 'jyf5tzsee6604e021wdibcwsy', 'a587wuo45jj@163.com', 'ghr', '2026-01-30 00:43:52.576393+00', '2026-02-02 09:38:02.540587+00', NULL);
 
 
 --
@@ -154,10 +162,8 @@ INSERT INTO "public"."app_token" ("id", "access_token", "token_expires_at", "upd
 
 --
 -- Data for Name: auth_token; Type: TABLE DATA; Schema: public; Owner: postgres
+-- (Table dropped by migration 20260303155519 — auth_token no longer exists)
 --
-
-INSERT INTO "public"."auth_token" ("id", "account_id", "access_token", "refresh_token", "token_expires_at", "created_at", "updated_at") VALUES
-	('8581aa62-04db-4b2a-b13f-5ae63c6f49fa', 'dfd2cee3-910a-4c14-8326-740b1af9ec73', 'BQC8ocSQanV4UMxo1LPkE_xLhDX_JJsZ2_SL5XGFz_tgeJcoytIH5pE5__D7iFGO6LDj8HgU5sWDBkhEMU7nuLY1cabJsnYrfo7a7TchhXX20AI5yEGmrsMLi5nBnLcVQUO5KgebtjFNGFk0n1PCwnKAKFZR8qlhRp42Bkdu5jT9APO-bvek1yMYHBaQ2mlB8GP8UoIp6EzniF1qx3vN5mGe7A1julFfjF7VpK3A1J54MkJ1q-r3TUGbdbSkE6PGZu5fQKpINZkNJu9LfeshNWWUGsj-XttrxdqBjdlZ_VRYBhELU_G6B3XdR7Vn5giN3HVrZ65NeCve5RCU4zk', 'AQDYf7TAMvvqJYPHQvhFJAa_pQm--aHracL826JwJURmMxIuaCKa_c8LkQf_OtSY-UQSn0RgliRyiX9CiW57EHioPNo9eC6cb_U3_ItEXNuCpcH7boJhY1WP_SZWH6W7N7c', '2026-02-02 10:38:02.567+00', '2026-01-30 00:43:52.600139+00', '2026-02-02 09:38:02.640731+00');
 
 
 --

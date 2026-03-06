@@ -17,7 +17,7 @@ The app currently uses Spotify OAuth (PKCE) as its sole authentication provider.
 ## Goals / Non-Goals
 
 **Goals:**
-- Replace Spotify OAuth with Better Auth (Google + Apple social login)
+- Replace Spotify OAuth with Better Auth (Google social login)
 - Maintain cookie-based auth for the web app (Better Auth session cookies); extension uses bearer token via `externally_connectable`
 - Decouple user identity from `spotify_id` — it becomes linked metadata, not the identity key
 - Rewire onboarding to use extension-driven sync instead of direct Spotify API calls
@@ -43,36 +43,40 @@ The app currently uses Spotify OAuth (PKCE) as its sole authentication provider.
 - No vendor lock-in deepening — current "deny all + service_role" RLS strategy remains untouched
 - Plugin ecosystem for future needs (MFA, passkeys, rate limiting) without switching providers
 
-### D2: Drizzle ORM with `@neondatabase/serverless` driver
+### D2: Drizzle ORM with `postgres` (postgres.js) driver
 
-**Choice**: Drizzle ORM with `@neondatabase/serverless` driver
-**Over**: Raw `pg` Pool, Kysely adapter
+**Choice**: Drizzle ORM with `postgres` (postgres.js) driver
+**Over**: Raw `pg` Pool, `@neondatabase/serverless`, Kysely adapter
 
 **Rationale**:
-- Raw `pg` Pool requires TCP sockets — Cloudflare Workers has no native TCP support
-- `@neondatabase/serverless` uses HTTP/WebSocket — works on all edge runtimes without Hyperdrive
-- Drizzle adapter is Better Auth's officially recommended path for CF Workers (see Hono example)
-- `@neondatabase/serverless` can connect to any Postgres (including Supabase) via the pooler endpoint
+- `postgres` (postgres.js) works with any standard PostgreSQL — local Supabase (`127.0.0.1:54322`) and Supabase's transaction pooler in production
+- Cloudflare Workers now support TCP sockets via `cloudflare:sockets`, so `postgres.js` works there too (with Supabase transaction pooler or Hyperdrive)
+- `@neondatabase/serverless` was initially chosen for edge HTTP compatibility but requires a Neon-hosted database — doesn't work with local Supabase Postgres
+- `prepare: false` required for compatibility with Supabase's transaction pooler (no prepared statements in transaction mode)
 - Drizzle is only used for Better Auth — existing app data access stays on `@supabase/supabase-js` with service_role
-- Better Auth's Drizzle adapter handles table creation and migrations
+- A Drizzle schema file (`src/lib/auth-schema.ts`) maps Better Auth models to table definitions
 
 **Connection setup**:
 ```typescript
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
+import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import * as authSchema from '@/lib/auth-schema';
 
-const sql = neon(process.env.DATABASE_URL!);
+const sql = postgres(process.env.DATABASE_URL!, { prepare: false });
 const db = drizzle(sql);
 
 export const auth = betterAuth({
-  database: drizzleAdapter(db, { provider: 'pg' }),
+  database: drizzleAdapter(db, {
+    provider: 'pg',
+    schema: { ...authSchema, account: authSchema.oauthAccount },
+  }),
   // ...
 });
 ```
 
-**Consideration**: Better Auth's `account` table name conflict still applies — use `modelName` to rename to `oauth_account` (see D3). All Supabase schema changes must go through `supabase` CLI (`supabase migration new`, `supabase db push`).
+**Consideration**: Better Auth's `account` table name conflict still applies — use `modelName` to rename to `oauth_account` (see D3). The schema must explicitly map `account` to `oauthAccount` so the adapter resolves the renamed model. All Supabase schema changes must go through `supabase` CLI (`supabase migration new`, `supabase db push`).
 
 ### D3: Keep existing `account` table, add `better_auth_user_id` FK
 
@@ -178,15 +182,14 @@ After:  WELCOME → PICK_COLOR → INSTALL_EXTENSION → SYNCING (extension) →
 
 ### D8: Social provider configuration
 
-**Choice**: Google + Apple as initial social providers
-**Over**: Only Google, or adding more providers immediately
+**Choice**: Google as the initial social provider
+**Over**: Google + Apple, or adding more providers immediately
 
 **Rationale**:
 - Google covers the majority of users and provides email
-- Apple as secondary option (privacy-conscious users and iOS/Mac audience — strong overlap with music app users)
-- Apple requires `https://appleid.apple.com` in `trustedOrigins`
-- Better Auth supports 20+ providers — adding more later is a config change, not a code change
-- OAuth callback URLs: `{BASE_URL}/api/auth/callback/google` and `{BASE_URL}/api/auth/callback/apple`
+- Apple was initially planned but removed — requires Apple Developer account ($99/yr) and adds `trustedOrigins` complexity that caused CSRF issues with Better Auth
+- Better Auth supports 20+ providers — adding Apple or others later is a config change, not a code change
+- OAuth callback URL: `{BASE_URL}/api/auth/callback/google`
 
 ### D9: File organization
 
@@ -221,7 +224,7 @@ All 26 files referencing `accountId`/`session.accountId` need their session retr
 
 **[Risk] Bearer token storage in `chrome.storage.local`** → `chrome.storage.local` is not encrypted but is scoped to the extension. Tokens are long-lived and revocable. Token rotation strategy: tokens can be revoked from the web app, extension detects 401 and prompts re-connection. No refresh token complexity needed — if token is revoked, user re-connects via the app.
 
-**[Trade-off] Two database clients** → `@supabase/supabase-js` (service_role) for app data + Drizzle + `@neondatabase/serverless` for Better Auth. Acceptable because they serve different purposes and don't interact.
+**[Trade-off] Two database clients** → `@supabase/supabase-js` (service_role) for app data + Drizzle + `postgres` (postgres.js) for Better Auth. Acceptable because they serve different purposes and don't interact.
 
 **[Trade-off] No migration path** → 0 users means clean break is correct. If we had users, we'd need a migration layer to re-authenticate existing accounts.
 
@@ -230,14 +233,13 @@ All 26 files referencing `accountId`/`session.accountId` need their session retr
 ## Migration Plan
 
 ### Phase 0: Runtime validation (Day 0)
-1. Create minimal Better Auth + Drizzle + @neondatabase/serverless setup
-2. Deploy to CF Workers dev environment
-3. Verify auth endpoints respond (sign-in, get-session, callback)
-4. If blocked: evaluate Hyperdrive as fallback, or switch to better-auth-cloudflare package
+1. Create minimal Better Auth + Drizzle + postgres.js setup
+2. Verify auth endpoints respond locally (sign-in, get-session, callback)
+3. Verify Drizzle schema maps all Better Auth models (user, session, oauth_account, verification)
 
 ### Phase 1: Auth swap (Days 1-2)
-1. Install `better-auth`, `drizzle-orm`, `@neondatabase/serverless` packages
-2. Create Better Auth config (`src/lib/auth.ts`) with Google + Apple providers
+1. Install `better-auth`, `drizzle-orm`, `postgres` packages
+2. Create Better Auth config (`src/lib/auth.ts`) with Google provider
 3. Run `bunx @better-auth/cli generate` to get migration SQL for Better Auth tables
 4. Apply migration: create Better Auth tables + add `better_auth_user_id` to `account` + make `spotify_id` nullable
 5. Create catch-all route handler at `src/routes/api/auth/$.ts`
@@ -246,7 +248,7 @@ All 26 files referencing `accountId`/`session.accountId` need their session retr
 8. Update all `getSession()`/`requireSession()` call sites (26 files)
 9. Delete old auth files (cookies.ts, session.ts, oauth.ts, guards.ts, auth routes)
 10. Delete `auth_token` table migration (or mark as deprecated)
-11. Create login page with Google/Apple buttons
+11. Create login page with Google button
 
 ### Phase 2: Onboarding rewire (Days 3-4)
 1. Replace `ConnectingStep` with `InstallExtensionStep` component
@@ -272,4 +274,4 @@ All 26 files referencing `accountId`/`session.accountId` need their session retr
 
 1. **Client Credentials (`app_token`)**: Does Spotify also revoke Client Credentials flow (used for album art, artist metadata)? If yes, those lookups need alternative sources or must be cached from extension data.
 2. **Extension detection**: Use `chrome.runtime.sendMessage` with `externally_connectable` for detection from web app. The bearer token handoff flow naturally includes extension detection as step 1 — if the extension responds to PING, it's installed.
-3. ~~**Cloudflare Workers compatibility**~~ **Resolved**: Using `@neondatabase/serverless` (HTTP, no TCP) with Drizzle adapter. Better Auth's Drizzle adapter is the officially recommended path for edge runtimes.
+3. ~~**Cloudflare Workers compatibility**~~ **Resolved**: Using `postgres` (postgres.js) with `drizzle-orm/postgres-js`. CF Workers now support TCP sockets via `cloudflare:sockets`. For production, use Supabase's transaction pooler endpoint with `prepare: false`.

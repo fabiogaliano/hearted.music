@@ -15,10 +15,53 @@ import {
 	mapPathfinderPlaylist,
 	mapPathfinderPlaylistTrack,
 } from "../shared/mappers";
-import { BACKEND_URL } from "../shared/constants";
+import { DEFAULT_BACKEND_URL } from "../shared/constants";
 
 let cachedToken: SpotifyTokenPayload | null = null;
 let cachedProfile: UserProfile | null = null;
+let isSyncing = false;
+
+const SPOTIFY_COOKIE_URL = "https://open.spotify.com/";
+
+function normalizeBackendUrl(url: string): string {
+	return url.endsWith("/") ? url.slice(0, -1) : url;
+}
+
+function isValidBackendUrl(value: unknown): value is string {
+	if (typeof value !== "string" || value.length === 0) return false;
+	try {
+		const parsed = new URL(value);
+		return parsed.protocol === "http:" || parsed.protocol === "https:";
+	} catch {
+		return false;
+	}
+}
+
+async function getBackendUrl(): Promise<string> {
+	const { backendUrl } = await chrome.storage.local.get("backendUrl");
+	if (isValidBackendUrl(backendUrl)) {
+		return normalizeBackendUrl(backendUrl);
+	}
+	return DEFAULT_BACKEND_URL;
+}
+
+function clearSpotifyTokenCache(): void {
+	cachedToken = null;
+	cachedProfile = null;
+	chrome.storage.local.remove("spotifyToken");
+}
+
+async function hasSpotifySession(): Promise<boolean> {
+	try {
+		const cookie = await chrome.cookies.get({
+			url: SPOTIFY_COOKIE_URL,
+			name: "sp_dc",
+		});
+		return Boolean(cookie?.value);
+	} catch {
+		return false;
+	}
+}
 
 function isTokenValid(): boolean {
 	return cachedToken !== null && Date.now() < cachedToken.expiresAtMs;
@@ -223,14 +266,26 @@ async function fetchPlaylistTracks(
 	return allTracks;
 }
 
+async function getApiToken(): Promise<string> {
+	const { apiToken } = await chrome.storage.local.get("apiToken");
+	if (!apiToken) {
+		throw new Error("No API token - extension not connected");
+	}
+	return apiToken;
+}
+
 async function postToBackend(
 	path: string,
 	body: Record<string, unknown>,
 ): Promise<Response> {
-	return fetch(`${BACKEND_URL}${path}`, {
+	const apiToken = await getApiToken();
+	const backendUrl = await getBackendUrl();
+	return fetch(new URL(path, `${backendUrl}/`).toString(), {
 		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		credentials: "include",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${apiToken}`,
+		},
 		body: JSON.stringify(body),
 	});
 }
@@ -243,6 +298,11 @@ type SyncResult = {
 
 async function performSync(): Promise<SyncResult> {
 	if (!isTokenValid()) throw new Error("No valid token");
+	if (isSyncing) {
+		console.log("[hearted.] Sync already in progress, skipping");
+		return { count: 0 };
+	}
+	isSyncing = true;
 
 	await setSyncState({ status: "syncing", fetched: 0, total: 0, error: null });
 
@@ -290,6 +350,8 @@ async function performSync(): Promise<SyncResult> {
 		await setSyncState({ status: "error", error });
 		console.error("[hearted.] Sync failed:", error);
 		throw err;
+	} finally {
+		isSyncing = false;
 	}
 }
 
@@ -343,17 +405,122 @@ chrome.runtime.onInstalled.addListener((details) => {
 	console.log("[hearted.] Extension installed:", details.reason);
 });
 
+chrome.runtime.onMessageExternal.addListener(
+	(message, _sender, sendResponse) => {
+		if (message.type === "PING") {
+			sendResponse({ type: "PONG" });
+			return true;
+		}
+
+		if (message.type === "CONNECT") {
+			(async () => {
+				const storagePayload: Record<string, string> = {
+					apiToken: message.token,
+				};
+				if (isValidBackendUrl(message.backendUrl)) {
+					storagePayload.backendUrl = normalizeBackendUrl(message.backendUrl);
+				}
+				await new Promise<void>((resolve) =>
+					chrome.storage.local.set(storagePayload, resolve),
+				);
+				console.log(
+					`[hearted.] Connected with API token from web app (${storagePayload.backendUrl ?? DEFAULT_BACKEND_URL})`,
+				);
+
+				// Re-hydrate Spotify token if SW was restarted
+				if (!cachedToken) {
+					const { spotifyToken } =
+						await chrome.storage.local.get("spotifyToken");
+					if (spotifyToken) cachedToken = spotifyToken as SpotifyTokenPayload;
+				}
+
+				sendResponse({ type: "CONNECTED" });
+
+				// Auto-sync if Spotify token is already available (user has Spotify open)
+				if (isTokenValid()) {
+					performSync().catch((err) =>
+						console.error("[hearted.] Auto-sync on connect:", err),
+					);
+				}
+			})();
+			return true;
+		}
+
+		if (message.type === "TRIGGER_SYNC") {
+			(async () => {
+				// Re-hydrate in-memory token if SW was restarted between polling check and click
+				if (!cachedToken) {
+					const { spotifyToken } =
+						await chrome.storage.local.get("spotifyToken");
+					if (spotifyToken) cachedToken = spotifyToken as SpotifyTokenPayload;
+				}
+				try {
+					const result = await performSync();
+					sendResponse({ ok: true, ...result });
+				} catch (err) {
+					const error = err instanceof Error ? err.message : "Unknown error";
+					sendResponse({ ok: false, error });
+				}
+			})();
+			return true;
+		}
+
+		if (message.type === "SPOTIFY_STATUS") {
+			(async () => {
+				const hasSession = await hasSpotifySession();
+				if (!hasSession) {
+					clearSpotifyTokenCache();
+					sendResponse({ type: "SPOTIFY_STATUS", hasToken: false });
+					return;
+				}
+
+				// Re-hydrate in-memory cache if SW was terminated and restarted
+				if (!cachedToken) {
+					const { spotifyToken } =
+						await chrome.storage.local.get("spotifyToken");
+					if (spotifyToken) cachedToken = spotifyToken as SpotifyTokenPayload;
+				}
+
+				const hasUsableToken =
+					cachedToken !== null && isTokenValid() && !cachedToken.isAnonymous;
+				if (!hasUsableToken && cachedToken) {
+					clearSpotifyTokenCache();
+				}
+
+				// Step 2 should mirror Spotify auth session state, not stale local token TTL.
+				sendResponse({ type: "SPOTIFY_STATUS", hasToken: true });
+			})();
+			return true;
+		}
+
+		return false;
+	},
+);
+
 chrome.runtime.onMessage.addListener(
 	(message: ExtensionMessage, _sender, sendResponse) => {
 		switch (message.type) {
 			case "SPOTIFY_TOKEN": {
 				cachedToken = message.payload;
 				cachedProfile = null;
+				// Persist so token survives service worker termination
+				chrome.storage.local.set({ spotifyToken: message.payload });
 				const expiresIn = Math.round(
 					(message.payload.expiresAtMs - Date.now()) / 1000,
 				);
 				console.log(`[hearted.] Token received (expires in ${expiresIn}s)`);
 				sendResponse({ ok: true });
+
+				// Auto-sync when connected to the app and this is a real user token
+				if (!message.payload.isAnonymous) {
+					chrome.storage.local.get("apiToken", ({ apiToken }) => {
+						if (apiToken && !isSyncing) {
+							performSync().catch((err) =>
+								console.error("[hearted.] Auto-sync on token:", err),
+							);
+						}
+					});
+				}
 				break;
 			}
 
@@ -401,3 +568,19 @@ chrome.runtime.onMessage.addListener(
 		return true;
 	},
 );
+
+// Real-time logout detection via sp_dc cookie; polling still reconciles within 3s.
+chrome.cookies.onChanged.addListener((changeInfo) => {
+	if (
+		changeInfo.cookie.domain !== ".spotify.com" ||
+		changeInfo.cookie.name !== "sp_dc"
+	) {
+		return;
+	}
+
+	// Ignore cookie refreshes implemented as overwrite remove+set events.
+	if (changeInfo.removed && changeInfo.cause !== "overwrite") {
+		clearSpotifyTokenCache();
+		console.log("[hearted.] Spotify logout detected (sp_dc removed)");
+	}
+});

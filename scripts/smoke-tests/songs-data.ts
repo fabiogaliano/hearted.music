@@ -81,7 +81,7 @@ async function listAccounts() {
 	console.log("  ID                                    | Spotify ID       | Name");
 	console.log("  " + "─".repeat(75));
 	for (const acc of data) {
-		console.log(`  ${acc.id} | ${acc.spotify_id.padEnd(16)} | ${acc.display_name ?? acc.email ?? "unknown"}`);
+		console.log(`  ${acc.id} | ${(acc.spotify_id ?? "(none)").padEnd(16)} | ${acc.display_name ?? acc.email ?? "unknown"}`);
 	}
 	console.log("\n  Run with: bun scripts/smoke-tests/songs-data.ts <account-id>\n");
 }

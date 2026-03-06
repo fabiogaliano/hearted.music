@@ -1,51 +1,26 @@
 # access-spotify-api Specification
 
 ## Purpose
-TBD - created by archiving change add-spotify-sdk-services. Update Purpose after archive.
+App-level Spotify API access via Client Credentials flow for non-user-scoped operations (e.g., album art lookup). User-scoped data comes exclusively from the extension sync pipeline.
+
 ## Requirements
-### Requirement: SDK-backed Spotify service
-
-The system SHALL provide a Spotify service backed by the Spotify SDK for API operations.
-
-#### Scenario: Service requested for account
-- **WHEN** a server function needs Spotify data for an account
-- **THEN** the system creates a Spotify service using that account's tokens
-- **AND** the service uses the SDK for API calls
-
-#### Scenario: Token refresh before SDK usage
-- **WHEN** the stored access token is expired
-- **THEN** the system refreshes the token via the raw token client
-- **AND** passes the new access token into the SDK before any API call
-
----
-
-### Requirement: Raw token client remains source of truth
-
-The system SHALL use the raw fetch client for token exchange and refresh, passing access tokens to the SDK.
-
-#### Scenario: OAuth callback token exchange
-- **WHEN** exchanging an authorization code for tokens
-- **THEN** the raw client performs the fetch to Spotify's token endpoint
-- **AND** stores the results in Supabase
-
-#### Scenario: SDK instantiation
-- **WHEN** constructing the Spotify SDK client
-- **THEN** the system passes the current access token from Supabase
-- **AND** does not rely on the SDK for token refresh
-
----
 
 ### Requirement: Retry and pagination helpers
 
-The system SHALL provide helpers for Spotify pagination and rate-limit retries.
+The system SHALL provide helpers for Spotify pagination and rate-limit retries for app-level API access only.
 
-#### Scenario: Rate limit response
-- **WHEN** a Spotify request returns HTTP 429 with a Retry-After header
-- **THEN** the system waits the specified delay and retries up to the configured maximum
+#### Scenario: Rate limit response on app-level requests
+- **WHEN** a Spotify request using the app-level Client Credentials token returns HTTP 429
+- **THEN** the system waits the specified Retry-After delay and retries up to the configured maximum
 
-#### Scenario: Multi-page endpoint
-- **WHEN** fetching a paginated Spotify endpoint
+#### Scenario: App-level paginated endpoint
+- **WHEN** fetching a paginated Spotify endpoint using Client Credentials
 - **THEN** the system iterates until all pages are fetched or a stop condition is met
+
+#### Scenario: User-scoped requests not supported
+- **WHEN** a user-scoped Spotify API request is needed
+- **THEN** the system SHALL NOT attempt the request via server-side tokens
+- **AND** the data SHALL come from the extension sync pipeline instead
 
 ---
 
@@ -54,19 +29,30 @@ The system SHALL provide helpers for Spotify pagination and rate-limit retries.
 The system SHALL place Spotify integration modules under `src/lib/integrations`.
 
 #### Scenario: Spotify service organization
-- **WHEN** Spotify service modules are created or updated
+- **WHEN** Spotify integration modules are created or updated
 - **THEN** they are located under `src/lib/integrations/spotify`
 
-#### Scenario: Existing integration module relocation
-- **WHEN** a Spotify integration module exists outside `src/lib/integrations`
-- **THEN** it is moved into `src/lib/integrations` and imports are updated
+#### Scenario: App-level auth module
+- **WHEN** Client Credentials flow modules are referenced
+- **THEN** they reside in `src/lib/integrations/spotify/app-auth.ts`
 
-### Requirement: Refresh coordination
+---
 
-The system SHALL deduplicate concurrent token refreshes per account.
+### Requirement: App-Level Client Credentials Fallback
 
-#### Scenario: Parallel Spotify requests
-- **WHEN** multiple requests detect an expired token for the same account
-- **THEN** only one refresh is performed
-- **AND** other requests await the in-flight refresh result
+The system SHALL maintain the Client Credentials flow for non-user-scoped Spotify API access if available.
 
+#### Scenario: Album art lookup
+- **WHEN** album artwork is needed for display
+- **AND** Client Credentials access is still available
+- **THEN** the system uses the `app_token` to fetch album data from Spotify's public API
+
+#### Scenario: Client Credentials revoked
+- **WHEN** Spotify revokes Client Credentials access
+- **THEN** the system falls back to album art URLs cached from extension sync data
+- **AND** does not attempt Spotify API calls
+
+#### Scenario: App token refresh
+- **WHEN** the app-level access token expires
+- **THEN** the system refreshes it via the Client Credentials flow
+- **AND** stores the new token in the `app_token` table
