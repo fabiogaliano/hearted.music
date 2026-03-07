@@ -100,7 +100,7 @@ function mapErrorToResponse(
 		};
 	}
 
-	if (/network error|fetch failed/i.test(message)) {
+	if (/network error|fetch failed|failed to fetch/i.test(message)) {
 		return {
 			ok: false,
 			errorCode: "NETWORK_ERROR",
