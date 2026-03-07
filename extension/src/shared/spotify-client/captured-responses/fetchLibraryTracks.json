@@ -1,0 +1,252 @@
+{
+	"data": {
+		"me": {
+			"library": {
+				"tracks": {
+					"__typename": "UserLibraryTrackPage",
+					"items": [
+						{
+							"__typename": "UserLibraryTrackResponse",
+							"addedAt": {
+								"isoString": "2025-06-06T14:08:26Z"
+							},
+							"track": {
+								"_uri": "spotify:track:2ekn2ttSfGqwhhate0LSR0",
+								"data": {
+									"__typename": "Track",
+									"albumOfTrack": {
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Dua Lipa"
+													},
+													"uri": "spotify:artist:6M2wZ9GZgrQXHCFfjv46we"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02838698485511bd9108fadadc",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851838698485511bd9108fadadc",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273838698485511bd9108fadadc",
+													"width": 640
+												}
+											]
+										},
+										"name": "Dua Lipa (Deluxe)",
+										"uri": "spotify:album:01sfgrNbnnPUEyz6GZYlt9"
+									},
+									"artists": {
+										"items": [
+											{
+												"profile": {
+													"name": "Dua Lipa"
+												},
+												"uri": "spotify:artist:6M2wZ9GZgrQXHCFfjv46we"
+											}
+										]
+									},
+									"associationsV3": {
+										"audioAssociations": {
+											"totalCount": 0
+										},
+										"videoAssociations": {
+											"totalCount": 0
+										}
+									},
+									"contentRating": {
+										"label": "NONE"
+									},
+									"discNumber": 1,
+									"duration": {
+										"totalMilliseconds": 209320
+									},
+									"mediaType": "AUDIO",
+									"name": "New Rules",
+									"playability": {
+										"playable": true
+									},
+									"trackNumber": 10
+								}
+							}
+						},
+						{
+							"__typename": "UserLibraryTrackResponse",
+							"addedAt": {
+								"isoString": "2025-06-06T14:08:24Z"
+							},
+							"track": {
+								"_uri": "spotify:track:6D8y7Bck8h11byRY88Pt2z",
+								"data": {
+									"__typename": "Track",
+									"albumOfTrack": {
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Dua Lipa"
+													},
+													"uri": "spotify:artist:6M2wZ9GZgrQXHCFfjv46we"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e022f8790ed72296c2614607575",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d000048512f8790ed72296c2614607575",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b2732f8790ed72296c2614607575",
+													"width": 640
+												}
+											]
+										},
+										"name": "Radical Optimism",
+										"uri": "spotify:album:1Mo92916G2mmG7ajpmSVrc"
+									},
+									"artists": {
+										"items": [
+											{
+												"profile": {
+													"name": "Dua Lipa"
+												},
+												"uri": "spotify:artist:6M2wZ9GZgrQXHCFfjv46we"
+											}
+										]
+									},
+									"associationsV3": {
+										"audioAssociations": {
+											"totalCount": 0
+										},
+										"videoAssociations": {
+											"totalCount": 1
+										}
+									},
+									"contentRating": {
+										"label": "NONE"
+									},
+									"discNumber": 1,
+									"duration": {
+										"totalMilliseconds": 185917
+									},
+									"mediaType": "AUDIO",
+									"name": "Houdini",
+									"playability": {
+										"playable": true
+									},
+									"trackNumber": 2
+								}
+							}
+						},
+						{
+							"__typename": "UserLibraryTrackResponse",
+							"addedAt": {
+								"isoString": "2025-06-06T14:08:23Z"
+							},
+							"track": {
+								"_uri": "spotify:track:3gJAFFELdZyIM8tiwLAikg",
+								"data": {
+									"__typename": "Track",
+									"albumOfTrack": {
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "JENNIE"
+													},
+													"uri": "spotify:artist:250b0Wlc5Vk0CoUsaCY84M"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02dcf27dec5e479b2e39c4c993",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851dcf27dec5e479b2e39c4c993",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273dcf27dec5e479b2e39c4c993",
+													"width": 640
+												}
+											]
+										},
+										"name": "Ruby",
+										"uri": "spotify:album:1vWMw6pu3err6qqZzI3RhH"
+									},
+									"artists": {
+										"items": [
+											{
+												"profile": {
+													"name": "JENNIE"
+												},
+												"uri": "spotify:artist:250b0Wlc5Vk0CoUsaCY84M"
+											},
+											{
+												"profile": {
+													"name": "Dua Lipa"
+												},
+												"uri": "spotify:artist:6M2wZ9GZgrQXHCFfjv46we"
+											}
+										]
+									},
+									"associationsV3": {
+										"audioAssociations": {
+											"totalCount": 0
+										},
+										"videoAssociations": {
+											"totalCount": 0
+										}
+									},
+									"contentRating": {
+										"label": "EXPLICIT"
+									},
+									"discNumber": 1,
+									"duration": {
+										"totalMilliseconds": 184698
+									},
+									"mediaType": "AUDIO",
+									"name": "Handlebars (feat. Dua Lipa)",
+									"playability": {
+										"playable": true
+									},
+									"trackNumber": 4
+								}
+							}
+						}
+					],
+					"pagingInfo": {
+						"limit": 3,
+						"offset": 0
+					},
+					"totalCount": 270
+				}
+			}
+		}
+	}
+}

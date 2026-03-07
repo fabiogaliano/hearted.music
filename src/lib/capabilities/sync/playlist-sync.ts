@@ -182,7 +182,8 @@ export class PlaylistSyncService {
 				description: sp.description,
 				snapshot_id: null,
 				is_public: true,
-				song_count: sp.track_count,
+				song_count:
+					sp.track_count ?? existingBySpotifyId.get(sp.id)?.song_count ?? 0,
 				is_destination: existingBySpotifyId.get(sp.id)?.is_destination ?? false,
 				image_url: sp.image_url,
 			}));
@@ -371,6 +372,14 @@ export class PlaylistSyncService {
 			}
 		}
 
+		const countResult = await playlists.updatePlaylistSongCount(
+			playlist.id,
+			spotifyTracks.length,
+		);
+		if (Result.isError(countResult)) {
+			return Result.err(countResult.error);
+		}
+
 		const result: PlaylistTrackSyncResult = {
 			playlistId: playlist.id,
 			playlistName: playlist.name,
@@ -499,7 +508,8 @@ export class PlaylistSyncService {
 		return (
 			existing.name !== spotify.name ||
 			existing.description !== spotify.description ||
-			existing.song_count !== spotify.track_count ||
+			(spotify.track_count !== null &&
+				existing.song_count !== spotify.track_count) ||
 			existing.image_url !== spotify.image_url
 		);
 	}

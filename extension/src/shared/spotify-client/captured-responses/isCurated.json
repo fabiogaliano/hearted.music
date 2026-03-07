@@ -1,0 +1,13 @@
+{
+	"data": {
+		"lookup": [
+			{
+				"__typename": "TrackResponseWrapper",
+				"data": {
+					"__typename": "Track",
+					"isCurated": true
+				}
+			}
+		]
+	}
+}

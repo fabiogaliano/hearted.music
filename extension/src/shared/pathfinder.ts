@@ -39,5 +39,11 @@ export async function queryPathfinder<T>(
 		throw new Error(`Pathfinder API error: ${res.status} ${operationName}`);
 	}
 
-	return res.json() as T;
+	const json = await res.json();
+	if (!json?.data) {
+		throw new Error(
+			`Pathfinder response missing data envelope for ${operationName}`,
+		);
+	}
+	return json as T;
 }
