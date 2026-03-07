@@ -11,7 +11,7 @@ export function Matching({ onExit }: MatchingProps) {
 		isComplete,
 		handleAdd,
 		handleNext,
-		handleSkip,
+		handleDismiss,
 		handleShowDetails,
 		handleHideDetails,
 		handleJourneyStepHover,
@@ -47,7 +47,7 @@ export function Matching({ onExit }: MatchingProps) {
 				playlists={playlists}
 				state={state}
 				onAdd={(playlistId: number) => handleAdd(playlistId, currentSong.id)}
-				onDiscard={handleSkip}
+				onDismiss={handleDismiss}
 				onNext={handleNext}
 				onToggleDetails={handleShowDetails}
 				onCloseDetails={handleHideDetails}

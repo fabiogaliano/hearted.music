@@ -9,7 +9,7 @@ interface MatchesSectionProps {
 	playlists: Playlist[];
 	addedTo: number[];
 	onAdd: (playlistId: number) => void;
-	onDiscard: () => void;
+	onDismiss: () => void;
 	onNext: () => void;
 	isExpanded: boolean;
 }
@@ -18,7 +18,7 @@ export function MatchesSection({
 	playlists,
 	addedTo,
 	onAdd,
-	onDiscard,
+	onDismiss,
 	onNext,
 	isExpanded,
 }: MatchesSectionProps) {
@@ -125,11 +125,11 @@ export function MatchesSection({
 				}}
 			>
 				<button
-					onClick={onDiscard}
+					onClick={onDismiss}
 					className="text-sm tracking-widest uppercase"
 					style={{ fontFamily: fonts.body, color: theme.textMuted }}
 				>
-					Discard
+					Dismiss
 				</button>
 
 				<button

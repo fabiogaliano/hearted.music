@@ -14,7 +14,7 @@ export function MatchingSession({
 	playlists,
 	state,
 	onAdd,
-	onDiscard,
+	onDismiss,
 	onNext,
 	onToggleDetails,
 	onCloseDetails,
@@ -63,7 +63,7 @@ export function MatchingSession({
 							playlists={playlists}
 							addedTo={state.addedTo[currentSong.id] || []}
 							onAdd={onAdd}
-							onDiscard={onDiscard}
+							onDismiss={onDismiss}
 							onNext={onNext}
 							isExpanded={state.showMeaning}
 						/>

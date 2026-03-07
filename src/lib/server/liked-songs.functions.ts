@@ -224,3 +224,31 @@ export const addSongToPlaylist = createServerFn({ method: "POST" })
 		// once extension-mediated playlist writes are available.
 		return { success: false };
 	});
+
+const SongActionSchema = z.object({
+	songId: z.uuid(),
+});
+
+export const skipSong = createServerFn({ method: "POST" })
+	.inputValidator((data) => SongActionSchema.parse(data))
+	.handler(async ({ data }) => {
+		const { session } = await requireAuthSession();
+		const result = await likedSong.updateStatus(
+			session.accountId,
+			data.songId,
+			"skipped",
+		);
+		return { success: Result.isOk(result) };
+	});
+
+export const dismissSong = createServerFn({ method: "POST" })
+	.inputValidator((data) => SongActionSchema.parse(data))
+	.handler(async ({ data }) => {
+		const { session } = await requireAuthSession();
+		const result = await likedSong.updateStatus(
+			session.accountId,
+			data.songId,
+			"dismissed",
+		);
+		return { success: Result.isOk(result) };
+	});

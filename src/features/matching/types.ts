@@ -20,7 +20,7 @@ export interface MatchingSessionProps {
 	playlists: Playlist[];
 	state: MatchingState;
 	onAdd: (playlistId: number) => void;
-	onDiscard: () => void;
+	onDismiss: () => void;
 	onNext: () => void;
 	onToggleDetails: () => void;
 	onCloseDetails: () => void;

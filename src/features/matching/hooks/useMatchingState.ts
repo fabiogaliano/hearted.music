@@ -30,7 +30,7 @@ export function useMatchingState(totalSongs: number) {
 		}));
 	};
 
-	const handleSkip = () => {
+	const handleDismiss = () => {
 		setState((prev) => ({
 			...prev,
 			currentIndex: prev.currentIndex + 1,
@@ -89,7 +89,7 @@ export function useMatchingState(totalSongs: number) {
 		isComplete: state.currentIndex >= totalSongs,
 		handleAdd,
 		handleNext,
-		handleSkip,
+		handleDismiss,
 		handleShowDetails,
 		handleHideDetails,
 		handleJourneyStepHover,

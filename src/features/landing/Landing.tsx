@@ -132,7 +132,7 @@ export function Landing({
 								playlists={playlists.slice(0, 3)}
 								addedTo={[]}
 								onAdd={() => {}}
-								onDiscard={handlePreviewDiscard}
+								onDismiss={handlePreviewDiscard}
 								onNext={handlePreviewNext}
 								isExpanded={false}
 							/>
