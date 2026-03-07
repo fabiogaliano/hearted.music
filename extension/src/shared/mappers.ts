@@ -95,7 +95,7 @@ export function mapPathfinderPlaylistTrack(
 				name: track.albumOfTrack?.name ?? "",
 				images: track.albumOfTrack?.coverArt?.sources ?? [],
 			},
-			duration_ms: track.trackDuration.totalMilliseconds,
+			duration_ms: track.trackDuration?.totalMilliseconds ?? 0,
 			uri: track.uri,
 		},
 	};
