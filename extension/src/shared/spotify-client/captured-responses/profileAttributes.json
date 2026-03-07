@@ -1,0 +1,26 @@
+{
+	"data": {
+		"me": {
+			"profile": {
+				"avatar": {
+					"sources": [
+						{
+							"height": 64,
+							"url": "https://i.scdn.co/image/ab67757000003b8246896c7b9933a600bfcdf2d8",
+							"width": 64
+						},
+						{
+							"height": 300,
+							"url": "https://i.scdn.co/image/ab6775700000ee8546896c7b9933a600bfcdf2d8",
+							"width": 300
+						}
+					]
+				},
+				"avatarBackgroundColor": 11836360,
+				"name": "ghr",
+				"uri": "spotify:user:jyf5tzsee6604e021wdibcwsy",
+				"username": "jyf5tzsee6604e021wdibcwsy"
+			}
+		}
+	}
+}

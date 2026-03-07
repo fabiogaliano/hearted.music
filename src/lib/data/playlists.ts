@@ -200,6 +200,19 @@ export function setPlaylistDestination(
 	);
 }
 
+export function updatePlaylistSongCount(
+	playlistId: string,
+	songCount: number,
+): Promise<Result<null, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMaybe(
+		supabase
+			.from("playlist")
+			.update({ song_count: songCount })
+			.eq("id", playlistId),
+	);
+}
+
 // ============================================================================
 // Playlist-Song Junction Operations
 // ============================================================================

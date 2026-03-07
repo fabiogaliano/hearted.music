@@ -373,7 +373,7 @@ export const SpotifyPlaylistDTOSchema = z.object({
 	name: z.string(),
 	description: z.string().nullable(),
 	owner: z.object({ id: z.string() }),
-	track_count: z.number(),
+	track_count: z.number().nullable(),
 	image_url: z.string().nullable(),
 });
 

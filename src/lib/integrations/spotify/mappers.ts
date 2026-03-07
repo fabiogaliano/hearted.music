@@ -60,7 +60,7 @@ export function mapPlaylistToPlaylistInsert(
 		spotify_id: dto.id,
 		name: dto.name,
 		description: dto.description,
-		song_count: dto.track_count,
+		song_count: dto.track_count ?? 0,
 		image_url: dto.image_url,
 	};
 }

@@ -78,7 +78,7 @@ export interface SpotifyPlaylistDTO {
 	name: string;
 	description: string | null;
 	owner: { id: string };
-	track_count: number;
+	track_count: number | null;
 	image_url: string | null;
 }
 
