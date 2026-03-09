@@ -7,7 +7,7 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
-import type { PhaseJobIds } from "@/lib/jobs/progress/types";
+import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,
@@ -267,7 +267,9 @@ export async function getPhaseJobIds(
 		return Result.ok(null);
 	}
 
-	const { PhaseJobIdsSchema } = await import("@/lib/jobs/progress/types");
+	const { PhaseJobIdsSchema } = await import(
+		"@/lib/platform/jobs/progress/types"
+	);
 	const parsed = PhaseJobIdsSchema.safeParse(result.value.phase_job_ids);
 
 	return Result.ok(parsed.success ? parsed.data : null);

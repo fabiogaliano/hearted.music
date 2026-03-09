@@ -16,8 +16,8 @@ import type {
 	JobItemStatus,
 	JobProgressEvent,
 	JobStatusEvent,
-} from "@/lib/jobs/progress/types";
-import { parseSSEEvent } from "@/lib/jobs/progress/types";
+} from "@/lib/platform/jobs/progress/types";
+import { parseSSEEvent } from "@/lib/platform/jobs/progress/types";
 
 // ============================================================================
 // Types

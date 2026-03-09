@@ -1,8 +1,8 @@
 import { Result } from "better-result";
 import { createJob } from "@/lib/data/jobs";
 import type { JobProgress } from "@/lib/data/jobs";
-import { startJob, finalizeJob } from "@/lib/jobs/lifecycle";
-import { emitProgress, emitStatus } from "@/lib/jobs/progress/helpers";
+import { startJob, finalizeJob } from "@/lib/platform/jobs/lifecycle";
+import { emitProgress, emitStatus } from "@/lib/platform/jobs/progress/helpers";
 import type { EnrichmentStageName } from "./types";
 
 export async function runTrackedStageJob<T>(params: {

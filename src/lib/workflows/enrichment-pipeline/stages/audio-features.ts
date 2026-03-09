@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import * as audioFeatureData from "@/lib/data/song-audio-feature";
+import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
 import { createAudioFeaturesService } from "@/lib/integrations/audio/service";
 import type { TrackInfo } from "@/lib/integrations/audio/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";

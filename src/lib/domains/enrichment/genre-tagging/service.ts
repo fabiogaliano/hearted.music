@@ -6,7 +6,7 @@
  */
 
 import { Result } from "better-result";
-import * as songData from "@/lib/data/song";
+import * as songData from "@/lib/domains/library/songs/queries";
 import {
 	createLastFmService,
 	type LastFmService,

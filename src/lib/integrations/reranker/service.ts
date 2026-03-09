@@ -16,7 +16,7 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
-import { getMlProvider } from "@/lib/ml/provider/factory";
+import { getMlProvider } from "@/lib/integrations/providers/factory";
 import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
 
 // ============================================================================

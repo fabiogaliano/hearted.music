@@ -3,8 +3,8 @@
  */
 
 import { describe, expect, it } from "vitest";
-import type { Song } from "@/lib/data/song";
-import type { AudioFeature } from "@/lib/data/song-audio-feature";
+import type { Song } from "@/lib/domains/library/songs/queries";
+import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import {
 	calculateAudioCentroid,
 	calculateCentroid,

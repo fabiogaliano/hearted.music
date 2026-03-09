@@ -2,13 +2,13 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
-import { requireAuthSession } from "@/lib/auth.server";
+import { requireAuthSession } from "@/lib/platform/auth/auth.server";
 import { getLastCompletedSync } from "@/lib/data/jobs";
 import {
 	getCount as getLikedSongCount,
 	getRecentWithDetails,
-} from "@/lib/data/liked-song";
-import { getAnalyzedCountForAccount } from "@/lib/data/song-analysis";
+} from "@/lib/domains/library/liked-songs/queries";
+import { getAnalyzedCountForAccount } from "@/lib/domains/enrichment/content-analysis/queries";
 import type { ActivityItem } from "@/features/dashboard/types";
 
 export interface DashboardStats {

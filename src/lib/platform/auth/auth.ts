@@ -16,7 +16,7 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { env } from "@/env";
-import * as authSchema from "@/lib/auth-schema";
+import * as authSchema from "@/lib/platform/auth/auth-schema";
 
 export function getAuth() {
 	const sql = postgres(env.DATABASE_URL, {
@@ -56,7 +56,7 @@ export function getAuth() {
 				create: {
 					after: async (user) => {
 						const { createAccountForBetterAuthUser } = await import(
-							"@/lib/data/accounts"
+							"@/lib/domains/library/accounts/queries"
 						);
 						const result = await createAccountForBetterAuthUser({
 							better_auth_user_id: user.id,

@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import {
 	getAuthSession as getAuthSessionImpl,
 	requireAuthSession as requireAuthSessionImpl,
-} from "@/lib/auth.server";
+} from "@/lib/platform/auth/auth.server";
 
 export const getAuthSession = createServerFn({ method: "GET" }).handler(
 	async () => {

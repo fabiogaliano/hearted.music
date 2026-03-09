@@ -17,9 +17,9 @@ import { z } from "zod";
 import type {
 	InsertData as InsertPlaylistAnalysis,
 	PlaylistAnalysis,
-} from "@/lib/data/playlist-analysis";
-import * as playlistAnalysis from "@/lib/data/playlist-analysis";
-import type { LlmService } from "@/lib/ml/llm/service";
+} from "@/lib/domains/enrichment/content-analysis/playlist-queries";
+import * as playlistAnalysis from "@/lib/domains/enrichment/content-analysis/playlist-queries";
+import type { LlmService } from "@/lib/integrations/llm/service";
 import type { DbError } from "@/lib/shared/errors/database";
 import { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
 import type { LlmError } from "@/lib/shared/errors/external/llm";

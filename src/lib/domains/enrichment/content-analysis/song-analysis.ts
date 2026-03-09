@@ -1,8 +1,8 @@
 import { Result } from "better-result";
 import { z } from "zod";
-import type { SongAnalysis } from "@/lib/data/song-analysis";
-import * as songAnalysis from "@/lib/data/song-analysis";
-import type { AudioFeature } from "@/lib/data/song-audio-feature";
+import type { SongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
+import * as songAnalysis from "@/lib/domains/enrichment/content-analysis/queries";
+import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import type { DbError } from "@/lib/shared/errors/database";
 import type { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
 import type { LlmError } from "@/lib/shared/errors/external/llm";

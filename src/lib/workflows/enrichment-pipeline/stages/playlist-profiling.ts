@@ -1,7 +1,7 @@
 import { Result } from "better-result";
-import * as playlistData from "@/lib/data/playlists";
-import * as songData from "@/lib/data/song";
-import { emitProgress } from "@/lib/jobs/progress/helpers";
+import * as playlistData from "@/lib/domains/library/playlists/queries";
+import * as songData from "@/lib/domains/library/songs/queries";
+import { emitProgress } from "@/lib/platform/jobs/progress/helpers";
 import { runTrackedStageJob } from "../job-runner";
 import type { EnrichmentContext, EnrichmentStageResult } from "../types";
 

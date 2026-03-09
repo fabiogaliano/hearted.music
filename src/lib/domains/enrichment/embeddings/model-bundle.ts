@@ -10,7 +10,7 @@
  */
 
 import { Result } from "better-result";
-import { getMlProvider } from "@/lib/ml/provider/factory";
+import { getMlProvider } from "@/lib/integrations/providers/factory";
 import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
 import {
 	EMBEDDING_SCHEMA_VERSION,

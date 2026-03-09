@@ -25,17 +25,17 @@ import { Result } from "better-result";
 import { z } from "zod";
 import type { JobProgress } from "@/lib/data/jobs";
 import * as jobs from "@/lib/data/jobs";
-import * as likedSongs from "@/lib/data/liked-song";
-import * as songs from "@/lib/data/song";
-import * as songAnalysis from "@/lib/data/song-analysis";
-import * as audioFeatures from "@/lib/data/song-audio-feature";
-import { finalizeJob, startJob } from "@/lib/jobs/lifecycle";
+import * as likedSongs from "@/lib/domains/library/liked-songs/queries";
+import * as songs from "@/lib/domains/library/songs/queries";
+import * as songAnalysis from "@/lib/domains/enrichment/content-analysis/queries";
+import * as audioFeatures from "@/lib/domains/enrichment/audio-features/queries";
+import { finalizeJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import {
 	emitError,
 	emitItem,
 	emitProgress,
 	emitStatus,
-} from "@/lib/jobs/progress/helpers";
+} from "@/lib/platform/jobs/progress/helpers";
 import type { DbError } from "@/lib/shared/errors/database";
 import { PipelineConfigError } from "@/lib/shared/errors/domain/analysis";
 import { type LlmProviderName, LlmService } from "../../ml/llm/service";

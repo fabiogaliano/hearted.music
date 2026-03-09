@@ -1,6 +1,6 @@
 import { Result } from "better-result";
-import { EmbeddingService } from "@/lib/ml/embedding/service";
-import { createPlaylistProfilingService } from "@/lib/capabilities/profiling/service";
+import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import { runAudioFeaturesStage } from "./stages/audio-features";
 import { runSongAnalysisStage } from "./stages/song-analysis";
 import { runSongEmbeddingStage } from "./stages/song-embedding";

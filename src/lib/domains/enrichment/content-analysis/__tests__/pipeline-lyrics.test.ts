@@ -11,9 +11,11 @@ import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the lyrics service module with real GeniusNotFoundError for error testing
-vi.mock("@/lib/capabilities/lyrics/service", async (importOriginal) => {
+vi.mock("@/lib/domains/enrichment/lyrics/service", async (importOriginal) => {
 	const actual =
-		await importOriginal<typeof import("@/lib/capabilities/lyrics/service")>();
+		await importOriginal<
+			typeof import("@/lib/domains/enrichment/lyrics/service")
+		>();
 	return {
 		...actual,
 		LyricsService: vi.fn().mockImplementation(() => ({
@@ -31,16 +33,16 @@ vi.mock("@/lib/data/jobs", () => ({
 	updateJobStatus: vi.fn().mockResolvedValue(Result.ok(undefined)),
 }));
 
-vi.mock("@/lib/jobs/lifecycle", () => ({
+vi.mock("@/lib/platform/jobs/lifecycle", () => ({
 	startJob: vi.fn().mockResolvedValue(Result.ok(undefined)),
 	finalizeJob: vi.fn().mockResolvedValue(Result.ok(undefined)),
 }));
 
-vi.mock("@/lib/data/song-audio-feature", () => ({
+vi.mock("@/lib/domains/enrichment/audio-features/queries", () => ({
 	getBatch: vi.fn().mockResolvedValue(Result.ok(new Map())),
 }));
 
-vi.mock("@/lib/data/song", () => ({
+vi.mock("@/lib/domains/library/songs/queries", () => ({
 	getByIds: vi.fn().mockResolvedValue(Result.ok([])),
 }));
 
@@ -63,7 +65,7 @@ vi.mock("../playlist-analysis", () => ({
 	PlaylistAnalysisService: vi.fn().mockImplementation(() => ({})),
 }));
 
-import { LyricsService } from "@/lib/capabilities/lyrics/service";
+import { LyricsService } from "@/lib/domains/enrichment/lyrics/service";
 import type { SongToAnalyze } from "../pipeline";
 
 describe("Pipeline Lyrics Integration", () => {
@@ -142,7 +144,7 @@ describe("Pipeline Lyrics Integration", () => {
 
 		it("handles lyrics fetch failure gracefully", async () => {
 			const { GeniusNotFoundError } = await import(
-				"@/lib/capabilities/lyrics/service"
+				"@/lib/domains/enrichment/lyrics/service"
 			);
 
 			mockGetLyricsText.mockResolvedValueOnce(
