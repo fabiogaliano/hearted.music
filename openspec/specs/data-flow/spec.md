@@ -147,11 +147,15 @@ The system SHALL provide optimistic updates for user actions.
 
 ### Requirement: Job lifecycle module location
 
-The system SHALL define job lifecycle helpers under the jobs module.
+The system SHALL define job lifecycle helpers under the platform jobs module.
 
 #### Scenario: Job lifecycle service location
 - **WHEN** job lifecycle helpers are referenced
-- **THEN** they reside in `src/lib/jobs/lifecycle.ts`
+- **THEN** they reside in `src/lib/platform/jobs/lifecycle.ts`
+
+#### Scenario: Job progress helper location
+- **WHEN** job progress helpers are referenced
+- **THEN** they reside under `src/lib/platform/jobs/progress/*`
 
 ### Requirement: Retry utility module location
 
@@ -254,7 +258,7 @@ useMutation({
 
 Jobs use a `pending → running → completed/failed` state machine. The `pending` state supports future SQS queue integration.
 
-**Service**: `src/lib/jobs/lifecycle.ts`
+**Service**: `src/lib/platform/jobs/lifecycle.ts`
 
 | Function                    | Use When                                               |
 | --------------------------- | ------------------------------------------------------ |
