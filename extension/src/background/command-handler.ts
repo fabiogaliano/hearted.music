@@ -1,3 +1,13 @@
+import {
+	addToPlaylist,
+	removeFromPlaylist,
+} from "../shared/spotify-client/mutations";
+import {
+	createPlaylist,
+	deletePlaylist,
+	updatePlaylist,
+} from "../shared/spotify-client/playlist-v2";
+import { queryArtistOverview } from "../shared/spotify-client/reads";
 import type {
 	CommandResponse,
 	SpotifyCommand,
@@ -6,16 +16,6 @@ import type {
 	SpotifyErrorCode,
 	SpotifyTokenPayload,
 } from "../shared/types";
-import { queryArtistOverview } from "../shared/spotify-client/reads";
-import {
-	addToPlaylist,
-	removeFromPlaylist,
-} from "../shared/spotify-client/mutations";
-import {
-	createPlaylist,
-	updatePlaylist,
-	deletePlaylist,
-} from "../shared/spotify-client/playlist-v2";
 
 export type TokenProvider = {
 	getCachedToken: () => SpotifyTokenPayload | null;

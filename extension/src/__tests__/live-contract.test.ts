@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { DEFAULT_HASHES } from "../shared/hash-registry";
 
 const TOKEN = (globalThis as any).process?.env?.SPOTIFY_TOKEN as

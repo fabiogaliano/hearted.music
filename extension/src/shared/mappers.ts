@@ -1,12 +1,12 @@
-import type { SpotifyTrackDTO, SpotifyPlaylistDTO } from "./types";
 import type {
 	PathfinderLibraryTrackItem,
 	PathfinderLibraryV3Item,
 	PathfinderPlaylistContentItem,
 } from "./spotify-client/responses.types";
+import type { SpotifyPlaylistDTO, SpotifyTrackDTO } from "./types";
 
 export function extractId(uri: string): string {
-	return uri.split(":").pop()!;
+	return uri.split(":").pop() as string;
 }
 
 /** Maps a pathfinder liked-track item (fetchLibraryTracks response).

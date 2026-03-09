@@ -1,6 +1,6 @@
 import type {
-	SpotifyTrackDTO,
 	SpotifyPlaylistDTO,
+	SpotifyTrackDTO,
 	UserProfile,
 } from "../types";
 import type {

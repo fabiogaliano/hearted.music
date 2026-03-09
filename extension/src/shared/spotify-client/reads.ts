@@ -1,9 +1,15 @@
+import {
+	extractId,
+	mapPathfinderPlaylist,
+	mapPathfinderPlaylistTrack,
+	mapPathfinderTrack,
+} from "../mappers";
+import { queryPathfinder } from "../pathfinder";
 import type {
-	SpotifyTrackDTO,
 	SpotifyPlaylistDTO,
+	SpotifyTrackDTO,
 	UserProfile,
 } from "../types";
-import type { ProgressCallback, ArtistOverviewResult } from "./types";
 import type {
 	PathfinderFetchLibraryTracksResponse,
 	PathfinderFetchPlaylistContentsResponse,
@@ -11,13 +17,7 @@ import type {
 	PathfinderProfileAttributesResponse,
 	PathfinderQueryArtistOverviewResponse,
 } from "./responses.types";
-import { queryPathfinder } from "../pathfinder";
-import {
-	extractId,
-	mapPathfinderTrack,
-	mapPathfinderPlaylist,
-	mapPathfinderPlaylistTrack,
-} from "../mappers";
+import type { ArtistOverviewResult, ProgressCallback } from "./types";
 
 export async function getCurrentUserProfile(
 	token: string,

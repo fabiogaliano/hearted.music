@@ -1,12 +1,12 @@
 import type {
-	CreatePlaylistResult,
-	UpdatePlaylistResult,
-	DeletePlaylistResult,
-} from "./types";
-import type {
 	PlaylistV2ChangesResponse,
 	PlaylistV2CreateResponse,
 } from "./responses.types";
+import type {
+	CreatePlaylistResult,
+	DeletePlaylistResult,
+	UpdatePlaylistResult,
+} from "./types";
 
 const PRIMARY_HOST = "spclient.wg.spotify.com";
 const FALLBACK_HOST = "gew4-spclient.spotify.com";

@@ -1,20 +1,20 @@
+import { parseSpotifyCommand } from "../../../shared/spotify-command-protocol";
+import { DEFAULT_BACKEND_URL } from "../shared/constants";
+import { updateHash } from "../shared/hash-registry";
+import {
+	fetchAllLikedTracks,
+	fetchPlaylistTracks,
+	getCurrentUserProfile as fetchProfile,
+	fetchUserPlaylists,
+} from "../shared/spotify-client/reads";
+import { getSyncState, setSyncState } from "../shared/storage";
 import type {
 	ExtensionMessage,
 	SpotifyTokenPayload,
 	StatusResponse,
 	UserProfile,
 } from "../shared/types";
-import { getSyncState, setSyncState } from "../shared/storage";
-import { updateHash } from "../shared/hash-registry";
-import {
-	getCurrentUserProfile as fetchProfile,
-	fetchAllLikedTracks,
-	fetchUserPlaylists,
-	fetchPlaylistTracks,
-} from "../shared/spotify-client/reads";
-import { DEFAULT_BACKEND_URL } from "../shared/constants";
 import { handleSpotifyCommand } from "./command-handler";
-import { parseSpotifyCommand } from "../../../shared/spotify-command-protocol";
 
 let cachedToken: SpotifyTokenPayload | null = null;
 let cachedProfile: UserProfile | null = null;
@@ -103,7 +103,7 @@ async function performSync(): Promise<SyncResult> {
 		return { count: 0 };
 	}
 	isSyncing = true;
-	const token = cachedToken!.accessToken;
+	const token = (cachedToken as SpotifyTokenPayload).accessToken;
 	await setSyncState({ status: "syncing", fetched: 0, total: 0, error: null });
 	try {
 		if (!cachedProfile) {
@@ -166,15 +166,25 @@ async function performSync(): Promise<SyncResult> {
 }
 
 // Debug helpers (callable from SW console)
-(self as any).testFetch = async () => {
+type DebugSelf = {
+	testFetch: () => Promise<unknown>;
+	triggerSync: () => Promise<unknown>;
+	fetchPlaylists: () => Promise<unknown>;
+	getProfile: () => Promise<unknown>;
+	fetchPlaylistTracks: (playlistUri: string) => Promise<unknown>;
+};
+const dbg = self as unknown as DebugSelf;
+
+dbg.testFetch = async () => {
 	if (!isTokenValid()) return console.error("[hearted.] No valid token");
-	const tracks = await fetchAllLikedTracks(cachedToken!.accessToken);
+	const token = (cachedToken as SpotifyTokenPayload).accessToken;
+	const tracks = await fetchAllLikedTracks(token);
 	const sample = tracks.slice(0, 5);
 	console.log("[hearted.] Sample tracks:", sample);
 	return sample;
 };
 
-(self as any).triggerSync = async () => {
+dbg.triggerSync = async () => {
 	try {
 		const result = await performSync();
 		console.log(`[hearted.] triggerSync result:`, result);
@@ -184,31 +194,31 @@ async function performSync(): Promise<SyncResult> {
 	}
 };
 
-(self as any).fetchPlaylists = async () => {
+dbg.fetchPlaylists = async () => {
 	if (!isTokenValid()) return console.error("[hearted.] No valid token");
+	const token = (cachedToken as SpotifyTokenPayload).accessToken;
 	if (!cachedProfile) {
-		cachedProfile = await fetchProfile(cachedToken!.accessToken);
+		cachedProfile = await fetchProfile(token);
 	}
 	const userUri = `spotify:user:${cachedProfile.spotifyId}`;
-	const playlists = await fetchUserPlaylists(cachedToken!.accessToken, userUri);
+	const playlists = await fetchUserPlaylists(token, userUri);
 	console.log("[hearted.] Playlists:", playlists);
 	return playlists;
 };
 
-(self as any).getProfile = async () => {
+dbg.getProfile = async () => {
 	if (!isTokenValid()) return console.error("[hearted.] No valid token");
-	const profile = await fetchProfile(cachedToken!.accessToken);
+	const token = (cachedToken as SpotifyTokenPayload).accessToken;
+	const profile = await fetchProfile(token);
 	cachedProfile = profile;
 	console.log("[hearted.] Profile:", profile);
 	return profile;
 };
 
-(self as any).fetchPlaylistTracks = async (playlistUri: string) => {
+dbg.fetchPlaylistTracks = async (playlistUri: string) => {
 	if (!isTokenValid()) return console.error("[hearted.] No valid token");
-	const tracks = await fetchPlaylistTracks(
-		cachedToken!.accessToken,
-		playlistUri,
-	);
+	const token = (cachedToken as SpotifyTokenPayload).accessToken;
+	const tracks = await fetchPlaylistTracks(token, playlistUri);
 	console.log("[hearted.] Playlist tracks:", tracks);
 	return tracks;
 };
@@ -404,7 +414,7 @@ chrome.runtime.onMessage.addListener(
 			case "GET_TOKEN": {
 				sendResponse(
 					isTokenValid()
-						? { token: cachedToken!.accessToken }
+						? { token: (cachedToken as SpotifyTokenPayload).accessToken }
 						: { token: null },
 				);
 				break;
