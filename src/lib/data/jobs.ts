@@ -9,7 +9,7 @@ import type { Result } from "better-result";
 import {
 	JobProgressSchema as JobProgressSchemaImpl,
 	type JobProgress as JobProgressType,
-} from "@/lib/jobs/progress/types";
+} from "@/lib/platform/jobs/progress/types";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,

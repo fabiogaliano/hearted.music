@@ -14,10 +14,13 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
-import type { Playlist, PlaylistSong } from "@/lib/data/playlists";
-import * as playlists from "@/lib/data/playlists";
-import type { Song } from "@/lib/data/song";
-import * as songs from "@/lib/data/song";
+import type {
+	Playlist,
+	PlaylistSong,
+} from "@/lib/domains/library/playlists/queries";
+import * as playlists from "@/lib/domains/library/playlists/queries";
+import type { Song } from "@/lib/domains/library/songs/queries";
+import * as songs from "@/lib/domains/library/songs/queries";
 import { dedupeTracksBySpotifyId } from "@/lib/integrations/spotify/mappers";
 import type {
 	SpotifyPlaylistDTO,

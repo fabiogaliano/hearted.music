@@ -10,11 +10,11 @@
 import { redirect } from "@tanstack/react-router";
 import { getRequest } from "@tanstack/react-start/server";
 import { Result } from "better-result";
-import { getAuth } from "@/lib/auth";
+import { getAuth } from "@/lib/platform/auth/auth";
 import {
 	getAccountByBetterAuthUserId,
 	type Account,
-} from "@/lib/data/accounts";
+} from "@/lib/domains/library/accounts/queries";
 
 export interface AppSession {
 	accountId: string;

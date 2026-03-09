@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { createAnalysisPipeline } from "@/lib/capabilities/analysis/pipeline";
+import { createAnalysisPipeline } from "@/lib/domains/enrichment/content-analysis/pipeline";
 import type { EnrichmentContext, EnrichmentStageResult } from "../types";
 
 export async function runSongAnalysisStage(

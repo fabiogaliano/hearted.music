@@ -13,15 +13,18 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
-import { getAuthSession } from "@/lib/auth.server";
+import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import { getJobById, type JobProgress } from "@/lib/data/jobs";
-import { subscribe, unsubscribeAll } from "@/lib/jobs/progress/emitter";
+import {
+	subscribe,
+	unsubscribeAll,
+} from "@/lib/platform/jobs/progress/emitter";
 import {
 	type JobEvent,
 	serializeSSEEvent,
 	serializeSSEPing,
 	TERMINAL_JOB_STATUSES,
-} from "@/lib/jobs/progress/types";
+} from "@/lib/platform/jobs/progress/types";
 
 /** Keep-alive ping interval (30 seconds) */
 const PING_INTERVAL_MS = 30_000;

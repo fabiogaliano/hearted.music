@@ -1,8 +1,8 @@
 import { TaggedError } from "better-result";
-import type { EmbeddingService } from "@/lib/ml/embedding/service";
-import type { PlaylistProfilingService } from "@/lib/capabilities/profiling/service";
-import type { Song } from "@/lib/data/song";
-import type { Playlist } from "@/lib/data/playlists";
+import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
+import type { Song } from "@/lib/domains/library/songs/queries";
+import type { Playlist } from "@/lib/domains/library/playlists/queries";
 
 export type EnrichmentStageName =
 	| "audio_features"

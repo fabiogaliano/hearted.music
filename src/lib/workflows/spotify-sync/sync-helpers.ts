@@ -6,12 +6,12 @@
  */
 
 import { Result } from "better-result";
-import type { LikedSong } from "@/lib/data/liked-song";
-import * as likedSongsData from "@/lib/data/liked-song";
-import type { Song } from "@/lib/data/song";
-import * as songs from "@/lib/data/song";
-import { completeJob, failJob, startJob } from "@/lib/jobs/lifecycle";
-import { emitError, emitStatus } from "@/lib/jobs/progress/helpers";
+import type { LikedSong } from "@/lib/domains/library/liked-songs/queries";
+import * as likedSongsData from "@/lib/domains/library/liked-songs/queries";
+import type { Song } from "@/lib/domains/library/songs/queries";
+import * as songs from "@/lib/domains/library/songs/queries";
+import { completeJob, failJob, startJob } from "@/lib/platform/jobs/lifecycle";
+import { emitError, emitStatus } from "@/lib/platform/jobs/progress/helpers";
 import type { DbError } from "@/lib/shared/errors/database";
 import { SyncFailedError } from "@/lib/shared/errors/domain/sync";
 import type { SpotifyError } from "@/lib/shared/errors/external/spotify";

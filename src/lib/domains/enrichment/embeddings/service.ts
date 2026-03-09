@@ -14,11 +14,11 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
-import type { SongAnalysis } from "@/lib/data/song-analysis";
-import * as songAnalysis from "@/lib/data/song-analysis";
-import type { SongEmbedding } from "@/lib/data/vectors";
-import * as vectors from "@/lib/data/vectors";
-import { getMlProvider } from "@/lib/ml/provider/factory";
+import type { SongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
+import * as songAnalysis from "@/lib/domains/enrichment/content-analysis/queries";
+import type { SongEmbedding } from "@/lib/domains/enrichment/embeddings/queries";
+import * as vectors from "@/lib/domains/enrichment/embeddings/queries";
+import { getMlProvider } from "@/lib/integrations/providers/factory";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	DimensionMismatchError,

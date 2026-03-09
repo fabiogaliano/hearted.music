@@ -1,9 +1,9 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
-import { requireAuthSession } from "@/lib/auth.server";
-import * as likedSong from "@/lib/data/liked-song";
-import type { LikedSongPageRow } from "@/lib/data/liked-song";
+import { requireAuthSession } from "@/lib/platform/auth/auth.server";
+import * as likedSong from "@/lib/domains/library/liked-songs/queries";
+import type { LikedSongPageRow } from "@/lib/domains/library/liked-songs/queries";
 import { appFetch } from "@/lib/integrations/spotify/app-auth";
 import type { FilterOption } from "@/features/liked-songs/queries";
 import type {

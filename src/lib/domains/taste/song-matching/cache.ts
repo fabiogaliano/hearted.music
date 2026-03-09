@@ -11,8 +11,8 @@ import {
 	hashMatchContext,
 	hashMatchingConfig,
 	hashPlaylistSet,
-} from "@/lib/ml/embedding/hashing";
-import { getModelBundleHash } from "@/lib/ml/embedding/versioning";
+} from "@/lib/domains/enrichment/embeddings/hashing";
+import { getModelBundleHash } from "@/lib/domains/enrichment/embeddings/versioning";
 import type { DbError } from "@/lib/shared/errors/database";
 import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
 import { DEFAULT_MATCHING_CONFIG } from "./config";
@@ -226,7 +226,9 @@ export class MatchCachingService {
 		songEmbeddings: Map<string, number[]>,
 	): Promise<Result<Map<string, MatchResult[]> | null, DbError>> {
 		// Import at method level to avoid circular dependencies
-		const matchingData = await import("@/lib/data/matching");
+		const matchingData = await import(
+			"@/lib/domains/taste/song-matching/queries"
+		);
 
 		// Find existing context
 		const contextResult = await matchingData.getMatchContextByHash(
@@ -305,12 +307,14 @@ export class MatchCachingService {
 		matches: Map<string, MatchResult[]>,
 	): Promise<Result<string, DbError | MatchingError | MLProviderError>> {
 		// Import at method level to avoid circular dependencies
-		const matchingData = await import("@/lib/data/matching");
+		const matchingData = await import(
+			"@/lib/domains/taste/song-matching/queries"
+		);
 		const { MATCHING_ALGO_VERSION } = await import(
-			"@/lib/ml/embedding/versioning"
+			"@/lib/domains/enrichment/embeddings/versioning"
 		);
 		const { getActiveModelBundle } = await import(
-			"@/lib/ml/embedding/model-bundle"
+			"@/lib/domains/enrichment/embeddings/model-bundle"
 		);
 
 		// Get active model bundle for embedding model

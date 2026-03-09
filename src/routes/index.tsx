@@ -8,7 +8,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { Landing } from "@/features/landing/Landing";
-import { getAuthSession } from "@/lib/auth.server";
+import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import { themes } from "@/lib/theme/colors";
 import { useRegisterTheme } from "@/lib/theme/ThemeHueProvider";
 import { DEFAULT_THEME } from "@/lib/theme/types";

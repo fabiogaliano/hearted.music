@@ -8,10 +8,10 @@
  */
 
 import { Result } from "better-result";
-import type { PlaylistProfilingService } from "@/lib/capabilities/profiling/service";
+import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { JobProgress } from "@/lib/data/jobs";
-import { emitItem, emitProgress } from "@/lib/jobs/progress/helpers";
-import type { EmbeddingService } from "@/lib/ml/embedding/service";
+import { emitItem, emitProgress } from "@/lib/platform/jobs/progress/helpers";
+import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { computeAdaptiveWeights, DEFAULT_MATCHING_CONFIG } from "./config";
 import { computeAudioFeatureScore } from "./scoring";
 import { cosineSimilarity } from "./semantic";

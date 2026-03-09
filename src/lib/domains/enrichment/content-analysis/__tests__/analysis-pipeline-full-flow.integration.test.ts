@@ -25,7 +25,7 @@
 import { Result } from "better-result";
 import { beforeAll, describe, expect, test } from "vitest";
 import * as jobsData from "@/lib/data/jobs";
-import type { JobProgress } from "@/lib/jobs/progress/types";
+import type { JobProgress } from "@/lib/platform/jobs/progress/types";
 import type { PipelineResult } from "../pipeline";
 import { createAnalysisPipeline, type SongToAnalyze } from "../pipeline";
 
@@ -64,7 +64,9 @@ const KNOWN_TRACKS = [
 // ─────────────────────────────────────────────────────────────
 
 async function getOrCreateTestSongs(): Promise<SongToAnalyze[]> {
-	const { getBySpotifyIds, upsert } = await import("@/lib/data/song");
+	const { getBySpotifyIds, upsert } = await import(
+		"@/lib/domains/library/songs/queries"
+	);
 
 	// Try to fetch existing songs
 	const existingResult = await getBySpotifyIds(
@@ -186,7 +188,9 @@ describe.skipIf(!RUN_TEST || !HAS_GENIUS || !HAS_LLM || !HAS_TEST_ACCOUNT)(
 				throw new Error("TEST_ACCOUNT_ID environment variable is required");
 			}
 
-			const { getAccountById } = await import("@/lib/data/accounts");
+			const { getAccountById } = await import(
+				"@/lib/domains/library/accounts/queries"
+			);
 			const accountResult = await getAccountById(TEST_ACCOUNT_ID);
 			if (!Result.isOk(accountResult) || !accountResult.value) {
 				throw new Error(
@@ -288,7 +292,7 @@ describe.skipIf(!RUN_TEST || !HAS_GENIUS || !HAS_LLM || !HAS_TEST_ACCOUNT)(
 				// The fact that analysis succeeded means LLM returned structured data
 				// We can verify by checking the analysis was stored in the database
 				const { get: getSongAnalysis } = await import(
-					"@/lib/data/song-analysis"
+					"@/lib/domains/enrichment/content-analysis/queries"
 				);
 
 				for (const song of TEST_SONGS) {
@@ -313,7 +317,7 @@ describe.skipIf(!RUN_TEST || !HAS_GENIUS || !HAS_LLM || !HAS_TEST_ACCOUNT)(
 				if (!Result.isOk(pipelineResult)) return;
 
 				const { get: getSongAnalysis } = await import(
-					"@/lib/data/song-analysis"
+					"@/lib/domains/enrichment/content-analysis/queries"
 				);
 
 				const analysisResult = await getSongAnalysis(TEST_SONGS[0].songId);
@@ -339,7 +343,7 @@ describe.skipIf(!RUN_TEST || !HAS_GENIUS || !HAS_LLM || !HAS_TEST_ACCOUNT)(
 				if (!Result.isOk(pipelineResult)) return;
 
 				const { get: getSongAnalysis } = await import(
-					"@/lib/data/song-analysis"
+					"@/lib/domains/enrichment/content-analysis/queries"
 				);
 
 				for (const song of TEST_SONGS) {
@@ -357,7 +361,7 @@ describe.skipIf(!RUN_TEST || !HAS_GENIUS || !HAS_LLM || !HAS_TEST_ACCOUNT)(
 				if (!Result.isOk(pipelineResult)) return;
 
 				const { get: getSongAnalysis } = await import(
-					"@/lib/data/song-analysis"
+					"@/lib/domains/enrichment/content-analysis/queries"
 				);
 
 				const analysisResult = await getSongAnalysis(TEST_SONGS[0].songId);

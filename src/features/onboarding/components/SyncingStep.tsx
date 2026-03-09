@@ -11,7 +11,7 @@ import {
 	type JobProgressState,
 	useJobProgress,
 } from "@/lib/hooks/useJobProgress";
-import type { PhaseJobIds } from "@/lib/jobs/progress/types";
+import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import { pollPhaseJobIds } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";

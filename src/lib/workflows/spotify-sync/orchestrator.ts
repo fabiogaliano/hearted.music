@@ -16,13 +16,13 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import type { JobProgress } from "@/lib/data/jobs";
-import * as likedSongData from "@/lib/data/liked-song";
-import type { Playlist } from "@/lib/data/playlists";
+import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
+import type { Playlist } from "@/lib/domains/library/playlists/queries";
 
-import * as playlists from "@/lib/data/playlists";
-import type { Song } from "@/lib/data/song";
-import { emitItem } from "@/lib/jobs/progress/helpers";
-import type { PhaseJobIds } from "@/lib/jobs/progress/types";
+import * as playlists from "@/lib/domains/library/playlists/queries";
+import type { Song } from "@/lib/domains/library/songs/queries";
+import { emitItem } from "@/lib/platform/jobs/progress/helpers";
+import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type { DbError } from "@/lib/shared/errors/database";
 import { SyncFailedError } from "@/lib/shared/errors/domain/sync";
 import type { SpotifyError } from "@/lib/shared/errors/external/spotify";

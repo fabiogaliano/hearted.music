@@ -1,15 +1,15 @@
 import { createHash } from "node:crypto";
 import { Result } from "better-result";
-import * as likedSongData from "@/lib/data/liked-song";
-import * as matchingData from "@/lib/data/matching";
-import * as audioFeatureData from "@/lib/data/song-audio-feature";
+import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
+import * as matchingData from "@/lib/domains/taste/song-matching/queries";
+import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
 import type { Json } from "@/lib/data/database.types";
-import { createMatchingService } from "@/lib/capabilities/matching/service";
+import { createMatchingService } from "@/lib/domains/taste/song-matching/service";
 import type {
 	MatchingSong,
 	MatchingPlaylistProfile,
 	MatchingAudioFeatures,
-} from "@/lib/capabilities/matching/types";
+} from "@/lib/domains/taste/song-matching/types";
 import { runTrackedStageJob } from "../job-runner";
 import type { EnrichmentContext, EnrichmentStageResult } from "../types";
 

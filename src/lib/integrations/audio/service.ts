@@ -6,7 +6,7 @@
  */
 
 import { Result } from "better-result";
-import * as audioFeatureData from "@/lib/data/song-audio-feature";
+import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
 import type { ReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import type { ReccoBeatsAudioFeatures } from "@/lib/integrations/reccobeats/types";
 import type { DbError } from "@/lib/shared/errors/database";

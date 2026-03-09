@@ -7,11 +7,11 @@
 
 import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
-import type { Song } from "@/lib/data/song";
-import * as audioFeatureData from "@/lib/data/song-audio-feature";
-import * as vectorsData from "@/lib/data/vectors";
-import type { EmbeddingService } from "@/lib/ml/embedding/service";
-import { getModelBundleHash } from "@/lib/ml/embedding/versioning";
+import type { Song } from "@/lib/domains/library/songs/queries";
+import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
+import * as vectorsData from "@/lib/domains/enrichment/embeddings/queries";
+import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import { getModelBundleHash } from "@/lib/domains/enrichment/embeddings/versioning";
 import {
 	calculateAudioCentroid,
 	calculateCentroid,

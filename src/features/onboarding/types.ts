@@ -1,4 +1,4 @@
-import type { PhaseJobIds } from "@/lib/jobs/progress/types";
+import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 
 /**
  * Statistics from sync operation, passed through router state.
