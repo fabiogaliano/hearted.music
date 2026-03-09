@@ -16,11 +16,11 @@
  */
 
 import { Result } from "better-result";
-import { getAccountById, getAccountBySpotifyId } from "@/lib/data/accounts";
+import { getAccountById, getAccountBySpotifyId } from "@/lib/domains/library/accounts/queries";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import * as songs from "@/lib/data/song";
-import * as likedSongs from "@/lib/data/liked-song";
-import type { UpsertData as UpsertSongData } from "@/lib/data/song";
+import * as songs from "@/lib/domains/library/songs/queries";
+import * as likedSongs from "@/lib/domains/library/liked-songs/queries";
+import type { UpsertData as UpsertSongData } from "@/lib/domains/library/songs/queries";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers

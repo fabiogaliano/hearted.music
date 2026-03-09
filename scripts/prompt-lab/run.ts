@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 import { Result } from "better-result";
-import { LlmService } from "@/lib/ml/llm/service";
+import { LlmService } from "@/lib/integrations/llm/service";
 import { LyricalAnalysisSchema, InstrumentalAnalysisSchema } from "./schema";
 import { PROMPT_VARIANTS, type PromptContext } from "./prompts";
 import { DEFAULT_TEST_SONGS, type TestSong } from "./test-songs";

@@ -47,7 +47,7 @@ vi.mock("@/lib/domains/library/songs/queries", () => ({
 }));
 
 // Mock LLM service
-vi.mock("../../ml/llm/service", () => ({
+vi.mock("@/lib/integrations/llm/service", () => ({
 	LlmService: vi.fn().mockImplementation(() => ({})),
 }));
 

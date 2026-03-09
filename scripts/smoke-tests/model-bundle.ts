@@ -5,9 +5,9 @@
  */
 
 import { Result } from "better-result";
-import { getActiveModelBundle } from "@/lib/ml/embedding/model-bundle";
-import { hashModelBundle } from "@/lib/ml/embedding/hashing";
-import { getModelBundleHash } from "@/lib/ml/embedding/versioning";
+import { getActiveModelBundle } from "@/lib/domains/enrichment/embeddings/model-bundle";
+import { hashModelBundle } from "@/lib/domains/enrichment/embeddings/hashing";
+import { getModelBundleHash } from "@/lib/domains/enrichment/embeddings/versioning";
 
 async function smoke() {
 	console.log("🧪 Model Bundle Smoke Test\n");

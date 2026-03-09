@@ -11,8 +11,8 @@ import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "./client";
-import type { Json, Tables, TablesInsert } from "./database.types";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Json, Tables, TablesInsert } from "@/lib/data/database.types";
 
 /** Playlist analysis row type */
 export type PlaylistAnalysis = Tables<"playlist_analysis">;

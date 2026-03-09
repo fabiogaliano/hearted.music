@@ -38,7 +38,10 @@ import {
 } from "@/lib/platform/jobs/progress/helpers";
 import type { DbError } from "@/lib/shared/errors/database";
 import { PipelineConfigError } from "@/lib/shared/errors/domain/analysis";
-import { type LlmProviderName, LlmService } from "../../ml/llm/service";
+import {
+	type LlmProviderName,
+	LlmService,
+} from "@/lib/integrations/llm/service";
 import { type GeniusError, LyricsService } from "../lyrics/service";
 import {
 	type AnalyzePlaylistInput,

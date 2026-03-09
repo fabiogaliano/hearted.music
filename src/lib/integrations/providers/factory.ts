@@ -19,9 +19,9 @@ import {
 	MLConfigError,
 	type MLProviderUnavailableError,
 } from "@/lib/shared/errors/domain/ml";
-import { createDeepInfraProvider } from "../adapters/deepinfra";
-import { createHuggingFaceProvider } from "../adapters/huggingface";
-import { createLocalProvider } from "../adapters/local";
+import { createDeepInfraProvider } from "./adapters/deepinfra";
+import { createHuggingFaceProvider } from "./adapters/huggingface";
+import { createLocalProvider } from "./adapters/local";
 import type { MLProvider } from "./ports";
 import type { ProviderName } from "./types";
 
