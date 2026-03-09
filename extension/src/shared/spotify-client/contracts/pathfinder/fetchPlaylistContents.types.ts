@@ -21,7 +21,7 @@ export interface Content {
 export interface ContentItem {
 	addedAt: AddedAt;
 	addedBy: AddedBy | null;
-	attributes: any[];
+	attributes: unknown[];
 	itemV2: ItemV2;
 	itemV3: ItemV3;
 	uid: string;
@@ -101,7 +101,7 @@ export interface AssociationsV3 {
 
 export interface AudioAssociations {
 	__typename: string;
-	items: any[];
+	items: unknown[];
 }
 
 export interface VideoAssociations {
@@ -136,7 +136,7 @@ export interface ItemV3Data {
 
 export interface ConsumptionExperienceTrait {
 	__typename: string;
-	contentRatings: any[];
+	contentRatings: unknown[];
 	duration: Duration;
 }
 

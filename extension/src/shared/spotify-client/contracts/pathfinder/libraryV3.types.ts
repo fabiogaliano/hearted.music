@@ -14,7 +14,7 @@ export interface LibraryV3Class {
 	__typename: string;
 	availableFilters: SelectedSortOrder[];
 	availableSortOrders: SelectedSortOrder[];
-	breadcrumbs: any[];
+	breadcrumbs: unknown[];
 	items: ItemElement[];
 	pagingInfo: PagingInfo;
 	selectedFilters: SelectedSortOrder[];
@@ -52,7 +52,7 @@ export interface ItemData {
 	image?: Image;
 	name?: string;
 	uri?: string;
-	attributes?: any[];
+	attributes?: unknown[];
 	currentUserCapabilities?: CurrentUserCapabilities;
 	description?: string;
 	format?: string;

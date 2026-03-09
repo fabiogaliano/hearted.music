@@ -1,6 +1,7 @@
 // --- Spotify Token & Hash Interception ---
 
 import type { SpotifyCommand } from "../../../shared/spotify-command-protocol";
+
 export type {
 	AddToPlaylistPayload,
 	CommandResponse,

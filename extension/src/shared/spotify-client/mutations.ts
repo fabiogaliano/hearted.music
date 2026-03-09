@@ -1,9 +1,9 @@
 import { queryPathfinder } from "../pathfinder";
-import type { AddToPlaylistResult, RemoveFromPlaylistResult } from "./types";
 import type {
 	PathfinderAddToPlaylistResponse,
 	PathfinderRemoveFromPlaylistResponse,
 } from "./responses.types";
+import type { AddToPlaylistResult, RemoveFromPlaylistResult } from "./types";
 
 export async function addToPlaylist(
 	token: string,

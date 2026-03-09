@@ -1,13 +1,13 @@
-import type { SpotifyClient } from "./types";
+import { addToPlaylist, removeFromPlaylist } from "./mutations";
+import { createPlaylist, deletePlaylist, updatePlaylist } from "./playlist-v2";
 import {
-	getCurrentUserProfile,
 	fetchAllLikedTracks,
-	fetchUserPlaylists,
 	fetchPlaylistTracks,
+	fetchUserPlaylists,
+	getCurrentUserProfile,
 	queryArtistOverview,
 } from "./reads";
-import { addToPlaylist, removeFromPlaylist } from "./mutations";
-import { createPlaylist, updatePlaylist, deletePlaylist } from "./playlist-v2";
+import type { SpotifyClient } from "./types";
 
 export function createSpotifyClient(): SpotifyClient {
 	return {
