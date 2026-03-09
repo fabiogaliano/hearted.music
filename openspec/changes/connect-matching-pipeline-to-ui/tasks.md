@@ -1,18 +1,18 @@
 ## 1. Database: Add missing job type enum values
 
-- [ ] 1.1 Add `audio_features`, `song_embedding`, `playlist_profiling` to `job_type` enum via Supabase migration (`supabase/migrations/`)
-- [ ] 1.2 Regenerate TypeScript types with `bunx supabase gen types` to update `src/lib/data/database.types.ts`
+- [x] 1.1 Add `audio_features`, `song_embedding`, `playlist_profiling` to `job_type` enum via Supabase migration (`supabase/migrations/`)
+- [x] 1.2 Regenerate TypeScript types with `bunx supabase gen types` to update `src/lib/data/database.types.ts`
 
 ## 2. Pipeline types and orchestrator
 
-- [ ] 2.1 Create `src/lib/capabilities/pipeline/types.ts` — define `PipelineOptions` (maxSongs, env var override), `PipelineStageResult` (stage name, job ID, succeeded/failed counts, error), `PipelineRunResult` (stages array, total duration), `PipelineRunError`
-- [ ] 2.2 Create `src/lib/capabilities/pipeline/orchestrator.ts` — implement `runEnrichmentPipeline(accountId, options?)` as a plain async function returning `Result<PipelineRunResult, PipelineRunError>`
-- [ ] 2.3 Implement Stage 1 (audio features): select batch-capped song IDs (`ORDER BY liked_at DESC LIMIT maxSongs`), call `AudioFeaturesService.getOrFetchFeatures()`, create job with type `audio_features`, emit SSE progress
-- [ ] 2.4 Implement Stage 2 (song analysis): call `AnalysisPipeline.getSongsNeedingAnalysis()` filtered to the batch song set, call `AnalysisPipeline.analyzeSongs()` — this already creates its own job internally
-- [ ] 2.5 Implement Stage 3 (song embeddings): query songs with `song_analysis` but no `song_embedding`, call `EmbeddingService.embedBatch()`, create job with type `song_embedding`, emit SSE progress
-- [ ] 2.6 Implement Stage 4 (playlist profiling): query destination playlists (`is_destination = true`), call `PlaylistProfilingService.computeProfile()` for each, create job with type `playlist_profiling`, emit SSE progress
-- [ ] 2.7 Implement Stage 5 (matching): query unactioned songs (no `item_status`), query profiled destination playlists, call `MatchingService.matchBatch()`, create `match_context` and store `match_result` rows — matching job type already exists
-- [ ] 2.8 Add error handling: wrap each stage in try/catch, log failures, collect `PipelineStageResult` per stage, continue to next stage on failure
+- [x] 2.1 Create `src/lib/capabilities/pipeline/types.ts` — define `PipelineOptions` (maxSongs, env var override), `PipelineStageResult` (stage name, job ID, succeeded/failed counts, error), `PipelineRunResult` (stages array, total duration), `PipelineRunError`
+- [x] 2.2 Create `src/lib/capabilities/pipeline/orchestrator.ts` — implement `runEnrichmentPipeline(accountId, options?)` as a plain async function returning `Result<PipelineRunResult, PipelineRunError>`
+- [x] 2.3 Implement Stage 1 (audio features): select batch-capped song IDs (`ORDER BY liked_at DESC LIMIT maxSongs`), call `AudioFeaturesService.getOrFetchFeatures()`, create job with type `audio_features`, emit SSE progress
+- [x] 2.4 Implement Stage 2 (song analysis): call `AnalysisPipeline.getSongsNeedingAnalysis()` filtered to the batch song set, call `AnalysisPipeline.analyzeSongs()` — this already creates its own job internally
+- [x] 2.5 Implement Stage 3 (song embeddings): query songs with `song_analysis` but no `song_embedding`, call `EmbeddingService.embedBatch()`, create job with type `song_embedding`, emit SSE progress
+- [x] 2.6 Implement Stage 4 (playlist profiling): query destination playlists (`is_destination = true`), call `PlaylistProfilingService.computeProfile()` for each, create job with type `playlist_profiling`, emit SSE progress
+- [x] 2.7 Implement Stage 5 (matching): query unactioned songs (no `item_status`), query profiled destination playlists, call `MatchingService.matchBatch()`, create `match_context` and store `match_result` rows — matching job type already exists
+- [x] 2.8 Add error handling: wrap each stage in try/catch, log failures, collect `PipelineStageResult` per stage, continue to next stage on failure
 
 ## 3. Sync endpoint integration
 
