@@ -5,8 +5,8 @@
 
 ## 2. Pipeline types and orchestrator
 
-- [x] 2.1 Create `src/lib/capabilities/pipeline/types.ts` — define `PipelineOptions` (maxSongs, env var override), `PipelineStageResult` (stage name, job ID, succeeded/failed counts, error), `PipelineRunResult` (stages array, total duration), `PipelineRunError`
-- [x] 2.2 Create `src/lib/capabilities/pipeline/orchestrator.ts` — implement `runEnrichmentPipeline(accountId, options?)` as a plain async function returning `Result<PipelineRunResult, PipelineRunError>`
+- [x] 2.1 Create `src/lib/workflows/enrichment-pipeline/types.ts` — define `PipelineOptions` (maxSongs, env var override), `PipelineStageResult` (stage name, job ID, succeeded/failed counts, error), `PipelineRunResult` (stages array, total duration), `PipelineRunError`
+- [x] 2.2 Create `src/lib/workflows/enrichment-pipeline/orchestrator.ts` — implement `runEnrichmentPipeline(accountId, options?)` as a plain async function returning `Result<PipelineRunResult, PipelineRunError>`
 - [x] 2.3 Implement Stage 1 (audio features): select batch-capped song IDs (`ORDER BY liked_at DESC LIMIT maxSongs`), call `AudioFeaturesService.getOrFetchFeatures()`, create job with type `audio_features`, emit SSE progress
 - [x] 2.4 Implement Stage 2 (song analysis): call `AnalysisPipeline.getSongsNeedingAnalysis()` filtered to the batch song set, call `AnalysisPipeline.analyzeSongs()` — this already creates its own job internally
 - [x] 2.5 Implement Stage 3 (song embeddings): query songs with `song_analysis` but no `song_embedding`, call `EmbeddingService.embedBatch()`, create job with type `song_embedding`, emit SSE progress
@@ -28,7 +28,7 @@
 
 ## 5. Testing
 
-- [ ] 5.1 Write unit tests for orchestrator in `tests/capabilities/pipeline/orchestrator.test.ts` — test stage sequencing, batch cap enforcement, error isolation between stages
+- [ ] 5.1 Write unit tests for orchestrator in `tests/workflows/enrichment-pipeline/orchestrator.test.ts` — test stage sequencing, batch cap enforcement, error isolation between stages
 - [ ] 5.2 Write integration test: trigger sync endpoint with test data, verify `song_analysis`, `song_embedding`, `playlist_profile`, `match_result` tables are populated
 - [ ] 5.3 Verify incremental behavior: run pipeline twice with same data, confirm second run is a no-op (zero items processed per stage)
 

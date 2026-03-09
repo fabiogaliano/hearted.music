@@ -34,8 +34,8 @@ This change makes the pipeline actually run — producing real match results tha
 ## Impact
 
 - **Sync endpoint**: `src/routes/api/extension/sync.tsx` — add pipeline trigger after sync phases complete
-- **Capabilities**: `src/lib/capabilities/` — new pipeline orchestrator module coordinating existing services (analysis, embedding, profiling, matching)
-- **Jobs**: `src/lib/jobs/` — job chaining logic, new job types for each pipeline stage
-- **Data layer**: Existing `src/lib/data/` modules (matching, song-audio-feature, etc.) already have the write operations; orchestrator calls them in sequence
+- **Workflows**: `src/lib/workflows/enrichment-pipeline/` — pipeline orchestrator module coordinating existing domain services (analysis, embedding, profiling, matching)
+- **Jobs**: `src/lib/platform/jobs/` — job chaining logic, new job types for each pipeline stage
+- **Domain queries**: Existing domain query modules (`src/lib/domains/enrichment/`, `src/lib/domains/taste/`) already have the write operations; orchestrator calls them in sequence
 - **API keys**: `GEMINI_API_KEY` (app-level env var) for song analysis; embedding provider auto-selects from available keys (`DEEPINFRA_API_KEY` or HuggingFace free tier fallback)
 - **Cost**: Song analysis via LLM is the main cost, mitigated by 5-song batch cap. Audio features (ReccoBeats) and embeddings (HuggingFace) are free

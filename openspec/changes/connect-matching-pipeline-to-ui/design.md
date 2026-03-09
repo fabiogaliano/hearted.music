@@ -3,13 +3,13 @@
 The sync endpoint (`src/routes/api/extension/sync.tsx`) successfully writes liked songs and playlists to the database, but nothing happens after. The enrichment services (analysis, embedding, profiling, matching) are all implemented but have no trigger. All enrichment tables are empty (0 rows in `song_analysis`, `song_embedding`, `song_audio_feature`, `playlist_profile`, `match_context`, `match_result`).
 
 Existing infrastructure:
-- `AnalysisPipeline` (`src/lib/capabilities/analysis/pipeline.ts`) — batch song analysis with job tracking and SSE progress, includes `getSongsNeedingAnalysis()` for incremental filtering
-- `EmbeddingService` (`src/lib/ml/embedding/service.ts`) — embeds analysis text, stores in `song_embedding`, supports batch with content hashing for cache invalidation
-- `PlaylistProfilingService` (`src/lib/capabilities/profiling/service.ts`) — computes centroid embeddings + audio centroids + genre distributions for playlists
-- `MatchingService` (`src/lib/capabilities/matching/service.ts`) — multi-factor scoring with `matchBatch()` and SSE progress
+- `AnalysisPipeline` (`src/lib/domains/enrichment/content-analysis/pipeline.ts`) — batch song analysis with job tracking and SSE progress, includes `getSongsNeedingAnalysis()` for incremental filtering
+- `EmbeddingService` (`src/lib/domains/enrichment/embeddings/service.ts`) — embeds analysis text, stores in `song_embedding`, supports batch with content hashing for cache invalidation
+- `PlaylistProfilingService` (`src/lib/domains/taste/playlist-profiling/service.ts`) — computes centroid embeddings + audio centroids + genre distributions for playlists
+- `MatchingService` (`src/lib/domains/taste/song-matching/service.ts`) — multi-factor scoring with `matchBatch()` and SSE progress
 - `AudioFeaturesService` (`src/lib/integrations/audio/service.ts`) — fetches from ReccoBeats (free, no API key), has `getOrFetchFeatures()` and `backfillMissingFeatures()` for batch processing
-- Job lifecycle (`src/lib/jobs/lifecycle.ts`) — `startJob`/`finalizeJob`/`completeJob`/`failJob` with retry
-- SSE progress (`src/lib/jobs/progress/helpers.ts`) — `emitProgress`/`emitItem`/`emitStatus`
+- Job lifecycle (`src/lib/platform/jobs/lifecycle.ts`) — `startJob`/`finalizeJob`/`completeJob`/`failJob` with retry
+- SSE progress (`src/lib/platform/jobs/progress/helpers.ts`) — `emitProgress`/`emitItem`/`emitStatus`
 
 ## Goals / Non-Goals
 
@@ -31,7 +31,7 @@ Existing infrastructure:
 
 ### 1. Pipeline orchestrator as a single function, not a class
 
-**Decision:** Create a `runEnrichmentPipeline(accountId, options)` function in `src/lib/capabilities/pipeline/orchestrator.ts` rather than a class.
+**Decision:** Create a `runEnrichmentPipeline(accountId, options)` function in `src/lib/workflows/enrichment-pipeline/orchestrator.ts` rather than a class.
 
 **Rationale:** The existing `AnalysisPipeline` class works well for its scope (analysis + lyrics prefetch), but the orchestrator is simpler — it just calls existing services in sequence. No internal state to manage, no constructor dependencies to inject. A plain async function with Result return is the lightest approach.
 
