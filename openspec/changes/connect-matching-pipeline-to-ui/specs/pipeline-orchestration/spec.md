@@ -134,11 +134,11 @@ Pipeline failures SHALL NOT cause the sync response to fail.
 
 ### Requirement: Orchestrator module location
 
-The pipeline orchestrator SHALL be located under the capabilities folder.
+The pipeline orchestrator SHALL be located under the workflows folder.
 
 #### Scenario: Module location
 - **WHEN** the orchestrator is created
-- **THEN** it SHALL reside at `src/lib/capabilities/pipeline/orchestrator.ts`
+- **THEN** it SHALL reside at `src/lib/workflows/enrichment-pipeline/orchestrator.ts`
 
 #### Scenario: Function signature
 - **WHEN** the orchestrator is invoked
