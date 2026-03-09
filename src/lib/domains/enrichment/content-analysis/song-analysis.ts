@@ -6,7 +6,7 @@ import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queri
 import type { DbError } from "@/lib/shared/errors/database";
 import type { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
 import type { LlmError } from "@/lib/shared/errors/external/llm";
-import type { LlmService } from "../../ml/llm/service";
+import type { LlmService } from "@/lib/integrations/llm/service";
 import { getLyricsFormatLegend } from "../lyrics/utils/lyrics-formatter";
 
 const ThemeSchema = z.object({ name: z.string(), description: z.string() });

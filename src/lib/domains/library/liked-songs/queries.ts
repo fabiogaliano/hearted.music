@@ -11,9 +11,9 @@ import {
 	fromSupabaseMany,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "./client";
-import type { Database, Tables, TablesInsert } from "./database.types";
-import type { ActionType } from "./newness";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Database, Tables, TablesInsert } from "@/lib/data/database.types";
+import type { ActionType } from "./status-queries";
 
 /** Liked song row type */
 export type LikedSong = Tables<"liked_song">;

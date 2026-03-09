@@ -13,8 +13,8 @@ import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "./client";
-import type { Enums, Tables } from "./database.types";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Enums, Tables } from "@/lib/data/database.types";
 
 export type UserPreferences = Tables<"user_preferences">;
 

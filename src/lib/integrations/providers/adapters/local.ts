@@ -24,14 +24,14 @@ import {
 	MLProviderUnavailableError,
 	MLTimeoutError,
 } from "@/lib/shared/errors/domain/ml";
-import type { MLProvider } from "../provider/ports";
+import type { MLProvider } from "../ports";
 import type {
 	EmbeddingResult,
 	EmbedOptions,
 	ProviderMetadata,
 	RerankOptions,
 	RerankResult,
-} from "../provider/types";
+} from "../types";
 
 /**
  * Local provider adapter using HuggingFace Transformers.js.

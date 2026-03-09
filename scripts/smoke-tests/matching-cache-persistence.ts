@@ -17,12 +17,12 @@
  */
 
 import { Result } from "better-result";
-import { createMatchingService } from "@/lib/capabilities/matching/service";
-import { createMatchCachingService } from "@/lib/capabilities/matching/cache";
+import { createMatchingService } from "@/lib/domains/taste/song-matching/service";
+import { createMatchCachingService } from "@/lib/domains/taste/song-matching/cache";
 import type {
 	MatchingSong,
 	MatchingPlaylistProfile,
-} from "@/lib/capabilities/matching/types";
+} from "@/lib/domains/taste/song-matching/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers

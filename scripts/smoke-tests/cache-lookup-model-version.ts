@@ -12,7 +12,7 @@
  */
 
 import { Result } from "better-result";
-import * as vectors from "@/lib/data/vectors";
+import * as vectors from "@/lib/domains/enrichment/embeddings/queries";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 
 const TEST_SONG_ID = "00000000-0000-0000-0000-000000000999";

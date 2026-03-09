@@ -8,11 +8,11 @@ import { Result } from "better-result";
 import {
 	MatchingService,
 	createMatchingService,
-} from "@/lib/capabilities/matching/service";
+} from "@/lib/domains/taste/song-matching/service";
 import type {
 	MatchingSong,
 	MatchingPlaylistProfile,
-} from "@/lib/capabilities/matching/types";
+} from "@/lib/domains/taste/song-matching/types";
 
 // ============================================================================
 // Test Data

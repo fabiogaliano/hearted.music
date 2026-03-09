@@ -23,14 +23,14 @@ import {
 	DeepInfraApiError,
 	DeepInfraRateLimitError,
 } from "@/lib/shared/errors/external/deepinfra";
-import type { MLProvider } from "../provider/ports";
+import type { MLProvider } from "../ports";
 import type {
 	EmbeddingResult,
 	EmbedOptions,
 	ProviderMetadata,
 	RerankOptions,
 	RerankResult,
-} from "../provider/types";
+} from "../types";
 
 /**
  * DeepInfra provider adapter.

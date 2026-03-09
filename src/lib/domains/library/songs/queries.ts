@@ -11,8 +11,8 @@ import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "./client";
-import type { Tables, TablesInsert } from "./database.types";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Tables, TablesInsert } from "@/lib/data/database.types";
 
 /** Song row type */
 export type Song = Tables<"song">;
