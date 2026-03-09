@@ -169,23 +169,27 @@ The system SHALL use content hashing for cache invalidation.
 
 ### Requirement: Matching module locations
 
-The system SHALL organize matching pipeline modules under the capability, integration, and ML folders.
+The system SHALL organize matching pipeline modules under bounded-context domains, workflows, integrations, and platform folders.
 
-#### Scenario: Matching service location
-- **WHEN** matching modules are created or updated
-- **THEN** they are located under `src/lib/capabilities/matching`
+#### Scenario: Song matching service location
+- **WHEN** song-matching modules are created or updated
+- **THEN** they are located under `src/lib/domains/taste/song-matching/*`
 
 #### Scenario: Genre and profiling locations
-- **WHEN** genre or profiling modules are created or updated
-- **THEN** they are located under `src/lib/capabilities/genre` and `src/lib/capabilities/profiling`
+- **WHEN** genre-tagging or playlist-profiling modules are created or updated
+- **THEN** they are located under `src/lib/domains/enrichment/genre-tagging/*` and `src/lib/domains/taste/playlist-profiling/*`
 
-#### Scenario: Embedding utilities location
-- **WHEN** embedding helpers are used by matching
-- **THEN** they are located under `src/lib/ml/embedding`
+#### Scenario: Analysis and embedding locations
+- **WHEN** analysis or embedding helpers are used by matching
+- **THEN** they are located under `src/lib/domains/enrichment/content-analysis/*` and `src/lib/domains/enrichment/embeddings/*`
+
+#### Scenario: Enrichment workflow location
+- **WHEN** the matching-related enrichment pipeline is referenced
+- **THEN** its orchestration modules are located under `src/lib/workflows/enrichment-pipeline/*`
 
 #### Scenario: External provider locations
-- **WHEN** Last.fm or ReccoBeats integrations are referenced
-- **THEN** they are located under `src/lib/integrations/lastfm` and `src/lib/integrations/reccobeats`
+- **WHEN** Last.fm, ReccoBeats, or LLM provider integrations are referenced by the matching stack
+- **THEN** they are located under `src/lib/integrations/lastfm/*`, `src/lib/integrations/reccobeats/*`, and `src/lib/integrations/llm/*`
 
 ## Data Flow
 
