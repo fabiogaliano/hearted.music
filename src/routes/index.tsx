@@ -36,7 +36,7 @@ function LandingPage() {
 
 	return (
 		<div className="relative min-h-screen" style={{ background: theme.bg }}>
-			<Landing featuredSongIndex={0} isReleased={true} />
+			<Landing featuredSongIndex={0} isReleased={false} />
 		</div>
 	);
 }

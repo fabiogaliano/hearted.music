@@ -7,6 +7,7 @@ count.txt
 .env
 .env.local
 .env.cloud
+prod-secrets.json
 .nitro
 .tanstack
 .wrangler

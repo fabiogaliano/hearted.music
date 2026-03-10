@@ -65,6 +65,8 @@ export interface HeroAnimationRefs {
 	ctaRef: RefObject<HTMLDivElement | null>;
 	/** Subtext container */
 	subtextRef: RefObject<HTMLParagraphElement | null>;
+	/** Animated heart in logo — fades in with subtext */
+	heartRef: RefObject<HTMLSpanElement | null>;
 	/** Nav button (mobile) */
 	navBtnRef: RefObject<HTMLButtonElement | null>;
 	/** Scroll indicator */
@@ -217,6 +219,7 @@ export function useHeroAnimation(
 				panelCurtainRef,
 				ctaRef,
 				subtextRef,
+				heartRef,
 				navBtnRef,
 				scrollIndicatorRef,
 			} = refs;
@@ -261,6 +264,8 @@ export function useHeroAnimation(
 				if (ctaRef.current) gsap.set(ctaRef.current, { opacity: 1, y: 0 });
 				if (subtextRef.current)
 					gsap.set(subtextRef.current, { opacity: 1, y: 0 });
+				if (heartRef.current)
+					gsap.set(heartRef.current, { width: 20, opacity: 1 });
 				if (navBtnRef.current) gsap.set(navBtnRef.current, { opacity: 1 });
 				if (scrollIndicatorRef.current)
 					gsap.set(scrollIndicatorRef.current, { opacity: 0 });
@@ -383,6 +388,10 @@ export function useHeroAnimation(
 
 			if (subtextRef.current) {
 				gsap.set(subtextRef.current, { opacity: 0, y: 10 });
+			}
+
+			if (heartRef.current) {
+				gsap.set(heartRef.current, { width: 0, minWidth: 0, opacity: 0 });
 			}
 
 			if (navBtnRef.current) {
@@ -612,13 +621,26 @@ export function useHeroAnimation(
 				);
 			}
 
-			// Phase 5: Subtext fade in (80% - 100%)
+			// Phase 5: Subtext + heart fade in (80% - 100%)
 			if (subtextRef.current) {
 				tl.to(
 					subtextRef.current,
 					{
 						opacity: 1,
 						y: 0,
+						duration: 0.2,
+						ease: "none",
+					},
+					0.8,
+				);
+			}
+
+			if (heartRef.current) {
+				tl.to(
+					heartRef.current,
+					{
+						width: 20,
+						opacity: 1,
 						duration: 0.2,
 						ease: "none",
 					},

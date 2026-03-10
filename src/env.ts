@@ -18,8 +18,8 @@ export const env = createEnv({
 		BETTER_AUTH_SECRET: z.string().min(32),
 		BETTER_AUTH_URL: z.url(),
 		DATABASE_URL: z.string().min(1),
-		GOOGLE_CLIENT_ID: z.string().min(1),
-		GOOGLE_CLIENT_SECRET: z.string().min(1),
+		GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+		GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
 		// Spotify Client Credentials (optional - used for album art fetching, not user auth)
 		SPOTIFY_CLIENT_ID: z.string().min(1).optional(),
 		SPOTIFY_CLIENT_SECRET: z.string().min(1).optional(),
@@ -30,6 +30,8 @@ export const env = createEnv({
 		GENIUS_CLIENT_TOKEN: z.string().min(1).optional(),
 		// ML provider selection (optional - defaults to deepinfra if key exists, else huggingface)
 		ML_PROVIDER: z.enum(["deepinfra", "huggingface", "local"]).optional(),
+		// Email (optional - waitlist confirmation emails skipped if not set)
+		RESEND_API_KEY: z.string().min(1).optional(),
 	},
 
 	clientPrefix: "VITE_",
@@ -66,6 +68,7 @@ export const env = createEnv({
 		HF_TOKEN: serverEnv.HF_TOKEN,
 		GENIUS_CLIENT_TOKEN: serverEnv.GENIUS_CLIENT_TOKEN,
 		ML_PROVIDER: serverEnv.ML_PROVIDER,
+		RESEND_API_KEY: serverEnv.RESEND_API_KEY,
 		VITE_APP_TITLE: import.meta.env.VITE_APP_TITLE,
 		VITE_CHROME_EXTENSION_ID: import.meta.env.VITE_CHROME_EXTENSION_ID,
 	},
