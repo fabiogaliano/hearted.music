@@ -16,7 +16,7 @@ import { useState } from "react";
 import { MatchesSection } from "@/features/matching/components/MatchesSection";
 import { SongSection } from "@/features/matching/components/SongSection";
 import { playlists, songs } from "@/lib/data/mock-data";
-import { useArtistImage } from "@/lib/hooks/useArtistImage";
+
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { LandingHero } from "./components/LandingHero";
@@ -51,7 +51,7 @@ export function Landing({
 	const featuredSong = songs[selectedSongIndex] || songs[0];
 	const isLoading = false;
 	const albumArtUrl = getAlbumArt(featuredSong.spotifyTrackId, 300);
-	const { artistImageUrl } = useArtistImage(featuredSong.spotifyTrackId);
+	const artistImageUrl = featuredSong.artistImageUrl;
 
 	// Preview song for Section 2 - separate state so it can cycle independently
 	const [previewSongIndex, setPreviewSongIndex] = useState(2);
@@ -141,7 +141,10 @@ export function Landing({
 				</div>
 			</section>
 
-			<section className="flex flex-col items-center justify-center px-8 py-24 lg:px-16 lg:py-32">
+			<section
+				id="waitlist-cta"
+				className="flex flex-col items-center justify-center px-8 py-24 lg:px-16 lg:py-32"
+			>
 				<p className="mb-4 text-lg" style={{ color: theme.textMuted }}>
 					Your songs have been trying to tell you something.
 				</p>
