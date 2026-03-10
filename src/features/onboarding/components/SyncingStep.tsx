@@ -529,7 +529,7 @@ export function SyncingStep({
 				className="mt-4 text-5xl leading-tight font-extralight"
 				style={{ fontFamily: fonts.display, color: theme.text }}
 			>
-				Reading your
+				Listening to your
 				<br />
 				<em className="font-normal">library</em>
 			</h2>

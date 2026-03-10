@@ -45,7 +45,7 @@ export function WelcomeStep() {
 				className="mt-6 text-xl font-light tracking-wide"
 				style={{ fontFamily: fonts.body, color: theme.textMuted }}
 			>
-				Organize your music library with AI-powered playlist matching
+				Your songs have been waiting.
 			</p>
 
 			<button
@@ -59,7 +59,7 @@ export function WelcomeStep() {
 					opacity: isNavigating ? 0.5 : 1,
 				}}
 			>
-				<span className="text-lg font-medium tracking-wide">Get Started</span>
+				<span className="text-lg font-medium tracking-wide">Let's go</span>
 				<span
 					className="inline-block transition-transform group-hover:translate-x-1"
 					style={{ color: theme.textMuted }}

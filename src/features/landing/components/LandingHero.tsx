@@ -38,8 +38,6 @@ export function LandingHero({
 }: LandingHeroProps) {
 	const theme = useTheme();
 	const [isBackgroundReady, setIsBackgroundReady] = useState(false);
-
-	// Track when scroll reaches reveal point (for CTA/subtext animations)
 	const [hasRevealed, setHasRevealed] = useState(false);
 
 	const sectionRef = useRef<HTMLElement>(null);
@@ -53,6 +51,7 @@ export function LandingHero({
 	const panelCurtainRef = useRef<HTMLDivElement>(null);
 	const ctaRef = useRef<HTMLDivElement>(null);
 	const subtextRef = useRef<HTMLParagraphElement>(null);
+	const heartRef = useRef<HTMLSpanElement>(null);
 	const navBtnRef = useRef<HTMLButtonElement>(null);
 	const scrollIndicatorRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +68,7 @@ export function LandingHero({
 			panelCurtainRef,
 			ctaRef,
 			subtextRef,
+			heartRef,
 			navBtnRef,
 			scrollIndicatorRef,
 		},
@@ -177,13 +177,28 @@ export function LandingHero({
 							<nav className="pointer-events-none absolute top-0 right-0 left-0 flex items-center justify-between px-8 py-5 lg:static lg:mb-16 lg:px-0">
 								<h1
 									ref={logoRef}
-									className="hero-logo text-2xl font-extralight tracking-tight"
+									className="hero-logo flex items-center text-2xl font-extralight tracking-tight"
 									style={{
 										fontFamily: fonts.display,
 										color: "#ffffff",
 										willChange: "transform",
 									}}
 								>
+									<span
+										ref={heartRef}
+										className="inline-flex items-center"
+										style={{ width: 0, minWidth: 0, opacity: 0 }}
+									>
+										<span
+											style={{
+												fontSize: "0.65em",
+												marginRight: "0.25em",
+												flexShrink: 0,
+											}}
+										>
+											<AnimatedHeart shouldAutoPlay={hasRevealed} />
+										</span>
+									</span>
 									hearted.
 								</h1>
 								<button
@@ -215,10 +230,23 @@ export function LandingHero({
 									<span className="italic">your liked songs</span>
 								</h2>
 
+								{/* Subtext - fades in late in scroll */}
+								<p
+									ref={subtextRef}
+									className="mt-3 text-lg leading-relaxed lg:text-xl"
+									style={{
+										color: theme.textOnPrimary,
+										opacity: 0,
+										transform: "translateY(10px)",
+									}}
+								>
+									what do they say about you?
+								</p>
+
 								{/* CTA - fades in late in scroll */}
 								<div
 									ref={ctaRef}
-									className="pointer-events-auto mt-10"
+									className="pointer-events-auto mt-6"
 									style={{ opacity: 0, transform: "translateY(10px)" }}
 								>
 									{isReleased ? (
@@ -227,22 +255,6 @@ export function LandingHero({
 										<WaitlistInput variant="dark" />
 									)}
 								</div>
-
-								{/* Subtext - fades in late in scroll */}
-								<p
-									ref={subtextRef}
-									className="mt-8 text-lg leading-relaxed lg:text-xl"
-									style={{
-										color: theme.textOnPrimary,
-										opacity: 0,
-										transform: "translateY(10px)",
-									}}
-								>
-									Every <AnimatedHeart shouldAutoPlay={hasRevealed} /> was a
-									feeling.
-									<br />
-									What do they all say about you?
-								</p>
 							</div>
 						</div>
 

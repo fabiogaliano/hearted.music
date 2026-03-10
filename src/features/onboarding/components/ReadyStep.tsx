@@ -55,16 +55,16 @@ export function ReadyStep({ syncStats }: ReadyStepProps) {
 				className="mt-4 text-6xl leading-tight font-extralight"
 				style={{ fontFamily: fonts.display, color: theme.text }}
 			>
-				You're all
+				You're
 				<br />
-				<em className="font-normal">set</em>
+				<em className="font-normal">in.</em>
 			</h2>
 
 			<p
 				className="mt-6 text-lg font-light"
 				style={{ fontFamily: fonts.body, color: theme.textMuted }}
 			>
-				Your library has been synced.
+				Going through every song. An email's on its way when it's ready.
 			</p>
 
 			<div className="mt-16 flex justify-center gap-16">
