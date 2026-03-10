@@ -46,8 +46,21 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			{
 				title: "hearted.",
 			},
+			{
+				name: "description",
+				content: "the stories inside your liked songs",
+			},
 		],
 		links: [
+			{
+				rel: "icon",
+				href: "/favicon.ico",
+				sizes: "48x48 32x32 16x16",
+			},
+			{
+				rel: "apple-touch-icon",
+				href: "/logo192.png",
+			},
 			{
 				rel: "stylesheet",
 				href: appCss,
