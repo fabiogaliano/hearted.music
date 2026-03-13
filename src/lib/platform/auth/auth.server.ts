@@ -30,24 +30,29 @@ interface AuthContext {
  * Use in contexts where auth is optional (e.g., landing page).
  */
 export async function getAuthSession(): Promise<AuthContext | null> {
-	const request = getRequest();
-	const betterAuthSession = await getAuth().api.getSession({
-		headers: request.headers,
-	});
+	try {
+		const request = getRequest();
+		const betterAuthSession = await getAuth().api.getSession({
+			headers: request.headers,
+		});
 
-	if (!betterAuthSession) return null;
+		if (!betterAuthSession) return null;
 
-	const accountResult = await getAccountByBetterAuthUserId(
-		betterAuthSession.user.id,
-	);
-	const account = Result.isOk(accountResult) ? accountResult.value : null;
+		const accountResult = await getAccountByBetterAuthUserId(
+			betterAuthSession.user.id,
+		);
+		const account = Result.isOk(accountResult) ? accountResult.value : null;
 
-	if (!account) return null;
+		if (!account) return null;
 
-	return {
-		session: { accountId: account.id },
-		account,
-	};
+		return {
+			session: { accountId: account.id },
+			account,
+		};
+	} catch (error) {
+		console.warn("Failed to get auth session:", (error as Error).message);
+		return null;
+	}
 }
 
 /**
