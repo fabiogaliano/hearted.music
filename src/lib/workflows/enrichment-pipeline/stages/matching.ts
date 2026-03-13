@@ -60,7 +60,7 @@ export async function runMatchingStage(
 		return {
 			stage: "matching",
 			status: "skipped",
-			reason: "no destination playlists",
+			reason: "no destination playlists selected",
 		};
 	}
 

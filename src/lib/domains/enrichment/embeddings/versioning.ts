@@ -12,7 +12,7 @@ export const EXTRACTOR_VERSION = 1;
 export const EMBEDDING_SCHEMA_VERSION = 1;
 
 /** Version of playlist profile computation */
-export const PLAYLIST_PROFILE_VERSION = 1;
+export const PLAYLIST_PROFILE_VERSION = 2;
 
 /** Version of matching algorithm */
 export const MATCHING_ALGO_VERSION = "matching_v2";

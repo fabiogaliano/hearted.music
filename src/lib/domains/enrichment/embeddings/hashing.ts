@@ -85,8 +85,15 @@ export async function hashTrackContent(text: string): Promise<string> {
 export async function hashPlaylistProfile(params: {
 	playlistId: string;
 	songIds: string[];
+	descriptionText?: string;
+	embeddingCentroid?: number[];
 	audioCentroid?: Record<string, number>;
+	genreDistribution?: Record<string, number>;
 }): Promise<string> {
+	const roundedEmbedding = params.embeddingCentroid
+		? params.embeddingCentroid.map((value) => Math.round(value * 10000) / 10000)
+		: [];
+
 	// Round audio centroid values for float stability
 	const roundedCentroid = params.audioCentroid
 		? Object.fromEntries(
@@ -97,10 +104,22 @@ export async function hashPlaylistProfile(params: {
 			)
 		: {};
 
+	const roundedGenreDistribution = params.genreDistribution
+		? Object.fromEntries(
+				Object.entries(params.genreDistribution).map(([k, v]) => [
+					k,
+					Math.round(v * 10000) / 10000,
+				]),
+			)
+		: {};
+
 	const content = stableStringify({
 		playlistId: params.playlistId,
 		songIds: params.songIds.sort(),
+		descriptionText: params.descriptionText?.trim() || null,
+		embeddingCentroid: roundedEmbedding,
 		audioCentroid: roundedCentroid,
+		genreDistribution: roundedGenreDistribution,
 	});
 
 	const hash = await shortHash(content);

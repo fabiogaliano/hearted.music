@@ -2,6 +2,15 @@ import { Result } from "better-result";
 import * as playlistData from "@/lib/domains/library/playlists/queries";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import * as songData from "@/lib/domains/library/songs/queries";
+import {
+	createAudioFeaturesService,
+	type TrackInfo,
+} from "@/lib/integrations/audio/service";
+import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
+import {
+	createGenreEnrichmentService,
+	type GenreEnrichmentInput,
+} from "@/lib/domains/enrichment/genre-tagging/service";
 import { emitProgress } from "@/lib/platform/jobs/progress/helpers";
 import { runTrackedStageJob } from "../job-runner";
 import type { EnrichmentContext, EnrichmentStageResult } from "../types";
@@ -44,11 +53,16 @@ export async function runPlaylistProfilingStage(
 			result: {
 				stage: "playlist_profiling",
 				status: "skipped",
-				reason: "no destination playlists",
+				reason: "no destination playlists selected",
 			},
 			playlists: [],
 		};
 	}
+
+	const audioFeaturesService = createAudioFeaturesService(
+		createReccoBeatsService(),
+	);
+	const genreService = createGenreEnrichmentService();
 
 	const { jobId, succeeded, failed } = await runTrackedStageJob({
 		accountId: ctx.accountId,
@@ -56,6 +70,7 @@ export async function runPlaylistProfilingStage(
 		work: async (jobId) => {
 			let succeeded = 0;
 			let failed = 0;
+			let done = 0;
 
 			for (let i = 0; i < playlists.length; i++) {
 				const playlist = playlists[i];
@@ -87,12 +102,47 @@ export async function runPlaylistProfilingStage(
 					continue;
 				}
 
+				// Backfill missing audio features (free signal, cache-first)
+				const trackInfos: TrackInfo[] = songsResult.value.map((s) => ({
+					songId: s.id,
+					spotifyTrackId: s.spotify_id,
+				}));
+				await audioFeaturesService.backfillMissingFeatures(trackInfos);
+
+				// Backfill missing genres (free signal, cache-first)
+				const genreInputs: GenreEnrichmentInput[] = songsResult.value.map(
+					(s) => ({
+						songId: s.id,
+						artist: s.artists[0] ?? "Unknown",
+						trackName: s.name,
+						album: s.album_name ?? undefined,
+					}),
+				);
+				await genreService.enrichBatch(genreInputs);
+
+				// Re-read songs after enrichment so profile gets fresh data
+				const freshSongsResult = await songData.getByIds(songIds);
+				const songs = Result.isOk(freshSongsResult)
+					? freshSongsResult.value
+					: songsResult.value;
+
+				// Normalize description text for embedding fallback
+				const rawDesc = [playlist.name, playlist.description]
+					.filter(Boolean)
+					.join(" — ");
+				const descriptionText = rawDesc.trim() || undefined;
+
 				const profileResult = await ctx.profilingService.computeProfile(
 					playlist.id,
-					songsResult.value,
+					songs,
+					{ descriptionText },
 				);
 				if (Result.isOk(profileResult)) {
-					succeeded++;
+					if (profileResult.value.fromCache) {
+						done++;
+					} else {
+						succeeded++;
+					}
 				} else {
 					failed++;
 				}
@@ -105,7 +155,12 @@ export async function runPlaylistProfilingStage(
 				});
 			}
 
-			return { total: playlists.length, succeeded, failed, result: undefined };
+			return {
+				total: playlists.length,
+				succeeded,
+				failed,
+				result: { done },
+			};
 		},
 	});
 
@@ -116,6 +171,8 @@ export async function runPlaylistProfilingStage(
 			jobId,
 			succeeded,
 			failed,
+			notReady: 0,
+			done: playlists.length - succeeded - failed,
 		},
 		playlists,
 	};
