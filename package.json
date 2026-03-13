@@ -4,7 +4,7 @@
 	"type": "module",
 	"scripts": {
 		"prepare": "lefthook install",
-		"dev": "vite dev",
+		"dev": "ML_PROVIDER=local vite dev",
 		"dev:clean": "VITE_DEVTOOLS=false vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
@@ -19,6 +19,7 @@
 		"typecheck": "tsc --noEmit",
 		"lyrics:snapshot": "bun src/lib/services/lyrics/__tests__/generate-snapshots.ts",
 		"lyrics:validate": "PARSER_VALIDATION=true vitest run lyrics-service.integration",
+		"dev:embeddings": "bun scripts/embedding-server.ts",
 		"ext:build": "bun extension/scripts/build.ts",
 		"ext:dev": "bun extension/scripts/build.ts --watch",
 		"ext:store": "bun extension/scripts/build.ts --store"
