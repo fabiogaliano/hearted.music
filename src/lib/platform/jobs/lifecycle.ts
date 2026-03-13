@@ -61,8 +61,9 @@ export async function startJob(jobId: string): Promise<Result<Job, DbError>> {
  * Finalizes a job by marking it completed or failed with retry logic.
  *
  * Decision logic:
- * - Empty input (total === 0) or partial success (succeeded > 0) → completed
- * - All failures (succeeded === 0 && total > 0) → failed
+ * - Empty input (total === 0) → completed
+ * - Any run where not every item failed (`failed < total`) → completed
+ * - All failures (`failed === total` and `total > 0`) → failed
  *
  * @param jobId - The job ID to finalize
  * @param progress - The final progress state
@@ -73,7 +74,8 @@ export async function finalizeJob(
 	progress: JobProgress,
 	errorMessage?: string,
 ): Promise<Result<Job, DbError>> {
-	const shouldComplete = progress.total === 0 || progress.succeeded > 0;
+	const shouldComplete =
+		progress.total === 0 || progress.failed < progress.total;
 	return shouldComplete
 		? completeJob(jobId)
 		: failJob(jobId, errorMessage ?? "All items failed");

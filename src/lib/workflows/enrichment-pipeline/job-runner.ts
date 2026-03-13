@@ -27,6 +27,10 @@ export async function runTrackedStageJob<T>(params: {
 
 	const progress: JobProgress = { total, done: total, succeeded, failed };
 	emitProgress(jobId, progress);
+	const terminalStatus =
+		progress.total === 0 || progress.failed < progress.total
+			? "completed"
+			: "failed";
 
 	// finalizeJob returns Result<Job, DbError> — log but don't throw, the work itself already completed
 	const finalizeResult = await finalizeJob(jobId, progress);
@@ -36,7 +40,7 @@ export async function runTrackedStageJob<T>(params: {
 		);
 	}
 
-	emitStatus(jobId, succeeded > 0 ? "completed" : "failed");
+	emitStatus(jobId, terminalStatus);
 
 	return { jobId, succeeded, failed, result };
 }
