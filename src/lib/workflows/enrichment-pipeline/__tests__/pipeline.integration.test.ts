@@ -46,6 +46,46 @@ describe.skipIf(!SHOULD_RUN)("Enrichment Pipeline Integration", () => {
 			expect(stageIsNotFailed(stage)).toBe(true);
 		}
 
+		// Verify bootstrap produces non-empty profiles
+		const profilingStage = stages.find((s) => s.stage === "playlist_profiling");
+		if (profilingStage?.status === "completed") {
+			const { getDestinationPlaylists } = await import(
+				"@/lib/domains/library/playlists/queries"
+			);
+			const { getPlaylistProfile } = await import(
+				"@/lib/domains/enrichment/embeddings/queries"
+			);
+
+			const playlistsResult = await getDestinationPlaylists(TEST_ACCOUNT_ID!);
+			if (Result.isOk(playlistsResult)) {
+				let profileCount = 0;
+				let usableProfileCount = 0;
+				for (const playlist of playlistsResult.value) {
+					const profileResult = await getPlaylistProfile(playlist.id);
+					if (Result.isOk(profileResult) && profileResult.value) {
+						profileCount++;
+						const p = profileResult.value;
+						const hasEmbedding = p.embedding !== null;
+						const hasAudio =
+							p.audio_centroid &&
+							Object.keys(p.audio_centroid as object).length > 0;
+						const hasGenres =
+							p.genre_distribution &&
+							Object.keys(p.genre_distribution as object).length > 0;
+						console.log(
+							`[integration] Profile ${playlist.id}: embedding=${hasEmbedding}, audio=${hasAudio}, genres=${hasGenres}`,
+						);
+						if (hasEmbedding || hasAudio || hasGenres) {
+							usableProfileCount++;
+						}
+					}
+				}
+
+				expect(profileCount).toBeGreaterThan(0);
+				expect(usableProfileCount).toBeGreaterThan(0);
+			}
+		}
+
 		const matchingStage = stages.find((s) => s.stage === "matching");
 		if (matchingStage?.status === "completed") {
 			const { getLatestMatchContext, getMatchResults } = await import(

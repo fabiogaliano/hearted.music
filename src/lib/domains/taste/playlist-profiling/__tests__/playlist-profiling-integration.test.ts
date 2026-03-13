@@ -445,6 +445,88 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 			}
 		});
 	});
+
+	describe("Description fallback bootstrap", () => {
+		test("falls back to description embedding when no songs provided", async () => {
+			const result = await service.computeProfile(
+				"test-playlist-desc-fallback",
+				[],
+				{
+					skipCache: true,
+					skipPersist: true,
+					descriptionText: "Chill vibes and relaxing ambient music",
+				},
+			);
+
+			expect(Result.isOk(result)).toBe(true);
+			if (!Result.isOk(result)) return;
+
+			const profile = result.value;
+			expect(profile.embedding).not.toBeNull();
+			if (profile.embedding) {
+				expect(profile.embedding.length).toBeGreaterThan(100);
+			}
+			expect(profile.songCount).toBe(0);
+		}, 30000);
+
+		test("content hash changes when description changes", async () => {
+			const result1 = await service.computeProfile(
+				"test-playlist-hash-desc",
+				[],
+				{
+					skipCache: true,
+					skipPersist: true,
+					descriptionText: "Chill vibes",
+				},
+			);
+			const result2 = await service.computeProfile(
+				"test-playlist-hash-desc",
+				[],
+				{
+					skipCache: true,
+					skipPersist: true,
+					descriptionText: "High energy workout",
+				},
+			);
+
+			if (Result.isOk(result1) && Result.isOk(result2)) {
+				expect(result1.value.contentHash).not.toBe(result2.value.contentHash);
+			}
+		}, 30000);
+
+		test("song-derived centroid is not overridden by description when embeddings exist", async () => {
+			if (!Result.isOk(profileResult)) return;
+
+			const withDescResult = await service.computeProfile(
+				TEST_PLAYLIST_ID,
+				TEST_SONGS,
+				{
+					skipCache: true,
+					skipPersist: true,
+					descriptionText: "This should not override song embeddings",
+				},
+			);
+
+			expect(Result.isOk(withDescResult)).toBe(true);
+			if (!Result.isOk(withDescResult)) return;
+
+			const originalProfile = profileResult.value;
+			const withDescProfile = withDescResult.value;
+			expect(withDescProfile.contentHash).toBe(originalProfile.contentHash);
+
+			if (originalProfile.embedding && withDescProfile.embedding) {
+				expect(withDescProfile.embedding.length).toBe(
+					originalProfile.embedding.length,
+				);
+				for (let i = 0; i < originalProfile.embedding.length; i++) {
+					expect(withDescProfile.embedding[i]).toBeCloseTo(
+						originalProfile.embedding[i],
+						10,
+					);
+				}
+			}
+		}, 30000);
+	});
 });
 
 // ─────────────────────────────────────────────────────────────

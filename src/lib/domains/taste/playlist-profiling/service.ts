@@ -7,6 +7,7 @@
 
 import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
+import { hashPlaylistProfile } from "@/lib/domains/enrichment/embeddings/hashing";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
 import * as vectorsData from "@/lib/domains/enrichment/embeddings/queries";
@@ -80,6 +81,7 @@ export class PlaylistProfilingService {
 		options: ProfilingOptions = {},
 	): Promise<Result<ComputedPlaylistProfile, ProfilingError>> {
 		const songIds = songs.map((s) => s.id);
+		const descriptionText = options.descriptionText?.trim() || undefined;
 
 		// Get model bundle hash for cache invalidation
 		const modelBundleHashResult = await getModelBundleHash();
@@ -88,35 +90,17 @@ export class PlaylistProfilingService {
 		}
 		const modelBundleHash = modelBundleHashResult.value;
 
-		// Compute content hash for caching
-		const contentHash = await this.hashContent(songIds);
-
-		// Check cache if not skipped
-		if (!options.skipCache) {
-			const cached = await this.getProfile(playlistId);
-			if (Result.isError(cached)) {
-				return Result.err(cached.error);
-			}
-			if (
-				cached.value &&
-				cached.value.contentHash === contentHash &&
-				cached.value.modelBundleHash === modelBundleHash
-			) {
-				return Result.ok(cached.value);
-			}
-		}
-
 		// Get embeddings for all songs
 		const embeddingsResult = await this.embeddingService.getEmbeddings(songIds);
 		if (Result.isError(embeddingsResult)) {
 			return Result.err(embeddingsResult.error);
 		}
 
-		// Calculate embedding centroid
+		// Calculate embedding centroid from song embeddings (authoritative when available)
 		const vectors = Array.from(embeddingsResult.value.values())
 			.map((e) => this.parseEmbedding(e.embedding))
 			.filter((v): v is number[] => v !== null);
-		const embeddingCentroid = calculateCentroid(vectors);
+		const songCentroid = calculateCentroid(vectors);
 
 		// Get audio features
 		const audioResult = await audioFeatureData.getBatch(songIds);
@@ -129,6 +113,46 @@ export class PlaylistProfilingService {
 
 		// Compute genre distribution from song.genres
 		const genreDistribution = computeGenreDistribution(songs);
+
+		// Compute content hash from the actual profile inputs that shape persistence
+		const contentHash = await hashPlaylistProfile({
+			playlistId,
+			songIds: [...songIds],
+			descriptionText: songCentroid.length === 0 ? descriptionText : undefined,
+			embeddingCentroid: songCentroid.length > 0 ? songCentroid : undefined,
+			audioCentroid,
+			genreDistribution,
+		});
+		const expectsDescriptionFallback =
+			songCentroid.length === 0 && !!descriptionText;
+
+		// Check cache if not skipped
+		if (!options.skipCache) {
+			const cached = await this.getProfile(playlistId);
+			if (Result.isError(cached)) {
+				return Result.err(cached.error);
+			}
+			if (
+				cached.value &&
+				cached.value.contentHash === contentHash &&
+				cached.value.modelBundleHash === modelBundleHash &&
+				(!expectsDescriptionFallback || cached.value.embedding !== null)
+			) {
+				return Result.ok(cached.value);
+			}
+		}
+
+		// Description fallback: embed description text when no song centroid exists
+		let embeddingCentroid = songCentroid;
+		if (songCentroid.length === 0 && descriptionText) {
+			const descResult = await this.embeddingService.embedText(
+				descriptionText,
+				{ prefix: "passage:" },
+			);
+			if (Result.isOk(descResult)) {
+				embeddingCentroid = descResult.value;
+			}
+		}
 
 		const profile: ComputedPlaylistProfile = {
 			playlistId,
@@ -187,21 +211,6 @@ export class PlaylistProfilingService {
 		} catch {
 			return null;
 		}
-	}
-
-	/**
-	 * Hash content for cache key using Web Crypto API (Edge compatible).
-	 */
-	private async hashContent(songIds: string[]): Promise<string> {
-		const content = songIds.sort().join(",");
-		const encoder = new TextEncoder();
-		const data = encoder.encode(content);
-		const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-		const hashArray = Array.from(new Uint8Array(hashBuffer));
-		return hashArray
-			.map((b) => b.toString(16).padStart(2, "0"))
-			.join("")
-			.slice(0, 16);
 	}
 }
 

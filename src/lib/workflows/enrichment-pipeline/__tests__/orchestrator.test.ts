@@ -413,6 +413,16 @@ describe("runEnrichmentPipeline", () => {
 		}
 	});
 
+	it("provides profilingService in context for bootstrap behavior", async () => {
+		setupAllStagesCompleted();
+
+		await runEnrichmentPipeline("acct-1");
+
+		const ctx = mockPlaylistProfiling.mock.calls[0][0];
+		expect(ctx.profilingService).toBeDefined();
+		expect(ctx.profilingService).toEqual({ fake: "profilingService" });
+	});
+
 	it("records totalDurationMs", async () => {
 		setupAllStagesCompleted();
 
