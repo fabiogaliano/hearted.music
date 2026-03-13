@@ -32,6 +32,7 @@ import {
 } from "@/lib/platform/jobs/progress/types";
 import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
 import { type ThemeColor, themeSchema } from "@/lib/theme/types";
+import { runEnrichmentPipeline } from "@/lib/workflows/enrichment-pipeline/orchestrator";
 
 /** Playlist view model for onboarding UI (camelCase frontend format) */
 export interface OnboardingPlaylist {
@@ -313,6 +314,16 @@ export const savePlaylistDestinations = createServerFn({ method: "POST" })
 				"update_playlist_destinations",
 				firstError.error,
 			);
+		}
+
+		if (data.playlistIds.length > 0) {
+			const pipelineResult = await runEnrichmentPipeline(session.accountId);
+			if (Result.isError(pipelineResult)) {
+				console.error(
+					"[onboarding] Pipeline bootstrap failed after saving destinations:",
+					pipelineResult.error.message,
+				);
+			}
 		}
 
 		return { success: true };
