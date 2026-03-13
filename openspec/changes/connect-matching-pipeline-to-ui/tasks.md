@@ -16,21 +16,21 @@
 
 ## 3. Sync endpoint integration
 
-- [ ] 3.1 Modify `src/routes/api/extension/sync.tsx` — after Phase 3 (playlist tracks, ~line 382), call `runEnrichmentPipeline(accountId, { maxSongs: 5 })`
-- [ ] 3.2 Add `pipelineJobIds` to the sync response (separate from `phaseJobIds`), keyed by stage name
-- [ ] 3.3 Add `pipeline` field to response with per-stage results and any errors
-- [ ] 3.4 Ensure pipeline failures don't affect sync response — sync returns `ok: true` regardless of pipeline outcome
+- [x] 3.1 Modify `src/routes/api/extension/sync.tsx` — after Phase 3 (playlist tracks, ~line 382), call `runEnrichmentPipeline(accountId, { maxSongs: 5 })`
+- [x] 3.2 Add `pipelineJobIds` to the sync response (separate from `phaseJobIds`), keyed by stage name
+- [x] 3.3 Add `pipeline` field to response with per-stage results and any errors
+- [x] 3.4 Ensure pipeline failures don't affect sync response — sync returns `ok: true` regardless of pipeline outcome
 
 ## 4. Batch cap configuration
 
-- [ ] 4.1 Read `PIPELINE_MAX_SONGS` from `process.env` in orchestrator, fallback to default of 5
-- [ ] 4.2 Apply batch cap to song selection query: most recently liked songs first (`ORDER BY liked_at DESC LIMIT maxSongs`)
+- [x] 4.1 Read `PIPELINE_MAX_SONGS` from `process.env` in orchestrator, fallback to default of 5
+- [x] 4.2 Apply batch cap to song selection query: most recently liked songs first (`ORDER BY liked_at DESC LIMIT maxSongs`)
 
 ## 5. Testing
 
-- [ ] 5.1 Write unit tests for orchestrator in `tests/workflows/enrichment-pipeline/orchestrator.test.ts` — test stage sequencing, batch cap enforcement, error isolation between stages
-- [ ] 5.2 Write integration test: trigger sync endpoint with test data, verify `song_analysis`, `song_embedding`, `playlist_profile`, `match_result` tables are populated
-- [ ] 5.3 Verify incremental behavior: run pipeline twice with same data, confirm second run is a no-op (zero items processed per stage)
+- [x] 5.1 Write unit tests for orchestrator in `tests/workflows/enrichment-pipeline/orchestrator.test.ts` — test stage sequencing, batch cap enforcement, error isolation between stages
+- [x] 5.2 Write integration test: trigger sync endpoint with test data, verify `song_analysis`, `song_embedding`, `playlist_profile`, `match_result` tables are populated
+- [x] 5.3 Verify incremental behavior: run pipeline twice with same data, confirm second run is a no-op (zero items processed per stage)
 
 ## 6. Verification
 

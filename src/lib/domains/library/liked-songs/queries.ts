@@ -209,7 +209,11 @@ export async function getPending(
 
 	// Get all liked song IDs for this account
 	const likedResult = await fromSupabaseMany(
-		supabase.from("liked_song").select("*").eq("account_id", accountId),
+		supabase
+			.from("liked_song")
+			.select("*")
+			.eq("account_id", accountId)
+			.is("unliked_at", null),
 	);
 
 	if (Result.isError(likedResult)) {
@@ -221,25 +225,30 @@ export async function getPending(
 		return Result.ok<LikedSong[], DbError>([]);
 	}
 
-	// Get song IDs that have item_status records
+	// Get song IDs that have item_status records (chunked to avoid URI-too-long)
 	const songIds = likedSongs.map((ls: LikedSong) => ls.song_id);
-	const statusResult = await fromSupabaseMany(
-		supabase
-			.from("item_status")
-			.select("item_id")
-			.eq("account_id", accountId)
-			.eq("item_type", "song")
-			.in("item_id", songIds),
-	);
+	const CHUNK_SIZE = 50;
+	const processedIds = new Set<string>();
 
-	if (Result.isError(statusResult)) {
-		return Result.err(statusResult.error);
+	for (let i = 0; i < songIds.length; i += CHUNK_SIZE) {
+		const chunk = songIds.slice(i, i + CHUNK_SIZE);
+		const statusResult = await fromSupabaseMany(
+			supabase
+				.from("item_status")
+				.select("item_id")
+				.eq("account_id", accountId)
+				.eq("item_type", "song")
+				.in("item_id", chunk),
+		);
+
+		if (Result.isError(statusResult)) {
+			return Result.err(statusResult.error);
+		}
+
+		for (const s of statusResult.value) {
+			processedIds.add((s as { item_id: string }).item_id);
+		}
 	}
-
-	// Filter out songs that have status records
-	const processedIds = new Set(
-		statusResult.value.map((s: { item_id: string }) => s.item_id),
-	);
 	const pending = likedSongs.filter(
 		(ls: LikedSong) => !processedIds.has(ls.song_id),
 	);

@@ -1,10 +1,13 @@
 import { Result } from "better-result";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
+import { selectPipelineBatch } from "./batch";
 import { runAudioFeaturesStage } from "./stages/audio-features";
+import { runGenreTaggingStage } from "./stages/genre-tagging";
 import { runSongAnalysisStage } from "./stages/song-analysis";
 import { runSongEmbeddingStage } from "./stages/song-embedding";
 import { runPlaylistProfilingStage } from "./stages/playlist-profiling";
+import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { runMatchingStage } from "./stages/matching";
 import {
 	PipelineBootstrapError,
@@ -15,7 +18,8 @@ import {
 	type PipelineOptions,
 } from "./types";
 
-const ENV_MAX_SONGS_KEY = "PIPELINE_MAX_SONGS";
+const ENV_BATCH_SIZE_KEY = "PIPELINE_BATCH_SIZE";
+const ENV_BATCH_SIZE_KEY_LEGACY = "PIPELINE_MAX_SONGS";
 
 async function runStage(
 	stageName: EnrichmentStageName,
@@ -39,10 +43,11 @@ export async function runEnrichmentPipeline(
 ): Promise<Result<EnrichmentRunResult, PipelineBootstrapError>> {
 	const startTime = Date.now();
 
-	const envMax = process.env[ENV_MAX_SONGS_KEY];
-	const maxSongs = envMax
-		? Number.parseInt(envMax, 10)
-		: (options?.maxSongs ?? 5);
+	const envSize =
+		process.env[ENV_BATCH_SIZE_KEY] ?? process.env[ENV_BATCH_SIZE_KEY_LEGACY];
+	const batchSize = envSize
+		? Number.parseInt(envSize, 10)
+		: (options?.batchSize ?? 5);
 
 	let embeddingService: EmbeddingService;
 	try {
@@ -56,22 +61,75 @@ export async function runEnrichmentPipeline(
 		);
 	}
 
+	const batch = await selectPipelineBatch(accountId, batchSize);
+	if (batch.songIds.length === 0) {
+		const skipped: EnrichmentStageResult[] = [
+			{ stage: "audio_features", status: "skipped", reason: "empty batch" },
+			{ stage: "genre_tagging", status: "skipped", reason: "empty batch" },
+			{ stage: "playlist_profiling", status: "skipped", reason: "empty batch" },
+			{ stage: "song_analysis", status: "skipped", reason: "empty batch" },
+			{ stage: "song_embedding", status: "skipped", reason: "empty batch" },
+			{ stage: "matching", status: "skipped", reason: "empty batch" },
+		];
+		const totalDurationMs = Date.now() - startTime;
+		return Result.ok({ stages: skipped, stageJobIds: {}, totalDurationMs });
+	}
+
 	const ctx: EnrichmentContext = {
 		accountId,
-		maxSongs,
 		embeddingService,
 		profilingService: createPlaylistProfilingService(embeddingService),
-		selectedBatchSongIds: [],
-		selectedBatchSongs: [],
-		destinationPlaylists: [],
 	};
 
+	// Phase A: parallel-safe prep (audio features + playlist profiling)
+	let playlistProfilingResult: EnrichmentStageResult;
+	let playlists: Playlist[];
+	const [audioFeaturesResult, genreTaggingResult, profilingOutput] =
+		await Promise.all([
+			runStage("audio_features", () => runAudioFeaturesStage(ctx, batch)),
+			runStage("genre_tagging", () => runGenreTaggingStage(ctx, batch)),
+			runPlaylistProfilingStage(ctx).catch(
+				(
+					error,
+				): {
+					result: EnrichmentStageResult;
+					playlists: Playlist[];
+				} => ({
+					result: {
+						stage: "playlist_profiling",
+						status: "failed",
+						jobId: null,
+						error: error instanceof Error ? error.message : String(error),
+					},
+					playlists: [],
+				}),
+			),
+		]);
+	playlistProfilingResult = profilingOutput.result;
+	playlists = profilingOutput.playlists;
+
+	// Phase B: song analysis (reads audio features written in Phase A)
+	const songAnalysisResult = await runStage("song_analysis", () =>
+		runSongAnalysisStage(ctx, batch),
+	);
+
+	// Phase C: song embedding (requires analysis from Phase B)
+	const songEmbeddingResult = await runStage("song_embedding", () =>
+		runSongEmbeddingStage(ctx, batch),
+	);
+
+	// Phase D: matching (reads embeddings, audio features, playlist profiles)
+	const matchingResult = await runStage("matching", () =>
+		runMatchingStage(ctx, batch, playlists),
+	);
+
 	const stages: EnrichmentStageResult[] = [
-		await runStage("audio_features", () => runAudioFeaturesStage(ctx)),
-		await runStage("song_analysis", () => runSongAnalysisStage(ctx)),
-		await runStage("song_embedding", () => runSongEmbeddingStage(ctx)),
-		await runStage("playlist_profiling", () => runPlaylistProfilingStage(ctx)),
-		await runStage("matching", () => runMatchingStage(ctx)),
+		audioFeaturesResult,
+		genreTaggingResult,
+		playlistProfilingResult,
+		songAnalysisResult,
+		songEmbeddingResult,
+		matchingResult,
 	];
 
 	const stageJobIds: Partial<Record<EnrichmentStageName, string>> = {};

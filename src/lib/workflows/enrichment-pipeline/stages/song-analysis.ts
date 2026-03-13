@@ -1,11 +1,62 @@
 import { Result } from "better-result";
 import { createAnalysisPipeline } from "@/lib/domains/enrichment/content-analysis/pipeline";
-import type { EnrichmentContext, EnrichmentStageResult } from "../types";
+import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
+import type { PipelineBatch } from "../batch";
+import type {
+	EnrichmentContext,
+	EnrichmentStageResult,
+	ReadyResult,
+} from "../types";
+
+export async function getReadyForSongAnalysis(
+	batchSongIds: string[],
+): Promise<ReadyResult> {
+	const existingResult = await songAnalysisData.get(batchSongIds);
+	if (Result.isError(existingResult)) {
+		throw new Error(
+			`Failed to check existing analyses: ${existingResult.error.message}`,
+		);
+	}
+
+	const existingMap = existingResult.value as Map<string, unknown>;
+	const ready: string[] = [];
+	const done: string[] = [];
+	for (const id of batchSongIds) {
+		if (existingMap.has(id)) {
+			done.push(id);
+		} else {
+			ready.push(id);
+		}
+	}
+
+	return { ready, notReady: [], done };
+}
 
 export async function runSongAnalysisStage(
 	ctx: EnrichmentContext,
+	batch: PipelineBatch,
 ): Promise<EnrichmentStageResult> {
-	console.log("[pipeline] Stage 2: song_analysis");
+	console.log("[pipeline] Stage: song_analysis");
+
+	let readiness: ReadyResult;
+	try {
+		readiness = await getReadyForSongAnalysis(batch.songIds);
+	} catch (error) {
+		return {
+			stage: "song_analysis",
+			status: "failed",
+			jobId: null,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+
+	if (readiness.ready.length === 0) {
+		return {
+			stage: "song_analysis",
+			status: "skipped",
+			reason: "no songs need analysis",
+		};
+	}
 
 	const pipelineResult = createAnalysisPipeline();
 	if (Result.isError(pipelineResult)) {
@@ -15,24 +66,16 @@ export async function runSongAnalysisStage(
 	}
 	const pipeline = pipelineResult.value;
 
-	const needingResult = await pipeline.getSongsNeedingAnalysis(
-		ctx.accountId,
-		ctx.maxSongs,
-	);
-	if (Result.isError(needingResult)) {
-		throw new Error(
-			`Failed to get songs needing analysis: ${needingResult.error.message}`,
-		);
-	}
-
-	const batchSet = new Set(ctx.selectedBatchSongIds);
-	const songsToAnalyze = needingResult.value.filter((s) =>
-		batchSet.has(s.songId),
-	);
-
-	if (songsToAnalyze.length === 0) {
-		return { stage: "song_analysis", status: "skipped" };
-	}
+	const songMap = new Map(batch.songs.map((s) => [s.id, s]));
+	const songsToAnalyze = readiness.ready.map((id) => {
+		const song = songMap.get(id);
+		return {
+			songId: id,
+			artist: song?.artists[0] ?? "Unknown Artist",
+			title: song?.name ?? "Unknown",
+			lyrics: "",
+		};
+	});
 
 	const analyzeResult = await pipeline.analyzeSongs(
 		ctx.accountId,
@@ -49,5 +92,7 @@ export async function runSongAnalysisStage(
 		jobId,
 		succeeded,
 		failed,
+		notReady: readiness.notReady.length,
+		done: readiness.done.length,
 	};
 }

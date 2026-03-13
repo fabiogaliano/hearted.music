@@ -1,31 +1,54 @@
 import { Result } from "better-result";
 import * as playlistData from "@/lib/domains/library/playlists/queries";
+import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import * as songData from "@/lib/domains/library/songs/queries";
 import { emitProgress } from "@/lib/platform/jobs/progress/helpers";
 import { runTrackedStageJob } from "../job-runner";
 import type { EnrichmentContext, EnrichmentStageResult } from "../types";
 
+export interface PlaylistProfilingOutput {
+	readonly result: EnrichmentStageResult;
+	readonly playlists: Playlist[];
+}
+
 export async function runPlaylistProfilingStage(
 	ctx: EnrichmentContext,
-): Promise<EnrichmentStageResult> {
+): Promise<PlaylistProfilingOutput> {
 	console.log("[pipeline] Stage 4: playlist_profiling");
 
-	const playlistsResult = await playlistData.getDestinationPlaylists(
-		ctx.accountId,
-	);
-	if (Result.isError(playlistsResult)) {
-		throw new Error(
-			`Failed to get destination playlists: ${playlistsResult.error.message}`,
+	let playlists: Playlist[];
+	try {
+		const playlistsResult = await playlistData.getDestinationPlaylists(
+			ctx.accountId,
 		);
+		if (Result.isError(playlistsResult)) {
+			throw new Error(
+				`Failed to get destination playlists: ${playlistsResult.error.message}`,
+			);
+		}
+		playlists = playlistsResult.value;
+	} catch (error) {
+		return {
+			result: {
+				stage: "playlist_profiling",
+				status: "failed",
+				jobId: null,
+				error: error instanceof Error ? error.message : String(error),
+			},
+			playlists: [],
+		};
 	}
 
-	const playlists = playlistsResult.value;
 	if (playlists.length === 0) {
-		return { stage: "playlist_profiling", status: "skipped" };
+		return {
+			result: {
+				stage: "playlist_profiling",
+				status: "skipped",
+				reason: "no destination playlists",
+			},
+			playlists: [],
+		};
 	}
-
-	// Store for Stage 5 to reuse without a second DB call
-	ctx.destinationPlaylists = playlists;
 
 	const { jobId, succeeded, failed } = await runTrackedStageJob({
 		accountId: ctx.accountId,
@@ -87,10 +110,13 @@ export async function runPlaylistProfilingStage(
 	});
 
 	return {
-		stage: "playlist_profiling",
-		status: "completed",
-		jobId,
-		succeeded,
-		failed,
+		result: {
+			stage: "playlist_profiling",
+			status: "completed",
+			jobId,
+			succeeded,
+			failed,
+		},
+		playlists,
 	};
 }

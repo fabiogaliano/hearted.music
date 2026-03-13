@@ -38,10 +38,8 @@ import {
 } from "@/lib/platform/jobs/progress/helpers";
 import type { DbError } from "@/lib/shared/errors/database";
 import { PipelineConfigError } from "@/lib/shared/errors/domain/analysis";
-import {
-	type LlmProviderName,
-	LlmService,
-} from "@/lib/integrations/llm/service";
+import { LlmService } from "@/lib/integrations/llm/service";
+import { getApiKeyForProvider } from "@/lib/integrations/llm/config";
 import { type GeniusError, LyricsService } from "../lyrics/service";
 import {
 	type AnalyzePlaylistInput,
@@ -594,23 +592,6 @@ export class AnalysisPipeline {
 // ============================================================================
 // Factory Function
 // ============================================================================
-
-/**
- * Gets API key for a provider from environment variables.
- * Pure function - no side effects, just reads env vars.
- */
-function getApiKeyForProvider(provider: LlmProviderName): string | undefined {
-	switch (provider) {
-		case "google":
-			return (
-				process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? process.env.GOOGLE_API_KEY
-			);
-		case "anthropic":
-			return process.env.ANTHROPIC_API_KEY;
-		case "openai":
-			return process.env.OPENAI_API_KEY;
-	}
-}
 
 /**
  * Creates an analysis pipeline with configuration from environment.

@@ -23,6 +23,7 @@ import {
 	LlmProviderError,
 	LlmRateLimitError,
 } from "@/lib/shared/errors/external/llm";
+import { getApiKeyForProvider } from "./config";
 
 // ============================================================================
 // Zod Schemas (single source of truth)
@@ -69,7 +70,7 @@ export interface ObjectGenerationResult<T> {
 
 /** Default models per provider */
 const DEFAULT_MODELS: Record<LlmProviderName, string> = {
-	google: "gemini-2.0-flash",
+	google: "gemini-2.5-flash",
 	anthropic: "claude-sonnet-4-20250514",
 	openai: "gpt-4o-mini",
 };
@@ -268,18 +269,4 @@ export function createLlmService(
 	}
 
 	return new LlmService({ provider, apiKey });
-}
-
-/**
- * Gets the API key for a provider from environment variables.
- */
-function getApiKeyForProvider(provider: LlmProviderName): string | undefined {
-	switch (provider) {
-		case "google":
-			return process.env.GEMINI_API_KEY;
-		case "anthropic":
-			return process.env.ANTHROPIC_API_KEY;
-		case "openai":
-			return process.env.OPENAI_API_KEY;
-	}
 }

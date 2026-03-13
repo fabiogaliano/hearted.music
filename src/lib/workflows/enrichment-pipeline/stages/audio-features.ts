@@ -3,40 +3,67 @@ import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queri
 import { createAudioFeaturesService } from "@/lib/integrations/audio/service";
 import type { TrackInfo } from "@/lib/integrations/audio/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
-import { selectPipelineBatch } from "../batch";
 import { runTrackedStageJob } from "../job-runner";
-import type { EnrichmentContext, EnrichmentStageResult } from "../types";
+import type { PipelineBatch } from "../batch";
+import type {
+	EnrichmentContext,
+	EnrichmentStageResult,
+	ReadyResult,
+} from "../types";
 
-export async function runAudioFeaturesStage(
-	ctx: EnrichmentContext,
-): Promise<EnrichmentStageResult> {
-	console.log("[pipeline] Stage 1: audio_features");
-
-	const batch = await selectPipelineBatch(ctx.accountId, ctx.maxSongs);
-	if (batch.songIds.length === 0) {
-		return { stage: "audio_features", status: "skipped" };
-	}
-
-	ctx.selectedBatchSongIds = batch.songIds;
-	ctx.selectedBatchSongs = batch.songs;
-
-	const existingResult = await audioFeatureData.getBatch(batch.songIds);
+export async function getReadyForAudioFeatures(
+	batchSongIds: string[],
+): Promise<ReadyResult> {
+	const existingResult = await audioFeatureData.getBatch(batchSongIds);
 	if (Result.isError(existingResult)) {
 		throw new Error(
 			`Failed to check existing audio features: ${existingResult.error.message}`,
 		);
 	}
 
-	const tracksToFetch: TrackInfo[] = batch.songIds
-		.filter((id) => !existingResult.value.has(id))
-		.map((id) => ({
-			songId: id,
-			spotifyTrackId: batch.spotifyIdBySongId.get(id)!,
-		}));
-
-	if (tracksToFetch.length === 0) {
-		return { stage: "audio_features", status: "skipped" };
+	const ready: string[] = [];
+	const done: string[] = [];
+	for (const id of batchSongIds) {
+		if (existingResult.value.has(id)) {
+			done.push(id);
+		} else {
+			ready.push(id);
+		}
 	}
+
+	return { ready, notReady: [], done };
+}
+
+export async function runAudioFeaturesStage(
+	ctx: EnrichmentContext,
+	batch: PipelineBatch,
+): Promise<EnrichmentStageResult> {
+	console.log("[pipeline] Stage: audio_features");
+
+	let readiness: ReadyResult;
+	try {
+		readiness = await getReadyForAudioFeatures(batch.songIds);
+	} catch (error) {
+		return {
+			stage: "audio_features",
+			status: "failed",
+			jobId: null,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+
+	if (readiness.ready.length === 0) {
+		return {
+			stage: "audio_features",
+			status: "skipped",
+			reason: "no songs need audio features",
+		};
+	}
+
+	const tracksToFetch: TrackInfo[] = readiness.ready.map((id) => ({
+		songId: id,
+		spotifyTrackId: batch.spotifyIdBySongId.get(id)!,
+	}));
 
 	const { jobId, succeeded, failed } = await runTrackedStageJob({
 		accountId: ctx.accountId,
@@ -61,5 +88,7 @@ export async function runAudioFeaturesStage(
 		jobId,
 		succeeded,
 		failed,
+		notReady: readiness.notReady.length,
+		done: readiness.done.length,
 	};
 }

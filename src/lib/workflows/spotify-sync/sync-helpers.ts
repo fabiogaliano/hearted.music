@@ -83,6 +83,7 @@ export function mapSpotifyTrackToSongData(st: SpotifyTrackDTO) {
 		image_url: st.track.album.images[0]?.url ?? null,
 		isrc: null,
 		artists: st.track.artists.map((a: { id: string; name: string }) => a.name),
+		artist_ids: st.track.artists.map((a: { id: string; name: string }) => a.id),
 		duration_ms: st.track.duration_ms,
 		genres: [],
 		popularity: null,

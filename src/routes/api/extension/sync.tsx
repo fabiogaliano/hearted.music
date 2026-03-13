@@ -36,6 +36,8 @@ import { updatePhaseJobIds } from "@/lib/domains/library/accounts/preferences-qu
 import { emitItem, emitStatus } from "@/lib/platform/jobs/progress/helpers";
 import { completeJob } from "@/lib/platform/jobs/lifecycle";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
+import { runEnrichmentPipeline } from "@/lib/workflows/enrichment-pipeline/orchestrator";
+import type { EnrichmentStageName } from "@/lib/workflows/enrichment-pipeline/types";
 import type {
 	SpotifyService,
 	SpotifyTrackDTO,
@@ -380,8 +382,40 @@ export const Route = createFileRoute("/api/extension/sync")({
 				emitStatus(phaseJobIds.playlist_tracks, "completed");
 				await completeJob(phaseJobIds.playlist_tracks);
 
+				// Phase 4: Enrichment pipeline — auto-runs after sync completes
+				let pipelineJobIds: Partial<
+					Record<EnrichmentStageName, string>
+				> | null = null;
+				let pipeline: Record<string, unknown> | null = null;
+
+				try {
+					const pipelineResult = await runEnrichmentPipeline(accountId);
+
+					if (Result.isOk(pipelineResult)) {
+						const run = pipelineResult.value;
+						pipelineJobIds = run.stageJobIds;
+						pipeline = {
+							stages: run.stages,
+							totalDurationMs: run.totalDurationMs,
+						};
+					} else {
+						console.error(
+							"[sync] Pipeline bootstrap failed:",
+							pipelineResult.error.message,
+						);
+						pipeline = { error: pipelineResult.error.message, stages: [] };
+					}
+				} catch (error) {
+					console.error("[sync] Pipeline unexpected error:", error);
+					pipeline = {
+						error:
+							error instanceof Error ? error.message : "Unknown pipeline error",
+						stages: [],
+					};
+				}
+
 				return Response.json(
-					{ ok: true, results, phaseJobIds },
+					{ ok: true, results, phaseJobIds, pipelineJobIds, pipeline },
 					{ headers: corsHeaders },
 				);
 			},

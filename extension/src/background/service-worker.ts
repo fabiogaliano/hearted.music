@@ -286,13 +286,6 @@ chrome.runtime.onMessageExternal.addListener(
 				}
 
 				sendResponse({ type: "CONNECTED" });
-
-				// Auto-sync if Spotify token is already available (user has Spotify open)
-				if (isTokenValid()) {
-					performSync().catch((err) =>
-						console.error("[hearted.] Auto-sync on connect:", err),
-					);
-				}
 			})();
 			return true;
 		}
@@ -390,17 +383,6 @@ chrome.runtime.onMessage.addListener(
 				);
 				console.log(`[hearted.] Token received (expires in ${expiresIn}s)`);
 				sendResponse({ ok: true });
-
-				// Auto-sync when connected to the app and this is a real user token
-				if (!message.payload.isAnonymous) {
-					chrome.storage.local.get("apiToken", ({ apiToken }) => {
-						if (apiToken && !isSyncing) {
-							performSync().catch((err) =>
-								console.error("[hearted.] Auto-sync on token:", err),
-							);
-						}
-					});
-				}
 				break;
 			}
 
