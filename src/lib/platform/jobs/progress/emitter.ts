@@ -68,23 +68,14 @@ export function subscribe(
  */
 export function emit(jobId: string, event: JobEvent): void {
 	const callbacks = subscribers.get(jobId);
-	const subscriberCount = callbacks?.size ?? 0;
-	console.log(
-		`[SSE] emit(${jobId}): ${event.type}, subscribers: ${subscriberCount}`,
-	);
+	if (!callbacks) return;
 
-	if (callbacks) {
-		for (const callback of callbacks) {
-			try {
-				callback(event);
-				console.log(`[SSE] Event delivered to subscriber`);
-			} catch (error) {
-				// Log but don't throw - one subscriber error shouldn't affect others
-				console.error(`[SSE] Error in subscriber for job ${jobId}:`, error);
-			}
+	for (const callback of callbacks) {
+		try {
+			callback(event);
+		} catch (error) {
+			console.error(`[SSE] Error in subscriber for job ${jobId}:`, error);
 		}
-	} else {
-		console.warn(`[SSE] No subscribers for job ${jobId} - event dropped!`);
 	}
 }
 

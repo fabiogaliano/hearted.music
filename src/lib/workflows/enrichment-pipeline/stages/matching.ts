@@ -11,42 +11,77 @@ import type {
 	MatchingAudioFeatures,
 } from "@/lib/domains/taste/song-matching/types";
 import { runTrackedStageJob } from "../job-runner";
-import type { EnrichmentContext, EnrichmentStageResult } from "../types";
+import type { PipelineBatch } from "../batch";
+import type { Playlist } from "@/lib/domains/library/playlists/queries";
+import type {
+	EnrichmentContext,
+	EnrichmentStageResult,
+	ReadyResult,
+} from "../types";
 
 function sha256Hex(input: string): string {
 	return createHash("sha256").update(input).digest("hex");
 }
 
-export async function runMatchingStage(
-	ctx: EnrichmentContext,
-): Promise<EnrichmentStageResult> {
-	console.log("[pipeline] Stage 5: matching");
-
-	const pendingResult = await likedSongData.getPending(ctx.accountId);
+export async function getReadyForMatching(
+	accountId: string,
+	batchSongIds: string[],
+): Promise<ReadyResult> {
+	const pendingResult = await likedSongData.getPending(accountId);
 	if (Result.isError(pendingResult)) {
 		throw new Error(
 			`Failed to get pending songs: ${pendingResult.error.message}`,
 		);
 	}
 
-	const batchSet = new Set(ctx.selectedBatchSongIds);
-	const pendingSongs = pendingResult.value.filter((ls) =>
-		batchSet.has(ls.song_id),
-	);
+	const pendingSet = new Set(pendingResult.value.map((ls) => ls.song_id));
 
-	if (pendingSongs.length === 0) {
-		return { stage: "matching", status: "skipped" };
+	const ready: string[] = [];
+	const done: string[] = [];
+	for (const id of batchSongIds) {
+		if (pendingSet.has(id)) {
+			ready.push(id);
+		} else {
+			done.push(id);
+		}
 	}
 
-	const playlists = ctx.destinationPlaylists;
+	return { ready, notReady: [], done };
+}
+
+export async function runMatchingStage(
+	ctx: EnrichmentContext,
+	batch: PipelineBatch,
+	playlists: Playlist[],
+): Promise<EnrichmentStageResult> {
+	console.log("[pipeline] Stage: matching");
+
 	if (playlists.length === 0) {
+		return {
+			stage: "matching",
+			status: "skipped",
+			reason: "no destination playlists",
+		};
+	}
+
+	let readiness: ReadyResult;
+	try {
+		readiness = await getReadyForMatching(ctx.accountId, batch.songIds);
+	} catch (error) {
+		return {
+			stage: "matching",
+			status: "failed",
+			jobId: null,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+
+	if (readiness.ready.length === 0) {
 		return { stage: "matching", status: "skipped" };
 	}
 
-	const pendingSongIds = new Set(pendingSongs.map((ps) => ps.song_id));
-	const songsForMatching = ctx.selectedBatchSongs.filter((s) =>
-		pendingSongIds.has(s.id),
-	);
+	const readySet = new Set(readiness.ready);
+	const songsForMatching = batch.songs.filter((s) => readySet.has(s.id));
 	const songIds = songsForMatching.map((s) => s.id);
 
 	const audioFeaturesResult = await audioFeatureData.getBatch(songIds);
@@ -191,5 +226,13 @@ export async function runMatchingStage(
 		},
 	});
 
-	return { stage: "matching", status: "completed", jobId, succeeded, failed };
+	return {
+		stage: "matching",
+		status: "completed",
+		jobId,
+		succeeded,
+		failed,
+		notReady: readiness.notReady.length,
+		done: readiness.done.length,
+	};
 }

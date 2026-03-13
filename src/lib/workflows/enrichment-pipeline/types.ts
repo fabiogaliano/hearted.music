@@ -1,18 +1,23 @@
 import { TaggedError } from "better-result";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
-import type { Song } from "@/lib/domains/library/songs/queries";
-import type { Playlist } from "@/lib/domains/library/playlists/queries";
 
 export type EnrichmentStageName =
 	| "audio_features"
+	| "genre_tagging"
 	| "song_analysis"
 	| "song_embedding"
 	| "playlist_profiling"
 	| "matching";
 
 export interface PipelineOptions {
-	readonly maxSongs?: number;
+	readonly batchSize?: number;
+}
+
+export interface ReadyResult {
+	readonly ready: string[];
+	readonly notReady: string[];
+	readonly done: string[];
 }
 
 export type EnrichmentStageResult =
@@ -22,9 +27,14 @@ export type EnrichmentStageResult =
 			readonly jobId: string | null;
 			readonly succeeded: number;
 			readonly failed: number;
+			readonly notReady?: number;
+			readonly done?: number;
 	  }
-	| { readonly stage: EnrichmentStageName; readonly status: "skipped" }
-	// error is set when the stage threw; succeeded/failed counts present when the job ran but all items failed
+	| {
+			readonly stage: EnrichmentStageName;
+			readonly status: "skipped";
+			readonly reason?: string;
+	  }
 	| {
 			readonly stage: EnrichmentStageName;
 			readonly status: "failed";
@@ -51,13 +61,8 @@ export class PipelineBootstrapError extends TaggedError(
 	}
 }
 
-// Mutable shared state threaded through all enrichment stages
 export interface EnrichmentContext {
 	readonly accountId: string;
-	readonly maxSongs: number;
 	readonly embeddingService: EmbeddingService;
 	readonly profilingService: PlaylistProfilingService;
-	selectedBatchSongIds: string[];
-	selectedBatchSongs: Song[];
-	destinationPlaylists: Playlist[];
 }

@@ -9,7 +9,7 @@
  * include this adapter to avoid bundle size bloat.
  *
  * Models:
- * - Embedding: Xenova/all-MiniLM-L6-v2 (384 dims, ~50MB download)
+ * - Embedding: Xenova/multilingual-e5-large (1024 dims, ~1.2GB download)
  * - Reranking: Xenova/bge-reranker-base (~100MB download, first run only)
  *
  * Note: Models are cached after first download. Initial inference will be slow
@@ -47,8 +47,8 @@ export class LocalProvider implements MLProvider {
 	constructor() {
 		this.metadata = {
 			name: "local",
-			embeddingModel: "Xenova/all-MiniLM-L6-v2",
-			embeddingDims: 384,
+			embeddingModel: "Xenova/multilingual-e5-large",
+			embeddingDims: 1024,
 			rerankerModel: "Xenova/bge-reranker-base",
 		};
 	}
