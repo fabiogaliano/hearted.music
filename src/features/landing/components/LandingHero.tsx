@@ -100,18 +100,34 @@ export function LandingHero({
 			});
 		};
 
-		const handlePointerMove = (ev: PointerEvent) => {
+		const getPointerPosition = (ev: PointerEvent) => {
 			const rect = container.getBoundingClientRect();
 			const x = clamp01((ev.clientX - rect.left) / rect.width);
 			const y = clamp01(1 - (ev.clientY - rect.top) / rect.height);
+			return { x, y };
+		};
+
+		const handlePointerMove = (ev: PointerEvent) => {
+			const { x, y } = getPointerPosition(ev);
 			pending = { x, y };
 			scheduleUpdate();
 		};
 
-		window.addEventListener("pointermove", handlePointerMove);
+		const handlePointerDown = (ev: PointerEvent) => {
+			const { x, y } = getPointerPosition(ev);
+			heartRippleRef.current?.setPointer({ x, y, strength: 1 });
+		};
+
+		window.addEventListener("pointermove", handlePointerMove, {
+			passive: true,
+		});
+		window.addEventListener("pointerdown", handlePointerDown, {
+			passive: true,
+		});
 
 		return () => {
 			window.removeEventListener("pointermove", handlePointerMove);
+			window.removeEventListener("pointerdown", handlePointerDown);
 			if (rafId != null) {
 				cancelAnimationFrame(rafId);
 			}
@@ -171,10 +187,10 @@ export function LandingHero({
 					<div className="pointer-events-none relative z-10 grid min-h-screen lg:grid-cols-2">
 						{/* Left: Copy column - elements morph from center to here */}
 						<div
-							className={`hero-initial-fade ${isBackgroundReady ? "is-ready" : ""} pointer-events-none relative flex flex-col justify-center overflow-visible px-8 py-20 lg:px-16`}
+							className={`hero-initial-fade ${isBackgroundReady ? "is-ready" : ""} pointer-events-none relative flex min-h-screen flex-col justify-center overflow-visible px-8 py-20 lg:min-h-0 lg:px-16`}
 						>
 							{/* Navigation - logo morphs here, button fades in */}
-							<nav className="pointer-events-none absolute top-0 right-0 left-0 flex items-center justify-between px-8 py-5 lg:static lg:mb-16 lg:px-0">
+							<nav className="pointer-events-none mb-8 flex items-center justify-between lg:mb-10">
 								<h1
 									ref={logoRef}
 									className="hero-logo flex items-center text-2xl font-extralight tracking-tight"
@@ -186,7 +202,7 @@ export function LandingHero({
 								>
 									<span
 										ref={heartRef}
-										className="inline-flex items-center"
+										className="hero-logo-heart inline-flex items-center"
 										style={{ width: 0, minWidth: 0, opacity: 0 }}
 									>
 										<span
@@ -219,21 +235,25 @@ export function LandingHero({
 							<div className="pointer-events-none max-w-lg">
 								<h2
 									ref={headlineRef}
-									className="hero-headline flex text-4xl leading-[1.1] font-extralight md:text-5xl lg:text-6xl"
+									className="hero-headline text-4xl leading-[1.1] font-extralight md:text-5xl lg:flex lg:text-6xl"
 									style={{
 										fontFamily: fonts.display,
 										color: pastelColor,
 										willChange: "transform, max-width",
 									}}
 								>
-									<span>the stories inside&nbsp;</span>
-									<span className="italic">your liked songs</span>
+									<span className="block lg:inline">
+										the stories inside&nbsp;
+									</span>
+									<span className="block italic lg:inline">
+										your liked songs
+									</span>
 								</h2>
 
 								{/* Subtext - fades in late in scroll */}
 								<p
 									ref={subtextRef}
-									className="mt-3 text-lg leading-relaxed lg:text-xl"
+									className="hero-subtext mt-3 text-lg leading-relaxed lg:text-xl"
 									style={{
 										color: theme.textOnPrimary,
 										opacity: 0,
@@ -246,7 +266,7 @@ export function LandingHero({
 								{/* CTA - fades in late in scroll */}
 								<div
 									ref={ctaRef}
-									className="pointer-events-auto mt-6"
+									className="hero-cta pointer-events-auto mt-6"
 									style={{ opacity: 0, transform: "translateY(10px)" }}
 								>
 									{isReleased ? (
@@ -282,7 +302,7 @@ export function LandingHero({
 						</div>
 
 						{/* Mobile: Panel (no scroll animation on mobile) */}
-						<div className="pointer-events-auto relative h-[70vh] lg:hidden">
+						<div className="pointer-events-auto relative min-h-screen lg:hidden">
 							<SongPreviewPanel
 								song={featuredSong}
 								albumArtUrl={albumArtUrl}

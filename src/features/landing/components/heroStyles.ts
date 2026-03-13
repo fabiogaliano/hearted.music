@@ -137,6 +137,11 @@ export const heroStyles = `
 		.hero-headline {
 			transform: none !important;
 		}
+		.hero-logo-heart {
+			width: 20px !important;
+			min-width: 20px !important;
+			opacity: 1 !important;
+		}
 		.hero-background {
 			transform: none !important;
 		}
@@ -144,8 +149,13 @@ export const heroStyles = `
 			opacity: 1 !important;
 			clip-path: none !important;
 		}
-		.hero-nav-btn {
+		.hero-subtext,
+		.hero-cta {
 			opacity: 1 !important;
+			transform: none !important;
+		}
+		.hero-nav-btn {
+			display: none !important;
 		}
 	}
 `;

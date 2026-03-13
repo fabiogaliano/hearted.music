@@ -75,6 +75,7 @@ export function SongPreviewPanel({
 	onNext,
 }: SongPreviewPanelProps) {
 	const theme = useTheme();
+	const panelBackgroundImageUrl = artistImageUrl ?? albumArtUrl;
 	// Extract hue for light-mode vignette gradient
 	const hue = extractHue(theme.primary);
 
@@ -88,13 +89,13 @@ export function SongPreviewPanel({
 				className="relative"
 				style={{ height: `${PANEL_LAYOUT.heroHeight}px` }}
 			>
-				{/* Artist image background - constrained to hero */}
-				{artistImageUrl ? (
+				{/* Hero image background - artist image with album-art fallback */}
+				{panelBackgroundImageUrl ? (
 					<>
 						<div
 							className="absolute inset-0"
 							style={{
-								backgroundImage: `url(${artistImageUrl})`,
+								backgroundImage: `url(${panelBackgroundImageUrl})`,
 								backgroundSize: "cover",
 								backgroundPosition: `center ${PANEL_LAYOUT.imagePositionY}%`,
 							}}

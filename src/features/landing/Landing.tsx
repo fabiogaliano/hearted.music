@@ -15,6 +15,7 @@
 import { useState } from "react";
 import { MatchesSection } from "@/features/matching/components/MatchesSection";
 import { SongSection } from "@/features/matching/components/SongSection";
+import { useArtistImage } from "@/lib/hooks/useArtistImage";
 import { playlists, songs } from "@/lib/data/mock-data";
 
 import { fonts } from "@/lib/theme/fonts";
@@ -51,7 +52,10 @@ export function Landing({
 	const featuredSong = songs[selectedSongIndex] || songs[0];
 	const isLoading = false;
 	const albumArtUrl = getAlbumArt(featuredSong.spotifyTrackId, 300);
-	const artistImageUrl = featuredSong.artistImageUrl;
+	const { artistImageUrl: fetchedArtistImageUrl } = useArtistImage(
+		featuredSong.spotifyTrackId,
+	);
+	const artistImageUrl = fetchedArtistImageUrl ?? featuredSong.artistImageUrl;
 
 	// Preview song for Section 2 - separate state so it can cycle independently
 	const [previewSongIndex, setPreviewSongIndex] = useState(2);
