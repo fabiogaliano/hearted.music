@@ -10,10 +10,11 @@ This revision updates the change artifacts so they describe the pipeline that ac
 
 - **Pipeline orchestrator implementation**: `runEnrichmentPipeline()` coordinates a six-stage enrichment flow inside the sync request lifecycle
 - **Dependency-aware execution**: the pipeline runs a parallel-safe prep phase (`audio_features`, `genre_tagging`, `playlist_profiling`) followed by dependent stages (`song_analysis`, `song_embedding`, `matching`)
-- **Sync endpoint integration**: `POST /api/extension/sync` triggers the pipeline after Phase 3 and returns stage results plus `pipelineJobIds`
+- **Pipeline trigger integration**: `POST /api/extension/sync` triggers the pipeline after Phase 3 as an internal follow-up, and onboarding destination selection can rerun it after playlists are marked as destinations
 - **Batch sizing**: the orchestrator uses `batchSize` semantics with `PIPELINE_BATCH_SIZE` as the primary environment override and `PIPELINE_MAX_SONGS` as a legacy fallback
 - **Pipeline progress visibility**: each stage owns its own job and SSE lifecycle so the UI can subscribe independently
 - **Non-fatal failures**: stage failures are reported inline on stage results, while bootstrap failures surface as a top-level pipeline error without failing sync itself
+- **Destination-dependent execution**: `playlist_profiling` and `matching` may skip until onboarding has saved one or more destination playlists
 
 ### Out of scope (separate changes)
 
@@ -32,16 +33,17 @@ This revision updates the change artifacts so they describe the pipeline that ac
 
 ### New Capabilities
 
-- **pipeline-orchestration**: Post-sync orchestration for the six-stage enrichment pipeline and the sync-response contract that exposes stage results and job IDs
+- **pipeline-orchestration**: Post-sync orchestration for the six-stage enrichment pipeline, including destination-dependent stages that may skip before onboarding selections exist
 
 ### Modified Capabilities
 
 - **matching-pipeline**: Clarify how destination-playlist matching is triggered from the post-sync pipeline
-- **data-flow**: Clarify dependency-ordered job chains, including safe parallel prep work and the shape of `pipelineJobIds`
+- **data-flow**: Clarify dependency-ordered job chains, including safe parallel prep work and the distinction between internal pipeline jobs and the slimmer extension sync response
 
 ## Impact
 
-- **Sync endpoint**: `src/routes/api/extension/sync.tsx` — trigger the pipeline after sync phases complete and include pipeline status in the response
+- **Sync endpoint**: `src/routes/api/extension/sync.tsx` — trigger the pipeline after sync phases complete without exposing pipeline-specific payload to the extension response
+- **Onboarding server functions**: `src/lib/server/onboarding.functions.ts` — rerun the pipeline after destination playlists are saved so profiling/matching can execute once destinations exist
 - **Workflows**: `src/lib/workflows/enrichment-pipeline/` — orchestrator, batch selection, and six stage modules (`audio_features`, `genre_tagging`, `playlist_profiling`, `song_analysis`, `song_embedding`, `matching`)
 - **Jobs**: `src/lib/platform/jobs/` plus `supabase/migrations/` — per-stage job tracking, including `genre_tagging`
 - **Tests**: `src/lib/workflows/enrichment-pipeline/__tests__/` — orchestrator and integration coverage for stage order, isolation, and response shape

@@ -25,6 +25,7 @@ Existing infrastructure used by this change:
 - document the current dependency ordering between pipeline stages
 - document current batch selection and environment override semantics
 - preserve the guarantee that pipeline failures do not fail sync itself
+- document that destination-dependent stages may legitimately skip before onboarding playlist selection is complete
 
 **Non-Goals:**
 - UI rewiring for match consumption
@@ -69,17 +70,11 @@ Then it runs the dependent stages in order:
 
 **Rationale:** This preserves the original development cost guardrail while matching the current API and keeping backward compatibility with the earlier environment variable name.
 
-### 4. The sync endpoint always returns structured pipeline output
+### 4. Pipeline triggers are internal to sync and onboarding, while the extension response stays slim
 
-**Decision:** `POST /api/extension/sync` always calls `runEnrichmentPipeline(accountId)` after Phase 3 and returns:
+**Decision:** `POST /api/extension/sync` always calls `runEnrichmentPipeline(accountId)` after Phase 3, and saving destination playlists during onboarding may call it again once destinations exist. The extension response remains limited to sync results plus `phaseJobIds`.
 
-- `pipelineJobIds`
-- `pipeline.stages`
-- `pipeline.totalDurationMs`
-
-If pipeline bootstrap fails before stage execution, the response still returns `ok: true` and surfaces a top-level `pipeline.error`.
-
-**Rationale:** The UI needs a stable response shape whether the pipeline ran fully, skipped due to an empty batch, or failed before stages started.
+**Rationale:** The pipeline is an internal follow-up to sync and onboarding state changes. The web app discovers sync progress through persisted phase job IDs and SSE, while destination-playlist work is only meaningful after onboarding has saved one or more destination playlists.
 
 ### 5. Each stage still owns its own incremental filtering
 
@@ -90,8 +85,8 @@ If pipeline bootstrap fails before stage execution, the response still returns `
 - `genre_tagging` skips songs that already have `song.genres`
 - `song_analysis` skips songs that already have `song_analysis`
 - `song_embedding` skips songs that already have `song_embedding`
-- `playlist_profiling` relies on profile caching in `PlaylistProfilingService`
-- `matching` skips liked songs that already have an action record via pending-song filtering
+- `playlist_profiling` relies on profile caching in `PlaylistProfilingService` and may skip entirely until onboarding has selected destination playlists
+- `matching` skips liked songs that already have an action record via pending-song filtering and may skip entirely until onboarding has selected destination playlists
 
 **Rationale:** This keeps stages idempotent and resilient to partial reruns.
 
@@ -120,7 +115,7 @@ POST /api/extension/sync
           → song_embedding
       → Phase D
           → matching
-  → Response: { ok, results, phaseJobIds, pipelineJobIds, pipeline }
+  → Response: { ok, results, phaseJobIds }
 ```
 
 ## Risks / Trade-offs

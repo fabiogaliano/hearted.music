@@ -54,6 +54,64 @@ export interface CacheStats {
 	readonly size: number;
 }
 
+export async function computeMatchContextMetadata(
+	songs: MatchingSong[],
+	profiles: MatchingPlaylistProfile[],
+	matchingConfig: Partial<MatchingConfig> = {},
+): Promise<{
+	contextHash: string;
+	candidateSetHash: string;
+	playlistSetHash: string;
+	configHash: string;
+	modelBundleHash: string;
+	effectiveConfig: MatchingConfig;
+}> {
+	const effectiveConfig = { ...DEFAULT_MATCHING_CONFIG, ...matchingConfig };
+
+	const songIds = songs.map((s) => s.id);
+	const songContentHashes = songs.map((s) =>
+		[s.name, s.artists.join(","), s.genres?.join(",") ?? ""].join("|"),
+	);
+	const candidateSetHash = await hashCandidateSet(songIds, songContentHashes);
+
+	const playlistIds = profiles.map((p) => p.playlistId);
+	const profileHashes = profiles.map((p) =>
+		[
+			p.playlistId,
+			Object.keys(p.genreDistribution).join(","),
+			Object.keys(p.audioCentroid).join(","),
+		].join("|"),
+	);
+	const playlistSetHash = await hashPlaylistSet(playlistIds, profileHashes);
+
+	const configHash = await hashMatchingConfig({
+		weights: { ...effectiveConfig.weights } as any,
+		audioWeights: { ...effectiveConfig.audioWeights } as any,
+		minScoreThreshold: effectiveConfig.minScoreThreshold,
+	});
+
+	const modelBundleHashResult = await getModelBundleHash();
+	if (Result.isError(modelBundleHashResult)) {
+		throw modelBundleHashResult.error;
+	}
+
+	const contextHash = await hashMatchContext({
+		candidateSetHash,
+		playlistSetHash,
+		configHash,
+		modelBundleHash: modelBundleHashResult.value,
+	});
+
+	return {
+		contextHash,
+		candidateSetHash,
+		playlistSetHash,
+		configHash,
+		modelBundleHash: modelBundleHashResult.value,
+		effectiveConfig,
+	};
+}
+
 // ============================================================================
 // Service
 // ============================================================================
@@ -417,56 +475,7 @@ export class MatchCachingService {
 		modelBundleHash: string;
 		effectiveConfig: MatchingConfig;
 	}> {
-		// Merge with DEFAULT_MATCHING_CONFIG (not cache config)
-		const effectiveConfig = { ...DEFAULT_MATCHING_CONFIG, ...matchingConfig };
-
-		// Hash candidate set (songs)
-		const songIds = songs.map((s) => s.id);
-		const songContentHashes = songs.map((s) =>
-			[s.name, s.artists.join(","), s.genres?.join(",") ?? ""].join("|"),
-		);
-		const candidateSetHash = await hashCandidateSet(songIds, songContentHashes);
-
-		// Hash playlist set
-		const playlistIds = profiles.map((p) => p.playlistId);
-		const profileHashes = profiles.map((p) =>
-			[
-				p.playlistId,
-				Object.keys(p.genreDistribution).join(","),
-				Object.keys(p.audioCentroid).join(","),
-			].join("|"),
-		);
-		const playlistSetHash = await hashPlaylistSet(playlistIds, profileHashes);
-
-		// Hash only matching-relevant config fields
-		const configHash = await hashMatchingConfig({
-			weights: { ...effectiveConfig.weights } as any,
-			audioWeights: { ...effectiveConfig.audioWeights } as any,
-			minScoreThreshold: effectiveConfig.minScoreThreshold,
-		});
-
-		// Get model bundle hash for cache invalidation
-		const modelBundleHashResult = await getModelBundleHash();
-		if (Result.isError(modelBundleHashResult)) {
-			throw modelBundleHashResult.error;
-		}
-
-		// Combine into context hash (includes model version for automatic invalidation)
-		const contextHash = await hashMatchContext({
-			candidateSetHash,
-			playlistSetHash,
-			configHash,
-			modelBundleHash: modelBundleHashResult.value,
-		});
-
-		return {
-			contextHash,
-			candidateSetHash,
-			playlistSetHash,
-			configHash,
-			modelBundleHash: modelBundleHashResult.value,
-			effectiveConfig,
-		};
+		return computeMatchContextMetadata(songs, profiles, matchingConfig);
 	}
 
 	/**

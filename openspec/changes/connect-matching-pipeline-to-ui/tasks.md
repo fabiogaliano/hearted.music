@@ -16,9 +16,9 @@
 ## 3. Sync endpoint integration
 
 - [x] 3.1 Modify `src/routes/api/extension/sync.tsx` — after Phase 3 (playlist tracks), call `runEnrichmentPipeline(accountId)`
-- [x] 3.2 Add `pipelineJobIds` to the sync response, keyed by enrichment stage name
-- [x] 3.3 Add `pipeline` to the sync response with `stages`, `totalDurationMs`, and top-level bootstrap error reporting when needed
-- [x] 3.4 Ensure pipeline failures do not change the sync response contract: sync still returns `ok: true`
+- [x] 3.2 Keep the extension response slim: return sync results and `phaseJobIds` only while running the enrichment pipeline internally
+- [x] 3.3 Ensure pipeline failures do not change the sync response contract: sync still returns `ok: true`
+- [x] 3.4 Allow destination-dependent stages to skip until onboarding has saved one or more destination playlists
 
 ## 4. Batch size configuration
 
