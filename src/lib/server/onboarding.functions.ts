@@ -32,7 +32,10 @@ import {
 } from "@/lib/platform/jobs/progress/types";
 import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
 import { type ThemeColor, themeSchema } from "@/lib/theme/types";
-import { runEnrichmentPipeline } from "@/lib/workflows/enrichment-pipeline/orchestrator";
+import {
+	runDestinationProfiling,
+	runMatching,
+} from "@/lib/workflows/enrichment-pipeline/orchestrator";
 
 /** Playlist view model for onboarding UI (camelCase frontend format) */
 export interface OnboardingPlaylist {
@@ -316,15 +319,57 @@ export const savePlaylistDestinations = createServerFn({ method: "POST" })
 			);
 		}
 
-		if (data.playlistIds.length > 0) {
-			const pipelineResult = await runEnrichmentPipeline(session.accountId);
-			if (Result.isError(pipelineResult)) {
-				console.error(
-					"[onboarding] Pipeline bootstrap failed after saving destinations:",
-					pipelineResult.error.message,
-				);
-			}
+		if (data.playlistIds.length === 0) {
+			return { success: true };
 		}
+
+		const songCountResult = await getLikedSongCount(session.accountId);
+		if (Result.isError(songCountResult) || songCountResult.value === 0) {
+			return { success: true };
+		}
+
+		// Fire-and-forget: destination-side work runs without blocking the save response
+		void (async () => {
+			try {
+				const profilingResult = await runDestinationProfiling(
+					session.accountId,
+				);
+				if (Result.isError(profilingResult)) {
+					console.error(
+						"[onboarding] Destination profiling bootstrap failed:",
+						profilingResult.error.message,
+					);
+					return;
+				}
+
+				for (const stage of profilingResult.value.stages) {
+					if (stage.status === "failed") {
+						console.error(
+							`[onboarding] Destination profiling stage failed: ${stage.error ?? "unknown error"}`,
+						);
+					}
+				}
+
+				const matchingResult = await runMatching(session.accountId);
+				if (Result.isError(matchingResult)) {
+					console.error(
+						"[onboarding] Matching bootstrap failed:",
+						matchingResult.error.message,
+					);
+					return;
+				}
+
+				for (const stage of matchingResult.value.stages) {
+					if (stage.status === "failed") {
+						console.error(
+							`[onboarding] Matching stage failed: ${stage.error ?? "unknown error"}`,
+						);
+					}
+				}
+			} catch (error) {
+				console.error("[onboarding] Destination follow-on work failed:", error);
+			}
+		})();
 
 		return { success: true };
 	});

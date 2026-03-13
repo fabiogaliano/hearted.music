@@ -12,8 +12,8 @@ The system SHALL support dependency-ordered job chains where multiple jobs run w
 
 #### Scenario: Chain progress tracking
 - **WHEN** a job chain is running
-- **THEN** the initiating request SHALL collect all job IDs
-- **AND** return them in the response so the UI can subscribe to each job's SSE progress independently
+- **THEN** the initiating request SHALL collect the sync phase job IDs for response persistence and SSE subscription
+- **AND** pipeline-stage job creation MAY remain internal to the pipeline implementation
 
 #### Scenario: Chain failure isolation
 - **WHEN** one job in the chain fails
@@ -22,16 +22,11 @@ The system SHALL support dependency-ordered job chains where multiple jobs run w
 
 ---
 
-### Requirement: Pipeline job IDs in sync response
+### Requirement: Sync response exposes phase job IDs only
 
-The sync endpoint SHALL return pipeline job IDs alongside sync phase job IDs.
+The sync endpoint SHALL return sync phase job IDs needed by onboarding and SSE progress tracking.
 
-#### Scenario: Stage-keyed pipeline job IDs
-- **WHEN** the enrichment pipeline runs after sync
-- **THEN** the response SHALL include pipeline job IDs under `pipelineJobIds` (separate from `phaseJobIds`)
-- **AND** each key SHALL correspond to a pipeline stage such as `audio_features`, `genre_tagging`, `playlist_profiling`, `song_analysis`, `song_embedding`, or `matching`
-
-#### Scenario: Pipeline not run
-- **WHEN** the pipeline has no stage jobs to report (for example, an empty batch)
-- **THEN** `pipelineJobIds` SHALL still be present in the response
-- **AND** it MAY be an empty object
+#### Scenario: Phase job IDs in response
+- **WHEN** the extension sync endpoint returns successfully
+- **THEN** the response SHALL include `phaseJobIds`
+- **AND** it SHALL NOT need to expose separate pipeline job IDs for internal enrichment stages

@@ -10,9 +10,9 @@ The matching stage SHALL only match songs against playlists marked as destinatio
 - **AND** it SHALL exclude playlists without a computed `playlist_profile`
 
 #### Scenario: No destination playlists
-- **WHEN** zero destination playlists have profiles
+- **WHEN** onboarding has not yet saved any destination playlists, or zero selected destination playlists have profiles
 - **THEN** the matching stage SHALL skip execution
-- **AND** report `{ matched: 0, skipped: true, reason: "no profiled destination playlists" }`
+- **AND** report a skip reason indicating that no destination playlists have been selected yet or profiled yet
 
 ---
 

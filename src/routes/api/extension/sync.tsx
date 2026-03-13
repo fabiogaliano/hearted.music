@@ -36,7 +36,7 @@ import { updatePhaseJobIds } from "@/lib/domains/library/accounts/preferences-qu
 import { emitItem, emitStatus } from "@/lib/platform/jobs/progress/helpers";
 import { completeJob } from "@/lib/platform/jobs/lifecycle";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
-import { runEnrichmentPipeline } from "@/lib/workflows/enrichment-pipeline/orchestrator";
+import { runSongEnrichment } from "@/lib/workflows/enrichment-pipeline/orchestrator";
 import type {
 	SpotifyService,
 	SpotifyTrackDTO,
@@ -381,18 +381,18 @@ export const Route = createFileRoute("/api/extension/sync")({
 				emitStatus(phaseJobIds.playlist_tracks, "completed");
 				await completeJob(phaseJobIds.playlist_tracks);
 
-				// Phase 4: Enrichment pipeline — auto-runs after sync completes
+				// Phase 4: Song-side enrichment only — sync does not trigger destination profiling or matching
 				try {
-					const pipelineResult = await runEnrichmentPipeline(accountId);
+					const enrichmentResult = await runSongEnrichment(accountId);
 
-					if (Result.isError(pipelineResult)) {
+					if (Result.isError(enrichmentResult)) {
 						console.error(
-							"[sync] Pipeline bootstrap failed:",
-							pipelineResult.error.message,
+							"[sync] Song enrichment bootstrap failed:",
+							enrichmentResult.error.message,
 						);
 					}
 				} catch (error) {
-					console.error("[sync] Pipeline unexpected error:", error);
+					console.error("[sync] Song enrichment unexpected error:", error);
 				}
 
 				return Response.json(

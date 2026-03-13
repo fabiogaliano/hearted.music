@@ -39,6 +39,10 @@ vi.mock("../stages/matching", () => ({
 	runMatchingStage: vi.fn(),
 }));
 
+vi.mock("@/lib/domains/library/playlists/queries", () => ({
+	getDestinationPlaylists: vi.fn(),
+}));
+
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import { selectPipelineBatch } from "../batch";
@@ -48,7 +52,13 @@ import { runSongEmbeddingStage } from "../stages/song-embedding";
 import { runPlaylistProfilingStage } from "../stages/playlist-profiling";
 import { runGenreTaggingStage } from "../stages/genre-tagging";
 import { runMatchingStage } from "../stages/matching";
-import { runEnrichmentPipeline } from "../orchestrator";
+import { getDestinationPlaylists } from "@/lib/domains/library/playlists/queries";
+import {
+	runEnrichmentPipeline,
+	runSongEnrichment,
+	runDestinationProfiling,
+	runMatching,
+} from "../orchestrator";
 
 const mockEmbeddingService = EmbeddingService as unknown as ReturnType<
 	typeof vi.fn
@@ -65,6 +75,9 @@ const mockPlaylistProfiling = runPlaylistProfilingStage as ReturnType<
 >;
 const mockGenreTagging = runGenreTaggingStage as ReturnType<typeof vi.fn>;
 const mockMatching = runMatchingStage as ReturnType<typeof vi.fn>;
+const mockGetDestinationPlaylists = getDestinationPlaylists as ReturnType<
+	typeof vi.fn
+>;
 
 const fakeBatch: PipelineBatch = {
 	songIds: ["s1", "s2"],
@@ -126,7 +139,7 @@ function setupAllStagesCompleted() {
 	mockMatching.mockResolvedValue(completedResult("matching"));
 }
 
-describe("runEnrichmentPipeline", () => {
+describe("runSongEnrichment", () => {
 	const savedEnv = process.env;
 
 	beforeEach(() => {
@@ -148,7 +161,221 @@ describe("runEnrichmentPipeline", () => {
 		process.env = savedEnv;
 	});
 
-	it("runs stages in dependency-correct phase order", async () => {
+	it("runs only 4 song-side stages in dependency order", async () => {
+		const callOrder: string[] = [];
+
+		mockAudioFeatures.mockImplementation(async () => {
+			callOrder.push("audio_features");
+			return completedResult("audio_features");
+		});
+		mockGenreTagging.mockImplementation(async () => {
+			callOrder.push("genre_tagging");
+			return completedResult("genre_tagging");
+		});
+		mockSongAnalysis.mockImplementation(async () => {
+			callOrder.push("song_analysis");
+			return completedResult("song_analysis");
+		});
+		mockSongEmbedding.mockImplementation(async () => {
+			callOrder.push("song_embedding");
+			return completedResult("song_embedding");
+		});
+
+		const result = await runSongEnrichment("acct-1");
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+
+		expect(result.value.stages).toHaveLength(4);
+
+		const afIdx = callOrder.indexOf("audio_features");
+		const gtIdx = callOrder.indexOf("genre_tagging");
+		const saIdx = callOrder.indexOf("song_analysis");
+		const seIdx = callOrder.indexOf("song_embedding");
+
+		expect(afIdx).toBeLessThan(saIdx);
+		expect(gtIdx).toBeLessThan(saIdx);
+		expect(saIdx).toBeLessThan(seIdx);
+
+		// Does not call destination stages
+		expect(mockPlaylistProfiling).not.toHaveBeenCalled();
+		expect(mockMatching).not.toHaveBeenCalled();
+	});
+
+	it("returns early with 4 skipped stages on empty batch", async () => {
+		mockSelectBatch.mockResolvedValue({
+			songIds: [],
+			songs: [],
+			spotifyIdBySongId: new Map(),
+		});
+
+		const result = await runSongEnrichment("acct-1");
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+
+		expect(result.value.stages).toHaveLength(4);
+		for (const stage of result.value.stages) {
+			expect(stage.status).toBe("skipped");
+			if (stage.status === "skipped") {
+				expect(stage.reason).toBe("empty batch");
+			}
+		}
+	});
+
+	it("respects batchSize option", async () => {
+		setupAllStagesCompleted();
+
+		await runSongEnrichment("acct-1", { batchSize: 42 });
+
+		expect(mockSelectBatch).toHaveBeenCalledWith("acct-1", 42);
+	});
+
+	it("returns PipelineBootstrapError when EmbeddingService throws", async () => {
+		mockEmbeddingService.mockImplementation(() => {
+			throw new Error("missing API key");
+		});
+
+		const result = await runSongEnrichment("acct-1");
+
+		expect(Result.isError(result)).toBe(true);
+		if (!Result.isError(result)) return;
+		expect(result.error._tag).toBe("PipelineBootstrapError");
+	});
+});
+
+describe("runDestinationProfiling", () => {
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		mockEmbeddingService.mockImplementation(() => ({
+			fake: "embeddingService",
+		}));
+		mockCreateProfilingService.mockReturnValue({
+			fake: "profilingService",
+		});
+	});
+
+	it("runs only playlist_profiling stage", async () => {
+		mockPlaylistProfiling.mockResolvedValue(profilingOutput());
+
+		const result = await runDestinationProfiling("acct-1");
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+
+		expect(result.value.stages).toHaveLength(1);
+		expect(result.value.stages[0].stage).toBe("playlist_profiling");
+		expect(result.value.stages[0].status).toBe("completed");
+
+		expect(mockAudioFeatures).not.toHaveBeenCalled();
+		expect(mockMatching).not.toHaveBeenCalled();
+	});
+
+	it("catches profiling errors and returns failed stage", async () => {
+		mockPlaylistProfiling.mockRejectedValue(new Error("profiling boom"));
+
+		const result = await runDestinationProfiling("acct-1");
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+
+		expect(result.value.stages[0].status).toBe("failed");
+		if (result.value.stages[0].status === "failed") {
+			expect(result.value.stages[0].error).toBe("profiling boom");
+		}
+	});
+});
+
+describe("runMatching", () => {
+	const savedEnv = process.env;
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		process.env = { ...savedEnv };
+		delete process.env.PIPELINE_BATCH_SIZE;
+		delete process.env.PIPELINE_MAX_SONGS;
+
+		mockEmbeddingService.mockImplementation(() => ({
+			fake: "embeddingService",
+		}));
+		mockCreateProfilingService.mockReturnValue({
+			fake: "profilingService",
+		});
+		mockSelectBatch.mockResolvedValue(fakeBatch);
+		mockGetDestinationPlaylists.mockResolvedValue(Result.ok(fakePlaylists));
+	});
+
+	afterEach(() => {
+		process.env = savedEnv;
+	});
+
+	it("runs only matching stage with loaded playlists", async () => {
+		mockMatching.mockResolvedValue(completedResult("matching"));
+
+		const result = await runMatching("acct-1");
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+
+		expect(result.value.stages).toHaveLength(1);
+		expect(result.value.stages[0].stage).toBe("matching");
+
+		expect(mockMatching).toHaveBeenCalledWith(
+			expect.objectContaining({ accountId: "acct-1" }),
+			fakeBatch,
+			fakePlaylists,
+		);
+
+		expect(mockAudioFeatures).not.toHaveBeenCalled();
+		expect(mockPlaylistProfiling).not.toHaveBeenCalled();
+	});
+
+	it("returns a failed matching stage when getDestinationPlaylists fails", async () => {
+		mockGetDestinationPlaylists.mockResolvedValue(
+			Result.err({ _tag: "DbError", message: "db error" }),
+		);
+
+		const result = await runMatching("acct-1");
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+
+		expect(result.value.stages).toEqual([
+			{
+				stage: "matching",
+				status: "failed",
+				jobId: null,
+				error: "Failed to get destination playlists: db error",
+			},
+		]);
+		expect(mockMatching).not.toHaveBeenCalled();
+	});
+});
+
+describe("runEnrichmentPipeline", () => {
+	const savedEnv = process.env;
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		process.env = { ...savedEnv };
+		delete process.env.PIPELINE_BATCH_SIZE;
+		delete process.env.PIPELINE_MAX_SONGS;
+
+		mockEmbeddingService.mockImplementation(() => ({
+			fake: "embeddingService",
+		}));
+		mockCreateProfilingService.mockReturnValue({
+			fake: "profilingService",
+		});
+		mockSelectBatch.mockResolvedValue(fakeBatch);
+		mockGetDestinationPlaylists.mockResolvedValue(Result.ok(fakePlaylists));
+	});
+
+	afterEach(() => {
+		process.env = savedEnv;
+	});
+
+	it("runs all 6 stages in sequential composition order", async () => {
 		const callOrder: string[] = [];
 
 		mockAudioFeatures.mockImplementation(async () => {
@@ -181,19 +408,19 @@ describe("runEnrichmentPipeline", () => {
 		expect(Result.isOk(result)).toBe(true);
 		if (!Result.isOk(result)) return;
 
-		// Phase A (parallel): audio_features + genre_tagging + playlist_profiling all before Phase B
+		// Song stages before destination stages
 		const afIdx = callOrder.indexOf("audio_features");
 		const gtIdx = callOrder.indexOf("genre_tagging");
-		const ppIdx = callOrder.indexOf("playlist_profiling");
 		const saIdx = callOrder.indexOf("song_analysis");
 		const seIdx = callOrder.indexOf("song_embedding");
+		const ppIdx = callOrder.indexOf("playlist_profiling");
 		const mIdx = callOrder.indexOf("matching");
 
 		expect(afIdx).toBeLessThan(saIdx);
 		expect(gtIdx).toBeLessThan(saIdx);
-		expect(ppIdx).toBeLessThan(saIdx);
 		expect(saIdx).toBeLessThan(seIdx);
-		expect(seIdx).toBeLessThan(mIdx);
+		expect(seIdx).toBeLessThan(ppIdx);
+		expect(ppIdx).toBeLessThan(mIdx);
 
 		expect(result.value.stages).toHaveLength(6);
 	});
@@ -210,11 +437,6 @@ describe("runEnrichmentPipeline", () => {
 		expect(mockGenreTagging.mock.calls[0][1]).toBe(fakeBatch);
 		expect(mockSongAnalysis.mock.calls[0][1]).toBe(fakeBatch);
 		expect(mockSongEmbedding.mock.calls[0][1]).toBe(fakeBatch);
-
-		// Matching receives (ctx, batch, playlists)
-		expect(mockMatching.mock.calls[0]).toHaveLength(3);
-		expect(mockMatching.mock.calls[0][1]).toBe(fakeBatch);
-		expect(mockMatching.mock.calls[0][2]).toBe(fakePlaylists);
 
 		// Playlist profiling receives only ctx
 		expect(mockPlaylistProfiling.mock.calls[0]).toHaveLength(1);
@@ -254,7 +476,7 @@ describe("runEnrichmentPipeline", () => {
 		expect(mockSelectBatch).toHaveBeenCalledWith("acct-1", 5);
 	});
 
-	it("returns early with all skipped if batch is empty", async () => {
+	it("returns early with all 6 skipped if batch is empty", async () => {
 		mockSelectBatch.mockResolvedValue({
 			songIds: [],
 			songs: [],
@@ -273,6 +495,8 @@ describe("runEnrichmentPipeline", () => {
 
 		expect(mockAudioFeatures).not.toHaveBeenCalled();
 		expect(mockSongAnalysis).not.toHaveBeenCalled();
+		expect(mockPlaylistProfiling).not.toHaveBeenCalled();
+		expect(mockMatching).not.toHaveBeenCalled();
 	});
 
 	it("continues running subsequent stages when an earlier stage throws", async () => {
@@ -351,49 +575,12 @@ describe("runEnrichmentPipeline", () => {
 		expect(stageJobIds.audio_features).toBe("job-af-123");
 		expect(stageJobIds.matching).toBe("job-match-456");
 
-		// Profiling threw → caught by inline .catch(), produces failed with jobId: null
 		expect(stageJobIds.song_analysis).toBeUndefined();
 		expect(stageJobIds.song_embedding).toBeUndefined();
 		expect(stageJobIds.playlist_profiling).toBeUndefined();
 	});
 
-	it("threads playlists from profiling to matching stage", async () => {
-		mockAudioFeatures.mockResolvedValue(completedResult("audio_features"));
-		mockGenreTagging.mockResolvedValue(completedResult("genre_tagging"));
-		mockPlaylistProfiling.mockResolvedValue(profilingOutput());
-		mockSongAnalysis.mockResolvedValue(completedResult("song_analysis"));
-		mockSongEmbedding.mockResolvedValue(completedResult("song_embedding"));
-		mockMatching.mockResolvedValue(completedResult("matching"));
-
-		await runEnrichmentPipeline("acct-1");
-
-		expect(mockMatching.mock.calls[0][2]).toBe(fakePlaylists);
-	});
-
-	it("passes empty playlists to matching when profiling throws", async () => {
-		mockAudioFeatures.mockResolvedValue(completedResult("audio_features"));
-		mockGenreTagging.mockResolvedValue(completedResult("genre_tagging"));
-		mockPlaylistProfiling.mockRejectedValue(new Error("profiling boom"));
-		mockSongAnalysis.mockResolvedValue(completedResult("song_analysis"));
-		mockSongEmbedding.mockResolvedValue(completedResult("song_embedding"));
-		mockMatching.mockResolvedValue(completedResult("matching"));
-
-		const result = await runEnrichmentPipeline("acct-1");
-
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
-
-		// Matching receives empty playlists array
-		expect(mockMatching.mock.calls[0][2]).toEqual([]);
-
-		// Profiling result is failed
-		const profiling = result.value.stages.find(
-			(s) => s.stage === "playlist_profiling",
-		);
-		expect(profiling?.status).toBe("failed");
-	});
-
-	it("includes reason on skipped stages when batch is empty", async () => {
+	it("does not run destination stages when batch is empty", async () => {
 		mockSelectBatch.mockResolvedValue({
 			songIds: [],
 			songs: [],
@@ -405,12 +592,21 @@ describe("runEnrichmentPipeline", () => {
 		expect(Result.isOk(result)).toBe(true);
 		if (!Result.isOk(result)) return;
 
-		for (const stage of result.value.stages) {
-			expect(stage.status).toBe("skipped");
-			if (stage.status === "skipped") {
-				expect(stage.reason).toBe("empty batch");
-			}
+		expect(result.value.stages).toHaveLength(6);
+
+		const profiling = result.value.stages.find(
+			(s) => s.stage === "playlist_profiling",
+		);
+		const matching = result.value.stages.find((s) => s.stage === "matching");
+
+		expect(profiling?.status).toBe("skipped");
+		expect(matching?.status).toBe("skipped");
+		if (profiling?.status === "skipped") {
+			expect(profiling.reason).toBe("empty batch");
 		}
+
+		expect(mockPlaylistProfiling).not.toHaveBeenCalled();
+		expect(mockMatching).not.toHaveBeenCalled();
 	});
 
 	it("provides profilingService in context for bootstrap behavior", async () => {
@@ -433,5 +629,25 @@ describe("runEnrichmentPipeline", () => {
 
 		expect(typeof result.value.totalDurationMs).toBe("number");
 		expect(result.value.totalDurationMs).toBeGreaterThanOrEqual(0);
+	});
+
+	it("includes reason on skipped stages when batch is empty", async () => {
+		mockSelectBatch.mockResolvedValue({
+			songIds: [],
+			songs: [],
+			spotifyIdBySongId: new Map(),
+		});
+
+		const result = await runEnrichmentPipeline("acct-1");
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+
+		for (const stage of result.value.stages) {
+			expect(stage.status).toBe("skipped");
+			if (stage.status === "skipped") {
+				expect(stage.reason).toBe("empty batch");
+			}
+		}
 	});
 });

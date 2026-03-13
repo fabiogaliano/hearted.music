@@ -8,15 +8,26 @@ The system SHALL run an enrichment pipeline automatically after sync phases comp
 - **WHEN** the sync endpoint (`POST /api/extension/sync`) completes all three sync phases (liked songs, playlists, playlist tracks)
 - **THEN** the system SHALL invoke `runEnrichmentPipeline(accountId, options?)` before returning the response
 
+#### Scenario: Pipeline reruns after destination selection changes
+- **WHEN** onboarding saves one or more destination playlists for the account
+- **THEN** the system MAY invoke `runEnrichmentPipeline(accountId, options?)` again so destination-dependent stages can run with the updated playlist selection
+
 #### Scenario: Pipeline runs within request lifecycle
 - **WHEN** the pipeline is triggered
 - **THEN** all pipeline work SHALL run within the same request lifecycle
-- **AND** pipeline results SHALL be included in the sync response under a `pipeline` field
+- **AND** the sync response SHALL NOT need to expose pipeline-specific result payload
 
 #### Scenario: Empty candidate batch
 - **WHEN** `selectPipelineBatch()` returns zero liked songs
 - **THEN** the pipeline SHALL return a structured result with all stages marked `skipped`
-- **AND** the sync response SHALL still include `pipeline` and `pipelineJobIds`
+- **AND** the sync response SHALL still return successfully without exposing pipeline-specific payload
+
+---
+
+#### Scenario: Destination playlists not selected yet
+- **WHEN** onboarding has not yet saved any destination playlists
+- **THEN** `playlist_profiling` and `matching` MAY return `status: "skipped"`
+- **AND** the skip reason SHALL reflect that no destination playlists have been selected yet
 
 ---
 
@@ -113,10 +124,10 @@ Each pipeline stage that executes work SHALL create a job record for progress tr
 - **THEN** it SHALL emit progress events via existing job progress helpers
 - **AND** clients subscribed to `/api/jobs/$id/progress` SHALL receive those events
 
-#### Scenario: Pipeline job IDs in response
+#### Scenario: Stage jobs remain internal to pipeline execution
 - **WHEN** the pipeline completes or skips due to an empty batch
-- **THEN** the sync response SHALL include `pipelineJobIds`
-- **AND** keys MAY include `audio_features`, `genre_tagging`, `playlist_profiling`, `song_analysis`, `song_embedding`, and `matching`
+- **THEN** any stage job IDs MAY remain internal to pipeline execution
+- **AND** the extension sync response SHALL not need to expose them
 
 ---
 
@@ -126,14 +137,14 @@ Pipeline failures SHALL NOT cause the sync response to fail.
 
 #### Scenario: Stage failure is reported inline
 - **WHEN** a pipeline stage throws or returns an error after the pipeline has started
-- **THEN** the stage SHALL be represented in `pipeline.stages` with `status: "failed"`
+- **THEN** the stage SHALL be represented in the internal orchestrator result with `status: "failed"`
 - **AND** the pipeline SHALL continue to the next stage
 - **AND** the sync response SHALL still return `ok: true`
 
 #### Scenario: Bootstrap failure is reported at the pipeline level
 - **WHEN** the orchestrator cannot initialize before any stage runs
 - **THEN** the sync response SHALL still return `ok: true`
-- **AND** the response `pipeline` field SHALL include a top-level `error` string and an empty `stages` array
+- **AND** the failure MAY be logged internally without changing the extension response payload
 
 ---
 

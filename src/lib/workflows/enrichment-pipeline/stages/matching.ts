@@ -1,9 +1,10 @@
-import { createHash } from "node:crypto";
 import { Result } from "better-result";
 import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
 import * as matchingData from "@/lib/domains/taste/song-matching/queries";
 import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
+import { MATCHING_ALGO_VERSION } from "@/lib/domains/enrichment/embeddings/versioning";
 import type { Json } from "@/lib/data/database.types";
+import { computeMatchContextMetadata } from "@/lib/domains/taste/song-matching/cache";
 import { createMatchingService } from "@/lib/domains/taste/song-matching/service";
 import type {
 	MatchingSong,
@@ -18,10 +19,6 @@ import type {
 	EnrichmentStageResult,
 	ReadyResult,
 } from "../types";
-
-function sha256Hex(input: string): string {
-	return createHash("sha256").update(input).digest("hex");
-}
 
 export async function getReadyForMatching(
 	accountId: string,
@@ -77,7 +74,11 @@ export async function runMatchingStage(
 	}
 
 	if (readiness.ready.length === 0) {
-		return { stage: "matching", status: "skipped" };
+		return {
+			stage: "matching",
+			status: "skipped",
+			reason: "no candidate songs ready for matching",
+		};
 	}
 
 	const readySet = new Set(readiness.ready);
@@ -129,8 +130,60 @@ export async function runMatchingStage(
 		}
 	}
 
-	if (playlistProfiles.length === 0 || matchingSongs.length === 0) {
-		return { stage: "matching", status: "skipped" };
+	if (playlistProfiles.length === 0) {
+		return {
+			stage: "matching",
+			status: "skipped",
+			reason: "no destination playlists with usable profiles",
+		};
+	}
+
+	if (matchingSongs.length === 0) {
+		return {
+			stage: "matching",
+			status: "skipped",
+			reason: "no candidate songs ready for matching",
+		};
+	}
+
+	// Compute deterministic matching identity before creating a tracked job
+	let identity: Awaited<ReturnType<typeof computeMatchContextMetadata>>;
+	try {
+		identity = await computeMatchContextMetadata(
+			matchingSongs,
+			playlistProfiles,
+		);
+	} catch (error) {
+		return {
+			stage: "matching",
+			status: "failed",
+			jobId: null,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+
+	// Dedupe: skip when an identical context already exists
+	const existingContext = await matchingData.getMatchContextByHash(
+		identity.contextHash,
+		ctx.accountId,
+	);
+	if (Result.isError(existingContext)) {
+		return {
+			stage: "matching",
+			status: "failed",
+			jobId: null,
+			error: `Failed to check existing matching context: ${existingContext.error.message}`,
+		};
+	}
+	if (Result.isOk(existingContext) && existingContext.value) {
+		console.log(
+			`[pipeline] Matching skipped: identical context ${identity.contextHash} already exists`,
+		);
+		return {
+			stage: "matching",
+			status: "skipped",
+			reason: "identical matching context already exists",
+		};
 	}
 
 	const embeddingsResult = await ctx.embeddingService.getEmbeddings(songIds);
@@ -152,45 +205,61 @@ export async function runMatchingStage(
 		ctx.profilingService,
 	);
 
-	const { jobId, succeeded, failed } = await runTrackedStageJob({
-		accountId: ctx.accountId,
-		stage: "matching",
-		work: async (jobId) => {
-			const matchResult = await matchingService.matchBatch(
-				matchingSongs,
-				playlistProfiles,
-				songEmbeddings,
-				{ jobId },
-			);
-
-			if (Result.isOk(matchResult)) {
-				const succeeded = matchResult.value.stats.matched;
-				const failed = matchResult.value.stats.failed;
-
-				const playlistSetHash = sha256Hex(
-					playlists
-						.map((p) => p.id)
-						.sort()
-						.join(","),
-				);
-				const candidateSetHash = sha256Hex([...songIds].sort().join(","));
-				const contextHash = sha256Hex(
-					`pipeline-${ctx.accountId}-${Date.now()}`,
+	try {
+		const { jobId, succeeded, failed } = await runTrackedStageJob({
+			accountId: ctx.accountId,
+			stage: "matching",
+			work: async (jobId) => {
+				const matchResult = await matchingService.matchBatch(
+					matchingSongs,
+					playlistProfiles,
+					songEmbeddings,
+					{ jobId },
 				);
 
-				const contextResult = await matchingData.createMatchContext({
-					account_id: ctx.accountId,
-					algorithm_version: "pipeline_v1",
-					config_hash: contextHash,
-					playlist_set_hash: playlistSetHash,
-					candidate_set_hash: candidateSetHash,
-					context_hash: contextHash,
-					playlist_count: playlistProfiles.length,
-					song_count: matchingSongs.length,
-				});
+				if (Result.isOk(matchResult)) {
+					const succeeded = matchResult.value.stats.matched;
+					const failed = matchResult.value.stats.failed;
 
-				if (Result.isOk(contextResult)) {
-					const contextId = contextResult.value.id;
+					const contextResult = await matchingData.createMatchContext({
+						account_id: ctx.accountId,
+						algorithm_version: MATCHING_ALGO_VERSION,
+						config_hash: identity.configHash,
+						playlist_set_hash: identity.playlistSetHash,
+						candidate_set_hash: identity.candidateSetHash,
+						context_hash: identity.contextHash,
+						playlist_count: playlistProfiles.length,
+						song_count: matchingSongs.length,
+					});
+
+					let contextId: string;
+					if (Result.isError(contextResult)) {
+						if (contextResult.error._tag === "ConstraintError") {
+							const existingContextResult =
+								await matchingData.getMatchContextByHash(
+									identity.contextHash,
+									ctx.accountId,
+								);
+
+							if (
+								Result.isError(existingContextResult) ||
+								!existingContextResult.value
+							) {
+								throw new Error(
+									`Failed to create match context: ${contextResult.error.message}`,
+								);
+							}
+
+							contextId = existingContextResult.value.id;
+						} else {
+							throw new Error(
+								`Failed to create match context: ${contextResult.error.message}`,
+							);
+						}
+					} else {
+						contextId = contextResult.value.id;
+					}
+
 					const insertData: matchingData.InsertMatchResult[] = [];
 
 					for (const [songId, results] of matchResult.value.matches) {
@@ -206,33 +275,48 @@ export async function runMatchingStage(
 						}
 					}
 
-					await matchingData.insertMatchResults(insertData);
+					const insertResult =
+						await matchingData.insertMatchResults(insertData);
+					if (Result.isError(insertResult)) {
+						if (insertResult.error._tag !== "ConstraintError") {
+							throw new Error(
+								`Failed to insert match results: ${insertResult.error.message}`,
+							);
+						}
+					}
+
+					return {
+						total: matchingSongs.length,
+						succeeded,
+						failed,
+						result: undefined,
+					};
 				}
 
 				return {
 					total: matchingSongs.length,
-					succeeded,
-					failed,
+					succeeded: 0,
+					failed: matchingSongs.length,
 					result: undefined,
 				};
-			}
+			},
+		});
 
-			return {
-				total: matchingSongs.length,
-				succeeded: 0,
-				failed: matchingSongs.length,
-				result: undefined,
-			};
-		},
-	});
-
-	return {
-		stage: "matching",
-		status: "completed",
-		jobId,
-		succeeded,
-		failed,
-		notReady: readiness.notReady.length,
-		done: readiness.done.length,
-	};
+		return {
+			stage: "matching",
+			status: "completed",
+			jobId,
+			succeeded,
+			failed,
+			notReady: readiness.notReady.length,
+			done: readiness.done.length,
+		};
+	} catch (error) {
+		return {
+			stage: "matching",
+			status: "failed",
+			jobId: null,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
 }
