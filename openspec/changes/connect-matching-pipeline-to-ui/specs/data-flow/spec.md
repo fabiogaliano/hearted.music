@@ -2,12 +2,13 @@
 
 ### Requirement: Job chaining pattern
 
-The system SHALL support sequential job chains where multiple jobs run in dependency order within a single request.
+The system SHALL support dependency-ordered job chains where multiple jobs run within a single request, including safe parallel prep work.
 
 #### Scenario: Chain execution
-- **WHEN** multiple stages need to run sequentially (e.g., analysis → embedding → matching)
+- **WHEN** multiple enrichment stages need to run within one sync request
 - **THEN** each stage SHALL create its own job record
-- **AND** stages SHALL execute in order, each starting after the previous completes
+- **AND** stages SHALL execute in dependency order
+- **AND** stages without direct dependencies MAY run in parallel before the next dependent phase begins
 
 #### Scenario: Chain progress tracking
 - **WHEN** a job chain is running
@@ -25,11 +26,12 @@ The system SHALL support sequential job chains where multiple jobs run in depend
 
 The sync endpoint SHALL return pipeline job IDs alongside sync phase job IDs.
 
-#### Scenario: Extended phaseJobIds
+#### Scenario: Stage-keyed pipeline job IDs
 - **WHEN** the enrichment pipeline runs after sync
 - **THEN** the response SHALL include pipeline job IDs under `pipelineJobIds` (separate from `phaseJobIds`)
-- **AND** each key SHALL correspond to a pipeline stage: `audio_features`, `song_analysis`, `song_embedding`, `playlist_profiling`, `matching`
+- **AND** each key SHALL correspond to a pipeline stage such as `audio_features`, `genre_tagging`, `playlist_profiling`, `song_analysis`, `song_embedding`, or `matching`
 
 #### Scenario: Pipeline not run
-- **WHEN** the pipeline is skipped (e.g., no liked songs)
-- **THEN** `pipelineJobIds` SHALL be `null` in the response
+- **WHEN** the pipeline has no stage jobs to report (for example, an empty batch)
+- **THEN** `pipelineJobIds` SHALL still be present in the response
+- **AND** it MAY be an empty object

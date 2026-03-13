@@ -1,129 +1,138 @@
 ## Context
 
-The sync endpoint (`src/routes/api/extension/sync.tsx`) successfully writes liked songs and playlists to the database, but nothing happens after. The enrichment services (analysis, embedding, profiling, matching) are all implemented but have no trigger. All enrichment tables are empty (0 rows in `song_analysis`, `song_embedding`, `song_audio_feature`, `playlist_profile`, `match_context`, `match_result`).
+The sync endpoint now invokes the enrichment pipeline after persistence completes, and the latest refactor restructured that pipeline around an orchestrator-owned `PipelineBatch` plus explicit stage modules under `src/lib/workflows/enrichment-pipeline/`.
 
-Existing infrastructure:
-- `AnalysisPipeline` (`src/lib/domains/enrichment/content-analysis/pipeline.ts`) — batch song analysis with job tracking and SSE progress, includes `getSongsNeedingAnalysis()` for incremental filtering
-- `EmbeddingService` (`src/lib/domains/enrichment/embeddings/service.ts`) — embeds analysis text, stores in `song_embedding`, supports batch with content hashing for cache invalidation
-- `PlaylistProfilingService` (`src/lib/domains/taste/playlist-profiling/service.ts`) — computes centroid embeddings + audio centroids + genre distributions for playlists
-- `MatchingService` (`src/lib/domains/taste/song-matching/service.ts`) — multi-factor scoring with `matchBatch()` and SSE progress
-- `AudioFeaturesService` (`src/lib/integrations/audio/service.ts`) — fetches from ReccoBeats (free, no API key), has `getOrFetchFeatures()` and `backfillMissingFeatures()` for batch processing
-- Job lifecycle (`src/lib/platform/jobs/lifecycle.ts`) — `startJob`/`finalizeJob`/`completeJob`/`failJob` with retry
-- SSE progress (`src/lib/platform/jobs/progress/helpers.ts`) — `emitProgress`/`emitItem`/`emitStatus`
+The shipped pipeline differs from the earlier design in three important ways:
+
+- it runs **six** stages, not five, because `genre_tagging` is now a first-class stage
+- it is **dependency-ordered**, not purely sequential: `audio_features`, `genre_tagging`, and `playlist_profiling` run in a parallel-safe prep phase before the dependent song-analysis stages
+- it uses `batchSize` and `PIPELINE_BATCH_SIZE`, with legacy fallback to `PIPELINE_MAX_SONGS`
+
+Existing infrastructure used by this change:
+- `selectPipelineBatch()` (`src/lib/workflows/enrichment-pipeline/batch.ts`) — selects the liked-song batch once and shares it across stages
+- `AnalysisPipeline` (`src/lib/domains/enrichment/content-analysis/pipeline.ts`) — batch song analysis with job tracking and SSE progress
+- `EmbeddingService` (`src/lib/domains/enrichment/embeddings/service.ts`) — embeds song analysis text and reads stored embeddings
+- `PlaylistProfilingService` (`src/lib/domains/taste/playlist-profiling/service.ts`) — computes playlist profiles from currently available signals
+- `MatchingService` (`src/lib/domains/taste/song-matching/service.ts`) — multi-factor scoring with tracked batch matching
+- `AudioFeaturesService` (`src/lib/integrations/audio/service.ts`) — free audio feature backfill via ReccoBeats
+- `GenreEnrichmentService` (`src/lib/domains/enrichment/genre-tagging/service.ts`) — free genre backfill via Last.fm when available
+- Job lifecycle + SSE helpers under `src/lib/platform/jobs/`
 
 ## Goals / Non-Goals
 
 **Goals:**
-- After sync completes, automatically run the enrichment pipeline: audio features → song analysis → song embeddings → playlist profiling → matching
-- Each stage runs as a tracked job with SSE progress
-- Incremental: on re-sync, only process new/unprocessed songs
-- Batch cap: limit first run to N songs (default 5, configurable) to control LLM cost during development
-- Populate `match_result` with real scores so the UI wiring change (Change B) has data to consume
+- document the orchestrator and sync-response contract that actually shipped
+- document the current dependency ordering between pipeline stages
+- document current batch selection and environment override semantics
+- preserve the guarantee that pipeline failures do not fail sync itself
 
 **Non-Goals:**
-- UI changes (route loader, component rewiring, real types) — separate Change B
-- Running the pipeline outside of post-sync context (manual trigger, cron, etc.)
-- Spotify playlist mutations (adding tracks via Pathfinder)
-- Pipeline retry/resume after partial failure (jobs are marked failed; user re-syncs to retry)
-- Genre enrichment via Last.fm (song.genres is already populated from Spotify data in sync)
+- UI rewiring for match consumption
+- background queue / worker execution outside the request lifecycle
+- playlist-profile bootstrap from playlist descriptions (separate follow-up)
+- Spotify playlist mutation and full automation of the post-match flow
 
 ## Decisions
 
-### 1. Pipeline orchestrator as a single function, not a class
+### 1. A single shared batch is selected once per pipeline run
 
-**Decision:** Create a `runEnrichmentPipeline(accountId, options)` function in `src/lib/workflows/enrichment-pipeline/orchestrator.ts` rather than a class.
+**Decision:** `runEnrichmentPipeline()` calls `selectPipelineBatch(accountId, batchSize)` once, then passes the resulting `PipelineBatch` to the stages that operate on liked-song candidates.
 
-**Rationale:** The existing `AnalysisPipeline` class works well for its scope (analysis + lyrics prefetch), but the orchestrator is simpler — it just calls existing services in sequence. No internal state to manage, no constructor dependencies to inject. A plain async function with Result return is the lightest approach.
+**Rationale:** This keeps all candidate-oriented stages aligned to the same recent-song window and avoids each stage re-querying a slightly different slice of liked songs.
 
-**Alternative considered:** A `PipelineOrchestrator` class mirroring `AnalysisPipeline`. Rejected because the orchestrator doesn't hold service instances — each stage creates its own via existing factory functions.
+### 2. The pipeline is dependency-ordered, with a parallel-safe prep phase
 
-### 2. Sequential stages within one request, not job-per-stage
+**Decision:** The orchestrator runs three prep stages together:
 
-**Decision:** The orchestrator runs all stages sequentially within the sync endpoint's response lifecycle. Each stage creates its own job for progress tracking, but the stages are not independently schedulable.
+- `audio_features`
+- `genre_tagging`
+- `playlist_profiling`
 
-**Rationale:** The sync endpoint already runs 3 phases sequentially (liked songs → playlists → playlist tracks). Adding 5 more stages to the same pattern is consistent. The alternative (a job queue where each stage enqueues the next) adds infrastructure complexity we don't need — there's no worker pool, no SQS, just a single request.
+Then it runs the dependent stages in order:
 
-**Trade-off:** If the sync endpoint times out (Cloudflare Workers has a time limit), the pipeline will be cut short. Mitigation: the 5-song batch cap makes the total wall time manageable (~30-60s for 5 songs). Full library runs will need the job queue approach later.
+- `song_analysis`
+- `song_embedding`
+- `matching`
 
-**Alternative considered:** Fire-and-forget after returning the sync response. Rejected because Cloudflare Workers terminate execution after response is sent — background work is not guaranteed to complete.
+**Rationale:** The prep stages read from the selected batch or destination playlists and can make progress independently, while `song_embedding` depends on `song_analysis`, and `matching` depends on the outputs persisted by earlier stages.
 
-### 3. Batch cap via orchestrator config, not database flag
+**Trade-off:** `playlist_profiling` currently executes before any new song embeddings are generated for the current run, so first-run playlist profiles can still be sparse. That limitation is intentionally deferred to a follow-up bootstrap change.
 
-**Decision:** The orchestrator accepts a `maxSongs` option (default 5). The sync endpoint passes this value. To uncap, change the value in the sync endpoint code or make it an env var.
+### 3. Batch sizing uses `batchSize` plus environment overrides
 
-**Rationale:** Simple, no database migration needed. During development, the cap is hardcoded. When ready for production, promote to `PIPELINE_MAX_SONGS` env var.
+**Decision:** `PipelineOptions` exposes `batchSize`, and the orchestrator resolves the final size from:
 
-**Alternative considered:** A flag in `user_preferences` table. Rejected — this is a development safeguard, not a user-facing preference. The user doesn't decide how many songs to analyze.
+1. `PIPELINE_BATCH_SIZE`
+2. legacy `PIPELINE_MAX_SONGS`
+3. `options?.batchSize`
+4. default `5`
 
-### 4. Trigger point: after Phase 3 in sync endpoint, before response
+**Rationale:** This preserves the original development cost guardrail while matching the current API and keeping backward compatibility with the earlier environment variable name.
 
-**Decision:** Add pipeline invocation after the existing 3 sync phases complete (line ~382 in `sync.tsx`), before `Response.json()`. The pipeline result is included in the response alongside sync results.
+### 4. The sync endpoint always returns structured pipeline output
 
-**Data flow:**
-```
+**Decision:** `POST /api/extension/sync` always calls `runEnrichmentPipeline(accountId)` after Phase 3 and returns:
+
+- `pipelineJobIds`
+- `pipeline.stages`
+- `pipeline.totalDurationMs`
+
+If pipeline bootstrap fails before stage execution, the response still returns `ok: true` and surfaces a top-level `pipeline.error`.
+
+**Rationale:** The UI needs a stable response shape whether the pipeline ran fully, skipped due to an empty batch, or failed before stages started.
+
+### 5. Each stage still owns its own incremental filtering
+
+**Decision:** The orchestrator chooses the candidate batch, but each stage decides which items are `ready`, `done`, or `notReady` based on persisted state.
+
+**Implementation details:**
+- `audio_features` skips songs already present in `song_audio_feature`
+- `genre_tagging` skips songs that already have `song.genres`
+- `song_analysis` skips songs that already have `song_analysis`
+- `song_embedding` skips songs that already have `song_embedding`
+- `playlist_profiling` relies on profile caching in `PlaylistProfilingService`
+- `matching` skips liked songs that already have an action record via pending-song filtering
+
+**Rationale:** This keeps stages idempotent and resilient to partial reruns.
+
+### 6. Stage failures are inline; bootstrap failures are top-level
+
+**Decision:** Stage-level failures are captured as `EnrichmentStageResult` items with `status: "failed"`, while pre-stage initialization failures return `Result.err(PipelineBootstrapError)` from the orchestrator.
+
+**Rationale:** This mirrors the current code path and distinguishes “the pipeline started but a stage failed” from “the pipeline could not initialize at all.”
+
+## Data flow
+
+```text
 POST /api/extension/sync
-  → Phase 1: Liked songs sync
-  → Phase 2: Playlists sync
-  → Phase 3: Playlist tracks (no-op)
-  → Phase 4: Enrichment pipeline (NEW)
-      → 4a: Audio features (ReccoBeats, free) - AudioFeaturesService.getOrFetchFeatures()
-      → 4b: Song analysis (LLM via AnalysisPipeline) - AnalysisPipeline.analyzeSongs()
-      → 4c: Song embeddings (ML provider) - EmbeddingService.embedBatch()
-      → 4d: Playlist profiling (computed from embeddings + audio + genres) - PlaylistProfilingService.computeProfile()
-      → 4e: Matching (MatchingService.matchBatch)
-  → Response: { ok: true, results: { ...sync, pipeline: { ... } }, phaseJobIds, pipelineJobIds }
+  → Phase 1: liked songs sync
+  → Phase 2: playlists sync
+  → Phase 3: playlist tracks (no-op)
+  → Phase 4: enrichment pipeline
+      → selectPipelineBatch(accountId, batchSize)
+      → Phase A (parallel-safe prep)
+          → audio_features
+          → genre_tagging
+          → playlist_profiling
+      → Phase B
+          → song_analysis
+      → Phase C
+          → song_embedding
+      → Phase D
+          → matching
+  → Response: { ok, results, phaseJobIds, pipelineJobIds, pipeline }
 ```
-
-**Implementation Details:**
-- Each stage creates its own job via existing `createJob()` function
-- Stage job IDs collected and returned as `pipelineJobIds` array
-- Pipeline results aggregated into structured response object
-- Errors captured per-stage but don't fail overall sync response
-
-**Rationale:** Keeps the pipeline tightly coupled to sync completion — no orphaned pipeline runs, no need for a separate trigger mechanism. The pipeline only runs when there's fresh data.
-
-### 5. Each stage filters its own work (incremental by design)
-
-**Decision:** Each stage queries the database for items that haven't been processed yet, rather than the orchestrator passing explicit lists between stages.
-
-**Implementation Details:**
-- Audio features: `AudioFeaturesService.getOrFetchFeatures()` — fetches existing from DB, backfills missing from ReccoBeats
-- Analysis: `AnalysisPipeline.getSongsNeedingAnalysis()` - already implemented (line 427 in pipeline.ts)
-- Embeddings: Songs with `song_analysis` but no `song_embedding` - filter in orchestrator
-- Profiling: Destination playlists with no `playlist_profile` or stale `content_hash` - `PlaylistProfilingService.computeProfile()` handles caching
-- Matching: Songs with no `item_status` against profiled destination playlists - `MatchingService.matchBatch()` with filtered inputs
-
-**Batch Selection Logic:**
-- Apply `maxSongs` limit after filtering to "most recently liked" songs
-- Use `ORDER BY liked_at DESC LIMIT maxSongs` in song selection queries
-- Each stage respects the same limited song set for consistency
-
-### 6. Pipeline failures are non-fatal to sync
-
-**Decision:** If any pipeline stage fails, log the error and continue with the next stage. The sync response still returns `ok: true` because the sync itself succeeded. Pipeline failures are reported in a separate `pipeline` field in the response.
-
-**Rationale:** A user's data sync should never fail because the LLM is down or ReccoBeats is unreachable. The pipeline is a best-effort enrichment pass. Users can re-sync to retry.
-
-### 7. Matching runs against destination playlists only
-
-**Decision:** `MatchingService.matchBatch()` is called with only playlists where `is_destination = true` (currently 26 playlists). Songs are matched against these, not all 134 playlists.
-
-**Rationale:** The whole point of "flag playlists" in onboarding is to mark which playlists are sorting targets. Non-destination playlists are irrelevant to matching.
 
 ## Risks / Trade-offs
 
-**[Cloudflare Workers timeout]** → The 5-song batch cap keeps wall time under 60s. Full library support will need a different execution model (e.g., Durable Objects, external worker, or chunked re-invocation). Deferred.
+**[Request timeout]** → The 5-song default keeps the request bounded, but full-library processing still needs a different execution model later.
 
-**[LLM rate limits]** → Gemini Flash has generous rate limits. The 5-song cap and concurrency=5 in `AnalysisPipeline` keep request rates low. If rate-limited, `LlmService` returns errors and `AnalysisPipeline` records them as failed items.
+**[First-run playlist profiles can be sparse]** → `playlist_profiling` currently runs before newly generated song embeddings for the current batch exist, and it only sees whatever enrichment already exists for destination playlist members. This is the main follow-up gap.
 
-**[ReccoBeats API unreliability]** → Audio features stage fails gracefully. `MatchingService` uses adaptive weights — if audio features are missing, it redistributes weight to embedding + genre factors.
+**[External API degradation]** → Audio features and genre enrichment degrade gracefully; matching can still proceed with adaptive weighting when some signals are missing.
 
-**[Empty embeddings for songs without analysis]** → If song analysis fails for a song, it won't have an embedding, and matching will rely only on genre overlap (audio centroid if available). This is acceptable for v1.
-
-**[Playlist profiling requires track embeddings]** → If no songs in a destination playlist have embeddings yet (first-ever run), the playlist profile will have null embedding centroid. Matching falls back to audio + genre factors only.
-
-**[Re-sync creates duplicate match results]** → `match_result` has a unique constraint on `(context_id, song_id, playlist_id)`. Each pipeline run creates a new `match_context`, so old results coexist with new ones. The UI (Change B) should query the latest context.
+**[Repeated match contexts]** → Each pipeline run creates a new `match_context`, so downstream consumers must query the latest context when presenting results.
 
 ## Open Questions
 
-1. **Job type enum values.** The existing `job_type` enum has `song_analysis`, `playlist_analysis`, `matching`. Audio features and embedding stages may need new job types added to the enum, or they can reuse existing types. Verify alignment before implementation.
+None for this change. The remaining known gap is the separate playlist-profile bootstrap follow-up.
