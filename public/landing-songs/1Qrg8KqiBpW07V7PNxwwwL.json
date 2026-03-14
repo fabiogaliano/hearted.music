@@ -1,0 +1,95 @@
+{
+  "id": 7,
+  "spotifyTrackId": "1Qrg8KqiBpW07V7PNxwwwL",
+  "name": "Kill Bill",
+  "artist": "SZA",
+  "album": "SOS",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b273c5276ed6cb0287df8d9be07f",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebfd0a9fb6c252a3ba44079acf",
+  "spotifyArtistId": "7tYKF4w9nC0nq9CsPZTHyP",
+  "genres": [
+    "trap",
+    "rnb",
+    "pop"
+  ],
+  "audioFeatures": {
+    "tempo": 88.98,
+    "energy": 0.735,
+    "valence": 0.418
+  },
+  "analysis": {
+    "headline": "A smooth, unsettling fantasy of possessive love, where adoration curdles into vengeful desire.",
+    "compound_mood": "Obsessive Yearning",
+    "mood_description": "A dark R&B groove pulls you in, but a chilling narrative unfolds over a deceptively relaxed beat. It feels like a late-night confession, both seductive and deeply disturbing.",
+    "interpretation": "A raw exploration of extreme possessiveness, born from a profound fear of loneliness and abandonment. The silky, almost comforting production style masks a deeply unsettling lyrical journey where heartbreak spirals into homicidal fantasy. It's the desperate rationalization of toxic attachment, where love becomes a justification for control, even if it means destruction.",
+    "themes": [
+      {
+        "name": "possessive love",
+        "description": "The intense desire to control the happiness and presence of another, even if it's destructive."
+      },
+      {
+        "name": "fear of loneliness",
+        "description": "Isolation as a driving force behind extreme actions, seen as a fate worse than any consequence."
+      },
+      {
+        "name": "violent fantasy",
+        "description": "Imagining destructive acts as a warped way to cope with rejection and perceived betrayal."
+      },
+      {
+        "name": "self-deception",
+        "description": "Claiming maturity and growth while simultaneously planning vengeful, irrational acts."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "simmering resentment",
+        "description": "Lingering bitterness and jealousy come to the surface, watching an ex find happiness with someone new, fueling a growing sense of injustice."
+      },
+      {
+        "section": "Pre-Chorus",
+        "mood": "fragile composure",
+        "description": "A feigned sense of maturity quickly unravels, revealing a raw, singular desire that overrides any rational thought or therapeutic advice."
+      },
+      {
+        "section": "Chorus",
+        "mood": "shocking confession",
+        "description": "The smooth delivery masks a blunt, almost casual admission of violent intent, driven by an enduring love and a profound aversion to being alone."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "escalating fantasy",
+        "description": "The dark thoughts become more vivid and detailed, building a narrative of betrayal and a twisted justification for the planned actions."
+      },
+      {
+        "section": "Bridge",
+        "mood": "twisted rationalization",
+        "description": "A disturbing self-justification takes hold, framing the extreme actions as noble sacrifices, done 'for love' and 'for us,' even claiming sobriety as a perverse badge of honor."
+      },
+      {
+        "section": "Final Chorus",
+        "mood": "chilling realization",
+        "description": "The fantasy fully plays out, with a chilling acceptance of the violent acts and an unwavering preference for oblivion over solitude."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Hate to see you happy if I'm not the one drivin'",
+        "insight": "Controlling another's joy as the ultimate expression of ownership."
+      },
+      {
+        "line": "If I can't have you, no one should",
+        "insight": "The absolute demand for singular possession, or total destruction."
+      },
+      {
+        "line": "Rather be in jail than alone",
+        "insight": "Isolation as a fate worse than any consequence, driving desperate choices."
+      },
+      {
+        "line": "I did it all for love",
+        "insight": "Twisting affection into a justification for unforgivable acts."
+      }
+    ],
+    "sonic_texture": "A warm, hazy R&B soundscape, built on a driving, yet relaxed trap beat and deep bass. Vocal layers create an intimate, almost conversational feel, even as the words grow darker. It's a smooth, seductive groove with an unsettling undertow."
+  }
+}

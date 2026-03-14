@@ -99,16 +99,19 @@ export const heroStyles = `
 			will-change: auto;
 		}
 		.hero-background {
-			transform: scaleX(0.5) !important;
+			will-change: auto;
+		}
+		.hero-background-inner {
 			will-change: auto;
 		}
 		.hero-panel {
-			opacity: 1 !important;
-			clip-path: none !important;
+			will-change: auto;
+		}
+		.hero-panel-curtain {
 			will-change: auto;
 		}
 		.hero-nav-btn {
-			opacity: 1 !important;
+			transition: none !important;
 		}
 	}
 
@@ -116,7 +119,7 @@ export const heroStyles = `
 	   MOBILE: STATIC LAYOUT
 	   No scroll animations on mobile, show final state
 	   ───────────────────────────────────────────────────────────────── */
-	@media (max-width: 1023px) {
+	@media (max-width: 1279px) {
 		.hero-section {
 			/* Remove any pinning on mobile */
 			height: auto !important;
@@ -136,6 +139,8 @@ export const heroStyles = `
 		.hero-logo,
 		.hero-headline {
 			transform: none !important;
+			max-width: none !important;
+			white-space: normal !important;
 		}
 		.hero-logo-heart {
 			width: 20px !important;
@@ -145,9 +150,15 @@ export const heroStyles = `
 		.hero-background {
 			transform: none !important;
 		}
+		.hero-background-inner {
+			transform: none !important;
+		}
 		.hero-panel {
 			opacity: 1 !important;
 			clip-path: none !important;
+		}
+		.hero-panel-curtain {
+			transform: translateX(100%) !important;
 		}
 		.hero-subtext,
 		.hero-cta {

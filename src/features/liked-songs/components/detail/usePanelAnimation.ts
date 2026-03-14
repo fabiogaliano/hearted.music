@@ -21,6 +21,7 @@ interface UsePanelAnimationOptions {
 	panelColors: PanelColors;
 	hasHeadline: boolean;
 	sonicTextureText?: string;
+	stackMetaBelowArt?: boolean;
 }
 
 export interface PanelAnimationRefs {
@@ -51,6 +52,7 @@ export function usePanelAnimation(options: UsePanelAnimationOptions) {
 		panelColors,
 		hasHeadline,
 		sonicTextureText,
+		stackMetaBelowArt = false,
 	} = options;
 
 	// Stale closure prevention — panelColors and albumArtUrl are read inside rAF callbacks
@@ -198,10 +200,19 @@ export function usePanelAnimation(options: UsePanelAnimationOptions) {
 		const artTop = lerp(artTopExpanded, artTopCollapsed, progress);
 		const artTranslateY = lerp(albumArtExpanded / 3, 0, progress);
 
-		const textLeft = paddingX + artSize + 16;
-		const textTopExpanded = artTopExpanded;
+		const textLeftExpanded = stackMetaBelowArt
+			? paddingX
+			: paddingX + albumArtExpanded + 16;
+		const textLeftCollapsed = paddingX + albumArtCollapsed + 16;
+		const textLeft = lerp(textLeftExpanded, textLeftCollapsed, progress);
+		const textTopExpanded = stackMetaBelowArt
+			? artTopExpanded + albumArtExpanded + 16
+			: artTopExpanded;
 		const textTopCollapsed = artTopCollapsed;
 		const textTop = lerp(textTopExpanded, textTopCollapsed, progress);
+		const textHeightExpanded = stackMetaBelowArt ? 84 : albumArtExpanded;
+		const textHeightCollapsed = albumArtCollapsed;
+		const textHeight = lerp(textHeightExpanded, textHeightCollapsed, progress);
 		const titleSize = lerp(24, 16, progress);
 		const metaSize = lerp(14, 12, progress);
 
@@ -239,7 +250,7 @@ export function usePanelAnimation(options: UsePanelAnimationOptions) {
 			textBlockRef.current.style.left = `${textLeft}px`;
 			textBlockRef.current.style.top = `${textTop}px`;
 			textBlockRef.current.style.right = `${paddingX}px`;
-			textBlockRef.current.style.height = `${artSize}px`;
+			textBlockRef.current.style.height = `${textHeight}px`;
 			textBlockRef.current.style.transform = `translateY(${artTranslateY}px)`;
 		}
 		if (titleRef.current) titleRef.current.style.fontSize = `${titleSize}px`;
@@ -255,7 +266,7 @@ export function usePanelAnimation(options: UsePanelAnimationOptions) {
 			const artBottom =
 				albumArtRef.current?.getBoundingClientRect().bottom ??
 				(albumArtUrlRef.current ? expectedArtBottom : textBottom);
-			const clusterBottom = artBottom;
+			const clusterBottom = Math.max(artBottom, textBottom);
 
 			const collapsedArtBottom = artTopCollapsed + albumArtCollapsed;
 			const minGapToClearSticky = Math.max(
@@ -336,7 +347,13 @@ export function usePanelAnimation(options: UsePanelAnimationOptions) {
 	useIsomorphicLayoutEffect(() => {
 		lastProgressRef.current = null;
 		applyFromCollapseOffset();
-	}, [isExpanded, albumArtUrl, artistImageUrl, reduceMotion]);
+	}, [
+		isExpanded,
+		albumArtUrl,
+		artistImageUrl,
+		reduceMotion,
+		stackMetaBelowArt,
+	]);
 
 	useEffect(() => {
 		return () => {

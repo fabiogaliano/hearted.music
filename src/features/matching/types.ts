@@ -1,4 +1,11 @@
-import type { Playlist, Song } from "@/lib/data/mock-data";
+import type { LandingSongDetail } from "@/lib/data/landing-songs";
+
+export interface Playlist {
+	id: number;
+	name: string;
+	reason: string;
+	matchScore: number;
+}
 
 export interface MatchingState {
 	currentIndex: number;
@@ -16,7 +23,7 @@ export interface CompletionStats {
 }
 
 export interface MatchingSessionProps {
-	currentSong: Song;
+	currentSong: LandingSongDetail;
 	playlists: Playlist[];
 	state: MatchingState;
 	onAdd: (playlistId: number) => void;
@@ -29,6 +36,7 @@ export interface MatchingSessionProps {
 
 export interface CompletionScreenProps {
 	stats: CompletionStats;
+	songs: LandingSongDetail[];
 	onExit: () => void;
 }
 

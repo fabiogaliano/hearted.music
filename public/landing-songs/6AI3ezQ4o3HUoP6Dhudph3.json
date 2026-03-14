@@ -1,0 +1,99 @@
+{
+  "id": 8,
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "name": "Not Like Us",
+  "artist": "Kendrick Lamar",
+  "album": "GNX",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b2731ea0c62b2339cbf493a999ad",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb39ba6dcd4355c03de0b50918",
+  "spotifyArtistId": "2YZyLoL8N0Wb9xBt1NhZWg",
+  "genres": [
+    "trap",
+    "hip hop",
+    "hip-hop"
+  ],
+  "audioFeatures": {
+    "tempo": 101.061,
+    "energy": 0.472,
+    "valence": 0.214
+  },
+  "analysis": {
+    "headline": "A blistering declaration of war, rallying a community with danceable defiance against perceived outsiders.",
+    "compound_mood": "Incendiary Confrontation",
+    "mood_description": "An unstoppable beat drives relentless accusations, making you move while the verbal punches land. It's a furious energy that demands a collective response, on the dance floor and beyond.",
+    "interpretation": "This isn't merely a diss track; it's a cultural reclaiming and a territorial statement. It frames the entire conflict as a battle for authenticity and regional identity, specifically from a West Coast perspective. Kendrick positions himself as the fierce guardian of hip-hop's true spirit, accusing his opponent of being a superficial appropriator, and rallying an entire community behind his cause. The highly danceable beat amplifies the sense of collective victory and definitive dismissal.",
+    "themes": [
+      {
+        "name": "cultural appropriation",
+        "description": "Exposing the perceived act of borrowing from various hip-hop scenes without genuine connection or respect."
+      },
+      {
+        "name": "performative authenticity",
+        "description": "Critiquing the illusion of being 'real' or 'street' through associations rather than lived experience."
+      },
+      {
+        "name": "predatory accusations",
+        "description": "Leveraging grave and unsettling allegations to completely dismantle the opponent's character."
+      },
+      {
+        "name": "regional supremacy",
+        "description": "Asserting the West Coast's foundational role and current dominance in hip-hop culture."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Sudden escalation",
+        "description": "A creepy, whispered opening quickly gives way to a signature producer tag, setting an immediate, aggressive tone for what's about to unfold."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Unleashed fury",
+        "description": "Rapid-fire disses and serious accusations about character and behavior are hurled, immediately establishing a dominant, confrontational stance."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Unifying rejection",
+        "description": "The repetitive chant creates an undeniable sense of 'us vs. them,' becoming a simple, powerful rallying cry that solidifies community and dismisses the other."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Deepening the cuts",
+        "description": "More specific attacks follow, bringing in deeper allegations and cultural critiques, widening the scope of the assault beyond personal slights."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Historical context",
+        "description": "The conflict is framed within a larger narrative of exploitation and inauthenticity, portraying the opponent as a colonizer of hip-hop culture and community resources."
+      },
+      {
+        "section": "Bridge & Outro",
+        "mood": "Victorious taunt",
+        "description": "The beat shifts, directly encouraging participation in the mockery and solidifying the 'us vs. them' dynamic into a triumphant, communal dance of dismissal."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Nail a nigga to the cross, he walk around like Teezo",
+        "insight": "A complete public obliteration, leaving the target exposed and shamed for all to see."
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "Stripping away a carefully crafted public image to reveal a devastating, damning accusation."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "Redefining the relationship from one of peer to one of exploiter, accusing cultural theft rather than partnership."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "A simple, powerful declaration of ultimate otherness, forming an impenetrable barrier against inclusion."
+      },
+      {
+        "line": "Then step this way, step that way",
+        "insight": "Turning the verbal assault into a physical, unifying movement, celebrating the collective victory through dance."
+      }
+    ],
+    "sonic_texture": "A potent, West Coast-infused trap beat with an insistent, thumping bassline and snapping drums. It’s built for immediate, collective movement, yet the lyrical delivery is sharp and direct, creating a confrontational party atmosphere that feels both aggressive and celebratory."
+  }
+}

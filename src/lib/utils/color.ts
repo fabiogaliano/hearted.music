@@ -22,3 +22,12 @@ export function extractHue(hslColor: string): number {
 export function getPastelColor(hue: number): string {
 	return `hsl(${hue}, 30%, 80%)`;
 }
+
+/**
+ * Convert an HSL color string to HSLA by injecting an alpha value
+ * @example withAlpha('hsl(218, 30%, 50%)', 0.5) → 'hsla(218, 30%, 50%, 0.5)'
+ */
+export function withAlpha(hslColor: string, alpha: number): string {
+	if (!hslColor.startsWith("hsl(")) return hslColor;
+	return `hsla(${hslColor.slice(4, -1)}, ${alpha})`;
+}

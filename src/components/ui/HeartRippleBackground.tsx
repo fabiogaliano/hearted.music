@@ -368,8 +368,8 @@ export const HeartRippleBackground = forwardRef<
 
 		const resizeBuffer = () => {
 			const dpr = Math.min(window.devicePixelRatio || 1, maxPixelRatio);
-			const width = window.innerWidth;
-			const height = window.innerHeight;
+			const width = Math.max(1, container.clientWidth);
+			const height = Math.max(1, container.clientHeight);
 
 			const newWidth = Math.max(1, Math.floor(width * dpr));
 			const newHeight = Math.max(1, Math.floor(height * dpr));

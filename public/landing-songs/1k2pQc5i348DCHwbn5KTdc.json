@@ -1,0 +1,95 @@
+{
+  "id": 13,
+  "spotifyTrackId": "1k2pQc5i348DCHwbn5KTdc",
+  "name": "Pink Pony Club",
+  "artist": "Chappell Roan",
+  "album": "The Rise and Fall of a Midwest Princess",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b27396fa88fb1789be437d5cb4b6",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebd258ecb0d66244e6300bcf64",
+  "spotifyArtistId": "7GlBOeep6PqTfFi59PTUUN",
+  "genres": [
+    "pop",
+    "electropop",
+    "synthpop"
+  ],
+  "audioFeatures": {
+    "tempo": 106.719,
+    "energy": 0.65,
+    "valence": 0.507
+  },
+  "analysis": {
+    "headline": "A defiant dance into self-discovery, trading hometown comfort for the dazzling chaos of chosen family and neon dreams.",
+    "compound_mood": "Liberated Glamour",
+    "mood_description": "Bright synths and a steady beat propel you onto a dancefloor where every move is an act of rebellion and self-celebration. It feels like stepping into your own vibrant spotlight, leaving past worries behind.",
+    "interpretation": "Creating a new life means sometimes breaking old hearts. It’s the thrilling, yet bittersweet, journey of escaping the stifling comfort of expectation to find a glittering, liberating world where true self-expression flourishes. The pull of home remains, a distant echo, but the intoxicating freedom of chosen family and a vibrant queer community offers an undeniable sense of belonging.",
+    "themes": [
+      {
+        "name": "rebellion and self-discovery",
+        "description": "Breaking away from hometown expectations to live authentically, embracing a new identity in a new place."
+      },
+      {
+        "name": "queer liberation",
+        "description": "Celebrating queer identity and joy in vibrant, accepting spaces that welcome true self-expression."
+      },
+      {
+        "name": "familial tension",
+        "description": "The persistent ache of disappointing loved ones while pursuing a personal truth that clashes with their desires."
+      },
+      {
+        "name": "chosen family",
+        "description": "Finding a sense of home and profound acceptance within a new community, distinct from one's biological family."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Yearning escape",
+        "description": "A quiet longing for a different life takes hold, as visions of L.A. pull away from the familiar confines of home."
+      },
+      {
+        "section": "Refrain/Pre-Chorus",
+        "mood": "Anticipatory defiance",
+        "description": "The internal conflict sharpens, knowing the chosen path will cause a scene, but the magnetic pull of belonging is too strong to resist, building into an inevitable resolve."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Euphoric embrace",
+        "description": "The energy explodes into full-blown celebration, a joyous declaration of dancing in the Pink Pony Club, completely immersed in a world of acceptance."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Sensory immersion",
+        "description": "Diving deeper into the vibrant, unapologetic chaos of the club, every detail reinforces that the decision to leave was undeniably the right one."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Lingering tenderness",
+        "description": "A reflective pause brings a moment of soft remembrance, acknowledging love for home and family, even from a thousand miles away, before returning to the present."
+      },
+      {
+        "section": "Outro",
+        "mood": "Enduring freedom",
+        "description": "A final, unwavering commitment to this new, authentic life, as the repeated dancing becomes a continuous, defiant celebration of self."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Won't make my mama proud, it's gonna cause a scene",
+        "insight": "The painful cost of choosing yourself over ingrained expectations and the fear of disappointment."
+      },
+      {
+        "line": "On the stage in my heels, it's where I belong",
+        "insight": "Finding profound self-acceptance and a sense of home in unexpected, glamorous, and liberating spaces."
+      },
+      {
+        "line": "Every night's another reason why I left it all",
+        "insight": "Validating a difficult choice with every moment of newfound joy, freedom, and belonging in a new life."
+      },
+      {
+        "line": "Don't think I've left you all behind",
+        "insight": "The lasting connection to roots and loved ones, even when physically and emotionally miles away."
+      }
+    ],
+    "sonic_texture": "Bright, driving synths layer over a pulsing electronic beat, creating an effervescent dancefloor energy. Sparkling melodies float above a solid bassline, while clear, confident vocals command attention, wrapped in a glossy pop finish."
+  }
+}

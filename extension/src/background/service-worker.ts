@@ -110,6 +110,8 @@ async function performSync(): Promise<SyncResult> {
 			cachedProfile = await fetchProfile(token);
 			console.log(`[hearted.] Current user: ${cachedProfile.displayName}`);
 		}
+		// local ref survives cachedProfile being nulled by incoming SPOTIFY_TOKEN messages
+		const profile = cachedProfile;
 
 		const likedSongs = await fetchAllLikedTracks(
 			token,
@@ -118,9 +120,9 @@ async function performSync(): Promise<SyncResult> {
 			},
 		);
 
-		const userUri = `spotify:user:${cachedProfile.spotifyId}`;
+		const userUri = `spotify:user:${profile.spotifyId}`;
 		const playlists = await fetchUserPlaylists(token, userUri);
-		const userProfile = cachedProfile;
+		const userProfile = profile;
 
 		console.log(
 			`[hearted.] Sync complete: ${likedSongs.length} liked songs, ${playlists.length} playlists`,

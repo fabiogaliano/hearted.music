@@ -19,6 +19,7 @@
 		"typecheck": "tsc --noEmit",
 		"lyrics:snapshot": "bun src/lib/services/lyrics/__tests__/generate-snapshots.ts",
 		"lyrics:validate": "PARSER_VALIDATION=true vitest run lyrics-service.integration",
+		"landing:songs:build": "bun scripts/build-landing-song-json.ts",
 		"dev:embeddings": "bun scripts/embedding-server.ts",
 		"ext:build": "bun extension/scripts/build.ts",
 		"ext:dev": "bun extension/scripts/build.ts --watch",

@@ -5,22 +5,21 @@ import {
 	type HeartRippleHandle,
 } from "@/components/ui/HeartRippleBackground";
 import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
-import type { songs } from "@/lib/data/mock-data";
+import { toLikedSong, type LandingSongForUI } from "@/lib/data/landing-songs";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { extractHue, getPastelColor } from "@/lib/utils/color";
 import { AnimatedHeart } from "./AnimatedHeart";
 import { heroStyles } from "./heroStyles";
-import { SongPreviewPanel } from "./SongPreviewPanel";
+import { LandingPanel } from "./LandingPanel";
 import { SpotifyLoginButton } from "./SpotifyLoginButton";
 import { useHeroAnimation } from "./useHeroAnimation";
 import { WaitlistInput } from "./WaitlistInput";
 
 export interface LandingHeroProps {
-	featuredSong: (typeof songs)[0];
+	featuredSong: LandingSongForUI;
 	albumArtUrl?: string;
 	artistImageUrl: string | undefined;
-	isLoading: boolean;
 	onPrev: () => void;
 	onNext: () => void;
 	/** Whether the app is in released mode (shows login) vs pre-release (shows waitlist) */
@@ -31,13 +30,19 @@ export function LandingHero({
 	featuredSong,
 	albumArtUrl,
 	artistImageUrl,
-	isLoading,
 	onPrev,
 	onNext,
 	isReleased = true,
 }: LandingHeroProps) {
 	const theme = useTheme();
+	const likedSong = toLikedSong(featuredSong);
 	const [isBackgroundReady, setIsBackgroundReady] = useState(false);
+	const [isDesktopLayout, setIsDesktopLayout] = useState(() =>
+		typeof window !== "undefined"
+			? window.matchMedia("(min-width: 1280px)").matches
+			: false,
+	);
+	const [isHeroVisualReady, setIsHeroVisualReady] = useState(false);
 	const [hasRevealed, setHasRevealed] = useState(false);
 
 	const sectionRef = useRef<HTMLElement>(null);
@@ -54,6 +59,28 @@ export function LandingHero({
 	const heartRef = useRef<HTMLSpanElement>(null);
 	const navBtnRef = useRef<HTMLButtonElement>(null);
 	const scrollIndicatorRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (typeof window === "undefined") return;
+
+		const mediaQuery = window.matchMedia("(min-width: 1280px)");
+		const handleChange = () => {
+			if (mediaQuery.matches !== isDesktopLayout) {
+				setIsHeroVisualReady(false);
+				setIsDesktopLayout(mediaQuery.matches);
+			}
+		};
+
+		handleChange();
+
+		if (typeof mediaQuery.addEventListener === "function") {
+			mediaQuery.addEventListener("change", handleChange);
+			return () => mediaQuery.removeEventListener("change", handleChange);
+		}
+
+		mediaQuery.addListener(handleChange);
+		return () => mediaQuery.removeListener(handleChange);
+	}, [isDesktopLayout]);
 
 	// Initialize GSAP ScrollTrigger animation
 	useHeroAnimation(
@@ -73,7 +100,9 @@ export function LandingHero({
 			scrollIndicatorRef,
 		},
 		{
-			isBackgroundReady,
+			isBackgroundReady: true,
+			isDesktopLayout,
+			onInitialStateApplied: () => setIsHeroVisualReady(true),
 			onRevealComplete: () => setHasRevealed(true),
 			onRevealReverse: () => setHasRevealed(false),
 		},
@@ -152,12 +181,12 @@ export function LandingHero({
 			    ─────────────────────────────────────────────────────────────────── */}
 			<section
 				ref={sectionRef}
-				className="hero-section relative min-h-screen snap-start snap-always lg:min-h-[300vh]"
+				className="hero-section relative min-h-screen snap-start snap-always xl:min-h-[300vh]"
 			>
 				{/* Pinned content - GSAP pins this during scroll */}
 				<div
 					ref={pinnedContentRef}
-					className="hero-pinned-content relative h-screen w-full overflow-hidden lg:sticky lg:top-0"
+					className="hero-pinned-content relative h-screen w-full overflow-hidden xl:sticky xl:top-0"
 				>
 					{/* Background container - morphs from 100vw to 50% */}
 					<div
@@ -184,13 +213,13 @@ export function LandingHero({
 						</div>
 					</div>
 
-					<div className="pointer-events-none relative z-10 grid min-h-screen lg:grid-cols-2">
+					<div className="pointer-events-none relative z-10 grid min-h-screen xl:grid-cols-2">
 						{/* Left: Copy column - elements morph from center to here */}
 						<div
-							className={`hero-initial-fade ${isBackgroundReady ? "is-ready" : ""} pointer-events-none relative flex min-h-screen flex-col justify-center overflow-visible px-8 py-20 lg:min-h-0 lg:px-16`}
+							className={`hero-initial-fade ${isHeroVisualReady ? "is-ready" : ""} pointer-events-none relative flex min-h-screen flex-col justify-center overflow-visible px-6 py-16 sm:px-8 md:px-10 xl:min-h-0 xl:px-16`}
 						>
 							{/* Navigation - logo morphs here, button fades in */}
-							<nav className="pointer-events-none mb-8 flex items-center justify-between lg:mb-10">
+							<nav className="pointer-events-none mb-8 flex items-center justify-between xl:mb-10">
 								<h1
 									ref={logoRef}
 									className="hero-logo flex items-center text-2xl font-extralight tracking-tight"
@@ -219,7 +248,7 @@ export function LandingHero({
 								</h1>
 								<button
 									ref={navBtnRef}
-									className="hero-nav-btn pointer-events-auto px-5 py-2 text-sm tracking-widest uppercase transition-all duration-300 hover:scale-105 lg:hidden"
+									className="hero-nav-btn pointer-events-auto px-5 py-2 text-sm tracking-widest uppercase transition-all duration-300 hover:scale-105 xl:hidden"
 									style={{
 										background: "rgba(255,255,255,0.2)",
 										color: "#ffffff",
@@ -235,17 +264,17 @@ export function LandingHero({
 							<div className="pointer-events-none max-w-lg">
 								<h2
 									ref={headlineRef}
-									className="hero-headline text-4xl leading-[1.1] font-extralight md:text-5xl lg:flex lg:text-6xl"
+									className="hero-headline text-4xl leading-[1.1] font-extralight sm:text-5xl xl:flex xl:text-6xl"
 									style={{
 										fontFamily: fonts.display,
 										color: pastelColor,
 										willChange: "transform, max-width",
 									}}
 								>
-									<span className="block lg:inline">
+									<span className="block xl:inline">
 										the stories inside&nbsp;
 									</span>
-									<span className="block italic lg:inline">
+									<span className="block italic xl:inline">
 										your liked songs
 									</span>
 								</h2>
@@ -253,7 +282,7 @@ export function LandingHero({
 								{/* Subtext - fades in late in scroll */}
 								<p
 									ref={subtextRef}
-									className="hero-subtext mt-3 text-lg leading-relaxed lg:text-xl"
+									className="hero-subtext mt-3 text-lg leading-relaxed xl:text-xl"
 									style={{
 										color: theme.textOnPrimary,
 										opacity: 0,
@@ -281,7 +310,7 @@ export function LandingHero({
 						{/* Right: Full-height analysis panel - reveals with curtain wipe */}
 						<div
 							ref={panelRef}
-							className="hero-panel pointer-events-auto relative hidden overflow-hidden lg:block"
+							className="hero-panel pointer-events-auto relative hidden overflow-hidden xl:block"
 							style={{ opacity: 0 }}
 						>
 							{/* Curtain wipe overlay (slides right to reveal) */}
@@ -291,23 +320,21 @@ export function LandingHero({
 								style={{ background: theme.bg }}
 							/>
 
-							<SongPreviewPanel
-								song={featuredSong}
+							<LandingPanel
+								song={likedSong}
 								albumArtUrl={albumArtUrl}
 								artistImageUrl={artistImageUrl}
-								isLoading={isLoading}
 								onPrev={onPrev}
 								onNext={onNext}
 							/>
 						</div>
 
 						{/* Mobile: Panel (no scroll animation on mobile) */}
-						<div className="pointer-events-auto relative min-h-screen lg:hidden">
-							<SongPreviewPanel
-								song={featuredSong}
+						<div className="pointer-events-auto relative min-h-screen xl:hidden">
+							<LandingPanel
+								song={likedSong}
 								albumArtUrl={albumArtUrl}
 								artistImageUrl={artistImageUrl}
-								isLoading={isLoading}
 								onPrev={onPrev}
 								onNext={onNext}
 							/>
@@ -317,7 +344,7 @@ export function LandingHero({
 					{/* Scroll indicator - fades out on first scroll */}
 					<div
 						ref={scrollIndicatorRef}
-						className={`pointer-events-none absolute bottom-8 left-1/2 z-20 -translate-x-1/2 transition-opacity duration-1000 ${isBackgroundReady ? "opacity-100" : "opacity-0"}`}
+						className={`pointer-events-none absolute bottom-8 left-1/2 z-20 -translate-x-1/2 transition-opacity duration-1000 ${isHeroVisualReady ? "opacity-100" : "opacity-0"}`}
 					>
 						<div
 							className="scroll-indicator flex flex-col items-center gap-2"

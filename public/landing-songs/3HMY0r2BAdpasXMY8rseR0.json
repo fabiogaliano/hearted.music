@@ -1,0 +1,95 @@
+{
+  "id": 5,
+  "spotifyTrackId": "3HMY0r2BAdpasXMY8rseR0",
+  "name": "Too Sweet",
+  "artist": "Hozier",
+  "album": "Unheard",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b273be392334d99f82bc410cb239",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebad85a585103dfc2f3439119a",
+  "spotifyArtistId": "2FXC3k01G6Gw61bmprjgqS",
+  "genres": [
+    "folk",
+    "blues",
+    "rock"
+  ],
+  "audioFeatures": {
+    "tempo": 117.038,
+    "energy": 0.62,
+    "valence": 0.934
+  },
+  "analysis": {
+    "headline": "A vibrant clash of raw hedonism and pristine purity, playfully acknowledging that some spirits just don't mix.",
+    "compound_mood": "Sardonic Affection",
+    "mood_description": "A buoyant, bluesy groove carries a playfully exasperated observation about differing approaches to life. It feels like dancing through a charming disagreement, a smile playing on lips.",
+    "interpretation": "The irresistible pull of an opposite whose radiant good nature and disciplined life feel almost alien to a spirit that thrives on uninhibited experience. It’s a playful longing for shared recklessness, a gentle nudge for someone to embrace a less polished side, or perhaps an honest admission that some fundamental differences are too vast to bridge, even with affection.",
+    "themes": [
+      {
+        "name": "clashing appetites",
+        "description": "One person thrives on strict self-control, the other finds joy in unadulterated pleasures."
+      },
+      {
+        "name": "invitation to chaos",
+        "description": "A teasing call to abandon perfection and embrace the messier, more exciting parts of life."
+      },
+      {
+        "name": "authentic abandon",
+        "description": "Finding freedom and truth in living without pretense, even if it means staying up late and drinking whiskey neat."
+      },
+      {
+        "name": "appreciative separation",
+        "description": "Loving someone for who they are while recognizing an unbridgeable gulf in lifestyles."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Opening Verse",
+        "mood": "Wry observation",
+        "description": "A groggy morning confession sets the scene, noticing the stark contrast with a partner's pristine routine. There's a playful annoyance about being told to \"live right.\""
+      },
+      {
+        "section": "First Pre-Chorus",
+        "mood": "Mischievous invitation",
+        "description": "A dreamy, almost romantic query asks if there isn't a secret desire to embrace a wilder, less structured existence, to let go of control."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Bluesy defiance",
+        "description": "The core declaration lands with a confident swagger, owning a preference for the raw and unadulterated, playfully stating the incompatibility."
+      },
+      {
+        "section": "Second Verse",
+        "mood": "Candid reflection",
+        "description": "A deeper dive into personal habits and philosophies, where one seeks freedom in late work and the other meticulously guards their well-being, acknowledging a fundamental divergence."
+      },
+      {
+        "section": "Second Pre-Chorus",
+        "mood": "Lingering hope",
+        "description": "Seeing beauty and potential in the partner, but wishing for them to \"mature\" into something less overtly sweet, a barrel-aged transformation."
+      },
+      {
+        "section": "Outro",
+        "mood": "Unwavering affirmation",
+        "description": "The core truth echoes one last time, a firm yet affectionate acceptance of irreconcilable differences, fading out with the same confident groove."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Don't you just wanna wake up, dark as a lake / Smellin' like a bonfire, lost in a haze?",
+        "insight": "The seductive allure of embracing a less polished, more visceral experience, a true surrender to the night."
+      },
+      {
+        "line": "I think I'll take my whiskey neat / My coffee black and my bed at 3",
+        "insight": "A defiant embrace of a rougher, unadulterated lifestyle, rejecting any softening or dilution."
+      },
+      {
+        "line": "The rest of you like you're the TSA",
+        "insight": "A sharp, humorous image of meticulous self-regulation, almost clinically monitoring every input."
+      },
+      {
+        "line": "If you can sit in a barrel, maybe I'll wait",
+        "insight": "A playful, yet deeply rooted wish for the partner to mature into a more complex, less innocent version of themselves, like a fine spirit."
+      }
+    ],
+    "sonic_texture": "A slinky, blues-rock bassline drives a confident, groovy rhythm. Crisp, understated drums and Hozier's signature resonant vocals intertwine with a soulful electric guitar riff, creating a rich texture that feels both smooth and subtly defiant."
+  }
+}

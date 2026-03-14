@@ -1,0 +1,91 @@
+{
+  "id": 6,
+  "spotifyTrackId": "5FVd6KXrgO9B3JPmC8OPst",
+  "name": "Do I Wanna Know?",
+  "artist": "Arctic Monkeys",
+  "album": "AM",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b2734ae1c4c5c45aabe565499163",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb7da39dea0a72f581535fb11f",
+  "spotifyArtistId": "7Ln80lUS6He07XvHI8qqHH",
+  "genres": [
+    "indie rock",
+    "rock",
+    "indie"
+  ],
+  "audioFeatures": {
+    "tempo": 85.03,
+    "energy": 0.532,
+    "valence": 0.405
+  },
+  "analysis": {
+    "headline": "A late-night plea for reassurance, haunted by what-ifs and the ghost of a shared past.",
+    "compound_mood": "Obsessive Yearning",
+    "mood_description": "A slow, grinding groove pulls you into a hazy, late-night atmosphere. You're stuck in a loop, replaying old moments and questioning everything.",
+    "interpretation": "The crushing weight of unreciprocated desire, caught in the endless cycle of 'what if' after a relationship's end. It's the painful realization that moving on feels impossible when every thought, every song, every late night brings them back, fueled by a dangerous cocktail of hope and self-deception.",
+    "themes": [
+      {
+        "name": "haunted persistence",
+        "description": "Holding onto a connection that refuses to fade, even when it causes more pain than comfort."
+      },
+      {
+        "name": "late-night regret",
+        "description": "The vulnerable confessions and desperate pleas that surface when inhibitions are lowered and memories flood back."
+      },
+      {
+        "name": "unreciprocated longing",
+        "description": "The agonizing uncertainty of wanting someone who might not feel the same way, leading to constant questioning."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Opening questions",
+        "mood": "sultry interrogation",
+        "description": "A slinky bassline creeps in, setting a scene of hushed curiosity as veiled questions about a past lover's feelings and secrets begin to surface, hinting at a deep, unsettling preoccupation."
+      },
+      {
+        "section": "Hesitant confession",
+        "mood": "vulnerable apprehension",
+        "description": "The rhythm picks up slightly, revealing the heart of the matter: a painful question about mutual feelings, admitting a longing for things to have been different, acknowledging the truth in drunk words."
+      },
+      {
+        "section": "Desperate gravitation",
+        "mood": "heavy yearning",
+        "description": "The full force of the obsession hits, a powerful, dragging pull back to someone. It's the admission of always thinking of them, unable to move on, stuck in their orbit."
+      },
+      {
+        "section": "Bold confrontation",
+        "mood": "insistent challenge",
+        "description": "A more direct challenge emerges, probing for any remaining openness in their heart, almost daring them to respond, a raw attempt to bridge the distance with a kiss that might not be wanted."
+      },
+      {
+        "section": "Unending pull",
+        "mood": "cyclical desperation",
+        "description": "The central plea returns with renewed intensity, solidifying the pattern of returning to the same emotional place, caught in the endless loop of wanting what might be lost."
+      },
+      {
+        "section": "Fading doubt",
+        "mood": "lingering uncertainty",
+        "description": "The questions echo and slowly dissolve, leaving the fundamental uncertainty hanging in the air, an unresolved yearning that fades but never truly disappears."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Do you ever get that fear that you can't shift the type That sticks around like summat in your teeth?",
+        "insight": "The nagging, uncomfortable presence of something unwanted, yet impossible to dislodge."
+      },
+      {
+        "line": "I've dreamt about you nearly every night this week How many secrets can you keep?",
+        "insight": "The consuming nature of obsession, where even subconscious thoughts are dominated by another, coupled with a deep suspicion of hidden truths."
+      },
+      {
+        "line": "(Do I wanna know) If this feelin' flows both ways?",
+        "insight": "The terrifying vulnerability of asking the definitive question that could shatter all remaining hope."
+      },
+      {
+        "line": "Too busy bein' yours To fall for somebody new",
+        "insight": "The self-imposed barrier to healing, where devotion to a past connection prevents any future possibilities."
+      }
+    ],
+    "sonic_texture": "A slinky, reverb-drenched guitar riff weaves through a deep, pulsing bassline and laid-back, yet driving drums. The vocals are coolly delivered, bordering on a mumble, carrying a heavy weight of yearning through a hazy, studio-polished sound."
+  }
+}

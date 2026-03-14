@@ -1,0 +1,94 @@
+{
+  "id": 19,
+  "spotifyTrackId": "3sK8wGT43QFpWrvNQsrQya",
+  "name": "DtMF",
+  "artist": "Bad Bunny",
+  "album": "Debí Tirar Más Fotos",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b273bbd45c8d36e0e045ef640411",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb81f47f44084e0a09b5f0fa13",
+  "spotifyArtistId": "4q3ewBCX7sLwd24euuV69X",
+  "genres": [
+    "latin",
+    "reggaeton",
+    "salsa"
+  ],
+  "audioFeatures": {
+    "tempo": 136.02,
+    "energy": 0.131,
+    "valence": 0.032
+  },
+  "analysis": {
+    "headline": "A hazy recollection of lost love, where regret dances alongside a yearning for home and fleeting escape.",
+    "compound_mood": "Muted Nostalgia",
+    "mood_description": "A low-key, hypnotic groove carries a deep ache. You're swaying, almost dancing, but a heavy sadness pulls at the edges, making every memory feel bittersweet and out of reach.",
+    "interpretation": "It's about the frustrating battle between trying to live fully in the present and being constantly pulled back by the ghost of a past connection. There's a longing for simpler times, for missed opportunities in love, and for the unwavering comfort of home and friends. Even amidst attempts at carefree partying, a current of regret runs deep, suggesting that some feelings are impossible to truly outrun.",
+    "themes": [
+      {
+        "name": "unfulfilled longing",
+        "description": "A persistent ache for what was lost or never fully appreciated, replaying moments that could have been different."
+      },
+      {
+        "name": "roots and belonging",
+        "description": "Finding solace in the familiar sights, sounds, and people of home, a grounding force against personal turmoil."
+      },
+      {
+        "name": "escapist revelry",
+        "description": "Turning to drink and chaotic partying as a way to momentarily drown out or distract from deeper emotional pain."
+      },
+      {
+        "name": "the passage of time",
+        "description": "Acknowledging personal growth and the evolution of life circumstances, even as old feelings linger."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro/Verse 1",
+        "mood": "Fading Memory",
+        "description": "A quiet opening sets a scene of serene San Juan, quickly shifting to a specific, almost painful memory of a last look and a list of all the things left unsaid and undone with someone important. There's a physical ache described, a heart 'kicking'."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Echoing Regret",
+        "description": "The central regret arrives, a repeated wish to have captured more moments, given more affection. This longing is intertwined with a powerful desire for friends and family to stay close, a plea for support when the emotional weight becomes too much."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Forced Detachment",
+        "description": "An attempt to move forward, spending time with family and denying the lingering thoughts of the past. But this resolve quickly crumbles, leading to a desperate dive into wild partying and drinking, a frantic effort to feel something else or nothing at all."
+      },
+      {
+        "section": "Interlude/Verse 3",
+        "mood": "Heartfelt Connection",
+        "description": "A moment of genuine, raw affection for friends and community breaks through, emphasizing the importance of shared presence. This transitions to a reflective acceptance of adulthood and simpler pleasures, valuing what truly matters over superficial pursuits."
+      },
+      {
+        "section": "Outro",
+        "mood": "Lingering Longing",
+        "description": "The main theme of regret returns, the wish for more photos and kisses. It's a slightly altered reprise, ending with a playful, yet still yearning, twist, hinting that the emotional journey isn't quite over."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Pero queriendo volver a la última vez que a los ojos te miré",
+        "insight": "The specific, haunting image of a final glance, a moment replayed endlessly in memory."
+      },
+      {
+        "line": "El corazón dándome patá'",
+        "insight": "The visceral, physical manifestation of emotional pain, a heart literally kicking in protest."
+      },
+      {
+        "line": "Debí tirar más fotos de cuando te tuve",
+        "insight": "The core regret of missed opportunities to capture and cherish fleeting moments, now lost forever."
+      },
+      {
+        "line": "Si me pregunta si aún pienso en ti, yo le digo que no",
+        "insight": "The painful self-deception and outward denial, trying to convince oneself and others that the past is truly gone."
+      },
+      {
+        "line": "Vamo' a disfrutar, que nunca se sabe si nos queda poco",
+        "insight": "A desperate embrace of the present, a carpe diem plea born from an underlying awareness of fragility and impermanence."
+      }
+    ],
+    "sonic_texture": "A low-slung, melancholic reggaeton rhythm underpins layers of live, traditional Puerto Rican instrumentation. It feels like a late-night street party winding down, with muted horns, subtle percussion like güiro and batá, and a vocal delivery that's more conversational and wistful than energetic, creating a hazy, introspective atmosphere."
+  }
+}
