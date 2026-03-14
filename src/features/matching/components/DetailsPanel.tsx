@@ -1,9 +1,9 @@
-import type { Song } from "@/lib/data/mock-data";
+import type { LandingSongDetail } from "@/lib/data/landing-songs";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 interface DetailsPanelProps {
-	song: Song;
+	song: LandingSongDetail;
 	isExpanded: boolean;
 	activeJourneyStep: number;
 	onJourneyStepHover: (index: number) => void;
@@ -56,7 +56,7 @@ export function DetailsPanel({
 									fontStyle: "italic",
 								}}
 							>
-								"{song.keyLines[0].text}"
+								"{song.analysis.key_lines[0].line}"
 							</p>
 						</div>
 
@@ -68,7 +68,7 @@ export function DetailsPanel({
 								Themes
 							</p>
 							<div className="flex flex-wrap gap-2">
-								{song.themes.map((t, i) => (
+								{song.analysis.themes.map((t, i) => (
 									<span
 										key={i}
 										className="px-3 py-1 text-sm"
@@ -95,7 +95,7 @@ export function DetailsPanel({
 								className="text-sm leading-relaxed"
 								style={{ fontFamily: fonts.body, color: theme.text }}
 							>
-								{song.keyLines[0].meaning}
+								{song.analysis.key_lines[0].insight}
 							</p>
 						</div>
 
@@ -110,7 +110,7 @@ export function DetailsPanel({
 								className="text-sm"
 								style={{ fontFamily: fonts.body, color: theme.text }}
 							>
-								{song.mood}
+								{song.analysis.compound_mood}
 							</p>
 						</div>
 					</div>
@@ -123,7 +123,7 @@ export function DetailsPanel({
 							/>
 
 							<div className="space-y-1">
-								{song.journey.map((step, i) => {
+								{song.analysis.journey.map((step, i) => {
 									const isActive = activeJourneyStep === i;
 
 									return (

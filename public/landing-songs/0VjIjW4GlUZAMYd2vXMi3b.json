@@ -1,0 +1,99 @@
+{
+  "id": 15,
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "name": "Blinding Lights",
+  "artist": "The Weeknd",
+  "album": "After Hours",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb9e528993a2820267b97f6aae",
+  "spotifyArtistId": "1Xyo4u8uXC1ZmMpatF05PJ",
+  "genres": [
+    "synthpop",
+    "synthwave",
+    "new wave"
+  ],
+  "audioFeatures": {
+    "tempo": 171.001,
+    "energy": 0.73,
+    "valence": 0.334
+  },
+  "analysis": {
+    "headline": "A desperate plea for human touch, lost in the neon glow of a city that never sleeps.",
+    "compound_mood": "Desperate Euphoria",
+    "mood_description": "A relentless synth beat drives you through a neon-lit night, chasing a connection that feels just out of reach, a strange mix of exhilarating momentum and lonely desperation.",
+    "interpretation": "Caught in the dazzling, empty allure of a late-night city, the search for genuine connection becomes a frantic drive, a desperate need for one person's touch to break through the haze of excess and withdrawal. The pulsing, euphoric sound provides a stark contrast to the vulnerable plea for presence and trust.",
+    "themes": [
+      {
+        "name": "addiction's grip",
+        "description": "The constant craving for a feeling, a substance, or a person to fill an internal void."
+      },
+      {
+        "name": "sin city's pull",
+        "description": "The dangerous glamour of urban excess, offering fleeting highs but leaving behind a deep loneliness."
+      },
+      {
+        "name": "desperate seeking",
+        "description": "The frantic, almost primal need for a specific human connection amidst chaos."
+      },
+      {
+        "name": "blinding illusion",
+        "description": "The bright, overwhelming facade of excitement that hides a deeper emptiness or vulnerability."
+      }
+    ],
+    "journey": [
+      {
+        "section": "intro",
+        "mood": "urgent pulse",
+        "description": "A tight, driving synth line immediately pulls you into a relentless rhythm, setting a high-stakes pace."
+      },
+      {
+        "section": "verse 1",
+        "mood": "vulnerable craving",
+        "description": "A voice emerges, raw and exposed, confessing a deep loneliness and the intense ache of withdrawal, needing just one touch to feel alive."
+      },
+      {
+        "section": "pre-chorus/chorus build",
+        "mood": "blinding desperation",
+        "description": "The city lights spin into a blur as the beat swells, a frantic realization that clarity and peace are impossible without that specific person, leading to an explosive plea."
+      },
+      {
+        "section": "chorus",
+        "mood": "euphoric release",
+        "description": "Everything opens up in a powerful, soaring declaration, the rush of being overwhelmed by this all-consuming need, trusting only this one presence."
+      },
+      {
+        "section": "bridge",
+        "mood": "renewed resolve",
+        "description": "A brief moment of clarity breaks through the chaos, a determined promise to hold on, a direct confession that can't be said over the phone."
+      },
+      {
+        "section": "outro",
+        "mood": "lingering echo",
+        "description": "The main refrain echoes, not fading so much as solidifying, a final, insistent longing for that vital touch as the song carries you away."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I've been tryna call",
+        "insight": "The first fragile step of reaching out when isolation has taken hold."
+      },
+      {
+        "line": "I'm goin' through withdrawals",
+        "insight": "The intense, physical manifestation of missing someone, like a true addiction."
+      },
+      {
+        "line": "Sin City's cold and empty",
+        "insight": "The glittering facade of pleasure revealing its true, hollow nature."
+      },
+      {
+        "line": "I said, ooh, I'm blinded by the lights",
+        "insight": "Lost in the overwhelming glow of excitement and danger, the ability to see clearly is gone."
+      },
+      {
+        "line": "No, I can't sleep until I feel your touch",
+        "insight": "Physical presence as the only cure for a restless, insomniac mind."
+      }
+    ],
+    "sonic_texture": "A relentless, driving beat underpins shimmering, nostalgic synths and a propulsive bassline, creating a retro-futuristic soundscape that feels both expansive and intimately urgent, with a clean, yearning vocal cutting through."
+  }
+}

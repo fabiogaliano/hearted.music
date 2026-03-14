@@ -1,4 +1,6 @@
-import type { Playlist } from "@/lib/data/mock-data";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import NumberFlow from "@number-flow/react";
+import type { Playlist } from "../types";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
@@ -12,6 +14,7 @@ interface MatchesSectionProps {
 	onDismiss: () => void;
 	onNext: () => void;
 	isExpanded: boolean;
+	songKey?: string;
 }
 
 export function MatchesSection({
@@ -21,8 +24,10 @@ export function MatchesSection({
 	onDismiss,
 	onNext,
 	isExpanded,
+	songKey,
 }: MatchesSectionProps) {
 	const theme = useTheme();
+	const prefersReducedMotion = useReducedMotion();
 	return (
 		<div
 			className="flex flex-col transition-[min-height,opacity] duration-500 ease-in-out"
@@ -45,13 +50,13 @@ export function MatchesSection({
 					gap: isExpanded ? "0.75rem" : "1.25rem",
 				}}
 			>
-				{playlists.map((playlist) => {
+				{playlists.map((playlist, slotIndex) => {
 					const isAdded = addedTo.includes(playlist.id);
 					const isGoodMatch = playlist.matchScore >= 0.7;
 
 					return (
 						<div
-							key={playlist.id}
+							key={slotIndex}
 							className="group transition-[padding-bottom] duration-500 ease-in-out"
 							style={{
 								borderBottom: `1px solid ${theme.border}`,
@@ -60,39 +65,69 @@ export function MatchesSection({
 						>
 							<div className="flex items-start justify-between">
 								<div className="flex items-start gap-3">
-									<span
+									{/* Stays fixed — digits roll to new value */}
+									<NumberFlow
+										value={Math.round(playlist.matchScore * 100)}
+										suffix="%"
 										className="font-extralight tabular-nums transition-[font-size] duration-500 ease-in-out"
 										style={{
 											fontFamily: fonts.display,
 											color: isGoodMatch ? theme.text : theme.textMuted,
 											fontSize: isExpanded ? "1.5rem" : "2rem",
 										}}
-									>
-										{Math.round(playlist.matchScore * 100)}%
-									</span>
-									<div className="pt-1">
-										<h3
-											className="font-light transition-[font-size] duration-500 ease-in-out"
-											style={{
-												fontFamily: fonts.display,
-												color: theme.text,
-												fontSize: isExpanded ? "1rem" : "1.125rem",
+									/>
+									{/* Slides in/out with each song change */}
+									<AnimatePresence mode="wait">
+										<motion.div
+											key={`${songKey}-${slotIndex}`}
+											className="pt-1"
+											initial={
+												prefersReducedMotion ? false : { opacity: 0, x: 20 }
+											}
+											animate={{
+												opacity: 1,
+												x: 0,
+												transition: {
+													duration: 0.25,
+													ease: [0.165, 0.84, 0.44, 1],
+												},
 											}}
+											exit={
+												prefersReducedMotion
+													? {}
+													: {
+															opacity: 0,
+															x: -20,
+															transition: {
+																duration: 0.18,
+																ease: [0.645, 0.045, 0.355, 1],
+															},
+														}
+											}
 										>
-											{playlist.name}
-										</h3>
-										{playlist.description && (
-											<p
-												className="mt-0.5 text-xs"
+											<h3
+												className="font-light transition-[font-size] duration-500 ease-in-out"
 												style={{
-													fontFamily: fonts.body,
-													color: theme.textMuted,
+													fontFamily: fonts.display,
+													color: theme.text,
+													fontSize: isExpanded ? "1rem" : "1.125rem",
 												}}
 											>
-												{playlist.description}
-											</p>
-										)}
-									</div>
+												{playlist.name}
+											</h3>
+											{playlist.reason && (
+												<p
+													className="mt-0.5 text-xs"
+													style={{
+														fontFamily: fonts.body,
+														color: theme.textMuted,
+													}}
+												>
+													{playlist.reason}
+												</p>
+											)}
+										</motion.div>
+									</AnimatePresence>
 								</div>
 
 								{isAdded ? (

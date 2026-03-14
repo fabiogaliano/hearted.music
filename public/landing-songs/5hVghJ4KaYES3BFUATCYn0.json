@@ -1,0 +1,99 @@
+{
+  "id": 14,
+  "spotifyTrackId": "5hVghJ4KaYES3BFUATCYn0",
+  "name": "EARFQUAKE",
+  "artist": "Tyler, the Creator",
+  "album": "IGOR",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b27330a635de2bb0caa4e26f6abb",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebdf2728294ff77dd11eeb18fb",
+  "spotifyArtistId": "4V8LLVI7PbaPR0K2TGSxFF",
+  "genres": [
+    "rock",
+    "pop",
+    "alternative"
+  ],
+  "audioFeatures": {
+    "tempo": 79.635,
+    "energy": 0.498,
+    "valence": 0.413
+  },
+  "analysis": {
+    "headline": "Feeling the ground shake beneath a crumbling relationship, desperately bargaining to keep it from falling apart.",
+    "compound_mood": "Anxious Pleading",
+    "mood_description": "A woozy, soulful haze where longing and regret intertwine. The groove is there, but a deep tremor runs underneath, threatening to crack everything open.",
+    "interpretation": "Feeling the ground drop out from under you when love becomes shaky, leading to desperate pleas and a willingness to take all the blame. It's the raw confusion of a relationship that causes both elation and collapse, leaving you begging for reassurance amidst the emotional chaos.",
+    "themes": [
+      {
+        "name": "vulnerability in love",
+        "description": "Laying bare every insecurity and fear to prevent a breakup."
+      },
+      {
+        "name": "self-blame and bargaining",
+        "description": "Taking responsibility for everything wrong, hoping it will make someone stay."
+      },
+      {
+        "name": "unstable foundations",
+        "description": "When a deep connection feels like the very thing tearing your world apart."
+      },
+      {
+        "name": "craving clarity",
+        "description": "Desiring honest communication when emotions feel overwhelming and confusing."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Urgent pleading",
+        "description": "Starting with a loop of \"For real this time,\" an immediate sense of urgency hangs in the air, a final chance at something vital."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Earth-shattering love",
+        "description": "The core feeling hits, a love so powerful it literally shakes the ground, but the thrill quickly turns into the ache of a breaking heart."
+      },
+      {
+        "section": "Refrain",
+        "mood": "Solemn acceptance",
+        "description": "A quiet, vulnerable admission of fault, a desperate whisper to \"Don't leave,\" knowing collapse is imminent without the other person."
+      },
+      {
+        "section": "Verse",
+        "mood": "Tangential longing",
+        "description": "A shift in perspective, a stream of consciousness touching on loyalty, personal struggles, and a deep, underlying \"so in love\" that echoes the main sentiment."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Direct confrontation",
+        "description": "The begging turns into a direct confrontation of unspoken feelings, a raw need for \"confirmation on how you feel\" to navigate the complicated situation."
+      },
+      {
+        "section": "Outro",
+        "mood": "Lingering echo",
+        "description": "The plea fades into a broken record, the \"Don't leave, it's my fault\" repeating until it shatters, leaving only the memory of the desperate call."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "'Cause you make my earth quake",
+        "insight": "The intensity of a love that feels both exhilarating and destructively powerful."
+      },
+      {
+        "line": "Don't leave, it's my fault",
+        "insight": "Taking responsibility for everything, hoping it will somehow stop the inevitable goodbye."
+      },
+      {
+        "line": "Riding around, your love be shakin’ me up",
+        "insight": "The constant turbulence and emotional upheaval caused by a relationship."
+      },
+      {
+        "line": "I just need some confirmation on how you feel, for real",
+        "insight": "A desperate need for honesty when caught in a confusing emotional spiral."
+      },
+      {
+        "line": "So in love",
+        "insight": "The simple, raw truth that underpins all the desperation and fear."
+      }
+    ],
+    "sonic_texture": "A warped R&B groove built on thick, hazy synths and a rubbery bassline, creating a plush but slightly off-kilter foundation. Layers of soulful, almost choir-like vocals float over a low-key, head-nodding beat, all sounding intimately close, like a live, raw take."
+  }
+}

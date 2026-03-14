@@ -1,0 +1,90 @@
+{
+  "id": 9,
+  "spotifyTrackId": "7r9BUOSnekEjrkMhmxD6Ae",
+  "name": "Taxes",
+  "artist": "Geese",
+  "album": "Getting Killed",
+  "albumArtUrl": "https://f4.bcbits.com/img/a0744100055_16.jpg",
+  "artistImageUrl": "https://variety.com/wp-content/uploads/2023/11/0C2A4953-e1701219495791.jpg",
+  "spotifyArtistId": "4MoAOfV4ROWMfNHCFMj2BX",
+  "genres": [
+    "indie rock",
+    "rock",
+    "alt-country"
+  ],
+  "audioFeatures": {
+    "tempo": 128,
+    "energy": 0.85,
+    "valence": null
+  },
+  "analysis": {
+    "headline": "A furious rejection of false salvation, choosing self-destruction over bending to external demands.",
+    "compound_mood": "Resigned Defiance",
+    "mood_description": "A heavy burden of guilt mixes with a stubborn refusal to submit, feeling like a slow, bitter stand against an impossible force.",
+    "interpretation": "This is really about the clash between profound self-condemnation and an unyielding rejection of external authority or societal obligations. There's a deep-seated guilt over past wrongs, but also a fierce resistance to being forced into a penitent role, especially when those making demands seem hypocritical. It ultimately becomes a grim assertion of control, choosing to inflict one's own pain rather than being broken by outside pressures.",
+    "themes": [
+      {
+        "name": "personal damnation",
+        "description": "Feeling worthy of punishment, but also that current suffering goes too far."
+      },
+      {
+        "name": "unyielding rebellion",
+        "description": "A stubborn, almost violent refusal to comply with demands."
+      },
+      {
+        "name": "hypocrisy unmasked",
+        "description": "Challenging those in power to confront their own failings."
+      },
+      {
+        "name": "self-directed pain",
+        "description": "Choosing to control one's own sorrow and heartbreak as a form of agency."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Opening Confession",
+        "mood": "Raw Guilt",
+        "description": "A raw, direct admission of feeling utterly damned by past actions."
+      },
+      {
+        "section": "Bitter Plea",
+        "mood": "Undeserved Suffering",
+        "description": "Shifting from self-condemnation to a protest against suffering that feels beyond what's fair."
+      },
+      {
+        "section": "Furious Resistance",
+        "mood": "Defiant Standoff",
+        "description": "An intense, almost violent rejection of external demands, drawing a line in the sand with vivid imagery."
+      },
+      {
+        "section": "Sharp Rebuke",
+        "mood": "Challenging Authority",
+        "description": "Turning the tables on perceived authority, calling out their own failings and hypocrisy."
+      },
+      {
+        "section": "Grim Acceptance",
+        "mood": "Self-Chosen Control",
+        "description": "A hard-won decision to take control of personal pain, embracing self-destruction on one's own terms."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I should burn in hell But I don't deserve this",
+        "insight": "The push and pull between internal guilt and the feeling of unfair external punishment."
+      },
+      {
+        "line": "You're gonna have to nail me down",
+        "insight": "The absolute, unyielding refusal to compromise or submit to demands."
+      },
+      {
+        "line": "Doctor, doctor, heal yourself",
+        "insight": "A direct challenge to the hypocrisy of anyone trying to 'fix' things from a position of flawed authority."
+      },
+      {
+        "line": "I will break my own heart from now on",
+        "insight": "Taking a grim, solitary control over one's own emotional fate."
+      }
+    ],
+    "sonic_texture": "This sounds like raw, driving indie rock with a gritty edge. Expect insistent, propulsive drums and guitars that feel both heavy and defiant, carrying the weight of the lyrical angst. The vocals likely have a weary, yet determined, quality, pushing against the sonic backdrop."
+  }
+}

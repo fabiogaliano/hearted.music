@@ -6,8 +6,11 @@
 import { useLocation } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useState } from "react";
-import { ONBOARDING_STEPS, type OnboardingStep } from "@/lib/data/preferences";
-import type { PhaseJobIds } from "@/lib/jobs/progress/types";
+import {
+	ONBOARDING_STEPS,
+	type OnboardingStep,
+} from "@/lib/domains/library/accounts/preferences-queries";
+import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type { OnboardingData } from "@/lib/server/onboarding.functions";
 import { themes } from "@/lib/theme/colors";
 import { useRegisterTheme, useTheme } from "@/lib/theme/ThemeHueProvider";

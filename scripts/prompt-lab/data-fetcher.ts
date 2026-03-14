@@ -1,8 +1,8 @@
 import { Result } from "better-result";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createLyricsService } from "@/lib/capabilities/lyrics/service";
-import { getLyricsFormatLegend } from "@/lib/capabilities/lyrics/utils/lyrics-formatter";
+import { createLyricsService } from "@/lib/domains/enrichment/lyrics/service";
+import { getLyricsFormatLegend } from "@/lib/domains/enrichment/lyrics/utils/lyrics-formatter";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import { createLastFmService } from "@/lib/integrations/lastfm/service";
 import type { TestSong } from "./test-songs";

@@ -8,13 +8,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
-import { requireAuthSession } from "@/lib/auth.server";
-import { getCount as getLikedSongCount } from "@/lib/data/liked-song";
+import { requireAuthSession } from "@/lib/platform/auth/auth.server";
+import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
 import {
 	getPlaylistCount,
 	getPlaylists,
 	setPlaylistDestination,
-} from "@/lib/data/playlists";
+} from "@/lib/domains/library/playlists/queries";
 import {
 	clearPhaseJobIds,
 	completeOnboarding,
@@ -25,10 +25,17 @@ import {
 	type OnboardingStep,
 	updateOnboardingStep,
 	updateTheme,
-} from "@/lib/data/preferences";
-import { type PhaseJobIds, PhaseJobIdsSchema } from "@/lib/jobs/progress/types";
+} from "@/lib/domains/library/accounts/preferences-queries";
+import {
+	type PhaseJobIds,
+	PhaseJobIdsSchema,
+} from "@/lib/platform/jobs/progress/types";
 import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
 import { type ThemeColor, themeSchema } from "@/lib/theme/types";
+import {
+	runDestinationProfiling,
+	runMatching,
+} from "@/lib/workflows/enrichment-pipeline/orchestrator";
 
 /** Playlist view model for onboarding UI (camelCase frontend format) */
 export interface OnboardingPlaylist {
@@ -311,6 +318,58 @@ export const savePlaylistDestinations = createServerFn({ method: "POST" })
 				firstError.error,
 			);
 		}
+
+		if (data.playlistIds.length === 0) {
+			return { success: true };
+		}
+
+		const songCountResult = await getLikedSongCount(session.accountId);
+		if (Result.isError(songCountResult) || songCountResult.value === 0) {
+			return { success: true };
+		}
+
+		// Fire-and-forget: destination-side work runs without blocking the save response
+		void (async () => {
+			try {
+				const profilingResult = await runDestinationProfiling(
+					session.accountId,
+				);
+				if (Result.isError(profilingResult)) {
+					console.error(
+						"[onboarding] Destination profiling bootstrap failed:",
+						profilingResult.error.message,
+					);
+					return;
+				}
+
+				for (const stage of profilingResult.value.stages) {
+					if (stage.status === "failed") {
+						console.error(
+							`[onboarding] Destination profiling stage failed: ${stage.error ?? "unknown error"}`,
+						);
+					}
+				}
+
+				const matchingResult = await runMatching(session.accountId);
+				if (Result.isError(matchingResult)) {
+					console.error(
+						"[onboarding] Matching bootstrap failed:",
+						matchingResult.error.message,
+					);
+					return;
+				}
+
+				for (const stage of matchingResult.value.stages) {
+					if (stage.status === "failed") {
+						console.error(
+							`[onboarding] Matching stage failed: ${stage.error ?? "unknown error"}`,
+						);
+					}
+				}
+			} catch (error) {
+				console.error("[onboarding] Destination follow-on work failed:", error);
+			}
+		})();
 
 		return { success: true };
 	});

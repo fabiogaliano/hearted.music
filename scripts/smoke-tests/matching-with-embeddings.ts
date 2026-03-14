@@ -24,12 +24,12 @@ import { Result } from "better-result";
 import { createLastFmService } from "@/lib/integrations/lastfm/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import * as hf from "@/lib/integrations/huggingface/service";
-import { createMatchingService } from "@/lib/capabilities/matching/service";
+import { createMatchingService } from "@/lib/domains/taste/song-matching/service";
 import type {
 	MatchingSong,
 	MatchingPlaylistProfile,
 	MatchingAudioFeatures,
-} from "@/lib/capabilities/matching/types";
+} from "@/lib/domains/taste/song-matching/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers

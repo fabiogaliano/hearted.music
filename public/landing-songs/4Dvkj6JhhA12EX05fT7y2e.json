@@ -1,0 +1,95 @@
+{
+  "id": 16,
+  "spotifyTrackId": "4Dvkj6JhhA12EX05fT7y2e",
+  "name": "As It Was",
+  "artist": "Harry Styles",
+  "album": "Harry's House",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b27382ce362511fb3d9dda6578ee",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebe309f8c3056a59f20d0968ca",
+  "spotifyArtistId": "6KImCVD70vtIoJWnq6nGn3",
+  "genres": [
+    "pop",
+    "pop rock",
+    "synthpop"
+  ],
+  "audioFeatures": {
+    "tempo": 173.93,
+    "energy": 0.731,
+    "valence": 0.662
+  },
+  "analysis": {
+    "headline": "A vibrant, propulsive dance through a changed world, holding onto what's left while everything shifts.",
+    "compound_mood": "Exuberant Sadness",
+    "mood_description": "A bright, insistent pulse drives through, but beneath the shimmer, there's a quiet ache for what's lost. It feels like dancing alone in a crowded room, both free and heavy-hearted.",
+    "interpretation": "It's about the sharp, often contradictory experience of profound personal change and isolation. Despite a determinedly upbeat sound that pushes forward, the lyrics reveal a deep longing for a past that's unreachable and a struggle with being alone. The bright, energetic production becomes a vehicle for expressing an internal battle to reconcile with a \"new normal\" where old comforts are gone, and even attempts at connection feel distant.",
+    "themes": [
+      {
+        "name": "relentless change",
+        "description": "Acknowledging that once things are different, there's no going back to how they were."
+      },
+      {
+        "name": "lonely persistence",
+        "description": "The feeling of pushing forward and coping with life, even when isolated and unheard."
+      },
+      {
+        "name": "outrunning the past",
+        "description": "A strong, almost desperate desire to avoid discussing or dwelling on former times."
+      },
+      {
+        "name": "external concern",
+        "description": "The unsettling experience of others checking in, sometimes with invasive or blunt questions."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Childlike jolt",
+        "description": "A sweet, innocent voice from the past gets abruptly cut off as a rush of driving synths and drums bursts in, pulling you into a breathless pace."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Restrained yearning",
+        "description": "Feeling an invisible force hold you back, a quiet plea for connection emerges, but the world keeps spinning too fast to truly pause."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Defiant affirmation",
+        "description": "A powerful, almost celebratory shout that \"it's just us\" in this changed world, even as the words confirm nothing is the same as before."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Intrusive reality",
+        "description": "The outside world breaks in with blunt, personal questions, revealing a stark loneliness and a quiet desperation for help that doesn't arrive."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Frantic escape",
+        "description": "A sudden, urgent need to move on, to leave the past behind and not look back, sprinting away from uncomfortable memories and conversations."
+      },
+      {
+        "section": "Outro",
+        "mood": "Lingering echo",
+        "description": "The driving rhythm continues its relentless push, repeating the core truth \"it's not the same\" as the sound slowly fades, leaving a bittersweet resonance."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Gravity's holdin' me back",
+        "insight": "The invisible, fundamental forces that prevent freedom and progress."
+      },
+      {
+        "line": "Harry, you're no good alone",
+        "insight": "The sharp, external judgment that cuts through and highlights a deep vulnerability."
+      },
+      {
+        "line": "What kind of pills are you on?",
+        "insight": "The startling, raw invasion of privacy when others pry into personal struggles."
+      },
+      {
+        "line": "I don't wanna talk about the way that it was",
+        "insight": "An active, almost desperate suppression of memory to navigate a new reality."
+      }
+    ],
+    "sonic_texture": "A propulsive, dance-ready beat with pulsing bass, shimmering 80s-inspired synths, and a driving tempo. The vocals are clear and direct, riding a bright, energetic wave that feels both celebratory and tinged with wistfulness."
+  }
+}

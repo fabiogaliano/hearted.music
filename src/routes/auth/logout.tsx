@@ -5,7 +5,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { getAuth } from "@/lib/auth";
+import { getAuth } from "@/lib/platform/auth/auth";
 
 const handleLogout = createServerFn({ method: "POST" }).handler(async () => {
 	const request = getRequest();

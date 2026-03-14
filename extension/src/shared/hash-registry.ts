@@ -6,6 +6,14 @@ export const DEFAULT_HASHES: Record<string, string> = {
 		"9c53fb83f35c6a177be88bf1b67cb080b853e86b576ed174216faa8f9164fc8f",
 	profileAttributes:
 		"53bcb064f6cd18c23f752bc324a791194d20df612d8e1239c735144ab0399ced",
+	// Shared hash: Spotify bundles add/remove into one persisted query, routing by operationName.
+	// Verified 2026-03-07 — wrong hash returns 412 "Invalid query hash", shared hash returns 200 for both.
+	addToPlaylist:
+		"47b2a1234b17748d332dd0431534f22450e9ecbb3d5ddcdacbd83368636a0990",
+	removeFromPlaylist:
+		"47b2a1234b17748d332dd0431534f22450e9ecbb3d5ddcdacbd83368636a0990",
+	queryArtistOverview:
+		"dd14c6043d8127b56c5acbe534f6b3c58714f0c26bc6ad41776079ed52833a8f",
 } as const;
 
 const STORAGE_KEY = "hashRegistry";

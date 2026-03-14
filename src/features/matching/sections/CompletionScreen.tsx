@@ -1,13 +1,15 @@
-import { songs } from "@/lib/data/mock-data";
+import type { LandingSongDetail } from "@/lib/data/landing-songs";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import type { CompletionStats } from "../types";
 
 export function CompletionScreen({
 	stats,
+	songs,
 	onExit,
 }: {
 	stats: CompletionStats;
+	songs: LandingSongDetail[];
 	onExit: () => void;
 }) {
 	const theme = useTheme();

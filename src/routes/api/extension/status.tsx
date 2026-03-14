@@ -16,9 +16,9 @@ import {
 	getExtensionCorsHeaders,
 } from "@/lib/server/extension-cors";
 import { Result } from "better-result";
-import * as likedSongData from "@/lib/data/liked-song";
-import * as playlistData from "@/lib/data/playlists";
-import { getAuthSession } from "@/lib/auth.server";
+import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
+import * as playlistData from "@/lib/domains/library/playlists/queries";
+import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import { validateApiToken } from "@/lib/data/api-tokens";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 

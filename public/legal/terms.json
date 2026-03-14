@@ -1,0 +1,221 @@
+{
+  "lastUpdated": "January 31, 2026",
+  "summary": "By using hearted., you agree to these terms. The basics:\n\nYou need a Spotify account to use the service\nThe service helps you explore your music — it doesn't guarantee perfect results\nCredits cost money; refunds aren't provided for used credits\nDon't abuse the service or use it to harm others\nYour account can be terminated for violating these terms",
+  "sections": [
+    {
+      "number": 1,
+      "title": "Using hearted.",
+      "content": [
+        {
+          "type": "sub-heading",
+          "text": "Account Requirements:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "A valid Spotify account is required",
+            "You must be at least 13 years old (or the minimum age in your country)",
+            "One account per person — no shared or automated accounts"
+          ]
+        },
+        {
+          "type": "sub-heading",
+          "text": "What hearted. Does:"
+        },
+        {
+          "type": "paragraph",
+          "text": "hearted. analyzes your liked songs using language models (AI) and suggests which playlists they might fit. The analyses are interpretations, not definitive truths. Music is personal — take the suggestions as starting points, not answers."
+        },
+        {
+          "type": "sub-heading",
+          "text": "What hearted. Doesn't Do:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Guarantee accuracy of any analysis",
+            "Modify your Spotify library without your explicit action",
+            "Store your Spotify password"
+          ]
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "title": "Credits & payments",
+      "content": [
+        {
+          "type": "sub-heading",
+          "text": "Free Tier:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "50 credits to start",
+            "3 credits earned monthly (up to 36 banked, expires after 1 year)",
+            "Only music analysis and playlist matching are available"
+          ]
+        },
+        {
+          "type": "sub-heading",
+          "text": "Purchasing Credits:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Credits are purchased through the platform",
+            "Prices are displayed before purchase",
+            "Credits expire after 1 year",
+            "Credits are delivered immediately upon purchase",
+            "By purchasing, you consent to immediate delivery and waive your 14-day withdrawal right",
+            "All credit purchases are final — no refunds"
+          ]
+        },
+        {
+          "type": "sub-heading",
+          "text": "Supporter Subscriptions:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Can be cancelled anytime",
+            "No refunds for the current billing period; access continues until period ends"
+          ]
+        },
+        {
+          "type": "sub-heading",
+          "text": "Price Changes:"
+        },
+        {
+          "type": "paragraph",
+          "text": "Prices may change. Existing credit balances remain valid. Subscription prices are locked for the current billing period."
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "title": "Acceptable use",
+      "content": [
+        {
+          "type": "sub-heading",
+          "text": "Don't:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Use automated tools to access the service",
+            "Use the service to harass, spam, or harm others",
+            "Violate Spotify's terms of service through hearted."
+          ]
+        },
+        {
+          "type": "sub-heading",
+          "text": "Do:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Use the service for personal music exploration",
+            "Report bugs or issues encountered",
+            "Respect other users if community features are added"
+          ]
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "title": "Content & intellectual property",
+      "content": [
+        {
+          "type": "definition-list",
+          "items": [
+            { "term": "Your Content", "description": "Your Spotify library remains yours. hearted. accesses it with your permission but doesn't claim ownership." }
+          ]
+        }
+      ]
+    },
+    {
+      "number": 5,
+      "title": "Disclaimers",
+      "content": [
+        {
+          "type": "definition-list",
+          "items": [
+            { "term": "\"As Is\" Service", "description": "hearted. is provided as-is, without warranties of any kind. There's no guarantee the service will be available, accurate, or error-free." },
+            { "term": "AI Limitations", "description": "Song analyses are AI-generated interpretations. They may be wrong, incomplete, or miss nuance. Use your own judgment." },
+            { "term": "Third-Party Services", "description": "hearted. depends on Spotify and AI providers. If those services change or become unavailable, hearted. functionality may be affected." }
+          ]
+        }
+      ]
+    },
+    {
+      "number": 6,
+      "title": "Limitation of liability",
+      "content": [
+        {
+          "type": "paragraph",
+          "text": "To the maximum extent permitted by law, hearted. isn't liable for:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Indirect, incidental, or consequential damages",
+            "Loss of data, profits, or goodwill",
+            "Service interruptions or errors"
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Total liability is limited to the amount paid for the service in the past 12 months."
+        }
+      ]
+    },
+    {
+      "number": 7,
+      "title": "Account termination",
+      "content": [
+        {
+          "type": "definition-list",
+          "items": [
+            { "term": "By You", "description": "Delete your account anytime. Personal data is removed per the Privacy Policy." },
+            { "term": "By hearted.", "description": "Accounts may be suspended or terminated for: Violating these terms, Abusing the service, Non-payment (for subscription accounts)" }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "If an account is terminated for violations, remaining credits may be forfeited."
+        }
+      ]
+    },
+    {
+      "number": 8,
+      "title": "Changes",
+      "content": [
+        {
+          "type": "paragraph",
+          "text": "Terms may be updated. Significant changes will be communicated via email before taking effect. Continued use after changes means acceptance of the new terms."
+        }
+      ]
+    },
+    {
+      "number": 9,
+      "title": "Governing law",
+      "content": [
+        {
+          "type": "paragraph",
+          "text": "These terms are governed by the laws of Portugal. Disputes will be resolved in the courts of Lisbon."
+        }
+      ]
+    },
+    {
+      "number": 10,
+      "title": "Contact",
+      "content": [
+        {
+          "type": "paragraph",
+          "text": "Questions about these terms? Reach out: __EMAIL__"
+        }
+      ]
+    }
+  ]
+}

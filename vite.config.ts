@@ -1,10 +1,11 @@
+import { spawn, type ChildProcess } from "node:child_process";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "url";
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 
 const isTest = process.env.VITEST === "true";
@@ -13,6 +14,49 @@ const isTest = process.env.VITEST === "true";
 if (isTest) {
 	const env = loadEnv("test", process.cwd(), "");
 	Object.assign(process.env, env);
+}
+
+function embeddingSidecarPlugin(): Plugin {
+	let child: ChildProcess | null = null;
+
+	return {
+		name: "embedding-sidecar",
+		configureServer(server) {
+			if (process.env.ML_PROVIDER !== "local") return;
+
+			const port = process.env.EMBEDDING_SERVER_PORT || "9847";
+			const baseUrl = `http://127.0.0.1:${port}`;
+
+			// Don't start if already running (e.g. user started it manually)
+			fetch(`${baseUrl}/health`, { signal: AbortSignal.timeout(1000) })
+				.then((res) => {
+					if (res.ok)
+						console.log(
+							"[Embedding Sidecar] Already running, skipping auto-start",
+						);
+				})
+				.catch(() => {
+					child = spawn("bun", ["scripts/embedding-server.ts"], {
+						stdio: "inherit",
+						cwd: process.cwd(),
+					});
+					child.on("error", (err) => {
+						console.error("[Embedding Sidecar] Failed to start:", err.message);
+						child = null;
+					});
+				});
+
+			const cleanup = () => {
+				if (child) {
+					child.kill();
+					child = null;
+				}
+			};
+			server.httpServer?.on("close", cleanup);
+			process.on("SIGINT", cleanup);
+			process.on("SIGTERM", cleanup);
+		},
+	};
 }
 
 const config = defineConfig({
@@ -41,6 +85,7 @@ const config = defineConfig({
 		},
 	},
 	plugins: [
+		embeddingSidecarPlugin(),
 		devtools(),
 		viteTsConfigPaths({
 			projects: ["./tsconfig.json"],

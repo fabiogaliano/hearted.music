@@ -1,0 +1,99 @@
+{
+  "id": 18,
+  "spotifyTrackId": "6DCZcSspjsKoFjzjrWoCdn",
+  "name": "God's Plan",
+  "artist": "Drake",
+  "album": "Scorpion",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b273f907de96b9a4fbc04accc0d5",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb4293385d324db8558179afd9",
+  "spotifyArtistId": "3TVXtAsR1Inumwj472S9r4",
+  "genres": [
+    "rap",
+    "hip-hop",
+    "rnb"
+  ],
+  "audioFeatures": {
+    "tempo": 77.169,
+    "energy": 0.449,
+    "valence": 0.357
+  },
+  "analysis": {
+    "headline": "A declaration of self-preservation, navigating fame's treacherous currents with an unshakeable belief in fate.",
+    "compound_mood": "Guarded Confidence",
+    "mood_description": "A defiant bounce carries heavy truths. The beat pulsates with a confident swagger, yet underneath lies a steady awareness of unseen dangers.",
+    "interpretation": "Moving through a world filled with envy and ill-will, accepting the burdens of fame while trusting in a higher purpose. It's about Drake's journey, his struggles, his belief in a pre-ordained path, and his relationship with loyalty, identity, and the constant threats that come with success. Despite the negativity, there's an unwavering conviction that he's exactly where he's meant to be.",
+    "themes": [
+      {
+        "name": "divine protection",
+        "description": "Believing in a higher purpose guiding one's path, even amidst challenges."
+      },
+      {
+        "name": "loyalty and rivalry",
+        "description": "The stark contrast between those who support and those who wish ill, defining one's inner circle against external threats."
+      },
+      {
+        "name": "toronto roots",
+        "description": "An unwavering connection to where it all began, feeding identity and purpose despite global fame."
+      },
+      {
+        "name": "legacy and mortality",
+        "description": "A quiet contemplation of one's impact and how one will be remembered, both during life and after."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Creeping paranoia",
+        "description": "Whispers of ill-will hang in the air, setting a tense stage as unseen forces gather against him."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Protective stance",
+        "description": "Trying to keep the peace while acknowledging the struggle and the constant threats to his well-being, contemplating how he'll be seen if he's gone."
+      },
+      {
+        "section": "Pre-Chorus",
+        "mood": "Unshakeable self-belief",
+        "description": "Rooting oneself in hometown pride and a sense of divine guidance, accepting flaws but moving forward with purpose and an eye on immortality."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Confident declaration",
+        "description": "Acknowledging the negativity surrounding him but standing firm in his path, empowered by his conviction that everything aligns with 'God's plan'."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Circles of trust",
+        "description": "Revealing the core relationships that make him, from his mother to his essential team, and the powerful alliances that keep him secure in his journey."
+      },
+      {
+        "section": "Outro",
+        "mood": "Resilient affirmation",
+        "description": "The same bad wishes return, met with an unyielding faith in the pre-ordained journey, his confidence echoing as the track fades."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I don't wanna die for them to miss me",
+        "insight": "Rejecting posthumous appreciation, demanding recognition and value now, in the present moment."
+      },
+      {
+        "line": "I only love my bed and my mama, I'm sorry",
+        "insight": "A raw admission of deeply personal, unwavering loyalties that eclipse all other relationships."
+      },
+      {
+        "line": "God's plan, God's plan",
+        "insight": "A mantra of destiny, an anchor in the face of chaos, an explanation for everything unfolding around him."
+      },
+      {
+        "line": "Hope I got some brothers that outlive me",
+        "insight": "A quiet, profound wish for his closest circle to endure beyond him, a hope for continuity through loyalty."
+      },
+      {
+        "line": "Without 40, Oli, there'd be no me",
+        "insight": "Humbly acknowledging the essential collaborators who built his world and continue to sustain it."
+      }
+    ],
+    "sonic_texture": "A sparse, booming beat provides the foundation, driven by deep 808s and a subtle, almost melancholic synth melody that loops consistently. The vocals sit front and center, delivered with a casual confidence over a track designed for rhythmic head nods."
+  }
+}

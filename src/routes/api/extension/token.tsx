@@ -9,7 +9,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
-import { requireAuthSession } from "@/lib/auth.server";
+import { requireAuthSession } from "@/lib/platform/auth/auth.server";
 import {
 	generateApiToken,
 	revokeAllTokensForAccount,

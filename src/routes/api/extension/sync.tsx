@@ -21,21 +21,22 @@ import {
 	extensionCorsPreflightResponse,
 	getExtensionCorsHeaders,
 } from "@/lib/server/extension-cors";
-import * as likedSongData from "@/lib/data/liked-song";
-import { PlaylistSyncService } from "@/lib/capabilities/sync/playlist-sync";
+import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
+import { PlaylistSyncService } from "@/lib/workflows/spotify-sync/playlist-sync";
 import {
 	initialSync,
 	incrementalSync,
 	runPhase,
-} from "@/lib/capabilities/sync/sync-helpers";
-import { getAuthSession } from "@/lib/auth.server";
+} from "@/lib/workflows/spotify-sync/sync-helpers";
+import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import { validateApiToken } from "@/lib/data/api-tokens";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { createJob } from "@/lib/data/jobs";
-import { updatePhaseJobIds } from "@/lib/data/preferences";
-import { emitItem, emitStatus } from "@/lib/jobs/progress/helpers";
-import { completeJob } from "@/lib/jobs/lifecycle";
-import type { PhaseJobIds } from "@/lib/jobs/progress/types";
+import { updatePhaseJobIds } from "@/lib/domains/library/accounts/preferences-queries";
+import { emitItem, emitStatus } from "@/lib/platform/jobs/progress/helpers";
+import { completeJob } from "@/lib/platform/jobs/lifecycle";
+import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
+import { runSongEnrichment } from "@/lib/workflows/enrichment-pipeline/orchestrator";
 import type {
 	SpotifyService,
 	SpotifyTrackDTO,
@@ -73,7 +74,7 @@ const SpotifyPlaylistDTOSchema = z.object({
 		name: z.string().optional(),
 		image_url: z.string().nullable().optional(),
 	}),
-	track_count: z.number(),
+	track_count: z.number().nullable(),
 	image_url: z.string().nullable(),
 });
 
@@ -379,6 +380,20 @@ export const Route = createFileRoute("/api/extension/sync")({
 				});
 				emitStatus(phaseJobIds.playlist_tracks, "completed");
 				await completeJob(phaseJobIds.playlist_tracks);
+
+				// Phase 4: Song-side enrichment only — sync does not trigger destination profiling or matching
+				try {
+					const enrichmentResult = await runSongEnrichment(accountId);
+
+					if (Result.isError(enrichmentResult)) {
+						console.error(
+							"[sync] Song enrichment bootstrap failed:",
+							enrichmentResult.error.message,
+						);
+					}
+				} catch (error) {
+					console.error("[sync] Song enrichment unexpected error:", error);
+				}
 
 				return Response.json(
 					{ ok: true, results, phaseJobIds },
