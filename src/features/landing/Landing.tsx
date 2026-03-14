@@ -13,7 +13,6 @@
  * - Pre-release: Shows waitlist email input for launch prep
  */
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { MatchesSection } from "@/features/matching/components/MatchesSection";
 import { SongSection } from "@/features/matching/components/SongSection";
 import {
@@ -230,7 +229,6 @@ export function Landing({
 	isReleased = true,
 }: LandingProps) {
 	const theme = useTheme();
-	const prefersReducedMotion = useReducedMotion();
 	const [songManifest] = useState(initialManifest);
 	const [songDetailsByTrackId, setSongDetailsByTrackId] = useState<
 		Record<string, LandingSongDetail>
@@ -355,48 +353,27 @@ export function Landing({
 							boxShadow: `0 1px 3px ${theme.text}08, 0 4px 12px ${theme.text}04`,
 						}}
 					>
-						<AnimatePresence mode="wait">
-							<motion.div
-								key={previewSongIndex}
-								className="grid gap-10 lg:grid-cols-[1.1fr_1fr]"
-								initial={prefersReducedMotion ? false : { opacity: 0, x: 24 }}
-								animate={{
-									opacity: 1,
-									x: 0,
-									transition: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
-								}}
-								exit={
-									prefersReducedMotion
-										? {}
-										: {
-												opacity: 0,
-												x: -24,
-												transition: {
-													duration: 0.18,
-													ease: [0.645, 0.045, 0.355, 1],
-												},
-											}
-								}
-							>
-								<SongSection
-									song={previewSong}
-									isExpanded={false}
-									metaVisible={true}
-									albumArtUrl={previewSongManifest.albumArtUrl}
-									isLoading={false}
-								/>
-								<MatchesSection
-									playlists={getPlaylistsForSong(
-										previewSongManifest.spotifyTrackId,
-									)}
-									addedTo={[]}
-									onAdd={() => {}}
-									onDismiss={handlePreviewDiscard}
-									onNext={handlePreviewNext}
-									isExpanded={false}
-								/>
-							</motion.div>
-						</AnimatePresence>
+						<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
+							<SongSection
+								song={previewSong}
+								isExpanded={false}
+								metaVisible={true}
+								albumArtUrl={previewSongManifest.albumArtUrl}
+								isLoading={false}
+								songKey={previewSongManifest.spotifyTrackId}
+							/>
+							<MatchesSection
+								playlists={getPlaylistsForSong(
+									previewSongManifest.spotifyTrackId,
+								)}
+								addedTo={[]}
+								onAdd={() => {}}
+								onDismiss={handlePreviewDiscard}
+								onNext={handlePreviewNext}
+								isExpanded={false}
+								songKey={previewSongManifest.spotifyTrackId}
+							/>
+						</div>
 					</div>
 				</div>
 			</section>
