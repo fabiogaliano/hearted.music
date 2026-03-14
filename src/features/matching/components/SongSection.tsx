@@ -1,5 +1,4 @@
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
-import type { Song } from "@/lib/data/mock-data";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
@@ -7,7 +6,11 @@ const COLLAPSED_ALBUM_SIZE = "min(100%, clamp(280px, 30vw, 560px))";
 const EXPANDED_ALBUM_SIZE = "clamp(220px, 18vw, 320px)";
 
 interface SongSectionProps {
-	song: Song;
+	song: {
+		name: string;
+		album: string;
+		artist: string;
+	};
 	isExpanded: boolean;
 	metaVisible: boolean;
 	albumArtUrl?: string;

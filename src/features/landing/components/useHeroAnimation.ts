@@ -74,8 +74,12 @@ export interface HeroAnimationRefs {
 }
 
 export interface HeroAnimationOptions {
-	/** Whether the background is ready (delays animation start) */
-	isBackgroundReady: boolean;
+	/** Whether the background is ready (retained for API compatibility) */
+	isBackgroundReady?: boolean;
+	/** Whether the wide desktop split layout is active */
+	isDesktopLayout: boolean;
+	/** Callback when the initial visual state has been applied */
+	onInitialStateApplied?: () => void;
 	/** Callback when animation reaches end (for hasRevealed state) */
 	onRevealComplete?: () => void;
 	/** Callback when animation leaves end */
@@ -196,17 +200,17 @@ export function useHeroAnimation(
 	refs: HeroAnimationRefs,
 	options: HeroAnimationOptions,
 ): HeroAnimationReturn {
-	const { isBackgroundReady, onRevealComplete, onRevealReverse } = options;
+	const {
+		isDesktopLayout,
+		onInitialStateApplied,
+		onRevealComplete,
+		onRevealReverse,
+	} = options;
 
 	useGSAP(
 		() => {
 			// SSR safety
 			if (typeof window === "undefined") return;
-
-			// Wait for background to be ready before starting scroll-driven animation.
-			// This prevents the timeline from running while WebGL/canvas is still initializing,
-			// which would cause elements to animate "under" an invisible initial state.
-			if (!isBackgroundReady) return;
 
 			const {
 				sectionRef,
@@ -234,20 +238,17 @@ export function useHeroAnimation(
 				return;
 			}
 
-			// Check for reduced motion preference
-			const prefersReducedMotion = window.matchMedia(
-				"(prefers-reduced-motion: reduce)",
-			).matches;
-			if (prefersReducedMotion) {
-				// Show final state immediately
-				if (logoRef.current) gsap.set(logoRef.current, { clearProps: "all" });
-				if (headlineRef.current)
-					gsap.set(headlineRef.current, {
-						maxWidth: "28rem",
-						justifyContent: "flex-start",
-						whiteSpace: "normal",
-						flexWrap: "wrap",
-					});
+			const applyDesktopStaticState = () => {
+				gsap.set(logoRef.current, {
+					clearProps: "x,y,scale,transformOrigin",
+				});
+				gsap.set(headlineRef.current, {
+					clearProps: "x,y,scale,transformOrigin,fontSize",
+					maxWidth: "28rem",
+					justifyContent: "flex-start",
+					whiteSpace: "normal",
+					flexWrap: "wrap",
+				});
 				if (backgroundRef.current)
 					gsap.set(backgroundRef.current, {
 						scaleX: 0.5,
@@ -258,24 +259,84 @@ export function useHeroAnimation(
 						scaleX: 2,
 						transformOrigin: "left center",
 					});
-				if (panelRef.current) gsap.set(panelRef.current, { opacity: 1 });
+				if (panelRef.current)
+					gsap.set(panelRef.current, { opacity: 1, y: 0, scale: 1 });
 				if (panelCurtainRef.current)
-					gsap.set(panelCurtainRef.current, { x: "100%" });
+					gsap.set(panelCurtainRef.current, {
+						x: "100%",
+						transformOrigin: "left center",
+					});
 				if (ctaRef.current) gsap.set(ctaRef.current, { opacity: 1, y: 0 });
 				if (subtextRef.current)
 					gsap.set(subtextRef.current, { opacity: 1, y: 0 });
 				if (heartRef.current)
-					gsap.set(heartRef.current, { width: 20, opacity: 1 });
-				if (navBtnRef.current) gsap.set(navBtnRef.current, { opacity: 1 });
+					gsap.set(heartRef.current, { width: 20, minWidth: 20, opacity: 1 });
+				if (navBtnRef.current)
+					gsap.set(navBtnRef.current, { clearProps: "opacity" });
 				if (scrollIndicatorRef.current)
 					gsap.set(scrollIndicatorRef.current, { opacity: 0 });
+				onInitialStateApplied?.();
 				onRevealComplete?.();
+			};
+
+			const applyNarrowStaticState = () => {
+				gsap.set(logoRef.current, {
+					clearProps: "x,y,scale,transformOrigin",
+				});
+				gsap.set(headlineRef.current, {
+					clearProps: "x,y,scale,transformOrigin,fontSize",
+					maxWidth: "none",
+					justifyContent: "flex-start",
+					whiteSpace: "normal",
+					flexWrap: "wrap",
+				});
+				if (backgroundRef.current)
+					gsap.set(backgroundRef.current, {
+						scaleX: 1,
+						transformOrigin: "left center",
+					});
+				if (backgroundInnerRef.current)
+					gsap.set(backgroundInnerRef.current, {
+						scaleX: 1,
+						transformOrigin: "left center",
+					});
+				if (panelRef.current)
+					gsap.set(panelRef.current, { opacity: 1, y: 0, scale: 1 });
+				if (panelCurtainRef.current)
+					gsap.set(panelCurtainRef.current, {
+						x: "100%",
+						transformOrigin: "left center",
+					});
+				if (ctaRef.current) gsap.set(ctaRef.current, { opacity: 1, y: 0 });
+				if (subtextRef.current)
+					gsap.set(subtextRef.current, { opacity: 1, y: 0 });
+				if (heartRef.current)
+					gsap.set(heartRef.current, { width: 20, minWidth: 20, opacity: 1 });
+				if (navBtnRef.current)
+					gsap.set(navBtnRef.current, { clearProps: "opacity" });
+				if (scrollIndicatorRef.current)
+					gsap.set(scrollIndicatorRef.current, { opacity: 0 });
+				onInitialStateApplied?.();
+				onRevealComplete?.();
+			};
+
+			// Check for reduced motion preference
+			const prefersReducedMotion = window.matchMedia(
+				"(prefers-reduced-motion: reduce)",
+			).matches;
+			if (prefersReducedMotion) {
+				if (isDesktopLayout) {
+					applyDesktopStaticState();
+				} else {
+					applyNarrowStaticState();
+				}
 				return;
 			}
 
-			// Match previous behavior: no scroll-driven hero on mobile.
-			const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
-			if (!isDesktop) return;
+			if (!isDesktopLayout) {
+				applyNarrowStaticState();
+				return;
+			}
 
 			ScrollTrigger.config({ ignoreMobileResize: true });
 
@@ -664,6 +725,7 @@ export function useHeroAnimation(
 
 			// Ensure the initial state is applied before any scroll events.
 			tl.progress(0);
+			onInitialStateApplied?.();
 
 			const invalidateTimeline = () => {
 				tl.invalidate();
@@ -722,10 +784,15 @@ export function useHeroAnimation(
 			window.addEventListener("keydown", handleKeyDown);
 
 			// Handle resize - recalculate morph positions
+			let resizeTimeout: number | null = null;
 			const handleResize = () => {
-				if (!logoRef.current || !headlineRef.current) return;
-				// ScrollTrigger.refresh() recalculates all positions and invalidates the timeline
-				ScrollTrigger.refresh();
+				if (resizeTimeout !== null) window.clearTimeout(resizeTimeout);
+				resizeTimeout = window.setTimeout(() => {
+					resizeTimeout = null;
+					if (!logoRef.current || !headlineRef.current) return;
+					// ScrollTrigger.refresh() recalculates all positions and invalidates the timeline
+					ScrollTrigger.refresh();
+				}, 120);
 			};
 
 			// Handle font load - fonts can shift layout
@@ -741,6 +808,7 @@ export function useHeroAnimation(
 			// Cleanup is handled automatically by useGSAP context
 			return () => {
 				isAlive = false; // Prevent font-load callback from running after unmount
+				if (resizeTimeout !== null) window.clearTimeout(resizeTimeout);
 				window.removeEventListener("resize", handleResize);
 				ScrollTrigger.removeEventListener("refreshInit", recalcMorphPositions);
 				ScrollTrigger.removeEventListener("refreshInit", invalidateTimeline);
@@ -758,7 +826,7 @@ export function useHeroAnimation(
 			};
 		},
 		{
-			dependencies: [isBackgroundReady],
+			dependencies: [isDesktopLayout],
 			revertOnUpdate: true, // Revert when dependencies change
 		},
 	);

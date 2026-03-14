@@ -1,0 +1,94 @@
+{
+  "id": 12,
+  "spotifyTrackId": "7lPN2DXiMsVn7XUKtOW1CS",
+  "name": "drivers license",
+  "artist": "Olivia Rodrigo",
+  "album": "SOUR",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b2738ffc294c1c4362e8472d14cd",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebe03a98785f3658f0b6461ec4",
+  "spotifyArtistId": "1McMsnEElThX1knmY4oliG",
+  "genres": [
+    "pop rock",
+    "pop",
+    "pop punk"
+  ],
+  "audioFeatures": {
+    "tempo": 72,
+    "energy": 0.38,
+    "valence": null
+  },
+  "analysis": {
+    "headline": "A devastating first heartbreak, navigating newfound freedom through a landscape of ghost memories and hollow promises.",
+    "compound_mood": "Angsty Longing",
+    "mood_description": "The sting of first heartbreak washes over you, cruising familiar streets that now feel utterly empty. Every memory plays on a loop, a stark contrast to the quiet car.",
+    "interpretation": "The agonizing collision of newfound freedom with crushing heartbreak. The open road, once a symbol of shared dreams, becomes a stark canvas for solitude and the painful realization that someone promised forever and then simply disappeared. It's a raw dive into the unfairness of one person moving on while the other is still deeply stuck in the past.",
+    "themes": [
+      {
+        "name": "first heartbreak",
+        "description": "The overwhelming pain and intense emotions that accompany the end of a very first significant love."
+      },
+      {
+        "name": "unequal healing",
+        "description": "The stark reality that one person moves on from a breakup far more easily and quickly than the other, leaving a profound sense of injustice."
+      },
+      {
+        "name": "betrayed promises",
+        "description": "The bitter realization that words of eternal commitment were meaningless, leaving behind a deep sense of broken trust."
+      },
+      {
+        "name": "suburban melancholy",
+        "description": "Finding familiar places and routines transformed into painful reminders of what was lost, amplifying feelings of loneliness."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Nostalgic ache",
+        "description": "A personal milestone, once imagined as a shared triumph, instantly turns into a crushing reminder of a profound absence. The joy of independence is overshadowed by searing memories."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Bitter insecurity",
+        "description": "The sting of a suspected new relationship brings up all the hidden self-doubt, zeroing in on a rival who seems to embody every insecurity."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Raw disbelief",
+        "description": "The shock of how someone could move on so easily feels like a personal betrayal, questioning every past promise. The road, once for two, is now a lonely stretch."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Crushing nostalgia",
+        "description": "Every street corner, every landmark, floods with memories, making it impossible to escape the ghost of the relationship. The love is still there, sharp and undeniable."
+      },
+      {
+        "section": "Outro",
+        "mood": "Quiet resignation",
+        "description": "The final, fading thought: the broken promise of 'forever' and the inescapable reality of driving alone, the pain settling into a quiet hum."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "But today, I drove through the suburbsCrying 'cause you weren't around",
+        "insight": "The stark contrast between a personal triumph and the immediate, overwhelming void left by a missing person."
+      },
+      {
+        "line": "And you're probably with that blonde girlWho always made me doubtShe's so much older than meShe's everything I'm insecure about",
+        "insight": "The painful, specific targeting of self-doubt, fueled by a perceived replacement."
+      },
+      {
+        "line": "Guess you didn't mean what you wrote in that song about me'Cause you said forever, now I drive alone past your street",
+        "insight": "The brutal clarity that words of devotion were empty, leaving behind a solitary future."
+      },
+      {
+        "line": "Can't drive past the places we used to go to'Cause I still fuckin' love you, babe",
+        "insight": "The raw, undeniable persistence of love, making every familiar place a fresh wound."
+      },
+      {
+        "line": "God, I'm so blue, know we're through",
+        "insight": "The heavy, all-encompassing weight of a realized ending, a deep sadness settling in."
+      }
+    ],
+    "sonic_texture": "Starts as a hushed, piano-led ballad, mirroring a whispered diary entry. It slowly swells with dramatic string arrangements and subtle percussion, building to an anthemic, almost explosive chorus. The bridge strips back, letting a raw, slightly strained vocal carry the full weight of emotion, before a final, powerful surge of sound."
+  }
+}

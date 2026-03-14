@@ -12,11 +12,15 @@
  * - Released (default): Shows "Login with Spotify" for live product
  * - Pre-release: Shows waitlist email input for launch prep
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MatchesSection } from "@/features/matching/components/MatchesSection";
 import { SongSection } from "@/features/matching/components/SongSection";
-import { useArtistImage } from "@/lib/hooks/useArtistImage";
-import { playlists, songs } from "@/lib/data/mock-data";
+import {
+	loadLandingSongDetail,
+	loadLandingSongsManifest,
+	type LandingSongDetail,
+	type LandingSongManifest,
+} from "@/lib/data/landing-songs";
 
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
@@ -24,17 +28,52 @@ import { LandingHero } from "./components/LandingHero";
 import { SpotifyLoginButton } from "./components/SpotifyLoginButton";
 import { WaitlistInput } from "./components/WaitlistInput";
 
-const albumArtMap: Record<string, string> = {};
-for (const song of songs) {
-	albumArtMap[song.spotifyTrackId] = song.albumArtUrl;
+const PRELOAD_MARGIN = 2;
+
+const landingPlaylists = [
+	{
+		id: 1,
+		name: "crying in the car",
+		reason: "for when you're driving and it hits you",
+		matchScore: 0.94,
+	},
+	{
+		id: 2,
+		name: "sweaty and happy",
+		reason: "movement that feels good",
+		matchScore: 0.89,
+	},
+	{
+		id: 3,
+		name: "feeling everything",
+		reason: "songs that meet you where you are",
+		matchScore: 0.82,
+	},
+	{
+		id: 4,
+		name: "easy does it",
+		reason: "a bit much for gentle mornings",
+		matchScore: 0.45,
+	},
+];
+
+function normalizeIndex(index: number, total: number): number {
+	if (total === 0) return 0;
+	return ((index % total) + total) % total;
 }
 
-const getAlbumArt = (
-	spotifyTrackId: string,
-	_size?: number,
-): string | undefined => {
-	return albumArtMap[spotifyTrackId];
-};
+function getWindowIndexes(
+	centerIndex: number,
+	total: number,
+	margin: number,
+): number[] {
+	if (total === 0) return [];
+	const indexes = new Set<number>();
+	for (let offset = -margin; offset <= margin; offset += 1) {
+		indexes.add(normalizeIndex(centerIndex + offset, total));
+	}
+	return [...indexes];
+}
 
 interface LandingProps {
 	/** Index of song to feature (default 0, can be randomized server-side) */
@@ -48,33 +87,110 @@ export function Landing({
 	isReleased = true,
 }: LandingProps) {
 	const theme = useTheme();
+	const [songManifest, setSongManifest] = useState<LandingSongManifest[]>([]);
+	const [songDetailsByTrackId, setSongDetailsByTrackId] = useState<
+		Record<string, LandingSongDetail>
+	>({});
 	const [selectedSongIndex, setSelectedSongIndex] = useState(featuredSongIndex);
-	const featuredSong = songs[selectedSongIndex] || songs[0];
-	const isLoading = false;
-	const albumArtUrl = getAlbumArt(featuredSong.spotifyTrackId, 300);
-	const { artistImageUrl: fetchedArtistImageUrl } = useArtistImage(
-		featuredSong.spotifyTrackId,
-	);
-	const artistImageUrl = fetchedArtistImageUrl ?? featuredSong.artistImageUrl;
-
-	// Preview song for Section 2 - separate state so it can cycle independently
 	const [previewSongIndex, setPreviewSongIndex] = useState(2);
-	const previewSong = songs[previewSongIndex] || songs[0];
+	const fetchedTrackIdsRef = useRef<Set<string>>(new Set());
+
+	useEffect(() => {
+		let cancelled = false;
+
+		const loadManifest = async () => {
+			try {
+				const manifest = await loadLandingSongsManifest();
+				if (cancelled) return;
+
+				setSongManifest(manifest);
+				if (manifest.length > 0) {
+					setSelectedSongIndex((current) =>
+						normalizeIndex(current, manifest.length),
+					);
+					setPreviewSongIndex((current) =>
+						normalizeIndex(current, manifest.length),
+					);
+				}
+			} catch {
+				if (cancelled) return;
+				setSongManifest([]);
+			}
+		};
+
+		void loadManifest();
+
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	useEffect(() => {
+		if (songManifest.length === 0) return;
+
+		const indexesToPrefetch = new Set<number>([
+			...getWindowIndexes(
+				selectedSongIndex,
+				songManifest.length,
+				PRELOAD_MARGIN,
+			),
+			...getWindowIndexes(
+				previewSongIndex,
+				songManifest.length,
+				PRELOAD_MARGIN,
+			),
+		]);
+
+		for (const index of indexesToPrefetch) {
+			const manifestSong = songManifest[index];
+			if (!manifestSong) continue;
+
+			const trackId = manifestSong.spotifyTrackId;
+			if (fetchedTrackIdsRef.current.has(trackId)) continue;
+
+			fetchedTrackIdsRef.current.add(trackId);
+			void loadLandingSongDetail(manifestSong.detailPath)
+				.then((detail) => {
+					setSongDetailsByTrackId((prev) => ({ ...prev, [trackId]: detail }));
+				})
+				.catch(() => {
+					fetchedTrackIdsRef.current.delete(trackId);
+				});
+		}
+	}, [songManifest, selectedSongIndex, previewSongIndex]);
+
+	const featuredSongManifest =
+		songManifest[selectedSongIndex] ?? songManifest[0] ?? null;
+	const previewSongManifest =
+		songManifest[previewSongIndex] ?? songManifest[0] ?? null;
+	const featuredSong = featuredSongManifest
+		? (songDetailsByTrackId[featuredSongManifest.spotifyTrackId] ??
+			featuredSongManifest)
+		: null;
+	const previewSong = previewSongManifest
+		? (songDetailsByTrackId[previewSongManifest.spotifyTrackId] ??
+			previewSongManifest)
+		: null;
+	const albumArtUrl = featuredSongManifest?.albumArtUrl;
+	const artistImageUrl = featuredSongManifest?.artistImageUrl;
 
 	const handlePrev = () => {
-		setSelectedSongIndex(
-			selectedSongIndex > 0 ? selectedSongIndex - 1 : songs.length - 1,
+		if (songManifest.length === 0) return;
+		setSelectedSongIndex((current) =>
+			normalizeIndex(current - 1, songManifest.length),
 		);
 	};
 	const handleNext = () => {
-		setSelectedSongIndex(
-			selectedSongIndex < songs.length - 1 ? selectedSongIndex + 1 : 0,
+		if (songManifest.length === 0) return;
+		setSelectedSongIndex((current) =>
+			normalizeIndex(current + 1, songManifest.length),
 		);
 	};
 
 	const handlePreviewNext = () => {
-		setPreviewSongIndex(
-			previewSongIndex < songs.length - 1 ? previewSongIndex + 1 : 0,
+		if (songManifest.length === 0) return;
+		setPreviewSongIndex((current) =>
+			normalizeIndex(current + 1, songManifest.length),
 		);
 	};
 	const handlePreviewDiscard = () => {
@@ -82,17 +198,30 @@ export function Landing({
 		handlePreviewNext();
 	};
 
+	if (!featuredSong || !previewSong) {
+		return (
+			<div
+				data-landing-scroll-root
+				className="min-h-screen overflow-x-hidden"
+				style={{ fontFamily: fonts.body, background: theme.bg }}
+			>
+				<section className="flex min-h-screen items-center justify-center px-8">
+					<p style={{ color: theme.textMuted }}>Loading songs...</p>
+				</section>
+			</div>
+		);
+	}
+
 	return (
 		<div
 			data-landing-scroll-root
-			className="h-screen snap-y snap-proximity overflow-y-auto overscroll-none"
+			className="min-h-screen overflow-x-hidden xl:h-screen xl:snap-y xl:snap-proximity xl:overflow-y-auto xl:overscroll-none"
 			style={{ fontFamily: fonts.body, background: theme.bg }}
 		>
 			<LandingHero
 				featuredSong={featuredSong}
 				albumArtUrl={albumArtUrl}
 				artistImageUrl={artistImageUrl}
-				isLoading={isLoading}
 				onPrev={handlePrev}
 				onNext={handleNext}
 				isReleased={isReleased}
@@ -129,11 +258,11 @@ export function Landing({
 								song={previewSong}
 								isExpanded={false}
 								metaVisible={true}
-								albumArtUrl={getAlbumArt(previewSong.spotifyTrackId, 640)}
-								isLoading={isLoading}
+								albumArtUrl={previewSongManifest?.albumArtUrl}
+								isLoading={false}
 							/>
 							<MatchesSection
-								playlists={playlists.slice(0, 3)}
+								playlists={landingPlaylists.slice(0, 3)}
 								addedTo={[]}
 								onAdd={() => {}}
 								onDismiss={handlePreviewDiscard}

@@ -1,4 +1,4 @@
-import type { Playlist } from "@/lib/data/mock-data";
+import type { Playlist } from "../types";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
@@ -81,7 +81,7 @@ export function MatchesSection({
 										>
 											{playlist.name}
 										</h3>
-										{playlist.description && (
+										{playlist.reason && (
 											<p
 												className="mt-0.5 text-xs"
 												style={{
@@ -89,7 +89,7 @@ export function MatchesSection({
 													color: theme.textMuted,
 												}}
 											>
-												{playlist.description}
+												{playlist.reason}
 											</p>
 										)}
 									</div>

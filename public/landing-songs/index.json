@@ -1,0 +1,324 @@
+{
+  "generatedAt": "2026-03-14T05:56:39.107Z",
+  "songs": [
+    {
+      "id": 1,
+      "spotifyTrackId": "2MvvoeRt8NcOXWESkxWn3g",
+      "name": "Ribs",
+      "artist": "Lorde",
+      "album": "Pure Heroine",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b273187331e276c898d39764cc98",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebaa69380a8d5203257611662d",
+      "spotifyArtistId": "163tK9Wjr9P9DmM0AVK7lm",
+      "genres": [
+        "indie pop",
+        "electronic",
+        "pop"
+      ],
+      "detailPath": "/landing-songs/2MvvoeRt8NcOXWESkxWn3g.json"
+    },
+    {
+      "id": 2,
+      "spotifyTrackId": "4OMJGnvZfDvsePyCwRGO7X",
+      "name": "Houdini",
+      "artist": "Dua Lipa",
+      "album": "Radical Optimism",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b273001d5706fddc72561f6488af",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb0c68f6c95232e716f0abee8d",
+      "spotifyArtistId": "6M2wZ9GZgrQXHCFfjv46we",
+      "genres": [
+        "pop",
+        "dance-pop",
+        "disco"
+      ],
+      "detailPath": "/landing-songs/4OMJGnvZfDvsePyCwRGO7X.json"
+    },
+    {
+      "id": 3,
+      "spotifyTrackId": "7DfFc7a6Rwfi3YQMRbDMau",
+      "name": "Thinkin Bout You",
+      "artist": "Frank Ocean",
+      "album": "channel ORANGE",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b2737aede4855f6d0d738012e2e5",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebee3123e593174208f9754fab",
+      "spotifyArtistId": "2h93pZq0e7k5yf4dywlkpM",
+      "genres": [
+        "neo-soul",
+        "rnb",
+        "soul"
+      ],
+      "detailPath": "/landing-songs/7DfFc7a6Rwfi3YQMRbDMau.json"
+    },
+    {
+      "id": 4,
+      "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+      "name": "Motion Sickness",
+      "artist": "Phoebe Bridgers",
+      "album": "Stranger in the Alps",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b27368b90c3b34c3ac22856ddab8",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb626686e362d30246e816cc5b",
+      "spotifyArtistId": "1r1uxoy19fzMxunt3ONAkG",
+      "genres": [
+        "indie folk",
+        "singer-songwriter",
+        "indie"
+      ],
+      "detailPath": "/landing-songs/5xo8RrjJ9CVNrtRg2S3B1R.json"
+    },
+    {
+      "id": 5,
+      "spotifyTrackId": "3HMY0r2BAdpasXMY8rseR0",
+      "name": "Too Sweet",
+      "artist": "Hozier",
+      "album": "Unheard",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b273be392334d99f82bc410cb239",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebad85a585103dfc2f3439119a",
+      "spotifyArtistId": "2FXC3k01G6Gw61bmprjgqS",
+      "genres": [
+        "folk",
+        "blues",
+        "rock"
+      ],
+      "detailPath": "/landing-songs/3HMY0r2BAdpasXMY8rseR0.json"
+    },
+    {
+      "id": 6,
+      "spotifyTrackId": "5FVd6KXrgO9B3JPmC8OPst",
+      "name": "Do I Wanna Know?",
+      "artist": "Arctic Monkeys",
+      "album": "AM",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b2734ae1c4c5c45aabe565499163",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb7da39dea0a72f581535fb11f",
+      "spotifyArtistId": "7Ln80lUS6He07XvHI8qqHH",
+      "genres": [
+        "indie rock",
+        "rock",
+        "indie"
+      ],
+      "detailPath": "/landing-songs/5FVd6KXrgO9B3JPmC8OPst.json"
+    },
+    {
+      "id": 7,
+      "spotifyTrackId": "1Qrg8KqiBpW07V7PNxwwwL",
+      "name": "Kill Bill",
+      "artist": "SZA",
+      "album": "SOS",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b273c5276ed6cb0287df8d9be07f",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebfd0a9fb6c252a3ba44079acf",
+      "spotifyArtistId": "7tYKF4w9nC0nq9CsPZTHyP",
+      "genres": [
+        "trap",
+        "rnb",
+        "pop"
+      ],
+      "detailPath": "/landing-songs/1Qrg8KqiBpW07V7PNxwwwL.json"
+    },
+    {
+      "id": 8,
+      "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+      "name": "Not Like Us",
+      "artist": "Kendrick Lamar",
+      "album": "GNX",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b2731ea0c62b2339cbf493a999ad",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb39ba6dcd4355c03de0b50918",
+      "spotifyArtistId": "2YZyLoL8N0Wb9xBt1NhZWg",
+      "genres": [
+        "trap",
+        "hip hop",
+        "hip-hop"
+      ],
+      "detailPath": "/landing-songs/6AI3ezQ4o3HUoP6Dhudph3.json"
+    },
+    {
+      "id": 9,
+      "spotifyTrackId": "7r9BUOSnekEjrkMhmxD6Ae",
+      "name": "Taxes",
+      "artist": "Geese",
+      "album": "3D Country",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b2735b131d745dafd8759e490e0c",
+      "artistImageUrl": "https://variety.com/wp-content/uploads/2023/11/0C2A4953-e1701219495791.jpg?w=1000&h=667&crop=1&resize=1360%2C907",
+      "spotifyArtistId": "4MoAOfV4ROWMfNHCFMj2BX",
+      "genres": [
+        "indie rock",
+        "rock",
+        "alt-country"
+      ],
+      "detailPath": "/landing-songs/7r9BUOSnekEjrkMhmxD6Ae.json"
+    },
+    {
+      "id": 10,
+      "spotifyTrackId": "6tNQ70jh4OwmPGpYy6R2o9",
+      "name": "Beautiful Things",
+      "artist": "Benson Boone",
+      "album": "Beautiful Things",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b273bef221ea02a821e7feeda9cf",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebb68234e1a673acc3d873d3e6",
+      "spotifyArtistId": "22wbnEMDvgVIAGdFeek6ET",
+      "genres": [
+        "pop rock",
+        "power pop"
+      ],
+      "detailPath": "/landing-songs/6tNQ70jh4OwmPGpYy6R2o9.json"
+    },
+    {
+      "id": 11,
+      "spotifyTrackId": "6dOtVTDdiauQNBQEDOtlAB",
+      "name": "BIRDS OF A FEATHER",
+      "artist": "Billie Eilish",
+      "album": "HIT ME HARD AND SOFT",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b27371d62ea7ea8a5be92d3c1f62",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb4a21b4760d2ecb7b0dcdc8da",
+      "spotifyArtistId": "6qqNVTkY8uBg9cP3Jd7DAH",
+      "genres": [
+        "pop",
+        "art pop",
+        "pop rock"
+      ],
+      "detailPath": "/landing-songs/6dOtVTDdiauQNBQEDOtlAB.json"
+    },
+    {
+      "id": 12,
+      "spotifyTrackId": "7lPN2DXiMsVn7XUKtOW1CS",
+      "name": "drivers license",
+      "artist": "Olivia Rodrigo",
+      "album": "SOUR",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b2738ffc294c1c4362e8472d14cd",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebe03a98785f3658f0b6461ec4",
+      "spotifyArtistId": "1McMsnEElThX1knmY4oliG",
+      "genres": [
+        "pop rock",
+        "pop",
+        "pop punk"
+      ],
+      "detailPath": "/landing-songs/7lPN2DXiMsVn7XUKtOW1CS.json"
+    },
+    {
+      "id": 13,
+      "spotifyTrackId": "1k2pQc5i348DCHwbn5KTdc",
+      "name": "Pink Pony Club",
+      "artist": "Chappell Roan",
+      "album": "The Rise and Fall of a Midwest Princess",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b27396fa88fb1789be437d5cb4b6",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebd258ecb0d66244e6300bcf64",
+      "spotifyArtistId": "7GlBOeep6PqTfFi59PTUUN",
+      "genres": [
+        "pop",
+        "electropop",
+        "synthpop"
+      ],
+      "detailPath": "/landing-songs/1k2pQc5i348DCHwbn5KTdc.json"
+    },
+    {
+      "id": 14,
+      "spotifyTrackId": "5hVghJ4KaYES3BFUATCYn0",
+      "name": "EARFQUAKE",
+      "artist": "Tyler, the Creator",
+      "album": "IGOR",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b27330a635de2bb0caa4e26f6abb",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebdf2728294ff77dd11eeb18fb",
+      "spotifyArtistId": "4V8LLVI7PbaPR0K2TGSxFF",
+      "genres": [
+        "rock",
+        "pop",
+        "alternative"
+      ],
+      "detailPath": "/landing-songs/5hVghJ4KaYES3BFUATCYn0.json"
+    },
+    {
+      "id": 15,
+      "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+      "name": "Blinding Lights",
+      "artist": "The Weeknd",
+      "album": "After Hours",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb9e528993a2820267b97f6aae",
+      "spotifyArtistId": "1Xyo4u8uXC1ZmMpatF05PJ",
+      "genres": [
+        "synthpop",
+        "synthwave",
+        "new wave"
+      ],
+      "detailPath": "/landing-songs/0VjIjW4GlUZAMYd2vXMi3b.json"
+    },
+    {
+      "id": 16,
+      "spotifyTrackId": "4Dvkj6JhhA12EX05fT7y2e",
+      "name": "As It Was",
+      "artist": "Harry Styles",
+      "album": "Harry's House",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b27382ce362511fb3d9dda6578ee",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebe309f8c3056a59f20d0968ca",
+      "spotifyArtistId": "6KImCVD70vtIoJWnq6nGn3",
+      "genres": [
+        "pop",
+        "pop rock",
+        "synthpop"
+      ],
+      "detailPath": "/landing-songs/4Dvkj6JhhA12EX05fT7y2e.json"
+    },
+    {
+      "id": 17,
+      "spotifyTrackId": "42UBPzRMh5yyz0EDPr6fr1",
+      "name": "Manchild",
+      "artist": "Sabrina Carpenter",
+      "album": "Manchild",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b273062c6573009fdebd43de443b",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb78e45cfa4697ce3c437cb455",
+      "spotifyArtistId": "74KM79TiuVKeVCqs8QtB0B",
+      "genres": [
+        "pop",
+        "dance-pop",
+        "indie pop"
+      ],
+      "detailPath": "/landing-songs/42UBPzRMh5yyz0EDPr6fr1.json"
+    },
+    {
+      "id": 18,
+      "spotifyTrackId": "6DCZcSspjsKoFjzjrWoCdn",
+      "name": "God's Plan",
+      "artist": "Drake",
+      "album": "Scorpion",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b273f907de96b9a4fbc04accc0d5",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb4293385d324db8558179afd9",
+      "spotifyArtistId": "3TVXtAsR1Inumwj472S9r4",
+      "genres": [
+        "rap",
+        "hip-hop",
+        "rnb"
+      ],
+      "detailPath": "/landing-songs/6DCZcSspjsKoFjzjrWoCdn.json"
+    },
+    {
+      "id": 19,
+      "spotifyTrackId": "3sK8wGT43QFpWrvNQsrQya",
+      "name": "DtMF",
+      "artist": "Bad Bunny",
+      "album": "Debí Tirar Más Fotos",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b273bbd45c8d36e0e045ef640411",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb81f47f44084e0a09b5f0fa13",
+      "spotifyArtistId": "4q3ewBCX7sLwd24euuV69X",
+      "genres": [
+        "latin",
+        "reggaeton",
+        "salsa"
+      ],
+      "detailPath": "/landing-songs/3sK8wGT43QFpWrvNQsrQya.json"
+    },
+    {
+      "id": 20,
+      "spotifyTrackId": "7ne4VBA60CxGM75vw0EYad",
+      "name": "That's So True",
+      "artist": "Gracie Abrams",
+      "album": "The Secret of Us (Deluxe)",
+      "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b2731dac3694b3289cd903cb3acf",
+      "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebf6d51e6f5342d2d363220920",
+      "spotifyArtistId": "4tuJ0bMpJh08umKkEXKUI5",
+      "genres": [
+        "indie pop",
+        "folk",
+        "pop"
+      ],
+      "detailPath": "/landing-songs/7ne4VBA60CxGM75vw0EYad.json"
+    }
+  ]
+}

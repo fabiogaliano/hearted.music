@@ -1,0 +1,99 @@
+{
+  "id": 4,
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "name": "Motion Sickness",
+  "artist": "Phoebe Bridgers",
+  "album": "Stranger in the Alps",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b27368b90c3b34c3ac22856ddab8",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb626686e362d30246e816cc5b",
+  "spotifyArtistId": "1r1uxoy19fzMxunt3ONAkG",
+  "genres": [
+    "indie folk",
+    "singer-songwriter",
+    "indie"
+  ],
+  "audioFeatures": {
+    "tempo": 107.021,
+    "energy": 0.546,
+    "valence": 0.623
+  },
+  "analysis": {
+    "headline": "Caught in the dizzying aftermath of a toxic love, grappling with conflicting feelings and the struggle to break free from a haunting past.",
+    "compound_mood": "Turbulent Clarity",
+    "mood_description": "It's a bittersweet sway, a gentle rhythm that carries sharp, stinging words. Feels like dancing through a memory, trying to shake off a persistent unease.",
+    "interpretation": "The disorienting aftermath of a toxic relationship, where the line between missing and resenting blurs into a constant state of emotional whiplash. It’s a raw, unflinching look at the insidious ways an abuser's influence lingers, making the simple act of moving on feel like an impossible battle against one's own internal landscape.",
+    "themes": [
+      {
+        "name": "emotional whiplash",
+        "description": "Being pulled in opposite directions by conflicting feelings after a breakup."
+      },
+      {
+        "name": "unshakeable past",
+        "description": "The persistent shadow of a manipulative relationship, even after it's over."
+      },
+      {
+        "name": "asymmetrical power",
+        "description": "The dynamic of an older partner using their position to control and diminish."
+      },
+      {
+        "name": "reclaiming self",
+        "description": "The painful, ongoing effort to detach and find emotional independence."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Opening Confession",
+        "mood": "Conflicted, Blunt",
+        "description": "It starts with a jarring honesty, laying bare the contradictory feelings of hate and longing that blur together after a painful split. A quiet bitterness surfaces, recalling past manipulations and dismissals."
+      },
+      {
+        "section": "Dizzying Revelation",
+        "mood": "Disoriented, Overwhelmed",
+        "description": "The central image arrives, a feeling of being constantly off-kilter and nauseated by the emotional turbulence, and a desperate plea to escape the suffocating presence that no scream can drown out."
+      },
+      {
+        "section": "Distant Observation",
+        "mood": "Detached, Regretful",
+        "description": "Stepping back, a clear view of the ex's chaotic self-destruction emerges, bringing a sense of gladness for having escaped, yet still a quiet sorrow for how everything imploded."
+      },
+      {
+        "section": "Lingering Irritation",
+        "mood": "Frustrated, Determined",
+        "description": "The emotional sickness persists, now tinged with specific annoyances and a growing resolve to actively fight back against the pervasive presence, signaling a move from passive suffering to active resistance."
+      },
+      {
+        "section": "Foundational Wound",
+        "mood": "Stark, Exposing",
+        "description": "A chilling truth surfaces, revealing the callous, dismissive way the relationship began, driven by the ex's boredom and exploiting a significant age gap."
+      },
+      {
+        "section": "Hope for Release",
+        "mood": "Yearning, Surrendering",
+        "description": "The struggle is reframed as an addiction, with a yearning to \"stay clean\" and live without the toxic influence, culminating in a desire to simply let go and find peace within the overwhelming sound."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I hate you for what you didAnd I miss you like a little kid",
+        "insight": "The paralyzing confusion of feeling intense contradictory emotions simultaneously."
+      },
+      {
+        "line": "I faked it every time, but that's alrightI can hardly feel anything",
+        "insight": "The emotional numbness that results from a relationship built on pretense and a desperate need for connection."
+      },
+      {
+        "line": "I have emotional motion sicknessSomebody roll the windows down",
+        "insight": "The feeling of constant disequilibrium and nausea caused by unresolved emotional turmoil."
+      },
+      {
+        "line": "You were in a band when I was born",
+        "insight": "The unsettling revelation of a vast age and power disparity that underpins the manipulation."
+      },
+      {
+        "line": "And I wanna know what would happenIf I surrender to the sound",
+        "insight": "A desperate longing for release, whether through escape or by fully embracing the chaos."
+      }
+    ],
+    "sonic_texture": "A warm, acoustic strumming carries a steady, unhurried rhythm, providing a soft bed for a clear, intimate vocal. There's a clean, open quality, like a breath taken in a quiet room, letting every word land with soft impact."
+  }
+}

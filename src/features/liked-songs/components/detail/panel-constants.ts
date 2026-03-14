@@ -45,26 +45,26 @@ export const ANIMATION_TIMING = {
 export const mockPlaylists = [
 	{
 		id: 1,
-		name: "Late Night Feels",
+		name: "crying in the car",
 		matchScore: 0.94,
-		reason: "Moody and introspective — made for late night thoughts",
+		reason: "for when you're driving and it hits you",
 	},
 	{
 		id: 2,
-		name: "Soul & Groove",
+		name: "sweaty and happy",
 		matchScore: 0.89,
-		reason: "The groove and warmth fit right in",
+		reason: "movement that feels good",
 	},
 	{
 		id: 3,
-		name: "Relationship Therapy",
+		name: "feeling everything",
 		matchScore: 0.82,
-		reason: "Emotionally resonant — perfect for processing",
+		reason: "songs that meet you where you are",
 	},
 	{
 		id: 4,
-		name: "Morning Coffee",
+		name: "easy does it",
 		matchScore: 0.45,
-		reason: "A bit too intense for easy mornings",
+		reason: "a bit much for gentle mornings",
 	},
 ];

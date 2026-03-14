@@ -1,0 +1,90 @@
+{
+  "id": 10,
+  "spotifyTrackId": "6tNQ70jh4OwmPGpYy6R2o9",
+  "name": "Beautiful Things",
+  "artist": "Benson Boone",
+  "album": "Beautiful Things",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b273bef221ea02a821e7feeda9cf",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebb68234e1a673acc3d873d3e6",
+  "spotifyArtistId": "22wbnEMDvgVIAGdFeek6ET",
+  "genres": [
+    "pop rock",
+    "power pop"
+  ],
+  "audioFeatures": {
+    "tempo": 105.029,
+    "energy": 0.471,
+    "valence": 0.219
+  },
+  "analysis": {
+    "headline": "The joyful terror of finally having everything you ever wanted.",
+    "compound_mood": "Precarious Joy",
+    "mood_description": "A warm embrace that tightens into a desperate grip. The comfort of love is constantly shadowed by the chilling thought of its disappearance.",
+    "interpretation": "The profound fear that accompanies genuine happiness. It's the human tendency to brace for impact even when everything is going right, convinced that good fortune is merely borrowed, and every beautiful thing is a ticking clock.",
+    "themes": [
+      {
+        "name": "fragile happiness",
+        "description": "Finding contentment only to be overwhelmed by the fear of losing it all."
+      },
+      {
+        "name": "anticipatory grief",
+        "description": "Living in the present while already mourning a potential future loss."
+      },
+      {
+        "name": "divine uncertainty",
+        "description": "Acknowledging blessings from a higher power while fearing their arbitrary withdrawal."
+      },
+      {
+        "name": "desperate dependence",
+        "description": "Clinging to a person or feeling as the only source of sanity and peace."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Warm gratitude",
+        "description": "Settling into a life of unexpected peace, counting blessings and feeling a rare sense of completeness."
+      },
+      {
+        "section": "Pre-Chorus",
+        "mood": "Rising dread",
+        "description": "A quiet tremor of fear begins to surface, a whisper of 'don't lose this' that interrupts the contentment."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Desperate plea",
+        "description": "The fear breaks through, an urgent, almost panicked begging for things to stay just as they are."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Lingering anxiety",
+        "description": "Even in sanity and renewed faith, the worry persists, a constant shadow over the discovered happiness."
+      },
+      {
+        "section": "Chorus (Reprise)",
+        "mood": "Intensified longing",
+        "description": "The plea returns, louder, more fervent, a desperate grip on what feels precious and fragile."
+      },
+      {
+        "section": "Outro",
+        "mood": "Unresolved yearning",
+        "description": "The plea softens but doesn't resolve, fading with the heavy weight of an unanswered prayer, leaving the uncertainty hanging."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "But I know the things He gives me, He can take away",
+        "insight": "The unsettling vulnerability that comes with divine blessings, knowing they are not guaranteed."
+      },
+      {
+        "line": "But there's no man as terrified as the man who stands to lose you",
+        "insight": "The heaviest burden isn't absence, it's the constant threat of it when you have everything to lose."
+      },
+      {
+        "line": "If everything's good and it's great, why do I sit and wait 'til it's gone?",
+        "insight": "The self-sabotage of happiness, always anticipating its end instead of living in the present joy."
+      }
+    ],
+    "sonic_texture": "A surging pop-rock anthem that builds from heartfelt confession to a soaring, pleading cry. The sound is big and open, driven by strong vocals and a steady, building rhythm, but carries an undercurrent of tension beneath its power."
+  }
+}

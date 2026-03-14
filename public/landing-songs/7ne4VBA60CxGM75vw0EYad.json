@@ -1,0 +1,94 @@
+{
+  "id": 20,
+  "spotifyTrackId": "7ne4VBA60CxGM75vw0EYad",
+  "name": "That's So True",
+  "artist": "Gracie Abrams",
+  "album": "The Secret of Us (Deluxe)",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b2731dac3694b3289cd903cb3acf",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebf6d51e6f5342d2d363220920",
+  "spotifyArtistId": "4tuJ0bMpJh08umKkEXKUI5",
+  "genres": [
+    "indie pop",
+    "folk",
+    "pop"
+  ],
+  "audioFeatures": {
+    "tempo": 108.548,
+    "energy": 0.808,
+    "valence": 0.372
+  },
+  "analysis": {
+    "headline": "The messy, tangled knot of jealousy and self-awareness after an old flame moves on.",
+    "compound_mood": "Sardonic Resentment",
+    "mood_description": "The quick pace keeps the anger moving, but there's a dull ache underneath all the sharp edges.",
+    "interpretation": "The bewildering experience of watching an ex move on, where old wounds resurface, and the messy tangle of jealousy, fascination, and self-awareness creates a whirlwind of feelings. It's a battle to seem cool and indifferent when every move is felt, analyzed, and sometimes even oddly admired.",
+    "themes": [
+      {
+        "name": "vicarious observation",
+        "description": "Peering into a past life, almost inhabiting the new relationship from a distance."
+      },
+      {
+        "name": "unresolved feelings",
+        "description": "The lingering impact of a past relationship, proving it's not truly over."
+      },
+      {
+        "name": "performative indifference",
+        "description": "The struggle to project nonchalance while battling intense internal emotions."
+      },
+      {
+        "name": "relational echo",
+        "description": "Seeing a new relationship mirror the old one, making it harder to move on."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Watching from the outside",
+        "mood": "Obsessive curiosity",
+        "description": "Peering into a past life, replaying old hurts while analyzing the new setup with a detached, yet deeply invested, gaze."
+      },
+      {
+        "section": "The warning sign",
+        "mood": "Conflicted advice",
+        "description": "A sharp realization about the ex's character turns into a sudden urge to warn the new person, quickly followed by the unsettling recognition of a shared, familiar scene."
+      },
+      {
+        "section": "Internal battlefield",
+        "mood": "Flickering emotions",
+        "description": "A chaotic swirl of emotions erupts, bouncing between jealous comparison, reluctant admiration for the new person, and a desperate struggle to maintain some sense of self, culminating in a blunt confession of hate."
+      },
+      {
+        "section": "Reckoning with ghosts",
+        "mood": "Defiant haunting",
+        "description": "The past floods back, a vivid memory of heartbreak and feeling utterly lost, now channeling into a fierce, almost vengeful declaration of lingering presence and a fight that isn't quite over."
+      },
+      {
+        "section": "Bitter acceptance",
+        "mood": "Weary dismissal",
+        "description": "Returning to the core truth: the ex is just another ordinary guy, and the drama isn't worth the emotional energy, settling into a resigned, almost bored dismissal."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Living in your glass house, I'm outside, uh",
+        "insight": "The vulnerable feeling of being exposed while simultaneously being the outsider looking in on a situation."
+      },
+      {
+        "line": "Smiling through it all, yeah, that's my life",
+        "insight": "The forced performance of happiness despite deep internal pain and heartbreak."
+      },
+      {
+        "line": "But I think I like her, she's so fun Wait, I think I hate her, I'm not that evolved, I'm sorry",
+        "insight": "The raw, honest contradiction of human feelings, where empathy and resentment clash within a single thought."
+      },
+      {
+        "line": "Remember how I died when you started walking?",
+        "insight": "The profound, visceral impact of being left behind, a feeling of annihilation and complete loss."
+      },
+      {
+        "line": "But I know what I know and you're just another dude",
+        "insight": "The ultimate dismissal, shrinking the ex from a world-shattering figure to someone utterly ordinary and unremarkable."
+      }
+    ],
+    "sonic_texture": "A brisk, driving rhythm section forms the backbone, with sharp, clear vocals cutting through the mix. The production is clean and energetic, feeling almost like a pop-punk track filtered through an indie-pop lens, all while maintaining a slight edge of raw, unpolished feeling."
+  }
+}

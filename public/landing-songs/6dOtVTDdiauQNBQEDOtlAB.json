@@ -1,0 +1,90 @@
+{
+  "id": 11,
+  "spotifyTrackId": "6dOtVTDdiauQNBQEDOtlAB",
+  "name": "BIRDS OF A FEATHER",
+  "artist": "Billie Eilish",
+  "album": "HIT ME HARD AND SOFT",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b27371d62ea7ea8a5be92d3c1f62",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb4a21b4760d2ecb7b0dcdc8da",
+  "spotifyArtistId": "6qqNVTkY8uBg9cP3Jd7DAH",
+  "genres": [
+    "pop",
+    "art pop",
+    "pop rock"
+  ],
+  "audioFeatures": {
+    "tempo": 104.978,
+    "energy": 0.507,
+    "valence": 0.438
+  },
+  "analysis": {
+    "headline": "A desperate promise of eternal love, fighting against self-doubt and the fleeting nature of forever.",
+    "compound_mood": "Insistent Devotion",
+    "mood_description": "A bright, pulsing rhythm carries a voice caught between declarations of forever and the quiet anxieties that whisper 'might not be long'. You're dancing, but the weight of absolute commitment presses down.",
+    "interpretation": "Love's most absolute promises are made against the backdrop of its inherent fragility. It's a plea for unwavering commitment, not just from one person to another, but also an internal battle to accept such profound connection after a history of independence. The intensity of feeling is almost overwhelming, revealing the vulnerability hidden within such fierce devotion, especially when one partner struggles to see their own worth.",
+    "themes": [
+      {
+        "name": "eternal devotion",
+        "description": "An unyielding vow to love until death, despite any obstacles."
+      },
+      {
+        "name": "overcoming self-doubt",
+        "description": "One person's struggle to accept their beloved's adoration, convinced they aren't worthy."
+      },
+      {
+        "name": "surrendering independence",
+        "description": "Acknowledging that past beliefs about being better alone have been shattered by this profound connection."
+      },
+      {
+        "name": "the fragility of forever",
+        "description": "The acceptance that even the deepest love can't control fate or guarantee endless time, yet committing anyway."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro/Verse 1",
+        "mood": "Desperate Vow",
+        "description": "A quiet, almost hesitant start bursts into a fiercely personal promise of love, pledging devotion 'til the grave. The conviction is absolute, even if a little frightening in its intensity."
+      },
+      {
+        "section": "Refrain/Pre-Chorus/Chorus",
+        "mood": "Unshakeable Truth",
+        "description": "The melody swells with a newfound certainty, proclaiming an unbreakable bond. It's a defiant rejection of past solitude, acknowledging the unpredictability of time but doubling down on an 'even better' forever."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Tender Frustration",
+        "description": "A shift in focus, revealing the loved one's struggle to accept such adoration. There's a gentle plea for them to see themselves through loving eyes, mixed with a touch of exasperation at their self-doubt."
+      },
+      {
+        "section": "Pre-Chorus/Chorus (Reprise)",
+        "mood": "Reaffirming Love",
+        "description": "The deep emotions return, the initial uncertainty about crying now a clear expression of overwhelming love. The desire to never say goodbye echoes the earlier vows, cementing the commitment."
+      },
+      {
+        "section": "Post-Chorus",
+        "mood": "Inescapable Connection",
+        "description": "A dreamy, almost fated feeling settles in, recognizing a soul-deep bond from another life. It's the ultimate confirmation, closing with a playful demand for the beloved to simply accept this undeniable love."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "If you go, I'm goin' too",
+        "insight": "The absolute conviction that separation is not an option, erasing the self without the other."
+      },
+      {
+        "line": "I said I'd never think I wasn't better alone",
+        "insight": "A profound surrender of deeply held beliefs about solitude, replaced by an undeniable need for connection."
+      },
+      {
+        "line": "Say you wanna quit, don't be stupid",
+        "insight": "A moment of gentle exasperation mixed with fierce protection, refusing to let the loved one's self-doubt sabotage what's real."
+      },
+      {
+        "line": "I knew you in another life",
+        "insight": "The feeling of a predestined connection, a recognition that transcends time and space."
+      }
+    ],
+    "sonic_texture": "Smooth, pulsing pop with a subtle electronic shimmer. The bassline is warm and inviting, carrying a steady, danceable groove. Vocals are intimate and layered, sometimes airy, sometimes direct, sitting comfortably over a clean, understated production that foregrounds the melody and emotion."
+  }
+}
