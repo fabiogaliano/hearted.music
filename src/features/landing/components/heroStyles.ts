@@ -61,12 +61,7 @@ export const heroStyles = `
 	}
 
 	.hero-background {
-		will-change: transform;
-	}
-
-	.hero-background-inner {
-		will-change: transform;
-		backface-visibility: hidden;
+		will-change: clip-path;
 	}
 
 	.hero-panel {
@@ -76,6 +71,14 @@ export const heroStyles = `
 	.hero-panel-curtain {
 		will-change: transform;
 		backface-visibility: hidden;
+	}
+
+	/* ─────────────────────────────────────────────────────────────────
+	   FLUID FONT SIZES (desktop)
+	   ───────────────────────────────────────────────────────────────── */
+	@media (min-width: 1280px) {
+		.hero-headline { font-size: clamp(3rem, 3.5vw, 4.5rem); }
+		.hero-logo { font-size: clamp(1.25rem, 1.5vw, 2rem); }
 	}
 
 	/* ─────────────────────────────────────────────────────────────────
@@ -100,9 +103,7 @@ export const heroStyles = `
 		}
 		.hero-background {
 			will-change: auto;
-		}
-		.hero-background-inner {
-			will-change: auto;
+			clip-path: none !important;
 		}
 		.hero-panel {
 			will-change: auto;
@@ -143,15 +144,12 @@ export const heroStyles = `
 			white-space: normal !important;
 		}
 		.hero-logo-heart {
-			width: 20px !important;
-			min-width: 20px !important;
+			width: 1.25rem !important;
+			min-width: 1.25rem !important;
 			opacity: 1 !important;
 		}
 		.hero-background {
-			transform: none !important;
-		}
-		.hero-background-inner {
-			transform: none !important;
+			clip-path: none !important;
 		}
 		.hero-panel {
 			opacity: 1 !important;

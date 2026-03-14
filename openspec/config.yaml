@@ -1,7 +1,7 @@
 schema: spec-driven
 
 context: |
-  Hearted (liked.music) — web app that reveals what your Liked Songs are really about.
+  Hearted (hearted.music) — web app that reveals what your Liked Songs are really about.
   Sorts Spotify liked songs into playlists via AI analysis + matching.
 
   Tech: TanStack Start, React 19, Tailwind v4, Zod v4, TypeScript 5.7, Biome, Vitest

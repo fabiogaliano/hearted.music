@@ -1,0 +1,73 @@
+{
+  "sections": [
+    {
+      "title": "Getting Started",
+      "items": [
+        {
+          "q": "How do I sign up?",
+          "a": "Sign in with your Spotify account. hearted. uses the secure Spotify login, so your password is never seen or stored."
+        },
+        {
+          "q": "What Spotify data do you access?",
+          "a": "Your music library and basic profile info — mostly to display on your hearted. profile. Permission to add songs to your playlists is also requested, but only used when you ask."
+        },
+        {
+          "q": "Does Hearted change my playlists?",
+          "a": "Only when you explicitly ask. When you match a song to a playlist, you tap the button. Tracks are never added, removed, or reordered on your behalf — every change is your choice."
+        }
+      ]
+    },
+    {
+      "title": "Platforms & Integrations",
+      "items": [
+        {
+          "q": "Why only Spotify (for now)?",
+          "a": "Spotify is the most used platform, and therefore where most Liked Songs libraries exist. Soon, Last.fm will also be able to be linked to your account. Other music platforms might be implemented if there's enough people showing interest."
+        }
+      ]
+    },
+    {
+      "title": "How It Works",
+      "items": [
+        {
+          "q": "How does song analysis work?",
+          "a": "hearted. reads lyrics and examines audio characteristics, then uses language models (AI) to offer an interpretation. It's a machine making sense of something deeply human — think of it as possibilities to explore, not answers set in stone."
+        },
+        {
+          "q": "How does playlist matching work?",
+          "a": "A profile is built for each playlist based on the description you give it and the songs already in it. Then your liked songs are compared to find where they'd naturally fit."
+        }
+      ]
+    },
+    {
+      "title": "Pricing",
+      "items": [
+        {
+          "q": "Is Hearted free?",
+          "a": "There's a free tier: 50 song analyses to start, plus 3 credits every month. Sadly, running the service has real costs that can grow quickly depending on library size."
+        },
+        {
+          "q": "What are credits?",
+          "a": "Credits are spent on analysis only — songs, playlists, or your taste profile. Syncing your library and adding songs to playlists is always free."
+        },
+        {
+          "q": "What's the Supporter plan?",
+          "a": "Credits are pay-per-usage — the cheapest option if you just want to explore your library occasionally. But even when no one is analyzing, there are costs to keep the website running (hosting, domains, infrastructure). The Supporter plan helps cover those and keeps the project alive long-term. If you believe in hearted., it's a way to be part of it."
+        },
+        {
+          "q": "Do Supporters get anything extra?",
+          "a": "Feedback and feature requests are heard directly, plus early access to new features and priority support."
+        }
+      ]
+    },
+    {
+      "title": "Account",
+      "items": [
+        {
+          "q": "Can I delete my account?",
+          "a": "Yes, anytime. All your personal data goes with it."
+        }
+      ]
+    }
+  ]
+}

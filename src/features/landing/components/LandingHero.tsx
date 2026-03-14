@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
 import {
 	HeartRippleBackground,
@@ -37,11 +37,6 @@ export function LandingHero({
 	const theme = useTheme();
 	const likedSong = toLikedSong(featuredSong);
 	const [isBackgroundReady, setIsBackgroundReady] = useState(false);
-	const [isDesktopLayout, setIsDesktopLayout] = useState(() =>
-		typeof window !== "undefined"
-			? window.matchMedia("(min-width: 1280px)").matches
-			: false,
-	);
 	const [isHeroVisualReady, setIsHeroVisualReady] = useState(false);
 	const [hasRevealed, setHasRevealed] = useState(false);
 
@@ -51,7 +46,6 @@ export function LandingHero({
 	const logoRef = useRef<HTMLHeadingElement>(null);
 	const headlineRef = useRef<HTMLHeadingElement>(null);
 	const backgroundRef = useRef<HTMLDivElement>(null);
-	const backgroundInnerRef = useRef<HTMLDivElement>(null);
 	const panelRef = useRef<HTMLDivElement>(null);
 	const panelCurtainRef = useRef<HTMLDivElement>(null);
 	const ctaRef = useRef<HTMLDivElement>(null);
@@ -59,28 +53,8 @@ export function LandingHero({
 	const heartRef = useRef<HTMLSpanElement>(null);
 	const navBtnRef = useRef<HTMLButtonElement>(null);
 	const scrollIndicatorRef = useRef<HTMLDivElement>(null);
-
-	useEffect(() => {
-		if (typeof window === "undefined") return;
-
-		const mediaQuery = window.matchMedia("(min-width: 1280px)");
-		const handleChange = () => {
-			if (mediaQuery.matches !== isDesktopLayout) {
-				setIsHeroVisualReady(false);
-				setIsDesktopLayout(mediaQuery.matches);
-			}
-		};
-
-		handleChange();
-
-		if (typeof mediaQuery.addEventListener === "function") {
-			mediaQuery.addEventListener("change", handleChange);
-			return () => mediaQuery.removeEventListener("change", handleChange);
-		}
-
-		mediaQuery.addListener(handleChange);
-		return () => mediaQuery.removeListener(handleChange);
-	}, [isDesktopLayout]);
+	const logoMarkerRef = useRef<HTMLDivElement>(null);
+	const headlineMarkerRef = useRef<HTMLDivElement>(null);
 
 	// Initialize GSAP ScrollTrigger animation
 	useHeroAnimation(
@@ -90,7 +64,6 @@ export function LandingHero({
 			logoRef,
 			headlineRef,
 			backgroundRef,
-			backgroundInnerRef,
 			panelRef,
 			panelCurtainRef,
 			ctaRef,
@@ -98,10 +71,11 @@ export function LandingHero({
 			heartRef,
 			navBtnRef,
 			scrollIndicatorRef,
+			logoMarkerRef,
+			headlineMarkerRef,
 		},
 		{
 			isBackgroundReady: true,
-			isDesktopLayout,
 			onInitialStateApplied: () => setIsHeroVisualReady(true),
 			onRevealComplete: () => setHasRevealed(true),
 			onRevealReverse: () => setHasRevealed(false),
@@ -171,14 +145,6 @@ export function LandingHero({
 		<>
 			<style>{heroStyles}</style>
 
-			{/* ───────────────────────────────────────────────────────────────────
-			    HERO SECTION - Cinematic Morph Reveal with GSAP ScrollTrigger
-
-			    Structure for GSAP pin:
-			    - Section acts as trigger (200vh via GSAP pinSpacing)
-			    - Pinned content stays fixed during scroll
-			    - GSAP animates all morph elements based on scroll progress
-			    ─────────────────────────────────────────────────────────────────── */}
 			<section
 				ref={sectionRef}
 				className="hero-section relative min-h-screen snap-start snap-always xl:min-h-[300vh]"
@@ -188,28 +154,52 @@ export function LandingHero({
 					ref={pinnedContentRef}
 					className="hero-pinned-content relative h-screen w-full overflow-hidden xl:sticky xl:top-0"
 				>
-					{/* Background container - morphs from 100vw to 50% */}
+					{/* Invisible markers for morph measurement — always at "start" position */}
+					<div
+						className="pointer-events-none absolute inset-0 z-0 flex flex-col items-center justify-center gap-3"
+						aria-hidden="true"
+					>
+						<div
+							ref={logoMarkerRef}
+							style={{
+								visibility: "hidden",
+								fontFamily: fonts.display,
+								fontSize: "var(--hero-logo-start-size)",
+								whiteSpace: "nowrap",
+								fontWeight: 200,
+							}}
+						>
+							hearted.
+						</div>
+						<div
+							ref={headlineMarkerRef}
+							style={{
+								visibility: "hidden",
+								fontFamily: fonts.display,
+								fontSize: "var(--hero-headline-start-size)",
+								whiteSpace: "nowrap",
+								fontWeight: 200,
+							}}
+						>
+							the stories inside your liked songs
+						</div>
+					</div>
+
+					{/* Background container - clip-path crops from full to left 50% */}
 					<div
 						ref={backgroundRef}
-						className="hero-background absolute inset-y-0 left-0 z-0 overflow-hidden"
-						style={{ width: "100%" }}
+						className="hero-background absolute inset-0 z-0 overflow-hidden"
 					>
-						{/* Counter-scaled content wrapper to preserve aspect ratio during shrink */}
+						<div className="absolute inset-0 z-0">
+							<HeartRipplePlaceholder />
+						</div>
 						<div
-							ref={backgroundInnerRef}
-							className="hero-background-inner absolute inset-0"
+							className={`absolute inset-0 z-10 transition-opacity duration-1000 ${isBackgroundReady ? "opacity-100" : "opacity-0"}`}
 						>
-							<div className="absolute inset-0 z-0">
-								<HeartRipplePlaceholder />
-							</div>
-							<div
-								className={`absolute inset-0 z-10 transition-opacity duration-1000 ${isBackgroundReady ? "opacity-100" : "opacity-0"}`}
-							>
-								<HeartRippleBackground
-									ref={heartRippleRef}
-									onReady={() => setIsBackgroundReady(true)}
-								/>
-							</div>
+							<HeartRippleBackground
+								ref={heartRippleRef}
+								onReady={() => setIsBackgroundReady(true)}
+							/>
 						</div>
 					</div>
 
@@ -254,14 +244,17 @@ export function LandingHero({
 										color: "#ffffff",
 										fontFamily: fonts.body,
 										backdropFilter: "blur(10px)",
-										opacity: 0, // Initial state, GSAP animates
+										opacity: 0,
 									}}
 								>
 									Get early access
 								</button>
 							</nav>
 
-							<div className="pointer-events-none max-w-lg">
+							<div
+								className="pointer-events-none"
+								style={{ maxInlineSize: "var(--hero-copy-max-width)" }}
+							>
 								<h2
 									ref={headlineRef}
 									className="hero-headline text-4xl leading-[1.1] font-extralight sm:text-5xl xl:flex xl:text-6xl"
