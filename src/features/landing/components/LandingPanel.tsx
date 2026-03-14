@@ -186,7 +186,7 @@ export function LandingPanel({
 					onTouchStart={handleTouchStart}
 					onTouchEnd={handleTouchEnd}
 					className="h-full overflow-y-auto"
-					style={{ overscrollBehaviorY: "contain" }}
+					style={{ overscrollBehavior: "auto" }}
 				>
 					<div
 						key={`hero-${song.track.id}`}

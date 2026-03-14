@@ -8,7 +8,7 @@
  * - 0.00–0.08: Scroll indicator fades out
  * - 0.00–0.65: Logo morph (center large → nav slot small)
  * - 0.00–0.65: Headline morph (center small → left large)
- * - 0.00–0.65: Background shrink (100vw → 50%)
+ * - 0.00–0.65: Background shrink (100vw → 50% via clip-path)
  * - 0.40–0.65: Nav button fade in
  * - 0.60–1.00: Right panel reveal (clip-path wipe)
  * - 0.80–1.00: Subtext fade in
@@ -53,10 +53,8 @@ export interface HeroAnimationRefs {
 	logoRef: RefObject<HTMLHeadingElement | null>;
 	/** Headline element that morphs from center to left */
 	headlineRef: RefObject<HTMLHeadingElement | null>;
-	/** Background container that shrinks */
+	/** Background container that shrinks via clip-path */
 	backgroundRef: RefObject<HTMLDivElement | null>;
-	/** Inner background wrapper that counter-scales (to avoid squash) */
-	backgroundInnerRef: RefObject<HTMLDivElement | null>;
 	/** Right panel that reveals with clip-path */
 	panelRef: RefObject<HTMLDivElement | null>;
 	/** Curtain overlay for panel reveal */
@@ -71,13 +69,15 @@ export interface HeroAnimationRefs {
 	navBtnRef: RefObject<HTMLButtonElement | null>;
 	/** Scroll indicator */
 	scrollIndicatorRef: RefObject<HTMLDivElement | null>;
+	/** Invisible marker at logo's start position */
+	logoMarkerRef: RefObject<HTMLDivElement | null>;
+	/** Invisible marker at headline's start position */
+	headlineMarkerRef: RefObject<HTMLDivElement | null>;
 }
 
 export interface HeroAnimationOptions {
 	/** Whether the background is ready (retained for API compatibility) */
 	isBackgroundReady?: boolean;
-	/** Whether the wide desktop split layout is active */
-	isDesktopLayout: boolean;
 	/** Callback when the initial visual state has been applied */
 	onInitialStateApplied?: () => void;
 	/** Callback when animation reaches end (for hasRevealed state) */
@@ -91,107 +91,62 @@ export interface HeroAnimationReturn {
 	progress: number;
 }
 
+interface MorphDeltas {
+	logo: { dx: number; dy: number; scale: number };
+	headline: { dx: number; dy: number; scale: number };
+}
+
 /**
- * Measures the morph positions for logo and headline
- * Returns the transform values needed to move from center to final position
+ * Computes morph deltas by comparing marker positions to element positions.
+ * Markers sit at the "start" position in the DOM (centered, large logo / small headline).
+ * Elements sit at the "end" position (nav slot / left column).
+ *
+ * IMPORTANT: Elements must be in their natural CSS state (no GSAP transforms,
+ * headline in initial text layout: nowrap / maxWidth:none) when this is called.
  */
-function measureMorphPositions(
+function computeMorphDeltas(
 	logoEl: HTMLElement,
 	headlineEl: HTMLElement,
-): {
-	logo: { startX: number; startY: number; startScale: number };
-	headline: { startX: number; startY: number; startScale: number };
-} {
-	const rootFontSize = Number.parseFloat(
-		getComputedStyle(document.documentElement).fontSize,
-	);
-	const rem =
-		Number.isFinite(rootFontSize) && rootFontSize > 0 ? rootFontSize : 16;
-
-	// Temporarily disable transforms and text layout to measure final positions.
-	// Must reset ALL properties that the timeline animates, otherwise measurements
-	// taken mid-animation (e.g., on resize) will be incorrect.
-	const elements = [logoEl, headlineEl];
-	const originalStyles = elements.map((el) => ({
-		transform: el.style.transform,
-		fontSize: el.style.fontSize,
-		maxWidth: el.style.maxWidth,
-		whiteSpace: el.style.whiteSpace,
-		flexWrap: el.style.flexWrap,
-	}));
-
-	// Reset to initial state for measurement (before timeline runs)
-	elements.forEach((el) => {
-		el.style.transform = "none";
-		el.style.fontSize = "";
-		el.style.maxWidth = "";
-		el.style.whiteSpace = "nowrap";
-		el.style.flexWrap = "";
-	});
-
-	// Force reflow to ensure measurements are accurate
-	void logoEl.offsetHeight;
-
+	logoMarkerEl: HTMLElement,
+	headlineMarkerEl: HTMLElement,
+): MorphDeltas {
 	const logoRect = logoEl.getBoundingClientRect();
 	const headlineRect = headlineEl.getBoundingClientRect();
-	const logoFinalFontSizePx = Number.parseFloat(
-		getComputedStyle(logoEl).fontSize,
-	);
-	const headlineFinalFontSizePx = Number.parseFloat(
-		getComputedStyle(headlineEl).fontSize,
-	);
+	const logoMarkerRect = logoMarkerEl.getBoundingClientRect();
+	const headlineMarkerRect = headlineMarkerEl.getBoundingClientRect();
 
-	// Restore original styles
-	elements.forEach((el, i) => {
-		el.style.transform = originalStyles[i].transform;
-		el.style.fontSize = originalStyles[i].fontSize;
-		el.style.maxWidth = originalStyles[i].maxWidth;
-		el.style.whiteSpace = originalStyles[i].whiteSpace;
-		el.style.flexWrap = originalStyles[i].flexWrap;
-	});
+	// Uniform scale from font-size ratio — preserves text aspect ratio
+	const logoFontSize =
+		Number.parseFloat(getComputedStyle(logoEl).fontSize) || 1;
+	const logoMarkerFontSize =
+		Number.parseFloat(getComputedStyle(logoMarkerEl).fontSize) || 1;
+	const headlineFontSize =
+		Number.parseFloat(getComputedStyle(headlineEl).fontSize) || 1;
+	const headlineMarkerFontSize =
+		Number.parseFloat(getComputedStyle(headlineMarkerEl).fontSize) || 1;
 
-	// Calculate start positions (centered in viewport)
-	const viewportCenterX = window.innerWidth / 2;
-	const viewportCenterY = window.innerHeight / 2;
+	const logoCenterX = logoRect.left + logoRect.width / 2;
+	const logoCenterY = logoRect.top + logoRect.height / 2;
+	const logoMarkerCenterX = logoMarkerRect.left + logoMarkerRect.width / 2;
+	const logoMarkerCenterY = logoMarkerRect.top + logoMarkerRect.height / 2;
 
-	// Scale from the element's final rendered size to the desired start sizes.
-	const logoFinalCenterX = logoRect.left + logoRect.width / 2;
-	const logoFinalCenterY = logoRect.top + logoRect.height / 2;
-	const safeLogoFinalPx =
-		Number.isFinite(logoFinalFontSizePx) && logoFinalFontSizePx > 0
-			? logoFinalFontSizePx
-			: 1.5 * rem;
-	const logoStartScale = (5.25 * rem) / safeLogoFinalPx;
-
-	const headlineFinalCenterX = headlineRect.left + headlineRect.width / 2;
-	const headlineFinalCenterY = headlineRect.top + headlineRect.height / 2;
-	const safeHeadlineFinalPx =
-		Number.isFinite(headlineFinalFontSizePx) && headlineFinalFontSizePx > 0
-			? headlineFinalFontSizePx
-			: 3.75 * rem;
-	const headlineStartScale = (1.75 * rem) / safeHeadlineFinalPx;
-
-	// Place the logo + headline as a vertically centered stack at the start.
-	// This prevents overlap regardless of viewport size / font metrics.
-	const logoStartHeight = logoRect.height * logoStartScale;
-	const headlineStartHeight = headlineRect.height * headlineStartScale;
-	const stackGap = 0.75 * rem;
-	const stackHeight = logoStartHeight + stackGap + headlineStartHeight;
-	const stackTopY = viewportCenterY - stackHeight / 2;
-	const logoStartCenterY = stackTopY + logoStartHeight / 2;
-	const headlineStartCenterY =
-		stackTopY + logoStartHeight + stackGap + headlineStartHeight / 2;
+	const headlineCenterX = headlineRect.left + headlineRect.width / 2;
+	const headlineCenterY = headlineRect.top + headlineRect.height / 2;
+	const headlineMarkerCenterX =
+		headlineMarkerRect.left + headlineMarkerRect.width / 2;
+	const headlineMarkerCenterY =
+		headlineMarkerRect.top + headlineMarkerRect.height / 2;
 
 	return {
 		logo: {
-			startX: viewportCenterX - logoFinalCenterX,
-			startY: logoStartCenterY - logoFinalCenterY,
-			startScale: logoStartScale,
+			dx: logoMarkerCenterX - logoCenterX,
+			dy: logoMarkerCenterY - logoCenterY,
+			scale: logoMarkerFontSize / logoFontSize,
 		},
 		headline: {
-			startX: viewportCenterX - headlineFinalCenterX,
-			startY: headlineStartCenterY - headlineFinalCenterY,
-			startScale: headlineStartScale,
+			dx: headlineMarkerCenterX - headlineCenterX,
+			dy: headlineMarkerCenterY - headlineCenterY,
+			scale: headlineMarkerFontSize / headlineFontSize,
 		},
 	};
 }
@@ -200,16 +155,13 @@ export function useHeroAnimation(
 	refs: HeroAnimationRefs,
 	options: HeroAnimationOptions,
 ): HeroAnimationReturn {
-	const {
-		isDesktopLayout,
-		onInitialStateApplied,
-		onRevealComplete,
-		onRevealReverse,
-	} = options;
+	const { onInitialStateApplied, onRevealComplete, onRevealReverse } = options;
+
+	// Once-guard so onInitialStateApplied only fires on initial mount
+	const initialStateAppliedRef = { current: false };
 
 	useGSAP(
 		() => {
-			// SSR safety
 			if (typeof window === "undefined") return;
 
 			const {
@@ -218,7 +170,6 @@ export function useHeroAnimation(
 				logoRef,
 				headlineRef,
 				backgroundRef,
-				backgroundInnerRef,
 				panelRef,
 				panelCurtainRef,
 				ctaRef,
@@ -226,9 +177,10 @@ export function useHeroAnimation(
 				heartRef,
 				navBtnRef,
 				scrollIndicatorRef,
+				logoMarkerRef,
+				headlineMarkerRef,
 			} = refs;
 
-			// Verify all required refs
 			if (
 				!sectionRef.current ||
 				!pinnedContentRef.current ||
@@ -238,26 +190,27 @@ export function useHeroAnimation(
 				return;
 			}
 
+			const fireInitialStateApplied = () => {
+				if (!initialStateAppliedRef.current) {
+					initialStateAppliedRef.current = true;
+					onInitialStateApplied?.();
+				}
+			};
+
 			const applyDesktopStaticState = () => {
 				gsap.set(logoRef.current, {
 					clearProps: "x,y,scale,transformOrigin",
 				});
 				gsap.set(headlineRef.current, {
 					clearProps: "x,y,scale,transformOrigin,fontSize",
-					maxWidth: "28rem",
+					maxWidth: "var(--hero-copy-max-width)",
 					justifyContent: "flex-start",
 					whiteSpace: "normal",
 					flexWrap: "wrap",
 				});
 				if (backgroundRef.current)
 					gsap.set(backgroundRef.current, {
-						scaleX: 0.5,
-						transformOrigin: "left center",
-					});
-				if (backgroundInnerRef.current)
-					gsap.set(backgroundInnerRef.current, {
-						scaleX: 2,
-						transformOrigin: "left center",
+						clipPath: "inset(0 50% 0 0)",
 					});
 				if (panelRef.current)
 					gsap.set(panelRef.current, { opacity: 1, y: 0, scale: 1 });
@@ -270,12 +223,16 @@ export function useHeroAnimation(
 				if (subtextRef.current)
 					gsap.set(subtextRef.current, { opacity: 1, y: 0 });
 				if (heartRef.current)
-					gsap.set(heartRef.current, { width: 20, minWidth: 20, opacity: 1 });
+					gsap.set(heartRef.current, {
+						width: "1.25rem",
+						minWidth: "1.25rem",
+						opacity: 1,
+					});
 				if (navBtnRef.current)
 					gsap.set(navBtnRef.current, { clearProps: "opacity" });
 				if (scrollIndicatorRef.current)
 					gsap.set(scrollIndicatorRef.current, { opacity: 0 });
-				onInitialStateApplied?.();
+				fireInitialStateApplied();
 				onRevealComplete?.();
 			};
 
@@ -292,13 +249,7 @@ export function useHeroAnimation(
 				});
 				if (backgroundRef.current)
 					gsap.set(backgroundRef.current, {
-						scaleX: 1,
-						transformOrigin: "left center",
-					});
-				if (backgroundInnerRef.current)
-					gsap.set(backgroundInnerRef.current, {
-						scaleX: 1,
-						transformOrigin: "left center",
+						clipPath: "none",
 					});
 				if (panelRef.current)
 					gsap.set(panelRef.current, { opacity: 1, y: 0, scale: 1 });
@@ -311,527 +262,559 @@ export function useHeroAnimation(
 				if (subtextRef.current)
 					gsap.set(subtextRef.current, { opacity: 1, y: 0 });
 				if (heartRef.current)
-					gsap.set(heartRef.current, { width: 20, minWidth: 20, opacity: 1 });
+					gsap.set(heartRef.current, {
+						width: "1.25rem",
+						minWidth: "1.25rem",
+						opacity: 1,
+					});
 				if (navBtnRef.current)
 					gsap.set(navBtnRef.current, { clearProps: "opacity" });
 				if (scrollIndicatorRef.current)
 					gsap.set(scrollIndicatorRef.current, { opacity: 0 });
-				onInitialStateApplied?.();
+				fireInitialStateApplied();
 				onRevealComplete?.();
 			};
 
-			// Check for reduced motion preference
-			const prefersReducedMotion = window.matchMedia(
-				"(prefers-reduced-motion: reduce)",
-			).matches;
-			if (prefersReducedMotion) {
-				if (isDesktopLayout) {
-					applyDesktopStaticState();
-				} else {
-					applyNarrowStaticState();
-				}
-				return;
-			}
+			// ─────────────────────────────────────────────────────────────
+			// gsap.matchMedia() handles breakpoint + reduced-motion routing
+			// ─────────────────────────────────────────────────────────────
+			const mm = gsap.matchMedia();
 
-			if (!isDesktopLayout) {
+			mm.add("(min-width: 1280px) and (prefers-reduced-motion: reduce)", () => {
+				applyDesktopStaticState();
+			});
+
+			mm.add("(max-width: 1279px)", () => {
 				applyNarrowStaticState();
-				return;
-			}
-
-			ScrollTrigger.config({ ignoreMobileResize: true });
-
-			const scrollerEl =
-				(sectionRef.current.closest(
-					"[data-landing-scroll-root]",
-				) as HTMLElement | null) ??
-				(document.querySelector(
-					"[data-landing-scroll-root]",
-				) as HTMLElement | null);
-			// Use getComputedStyle to capture the actual applied value (not just inline styles).
-			// This ensures we restore scroll-snap even if it's set via CSS classes.
-			const previousScrollSnapType = scrollerEl
-				? getComputedStyle(scrollerEl).scrollSnapType
-				: "";
-			let restoreSnapTimeout: number | null = null;
-			let isRestoreTrackingActive = false;
-			let isAlive = true; // Flag to prevent callbacks after unmount
-			const clearRestoreTracking = () => {
-				if (!scrollerEl) return;
-				if (restoreSnapTimeout !== null) {
-					window.clearTimeout(restoreSnapTimeout);
-					restoreSnapTimeout = null;
-				}
-				if (isRestoreTrackingActive) {
-					scrollerEl.removeEventListener("scroll", scheduleRestoreFromScroll);
-					isRestoreTrackingActive = false;
-				}
-			};
-			const doRestoreScrollSnap = () => {
-				if (!scrollerEl) return;
-				if (previousScrollSnapType) {
-					scrollerEl.style.scrollSnapType = previousScrollSnapType;
-					return;
-				}
-				scrollerEl.style.scrollSnapType = "";
-			};
-			const disableScrollSnap = () => {
-				if (!scrollerEl) return;
-				clearRestoreTracking();
-				scrollerEl.style.scrollSnapType = "none";
-			};
-			function scheduleRestoreFromScroll() {
-				if (restoreSnapTimeout !== null)
-					window.clearTimeout(restoreSnapTimeout);
-				restoreSnapTimeout = window.setTimeout(() => {
-					clearRestoreTracking();
-					doRestoreScrollSnap();
-				}, SCROLL_SNAP_RESTORE_DELAY_MS);
-			}
-			const requestRestoreScrollSnap = () => {
-				if (!scrollerEl) return;
-				if (!isRestoreTrackingActive) {
-					scrollerEl.addEventListener("scroll", scheduleRestoreFromScroll, {
-						passive: true,
-					});
-					isRestoreTrackingActive = true;
-				}
-				scheduleRestoreFromScroll();
-			};
-
-			let morphPositions = measureMorphPositions(
-				logoRef.current,
-				headlineRef.current,
-			);
-			const recalcMorphPositions = () => {
-				// Guard against callback firing after refs are cleared during unmount
-				if (!logoRef.current || !headlineRef.current) return;
-				morphPositions = measureMorphPositions(
-					logoRef.current,
-					headlineRef.current,
-				);
-			};
-
-			ScrollTrigger.addEventListener("refreshInit", recalcMorphPositions);
-
-			// Flexbox headline: start with nowrap (guarantees single line) + centered
-			gsap.set(headlineRef.current, {
-				maxWidth: "none",
-				justifyContent: "center",
-				whiteSpace: "nowrap", // Prevent text wrap within spans
 			});
 
-			if (backgroundRef.current) {
-				gsap.set(backgroundRef.current, {
-					scaleX: 1,
-					transformOrigin: "left center",
-				});
-			}
-			if (backgroundInnerRef.current) {
-				gsap.set(backgroundInnerRef.current, {
-					scaleX: 1,
-					transformOrigin: "left center",
-				});
-			}
+			mm.add(
+				"(min-width: 1280px) and (prefers-reduced-motion: no-preference)",
+				() => {
+					// ─── Full desktop animation ───────────────────────────
 
-			if (panelRef.current) {
-				gsap.set(panelRef.current, { opacity: 0, y: 12, scale: 0.985 });
-			}
-			if (panelCurtainRef.current) {
-				gsap.set(panelCurtainRef.current, {
-					x: "0%",
-					transformOrigin: "left center",
-				});
-			}
+					ScrollTrigger.config({ ignoreMobileResize: true });
 
-			if (ctaRef.current) {
-				gsap.set(ctaRef.current, { opacity: 0, y: 10 });
-			}
+					const scrollerEl =
+						(sectionRef.current!.closest(
+							"[data-landing-scroll-root]",
+						) as HTMLElement | null) ??
+						(document.querySelector(
+							"[data-landing-scroll-root]",
+						) as HTMLElement | null);
 
-			if (subtextRef.current) {
-				gsap.set(subtextRef.current, { opacity: 0, y: 10 });
-			}
-
-			if (heartRef.current) {
-				gsap.set(heartRef.current, { width: 0, minWidth: 0, opacity: 0 });
-			}
-
-			if (navBtnRef.current) {
-				gsap.set(navBtnRef.current, { opacity: 0 });
-			}
-
-			const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
-			const getAnimationProgressFromScroll = (scrollProgress: number) => {
-				if (scrollProgress <= ANIMATION_START_POINT) return 0;
-				if (scrollProgress >= ANIMATION_END_POINT) return 1;
-				return clamp01(
-					(scrollProgress - ANIMATION_START_POINT) /
-						(ANIMATION_END_POINT - ANIMATION_START_POINT),
-				);
-			};
-
-			let autoScrollTween: gsap.core.Tween | null = null;
-			let isAutoScrolling = false;
-			let hasAutoCompleted = false;
-			let autoCompletionDisabled = false;
-			let st: ScrollTrigger | null = null;
-
-			const cancelAutoScroll = () => {
-				if (autoScrollTween) {
-					autoScrollTween.kill();
-					autoScrollTween = null;
-				}
-				if (isAutoScrolling) {
-					isAutoScrolling = false;
-					autoCompletionDisabled = true;
-				}
-			};
-
-			const handleKeyDown = (ev: KeyboardEvent) => {
-				if (
-					ev.key === "ArrowDown" ||
-					ev.key === "ArrowUp" ||
-					ev.key === "PageDown" ||
-					ev.key === "PageUp" ||
-					ev.key === "Home" ||
-					ev.key === "End" ||
-					ev.key === " " ||
-					ev.key === "Spacebar"
-				) {
-					cancelAutoScroll();
-				}
-			};
-
-			const handleWheel = (ev: WheelEvent) => {
-				if (!isAutoScrolling) return;
-				if (ev.deltaY < 0) {
-					cancelAutoScroll();
-				}
-			};
-
-			const startAutoScroll = () => {
-				if (!scrollerEl || !st) return;
-				if (autoScrollTween) {
-					autoScrollTween.kill();
-					autoScrollTween = null;
-				}
-				isAutoScrolling = true;
-				autoCompletionDisabled = false;
-				const targetScrollTop =
-					st.start + (st.end - st.start) * ANIMATION_END_POINT;
-				autoScrollTween = gsap.to(scrollerEl, {
-					scrollTop: targetScrollTop,
-					duration: AUTO_COMPLETE_DURATION_S,
-					ease: "power2.out",
-					onUpdate: () => {
-						st?.update();
-					},
-					onComplete: () => {
-						isAutoScrolling = false;
-						hasAutoCompleted = true;
-						autoScrollTween = null;
-					},
-				});
-			};
-
-			let lastAnimationProgress = 0;
-
-			// Create the main timeline (progress 0..1). ScrollTrigger drives it with a start hold + end deadzone.
-			const tl = gsap.timeline({ paused: true });
-			const setTimelineProgress = gsap.quickTo(tl, "progress", {
-				duration: 0.15,
-				ease: "power2.out",
-			});
-
-			// Phase 1: Scroll indicator fade out (0% - 8%)
-			// Use fromTo() to ensure starting opacity is 1, regardless of CSS transition timing
-			if (scrollIndicatorRef.current) {
-				tl.fromTo(
-					scrollIndicatorRef.current,
-					{ opacity: 1 },
-					{
-						opacity: 0,
-						duration: 0.08,
-						ease: "none",
-					},
-					0,
-				);
-			}
-			if (backgroundInnerRef.current) {
-				tl.to(
-					backgroundInnerRef.current,
-					{
-						scaleX: 2,
-						duration: 0.65,
-						ease: "none",
-					},
-					0,
-				);
-			}
-
-			// Phase 2: Logo morph (0% - 65%)
-			tl.fromTo(
-				logoRef.current,
-				{
-					x: () => morphPositions.logo.startX,
-					y: () => morphPositions.logo.startY,
-					scale: () => morphPositions.logo.startScale,
-					transformOrigin: "center center",
-				},
-				{
-					x: 0,
-					y: 0,
-					scale: 1,
-					duration: 0.65,
-					ease: "none",
-					immediateRender: true,
-				},
-				0,
-			);
-
-			// Phase 2: Headline morph (0% - 65%)
-			tl.fromTo(
-				headlineRef.current,
-				{
-					x: () => morphPositions.headline.startX,
-					y: () => morphPositions.headline.startY,
-					scale: () => morphPositions.headline.startScale,
-					transformOrigin: "center center",
-				},
-				{
-					x: 0,
-					y: 0,
-					scale: 1,
-					duration: 0.65,
-					ease: "none",
-					immediateRender: true,
-				},
-				0,
-			);
-
-			// Headline: animate justifyContent from center to flex-start
-			tl.to(
-				headlineRef.current,
-				{
-					justifyContent: "flex-start",
-					duration: 0.65,
-					ease: "none",
-				},
-				0,
-			);
-
-			// At 0.55: enable wrapping + set narrow maxWidth to trigger flex wrap
-			tl.set(
-				headlineRef.current,
-				{
-					whiteSpace: "normal",
-					flexWrap: "wrap",
-					maxWidth: "28rem", // Forces the flex wrap between spans
-				},
-				0.55,
-			);
-
-			// Phase 2: Background shrink (0% - 65%)
-			if (backgroundRef.current) {
-				tl.to(
-					backgroundRef.current,
-					{
-						scaleX: 0.5,
-						duration: 0.65,
-						ease: "none",
-					},
-					0,
-				);
-			}
-
-			// Phase 3: Nav button fade in (40% - 65%)
-			if (navBtnRef.current) {
-				tl.to(
-					navBtnRef.current,
-					{
-						opacity: 1,
-						duration: 0.25,
-						ease: "none",
-					},
-					0.4,
-				);
-			}
-
-			// Phase 4: Panel reveal with curtain (60% - 100%)
-			if (panelRef.current) {
-				tl.to(
-					panelRef.current,
-					{
-						opacity: 1,
-						y: 0,
-						scale: 1,
-						duration: 0.4,
-						ease: "none",
-					},
-					0.6,
-				);
-			}
-			if (panelCurtainRef.current) {
-				tl.to(
-					panelCurtainRef.current,
-					{
-						x: "100%",
-						duration: 0.4,
-						ease: "none",
-					},
-					0.6,
-				);
-			}
-
-			// Phase 5: Subtext + heart fade in (80% - 100%)
-			if (subtextRef.current) {
-				tl.to(
-					subtextRef.current,
-					{
-						opacity: 1,
-						y: 0,
-						duration: 0.2,
-						ease: "none",
-					},
-					0.8,
-				);
-			}
-
-			if (heartRef.current) {
-				tl.to(
-					heartRef.current,
-					{
-						width: 20,
-						opacity: 1,
-						duration: 0.2,
-						ease: "none",
-					},
-					0.8,
-				);
-			}
-
-			// Phase 5: CTA fade in (85% - 100%)
-			if (ctaRef.current) {
-				tl.to(
-					ctaRef.current,
-					{
-						opacity: 1,
-						y: 0,
-						duration: 0.15,
-						ease: "none",
-					},
-					0.85,
-				);
-			}
-
-			// Ensure the initial state is applied before any scroll events.
-			tl.progress(0);
-			onInitialStateApplied?.();
-
-			const invalidateTimeline = () => {
-				tl.invalidate();
-				tl.progress(lastAnimationProgress);
-			};
-			ScrollTrigger.addEventListener("refreshInit", invalidateTimeline);
-
-			st = ScrollTrigger.create({
-				trigger: sectionRef.current,
-				scroller: scrollerEl ?? undefined,
-				start: "top top",
-				end: "bottom bottom",
-				invalidateOnRefresh: true,
-				onEnter: disableScrollSnap,
-				onEnterBack: disableScrollSnap,
-				onLeave: requestRestoreScrollSnap,
-				onUpdate: (self) => {
-					if (self.progress < AUTO_COMPLETE_RESET_POINT) {
-						hasAutoCompleted = false;
-						autoCompletionDisabled = false;
-					}
-					const velocity = self.getVelocity();
-					if (
-						!hasAutoCompleted &&
-						!autoCompletionDisabled &&
-						!isAutoScrolling &&
-						self.direction === 1 &&
-						self.progress >= AUTO_COMPLETE_MIN_PROGRESS &&
-						self.progress < ANIMATION_END_POINT
-					) {
-						if (velocity > AUTO_COMPLETE_TRIGGER_VELOCITY_PX_PER_S) {
-							startAutoScroll();
+					const previousScrollSnapType = scrollerEl
+						? getComputedStyle(scrollerEl).scrollSnapType
+						: "";
+					let restoreSnapTimeout: number | null = null;
+					let isRestoreTrackingActive = false;
+					let isAlive = true;
+					const clearRestoreTracking = () => {
+						if (!scrollerEl) return;
+						if (restoreSnapTimeout !== null) {
+							window.clearTimeout(restoreSnapTimeout);
+							restoreSnapTimeout = null;
 						}
+						if (isRestoreTrackingActive) {
+							scrollerEl.removeEventListener(
+								"scroll",
+								scheduleRestoreFromScroll,
+							);
+							isRestoreTrackingActive = false;
+						}
+					};
+					const doRestoreScrollSnap = () => {
+						if (!scrollerEl) return;
+						if (previousScrollSnapType) {
+							scrollerEl.style.scrollSnapType = previousScrollSnapType;
+							return;
+						}
+						scrollerEl.style.scrollSnapType = "";
+					};
+					const disableScrollSnap = () => {
+						if (!scrollerEl) return;
+						clearRestoreTracking();
+						scrollerEl.style.scrollSnapType = "none";
+					};
+					function scheduleRestoreFromScroll() {
+						if (restoreSnapTimeout !== null)
+							window.clearTimeout(restoreSnapTimeout);
+						restoreSnapTimeout = window.setTimeout(() => {
+							clearRestoreTracking();
+							doRestoreScrollSnap();
+						}, SCROLL_SNAP_RESTORE_DELAY_MS);
 					}
-					const animationProgress = getAnimationProgressFromScroll(
-						self.progress,
+					const requestRestoreScrollSnap = () => {
+						if (!scrollerEl) return;
+						if (!isRestoreTrackingActive) {
+							scrollerEl.addEventListener("scroll", scheduleRestoreFromScroll, {
+								passive: true,
+							});
+							isRestoreTrackingActive = true;
+						}
+						scheduleRestoreFromScroll();
+					};
+
+					// ─── Initial state (must come BEFORE measurement) ────
+					gsap.set(headlineRef.current, {
+						maxWidth: "none",
+						justifyContent: "center",
+						whiteSpace: "nowrap",
+					});
+
+					// Force reflow so measurement reflects the new layout
+					void logoRef.current!.offsetHeight;
+
+					// ─── Marker-based measurement ─────────────────────────
+					let deltas = computeMorphDeltas(
+						logoRef.current!,
+						headlineRef.current!,
+						logoMarkerRef.current!,
+						headlineMarkerRef.current!,
 					);
-					lastAnimationProgress = animationProgress;
-					setTimelineProgress(animationProgress);
-					if (animationProgress >= 0.85) {
-						onRevealComplete?.();
+
+					if (backgroundRef.current) {
+						gsap.set(backgroundRef.current, {
+							clipPath: "inset(0 0% 0 0)",
+						});
 					}
+
+					if (panelRef.current) {
+						gsap.set(panelRef.current, { opacity: 0, y: 12, scale: 0.985 });
+					}
+					if (panelCurtainRef.current) {
+						gsap.set(panelCurtainRef.current, {
+							x: "0%",
+							transformOrigin: "left center",
+						});
+					}
+
+					if (ctaRef.current) {
+						gsap.set(ctaRef.current, { opacity: 0, y: 10 });
+					}
+
+					if (subtextRef.current) {
+						gsap.set(subtextRef.current, { opacity: 0, y: 10 });
+					}
+
+					if (heartRef.current) {
+						gsap.set(heartRef.current, {
+							width: 0,
+							minWidth: 0,
+							opacity: 0,
+						});
+					}
+
+					if (navBtnRef.current) {
+						gsap.set(navBtnRef.current, { opacity: 0 });
+					}
+
+					const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+					const getAnimationProgressFromScroll = (scrollProgress: number) => {
+						if (scrollProgress <= ANIMATION_START_POINT) return 0;
+						if (scrollProgress >= ANIMATION_END_POINT) return 1;
+						return clamp01(
+							(scrollProgress - ANIMATION_START_POINT) /
+								(ANIMATION_END_POINT - ANIMATION_START_POINT),
+						);
+					};
+
+					let autoScrollTween: gsap.core.Tween | null = null;
+					let isAutoScrolling = false;
+					let hasAutoCompleted = false;
+					let autoCompletionDisabled = false;
+					let st: ScrollTrigger | null = null;
+
+					const cancelAutoScroll = () => {
+						if (autoScrollTween) {
+							autoScrollTween.kill();
+							autoScrollTween = null;
+						}
+						if (isAutoScrolling) {
+							isAutoScrolling = false;
+							autoCompletionDisabled = true;
+						}
+					};
+
+					const handleKeyDown = (ev: KeyboardEvent) => {
+						if (
+							ev.key === "ArrowDown" ||
+							ev.key === "ArrowUp" ||
+							ev.key === "PageDown" ||
+							ev.key === "PageUp" ||
+							ev.key === "Home" ||
+							ev.key === "End" ||
+							ev.key === " " ||
+							ev.key === "Spacebar"
+						) {
+							cancelAutoScroll();
+						}
+					};
+
+					const handleWheel = (ev: WheelEvent) => {
+						if (!isAutoScrolling) return;
+						if (ev.deltaY < 0) {
+							cancelAutoScroll();
+						}
+					};
+
+					const startAutoScroll = () => {
+						if (!scrollerEl || !st) return;
+						if (autoScrollTween) {
+							autoScrollTween.kill();
+							autoScrollTween = null;
+						}
+						isAutoScrolling = true;
+						autoCompletionDisabled = false;
+						const targetScrollTop =
+							st.start + (st.end - st.start) * ANIMATION_END_POINT;
+						autoScrollTween = gsap.to(scrollerEl, {
+							scrollTop: targetScrollTop,
+							duration: AUTO_COMPLETE_DURATION_S,
+							ease: "power2.out",
+							onUpdate: () => {
+								st?.update();
+							},
+							onComplete: () => {
+								isAutoScrolling = false;
+								hasAutoCompleted = true;
+								autoScrollTween = null;
+							},
+						});
+					};
+
+					let lastAnimationProgress = 0;
+
+					// ─── Timeline ─────────────────────────────────────────
+					const tl = gsap.timeline({ paused: true });
+					const setTimelineProgress = gsap.quickTo(tl, "progress", {
+						duration: 0.15,
+						ease: "power2.out",
+					});
+
+					// Phase 1: Scroll indicator fade out (0% - 8%)
+					if (scrollIndicatorRef.current) {
+						tl.fromTo(
+							scrollIndicatorRef.current,
+							{ opacity: 1 },
+							{
+								opacity: 0,
+								duration: 0.08,
+								ease: "none",
+							},
+							0,
+						);
+					}
+
+					// Phase 2: Logo morph (0% - 65%) — function-based from values for resize rebuild
+					tl.fromTo(
+						logoRef.current,
+						{
+							x: () => deltas.logo.dx,
+							y: () => deltas.logo.dy,
+							scale: () => deltas.logo.scale,
+							transformOrigin: "center center",
+						},
+						{
+							x: 0,
+							y: 0,
+							scale: 1,
+							duration: 0.65,
+							ease: "none",
+							immediateRender: true,
+						},
+						0,
+					);
+
+					// Phase 2: Headline morph (0% - 65%)
+					tl.fromTo(
+						headlineRef.current,
+						{
+							x: () => deltas.headline.dx,
+							y: () => deltas.headline.dy,
+							scale: () => deltas.headline.scale,
+							transformOrigin: "center center",
+						},
+						{
+							x: 0,
+							y: 0,
+							scale: 1,
+							duration: 0.65,
+							ease: "none",
+							immediateRender: true,
+						},
+						0,
+					);
+
+					// Headline: animate justifyContent from center to flex-start
+					tl.to(
+						headlineRef.current,
+						{
+							justifyContent: "flex-start",
+							duration: 0.65,
+							ease: "none",
+						},
+						0,
+					);
+
+					// At 0.55: enable wrapping + set narrow maxWidth to trigger flex wrap
+					tl.set(
+						headlineRef.current,
+						{
+							whiteSpace: "normal",
+							flexWrap: "wrap",
+							maxWidth: "var(--hero-copy-max-width)",
+						},
+						0.55,
+					);
+
+					// Phase 2: Background shrink via clip-path (0% - 65%)
+					if (backgroundRef.current) {
+						tl.fromTo(
+							backgroundRef.current,
+							{ clipPath: "inset(0 0% 0 0)" },
+							{
+								clipPath: "inset(0 50% 0 0)",
+								duration: 0.65,
+								ease: "none",
+							},
+							0,
+						);
+					}
+
+					// Phase 3: Nav button fade in (40% - 65%)
+					if (navBtnRef.current) {
+						tl.to(
+							navBtnRef.current,
+							{
+								opacity: 1,
+								duration: 0.25,
+								ease: "none",
+							},
+							0.4,
+						);
+					}
+
+					// Phase 4: Panel reveal with curtain (60% - 100%)
+					if (panelRef.current) {
+						tl.to(
+							panelRef.current,
+							{
+								opacity: 1,
+								y: 0,
+								scale: 1,
+								duration: 0.4,
+								ease: "none",
+							},
+							0.6,
+						);
+					}
+					if (panelCurtainRef.current) {
+						tl.to(
+							panelCurtainRef.current,
+							{
+								x: "100%",
+								duration: 0.4,
+								ease: "none",
+							},
+							0.6,
+						);
+					}
+
+					// Phase 5: Subtext + heart fade in (80% - 100%)
+					if (subtextRef.current) {
+						tl.to(
+							subtextRef.current,
+							{
+								opacity: 1,
+								y: 0,
+								duration: 0.2,
+								ease: "none",
+							},
+							0.8,
+						);
+					}
+
+					if (heartRef.current) {
+						tl.to(
+							heartRef.current,
+							{
+								width: "1.25rem",
+								opacity: 1,
+								duration: 0.2,
+								ease: "none",
+							},
+							0.8,
+						);
+					}
+
+					// Phase 5: CTA fade in (85% - 100%)
+					if (ctaRef.current) {
+						tl.to(
+							ctaRef.current,
+							{
+								opacity: 1,
+								y: 0,
+								duration: 0.15,
+								ease: "none",
+							},
+							0.85,
+						);
+					}
+
+					// Ensure the initial state is applied before any scroll events.
+					tl.progress(0);
+					fireInitialStateApplied();
+
+					// ─── Resize → refreshInit → recompute deltas chain ───
+					const handleRefreshInit = () => {
+						if (
+							!logoRef.current ||
+							!headlineRef.current ||
+							!logoMarkerRef.current ||
+							!headlineMarkerRef.current
+						)
+							return;
+
+						// Clear GSAP transforms + reset text layout so
+						// getBoundingClientRect returns the natural CSS position
+						const savedLogoTransform = logoRef.current.style.transform;
+						const savedHeadlineTransform = headlineRef.current.style.transform;
+						const savedMaxWidth = headlineRef.current.style.maxWidth;
+						const savedWhiteSpace = headlineRef.current.style.whiteSpace;
+						const savedFlexWrap = headlineRef.current.style.flexWrap;
+
+						logoRef.current.style.transform = "none";
+						headlineRef.current.style.transform = "none";
+						headlineRef.current.style.maxWidth = "none";
+						headlineRef.current.style.whiteSpace = "nowrap";
+						headlineRef.current.style.flexWrap = "";
+						void logoRef.current.offsetHeight;
+
+						deltas = computeMorphDeltas(
+							logoRef.current,
+							headlineRef.current,
+							logoMarkerRef.current,
+							headlineMarkerRef.current,
+						);
+
+						logoRef.current.style.transform = savedLogoTransform;
+						headlineRef.current.style.transform = savedHeadlineTransform;
+						headlineRef.current.style.maxWidth = savedMaxWidth;
+						headlineRef.current.style.whiteSpace = savedWhiteSpace;
+						headlineRef.current.style.flexWrap = savedFlexWrap;
+
+						tl.invalidate();
+						tl.progress(lastAnimationProgress);
+					};
+					ScrollTrigger.addEventListener("refreshInit", handleRefreshInit);
+
+					// ─── ScrollTrigger ────────────────────────────────────
+					st = ScrollTrigger.create({
+						trigger: sectionRef.current,
+						scroller: scrollerEl ?? undefined,
+						start: "top top",
+						end: "bottom bottom",
+						invalidateOnRefresh: true,
+						onEnter: disableScrollSnap,
+						onEnterBack: disableScrollSnap,
+						onLeave: requestRestoreScrollSnap,
+						onUpdate: (self) => {
+							if (self.progress < AUTO_COMPLETE_RESET_POINT) {
+								hasAutoCompleted = false;
+								autoCompletionDisabled = false;
+							}
+							const velocity = self.getVelocity();
+							if (
+								!hasAutoCompleted &&
+								!autoCompletionDisabled &&
+								!isAutoScrolling &&
+								self.direction === 1 &&
+								self.progress >= AUTO_COMPLETE_MIN_PROGRESS &&
+								self.progress < ANIMATION_END_POINT
+							) {
+								if (velocity > AUTO_COMPLETE_TRIGGER_VELOCITY_PX_PER_S) {
+									startAutoScroll();
+								}
+							}
+							const animationProgress = getAnimationProgressFromScroll(
+								self.progress,
+							);
+							lastAnimationProgress = animationProgress;
+							setTimelineProgress(animationProgress);
+							if (animationProgress >= 0.85) {
+								onRevealComplete?.();
+							}
+						},
+						onLeaveBack: () => {
+							requestRestoreScrollSnap();
+							onRevealReverse?.();
+						},
+					});
+
+					// ─── Event listeners ──────────────────────────────────
+					if (scrollerEl) {
+						scrollerEl.addEventListener("wheel", handleWheel, {
+							passive: true,
+						});
+						scrollerEl.addEventListener("touchstart", cancelAutoScroll, {
+							passive: true,
+						});
+					}
+					window.addEventListener("keydown", handleKeyDown);
+
+					// Debounced resize → ScrollTrigger.refresh()
+					let resizeTimeout: number | null = null;
+					const handleResize = () => {
+						if (resizeTimeout !== null) window.clearTimeout(resizeTimeout);
+						resizeTimeout = window.setTimeout(() => {
+							resizeTimeout = null;
+							if (!logoRef.current || !headlineRef.current) return;
+							ScrollTrigger.refresh();
+						}, 120);
+					};
+					window.addEventListener("resize", handleResize);
+
+					// Font load → refresh measurements
+					const handleFontLoad = () => {
+						if (!isAlive || !logoRef.current || !headlineRef.current) return;
+						ScrollTrigger.refresh();
+					};
+					document.fonts?.ready.then(handleFontLoad);
+
+					// ─── Cleanup (matchMedia auto-calls on revert) ───────
+					return () => {
+						isAlive = false;
+						if (resizeTimeout !== null) window.clearTimeout(resizeTimeout);
+						window.removeEventListener("resize", handleResize);
+						ScrollTrigger.removeEventListener("refreshInit", handleRefreshInit);
+						if (scrollerEl) {
+							scrollerEl.removeEventListener("wheel", handleWheel);
+							scrollerEl.removeEventListener("touchstart", cancelAutoScroll);
+						}
+						window.removeEventListener("keydown", handleKeyDown);
+						if (autoScrollTween) {
+							autoScrollTween.kill();
+						}
+						st?.kill();
+						clearRestoreTracking();
+						doRestoreScrollSnap();
+					};
 				},
-				onLeaveBack: () => {
-					requestRestoreScrollSnap();
-					onRevealReverse?.();
-				},
-			});
+			);
 
-			if (scrollerEl) {
-				scrollerEl.addEventListener("wheel", handleWheel, { passive: true });
-				scrollerEl.addEventListener("touchstart", cancelAutoScroll, {
-					passive: true,
-				});
-			}
-			window.addEventListener("keydown", handleKeyDown);
-
-			// Handle resize - recalculate morph positions
-			let resizeTimeout: number | null = null;
-			const handleResize = () => {
-				if (resizeTimeout !== null) window.clearTimeout(resizeTimeout);
-				resizeTimeout = window.setTimeout(() => {
-					resizeTimeout = null;
-					if (!logoRef.current || !headlineRef.current) return;
-					// ScrollTrigger.refresh() recalculates all positions and invalidates the timeline
-					ScrollTrigger.refresh();
-				}, 120);
-			};
-
-			// Handle font load - fonts can shift layout
-			const handleFontLoad = () => {
-				// Guard against promise resolving after unmount
-				if (!isAlive || !logoRef.current || !headlineRef.current) return;
-				ScrollTrigger.refresh();
-			};
-
-			window.addEventListener("resize", handleResize);
-			document.fonts?.ready.then(handleFontLoad);
-
-			// Cleanup is handled automatically by useGSAP context
+			// matchMedia cleanup on useGSAP revert
 			return () => {
-				isAlive = false; // Prevent font-load callback from running after unmount
-				if (resizeTimeout !== null) window.clearTimeout(resizeTimeout);
-				window.removeEventListener("resize", handleResize);
-				ScrollTrigger.removeEventListener("refreshInit", recalcMorphPositions);
-				ScrollTrigger.removeEventListener("refreshInit", invalidateTimeline);
-				if (scrollerEl) {
-					scrollerEl.removeEventListener("wheel", handleWheel);
-					scrollerEl.removeEventListener("touchstart", cancelAutoScroll);
-				}
-				window.removeEventListener("keydown", handleKeyDown);
-				if (autoScrollTween) {
-					autoScrollTween.kill();
-				}
-				st?.kill();
-				clearRestoreTracking();
-				doRestoreScrollSnap();
+				mm.revert();
 			};
 		},
 		{
-			dependencies: [isDesktopLayout],
-			revertOnUpdate: true, // Revert when dependencies change
+			dependencies: [],
+			revertOnUpdate: true,
 		},
 	);
 
 	return {
-		progress: 0, // Progress tracking could be added if needed
+		progress: 0,
 	};
 }

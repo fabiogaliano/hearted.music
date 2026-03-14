@@ -13,11 +13,11 @@
  * - Pre-release: Shows waitlist email input for launch prep
  */
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { MatchesSection } from "@/features/matching/components/MatchesSection";
 import { SongSection } from "@/features/matching/components/SongSection";
 import {
 	loadLandingSongDetail,
-	loadLandingSongsManifest,
 	type LandingSongDetail,
 	type LandingSongManifest,
 } from "@/lib/data/landing-songs";
@@ -30,32 +30,172 @@ import { WaitlistInput } from "./components/WaitlistInput";
 
 const PRELOAD_MARGIN = 2;
 
-const landingPlaylists = [
+// 7 playlist archetypes that cover the emotional/energetic range of the demo songs
+const PLAYLISTS = [
 	{
 		id: 1,
 		name: "crying in the car",
 		reason: "for when you're driving and it hits you",
-		matchScore: 0.94,
 	},
-	{
-		id: 2,
-		name: "sweaty and happy",
-		reason: "movement that feels good",
-		matchScore: 0.89,
-	},
+	{ id: 2, name: "sweaty and happy", reason: "movement that feels good" },
 	{
 		id: 3,
 		name: "feeling everything",
 		reason: "songs that meet you where you are",
-		matchScore: 0.82,
 	},
 	{
 		id: 4,
-		name: "easy does it",
-		reason: "a bit much for gentle mornings",
-		matchScore: 0.45,
+		name: "main character energy",
+		reason: "when you need to feel like the point",
 	},
-];
+	{ id: 5, name: "3am thoughts", reason: "the spiral, but make it beautiful" },
+	{ id: 6, name: "sunday softness", reason: "no urgency, just warmth" },
+	{
+		id: 7,
+		name: "revenge era",
+		reason: "when done-with-it becomes a superpower",
+	},
+] as const;
+
+type PlaylistId = (typeof PLAYLISTS)[number]["id"];
+
+// Per-song top-3 playlist matches with earned scores
+// spotifyTrackId → [{ id: PlaylistId, matchScore }]
+const SONG_PLAYLIST_MATCHES: Record<
+	string,
+	Array<{ id: PlaylistId; matchScore: number }>
+> = {
+	// Ribs — Lorde: existential dread, growing-up vertigo
+	"2MvvoeRt8NcOXWESkxWn3g": [
+		{ id: 5, matchScore: 0.94 },
+		{ id: 3, matchScore: 0.72 },
+		{ id: 1, matchScore: 0.51 },
+	],
+	// Houdini — Dua Lipa: escapist disco, confident fun
+	"4OMJGnvZfDvsePyCwRGO7X": [
+		{ id: 2, matchScore: 0.95 },
+		{ id: 4, matchScore: 0.79 },
+		{ id: 7, matchScore: 0.48 },
+	],
+	// Thinkin Bout You — Frank Ocean: quiet longing, soft ache
+	"7DfFc7a6Rwfi3YQMRbDMau": [
+		{ id: 5, matchScore: 0.91 },
+		{ id: 3, matchScore: 0.68 },
+		{ id: 6, matchScore: 0.44 },
+	],
+	// Motion Sickness — Phoebe Bridgers: bittersweet driving rage
+	"5xo8RrjJ9CVNrtRg2S3B1R": [
+		{ id: 1, matchScore: 0.96 },
+		{ id: 7, matchScore: 0.63 },
+		{ id: 5, matchScore: 0.41 },
+	],
+	// Too Sweet — Hozier: slow blues, gentle rejection
+	"3HMY0r2BAdpasXMY8rseR0": [
+		{ id: 6, matchScore: 0.88 },
+		{ id: 3, matchScore: 0.6 },
+		{ id: 5, matchScore: 0.39 },
+	],
+	// Do I Wanna Know? — Arctic Monkeys: slow-burn late-night desire
+	"5FVd6KXrgO9B3JPmC8OPst": [
+		{ id: 5, matchScore: 0.93 },
+		{ id: 3, matchScore: 0.65 },
+		{ id: 1, matchScore: 0.47 },
+	],
+	// Kill Bill — SZA: dark obsessive love, edge of revenge
+	"1Qrg8KqiBpW07V7PNxwwwL": [
+		{ id: 7, matchScore: 0.92 },
+		{ id: 5, matchScore: 0.74 },
+		{ id: 3, matchScore: 0.5 },
+	],
+	// Not Like Us — Kendrick Lamar: triumphant beef anthem
+	"6AI3ezQ4o3HUoP6Dhudph3": [
+		{ id: 4, matchScore: 0.96 },
+		{ id: 7, matchScore: 0.85 },
+		{ id: 2, matchScore: 0.58 },
+	],
+	// Taxes — Geese: wiry alt-country indie rock
+	"7r9BUOSnekEjrkMhmxD6Ae": [
+		{ id: 1, matchScore: 0.77 },
+		{ id: 6, matchScore: 0.55 },
+		{ id: 5, matchScore: 0.38 },
+	],
+	// Beautiful Things — Benson Boone: emotional pop, gratitude shadowed by fear
+	"6tNQ70jh4OwmPGpYy6R2o9": [
+		{ id: 3, matchScore: 0.91 },
+		{ id: 6, matchScore: 0.67 },
+		{ id: 1, matchScore: 0.44 },
+	],
+	// BIRDS OF A FEATHER — Billie Eilish: tender devotion, soft intensity
+	"6dOtVTDdiauQNBQEDOtlAB": [
+		{ id: 3, matchScore: 0.93 },
+		{ id: 6, matchScore: 0.76 },
+		{ id: 5, matchScore: 0.49 },
+	],
+	// drivers license — Olivia Rodrigo: the driving heartbreak song
+	"7lPN2DXiMsVn7XUKtOW1CS": [
+		{ id: 1, matchScore: 0.97 },
+		{ id: 3, matchScore: 0.81 },
+		{ id: 5, matchScore: 0.55 },
+	],
+	// Pink Pony Club — Chappell Roan: queer joy, camp, liberation
+	"1k2pQc5i348DCHwbn5KTdc": [
+		{ id: 2, matchScore: 0.94 },
+		{ id: 4, matchScore: 0.72 },
+		{ id: 7, matchScore: 0.43 },
+	],
+	// EARFQUAKE — Tyler, the Creator: vulnerable soft love
+	"5hVghJ4KaYES3BFUATCYn0": [
+		{ id: 3, matchScore: 0.89 },
+		{ id: 5, matchScore: 0.66 },
+		{ id: 6, matchScore: 0.42 },
+	],
+	// Blinding Lights — The Weeknd: synthwave driving rush
+	"0VjIjW4GlUZAMYd2vXMi3b": [
+		{ id: 1, matchScore: 0.88 },
+		{ id: 2, matchScore: 0.69 },
+		{ id: 4, matchScore: 0.47 },
+	],
+	// As It Was — Harry Styles: bittersweet, moving-on melancholy
+	"4Dvkj6JhhA12EX05fT7y2e": [
+		{ id: 3, matchScore: 0.82 },
+		{ id: 1, matchScore: 0.61 },
+		{ id: 6, matchScore: 0.4 },
+	],
+	// Manchild — Sabrina Carpenter: sharp wit, playfully done
+	"42UBPzRMh5yyz0EDPr6fr1": [
+		{ id: 7, matchScore: 0.91 },
+		{ id: 4, matchScore: 0.73 },
+		{ id: 2, matchScore: 0.46 },
+	],
+	// God's Plan — Drake: confident generosity, effortless cool
+	"6DCZcSspjsKoFjzjrWoCdn": [
+		{ id: 4, matchScore: 0.88 },
+		{ id: 6, matchScore: 0.57 },
+		{ id: 2, matchScore: 0.38 },
+	],
+	// DtMF — Bad Bunny: reggaeton nostalgia, cultural warmth
+	"3sK8wGT43QFpWrvNQsrQya": [
+		{ id: 2, matchScore: 0.87 },
+		{ id: 3, matchScore: 0.64 },
+		{ id: 1, matchScore: 0.42 },
+	],
+	// That's So True — Gracie Abrams: relatable post-breakup indie folk
+	"7ne4VBA60CxGM75vw0EYad": [
+		{ id: 3, matchScore: 0.9 },
+		{ id: 1, matchScore: 0.71 },
+		{ id: 5, matchScore: 0.48 },
+	],
+};
+
+function getPlaylistsForSong(trackId: string) {
+	const matches =
+		SONG_PLAYLIST_MATCHES[trackId] ??
+		SONG_PLAYLIST_MATCHES["7lPN2DXiMsVn7XUKtOW1CS"]!;
+	return matches.map(({ id, matchScore }) => {
+		const def = PLAYLISTS.find((p) => p.id === id)!;
+		return { id: def.id, name: def.name, reason: def.reason, matchScore };
+	});
+}
 
 function normalizeIndex(index: number, total: number): number {
 	if (total === 0) return 0;
@@ -76,54 +216,32 @@ function getWindowIndexes(
 }
 
 interface LandingProps {
-	/** Index of song to feature (default 0, can be randomized server-side) */
-	featuredSongIndex?: number;
+	/** Pre-shuffled manifest from server loader */
+	initialManifest: LandingSongManifest[];
+	/** First song's full detail, loaded server-side */
+	initialDetail: LandingSongDetail;
 	/** Release mode - true for login, false for waitlist (controlled from PrototypeWrapper) */
 	isReleased?: boolean;
 }
 
 export function Landing({
-	featuredSongIndex = 0,
+	initialManifest,
+	initialDetail,
 	isReleased = true,
 }: LandingProps) {
 	const theme = useTheme();
-	const [songManifest, setSongManifest] = useState<LandingSongManifest[]>([]);
+	const prefersReducedMotion = useReducedMotion();
+	const [songManifest] = useState(initialManifest);
 	const [songDetailsByTrackId, setSongDetailsByTrackId] = useState<
 		Record<string, LandingSongDetail>
-	>({});
-	const [selectedSongIndex, setSelectedSongIndex] = useState(featuredSongIndex);
-	const [previewSongIndex, setPreviewSongIndex] = useState(2);
-	const fetchedTrackIdsRef = useRef<Set<string>>(new Set());
-
-	useEffect(() => {
-		let cancelled = false;
-
-		const loadManifest = async () => {
-			try {
-				const manifest = await loadLandingSongsManifest();
-				if (cancelled) return;
-
-				setSongManifest(manifest);
-				if (manifest.length > 0) {
-					setSelectedSongIndex((current) =>
-						normalizeIndex(current, manifest.length),
-					);
-					setPreviewSongIndex((current) =>
-						normalizeIndex(current, manifest.length),
-					);
-				}
-			} catch {
-				if (cancelled) return;
-				setSongManifest([]);
-			}
-		};
-
-		void loadManifest();
-
-		return () => {
-			cancelled = true;
-		};
-	}, []);
+	>({ [initialDetail.spotifyTrackId]: initialDetail });
+	const [selectedSongIndex, setSelectedSongIndex] = useState(0);
+	const [previewSongIndex, setPreviewSongIndex] = useState(
+		initialManifest.length > 2 ? 2 : 0,
+	);
+	const fetchedTrackIdsRef = useRef<Set<string>>(
+		new Set([initialDetail.spotifyTrackId]),
+	);
 
 	useEffect(() => {
 		if (songManifest.length === 0) return;
@@ -160,19 +278,17 @@ export function Landing({
 	}, [songManifest, selectedSongIndex, previewSongIndex]);
 
 	const featuredSongManifest =
-		songManifest[selectedSongIndex] ?? songManifest[0] ?? null;
+		songManifest[selectedSongIndex] ?? songManifest[0]!;
 	const previewSongManifest =
-		songManifest[previewSongIndex] ?? songManifest[0] ?? null;
-	const featuredSong = featuredSongManifest
-		? (songDetailsByTrackId[featuredSongManifest.spotifyTrackId] ??
-			featuredSongManifest)
-		: null;
-	const previewSong = previewSongManifest
-		? (songDetailsByTrackId[previewSongManifest.spotifyTrackId] ??
-			previewSongManifest)
-		: null;
-	const albumArtUrl = featuredSongManifest?.albumArtUrl;
-	const artistImageUrl = featuredSongManifest?.artistImageUrl;
+		songManifest[previewSongIndex] ?? songManifest[0]!;
+	const featuredSong =
+		songDetailsByTrackId[featuredSongManifest.spotifyTrackId] ??
+		featuredSongManifest;
+	const previewSong =
+		songDetailsByTrackId[previewSongManifest.spotifyTrackId] ??
+		previewSongManifest;
+	const albumArtUrl = featuredSongManifest.albumArtUrl;
+	const artistImageUrl = featuredSongManifest.artistImageUrl;
 
 	const handlePrev = () => {
 		if (songManifest.length === 0) return;
@@ -197,20 +313,6 @@ export function Landing({
 		// Discard behaves the same as next for the preview
 		handlePreviewNext();
 	};
-
-	if (!featuredSong || !previewSong) {
-		return (
-			<div
-				data-landing-scroll-root
-				className="min-h-screen overflow-x-hidden"
-				style={{ fontFamily: fonts.body, background: theme.bg }}
-			>
-				<section className="flex min-h-screen items-center justify-center px-8">
-					<p style={{ color: theme.textMuted }}>Loading songs...</p>
-				</section>
-			</div>
-		);
-	}
 
 	return (
 		<div
@@ -253,23 +355,48 @@ export function Landing({
 							boxShadow: `0 1px 3px ${theme.text}08, 0 4px 12px ${theme.text}04`,
 						}}
 					>
-						<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
-							<SongSection
-								song={previewSong}
-								isExpanded={false}
-								metaVisible={true}
-								albumArtUrl={previewSongManifest?.albumArtUrl}
-								isLoading={false}
-							/>
-							<MatchesSection
-								playlists={landingPlaylists.slice(0, 3)}
-								addedTo={[]}
-								onAdd={() => {}}
-								onDismiss={handlePreviewDiscard}
-								onNext={handlePreviewNext}
-								isExpanded={false}
-							/>
-						</div>
+						<AnimatePresence mode="wait">
+							<motion.div
+								key={previewSongIndex}
+								className="grid gap-10 lg:grid-cols-[1.1fr_1fr]"
+								initial={prefersReducedMotion ? false : { opacity: 0, x: 24 }}
+								animate={{
+									opacity: 1,
+									x: 0,
+									transition: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
+								}}
+								exit={
+									prefersReducedMotion
+										? {}
+										: {
+												opacity: 0,
+												x: -24,
+												transition: {
+													duration: 0.18,
+													ease: [0.645, 0.045, 0.355, 1],
+												},
+											}
+								}
+							>
+								<SongSection
+									song={previewSong}
+									isExpanded={false}
+									metaVisible={true}
+									albumArtUrl={previewSongManifest.albumArtUrl}
+									isLoading={false}
+								/>
+								<MatchesSection
+									playlists={getPlaylistsForSong(
+										previewSongManifest.spotifyTrackId,
+									)}
+									addedTo={[]}
+									onAdd={() => {}}
+									onDismiss={handlePreviewDiscard}
+									onNext={handlePreviewNext}
+									isExpanded={false}
+								/>
+							</motion.div>
+						</AnimatePresence>
 					</div>
 				</div>
 			</section>
@@ -300,24 +427,15 @@ export function Landing({
 				}}
 			>
 				<p>
-					<a
-						href="/prototypes/warm-pastel/faq"
-						className="underline-offset-2 hover:underline"
-					>
+					<a href="/faq" className="underline-offset-2 hover:underline">
 						FAQ
 					</a>
 					{" · "}
-					<a
-						href="/prototypes/warm-pastel/privacy"
-						className="underline-offset-2 hover:underline"
-					>
+					<a href="/privacy" className="underline-offset-2 hover:underline">
 						Privacy
 					</a>
 					{" · "}
-					<a
-						href="/prototypes/warm-pastel/terms"
-						className="underline-offset-2 hover:underline"
-					>
+					<a href="/terms" className="underline-offset-2 hover:underline">
 						Terms
 					</a>
 				</p>

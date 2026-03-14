@@ -50,7 +50,7 @@ function AnalysisToggle({
 					<p
 						style={{
 							fontFamily: fonts.body,
-							fontSize: 16,
+							fontSize: "var(--s0)",
 							lineHeight: 1.55,
 							color: colorProps.textMuted,
 							borderLeft: `2px solid ${colorProps.accent}`,
@@ -64,7 +64,7 @@ function AnalysisToggle({
 					<p
 						style={{
 							fontFamily: fonts.display,
-							fontSize: 26,
+							fontSize: "clamp(1.25rem, 1.6vw, 1.75rem)",
 							fontWeight: 400,
 							lineHeight: 1.35,
 							color: hovered ? colorProps.accent : colorProps.text,
@@ -78,7 +78,7 @@ function AnalysisToggle({
 			<span
 				style={{
 					fontFamily: fonts.body,
-					fontSize: 10,
+					fontSize: "0.625rem",
 					letterSpacing: "0.04em",
 					color: colorProps.textDim,
 					opacity: hovered ? 1 : 0,
@@ -108,7 +108,7 @@ function GenrePills({
 			<span
 				style={{
 					fontFamily: fonts.body,
-					fontSize: 8,
+					fontSize: "0.5rem",
 					letterSpacing: "0.07em",
 					padding: "2px 8px",
 					border: `0.5px solid ${colorProps.accent}`,
@@ -123,7 +123,7 @@ function GenrePills({
 					key={g}
 					style={{
 						fontFamily: fonts.body,
-						fontSize: 8,
+						fontSize: "0.5rem",
 						letterSpacing: "0.06em",
 						padding: "2px 8px",
 						border: `0.5px solid ${colorProps.border}`,
@@ -169,8 +169,7 @@ export function LandingPanelContent({
 			ref={contentRef}
 			className="pb-4"
 			style={{
-				paddingLeft: "20px",
-				paddingRight: "20px",
+				paddingInline: "var(--hero-panel-padding-x)",
 			}}
 		>
 			<div ref={spacerRef} style={{ height: 0 }} />
@@ -199,7 +198,7 @@ export function LandingPanelContent({
 										<p
 											style={{
 												fontFamily: fonts.body,
-												fontSize: 9,
+												fontSize: "0.5625rem",
 												letterSpacing: "0.05em",
 												color: colorProps.textDim,
 												opacity: 0.7,
@@ -262,7 +261,7 @@ export function LandingPanelContent({
 										<span
 											style={{
 												fontFamily: fonts.body,
-												fontSize: 10,
+												fontSize: "0.625rem",
 												fontWeight: 500,
 												letterSpacing: "0.1em",
 												textTransform: "uppercase",
