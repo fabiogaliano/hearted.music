@@ -50,6 +50,45 @@ export const JobProgressSchema = z.object({
 export type JobProgress = z.infer<typeof JobProgressSchema>;
 
 // ============================================================================
+// Enrichment Chunk Progress (stored in job.progress JSONB)
+// ============================================================================
+
+export const EnrichmentStageStatusSchema = z.enum([
+	"pending",
+	"running",
+	"completed",
+	"failed",
+	"skipped",
+]);
+export type EnrichmentStageStatus = z.infer<typeof EnrichmentStageStatusSchema>;
+
+export const EnrichmentStageProgressSchema = z.object({
+	status: EnrichmentStageStatusSchema,
+	succeeded: z.number().int().min(0).default(0),
+	failed: z.number().int().min(0).default(0),
+});
+export type EnrichmentStageProgress = z.infer<
+	typeof EnrichmentStageProgressSchema
+>;
+
+export const EnrichmentChunkProgressSchema = z.object({
+	total: z.number().int().min(0),
+	done: z.number().int().min(0),
+	succeeded: z.number().int().min(0),
+	failed: z.number().int().min(0),
+
+	currentStage: z.string().optional(),
+
+	stages: z.record(z.string(), EnrichmentStageProgressSchema).default({}),
+
+	batchSize: z.number().int().min(0),
+	batchSequence: z.number().int().min(0),
+});
+export type EnrichmentChunkProgress = z.infer<
+	typeof EnrichmentChunkProgressSchema
+>;
+
+// ============================================================================
 // Item Status Types
 // ============================================================================
 

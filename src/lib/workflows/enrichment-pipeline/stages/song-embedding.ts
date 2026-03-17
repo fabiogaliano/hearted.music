@@ -1,13 +1,9 @@
 import { Result } from "better-result";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
-import { runTrackedStageJob } from "../job-runner";
+import { recordTerminalFailure } from "@/lib/data/job-failures";
 import type { PipelineBatch } from "../batch";
-import type {
-	EnrichmentContext,
-	EnrichmentStageResult,
-	ReadyResult,
-} from "../types";
+import type { EnrichmentContext, ReadyResult } from "../types";
 
 export async function getReadyForSongEmbedding(
 	batchSongIds: string[],
@@ -49,75 +45,56 @@ export async function getReadyForSongEmbedding(
 	return { ready, notReady, done };
 }
 
-export async function runSongEmbeddingStage(
+export async function runSongEmbedding(
 	ctx: EnrichmentContext,
 	batch: PipelineBatch,
-): Promise<EnrichmentStageResult> {
-	console.log("[pipeline] Stage: song_embedding");
-
+): Promise<{ total: number; succeeded: number; failed: number }> {
 	let readiness: ReadyResult;
 	try {
 		readiness = await getReadyForSongEmbedding(
 			batch.songIds,
 			ctx.embeddingService,
 		);
-	} catch (error) {
+	} catch {
 		return {
-			stage: "song_embedding",
-			status: "failed",
-			jobId: null,
-			error: error instanceof Error ? error.message : String(error),
+			total: batch.songIds.length,
+			succeeded: 0,
+			failed: batch.songIds.length,
 		};
 	}
 
 	if (readiness.ready.length === 0) {
-		return {
-			stage: "song_embedding",
-			status: "skipped",
-			reason: "no songs ready for embedding",
-		};
+		return { total: 0, succeeded: 0, failed: 0 };
 	}
 
 	const songIds = readiness.ready;
+	const embedResult = await ctx.embeddingService.embedBatch(songIds);
+	if (Result.isOk(embedResult)) {
+		const { failed } = embedResult.value;
+		if (failed.length > 0) {
+			console.error("[pipeline] embedBatch failed items:", failed);
 
-	const { jobId, succeeded, failed } = await runTrackedStageJob({
-		accountId: ctx.accountId,
-		stage: "song_embedding",
-		work: async () => {
-			const embedResult = await ctx.embeddingService.embedBatch(songIds);
-			if (Result.isError(embedResult)) {
-				console.error("[pipeline] embedBatch error:", embedResult.error);
+			if (ctx.jobId) {
+				await Promise.all(
+					failed.map((item) =>
+						recordTerminalFailure({
+							jobId: ctx.jobId!,
+							itemId: item.songId,
+							errorType: item.error.includes("Missing analysis")
+								? "validation"
+								: "permanent",
+							errorMessage: `Embedding failed: ${item.error}`,
+						}),
+					),
+				);
 			}
-			if (Result.isOk(embedResult)) {
-				if (embedResult.value.failed.length > 0) {
-					console.error(
-						"[pipeline] embedBatch failed items:",
-						embedResult.value.failed,
-					);
-				}
-				return {
-					total: songIds.length,
-					succeeded: embedResult.value.succeeded.length,
-					failed: embedResult.value.failed.length,
-					result: undefined,
-				};
-			}
-			return {
-				total: songIds.length,
-				succeeded: 0,
-				failed: songIds.length,
-				result: undefined,
-			};
-		},
-	});
-
-	return {
-		stage: "song_embedding",
-		status: "completed",
-		jobId,
-		succeeded,
-		failed,
-		notReady: readiness.notReady.length,
-		done: readiness.done.length,
-	};
+		}
+		return {
+			total: songIds.length,
+			succeeded: embedResult.value.succeeded.length,
+			failed: failed.length,
+		};
+	}
+	console.error("[pipeline] embedBatch error:", embedResult.error);
+	return { total: songIds.length, succeeded: 0, failed: songIds.length };
 }

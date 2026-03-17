@@ -23,6 +23,7 @@ import {
 	LlmProviderError,
 	LlmRateLimitError,
 } from "@/lib/shared/errors/external/llm";
+import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
 import { getApiKeyForProvider } from "./config";
 
 // ============================================================================
@@ -77,6 +78,9 @@ const DEFAULT_MODELS: Record<LlmProviderName, string> = {
 
 type LlmServiceError = LlmError;
 
+// Shared across all instances so concurrent worker jobs respect a single rate limit
+const sharedLimiter = new ConcurrencyLimiter(3, 100, 500);
+
 // ============================================================================
 // Service
 // ============================================================================
@@ -84,6 +88,7 @@ type LlmServiceError = LlmError;
 export class LlmService {
 	private readonly provider: LlmProviderName;
 	private readonly model: string;
+	private readonly limiter = sharedLimiter;
 	private readonly languageModel:
 		| ReturnType<typeof createGoogleGenerativeAI>
 		| ReturnType<typeof createAnthropic>
@@ -125,22 +130,24 @@ export class LlmService {
 	async generateText(
 		prompt: string,
 	): Promise<Result<TextGenerationResult, LlmServiceError>> {
-		try {
-			const result = await generateText({
-				model: this.languageModel(this.model),
-				prompt,
-			});
+		return this.limiter.run(async () => {
+			try {
+				const result = await generateText({
+					model: this.languageModel(this.model),
+					prompt,
+				});
 
-			const tokens = this.extractTokenUsage(result.usage);
+				const tokens = this.extractTokenUsage(result.usage);
 
-			return Result.ok({
-				text: result.text,
-				model: this.getCurrentModel(),
-				tokens,
-			});
-		} catch (error) {
-			return Result.err(this.normalizeError(error));
-		}
+				return Result.ok({
+					text: result.text,
+					model: this.getCurrentModel(),
+					tokens,
+				});
+			} catch (error) {
+				return Result.err(this.normalizeError(error));
+			}
+		});
 	}
 
 	/**
@@ -150,23 +157,25 @@ export class LlmService {
 		prompt: string,
 		schema: z.ZodType<T>,
 	): Promise<Result<ObjectGenerationResult<T>, LlmServiceError>> {
-		try {
-			const result = await generateObject({
-				model: this.languageModel(this.model),
-				prompt,
-				schema,
-			});
+		return this.limiter.run(async () => {
+			try {
+				const result = await generateObject({
+					model: this.languageModel(this.model),
+					prompt,
+					schema,
+				});
 
-			const tokens = this.extractTokenUsage(result.usage);
+				const tokens = this.extractTokenUsage(result.usage);
 
-			return Result.ok({
-				output: result.object as T,
-				model: this.getCurrentModel(),
-				tokens,
-			});
-		} catch (error) {
-			return Result.err(this.normalizeError(error));
-		}
+				return Result.ok({
+					output: result.object as T,
+					model: this.getCurrentModel(),
+					tokens,
+				});
+			} catch (error) {
+				return Result.err(this.normalizeError(error));
+			}
+		});
 	}
 
 	/**

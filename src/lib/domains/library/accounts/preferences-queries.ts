@@ -274,3 +274,49 @@ export async function getPhaseJobIds(
 
 	return Result.ok(parsed.success ? parsed.data : null);
 }
+
+export function updateEnrichmentJobId(
+	accountId: string,
+	jobId: string,
+): Promise<Result<UserPreferences, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("user_preferences")
+			.upsert(
+				{
+					account_id: accountId,
+					enrichment_job_id: jobId,
+				},
+				{ onConflict: "account_id" },
+			)
+			.select()
+			.single(),
+	);
+}
+
+export function clearEnrichmentJobId(
+	accountId: string,
+): Promise<Result<UserPreferences, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("user_preferences")
+			.update({ enrichment_job_id: null })
+			.eq("account_id", accountId)
+			.select()
+			.single(),
+	);
+}
+
+export async function getEnrichmentJobId(
+	accountId: string,
+): Promise<Result<string | null, DbError>> {
+	const result = await getPreferences(accountId);
+
+	if (Result.isError(result)) {
+		return Result.err(result.error);
+	}
+
+	return Result.ok(result.value?.enrichment_job_id ?? null);
+}

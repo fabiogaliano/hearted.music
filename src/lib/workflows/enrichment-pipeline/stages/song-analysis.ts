@@ -1,12 +1,9 @@
 import { Result } from "better-result";
 import { createAnalysisPipeline } from "@/lib/domains/enrichment/content-analysis/pipeline";
 import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
+import { recordTerminalFailure } from "@/lib/data/job-failures";
 import type { PipelineBatch } from "../batch";
-import type {
-	EnrichmentContext,
-	EnrichmentStageResult,
-	ReadyResult,
-} from "../types";
+import type { EnrichmentContext, ReadyResult } from "../types";
 
 export async function getReadyForSongAnalysis(
 	batchSongIds: string[],
@@ -32,37 +29,32 @@ export async function getReadyForSongAnalysis(
 	return { ready, notReady: [], done };
 }
 
-export async function runSongAnalysisStage(
+export async function runSongAnalysis(
 	ctx: EnrichmentContext,
 	batch: PipelineBatch,
-): Promise<EnrichmentStageResult> {
-	console.log("[pipeline] Stage: song_analysis");
-
+): Promise<{ total: number; succeeded: number; failed: number }> {
 	let readiness: ReadyResult;
 	try {
 		readiness = await getReadyForSongAnalysis(batch.songIds);
-	} catch (error) {
+	} catch {
 		return {
-			stage: "song_analysis",
-			status: "failed",
-			jobId: null,
-			error: error instanceof Error ? error.message : String(error),
+			total: batch.songIds.length,
+			succeeded: 0,
+			failed: batch.songIds.length,
 		};
 	}
 
 	if (readiness.ready.length === 0) {
-		return {
-			stage: "song_analysis",
-			status: "skipped",
-			reason: "no songs need analysis",
-		};
+		return { total: 0, succeeded: 0, failed: 0 };
 	}
 
 	const pipelineResult = createAnalysisPipeline();
 	if (Result.isError(pipelineResult)) {
-		throw new Error(
-			`Failed to create analysis pipeline: ${pipelineResult.error.message}`,
-		);
+		return {
+			total: readiness.ready.length,
+			succeeded: 0,
+			failed: readiness.ready.length,
+		};
 	}
 	const pipeline = pipelineResult.value;
 
@@ -82,17 +74,37 @@ export async function runSongAnalysisStage(
 		songsToAnalyze,
 	);
 	if (Result.isError(analyzeResult)) {
-		throw new Error(`Song analysis failed: ${analyzeResult.error.message}`);
+		return {
+			total: songsToAnalyze.length,
+			succeeded: 0,
+			failed: songsToAnalyze.length,
+		};
 	}
 
-	const { jobId, succeeded, failed } = analyzeResult.value;
+	if (analyzeResult.value.failed > 0 && ctx.jobId) {
+		const analysisCheck = await songAnalysisData.get(readiness.ready);
+		if (Result.isOk(analysisCheck)) {
+			const analyzedSet = analysisCheck.value as Map<string, unknown>;
+			const failedSongIds = readiness.ready.filter(
+				(id) => !analyzedSet.has(id),
+			);
+
+			await Promise.all(
+				failedSongIds.map((songId) =>
+					recordTerminalFailure({
+						jobId: ctx.jobId!,
+						itemId: songId,
+						errorType: "permanent",
+						errorMessage: "Song analysis failed",
+					}),
+				),
+			);
+		}
+	}
+
 	return {
-		stage: "song_analysis",
-		status: "completed",
-		jobId,
-		succeeded,
-		failed,
-		notReady: readiness.notReady.length,
-		done: readiness.done.length,
+		total: analyzeResult.value.total,
+		succeeded: analyzeResult.value.succeeded,
+		failed: analyzeResult.value.failed,
 	};
 }

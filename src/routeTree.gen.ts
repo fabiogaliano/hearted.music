@@ -30,6 +30,7 @@ import { Route as ApiExtensionSyncRouteImport } from './routes/api/extension/syn
 import { Route as ApiExtensionStatusRouteImport } from './routes/api/extension/status'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiJobsIdProgressRouteImport } from './routes/api/jobs/$id/progress'
+import { Route as ApiJobsIdEnrichmentProgressRouteImport } from './routes/api/jobs/$id/enrichment-progress'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -136,6 +137,12 @@ const ApiJobsIdProgressRoute = ApiJobsIdProgressRouteImport.update({
   path: '/api/jobs/$id/progress',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiJobsIdEnrichmentProgressRoute =
+  ApiJobsIdEnrichmentProgressRouteImport.update({
+    id: '/api/jobs/$id/enrichment-progress',
+    path: '/api/jobs/$id/enrichment-progress',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
+  '/api/jobs/$id/enrichment-progress': typeof ApiJobsIdEnrichmentProgressRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRoutesByTo {
@@ -179,6 +187,7 @@ export interface FileRoutesByTo {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
+  '/api/jobs/$id/enrichment-progress': typeof ApiJobsIdEnrichmentProgressRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRoutesById {
@@ -203,6 +212,7 @@ export interface FileRoutesById {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
+  '/api/jobs/$id/enrichment-progress': typeof ApiJobsIdEnrichmentProgressRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRouteTypes {
@@ -227,6 +237,7 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
+    | '/api/jobs/$id/enrichment-progress'
     | '/api/jobs/$id/progress'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -249,6 +260,7 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
+    | '/api/jobs/$id/enrichment-progress'
     | '/api/jobs/$id/progress'
   id:
     | '__root__'
@@ -272,6 +284,7 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
+    | '/api/jobs/$id/enrichment-progress'
     | '/api/jobs/$id/progress'
   fileRoutesById: FileRoutesById
 }
@@ -290,6 +303,7 @@ export interface RootRouteChildren {
   ApiExtensionStatusRoute: typeof ApiExtensionStatusRoute
   ApiExtensionSyncRoute: typeof ApiExtensionSyncRoute
   ApiExtensionTokenRoute: typeof ApiExtensionTokenRoute
+  ApiJobsIdEnrichmentProgressRoute: typeof ApiJobsIdEnrichmentProgressRoute
   ApiJobsIdProgressRoute: typeof ApiJobsIdProgressRoute
 }
 
@@ -442,6 +456,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiJobsIdProgressRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/jobs/$id/enrichment-progress': {
+      id: '/api/jobs/$id/enrichment-progress'
+      path: '/api/jobs/$id/enrichment-progress'
+      fullPath: '/api/jobs/$id/enrichment-progress'
+      preLoaderRoute: typeof ApiJobsIdEnrichmentProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -481,6 +502,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiExtensionStatusRoute: ApiExtensionStatusRoute,
   ApiExtensionSyncRoute: ApiExtensionSyncRoute,
   ApiExtensionTokenRoute: ApiExtensionTokenRoute,
+  ApiJobsIdEnrichmentProgressRoute: ApiJobsIdEnrichmentProgressRoute,
   ApiJobsIdProgressRoute: ApiJobsIdProgressRoute,
 }
 export const routeTree = rootRouteImport
