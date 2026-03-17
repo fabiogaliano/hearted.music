@@ -28,12 +28,15 @@ import {
 
 const BASE_URL = "https://api.reccobeats.com/v1";
 
+// Shared across all instances so concurrent worker jobs respect a single rate limit
+const sharedLimiter = new ConcurrencyLimiter(5, 50);
+
 // ============================================================================
 // Service
 // ============================================================================
 
 export class ReccoBeatsService {
-	private readonly limiter = new ConcurrencyLimiter(5, 50);
+	private readonly limiter = sharedLimiter;
 
 	/**
 	 * Get audio features for a single track.

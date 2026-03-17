@@ -11,14 +11,9 @@ import type {
 	MatchingPlaylistProfile,
 	MatchingAudioFeatures,
 } from "@/lib/domains/taste/song-matching/types";
-import { runTrackedStageJob } from "../job-runner";
 import type { PipelineBatch } from "../batch";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
-import type {
-	EnrichmentContext,
-	EnrichmentStageResult,
-	ReadyResult,
-} from "../types";
+import type { EnrichmentContext, ReadyResult } from "../types";
 
 export async function getReadyForMatching(
 	accountId: string,
@@ -46,39 +41,28 @@ export async function getReadyForMatching(
 	return { ready, notReady: [], done };
 }
 
-export async function runMatchingStage(
+export async function runMatching(
 	ctx: EnrichmentContext,
 	batch: PipelineBatch,
 	playlists: Playlist[],
-): Promise<EnrichmentStageResult> {
-	console.log("[pipeline] Stage: matching");
-
+): Promise<{ total: number; succeeded: number; failed: number }> {
 	if (playlists.length === 0) {
-		return {
-			stage: "matching",
-			status: "skipped",
-			reason: "no destination playlists selected",
-		};
+		return { total: 0, succeeded: 0, failed: 0 };
 	}
 
 	let readiness: ReadyResult;
 	try {
 		readiness = await getReadyForMatching(ctx.accountId, batch.songIds);
-	} catch (error) {
+	} catch {
 		return {
-			stage: "matching",
-			status: "failed",
-			jobId: null,
-			error: error instanceof Error ? error.message : String(error),
+			total: batch.songIds.length,
+			succeeded: 0,
+			failed: batch.songIds.length,
 		};
 	}
 
 	if (readiness.ready.length === 0) {
-		return {
-			stage: "matching",
-			status: "skipped",
-			reason: "no candidate songs ready for matching",
-		};
+		return { total: 0, succeeded: 0, failed: 0 };
 	}
 
 	const readySet = new Set(readiness.ready);
@@ -130,60 +114,30 @@ export async function runMatchingStage(
 		}
 	}
 
-	if (playlistProfiles.length === 0) {
-		return {
-			stage: "matching",
-			status: "skipped",
-			reason: "no destination playlists with usable profiles",
-		};
+	if (playlistProfiles.length === 0 || matchingSongs.length === 0) {
+		return { total: 0, succeeded: 0, failed: 0 };
 	}
 
-	if (matchingSongs.length === 0) {
-		return {
-			stage: "matching",
-			status: "skipped",
-			reason: "no candidate songs ready for matching",
-		};
-	}
-
-	// Compute deterministic matching identity before creating a tracked job
 	let identity: Awaited<ReturnType<typeof computeMatchContextMetadata>>;
 	try {
 		identity = await computeMatchContextMetadata(
 			matchingSongs,
 			playlistProfiles,
 		);
-	} catch (error) {
+	} catch {
 		return {
-			stage: "matching",
-			status: "failed",
-			jobId: null,
-			error: error instanceof Error ? error.message : String(error),
+			total: matchingSongs.length,
+			succeeded: 0,
+			failed: matchingSongs.length,
 		};
 	}
 
-	// Dedupe: skip when an identical context already exists
 	const existingContext = await matchingData.getMatchContextByHash(
 		identity.contextHash,
 		ctx.accountId,
 	);
-	if (Result.isError(existingContext)) {
-		return {
-			stage: "matching",
-			status: "failed",
-			jobId: null,
-			error: `Failed to check existing matching context: ${existingContext.error.message}`,
-		};
-	}
 	if (Result.isOk(existingContext) && existingContext.value) {
-		console.log(
-			`[pipeline] Matching skipped: identical context ${identity.contextHash} already exists`,
-		);
-		return {
-			stage: "matching",
-			status: "skipped",
-			reason: "identical matching context already exists",
-		};
+		return { total: 0, succeeded: 0, failed: 0 };
 	}
 
 	const embeddingsResult = await ctx.embeddingService.getEmbeddings(songIds);
@@ -206,117 +160,96 @@ export async function runMatchingStage(
 	);
 
 	try {
-		const { jobId, succeeded, failed } = await runTrackedStageJob({
-			accountId: ctx.accountId,
-			stage: "matching",
-			work: async (jobId) => {
-				const matchResult = await matchingService.matchBatch(
-					matchingSongs,
-					playlistProfiles,
-					songEmbeddings,
-					{ jobId },
-				);
+		const matchResult = await matchingService.matchBatch(
+			matchingSongs,
+			playlistProfiles,
+			songEmbeddings,
+		);
 
-				if (Result.isOk(matchResult)) {
-					const succeeded = matchResult.value.stats.matched;
-					const failed = matchResult.value.stats.failed;
+		if (Result.isOk(matchResult)) {
+			const succeeded = matchResult.value.stats.matched;
+			const failed = matchResult.value.stats.failed;
 
-					const contextResult = await matchingData.createMatchContext({
-						account_id: ctx.accountId,
-						algorithm_version: MATCHING_ALGO_VERSION,
-						config_hash: identity.configHash,
-						playlist_set_hash: identity.playlistSetHash,
-						candidate_set_hash: identity.candidateSetHash,
-						context_hash: identity.contextHash,
-						playlist_count: playlistProfiles.length,
-						song_count: matchingSongs.length,
-					});
+			const contextResult = await matchingData.createMatchContext({
+				account_id: ctx.accountId,
+				algorithm_version: MATCHING_ALGO_VERSION,
+				config_hash: identity.configHash,
+				playlist_set_hash: identity.playlistSetHash,
+				candidate_set_hash: identity.candidateSetHash,
+				context_hash: identity.contextHash,
+				playlist_count: playlistProfiles.length,
+				song_count: matchingSongs.length,
+			});
 
-					let contextId: string;
-					if (Result.isError(contextResult)) {
-						if (contextResult.error._tag === "ConstraintError") {
-							const existingContextResult =
-								await matchingData.getMatchContextByHash(
-									identity.contextHash,
-									ctx.accountId,
-								);
-
-							if (
-								Result.isError(existingContextResult) ||
-								!existingContextResult.value
-							) {
-								throw new Error(
-									`Failed to create match context: ${contextResult.error.message}`,
-								);
-							}
-
-							contextId = existingContextResult.value.id;
-						} else {
-							throw new Error(
-								`Failed to create match context: ${contextResult.error.message}`,
-							);
-						}
-					} else {
-						contextId = contextResult.value.id;
+			let contextId: string;
+			if (Result.isError(contextResult)) {
+				if (contextResult.error._tag === "ConstraintError") {
+					const existingContextResult =
+						await matchingData.getMatchContextByHash(
+							identity.contextHash,
+							ctx.accountId,
+						);
+					if (
+						Result.isError(existingContextResult) ||
+						!existingContextResult.value
+					) {
+						return {
+							total: matchingSongs.length,
+							succeeded: 0,
+							failed: matchingSongs.length,
+						};
 					}
-
-					const insertData: matchingData.InsertMatchResult[] = [];
-
-					for (const [songId, results] of matchResult.value.matches) {
-						for (const r of results) {
-							insertData.push({
-								context_id: contextId,
-								song_id: songId,
-								playlist_id: r.playlistId,
-								score: r.score,
-								rank: r.rank,
-								factors: r.factors as unknown as Json,
-							});
-						}
-					}
-
-					const insertResult =
-						await matchingData.insertMatchResults(insertData);
-					if (Result.isError(insertResult)) {
-						if (insertResult.error._tag !== "ConstraintError") {
-							throw new Error(
-								`Failed to insert match results: ${insertResult.error.message}`,
-							);
-						}
-					}
-
+					contextId = existingContextResult.value.id;
+				} else {
 					return {
 						total: matchingSongs.length,
-						succeeded,
-						failed,
-						result: undefined,
+						succeeded: 0,
+						failed: matchingSongs.length,
 					};
 				}
+			} else {
+				contextId = contextResult.value.id;
+			}
 
+			const insertData: matchingData.InsertMatchResult[] = [];
+			for (const [songId, results] of matchResult.value.matches) {
+				for (const r of results) {
+					insertData.push({
+						context_id: contextId,
+						song_id: songId,
+						playlist_id: r.playlistId,
+						score: r.score,
+						rank: r.rank,
+						factors: r.factors as unknown as Json,
+					});
+				}
+			}
+
+			const insertResult = await matchingData.insertMatchResults(insertData);
+			if (
+				Result.isError(insertResult) &&
+				insertResult.error._tag !== "ConstraintError"
+			) {
 				return {
 					total: matchingSongs.length,
-					succeeded: 0,
-					failed: matchingSongs.length,
-					result: undefined,
+					succeeded,
+					failed: matchingSongs.length - succeeded,
 				};
-			},
-		});
+			}
+
+			return { total: matchingSongs.length, succeeded, failed };
+		}
 
 		return {
-			stage: "matching",
-			status: "completed",
-			jobId,
-			succeeded,
-			failed,
-			notReady: readiness.notReady.length,
-			done: readiness.done.length,
+			total: matchingSongs.length,
+			succeeded: 0,
+			failed: matchingSongs.length,
 		};
-	} catch (error) {
+	} catch {
 		return {
-			stage: "matching",
-			status: "failed",
-			jobId: null,
-			error: error instanceof Error ? error.message : String(error),
+			total: matchingSongs.length,
+			succeeded: 0,
+			failed: matchingSongs.length,
 		};
 	}
 }

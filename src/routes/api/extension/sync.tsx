@@ -33,10 +33,10 @@ import { validateApiToken } from "@/lib/data/api-tokens";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { createJob } from "@/lib/data/jobs";
 import { updatePhaseJobIds } from "@/lib/domains/library/accounts/preferences-queries";
+import { requestEnrichment } from "@/lib/workflows/enrichment-pipeline/trigger";
 import { emitItem, emitStatus } from "@/lib/platform/jobs/progress/helpers";
 import { completeJob } from "@/lib/platform/jobs/lifecycle";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
-import { runSongEnrichment } from "@/lib/workflows/enrichment-pipeline/orchestrator";
 import type {
 	SpotifyService,
 	SpotifyTrackDTO,
@@ -381,22 +381,11 @@ export const Route = createFileRoute("/api/extension/sync")({
 				emitStatus(phaseJobIds.playlist_tracks, "completed");
 				await completeJob(phaseJobIds.playlist_tracks);
 
-				// Phase 4: Song-side enrichment only — sync does not trigger destination profiling or matching
-				try {
-					const enrichmentResult = await runSongEnrichment(accountId);
-
-					if (Result.isError(enrichmentResult)) {
-						console.error(
-							"[sync] Song enrichment bootstrap failed:",
-							enrichmentResult.error.message,
-						);
-					}
-				} catch (error) {
-					console.error("[sync] Song enrichment unexpected error:", error);
-				}
+				// Phase 4: Request enrichment if account has songs
+				const enrichmentJobId = await requestEnrichment(accountId);
 
 				return Response.json(
-					{ ok: true, results, phaseJobIds },
+					{ ok: true, results, phaseJobIds, enrichmentJobId },
 					{ headers: corsHeaders },
 				);
 			},

@@ -15,6 +15,7 @@ import {
 	type DeepInfraError,
 	DeepInfraRateLimitError,
 } from "@/lib/shared/errors/external/deepinfra";
+import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
 
 // ============================================================================
 // Configuration
@@ -31,6 +32,9 @@ const MAX_BATCH_SIZE = 96;
 
 /** Default timeout for API calls */
 const DEFAULT_TIMEOUT_MS = 30_000;
+
+// Shared across all callers so concurrent worker jobs respect a single rate limit
+const sharedLimiter = new ConcurrencyLimiter(10, 20, 100);
 
 // ============================================================================
 // Zod Schemas (single source of truth)
@@ -172,62 +176,64 @@ export async function embedBatch(
 	// Apply prefix for optimal results with E5 models
 	const prefixedTexts = texts.map((t) => `${prefix} ${t}`);
 
-	try {
-		const response = await fetch(EMBEDDING_URL, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${getApiKey()}`,
-			},
-			body: JSON.stringify({
-				input: prefixedTexts,
-				model: EMBEDDING_MODEL,
-				encoding_format: "float",
-			}),
-			signal: AbortSignal.timeout(timeoutMs),
-		});
+	return sharedLimiter.run(async () => {
+		try {
+			const response = await fetch(EMBEDDING_URL, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${getApiKey()}`,
+				},
+				body: JSON.stringify({
+					input: prefixedTexts,
+					model: EMBEDDING_MODEL,
+					encoding_format: "float",
+				}),
+				signal: AbortSignal.timeout(timeoutMs),
+			});
 
-		if (!response.ok) {
-			return handleErrorResponse(response, "embeddings");
-		}
+			if (!response.ok) {
+				return handleErrorResponse(response, "embeddings");
+			}
 
-		const rawData = await response.json();
-		const parseResult = EmbeddingApiResponseSchema.safeParse(rawData);
-		if (!parseResult.success) {
+			const rawData = await response.json();
+			const parseResult = EmbeddingApiResponseSchema.safeParse(rawData);
+			if (!parseResult.success) {
+				return Result.err(
+					new DeepInfraApiError(
+						"embeddings",
+						undefined,
+						`Invalid API response: ${parseResult.error.message}`,
+					),
+				);
+			}
+			const data = parseResult.data;
+
+			// Sort by index to ensure order matches input
+			const sortedData = [...data.data].sort((a, b) => a.index - b.index);
+
+			const results: EmbeddingResult[] = sortedData.map((item) => ({
+				embedding: item.embedding,
+				model: data.model,
+				dims: item.embedding.length,
+			}));
+
+			return Result.ok(results);
+		} catch (error) {
+			if (error instanceof Error && error.name === "TimeoutError") {
+				return Result.err(
+					new DeepInfraApiError("embeddings", undefined, "Request timed out"),
+				);
+			}
 			return Result.err(
 				new DeepInfraApiError(
 					"embeddings",
 					undefined,
-					`Invalid API response: ${parseResult.error.message}`,
+					error instanceof Error ? error.message : "Unknown error",
 				),
 			);
 		}
-		const data = parseResult.data;
-
-		// Sort by index to ensure order matches input
-		const sortedData = [...data.data].sort((a, b) => a.index - b.index);
-
-		const results: EmbeddingResult[] = sortedData.map((item) => ({
-			embedding: item.embedding,
-			model: data.model,
-			dims: item.embedding.length,
-		}));
-
-		return Result.ok(results);
-	} catch (error) {
-		if (error instanceof Error && error.name === "TimeoutError") {
-			return Result.err(
-				new DeepInfraApiError("embeddings", undefined, "Request timed out"),
-			);
-		}
-		return Result.err(
-			new DeepInfraApiError(
-				"embeddings",
-				undefined,
-				error instanceof Error ? error.message : "Unknown error",
-			),
-		);
-	}
+	});
 }
 
 /**
@@ -249,65 +255,67 @@ export async function rerank(
 
 	const { topK = 0, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
 
-	try {
-		const response = await fetch(RERANKER_URL, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${getApiKey()}`,
-			},
-			body: JSON.stringify({
-				query,
-				documents,
-				return_documents: false,
-				...(topK > 0 && { top_n: topK }),
-			}),
-			signal: AbortSignal.timeout(timeoutMs),
-		});
+	return sharedLimiter.run(async () => {
+		try {
+			const response = await fetch(RERANKER_URL, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${getApiKey()}`,
+				},
+				body: JSON.stringify({
+					query,
+					documents,
+					return_documents: false,
+					...(topK > 0 && { top_n: topK }),
+				}),
+				signal: AbortSignal.timeout(timeoutMs),
+			});
 
-		if (!response.ok) {
-			return handleErrorResponse(response, "rerank");
-		}
+			if (!response.ok) {
+				return handleErrorResponse(response, "rerank");
+			}
 
-		const rawData = await response.json();
-		const parseResult = RerankApiResponseSchema.safeParse(rawData);
-		if (!parseResult.success) {
+			const rawData = await response.json();
+			const parseResult = RerankApiResponseSchema.safeParse(rawData);
+			if (!parseResult.success) {
+				return Result.err(
+					new DeepInfraApiError(
+						"rerank",
+						undefined,
+						`Invalid API response: ${parseResult.error.message}`,
+					),
+				);
+			}
+			const data = parseResult.data;
+
+			const scores: RerankScore[] = data.results.map((item) => ({
+				index: item.index,
+				score: item.relevance_score,
+			}));
+
+			// Sort by score descending
+			scores.sort((a, b) => b.score - a.score);
+
+			return Result.ok({
+				scores,
+				model: "Qwen/Qwen3-Reranker-0.6B",
+			});
+		} catch (error) {
+			if (error instanceof Error && error.name === "TimeoutError") {
+				return Result.err(
+					new DeepInfraApiError("rerank", undefined, "Request timed out"),
+				);
+			}
 			return Result.err(
 				new DeepInfraApiError(
 					"rerank",
 					undefined,
-					`Invalid API response: ${parseResult.error.message}`,
+					error instanceof Error ? error.message : "Unknown error",
 				),
 			);
 		}
-		const data = parseResult.data;
-
-		const scores: RerankScore[] = data.results.map((item) => ({
-			index: item.index,
-			score: item.relevance_score,
-		}));
-
-		// Sort by score descending
-		scores.sort((a, b) => b.score - a.score);
-
-		return Result.ok({
-			scores,
-			model: "Qwen/Qwen3-Reranker-0.6B",
-		});
-	} catch (error) {
-		if (error instanceof Error && error.name === "TimeoutError") {
-			return Result.err(
-				new DeepInfraApiError("rerank", undefined, "Request timed out"),
-			);
-		}
-		return Result.err(
-			new DeepInfraApiError(
-				"rerank",
-				undefined,
-				error instanceof Error ? error.message : "Unknown error",
-			),
-		);
-	}
+	});
 }
 
 /**

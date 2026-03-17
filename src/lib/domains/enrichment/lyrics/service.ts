@@ -50,11 +50,13 @@ export {
 	type GeniusError,
 };
 
+// Shared across all instances so concurrent worker jobs respect a single rate limit
+const sharedLimiter = new ConcurrencyLimiter(5, 50, 200);
+
 export class LyricsService {
 	private readonly baseUrl = "https://api.genius.com";
 	private readonly client: ReturnType<typeof wretch>;
-	// Up to 5 concurrent in-flight requests, with 50-200ms jitter between request starts
-	private readonly limiter = new ConcurrencyLimiter(5, 50, 200);
+	private readonly limiter = sharedLimiter;
 
 	constructor(config: LyricsServiceConfig) {
 		if (!config.accessToken) {

@@ -1,34 +1,24 @@
 import { Result } from "better-result";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
-import { getDestinationPlaylists } from "@/lib/domains/library/playlists/queries";
+import { updateJobProgress } from "@/lib/data/jobs";
+import { getTerminallyFailedSongIds } from "@/lib/data/job-failures";
+import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/types";
 import { selectPipelineBatch } from "./batch";
-import { runAudioFeaturesStage } from "./stages/audio-features";
-import { runGenreTaggingStage } from "./stages/genre-tagging";
-import { runSongAnalysisStage } from "./stages/song-analysis";
-import { runSongEmbeddingStage } from "./stages/song-embedding";
-import {
-	runPlaylistProfilingStage,
-	type PlaylistProfilingOutput,
-} from "./stages/playlist-profiling";
-import { runMatchingStage } from "./stages/matching";
+import { runAudioFeatures } from "./stages/audio-features";
+import { runGenreTagging } from "./stages/genre-tagging";
+import { runSongAnalysis } from "./stages/song-analysis";
+import { runSongEmbedding } from "./stages/song-embedding";
+import { runPlaylistProfiling } from "./stages/playlist-profiling";
+import { runMatching } from "./stages/matching";
+import { makeInitialProgress } from "./progress";
 import {
 	PipelineBootstrapError,
 	type EnrichmentContext,
-	type EnrichmentRunResult,
 	type EnrichmentStageName,
-	type EnrichmentStageResult,
-	type PipelineOptions,
 } from "./types";
 
-const ENV_BATCH_SIZE_KEY = "PIPELINE_BATCH_SIZE";
-const ENV_BATCH_SIZE_KEY_LEGACY = "PIPELINE_MAX_SONGS";
-
-function resolveBatchSize(options?: PipelineOptions): number {
-	const envSize =
-		process.env[ENV_BATCH_SIZE_KEY] ?? process.env[ENV_BATCH_SIZE_KEY_LEGACY];
-	return envSize ? Number.parseInt(envSize, 10) : (options?.batchSize ?? 5);
-}
+type StageResult = { total: number; succeeded: number; failed: number };
 
 function initEmbeddingService(): Result<
 	EmbeddingService,
@@ -57,225 +47,201 @@ function buildContext(
 	};
 }
 
-function collectStageJobIds(
-	stages: EnrichmentStageResult[],
-): Partial<Record<EnrichmentStageName, string>> {
-	const stageJobIds: Partial<Record<EnrichmentStageName, string>> = {};
-	for (const s of stages) {
-		if ((s.status === "completed" || s.status === "failed") && s.jobId) {
-			stageJobIds[s.stage] = s.jobId;
-		}
+function applyStageResult(
+	progress: EnrichmentChunkProgress,
+	stageName: EnrichmentStageName,
+	result: StageResult,
+	status: "completed" | "failed" | "skipped",
+): void {
+	progress.stages[stageName] = {
+		status,
+		succeeded: result.succeeded,
+		failed: result.failed,
+	};
+	progress.succeeded += result.succeeded;
+	progress.failed += result.failed;
+	progress.done += result.succeeded + result.failed;
+}
+
+async function persistProgress(
+	jobId: string,
+	progress: EnrichmentChunkProgress,
+): Promise<void> {
+	const result = await updateJobProgress(jobId, progress);
+	if (Result.isError(result)) {
+		console.error(
+			`[worker-chunk] Failed to persist progress for job ${jobId}: ${result.error.message}`,
+		);
 	}
-	return stageJobIds;
 }
 
 async function runStage(
 	stageName: EnrichmentStageName,
-	fn: () => Promise<EnrichmentStageResult>,
-): Promise<EnrichmentStageResult> {
+	fn: () => Promise<StageResult>,
+): Promise<StageResult> {
 	try {
 		return await fn();
 	} catch (error) {
-		return {
-			stage: stageName,
-			status: "failed",
-			jobId: null,
-			error: error instanceof Error ? error.message : String(error),
-		};
+		console.error(`[worker-chunk] Stage ${stageName} threw:`, error);
+		return { total: 0, succeeded: 0, failed: 0 };
 	}
 }
 
-// --- Trigger-scoped entry points ---
+function stageStatus(result: StageResult): "completed" | "failed" {
+	return result.failed > 0 && result.succeeded === 0 ? "failed" : "completed";
+}
 
-export async function runSongEnrichment(
-	accountId: string,
-	options?: PipelineOptions,
-): Promise<Result<EnrichmentRunResult, PipelineBootstrapError>> {
-	const startTime = Date.now();
+// --- Song enrichment phases (A-C) ---
 
-	const embeddingResult = initEmbeddingService();
-	if (Result.isError(embeddingResult)) return embeddingResult;
-
-	const batchSize = resolveBatchSize(options);
-	const batch = await selectPipelineBatch(accountId, batchSize);
-
-	if (batch.songIds.length === 0) {
-		const skipped: EnrichmentStageResult[] = [
-			{ stage: "audio_features", status: "skipped", reason: "empty batch" },
-			{ stage: "genre_tagging", status: "skipped", reason: "empty batch" },
-			{ stage: "song_analysis", status: "skipped", reason: "empty batch" },
-			{ stage: "song_embedding", status: "skipped", reason: "empty batch" },
-		];
-		return Result.ok({
-			stages: skipped,
-			stageJobIds: {},
-			totalDurationMs: Date.now() - startTime,
-		});
-	}
-
-	const ctx = buildContext(accountId, embeddingResult.value);
-
+async function enrichSongs(
+	ctx: EnrichmentContext,
+	batch: Awaited<ReturnType<typeof selectPipelineBatch>>,
+	jobId: string,
+	progress: EnrichmentChunkProgress,
+): Promise<void> {
 	// Phase A: audio_features + genre_tagging (parallel)
-	const [audioFeaturesResult, genreTaggingResult] = await Promise.all([
-		runStage("audio_features", () => runAudioFeaturesStage(ctx, batch)),
-		runStage("genre_tagging", () => runGenreTaggingStage(ctx, batch)),
+	progress.currentStage = "audio_features";
+	progress.stages.audio_features.status = "running";
+	progress.stages.genre_tagging.status = "running";
+	await persistProgress(jobId, progress);
+
+	const [audioResult, genreResult] = await Promise.all([
+		runStage("audio_features", () => runAudioFeatures(ctx, batch)),
+		runStage("genre_tagging", () => runGenreTagging(ctx, batch)),
 	]);
 
-	// Phase B: song analysis (reads audio features from Phase A)
-	const songAnalysisResult = await runStage("song_analysis", () =>
-		runSongAnalysisStage(ctx, batch),
+	applyStageResult(
+		progress,
+		"audio_features",
+		audioResult,
+		stageStatus(audioResult),
+	);
+	applyStageResult(
+		progress,
+		"genre_tagging",
+		genreResult,
+		stageStatus(genreResult),
 	);
 
-	// Phase C: song embedding (requires analysis from Phase B)
-	const songEmbeddingResult = await runStage("song_embedding", () =>
-		runSongEmbeddingStage(ctx, batch),
+	// Phase B: song_analysis
+	progress.currentStage = "song_analysis";
+	progress.stages.song_analysis.status = "running";
+	await persistProgress(jobId, progress);
+
+	const analysisResult = await runStage("song_analysis", () =>
+		runSongAnalysis(ctx, batch),
+	);
+	applyStageResult(
+		progress,
+		"song_analysis",
+		analysisResult,
+		stageStatus(analysisResult),
 	);
 
-	const stages = [
-		audioFeaturesResult,
-		genreTaggingResult,
-		songAnalysisResult,
-		songEmbeddingResult,
-	];
+	// Phase C: song_embedding
+	progress.currentStage = "song_embedding";
+	progress.stages.song_embedding.status = "running";
+	await persistProgress(jobId, progress);
 
-	const totalDurationMs = Date.now() - startTime;
-	console.log(`[pipeline] Song enrichment completed in ${totalDurationMs}ms`);
-
-	return Result.ok({
-		stages,
-		stageJobIds: collectStageJobIds(stages),
-		totalDurationMs,
-	});
+	const embeddingStageResult = await runStage("song_embedding", () =>
+		runSongEmbedding(ctx, batch),
+	);
+	applyStageResult(
+		progress,
+		"song_embedding",
+		embeddingStageResult,
+		stageStatus(embeddingStageResult),
+	);
 }
 
-export async function runDestinationProfiling(
-	accountId: string,
-): Promise<Result<EnrichmentRunResult, PipelineBootstrapError>> {
-	const startTime = Date.now();
+// --- Matching phases (D-E) ---
 
-	const embeddingResult = initEmbeddingService();
-	if (Result.isError(embeddingResult)) return embeddingResult;
+async function matchSongs(
+	ctx: EnrichmentContext,
+	batch: Awaited<ReturnType<typeof selectPipelineBatch>>,
+	jobId: string,
+	progress: EnrichmentChunkProgress,
+): Promise<void> {
+	// Phase D: playlist_profiling
+	progress.currentStage = "playlist_profiling";
+	progress.stages.playlist_profiling.status = "running";
+	await persistProgress(jobId, progress);
 
-	const ctx = buildContext(accountId, embeddingResult.value);
-
-	const profilingOutput = await runPlaylistProfilingStage(ctx).catch(
-		(error): PlaylistProfilingOutput => ({
-			result: {
-				stage: "playlist_profiling",
-				status: "failed",
-				jobId: null,
-				error: error instanceof Error ? error.message : String(error),
-			},
-			playlists: [],
-		}),
+	let profilingPlaylists: Awaited<
+		ReturnType<typeof runPlaylistProfiling>
+	>["playlists"] = [];
+	const profilingResult = await (async (): Promise<StageResult> => {
+		try {
+			const r = await runPlaylistProfiling(ctx);
+			profilingPlaylists = r.playlists;
+			return { total: r.total, succeeded: r.succeeded, failed: r.failed };
+		} catch (error) {
+			console.error("[worker-chunk] Stage playlist_profiling threw:", error);
+			return { total: 0, succeeded: 0, failed: 0 };
+		}
+	})();
+	applyStageResult(
+		progress,
+		"playlist_profiling",
+		profilingResult,
+		stageStatus(profilingResult),
 	);
 
-	const stages = [profilingOutput.result];
-	const totalDurationMs = Date.now() - startTime;
-	console.log(
-		`[pipeline] Destination profiling completed in ${totalDurationMs}ms`,
-	);
+	// Phase E: matching
+	progress.currentStage = "matching";
+	progress.stages.matching.status = "running";
+	await persistProgress(jobId, progress);
 
-	return Result.ok({
-		stages,
-		stageJobIds: collectStageJobIds(stages),
-		totalDurationMs,
-	});
+	const matchResult = await runStage("matching", () =>
+		runMatching(ctx, batch, profilingPlaylists),
+	);
+	applyStageResult(progress, "matching", matchResult, stageStatus(matchResult));
 }
 
-export async function runMatching(
+// --- Worker-owned chunk orchestration ---
+
+export async function executeWorkerChunk(
 	accountId: string,
-	options?: PipelineOptions,
-): Promise<Result<EnrichmentRunResult, PipelineBootstrapError>> {
-	const startTime = Date.now();
-
+	jobId: string,
+	batchSize: number,
+	batchSequence: number,
+): Promise<{ hasMoreSongs: boolean }> {
 	const embeddingResult = initEmbeddingService();
-	if (Result.isError(embeddingResult)) return embeddingResult;
-
-	const batchSize = resolveBatchSize(options);
-	const batch = await selectPipelineBatch(accountId, batchSize);
-	const ctx = buildContext(accountId, embeddingResult.value);
-
-	const playlistsResult = await getDestinationPlaylists(accountId);
-	if (Result.isError(playlistsResult)) {
-		const stages: EnrichmentStageResult[] = [
-			{
-				stage: "matching",
-				status: "failed",
-				jobId: null,
-				error: `Failed to get destination playlists: ${playlistsResult.error.message}`,
-			},
-		];
-
-		return Result.ok({
-			stages,
-			stageJobIds: collectStageJobIds(stages),
-			totalDurationMs: Date.now() - startTime,
-		});
+	if (Result.isError(embeddingResult)) {
+		throw new PipelineBootstrapError(
+			"Failed to initialize EmbeddingService",
+			embeddingResult.error,
+		);
 	}
 
-	const matchingResult = await runStage("matching", () =>
-		runMatchingStage(ctx, batch, playlistsResult.value),
+	const ctx = { ...buildContext(accountId, embeddingResult.value), jobId };
+
+	const failedIdsResult = await getTerminallyFailedSongIds(accountId);
+	const excludeIds = Result.isOk(failedIdsResult) ? failedIdsResult.value : [];
+
+	const batch = await selectPipelineBatch(
+		accountId,
+		batchSize,
+		excludeIds.length > 0 ? excludeIds : undefined,
 	);
 
-	const stages = [matchingResult];
-	const totalDurationMs = Date.now() - startTime;
-	console.log(`[pipeline] Matching completed in ${totalDurationMs}ms`);
-
-	return Result.ok({
-		stages,
-		stageJobIds: collectStageJobIds(stages),
-		totalDurationMs,
-	});
-}
-
-// --- Backward-compatible wrapper ---
-
-export async function runEnrichmentPipeline(
-	accountId: string,
-	options?: PipelineOptions,
-): Promise<Result<EnrichmentRunResult, PipelineBootstrapError>> {
-	const startTime = Date.now();
-
-	const songResult = await runSongEnrichment(accountId, options);
-	if (Result.isError(songResult)) return songResult;
-
-	const allSongStagesSkipped = songResult.value.stages.every(
-		(s) => s.status === "skipped",
+	const progress = makeInitialProgress(
+		batchSize,
+		batchSequence,
+		batch.songIds.length,
 	);
 
-	// Skip destination work when no liked-song candidates exist
-	if (allSongStagesSkipped) {
-		const stages: EnrichmentStageResult[] = [
-			...songResult.value.stages,
-			{ stage: "playlist_profiling", status: "skipped", reason: "empty batch" },
-			{ stage: "matching", status: "skipped", reason: "empty batch" },
-		];
-		return Result.ok({
-			stages,
-			stageJobIds: {},
-			totalDurationMs: Date.now() - startTime,
-		});
-	}
+	await enrichSongs(ctx, batch, jobId, progress);
+	await matchSongs(ctx, batch, jobId, progress);
 
-	const profilingResult = await runDestinationProfiling(accountId);
-	if (Result.isError(profilingResult)) return profilingResult;
+	progress.currentStage = undefined;
+	await persistProgress(jobId, progress);
 
-	const matchingResult = await runMatching(accountId, options);
-	if (Result.isError(matchingResult)) return matchingResult;
-
-	const stages = [
-		...songResult.value.stages,
-		...profilingResult.value.stages,
-		...matchingResult.value.stages,
-	];
-
-	const totalDurationMs = Date.now() - startTime;
-	console.log(`[pipeline] Completed in ${totalDurationMs}ms`);
-
-	return Result.ok({
-		stages,
-		stageJobIds: collectStageJobIds(stages),
-		totalDurationMs,
-	});
+	// Check if there are more unenriched songs
+	const nextBatch = await selectPipelineBatch(
+		accountId,
+		1,
+		excludeIds.length > 0 ? excludeIds : undefined,
+	);
+	return { hasMoreSongs: nextBatch.songIds.length > 0 };
 }

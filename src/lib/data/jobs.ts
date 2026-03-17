@@ -5,12 +5,13 @@
  * Returns Result<T, DbError> for composable error handling.
  */
 
-import type { Result } from "better-result";
+import { Result } from "better-result";
 import {
 	JobProgressSchema as JobProgressSchemaImpl,
 	type JobProgress as JobProgressType,
+	type EnrichmentChunkProgress,
 } from "@/lib/platform/jobs/progress/types";
-import type { DbError } from "@/lib/shared/errors/database";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
@@ -152,7 +153,7 @@ export function createJob(
  */
 export function updateJobProgress(
 	id: string,
-	progress: JobProgress,
+	progress: JobProgress | EnrichmentChunkProgress,
 ): Promise<Result<Job, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
@@ -245,4 +246,167 @@ export function getLastCompletedSync(
 			.limit(1)
 			.single(),
 	);
+}
+
+// ---------------------------------------------------------------------------
+// Enrichment job helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a new enrichment job with custom initial progress.
+ * Unlike createJob, accepts arbitrary progress (for batchSize/batchSequence).
+ */
+export function createEnrichmentJob(
+	accountId: string,
+	progress: EnrichmentChunkProgress,
+): Promise<Result<Job, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("job")
+			.insert({
+				account_id: accountId,
+				type: "enrichment" as JobType,
+				status: "pending" as const,
+				progress: progress as any,
+			})
+			.select()
+			.single(),
+	);
+}
+
+/**
+ * Gets or creates an enrichment job for an account.
+ * Reuses an existing active (pending/running) job if one exists,
+ * otherwise creates a new one with the provided initial progress.
+ *
+ * A partial unique index (idx_unique_active_enrichment_per_account) enforces
+ * at most one active enrichment job per account. If a concurrent caller wins
+ * the insert race, we catch the unique violation and read the winner's row.
+ */
+export async function getOrCreateEnrichmentJob(
+	accountId: string,
+	progress: EnrichmentChunkProgress,
+): Promise<Result<Job, DbError>> {
+	const existing = await getActiveEnrichmentJob(accountId);
+	if (Result.isError(existing)) return existing;
+	if (existing.value) {
+		const job: Job = existing.value;
+		return Result.ok(job);
+	}
+
+	const created = await createEnrichmentJob(accountId, progress);
+
+	if (Result.isError(created) && created.error._tag === "ConstraintError") {
+		// Unique-violation from idx_unique_active_enrichment_per_account — a
+		// concurrent caller inserted between our SELECT and INSERT. Read the
+		// winner's row instead of propagating the error.
+		const retry = await getActiveEnrichmentJob(accountId);
+		if (Result.isError(retry)) return retry;
+		if (retry.value) return Result.ok(retry.value);
+	}
+
+	return created;
+}
+
+/**
+ * Gets the active enrichment job for an account.
+ * Shorthand for getActiveJob(accountId, "enrichment").
+ */
+export function getActiveEnrichmentJob(
+	accountId: string,
+): Promise<Result<Job | null, DbError>> {
+	return getActiveJob(accountId, "enrichment");
+}
+
+/**
+ * Claims the next pending enrichment job via database RPC.
+ * The RPC atomically transitions the job to 'running' and assigns it.
+ * Returns null if no pending enrichment job is available.
+ */
+export async function claimEnrichmentJob(): Promise<
+	Result<Job | null, DbError>
+> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase.rpc("claim_pending_enrichment_job");
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	if (!data || (Array.isArray(data) && data.length === 0)) {
+		return Result.ok(null);
+	}
+
+	const job = Array.isArray(data) ? data[0] : data;
+	return Result.ok(job as Job);
+}
+
+/**
+ * Updates the heartbeat timestamp on a job to signal the worker is alive.
+ */
+export async function updateHeartbeat(
+	jobId: string,
+): Promise<Result<void, DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { error } = await supabase
+		.from("job")
+		.update({ heartbeat_at: new Date().toISOString() })
+		.eq("id", jobId);
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok(undefined);
+}
+
+/**
+ * Sweeps stale enrichment jobs back to pending so they can be re-claimed.
+ * Calls the sweep_stale_enrichment_jobs RPC with a Postgres interval threshold.
+ */
+export async function sweepStaleEnrichmentJobs(
+	staleThreshold: string,
+): Promise<Result<Job[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase.rpc("sweep_stale_enrichment_jobs", {
+		stale_threshold: staleThreshold,
+	});
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok((data ?? []) as Job[]);
+}
+
+/**
+ * Marks enrichment jobs as failed if they've been stale beyond recovery.
+ * Calls the mark_dead_enrichment_jobs RPC with a Postgres interval threshold.
+ */
+export async function markDeadEnrichmentJobs(
+	staleThreshold: string,
+): Promise<Result<Job[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase.rpc("mark_dead_enrichment_jobs", {
+		stale_threshold: staleThreshold,
+	});
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok((data ?? []) as Job[]);
 }

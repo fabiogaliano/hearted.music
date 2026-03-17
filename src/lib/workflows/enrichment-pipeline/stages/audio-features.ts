@@ -3,13 +3,9 @@ import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queri
 import { createAudioFeaturesService } from "@/lib/integrations/audio/service";
 import type { TrackInfo } from "@/lib/integrations/audio/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
-import { runTrackedStageJob } from "../job-runner";
+import { recordTerminalFailure } from "@/lib/data/job-failures";
 import type { PipelineBatch } from "../batch";
-import type {
-	EnrichmentContext,
-	EnrichmentStageResult,
-	ReadyResult,
-} from "../types";
+import type { EnrichmentContext, ReadyResult } from "../types";
 
 export async function getReadyForAudioFeatures(
 	batchSongIds: string[],
@@ -34,30 +30,23 @@ export async function getReadyForAudioFeatures(
 	return { ready, notReady: [], done };
 }
 
-export async function runAudioFeaturesStage(
+export async function runAudioFeatures(
 	ctx: EnrichmentContext,
 	batch: PipelineBatch,
-): Promise<EnrichmentStageResult> {
-	console.log("[pipeline] Stage: audio_features");
-
+): Promise<{ total: number; succeeded: number; failed: number }> {
 	let readiness: ReadyResult;
 	try {
 		readiness = await getReadyForAudioFeatures(batch.songIds);
-	} catch (error) {
+	} catch {
 		return {
-			stage: "audio_features",
-			status: "failed",
-			jobId: null,
-			error: error instanceof Error ? error.message : String(error),
+			total: batch.songIds.length,
+			succeeded: 0,
+			failed: batch.songIds.length,
 		};
 	}
 
 	if (readiness.ready.length === 0) {
-		return {
-			stage: "audio_features",
-			status: "skipped",
-			reason: "no songs need audio features",
-		};
+		return { total: 0, succeeded: 0, failed: 0 };
 	}
 
 	const tracksToFetch: TrackInfo[] = readiness.ready.map((id) => ({
@@ -65,30 +54,28 @@ export async function runAudioFeaturesStage(
 		spotifyTrackId: batch.spotifyIdBySongId.get(id)!,
 	}));
 
-	const { jobId, succeeded, failed } = await runTrackedStageJob({
-		accountId: ctx.accountId,
-		stage: "audio_features",
-		work: async () => {
-			const service = createAudioFeaturesService(createReccoBeatsService());
-			const fetchResult = await service.getOrFetchFeatures(tracksToFetch);
-			const succeeded = Result.isOk(fetchResult) ? fetchResult.value.size : 0;
-			const failed = tracksToFetch.length - succeeded;
-			return {
-				total: tracksToFetch.length,
-				succeeded,
-				failed,
-				result: undefined,
-			};
-		},
-	});
+	const service = createAudioFeaturesService(createReccoBeatsService());
+	const fetchResult = await service.getOrFetchFeatures(tracksToFetch);
+	const succeededMap = Result.isOk(fetchResult) ? fetchResult.value : new Map();
+	const succeeded = succeededMap.size;
+	const failed = tracksToFetch.length - succeeded;
 
-	return {
-		stage: "audio_features",
-		status: "completed",
-		jobId,
-		succeeded,
-		failed,
-		notReady: readiness.notReady.length,
-		done: readiness.done.length,
-	};
+	if (failed > 0 && ctx.jobId) {
+		const failedSongIds = tracksToFetch
+			.filter((t) => !succeededMap.has(t.songId))
+			.map((t) => t.songId);
+
+		await Promise.all(
+			failedSongIds.map((songId) =>
+				recordTerminalFailure({
+					jobId: ctx.jobId!,
+					itemId: songId,
+					errorType: "permanent",
+					errorMessage: "Audio features unavailable for track",
+				}),
+			),
+		);
+	}
+
+	return { total: tracksToFetch.length, succeeded, failed };
 }

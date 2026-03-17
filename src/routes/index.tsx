@@ -46,7 +46,7 @@ function LandingPage() {
 			<Landing
 				initialManifest={manifest}
 				initialDetail={initialDetail}
-				isReleased={false}
+				isReleased={true}
 			/>
 		</div>
 	);

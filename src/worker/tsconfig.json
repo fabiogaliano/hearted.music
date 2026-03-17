@@ -1,0 +1,8 @@
+{
+	"extends": "../../tsconfig.json",
+	"include": ["./**/*.ts", "../../src/lib/**/*.ts"],
+	"exclude": ["../../old_app", "../../node_modules", "../../extension"],
+	"compilerOptions": {
+		"types": ["@types/bun"]
+	}
+}
