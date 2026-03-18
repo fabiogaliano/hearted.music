@@ -16,7 +16,7 @@ The system SHALL provide a re-match operation that runs matching on all data-enr
 #### Scenario: Re-match scope includes all data-enriched songs
 - **WHEN** running a re-match pass
 - **THEN** include ALL songs that have completed data enrichment (4 shared artifacts exist)
-- **AND** load the exclusion set (match_decisions + playlist_tracks) before scoring
+- **AND** load the exclusion set (match_decisions + playlist_songs) before scoring
 - **AND** skip excluded (song, playlist) pairs at scoring time
 
 ### Requirement: Re-match is Separate from Pipeline

@@ -35,15 +35,18 @@ export interface MatchResult {
 export interface BatchMatchResult {
 	/** Matches keyed by songId */
 	readonly matches: Map<string, MatchResult[]>;
-	/** Songs that failed to match */
-	readonly failed: string[];
+	/** Songs that scored below threshold against all playlists */
+	readonly noMatch: string[];
+	/** Songs skipped because all playlists were in the exclusion set */
+	readonly excluded: string[];
 	/** Statistics */
 	readonly stats: {
 		readonly total: number;
 		readonly matched: number;
 		readonly cached: number;
 		readonly computed: number;
-		readonly failed: number;
+		readonly noMatch: number;
+		readonly excluded: number;
 	};
 }
 

@@ -7,7 +7,7 @@ The matching stage SHALL accept an exclusion set and skip already-decided (song,
 #### Scenario: Load exclusion set before matching
 - **WHEN** preparing to run `matchBatch`
 - **THEN** load `match_decision` rows (added + dismissed) for the account
-- **AND** load `playlist_track` rows (songs already in playlists) for the account
+- **AND** load `playlist_song` rows (songs already in playlists) for the account
 - **AND** pass the combined exclusion set to the matching stage
 
 #### Scenario: Skip excluded pairs
@@ -86,7 +86,7 @@ The batch selection SHALL check both shared data artifacts and per-user `item_st
 
 ### Requirement: Cache-First Matching
 
-The matching pipeline SHALL use cache-first matching with context hash deduplication. The `matchBatch` return type SHALL use `unmatched` instead of `failed` for songs with no suggestions.
+The matching pipeline SHALL use cache-first matching with context hash deduplication. The `matchBatch` return type SHALL use `noMatch` instead of `failed` for songs with no suggestions.
 
 #### Scenario: No ready candidates
 - **WHEN** there are no liked-song candidates ready for matching
@@ -95,5 +95,5 @@ The matching pipeline SHALL use cache-first matching with context hash deduplica
 
 #### Scenario: Unmatched songs terminology
 - **WHEN** a song has zero matches above the score threshold (0.3)
-- **THEN** the song SHALL be reported as `unmatched` (not `failed`)
-- **AND** `BatchMatchResult.unmatched` SHALL contain the song ID
+- **THEN** the song SHALL be reported as `noMatch` (not `failed`)
+- **AND** `BatchMatchResult.noMatch` SHALL contain the song ID

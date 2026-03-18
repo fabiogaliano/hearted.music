@@ -59,7 +59,7 @@ The system SHALL load existing decisions and playlist membership before matching
 #### Scenario: Load exclusion set
 - **WHEN** preparing to run matching for an account
 - **THEN** load all `match_decision` rows (added + declined) for the account
-- **AND** load all `playlist_track` rows (songs already in playlists) for the account
+- **AND** load all `playlist_song` rows (songs already in playlists) for the account
 - **AND** combine into an exclusion set of `(song_id, playlist_id)` pairs
 
 #### Scenario: Skip excluded pairs during scoring

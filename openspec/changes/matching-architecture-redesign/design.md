@@ -77,11 +77,11 @@ Current relevant files:
 - *Clear `item_status` and re-run the full pipeline*: Wastes compute on stages A-D (data already exists). Also re-enters the chaining system unnecessarily.
 - *Embed re-match logic in the pipeline*: Complicates the orchestrator with conditional batch selection modes.
 
-**Re-match scope**: ALL songs are candidates (not just previously unmatched). When playlist C is added, songs already matched to A and B should also be evaluated against C. The exclusion set (match_decisions + playlist_tracks) prevents redundant suggestions.
+**Re-match scope**: ALL songs are candidates (not just previously unmatched). When playlist C is added, songs already matched to A and B should also be evaluated against C. The exclusion set (match_decisions + playlist_songs) prevents redundant suggestions.
 
 ### 5. Exclusion set loaded at match time
 
-**Decision**: Before `matchBatch` runs, load `match_decision` rows (added + declined) and `playlist_track` rows for the account. Skip excluded (song, playlist) pairs during scoring — no `match_result` rows created for them.
+**Decision**: Before `matchBatch` runs, load `match_decision` rows (added + declined) and `playlist_song` rows for the account. Skip excluded (song, playlist) pairs during scoring — no `match_result` rows created for them.
 
 **Rationale**: Filtering at match time (not display time) means `match_result` only contains actionable suggestions. Badge count becomes a simple count on `match_result` for the latest context, with no joins needed against `match_decision`.
 

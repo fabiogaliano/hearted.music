@@ -2,6 +2,8 @@ import { Result } from "better-result";
 import {
 	sweepStaleEnrichmentJobs,
 	markDeadEnrichmentJobs,
+	sweepStaleRematchJobs,
+	markDeadRematchJobs,
 } from "@/lib/data/jobs";
 import { workerConfig } from "./config";
 import { startHealthServer, setShuttingDown, setUnhealthy } from "./health";
@@ -27,6 +29,30 @@ function startSweep(): { stop: () => void } {
 			log.warn("dead-lettered-jobs", {
 				count: dead.value.length,
 				jobIds: dead.value.map((j) => j.id),
+			});
+		}
+
+		const sweptRematch = await sweepStaleRematchJobs(
+			workerConfig.staleThreshold,
+		);
+		if (Result.isError(sweptRematch)) {
+			log.error("sweep-rematch-error", { error: sweptRematch.error.message });
+		} else if (sweptRematch.value.length > 0) {
+			log.info("swept-stale-rematch-jobs", {
+				count: sweptRematch.value.length,
+				jobIds: sweptRematch.value.map((j) => j.id),
+			});
+		}
+
+		const deadRematch = await markDeadRematchJobs(workerConfig.staleThreshold);
+		if (Result.isError(deadRematch)) {
+			log.error("dead-letter-rematch-error", {
+				error: deadRematch.error.message,
+			});
+		} else if (deadRematch.value.length > 0) {
+			log.warn("dead-lettered-rematch-jobs", {
+				count: deadRematch.value.length,
+				jobIds: deadRematch.value.map((j) => j.id),
 			});
 		}
 	}, workerConfig.sweepIntervalMs);

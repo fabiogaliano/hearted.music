@@ -137,8 +137,6 @@ export type Database = {
 			item_status: {
 				Row: {
 					account_id: string;
-					action_type: string | null;
-					actioned_at: string | null;
 					created_at: string;
 					id: string;
 					is_new: boolean;
@@ -149,8 +147,6 @@ export type Database = {
 				};
 				Insert: {
 					account_id: string;
-					action_type?: string | null;
-					actioned_at?: string | null;
 					created_at?: string;
 					id?: string;
 					is_new?: boolean;
@@ -161,8 +157,6 @@ export type Database = {
 				};
 				Update: {
 					account_id?: string;
-					action_type?: string | null;
-					actioned_at?: string | null;
 					created_at?: string;
 					id?: string;
 					is_new?: boolean;
@@ -378,6 +372,58 @@ export type Database = {
 						columns: ["account_id"];
 						isOneToOne: false;
 						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			match_decision: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					decided_at: string;
+					decision: string;
+					id: string;
+					playlist_id: string;
+					song_id: string;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					decided_at?: string;
+					decision: string;
+					id?: string;
+					playlist_id: string;
+					song_id: string;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					decided_at?: string;
+					decision?: string;
+					id?: string;
+					playlist_id?: string;
+					song_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "match_decision_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_decision_playlist_id_fkey";
+						columns: ["playlist_id"];
+						isOneToOne: false;
+						referencedRelation: "playlist";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_decision_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
 						referencedColumns: ["id"];
 					},
 				];
@@ -978,6 +1024,7 @@ export type Database = {
 					onboarding_completed_at: string | null;
 					onboarding_step: string;
 					phase_job_ids: Json | null;
+					rematch_job_id: string | null;
 					theme: Database["public"]["Enums"]["theme"] | null;
 					updated_at: string;
 				};
@@ -989,6 +1036,7 @@ export type Database = {
 					onboarding_completed_at?: string | null;
 					onboarding_step?: string;
 					phase_job_ids?: Json | null;
+					rematch_job_id?: string | null;
 					theme?: Database["public"]["Enums"]["theme"] | null;
 					updated_at?: string;
 				};
@@ -1000,6 +1048,7 @@ export type Database = {
 					onboarding_completed_at?: string | null;
 					onboarding_step?: string;
 					phase_job_ids?: Json | null;
+					rematch_job_id?: string | null;
 					theme?: Database["public"]["Enums"]["theme"] | null;
 					updated_at?: string;
 				};
@@ -1014,6 +1063,13 @@ export type Database = {
 					{
 						foreignKeyName: "user_preferences_enrichment_job_id_fkey";
 						columns: ["enrichment_job_id"];
+						isOneToOne: false;
+						referencedRelation: "job";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "user_preferences_rematch_job_id_fkey";
+						columns: ["rematch_job_id"];
 						isOneToOne: false;
 						referencedRelation: "job";
 						referencedColumns: ["id"];
@@ -1094,6 +1150,30 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
+			claim_pending_rematch_job: {
+				Args: never;
+				Returns: {
+					account_id: string;
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error: string | null;
+					heartbeat_at: string | null;
+					id: string;
+					max_attempts: number;
+					progress: Json | null;
+					started_at: string | null;
+					status: Database["public"]["Enums"]["job_status"];
+					type: Database["public"]["Enums"]["job_type"];
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 			count_analyzed_songs_for_account: {
 				Args: { p_account_id: string };
 				Returns: number;
@@ -1126,12 +1206,37 @@ export type Database = {
 				Args: { p_account_id: string };
 				Returns: {
 					analyzed: number;
+					has_suggestions: number;
 					matched: number;
 					pending: number;
 					total: number;
 				}[];
 			};
 			mark_dead_enrichment_jobs: {
+				Args: { stale_threshold: string };
+				Returns: {
+					account_id: string;
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error: string | null;
+					heartbeat_at: string | null;
+					id: string;
+					max_attempts: number;
+					progress: Json | null;
+					started_at: string | null;
+					status: Database["public"]["Enums"]["job_status"];
+					type: Database["public"]["Enums"]["job_type"];
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
+			mark_dead_rematch_jobs: {
 				Args: { stale_threshold: string };
 				Returns: {
 					account_id: string;
@@ -1179,6 +1284,30 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
+			sweep_stale_rematch_jobs: {
+				Args: { stale_threshold: string };
+				Returns: {
+					account_id: string;
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error: string | null;
+					heartbeat_at: string | null;
+					id: string;
+					max_attempts: number;
+					progress: Json | null;
+					started_at: string | null;
+					status: Database["public"]["Enums"]["job_status"];
+					type: Database["public"]["Enums"]["job_type"];
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 		};
 		Enums: {
 			item_type: "song" | "playlist";
@@ -1194,7 +1323,8 @@ export type Database = {
 				| "song_embedding"
 				| "playlist_profiling"
 				| "genre_tagging"
-				| "enrichment";
+				| "enrichment"
+				| "rematch";
 			theme: "blue" | "green" | "rose" | "lavender";
 		};
 		CompositeTypes: {
@@ -1343,6 +1473,7 @@ export const Constants = {
 				"playlist_profiling",
 				"genre_tagging",
 				"enrichment",
+				"rematch",
 			],
 			theme: ["blue", "green", "rose", "lavender"],
 		},

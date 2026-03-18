@@ -33,6 +33,8 @@ export interface BatchMatchOptions {
 	jobId?: string;
 	/** Progress callback (optional) */
 	onProgress?: (progress: JobProgress) => void;
+	/** Song:playlist pairs to skip (format: "songId:playlistId") */
+	exclusionSet?: Set<string>;
 }
 
 export class MatchingService {
@@ -107,14 +109,23 @@ export class MatchingService {
 		if (songs.length === 0 || profiles.length === 0) {
 			return Result.ok({
 				matches: new Map(),
-				failed: [],
-				stats: { total: 0, matched: 0, cached: 0, computed: 0, failed: 0 },
+				noMatch: [],
+				excluded: [],
+				stats: {
+					total: 0,
+					matched: 0,
+					cached: 0,
+					computed: 0,
+					noMatch: 0,
+					excluded: 0,
+				},
 			});
 		}
 
-		const { jobId, onProgress } = options ?? {};
+		const { jobId, onProgress, exclusionSet } = options ?? {};
 		const matches = new Map<string, MatchResult[]>();
-		const failed: string[] = [];
+		const noMatch: string[] = [];
+		const excluded: string[] = [];
 		let computed = 0;
 
 		// Initialize progress tracking
@@ -131,6 +142,18 @@ export class MatchingService {
 				? `${song.name}`
 				: `Song ${song.id.slice(0, 8)}`;
 
+			// Filter out excluded playlists for this song
+			const eligibleProfiles = exclusionSet
+				? profiles.filter(
+						(p) => !exclusionSet.has(`${song.id}:${p.playlistId}`),
+					)
+				: profiles;
+
+			if (eligibleProfiles.length === 0) {
+				excluded.push(song.id);
+				continue;
+			}
+
 			// Emit: song matching in progress
 			if (jobId) {
 				emitItem(jobId, {
@@ -143,7 +166,7 @@ export class MatchingService {
 			}
 
 			const embedding = songEmbeddings?.get(song.id) ?? null;
-			const result = await this.matchSong(song, profiles, embedding);
+			const result = await this.matchSong(song, eligibleProfiles, embedding);
 
 			if (Result.isOk(result) && result.value.length > 0) {
 				matches.set(song.id, result.value);
@@ -162,10 +185,10 @@ export class MatchingService {
 					});
 				}
 			} else {
-				failed.push(song.id);
+				noMatch.push(song.id);
 				progress.failed++;
 
-				// Emit: song match failed
+				// Emit: song had no match
 				if (jobId) {
 					emitItem(jobId, {
 						itemId: song.id,
@@ -191,13 +214,15 @@ export class MatchingService {
 
 		return Result.ok({
 			matches,
-			failed,
+			noMatch,
+			excluded,
 			stats: {
 				total: songs.length,
 				matched: matches.size,
-				cached: 0, // No caching in this version
+				cached: 0,
 				computed,
-				failed: failed.length,
+				noMatch: noMatch.length,
+				excluded: excluded.length,
 			},
 		});
 	}

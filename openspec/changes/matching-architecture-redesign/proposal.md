@@ -10,7 +10,7 @@ The current matching architecture conflates pipeline processing state, user acti
 - Pipeline writes `item_status` after processing to prevent infinite loops — `item_status` becomes a pure pipeline processing tracker
 - Matching stage accepts exclusion set (existing decisions + playlist membership) and skips excluded pairs at scoring time
 - Re-match triggered on sync only when `playlistSetHash` differs from latest `match_context`
-- Rename `BatchMatchResult.failed` → `unmatched` (no match above threshold is not a failure)
+- Rename `BatchMatchResult.failed` → `noMatch` (no match above threshold is not a failure)
 - Skip/Next becomes UI-only state (not persisted) — only `'added'` and `'dismissed'` are permanent decisions
 - Badge count and /matching page derived directly from `match_result` for the latest `match_context` — since exclusion happens at match time, `match_result` only contains actionable suggestions
 - `get_liked_songs_page` RPC updated to derive matching status from `match_result`/`match_decision` instead of `item_status.action_type`
@@ -23,8 +23,8 @@ The current matching architecture conflates pipeline processing state, user acti
 
 ### Modified Capabilities
 - `newness`: Remove `action_type`/`actioned_at` from `item_status`. `item_status` becomes a pipeline processing tracker + newness flag only. Matching status derivation moves from `item_status.action_type` to `match_result`/`match_decision` composition.
-- `matching-pipeline`: Add exclusion set input (match_decisions + playlist_tracks) to skip already-decided pairs at scoring time. Rename `failed` → `unmatched`. Return matched/unmatched song IDs from matching stage (not just counts).
-- `matching-ui`: Clarify data mutations — "Add" writes `match_decision(added)`, "Decline" writes `match_decision(dismissed)`, "Dismiss" batch-inserts dismissed for all shown playlists, "Skip/Next" is UI-only (not persisted). Badge count derived from match_result minus match_decision minus playlist_track.
+- `matching-pipeline`: Add exclusion set input (match_decisions + playlist_songs) to skip already-decided pairs at scoring time. Rename `failed` → `noMatch`. Return matched/noMatch song IDs from matching stage (not just counts).
+- `matching-ui`: Clarify data mutations — "Add" writes `match_decision(added)`, "Decline" writes `match_decision(dismissed)`, "Dismiss" batch-inserts dismissed for all shown playlists, "Skip/Next" is UI-only (not persisted). Badge count derived from match_result minus match_decision minus playlist_song.
 - `data-flow`: Update server function contracts — `addSongToPlaylist` writes to `match_decision`, `dismissSong` batch-inserts dismissed decisions, `skipSong` removed as server function.
 
 ## Impact

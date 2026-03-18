@@ -225,7 +225,7 @@ async function smoke() {
 		if (Result.isOk(result)) {
 			const batch = result.value;
 			console.log(`  ✓ returns Ok for batch`);
-			console.log(`  ✓ stats: total=${batch.stats.total}, matched=${batch.stats.matched}, failed=${batch.stats.failed}`);
+			console.log(`  ✓ stats: total=${batch.stats.total}, matched=${batch.stats.matched}, noMatch=${batch.stats.noMatch}`);
 			console.log(`  ✓ matches map size: ${batch.matches.size}`);
 
 			// Print each song's best match

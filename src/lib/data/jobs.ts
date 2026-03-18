@@ -410,3 +410,123 @@ export async function markDeadEnrichmentJobs(
 
 	return Result.ok((data ?? []) as Job[]);
 }
+
+// ---------------------------------------------------------------------------
+// Rematch job helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a new rematch job in pending status.
+ */
+export function createRematchJob(
+	accountId: string,
+): Promise<Result<Job, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const initialProgress: JobProgress = {
+		total: 0,
+		done: 0,
+		succeeded: 0,
+		failed: 0,
+	};
+
+	return fromSupabaseSingle(
+		supabase
+			.from("job")
+			.insert({
+				account_id: accountId,
+				type: "rematch" as JobType,
+				status: "pending" as const,
+				progress: initialProgress,
+			})
+			.select()
+			.single(),
+	);
+}
+
+/**
+ * Gets or creates a rematch job for an account.
+ * Reuses an existing active (pending/running) job if one exists.
+ * A partial unique index enforces at most one active rematch job per account.
+ */
+export async function getOrCreateRematchJob(
+	accountId: string,
+): Promise<Result<Job, DbError>> {
+	const existing = await getActiveJob(accountId, "rematch");
+	if (Result.isError(existing)) return existing;
+	if (existing.value) return Result.ok(existing.value);
+
+	const created = await createRematchJob(accountId);
+
+	if (Result.isError(created) && created.error._tag === "ConstraintError") {
+		const retry = await getActiveJob(accountId, "rematch");
+		if (Result.isError(retry)) return retry;
+		if (retry.value) return Result.ok(retry.value);
+	}
+
+	return created;
+}
+
+/**
+ * Claims the next pending rematch job via database RPC.
+ * Returns null if no pending rematch job is available.
+ */
+export async function claimRematchJob(): Promise<Result<Job | null, DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase.rpc("claim_pending_rematch_job");
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	if (!data || (Array.isArray(data) && data.length === 0)) {
+		return Result.ok(null);
+	}
+
+	const job = Array.isArray(data) ? data[0] : data;
+	return Result.ok(job as Job);
+}
+
+/**
+ * Sweeps stale rematch jobs back to pending so they can be re-claimed.
+ */
+export async function sweepStaleRematchJobs(
+	staleThreshold: string,
+): Promise<Result<Job[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase.rpc("sweep_stale_rematch_jobs", {
+		stale_threshold: staleThreshold,
+	});
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok((data ?? []) as Job[]);
+}
+
+/**
+ * Marks rematch jobs as failed if they've been stale beyond recovery.
+ */
+export async function markDeadRematchJobs(
+	staleThreshold: string,
+): Promise<Result<Job[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase.rpc("mark_dead_rematch_jobs", {
+		stale_threshold: staleThreshold,
+	});
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok((data ?? []) as Job[]);
+}
