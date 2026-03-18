@@ -65,7 +65,7 @@ The system SHALL use Zustand for ephemeral UI state only.
 
 ### Requirement: Server Functions for Mutations
 
-The system SHALL use TanStack Start server functions for data mutations.
+The system SHALL use TanStack Start server functions for data mutations. Matching actions SHALL write to `match_decision`, not `item_status`.
 
 #### Scenario: Server function definition
 - **WHEN** creating a server mutation
@@ -78,6 +78,21 @@ The system SHALL use TanStack Start server functions for data mutations.
 #### Scenario: Error handling
 - **WHEN** server function fails
 - **THEN** error is typed and catchable
+
+#### Scenario: addSongToPlaylist writes match_decision
+- **WHEN** user adds song to a specific playlist
+- **THEN** `addSongToPlaylist` server function SHALL insert `match_decision(song_id, playlist_id, 'added')`
+- **AND** SHALL NOT write to `item_status.action_type`
+
+#### Scenario: dismissSong batch-declines
+- **WHEN** user dismisses a song with suggestions for playlists A, B, C
+- **THEN** `dismissSong` server function SHALL batch insert `match_decision(decision='dismissed')` for each shown playlist
+- **AND** accept an array of playlist IDs as input
+
+#### Scenario: next has no server function
+- **WHEN** user clicks Next Song
+- **THEN** no server function is called
+- **AND** navigation state is managed in client-side UI state only
 
 ---
 
@@ -140,7 +155,11 @@ The system SHALL provide optimistic updates for user actions.
 
 #### Scenario: Add to playlist
 - **WHEN** user adds song to playlist
-- **THEN** immediately show song in playlist (before server confirms)
+- **THEN** immediately show playlist as "added" in the matches list (before server confirms)
+
+#### Scenario: Dismiss song
+- **WHEN** user dismisses a song
+- **THEN** immediately remove all suggestions from the list and advance (before server confirms)
 
 #### Scenario: Rollback on error
 - **WHEN** mutation fails
@@ -230,17 +249,18 @@ queryKey: ['preferences', accountId]
 // lib/server/liked-songs.server.ts
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { updateStatus } from '~/lib/data/liked-song'
+import { insertMatchDecision } from '~/lib/data/match-decision-queries'
 
 export const addSongToPlaylist = createServerFn()
   .validator(z.object({
     songId: z.uuid(),
+    playlistId: z.uuid(),
     spotifyTrackId: z.string().min(1),
     spotifyPlaylistId: z.string().min(1),
   }))
   .handler(async ({ data }) => {
-    // Matching status is derived from item_status records
-    await updateStatus(session.accountId, data.songId, 'added_to_playlist')
+    // Matching decisions are recorded in match_decision, not item_status
+    await insertMatchDecision(session.accountId, data.songId, data.playlistId, 'added')
     return { success: true }
   })
 ```
