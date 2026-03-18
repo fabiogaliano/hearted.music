@@ -89,8 +89,13 @@ The system SHALL use cache-first pattern to avoid redundant computation, includi
 - **AND** the stored context metadata SHALL use `MATCHING_ALGO_VERSION` rather than a hardcoded version string
 
 #### Scenario: Cache invalidation
-- **WHEN** song analysis changes OR playlist contents change OR playlist profile inputs change OR config changes OR model/version changes
+- **WHEN** song analysis changes OR playlist contents change OR playlist profile inputs change OR playlist name/description changes OR config changes OR model/version changes
 - **THEN** context hash naturally differs, causing fresh computation
+
+#### Scenario: Profile content hash includes intent text
+- **WHEN** computing playlist profile content hash
+- **THEN** intent text (name + description) SHALL always be included in the hash input
+- **AND** the hash SHALL NOT gate intent text inclusion on whether song embeddings exist
 
 #### Scenario: Incremental candidate set
 - **WHEN** a re-sync adds new songs but existing songs are unchanged
@@ -115,11 +120,42 @@ The system SHALL use cache-first pattern to avoid redundant computation, includi
 
 ### Requirement: Playlist Profiling
 
-The system SHALL compute aggregate profiles for destination playlists.
+The system SHALL compute aggregate profiles for destination playlists, blending song-derived content signals with playlist intent signals (name and description).
 
 #### Scenario: Embedding centroid
 - **WHEN** computing playlist profile
-- **THEN** average all song embeddings in playlist
+- **THEN** average all song embeddings in playlist to produce a song centroid
+
+#### Scenario: Intent embedding
+- **WHEN** computing playlist profile
+- **AND** playlist has name text (always present) and optionally description text
+- **THEN** embed the intent text (name + description joined with " — ") using `EmbeddingService.embedText()` with `passage:` prefix
+- **AND** produce an intent embedding vector
+
+#### Scenario: Intent-content blending
+- **WHEN** both song centroid and intent embedding are available
+- **THEN** L2-normalize both vectors before blending
+- **AND** compute weighted average: `(1 - intentWeight) * songCentroid + intentWeight * intentEmbedding`
+- **AND** L2-normalize the result
+- **AND** use the blended vector as the profile's embedding centroid
+
+#### Scenario: Intent weight computation
+- **WHEN** computing the blend weight
+- **THEN** compute `intentWeight` from song count and description presence using a smooth decay formula
+- **AND** intent weight SHALL be higher for playlists with fewer songs (new/sparse playlists)
+- **AND** intent weight SHALL be boosted when description text is present (richer signal)
+- **AND** intent weight SHALL never reach zero — a minimum floor of 0.15 (name-only) or 0.30 (with description) SHALL be enforced
+
+#### Scenario: Intent-only profile (no songs)
+- **WHEN** computing playlist profile
+- **AND** playlist has no songs with embeddings
+- **AND** intent text exists
+- **THEN** the intent embedding SHALL be the profile's embedding centroid (no blending needed)
+
+#### Scenario: No intent text (edge case)
+- **WHEN** computing playlist profile
+- **AND** no intent text is available
+- **THEN** fall back to pure song centroid (existing behavior unchanged)
 
 #### Scenario: Audio feature centroid
 - **WHEN** computing playlist profile

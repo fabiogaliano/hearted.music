@@ -65,6 +65,67 @@ export function calculateAudioCentroid(
 	return centroid as AudioCentroid;
 }
 
+// Intent blending tuning constants
+const INTENT_BASE_WEIGHT = 0.35;
+const INTENT_DESC_BOOST = 1.5;
+const INTENT_MATURITY_THRESHOLD = 30;
+const INTENT_FLOOR_WITH_DESC = 0.3;
+const INTENT_FLOOR_NAME_ONLY = 0.15;
+
+function l2Normalize(vec: number[]): number[] {
+	let norm = 0;
+	for (let i = 0; i < vec.length; i++) {
+		norm += vec[i] * vec[i];
+	}
+	norm = Math.sqrt(norm);
+	if (norm === 0) return vec;
+	return vec.map((v) => v / norm);
+}
+
+/**
+ * Blend song centroid with intent embedding using weighted average.
+ * Both vectors are L2-normalized before blending to prevent magnitude bias,
+ * and the result is re-normalized for stable cosine similarity.
+ */
+export function blendEmbeddings(
+	songCentroid: number[],
+	intentEmbedding: number[] | null,
+	intentWeight: number,
+): number[] {
+	if (!intentEmbedding || intentEmbedding.length === 0) return songCentroid;
+	if (songCentroid.length === 0) return intentEmbedding;
+
+	const normContent = l2Normalize(songCentroid);
+	const normIntent = l2Normalize(intentEmbedding);
+	const cw = 1 - intentWeight;
+
+	const blended = normContent.map(
+		(v, i) => cw * v + intentWeight * normIntent[i],
+	);
+	return l2Normalize(blended);
+}
+
+/**
+ * Compute how much the intent embedding (name + description) should
+ * influence the final profile embedding.
+ *
+ * Higher for sparse/new playlists, lower for established ones.
+ * Description presence boosts the weight (richer signal).
+ * A floor ensures intent never fully disappears.
+ */
+export function computeIntentWeight(
+	songCount: number,
+	hasDescription: boolean,
+): number {
+	const descBoost = hasDescription ? INTENT_DESC_BOOST : 1.0;
+	const decay = Math.max(0, 1.0 - songCount / INTENT_MATURITY_THRESHOLD);
+	const weight = INTENT_BASE_WEIGHT * descBoost * decay;
+	const floor = hasDescription
+		? INTENT_FLOOR_WITH_DESC
+		: INTENT_FLOOR_NAME_ONLY;
+	return Math.max(floor, Math.min(1.0, weight));
+}
+
 /**
  * Compute genre distribution from songs.
  * Accumulates counts for each genre across all songs.

@@ -5,10 +5,13 @@
 import { describe, expect, it } from "vitest";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
+import { hashPlaylistProfile } from "@/lib/domains/enrichment/embeddings/hashing";
 import {
+	blendEmbeddings,
 	calculateAudioCentroid,
 	calculateCentroid,
 	computeGenreDistribution,
+	computeIntentWeight,
 } from "../calculations";
 
 // ============================================================================
@@ -374,5 +377,186 @@ describe("computeGenreDistribution", () => {
 			rock: 1,
 			indie: 1,
 		});
+	});
+});
+
+// ============================================================================
+// blendEmbeddings
+// ============================================================================
+
+function l2Norm(vec: number[]): number {
+	return Math.sqrt(vec.reduce((sum, v) => sum + v * v, 0));
+}
+
+describe("blendEmbeddings", () => {
+	it("returns song centroid when intent is null", () => {
+		const result = blendEmbeddings([1, 2, 3], null, 0.5);
+		expect(result).toEqual([1, 2, 3]);
+	});
+
+	it("returns song centroid when intent is empty", () => {
+		const result = blendEmbeddings([1, 2, 3], [], 0.5);
+		expect(result).toEqual([1, 2, 3]);
+	});
+
+	it("returns intent embedding when song centroid is empty", () => {
+		const result = blendEmbeddings([], [1, 2, 3], 0.5);
+		expect(result).toEqual([1, 2, 3]);
+	});
+
+	it("produces unit-length output", () => {
+		const result = blendEmbeddings([1, 0, 0], [0, 1, 0], 0.5);
+		expect(l2Norm(result)).toBeCloseTo(1.0);
+	});
+
+	it("at weight=0, result equals normalized song centroid direction", () => {
+		const songCentroid = [3, 4, 0];
+		const intent = [0, 0, 5];
+		const result = blendEmbeddings(songCentroid, intent, 0);
+		// Should point in direction of [3, 4, 0] normalized = [0.6, 0.8, 0]
+		expect(result[0]).toBeCloseTo(0.6);
+		expect(result[1]).toBeCloseTo(0.8);
+		expect(result[2]).toBeCloseTo(0);
+	});
+
+	it("at weight=1, result equals normalized intent direction", () => {
+		const songCentroid = [3, 4, 0];
+		const intent = [0, 0, 5];
+		const result = blendEmbeddings(songCentroid, intent, 1);
+		// Should point in direction of [0, 0, 5] normalized = [0, 0, 1]
+		expect(result[0]).toBeCloseTo(0);
+		expect(result[1]).toBeCloseTo(0);
+		expect(result[2]).toBeCloseTo(1);
+	});
+
+	it("normalizes inputs so magnitude doesn't bias the blend", () => {
+		// Same direction, different magnitudes
+		const smallCentroid = [0.1, 0.1, 0];
+		const largeCentroid = [10, 10, 0];
+		const intent = [0, 0, 1];
+
+		const resultSmall = blendEmbeddings(smallCentroid, intent, 0.5);
+		const resultLarge = blendEmbeddings(largeCentroid, intent, 0.5);
+
+		// Both should produce the same blended result (same directions, same weight)
+		expect(resultSmall[0]).toBeCloseTo(resultLarge[0]);
+		expect(resultSmall[1]).toBeCloseTo(resultLarge[1]);
+		expect(resultSmall[2]).toBeCloseTo(resultLarge[2]);
+	});
+
+	it("blends orthogonal vectors at weight=0.5 equally", () => {
+		const result = blendEmbeddings([1, 0], [0, 1], 0.5);
+		// Both normalized to unit → 50/50 → [0.5, 0.5] → normalized
+		const expected = 1 / Math.sqrt(2);
+		expect(result[0]).toBeCloseTo(expected);
+		expect(result[1]).toBeCloseTo(expected);
+	});
+});
+
+// ============================================================================
+// computeIntentWeight
+// ============================================================================
+
+describe("computeIntentWeight", () => {
+	it("enforces name-only floor at 0.15", () => {
+		expect(computeIntentWeight(100, false)).toBeCloseTo(0.15);
+		expect(computeIntentWeight(50, false)).toBeCloseTo(0.15);
+	});
+
+	it("enforces description floor at 0.30", () => {
+		expect(computeIntentWeight(100, true)).toBeCloseTo(0.3);
+		expect(computeIntentWeight(50, true)).toBeCloseTo(0.3);
+	});
+
+	it("returns higher weight for fewer songs", () => {
+		const w1 = computeIntentWeight(1, true);
+		const w10 = computeIntentWeight(10, true);
+		const w25 = computeIntentWeight(25, true);
+		expect(w1).toBeGreaterThan(w10);
+		expect(w10).toBeGreaterThan(w25);
+	});
+
+	it("description presence boosts weight", () => {
+		const withDesc = computeIntentWeight(5, true);
+		const nameOnly = computeIntentWeight(5, false);
+		expect(withDesc).toBeGreaterThan(nameOnly);
+	});
+
+	it("never exceeds 1.0", () => {
+		expect(computeIntentWeight(0, true)).toBeLessThanOrEqual(1.0);
+	});
+
+	it("hits floor at maturity threshold (30 songs)", () => {
+		const w30desc = computeIntentWeight(30, true);
+		expect(w30desc).toBeCloseTo(0.3);
+
+		const w30name = computeIntentWeight(30, false);
+		expect(w30name).toBeCloseTo(0.15);
+	});
+
+	it("decays smoothly between 0 and 30 songs", () => {
+		const weights = Array.from({ length: 31 }, (_, i) =>
+			computeIntentWeight(i, true),
+		);
+		// Each weight should be >= the next (monotonically non-increasing)
+		for (let i = 0; i < weights.length - 1; i++) {
+			expect(weights[i]).toBeGreaterThanOrEqual(weights[i + 1] - 0.001);
+		}
+	});
+});
+
+// ============================================================================
+// hashPlaylistProfile — intent text in content hash
+// ============================================================================
+
+describe("hashPlaylistProfile intent text", () => {
+	const baseSongIds = ["song-1", "song-2"];
+	const baseCentroid = [0.1, 0.2, 0.3];
+
+	it("same songs + different description → different hash", async () => {
+		const hash1 = await hashPlaylistProfile({
+			playlistId: "pl-1",
+			songIds: baseSongIds,
+			descriptionText: "crying in the car",
+			embeddingCentroid: baseCentroid,
+		});
+		const hash2 = await hashPlaylistProfile({
+			playlistId: "pl-1",
+			songIds: baseSongIds,
+			descriptionText: "revenge era",
+			embeddingCentroid: baseCentroid,
+		});
+		expect(hash1).not.toBe(hash2);
+	});
+
+	it("same songs + no description vs with description → different hash", async () => {
+		const hashNoDesc = await hashPlaylistProfile({
+			playlistId: "pl-1",
+			songIds: baseSongIds,
+			embeddingCentroid: baseCentroid,
+		});
+		const hashWithDesc = await hashPlaylistProfile({
+			playlistId: "pl-1",
+			songIds: baseSongIds,
+			descriptionText: "sunday softness",
+			embeddingCentroid: baseCentroid,
+		});
+		expect(hashNoDesc).not.toBe(hashWithDesc);
+	});
+
+	it("same description → same hash (deterministic)", async () => {
+		const hash1 = await hashPlaylistProfile({
+			playlistId: "pl-1",
+			songIds: baseSongIds,
+			descriptionText: "crying in the car",
+			embeddingCentroid: baseCentroid,
+		});
+		const hash2 = await hashPlaylistProfile({
+			playlistId: "pl-1",
+			songIds: baseSongIds,
+			descriptionText: "crying in the car",
+			embeddingCentroid: baseCentroid,
+		});
+		expect(hash1).toBe(hash2);
 	});
 });
