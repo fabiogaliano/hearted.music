@@ -14,9 +14,11 @@ import * as vectorsData from "@/lib/domains/enrichment/embeddings/queries";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { getModelBundleHash } from "@/lib/domains/enrichment/embeddings/versioning";
 import {
+	blendEmbeddings,
 	calculateAudioCentroid,
 	calculateCentroid,
 	computeGenreDistribution,
+	computeIntentWeight,
 } from "./calculations";
 import type {
 	AudioCentroid,
@@ -81,7 +83,10 @@ export class PlaylistProfilingService {
 		options: ProfilingOptions = {},
 	): Promise<Result<ComputedPlaylistProfile, ProfilingError>> {
 		const songIds = songs.map((s) => s.id);
-		const descriptionText = options.descriptionText?.trim() || undefined;
+		const intentText =
+			[options.name, options.description].filter(Boolean).join(" — ").trim() ||
+			undefined;
+		const hasDescription = !!options.description;
 
 		// Get model bundle hash for cache invalidation
 		const modelBundleHashResult = await getModelBundleHash();
@@ -114,17 +119,16 @@ export class PlaylistProfilingService {
 		// Compute genre distribution from song.genres
 		const genreDistribution = computeGenreDistribution(songs);
 
-		// Compute content hash from the actual profile inputs that shape persistence
+		// Compute content hash — always include intent text so name changes invalidate
 		const contentHash = await hashPlaylistProfile({
 			playlistId,
 			songIds: [...songIds],
-			descriptionText: songCentroid.length === 0 ? descriptionText : undefined,
+			descriptionText: intentText,
 			embeddingCentroid: songCentroid.length > 0 ? songCentroid : undefined,
 			audioCentroid,
 			genreDistribution,
 		});
-		const expectsDescriptionFallback =
-			songCentroid.length === 0 && !!descriptionText;
+		const expectsIntentBlend = !!intentText;
 
 		// Check cache if not skipped
 		if (!options.skipCache) {
@@ -136,23 +140,29 @@ export class PlaylistProfilingService {
 				cached.value &&
 				cached.value.contentHash === contentHash &&
 				cached.value.modelBundleHash === modelBundleHash &&
-				(!expectsDescriptionFallback || cached.value.embedding !== null)
+				(!expectsIntentBlend || cached.value.embedding !== null)
 			) {
 				return Result.ok(cached.value);
 			}
 		}
 
-		// Description fallback: embed description text when no song centroid exists
-		let embeddingCentroid = songCentroid;
-		if (songCentroid.length === 0 && descriptionText) {
-			const descResult = await this.embeddingService.embedText(
-				descriptionText,
-				{ prefix: "passage:" },
-			);
-			if (Result.isOk(descResult)) {
-				embeddingCentroid = descResult.value;
+		// Embed intent text (name + description) for blending into profile
+		let intentEmbedding: number[] | null = null;
+		if (intentText) {
+			const intentResult = await this.embeddingService.embedText(intentText, {
+				prefix: "passage:",
+			});
+			if (Result.isOk(intentResult)) {
+				intentEmbedding = intentResult.value;
 			}
 		}
+
+		const intentWeight = computeIntentWeight(songs.length, hasDescription);
+		const embeddingCentroid = blendEmbeddings(
+			songCentroid,
+			intentEmbedding,
+			intentWeight,
+		);
 
 		const profile: ComputedPlaylistProfile = {
 			playlistId,

@@ -44,8 +44,10 @@ export interface ProfilingOptions {
 	readonly skipCache?: boolean;
 	/** Skip persisting to database */
 	readonly skipPersist?: boolean;
-	/** Normalized playlist description for embedding fallback */
-	readonly descriptionText?: string;
+	/** Playlist name (always present) */
+	readonly name?: string;
+	/** Playlist description (may be empty) */
+	readonly description?: string;
 }
 
 /** Progress for batch operations */
