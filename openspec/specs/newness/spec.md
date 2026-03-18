@@ -16,9 +16,10 @@ The system SHALL track when items become "new" to display badges.
 - **WHEN** new liked songs sync from Spotify
 - **THEN** create `item_status` record with `is_new = true`
 
-#### Scenario: New matches generated
-- **WHEN** matching algorithm produces new results
-- **THEN** create `item_status` record for each new match
+#### Scenario: New match suggestions generated
+- **WHEN** enrichment pipeline or re-match produces `match_result` rows for songs
+- **THEN** call `markItemsNew` for songs that received at least one match suggestion
+- **AND** set `is_new = true` on those `item_status` records
 
 #### Scenario: New playlists discovered
 - **WHEN** new playlists sync from Spotify
@@ -28,19 +29,22 @@ The system SHALL track when items become "new" to display badges.
 
 ### Requirement: Badge Counts
 
-The system SHALL display counts of new items in navigation.
+The system SHALL display counts of items in navigation, distinguishing total actionable from new.
 
-#### Scenario: Sort Songs badge
+#### Scenario: Sidebar "Match Songs" badge (total actionable)
 - **WHEN** rendering sidebar navigation
-- **THEN** show badge with count of new songs ready to match
+- **THEN** show badge with count of ALL songs that have `match_result` rows in the latest `match_context` for the account
+- **AND** this includes both new and previously seen/skipped songs
+- **AND** query: `SELECT COUNT(DISTINCT song_id) FROM match_result WHERE context_id = (latest context)`
+
+#### Scenario: Dashboard "new songs" count (new only)
+- **WHEN** rendering the dashboard "Ready to match" widget
+- **THEN** show count of songs with actionable suggestions that the user has NOT yet seen
+- **AND** query: join `match_result` with `item_status` where `is_new = true` and `context_id = (latest context)`
 
 #### Scenario: Playlists badge
 - **WHEN** rendering sidebar navigation
 - **THEN** show badge with count of new playlists (optional)
-
-#### Scenario: Efficient count query
-- **WHEN** fetching badge counts
-- **THEN** use single query: `SELECT item_type, COUNT(*) WHERE is_new = true GROUP BY item_type`
 
 ---
 
@@ -64,48 +68,60 @@ The system SHALL clear "new" status when user views items.
 
 ### Requirement: Action-Based Clearing
 
-The system SHALL clear "new" status when user takes action. These actions also establish matching status.
+The system SHALL clear "new" status when user interacts with a song on the matching page. User decisions are recorded in `match_decision`, not `item_status`.
 
 #### Scenario: Add to playlist
-- **WHEN** user adds song to playlist
-- **THEN** set `actioned_at`, `action_type = 'added_to_playlist'`, clear `is_new`
-- **AND** the song's matching status becomes `matched`
+- **WHEN** user adds song to a specific playlist
+- **THEN** insert `match_decision(song_id, playlist_id, 'added')`
+- **AND** clear `is_new` on `item_status`
+
+#### Scenario: Dismiss song
+- **WHEN** user dismisses a song
+- **THEN** batch insert `match_decision(decision='dismissed')` for all currently shown playlists
+- **AND** clear `is_new` on `item_status`
 
 #### Scenario: Skip song
 - **WHEN** user skips a song
-- **THEN** set `actioned_at`, `action_type = 'skipped'`, clear `is_new`
-- **AND** the song's matching status becomes `ignored`
+- **THEN** do NOT write any `match_decision`
+- **AND** `is_new` is cleared via `markSeen` (viewport-based, song was on screen)
+- **AND** the song reappears on next visit to the matching page (no decision persisted)
 
-#### Scenario: Dismiss notification
-- **WHEN** user dismisses a new item notification
-- **THEN** set `actioned_at`, `action_type = 'dismissed'`, clear `is_new`
-- **AND** the song's matching status becomes `ignored`
+#### Scenario: User opens matching page without interacting
+- **WHEN** user opens the matching page but leaves without any action
+- **THEN** do NOT clear `is_new` (unless `markSeen` 2s viewport threshold was reached)
 
 ---
 
 ### Requirement: Matching Status Derivation
 
-The system SHALL derive matching status from `item_status` records, making `item_status` the single source of truth for both newness tracking and matching status.
+The system SHALL derive matching status from `match_result` and `match_decision` records, NOT from `item_status.action_type`.
+
+#### Scenario: Song has actionable suggestions
+- **WHEN** a song has `match_result` rows in the latest `match_context`
+- **AND** at least one `match_result` has no corresponding `match_decision`
+- **THEN** the song's matching status is `has_suggestions`
+
+#### Scenario: Song fully acted upon
+- **WHEN** a song has `match_result` rows in the latest `match_context`
+- **AND** every `match_result` has a corresponding `match_decision`
+- **THEN** the song's matching status is `acted`
+
+#### Scenario: Song has no suggestions
+- **WHEN** a song has no `match_result` rows in the latest `match_context`
+- **AND** the song has an `item_status` row (pipeline processed it)
+- **THEN** the song's matching status is `no_suggestions`
 
 #### Scenario: Song is pending
-- **WHEN** a liked song has no `item_status` record
-- **THEN** the song's matching status is `pending` (NULL)
+- **WHEN** a song has no `item_status` row
+- **THEN** the song's matching status is `pending`
 
-#### Scenario: Song is matched via playlist
-- **WHEN** a liked song has an `item_status` record with `action_type = 'added_to_playlist'`
-- **THEN** the song's matching status is `matched`
+#### Scenario: SQL functions use match_result for filtering
+- **WHEN** `get_liked_songs_page` filters by matching status
+- **THEN** it SHALL JOIN on `match_result`/`match_context`/`match_decision` to derive status
 
-#### Scenario: Song is ignored
-- **WHEN** a liked song has an `item_status` record with `action_type IN ('skipped', 'dismissed')`
-- **THEN** the song's matching status is `ignored`
-
-#### Scenario: SQL functions use item_status for filtering
-- **WHEN** `get_liked_songs_page` filters by `matched` or `pending`
-- **THEN** it SHALL JOIN on `item_status` and filter by presence/absence of actioned records
-
-#### Scenario: SQL functions use item_status for counting
+#### Scenario: SQL functions use match_result for counting
 - **WHEN** `get_liked_songs_stats` counts matched and pending songs
-- **THEN** it SHALL JOIN on `item_status` and count based on `action_type`
+- **THEN** it SHALL derive counts from `match_result`/`match_decision` composition
 
 ---
 
@@ -148,8 +164,6 @@ CREATE TABLE item_status (
   is_new BOOLEAN DEFAULT true,
   first_appeared_at TIMESTAMPTZ DEFAULT now(),
   viewed_at TIMESTAMPTZ,
-  actioned_at TIMESTAMPTZ,
-  action_type TEXT,  -- 'added_to_playlist', 'skipped', 'dismissed'
   UNIQUE(account_id, item_type, item_id)
 );
 
@@ -205,6 +219,6 @@ export function markAllSeen(
 | Strategy | Trigger | Sets |
 |----------|---------|------|
 | View-based | 2s in viewport | `viewed_at`, `is_new = false` |
-| Action-based | User action | `actioned_at`, `action_type`, `is_new = false` |
+| Action-based | User action | `match_decision` insert, `is_new = false` |
 | Explicit | "Mark all read" | `is_new = false` for all |
 | Age-based | Cron job | `is_new = false` for items > 7 days |
