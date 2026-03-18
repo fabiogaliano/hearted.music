@@ -33,7 +33,10 @@ import { validateApiToken } from "@/lib/data/api-tokens";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { createJob } from "@/lib/data/jobs";
 import { updatePhaseJobIds } from "@/lib/domains/library/accounts/preferences-queries";
-import { requestEnrichment } from "@/lib/workflows/enrichment-pipeline/trigger";
+import {
+	requestEnrichment,
+	checkAndRematch,
+} from "@/lib/workflows/enrichment-pipeline/trigger";
 import { emitItem, emitStatus } from "@/lib/platform/jobs/progress/helpers";
 import { completeJob } from "@/lib/platform/jobs/lifecycle";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
@@ -384,8 +387,18 @@ export const Route = createFileRoute("/api/extension/sync")({
 				// Phase 4: Request enrichment if account has songs
 				const enrichmentJobId = await requestEnrichment(accountId);
 
+				// Phase 5: Check for playlist changes and create rematch job if needed
+				const rematch = await checkAndRematch(accountId);
+
 				return Response.json(
-					{ ok: true, results, phaseJobIds, enrichmentJobId },
+					{
+						ok: true,
+						results,
+						phaseJobIds,
+						enrichmentJobId,
+						rematchTriggered: rematch.triggered,
+						rematchJobId: rematch.rematchJobId ?? null,
+					},
 					{ headers: corsHeaders },
 				);
 			},

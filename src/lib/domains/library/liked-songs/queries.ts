@@ -13,7 +13,6 @@ import {
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Database, Tables, TablesInsert } from "@/lib/data/database.types";
-import type { ActionType } from "./status-queries";
 
 /** Liked song row type */
 export type LikedSong = Tables<"liked_song">;
@@ -51,8 +50,9 @@ export type LikedSongsStatsRow =
 export type LikedSongFilter =
 	| "all"
 	| "pending"
-	| "matched"
-	| "ignored"
+	| "has_suggestions"
+	| "acted"
+	| "no_suggestions"
 	| "analyzed";
 
 /**
@@ -324,34 +324,5 @@ export function softDeleteBatch(
 			.eq("account_id", accountId)
 			.in("song_id", songIds)
 			.select(),
-	);
-}
-
-/**
- * Updates the status of a liked song by creating/updating an item_status record.
- * Returns the created/updated item_status.
- */
-export function updateStatus(
-	accountId: string,
-	songId: string,
-	actionType: ActionType,
-): Promise<Result<ItemStatus, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	return fromSupabaseSingle(
-		supabase
-			.from("item_status")
-			.upsert(
-				{
-					account_id: accountId,
-					item_id: songId,
-					item_type: "song" as const,
-					action_type: actionType,
-					actioned_at: new Date().toISOString(),
-					is_new: false,
-				},
-				{ onConflict: "account_id,item_id,item_type" },
-			)
-			.select()
-			.single(),
 	);
 }

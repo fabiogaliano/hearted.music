@@ -77,6 +77,6 @@ The matching page SHALL derive its song queue from `match_result` for the latest
 The system SHALL NOT suggest adding a song to a playlist it is already in.
 
 #### Scenario: Song exists in playlist on Spotify
-- **WHEN** `playlist_track` shows song X is already in playlist A
+- **WHEN** `playlist_song` shows song X is already in playlist A
 - **THEN** do NOT show playlist A as a suggestion for song X
 - **AND** no `match_result` row SHALL exist for this pair (excluded at match time)

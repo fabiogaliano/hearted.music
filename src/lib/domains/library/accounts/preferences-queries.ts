@@ -320,3 +320,49 @@ export async function getEnrichmentJobId(
 
 	return Result.ok(result.value?.enrichment_job_id ?? null);
 }
+
+export function updateRematchJobId(
+	accountId: string,
+	jobId: string,
+): Promise<Result<UserPreferences, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("user_preferences")
+			.upsert(
+				{
+					account_id: accountId,
+					rematch_job_id: jobId,
+				},
+				{ onConflict: "account_id" },
+			)
+			.select()
+			.single(),
+	);
+}
+
+export function clearRematchJobId(
+	accountId: string,
+): Promise<Result<UserPreferences, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("user_preferences")
+			.update({ rematch_job_id: null })
+			.eq("account_id", accountId)
+			.select()
+			.single(),
+	);
+}
+
+export async function getRematchJobId(
+	accountId: string,
+): Promise<Result<string | null, DbError>> {
+	const result = await getPreferences(accountId);
+
+	if (Result.isError(result)) {
+		return Result.err(result.error);
+	}
+
+	return Result.ok(result.value?.rematch_job_id ?? null);
+}

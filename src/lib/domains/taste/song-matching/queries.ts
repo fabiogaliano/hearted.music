@@ -167,6 +167,31 @@ export function createMatchContext(
 	);
 }
 
+/**
+ * Gets the playlist_set_hash from the latest match context for an account.
+ * Returns null if no context exists.
+ */
+export async function getLatestPlaylistSetHash(
+	accountId: string,
+): Promise<Result<string | null, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const result = await fromSupabaseMaybe(
+		supabase
+			.from("match_context")
+			.select("playlist_set_hash")
+			.eq("account_id", accountId)
+			.order("created_at", { ascending: false })
+			.limit(1)
+			.single(),
+	);
+
+	if (Result.isError(result)) {
+		return Result.err(result.error);
+	}
+
+	return Result.ok(result.value?.playlist_set_hash ?? null);
+}
+
 // ============================================================================
 // Match Result Operations
 // ============================================================================

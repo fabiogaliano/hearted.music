@@ -6,7 +6,11 @@
 import type { ThemeConfig } from "@/lib/theme/types";
 
 // Re-export the API types for convenience
-export type MatchingStatus = "pending" | "matched" | "ignored";
+export type MatchingStatus =
+	| "pending"
+	| "has_suggestions"
+	| "acted"
+	| "no_suggestions";
 export type UIAnalysisStatus =
 	| "not_analyzed"
 	| "analyzing"

@@ -6,12 +6,8 @@
  */
 
 import { Result } from "better-result";
-import { z } from "zod";
 import type { DbError } from "@/lib/shared/errors/database";
-import {
-	fromSupabaseMany,
-	fromSupabaseSingle,
-} from "@/lib/shared/utils/result-wrappers/supabase";
+import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Enums, Tables, TablesInsert } from "@/lib/data/database.types";
 
@@ -25,14 +21,6 @@ export type ItemStatus = Tables<"item_status">;
 /** Item type enum from database */
 export type ItemType = Enums<"item_type">;
 
-/** Action type values (TEXT column, not enum) */
-export const ACTION_TYPES = z.enum([
-	"added_to_playlist",
-	"skipped",
-	"dismissed",
-]);
-export type ActionType = z.infer<typeof ACTION_TYPES>;
-
 /** Counts of new items by type */
 export type NewCounts = {
 	song: number;
@@ -42,13 +30,7 @@ export type NewCounts = {
 /** Insert type for item status */
 export type UpsertItemStatus = Pick<
 	TablesInsert<"item_status">,
-	| "account_id"
-	| "item_id"
-	| "item_type"
-	| "is_new"
-	| "action_type"
-	| "actioned_at"
-	| "viewed_at"
+	"account_id" | "item_id" | "item_type" | "is_new" | "viewed_at"
 >;
 
 // ============================================================================
@@ -204,6 +186,40 @@ export function markSeen(
 }
 
 /**
+ * Creates item_status rows marking items as pipeline-processed (is_new = false).
+ * Does NOT set viewed_at — the user hasn't viewed these items.
+ * Used by the enrichment pipeline to record that processing completed.
+ */
+export function markPipelineProcessed(
+	accountId: string,
+	itemType: ItemType,
+	itemIds: string[],
+): Promise<Result<ItemStatus[], DbError>> {
+	if (itemIds.length === 0) {
+		return Promise.resolve(Result.ok<ItemStatus[], DbError>([]));
+	}
+
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMany(
+		supabase
+			.from("item_status")
+			.upsert(
+				itemIds.map((itemId) => ({
+					account_id: accountId,
+					item_id: itemId,
+					item_type: itemType,
+					is_new: false,
+				})),
+				{
+					onConflict: "account_id,item_id,item_type",
+					ignoreDuplicates: true,
+				},
+			)
+			.select(),
+	);
+}
+
+/**
  * Marks all items of a type as seen for an account.
  * Returns the count of updated items.
  */
@@ -229,62 +245,4 @@ export async function markAllSeen(
 	}
 
 	return Result.ok(result.value.length);
-}
-
-/**
- * Records an action on an item (add_to_playlist, dismiss, viewed).
- * Also marks the item as not new.
- */
-export function recordAction(
-	accountId: string,
-	itemId: string,
-	itemType: ItemType,
-	actionType: ActionType,
-): Promise<Result<ItemStatus, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	const now = new Date().toISOString();
-
-	return fromSupabaseSingle(
-		supabase
-			.from("item_status")
-			.upsert(
-				{
-					account_id: accountId,
-					item_id: itemId,
-					item_type: itemType,
-					is_new: false,
-					action_type: actionType,
-					actioned_at: now,
-				},
-				{ onConflict: "account_id,item_id,item_type" },
-			)
-			.select()
-			.single(),
-	);
-}
-
-/**
- * Clears the action status for items (reverts to just viewed state).
- * Useful for "undo" functionality.
- */
-export function clearAction(
-	accountId: string,
-	itemId: string,
-	itemType: ItemType,
-): Promise<Result<ItemStatus, DbError>> {
-	const supabase = createAdminSupabaseClient();
-
-	return fromSupabaseSingle(
-		supabase
-			.from("item_status")
-			.update({
-				action_type: null,
-				actioned_at: null,
-			})
-			.eq("account_id", accountId)
-			.eq("item_id", itemId)
-			.eq("item_type", itemType)
-			.select()
-			.single(),
-	);
 }

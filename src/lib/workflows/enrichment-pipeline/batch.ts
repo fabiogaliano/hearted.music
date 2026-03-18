@@ -11,9 +11,50 @@ export interface PipelineBatch {
 
 const ENRICHMENT_CHUNK = 200;
 
-async function getFullyEnrichedSongIds(accountId: string): Promise<string[]> {
-	const supabase = createAdminSupabaseClient();
+async function getSharedArtifactSongIds(
+	supabase: ReturnType<typeof createAdminSupabaseClient>,
+	chunk: string[],
+): Promise<{
+	hasAudio: Set<string>;
+	hasGenres: Set<string>;
+	hasAnalysis: Set<string>;
+	hasEmbedding: Set<string>;
+}> {
+	const [audioRes, songRes, analysisRes, embeddingRes] = await Promise.all([
+		supabase.from("song_audio_feature").select("song_id").in("song_id", chunk),
+		supabase.from("song").select("id, genres").in("id", chunk),
+		supabase.from("song_analysis").select("song_id").in("song_id", chunk),
+		supabase.from("song_embedding").select("song_id").in("song_id", chunk),
+	]);
 
+	return {
+		hasAudio: new Set((audioRes.data ?? []).map((r) => r.song_id)),
+		hasGenres: new Set(
+			(songRes.data ?? [])
+				.filter((r) => r.genres && r.genres.length > 0)
+				.map((r) => r.id),
+		),
+		hasAnalysis: new Set((analysisRes.data ?? []).map((r) => r.song_id)),
+		hasEmbedding: new Set((embeddingRes.data ?? []).map((r) => r.song_id)),
+	};
+}
+
+function hasAllSharedArtifacts(
+	id: string,
+	artifacts: Awaited<ReturnType<typeof getSharedArtifactSongIds>>,
+): boolean {
+	return (
+		artifacts.hasAudio.has(id) &&
+		artifacts.hasGenres.has(id) &&
+		artifacts.hasAnalysis.has(id) &&
+		artifacts.hasEmbedding.has(id)
+	);
+}
+
+async function getLikedSongIds(
+	supabase: ReturnType<typeof createAdminSupabaseClient>,
+	accountId: string,
+): Promise<string[]> {
 	const likedResult = await supabase
 		.from("liked_song")
 		.select("song_id")
@@ -21,8 +62,12 @@ async function getFullyEnrichedSongIds(accountId: string): Promise<string[]> {
 		.is("unliked_at", null);
 
 	if (likedResult.error || !likedResult.data) return [];
+	return likedResult.data.map((r) => r.song_id);
+}
 
-	const allSongIds = likedResult.data.map((r) => r.song_id);
+async function getFullyEnrichedSongIds(accountId: string): Promise<string[]> {
+	const supabase = createAdminSupabaseClient();
+	const allSongIds = await getLikedSongIds(supabase, accountId);
 	if (allSongIds.length === 0) return [];
 
 	const fullyEnriched: string[] = [];
@@ -30,34 +75,22 @@ async function getFullyEnrichedSongIds(accountId: string): Promise<string[]> {
 	for (let i = 0; i < allSongIds.length; i += ENRICHMENT_CHUNK) {
 		const chunk = allSongIds.slice(i, i + ENRICHMENT_CHUNK);
 
-		const [audioRes, songRes, analysisRes, embeddingRes] = await Promise.all([
+		const [artifacts, itemStatusRes] = await Promise.all([
+			getSharedArtifactSongIds(supabase, chunk),
 			supabase
-				.from("song_audio_feature")
-				.select("song_id")
-				.in("song_id", chunk),
-			supabase.from("song").select("id, genres").in("id", chunk),
-			supabase.from("song_analysis").select("song_id").in("song_id", chunk),
-			supabase.from("song_embedding").select("song_id").in("song_id", chunk),
+				.from("item_status")
+				.select("item_id")
+				.eq("account_id", accountId)
+				.eq("item_type", "song")
+				.in("item_id", chunk),
 		]);
 
-		const hasAudio = new Set((audioRes.data ?? []).map((r) => r.song_id));
-		const hasGenres = new Set(
-			(songRes.data ?? [])
-				.filter((r) => r.genres && r.genres.length > 0)
-				.map((r) => r.id),
-		);
-		const hasAnalysis = new Set((analysisRes.data ?? []).map((r) => r.song_id));
-		const hasEmbedding = new Set(
-			(embeddingRes.data ?? []).map((r) => r.song_id),
+		const hasItemStatus = new Set(
+			(itemStatusRes.data ?? []).map((r) => r.item_id),
 		);
 
 		for (const id of chunk) {
-			if (
-				hasAudio.has(id) &&
-				hasGenres.has(id) &&
-				hasAnalysis.has(id) &&
-				hasEmbedding.has(id)
-			) {
+			if (hasAllSharedArtifacts(id, artifacts) && hasItemStatus.has(id)) {
 				fullyEnriched.push(id);
 			}
 		}
@@ -66,14 +99,36 @@ async function getFullyEnrichedSongIds(accountId: string): Promise<string[]> {
 	return fullyEnriched;
 }
 
-export async function selectPipelineBatch(
+export async function getDataEnrichedSongIds(
 	accountId: string,
+): Promise<string[]> {
+	const supabase = createAdminSupabaseClient();
+	const allSongIds = await getLikedSongIds(supabase, accountId);
+	if (allSongIds.length === 0) return [];
+
+	const dataEnriched: string[] = [];
+
+	for (let i = 0; i < allSongIds.length; i += ENRICHMENT_CHUNK) {
+		const chunk = allSongIds.slice(i, i + ENRICHMENT_CHUNK);
+		const artifacts = await getSharedArtifactSongIds(supabase, chunk);
+
+		for (const id of chunk) {
+			if (hasAllSharedArtifacts(id, artifacts)) {
+				dataEnriched.push(id);
+			}
+		}
+	}
+
+	return dataEnriched;
+}
+
+async function buildBatch(
+	accountId: string,
+	enrichedIds: string[],
 	maxSongs: number,
 	excludeSongIds?: string[],
 ): Promise<PipelineBatch> {
 	const supabase = createAdminSupabaseClient();
-
-	const enrichedIds = await getFullyEnrichedSongIds(accountId);
 
 	const allExcluded = new Set<string>(excludeSongIds ?? []);
 	for (const id of enrichedIds) {
@@ -123,4 +178,22 @@ export async function selectPipelineBatch(
 	}
 
 	return { songIds, songs, spotifyIdBySongId };
+}
+
+export async function selectPipelineBatch(
+	accountId: string,
+	maxSongs: number,
+	excludeSongIds?: string[],
+): Promise<PipelineBatch> {
+	const enrichedIds = await getFullyEnrichedSongIds(accountId);
+	return buildBatch(accountId, enrichedIds, maxSongs, excludeSongIds);
+}
+
+export async function selectDataEnrichmentBatch(
+	accountId: string,
+	maxSongs: number,
+	excludeSongIds?: string[],
+): Promise<PipelineBatch> {
+	const enrichedIds = await getDataEnrichedSongIds(accountId);
+	return buildBatch(accountId, enrichedIds, maxSongs, excludeSongIds);
 }
