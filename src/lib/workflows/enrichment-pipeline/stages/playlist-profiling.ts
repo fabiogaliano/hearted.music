@@ -79,15 +79,10 @@ export async function runPlaylistProfiling(ctx: EnrichmentContext): Promise<{
 			? freshSongsResult.value
 			: songsResult.value;
 
-		const rawDesc = [playlist.name, playlist.description]
-			.filter(Boolean)
-			.join(" — ");
-		const descriptionText = rawDesc.trim() || undefined;
-
 		const profileResult = await ctx.profilingService.computeProfile(
 			playlist.id,
 			songs,
-			{ descriptionText },
+			{ name: playlist.name, description: playlist.description ?? undefined },
 		);
 		if (Result.isOk(profileResult)) {
 			if (!profileResult.value.fromCache) {

@@ -446,15 +446,16 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 		});
 	});
 
-	describe("Description fallback bootstrap", () => {
-		test("falls back to description embedding when no songs provided", async () => {
+	describe("Intent blending", () => {
+		test("empty playlist with description produces non-null embedding", async () => {
 			const result = await service.computeProfile(
 				"test-playlist-desc-fallback",
 				[],
 				{
 					skipCache: true,
 					skipPersist: true,
-					descriptionText: "Chill vibes and relaxing ambient music",
+					name: "Chill vibes",
+					description: "relaxing ambient music",
 				},
 			);
 
@@ -469,14 +470,14 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 			expect(profile.songCount).toBe(0);
 		}, 30000);
 
-		test("content hash changes when description changes", async () => {
+		test("content hash changes when description changes (empty playlist)", async () => {
 			const result1 = await service.computeProfile(
 				"test-playlist-hash-desc",
 				[],
 				{
 					skipCache: true,
 					skipPersist: true,
-					descriptionText: "Chill vibes",
+					name: "Chill vibes",
 				},
 			);
 			const result2 = await service.computeProfile(
@@ -485,7 +486,7 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 				{
 					skipCache: true,
 					skipPersist: true,
-					descriptionText: "High energy workout",
+					name: "High energy workout",
 				},
 			);
 
@@ -494,7 +495,7 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 			}
 		}, 30000);
 
-		test("song-derived centroid is not overridden by description when embeddings exist", async () => {
+		test("content hash changes when description changes (with songs)", async () => {
 			if (!Result.isOk(profileResult)) return;
 
 			const withDescResult = await service.computeProfile(
@@ -503,27 +504,53 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 				{
 					skipCache: true,
 					skipPersist: true,
-					descriptionText: "This should not override song embeddings",
+					name: "crying in the car",
+					description: "for when you're driving and it hits you",
 				},
 			);
 
 			expect(Result.isOk(withDescResult)).toBe(true);
 			if (!Result.isOk(withDescResult)) return;
 
-			const originalProfile = profileResult.value;
-			const withDescProfile = withDescResult.value;
-			expect(withDescProfile.contentHash).toBe(originalProfile.contentHash);
+			// Content hash must differ because intent text is now included
+			expect(withDescResult.value.contentHash).not.toBe(
+				profileResult.value.contentHash,
+			);
+		}, 30000);
 
-			if (originalProfile.embedding && withDescProfile.embedding) {
-				expect(withDescProfile.embedding.length).toBe(
-					originalProfile.embedding.length,
-				);
-				for (let i = 0; i < originalProfile.embedding.length; i++) {
-					expect(withDescProfile.embedding[i]).toBeCloseTo(
-						originalProfile.embedding[i],
-						10,
-					);
+		test("description blends into embedding when songs exist", async () => {
+			if (!Result.isOk(profileResult)) return;
+
+			const withDescResult = await service.computeProfile(
+				TEST_PLAYLIST_ID,
+				TEST_SONGS,
+				{
+					skipCache: true,
+					skipPersist: true,
+					name: "revenge era",
+					description: "when done-with-it becomes a superpower",
+				},
+			);
+
+			expect(Result.isOk(withDescResult)).toBe(true);
+			if (!Result.isOk(withDescResult)) return;
+
+			const original = profileResult.value;
+			const blended = withDescResult.value;
+
+			if (original.embedding && blended.embedding) {
+				// Same dimensions
+				expect(blended.embedding.length).toBe(original.embedding.length);
+
+				// But different values (intent blended in)
+				let hasDifference = false;
+				for (let i = 0; i < original.embedding.length; i++) {
+					if (Math.abs(blended.embedding[i] - original.embedding[i]) > 1e-6) {
+						hasDifference = true;
+						break;
+					}
 				}
+				expect(hasDifference).toBe(true);
 			}
 		}, 30000);
 	});
