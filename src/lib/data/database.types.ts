@@ -1196,6 +1196,7 @@ export type Database = {
 					song_album_name: string;
 					song_artist_ids: string[];
 					song_artists: string[];
+					song_genres: string[];
 					song_id: string;
 					song_image_url: string;
 					song_name: string;
@@ -1208,6 +1209,7 @@ export type Database = {
 					analyzed: number;
 					has_suggestions: number;
 					matched: number;
+					new_suggestions: number;
 					pending: number;
 					total: number;
 				}[];

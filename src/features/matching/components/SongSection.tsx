@@ -3,8 +3,7 @@ import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
-const COLLAPSED_ALBUM_SIZE = "min(100%, clamp(280px, 30vw, 560px))";
-const EXPANDED_ALBUM_SIZE = "clamp(220px, 18vw, 320px)";
+const ALBUM_SIZE = "min(100%, clamp(280px, 30vw, 560px))";
 
 interface SongSectionProps {
 	song: {
@@ -12,7 +11,6 @@ interface SongSectionProps {
 		album: string;
 		artist: string;
 	};
-	isExpanded: boolean;
 	metaVisible: boolean;
 	albumArtUrl?: string;
 	isLoading: boolean;
@@ -21,7 +19,6 @@ interface SongSectionProps {
 
 export function SongSection({
 	song,
-	isExpanded,
 	metaVisible,
 	albumArtUrl,
 	isLoading,
@@ -31,14 +28,14 @@ export function SongSection({
 	const prefersReducedMotion = useReducedMotion();
 
 	return (
-		<div className={isExpanded ? "flex items-start gap-6" : ""}>
+		<div>
 			<AnimatePresence mode="wait">
 				<motion.div
 					key={songKey}
-					className="relative shrink-0 origin-top transition-[width,max-width] duration-500 ease-in-out"
+					className="relative shrink-0 origin-top"
 					style={{
-						maxWidth: isExpanded ? EXPANDED_ALBUM_SIZE : COLLAPSED_ALBUM_SIZE,
-						width: isExpanded ? EXPANDED_ALBUM_SIZE : COLLAPSED_ALBUM_SIZE,
+						maxWidth: ALBUM_SIZE,
+						width: ALBUM_SIZE,
 					}}
 					initial={prefersReducedMotion ? false : { opacity: 0, x: 20 }}
 					animate={{
@@ -81,7 +78,7 @@ export function SongSection({
 			<AnimatePresence mode="wait">
 				<motion.div
 					key={songKey}
-					className={`${isExpanded ? "mt-0 min-w-0 flex-1" : "mt-6"}`}
+					className="mt-6"
 					style={{
 						opacity: metaVisible ? 1 : 0,
 						willChange: "opacity, transform",
@@ -112,17 +109,13 @@ export function SongSection({
 						{song.album}
 					</p>
 					<h2
-						className={
-							isExpanded
-								? "mt-2 text-2xl leading-tight font-extralight"
-								: "mt-2 text-4xl leading-tight font-extralight"
-						}
+						className="mt-2 text-4xl leading-tight font-extralight"
 						style={{ fontFamily: fonts.display, color: theme.text }}
 					>
 						{song.name}
 					</h2>
 					<p
-						className={isExpanded ? "mt-1 text-base" : "mt-2 text-lg"}
+						className="mt-2 text-lg"
 						style={{ fontFamily: fonts.body, color: theme.textMuted }}
 					>
 						{song.artist}

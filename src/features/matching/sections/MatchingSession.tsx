@@ -1,24 +1,18 @@
 import { useLayoutEffect, useRef } from "react";
 
-import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import { DetailsPanel } from "../components/DetailsPanel";
 import { MatchesSection } from "../components/MatchesSection";
 import { SongSection } from "../components/SongSection";
 import type { MatchingSessionProps } from "../types";
 
-const COLLAPSED_ALBUM_SIZE = "min(100%, clamp(280px, 30vw, 560px))";
-
 export function MatchingSession({
 	currentSong,
 	playlists,
+	addedTo,
 	state,
 	onAdd,
 	onDismiss,
 	onNext,
-	onToggleDetails,
-	onCloseDetails,
-	onJourneyStepHover,
 }: MatchingSessionProps) {
 	const theme = useTheme();
 	const topGridRef = useRef<HTMLDivElement>(null);
@@ -53,56 +47,25 @@ export function MatchingSession({
 				>
 					<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
 						<SongSection
-							song={currentSong}
-							isExpanded={state.showMeaning}
+							song={{
+								name: currentSong.name,
+								album: currentSong.album ?? "",
+								artist: currentSong.artist,
+							}}
 							metaVisible={state.songMetaVisible}
-							albumArtUrl={currentSong.albumArtUrl}
+							albumArtUrl={currentSong.albumArtUrl ?? undefined}
 							isLoading={false}
 						/>
 						<MatchesSection
 							playlists={playlists}
-							addedTo={state.addedTo[currentSong.id] || []}
+							addedTo={addedTo}
 							onAdd={onAdd}
 							onDismiss={onDismiss}
 							onNext={onNext}
-							isExpanded={state.showMeaning}
 						/>
 					</div>
 				</div>
 			</div>
-
-			<div
-				className="transition-[padding-top] duration-500 ease-in-out"
-				style={{ paddingTop: "2rem" }}
-			>
-				<div
-					className="h-px transition-all duration-500 ease-in-out"
-					style={{
-						background: theme.border,
-						maxWidth: state.showMeaning ? "100%" : COLLAPSED_ALBUM_SIZE,
-					}}
-				/>
-
-				{!state.showMeaning && (
-					<div className="mt-6">
-						<button
-							onClick={onToggleDetails}
-							className="text-sm tracking-widest uppercase transition-all duration-300 hover:opacity-70"
-							style={{ fontFamily: fonts.body, color: theme.textMuted }}
-						>
-							Explore +
-						</button>
-					</div>
-				)}
-			</div>
-
-			<DetailsPanel
-				song={currentSong}
-				isExpanded={state.showMeaning}
-				activeJourneyStep={state.activeJourneyStep}
-				onJourneyStepHover={onJourneyStepHover}
-				onClose={onCloseDetails}
-			/>
 		</>
 	);
 }

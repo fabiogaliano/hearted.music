@@ -49,7 +49,7 @@ function DashboardHome() {
 				analyzedPercent: stats.analyzedPercent,
 				matchedCount: 421,
 				playlistCount: 4,
-				reviewCount: 5,
+				reviewCount: stats.newSuggestions,
 			}}
 			lastSyncText={lastSyncText}
 			matchPreviews={mockMatchPreviews}
