@@ -71,7 +71,7 @@ export interface SongMatchesResult {
 // ============================================================================
 
 /** Returns song IDs that have at least one undecided match result, with ordering info. */
-async function getUndecidedSongs(
+export async function getUndecidedSongs(
 	contextId: string,
 	accountId: string,
 ): Promise<Array<{ songId: string; maxScore: number }>> {
@@ -147,7 +147,6 @@ export const getSongMatches = createServerFn({ method: "GET" })
 		const { session } = await requireAuthSession();
 		const supabase = createAdminSupabaseClient();
 
-		// Build undecided song list ordered by is_new DESC, maxScore DESC
 		const [undecided, newSongIds] = await Promise.all([
 			getUndecidedSongs(data.contextId, session.accountId),
 			getNewItemIds(session.accountId, "song"),
@@ -160,7 +159,8 @@ export const getSongMatches = createServerFn({ method: "GET" })
 			const aNew = newSet.has(a.songId) ? 1 : 0;
 			const bNew = newSet.has(b.songId) ? 1 : 0;
 			if (aNew !== bNew) return bNew - aNew;
-			return b.maxScore - a.maxScore;
+			if (b.maxScore !== a.maxScore) return b.maxScore - a.maxScore;
+			return a.songId.localeCompare(b.songId);
 		});
 
 		if (data.offset >= undecided.length) return null;

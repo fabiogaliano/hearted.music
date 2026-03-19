@@ -27,6 +27,7 @@ export const PANEL_KEYFRAMES = `
 
 export const LAYOUT = {
 	heroHeight: 450,
+	heroHeightNoImage: 180,
 	collapsedHeaderHeight: 108,
 	albumArtExpanded: 112,
 	albumArtCollapsed: 56,

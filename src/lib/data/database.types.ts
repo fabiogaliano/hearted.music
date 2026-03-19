@@ -134,6 +134,30 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			artist: {
+				Row: {
+					created_at: string;
+					image_url: string | null;
+					name: string;
+					spotify_id: string;
+					updated_at: string;
+				};
+				Insert: {
+					created_at?: string;
+					image_url?: string | null;
+					name: string;
+					spotify_id: string;
+					updated_at?: string;
+				};
+				Update: {
+					created_at?: string;
+					image_url?: string | null;
+					name?: string;
+					spotify_id?: string;
+					updated_at?: string;
+				};
+				Relationships: [];
+			};
 			item_status: {
 				Row: {
 					account_id: string;
@@ -1190,6 +1214,7 @@ export type Database = {
 					analysis_created_at: string;
 					analysis_id: string;
 					analysis_model: string;
+					artist_image_url: string;
 					id: string;
 					liked_at: string;
 					matching_status: string;

@@ -61,6 +61,7 @@ export const getLikedSongsPage = createServerFn({ method: "GET" })
 				name: row.song_name,
 				artist: row.song_artists[0] ?? "Unknown Artist",
 				artist_id: row.song_artist_ids?.[0] ?? null,
+				artist_image_url: row.artist_image_url ?? null,
 				album: row.song_album_name,
 				image_url: row.song_image_url,
 				genres: row.song_genres ?? [],

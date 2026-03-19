@@ -91,6 +91,7 @@ export function toLikedSong(song: LandingSongForUI): LikedSong {
 			name: song.name,
 			artist: song.artist,
 			artist_id: song.spotifyArtistId,
+			artist_image_url: null,
 			album: song.album,
 			image_url: song.albumArtUrl,
 			genres: song.genres ?? [],

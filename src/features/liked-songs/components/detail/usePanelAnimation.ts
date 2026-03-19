@@ -22,6 +22,7 @@ interface UsePanelAnimationOptions {
 	hasHeadline: boolean;
 	sonicTextureText?: string;
 	stackMetaBelowArt?: boolean;
+	heroHeight?: number;
 }
 
 export interface PanelAnimationRefs {
@@ -53,7 +54,10 @@ export function usePanelAnimation(options: UsePanelAnimationOptions) {
 		hasHeadline,
 		sonicTextureText,
 		stackMetaBelowArt = false,
+		heroHeight: heroHeightOverride,
 	} = options;
+
+	const effectiveHeroHeight = heroHeightOverride ?? LAYOUT.heroHeight;
 
 	// Stale closure prevention — panelColors and albumArtUrl are read inside rAF callbacks
 	const panelColorsRef = useRef(panelColors);
@@ -179,12 +183,12 @@ export function usePanelAnimation(options: UsePanelAnimationOptions) {
 		lastProgressRef.current = progress;
 
 		const {
-			heroHeight: expandedHeroHeight,
 			collapsedHeaderHeight,
 			albumArtExpanded,
 			albumArtCollapsed,
 			paddingX,
 		} = LAYOUT;
+		const expandedHeroHeight = effectiveHeroHeight;
 
 		const heroHeight = lerp(
 			expandedHeroHeight,
@@ -293,10 +297,10 @@ export function usePanelAnimation(options: UsePanelAnimationOptions) {
 	};
 
 	const getCollapseMetrics = () => {
-		const { heroHeight, collapsedHeaderHeight } = LAYOUT;
-		const collapseDistance = heroHeight - collapsedHeaderHeight;
+		const { collapsedHeaderHeight } = LAYOUT;
+		const collapseDistance = effectiveHeroHeight - collapsedHeaderHeight;
 		return {
-			expandedHeroHeight: heroHeight,
+			expandedHeroHeight: effectiveHeroHeight,
 			collapsedHeaderHeight,
 			collapseDistance,
 		};
