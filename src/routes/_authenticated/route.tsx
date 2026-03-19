@@ -8,6 +8,7 @@
  *   - theme: ThemeColor
  */
 
+import { useQuery } from "@tanstack/react-query";
 import {
 	createFileRoute,
 	Outlet,
@@ -17,6 +18,7 @@ import {
 import { Sidebar } from "./-components/Sidebar";
 import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getOnboardingData } from "@/lib/server/onboarding.functions";
+import { matchingSessionQueryOptions } from "@/features/matching/queries";
 import { useRegisterTheme } from "@/lib/theme/ThemeHueProvider";
 import { getTheme } from "@/lib/theme/useTheme";
 import { DEFAULT_THEME } from "@/lib/theme/types";
@@ -42,14 +44,17 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthenticatedLayout() {
-	const { theme: themeColor, account } = Route.useRouteContext();
+	const { theme: themeColor, account, session } = Route.useRouteContext();
 	const theme = getTheme(themeColor ?? DEFAULT_THEME);
 	const location = useLocation();
 	const isOnboarding = location.pathname.startsWith("/onboarding");
 
-	// Onboarding owns theme registration (user picks color live)
-	// Other routes use the DB-persisted theme
 	useRegisterTheme(isOnboarding ? null : theme);
+
+	const { data: matchingSession } = useQuery(
+		matchingSessionQueryOptions(session.accountId),
+	);
+	const pendingSuggestions = matchingSession?.totalSongs ?? 0;
 
 	if (isOnboarding) {
 		return <Outlet />;
@@ -64,7 +69,7 @@ function AuthenticatedLayout() {
 			}}
 		>
 			<Sidebar
-				unsortedCount={5}
+				unsortedCount={pendingSuggestions}
 				userName={account?.display_name ?? account?.email ?? null}
 				userPlan="Free Plan"
 			/>

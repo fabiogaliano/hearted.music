@@ -1,19 +1,17 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import NumberFlow from "@number-flow/react";
+import { ClientNumberFlow as NumberFlow } from "./ClientNumberFlow";
 import type { Playlist } from "../types";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
-const COLLAPSED_ALBUM_SIZE = "clamp(300px, 30vw, 560px)";
-const EXPANDED_ALBUM_SIZE = "clamp(220px, 18vw, 320px)";
+const MIN_HEIGHT = "clamp(300px, 30vw, 560px)";
 
 interface MatchesSectionProps {
 	playlists: Playlist[];
-	addedTo: number[];
-	onAdd: (playlistId: number) => void;
+	addedTo: string[];
+	onAdd: (playlistId: string) => void;
 	onDismiss: () => void;
 	onNext: () => void;
-	isExpanded: boolean;
 	songKey?: string;
 }
 
@@ -23,17 +21,15 @@ export function MatchesSection({
 	onAdd,
 	onDismiss,
 	onNext,
-	isExpanded,
 	songKey,
 }: MatchesSectionProps) {
 	const theme = useTheme();
 	const prefersReducedMotion = useReducedMotion();
 	return (
 		<div
-			className="flex flex-col transition-[min-height,opacity] duration-500 ease-in-out"
+			className="flex flex-col"
 			style={{
-				opacity: isExpanded ? 0.6 : 1,
-				minHeight: isExpanded ? EXPANDED_ALBUM_SIZE : COLLAPSED_ALBUM_SIZE,
+				minHeight: MIN_HEIGHT,
 			}}
 		>
 			<p
@@ -44,10 +40,10 @@ export function MatchesSection({
 			</p>
 
 			<div
-				className="flex min-h-0 flex-1 flex-col transition-[margin-top,gap] duration-500 ease-in-out"
+				className="flex min-h-0 flex-1 flex-col"
 				style={{
-					marginTop: isExpanded ? "1rem" : "1.5rem",
-					gap: isExpanded ? "0.75rem" : "1.25rem",
+					marginTop: "1.5rem",
+					gap: "1.25rem",
 				}}
 			>
 				{playlists.map((playlist, slotIndex) => {
@@ -57,10 +53,10 @@ export function MatchesSection({
 					return (
 						<div
 							key={slotIndex}
-							className="group transition-[padding-bottom] duration-500 ease-in-out"
+							className="group"
 							style={{
 								borderBottom: `1px solid ${theme.border}`,
-								paddingBottom: isExpanded ? "0.75rem" : "1.25rem",
+								paddingBottom: "1.25rem",
 							}}
 						>
 							<div className="flex items-start justify-between">
@@ -69,11 +65,11 @@ export function MatchesSection({
 									<NumberFlow
 										value={Math.round(playlist.matchScore * 100)}
 										suffix="%"
-										className="font-extralight tabular-nums transition-[font-size] duration-500 ease-in-out"
+										className="font-extralight tabular-nums"
 										style={{
 											fontFamily: fonts.display,
 											color: isGoodMatch ? theme.text : theme.textMuted,
-											fontSize: isExpanded ? "1.5rem" : "2rem",
+											fontSize: "2rem",
 										}}
 									/>
 									{/* Slides in/out with each song change */}
@@ -106,11 +102,11 @@ export function MatchesSection({
 											}
 										>
 											<h3
-												className="font-light transition-[font-size] duration-500 ease-in-out"
+												className="font-light"
 												style={{
 													fontFamily: fonts.display,
 													color: theme.text,
-													fontSize: isExpanded ? "1rem" : "1.125rem",
+													fontSize: "1.125rem",
 												}}
 											>
 												{playlist.name}
@@ -153,10 +149,9 @@ export function MatchesSection({
 			</div>
 
 			<div
-				className="flex items-center justify-between transition-[margin-top,padding-top] duration-500 ease-in-out"
+				className="flex items-center justify-between"
 				style={{
-					marginTop: isExpanded ? "1.5rem" : "2rem",
-					paddingTop: isExpanded ? "0.75rem" : "0rem",
+					marginTop: "2rem",
 				}}
 			>
 				<button
@@ -172,15 +167,7 @@ export function MatchesSection({
 					className="group inline-flex items-center gap-3"
 					style={{ fontFamily: fonts.body, color: theme.text }}
 				>
-					<span
-						className={
-							isExpanded
-								? "text-base font-medium tracking-wide"
-								: "text-lg font-medium tracking-wide"
-						}
-					>
-						Next Song
-					</span>
+					<span className="text-lg font-medium tracking-wide">Next Song</span>
 					<span
 						className="inline-block transition-transform group-hover:translate-x-1"
 						style={{ color: theme.textMuted }}

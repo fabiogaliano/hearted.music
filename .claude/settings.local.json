@@ -9,7 +9,5 @@
     ]
   },
   "enableAllProjectMcpServers": true,
-  "enabledPlugins": {
-    "oh-my-claude@oh-my-claude": true
-  }
+  "enabledPlugins": {}
 }

@@ -1,17 +1,37 @@
-import type { LandingSongDetail } from "@/lib/data/landing-songs";
+export interface SongAnalysis {
+	headline: string;
+	compound_mood: string;
+	mood_description: string;
+	interpretation: string;
+	themes: Array<{ name: string; description: string }>;
+	journey: Array<{ section: string; mood: string; description: string }>;
+	key_lines: Array<{ line: string; insight: string }>;
+	sonic_texture: string;
+}
+
+export interface SongForMatching {
+	id: string;
+	name: string;
+	artist: string;
+	album: string | null;
+	albumArtUrl?: string | null;
+	genres: string[];
+	audioFeatures?: {
+		tempo: number | null;
+		energy: number | null;
+		valence: number | null;
+	} | null;
+	analysis: SongAnalysis | null;
+}
 
 export interface Playlist {
-	id: number;
+	id: string;
 	name: string;
 	reason: string;
 	matchScore: number;
 }
 
 export interface MatchingState {
-	currentIndex: number;
-	addedTo: Record<number, number[]>;
-	showMeaning: boolean;
-	activeJourneyStep: number;
 	songMetaVisible: boolean;
 }
 
@@ -23,20 +43,18 @@ export interface CompletionStats {
 }
 
 export interface MatchingSessionProps {
-	currentSong: LandingSongDetail;
+	currentSong: SongForMatching;
 	playlists: Playlist[];
+	addedTo: string[];
 	state: MatchingState;
-	onAdd: (playlistId: number) => void;
+	onAdd: (playlistId: string) => void;
 	onDismiss: () => void;
 	onNext: () => void;
-	onToggleDetails: () => void;
-	onCloseDetails: () => void;
-	onJourneyStepHover: (index: number) => void;
 }
 
 export interface CompletionScreenProps {
 	stats: CompletionStats;
-	songs: LandingSongDetail[];
+	songs: Array<{ id: string; albumArtUrl?: string | null; name: string }>;
 	onExit: () => void;
 }
 
@@ -46,5 +64,16 @@ export interface MatchingHeaderProps {
 }
 
 export interface MatchingProps {
+	currentSong: SongForMatching | null;
+	currentMatches: Playlist[];
+	totalSongs: number;
+	offset: number;
+	addedTo: string[];
+	isComplete: boolean;
+	completionStats: CompletionStats;
+	recentSongs: Array<{ id: string; albumArtUrl?: string | null; name: string }>;
+	onAdd: (playlistId: string) => void;
+	onDismiss: () => void;
+	onNext: () => void;
 	onExit: () => void;
 }

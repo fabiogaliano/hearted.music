@@ -4,10 +4,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireAuthSession } from "@/lib/platform/auth/auth.server";
 import * as likedSong from "@/lib/domains/library/liked-songs/queries";
 import type { LikedSongPageRow } from "@/lib/domains/library/liked-songs/queries";
-import {
-	insertMatchDecision,
-	insertMatchDecisions,
-} from "@/lib/data/match-decision-queries";
 import { appFetch } from "@/lib/integrations/spotify/app-auth";
 import type { FilterOption } from "@/features/liked-songs/queries";
 import type {
@@ -24,13 +20,6 @@ const LikedSongsPageSchema = z.object({
 
 const ArtistImageByIdSchema = z.object({
 	artistId: z.string().min(1),
-});
-
-const AddToPlaylistSchema = z.object({
-	songId: z.uuid(),
-	playlistId: z.uuid(),
-	spotifyTrackId: z.string().min(1),
-	spotifyPlaylistId: z.string().min(1),
 });
 
 export interface LikedSongsPageParams {
@@ -109,6 +98,7 @@ export type LikedSongsStatsResult =
 			analyzed: number;
 			matched: number;
 			has_suggestions: number;
+			new_suggestions: number;
 			pending: number;
 	  }
 	| { success: false; error: string };
@@ -130,6 +120,7 @@ export const getLikedSongsStats = createServerFn({ method: "GET" }).handler(
 			analyzed: Number(row.analyzed),
 			matched: Number(row.matched),
 			has_suggestions: Number(row.has_suggestions),
+			new_suggestions: Number(row.new_suggestions),
 			pending: Number(row.pending),
 		};
 	},
@@ -165,52 +156,4 @@ export const getArtistImageById = createServerFn({ method: "GET" })
 		if (Result.isError(artistsResult)) return { url: null };
 
 		return { url: artistsResult.value.artists[0]?.images[0]?.url ?? null };
-	});
-
-export interface AddToPlaylistParams {
-	songId: string;
-	playlistId: string;
-	spotifyTrackId: string;
-	spotifyPlaylistId: string;
-}
-
-export interface AddToPlaylistResult {
-	success: boolean;
-}
-
-export const addSongToPlaylist = createServerFn({ method: "POST" })
-	.inputValidator((data) => AddToPlaylistSchema.parse(data))
-	.handler(async ({ data }): Promise<AddToPlaylistResult> => {
-		const { session } = await requireAuthSession();
-		const result = await insertMatchDecision(
-			session.accountId,
-			data.songId,
-			data.playlistId,
-			"added",
-		);
-		return { success: Result.isOk(result) };
-	});
-
-const DismissSongSchema = z.object({
-	songId: z.uuid(),
-	playlistIds: z.array(z.uuid()).min(1),
-});
-
-export interface DismissSongParams {
-	songId: string;
-	playlistIds: string[];
-}
-
-export const dismissSong = createServerFn({ method: "POST" })
-	.inputValidator((data) => DismissSongSchema.parse(data))
-	.handler(async ({ data }) => {
-		const { session } = await requireAuthSession();
-		const decisions = data.playlistIds.map((playlistId) => ({
-			accountId: session.accountId,
-			songId: data.songId,
-			playlistId,
-			decision: "dismissed" as const,
-		}));
-		const result = await insertMatchDecisions(decisions);
-		return { success: Result.isOk(result) };
 	});
