@@ -42,6 +42,11 @@ The system SHALL display counts of items in navigation, distinguishing total act
 - **THEN** show count of songs with actionable suggestions that the user has NOT yet seen
 - **AND** query: join `match_result` with `item_status` where `is_new = true` and `context_id = (latest context)`
 
+#### Scenario: Stats RPC returns new_suggestions
+- **WHEN** calling `get_liked_songs_stats`
+- **THEN** the return type SHALL include a `new_suggestions` column
+- **AND** `new_suggestions` SHALL count songs with undecided `match_result` rows AND `item_status.is_new = true`
+
 #### Scenario: Playlists badge
 - **WHEN** rendering sidebar navigation
 - **THEN** show badge with count of new playlists (optional)
@@ -68,27 +73,32 @@ The system SHALL clear "new" status when user views items.
 
 ### Requirement: Action-Based Clearing
 
-The system SHALL clear "new" status when user interacts with a song on the matching page. User decisions are recorded in `match_decision`, not `item_status`.
+The system SHALL clear "new" status via session-based batch `markSeen` when the user leaves the matching page, decoupled from individual actions. User decisions are recorded in `match_decision`, not `item_status`.
 
 #### Scenario: Add to playlist
 - **WHEN** user adds song to a specific playlist
 - **THEN** insert `match_decision(song_id, playlist_id, 'added')`
-- **AND** clear `is_new` on `item_status`
+- **AND** `is_new` is NOT cleared immediately — clearing happens on session end
 
 #### Scenario: Dismiss song
 - **WHEN** user dismisses a song
 - **THEN** batch insert `match_decision(decision='dismissed')` for all currently shown playlists
-- **AND** clear `is_new` on `item_status`
+- **AND** `is_new` is NOT cleared immediately — clearing happens on session end
 
 #### Scenario: Skip song
 - **WHEN** user skips a song
 - **THEN** do NOT write any `match_decision`
-- **AND** `is_new` is cleared via `markSeen` (viewport-based, song was on screen)
+- **AND** `is_new` clearing happens on session end alongside all other presented songs
 - **AND** the song reappears on next visit to the matching page (no decision persisted)
 
+#### Scenario: Session end clears all presented songs
+- **WHEN** user leaves the matching page (navigation, unmount, tab close)
+- **THEN** batch `markSeen(accountId, "song", [...presentedSongIds])` for all songs shown during the session
+- **AND** this clears `is_new` for add, dismiss, and skip actions uniformly
+
 #### Scenario: User opens matching page without interacting
-- **WHEN** user opens the matching page but leaves without any action
-- **THEN** do NOT clear `is_new` (unless `markSeen` 2s viewport threshold was reached)
+- **WHEN** user opens the matching page but leaves before any song is presented
+- **THEN** do NOT clear `is_new` (presented songs set is empty)
 
 ---
 
@@ -219,6 +229,6 @@ export function markAllSeen(
 | Strategy | Trigger | Sets |
 |----------|---------|------|
 | View-based | 2s in viewport | `viewed_at`, `is_new = false` |
-| Action-based | User action | `match_decision` insert, `is_new = false` |
+| Action-based | Session end (batch `markSeen`) | `match_decision` insert (per action), `is_new = false` (on session end) |
 | Explicit | "Mark all read" | `is_new = false` for all |
 | Age-based | Cron job | `is_new = false` for items > 7 days |
