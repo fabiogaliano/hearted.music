@@ -7,7 +7,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { JobProgressState } from "@/lib/hooks/useJobProgress";
-import type { PhaseJobIds } from "@/lib/jobs/progress/types";
+import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import { mockGoToStep, setupOnboardingNavigationMock } from "@/test/mocks";
 import { render, screen, waitFor } from "@/test/utils/render";
 import { SyncingStep } from "../components/SyncingStep";

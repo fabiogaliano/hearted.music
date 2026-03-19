@@ -1,0 +1,5800 @@
+{
+	"data": {
+		"artistUnion": {
+			"__typename": "Artist",
+			"discography": {
+				"albums": {
+					"items": [
+						{
+							"releases": {
+								"items": [
+									{
+										"copyright": {
+											"items": [
+												{
+													"text": "© 2025 Universal Music New Zealand Limited",
+													"type": "C"
+												},
+												{
+													"text": "℗ 2025 Universal Music New Zealand Limited",
+													"type": "P"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e0223d41bf736920a032e222a78",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d0000485123d41bf736920a032e222a78",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b27323d41bf736920a032e222a78",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"day": 27,
+											"month": 6,
+											"precision": "DAY",
+											"year": 2025
+										},
+										"id": "28bHj2enHkHVFLwuWmkwlQ",
+										"label": "Universal Music New Zealand Limited",
+										"name": "Virgin",
+										"playability": {
+											"playable": true,
+											"reason": "PLAYABLE"
+										},
+										"sharingInfo": {
+											"shareId": "L1Uh46slR5yhOTlJec2YzQ",
+											"shareUrl": "https://open.spotify.com/en/album/28bHj2enHkHVFLwuWmkwlQ?si=L1Uh46slR5yhOTlJec2YzQ"
+										},
+										"tracks": {
+											"totalCount": 11
+										},
+										"type": "ALBUM",
+										"uri": "spotify:album:28bHj2enHkHVFLwuWmkwlQ"
+									}
+								]
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"copyright": {
+											"items": [
+												{
+													"text": "© 2021 Universal Music New Zealand Limited",
+													"type": "C"
+												},
+												{
+													"text": "℗ 2021 Universal Music New Zealand Limited",
+													"type": "P"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02a5603d487cfa2c30a05cdfaa",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851a5603d487cfa2c30a05cdfaa",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273a5603d487cfa2c30a05cdfaa",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"day": 5,
+											"month": 11,
+											"precision": "DAY",
+											"year": 2021
+										},
+										"id": "3lK2JRwfIOn2NaYtgEGTmZ",
+										"label": "Universal Music New Zealand Limited",
+										"name": "Solar Power (Deluxe Edition)",
+										"playability": {
+											"playable": true,
+											"reason": "PLAYABLE"
+										},
+										"sharingInfo": {
+											"shareId": "-pD0JPxvRy68hkET7W8jlg",
+											"shareUrl": "https://open.spotify.com/en/album/3lK2JRwfIOn2NaYtgEGTmZ?si=-pD0JPxvRy68hkET7W8jlg"
+										},
+										"tracks": {
+											"totalCount": 14
+										},
+										"type": "ALBUM",
+										"uri": "spotify:album:3lK2JRwfIOn2NaYtgEGTmZ"
+									}
+								]
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"copyright": {
+											"items": [
+												{
+													"text": "© 2021 Universal Music New Zealand Limited",
+													"type": "C"
+												},
+												{
+													"text": "℗ 2021 Universal Music New Zealand Limited",
+													"type": "P"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e0236615a0a60523dd62135ab3a",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d0000485136615a0a60523dd62135ab3a",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b27336615a0a60523dd62135ab3a",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"day": 20,
+											"month": 8,
+											"precision": "DAY",
+											"year": 2021
+										},
+										"id": "4SBl4zvNIL4H137YRf2P0J",
+										"label": "Universal Music New Zealand Limited",
+										"name": "Solar Power",
+										"playability": {
+											"playable": true,
+											"reason": "PLAYABLE"
+										},
+										"sharingInfo": {
+											"shareId": "s9J24ZnHT1q-Nk41Zgg_xA",
+											"shareUrl": "https://open.spotify.com/en/album/4SBl4zvNIL4H137YRf2P0J?si=s9J24ZnHT1q-Nk41Zgg_xA"
+										},
+										"tracks": {
+											"totalCount": 12
+										},
+										"type": "ALBUM",
+										"uri": "spotify:album:4SBl4zvNIL4H137YRf2P0J"
+									}
+								]
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"copyright": {
+											"items": [
+												{
+													"text": "© 2017 Universal Music New Zealand Limited",
+													"type": "C"
+												},
+												{
+													"text": "℗ 2017 Universal Music New Zealand Limited",
+													"type": "P"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02f8553e18a11209d4becd0336",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851f8553e18a11209d4becd0336",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273f8553e18a11209d4becd0336",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"day": 16,
+											"month": 6,
+											"precision": "DAY",
+											"year": 2017
+										},
+										"id": "2B87zXm9bOWvAJdkJBTpzF",
+										"label": "Universal Music New Zealand Limited",
+										"name": "Melodrama",
+										"playability": {
+											"playable": true,
+											"reason": "PLAYABLE"
+										},
+										"sharingInfo": {
+											"shareId": "7DnjMwmfR0mKfo6iiDmTyg",
+											"shareUrl": "https://open.spotify.com/en/album/2B87zXm9bOWvAJdkJBTpzF?si=7DnjMwmfR0mKfo6iiDmTyg"
+										},
+										"tracks": {
+											"totalCount": 11
+										},
+										"type": "ALBUM",
+										"uri": "spotify:album:2B87zXm9bOWvAJdkJBTpzF"
+									}
+								]
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"copyright": {
+											"items": [
+												{
+													"text": "© 2013 Universal Music NZ Ltd.",
+													"type": "C"
+												},
+												{
+													"text": "℗ 2013 Universal Music NZ Ltd.",
+													"type": "P"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02187331e276c898d39764cc98",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851187331e276c898d39764cc98",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273187331e276c898d39764cc98",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"day": 27,
+											"month": 9,
+											"precision": "DAY",
+											"year": 2013
+										},
+										"id": "0rmhjUgoVa17LZuS8xWQ3v",
+										"label": "Universal Music New Zealand Limited",
+										"name": "Pure Heroine",
+										"playability": {
+											"playable": true,
+											"reason": "PLAYABLE"
+										},
+										"sharingInfo": {
+											"shareId": "DDhkWSEVTMOilbLALlKKyw",
+											"shareUrl": "https://open.spotify.com/en/album/0rmhjUgoVa17LZuS8xWQ3v?si=DDhkWSEVTMOilbLALlKKyw"
+										},
+										"tracks": {
+											"totalCount": 10
+										},
+										"type": "ALBUM",
+										"uri": "spotify:album:0rmhjUgoVa17LZuS8xWQ3v"
+									}
+								]
+							}
+						}
+					],
+					"totalCount": 5
+				},
+				"compilations": {
+					"items": [],
+					"totalCount": 0
+				},
+				"latest": null,
+				"popularReleasesAlbums": {
+					"items": [
+						{
+							"copyright": {
+								"items": [
+									{
+										"text": "© 2013 Universal Music NZ Ltd.",
+										"type": "C"
+									},
+									{
+										"text": "℗ 2013 Universal Music NZ Ltd.",
+										"type": "P"
+									}
+								]
+							},
+							"coverArt": {
+								"sources": [
+									{
+										"height": 300,
+										"url": "https://i.scdn.co/image/ab67616d00001e02187331e276c898d39764cc98",
+										"width": 300
+									},
+									{
+										"height": 64,
+										"url": "https://i.scdn.co/image/ab67616d00004851187331e276c898d39764cc98",
+										"width": 64
+									},
+									{
+										"height": 640,
+										"url": "https://i.scdn.co/image/ab67616d0000b273187331e276c898d39764cc98",
+										"width": 640
+									}
+								]
+							},
+							"date": {
+								"day": 27,
+								"month": 9,
+								"precision": "DAY",
+								"year": 2013
+							},
+							"id": "0rmhjUgoVa17LZuS8xWQ3v",
+							"label": "Universal Music New Zealand Limited",
+							"name": "Pure Heroine",
+							"playability": {
+								"playable": true,
+								"reason": "PLAYABLE"
+							},
+							"sharingInfo": {
+								"shareId": "ZPNQqRSKTU6Pmh6V3wNAEQ",
+								"shareUrl": "https://open.spotify.com/en/album/0rmhjUgoVa17LZuS8xWQ3v?si=ZPNQqRSKTU6Pmh6V3wNAEQ"
+							},
+							"tracks": {
+								"totalCount": 10
+							},
+							"type": "ALBUM",
+							"uri": "spotify:album:0rmhjUgoVa17LZuS8xWQ3v"
+						},
+						{
+							"copyright": {
+								"items": [
+									{
+										"text": "© 2017 Universal Music New Zealand Limited",
+										"type": "C"
+									},
+									{
+										"text": "℗ 2017 Universal Music New Zealand Limited",
+										"type": "P"
+									}
+								]
+							},
+							"coverArt": {
+								"sources": [
+									{
+										"height": 300,
+										"url": "https://i.scdn.co/image/ab67616d00001e02f8553e18a11209d4becd0336",
+										"width": 300
+									},
+									{
+										"height": 64,
+										"url": "https://i.scdn.co/image/ab67616d00004851f8553e18a11209d4becd0336",
+										"width": 64
+									},
+									{
+										"height": 640,
+										"url": "https://i.scdn.co/image/ab67616d0000b273f8553e18a11209d4becd0336",
+										"width": 640
+									}
+								]
+							},
+							"date": {
+								"day": 16,
+								"month": 6,
+								"precision": "DAY",
+								"year": 2017
+							},
+							"id": "2B87zXm9bOWvAJdkJBTpzF",
+							"label": "Universal Music New Zealand Limited",
+							"name": "Melodrama",
+							"playability": {
+								"playable": true,
+								"reason": "PLAYABLE"
+							},
+							"sharingInfo": {
+								"shareId": "k-EEyxrZQE6f_tUp0wf-fA",
+								"shareUrl": "https://open.spotify.com/en/album/2B87zXm9bOWvAJdkJBTpzF?si=k-EEyxrZQE6f_tUp0wf-fA"
+							},
+							"tracks": {
+								"totalCount": 11
+							},
+							"type": "ALBUM",
+							"uri": "spotify:album:2B87zXm9bOWvAJdkJBTpzF"
+						},
+						{
+							"copyright": {
+								"items": [
+									{
+										"text": "© 2025 Universal Music New Zealand Limited",
+										"type": "C"
+									},
+									{
+										"text": "℗ 2025 Universal Music New Zealand Limited",
+										"type": "P"
+									}
+								]
+							},
+							"coverArt": {
+								"sources": [
+									{
+										"height": 300,
+										"url": "https://i.scdn.co/image/ab67616d00001e0223d41bf736920a032e222a78",
+										"width": 300
+									},
+									{
+										"height": 64,
+										"url": "https://i.scdn.co/image/ab67616d0000485123d41bf736920a032e222a78",
+										"width": 64
+									},
+									{
+										"height": 640,
+										"url": "https://i.scdn.co/image/ab67616d0000b27323d41bf736920a032e222a78",
+										"width": 640
+									}
+								]
+							},
+							"date": {
+								"day": 27,
+								"month": 6,
+								"precision": "DAY",
+								"year": 2025
+							},
+							"id": "28bHj2enHkHVFLwuWmkwlQ",
+							"label": "Universal Music New Zealand Limited",
+							"name": "Virgin",
+							"playability": {
+								"playable": true,
+								"reason": "PLAYABLE"
+							},
+							"sharingInfo": {
+								"shareId": "13xkZoEgTM2ws1j-Og2Y6Q",
+								"shareUrl": "https://open.spotify.com/en/album/28bHj2enHkHVFLwuWmkwlQ?si=13xkZoEgTM2ws1j-Og2Y6Q"
+							},
+							"tracks": {
+								"totalCount": 11
+							},
+							"type": "ALBUM",
+							"uri": "spotify:album:28bHj2enHkHVFLwuWmkwlQ"
+						},
+						{
+							"copyright": {
+								"items": [
+									{
+										"text": "© 2013 Universal Music NZ Ltd.",
+										"type": "C"
+									},
+									{
+										"text": "℗ 2013 Universal Music NZ Ltd.",
+										"type": "P"
+									}
+								]
+							},
+							"coverArt": {
+								"sources": [
+									{
+										"height": 300,
+										"url": "https://i.scdn.co/image/ab67616d00001e02244fb8bb9594476ab5cb39b9",
+										"width": 300
+									},
+									{
+										"height": 64,
+										"url": "https://i.scdn.co/image/ab67616d00004851244fb8bb9594476ab5cb39b9",
+										"width": 64
+									},
+									{
+										"height": 640,
+										"url": "https://i.scdn.co/image/ab67616d0000b273244fb8bb9594476ab5cb39b9",
+										"width": 640
+									}
+								]
+							},
+							"date": {
+								"day": 8,
+								"month": 3,
+								"precision": "DAY",
+								"year": 2013
+							},
+							"id": "0zUEZI3Z9kZuPoyoWakf75",
+							"label": "Universal Music New Zealand Limited",
+							"name": "The Love Club EP",
+							"playability": {
+								"playable": true,
+								"reason": "PLAYABLE"
+							},
+							"sharingInfo": {
+								"shareId": "ivV5mF9iSCOxblyoI0AZNA",
+								"shareUrl": "https://open.spotify.com/en/album/0zUEZI3Z9kZuPoyoWakf75?si=ivV5mF9iSCOxblyoI0AZNA"
+							},
+							"tracks": {
+								"totalCount": 5
+							},
+							"type": "EP",
+							"uri": "spotify:album:0zUEZI3Z9kZuPoyoWakf75"
+						},
+						{
+							"copyright": {
+								"items": [
+									{
+										"text": "© 2021 Universal Music New Zealand Limited",
+										"type": "C"
+									},
+									{
+										"text": "℗ 2021 Universal Music New Zealand Limited",
+										"type": "P"
+									}
+								]
+							},
+							"coverArt": {
+								"sources": [
+									{
+										"height": 300,
+										"url": "https://i.scdn.co/image/ab67616d00001e0236615a0a60523dd62135ab3a",
+										"width": 300
+									},
+									{
+										"height": 64,
+										"url": "https://i.scdn.co/image/ab67616d0000485136615a0a60523dd62135ab3a",
+										"width": 64
+									},
+									{
+										"height": 640,
+										"url": "https://i.scdn.co/image/ab67616d0000b27336615a0a60523dd62135ab3a",
+										"width": 640
+									}
+								]
+							},
+							"date": {
+								"day": 20,
+								"month": 8,
+								"precision": "DAY",
+								"year": 2021
+							},
+							"id": "4SBl4zvNIL4H137YRf2P0J",
+							"label": "Universal Music New Zealand Limited",
+							"name": "Solar Power",
+							"playability": {
+								"playable": true,
+								"reason": "PLAYABLE"
+							},
+							"sharingInfo": {
+								"shareId": "gbHouZ6_SRurpwrGSugnDw",
+								"shareUrl": "https://open.spotify.com/en/album/4SBl4zvNIL4H137YRf2P0J?si=gbHouZ6_SRurpwrGSugnDw"
+							},
+							"tracks": {
+								"totalCount": 12
+							},
+							"type": "ALBUM",
+							"uri": "spotify:album:4SBl4zvNIL4H137YRf2P0J"
+						},
+						{
+							"copyright": {
+								"items": [
+									{
+										"text": "© 2021 Universal Music New Zealand Limited",
+										"type": "C"
+									},
+									{
+										"text": "℗ 2021 Universal Music New Zealand Limited",
+										"type": "P"
+									}
+								]
+							},
+							"coverArt": {
+								"sources": [
+									{
+										"height": 300,
+										"url": "https://i.scdn.co/image/ab67616d00001e02a5603d487cfa2c30a05cdfaa",
+										"width": 300
+									},
+									{
+										"height": 64,
+										"url": "https://i.scdn.co/image/ab67616d00004851a5603d487cfa2c30a05cdfaa",
+										"width": 64
+									},
+									{
+										"height": 640,
+										"url": "https://i.scdn.co/image/ab67616d0000b273a5603d487cfa2c30a05cdfaa",
+										"width": 640
+									}
+								]
+							},
+							"date": {
+								"day": 5,
+								"month": 11,
+								"precision": "DAY",
+								"year": 2021
+							},
+							"id": "3lK2JRwfIOn2NaYtgEGTmZ",
+							"label": "Universal Music New Zealand Limited",
+							"name": "Solar Power (Deluxe Edition)",
+							"playability": {
+								"playable": true,
+								"reason": "PLAYABLE"
+							},
+							"sharingInfo": {
+								"shareId": "9tBGm-usTbuNuST5ZDWaIQ",
+								"shareUrl": "https://open.spotify.com/en/album/3lK2JRwfIOn2NaYtgEGTmZ?si=9tBGm-usTbuNuST5ZDWaIQ"
+							},
+							"tracks": {
+								"totalCount": 14
+							},
+							"type": "ALBUM",
+							"uri": "spotify:album:3lK2JRwfIOn2NaYtgEGTmZ"
+						},
+						{
+							"copyright": {
+								"items": [
+									{
+										"text": "© 2017 Universal Music NZ Ltd.",
+										"type": "C"
+									},
+									{
+										"text": "℗ 2017 Universal Music NZ Ltd.",
+										"type": "P"
+									}
+								]
+							},
+							"coverArt": {
+								"sources": [
+									{
+										"height": 300,
+										"url": "https://i.scdn.co/image/ab67616d00001e0286199dcc5db6850d5397adf7",
+										"width": 300
+									},
+									{
+										"height": 64,
+										"url": "https://i.scdn.co/image/ab67616d0000485186199dcc5db6850d5397adf7",
+										"width": 64
+									},
+									{
+										"height": 640,
+										"url": "https://i.scdn.co/image/ab67616d0000b27386199dcc5db6850d5397adf7",
+										"width": 640
+									}
+								]
+							},
+							"date": {
+								"day": 14,
+								"month": 9,
+								"precision": "DAY",
+								"year": 2017
+							},
+							"id": "7kXQ0AvaykUJMxR0gRfr4d",
+							"label": "Universal Music New Zealand Limited",
+							"name": "Homemade Dynamite (Feat. Khalid, Post Malone & SZA) [REMIX]",
+							"playability": {
+								"playable": true,
+								"reason": "PLAYABLE"
+							},
+							"sharingInfo": {
+								"shareId": "1lTG4Ex9TPmRuy96TkU2CQ",
+								"shareUrl": "https://open.spotify.com/en/album/7kXQ0AvaykUJMxR0gRfr4d?si=1lTG4Ex9TPmRuy96TkU2CQ"
+							},
+							"tracks": {
+								"totalCount": 1
+							},
+							"type": "SINGLE",
+							"uri": "spotify:album:7kXQ0AvaykUJMxR0gRfr4d"
+						},
+						{
+							"copyright": {
+								"items": [
+									{
+										"text": "© 2014 Universal Music New Zealand Limited",
+										"type": "C"
+									},
+									{
+										"text": "℗ 2014 Universal Music New Zealand Limited",
+										"type": "P"
+									}
+								]
+							},
+							"coverArt": {
+								"sources": [
+									{
+										"height": 300,
+										"url": "https://i.scdn.co/image/ab67616d00001e02705b7a96fe557beb0256fc08",
+										"width": 300
+									},
+									{
+										"height": 64,
+										"url": "https://i.scdn.co/image/ab67616d00004851705b7a96fe557beb0256fc08",
+										"width": 64
+									},
+									{
+										"height": 640,
+										"url": "https://i.scdn.co/image/ab67616d0000b273705b7a96fe557beb0256fc08",
+										"width": 640
+									}
+								]
+							},
+							"date": {
+								"day": 24,
+								"month": 4,
+								"precision": "DAY",
+								"year": 2014
+							},
+							"id": "2vORXjfFzyQeExBayLpX1U",
+							"label": "Universal Music New Zealand Limited",
+							"name": "Tennis Court (Flume Remix)",
+							"playability": {
+								"playable": true,
+								"reason": "PLAYABLE"
+							},
+							"sharingInfo": {
+								"shareId": "wKJQ7dtnQgaUxdyLJI-jwQ",
+								"shareUrl": "https://open.spotify.com/en/album/2vORXjfFzyQeExBayLpX1U?si=wKJQ7dtnQgaUxdyLJI-jwQ"
+							},
+							"tracks": {
+								"totalCount": 1
+							},
+							"type": "SINGLE",
+							"uri": "spotify:album:2vORXjfFzyQeExBayLpX1U"
+						},
+						{
+							"copyright": {
+								"items": [
+									{
+										"text": "© 2024 Atlantic Recording Corporation",
+										"type": "C"
+									},
+									{
+										"text": "℗ 2024 Atlantic Recording Corporation",
+										"type": "P"
+									}
+								]
+							},
+							"coverArt": {
+								"sources": [
+									{
+										"height": 300,
+										"url": "https://i.scdn.co/image/ab67616d00001e02c7cbc6c7c707862f5a0cec2a",
+										"width": 300
+									},
+									{
+										"height": 64,
+										"url": "https://i.scdn.co/image/ab67616d00004851c7cbc6c7c707862f5a0cec2a",
+										"width": 64
+									},
+									{
+										"height": 640,
+										"url": "https://i.scdn.co/image/ab67616d0000b273c7cbc6c7c707862f5a0cec2a",
+										"width": 640
+									}
+								]
+							},
+							"date": {
+								"day": 21,
+								"month": 6,
+								"precision": "DAY",
+								"year": 2024
+							},
+							"id": "7mwumbLY3qKZOQRCv0OdyX",
+							"label": "Atlantic Records",
+							"name": "Girl, so confusing featuring lorde",
+							"playability": {
+								"playable": true,
+								"reason": "PLAYABLE"
+							},
+							"sharingInfo": {
+								"shareId": "G3xkUNBsS7eMB2WnMwgHUg",
+								"shareUrl": "https://open.spotify.com/en/album/7mwumbLY3qKZOQRCv0OdyX?si=G3xkUNBsS7eMB2WnMwgHUg"
+							},
+							"tracks": {
+								"totalCount": 1
+							},
+							"type": "SINGLE",
+							"uri": "spotify:album:7mwumbLY3qKZOQRCv0OdyX"
+						},
+						{
+							"copyright": {
+								"items": [
+									{
+										"text": "© 2014 Republic Records, a division of UMG Recordings, Inc.",
+										"type": "C"
+									},
+									{
+										"text": "℗ 2014 Republic Records, a division of UMG Recordings, Inc.",
+										"type": "P"
+									}
+								]
+							},
+							"coverArt": {
+								"sources": [
+									{
+										"height": 300,
+										"url": "https://i.scdn.co/image/ab67616d00001e0274b226f1b53ca4902dedce2a",
+										"width": 300
+									},
+									{
+										"height": 64,
+										"url": "https://i.scdn.co/image/ab67616d0000485174b226f1b53ca4902dedce2a",
+										"width": 64
+									},
+									{
+										"height": 640,
+										"url": "https://i.scdn.co/image/ab67616d0000b27374b226f1b53ca4902dedce2a",
+										"width": 640
+									}
+								]
+							},
+							"date": {
+								"day": 30,
+								"month": 9,
+								"precision": "DAY",
+								"year": 2014
+							},
+							"id": "7sg5iqMiDrM2aJqLAmv83V",
+							"label": "Hunger Games 3/Mockingjay",
+							"name": "Yellow Flicker Beat (From The Hunger Games: Mockingjay Part 1)",
+							"playability": {
+								"playable": true,
+								"reason": "PLAYABLE"
+							},
+							"sharingInfo": {
+								"shareId": "XOAq4EgAREqQDA8QMB9Gxg",
+								"shareUrl": "https://open.spotify.com/en/album/7sg5iqMiDrM2aJqLAmv83V?si=XOAq4EgAREqQDA8QMB9Gxg"
+							},
+							"tracks": {
+								"totalCount": 1
+							},
+							"type": "SINGLE",
+							"uri": "spotify:album:7sg5iqMiDrM2aJqLAmv83V"
+						}
+					],
+					"totalCount": 20
+				},
+				"singles": {
+					"items": [
+						{
+							"releases": {
+								"items": [
+									{
+										"copyright": {
+											"items": [
+												{
+													"text": "(P) 2025 RCA Records, under exclusive license from Domino Recording Co. Ltd.",
+													"type": "P"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e0211f23fe3cda20c995b8e2f84",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d0000485111f23fe3cda20c995b8e2f84",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b27311f23fe3cda20c995b8e2f84",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"day": 17,
+											"month": 7,
+											"precision": "DAY",
+											"year": 2025
+										},
+										"id": "7eD4M0bxUGIFRCi0wWhkbt",
+										"label": "Domino Recording Co./RCA Records",
+										"name": "Mind Loaded (feat. Caroline Polachek, Lorde & Mustafa)",
+										"playability": {
+											"playable": true,
+											"reason": "PLAYABLE"
+										},
+										"sharingInfo": {
+											"shareId": "4pqg4dw1TcmUNhAt0baEeg",
+											"shareUrl": "https://open.spotify.com/en/album/7eD4M0bxUGIFRCi0wWhkbt?si=4pqg4dw1TcmUNhAt0baEeg"
+										},
+										"tracks": {
+											"totalCount": 1
+										},
+										"type": "SINGLE",
+										"uri": "spotify:album:7eD4M0bxUGIFRCi0wWhkbt"
+									}
+								]
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"copyright": {
+											"items": [
+												{
+													"text": "© 2024 Atlantic Recording Corporation",
+													"type": "C"
+												},
+												{
+													"text": "℗ 2024 Atlantic Recording Corporation",
+													"type": "P"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02c7cbc6c7c707862f5a0cec2a",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851c7cbc6c7c707862f5a0cec2a",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273c7cbc6c7c707862f5a0cec2a",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"day": 21,
+											"month": 6,
+											"precision": "DAY",
+											"year": 2024
+										},
+										"id": "7mwumbLY3qKZOQRCv0OdyX",
+										"label": "Atlantic Records",
+										"name": "Girl, so confusing featuring lorde",
+										"playability": {
+											"playable": true,
+											"reason": "PLAYABLE"
+										},
+										"sharingInfo": {
+											"shareId": "EopPoqNtRpGxMyjb2sk2SA",
+											"shareUrl": "https://open.spotify.com/en/album/7mwumbLY3qKZOQRCv0OdyX?si=EopPoqNtRpGxMyjb2sk2SA"
+										},
+										"tracks": {
+											"totalCount": 1
+										},
+										"type": "SINGLE",
+										"uri": "spotify:album:7mwumbLY3qKZOQRCv0OdyX"
+									}
+								]
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"copyright": {
+											"items": [
+												{
+													"text": "2024 A24 Music",
+													"type": "C"
+												},
+												{
+													"text": "2024 A24 Music",
+													"type": "P"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02b0cfda5df6f0c808dccbab80",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851b0cfda5df6f0c808dccbab80",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273b0cfda5df6f0c808dccbab80",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"day": 28,
+											"month": 3,
+											"precision": "DAY",
+											"year": 2024
+										},
+										"id": "2uZazZt5CXCpf5KPzSzh2V",
+										"label": "A24 Music",
+										"name": "Take Me to the River",
+										"playability": {
+											"playable": true,
+											"reason": "PLAYABLE"
+										},
+										"sharingInfo": {
+											"shareId": "698GraJGQcCh26WMngnbLw",
+											"shareUrl": "https://open.spotify.com/en/album/2uZazZt5CXCpf5KPzSzh2V?si=698GraJGQcCh26WMngnbLw"
+										},
+										"tracks": {
+											"totalCount": 1
+										},
+										"type": "SINGLE",
+										"uri": "spotify:album:2uZazZt5CXCpf5KPzSzh2V"
+									}
+								]
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"copyright": {
+											"items": [
+												{
+													"text": "© 2021 Universal Music New Zealand Limited",
+													"type": "C"
+												},
+												{
+													"text": "℗ 2021 Universal Music New Zealand Limited",
+													"type": "P"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e0252c43a5bd02104fe06619069",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d0000485152c43a5bd02104fe06619069",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b27352c43a5bd02104fe06619069",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"day": 9,
+											"month": 9,
+											"precision": "DAY",
+											"year": 2021
+										},
+										"id": "0fPuf1jv42CH5okF6MjKmE",
+										"label": "Universal Music New Zealand Limited",
+										"name": "Te Ao Mārama",
+										"playability": {
+											"playable": true,
+											"reason": "PLAYABLE"
+										},
+										"sharingInfo": {
+											"shareId": "zB0CGUxTTz6TlA4KHwX-xA",
+											"shareUrl": "https://open.spotify.com/en/album/0fPuf1jv42CH5okF6MjKmE?si=zB0CGUxTTz6TlA4KHwX-xA"
+										},
+										"tracks": {
+											"totalCount": 5
+										},
+										"type": "EP",
+										"uri": "spotify:album:0fPuf1jv42CH5okF6MjKmE"
+									}
+								]
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"copyright": {
+											"items": [
+												{
+													"text": "© 2018 Universal Music NZ Ltd.",
+													"type": "C"
+												},
+												{
+													"text": "℗ 2018 Universal Music NZ Ltd.",
+													"type": "P"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e0231eaac8233b1452cf3897058",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d0000485131eaac8233b1452cf3897058",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b27331eaac8233b1452cf3897058",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"day": 9,
+											"month": 3,
+											"precision": "DAY",
+											"year": 2018
+										},
+										"id": "3dbGt0XseArzHevp1kBYHD",
+										"label": "Universal Music New Zealand Limited",
+										"name": "Supercut (El-P Remix)",
+										"playability": {
+											"playable": true,
+											"reason": "PLAYABLE"
+										},
+										"sharingInfo": {
+											"shareId": "R14LMVmrSIijWsMg8NpAlg",
+											"shareUrl": "https://open.spotify.com/en/album/3dbGt0XseArzHevp1kBYHD?si=R14LMVmrSIijWsMg8NpAlg"
+										},
+										"tracks": {
+											"totalCount": 1
+										},
+										"type": "SINGLE",
+										"uri": "spotify:album:3dbGt0XseArzHevp1kBYHD"
+									}
+								]
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"copyright": {
+											"items": [
+												{
+													"text": "© 2017 Universal Music NZ Ltd.",
+													"type": "C"
+												},
+												{
+													"text": "℗ 2017 Universal Music NZ Ltd.",
+													"type": "P"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e0286199dcc5db6850d5397adf7",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d0000485186199dcc5db6850d5397adf7",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b27386199dcc5db6850d5397adf7",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"day": 14,
+											"month": 9,
+											"precision": "DAY",
+											"year": 2017
+										},
+										"id": "7kXQ0AvaykUJMxR0gRfr4d",
+										"label": "Universal Music New Zealand Limited",
+										"name": "Homemade Dynamite (Feat. Khalid, Post Malone & SZA) [REMIX]",
+										"playability": {
+											"playable": true,
+											"reason": "PLAYABLE"
+										},
+										"sharingInfo": {
+											"shareId": "SvA_VCz6S1mwCGuUeqg1kQ",
+											"shareUrl": "https://open.spotify.com/en/album/7kXQ0AvaykUJMxR0gRfr4d?si=SvA_VCz6S1mwCGuUeqg1kQ"
+										},
+										"tracks": {
+											"totalCount": 1
+										},
+										"type": "SINGLE",
+										"uri": "spotify:album:7kXQ0AvaykUJMxR0gRfr4d"
+									}
+								]
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"copyright": {
+											"items": [
+												{
+													"text": "© 2017 Universal Music New Zealand Limited",
+													"type": "C"
+												},
+												{
+													"text": "℗ 2017 Universal Music New Zealand Limited",
+													"type": "P"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e022e6cb000abc707be89b5ce7b",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d000048512e6cb000abc707be89b5ce7b",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b2732e6cb000abc707be89b5ce7b",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"day": 19,
+											"month": 5,
+											"precision": "DAY",
+											"year": 2017
+										},
+										"id": "7IbLnQpLU1n85xtPPr9dbR",
+										"label": "Universal Music New Zealand Limited",
+										"name": "Green Light (Chromeo Remix)",
+										"playability": {
+											"playable": true,
+											"reason": "PLAYABLE"
+										},
+										"sharingInfo": {
+											"shareId": "tqDvgXe-RK-bFeNN-3e2wQ",
+											"shareUrl": "https://open.spotify.com/en/album/7IbLnQpLU1n85xtPPr9dbR?si=tqDvgXe-RK-bFeNN-3e2wQ"
+										},
+										"tracks": {
+											"totalCount": 1
+										},
+										"type": "SINGLE",
+										"uri": "spotify:album:7IbLnQpLU1n85xtPPr9dbR"
+									}
+								]
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"copyright": {
+											"items": [
+												{
+													"text": "© 2014 Universal Music NZ Ltd., licensed to Republic Records",
+													"type": "C"
+												},
+												{
+													"text": "℗ 2014 Universal Music NZ Ltd., licensed to Republic Records",
+													"type": "P"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02dfe4fe3d28a00618b67e3c41",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851dfe4fe3d28a00618b67e3c41",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273dfe4fe3d28a00618b67e3c41",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"day": 11,
+											"month": 11,
+											"precision": "DAY",
+											"year": 2014
+										},
+										"id": "112eEMM7VwHVEknE4hHjjY",
+										"label": "Hunger Games 3/Mockingjay",
+										"name": "Flicker (Kanye West Rework) [From The Hunger Games: Mockingjay Part 1]",
+										"playability": {
+											"playable": true,
+											"reason": "PLAYABLE"
+										},
+										"sharingInfo": {
+											"shareId": "eVAojNfpScG2sSUbgvwI_g",
+											"shareUrl": "https://open.spotify.com/en/album/112eEMM7VwHVEknE4hHjjY?si=eVAojNfpScG2sSUbgvwI_g"
+										},
+										"tracks": {
+											"totalCount": 1
+										},
+										"type": "SINGLE",
+										"uri": "spotify:album:112eEMM7VwHVEknE4hHjjY"
+									}
+								]
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"copyright": {
+											"items": [
+												{
+													"text": "© 2014 Republic Records, a division of UMG Recordings, Inc.",
+													"type": "C"
+												},
+												{
+													"text": "℗ 2014 Republic Records, a division of UMG Recordings, Inc.",
+													"type": "P"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e0274b226f1b53ca4902dedce2a",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d0000485174b226f1b53ca4902dedce2a",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b27374b226f1b53ca4902dedce2a",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"day": 30,
+											"month": 9,
+											"precision": "DAY",
+											"year": 2014
+										},
+										"id": "7sg5iqMiDrM2aJqLAmv83V",
+										"label": "Hunger Games 3/Mockingjay",
+										"name": "Yellow Flicker Beat (From The Hunger Games: Mockingjay Part 1)",
+										"playability": {
+											"playable": true,
+											"reason": "PLAYABLE"
+										},
+										"sharingInfo": {
+											"shareId": "nueCp4OsRKWDHf5Tx1rQEg",
+											"shareUrl": "https://open.spotify.com/en/album/7sg5iqMiDrM2aJqLAmv83V?si=nueCp4OsRKWDHf5Tx1rQEg"
+										},
+										"tracks": {
+											"totalCount": 1
+										},
+										"type": "SINGLE",
+										"uri": "spotify:album:7sg5iqMiDrM2aJqLAmv83V"
+									}
+								]
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"copyright": {
+											"items": [
+												{
+													"text": "© 2014 Universal Music New Zealand Limited",
+													"type": "C"
+												},
+												{
+													"text": "℗ 2014 Universal Music New Zealand Limited",
+													"type": "P"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02705b7a96fe557beb0256fc08",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851705b7a96fe557beb0256fc08",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273705b7a96fe557beb0256fc08",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"day": 24,
+											"month": 4,
+											"precision": "DAY",
+											"year": 2014
+										},
+										"id": "2vORXjfFzyQeExBayLpX1U",
+										"label": "Universal Music New Zealand Limited",
+										"name": "Tennis Court (Flume Remix)",
+										"playability": {
+											"playable": true,
+											"reason": "PLAYABLE"
+										},
+										"sharingInfo": {
+											"shareId": "xSWgmADPSSioumbWcb6GAw",
+											"shareUrl": "https://open.spotify.com/en/album/2vORXjfFzyQeExBayLpX1U?si=xSWgmADPSSioumbWcb6GAw"
+										},
+										"tracks": {
+											"totalCount": 1
+										},
+										"type": "SINGLE",
+										"uri": "spotify:album:2vORXjfFzyQeExBayLpX1U"
+									}
+								]
+							}
+						}
+					],
+					"totalCount": 15
+				},
+				"topTracks": {
+					"items": [
+						{
+							"track": {
+								"albumOfTrack": {
+									"coverArt": {
+										"sources": [
+											{
+												"url": "https://i.scdn.co/image/ab67616d00001e02187331e276c898d39764cc98"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d00004851187331e276c898d39764cc98"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d0000b273187331e276c898d39764cc98"
+											}
+										]
+									},
+									"uri": "spotify:album:0rmhjUgoVa17LZuS8xWQ3v"
+								},
+								"artists": {
+									"items": [
+										{
+											"profile": {
+												"name": "Lorde"
+											},
+											"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+										}
+									]
+								},
+								"associationsV3": {
+									"videoAssociations": {
+										"totalCount": 0
+									}
+								},
+								"contentRating": {
+									"label": "NONE"
+								},
+								"discNumber": 1,
+								"duration": {
+									"totalMilliseconds": 258969
+								},
+								"id": "2MvvoeRt8NcOXWESkxWn3g",
+								"name": "Ribs",
+								"playability": {
+									"playable": true,
+									"reason": "PLAYABLE"
+								},
+								"playcount": "1026687892",
+								"uri": "spotify:track:2MvvoeRt8NcOXWESkxWn3g"
+							},
+							"uid": "ca25c28da67c314cc575"
+						},
+						{
+							"track": {
+								"albumOfTrack": {
+									"coverArt": {
+										"sources": [
+											{
+												"url": "https://i.scdn.co/image/ab67616d00001e02187331e276c898d39764cc98"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d00004851187331e276c898d39764cc98"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d0000b273187331e276c898d39764cc98"
+											}
+										]
+									},
+									"uri": "spotify:album:0rmhjUgoVa17LZuS8xWQ3v"
+								},
+								"artists": {
+									"items": [
+										{
+											"profile": {
+												"name": "Lorde"
+											},
+											"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+										}
+									]
+								},
+								"associationsV3": {
+									"videoAssociations": {
+										"totalCount": 1
+									}
+								},
+								"contentRating": {
+									"label": "NONE"
+								},
+								"discNumber": 1,
+								"duration": {
+									"totalMilliseconds": 193058
+								},
+								"id": "3G6hD9B2ZHOsgf4WfNu7X1",
+								"name": "Team",
+								"playability": {
+									"playable": true,
+									"reason": "PLAYABLE"
+								},
+								"playcount": "1063036369",
+								"uri": "spotify:track:3G6hD9B2ZHOsgf4WfNu7X1"
+							},
+							"uid": "252a178b154a7e116694"
+						},
+						{
+							"track": {
+								"albumOfTrack": {
+									"coverArt": {
+										"sources": [
+											{
+												"url": "https://i.scdn.co/image/ab67616d00001e02187331e276c898d39764cc98"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d00004851187331e276c898d39764cc98"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d0000b273187331e276c898d39764cc98"
+											}
+										]
+									},
+									"uri": "spotify:album:0rmhjUgoVa17LZuS8xWQ3v"
+								},
+								"artists": {
+									"items": [
+										{
+											"profile": {
+												"name": "Lorde"
+											},
+											"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+										}
+									]
+								},
+								"associationsV3": {
+									"videoAssociations": {
+										"totalCount": 1
+									}
+								},
+								"contentRating": {
+									"label": "NONE"
+								},
+								"discNumber": 1,
+								"duration": {
+									"totalMilliseconds": 190185
+								},
+								"id": "2dLLR6qlu5UJ5gk0dKz0h3",
+								"name": "Royals",
+								"playability": {
+									"playable": true,
+									"reason": "PLAYABLE"
+								},
+								"playcount": "1471124140",
+								"uri": "spotify:track:2dLLR6qlu5UJ5gk0dKz0h3"
+							},
+							"uid": "28368d0b935a5dbc0e57"
+						},
+						{
+							"track": {
+								"albumOfTrack": {
+									"coverArt": {
+										"sources": [
+											{
+												"url": "https://i.scdn.co/image/ab67616d00001e02f8553e18a11209d4becd0336"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d00004851f8553e18a11209d4becd0336"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d0000b273f8553e18a11209d4becd0336"
+											}
+										]
+									},
+									"uri": "spotify:album:2B87zXm9bOWvAJdkJBTpzF"
+								},
+								"artists": {
+									"items": [
+										{
+											"profile": {
+												"name": "Lorde"
+											},
+											"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+										}
+									]
+								},
+								"associationsV3": {
+									"videoAssociations": {
+										"totalCount": 0
+									}
+								},
+								"contentRating": {
+									"label": "NONE"
+								},
+								"discNumber": 1,
+								"duration": {
+									"totalMilliseconds": 277506
+								},
+								"id": "6K8VQ84MqhsoakN5MjrnVR",
+								"name": "Supercut",
+								"playability": {
+									"playable": true,
+									"reason": "PLAYABLE"
+								},
+								"playcount": "466824273",
+								"uri": "spotify:track:6K8VQ84MqhsoakN5MjrnVR"
+							},
+							"uid": "a1b89be5e149f6d9b001"
+						},
+						{
+							"track": {
+								"albumOfTrack": {
+									"coverArt": {
+										"sources": [
+											{
+												"url": "https://i.scdn.co/image/ab67616d00001e02187331e276c898d39764cc98"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d00004851187331e276c898d39764cc98"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d0000b273187331e276c898d39764cc98"
+											}
+										]
+									},
+									"uri": "spotify:album:0rmhjUgoVa17LZuS8xWQ3v"
+								},
+								"artists": {
+									"items": [
+										{
+											"profile": {
+												"name": "Lorde"
+											},
+											"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+										}
+									]
+								},
+								"associationsV3": {
+									"videoAssociations": {
+										"totalCount": 0
+									}
+								},
+								"contentRating": {
+									"label": "NONE"
+								},
+								"discNumber": 1,
+								"duration": {
+									"totalMilliseconds": 246755
+								},
+								"id": "51QEyJI5M7uyd8DOh9tqQY",
+								"name": "Buzzcut Season",
+								"playability": {
+									"playable": true,
+									"reason": "PLAYABLE"
+								},
+								"playcount": "381917066",
+								"uri": "spotify:track:51QEyJI5M7uyd8DOh9tqQY"
+							},
+							"uid": "413e6e2182395f09a735"
+						},
+						{
+							"track": {
+								"albumOfTrack": {
+									"coverArt": {
+										"sources": [
+											{
+												"url": "https://i.scdn.co/image/ab67616d00001e028ac99f88ebc09b1f1637dc00"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d000048518ac99f88ebc09b1f1637dc00"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d0000b2738ac99f88ebc09b1f1637dc00"
+											}
+										]
+									},
+									"uri": "spotify:album:36P07bti6xD99o7S1acmin"
+								},
+								"artists": {
+									"items": [
+										{
+											"profile": {
+												"name": "Charli xcx"
+											},
+											"uri": "spotify:artist:25uiPmTg16RbhZWAqwLBy5"
+										},
+										{
+											"profile": {
+												"name": "Lorde"
+											},
+											"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+										}
+									]
+								},
+								"associationsV3": {
+									"videoAssociations": {
+										"totalCount": 0
+									}
+								},
+								"contentRating": {
+									"label": "NONE"
+								},
+								"discNumber": 1,
+								"duration": {
+									"totalMilliseconds": 205938
+								},
+								"id": "7srqyRb5plksW5k65itXDB",
+								"name": "Girl, so confusing featuring lorde",
+								"playability": {
+									"playable": true,
+									"reason": "PLAYABLE"
+								},
+								"playcount": "272859109",
+								"uri": "spotify:track:7srqyRb5plksW5k65itXDB"
+							},
+							"uid": "f24a3a1540ef3790c4fa"
+						},
+						{
+							"track": {
+								"albumOfTrack": {
+									"coverArt": {
+										"sources": [
+											{
+												"url": "https://i.scdn.co/image/ab67616d00001e02f8553e18a11209d4becd0336"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d00004851f8553e18a11209d4becd0336"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d0000b273f8553e18a11209d4becd0336"
+											}
+										]
+									},
+									"uri": "spotify:album:2B87zXm9bOWvAJdkJBTpzF"
+								},
+								"artists": {
+									"items": [
+										{
+											"profile": {
+												"name": "Lorde"
+											},
+											"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+										}
+									]
+								},
+								"associationsV3": {
+									"videoAssociations": {
+										"totalCount": 1
+									}
+								},
+								"contentRating": {
+									"label": "NONE"
+								},
+								"discNumber": 1,
+								"duration": {
+									"totalMilliseconds": 234652
+								},
+								"id": "6ie2Bw3xLj2JcGowOlcMhb",
+								"name": "Green Light",
+								"playability": {
+									"playable": true,
+									"reason": "PLAYABLE"
+								},
+								"playcount": "729003982",
+								"uri": "spotify:track:6ie2Bw3xLj2JcGowOlcMhb"
+							},
+							"uid": "e92193f6059003eb2516"
+						},
+						{
+							"track": {
+								"albumOfTrack": {
+									"coverArt": {
+										"sources": [
+											{
+												"url": "https://i.scdn.co/image/ab67616d00001e0223d41bf736920a032e222a78"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d0000485123d41bf736920a032e222a78"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d0000b27323d41bf736920a032e222a78"
+											}
+										]
+									},
+									"uri": "spotify:album:28bHj2enHkHVFLwuWmkwlQ"
+								},
+								"artists": {
+									"items": [
+										{
+											"profile": {
+												"name": "Lorde"
+											},
+											"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+										}
+									]
+								},
+								"associationsV3": {
+									"videoAssociations": {
+										"totalCount": 0
+									}
+								},
+								"contentRating": {
+									"label": "NONE"
+								},
+								"discNumber": 1,
+								"duration": {
+									"totalMilliseconds": 204988
+								},
+								"id": "6ghDayhHeBXAP4OOnnrFW9",
+								"name": "David",
+								"playability": {
+									"playable": true,
+									"reason": "PLAYABLE"
+								},
+								"playcount": "83810372",
+								"uri": "spotify:track:6ghDayhHeBXAP4OOnnrFW9"
+							},
+							"uid": "28d17e5d90c5647a1712"
+						},
+						{
+							"track": {
+								"albumOfTrack": {
+									"coverArt": {
+										"sources": [
+											{
+												"url": "https://i.scdn.co/image/ab67616d00001e02187331e276c898d39764cc98"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d00004851187331e276c898d39764cc98"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d0000b273187331e276c898d39764cc98"
+											}
+										]
+									},
+									"uri": "spotify:album:0rmhjUgoVa17LZuS8xWQ3v"
+								},
+								"artists": {
+									"items": [
+										{
+											"profile": {
+												"name": "Lorde"
+											},
+											"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+										}
+									]
+								},
+								"associationsV3": {
+									"videoAssociations": {
+										"totalCount": 0
+									}
+								},
+								"contentRating": {
+									"label": "NONE"
+								},
+								"discNumber": 1,
+								"duration": {
+									"totalMilliseconds": 294222
+								},
+								"id": "55N0YHhO55Q1lWsc4dDPcI",
+								"name": "A World Alone",
+								"playability": {
+									"playable": true,
+									"reason": "PLAYABLE"
+								},
+								"playcount": "158979710",
+								"uri": "spotify:track:55N0YHhO55Q1lWsc4dDPcI"
+							},
+							"uid": "8f3ff31e70e1c9cd6b6a"
+						},
+						{
+							"track": {
+								"albumOfTrack": {
+									"coverArt": {
+										"sources": [
+											{
+												"url": "https://i.scdn.co/image/ab67616d00001e0223d41bf736920a032e222a78"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d0000485123d41bf736920a032e222a78"
+											},
+											{
+												"url": "https://i.scdn.co/image/ab67616d0000b27323d41bf736920a032e222a78"
+											}
+										]
+									},
+									"uri": "spotify:album:28bHj2enHkHVFLwuWmkwlQ"
+								},
+								"artists": {
+									"items": [
+										{
+											"profile": {
+												"name": "Lorde"
+											},
+											"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+										}
+									]
+								},
+								"associationsV3": {
+									"videoAssociations": {
+										"totalCount": 1
+									}
+								},
+								"contentRating": {
+									"label": "NONE"
+								},
+								"discNumber": 1,
+								"duration": {
+									"totalMilliseconds": 209286
+								},
+								"id": "7hGCCQkdyF1MX6uk339uBS",
+								"name": "What Was That",
+								"playability": {
+									"playable": true,
+									"reason": "PLAYABLE"
+								},
+								"playcount": "152450111",
+								"uri": "spotify:track:7hGCCQkdyF1MX6uk339uBS"
+							},
+							"uid": "29aca0ed97e272733c07"
+						}
+					]
+				}
+			},
+			"goods": {
+				"concerts": {
+					"items": [
+						{
+							"data": {
+								"__typename": "ConcertV2",
+								"festival": false,
+								"location": {
+									"city": "Santiago",
+									"name": "O’Higgins Park"
+								},
+								"startDateIsoString": "2026-03-13T17:00-03:00",
+								"title": "Lorde",
+								"uri": "spotify:concert:2xDS1B7x4PS1DHyX48HMy3"
+							}
+						},
+						{
+							"data": {
+								"__typename": "ConcertV2",
+								"festival": false,
+								"location": {
+									"city": "San Isidro",
+									"name": "Hipodromo De San Isidro"
+								},
+								"startDateIsoString": "2026-03-13T17:00-03:00",
+								"title": "Lorde",
+								"uri": "spotify:concert:71sKewJiUh6QUG9oRaLY52"
+							}
+						},
+						{
+							"data": {
+								"__typename": "ConcertV2",
+								"festival": false,
+								"location": {
+									"city": "Luque",
+									"name": "Parque Olímpico"
+								},
+								"startDateIsoString": "2026-03-17T17:00-03:00",
+								"title": "Lorde",
+								"uri": "spotify:concert:4ErUEy0zg7XuVZu2IVv8B9"
+							}
+						},
+						{
+							"data": {
+								"__typename": "ConcertV2",
+								"festival": false,
+								"location": {
+									"city": "São Paulo",
+									"name": "Autódromo José Carlos Pace"
+								},
+								"startDateIsoString": "2026-03-20T17:00-03:00",
+								"title": "Lorde",
+								"uri": "spotify:concert:4ZnEkvhcx4o3aRxB3K2nEp"
+							}
+						},
+						{
+							"data": {
+								"__typename": "ConcertV2",
+								"festival": false,
+								"location": {
+									"city": "Bogotá",
+									"name": "Parque Simón Bolívar"
+								},
+								"startDateIsoString": "2026-03-20T17:00-05:00",
+								"title": "Lorde",
+								"uri": "spotify:concert:72dxV2BSa3IL3QmDBreuXX"
+							}
+						},
+						{
+							"data": {
+								"__typename": "ConcertV2",
+								"festival": false,
+								"location": {
+									"city": "Monterrey",
+									"name": "Auditorio Banamex"
+								},
+								"startDateIsoString": "2026-04-28T21:00-06:00",
+								"title": "Lorde",
+								"uri": "spotify:concert:3AWVlWAuThbrYNnHbuuBvA"
+							}
+						},
+						{
+							"data": {
+								"__typename": "ConcertV2",
+								"festival": false,
+								"location": {
+									"city": "Zapopan",
+									"name": "Auditorio Telmex"
+								},
+								"startDateIsoString": "2026-04-29T21:00-06:00",
+								"title": "Lorde",
+								"uri": "spotify:concert:5dnmT27egG3vb62GtkYBUm"
+							}
+						},
+						{
+							"data": {
+								"__typename": "ConcertV2",
+								"festival": false,
+								"location": {
+									"city": "Ciudad de México",
+									"name": "Palacio de los Deportes"
+								},
+								"startDateIsoString": "2026-05-01T20:00-06:00",
+								"title": "Lorde",
+								"uri": "spotify:concert:0mJZMy2PFDCdYidF26wntP"
+							}
+						},
+						{
+							"data": {
+								"__typename": "ConcertV2",
+								"festival": false,
+								"location": {
+									"city": "Inglewood",
+									"name": "Kia Forum"
+								},
+								"startDateIsoString": "2026-05-14T19:00-07:00",
+								"title": "Lorde",
+								"uri": "spotify:concert:7LW8kSyU5X31bbcYejOvyX"
+							}
+						},
+						{
+							"data": {
+								"__typename": "ConcertV2",
+								"festival": false,
+								"location": {
+									"city": "Salt Lake City",
+									"name": "Utah State Fairpark"
+								},
+								"startDateIsoString": "2026-05-15T11:30-06:00",
+								"title": "Lorde, The xx, Turnstile, Hayley Williams, Modest Mouse, Alex G, Blood Orange, Lucy Dacus, Father John Misty, Japanese Breakfast, Magdalena Bay, flipturn, The Last Dinner Party, Briston Maroney, Beach Bunny, American Football, Snail Mail, Granddaddy, Pattie Gonia, BETWEEN FRIENDS, Ritt Momney, The Moss, Nilüfer Yanya, Clap Your Hands Say Yeah, Kevin Morby, Drugdealer, Melody's Echo Chamber, Ben Kweller, Dehd, Ethan Regan, Show Me the Body, Lyn Lapid, Jane Remover, Quadeca, Dry Cleaning, El Mató a un Policía Motorizado, KennyHoopla, Hannah Cohen, NewDad, Chanel Beads, Freak Slug, TOPS, Automatic, feeble little horse, Die Spitz, Provoker, Mustard Service, This Is Lorelei, Hotline TNT, caroline, Folk Bitch Trio, Wombo, Old Mervs, The Kilans, Cardinals, YHWH Nailgun, FIGHTMASTER, Glom, Gelli Haha, Rachael Jenkins, Dad Bod, Wilbere, Jill Whit, Bad Luck Brigade, Gonk, Starr 67, Chalk",
+								"uri": "spotify:concert:4o3er4fhUOI43UvOj6cHXD"
+							}
+						}
+					],
+					"totalCount": 32
+				},
+				"merch": {
+					"items": []
+				}
+			},
+			"headerImage": {
+				"data": {
+					"__typename": "ImageV2",
+					"sources": [
+						{
+							"maxHeight": 640,
+							"maxWidth": 1494,
+							"url": "https://image-cdn-fa.spotifycdn.com/image/ab676186000001949971985719d2453042aa914e"
+						},
+						{
+							"maxHeight": 1080,
+							"maxWidth": 1920,
+							"url": "https://i2o.scdn.co/image/ab676186000016679971985719d2453042aa914e"
+						},
+						{
+							"maxHeight": 1080,
+							"maxWidth": 1920,
+							"url": "https://i2o.scdn.co/image/ab676186000016679971985719d2453042aa914e"
+						},
+						{
+							"maxHeight": 641,
+							"maxWidth": 1495,
+							"url": "https://image-cdn-fa.spotifycdn.com/image/ab67618600009d809971985719d2453042aa914e"
+						},
+						{
+							"maxHeight": 1140,
+							"maxWidth": 2660,
+							"url": "https://image-cdn-fa.spotifycdn.com/image/ab6761860000eab19971985719d2453042aa914e"
+						}
+					]
+				}
+			},
+			"id": "163tK9Wjr9P9DmM0AVK7lm",
+			"preRelease": null,
+			"profile": {
+				"biography": {
+					"text": "The magic lives close to the edge",
+					"type": "AUTOBIOGRAPHY"
+				},
+				"externalLinks": {
+					"items": [
+						{
+							"name": "FACEBOOK",
+							"url": "https://facebook.com/lordemusic"
+						},
+						{
+							"name": "INSTAGRAM",
+							"url": "https://instagram.com/lorde"
+						},
+						{
+							"name": "TWITTER",
+							"url": "https://twitter.com/lorde"
+						},
+						{
+							"name": "WIKIPEDIA",
+							"url": "https://en.wikipedia.org/wiki/Lorde"
+						}
+					]
+				},
+				"name": "Lorde",
+				"pinnedItem": null,
+				"playlistsV2": {
+					"items": [
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://image-cdn-fa.spotifycdn.com/image/ab67706c0000d72c1d671dcf450d040517ae343d",
+													"width": null
+												}
+											]
+										}
+									]
+								},
+								"name": "Lorde Discography",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "lordemusic"
+									}
+								},
+								"uri": "spotify:playlist:2ifHoL10xR8PPSHvrbnQ2M"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://image-cdn-fa.spotifycdn.com/image/ab67706c0000d72cb077f78b7aefd239656c6730",
+													"width": null
+												}
+											]
+										}
+									]
+								},
+								"name": "Homemade Dynamite",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "lordemusic"
+									}
+								},
+								"uri": "spotify:playlist:43Yim9aRqJJ5Rmq5ag8XRJ"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "Experience Solar Power, enhanced with photos & stories from Lorde.",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://i.scdn.co/image/ab67706f0000000203abc43284b4b20006d785b6",
+													"width": null
+												}
+											]
+										}
+									]
+								},
+								"name": "Lorde presents Solar Power, the Enhanced Album",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DX1D2beE6xFE6"
+							}
+						}
+					],
+					"totalCount": 3
+				},
+				"verified": true
+			},
+			"relatedContent": {
+				"appearsOn": {
+					"items": [
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Disclosure"
+													},
+													"uri": "spotify:artist:6nS5roXSAGhTGr34W6n7Et"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02e2f9df5c00476154a4fbdfff",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851e2f9df5c00476154a4fbdfff",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273e2f9df5c00476154a4fbdfff",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2015
+										},
+										"id": "08ipn1MH7xqgoqhUbtvCTy",
+										"name": "Caracal (Deluxe)",
+										"sharingInfo": {
+											"shareId": "KwlhZnF7QBW0MOSg4csauQ",
+											"shareUrl": "https://open.spotify.com/en/album/08ipn1MH7xqgoqhUbtvCTy?si=KwlhZnF7QBW0MOSg4csauQ"
+										},
+										"type": "ALBUM",
+										"uri": "spotify:album:08ipn1MH7xqgoqhUbtvCTy"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Blood Orange"
+													},
+													"uri": "spotify:artist:6LEeAFiJF8OuPx747e1wxR"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e020710ea6bfb5a1208a5105693",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d000048510710ea6bfb5a1208a5105693",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b2730710ea6bfb5a1208a5105693",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2025
+										},
+										"id": "5RUma3H9uzDLXxwT7JzTel",
+										"name": "Essex Honey",
+										"sharingInfo": {
+											"shareId": "9VrJgJQfRm-xnBXSqHd-CA",
+											"shareUrl": "https://open.spotify.com/en/album/5RUma3H9uzDLXxwT7JzTel?si=9VrJgJQfRm-xnBXSqHd-CA"
+										},
+										"type": "ALBUM",
+										"uri": "spotify:album:5RUma3H9uzDLXxwT7JzTel"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Charli xcx"
+													},
+													"uri": "spotify:artist:25uiPmTg16RbhZWAqwLBy5"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02927ee510cae02a0334d3207c",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851927ee510cae02a0334d3207c",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273927ee510cae02a0334d3207c",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2024
+										},
+										"id": "0W5woeQnfOZmVLSbggRRlR",
+										"name": "Brat and it’s completely different but also still brat",
+										"sharingInfo": {
+											"shareId": "htqsHGz2SX-J1pm5tvEzKg",
+											"shareUrl": "https://open.spotify.com/en/album/0W5woeQnfOZmVLSbggRRlR?si=htqsHGz2SX-J1pm5tvEzKg"
+										},
+										"type": "ALBUM",
+										"uri": "spotify:album:0W5woeQnfOZmVLSbggRRlR"
+									},
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Charli xcx"
+													},
+													"uri": "spotify:artist:25uiPmTg16RbhZWAqwLBy5"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e028ac99f88ebc09b1f1637dc00",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d000048518ac99f88ebc09b1f1637dc00",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b2738ac99f88ebc09b1f1637dc00",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2024
+										},
+										"id": "36P07bti6xD99o7S1acmin",
+										"name": "Brat and it’s completely different but also still brat",
+										"sharingInfo": {
+											"shareId": "TcSFdyZkT02znMUGyLHBLw",
+											"shareUrl": "https://open.spotify.com/en/album/36P07bti6xD99o7S1acmin?si=TcSFdyZkT02znMUGyLHBLw"
+										},
+										"type": "ALBUM",
+										"uri": "spotify:album:36P07bti6xD99o7S1acmin"
+									}
+								],
+								"totalCount": 2
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02fa1f4d91230bd4558dac7903",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851fa1f4d91230bd4558dac7903",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273fa1f4d91230bd4558dac7903",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2021
+										},
+										"id": "3zuiRKPaFalv72BcNJ47Ih",
+										"name": "Best of 10s",
+										"sharingInfo": {
+											"shareId": "h6-xVYDISlWyDWraFLdXOw",
+											"shareUrl": "https://open.spotify.com/en/album/3zuiRKPaFalv72BcNJ47Ih?si=h6-xVYDISlWyDWraFLdXOw"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:3zuiRKPaFalv72BcNJ47Ih"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e025dbef303a70a810f2e946e61",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d000048515dbef303a70a810f2e946e61",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b2735dbef303a70a810f2e946e61",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2013
+										},
+										"id": "0SEBE7BfXHY4o9VQICoZOC",
+										"name": "The Hunger Games: Catching Fire (Original Motion Picture Soundtrack / Deluxe Version)",
+										"sharingInfo": {
+											"shareId": "iMKqZ-7UT_KVKp7Pr7P4Dg",
+											"shareUrl": "https://open.spotify.com/en/album/0SEBE7BfXHY4o9VQICoZOC?si=iMKqZ-7UT_KVKp7Pr7P4Dg"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:0SEBE7BfXHY4o9VQICoZOC"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02c569c3ba6777d0426a0fa34a",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851c569c3ba6777d0426a0fa34a",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273c569c3ba6777d0426a0fa34a",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2025
+										},
+										"id": "14P3ABWrY7cBuLkryJRIJ3",
+										"name": "Volleyball Hits",
+										"sharingInfo": {
+											"shareId": "ahJJHbNaTey0P0ywf-8I7w",
+											"shareUrl": "https://open.spotify.com/en/album/14P3ABWrY7cBuLkryJRIJ3?si=ahJJHbNaTey0P0ywf-8I7w"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:14P3ABWrY7cBuLkryJRIJ3"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02402339f6bc3133956e562e8d",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851402339f6bc3133956e562e8d",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273402339f6bc3133956e562e8d",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2020
+										},
+										"id": "134cY2SIaFtmSFkt7oeHtD",
+										"name": "International Women's Day",
+										"sharingInfo": {
+											"shareId": "0LlqjoFfT2aHyv59AGUGDA",
+											"shareUrl": "https://open.spotify.com/en/album/134cY2SIaFtmSFkt7oeHtD?si=0LlqjoFfT2aHyv59AGUGDA"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:134cY2SIaFtmSFkt7oeHtD"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02f48373049184306e0746d6a7",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851f48373049184306e0746d6a7",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273f48373049184306e0746d6a7",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2020
+										},
+										"id": "3qQjG9LVCSUltwzrQdANmX",
+										"name": "Old But Gold",
+										"sharingInfo": {
+											"shareId": "79iND-M6T4OM1BVwNubgSg",
+											"shareUrl": "https://open.spotify.com/en/album/3qQjG9LVCSUltwzrQdANmX?si=79iND-M6T4OM1BVwNubgSg"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:3qQjG9LVCSUltwzrQdANmX"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02801f086d4f808a91b801a628",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851801f086d4f808a91b801a628",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273801f086d4f808a91b801a628",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2014
+										},
+										"id": "56bAWM3HFElgEjdnraBqvQ",
+										"name": "The Hunger Games: Mockingjay Pt. 1 (Original Motion Picture Soundtrack)",
+										"sharingInfo": {
+											"shareId": "yhBDpJrPQt-mliS_7df1-g",
+											"shareUrl": "https://open.spotify.com/en/album/56bAWM3HFElgEjdnraBqvQ?si=yhBDpJrPQt-mliS_7df1-g"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:56bAWM3HFElgEjdnraBqvQ"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02ed7d59f83e4e4e14f98e486f",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851ed7d59f83e4e4e14f98e486f",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273ed7d59f83e4e4e14f98e486f",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2020
+										},
+										"id": "3fS9rCuakrh2u9Zv5VHuPh",
+										"name": "Songs To Vibe Out To",
+										"sharingInfo": {
+											"shareId": "T9uwGXojSBa1VysenJwufA",
+											"shareUrl": "https://open.spotify.com/en/album/3fS9rCuakrh2u9Zv5VHuPh?si=T9uwGXojSBa1VysenJwufA"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:3fS9rCuakrh2u9Zv5VHuPh"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e0296585325ff31651e1509f4bf",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d0000485196585325ff31651e1509f4bf",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b27396585325ff31651e1509f4bf",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2021
+										},
+										"id": "6eWjlIIzUgYLsyMzPMQoSH",
+										"name": "Sunset Vibes",
+										"sharingInfo": {
+											"shareId": "U-hm_9pJQIWTtIdg0uX3Gg",
+											"shareUrl": "https://open.spotify.com/en/album/6eWjlIIzUgYLsyMzPMQoSH?si=U-hm_9pJQIWTtIdg0uX3Gg"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:6eWjlIIzUgYLsyMzPMQoSH"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e0295d1dba6d2f7b6fb6ced4ae5",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d0000485195d1dba6d2f7b6fb6ced4ae5",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b27395d1dba6d2f7b6fb6ced4ae5",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2025
+										},
+										"id": "5oaMYJ4lChOFphmKd7AizE",
+										"name": "Romantic Picnic Date",
+										"sharingInfo": {
+											"shareId": "pLjKrNu8TiyczjXMHYnjQg",
+											"shareUrl": "https://open.spotify.com/en/album/5oaMYJ4lChOFphmKd7AizE?si=pLjKrNu8TiyczjXMHYnjQg"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:5oaMYJ4lChOFphmKd7AizE"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e028e56484f6081de5403aa3722",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d000048518e56484f6081de5403aa3722",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b2738e56484f6081de5403aa3722",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2024
+										},
+										"id": "0IFu17AU2LB1SpgAGtK6BH",
+										"name": "Chill 2010s",
+										"sharingInfo": {
+											"shareId": "46jYwQiEQk674KzkZsT8uA",
+											"shareUrl": "https://open.spotify.com/en/album/0IFu17AU2LB1SpgAGtK6BH?si=46jYwQiEQk674KzkZsT8uA"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:0IFu17AU2LB1SpgAGtK6BH"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e024353f20c3cfaf4b8cc79395f",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d000048514353f20c3cfaf4b8cc79395f",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b2734353f20c3cfaf4b8cc79395f",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2023
+										},
+										"id": "0LkcZAvcu2AUR70mx332Vu",
+										"name": "ITS KAJDA KREJZA",
+										"sharingInfo": {
+											"shareId": "iORhZSQgQFa6N8usoVdzXQ",
+											"shareUrl": "https://open.spotify.com/en/album/0LkcZAvcu2AUR70mx332Vu?si=iORhZSQgQFa6N8usoVdzXQ"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:0LkcZAvcu2AUR70mx332Vu"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e0249bbc631e93cfd0d30f40bf5",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d0000485149bbc631e93cfd0d30f40bf5",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b27349bbc631e93cfd0d30f40bf5",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2020
+										},
+										"id": "64jec0cjLZRVHAMMmBwryd",
+										"name": "Lady Boss Anthems",
+										"sharingInfo": {
+											"shareId": "deC2nmkcSTmvxYzAlSMsaQ",
+											"shareUrl": "https://open.spotify.com/en/album/64jec0cjLZRVHAMMmBwryd?si=deC2nmkcSTmvxYzAlSMsaQ"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:64jec0cjLZRVHAMMmBwryd"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e020c796618abeeabbf5df80cc0",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d000048510c796618abeeabbf5df80cc0",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b2730c796618abeeabbf5df80cc0",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2024
+										},
+										"id": "6GpXFc0McNtbMN5xd3RnVA",
+										"name": "Pop Princess & Friends 2024",
+										"sharingInfo": {
+											"shareId": "cSIglCy2QyaR6yiyit7BYw",
+											"shareUrl": "https://open.spotify.com/en/album/6GpXFc0McNtbMN5xd3RnVA?si=cSIglCy2QyaR6yiyit7BYw"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:6GpXFc0McNtbMN5xd3RnVA"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e020f6ad81987dc57605781fc46",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d000048510f6ad81987dc57605781fc46",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b2730f6ad81987dc57605781fc46",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2017
+										},
+										"id": "0qfNPiQa1Mk9PrG87C4MV9",
+										"name": "Best Of 2017 Indie",
+										"sharingInfo": {
+											"shareId": "BzsTlrRhQGiVr1iUDvudwg",
+											"shareUrl": "https://open.spotify.com/en/album/0qfNPiQa1Mk9PrG87C4MV9?si=BzsTlrRhQGiVr1iUDvudwg"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:0qfNPiQa1Mk9PrG87C4MV9"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e029bb8718a1592b87b799c16bc",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d000048519bb8718a1592b87b799c16bc",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b2739bb8718a1592b87b799c16bc",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2025
+										},
+										"id": "2VLtxtEQN4wqFfz4E527vs",
+										"name": "Beach Vacation Party Mix",
+										"sharingInfo": {
+											"shareId": "p_r_RU9HQcW-V8B2X0-mFQ",
+											"shareUrl": "https://open.spotify.com/en/album/2VLtxtEQN4wqFfz4E527vs?si=p_r_RU9HQcW-V8B2X0-mFQ"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:2VLtxtEQN4wqFfz4E527vs"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02e67371609e6764cb327e6176",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851e67371609e6764cb327e6176",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273e67371609e6764cb327e6176",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2021
+										},
+										"id": "38UOWpmcU1eoazWO856i3A",
+										"name": "Lonely Nights",
+										"sharingInfo": {
+											"shareId": "bLyHgxyjTIiLSXMTndkPRQ",
+											"shareUrl": "https://open.spotify.com/en/album/38UOWpmcU1eoazWO856i3A?si=bLyHgxyjTIiLSXMTndkPRQ"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:38UOWpmcU1eoazWO856i3A"
+									}
+								],
+								"totalCount": 1
+							}
+						},
+						{
+							"releases": {
+								"items": [
+									{
+										"artists": {
+											"items": [
+												{
+													"profile": {
+														"name": "Various Artists"
+													},
+													"uri": "spotify:artist:0LyfQWJT6nXafLPZqxe9Of"
+												}
+											]
+										},
+										"coverArt": {
+											"sources": [
+												{
+													"height": 300,
+													"url": "https://i.scdn.co/image/ab67616d00001e02fa86f6dcd670ce755f9253fc",
+													"width": 300
+												},
+												{
+													"height": 64,
+													"url": "https://i.scdn.co/image/ab67616d00004851fa86f6dcd670ce755f9253fc",
+													"width": 64
+												},
+												{
+													"height": 640,
+													"url": "https://i.scdn.co/image/ab67616d0000b273fa86f6dcd670ce755f9253fc",
+													"width": 640
+												}
+											]
+										},
+										"date": {
+											"year": 2024
+										},
+										"id": "0L0OJ06NMwvP1ElxicoOCU",
+										"name": "Songs For When You're Sad",
+										"sharingInfo": {
+											"shareId": "JLbdoBGbQF6iju6UzNMvtA",
+											"shareUrl": "https://open.spotify.com/en/album/0L0OJ06NMwvP1ElxicoOCU?si=JLbdoBGbQF6iju6UzNMvtA"
+										},
+										"type": "COMPILATION",
+										"uri": "spotify:album:0L0OJ06NMwvP1ElxicoOCU"
+									}
+								],
+								"totalCount": 1
+							}
+						}
+					],
+					"totalCount": 834
+				},
+				"discoveredOnV2": {
+					"items": [
+						{
+							"data": {
+								"__typename": "GenericError"
+							}
+						},
+						{
+							"data": {
+								"__typename": "GenericError"
+							}
+						},
+						{
+							"data": {
+								"__typename": "GenericError"
+							}
+						},
+						{
+							"data": {
+								"__typename": "GenericError"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "Lorde on world tour!!!! can&#x27;t wait to see her 😭 setlist updated regularly.",
+								"id": "3Rxw8T55ln3gVvhGvjxLpL",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da8471abb835cb9c5d6bb5cd3e31",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "Lorde Setlist 2026 💎 ULTRASOUND WORLD TOUR ⭐️ VIRGIN  ",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "The Sound Of: Artists"
+									}
+								},
+								"uri": "spotify:playlist:3Rxw8T55ln3gVvhGvjxLpL"
+							}
+						},
+						{
+							"data": {
+								"__typename": "GenericError"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "This is Lorde. The essential tracks, all in one playlist.",
+								"id": "37i9dQZF1DZ06evO0AtdTy",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://pickasso.spotifycdn.com/image/ab67c0de0000deef/dt/v1/img/thisisv3/163tK9Wjr9P9DmM0AVK7lm/en",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "This Is Lorde",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DZ06evO0AtdTy"
+							}
+						},
+						{
+							"data": {
+								"__typename": "GenericError"
+							}
+						},
+						{
+							"data": {
+								"__typename": "GenericError"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "every main character needs their soundtrack. ",
+								"id": "37i9dQZF1DX4OzrY981I1W",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://i.scdn.co/image/ab67706f00000002b063c3c335a223fabbf31590",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "my life is a movie",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DX4OzrY981I1W"
+							}
+						},
+						{
+							"data": {
+								"__typename": "GenericError"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "Warm familiar pop you know and love.",
+								"id": "37i9dQZF1DWTwnEm1IYyoj",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://i.scdn.co/image/ab67706f00000002b8a99c81daf2907ac71f7d40",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "Soft Pop Hits",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DWTwnEm1IYyoj"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "",
+								"id": "497KqY8H6mGyaBBUrcWQ0t",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://image-cdn-fa.spotifycdn.com/image/ab67706c0000d72c67b1dbe7d43cc1acf1071ce6",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "LORDE SETLIST 2026 AUS",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "brookecavander"
+									}
+								},
+								"uri": "spotify:playlist:497KqY8H6mGyaBBUrcWQ0t"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "Sing along and enjoy the drive",
+								"id": "37i9dQZF1DWWMOmoXKqHTD",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://i.scdn.co/image/ab67706f0000000292af799a11403259b8474500",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "Songs to Sing in the Car",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DWWMOmoXKqHTD"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "The biggest songs of the 2010s. Cover: Ariana Grande",
+								"id": "37i9dQZF1DX5Ejj0EkURtP",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://i.scdn.co/image/ab67706f00000002e0e14ab9c50ecc48b2d66808",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "All Out 2010s",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DX5Ejj0EkURtP"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "",
+								"id": "1wmFxCNriZMILfKrIfPQsT",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000d72ca40c652d86f551c008c51355",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "Lorde The Ultrasound Tour Setlist AUS/NZ 2026",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "juliana"
+									}
+								},
+								"uri": "spotify:playlist:1wmFxCNriZMILfKrIfPQsT"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "🩻🎧 (encore = ribs)",
+								"id": "05oEt4eQoX41KqbGmsbxnQ",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": 640,
+													"url": "https://mosaic.scdn.co/640/ab67616d00001e02187331e276c898d39764cc98ab67616d00001e0223d41bf736920a032e222a78ab67616d00001e026a981f32a19835a326512f50ab67616d00001e02f8553e18a11209d4becd0336",
+													"width": 640
+												},
+												{
+													"height": 300,
+													"url": "https://mosaic.scdn.co/300/ab67616d00001e02187331e276c898d39764cc98ab67616d00001e0223d41bf736920a032e222a78ab67616d00001e026a981f32a19835a326512f50ab67616d00001e02f8553e18a11209d4becd0336",
+													"width": 300
+												},
+												{
+													"height": 60,
+													"url": "https://mosaic.scdn.co/60/ab67616d00001e02187331e276c898d39764cc98ab67616d00001e0223d41bf736920a032e222a78ab67616d00001e026a981f32a19835a326512f50ab67616d00001e02f8553e18a11209d4becd0336",
+													"width": 60
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "LORDE SETLIST AUS/NZ 2026",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "stella kay"
+									}
+								},
+								"uri": "spotify:playlist:05oEt4eQoX41KqbGmsbxnQ"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "Mellow songs from the 2010s. ",
+								"id": "37i9dQZF1DX1uHCeFHcn8X",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://i.scdn.co/image/ab67706f00000002f956f931f3f83d5316bda8be",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "Soft 10s",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DX1uHCeFHcn8X"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "The most interesting tracks in the current world of pop music.",
+								"id": "37i9dQZF1DWVlLVXKTOAYa",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://i.scdn.co/image/ab67706f0000000234c52068a57d2127a883a1d4",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "Pop Right Now",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DWVlLVXKTOAYa"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "Current favorites and exciting new music. Cover: Taylor Swift",
+								"id": "37i9dQZF1DXcRXFNfZr7Tp",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://i.scdn.co/image/ab67706f0000000299cdf73c0a2880ae448d6e65",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "just hits",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DXcRXFNfZr7Tp"
+							}
+						}
+					],
+					"totalCount": 100
+				},
+				"featuringV2": {
+					"items": [
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "This is Lorde. The essential tracks, all in one playlist.",
+								"id": "37i9dQZF1DZ06evO0AtdTy",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://pickasso.spotifycdn.com/image/ab67c0de0000deef/dt/v1/img/thisisv3/163tK9Wjr9P9DmM0AVK7lm/en",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "This Is Lorde",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DZ06evO0AtdTy"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "",
+								"id": "37i9dQZF1E4FIgyPlgKOlU",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://pickasso.spotifycdn.com/image/ab67c0de0000deef/dt/v1/img/radio/artist/163tK9Wjr9P9DmM0AVK7lm/en",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "Lorde Radio",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1E4FIgyPlgKOlU"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "Warm familiar pop you know and love.",
+								"id": "37i9dQZF1DWTwnEm1IYyoj",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://i.scdn.co/image/ab67706f00000002b8a99c81daf2907ac71f7d40",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "Soft Pop Hits",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DWTwnEm1IYyoj"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "every main character needs their soundtrack. ",
+								"id": "37i9dQZF1DX4OzrY981I1W",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://i.scdn.co/image/ab67706f00000002b063c3c335a223fabbf31590",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "my life is a movie",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DX4OzrY981I1W"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "Our editors' picks for the pop songs that have defined the streaming era.",
+								"id": "37i9dQZF1DX13sApGEHdQm",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://i.scdn.co/image/ab67706f0000000201ed08c100565e01ee6a2465",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "100 Greatest Pop Songs of the Streaming Era",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DX13sApGEHdQm"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "Splash and sing-along.",
+								"id": "37i9dQZF1DWSqmBTGDYngZ",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://i.scdn.co/image/ab67706f00000002b4fc8034217025210cc630c1",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "Songs to Sing in the Shower",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DWSqmBTGDYngZ"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "The biggest songs of the 2010s. Cover: Ariana Grande",
+								"id": "37i9dQZF1DX5Ejj0EkURtP",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://i.scdn.co/image/ab67706f00000002e0e14ab9c50ecc48b2d66808",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "All Out 2010s",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DX5Ejj0EkURtP"
+							}
+						},
+						{
+							"data": {
+								"__typename": "Playlist",
+								"description": "Current favorites and exciting new music. Cover: Taylor Swift",
+								"id": "37i9dQZF1DXcRXFNfZr7Tp",
+								"images": {
+									"items": [
+										{
+											"sources": [
+												{
+													"height": null,
+													"url": "https://i.scdn.co/image/ab67706f0000000299cdf73c0a2880ae448d6e65",
+													"width": null
+												}
+											]
+										}
+									],
+									"totalCount": 1
+								},
+								"name": "just hits",
+								"ownerV2": {
+									"data": {
+										"__typename": "User",
+										"name": "Spotify"
+									}
+								},
+								"uri": "spotify:playlist:37i9dQZF1DXcRXFNfZr7Tp"
+							}
+						}
+					],
+					"totalCount": 8
+				},
+				"relatedArtists": {
+					"items": [
+						{
+							"id": "1moxjboGR7GNWYIMWsRjgG",
+							"profile": {
+								"name": "Florence + The Machine"
+							},
+							"uri": "spotify:artist:1moxjboGR7GNWYIMWsRjgG",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5eb836eb0a7a82eb8f4133ee04d",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f178836eb0a7a82eb8f4133ee04d",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab67616100005174836eb0a7a82eb8f4133ee04d",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "25uiPmTg16RbhZWAqwLBy5",
+							"profile": {
+								"name": "Charli xcx"
+							},
+							"uri": "spotify:artist:25uiPmTg16RbhZWAqwLBy5",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5ebdaa727dd396963ba92dd6377",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f178daa727dd396963ba92dd6377",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab67616100005174daa727dd396963ba92dd6377",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "4NHQUGzhtTLFvgF5SZesLK",
+							"profile": {
+								"name": "Tove Lo"
+							},
+							"uri": "spotify:artist:4NHQUGzhtTLFvgF5SZesLK",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5eb2360c963315739fc33b01687",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f1782360c963315739fc33b01687",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab676161000051742360c963315739fc33b01687",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "2FXC3k01G6Gw61bmprjgqS",
+							"profile": {
+								"name": "Hozier"
+							},
+							"uri": "spotify:artist:2FXC3k01G6Gw61bmprjgqS",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5ebad85a585103dfc2f3439119a",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f178ad85a585103dfc2f3439119a",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab67616100005174ad85a585103dfc2f3439119a",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "00FQb4jTyendYWaN8pK0wa",
+							"profile": {
+								"name": "Lana Del Rey"
+							},
+							"uri": "spotify:artist:00FQb4jTyendYWaN8pK0wa",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5ebb99cacf8acd5378206767261",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f178b99cacf8acd5378206767261",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab67616100005174b99cacf8acd5378206767261",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "4G9NDjRyZFDlJKMRL8hx3S",
+							"profile": {
+								"name": "sombr"
+							},
+							"uri": "spotify:artist:4G9NDjRyZFDlJKMRL8hx3S",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5eb78edaa6468cae153565c2c97",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f17878edaa6468cae153565c2c97",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab6761610000517478edaa6468cae153565c2c97",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "6KImCVD70vtIoJWnq6nGn3",
+							"profile": {
+								"name": "Harry Styles"
+							},
+							"uri": "spotify:artist:6KImCVD70vtIoJWnq6nGn3",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5ebe309f8c3056a59f20d0968ca",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f178e309f8c3056a59f20d0968ca",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab67616100005174e309f8c3056a59f20d0968ca",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "7GlBOeep6PqTfFi59PTUUN",
+							"profile": {
+								"name": "Chappell Roan"
+							},
+							"uri": "spotify:artist:7GlBOeep6PqTfFi59PTUUN",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5ebd258ecb0d66244e6300bcf64",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f178d258ecb0d66244e6300bcf64",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab67616100005174d258ecb0d66244e6300bcf64",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "4gvjmrtzydbMpyJaXUtwvP",
+							"profile": {
+								"name": "Addison Rae"
+							},
+							"uri": "spotify:artist:4gvjmrtzydbMpyJaXUtwvP",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5eb8aaca79d5544dc02bea2b6b2",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f1788aaca79d5544dc02bea2b6b2",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab676161000051748aaca79d5544dc02bea2b6b2",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "55fhWPvDiMpLnE4ZzNXZyW",
+							"profile": {
+								"name": "Noah Cyrus"
+							},
+							"uri": "spotify:artist:55fhWPvDiMpLnE4ZzNXZyW",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5eb8dd6d79e9fd4d7a80875b1a3",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f1788dd6d79e9fd4d7a80875b1a3",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab676161000051748dd6d79e9fd4d7a80875b1a3",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "2eam0iDomRHGBypaDQLwWI",
+							"profile": {
+								"name": "Bleachers"
+							},
+							"uri": "spotify:artist:2eam0iDomRHGBypaDQLwWI",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5eb2a2ced96a8df71b0dca06a19",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f1782a2ced96a8df71b0dca06a19",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab676161000051742a2ced96a8df71b0dca06a19",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "6LEeAFiJF8OuPx747e1wxR",
+							"profile": {
+								"name": "Blood Orange"
+							},
+							"uri": "spotify:artist:6LEeAFiJF8OuPx747e1wxR",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5eb82a833d61eafc09c05c24882",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f17882a833d61eafc09c05c24882",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab6761610000517482a833d61eafc09c05c24882",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "4LEiUm1SRbFMgfqnQTwUbQ",
+							"profile": {
+								"name": "Bon Iver"
+							},
+							"uri": "spotify:artist:4LEiUm1SRbFMgfqnQTwUbQ",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5ebfa1d9471f2a10a3a5da1a646",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f178fa1d9471f2a10a3a5da1a646",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab67616100005174fa1d9471f2a10a3a5da1a646",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "4tuJ0bMpJh08umKkEXKUI5",
+							"profile": {
+								"name": "Gracie Abrams"
+							},
+							"uri": "spotify:artist:4tuJ0bMpJh08umKkEXKUI5",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5ebf6d51e6f5342d2d363220920",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f178f6d51e6f5342d2d363220920",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab67616100005174f6d51e6f5342d2d363220920",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "0C8ZW7ezQVs4URX5aX7Kqx",
+							"profile": {
+								"name": "Selena Gomez"
+							},
+							"uri": "spotify:artist:0C8ZW7ezQVs4URX5aX7Kqx",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5eb815e520e3ce7fe210046ba66",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f178815e520e3ce7fe210046ba66",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab67616100005174815e520e3ce7fe210046ba66",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "6oBm8HB0yfrIc9IHbxs6in",
+							"profile": {
+								"name": "Lykke Li"
+							},
+							"uri": "spotify:artist:6oBm8HB0yfrIc9IHbxs6in",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5ebcca02aff2b0e609b77ca0130",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f178cca02aff2b0e609b77ca0130",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab67616100005174cca02aff2b0e609b77ca0130",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "45dkTj5sMRSjrmBSBeiHym",
+							"profile": {
+								"name": "Tate McRae"
+							},
+							"uri": "spotify:artist:45dkTj5sMRSjrmBSBeiHym",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5ebbed8016bd64422793ff3bc75",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f178bed8016bd64422793ff3bc75",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab67616100005174bed8016bd64422793ff3bc75",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "4MXUO7sVCaFgFjoTI5ox5c",
+							"profile": {
+								"name": "Sufjan Stevens"
+							},
+							"uri": "spotify:artist:4MXUO7sVCaFgFjoTI5ox5c",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5ebe70700c1329d2f26971c3914",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f178e70700c1329d2f26971c3914",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab67616100005174e70700c1329d2f26971c3914",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "67FB4n52MgexGQIG8s0yUH",
+							"profile": {
+								"name": "Lola Young"
+							},
+							"uri": "spotify:artist:67FB4n52MgexGQIG8s0yUH",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5eb0d191f6192fd3690e7aefcc3",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f1780d191f6192fd3690e7aefcc3",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab676161000051740d191f6192fd3690e7aefcc3",
+											"width": 320
+										}
+									]
+								}
+							}
+						},
+						{
+							"id": "3WGpXCj9YhhfX11TToZcXP",
+							"profile": {
+								"name": "Troye Sivan"
+							},
+							"uri": "spotify:artist:3WGpXCj9YhhfX11TToZcXP",
+							"visuals": {
+								"avatarImage": {
+									"sources": [
+										{
+											"height": 640,
+											"url": "https://i.scdn.co/image/ab6761610000e5eb26e8cb3ff6fc7744b312811b",
+											"width": 640
+										},
+										{
+											"height": 160,
+											"url": "https://i.scdn.co/image/ab6761610000f17826e8cb3ff6fc7744b312811b",
+											"width": 160
+										},
+										{
+											"height": 320,
+											"url": "https://i.scdn.co/image/ab6761610000517426e8cb3ff6fc7744b312811b",
+											"width": 320
+										}
+									]
+								}
+							}
+						}
+					],
+					"totalCount": 40
+				}
+			},
+			"relatedMusicVideos": {
+				"__typename": "MusicVideosPage",
+				"items": [
+					{
+						"_uri": "spotify:track:1RzfhDwdvuSErzWibkmCeF",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7fd79e829dd3815235a378b04",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b7fd79e829dd3815235a378b04",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7fd79e829dd3815235a378b04",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:4LJpjxLHPaOqztX8YYrhaz"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:1gvOEwQbIEjkpLdcZwtBoB"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "EXPLICIT"
+							},
+							"name": "Man Of The Year",
+							"uri": "spotify:track:1RzfhDwdvuSErzWibkmCeF"
+						}
+					},
+					{
+						"_uri": "spotify:track:5CY157S4Ftj6Dwojaakp88",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7edfd935016e7a0d9fe44c160",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b7edfd935016e7a0d9fe44c160",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7edfd935016e7a0d9fe44c160",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:6On1ZLimsqlm0ACsBb8kF3"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:7hGCCQkdyF1MX6uk339uBS"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "What Was That",
+							"uri": "spotify:track:5CY157S4Ftj6Dwojaakp88"
+						}
+					},
+					{
+						"_uri": "spotify:track:2MHvSgVPE9NhpgvHGMZ8bn",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7535c93f2813e31eba25519e0",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b7535c93f2813e31eba25519e0",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7535c93f2813e31eba25519e0",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:0O6aSMY3nHl0WNuCksiR27"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:6kj8TeHSns33wt1Z1wdmMx"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "Oceanic Feeling",
+							"uri": "spotify:track:2MHvSgVPE9NhpgvHGMZ8bn"
+						}
+					},
+					{
+						"_uri": "spotify:track:3zT1ltjfRUAH7KECBvriT1",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7c58168a47352361ad56b6634",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b7c58168a47352361ad56b6634",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7c58168a47352361ad56b6634",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:4ILLeWyfFFYrdu58bvorYB"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:7JqqIi2ktnsNkYdQhKSCrz"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "The Path",
+							"uri": "spotify:track:3zT1ltjfRUAH7KECBvriT1"
+						}
+					},
+					{
+						"_uri": "spotify:track:3CPCinK4LZyvcqJIqsf1Sr",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7622616744cfdf7fed23083a8",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b7622616744cfdf7fed23083a8",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7622616744cfdf7fed23083a8",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:6Q7CLKPQ7qNak4vkcqEeco"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:1toRu029yjgrleWg2w3gNU"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "Secrets from a Girl (Who's Seen it All)",
+							"uri": "spotify:track:3CPCinK4LZyvcqJIqsf1Sr"
+						}
+					},
+					{
+						"_uri": "spotify:track:5AEhT3kfW4QMY6AAXVwbJE",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b78adf62e18c472ca2929f8a05",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b78adf62e18c472ca2929f8a05",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b78adf62e18c472ca2929f8a05",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:6jAGoK62fQCW8OjRP7szaI"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:6vLf0MjsXzrr3WIOWK9N9j"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "Leader of a New Regime",
+							"uri": "spotify:track:5AEhT3kfW4QMY6AAXVwbJE"
+						}
+					},
+					{
+						"_uri": "spotify:track:4sVnztLHfqMqgS2DkFXF2B",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7bdfb220f4b73ea7f4640a54d",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b7bdfb220f4b73ea7f4640a54d",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7bdfb220f4b73ea7f4640a54d",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:0j1CHvsPJxO3qwxxC4DtFS"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:5iUnomffoLeQsdlY2k5TDU"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "Fallen Fruit",
+							"uri": "spotify:track:4sVnztLHfqMqgS2DkFXF2B"
+						}
+					},
+					{
+						"_uri": "spotify:track:6122PdJ8f7ZLuLG0AJNxIo",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b775797f951f80016a391c5751",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b775797f951f80016a391c5751",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b775797f951f80016a391c5751",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:5Sbg59ksxYtaMERHsaeYmC"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:78Sn3YMeqUgJBoe6zt940Z"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "Dominoes - Rooftop Performance",
+							"uri": "spotify:track:6122PdJ8f7ZLuLG0AJNxIo"
+						}
+					},
+					{
+						"_uri": "spotify:track:1GM88r73Y3DowF4I0evKsk",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b79440a4de2170f86f4f0ba3be",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b79440a4de2170f86f4f0ba3be",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b79440a4de2170f86f4f0ba3be",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:2KnviagxmMUlnOjry69JOw"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:7rb4dcBfW0m1LQQcDCh4Hv"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "Mood Ring",
+							"uri": "spotify:track:1GM88r73Y3DowF4I0evKsk"
+						}
+					},
+					{
+						"_uri": "spotify:track:73VrZ3N8PlAoQOQzKxbGnB",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7edc91b6ad13e9e85aca61879",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b7edc91b6ad13e9e85aca61879",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7edc91b6ad13e9e85aca61879",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:2RnTJDatfh3KEs5x10hWBZ"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:38Zs2b75JPNB2tS7O7JQnS"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "Stoned at the Nail Salon - Rooftop Performance",
+							"uri": "spotify:track:73VrZ3N8PlAoQOQzKxbGnB"
+						}
+					},
+					{
+						"_uri": "spotify:track:44Iv82Ltq8ojBROsYwIDxE",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b702fb4eac69c2470523bc838a",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b702fb4eac69c2470523bc838a",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b702fb4eac69c2470523bc838a",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:5Q8JT0qlU7zdxvtlmWdrdp"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:7s2kWabRM60W9I61HpKg8C"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "Solar Power - Summer Storm Version / Rooftop Performance",
+							"uri": "spotify:track:44Iv82Ltq8ojBROsYwIDxE"
+						}
+					},
+					{
+						"_uri": "spotify:track:7rRGR1pM6FHCjCSX3wc1IJ",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b71246c3d219181cea8478b45e",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b71246c3d219181cea8478b45e",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b71246c3d219181cea8478b45e",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:2oc1vBm1NXpy3QB0pL75J0"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:7s2kWabRM60W9I61HpKg8C"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "Solar Power - Rooftop Performance",
+							"uri": "spotify:track:7rRGR1pM6FHCjCSX3wc1IJ"
+						}
+					},
+					{
+						"_uri": "spotify:track:5LlL2yZvo4K1BXdNhtgW29",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7cf5a7a1c33044e9576c15b0b",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b7cf5a7a1c33044e9576c15b0b",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7cf5a7a1c33044e9576c15b0b",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:0gXNAXo1nygV13Gr4s3Ozr"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:7s2kWabRM60W9I61HpKg8C"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "Solar Power",
+							"uri": "spotify:track:5LlL2yZvo4K1BXdNhtgW29"
+						}
+					},
+					{
+						"_uri": "spotify:track:6d4SBNxYaN6QuVuIFlw8hL",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b721a1345a1362083379b33c74",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b721a1345a1362083379b33c74",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b721a1345a1362083379b33c74",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:618bnUbctgY0IvU9TZSYWN"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:7ARveOiD31w2Nq0n5FsSf8"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "EXPLICIT"
+							},
+							"name": "Perfect Places",
+							"uri": "spotify:track:6d4SBNxYaN6QuVuIFlw8hL"
+						}
+					},
+					{
+						"_uri": "spotify:track:7y0eOwRz94Eb5Land91uks",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b75c1ebbb6e7ab341c46d9b73f",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b75c1ebbb6e7ab341c46d9b73f",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b75c1ebbb6e7ab341c46d9b73f",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:5vvgl4KzNIXHAffUm4DhT7"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:6ie2Bw3xLj2JcGowOlcMhb"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "Green Light",
+							"uri": "spotify:track:7y0eOwRz94Eb5Land91uks"
+						}
+					},
+					{
+						"_uri": "spotify:track:0s142vV6uonOOprH6zPtGU",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b70c30ba728ad181e53eb3c697",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b70c30ba728ad181e53eb3c697",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b70c30ba728ad181e53eb3c697",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:6T0BCAUYdBv766O85aZdMS"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:0Nf53RDPZEjFrQE4B5n6Vf"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "Yellow Flicker Beat",
+							"uri": "spotify:track:0s142vV6uonOOprH6zPtGU"
+						}
+					},
+					{
+						"_uri": "spotify:track:41PSdsmt9UMNcTBRjIeqy2",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7d94f925c949583c4830e2992",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b7d94f925c949583c4830e2992",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7d94f925c949583c4830e2992",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:2UsAkqCsc4Hpg1RJYXfYgI"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:2dLLR6qlu5UJ5gk0dKz0h3"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "Royals",
+							"uri": "spotify:track:41PSdsmt9UMNcTBRjIeqy2"
+						}
+					},
+					{
+						"_uri": "spotify:track:3t2s0t45Uw3h5regsruIbl",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7aebffc9625071534c9cde507",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b7aebffc9625071534c9cde507",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7aebffc9625071534c9cde507",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:0FLufsB6g3EjCZkYclXvNu"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:2dLLR6qlu5UJ5gk0dKz0h3"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "Royals - TV Edit",
+							"uri": "spotify:track:3t2s0t45Uw3h5regsruIbl"
+						}
+					},
+					{
+						"_uri": "spotify:track:5ywj9XxiK0lm8NxwCeackG",
+						"data": {
+							"__typename": "Track",
+							"albumOfTrack": {
+								"coverArt": {
+									"sources": [
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7b0aa9b4eed88b526d43c75c2",
+											"width": 1280
+										},
+										{
+											"height": 360,
+											"url": "https://i.scdn.co/image/ab6742d3000052b7b0aa9b4eed88b526d43c75c2",
+											"width": 640
+										},
+										{
+											"height": 720,
+											"url": "https://i.scdn.co/image/ab6742d3000053b7b0aa9b4eed88b526d43c75c2",
+											"width": 1280
+										}
+									]
+								},
+								"uri": "spotify:album:5uIbcfQBoNl2W1qjhQL6xT"
+							},
+							"artists": {
+								"items": [
+									{
+										"profile": {
+											"name": "Lorde"
+										},
+										"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm"
+									}
+								]
+							},
+							"associationsV3": {
+								"audioAssociations": {
+									"items": [
+										{
+											"trackAudio": {
+												"_uri": "spotify:track:3G6hD9B2ZHOsgf4WfNu7X1"
+											}
+										}
+									]
+								}
+							},
+							"contentRating": {
+								"label": "NONE"
+							},
+							"name": "Team",
+							"uri": "spotify:track:5ywj9XxiK0lm8NxwCeackG"
+						}
+					}
+				],
+				"pagingInfo": {
+					"nextOffset": null
+				},
+				"totalCount": 19
+			},
+			"saved": false,
+			"sharingInfo": {
+				"shareId": "S9V2oQ7GSmae2wzcr36RXA",
+				"shareUrl": "https://open.spotify.com/en/artist/163tK9Wjr9P9DmM0AVK7lm?si=S9V2oQ7GSmae2wzcr36RXA"
+			},
+			"stats": {
+				"followers": 10728019,
+				"monthlyListeners": 26487823,
+				"topCities": {
+					"items": [
+						{
+							"city": "London",
+							"country": "GB",
+							"numberOfListeners": 563038,
+							"region": "ENG"
+						},
+						{
+							"city": "Sydney",
+							"country": "AU",
+							"numberOfListeners": 499635,
+							"region": "NSW"
+						},
+						{
+							"city": "Melbourne",
+							"country": "AU",
+							"numberOfListeners": 450362,
+							"region": "VIC"
+						},
+						{
+							"city": "Chicago",
+							"country": "US",
+							"numberOfListeners": 329981,
+							"region": "IL"
+						},
+						{
+							"city": "New York City",
+							"country": "US",
+							"numberOfListeners": 329758,
+							"region": "NY"
+						}
+					]
+				},
+				"worldRank": 265
+			},
+			"unmappedMusicVideos": {
+				"__typename": "MusicVideosPage",
+				"items": [],
+				"pagingInfo": {
+					"nextOffset": null
+				},
+				"totalCount": 0
+			},
+			"uri": "spotify:artist:163tK9Wjr9P9DmM0AVK7lm",
+			"visualIdentity": {
+				"wideFullBleedImage": {
+					"__typename": "VisualIdentityImage",
+					"extractedColorSet": {
+						"encoreBaseSetTextColor": {
+							"alpha": 255,
+							"blue": 149,
+							"green": 162,
+							"red": 255
+						},
+						"highContrast": {
+							"backgroundBase": {
+								"alpha": 255,
+								"blue": 0,
+								"green": 0,
+								"red": 159
+							},
+							"backgroundTintedBase": {
+								"alpha": 255,
+								"blue": 0,
+								"green": 0,
+								"red": 97
+							},
+							"textBase": {
+								"alpha": 255,
+								"blue": 255,
+								"green": 255,
+								"red": 255
+							},
+							"textBrightAccent": {
+								"alpha": 255,
+								"blue": 255,
+								"green": 255,
+								"red": 255
+							},
+							"textSubdued": {
+								"alpha": 255,
+								"blue": 179,
+								"green": 190,
+								"red": 255
+							}
+						},
+						"higherContrast": {
+							"backgroundBase": {
+								"alpha": 255,
+								"blue": 0,
+								"green": 0,
+								"red": 101
+							},
+							"backgroundTintedBase": {
+								"alpha": 255,
+								"blue": 41,
+								"green": 52,
+								"red": 147
+							},
+							"textBase": {
+								"alpha": 255,
+								"blue": 255,
+								"green": 255,
+								"red": 255
+							},
+							"textBrightAccent": {
+								"alpha": 255,
+								"blue": 96,
+								"green": 215,
+								"red": 30
+							},
+							"textSubdued": {
+								"alpha": 255,
+								"blue": 179,
+								"green": 190,
+								"red": 255
+							}
+						},
+						"minContrast": {
+							"backgroundBase": {
+								"alpha": 255,
+								"blue": 24,
+								"green": 24,
+								"red": 184
+							},
+							"backgroundTintedBase": {
+								"alpha": 255,
+								"blue": 0,
+								"green": 0,
+								"red": 130
+							},
+							"textBase": {
+								"alpha": 255,
+								"blue": 255,
+								"green": 255,
+								"red": 255
+							},
+							"textBrightAccent": {
+								"alpha": 255,
+								"blue": 255,
+								"green": 255,
+								"red": 255
+							},
+							"textSubdued": {
+								"alpha": 255,
+								"blue": 255,
+								"green": 255,
+								"red": 255
+							}
+						}
+					}
+				}
+			},
+			"visuals": {
+				"avatarImage": {
+					"extractedColors": {
+						"colorRaw": {
+							"hex": "#586060"
+						}
+					},
+					"sources": [
+						{
+							"height": 640,
+							"url": "https://i.scdn.co/image/ab6761610000e5ebaa69380a8d5203257611662d",
+							"width": 640
+						},
+						{
+							"height": 160,
+							"url": "https://i.scdn.co/image/ab6761610000f178aa69380a8d5203257611662d",
+							"width": 160
+						},
+						{
+							"height": 320,
+							"url": "https://i.scdn.co/image/ab67616100005174aa69380a8d5203257611662d",
+							"width": 320
+						}
+					]
+				},
+				"gallery": {
+					"items": [
+						{
+							"sources": [
+								{
+									"height": 640,
+									"url": "https://i.scdn.co/image/ab6761670000ecd49f443b2cb925f1737c2b548a",
+									"width": 640
+								}
+							]
+						}
+					]
+				}
+			},
+			"watchFeedEntrypoint": {
+				"entrypointUri": "spotify:watch-feed:artist:163tK9Wjr9P9DmM0AVK7lm?itemId=c3BvdGlmeTp0cmFjazoyTXZ2b2VSdDhOY09YV0VTa3hXbjNn",
+				"thumbnailImage": {
+					"data": {
+						"__typename": "ImageV2",
+						"imageId": "https://i.scdn.co/image/ab67616d00004851187331e276c898d39764cc98",
+						"imageIdType": "IMAGE_URL",
+						"sources": [
+							{
+								"imageFormat": "WEBP",
+								"maxHeight": 640,
+								"maxWidth": 640,
+								"url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d000075a0187331e276c898d39764cc98"
+							},
+							{
+								"imageFormat": "WEBP",
+								"maxHeight": 64,
+								"maxWidth": 64,
+								"url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d000090d5187331e276c898d39764cc98"
+							},
+							{
+								"imageFormat": "WEBP",
+								"maxHeight": 300,
+								"maxWidth": 300,
+								"url": "https://image-cdn-fa.spotifycdn.com/image/ab67616d0000ab87187331e276c898d39764cc98"
+							}
+						]
+					}
+				},
+				"video": null
+			}
+		}
+	}
+}

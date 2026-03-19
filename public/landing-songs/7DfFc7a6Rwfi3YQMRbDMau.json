@@ -1,0 +1,94 @@
+{
+  "id": 3,
+  "spotifyTrackId": "7DfFc7a6Rwfi3YQMRbDMau",
+  "name": "Thinkin Bout You",
+  "artist": "Frank Ocean",
+  "album": "channel ORANGE",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b2737aede4855f6d0d738012e2e5",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebee3123e593174208f9754fab",
+  "spotifyArtistId": "2h93pZq0e7k5yf4dywlkpM",
+  "genres": [
+    "neo-soul",
+    "rnb",
+    "soul"
+  ],
+  "audioFeatures": {
+    "tempo": 129.83,
+    "energy": 0.339,
+    "valence": 0.2
+  },
+  "analysis": {
+    "headline": "A tender ache for a future that might never be, wrapped in the smooth pull of a memory.",
+    "compound_mood": "Wistful Yearning",
+    "mood_description": "A warm, pulsing beat carries a profound sadness. It feels like dancing slowly in a dimly lit room, lost in thoughts of someone far away.",
+    "interpretation": "The agonizing struggle between hoping for a shared future and the gnawing fear that the other person doesn't feel the same. This isn't just about a breakup; it's about the emotional toll of carrying a relationship's future alone, haunted by the profound impact of a pivotal first love. The smooth, almost danceable production creates a stark contrast with the raw, vulnerable plea in the lyrics, embodying the disconnect between outward composure and internal turmoil.",
+    "themes": [
+      {
+        "name": "unshared horizons",
+        "description": "One person dreams of forever, while the other seems content with the present, revealing a painful mismatch in long-term vision."
+      },
+      {
+        "name": "first love's imprint",
+        "description": "The indelible mark left by a significant first connection, shaping all subsequent feelings and memories."
+      },
+      {
+        "name": "vulnerable pretense",
+        "description": "Putting on a facade of indifference or casualness to protect a deeply wounded heart, even when it's transparent."
+      },
+      {
+        "name": "emotional downpour",
+        "description": "The overwhelming and uncontrollable rush of sadness that breaks through any attempt at composure."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Quiet chaos",
+        "description": "A life turned upside down by a love that brought peace, now shattered by its absence. Tears fall like unexpected rain, acknowledging the mess left behind."
+      },
+      {
+        "section": "Pre-Chorus & Chorus",
+        "mood": "Anxious longing",
+        "description": "The heart of the song's plea emerges, a desperate question echoing into an uncertain space. Thinking of forever, wondering if the other person ever thinks so far ahead, feeling the weight of that unasked question."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Defensive casualness",
+        "description": "A sudden, clumsy attempt to retreat, feigning indifference. Pretending the love wasn't real, masking deep feelings with flippant remarks, trying to regain control of a raw situation."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Intimate memory",
+        "description": "Dropping the facade completely, a direct address. Recalling the shared past, acknowledging the profound significance of a first love, solidifying its place as something that will never fade."
+      },
+      {
+        "section": "Outro Chorus",
+        "mood": "Lingering uncertainty",
+        "description": "The cycle returns to the central, unanswered question. Still thinking about forever, still wondering if the other person ever does, caught in the loop of persistent longing."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "A tornado flew around my room before you came",
+        "insight": "Life before that person was chaotic and messy, and their arrival brought a momentary calm that's now shattered again."
+      },
+      {
+        "line": "My eyes don't shed tears, but boy, they pour",
+        "insight": "Despite a tough exterior, the emotional pain is so overwhelming it breaks through, an unstoppable flood."
+      },
+      {
+        "line": "Or do you not think so far ahead? 'Cause I been thinkin' 'bout forever, ooh",
+        "insight": "The painful realization that future hopes and long-term commitment might be entirely one-sided."
+      },
+      {
+        "line": "No, I don't like you, I just thought you were cool enough to kick it",
+        "insight": "A desperate, transparent attempt to downplay profound feelings and protect a vulnerable heart."
+      },
+      {
+        "line": "You know you were my first time",
+        "insight": "The indelible significance of that specific connection, a foundational experience that continues to resonate."
+      }
+    ],
+    "sonic_texture": "Smooth, syrupy synths glide over a steady, unhurried R&B rhythm. The vocals are upfront and intimate, bathed in a warm, slightly hazy atmosphere, creating a feeling of floating through a melancholic dream."
+  }
+}

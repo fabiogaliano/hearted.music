@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { signIn } from "@/lib/auth-client";
+import { signIn } from "@/lib/platform/auth/auth-client";
 import { getAuthSession } from "@/lib/server/auth.functions";
 import { fonts } from "@/lib/theme/fonts";
 

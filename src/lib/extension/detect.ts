@@ -18,6 +18,36 @@ declare const chrome: {
 
 const EXTENSION_ID = env.VITE_CHROME_EXTENSION_ID ?? "";
 
+export async function sendExtensionCommand<T = unknown>(
+	message: Record<string, unknown>,
+): Promise<T | null> {
+	if (
+		!EXTENSION_ID ||
+		typeof chrome === "undefined" ||
+		!chrome.runtime?.sendMessage
+	) {
+		return null;
+	}
+	const runtime = chrome.runtime;
+	try {
+		return new Promise<T | null>((resolve) => {
+			runtime.sendMessage(EXTENSION_ID, message, (response) => {
+				if (runtime.lastError) {
+					console.warn(
+						"[hearted.] Extension command error:",
+						runtime.lastError.message,
+					);
+					resolve(null);
+					return;
+				}
+				resolve((response ?? null) as T | null);
+			});
+		});
+	} catch {
+		return null;
+	}
+}
+
 export async function getSpotifyConnectionStatus(): Promise<boolean> {
 	if (
 		!EXTENSION_ID ||

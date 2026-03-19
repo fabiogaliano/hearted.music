@@ -20,13 +20,13 @@ import {
 	GeniusNotFoundError,
 	GeniusParseError,
 	GeniusFetchError,
-} from "@/lib/capabilities/lyrics/service";
+} from "@/lib/domains/enrichment/lyrics/service";
 import {
 	generateQueryVariants,
 	scoreResult,
-} from "@/lib/capabilities/lyrics/utils/search-strategy";
-import { calculateSimilarity } from "@/lib/capabilities/lyrics/utils/string-similarity";
-import type { ResponseHitsResult } from "@/lib/capabilities/lyrics/types/genius.types";
+} from "@/lib/domains/enrichment/lyrics/utils/search-strategy";
+import { calculateSimilarity } from "@/lib/domains/enrichment/lyrics/utils/string-similarity";
+import type { ResponseHitsResult } from "@/lib/domains/enrichment/lyrics/types/genius.types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers

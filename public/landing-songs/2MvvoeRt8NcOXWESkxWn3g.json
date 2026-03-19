@@ -1,0 +1,94 @@
+{
+  "id": 1,
+  "spotifyTrackId": "2MvvoeRt8NcOXWESkxWn3g",
+  "name": "Ribs",
+  "artist": "Lorde",
+  "album": "Pure Heroine",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b273187331e276c898d39764cc98",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5ebaa69380a8d5203257611662d",
+  "spotifyArtistId": "163tK9Wjr9P9DmM0AVK7lm",
+  "genres": [
+    "indie pop",
+    "electronic",
+    "pop"
+  ],
+  "audioFeatures": {
+    "tempo": 127.945,
+    "energy": 0.472,
+    "valence": 0.0424
+  },
+  "analysis": {
+    "headline": "A midnight dance with the ghosts of childhood, desperately trying to outrun the terrifying march of time.",
+    "compound_mood": "Anxious Nostalgia",
+    "mood_description": "A bittersweet electronic hum pulses through the night, a thumping beat that feels like running. There's a desperate energy underneath the hazy, shimmering sound, a plea to hold onto something slipping away.",
+    "interpretation": "The intense fear of growing older and losing the innocence and connections of youth. It's a yearning to rewind time, to reclaim the unburdened mind of a child, even while acknowledging the futility of such a desire. The rhythmic, almost danceable production provides a hypnotic backdrop, making the internal struggle feel like an inescapable, lonely journey through a late-night cityscape.",
+    "themes": [
+      {
+        "name": "fear of aging",
+        "description": "The anxiety and dread that accompany the inevitable passage of time and the loss of youth."
+      },
+      {
+        "name": "lost innocence",
+        "description": "Mourning the carefree state of childhood, a time before responsibilities and the weight of self-awareness."
+      },
+      {
+        "name": "fading connections",
+        "description": "The struggle to maintain closeness and recreate past bonds in the face of growing loneliness."
+      },
+      {
+        "name": "futile longing",
+        "description": "A deep desire for what's gone, knowing it can never truly return, leading to a sense of wistful resignation."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1/Chorus",
+        "mood": "hazy remembrance",
+        "description": "Echoes of a forgotten night. A hazy memory of youth, with a shared drink and a song on repeat, already feeling like a distant dream."
+      },
+      {
+        "section": "Verse 2/Chorus",
+        "mood": "lonely disillusionment",
+        "description": "The dream turns sour. A lonely drift through city streets, where the realization of growing old settles in like a cold, isolating fog."
+      },
+      {
+        "section": "Bridge",
+        "mood": "desperate yearning",
+        "description": "A desperate pull backward. A direct, almost frantic plea to retrieve lost thoughts and the unburdened minds of youth."
+      },
+      {
+        "section": "Refrain",
+        "mood": "fragile intimacy",
+        "description": "Clinging to a moment. Recreating childhood intimacy with a friend, laughing to forget, but a quiet voice knows it won't truly last."
+      },
+      {
+        "section": "Outro",
+        "mood": "resigned acceptance",
+        "description": "The fragile illusion crumbles. The realization that even the most cherished moments are just a temporary shield against the relentless flow of time."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "It drives you crazy, getting old",
+        "insight": "The unsettling, almost maddening feeling of time asserting its power over you."
+      },
+      {
+        "line": "And I've never felt more alone",
+        "insight": "The profound isolation that can accompany the shift from childhood ease to adult awareness."
+      },
+      {
+        "line": "I want 'em back, I want 'em backThe minds we had",
+        "insight": "A primal, desperate cry for the return of a past self, unburdened and free."
+      },
+      {
+        "line": "And laughing till our ribs get tough",
+        "insight": "The bittersweet attempt to recapture a specific, visceral joy of childhood closeness."
+      },
+      {
+        "line": "But that will never be enough",
+        "insight": "The heavy, crushing truth that no amount of nostalgia or shared moments can stop the inevitable march forward."
+      }
+    ],
+    "sonic_texture": "Swirling, layered synths create a dreamy, atmospheric haze, grounded by a steady, almost driving electronic beat. Lorde's vocals float ethereally, sometimes doubled, creating a sense of intimacy and distance, as subtle percussive elements add to the melancholic, pulsing groove."
+  }
+}

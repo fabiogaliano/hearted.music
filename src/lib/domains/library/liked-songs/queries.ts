@@ -1,0 +1,328 @@
+/**
+ * Liked song and processing status operations.
+ *
+ * Uses service role client to bypass RLS since we use custom auth.
+ * Returns Result<T, DbError> for composable error handling.
+ */
+
+import { Result } from "better-result";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import {
+	fromSupabaseMany,
+	fromSupabaseSingle,
+} from "@/lib/shared/utils/result-wrappers/supabase";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Database, Tables, TablesInsert } from "@/lib/data/database.types";
+
+/** Liked song row type */
+export type LikedSong = Tables<"liked_song">;
+
+/** Item status row type (for tracking pending/processed state) */
+export type ItemStatus = Tables<"item_status">;
+
+/** Insert type for upserting liked songs */
+export type UpsertData = Pick<
+	TablesInsert<"liked_song">,
+	"song_id" | "liked_at"
+>;
+
+/** Liked song with joined song details for activity feed */
+export interface LikedSongWithDetails {
+	id: string;
+	liked_at: string;
+	song: {
+		id: string;
+		name: string;
+		artists: string[];
+		image_url: string | null;
+	};
+}
+
+/** Row returned from get_liked_songs_page RPC function (inferred from DB types) */
+export type LikedSongPageRow =
+	Database["public"]["Functions"]["get_liked_songs_page"]["Returns"][number];
+
+/** Stats row returned from get_liked_songs_stats RPC function */
+export type LikedSongsStatsRow =
+	Database["public"]["Functions"]["get_liked_songs_stats"]["Returns"][number];
+
+/** Filter options for liked songs page */
+export type LikedSongFilter =
+	| "all"
+	| "pending"
+	| "has_suggestions"
+	| "acted"
+	| "no_suggestions"
+	| "analyzed";
+
+/**
+ * Gets all liked songs for an account.
+ * Returns empty array if none found.
+ */
+export function getAll(
+	accountId: string,
+): Promise<Result<LikedSong[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMany(
+		supabase
+			.from("liked_song")
+			.select("*")
+			.eq("account_id", accountId)
+			.order("liked_at", { ascending: false }),
+	);
+}
+
+/**
+ * Counts liked songs for an account (efficient - no data transfer).
+ * Uses Supabase's count feature for O(1) DB operation.
+ */
+export async function getCount(
+	accountId: string,
+): Promise<Result<number, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { count, error } = await supabase
+		.from("liked_song")
+		.select("*", { count: "exact", head: true })
+		.eq("account_id", accountId);
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok(count ?? 0);
+}
+
+/**
+ * Gets recent liked songs with song details for activity feed.
+ * Uses Supabase foreign key join to fetch song name, artists, and image.
+ */
+export async function getRecentWithDetails(
+	accountId: string,
+	limit = 10,
+): Promise<Result<LikedSongWithDetails[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase
+		.from("liked_song")
+		.select(
+			`
+			id,
+			liked_at,
+			song:song_id (
+				id,
+				name,
+				artists,
+				image_url
+			)
+		`,
+		)
+		.eq("account_id", accountId)
+		.is("unliked_at", null)
+		.order("liked_at", { ascending: false })
+		.limit(limit);
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	// Supabase returns song as object or null; filter out nulls and cast
+	const filtered = (data ?? []).filter(
+		(row): row is LikedSongWithDetails => row.song !== null,
+	);
+
+	return Result.ok(filtered);
+}
+
+/**
+ * Gets a page of liked songs with full details (song + analysis) for the UI.
+ * Uses RPC function for efficient single-query fetch with JOINs.
+ * Cursor-based pagination using liked_at timestamp.
+ */
+export async function getPageWithDetails(
+	accountId: string,
+	options: {
+		cursor?: string;
+		limit?: number;
+		filter?: LikedSongFilter;
+	} = {},
+): Promise<
+	Result<{ items: LikedSongPageRow[]; nextCursor: string | null }, DbError>
+> {
+	const supabase = createAdminSupabaseClient();
+	const limit = options.limit ?? 50;
+
+	const { data, error } = await supabase.rpc("get_liked_songs_page", {
+		p_account_id: accountId,
+		p_cursor: options.cursor,
+		p_limit: limit,
+		p_filter: options.filter ?? "all",
+	});
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	const rows = (data ?? []) as LikedSongPageRow[];
+	const hasMore = rows.length > limit;
+	const items = hasMore ? rows.slice(0, limit) : rows;
+	const nextCursor = hasMore ? items[items.length - 1].liked_at : null;
+
+	return Result.ok({ items, nextCursor });
+}
+
+/**
+ * Gets aggregate stats for liked songs (total, analyzed, sorted, unsorted).
+ * Single efficient query independent of pagination.
+ */
+export async function getStats(
+	accountId: string,
+): Promise<Result<LikedSongsStatsRow, DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase
+		.rpc("get_liked_songs_stats", { p_account_id: accountId })
+		.single();
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok(data);
+}
+
+/**
+ * Gets liked songs that haven't been processed yet (no item_status record).
+ * These are songs waiting for user action (add to playlist, dismiss, etc.).
+ */
+export async function getPending(
+	accountId: string,
+): Promise<Result<LikedSong[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	// Get all liked song IDs for this account
+	const likedResult = await fromSupabaseMany(
+		supabase
+			.from("liked_song")
+			.select("*")
+			.eq("account_id", accountId)
+			.is("unliked_at", null),
+	);
+
+	if (Result.isError(likedResult)) {
+		return likedResult;
+	}
+
+	const likedSongs = likedResult.value;
+	if (likedSongs.length === 0) {
+		return Result.ok<LikedSong[], DbError>([]);
+	}
+
+	// Get song IDs that have item_status records (chunked to avoid URI-too-long)
+	const songIds = likedSongs.map((ls: LikedSong) => ls.song_id);
+	const CHUNK_SIZE = 50;
+	const processedIds = new Set<string>();
+
+	for (let i = 0; i < songIds.length; i += CHUNK_SIZE) {
+		const chunk = songIds.slice(i, i + CHUNK_SIZE);
+		const statusResult = await fromSupabaseMany(
+			supabase
+				.from("item_status")
+				.select("item_id")
+				.eq("account_id", accountId)
+				.eq("item_type", "song")
+				.in("item_id", chunk),
+		);
+
+		if (Result.isError(statusResult)) {
+			return Result.err(statusResult.error);
+		}
+
+		for (const s of statusResult.value) {
+			processedIds.add((s as { item_id: string }).item_id);
+		}
+	}
+	const pending = likedSongs.filter(
+		(ls: LikedSong) => !processedIds.has(ls.song_id),
+	);
+
+	return Result.ok(pending);
+}
+
+/**
+ * Creates or updates liked songs for an account.
+ * Uses (account_id, song_id) as the conflict target.
+ * Returns all upserted liked songs.
+ */
+export function upsert(
+	accountId: string,
+	data: UpsertData[],
+): Promise<Result<LikedSong[], DbError>> {
+	if (data.length === 0) {
+		return Promise.resolve(Result.ok<LikedSong[], DbError>([]));
+	}
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMany(
+		supabase
+			.from("liked_song")
+			.upsert(
+				data.map((ls) => ({
+					account_id: accountId,
+					song_id: ls.song_id,
+					liked_at: ls.liked_at,
+				})),
+				{ onConflict: "account_id,song_id" },
+			)
+			.select(),
+	);
+}
+
+/**
+ * Soft deletes a liked song for an account by setting unliked_at.
+ * Preserves timeline history for analytics.
+ */
+export function softDelete(
+	accountId: string,
+	songId: string,
+): Promise<Result<LikedSong, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("liked_song")
+			.update({ unliked_at: new Date().toISOString() })
+			.eq("account_id", accountId)
+			.eq("song_id", songId)
+			.select()
+			.single(),
+	);
+}
+
+/**
+ * Batch soft deletes liked songs for an account by setting unliked_at.
+ * O(1) DB call instead of O(n) sequential calls.
+ * Preserves timeline history for analytics.
+ */
+export function softDeleteBatch(
+	accountId: string,
+	songIds: string[],
+): Promise<Result<LikedSong[], DbError>> {
+	if (songIds.length === 0) {
+		return Promise.resolve(Result.ok<LikedSong[], DbError>([]));
+	}
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMany(
+		supabase
+			.from("liked_song")
+			.update({ unliked_at: new Date().toISOString() })
+			.eq("account_id", accountId)
+			.in("song_id", songIds)
+			.select(),
+	);
+}

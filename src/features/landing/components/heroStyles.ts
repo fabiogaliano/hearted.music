@@ -61,12 +61,7 @@ export const heroStyles = `
 	}
 
 	.hero-background {
-		will-change: transform;
-	}
-
-	.hero-background-inner {
-		will-change: transform;
-		backface-visibility: hidden;
+		will-change: clip-path;
 	}
 
 	.hero-panel {
@@ -76,6 +71,14 @@ export const heroStyles = `
 	.hero-panel-curtain {
 		will-change: transform;
 		backface-visibility: hidden;
+	}
+
+	/* ─────────────────────────────────────────────────────────────────
+	   FLUID FONT SIZES (desktop)
+	   ───────────────────────────────────────────────────────────────── */
+	@media (min-width: 1280px) {
+		.hero-headline { font-size: clamp(3rem, 3.5vw, 4.5rem); }
+		.hero-logo { font-size: clamp(1.25rem, 1.5vw, 2rem); }
 	}
 
 	/* ─────────────────────────────────────────────────────────────────
@@ -99,16 +102,17 @@ export const heroStyles = `
 			will-change: auto;
 		}
 		.hero-background {
-			transform: scaleX(0.5) !important;
 			will-change: auto;
+			clip-path: none !important;
 		}
 		.hero-panel {
-			opacity: 1 !important;
-			clip-path: none !important;
+			will-change: auto;
+		}
+		.hero-panel-curtain {
 			will-change: auto;
 		}
 		.hero-nav-btn {
-			opacity: 1 !important;
+			transition: none !important;
 		}
 	}
 
@@ -116,7 +120,7 @@ export const heroStyles = `
 	   MOBILE: STATIC LAYOUT
 	   No scroll animations on mobile, show final state
 	   ───────────────────────────────────────────────────────────────── */
-	@media (max-width: 1023px) {
+	@media (max-width: 1279px) {
 		.hero-section {
 			/* Remove any pinning on mobile */
 			height: auto !important;
@@ -136,18 +140,23 @@ export const heroStyles = `
 		.hero-logo,
 		.hero-headline {
 			transform: none !important;
+			max-width: none !important;
+			white-space: normal !important;
 		}
 		.hero-logo-heart {
-			width: 20px !important;
-			min-width: 20px !important;
+			width: 1.25rem !important;
+			min-width: 1.25rem !important;
 			opacity: 1 !important;
 		}
 		.hero-background {
-			transform: none !important;
+			clip-path: none !important;
 		}
 		.hero-panel {
 			opacity: 1 !important;
 			clip-path: none !important;
+		}
+		.hero-panel-curtain {
+			transform: translateX(100%) !important;
 		}
 		.hero-subtext,
 		.hero-cta {

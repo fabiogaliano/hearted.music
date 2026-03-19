@@ -9,7 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as FaqRouteImport } from './routes/faq'
 import { Route as DevPlaygroundRouteImport } from './routes/dev-playground'
 import { Route as DevExtensionStepRouteImport } from './routes/dev-extension-step'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -27,10 +30,26 @@ import { Route as ApiExtensionSyncRouteImport } from './routes/api/extension/syn
 import { Route as ApiExtensionStatusRouteImport } from './routes/api/extension/status'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiJobsIdProgressRouteImport } from './routes/api/jobs/$id/progress'
+import { Route as ApiJobsIdEnrichmentProgressRouteImport } from './routes/api/jobs/$id/enrichment-progress'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DevPlaygroundRoute = DevPlaygroundRouteImport.update({
@@ -118,12 +137,21 @@ const ApiJobsIdProgressRoute = ApiJobsIdProgressRouteImport.update({
   path: '/api/jobs/$id/progress',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiJobsIdEnrichmentProgressRoute =
+  ApiJobsIdEnrichmentProgressRouteImport.update({
+    id: '/api/jobs/$id/enrichment-progress',
+    path: '/api/jobs/$id/enrichment-progress',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dev-extension-step': typeof DevExtensionStepRoute
   '/dev-playground': typeof DevPlaygroundRoute
+  '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/liked-songs': typeof AuthenticatedLikedSongsRoute
   '/match': typeof AuthenticatedMatchRoute
@@ -136,13 +164,17 @@ export interface FileRoutesByFullPath {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
+  '/api/jobs/$id/enrichment-progress': typeof ApiJobsIdEnrichmentProgressRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dev-extension-step': typeof DevExtensionStepRoute
   '/dev-playground': typeof DevPlaygroundRoute
+  '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/liked-songs': typeof AuthenticatedLikedSongsRoute
   '/match': typeof AuthenticatedMatchRoute
@@ -155,6 +187,7 @@ export interface FileRoutesByTo {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
+  '/api/jobs/$id/enrichment-progress': typeof ApiJobsIdEnrichmentProgressRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRoutesById {
@@ -163,7 +196,10 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/dev-extension-step': typeof DevExtensionStepRoute
   '/dev-playground': typeof DevPlaygroundRoute
+  '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/liked-songs': typeof AuthenticatedLikedSongsRoute
   '/_authenticated/match': typeof AuthenticatedMatchRoute
@@ -176,6 +212,7 @@ export interface FileRoutesById {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
+  '/api/jobs/$id/enrichment-progress': typeof ApiJobsIdEnrichmentProgressRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRouteTypes {
@@ -184,7 +221,10 @@ export interface FileRouteTypes {
     | '/'
     | '/dev-extension-step'
     | '/dev-playground'
+    | '/faq'
     | '/login'
+    | '/privacy'
+    | '/terms'
     | '/dashboard'
     | '/liked-songs'
     | '/match'
@@ -197,13 +237,17 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
+    | '/api/jobs/$id/enrichment-progress'
     | '/api/jobs/$id/progress'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dev-extension-step'
     | '/dev-playground'
+    | '/faq'
     | '/login'
+    | '/privacy'
+    | '/terms'
     | '/dashboard'
     | '/liked-songs'
     | '/match'
@@ -216,6 +260,7 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
+    | '/api/jobs/$id/enrichment-progress'
     | '/api/jobs/$id/progress'
   id:
     | '__root__'
@@ -223,7 +268,10 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/dev-extension-step'
     | '/dev-playground'
+    | '/faq'
     | '/login'
+    | '/privacy'
+    | '/terms'
     | '/_authenticated/dashboard'
     | '/_authenticated/liked-songs'
     | '/_authenticated/match'
@@ -236,6 +284,7 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
+    | '/api/jobs/$id/enrichment-progress'
     | '/api/jobs/$id/progress'
   fileRoutesById: FileRoutesById
 }
@@ -244,23 +293,48 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   DevExtensionStepRoute: typeof DevExtensionStepRoute
   DevPlaygroundRoute: typeof DevPlaygroundRoute
+  FaqRoute: typeof FaqRoute
   LoginRoute: typeof LoginRoute
+  PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
   ApiArtistImagesForTracksRoute: typeof ApiArtistImagesForTracksRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiExtensionStatusRoute: typeof ApiExtensionStatusRoute
   ApiExtensionSyncRoute: typeof ApiExtensionSyncRoute
   ApiExtensionTokenRoute: typeof ApiExtensionTokenRoute
+  ApiJobsIdEnrichmentProgressRoute: typeof ApiJobsIdEnrichmentProgressRoute
   ApiJobsIdProgressRoute: typeof ApiJobsIdProgressRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dev-playground': {
@@ -382,6 +456,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiJobsIdProgressRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/jobs/$id/enrichment-progress': {
+      id: '/api/jobs/$id/enrichment-progress'
+      path: '/api/jobs/$id/enrichment-progress'
+      fullPath: '/api/jobs/$id/enrichment-progress'
+      preLoaderRoute: typeof ApiJobsIdEnrichmentProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -411,13 +492,17 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   DevExtensionStepRoute: DevExtensionStepRoute,
   DevPlaygroundRoute: DevPlaygroundRoute,
+  FaqRoute: FaqRoute,
   LoginRoute: LoginRoute,
+  PrivacyRoute: PrivacyRoute,
+  TermsRoute: TermsRoute,
   ApiArtistImagesForTracksRoute: ApiArtistImagesForTracksRoute,
   AuthLogoutRoute: AuthLogoutRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiExtensionStatusRoute: ApiExtensionStatusRoute,
   ApiExtensionSyncRoute: ApiExtensionSyncRoute,
   ApiExtensionTokenRoute: ApiExtensionTokenRoute,
+  ApiJobsIdEnrichmentProgressRoute: ApiJobsIdEnrichmentProgressRoute,
   ApiJobsIdProgressRoute: ApiJobsIdProgressRoute,
 }
 export const routeTree = rootRouteImport

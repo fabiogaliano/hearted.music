@@ -1,15 +1,12 @@
-import { songs } from "@/lib/data/mock-data";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import type { CompletionStats } from "../types";
+import type { CompletionScreenProps } from "../types";
 
 export function CompletionScreen({
 	stats,
+	songs,
 	onExit,
-}: {
-	stats: CompletionStats;
-	onExit: () => void;
-}) {
+}: CompletionScreenProps) {
 	const theme = useTheme();
 
 	return (
@@ -104,7 +101,7 @@ export function CompletionScreen({
 							className="relative h-20 w-20 transition-transform hover:-translate-y-1"
 						>
 							<img
-								src={song.albumArtUrl}
+								src={song.albumArtUrl ?? undefined}
 								alt={song.name}
 								className="h-full w-full object-cover"
 							/>

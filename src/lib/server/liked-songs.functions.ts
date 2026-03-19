@@ -1,9 +1,9 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
-import { requireAuthSession } from "@/lib/auth.server";
-import * as likedSong from "@/lib/data/liked-song";
-import type { LikedSongPageRow } from "@/lib/data/liked-song";
+import { requireAuthSession } from "@/lib/platform/auth/auth.server";
+import * as likedSong from "@/lib/domains/library/liked-songs/queries";
+import type { LikedSongPageRow } from "@/lib/domains/library/liked-songs/queries";
 import { appFetch } from "@/lib/integrations/spotify/app-auth";
 import type { FilterOption } from "@/features/liked-songs/queries";
 import type {
@@ -12,29 +12,15 @@ import type {
 	AnalysisContent,
 } from "@/features/liked-songs/types";
 
-// ─── Input Validation Schemas ───────────────────────────────────────────────
-
 const LikedSongsPageSchema = z.object({
 	filter: z.enum(["all", "pending", "matched", "analyzed"]),
 	cursor: z.string().optional(),
 	limit: z.number().int().min(1).max(100).optional(),
 });
 
-const ArtistImageSchema = z.object({
-	trackId: z.string().min(1),
-});
-
 const ArtistImageByIdSchema = z.object({
 	artistId: z.string().min(1),
 });
-
-const AddToPlaylistSchema = z.object({
-	songId: z.uuid(),
-	spotifyTrackId: z.string().min(1),
-	spotifyPlaylistId: z.string().min(1),
-});
-
-// ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface LikedSongsPageParams {
 	filter: FilterOption;
@@ -111,6 +97,8 @@ export type LikedSongsStatsResult =
 			total: number;
 			analyzed: number;
 			matched: number;
+			has_suggestions: number;
+			new_suggestions: number;
 			pending: number;
 	  }
 	| { success: false; error: string };
@@ -131,28 +119,16 @@ export const getLikedSongsStats = createServerFn({ method: "GET" }).handler(
 			total: Number(row.total),
 			analyzed: Number(row.analyzed),
 			matched: Number(row.matched),
+			has_suggestions: Number(row.has_suggestions),
+			new_suggestions: Number(row.new_suggestions),
 			pending: Number(row.pending),
 		};
 	},
 );
 
-export interface ArtistImageParams {
-	trackId: string;
-}
-
 export interface ArtistImageResult {
 	url: string | null;
 }
-
-const TracksSchema = z.object({
-	tracks: z.array(
-		z
-			.object({
-				artists: z.array(z.object({ id: z.string() })),
-			})
-			.nullable(),
-	),
-});
 
 const ArtistsSchema = z.object({
 	artists: z.array(
@@ -163,29 +139,6 @@ const ArtistsSchema = z.object({
 			.nullable(),
 	),
 });
-
-export const getArtistImageForTrack = createServerFn({ method: "GET" })
-	.inputValidator((data) => ArtistImageSchema.parse(data))
-	.handler(async ({ data }): Promise<ArtistImageResult> => {
-		await requireAuthSession();
-
-		const tracksResult = await appFetch(
-			`/tracks?ids=${data.trackId}`,
-			TracksSchema,
-		);
-		if (Result.isError(tracksResult)) return { url: null };
-
-		const artistId = tracksResult.value.tracks[0]?.artists[0]?.id;
-		if (!artistId) return { url: null };
-
-		const artistsResult = await appFetch(
-			`/artists?ids=${artistId}`,
-			ArtistsSchema,
-		);
-		if (Result.isError(artistsResult)) return { url: null };
-
-		return { url: artistsResult.value.artists[0]?.images[0]?.url ?? null };
-	});
 
 export interface ArtistImageByIdParams {
 	artistId: string;
@@ -203,52 +156,4 @@ export const getArtistImageById = createServerFn({ method: "GET" })
 		if (Result.isError(artistsResult)) return { url: null };
 
 		return { url: artistsResult.value.artists[0]?.images[0]?.url ?? null };
-	});
-
-export interface AddToPlaylistParams {
-	songId: string;
-	spotifyTrackId: string;
-	spotifyPlaylistId: string;
-}
-
-export interface AddToPlaylistResult {
-	success: boolean;
-}
-
-export const addSongToPlaylist = createServerFn({ method: "POST" })
-	.inputValidator((data) => AddToPlaylistSchema.parse(data))
-	.handler(async (_ctx): Promise<AddToPlaylistResult> => {
-		await requireAuthSession();
-		// Playlist mutation requires user-scoped Spotify tokens which are now
-		// managed by the browser extension. This endpoint will be re-implemented
-		// once extension-mediated playlist writes are available.
-		return { success: false };
-	});
-
-const SongActionSchema = z.object({
-	songId: z.uuid(),
-});
-
-export const skipSong = createServerFn({ method: "POST" })
-	.inputValidator((data) => SongActionSchema.parse(data))
-	.handler(async ({ data }) => {
-		const { session } = await requireAuthSession();
-		const result = await likedSong.updateStatus(
-			session.accountId,
-			data.songId,
-			"skipped",
-		);
-		return { success: Result.isOk(result) };
-	});
-
-export const dismissSong = createServerFn({ method: "POST" })
-	.inputValidator((data) => SongActionSchema.parse(data))
-	.handler(async ({ data }) => {
-		const { session } = await requireAuthSession();
-		const result = await likedSong.updateStatus(
-			session.accountId,
-			data.songId,
-			"dismissed",
-		);
-		return { success: Result.isOk(result) };
 	});

@@ -8,7 +8,7 @@
  */
 
 import { Result } from "better-result";
-import { getMlProvider } from "@/lib/ml/provider/factory";
+import { getMlProvider } from "@/lib/integrations/providers/factory";
 
 async function main() {
 	console.log("=".repeat(60));

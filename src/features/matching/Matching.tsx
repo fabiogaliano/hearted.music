@@ -1,57 +1,50 @@
-import { playlists, songs } from "@/lib/data/mock-data";
 import { useMatchingState } from "./hooks/useMatchingState";
+
 import { CompletionScreen } from "./sections/CompletionScreen";
 import { MatchingHeader } from "./sections/MatchingHeader";
 import { MatchingSession } from "./sections/MatchingSession";
-import type { CompletionStats, MatchingProps } from "./types";
+import type { MatchingProps } from "./types";
 
-export function Matching({ onExit }: MatchingProps) {
-	const {
-		state,
-		isComplete,
-		handleAdd,
-		handleNext,
-		handleDismiss,
-		handleShowDetails,
-		handleHideDetails,
-		handleJourneyStepHover,
-	} = useMatchingState(songs.length);
-
-	const currentSong = songs[state.currentIndex];
-
-	const totalAdditions = Object.values(state.addedTo).reduce(
-		(sum, arr) => sum + arr.length,
-		0,
-	);
-	const songsMatched = Object.keys(state.addedTo).length;
-	const completionStats: CompletionStats = {
-		totalSongs: songs.length,
-		songsMatched,
-		totalAdditions,
-		skippedCount: songs.length - songsMatched,
-	};
+export function Matching({
+	currentSong,
+	currentMatches,
+	totalSongs,
+	offset,
+	addedTo,
+	isComplete,
+	completionStats,
+	recentSongs,
+	onAdd,
+	onDismiss,
+	onNext,
+	onExit,
+}: MatchingProps) {
+	const { state } = useMatchingState();
 
 	if (isComplete) {
-		return <CompletionScreen stats={completionStats} onExit={onExit} />;
+		return (
+			<CompletionScreen
+				stats={completionStats}
+				songs={recentSongs}
+				onExit={onExit}
+			/>
+		);
 	}
+
+	if (!currentSong) return null;
 
 	return (
 		<div className="mx-auto w-full max-w-[min(1600px,100%)]">
-			<MatchingHeader
-				currentIndex={state.currentIndex}
-				totalSongs={songs.length}
-			/>
+			<MatchingHeader currentIndex={offset} totalSongs={totalSongs} />
 
 			<MatchingSession
 				currentSong={currentSong}
-				playlists={playlists}
+				playlists={currentMatches}
+				addedTo={addedTo}
 				state={state}
-				onAdd={(playlistId: number) => handleAdd(playlistId, currentSong.id)}
-				onDismiss={handleDismiss}
-				onNext={handleNext}
-				onToggleDetails={handleShowDetails}
-				onCloseDetails={handleHideDetails}
-				onJourneyStepHover={handleJourneyStepHover}
+				onAdd={onAdd}
+				onDismiss={onDismiss}
+				onNext={onNext}
 			/>
 		</div>
 	);

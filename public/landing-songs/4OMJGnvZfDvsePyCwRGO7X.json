@@ -1,0 +1,95 @@
+{
+  "id": 2,
+  "spotifyTrackId": "4OMJGnvZfDvsePyCwRGO7X",
+  "name": "Houdini",
+  "artist": "Dua Lipa",
+  "album": "Radical Optimism",
+  "albumArtUrl": "https://i.scdn.co/image/ab67616d0000b273001d5706fddc72561f6488af",
+  "artistImageUrl": "https://i.scdn.co/image/ab6761610000e5eb0c68f6c95232e716f0abee8d",
+  "spotifyArtistId": "6M2wZ9GZgrQXHCFfjv46we",
+  "genres": [
+    "pop",
+    "dance-pop",
+    "disco"
+  ],
+  "audioFeatures": {
+    "tempo": 123,
+    "energy": 0.82,
+    "valence": null
+  },
+  "analysis": {
+    "headline": "A playful challenge to a new connection, daring them to prove their worth before disappearing into the night.",
+    "compound_mood": "Playful Elusiveness",
+    "mood_description": "A high-stakes dance under flashing lights, daring someone to catch a fleeting glance before it vanishes. Confidence and caution swirl in a playful, charged atmosphere.",
+    "interpretation": "The game of 'Houdini' isn't just about escape; it's a deliberate test, a playful yet firm challenge to a potential partner. It's a way of saying, 'I've left before, but I'm open to being convinced to stay if you're truly exceptional.' The elusiveness is both a boundary and an invitation, a self-protective habit that longs to be broken by genuine connection.",
+    "themes": [
+      {
+        "name": "testing boundaries",
+        "description": "Pushing the limits of a new connection to see its true strength."
+      },
+      {
+        "name": "self-aware elusiveness",
+        "description": "Knowing one tends to disappear, but choosing to challenge someone to break the pattern."
+      },
+      {
+        "name": "conditional commitment",
+        "description": "Offering a chance at sticking around, but only if the other person meets a high standard."
+      },
+      {
+        "name": "the chase",
+        "description": "Embracing the thrill of being pursued and the power in holding back."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Slightly coy",
+        "description": "A brief, confident arrival, setting a scene of playful mystery, inviting attention."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Bold challenge",
+        "description": "Laying down the rules of the game, daring someone to prove their worth before a swift exit, a promise of vanishing."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Flirtatious observation",
+        "description": "Watching a potential partner, inviting them closer while still holding back, a quiet moment of assessing the next move."
+      },
+      {
+        "section": "Post-Chorus",
+        "mood": "Hidden longing",
+        "description": "A sudden flicker of vulnerability, admitting a desire to change and be convinced to stay, a momentary break from the game."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Skeptical demand",
+        "description": "Questioning surface-level charm, pushing for genuine effort and proof before truly believing in the connection."
+      },
+      {
+        "section": "Outro",
+        "mood": "Lasting allure",
+        "description": "The final echo of the challenge, a playful reminder that the chase is still on, leaving the outcome tantalizingly open."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Catch me or I go Houdini",
+        "insight": "The exhilarating risk of a connection that could vanish at any moment, placing the onus on the other."
+      },
+      {
+        "line": "Time is passin' like a solar eclipse",
+        "insight": "A brief window for connection, a blink-and-you-miss-it opportunity that demands quick action."
+      },
+      {
+        "line": "Maybe you could be the one to make me stay",
+        "insight": "A raw admission of wanting a reason to settle down, despite the impulse to flee from commitment."
+      },
+      {
+        "line": "Do you practise everything that you preach?",
+        "insight": "Cutting through sweet talk to demand substance and real action, seeking truth beyond mere words."
+      }
+    ],
+    "sonic_texture": "A relentless, pulsing synth-bass line anchors a shimmering landscape of layered disco-pop grooves. Crisp drums drive the rhythm, while confident, clear vocals float effortlessly, weaving through the vibrant, electric air."
+  }
+}

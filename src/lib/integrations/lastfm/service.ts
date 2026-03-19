@@ -28,9 +28,12 @@ import { isGenre } from "./whitelist";
 const BASE_URL = "https://ws.audioscrobbler.com/2.0";
 const MAX_GENRES = 3;
 
+// Shared across all instances so concurrent worker jobs respect a single rate limit
+const sharedLimiter = new ConcurrencyLimiter(5, 50, 200);
+
 export class LastFmService {
 	private readonly apiKey: string;
-	private readonly limiter = new ConcurrencyLimiter(5, 50, 200);
+	private readonly limiter = sharedLimiter;
 
 	constructor(apiKey: string) {
 		this.apiKey = apiKey;

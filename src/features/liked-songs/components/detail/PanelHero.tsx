@@ -116,6 +116,7 @@ interface PanelHeroProps {
 	isExpanded: boolean;
 	isAnalysisOpen: boolean;
 	sonicTextureSingleLine: boolean;
+	stackMetaBelowArt?: boolean;
 	song: LikedSong;
 	analysis?: AnalysisContent;
 	baseTheme: ThemeConfig;
@@ -149,6 +150,7 @@ export function PanelHero({
 	isExpanded,
 	isAnalysisOpen,
 	sonicTextureSingleLine,
+	stackMetaBelowArt = false,
 	song,
 	analysis,
 	baseTheme,
@@ -171,6 +173,14 @@ export function PanelHero({
 		sonicTextureRef,
 	},
 }: PanelHeroProps) {
+	const expandedTextLeft = stackMetaBelowArt
+		? LAYOUT.paddingX
+		: LAYOUT.paddingX + LAYOUT.albumArtExpanded + 16;
+	const expandedTextTop = stackMetaBelowArt
+		? LAYOUT.heroHeight - 18 + 16
+		: LAYOUT.heroHeight - LAYOUT.albumArtExpanded - 18;
+	const expandedTextHeight = stackMetaBelowArt ? 84 : LAYOUT.albumArtExpanded;
+
 	return (
 		<div
 			ref={headerRef}
@@ -265,9 +275,9 @@ export function PanelHero({
 						style={{
 							overflow: "hidden",
 							right: `${LAYOUT.paddingX}px`,
-							left: `${LAYOUT.paddingX + LAYOUT.albumArtExpanded + 16}px`,
-							top: `${LAYOUT.heroHeight - LAYOUT.albumArtExpanded - 18}px`,
-							height: `${LAYOUT.albumArtExpanded}px`,
+							left: `${expandedTextLeft}px`,
+							top: `${expandedTextTop}px`,
+							height: `${expandedTextHeight}px`,
 							transform: `translateY(${LAYOUT.albumArtExpanded / 3}px)`,
 						}}
 					>

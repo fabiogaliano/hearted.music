@@ -18,7 +18,7 @@ import {
 	getMlProvider,
 	resetProvider,
 	selectProvider,
-} from "@/lib/ml/provider/factory";
+} from "@/lib/integrations/providers/factory";
 
 // ============================================================================
 // Test Utilities

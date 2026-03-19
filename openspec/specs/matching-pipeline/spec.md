@@ -61,33 +61,106 @@ The system SHALL allow tuning matching algorithm without code changes.
 
 ### Requirement: Cache-First Matching
 
-The system SHALL use cache-first pattern to avoid redundant computation.
+The system SHALL use cache-first pattern to avoid redundant computation, including pipeline-triggered reruns of the same matching inputs.
 
 #### Scenario: Cache key computation
 - **WHEN** matching is requested
-- **THEN** compute context hash from: playlist set hash + candidate set hash + config hash
+- **THEN** compute context hash from playlist set hash + candidate set hash + config hash + model/version hash
+
+#### Scenario: Deterministic pipeline context identity
+- **WHEN** the enrichment pipeline matching stage prepares to run
+- **THEN** it SHALL compute the same materially relevant matching hashes before creating a tracked matching job
+- **AND** `playlistSetHash` SHALL be derived from playlist/profile inputs that affect the result, not playlist IDs alone
+- **AND** `candidateSetHash` SHALL be derived from candidate content that affects the result, not song IDs alone
+- **AND** the stage SHALL use the same hashing primitives as the cache-first matching path where practical
 
 #### Scenario: Cache hit
 - **WHEN** context hash matches existing `match_context`
 - **THEN** return cached `match_result` rows without recomputation
 
+#### Scenario: Identical pipeline rerun
+- **WHEN** the pipeline matching stage finds an existing `match_context` for the same account and computed `contextHash`
+- **THEN** it SHALL NOT create a duplicate `match_context`
+- **AND** it SHALL return a no-op stage result instead of recomputing matches
+
 #### Scenario: Cache miss
 - **WHEN** context hash is new
-- **THEN** compute matches, create `match_context`, store `match_result` rows
+- **THEN** compute matches, create `match_context`, and store `match_result` rows
+- **AND** the stored context metadata SHALL use `MATCHING_ALGO_VERSION` rather than a hardcoded version string
 
 #### Scenario: Cache invalidation
-- **WHEN** song analysis changes OR playlist contents change OR config changes
+- **WHEN** song analysis changes OR playlist contents change OR playlist profile inputs change OR playlist name/description changes OR config changes OR model/version changes
 - **THEN** context hash naturally differs, causing fresh computation
+
+#### Scenario: Profile content hash includes intent text
+- **WHEN** computing playlist profile content hash
+- **THEN** intent text (name + description) SHALL always be included in the hash input
+- **AND** the hash SHALL NOT gate intent text inclusion on whether song embeddings exist
+
+#### Scenario: Incremental candidate set
+- **WHEN** a re-sync adds new songs but existing songs are unchanged
+- **THEN** the candidate set hash SHALL differ
+- **AND** a fresh `match_context` MAY be created
+
+#### Scenario: No destination playlists
+- **WHEN** onboarding has not yet saved any destination playlists, or zero selected destination playlists have profiles
+- **THEN** the matching stage SHALL skip execution
+- **AND** report a skip reason indicating that no destination playlists have been selected yet or profiled yet
+
+#### Scenario: No ready candidates
+- **WHEN** there are no liked-song candidates ready for matching
+- **THEN** the matching stage SHALL skip execution
+- **AND** it SHALL NOT use `item_status` as a proxy for "matching completed"
+
+#### Scenario: Unmatched songs terminology
+- **WHEN** a song has zero matches above the score threshold (0.3)
+- **THEN** the song SHALL be reported as `noMatch` (not `failed`)
+- **AND** `BatchMatchResult.noMatch` SHALL contain the song ID
+
+#### Scenario: Missing prerequisites
+- **WHEN** matching inputs are incomplete because required enrichment prerequisites are not ready yet
+- **THEN** the matching stage SHALL skip execution instead of failing the pipeline
 
 ---
 
 ### Requirement: Playlist Profiling
 
-The system SHALL compute aggregate profiles for destination playlists.
+The system SHALL compute aggregate profiles for destination playlists, blending song-derived content signals with playlist intent signals (name and description).
 
 #### Scenario: Embedding centroid
 - **WHEN** computing playlist profile
-- **THEN** average all song embeddings in playlist
+- **THEN** average all song embeddings in playlist to produce a song centroid
+
+#### Scenario: Intent embedding
+- **WHEN** computing playlist profile
+- **AND** playlist has name text (always present) and optionally description text
+- **THEN** embed the intent text (name + description joined with " — ") using `EmbeddingService.embedText()` with `passage:` prefix
+- **AND** produce an intent embedding vector
+
+#### Scenario: Intent-content blending
+- **WHEN** both song centroid and intent embedding are available
+- **THEN** L2-normalize both vectors before blending
+- **AND** compute weighted average: `(1 - intentWeight) * songCentroid + intentWeight * intentEmbedding`
+- **AND** L2-normalize the result
+- **AND** use the blended vector as the profile's embedding centroid
+
+#### Scenario: Intent weight computation
+- **WHEN** computing the blend weight
+- **THEN** compute `intentWeight` from song count and description presence using a smooth decay formula
+- **AND** intent weight SHALL be higher for playlists with fewer songs (new/sparse playlists)
+- **AND** intent weight SHALL be boosted when description text is present (richer signal)
+- **AND** intent weight SHALL never reach zero — a minimum floor of 0.15 (name-only) or 0.30 (with description) SHALL be enforced
+
+#### Scenario: Intent-only profile (no songs)
+- **WHEN** computing playlist profile
+- **AND** playlist has no songs with embeddings
+- **AND** intent text exists
+- **THEN** the intent embedding SHALL be the profile's embedding centroid (no blending needed)
+
+#### Scenario: No intent text (edge case)
+- **WHEN** computing playlist profile
+- **AND** no intent text is available
+- **THEN** fall back to pure song centroid (existing behavior unchanged)
 
 #### Scenario: Audio feature centroid
 - **WHEN** computing playlist profile
@@ -169,23 +242,117 @@ The system SHALL use content hashing for cache invalidation.
 
 ### Requirement: Matching module locations
 
-The system SHALL organize matching pipeline modules under the capability, integration, and ML folders.
+The system SHALL organize matching pipeline modules under bounded-context domains, workflows, integrations, and platform folders.
 
-#### Scenario: Matching service location
-- **WHEN** matching modules are created or updated
-- **THEN** they are located under `src/lib/capabilities/matching`
+#### Scenario: Song matching service location
+- **WHEN** song-matching modules are created or updated
+- **THEN** they are located under `src/lib/domains/taste/song-matching/*`
 
 #### Scenario: Genre and profiling locations
-- **WHEN** genre or profiling modules are created or updated
-- **THEN** they are located under `src/lib/capabilities/genre` and `src/lib/capabilities/profiling`
+- **WHEN** genre-tagging or playlist-profiling modules are created or updated
+- **THEN** they are located under `src/lib/domains/enrichment/genre-tagging/*` and `src/lib/domains/taste/playlist-profiling/*`
 
-#### Scenario: Embedding utilities location
-- **WHEN** embedding helpers are used by matching
-- **THEN** they are located under `src/lib/ml/embedding`
+#### Scenario: Analysis and embedding locations
+- **WHEN** analysis or embedding helpers are used by matching
+- **THEN** they are located under `src/lib/domains/enrichment/content-analysis/*` and `src/lib/domains/enrichment/embeddings/*`
+
+#### Scenario: Enrichment workflow location
+- **WHEN** the matching-related enrichment pipeline is referenced
+- **THEN** its orchestration modules are located under `src/lib/workflows/enrichment-pipeline/*`
 
 #### Scenario: External provider locations
-- **WHEN** Last.fm or ReccoBeats integrations are referenced
-- **THEN** they are located under `src/lib/integrations/lastfm` and `src/lib/integrations/reccobeats`
+- **WHEN** Last.fm, ReccoBeats, or LLM provider integrations are referenced by the matching stack
+- **THEN** they are located under `src/lib/integrations/lastfm/*`, `src/lib/integrations/reccobeats/*`, and `src/lib/integrations/llm/*`
+
+### Requirement: Matching Exclusion Set
+
+The matching stage SHALL accept an exclusion set and skip already-decided (song, playlist) pairs during scoring.
+
+#### Scenario: Load exclusion set before matching
+- **WHEN** preparing to run `matchBatch`
+- **THEN** load `match_decision` rows (added + dismissed) for the account
+- **AND** load `playlist_song` rows (songs already in playlists) for the account
+- **AND** pass the combined exclusion set to the matching stage
+
+#### Scenario: Skip excluded pairs
+- **WHEN** scoring song X against playlist A
+- **AND** `(X, A)` is in the exclusion set
+- **THEN** do NOT compute a score
+- **AND** do NOT create a `match_result` row
+
+#### Scenario: Exclusion reduces computation
+- **WHEN** user has dismissed song X (which dismissed it for playlists A, B) and song X is already in playlist C
+- **THEN** only score song X against playlists D, E, etc. (non-excluded playlists)
+
+---
+
+### Requirement: Matching Stage Returns Song IDs
+
+The matching stage SHALL return which songs received suggestions and which did not, not just aggregate counts.
+
+#### Scenario: Matched songs identified
+- **WHEN** matching completes
+- **THEN** return an array of song IDs that received at least one `match_result` (score >= threshold)
+
+#### Scenario: Unmatched songs identified
+- **WHEN** matching completes
+- **THEN** return an array of song IDs that received zero `match_result` rows (all scores below threshold or all pairs excluded)
+
+#### Scenario: Matching skipped indicator
+- **WHEN** matching is skipped (no playlists or no candidates)
+- **THEN** return a flag indicating matching was skipped
+
+---
+
+### Requirement: Pipeline Writes item_status
+
+The enrichment pipeline orchestrator SHALL write `item_status` for all batch songs after matching completes.
+
+#### Scenario: All batch songs get item_status
+- **WHEN** the orchestrator finishes processing a batch (stages A-D + matching)
+- **THEN** create or update `item_status` for every song in the batch
+
+#### Scenario: Songs with suggestions marked as new
+- **WHEN** a song received at least one `match_result`
+- **THEN** call `markItemsNew` for that song
+- **AND** set `is_new = true` on the `item_status` record
+
+#### Scenario: Songs without suggestions still tracked
+- **WHEN** a song received zero `match_result` rows
+- **THEN** still create an `item_status` row (marking the song as pipeline-processed)
+- **AND** set `is_new = false`
+
+#### Scenario: Matching skipped still writes item_status
+- **WHEN** matching was skipped (no playlists)
+- **THEN** still create `item_status` rows for all batch songs
+- **AND** set `is_new = false`
+
+---
+
+### Requirement: Batch Selection Considers Per-User Processing
+
+The batch selection SHALL check both shared data artifacts and per-user `item_status` to determine which songs need processing.
+
+#### Scenario: Song needs data enrichment
+- **WHEN** a song is missing any of the 4 shared data artifacts (audio features, genres, analysis, embedding)
+- **THEN** the song SHALL be selected for pipeline processing regardless of `item_status`
+
+#### Scenario: Song needs matching for this user
+- **WHEN** a song has all 4 shared data artifacts
+- **AND** the song has no `item_status` row for this user
+- **THEN** the song SHALL be selected for pipeline processing (stages A-D will skip, matching will run)
+
+#### Scenario: Song fully processed
+- **WHEN** a song has all 4 shared data artifacts
+- **AND** the song has an `item_status` row for this user
+- **THEN** the song SHALL NOT be selected for pipeline processing
+
+#### Scenario: hasMoreSongs when matching skipped
+- **WHEN** matching was skipped (no playlists)
+- **THEN** the `hasMoreSongs` probe SHALL only check for songs missing shared data artifacts
+- **AND** SHALL NOT count songs that only need matching (to prevent infinite chaining)
+
+---
 
 ## Data Flow
 

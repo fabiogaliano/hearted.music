@@ -4,14 +4,14 @@
  */
 
 import { Result } from "better-result";
-import * as likedSongData from "@/lib/data/liked-song";
+import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { LlmService } from "@/lib/ml/llm/service";
-import { SongAnalysisService } from "@/lib/capabilities/analysis/song-analysis";
-import { LyricsService } from "@/lib/capabilities/lyrics/service";
-import * as songData from "@/lib/data/song";
+import { LlmService } from "@/lib/integrations/llm/service";
+import { SongAnalysisService } from "@/lib/domains/enrichment/content-analysis/song-analysis";
+import { LyricsService } from "@/lib/domains/enrichment/lyrics/service";
+import * as songData from "@/lib/domains/library/songs/queries";
 import { LastFmService } from "@/lib/integrations/lastfm/service";
-import type { AudioFeature } from "@/lib/data/song-audio-feature";
+import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import { AudioFeaturesService } from "@/lib/integrations/audio/service";
 import { ReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 

@@ -33,14 +33,13 @@ window.fetch = function (...args: Parameters<typeof fetch>) {
 			if (pair) auth = pair[1];
 		} else if (typeof init.headers === "object") {
 			auth =
-				(init.headers as Record<string, string>)["Authorization"] ||
-				(init.headers as Record<string, string>)["authorization"] ||
+				(init.headers as Record<string, string>).Authorization ||
+				(init.headers as Record<string, string>).authorization ||
 				null;
 		}
 
 		if (
-			auth &&
-			auth.startsWith("Bearer ") &&
+			auth?.startsWith("Bearer ") &&
 			auth !== lastToken &&
 			isSpotifyUrl(url)
 		) {
@@ -57,7 +56,7 @@ window.fetch = function (...args: Parameters<typeof fetch>) {
 
 // Also log all pathfinder requests and dispatch hash update events
 const pfLog: Array<{ op: string; hash: string; vars: string }> = [];
-(window as any).__pfLog = pfLog;
+(window as unknown as { __pfLog: typeof pfLog }).__pfLog = pfLog;
 
 const HASH_EVENT_NAME = "__hearted_hash";
 const lastSeenHashes = new Map<string, string>();

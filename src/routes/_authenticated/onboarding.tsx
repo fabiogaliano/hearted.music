@@ -15,7 +15,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { Onboarding } from "@/features/onboarding/Onboarding";
-import { ONBOARDING_STEPS } from "@/lib/data/preferences";
+import { ONBOARDING_STEPS } from "@/lib/domains/library/accounts/preferences-queries";
 import { getOnboardingData } from "@/lib/server/onboarding.functions";
 
 /**

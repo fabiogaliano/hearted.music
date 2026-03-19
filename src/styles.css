@@ -62,6 +62,24 @@ code {
   --kbd-text-color: var(--muted-foreground);
   --kbd-bg-color: color-mix(in oklch, var(--foreground) 10%, transparent);
   --kbd-border-color: color-mix(in oklch, var(--muted-foreground) 30%, transparent);
+
+  /* Modular scale (perfect fifth, ratio 1.5) */
+  --scale-ratio: 1.5;
+  --s-3: calc(1rem / var(--scale-ratio) / var(--scale-ratio) / var(--scale-ratio));
+  --s-2: calc(1rem / var(--scale-ratio) / var(--scale-ratio));
+  --s-1: calc(1rem / var(--scale-ratio));
+  --s0: 1rem;
+  --s1: calc(1rem * var(--scale-ratio));
+  --s2: calc(1rem * var(--scale-ratio) * var(--scale-ratio));
+  --s3: calc(1rem * var(--scale-ratio) * var(--scale-ratio) * var(--scale-ratio));
+  --s4: calc(1rem * var(--scale-ratio) * var(--scale-ratio) * var(--scale-ratio) * var(--scale-ratio));
+  --s5: calc(1rem * var(--scale-ratio) * var(--scale-ratio) * var(--scale-ratio) * var(--scale-ratio) * var(--scale-ratio));
+
+  /* Hero-specific fluid tokens */
+  --hero-logo-start-size: clamp(var(--s4), 5vw, var(--s5));
+  --hero-headline-start-size: clamp(var(--s1), 1.8vw, var(--s2));
+  --hero-copy-max-width: clamp(24rem, 30vw, 32rem);
+  --hero-panel-padding-x: clamp(var(--s1), 2vw, var(--s2));
 }
 
 .dark {

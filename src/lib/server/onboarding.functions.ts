@@ -8,13 +8,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
-import { requireAuthSession } from "@/lib/auth.server";
-import { getCount as getLikedSongCount } from "@/lib/data/liked-song";
+import { requireAuthSession } from "@/lib/platform/auth/auth.server";
+import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
+import { requestEnrichment } from "@/lib/workflows/enrichment-pipeline/trigger";
 import {
 	getPlaylistCount,
 	getPlaylists,
 	setPlaylistDestination,
-} from "@/lib/data/playlists";
+} from "@/lib/domains/library/playlists/queries";
 import {
 	clearPhaseJobIds,
 	completeOnboarding,
@@ -25,8 +26,11 @@ import {
 	type OnboardingStep,
 	updateOnboardingStep,
 	updateTheme,
-} from "@/lib/data/preferences";
-import { type PhaseJobIds, PhaseJobIdsSchema } from "@/lib/jobs/progress/types";
+} from "@/lib/domains/library/accounts/preferences-queries";
+import {
+	type PhaseJobIds,
+	PhaseJobIdsSchema,
+} from "@/lib/platform/jobs/progress/types";
 import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
 import { type ThemeColor, themeSchema } from "@/lib/theme/types";
 
@@ -310,6 +314,10 @@ export const savePlaylistDestinations = createServerFn({ method: "POST" })
 				"update_playlist_destinations",
 				firstError.error,
 			);
+		}
+
+		if (data.playlistIds.length > 0) {
+			await requestEnrichment(session.accountId);
 		}
 
 		return { success: true };

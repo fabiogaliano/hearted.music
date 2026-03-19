@@ -4,7 +4,7 @@ import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { extractHue, getPastelColor } from "@/lib/utils/color";
 
 // Mix of musical notes and tiny hearts - music + feelings
-const PARTICLE_SYMBOLS = ["♪", "♥", "♫", "♥", "♩", "♥"];
+const PARTICLE_SYMBOLS = ["♪", "♥\uFE0E", "♫", "♥\uFE0E", "♩", "♥\uFE0E"];
 
 export interface AnimatedHeartProps {
 	shouldAutoPlay?: boolean;
@@ -39,10 +39,12 @@ export function AnimatedHeart({
 			particle.textContent = PARTICLE_SYMBOLS[i % PARTICLE_SYMBOLS.length];
 			particle.style.cssText = `
 				position: absolute;
-				font-size: ${PARTICLE_SYMBOLS[i % PARTICLE_SYMBOLS.length] === "♥" ? "8px" : "10px"};
+				font-size: ${PARTICLE_SYMBOLS[i % PARTICLE_SYMBOLS.length].startsWith("♥") ? "8px" : "10px"};
 				pointer-events: none;
 				left: 50%;
 				top: 50%;
+				opacity: 0;
+				transform: translate(-50%, -50%) scale(0);
 				color: ${pastelColor};
 				text-shadow: 0 1px 2px rgba(0,0,0,0.1);
 			`;
@@ -62,7 +64,7 @@ export function AnimatedHeart({
 				[
 					{
 						transform: "translate(-50%, -50%) scale(0) rotate(0deg)",
-						opacity: 1,
+						opacity: 0,
 					},
 					{
 						transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(1.2) rotate(${rotation}deg)`,
@@ -78,7 +80,7 @@ export function AnimatedHeart({
 					duration: 900 + Math.random() * 400,
 					easing: "cubic-bezier(0.16, 1, 0.3, 1)",
 					delay: i * 50,
-					fill: "forwards",
+					fill: "both",
 				},
 			).onfinish = () => particle.remove();
 		}
@@ -195,6 +197,7 @@ export function AnimatedHeart({
 					-webkit-user-select: none;
 					-webkit-touch-callout: none;
 					touch-action: manipulation;
+					-webkit-tap-highlight-color: transparent;
 				}
 			`}</style>
 			<span
@@ -213,7 +216,7 @@ export function AnimatedHeart({
 				}}
 				aria-label="Heart animation"
 			>
-				{isFilled ? "♥" : "♡"}
+				{isFilled ? "♥\uFE0E" : "♡\uFE0E"}
 			</span>
 		</span>
 	);

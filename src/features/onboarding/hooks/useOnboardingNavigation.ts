@@ -38,8 +38,8 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 import { toast } from "sonner";
-import type { OnboardingStep } from "@/lib/data/preferences";
-import type { PhaseJobIds } from "@/lib/jobs/progress/types";
+import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
+import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import { saveOnboardingStep } from "@/lib/server/onboarding.functions";
 import "../types"; // Import to ensure HistoryState augmentation is loaded
 

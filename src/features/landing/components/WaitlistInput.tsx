@@ -60,7 +60,7 @@ export function WaitlistInput({
 
 	return (
 		<form onSubmit={handleSubmit} className="flex flex-col gap-2">
-			<div className="flex max-w-sm gap-3">
+			<div className="flex w-full max-w-md flex-col gap-3 sm:flex-row">
 				<input
 					type="email"
 					required
@@ -68,7 +68,7 @@ export function WaitlistInput({
 					onChange={(e) => setEmail(e.target.value)}
 					placeholder="Your email"
 					disabled={status === "submitting"}
-					className="flex-1 px-4 py-3 text-sm transition-all duration-300 focus:outline-none disabled:opacity-60"
+					className="w-full flex-1 px-4 py-3 text-sm transition-all duration-300 focus:outline-none disabled:opacity-60"
 					style={{
 						background: isDark ? "rgba(255,255,255,0.15)" : theme.surface,
 						border: `1px solid ${isDark ? "rgba(255,255,255,0.3)" : theme.border}`,
@@ -80,7 +80,7 @@ export function WaitlistInput({
 				<button
 					type="submit"
 					disabled={status === "submitting"}
-					className="px-6 py-3 text-sm tracking-widest uppercase transition-all duration-300 hover:scale-105 disabled:opacity-60 disabled:hover:scale-100"
+					className="w-full px-6 py-3 text-sm tracking-widest uppercase transition-all duration-300 hover:scale-105 disabled:opacity-60 disabled:hover:scale-100 sm:w-auto"
 					style={{
 						background: theme.textOnPrimary,
 						color: theme.primary,

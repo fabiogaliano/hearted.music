@@ -1,21 +1,20 @@
+import { parseSpotifyCommand } from "../../../shared/spotify-command-protocol";
+import { DEFAULT_BACKEND_URL } from "../shared/constants";
+import { updateHash } from "../shared/hash-registry";
+import {
+	fetchAllLikedTracks,
+	fetchPlaylistTracks,
+	getCurrentUserProfile as fetchProfile,
+	fetchUserPlaylists,
+} from "../shared/spotify-client/reads";
+import { getSyncState, setSyncState } from "../shared/storage";
 import type {
 	ExtensionMessage,
 	SpotifyTokenPayload,
-	SpotifyTrackDTO,
-	SpotifyPlaylistDTO,
 	StatusResponse,
 	UserProfile,
 } from "../shared/types";
-import { getSyncState, setSyncState } from "../shared/storage";
-import { updateHash } from "../shared/hash-registry";
-import { queryPathfinder } from "../shared/pathfinder";
-import {
-	extractId,
-	mapPathfinderTrack,
-	mapPathfinderPlaylist,
-	mapPathfinderPlaylistTrack,
-} from "../shared/mappers";
-import { DEFAULT_BACKEND_URL } from "../shared/constants";
+import { handleSpotifyCommand } from "./command-handler";
 
 let cachedToken: SpotifyTokenPayload | null = null;
 let cachedProfile: UserProfile | null = null;
@@ -67,207 +66,6 @@ function isTokenValid(): boolean {
 	return cachedToken !== null && Date.now() < cachedToken.expiresAtMs;
 }
 
-type ProfileResponse = {
-	data: {
-		me: {
-			profile: {
-				uri: string;
-				name: string;
-				username: string;
-				avatar: {
-					sources: Array<{ url: string; width: number; height: number }>;
-				} | null;
-			};
-		};
-	};
-};
-
-async function getCurrentUserProfile(token: string): Promise<UserProfile> {
-	if (cachedProfile) return cachedProfile;
-	const data = await queryPathfinder<ProfileResponse>(
-		token,
-		"profileAttributes",
-		{},
-	);
-	const profile = data.data.me.profile;
-	const avatarSources = profile.avatar?.sources ?? [];
-	// Pick the largest avatar (last in sources array, or sort by width)
-	const largestAvatar =
-		avatarSources.length > 0
-			? avatarSources.reduce((best, s) => (s.width > best.width ? s : best))
-			: null;
-
-	cachedProfile = {
-		spotifyId: extractId(profile.uri),
-		displayName: profile.name,
-		username: profile.username,
-		avatarUrl: largestAvatar?.url ?? null,
-	};
-	console.log(
-		`[hearted.] Current user: ${cachedProfile.displayName} (${profile.uri})`,
-	);
-	return cachedProfile;
-}
-
-type LikedTracksResponse = {
-	data: {
-		me: {
-			library: {
-				tracks: {
-					items: Array<Record<string, any>>;
-					totalCount: number;
-					pagingInfo: { offset: number; limit: number };
-				};
-			};
-		};
-	};
-};
-
-type LibraryV3Response = {
-	data: {
-		me: {
-			libraryV3: {
-				items: Array<Record<string, any>>;
-				totalCount: number;
-				pagingInfo: { offset: number; limit: number };
-			};
-		};
-	};
-};
-
-async function fetchAllLikedTracks(
-	token: string,
-	onProgress: (fetched: number, total: number) => void,
-): Promise<SpotifyTrackDTO[]> {
-	const allTracks: SpotifyTrackDTO[] = [];
-	let offset = 0;
-	const limit = 50;
-	let total = Infinity;
-
-	while (offset < total) {
-		const data = await queryPathfinder<LikedTracksResponse>(
-			token,
-			"fetchLibraryTracks",
-			{ offset, limit },
-		);
-		const tracks = data.data?.me?.library?.tracks;
-		const items = tracks?.items ?? [];
-		total = tracks?.totalCount ?? items.length;
-
-		const mapped = items
-			.map(mapPathfinderTrack)
-			.filter((t): t is SpotifyTrackDTO => t !== null);
-		allTracks.push(...mapped);
-		offset += limit;
-
-		onProgress(allTracks.length, total);
-		console.log(`[hearted.] Fetched ${allTracks.length}/${total} liked tracks`);
-
-		if (offset < total) {
-			await new Promise((r) => setTimeout(r, 200));
-		}
-	}
-
-	return allTracks;
-}
-
-async function fetchUserPlaylists(
-	token: string,
-): Promise<SpotifyPlaylistDTO[]> {
-	const profile = await getCurrentUserProfile(token);
-	const userUri = `spotify:user:${profile.spotifyId}`;
-	const allPlaylists: SpotifyPlaylistDTO[] = [];
-	let offset = 0;
-	const limit = 50;
-	let total = Infinity;
-
-	while (offset < total) {
-		const data = await queryPathfinder<LibraryV3Response>(token, "libraryV3", {
-			filters: ["Playlists"],
-			order: null,
-			textFilter: "",
-			features: ["LIKED_SONGS", "YOUR_EPISODES_V2", "PRERELEASES", "EVENTS"],
-			limit,
-			offset,
-			flatten: true,
-			expandedFolders: [],
-			folderUri: null,
-			includeFoldersWhenFlattening: true,
-		});
-		const library = data.data?.me?.libraryV3;
-		const items = library?.items ?? [];
-		total = library?.totalCount ?? items.length;
-
-		const mapped = items
-			.filter((item: any) => {
-				const typename = item.item?.data?.__typename;
-				if (typename !== "Playlist") return false;
-				const ownerUri = item.item?.data?.ownerV2?.data?.uri;
-				return ownerUri === userUri;
-			})
-			.map(mapPathfinderPlaylist);
-		allPlaylists.push(...mapped);
-		offset += limit;
-
-		console.log(
-			`[hearted.] Fetched ${allPlaylists.length} owned playlists (scanned ${offset}/${total})`,
-		);
-
-		if (offset < total) {
-			await new Promise((r) => setTimeout(r, 200));
-		}
-	}
-
-	return allPlaylists;
-}
-
-type PlaylistContentsResponse = {
-	data: {
-		playlistV2: {
-			content: {
-				items: Array<Record<string, any>>;
-				totalCount: number;
-				pagingInfo: { offset: number; limit: number };
-			};
-		};
-	};
-};
-
-async function fetchPlaylistTracks(
-	token: string,
-	playlistUri: string,
-): Promise<SpotifyTrackDTO[]> {
-	const allTracks: SpotifyTrackDTO[] = [];
-	let offset = 0;
-	const limit = 50;
-	let total = Infinity;
-
-	while (offset < total) {
-		const data = await queryPathfinder<PlaylistContentsResponse>(
-			token,
-			"fetchPlaylistContents",
-			{ uri: playlistUri, offset, limit },
-		);
-		const content = data.data?.playlistV2?.content;
-		const items = content?.items ?? [];
-		total = content?.totalCount ?? items.length;
-
-		const mapped = items
-			.map(mapPathfinderPlaylistTrack)
-			.filter((t: any): t is SpotifyTrackDTO => t !== null);
-		allTracks.push(...mapped);
-		offset += limit;
-
-		console.log(`[hearted.] Playlist tracks: ${allTracks.length}/${total}`);
-
-		if (offset < total) {
-			await new Promise((r) => setTimeout(r, 200));
-		}
-	}
-
-	return allTracks;
-}
-
 async function getApiToken(): Promise<string> {
 	const { apiToken } = await chrome.storage.local.get("apiToken");
 	if (!apiToken) {
@@ -305,26 +103,27 @@ async function performSync(): Promise<SyncResult> {
 		return { count: 0 };
 	}
 	isSyncing = true;
-
+	const token = (cachedToken as SpotifyTokenPayload).accessToken;
 	await setSyncState({ status: "syncing", fetched: 0, total: 0, error: null });
-
 	try {
+		if (!cachedProfile) {
+			cachedProfile = await fetchProfile(token);
+			console.log(`[hearted.] Current user: ${cachedProfile.displayName}`);
+		}
+		// local ref survives cachedProfile being nulled by incoming SPOTIFY_TOKEN messages
+		const profile = cachedProfile;
+
 		const likedSongs = await fetchAllLikedTracks(
-			cachedToken!.accessToken,
+			token,
 			async (fetched, total) => {
 				await setSyncState({ fetched, total });
 			},
 		);
 
-		const playlists = await fetchUserPlaylists(cachedToken!.accessToken);
-		const userProfile = cachedProfile;
+		const userUri = `spotify:user:${profile.spotifyId}`;
+		const playlists = await fetchUserPlaylists(token, userUri);
+		const userProfile = profile;
 
-		await setSyncState({
-			status: "done",
-			fetched: likedSongs.length,
-			total: likedSongs.length,
-			lastSyncAt: Date.now(),
-		});
 		console.log(
 			`[hearted.] Sync complete: ${likedSongs.length} liked songs, ${playlists.length} playlists`,
 		);
@@ -337,13 +136,24 @@ async function performSync(): Promise<SyncResult> {
 			});
 			if (res.ok) {
 				const result = await res.json();
+				await setSyncState({
+					status: "done",
+					fetched: likedSongs.length,
+					total: likedSongs.length,
+					lastSyncAt: Date.now(),
+				});
 				console.log("[hearted.] Backend sync result:", result);
 				return { count: likedSongs.length, backendResult: result };
 			} else {
+				await setSyncState({
+					status: "error",
+					error: `Backend HTTP ${res.status}`,
+				});
 				console.warn(`[hearted.] Backend sync failed: ${res.status}`);
 				return { count: likedSongs.length, backendError: `HTTP ${res.status}` };
 			}
 		} catch {
+			await setSyncState({ status: "error", error: "Backend unreachable" });
 			console.warn("[hearted.] Backend unreachable");
 			return { count: likedSongs.length, backendError: "unreachable" };
 		}
@@ -358,18 +168,25 @@ async function performSync(): Promise<SyncResult> {
 }
 
 // Debug helpers (callable from SW console)
-(self as any).testFetch = async () => {
+type DebugSelf = {
+	testFetch: () => Promise<unknown>;
+	triggerSync: () => Promise<unknown>;
+	fetchPlaylists: () => Promise<unknown>;
+	getProfile: () => Promise<unknown>;
+	fetchPlaylistTracks: (playlistUri: string) => Promise<unknown>;
+};
+const dbg = self as unknown as DebugSelf;
+
+dbg.testFetch = async () => {
 	if (!isTokenValid()) return console.error("[hearted.] No valid token");
-	const data = await queryPathfinder(
-		cachedToken!.accessToken,
-		"fetchLibraryTracks",
-		{ offset: 0, limit: 5 },
-	);
-	console.log("[hearted.] Raw response:", data);
-	return data;
+	const token = (cachedToken as SpotifyTokenPayload).accessToken;
+	const tracks = await fetchAllLikedTracks(token);
+	const sample = tracks.slice(0, 5);
+	console.log("[hearted.] Sample tracks:", sample);
+	return sample;
 };
 
-(self as any).triggerSync = async () => {
+dbg.triggerSync = async () => {
 	try {
 		const result = await performSync();
 		console.log(`[hearted.] triggerSync result:`, result);
@@ -379,28 +196,41 @@ async function performSync(): Promise<SyncResult> {
 	}
 };
 
-(self as any).fetchPlaylists = async () => {
+dbg.fetchPlaylists = async () => {
 	if (!isTokenValid()) return console.error("[hearted.] No valid token");
-	const playlists = await fetchUserPlaylists(cachedToken!.accessToken);
+	const token = (cachedToken as SpotifyTokenPayload).accessToken;
+	if (!cachedProfile) {
+		cachedProfile = await fetchProfile(token);
+	}
+	const userUri = `spotify:user:${cachedProfile.spotifyId}`;
+	const playlists = await fetchUserPlaylists(token, userUri);
 	console.log("[hearted.] Playlists:", playlists);
 	return playlists;
 };
 
-(self as any).getProfile = async () => {
+dbg.getProfile = async () => {
 	if (!isTokenValid()) return console.error("[hearted.] No valid token");
-	const profile = await getCurrentUserProfile(cachedToken!.accessToken);
+	const token = (cachedToken as SpotifyTokenPayload).accessToken;
+	const profile = await fetchProfile(token);
+	cachedProfile = profile;
 	console.log("[hearted.] Profile:", profile);
 	return profile;
 };
 
-(self as any).fetchPlaylistTracks = async (playlistUri: string) => {
+dbg.fetchPlaylistTracks = async (playlistUri: string) => {
 	if (!isTokenValid()) return console.error("[hearted.] No valid token");
-	const tracks = await fetchPlaylistTracks(
-		cachedToken!.accessToken,
-		playlistUri,
-	);
+	const token = (cachedToken as SpotifyTokenPayload).accessToken;
+	const tracks = await fetchPlaylistTracks(token, playlistUri);
 	console.log("[hearted.] Playlist tracks:", tracks);
 	return tracks;
+};
+
+const tokenProvider = {
+	getCachedToken: () => cachedToken,
+	setCachedToken: (token: SpotifyTokenPayload) => {
+		cachedToken = token;
+	},
+	isTokenValid,
 };
 
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -458,13 +288,6 @@ chrome.runtime.onMessageExternal.addListener(
 				}
 
 				sendResponse({ type: "CONNECTED" });
-
-				// Auto-sync if Spotify token is already available (user has Spotify open)
-				if (isTokenValid()) {
-					performSync().catch((err) =>
-						console.error("[hearted.] Auto-sync on connect:", err),
-					);
-				}
 			})();
 			return true;
 		}
@@ -519,6 +342,32 @@ chrome.runtime.onMessageExternal.addListener(
 			return true;
 		}
 
+		if (message.type === "SPOTIFY_COMMAND") {
+			const parsed = parseSpotifyCommand(message);
+			if (!parsed.ok) {
+				const raw = message as { commandId?: unknown };
+				const commandId =
+					typeof raw.commandId === "string" ? raw.commandId : "invalid-command";
+				sendResponse({
+					ok: false,
+					errorCode: "INVALID_PARAMS",
+					message: parsed.error,
+					retryable: false,
+					commandId,
+				});
+				return true;
+			}
+
+			(async () => {
+				const response = await handleSpotifyCommand(
+					parsed.value,
+					tokenProvider,
+				);
+				sendResponse(response);
+			})();
+			return true;
+		}
+
 		return false;
 	},
 );
@@ -536,17 +385,6 @@ chrome.runtime.onMessage.addListener(
 				);
 				console.log(`[hearted.] Token received (expires in ${expiresIn}s)`);
 				sendResponse({ ok: true });
-
-				// Auto-sync when connected to the app and this is a real user token
-				if (!message.payload.isAnonymous) {
-					chrome.storage.local.get("apiToken", ({ apiToken }) => {
-						if (apiToken && !isSyncing) {
-							performSync().catch((err) =>
-								console.error("[hearted.] Auto-sync on token:", err),
-							);
-						}
-					});
-				}
 				break;
 			}
 
@@ -560,7 +398,7 @@ chrome.runtime.onMessage.addListener(
 			case "GET_TOKEN": {
 				sendResponse(
 					isTokenValid()
-						? { token: cachedToken!.accessToken }
+						? { token: (cachedToken as SpotifyTokenPayload).accessToken }
 						: { token: null },
 				);
 				break;

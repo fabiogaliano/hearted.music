@@ -2,42 +2,50 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
-import { requireAuthSession } from "@/lib/auth.server";
+import { requireAuthSession } from "@/lib/platform/auth/auth.server";
 import { getLastCompletedSync } from "@/lib/data/jobs";
 import {
 	getCount as getLikedSongCount,
 	getRecentWithDetails,
-} from "@/lib/data/liked-song";
-import { getAnalyzedCountForAccount } from "@/lib/data/song-analysis";
+	getStats as getLikedSongStats,
+} from "@/lib/domains/library/liked-songs/queries";
+import { getAnalyzedCountForAccount } from "@/lib/domains/enrichment/content-analysis/queries";
 import type { ActivityItem } from "@/features/dashboard/types";
 
 export interface DashboardStats {
 	totalSongs: number;
 	analyzedPercent: number;
 	lastSyncAt: string | null;
+	newSuggestions: number;
 }
 
 export const getDashboardStats = createServerFn({ method: "GET" }).handler(
 	async (): Promise<DashboardStats> => {
 		const { session } = await requireAuthSession();
 
-		const [totalResult, analyzedResult, lastSyncResult] = await Promise.all([
-			getLikedSongCount(session.accountId),
-			getAnalyzedCountForAccount(session.accountId),
-			getLastCompletedSync(session.accountId),
-		]);
+		const [totalResult, analyzedResult, lastSyncResult, statsResult] =
+			await Promise.all([
+				getLikedSongCount(session.accountId),
+				getAnalyzedCountForAccount(session.accountId),
+				getLastCompletedSync(session.accountId),
+				getLikedSongStats(session.accountId),
+			]);
 
 		const totalSongs = Result.isOk(totalResult) ? totalResult.value : 0;
 		const analyzedCount = Result.isOk(analyzedResult)
 			? analyzedResult.value
 			: 0;
 		const lastSync = Result.isOk(lastSyncResult) ? lastSyncResult.value : null;
+		const newSuggestions = Result.isOk(statsResult)
+			? Number(statsResult.value.new_suggestions)
+			: 0;
 
 		return {
 			totalSongs,
 			analyzedPercent:
 				totalSongs > 0 ? Math.round((analyzedCount / totalSongs) * 100) : 0,
 			lastSyncAt: lastSync?.completed_at ?? null,
+			newSuggestions,
 		};
 	},
 );

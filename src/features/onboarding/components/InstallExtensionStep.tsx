@@ -9,6 +9,7 @@ import {
 	connectExtension,
 	getSpotifyConnectionStatus,
 	isExtensionInstalled,
+	triggerExtensionSync,
 } from "@/lib/extension/detect";
 import { resetSyncJobs } from "@/lib/server/onboarding.functions";
 import { toast } from "sonner";
@@ -213,8 +214,13 @@ export function InstallExtensionStep() {
 
 			// Clear stale phaseJobIds so SyncingStep starts fresh ("Waiting for extension")
 			// instead of subscribing to stale jobs from a previous run.
-			// The extension will auto-trigger sync on the next valid Spotify token.
 			await resetSyncJobs();
+
+			// Kick off the sync now — the extension has both the API token (from CONNECT)
+			// and the Spotify token (from content script). Without this, nothing bridges
+			// "ready" to "syncing" and the user stalls on "Waiting for Spotify".
+			triggerExtensionSync();
+
 			await goToStep("syncing", { phaseJobIds: null });
 		} catch (err) {
 			console.error("[hearted.] handleAccept failed:", err);
