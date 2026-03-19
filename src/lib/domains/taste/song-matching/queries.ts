@@ -198,7 +198,7 @@ export async function getLatestPlaylistSetHash(
 
 /**
  * Gets all match results for a context.
- * Results are ordered by score descending.
+ * Results are ordered by score descending, with song_id tiebreaker for determinism.
  */
 export function getMatchResults(
 	contextId: string,
@@ -209,7 +209,8 @@ export function getMatchResults(
 			.from("match_result")
 			.select("*")
 			.eq("context_id", contextId)
-			.order("score", { ascending: false }),
+			.order("score", { ascending: false })
+			.order("song_id", { ascending: true }),
 	);
 }
 

@@ -206,6 +206,9 @@ export function LandingPanel({
 							song={song}
 							analysis={analysis}
 							baseTheme={baseTheme}
+							heroHeight={
+								artistImageUrl ? LAYOUT.heroHeight : LAYOUT.heroHeightNoImage
+							}
 							onClose={noop}
 							onNext={onNext}
 							onPrevious={onPrev}

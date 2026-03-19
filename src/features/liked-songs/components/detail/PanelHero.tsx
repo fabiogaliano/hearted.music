@@ -120,6 +120,7 @@ interface PanelHeroProps {
 	song: LikedSong;
 	analysis?: AnalysisContent;
 	baseTheme: ThemeConfig;
+	heroHeight: number;
 	onClose: () => void;
 	onNext: () => void;
 	onPrevious: () => void;
@@ -154,6 +155,7 @@ export function PanelHero({
 	song,
 	analysis,
 	baseTheme,
+	heroHeight: heroHeightProp,
 	onClose,
 	onNext,
 	onPrevious,
@@ -177,8 +179,8 @@ export function PanelHero({
 		? LAYOUT.paddingX
 		: LAYOUT.paddingX + LAYOUT.albumArtExpanded + 16;
 	const expandedTextTop = stackMetaBelowArt
-		? LAYOUT.heroHeight - 18 + 16
-		: LAYOUT.heroHeight - LAYOUT.albumArtExpanded - 18;
+		? heroHeightProp - 18 + 16
+		: heroHeightProp - LAYOUT.albumArtExpanded - 18;
 	const expandedTextHeight = stackMetaBelowArt ? 84 : LAYOUT.albumArtExpanded;
 
 	return (
@@ -198,7 +200,7 @@ export function PanelHero({
 					ref={heroRef}
 					className="absolute inset-x-0 top-0"
 					style={{
-						height: `${LAYOUT.heroHeight}px`,
+						height: `${heroHeightProp}px`,
 						pointerEvents: "none",
 					}}
 				>
@@ -225,7 +227,7 @@ export function PanelHero({
 						<div
 							ref={artistImageRef}
 							className="absolute inset-0"
-							style={{ background: colors.bgLight }}
+							style={{ background: colors.bg }}
 						/>
 					)}
 
@@ -253,7 +255,7 @@ export function PanelHero({
 								left: `${LAYOUT.paddingX}px`,
 								width: `${LAYOUT.albumArtExpanded}px`,
 								height: `${LAYOUT.albumArtExpanded}px`,
-								top: `${LAYOUT.heroHeight - LAYOUT.albumArtExpanded - 18}px`,
+								top: `${heroHeightProp - LAYOUT.albumArtExpanded - 18}px`,
 								transform: `translateY(${LAYOUT.albumArtExpanded / 3}px)`,
 								boxShadow: isDark
 									? `0 8px 32px ${colors.bg}`

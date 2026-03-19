@@ -25,6 +25,7 @@ import { extractHue } from "@/lib/utils/color";
 import type { AnalysisContent, LikedSong } from "../types";
 import { PanelContent } from "./detail/PanelContent";
 import { PanelHero } from "./detail/PanelHero";
+import { LAYOUT } from "./detail/panel-constants";
 import { getThemedDarkColors } from "./detail/themed-dark-colors";
 import type { ColorProps, PanelColors } from "./detail/types";
 import { usePanelAnimation } from "./detail/usePanelAnimation";
@@ -92,6 +93,9 @@ export function SongDetailPanel({
 	const [addedTo, setAddedTo] = useState<number[]>([]);
 
 	const analysis = song.analysis?.analysis as AnalysisContent | undefined;
+	const heroHeight = artistImageUrl
+		? LAYOUT.heroHeight
+		: LAYOUT.heroHeightNoImage;
 
 	const colorProps: ColorProps = {
 		text: panelColors.text,
@@ -200,6 +204,7 @@ export function SongDetailPanel({
 		panelColors,
 		hasHeadline: !!analysis?.headline,
 		sonicTextureText: analysis?.sonic_texture,
+		heroHeight,
 	});
 
 	if (!startRect) return null;
@@ -250,6 +255,7 @@ export function SongDetailPanel({
 						song={song}
 						analysis={analysis}
 						baseTheme={baseTheme}
+						heroHeight={heroHeight}
 						onClose={onClose}
 						onNext={onNext}
 						onPrevious={onPrevious}

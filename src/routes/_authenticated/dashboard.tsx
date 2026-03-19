@@ -2,44 +2,31 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Dashboard } from "@/features/dashboard/Dashboard";
 import {
 	getDashboardStats,
+	getMatchPreviews,
 	getRecentActivity,
 } from "@/lib/server/dashboard.functions";
 import { formatRelativeTime } from "@/lib/shared/utils/format-time";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
 	loader: async () => {
-		const [stats, recentActivity] = await Promise.all([
+		const [stats, recentActivity, matchPreviews] = await Promise.all([
 			getDashboardStats(),
 			getRecentActivity(),
+			getMatchPreviews(),
 		]);
-		return { stats, recentActivity };
+		return { stats, recentActivity, matchPreviews };
 	},
 	component: DashboardHome,
 });
 
 function DashboardHome() {
 	const { account } = Route.useRouteContext();
-	const { stats, recentActivity } = Route.useLoaderData();
+	const { stats, recentActivity, matchPreviews } = Route.useLoaderData();
 	const displayName = account?.display_name ?? account?.email ?? null;
 
 	const lastSyncText = stats.lastSyncAt
 		? formatRelativeTime(stats.lastSyncAt)
 		: "Never";
-
-	const mockMatchPreviews = [
-		{
-			id: 1,
-			image: "https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36",
-		},
-		{
-			id: 2,
-			image: "https://i.scdn.co/image/ab67616d0000b273bd26ede1ae69327010d49946",
-		},
-		{
-			id: 3,
-			image: "https://i.scdn.co/image/ab67616d0000b273712701c5e263efc8726b1464",
-		},
-	];
 
 	return (
 		<Dashboard
@@ -52,7 +39,7 @@ function DashboardHome() {
 				reviewCount: stats.newSuggestions,
 			}}
 			lastSyncText={lastSyncText}
-			matchPreviews={mockMatchPreviews}
+			matchPreviews={matchPreviews}
 			recentActivity={recentActivity}
 		/>
 	);

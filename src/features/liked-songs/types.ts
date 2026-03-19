@@ -26,6 +26,7 @@ export interface LikedSong {
 		name: string;
 		artist: string;
 		artist_id: string | null;
+		artist_image_url: string | null;
 		album: string | null;
 		image_url: string | null;
 		genres: string[];

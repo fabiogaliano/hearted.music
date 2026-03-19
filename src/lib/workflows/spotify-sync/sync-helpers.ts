@@ -6,10 +6,13 @@
  */
 
 import { Result } from "better-result";
+import { z } from "zod";
 import type { LikedSong } from "@/lib/domains/library/liked-songs/queries";
 import * as likedSongsData from "@/lib/domains/library/liked-songs/queries";
+import * as artists from "@/lib/domains/library/artists/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import * as songs from "@/lib/domains/library/songs/queries";
+import { appFetch } from "@/lib/integrations/spotify/app-auth";
 import { completeJob, failJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import { emitError, emitStatus } from "@/lib/platform/jobs/progress/helpers";
 import type { DbError } from "@/lib/shared/errors/database";
@@ -91,11 +94,71 @@ export function mapSpotifyTrackToSongData(st: SpotifyTrackDTO) {
 	};
 }
 
+const SpotifyArtistsSchema = z.object({
+	artists: z.array(
+		z
+			.object({
+				id: z.string(),
+				name: z.string(),
+				images: z.array(z.object({ url: z.string() })),
+			})
+			.nullable(),
+	),
+});
+
+/**
+ * Fetches artist images from Spotify and upserts to the artist table.
+ * Batches in groups of 50 (Spotify API limit).
+ * Best-effort: logs warnings but doesn't fail the sync.
+ */
+async function syncArtists(tracks: SpotifyTrackDTO[]): Promise<void> {
+	const uniqueArtists = new Map<string, string>();
+	for (const st of tracks) {
+		for (const a of st.track.artists) {
+			if (!uniqueArtists.has(a.id)) {
+				uniqueArtists.set(a.id, a.name);
+			}
+		}
+	}
+
+	if (uniqueArtists.size === 0) return;
+
+	const artistIds = [...uniqueArtists.keys()];
+	const BATCH_SIZE = 50;
+
+	for (let i = 0; i < artistIds.length; i += BATCH_SIZE) {
+		const batch = artistIds.slice(i, i + BATCH_SIZE);
+		const result = await appFetch(
+			`/artists?ids=${batch.join(",")}`,
+			SpotifyArtistsSchema,
+		);
+
+		if (Result.isError(result)) {
+			console.warn(
+				"Failed to fetch artist images batch:",
+				result.error.message,
+			);
+			continue;
+		}
+
+		const artistData = result.value.artists.filter(Boolean).map((a) => ({
+			spotify_id: a!.id,
+			name: a!.name,
+			image_url: a!.images[0]?.url ?? null,
+		}));
+
+		const upsertResult = await artists.upsert(artistData);
+		if (Result.isError(upsertResult)) {
+			console.warn("Failed to upsert artists:", upsertResult.error.message);
+		}
+	}
+}
+
 /**
  * Imports tracks into a user's liked songs.
- * Handles both the global song catalog and user-specific linking.
+ * Handles both the global song catalog, artist metadata, and user-specific linking.
  *
- * Flow: Transform → Upsert to global catalog → Link to user's liked_songs
+ * Flow: Transform → Upsert to global catalog → Sync artists → Link to user's liked_songs
  *
  * Why two tables? Songs are shared across users (global catalog),
  * but liked_songs is per-user (tracks which songs a user has liked).
@@ -112,13 +175,18 @@ export async function importLikedTracks(
 	}
 	const newSongs = upsertedResult.value;
 
+	// Best-effort: sync artist images in parallel with liked_song linking
 	const songMap = new Map(newSongs.map((s) => [s.spotify_id, s]));
 	const likedSongData = tracks.flatMap((st: SpotifyTrackDTO) => {
 		const song = songMap.get(st.track.id);
 		return song ? [{ song_id: song.id, liked_at: st.added_at }] : [];
 	});
 
-	const likedResult = await likedSongsData.upsert(accountId, likedSongData);
+	const [likedResult] = await Promise.all([
+		likedSongsData.upsert(accountId, likedSongData),
+		syncArtists(tracks),
+	]);
+
 	if (Result.isError(likedResult)) {
 		return Result.err(likedResult.error);
 	}

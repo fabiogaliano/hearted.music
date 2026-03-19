@@ -24,7 +24,6 @@ import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 import { SongCard } from "./components/SongCard";
 import { SongDetailPanel } from "./components/SongDetailPanel";
-import { useArtistImage } from "./hooks/useArtistImage";
 import { useInfiniteScroll } from "./hooks/useInfiniteScroll";
 import { useSongExpansion } from "./hooks/useSongExpansion";
 import {
@@ -107,11 +106,7 @@ export function LikedSongsPage({
 		initialSlug: selectedSlug,
 	});
 
-	// Artist image for detail view background - only fetch when expanded
-	// Uses artist_id for efficient caching (same artist across tracks = 1 fetch)
-	const { artistImageUrl } = useArtistImage(selectedSong?.track.artist_id, {
-		enabled: isExpanded,
-	});
+	const artistImageUrl = selectedSong?.track.artist_image_url ?? undefined;
 
 	// Stats - fetched from server for accurate totals independent of pagination
 	const { data: stats } = useQuery(likedSongsStatsQueryOptions(accountId));

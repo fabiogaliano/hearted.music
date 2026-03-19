@@ -104,10 +104,9 @@ function MatchingPageContent({
 		queryClient.prefetchQuery(songMatchesQueryOptions(contextId, offset + 2));
 	}, [queryClient, contextId, offset, songData]);
 
-	// Track presented song and accumulate for completion screen
+	// Accumulate song info for completion screen (mark-seen happens on user action)
 	useEffect(() => {
 		if (!songData) return;
-		addPresented(songData.song.id);
 		setRecentSongs((prev) => {
 			if (prev.some((s) => s.id === songData.song.id)) return prev;
 			return [
@@ -120,7 +119,7 @@ function MatchingPageContent({
 			];
 		});
 		setAddedTo((prev) => (prev.length === 0 ? prev : []));
-	}, [songData, addPresented]);
+	}, [songData]);
 
 	const currentSong: SongForMatching | null = songData?.song ?? null;
 	const currentMatches: Playlist[] =
@@ -141,6 +140,7 @@ function MatchingPageContent({
 
 	const handleAdd = async (playlistId: string) => {
 		if (!currentSong) return;
+		addPresented(currentSong.id);
 		await addSongToPlaylist({
 			data: {
 				songId: currentSong.id,
@@ -157,6 +157,7 @@ function MatchingPageContent({
 
 	const handleDismiss = async () => {
 		if (!currentSong) return;
+		addPresented(currentSong.id);
 		const playlistIds = currentMatches.map((m) => m.id);
 		if (playlistIds.length > 0) {
 			await dismissSong({ data: { songId: currentSong.id, playlistIds } });
@@ -169,6 +170,7 @@ function MatchingPageContent({
 	};
 
 	const handleNext = () => {
+		if (currentSong) addPresented(currentSong.id);
 		setOffset((prev) => prev + 1);
 	};
 
