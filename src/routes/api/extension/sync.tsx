@@ -37,8 +37,10 @@ import {
 	requestEnrichment,
 	checkAndRematch,
 } from "@/lib/workflows/enrichment-pipeline/trigger";
+import { triggerLightweightEnrichment } from "@/lib/workflows/playlist-sync/trigger-lightweight-enrichment";
+import * as playlistData from "@/lib/domains/library/playlists/queries";
 import { emitItem, emitStatus } from "@/lib/platform/jobs/progress/helpers";
-import { completeJob } from "@/lib/platform/jobs/lifecycle";
+import { completeJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type {
 	SpotifyService,
@@ -81,9 +83,15 @@ const SpotifyPlaylistDTOSchema = z.object({
 	image_url: z.string().nullable(),
 });
 
+const PlaylistTrackEntrySchema = z.object({
+	playlistSpotifyId: z.string(),
+	tracks: z.array(SpotifyTrackDTOSchema),
+});
+
 const SyncPayloadSchema = z.object({
 	likedSongs: z.array(SpotifyTrackDTOSchema),
 	playlists: z.array(SpotifyPlaylistDTOSchema),
+	playlistTracks: z.array(PlaylistTrackEntrySchema).optional(),
 	userProfile: z
 		.object({
 			spotifyId: z.string(),
@@ -200,6 +208,7 @@ export const Route = createFileRoute("/api/extension/sync")({
 				const likedSongs = payload.likedSongs as unknown as SpotifyTrackDTO[];
 				const extensionPlaylists =
 					payload.playlists as unknown as SpotifyPlaylistDTO[];
+				const incomingPlaylistTracks = payload.playlistTracks ?? [];
 
 				// Create job records for SSE progress tracking
 				const [songsJobResult, playlistsJobResult, tracksJobResult] =
@@ -247,13 +256,16 @@ export const Route = createFileRoute("/api/extension/sync")({
 					count: 0,
 					total: extensionPlaylists.length,
 				});
-				// Extension doesn't sync playlist tracks — emit total 0 for this phase
+				const playlistTrackTotal = incomingPlaylistTracks.reduce(
+					(sum, pt) => sum + pt.tracks.length,
+					0,
+				);
 				emitItem(phaseJobIds.playlist_tracks, {
 					itemId: "playlist_tracks",
 					itemKind: "song",
 					status: "in_progress",
 					count: 0,
-					total: 0,
+					total: playlistTrackTotal,
 				});
 
 				const results: Record<string, unknown> = {};
@@ -373,16 +385,90 @@ export const Route = createFileRoute("/api/extension/sync")({
 					await completeJob(phaseJobIds.playlists);
 				}
 
-				// Phase 3: Playlist tracks — extension doesn't sync these separately
-				emitItem(phaseJobIds.playlist_tracks, {
-					itemId: "playlist_tracks",
-					itemKind: "song",
-					status: "succeeded",
-					count: 0,
-					total: 0,
-				});
-				emitStatus(phaseJobIds.playlist_tracks, "completed");
-				await completeJob(phaseJobIds.playlist_tracks);
+				// Phase 3: Sync playlist tracks
+				if (incomingPlaylistTracks.length > 0) {
+					await startJob(phaseJobIds.playlist_tracks);
+
+					// Resolve DB playlists by spotify_id
+					const dbPlaylistsResult = await playlistData.getPlaylists(accountId);
+					const dbPlaylistMap = Result.isOk(dbPlaylistsResult)
+						? new Map(dbPlaylistsResult.value.map((p) => [p.spotify_id, p]))
+						: new Map<string, playlistData.Playlist>();
+
+					let tracksProcessed = 0;
+					const changedPlaylistIds: string[] = [];
+
+					const playlistSync = new PlaylistSyncService(
+						null as unknown as SpotifyService,
+					);
+
+					for (const entry of incomingPlaylistTracks) {
+						const dbPlaylist = dbPlaylistMap.get(entry.playlistSpotifyId);
+						if (!dbPlaylist) continue;
+
+						const trackResult = await playlistSync.syncPlaylistTracksFromData(
+							accountId,
+							dbPlaylist,
+							entry.tracks as unknown as SpotifyTrackDTO[],
+						);
+
+						if (Result.isOk(trackResult)) {
+							tracksProcessed += entry.tracks.length;
+							if (
+								trackResult.value.added > 0 ||
+								trackResult.value.removed > 0
+							) {
+								changedPlaylistIds.push(dbPlaylist.id);
+							}
+							emitItem(phaseJobIds.playlist_tracks, {
+								itemId: "playlist_tracks",
+								itemKind: "song",
+								status: "in_progress",
+								count: tracksProcessed,
+								total: playlistTrackTotal,
+							});
+						}
+					}
+
+					emitItem(phaseJobIds.playlist_tracks, {
+						itemId: "playlist_tracks",
+						itemKind: "song",
+						status: "succeeded",
+						count: tracksProcessed,
+						total: playlistTrackTotal,
+					});
+					emitStatus(phaseJobIds.playlist_tracks, "completed");
+					await completeJob(phaseJobIds.playlist_tracks);
+
+					results.playlistTracks = {
+						total: tracksProcessed,
+						playlistsSynced: incomingPlaylistTracks.length,
+						playlistsChanged: changedPlaylistIds.length,
+					};
+
+					// Identify affected destination playlists and enqueue lightweight enrichment
+					const destResult =
+						await playlistData.getDestinationPlaylists(accountId);
+					if (Result.isOk(destResult)) {
+						const destIds = new Set(destResult.value.map((p) => p.id));
+						const affectedDests = changedPlaylistIds.filter((id) =>
+							destIds.has(id),
+						);
+						if (affectedDests.length > 0) {
+							await triggerLightweightEnrichment(accountId, "sync");
+						}
+					}
+				} else {
+					emitItem(phaseJobIds.playlist_tracks, {
+						itemId: "playlist_tracks",
+						itemKind: "song",
+						status: "succeeded",
+						count: 0,
+						total: 0,
+					});
+					emitStatus(phaseJobIds.playlist_tracks, "completed");
+					await completeJob(phaseJobIds.playlist_tracks);
+				}
 
 				// Phase 4: Request enrichment if account has songs
 				const enrichmentJobId = await requestEnrichment(accountId);

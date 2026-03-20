@@ -17,7 +17,7 @@ import type { Tables, TablesInsert } from "@/lib/data/database.types";
 /** Song row type */
 export type Song = Tables<"song">;
 
-/** Insert type for upserting songs */
+/** Insert type for upserting songs (includes all fields) */
 export type UpsertData = Pick<
 	TablesInsert<"song">,
 	| "spotify_id"
@@ -30,6 +30,22 @@ export type UpsertData = Pick<
 	| "artist_ids"
 	| "duration_ms"
 	| "genres"
+	| "popularity"
+	| "preview_url"
+>;
+
+/** Catalog-only upsert: sync owns these fields, enrichment owns genres */
+export type CatalogUpsertData = Pick<
+	TablesInsert<"song">,
+	| "spotify_id"
+	| "name"
+	| "album_id"
+	| "album_name"
+	| "image_url"
+	| "isrc"
+	| "artists"
+	| "artist_ids"
+	| "duration_ms"
 	| "popularity"
 	| "preview_url"
 >;
@@ -130,6 +146,41 @@ export function upsert(data: UpsertData[]): Promise<Result<Song[], DbError>> {
 					artists: song.artists,
 					duration_ms: song.duration_ms,
 					genres: song.genres,
+					popularity: song.popularity,
+					preview_url: song.preview_url,
+				})),
+				{ onConflict: "spotify_id" },
+			)
+			.select(),
+	);
+}
+
+/**
+ * Creates or updates songs with catalog metadata only.
+ * Never touches enrichment-owned fields (genres, etc.).
+ * Use this from sync flows; use updateGenres/updateGenresBatch for enrichment.
+ */
+export function upsertCatalog(
+	data: CatalogUpsertData[],
+): Promise<Result<Song[], DbError>> {
+	if (data.length === 0) {
+		return Promise.resolve(Result.ok<Song[], DbError>([]));
+	}
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMany(
+		supabase
+			.from("song")
+			.upsert(
+				data.map((song) => ({
+					spotify_id: song.spotify_id,
+					name: song.name,
+					album_id: song.album_id,
+					album_name: song.album_name,
+					image_url: song.image_url,
+					isrc: song.isrc,
+					artists: song.artists,
+					artist_ids: song.artist_ids,
+					duration_ms: song.duration_ms,
 					popularity: song.popularity,
 					preview_url: song.preview_url,
 				})),

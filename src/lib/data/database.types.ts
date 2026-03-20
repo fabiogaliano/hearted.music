@@ -1174,6 +1174,30 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
+			claim_pending_lightweight_enrichment_job: {
+				Args: never;
+				Returns: {
+					account_id: string;
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error: string | null;
+					heartbeat_at: string | null;
+					id: string;
+					max_attempts: number;
+					progress: Json | null;
+					started_at: string | null;
+					status: Database["public"]["Enums"]["job_status"];
+					type: Database["public"]["Enums"]["job_type"];
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 			claim_pending_rematch_job: {
 				Args: never;
 				Returns: {
@@ -1351,7 +1375,8 @@ export type Database = {
 				| "playlist_profiling"
 				| "genre_tagging"
 				| "enrichment"
-				| "rematch";
+				| "rematch"
+				| "playlist_lightweight_enrichment";
 			theme: "blue" | "green" | "rose" | "lavender";
 		};
 		CompositeTypes: {
@@ -1501,6 +1526,7 @@ export const Constants = {
 				"genre_tagging",
 				"enrichment",
 				"rematch",
+				"playlist_lightweight_enrichment",
 			],
 			theme: ["blue", "green", "rose", "lavender"],
 		},

@@ -4,6 +4,7 @@ import { updateHeartbeat } from "@/lib/data/jobs";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/types";
 import { executeWorkerChunk } from "@/lib/workflows/enrichment-pipeline/orchestrator";
 import { requestRematch } from "@/lib/workflows/enrichment-pipeline/rematch";
+import { runLightweightEnrichment } from "@/lib/workflows/playlist-sync/lightweight-enrichment";
 import { workerConfig } from "./config";
 import { log } from "./logger";
 
@@ -48,6 +49,50 @@ export async function executeJob(job: Job): Promise<ExecuteResult> {
 			accountId,
 			batchSequence: progress.batchSequence ?? 0,
 		};
+	} finally {
+		heartbeat.stop();
+	}
+}
+
+/**
+ * Executes a lightweight enrichment job: audio features, genres, lyrics embeddings
+ * for playlist-only songs, then triggers reprofiling and rematch.
+ * Single-shot — no chaining or batching.
+ */
+export async function executeLightweightEnrichmentJob(job: Job): Promise<void> {
+	const heartbeat = startHeartbeat(job.id);
+	const accountId = job.account_id;
+
+	log.info("lightweight-enrichment-start", { jobId: job.id, accountId });
+
+	try {
+		const stats = await runLightweightEnrichment({ accountId });
+
+		log.info("lightweight-enrichment-complete", {
+			jobId: job.id,
+			accountId,
+			songsScanned: stats.songsScanned,
+			audioFilled: stats.audio.filled,
+			genresFilled: stats.genres.filled,
+			lyricsStored: stats.lyricsEmbeddings.stored,
+		});
+
+		// Trigger rematch if we enriched destination playlist songs
+		if (
+			stats.affectedPlaylistIds.length > 0 &&
+			(stats.audio.filled > 0 ||
+				stats.genres.filled > 0 ||
+				stats.lyricsEmbeddings.stored > 0)
+		) {
+			const rematchResult = await requestRematch(accountId);
+			if (Result.isError(rematchResult)) {
+				log.warn("lightweight-enrichment-rematch-failed", {
+					jobId: job.id,
+					accountId,
+					error: rematchResult.error.message,
+				});
+			}
+		}
 	} finally {
 		heartbeat.stop();
 	}

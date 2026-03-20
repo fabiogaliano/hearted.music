@@ -2,6 +2,7 @@ import { Result } from "better-result";
 import type { Job } from "@/lib/data/jobs";
 import {
 	claimEnrichmentJob,
+	claimLightweightEnrichmentJob,
 	claimRematchJob,
 	markJobCompleted,
 	markJobFailed,
@@ -13,7 +14,11 @@ import {
 } from "@/lib/domains/library/accounts/preferences-queries";
 import { chainNextChunk } from "./chain";
 import { workerConfig } from "./config";
-import { executeJob, executeRematchJob } from "./execute";
+import {
+	executeJob,
+	executeLightweightEnrichmentJob,
+	executeRematchJob,
+} from "./execute";
 import { log } from "./logger";
 
 let shouldPoll = true;
@@ -109,6 +114,28 @@ async function processEnrichmentJob(job: Job): Promise<void> {
 	}
 }
 
+async function processLightweightEnrichmentJob(job: Job): Promise<void> {
+	try {
+		await executeLightweightEnrichmentJob(job);
+
+		const completedResult = await markJobCompleted(job.id);
+		if (Result.isError(completedResult)) {
+			log.error("mark-completed-failed", {
+				jobId: job.id,
+				error: completedResult.error.message,
+			});
+		}
+		log.info("lightweight-enrichment-job-complete", {
+			jobId: job.id,
+			accountId: job.account_id,
+		});
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		await markJobFailedSafe(job, message);
+		throw error;
+	}
+}
+
 async function processRematchJob(job: Job): Promise<void> {
 	try {
 		await executeRematchJob(job);
@@ -184,6 +211,18 @@ export async function startPolling(): Promise<void> {
 		}
 		job = enrichResult.value;
 
+		// Lightweight enrichment gets second priority — enriches destination playlist songs
+		if (!job) {
+			const lightweightResult = await claimLightweightEnrichmentJob();
+			if (Result.isError(lightweightResult)) {
+				log.error("claim-lightweight-error", {
+					error: lightweightResult.error.message,
+				});
+			} else {
+				job = lightweightResult.value;
+			}
+		}
+
 		if (!job) {
 			const rematchResult = await claimRematchJob();
 			if (Result.isError(rematchResult)) {
@@ -211,7 +250,9 @@ export async function startPolling(): Promise<void> {
 
 		(async () => {
 			try {
-				if (claimed.type === "rematch") {
+				if (claimed.type === "playlist_lightweight_enrichment") {
+					await processLightweightEnrichmentJob(claimed);
+				} else if (claimed.type === "rematch") {
 					await processRematchJob(claimed);
 				} else {
 					await processEnrichmentJob(claimed);
