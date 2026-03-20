@@ -20,6 +20,11 @@ import {
 	computeGenreDistribution,
 	computeIntentWeight,
 } from "./calculations";
+import type { LlmService } from "@/lib/integrations/llm/service";
+import {
+	expandPlaylistIntent,
+	buildColdStartEmbeddingText,
+} from "./intent-expansion";
 import type {
 	AudioCentroid,
 	ComputedPlaylistProfile,
@@ -33,7 +38,10 @@ import type {
 const PROFILE_KIND: ProfileKind = "content_v1";
 
 export class PlaylistProfilingService {
-	constructor(private readonly embeddingService: EmbeddingService) {}
+	constructor(
+		private readonly embeddingService: EmbeddingService,
+		private readonly llmService?: LlmService,
+	) {}
 
 	/**
 	 * Get existing profile for a playlist.
@@ -146,11 +154,75 @@ export class PlaylistProfilingService {
 			}
 		}
 
+		// Cold-start HyDE expansion: when 0 songs, use LLM to generate rich profile
+		if (songs.length === 0 && this.llmService && intentText) {
+			const expansionResult = await expandPlaylistIntent(
+				this.llmService,
+				options.name ?? intentText,
+				options.description,
+			);
+
+			if (Result.isOk(expansionResult)) {
+				const expansion = expansionResult.value;
+				const hydeText = buildColdStartEmbeddingText(expansion);
+
+				// HyDE: expanded text IS document-length, so use passage prefix
+				const hydeEmbeddingResult = await this.embeddingService.embedText(
+					hydeText,
+					{ prefix: "passage:" },
+				);
+				const hydeEmbedding = Result.isOk(hydeEmbeddingResult)
+					? hydeEmbeddingResult.value
+					: null;
+
+				const coldStartAudioCentroid: AudioCentroid = expansion.audio_profile;
+				const coldStartGenres: GenreDistribution = Object.fromEntries(
+					expansion.expected_genres.map((g) => [g, 1]),
+				);
+
+				const profile: ComputedPlaylistProfile = {
+					playlistId,
+					kind: PROFILE_KIND,
+					embedding: hydeEmbedding,
+					audioCentroid: coldStartAudioCentroid,
+					genreDistribution: coldStartGenres,
+					songIds,
+					songCount: 0,
+					contentHash,
+					modelBundleHash,
+					fromCache: false,
+				};
+
+				if (!options.skipPersist) {
+					const upsertResult = await vectorsData.upsertPlaylistProfile({
+						playlist_id: playlistId,
+						kind: PROFILE_KIND,
+						model_bundle_hash: modelBundleHash,
+						dims: hydeEmbedding?.length ?? 0,
+						content_hash: contentHash,
+						embedding: hydeEmbedding ? JSON.stringify(hydeEmbedding) : null,
+						audio_centroid: coldStartAudioCentroid as Json,
+						genre_distribution: coldStartGenres as Json,
+						emotion_distribution: {} as Json,
+						song_count: 0,
+						song_ids: [],
+					});
+					if (Result.isError(upsertResult)) {
+						return Result.err(upsertResult.error);
+					}
+				}
+
+				return Result.ok(profile);
+			}
+			// LLM failed — fall through to raw name embedding below
+		}
+
 		// Embed intent text (name + description) for blending into profile
 		let intentEmbedding: number[] | null = null;
 		if (intentText) {
+			// Short name/description text is a query seeking similar songs
 			const intentResult = await this.embeddingService.embedText(intentText, {
-				prefix: "passage:",
+				prefix: "query:",
 			});
 			if (Result.isOk(intentResult)) {
 				intentEmbedding = intentResult.value;
@@ -229,6 +301,7 @@ export class PlaylistProfilingService {
  */
 export function createPlaylistProfilingService(
 	embeddingService: EmbeddingService,
+	llmService?: LlmService,
 ): PlaylistProfilingService {
-	return new PlaylistProfilingService(embeddingService);
+	return new PlaylistProfilingService(embeddingService, llmService);
 }
