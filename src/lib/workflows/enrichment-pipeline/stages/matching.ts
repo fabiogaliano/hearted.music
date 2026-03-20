@@ -1,19 +1,20 @@
 import { Result } from "better-result";
-import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
-import * as matchingData from "@/lib/domains/taste/song-matching/queries";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Json } from "@/lib/data/database.types";
 import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
 import { MATCHING_ALGO_VERSION } from "@/lib/domains/enrichment/embeddings/versioning";
-import type { Json } from "@/lib/data/database.types";
+import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
+import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { computeMatchContextMetadata } from "@/lib/domains/taste/song-matching/cache";
+import * as matchingData from "@/lib/domains/taste/song-matching/queries";
 import { createMatchingService } from "@/lib/domains/taste/song-matching/service";
 import type {
-	MatchingSong,
-	MatchingPlaylistProfile,
 	MatchingAudioFeatures,
+	MatchingPlaylistProfile,
+	MatchingSong,
 } from "@/lib/domains/taste/song-matching/types";
-import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { PipelineBatch } from "../batch";
-import type { Playlist } from "@/lib/domains/library/playlists/queries";
+import { rerankMatches } from "../reranking";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
 /**
@@ -197,6 +198,8 @@ export async function runMatching(
 		contextMeta = await computeMatchContextMetadata(
 			matchingSongs,
 			playlistProfiles,
+			{},
+			exclusionSet,
 		);
 	} catch {
 		return {
@@ -246,6 +249,16 @@ export async function runMatching(
 		);
 
 		if (Result.isOk(matchResult)) {
+			// Rerank matches per playlist using cross-encoder
+			if (ctx.rerankerService) {
+				await rerankMatches(
+					matchResult.value.matches,
+					matchingSongs,
+					playlists,
+					ctx.rerankerService,
+				);
+			}
+
 			const succeeded = matchResult.value.stats.matched;
 			const noMatchCount = matchResult.value.stats.noMatch;
 			const matchedSongIds = [...matchResult.value.matches.keys()];

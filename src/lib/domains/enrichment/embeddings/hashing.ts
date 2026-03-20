@@ -115,7 +115,7 @@ export async function hashPlaylistProfile(params: {
 
 	const content = stableStringify({
 		playlistId: params.playlistId,
-		songIds: params.songIds.sort(),
+		songIds: [...params.songIds].sort(),
 		descriptionText: params.descriptionText?.trim() || null,
 		embeddingCentroid: roundedEmbedding,
 		audioCentroid: roundedCentroid,
@@ -128,13 +128,13 @@ export async function hashPlaylistProfile(params: {
 
 /**
  * Hash matching configuration.
+ * Accepts the full MatchingConfig so every scoring-relevant field
+ * participates in the hash automatically.
  * Prefix: mc_{version}_
  */
-export async function hashMatchingConfig(config: {
-	weights: Record<string, number>;
-	audioWeights: Record<string, number>;
-	minScoreThreshold: number;
-}): Promise<string> {
+export async function hashMatchingConfig(
+	config: Record<string, unknown>,
+): Promise<string> {
 	const content = stableStringify(config);
 	const hash = await shortHash(content);
 	return `mc_${MATCHING_ALGO_VERSION}_${hash}`;
@@ -149,8 +149,8 @@ export async function hashCandidateSet(
 	contentHashes: string[],
 ): Promise<string> {
 	const content = stableStringify({
-		songIds: songIds.sort(),
-		contentHashes: contentHashes.sort(),
+		songIds: [...songIds].sort(),
+		contentHashes: [...contentHashes].sort(),
 	});
 	const hash = await shortHash(content);
 	return `cs_${hash}`;
@@ -165,11 +165,33 @@ export async function hashPlaylistSet(
 	profileHashes: string[],
 ): Promise<string> {
 	const content = stableStringify({
-		playlistIds: playlistIds.sort(),
-		profileHashes: profileHashes.sort(),
+		playlistIds: [...playlistIds].sort(),
+		profileHashes: [...profileHashes].sort(),
 	});
 	const hash = await shortHash(content);
 	return `ps_${hash}`;
+}
+
+/**
+ * Hash exclusion set for match-context deduplication.
+ * Prefix: xs_
+ */
+export async function hashExclusionSet(exclusions: string[]): Promise<string> {
+	const content = stableStringify({ exclusions: [...exclusions].sort() });
+	const hash = await shortHash(content);
+	return `xs_${hash}`;
+}
+
+/**
+ * Hash reranker model/config for match-context deduplication.
+ * Prefix: rc_
+ */
+export async function hashRerankerConfig(
+	config: Record<string, unknown>,
+): Promise<string> {
+	const content = stableStringify(config);
+	const hash = await shortHash(content);
+	return `rc_${hash}`;
 }
 
 /**
@@ -181,6 +203,8 @@ export async function hashMatchContext(params: {
 	playlistSetHash: string;
 	configHash: string;
 	modelBundleHash?: string;
+	exclusionSetHash?: string;
+	rerankerConfigHash?: string;
 }): Promise<string> {
 	const content = stableStringify(params);
 	const hash = await shortHash(content);
@@ -258,6 +282,8 @@ export function parseHashPrefix(hash: string): ParsedHash | null {
 		/^(ctx)_(.+)$/, // Match context (no version)
 		/^(tg)_(.+)$/, // Track genre (no version)
 		/^(mb)_(.+)$/, // Model bundle (no version - hash IS the version)
+		/^(xs)_(.+)$/, // Exclusion set (no version)
+		/^(rc)_(.+)$/, // Reranker config (no version)
 	];
 
 	for (const pattern of patterns) {

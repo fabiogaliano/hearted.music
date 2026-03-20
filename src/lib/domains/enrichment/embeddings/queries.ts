@@ -6,14 +6,14 @@
  */
 
 import { Result } from "better-result";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Json, Tables, TablesInsert } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Json, Tables, TablesInsert } from "@/lib/data/database.types";
 
 // ============================================================================
 // Type Exports
@@ -211,7 +211,7 @@ export function upsertSongEmbeddings(
 /**
  * Gets the profile for a playlist.
  * Returns null if not found.
- * Playlist profiles are one-to-one (unique on playlist_id).
+ * Multiple historical rows can exist per playlist, so this returns the latest.
  */
 export function getPlaylistProfile(
 	playlistId: string,
@@ -222,7 +222,9 @@ export function getPlaylistProfile(
 			.from("playlist_profile")
 			.select("*")
 			.eq("playlist_id", playlistId)
-			.single(),
+			.order("updated_at", { ascending: false })
+			.limit(1)
+			.maybeSingle(),
 	);
 }
 
@@ -242,7 +244,8 @@ export async function getPlaylistProfilesBatch(
 		supabase
 			.from("playlist_profile")
 			.select("*")
-			.in("playlist_id", playlistIds),
+			.in("playlist_id", playlistIds)
+			.order("updated_at", { ascending: false }),
 	);
 
 	if (Result.isError(result)) {
@@ -251,6 +254,7 @@ export async function getPlaylistProfilesBatch(
 
 	const profileMap = new Map<string, PlaylistProfile>();
 	for (const profile of result.value) {
+		if (profileMap.has(profile.playlist_id)) continue;
 		profileMap.set(profile.playlist_id, profile);
 	}
 

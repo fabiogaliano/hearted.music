@@ -6,24 +6,28 @@
  */
 
 import { Result } from "better-result";
+import type { Json } from "@/lib/data/database.types";
+import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
-import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
+import { MATCHING_ALGO_VERSION } from "@/lib/domains/enrichment/embeddings/versioning";
 import { markItemsNew } from "@/lib/domains/library/liked-songs/status-queries";
 import * as songData from "@/lib/domains/library/songs/queries";
-import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
-import * as matchingData from "@/lib/domains/taste/song-matching/queries";
-import { MATCHING_ALGO_VERSION } from "@/lib/domains/enrichment/embeddings/versioning";
-import type { Json } from "@/lib/data/database.types";
+import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import { computeMatchContextMetadata } from "@/lib/domains/taste/song-matching/cache";
+import * as matchingData from "@/lib/domains/taste/song-matching/queries";
 import { createMatchingService } from "@/lib/domains/taste/song-matching/service";
 import type {
-	MatchingSong,
-	MatchingPlaylistProfile,
 	MatchingAudioFeatures,
+	MatchingPlaylistProfile,
+	MatchingSong,
 } from "@/lib/domains/taste/song-matching/types";
+import type { LlmService } from "@/lib/integrations/llm/service";
+import { createLlmService } from "@/lib/integrations/llm/service";
+import { RerankerService } from "@/lib/integrations/reranker/service";
+import { getDataEnrichedSongIds } from "./batch";
+import { rerankMatches } from "./reranking";
 import { loadExclusionSet } from "./stages/matching";
 import { runPlaylistProfiling } from "./stages/playlist-profiling";
-import { getDataEnrichedSongIds } from "./batch";
 
 type RematchError = { message: string };
 
@@ -42,7 +46,24 @@ export async function requestRematch(
 		return Result.err({ message: "Failed to initialize EmbeddingService" });
 	}
 
-	const profilingService = createPlaylistProfilingService(embeddingService);
+	let llmService: LlmService | undefined;
+	try {
+		llmService = createLlmService();
+	} catch {
+		// LLM unavailable — cold-start expansion disabled
+	}
+
+	let rerankerService: RerankerService | undefined;
+	try {
+		rerankerService = new RerankerService();
+	} catch {
+		// Reranker unavailable
+	}
+
+	const profilingService = createPlaylistProfilingService(
+		embeddingService,
+		llmService,
+	);
 
 	// Get all data-enriched songs
 	const songIds = await getDataEnrichedSongIds(accountId);
@@ -57,7 +78,13 @@ export async function requestRematch(
 	}
 
 	// Run playlist profiling
-	const ctx = { accountId, embeddingService, profilingService };
+	const ctx = {
+		accountId,
+		embeddingService,
+		profilingService,
+		llmService,
+		rerankerService,
+	};
 	let playlists: Awaited<ReturnType<typeof runPlaylistProfiling>>["playlists"];
 	try {
 		const profilingResult = await runPlaylistProfiling(ctx);
@@ -133,12 +160,17 @@ export async function requestRematch(
 		};
 	});
 
+	// Load exclusion set before computing context metadata so dedupe reflects it
+	const exclusionSet = await loadExclusionSet(accountId);
+
 	// Compute context metadata
 	let contextMeta: Awaited<ReturnType<typeof computeMatchContextMetadata>>;
 	try {
 		contextMeta = await computeMatchContextMetadata(
 			matchingSongs,
 			playlistProfiles,
+			{},
+			exclusionSet,
 		);
 	} catch {
 		return Result.err({ message: "Failed to compute context metadata" });
@@ -152,9 +184,6 @@ export async function requestRematch(
 	if (Result.isOk(existingContext) && existingContext.value) {
 		return Result.ok({ matched: 0, total: songIds.length });
 	}
-
-	// Load exclusion set
-	const exclusionSet = await loadExclusionSet(accountId);
 
 	// Get embeddings
 	const embeddingsResult = await embeddingService.getEmbeddings(songIds);
@@ -185,6 +214,16 @@ export async function requestRematch(
 
 	if (Result.isError(matchResult)) {
 		return Result.err({ message: "Matching failed" });
+	}
+
+	// Rerank matches using cross-encoder (same path as normal pipeline)
+	if (rerankerService && matchResult.value.matches.size > 0) {
+		await rerankMatches(
+			matchResult.value.matches,
+			matchingSongs,
+			playlists,
+			rerankerService,
+		);
 	}
 
 	const matchedSongIds = [...matchResult.value.matches.keys()];

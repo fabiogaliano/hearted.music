@@ -8,10 +8,10 @@
  */
 
 import { Result } from "better-result";
-import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { JobProgress } from "@/lib/data/jobs";
-import { emitItem, emitProgress } from "@/lib/platform/jobs/progress/helpers";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
+import { emitItem, emitProgress } from "@/lib/platform/jobs/progress/helpers";
 import { computeAdaptiveWeights, DEFAULT_MATCHING_CONFIG } from "./config";
 import { computeAudioFeatureScore } from "./scoring";
 import { cosineSimilarity } from "./semantic";
@@ -242,7 +242,7 @@ export class MatchingService {
 				!!song.audioFeatures && Object.keys(profile.audioCentroid).length > 0,
 		};
 
-		const weights = computeAdaptiveWeights(availability);
+		const weights = computeAdaptiveWeights(availability, this.config.weights);
 
 		const embeddingScore = this.computeVectorScore(
 			songEmbedding,
@@ -306,11 +306,11 @@ export class MatchingService {
 		if (!songEmbedding || !playlistEmbedding) return 0;
 		if (this.config.skipVectorScoring) return 0;
 
-		// Cosine similarity is already -1 to 1, normalize to 0-1
 		const similarity = cosineSimilarity(songEmbedding, playlistEmbedding);
+		const baseline = this.config.similarityBaseline;
 
-		// Transform from [-1, 1] to [0, 1]
-		return Math.max(0, Math.min(1, (similarity + 1) / 2));
+		// Stretch the naturally compressed cosine range: baseline→0, 1.0→1.0
+		return Math.max(0, Math.min(1, (similarity - baseline) / (1 - baseline)));
 	}
 
 	/**

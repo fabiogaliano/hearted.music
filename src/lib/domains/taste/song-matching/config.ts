@@ -46,6 +46,7 @@ export const DEFAULT_MATCHING_CONFIG: MatchingConfig = {
 	maxResultsPerSong: 10,
 	skipVectorScoring: false,
 	vetoThreshold: 0.2,
+	similarityBaseline: 0.5,
 };
 
 /**
@@ -54,8 +55,9 @@ export const DEFAULT_MATCHING_CONFIG: MatchingConfig = {
  */
 export function computeAdaptiveWeights(
 	availability: DataAvailability,
+	baseWeights: MatchingWeights = DEFAULT_MATCHING_WEIGHTS,
 ): MatchingWeights {
-	const base = { ...DEFAULT_MATCHING_WEIGHTS };
+	const base = { ...baseWeights };
 
 	let unavailableWeight = 0;
 	const available: (keyof typeof base)[] = [];

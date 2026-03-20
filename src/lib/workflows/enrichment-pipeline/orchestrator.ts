@@ -1,5 +1,8 @@
 import { Result } from "better-result";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import { createLlmService } from "@/lib/integrations/llm/service";
+import type { LlmService } from "@/lib/integrations/llm/service";
+import { RerankerService } from "@/lib/integrations/reranker/service";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import { updateJobProgress } from "@/lib/data/jobs";
 import { getTerminallyFailedSongIds } from "@/lib/data/job-failures";
@@ -44,14 +47,35 @@ function initEmbeddingService(): Result<
 	}
 }
 
+function initLlmService(): LlmService | undefined {
+	try {
+		return createLlmService();
+	} catch {
+		return undefined;
+	}
+}
+
 function buildContext(
 	accountId: string,
 	embeddingService: EmbeddingService,
 ): EnrichmentContext {
+	const llmService = initLlmService();
+	let rerankerService: RerankerService | undefined;
+	try {
+		rerankerService = new RerankerService();
+	} catch {
+		// Reranker unavailable — scoring falls back to original order
+	}
+
 	return {
 		accountId,
 		embeddingService,
-		profilingService: createPlaylistProfilingService(embeddingService),
+		profilingService: createPlaylistProfilingService(
+			embeddingService,
+			llmService,
+		),
+		llmService,
+		rerankerService,
 	};
 }
 

@@ -1,5 +1,7 @@
 import { TaggedError } from "better-result";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import type { LlmService } from "@/lib/integrations/llm/service";
+import type { RerankerService } from "@/lib/integrations/reranker/service";
 import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 
 export type EnrichmentStageName =
@@ -31,5 +33,7 @@ export interface EnrichmentContext {
 	readonly accountId: string;
 	readonly embeddingService: EmbeddingService;
 	readonly profilingService: PlaylistProfilingService;
+	readonly llmService?: LlmService;
+	readonly rerankerService?: RerankerService;
 	readonly jobId?: string;
 }
