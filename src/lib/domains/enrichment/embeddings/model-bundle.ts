@@ -54,11 +54,22 @@ export interface AlgorithmVersions {
 	matching: string;
 }
 
+export interface PlaylistProfilingConfig {
+	/** Profiling strategy identifier — bump or rename when logic changes */
+	strategy: string;
+	/** Whether intent query embedding is used for blending */
+	usesIntentQueryEmbedding: boolean;
+	/** Whether HyDE cold-start expansion is enabled */
+	usesHydeColdStart: boolean;
+}
+
 export interface EnrichmentConfig {
 	/** Primary genre source */
 	genreSource: "lastfm" | "spotify" | "combined";
 	/** Whether emotion analysis is enabled */
 	emotionEnabled: boolean;
+	/** Playlist profiling strategy — changes here auto-invalidate cached profiles */
+	playlistProfiling: PlaylistProfilingConfig;
 }
 
 export interface ModelBundle {
@@ -101,12 +112,6 @@ export function getActiveModelBundle(): Result<ModelBundle, MLProviderError> {
 			provider: metadata.name,
 			isInstructionTuned: true, // e5-large-instruct is instruction-tuned
 		},
-		// Reranker not currently used - uncomment when enabled
-		// reranker: {
-		//     model: metadata.rerankerModel ?? "BAAI/bge-reranker-v2-m3",
-		//     provider: metadata.name,
-		//     maxLength: 8192,
-		// },
 		algorithms: {
 			extractor: EXTRACTOR_VERSION,
 			schema: EMBEDDING_SCHEMA_VERSION,
@@ -115,7 +120,12 @@ export function getActiveModelBundle(): Result<ModelBundle, MLProviderError> {
 		},
 		enrichment: {
 			genreSource: "lastfm",
-			emotionEnabled: false, // Not yet implemented
+			emotionEnabled: false,
+			playlistProfiling: {
+				strategy: "hyde_v1",
+				usesIntentQueryEmbedding: true,
+				usesHydeColdStart: true,
+			},
 		},
 		version: 1,
 	});
