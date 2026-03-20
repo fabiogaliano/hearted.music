@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MATCHING_LAB</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --bg-cell: #131313;
+    --bg-hover: #191919;
+    --bg-selected: #1c1c1c;
+    --bg-section: #111;
+    --border: #222;
+    --border-bright: #2e2e2e;
+    --text: #888;
+    --text-bright: #bbb;
+    --text-head: #666;
+    --text-dim: #3e3e3e;
+    --text-value: #999;
+    --mono: 'IBM Plex Mono', 'SF Mono', 'Consolas', monospace;
+    --accent-gold: #8b6914;
+    --accent-green: #1a7a3a;
+  }
+
+  body {
+    font-family: var(--mono);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .shell {
+    max-width: 1500px;
+    margin: 0 auto;
+    border: 1px solid var(--border);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ─── Top Bar ────────────────────────────────── */
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    gap: 20px;
+    white-space: nowrap;
+  }
+
+  .topbar .sys-label { color: var(--text-dim); font-size: 11px; letter-spacing: 0.08em; }
+  .topbar .sys-name { color: var(--text-bright); font-weight: 600; font-size: 13px; letter-spacing: 0.05em; }
+  .topbar .sys-status { color: var(--text-dim); font-size: 11px; }
+
+  .topbar .sys-stats {
+    margin-left: auto;
+    display: flex;
+    gap: 24px;
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+
+  .topbar .sys-stats .stat-val { color: var(--text-value); margin-left: 8px; }
+
+  .account-picker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .account-select {
+    min-width: 220px;
+    padding: 5px 8px;
+    background: var(--bg-cell);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    outline: none;
+  }
+
+  .account-select:focus { border-color: var(--border-bright); }
+  .account-select:disabled { opacity: 0.6; }
+
+  /* ─── Tabs ──────────────────────────────────── */
+
+  .tab-bar {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  .tab-btn {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--text-head); border-bottom-color: var(--text-head); }
+
+  .tab-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    padding-right: 12px;
+    gap: 8px;
+  }
+
+  .tab-panel { display: none; flex: 1; overflow-y: auto; }
+  .tab-panel.active { display: block; }
+
+  /* ─── Main Content ─────────────────────────── */
+
+  .main-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+  /* ─── Buttons ──────────────────────────────── */
+
+  .btn {
+    padding: 6px 14px;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+
+  .btn:hover { color: var(--text); border-color: var(--border-bright); }
+  .btn:disabled { opacity: 0.25; cursor: not-allowed; }
+
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .loading { animation: blink 1.2s ease-in-out infinite; }
+
+  /* ─── Badges ───────────────────────────────── */
+
+  .badge {
+    display: inline-block;
+    padding: 1px 5px;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+  }
+
+  .badge-cold { color: var(--accent-gold); border-color: #3d2e0a; }
+  .badge-learned { color: var(--accent-green); border-color: #0a3d1c; }
+
+  /* ─── Hint Text ────────────────────────────── */
+
+  .hint {
+    color: var(--text-dim);
+    font-size: 10px;
+    line-height: 1.7;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: #0c0c0c;
+  }
+
+  .hint strong { color: var(--text-head); font-weight: 500; }
+
+  /* ─── Empty State ──────────────────────────── */
+
+  .empty-state {
+    padding: 60px 24px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+
+  /* ─── Bottom Bar ───────────────────────────── */
+
+  .bottombar {
+    padding: 8px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ═══════════════════════════════════════════════
+     PLAYLISTS TAB
+     ═══════════════════════════════════════════════ */
+
+  .pl-list { }
+
+  .pl-card {
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.08s;
+  }
+
+  .pl-card:hover { background: var(--bg-hover); }
+  .pl-card.expanded { background: var(--bg-cell); }
+
+  .pl-card-header {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    padding: 12px 20px;
+    gap: 16px;
+  }
+
+  .pl-card-name {
+    font-size: 12px;
+    color: var(--text-bright);
+    font-weight: 500;
+  }
+
+  .pl-card-desc {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  .pl-card-stats {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: right;
+  }
+
+  .pl-card-arrow {
+    color: var(--text-dim);
+    font-size: 10px;
+    transition: transform 0.15s;
+  }
+
+  .pl-card.expanded .pl-card-arrow { transform: rotate(90deg); }
+
+  .pl-detail { display: none; border-top: 1px solid var(--border); }
+  .pl-card.expanded .pl-detail { display: block; }
+
+  /* ─── Expansion Profile ────────────────────── */
+
+  .expansion-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+
+  .exp-left {
+    padding: 16px 20px;
+    border-right: 1px solid var(--border);
+  }
+
+  .exp-right {
+    padding: 16px 20px;
+  }
+
+  .exp-section-title {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--text-head);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    margin-top: 14px;
+  }
+
+  .exp-section-title:first-child { margin-top: 0; }
+
+  .exp-headline {
+    font-size: 13px;
+    color: var(--text-bright);
+    font-weight: 500;
+    line-height: 1.5;
+    margin-bottom: 4px;
+  }
+
+  .exp-mood {
+    font-size: 11px;
+    color: var(--accent-gold);
+    margin-bottom: 8px;
+  }
+
+  .exp-text {
+    font-size: 11px;
+    color: var(--text);
+    line-height: 1.6;
+    margin-bottom: 6px;
+  }
+
+  .exp-theme {
+    margin-bottom: 6px;
+  }
+
+  .exp-theme-name {
+    font-size: 11px;
+    color: var(--text-value);
+    font-weight: 500;
+  }
+
+  .exp-theme-desc {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 1px;
+  }
+
+  .genre-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .genre-tag {
+    padding: 2px 8px;
+    background: #1a1a1a;
+    border: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--text-value);
+  }
+
+  .audio-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+
+  .audio-item {
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    background: #0d0d0d;
+  }
+
+  .audio-label {
+    font-size: 8px;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .audio-val {
+    font-size: 12px;
+    color: var(--text-value);
+    font-weight: 500;
+  }
+
+  .audio-bar {
+    height: 2px;
+    background: var(--border);
+    margin-top: 3px;
+    position: relative;
+  }
+
+  .audio-fill {
+    position: absolute;
+    left: 0; top: 0;
+    height: 100%;
+    background: var(--text-head);
+  }
+
+  /* ─── Suggestions Table ────────────────────── */
+
+  .sugg-section {
+    border-top: 1px solid var(--border);
+    padding: 0;
+  }
+
+  .sugg-title {
+    padding: 10px 20px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-head);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .sugg-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .sugg-table th {
+    padding: 5px 12px;
+    text-align: left;
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .sugg-table th.r { text-align: right; }
+
+  .sugg-table td {
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 11px;
+  }
+
+  .sugg-table td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  .sugg-table tr:hover td { background: var(--bg-hover); }
+
+  .sugg-table .rank-cell { color: var(--text-dim); font-size: 10px; width: 28px; }
+  .sugg-table .song-cell { color: var(--text-value); }
+  .sugg-table .artist-cell { color: var(--text-dim); font-size: 10px; }
+
+  .sugg-art {
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+    vertical-align: middle;
+  }
+
+  .score-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .score-track {
+    width: 50px;
+    height: 3px;
+    background: var(--border);
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .score-fill {
+    position: absolute;
+    left: 0; top: 0;
+    height: 100%;
+    background: var(--text-dim);
+  }
+
+  .sugg-table tr:nth-child(-n+3) .score-fill { background: var(--text-head); }
+
+  .score-num { color: var(--text-bright); font-weight: 500; }
+  .factor-dim { color: var(--text-dim); }
+  .factor-on { color: var(--text); }
+
+  .exp-loading {
+    padding: 30px 20px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 11px;
+  }
+
+  /* ═══════════════════════════════════════════════
+     DIAGNOSTICS TAB
+     ═══════════════════════════════════════════════ */
+
+  .diag-section {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .diag-section-title {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--text-head);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .diag-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .diag-stat {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-cell);
+  }
+
+  .diag-stat-label {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .diag-stat-value {
+    font-size: 16px;
+    color: var(--text-bright);
+    font-weight: 500;
+  }
+
+  .diag-stat-sub {
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  .diag-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+  }
+
+  .diag-table th {
+    padding: 5px 10px;
+    text-align: left;
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .diag-table th.r { text-align: right; }
+
+  .diag-table td {
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 11px;
+  }
+
+  .diag-table td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  .diag-table td.name { color: var(--text-value); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .diag-table tr:hover td { background: var(--bg-hover); }
+
+  .spread-bar-bg {
+    display: inline-block;
+    height: 6px;
+    background: var(--text-dim);
+    vertical-align: middle;
+    margin-right: 6px;
+    min-width: 2px;
+  }
+
+  /* ═══════════════════════════════════════════════
+     MATCHING TAB (two-column song picker + results)
+     ═══════════════════════════════════════════════ */
+
+  .match-layout {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .match-left {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .zone-head {
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .zone-meta { color: var(--text-dim); font-size: 10px; }
+
+  .params-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .param-cell {
+    padding: 12px 16px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: #161616;
+  }
+
+  .param-cell:nth-child(2n) { border-right: none; }
+
+  .param-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+
+  .param-label { font-size: 10px; letter-spacing: 0.1em; color: var(--text-dim); text-transform: uppercase; }
+  .param-value { font-size: 12px; color: var(--text-value); font-weight: 500; }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 1px;
+    background: var(--border-bright);
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 1.5px solid var(--text-dim);
+    cursor: pointer;
+  }
+
+  .action-row {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #161616;
+  }
+
+  .action-row label {
+    font-size: 10px;
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  input[type="checkbox"] {
+    appearance: none;
+    width: 10px; height: 10px;
+    border: 1px solid var(--text-dim);
+    background: var(--bg);
+    cursor: pointer;
+    position: relative;
+  }
+
+  input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    background: var(--text-head);
+  }
+
+  .search-row {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 6px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    outline: none;
+  }
+
+  .search-input:focus { border-color: var(--border-bright); }
+  .search-input::placeholder { color: var(--text-dim); }
+
+  .song-scroll { max-height: 340px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+  .song-row {
+    display: grid;
+    grid-template-columns: 18px 36px 1fr auto;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.08s;
+  }
+
+  .song-row:hover { background: var(--bg-hover); }
+  .song-row.selected { background: var(--bg-selected); }
+
+  .song-art { width: 36px; height: 36px; background: var(--bg); object-fit: cover; flex-shrink: 0; }
+  .song-text { min-width: 0; }
+  .song-row .s-name { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; line-height: 1.3; }
+  .song-row.selected .s-name { color: var(--text-bright); }
+  .song-row .s-sub { color: var(--text-dim); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+  .song-row .s-flags { color: var(--text-dim); font-size: 9px; letter-spacing: 0.06em; }
+
+  .pin-btn { background: none; border: none; cursor: pointer; font-size: 12px; color: var(--text-dim); padding: 4px; font-family: var(--mono); line-height: 1; }
+  .pin-btn:hover { color: var(--text-head); }
+  .pin-btn.pinned { color: var(--text-value); }
+  .song-row.is-pinned { border-left: 2px solid var(--border-bright); padding-left: 10px; }
+
+  .match-right {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .r-section-head {
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-head);
+    text-transform: uppercase;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .r-meta { color: var(--text-dim); font-size: 10px; }
+
+  .result-block { border-bottom: 1px solid var(--border-bright); }
+
+  .result-song-bar {
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-cell);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .result-song-bar .r-art { width: 32px; height: 32px; background: var(--bg); object-fit: cover; flex-shrink: 0; }
+  .result-song-bar .r-name { color: var(--text-bright); font-weight: 500; font-size: 12px; }
+  .result-song-bar .r-artist { color: var(--text-dim); font-size: 11px; margin-left: 4px; }
+  .result-song-bar .r-tags { margin-left: auto; color: var(--text-dim); font-size: 10px; }
+
+  .result-table { width: 100%; border-collapse: collapse; }
+  .result-table th { padding: 5px 14px; text-align: left; font-size: 9px; font-weight: 400; letter-spacing: 0.08em; color: var(--text-dim); text-transform: uppercase; border-bottom: 1px solid var(--border); background: var(--bg); }
+  .result-table th.r { text-align: right; }
+  .result-table td { padding: 6px 14px; border-bottom: 1px solid var(--border); color: var(--text); font-size: 11px; }
+  .result-table td.r { text-align: right; }
+  .result-table tr:hover td { background: var(--bg-hover); }
+  .result-table .rank { color: var(--text-dim); font-size: 10px; }
+  .result-table .pl-name { color: var(--text-value); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .result-table .score { color: var(--text-bright); font-weight: 500; }
+  .result-table .factor { color: var(--text-dim); }
+  .result-table .factor.on { color: var(--text); }
+  .result-table .weights { color: var(--text-dim); font-size: 10px; }
+
+  .result-stats {
+    padding: 5px 14px;
+    font-size: 9px;
+    color: var(--text-dim);
+    display: flex;
+    gap: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .result-stats .sv { color: var(--text-head); }
+
+  .profiles-table { width: 100%; border-collapse: collapse; }
+  .profiles-table th { padding: 4px 10px; text-align: left; font-size: 9px; font-weight: 400; letter-spacing: 0.08em; color: var(--text-dim); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  .profiles-table th.r { text-align: right; }
+  .profiles-table td { padding: 4px 10px; border-bottom: 1px solid var(--border); color: var(--text-dim); font-size: 10px; }
+  .profiles-table td.r { text-align: right; }
+  .profiles-table td.pname { color: var(--text-dim); }
+
+  @media (max-width: 900px) {
+    .topbar {
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .topbar .sys-stats {
+      margin-left: 0;
+      width: 100%;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .account-picker {
+      margin-left: auto;
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .account-select {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .match-layout { grid-template-columns: 1fr; }
+    .match-left { max-height: 50vh; border-right: none; border-bottom: 1px solid var(--border); }
+  }
+
+  /* ─── Scrollbar ────────────────────────────── */
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+
+  @media (max-width: 900px) {
+    .expansion-panel { grid-template-columns: 1fr; }
+    .exp-left { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <div class="topbar">
+    <span class="sys-label">SYS</span>
+    <span class="sys-name">MATCHING_LAB</span>
+    <span class="sys-status" id="sysStatus">&#9656; IDLE</span>
+    <label class="account-picker" for="accountSelect">
+      <span class="sys-label">ACCOUNT</span>
+      <select id="accountSelect" class="account-select" aria-label="Select account" disabled>
+        <option>LOADING...</option>
+      </select>
+    </label>
+    <div class="sys-stats" id="sysStats"></div>
+  </div>
+
+  <div class="tab-bar">
+    <button type="button" class="tab-btn active" data-tab="playlists">PLAYLISTS</button>
+    <button type="button" class="tab-btn" data-tab="matching">MATCHING</button>
+    <button type="button" class="tab-btn" data-tab="diagnostics">DIAGNOSTICS</button>
+    <div class="tab-actions">
+      <button type="button" class="btn" id="reprofileBtn" title="Re-profile all playlists with LLM cold-start expansion">REPROFILE ALL</button>
+      <button type="button" class="btn" id="diagRefreshBtn" title="Refresh diagnostics">REFRESH DIAG</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+
+    <!-- ═══ PLAYLISTS TAB ═══ -->
+    <div class="tab-panel active" id="tabPlaylists">
+      <div class="hint">
+        <strong>How this works:</strong> Each playlist gets a profile that represents its "taste."
+        When a playlist has <strong>0 songs</strong>, the AI imagines what a prototypical song would sound like (cold-start expansion) and builds the profile from that.
+        Click a playlist to see its AI-generated profile and top song suggestions.
+        Use <strong>REPROFILE ALL</strong> to regenerate all profiles with the latest LLM.
+      </div>
+      <div id="playlistsArea">
+        <div class="empty-state loading">LOADING PLAYLISTS...</div>
+      </div>
+    </div>
+
+    <!-- ═══ MATCHING TAB ═══ -->
+    <div class="tab-panel" id="tabMatching">
+      <div class="match-layout">
+        <div class="match-left">
+          <div class="zone-head" style="background:#161616;">PRODUCTION MATCHING</div>
+          <div class="params-grid" style="grid-template-columns:1fr;">
+            <div class="param-cell">
+              <div class="param-top"><span class="param-label">THRESHOLD</span><span class="param-value" id="threshVal">0.00</span></div>
+              <input type="range" id="threshold" min="0" max="100" value="0" />
+            </div>
+          </div>
+          <div class="action-row">
+            <span style="font-size:10px;color:var(--text-dim);">Shared scoring for the selected account, with exclusions, top-N filtering, and reranking when available</span>
+            <button type="button" class="btn" id="matchRunBtn" disabled style="margin-left:auto;">EXECUTE</button>
+          </div>
+
+          <div class="zone-head">
+            <span>SONG_INDEX</span>
+            <span class="zone-meta" id="selectedCount">0 SEL</span>
+          </div>
+          <div class="search-row">
+            <input type="text" class="search-input" id="songSearch" placeholder="FILTER..." />
+          </div>
+          <div class="song-scroll" id="songList"></div>
+
+          <div class="zone-head" style="background:#0b0b0b;opacity:0.7;">
+            <span>PLAYLIST_PROFILES</span>
+            <span class="zone-meta" id="profileMeta"></span>
+          </div>
+          <div id="profilesArea"></div>
+        </div>
+
+        <div class="match-right">
+          <div class="r-section-head">
+            <span>MATCH_RESULTS</span>
+            <span class="r-meta" id="matchResultsMeta"></span>
+          </div>
+          <div id="matchResultsArea">
+            <div class="empty-state">
+              SELECT SONGS &#9656; EXECUTE
+              <div style="margin-top:8px;font-size:10px;color:var(--text-dim);opacity:0.6;">Choose songs from the left, then run matching against all playlists</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ DIAGNOSTICS TAB ═══ -->
+    <div class="tab-panel" id="tabDiagnostics">
+      <div class="hint">
+        <strong>What to look for:</strong>
+        These diagnostics are <strong>embedding/profile only</strong> for the selected account. They do not include audio, genre, exclusions, or reranking.
+        <strong>Spread</strong> = how much embedding-based scores vary across playlists for a given song. Higher = better discrimination.
+        <strong>Goal:</strong> 15-30pp spread means songs are being meaningfully sorted.
+        If spread is &lt;5pp, all playlists look the same to the algorithm.
+        <strong>Inter-playlist similarity</strong> should be low (&lt;0.85) so playlists are distinct.
+      </div>
+      <div id="diagArea">
+        <div class="empty-state">CLICK REFRESH DIAG TO LOAD</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="bottombar">
+    <span id="logLine">LOG: READY</span>
+    <span>v0.2</span>
+  </div>
+
+</div>
+
+<script>
+var state = {
+  playlists: [],
+  expandedId: null,
+  expansions: {},
+  suggestions: {},
+  accounts: [],
+  accountId: null,
+  matchSummary: null,
+};
+
+function $(id) { return document.getElementById(id); }
+function esc(str) { var el = document.createElement('span'); el.textContent = str; return el.innerHTML; }
+function fmt(n) { return (n * 100).toFixed(1); }
+function fmt4(n) { return n.toFixed(4); }
+function log(msg) { $('logLine').textContent = 'LOG: ' + msg; }
+async function fetchJson(url, opts) { return (await fetch(url, opts)).json(); }
+function withAccount(url) {
+  if (!state.accountId) return url;
+  return url + (url.indexOf('?') === -1 ? '?' : '&') + 'accountId=' + encodeURIComponent(state.accountId);
+}
+function shortAccountId(accountId) {
+  return accountId ? accountId.slice(0, 8) : 'NONE';
+}
+function formatAccountLabel(account) {
+  return shortAccountId(account.id) + ' · ' + account.playlistCount + ' playlists';
+}
+function renderMatchEmptyState() {
+  $('matchResultsArea').innerHTML = '<div class="empty-state">SELECT SONGS &#9656; EXECUTE<div style="margin-top:8px;font-size:10px;color:var(--text-dim);opacity:0.6;">Choose songs from the left, then run matching against playlists in the selected account</div></div>';
+  $('matchResultsMeta').textContent = '';
+}
+function resetScopedState() {
+  state.expandedId = null;
+  state.expansions = {};
+  state.suggestions = {};
+  state.selectedIds = new Set();
+  state.matchResults = null;
+  state.matchSummary = null;
+  renderMatchEmptyState();
+  updateMatchBtn();
+  $('diagArea').innerHTML = '<div class="empty-state">CLICK REFRESH DIAG TO LOAD</div>';
+}
+function renderAccountPicker() {
+  var select = $('accountSelect');
+  if (!state.accounts.length) {
+    select.innerHTML = '<option value="">NO ACCOUNTS</option>';
+    select.disabled = true;
+    return;
+  }
+
+  select.innerHTML = state.accounts.map((account) => {
+    var selected = account.id === state.accountId ? ' selected' : '';
+    return '<option value="' + esc(account.id) + '"' + selected + '>' + esc(formatAccountLabel(account)) + '</option>';
+  }).join('');
+  select.disabled = state.accounts.length === 1;
+}
+
+async function loadAccounts() {
+  var data = await fetchJson('/api/accounts');
+  state.accounts = data.accounts || [];
+  if (!state.accounts.some((account) => account.id === state.accountId)) {
+    state.accountId = data.defaultAccountId || (state.accounts[0] ? state.accounts[0].id : null);
+  }
+  renderAccountPicker();
+}
+
+async function handleAccountChange() {
+  state.accountId = $('accountSelect').value || null;
+  resetScopedState();
+  await Promise.all([loadPlaylists(), loadSummary(), loadSongs($('songSearch').value)]);
+  log('ACCOUNT -> ' + shortAccountId(state.accountId));
+}
+
+// ═══ TABS ═══════════════════════════════════════════════════════════════════
+
+document.querySelectorAll('.tab-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach((b) => { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach((p) => { p.classList.remove('active'); });
+    btn.classList.add('active');
+    $('tab' + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add('active');
+  });
+});
+
+// ═══ PLAYLISTS ══════════════════════════════════════════════════════════════
+
+async function loadPlaylists() {
+  var payload = await fetchJson(withAccount('/api/playlists'));
+  state.accountId = payload.accountId || state.accountId;
+  state.playlists = payload.playlists || [];
+  renderAccountPicker();
+  renderPlaylists();
+  renderMatchProfiles();
+}
+
+function renderPlaylists() {
+  var area = $('playlistsArea');
+  if (!state.playlists.length) {
+    area.innerHTML = '<div class="empty-state">NO PLAYLIST PROFILES FOR THIS ACCOUNT<div style="margin-top:8px;font-size:10px;color:var(--text-dim);opacity:0.6;">Run REPROFILE ALL to generate them</div></div>';
+    return;
+  }
+
+  area.innerHTML = '<div class="pl-list">' + state.playlists.map((p) => {
+    var isExpanded = state.expandedId === p.id;
+    var src = p.profileSource === 'cold_start'
+      ? '<span class="badge badge-cold">COLD START</span>'
+      : '<span class="badge badge-learned">LEARNED</span>';
+    var stats = p.genreDistributionSize + ' genres, ' + p.audioCentroidKeys + ' audio, emb: ' + (p.hasEmbedding ? 'Y' : 'N');
+
+    return '<div class="pl-card' + (isExpanded ? ' expanded' : '') + '" data-id="' + p.id + '">' +
+      '<div class="pl-card-header">' +
+        '<div>' +
+          '<div class="pl-card-name">' + esc(p.name) + '</div>' +
+          (p.description ? '<div class="pl-card-desc">' + esc(p.description) + '</div>' : '') +
+        '</div>' +
+        '<span>' + src + '</span>' +
+        '<span class="pl-card-stats">' + stats + '</span>' +
+        '<span class="pl-card-arrow">&#9656;</span>' +
+      '</div>' +
+      '<div class="pl-detail" id="detail-' + p.id + '">' +
+        (isExpanded ? '' : '<div class="exp-loading loading">LOADING...</div>') +
+      '</div>' +
+    '</div>';
+  }).join('') + '</div>';
+
+  // Click handlers
+  area.querySelectorAll('.pl-card-header').forEach((hdr) => {
+    hdr.addEventListener('click', () => {
+      var id = hdr.parentElement.dataset.id;
+      togglePlaylist(id);
+    });
+  });
+
+  // If something was expanded, load it
+  if (state.expandedId) {
+    loadPlaylistDetail(state.expandedId);
+  }
+}
+
+async function togglePlaylist(id) {
+  if (state.expandedId === id) {
+    state.expandedId = null;
+    renderPlaylists();
+    return;
+  }
+  state.expandedId = id;
+  renderPlaylists();
+  await loadPlaylistDetail(id);
+}
+
+async function loadPlaylistDetail(id) {
+  var detail = $('detail-' + id);
+  if (!detail) return;
+
+  detail.innerHTML = '<div class="exp-loading loading">LOADING AI PROFILE &amp; SUGGESTIONS...</div>';
+
+  // Load expansion + suggestions in parallel
+  var [expResult, suggResult] = await Promise.all([
+    fetchJson(withAccount('/api/playlist/' + id + '/expansion')),
+    fetchJson(withAccount('/api/playlist/' + id + '/suggestions?limit=15')),
+  ]);
+
+  state.expansions[id] = expResult;
+  state.suggestions[id] = suggResult;
+
+  renderPlaylistDetail(id, detail);
+}
+
+function renderPlaylistDetail(id, container) {
+  var exp = state.expansions[id];
+  var sugg = state.suggestions[id];
+  var playlist = state.playlists.find((p) => p.id === id);
+  var html = '';
+
+  // Expansion panel
+  if (exp && exp.expansion) {
+    var e = exp.expansion;
+    html += '<div class="expansion-panel">';
+
+    // Left: semantic profile
+    html += '<div class="exp-left">';
+    html += '<div class="exp-section-title">AI COLD-START PROFILE' + (exp.cached ? ' (cached)' : '') + '</div>';
+    html += '<div class="exp-headline">' + esc(e.headline) + '</div>';
+    html += '<div class="exp-mood">' + esc(e.compound_mood) + '</div>';
+    html += '<div class="exp-text">' + esc(e.mood_description) + '</div>';
+
+    html += '<div class="exp-section-title">INTERPRETATION</div>';
+    html += '<div class="exp-text">' + esc(e.interpretation) + '</div>';
+
+    html += '<div class="exp-section-title">THEMES</div>';
+    (e.themes || []).forEach((t) => {
+      html += '<div class="exp-theme">' +
+        '<div class="exp-theme-name">' + esc(t.name) + '</div>' +
+        '<div class="exp-theme-desc">' + esc(t.description) + '</div>' +
+      '</div>';
+    });
+
+    html += '<div class="exp-section-title">SONIC TEXTURE</div>';
+    html += '<div class="exp-text">' + esc(e.sonic_texture) + '</div>';
+    html += '</div>';
+
+    // Right: genres + audio
+    html += '<div class="exp-right">';
+    html += '<div class="exp-section-title">EXPECTED GENRES</div>';
+    html += '<div class="genre-tags">';
+    (e.expected_genres || []).forEach((g) => {
+      html += '<span class="genre-tag">' + esc(g) + '</span>';
+    });
+    html += '</div>';
+
+    html += '<div class="exp-section-title">ESTIMATED AUDIO PROFILE</div>';
+    html += '<div class="hint" style="padding: 8px 0; border: none; background: none;">' +
+      'These are the AI\'s estimate of what typical audio features would be for songs in this playlist. ' +
+      '0-1 scale (except tempo in BPM and loudness in dB). Used for audio similarity scoring.' +
+    '</div>';
+    html += '<div class="audio-grid">';
+    if (e.audio_profile) {
+      var ap = e.audio_profile;
+      var audioKeys = ['energy', 'valence', 'danceability', 'acousticness', 'instrumentalness', 'speechiness', 'liveness'];
+      audioKeys.forEach((key) => {
+        var val = ap[key];
+        if (val == null) return;
+        html += '<div class="audio-item">' +
+          '<div class="audio-label">' + key + '</div>' +
+          '<div class="audio-val">' + val.toFixed(2) + '</div>' +
+          '<div class="audio-bar"><div class="audio-fill" style="width:' + (val * 100) + '%"></div></div>' +
+        '</div>';
+      });
+      // Tempo + loudness (different scales)
+      if (ap.tempo != null) {
+        html += '<div class="audio-item"><div class="audio-label">TEMPO</div><div class="audio-val">' + ap.tempo + ' BPM</div></div>';
+      }
+      if (ap.loudness != null) {
+        html += '<div class="audio-item"><div class="audio-label">LOUDNESS</div><div class="audio-val">' + ap.loudness + ' dB</div></div>';
+      }
+    }
+    html += '</div>';
+
+    // Also show stored profile data from DB
+    if (playlist) {
+      html += '<div class="exp-section-title">STORED PROFILE GENRES (from DB)</div>';
+      html += '<div class="genre-tags">';
+      (playlist.topGenres || []).forEach((g) => {
+        html += '<span class="genre-tag">' + esc(g.genre) + ' (' + g.count + ')</span>';
+      });
+      html += '</div>';
+
+      if (playlist.audioCentroid && Object.keys(playlist.audioCentroid).length > 0) {
+        html += '<div class="exp-section-title">STORED AUDIO CENTROID (from DB)</div>';
+        html += '<div class="audio-grid">';
+        for (var key in playlist.audioCentroid) {
+          var val = playlist.audioCentroid[key];
+          var isNorm = key !== 'tempo' && key !== 'loudness';
+          html += '<div class="audio-item">' +
+            '<div class="audio-label">' + key + '</div>' +
+            '<div class="audio-val">' + (typeof val === 'number' ? val.toFixed(2) : val) + '</div>' +
+            (isNorm ? '<div class="audio-bar"><div class="audio-fill" style="width:' + (val * 100) + '%"></div></div>' : '') +
+          '</div>';
+        }
+        html += '</div>';
+      }
+    }
+
+    html += '</div></div>';
+  } else if (exp && exp.error) {
+    html += '<div class="hint"><strong>Could not load AI profile:</strong> ' + esc(exp.error) + '. ' +
+      'The profile may still work using stored DB data (genres, audio centroid, embedding).</div>';
+  }
+
+  // Suggestions section
+  html += '<div class="sugg-section">';
+  html += '<div class="sugg-title">TOP SONG SUGGESTIONS' +
+    '<span style="float:right;color:var(--text-dim);font-size:9px;letter-spacing:0.04em">' +
+    'Scored by: embedding similarity (50%) + audio features (30%) + genre overlap (20%)' +
+    '</span></div>';
+
+  if (sugg && sugg.suggestions && sugg.suggestions.length > 0) {
+    html += '<table class="sugg-table"><thead><tr>' +
+      '<th>#</th><th></th><th>SONG</th><th>ARTIST</th>' +
+      '<th class="r" title="Final weighted score (0-100)">SCORE</th>' +
+      '<th class="r" title="Embedding similarity after baseline normalization">EMB</th>' +
+      '<th class="r" title="Raw cosine similarity before normalization">RAW COS</th>' +
+      '<th class="r" title="Audio feature similarity">AUDIO</th>' +
+      '<th class="r" title="Genre overlap with playlist">GENRE</th>' +
+    '</tr></thead><tbody>';
+
+    sugg.suggestions.forEach((s, i) => {
+      var art = s.imageUrl ? '<img class="sugg-art" src="' + s.imageUrl + '" loading="lazy" alt="' + esc(s.name + ' cover art') + '" />' : '';
+      var ec = s.factors.embedding > 0 ? 'factor-on' : 'factor-dim';
+      var ac = s.factors.audio > 0 ? 'factor-on' : 'factor-dim';
+      var gc = s.factors.genre > 0 ? 'factor-on' : 'factor-dim';
+
+      html += '<tr>' +
+        '<td class="rank-cell">' + String(i + 1).padStart(2, '0') + '</td>' +
+        '<td>' + art + '</td>' +
+        '<td class="song-cell">' + esc(s.name) + '</td>' +
+        '<td class="artist-cell">' + esc((s.artists || []).join(', ')) + '</td>' +
+        '<td class="r"><div class="score-bar-wrap">' +
+          '<div class="score-track"><div class="score-fill" style="width:' + (s.score * 100).toFixed(0) + '%"></div></div>' +
+          '<span class="score-num">' + (s.score * 100).toFixed(1) + '</span>' +
+        '</div></td>' +
+        '<td class="r ' + ec + '">' + (s.factors.embedding * 100).toFixed(1) + '</td>' +
+        '<td class="r factor-dim">' + (s.rawCosine * 100).toFixed(1) + '</td>' +
+        '<td class="r ' + ac + '">' + (s.factors.audio * 100).toFixed(1) + '</td>' +
+        '<td class="r ' + gc + '">' + (s.factors.genre * 100).toFixed(1) + '</td>' +
+      '</tr>';
+    });
+
+    html += '</tbody></table>';
+
+    // Spread summary
+    var scores = sugg.suggestions.map((s) => s.score);
+    var minS = Math.min.apply(null, scores);
+    var maxS = Math.max.apply(null, scores);
+    html += '<div style="padding:8px 12px;font-size:10px;color:var(--text-dim);border-top:1px solid var(--border);">' +
+      'RANGE: <span style="color:var(--text-head)">' + fmt(minS) + ' - ' + fmt(maxS) + '</span> &nbsp; ' +
+      'SPREAD: <span style="color:var(--text-head)">' + fmt(maxS - minS) + 'pp</span> &nbsp; ' +
+      '(within top 15)' +
+    '</div>';
+  } else {
+    html += '<div class="empty-state">' + (sugg && sugg.reason ? esc(sugg.reason) : 'NO SUGGESTIONS') + '</div>';
+  }
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+// ═══ DIAGNOSTICS ════════════════════════════════════════════════════════════
+
+async function loadDiagnostics() {
+  var btn = $('diagRefreshBtn');
+  btn.disabled = true;
+  btn.textContent = 'LOADING...';
+  btn.classList.add('loading');
+  log('LOADING DIAGNOSTICS...');
+
+  try {
+    var d = await fetchJson(withAccount('/api/diagnostics'));
+    state.accountId = d.accountId || state.accountId;
+    renderAccountPicker();
+    if (d.error) {
+      $('diagArea').innerHTML = '<div class="empty-state">' + esc(d.error) + '</div>';
+      return;
+    }
+    renderDiagnostics(d);
+    log('DIAGNOSTICS: ' + d.songCount + ' songs, ' + d.playlistCount + ' playlists, spread ' + fmt(d.overall.normalized.spread) + 'pp');
+  } catch (e) {
+    $('diagArea').innerHTML = '<div class="empty-state">FAILED: ' + esc(String(e)) + '</div>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'REFRESH DIAG';
+    btn.classList.remove('loading');
+  }
+}
+
+function renderDiagnostics(d) {
+  var html = '';
+  var ov = d.overall.normalized;
+
+  // Overall
+  html += '<div class="diag-section">';
+  html += '<div class="diag-section-title">OVERALL SCORE DISTRIBUTION (' + ov.count + ' song-playlist pairs)</div>';
+  html += '<div class="hint" style="border:none;padding:0 0 10px 0;background:none;">' +
+    'These are <strong>normalized</strong> scores (baseline 0.5 mapped to 0). ' +
+    'A spread of <strong>27pp+</strong> means the algorithm can meaningfully differentiate songs across playlists. ' +
+    'Below 10pp = everything looks the same.' +
+  '</div>';
+  html += '<div class="diag-grid">' +
+    diagStat('SPREAD', fmt(ov.spread) + 'pp', ov.spread > 0.2 ? 'good' : ov.spread > 0.1 ? 'ok' : 'low') +
+    diagStat('MEAN', fmt(ov.mean), '') +
+    diagStat('STDEV', fmt(ov.stdev), 'higher = more variation') +
+    diagStat('MIN', fmt(ov.min), '') +
+    diagStat('P50', fmt(ov.p50), 'median') +
+    diagStat('MAX', fmt(ov.max), '') +
+  '</div></div>';
+
+  // Per-playlist
+  html += '<div class="diag-section">';
+  html += '<div class="diag-section-title">PER-PLAYLIST SPREAD</div>';
+  html += '<div class="hint" style="border:none;padding:0 0 10px 0;background:none;">' +
+    'For each playlist: how much do song scores vary? Wider spread = this playlist has a stronger identity. ' +
+    '<strong>COLD</strong> playlists use AI-imagined profiles. <strong>LEARNED</strong> use real song data.' +
+  '</div>';
+  html += '<table class="diag-table"><thead><tr>' +
+    '<th>PLAYLIST</th><th>SRC</th><th class="r">SPREAD</th><th class="r">MIN</th><th class="r">MEAN</th><th class="r">MAX</th><th></th>' +
+  '</tr></thead><tbody>';
+
+  var maxSpread = Math.max.apply(null, d.perPlaylist.map((p) => p.normalized.spread));
+  d.perPlaylist.sort((a, b) => b.normalized.spread - a.normalized.spread);
+
+  d.perPlaylist.forEach((p) => {
+    var n = p.normalized;
+    var src = p.profileSource === 'cold_start'
+      ? '<span class="badge badge-cold">COLD</span>'
+      : '<span class="badge badge-learned">LEARNED</span>';
+    var barW = maxSpread > 0 ? (n.spread / maxSpread) * 100 : 0;
+    html += '<tr>' +
+      '<td class="name" title="' + esc(p.name) + '">' + esc(p.name.length > 30 ? p.name.slice(0, 30) + '\u2026' : p.name) + '</td>' +
+      '<td>' + src + '</td>' +
+      '<td class="r">' + fmt(n.spread) + 'pp</td>' +
+      '<td class="r">' + fmt(n.min) + '</td>' +
+      '<td class="r">' + fmt(n.mean) + '</td>' +
+      '<td class="r">' + fmt(n.max) + '</td>' +
+      '<td><span class="spread-bar-bg" style="width:' + barW.toFixed(0) + 'px"></span></td>' +
+    '</tr>';
+  });
+  html += '</tbody></table></div>';
+
+  // Song spread summary
+  var ss = d.songSpreads.stats;
+  html += '<div class="diag-section">';
+  html += '<div class="diag-section-title">PER-SONG DISCRIMINATION</div>';
+  html += '<div class="hint" style="border:none;padding:0 0 10px 0;background:none;">' +
+    'For each song: best playlist score minus worst playlist score. ' +
+    'If a song has <strong>18pp spread</strong>, the algorithm strongly prefers one playlist over another. ' +
+    'Under <strong>5pp</strong> = the song matches everything equally (indecisive).' +
+  '</div>';
+  html += '<div class="diag-grid">' +
+    diagStat('MEAN SPREAD', fmt(ss.mean) + 'pp', '') +
+    diagStat('P50', fmt(ss.p50) + 'pp', 'median song') +
+    diagStat('BEST', fmt(ss.max) + 'pp', 'most decisive') +
+    diagStat('WORST', fmt(ss.min) + 'pp', 'most ambiguous') +
+  '</div>';
+
+  // Top 5
+  html += '<div class="diag-section-title" style="margin-top:12px;">MOST DECISIVE SONGS (top 5)</div>';
+  html += renderSpreadTable(d.songSpreads.top5);
+
+  html += '<div class="diag-section-title" style="margin-top:12px;">MOST AMBIGUOUS SONGS (bottom 5)</div>';
+  html += renderSpreadTable(d.songSpreads.bottom5);
+  html += '</div>';
+
+  // Inter-playlist
+  html += '<div class="diag-section">';
+  html += '<div class="diag-section-title">INTER-PLAYLIST SIMILARITY</div>';
+  html += '<div class="hint" style="border:none;padding:0 0 10px 0;background:none;">' +
+    'How similar are the playlist embeddings to each other? ' +
+    'Values near <strong>1.0</strong> = those playlists are virtually identical to the algorithm. ' +
+    'Below <strong>0.85</strong> = meaningfully different. ' +
+    'If all values are &gt;0.95, consider renaming playlists or adding descriptions to help the AI differentiate.' +
+  '</div>';
+  html += '<table class="diag-table"><thead><tr>' +
+    '<th>PLAYLIST A</th><th>PLAYLIST B</th><th class="r">SIMILARITY</th><th></th>' +
+  '</tr></thead><tbody>';
+
+  d.interPlaylist.forEach((ip) => {
+    var color = ip.similarity > 0.9 ? 'color:var(--accent-gold)' : ip.similarity > 0.85 ? 'color:var(--text-value)' : 'color:var(--accent-green)';
+    html += '<tr>' +
+      '<td class="name">' + esc(ip.a.length > 25 ? ip.a.slice(0, 25) + '\u2026' : ip.a) + '</td>' +
+      '<td class="name">' + esc(ip.b.length > 25 ? ip.b.slice(0, 25) + '\u2026' : ip.b) + '</td>' +
+      '<td class="r" style="' + color + '">' + fmt4(ip.similarity) + '</td>' +
+      '<td style="font-size:9px;' + color + '">' + (ip.similarity > 0.95 ? 'IDENTICAL' : ip.similarity > 0.9 ? 'TOO CLOSE' : ip.similarity > 0.85 ? 'similar' : ip.similarity > 0.75 ? 'ok' : 'distinct') + '</td>' +
+    '</tr>';
+  });
+  html += '</tbody></table></div>';
+
+  $('diagArea').innerHTML = html;
+}
+
+function renderSpreadTable(items) {
+  var html = '<table class="diag-table"><thead><tr>' +
+    '<th>SONG</th><th class="r">SPREAD</th><th>BEST PLAYLIST</th><th class="r">SCORE</th><th>WORST PLAYLIST</th><th class="r">SCORE</th>' +
+  '</tr></thead><tbody>';
+  items.forEach((s) => {
+    html += '<tr>' +
+      '<td class="name">' + esc(s.name.length > 28 ? s.name.slice(0, 28) + '\u2026' : s.name) + '</td>' +
+      '<td class="r">' + fmt(s.spread) + 'pp</td>' +
+      '<td class="name">' + esc((s.best.playlist || '').slice(0, 22)) + '</td>' +
+      '<td class="r">' + fmt(s.best.score) + '</td>' +
+      '<td class="name">' + esc((s.worst.playlist || '').slice(0, 22)) + '</td>' +
+      '<td class="r">' + fmt(s.worst.score) + '</td>' +
+    '</tr>';
+  });
+  return html + '</tbody></table>';
+}
+
+function diagStat(label, value, sub) {
+  return '<div class="diag-stat">' +
+    '<div class="diag-stat-label">' + label + '</div>' +
+    '<div class="diag-stat-value">' + value + '</div>' +
+    (sub ? '<div class="diag-stat-sub">' + sub + '</div>' : '') +
+  '</div>';
+}
+
+// ═══ MATCHING TAB ═══════════════════════════════════════════════════════════
+
+state.songs = [];
+state.selectedIds = new Set();
+state.pinnedIds = new Set();
+state.matchResults = null;
+state.matchSummary = null;
+
+async function loadPins() {
+  var data = await fetchJson('/api/pins');
+  state.pinnedIds = new Set(data.pins);
+}
+
+async function togglePin(songId, evt) {
+  evt.stopPropagation();
+  var action = state.pinnedIds.has(songId) ? 'remove' : 'add';
+  var data = await fetchJson('/api/pins', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ songId: songId, action: action }),
+  });
+  state.pinnedIds = new Set(data.pins);
+  renderSongList();
+}
+
+async function loadSongs(q) {
+  var qs = q ? '?q=' + encodeURIComponent(q) : '';
+  var payload = await fetchJson(withAccount('/api/songs' + qs));
+  state.accountId = payload.accountId || state.accountId;
+  renderAccountPicker();
+  state.songs = payload.songs || [];
+  renderSongList();
+}
+
+function renderSongList() {
+  var filter = $('songSearch').value.toLowerCase();
+  var list = filter
+    ? state.songs.filter((s) => s.name.toLowerCase().includes(filter) || s.artists.join(' ').toLowerCase().includes(filter))
+    : state.songs;
+
+  list = [].concat(list).sort((a, b) => (state.pinnedIds.has(a.id) ? 0 : 1) - (state.pinnedIds.has(b.id) ? 0 : 1));
+
+  $('songList').innerHTML = list.map((s) => {
+    var sel = state.selectedIds.has(s.id);
+    var pinned = state.pinnedIds.has(s.id);
+    var flags = (s.hasEmbedding ? 'E' : '\u00b7') + (s.hasAudioFeatures ? 'A' : '\u00b7') + (s.genres && s.genres.length > 0 ? 'G' : '\u00b7');
+    var art = s.imageUrl ? '<img class="song-art" src="' + s.imageUrl + '" loading="lazy" alt="' + esc(s.name + ' cover art') + '" />' : '<span class="song-art"></span>';
+    var rowCls = [sel ? 'selected' : '', pinned ? 'is-pinned' : ''].filter(Boolean).join(' ');
+    return '<div class="song-row ' + rowCls + '" data-id="' + s.id + '">' +
+      '<button type="button" class="pin-btn ' + (pinned ? 'pinned' : '') + '" data-pin="' + s.id + '" aria-label="' + esc((pinned ? 'Unpin ' : 'Pin ') + s.name) + '">' + (pinned ? '\u25c6' : '\u25c7') + '</button>' +
+      art +
+      '<div class="song-text"><div class="s-name">' + esc(s.name) + '</div><div class="s-sub">' + esc(s.artists[0] || '') + '</div></div>' +
+      '<span class="s-flags">' + flags + '</span>' +
+    '</div>';
+  }).join('');
+
+  $('songList').querySelectorAll('.pin-btn').forEach((el) => {
+    el.addEventListener('click', (evt) => { togglePin(el.dataset.pin, evt); });
+  });
+
+  $('songList').querySelectorAll('.song-row').forEach((el) => {
+    el.addEventListener('click', () => {
+      var id = el.dataset.id;
+      state.selectedIds.has(id) ? state.selectedIds.delete(id) : state.selectedIds.add(id);
+      renderSongList();
+      updateMatchBtn();
+    });
+  });
+}
+
+function updateMatchBtn() {
+  var n = state.selectedIds.size;
+  $('selectedCount').textContent = n + ' SEL';
+  $('matchRunBtn').disabled = n === 0;
+}
+
+function renderMatchProfiles() {
+  if (!state.playlists.length) {
+    $('profilesArea').innerHTML = '<div class="empty-state" style="padding:24px 16px;">NO PROFILES LOADED</div>';
+    $('profileMeta').textContent = '0 LOADED';
+    return;
+  }
+
+  var rows = state.playlists.map((p) => {
+    var name = p.name.length > 22 ? p.name.slice(0, 22) + '\u2026' : p.name;
+    var src = p.profileSource === 'cold_start' ? '<span class="badge badge-cold">COLD</span>' : '<span class="badge badge-learned">LEARNED</span>';
+    return '<tr><td class="pname">' + esc(name) + '</td><td>' + src + '</td><td class="r">' + p.songCount + '</td><td class="r">' + p.genreDistributionSize + '</td><td class="r">' + (p.hasEmbedding ? 'Y' : '\u2014') + '</td></tr>';
+  }).join('');
+  $('profilesArea').innerHTML = '<table class="profiles-table"><thead><tr><th>NAME</th><th>SRC</th><th class="r">SONGS</th><th class="r">GEN</th><th class="r">EMB</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  $('profileMeta').textContent = state.playlists.length + ' LOADED';
+}
+
+async function runMatchExecution() {
+  if (state.selectedIds.size === 0) return;
+  var btn = $('matchRunBtn');
+  btn.disabled = true;
+  btn.textContent = 'RUNNING...';
+  btn.classList.add('loading');
+  log('MATCHING ' + state.selectedIds.size + ' SONGS...');
+
+  var body = {
+    songIds: Array.from(state.selectedIds),
+    accountId: state.accountId,
+    threshold: parseInt($('threshold').value) / 100,
+  };
+
+  var response = await fetchJson('/api/match', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  state.accountId = response.summary && response.summary.accountId ? response.summary.accountId : state.accountId;
+  renderAccountPicker();
+  state.matchResults = response.results;
+  state.matchSummary = response.summary || null;
+
+  btn.disabled = false;
+  btn.textContent = 'EXECUTE';
+  btn.classList.remove('loading');
+  log('MATCH COMPLETE \u2014 ' + state.matchResults.length + ' SONGS SCORED FOR ' + shortAccountId(state.accountId));
+  renderMatchResults();
+}
+
+function renderMatchResults() {
+  var results = state.matchResults;
+  if (!results || results.length === 0) {
+    var emptyReason = state.matchSummary && state.matchSummary.reason ? state.matchSummary.reason : 'NO RESULTS';
+    $('matchResultsArea').innerHTML = '<div class="empty-state">' + esc(emptyReason) + '</div>';
+    $('matchResultsMeta').textContent = '';
+    return;
+  }
+
+  var totalPairs = results.reduce((s, r) => s + r.matches.length, 0);
+  var meta = [results.length + ' SONGS', totalPairs + ' MATCHES'];
+  if (state.matchSummary) {
+    meta.push(state.matchSummary.reranked ? 'RERANKED' : 'BASE ONLY');
+    if (state.matchSummary.usedExclusions) meta.push('EXCLUSIONS');
+  }
+  $('matchResultsMeta').textContent = meta.join(' \u00b7 ');
+
+  $('matchResultsArea').innerHTML = results.map((r) => {
+    var thresh = parseInt($('threshold').value) / 100;
+    var visible = r.matches.filter((m) => m.score >= thresh);
+    var scores = visible.map((m) => m.score);
+    var min = scores.length ? Math.min.apply(null, scores) : 0;
+    var max = scores.length ? Math.max.apply(null, scores) : 0;
+    var mean = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+
+    var flags = '[' + (r.hasEmbedding ? 'E' : '\u00b7') + (r.hasAudioFeatures ? 'A' : '\u00b7') + (r.genres && r.genres.length > 0 ? 'G' : '\u00b7') + ']';
+    var art = r.imageUrl ? '<img class="r-art" src="' + r.imageUrl + '" style="width:32px;height:32px;object-fit:cover;" alt="' + esc(r.songName + ' cover art') + '" />' : '';
+
+    var rows = visible.map((m, i) => {
+      var ec = m.factors.embedding > 0 ? 'on' : '';
+      var ac = m.factors.audio > 0 ? 'on' : '';
+      var gc = m.factors.genre > 0 ? 'on' : '';
+      var wStr = (m.weights.embedding * 100).toFixed(0) + '/' + (m.weights.audio * 100).toFixed(0) + '/' + (m.weights.genre * 100).toFixed(0);
+      var pct = m.score * 100;
+      var plName = m.playlistName.length > 28 ? m.playlistName.slice(0, 28) + '\u2026' : m.playlistName;
+      var rawCos = m.rawCosine != null ? (m.rawCosine * 100).toFixed(1) : '\u2014';
+      return '<tr>' +
+        '<td class="rank">' + String(i + 1).padStart(2, '0') + '</td>' +
+        '<td class="pl-name" title="' + esc(m.playlistName) + '">' + esc(plName) + '</td>' +
+        '<td class="r"><div class="score-bar-wrap"><div class="score-track"><div class="score-fill" style="width:' + pct.toFixed(0) + '%"></div></div><span class="score">' + pct.toFixed(1) + '</span></div></td>' +
+        '<td class="r factor ' + ec + '">' + (m.factors.embedding * 100).toFixed(1) + '</td>' +
+        '<td class="r factor" style="color:var(--text-dim)">' + rawCos + '</td>' +
+        '<td class="r factor ' + ac + '">' + (m.factors.audio * 100).toFixed(1) + '</td>' +
+        '<td class="r factor ' + gc + '">' + (m.factors.genre * 100).toFixed(1) + '</td>' +
+        '<td class="r weights">' + wStr + '</td>' +
+      '</tr>';
+    }).join('');
+
+    return '<div class="result-block">' +
+      '<div class="result-song-bar">' + art +
+        '<span class="r-name">' + esc(r.songName) + '</span>' +
+        '<span class="r-artist">' + esc(r.artists.join(', ')) + '</span>' +
+        '<span class="r-tags">' + flags + '</span>' +
+      '</div>' +
+      '<table class="result-table"><thead><tr>' +
+        '<th>#</th><th>PLAYLIST</th><th class="r">SCORE</th><th class="r">EMB</th><th class="r">RAW</th><th class="r">AUD</th><th class="r">GEN</th><th class="r">W</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<div class="result-stats">' +
+        '<span>RANGE <span class="sv">' + (min * 100).toFixed(1) + '\u2013' + (max * 100).toFixed(1) + '</span></span>' +
+        '<span>MEAN <span class="sv">' + (mean * 100).toFixed(1) + '</span></span>' +
+        '<span>SPREAD <span class="sv">' + ((max - min) * 100).toFixed(1) + 'pp</span></span>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// Slider sync
+function syncSliders() {
+  $('threshVal').textContent = (parseInt($('threshold').value) / 100).toFixed(2);
+}
+
+['threshold'].forEach((id) => {
+  $(id).addEventListener('input', syncSliders);
+});
+
+var searchTimeout;
+$('songSearch').addEventListener('input', () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => { loadSongs($('songSearch').value); }, 200);
+});
+
+$('matchRunBtn').addEventListener('click', runMatchExecution);
+
+// ═══ REPROFILE ══════════════════════════════════════════════════════════════
+
+$('reprofileBtn').addEventListener('click', async () => {
+  var btn = $('reprofileBtn');
+  btn.disabled = true;
+  btn.textContent = 'REPROFILING...';
+  btn.classList.add('loading');
+  $('sysStatus').textContent = '\u25b8 REPROFILING';
+  log('REPROFILING ALL PLAYLISTS WITH AI EXPANSION...');
+
+  try {
+    var result = await fetchJson(withAccount('/api/reprofile'), { method: 'POST' });
+    if (result.error) {
+      log('REPROFILE FAILED: ' + result.error);
+    } else {
+      var ok = result.playlists ? result.playlists.filter((p) => p.status === 'ok').length : 0;
+      log('REPROFILE DONE \u2014 ' + ok + '/' + (result.playlists || []).length + ' playlists updated');
+      state.expansions = {};
+      state.suggestions = {};
+      await loadPlaylists();
+    }
+  } catch (e) {
+    log('REPROFILE ERROR: ' + String(e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'REPROFILE ALL';
+    btn.classList.remove('loading');
+    $('sysStatus').textContent = '\u25b8 IDLE';
+  }
+});
+
+$('diagRefreshBtn').addEventListener('click', loadDiagnostics);
+$('accountSelect').addEventListener('change', handleAccountChange);
+
+// ═══ INIT ═══════════════════════════════════════════════════════════════════
+
+async function loadSummary() {
+  var d = await fetchJson(withAccount('/api/summary'));
+  state.accountId = d.accountId || state.accountId;
+  renderAccountPicker();
+  $('sysStats').innerHTML = [
+    '<span>ACC <span class="stat-val">' + esc(shortAccountId(state.accountId)) + '</span></span>',
+    '<span>PL <span class="stat-val">' + d.playlistProfiles + '</span></span>',
+    '<span>SONGS <span class="stat-val">' + d.totalSongs + '</span></span>',
+    '<span>EMB <span class="stat-val">' + d.withEmbeddings + '</span></span>',
+    '<span>AUD <span class="stat-val">' + d.withAudioFeatures + '</span></span>',
+    '<span>GEN <span class="stat-val">' + d.withGenres + '</span></span>',
+  ].join('');
+}
+
+(async () => {
+  renderMatchEmptyState();
+  await loadAccounts();
+  await Promise.all([loadPins(), loadPlaylists(), loadSummary()]);
+  await loadSongs();
+  log('READY \u2014 ' + state.playlists.length + ' PLAYLISTS, ' + state.songs.length + ' SONGS, ACCOUNT ' + shortAccountId(state.accountId));
+})();
+</script>
+
+</body>
+</html>
