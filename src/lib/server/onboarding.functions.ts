@@ -11,6 +11,7 @@ import { z } from "zod";
 import { requireAuthSession } from "@/lib/platform/auth/auth.server";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
 import { requestEnrichment } from "@/lib/workflows/enrichment-pipeline/trigger";
+import { triggerLightweightEnrichment } from "@/lib/workflows/playlist-sync/trigger-lightweight-enrichment";
 import {
 	getPlaylistCount,
 	getPlaylists,
@@ -317,7 +318,10 @@ export const savePlaylistDestinations = createServerFn({ method: "POST" })
 		}
 
 		if (data.playlistIds.length > 0) {
-			await requestEnrichment(session.accountId);
+			await Promise.all([
+				requestEnrichment(session.accountId),
+				triggerLightweightEnrichment(session.accountId, "destination_toggle"),
+			]);
 		}
 
 		return { success: true };

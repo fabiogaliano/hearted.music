@@ -9,7 +9,7 @@
  * Uses:
  * - SpotifyService for Spotify API calls
  * - data/playlists.ts for database operations
- * - data/songs.ts for song operations
+ * - sync-helpers.ts for shared track import
  */
 
 import { Result } from "better-result";
@@ -20,7 +20,6 @@ import type {
 } from "@/lib/domains/library/playlists/queries";
 import * as playlists from "@/lib/domains/library/playlists/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
-import * as songs from "@/lib/domains/library/songs/queries";
 import { dedupeTracksBySpotifyId } from "@/lib/integrations/spotify/mappers";
 import type {
 	SpotifyPlaylistDTO,
@@ -30,6 +29,7 @@ import type {
 import type { DbError } from "@/lib/shared/errors/database";
 import { SyncFailedError } from "@/lib/shared/errors/domain/sync";
 import type { SpotifyError } from "@/lib/shared/errors/external/spotify";
+import { importSpotifyTracks } from "./sync-helpers";
 
 /** Playlist change entry */
 export const PlaylistChangeEntrySchema = z.object({
@@ -268,38 +268,23 @@ export class PlaylistSyncService {
 	): Promise<Result<PlaylistTrackSyncResult, PlaylistSyncFailedError>> {
 		const spotifyTracks = dedupeTracksBySpotifyId(rawTracks);
 
-		const existingResult = await playlists.getPlaylistSongs(playlist.id);
+		const [existingResult, songMapResult] = await Promise.all([
+			playlists.getPlaylistSongs(playlist.id),
+			importSpotifyTracks(spotifyTracks),
+		]);
 		if (Result.isError(existingResult)) {
 			return Result.err(existingResult.error);
+		}
+		if (Result.isError(songMapResult)) {
+			return Result.err(songMapResult.error);
 		}
 		const existingSongs = existingResult.value;
 		const existingBySongId = new Map(
 			existingSongs.map((ps: PlaylistSong) => [ps.song_id, ps]),
 		);
 
-		const spotifyTrackData = spotifyTracks.map((t) => ({
-			spotify_id: t.track.id,
-			name: t.track.name,
-			album_id: t.track.album.id,
-			album_name: t.track.album.name,
-			image_url: t.track.album.images[0]?.url ?? null,
-			isrc: null,
-			artists: t.track.artists.map((a: { id: string; name: string }) => a.name),
-			duration_ms: t.track.duration_ms,
-			genres: [],
-			popularity: null,
-			preview_url: null,
-		}));
-
-		const upsertedSongsResult = await songs.upsert(spotifyTrackData);
-		if (Result.isError(upsertedSongsResult)) {
-			return Result.err(upsertedSongsResult.error);
-		}
-		const upsertedSongs = upsertedSongsResult.value;
-
-		const songBySpotifyId = new Map(
-			upsertedSongs.map((s: Song) => [s.spotify_id, s]),
-		);
+		const songBySpotifyId = songMapResult.value;
+		const upsertedSongs = [...songBySpotifyId.values()];
 
 		const spotifyTrackIds = new Set(
 			spotifyTracks.map((t: SpotifyTrackDTO) => t.track.id),

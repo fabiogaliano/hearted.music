@@ -74,8 +74,8 @@ export async function fetchLikedSongs(
 }
 
 /**
- * Transforms a SpotifyTrackDTO to the format expected by songs.upsert().
- * Pure function - no side effects.
+ * Transforms a SpotifyTrackDTO to catalog metadata for song upsert.
+ * Does not include enrichment-owned fields (genres).
  */
 export function mapSpotifyTrackToSongData(st: SpotifyTrackDTO) {
 	return {
@@ -88,10 +88,30 @@ export function mapSpotifyTrackToSongData(st: SpotifyTrackDTO) {
 		artists: st.track.artists.map((a: { id: string; name: string }) => a.name),
 		artist_ids: st.track.artists.map((a: { id: string; name: string }) => a.id),
 		duration_ms: st.track.duration_ms,
-		genres: [],
 		popularity: null,
 		preview_url: null,
 	};
+}
+
+/**
+ * Shared import path for Spotify tracks used by both liked-song and playlist-track sync.
+ * Maps tracks → catalog upsert (no genre overwrite) → sync artists → return spotify_id→Song map.
+ */
+export async function importSpotifyTracks(
+	tracks: SpotifyTrackDTO[],
+): Promise<Result<Map<string, Song>, SyncOperationError>> {
+	const songData = tracks.map(mapSpotifyTrackToSongData);
+
+	const upsertedResult = await songs.upsertCatalog(songData);
+	if (Result.isError(upsertedResult)) {
+		return Result.err(upsertedResult.error);
+	}
+
+	// Best-effort artist image sync
+	syncArtists(tracks).catch((err) => console.warn("Artist sync failed:", err));
+
+	const songMap = new Map(upsertedResult.value.map((s) => [s.spotify_id, s]));
+	return Result.ok(songMap);
 }
 
 const SpotifyArtistsSchema = z.object({
@@ -156,42 +176,30 @@ async function syncArtists(tracks: SpotifyTrackDTO[]): Promise<void> {
 
 /**
  * Imports tracks into a user's liked songs.
- * Handles both the global song catalog, artist metadata, and user-specific linking.
- *
- * Flow: Transform → Upsert to global catalog → Sync artists → Link to user's liked_songs
- *
- * Why two tables? Songs are shared across users (global catalog),
- * but liked_songs is per-user (tracks which songs a user has liked).
+ * Uses the shared import path for catalog upsert + artist sync,
+ * then links songs to the user's liked_songs.
  */
 export async function importLikedTracks(
 	accountId: string,
 	tracks: SpotifyTrackDTO[],
 ): Promise<Result<Song[], SyncOperationError>> {
-	const songData = tracks.map(mapSpotifyTrackToSongData);
-
-	const upsertedResult = await songs.upsert(songData);
-	if (Result.isError(upsertedResult)) {
-		return Result.err(upsertedResult.error);
+	const songMapResult = await importSpotifyTracks(tracks);
+	if (Result.isError(songMapResult)) {
+		return Result.err(songMapResult.error);
 	}
-	const newSongs = upsertedResult.value;
+	const songMap = songMapResult.value;
 
-	// Best-effort: sync artist images in parallel with liked_song linking
-	const songMap = new Map(newSongs.map((s) => [s.spotify_id, s]));
 	const likedSongData = tracks.flatMap((st: SpotifyTrackDTO) => {
 		const song = songMap.get(st.track.id);
 		return song ? [{ song_id: song.id, liked_at: st.added_at }] : [];
 	});
 
-	const [likedResult] = await Promise.all([
-		likedSongsData.upsert(accountId, likedSongData),
-		syncArtists(tracks),
-	]);
-
+	const likedResult = await likedSongsData.upsert(accountId, likedSongData);
 	if (Result.isError(likedResult)) {
 		return Result.err(likedResult.error);
 	}
 
-	return Result.ok(newSongs);
+	return Result.ok([...songMap.values()]);
 }
 
 /**

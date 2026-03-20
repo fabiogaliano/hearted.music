@@ -490,6 +490,33 @@ export async function claimRematchJob(): Promise<Result<Job | null, DbError>> {
 }
 
 /**
+ * Claims the next pending lightweight enrichment job via database RPC.
+ * Returns null if no pending job is available.
+ */
+export async function claimLightweightEnrichmentJob(): Promise<
+	Result<Job | null, DbError>
+> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase.rpc(
+		"claim_pending_lightweight_enrichment_job",
+	);
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	if (!data || (Array.isArray(data) && data.length === 0)) {
+		return Result.ok(null);
+	}
+
+	const job = Array.isArray(data) ? data[0] : data;
+	return Result.ok(job as Job);
+}
+
+/**
  * Sweeps stale rematch jobs back to pending so they can be re-claimed.
  */
 export async function sweepStaleRematchJobs(

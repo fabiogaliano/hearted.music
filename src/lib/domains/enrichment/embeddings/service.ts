@@ -375,6 +375,70 @@ export class EmbeddingService {
 	}
 
 	/**
+	 * Embeds arbitrary text and stores as a song_embedding.
+	 * Canonical path for text-originated song embeddings (e.g. lyrics).
+	 * Uses content hash for caching — won't re-embed identical text.
+	 */
+	async embedAndStoreText(
+		songId: string,
+		text: string,
+		options?: { prefix?: "query:" | "passage:" },
+	): Promise<Result<EmbedSongResult, EmbeddingServiceError>> {
+		const prefix = options?.prefix ?? "passage:";
+		const contentHash = await this.hashContent(text);
+
+		// Check cache by content hash
+		const existingResult = await this.getByContentHash(songId, contentHash);
+		if (Result.isError(existingResult)) {
+			return Result.err(existingResult.error);
+		}
+		if (existingResult.value) {
+			return Result.ok({
+				songId,
+				embedding: existingResult.value,
+				cached: true,
+			});
+		}
+
+		// Generate embedding
+		const providerResult = getMlProvider();
+		if (Result.isError(providerResult)) {
+			return Result.err(providerResult.error);
+		}
+		const embedResult = await providerResult.value.embed(text, { prefix });
+		if (Result.isError(embedResult)) {
+			return Result.err(embedResult.error);
+		}
+		if (embedResult.value.dims !== this.dims) {
+			return Result.err(
+				new DimensionMismatchError(this.dims, embedResult.value.dims),
+			);
+		}
+
+		// Store with model bundle hash
+		const modelBundleHashResult = await getModelBundleHash();
+		if (Result.isError(modelBundleHashResult)) {
+			return Result.err(modelBundleHashResult.error);
+		}
+
+		const storeResult = await vectors.upsertSongEmbedding({
+			song_id: songId,
+			kind: "full",
+			model: this.model,
+			model_version: modelBundleHashResult.value,
+			dims: this.dims,
+			content_hash: contentHash,
+			embedding: JSON.stringify(embedResult.value.embedding),
+		});
+
+		if (Result.isError(storeResult)) {
+			return Result.err(storeResult.error);
+		}
+
+		return Result.ok({ songId, embedding: storeResult.value, cached: false });
+	}
+
+	/**
 	 * Gets the embedding for a song, returning null if not found.
 	 */
 	async getEmbedding(

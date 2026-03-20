@@ -124,14 +124,36 @@ async function performSync(): Promise<SyncResult> {
 		const playlists = await fetchUserPlaylists(token, userUri);
 		const userProfile = profile;
 
+		// Fetch tracks for all owned playlists
+		const playlistTracks: Array<{
+			playlistSpotifyId: string;
+			tracks: Awaited<ReturnType<typeof fetchPlaylistTracks>>;
+		}> = [];
+		for (const pl of playlists) {
+			try {
+				const tracks = await fetchPlaylistTracks(
+					token,
+					`spotify:playlist:${pl.id}`,
+				);
+				playlistTracks.push({ playlistSpotifyId: pl.id, tracks });
+			} catch (err) {
+				console.warn(`[hearted.] Failed to fetch tracks for ${pl.name}:`, err);
+			}
+		}
+
+		const totalTracks = playlistTracks.reduce(
+			(sum, pt) => sum + pt.tracks.length,
+			0,
+		);
 		console.log(
-			`[hearted.] Sync complete: ${likedSongs.length} liked songs, ${playlists.length} playlists`,
+			`[hearted.] Sync complete: ${likedSongs.length} liked songs, ${playlists.length} playlists, ${totalTracks} playlist tracks`,
 		);
 
 		try {
 			const res = await postToBackend("/api/extension/sync", {
 				likedSongs,
 				playlists,
+				playlistTracks,
 				userProfile,
 			});
 			if (res.ok) {
