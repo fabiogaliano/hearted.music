@@ -85,4 +85,23 @@ describe("computeAdaptiveWeights", () => {
 			expect(w.embedding + w.audio + w.genre).toBeCloseTo(1.0);
 		}
 	});
+
+	it("redistributes custom base weights proportionally", () => {
+		const w = computeAdaptiveWeights(
+			{
+				hasEmbedding: false,
+				hasAudioFeatures: true,
+				hasGenres: true,
+			},
+			{
+				embedding: 0.2,
+				audio: 0.5,
+				genre: 0.3,
+			},
+		);
+
+		expect(w.embedding).toBe(0);
+		expect(w.audio).toBeCloseTo(0.625);
+		expect(w.genre).toBeCloseTo(0.375);
+	});
 });

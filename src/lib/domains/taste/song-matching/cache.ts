@@ -8,12 +8,16 @@
 import { Result } from "better-result";
 import {
 	hashCandidateSet,
+	hashExclusionSet,
 	hashMatchContext,
 	hashMatchingConfig,
 	hashPlaylistSet,
+	hashRerankerConfig,
 	stableStringify,
 } from "@/lib/domains/enrichment/embeddings/hashing";
 import { getModelBundleHash } from "@/lib/domains/enrichment/embeddings/versioning";
+import { getMlProvider } from "@/lib/integrations/providers/factory";
+import { DEFAULT_RERANKER_CONFIG } from "@/lib/integrations/reranker/service";
 import { DEFAULT_MATCHING_CONFIG } from "./config";
 import type {
 	MatchingConfig,
@@ -25,11 +29,14 @@ export async function computeMatchContextMetadata(
 	songs: MatchingSong[],
 	profiles: MatchingPlaylistProfile[],
 	matchingConfig: Partial<MatchingConfig> = {},
+	exclusionSet?: Set<string>,
 ): Promise<{
 	contextHash: string;
 	candidateSetHash: string;
 	playlistSetHash: string;
 	configHash: string;
+	exclusionSetHash?: string;
+	rerankerConfigHash: string;
 	modelBundleHash: string;
 	effectiveConfig: MatchingConfig;
 }> {
@@ -54,10 +61,22 @@ export async function computeMatchContextMetadata(
 	);
 	const playlistSetHash = await hashPlaylistSet(playlistIds, profileHashes);
 
-	const configHash = await hashMatchingConfig({
-		weights: { ...effectiveConfig.weights } as any,
-		audioWeights: { ...effectiveConfig.audioWeights } as any,
-		minScoreThreshold: effectiveConfig.minScoreThreshold,
+	const configHash = await hashMatchingConfig(
+		effectiveConfig as unknown as Record<string, unknown>,
+	);
+	const exclusionSetHash =
+		exclusionSet && exclusionSet.size > 0
+			? await hashExclusionSet([...exclusionSet])
+			: undefined;
+	const providerResult = getMlProvider();
+	const rerankerConfigHash = await hashRerankerConfig({
+		model: Result.isOk(providerResult)
+			? (providerResult.value.getMetadata().rerankerModel ?? null)
+			: null,
+		provider: Result.isOk(providerResult)
+			? providerResult.value.getMetadata().name
+			: null,
+		config: DEFAULT_RERANKER_CONFIG,
 	});
 
 	const modelBundleHashResult = await getModelBundleHash();
@@ -69,6 +88,8 @@ export async function computeMatchContextMetadata(
 		candidateSetHash,
 		playlistSetHash,
 		configHash,
+		exclusionSetHash,
+		rerankerConfigHash,
 		modelBundleHash: modelBundleHashResult.value,
 	});
 
@@ -77,6 +98,8 @@ export async function computeMatchContextMetadata(
 		candidateSetHash,
 		playlistSetHash,
 		configHash,
+		exclusionSetHash,
+		rerankerConfigHash,
 		modelBundleHash: modelBundleHashResult.value,
 		effectiveConfig,
 	};

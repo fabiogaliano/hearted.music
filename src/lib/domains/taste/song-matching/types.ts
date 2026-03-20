@@ -25,6 +25,8 @@ export interface MatchResult {
 	readonly rank: number;
 	/** Individual factor scores */
 	readonly factors: ScoreFactors;
+	/** Cross-encoder reranked score, if reranking was applied */
+	readonly rerankedScore?: number;
 	/** Confidence in the match (based on data availability) */
 	readonly confidence: number;
 	/** Whether result came from cache */
@@ -84,6 +86,8 @@ export interface MatchingConfig {
 	readonly skipVectorScoring: boolean;
 	/** Veto threshold - scores below this are considered poor matches */
 	readonly vetoThreshold: number;
+	/** Baseline similarity below which vector scores map to 0 (stretches compressed range) */
+	readonly similarityBaseline: number;
 }
 
 /** Missing required data for matching */
