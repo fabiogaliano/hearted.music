@@ -23,8 +23,8 @@ import {
 import { render, screen, within } from "@/test/utils/render";
 import { Onboarding } from "../Onboarding";
 
-const mockSavePlaylistDestinations = vi.fn();
-const mockSaveTheme = vi.fn();
+const mockSavePlaylistTargets = vi.fn();
+const mockSaveThemePreference = vi.fn();
 const mockUseLocation = vi.fn(() => ({ state: {} }));
 
 vi.mock("../hooks/useOnboardingNavigation", () =>
@@ -38,9 +38,8 @@ vi.mock("@/lib/keyboard/useShortcut", () => setupShortcutMock());
 vi.mock("@/lib/hooks/useJobProgress", () => setupJobProgressMock());
 
 vi.mock("@/lib/server/onboarding.functions", () => ({
-	savePlaylistDestinations: (args: unknown) =>
-		mockSavePlaylistDestinations(args),
-	saveTheme: (args: unknown) => mockSaveTheme(args),
+	savePlaylistTargets: (args: unknown) => mockSavePlaylistTargets(args),
+	saveThemePreference: (args: unknown) => mockSaveThemePreference(args),
 }));
 
 vi.mock("../components/SyncingStep", () => ({
@@ -58,7 +57,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 const testPlaylists = [
 	ONBOARDING_PLAYLISTS.lofiCityPop,
-	toOnboardingPlaylist(PLAYLISTS.oldRock, { isDestination: true }),
+	toOnboardingPlaylist(PLAYLISTS.oldRock, { isTarget: true }),
 ];
 
 const createMockOnboardingData = (
@@ -78,8 +77,8 @@ describe("Onboarding Flow", () => {
 		vi.clearAllMocks();
 		mockUseLocation.mockReturnValue({ state: {} });
 		mockGoToStep.mockResolvedValue(undefined);
-		mockSavePlaylistDestinations.mockResolvedValue(undefined);
-		mockSaveTheme.mockResolvedValue(undefined);
+		mockSavePlaylistTargets.mockResolvedValue(undefined);
+		mockSaveThemePreference.mockResolvedValue(undefined);
 	});
 
 	it("uses explicit null phaseJobIds from navigation state over DB fallback", () => {

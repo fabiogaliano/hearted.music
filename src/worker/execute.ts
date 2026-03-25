@@ -1,10 +1,14 @@
 import { Result } from "better-result";
 import type { Job } from "@/lib/data/jobs";
-import { updateHeartbeat } from "@/lib/data/jobs";
+import {
+	getJobById,
+	updateHeartbeat,
+	updateJobProgress,
+} from "@/lib/data/jobs";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/types";
 import { executeWorkerChunk } from "@/lib/workflows/enrichment-pipeline/orchestrator";
-import { requestRematch } from "@/lib/workflows/enrichment-pipeline/rematch";
-import { runLightweightEnrichment } from "@/lib/workflows/playlist-sync/lightweight-enrichment";
+import { executeRefresh } from "@/lib/workflows/target-playlist-match-refresh/orchestrator";
+import type { TargetPlaylistRefreshPlan } from "@/lib/workflows/target-playlist-match-refresh/types";
 import { workerConfig } from "./config";
 import { log } from "./logger";
 
@@ -55,77 +59,72 @@ export async function executeJob(job: Job): Promise<ExecuteResult> {
 }
 
 /**
- * Executes a lightweight enrichment job: audio features, genres, lyrics embeddings
- * for playlist-only songs, then triggers reprofiling and rematch.
- * Single-shot — no chaining or batching.
+ * Executes a target-playlist match refresh job.
+ * Runs the refresh orchestrator, then checks rerunRequested for a follow-up pass.
  */
-export async function executeLightweightEnrichmentJob(job: Job): Promise<void> {
+export async function executeTargetPlaylistMatchRefreshJob(
+	job: Job,
+): Promise<void> {
 	const heartbeat = startHeartbeat(job.id);
 	const accountId = job.account_id;
+	const initialProgress = (job.progress ?? {}) as Record<string, unknown>;
+	let plan = (initialProgress.plan ?? {
+		source: "manual",
+		shouldEnrichTargetPlaylistSongs: false,
+	}) as TargetPlaylistRefreshPlan;
 
-	log.info("lightweight-enrichment-start", { jobId: job.id, accountId });
+	log.info("target-refresh-start", { jobId: job.id, accountId });
 
 	try {
-		const stats = await runLightweightEnrichment({ accountId });
+		let pass = 0;
+		while (true) {
+			const result = await executeRefresh(accountId, plan);
 
-		log.info("lightweight-enrichment-complete", {
-			jobId: job.id,
-			accountId,
-			songsScanned: stats.songsScanned,
-			audioFilled: stats.audio.filled,
-			genresFilled: stats.genres.filled,
-			lyricsStored: stats.lyricsEmbeddings.stored,
-		});
-
-		// Trigger rematch if we enriched destination playlist songs
-		if (
-			stats.affectedPlaylistIds.length > 0 &&
-			(stats.audio.filled > 0 ||
-				stats.genres.filled > 0 ||
-				stats.lyricsEmbeddings.stored > 0)
-		) {
-			const rematchResult = await requestRematch(accountId);
-			if (Result.isError(rematchResult)) {
-				log.warn("lightweight-enrichment-rematch-failed", {
+			log.info(
+				pass === 0
+					? "target-refresh-complete"
+					: "target-refresh-rerun-complete",
+				{
 					jobId: job.id,
 					accountId,
-					error: rematchResult.error.message,
-				});
+					published: result.published,
+					matched: result.matchedSongCount,
+					candidates: result.candidateCount,
+					playlists: result.playlistCount,
+					noOp: result.noOp,
+					isEmpty: result.isEmpty,
+					pass,
+				},
+			);
+
+			const freshJobResult = await getJobById(job.id);
+			const freshProgress =
+				Result.isOk(freshJobResult) && freshJobResult.value
+					? ((freshJobResult.value.progress ?? {}) as Record<string, unknown>)
+					: initialProgress;
+
+			if (!freshProgress.rerunRequested) {
+				break;
 			}
-		}
-	} finally {
-		heartbeat.stop();
-	}
-}
 
-/**
- * Executes a rematch job: profiles playlists and re-matches all enriched songs.
- * Single-shot — no chaining or batching.
- */
-export async function executeRematchJob(job: Job): Promise<void> {
-	const heartbeat = startHeartbeat(job.id);
-	const accountId = job.account_id;
-
-	log.info("rematch-start", { jobId: job.id, accountId });
-
-	try {
-		const result = await requestRematch(accountId);
-
-		if (Result.isError(result)) {
-			log.error("rematch-execution-failed", {
+			log.info("target-refresh-rerun", {
 				jobId: job.id,
 				accountId,
-				error: result.error.message,
+				pass: pass + 1,
 			});
-			throw new Error(result.error.message);
-		}
+			await updateJobProgress(job.id, {
+				...freshProgress,
+				rerunRequested: false,
+			} as any);
 
-		log.info("rematch-complete", {
-			jobId: job.id,
-			accountId,
-			matched: result.value.matched,
-			total: result.value.total,
-		});
+			const latestPlan = (freshProgress.plan ??
+				plan) as TargetPlaylistRefreshPlan;
+			plan = {
+				...latestPlan,
+				shouldEnrichTargetPlaylistSongs: true,
+			};
+			pass += 1;
+		}
 	} finally {
 		heartbeat.stop();
 	}

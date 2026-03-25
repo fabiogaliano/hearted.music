@@ -34,7 +34,7 @@ export type UpsertPlaylistData = Pick<
 	| "snapshot_id"
 	| "is_public"
 	| "song_count"
-	| "is_destination"
+	| "is_target"
 	| "image_url"
 >;
 
@@ -120,11 +120,11 @@ export async function getPlaylistCount(
 }
 
 /**
- * Gets all destination playlists for an account.
- * Destination playlists are targets for auto-sorting liked songs.
+ * Gets all target playlists for an account.
+ * Target playlists are the ones liked songs get auto-sorted into.
  * Returns empty array if none found.
  */
-export function getDestinationPlaylists(
+export function getTargetPlaylists(
 	accountId: string,
 ): Promise<Result<Playlist[], DbError>> {
 	const supabase = createAdminSupabaseClient();
@@ -133,7 +133,7 @@ export function getDestinationPlaylists(
 			.from("playlist")
 			.select("*")
 			.eq("account_id", accountId)
-			.eq("is_destination", true)
+			.eq("is_target", true)
 			.order("name", { ascending: true }),
 	);
 }
@@ -163,7 +163,7 @@ export function upsertPlaylists(
 					snapshot_id: playlist.snapshot_id,
 					is_public: playlist.is_public,
 					song_count: playlist.song_count,
-					is_destination: playlist.is_destination,
+					is_target: playlist.is_target,
 					image_url: playlist.image_url,
 				})),
 				{ onConflict: "account_id,spotify_id" },
@@ -182,18 +182,18 @@ export function deletePlaylist(id: string): Promise<Result<null, DbError>> {
 }
 
 /**
- * Sets whether a playlist is a destination for auto-sorting.
+ * Sets whether a playlist is a target for auto-sorting.
  * Returns the updated playlist.
  */
-export function setPlaylistDestination(
+export function setPlaylistTarget(
 	id: string,
-	isDestination: boolean,
+	isTarget: boolean,
 ): Promise<Result<Playlist, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
 		supabase
 			.from("playlist")
-			.update({ is_destination: isDestination })
+			.update({ is_target: isTarget })
 			.eq("id", id)
 			.select()
 			.single(),

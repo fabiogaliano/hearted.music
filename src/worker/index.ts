@@ -1,14 +1,14 @@
 import { Result } from "better-result";
 import {
-	sweepStaleEnrichmentJobs,
 	markDeadEnrichmentJobs,
-	sweepStaleRematchJobs,
-	markDeadRematchJobs,
+	markDeadTargetPlaylistMatchRefreshJobs,
+	sweepStaleEnrichmentJobs,
+	sweepStaleTargetPlaylistMatchRefreshJobs,
 } from "@/lib/data/jobs";
 import { workerConfig } from "./config";
-import { startHealthServer, setShuttingDown, setUnhealthy } from "./health";
-import { startPolling, stopPolling, getActiveJobCount } from "./poll";
+import { setShuttingDown, setUnhealthy, startHealthServer } from "./health";
 import { log } from "./logger";
+import { getActiveJobCount, startPolling, stopPolling } from "./poll";
 
 function startSweep(): { stop: () => void } {
 	const interval = setInterval(async () => {
@@ -32,27 +32,31 @@ function startSweep(): { stop: () => void } {
 			});
 		}
 
-		const sweptRematch = await sweepStaleRematchJobs(
+		const sweptTargetRefresh = await sweepStaleTargetPlaylistMatchRefreshJobs(
 			workerConfig.staleThreshold,
 		);
-		if (Result.isError(sweptRematch)) {
-			log.error("sweep-rematch-error", { error: sweptRematch.error.message });
-		} else if (sweptRematch.value.length > 0) {
-			log.info("swept-stale-rematch-jobs", {
-				count: sweptRematch.value.length,
-				jobIds: sweptRematch.value.map((j) => j.id),
+		if (Result.isError(sweptTargetRefresh)) {
+			log.error("sweep-target-refresh-error", {
+				error: sweptTargetRefresh.error.message,
+			});
+		} else if (sweptTargetRefresh.value.length > 0) {
+			log.info("swept-stale-target-refresh-jobs", {
+				count: sweptTargetRefresh.value.length,
+				jobIds: sweptTargetRefresh.value.map((j) => j.id),
 			});
 		}
 
-		const deadRematch = await markDeadRematchJobs(workerConfig.staleThreshold);
-		if (Result.isError(deadRematch)) {
-			log.error("dead-letter-rematch-error", {
-				error: deadRematch.error.message,
+		const deadTargetRefresh = await markDeadTargetPlaylistMatchRefreshJobs(
+			workerConfig.staleThreshold,
+		);
+		if (Result.isError(deadTargetRefresh)) {
+			log.error("dead-letter-target-refresh-error", {
+				error: deadTargetRefresh.error.message,
 			});
-		} else if (deadRematch.value.length > 0) {
-			log.warn("dead-lettered-rematch-jobs", {
-				count: deadRematch.value.length,
-				jobIds: deadRematch.value.map((j) => j.id),
+		} else if (deadTargetRefresh.value.length > 0) {
+			log.warn("dead-lettered-target-refresh-jobs", {
+				count: deadTargetRefresh.value.length,
+				jobIds: deadTargetRefresh.value.map((j) => j.id),
 			});
 		}
 	}, workerConfig.sweepIntervalMs);

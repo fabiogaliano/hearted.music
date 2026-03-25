@@ -6,11 +6,13 @@ import {
 	fetchPlaylistTracks,
 	getCurrentUserProfile as fetchProfile,
 	fetchUserPlaylists,
+	queryArtistOverview,
 } from "../shared/spotify-client/reads";
 import { getSyncState, setSyncState } from "../shared/storage";
 import type {
 	ExtensionMessage,
 	SpotifyTokenPayload,
+	SpotifyTrackDTO,
 	StatusResponse,
 	UserProfile,
 } from "../shared/types";
@@ -96,6 +98,119 @@ type SyncResult = {
 	backendError?: string;
 };
 
+const ARTIST_OVERVIEW_CONCURRENCY = 8;
+
+function pickBestArtistImageUrl(
+	artist: Awaited<ReturnType<typeof queryArtistOverview>>,
+): string | null {
+	if (artist.avatarImages.length === 0) {
+		return null;
+	}
+
+	const bestImage = artist.avatarImages.reduce((best, current) => {
+		const bestArea = (best.width ?? 0) * (best.height ?? 0);
+		const currentArea = (current.width ?? 0) * (current.height ?? 0);
+		return currentArea > bestArea ? current : best;
+	});
+
+	return bestImage.url;
+}
+
+async function fetchArtistImageUrls(
+	token: string,
+	tracks: SpotifyTrackDTO[],
+): Promise<Map<string, string | null>> {
+	const artistImageUrls = new Map<string, string | null>();
+	const artistsToHydrate = new Map<string, string>();
+
+	for (const track of tracks) {
+		for (const artist of track.track.artists) {
+			if (artist.imageUrl != null) {
+				artistImageUrls.set(artist.id, artist.imageUrl);
+				artistsToHydrate.delete(artist.id);
+				continue;
+			}
+
+			if (!artistImageUrls.has(artist.id) && !artistsToHydrate.has(artist.id)) {
+				artistsToHydrate.set(artist.id, artist.name);
+			}
+		}
+	}
+
+	const artistEntries = [...artistsToHydrate.entries()];
+	let hydratedArtists = 0;
+	await setSyncState({
+		phase: "artistImages",
+		fetched: hydratedArtists,
+		total: artistEntries.length,
+		artistImages: { fetched: hydratedArtists, total: artistEntries.length },
+	});
+
+	for (
+		let index = 0;
+		index < artistEntries.length;
+		index += ARTIST_OVERVIEW_CONCURRENCY
+	) {
+		const batch = artistEntries.slice(
+			index,
+			index + ARTIST_OVERVIEW_CONCURRENCY,
+		);
+		const results = await Promise.allSettled(
+			batch.map(async ([artistId]) => {
+				const artistOverview = await queryArtistOverview(
+					token,
+					`spotify:artist:${artistId}`,
+				);
+				return {
+					artistId,
+					imageUrl: pickBestArtistImageUrl(artistOverview),
+				};
+			}),
+		);
+
+		results.forEach((result, batchIndex) => {
+			const [artistId, artistName] = batch[batchIndex];
+
+			if (result.status === "fulfilled") {
+				artistImageUrls.set(result.value.artistId, result.value.imageUrl);
+				return;
+			}
+
+			artistImageUrls.set(artistId, null);
+			console.warn(
+				`[hearted.] Failed to fetch artist overview for ${artistName} (${artistId}):`,
+				result.reason,
+			);
+		});
+
+		hydratedArtists += batch.length;
+		await setSyncState({
+			phase: "artistImages",
+			fetched: hydratedArtists,
+			total: artistEntries.length,
+			artistImages: { fetched: hydratedArtists, total: artistEntries.length },
+		});
+	}
+
+	return artistImageUrls;
+}
+
+function attachArtistImagesToTracks(
+	tracks: SpotifyTrackDTO[],
+	artistImageUrls: ReadonlyMap<string, string | null>,
+): SpotifyTrackDTO[] {
+	return tracks.map((track) => ({
+		...track,
+		track: {
+			...track.track,
+			artists: track.track.artists.map((artist) => ({
+				...artist,
+				imageUrl: artistImageUrls.get(artist.id) ?? null,
+			})),
+		},
+	}));
+}
+
 async function performSync(): Promise<SyncResult> {
 	if (!isTokenValid()) throw new Error("No valid token");
 	if (isSyncing) {
@@ -104,7 +219,17 @@ async function performSync(): Promise<SyncResult> {
 	}
 	isSyncing = true;
 	const token = (cachedToken as SpotifyTokenPayload).accessToken;
-	await setSyncState({ status: "syncing", fetched: 0, total: 0, error: null });
+	await setSyncState({
+		status: "syncing",
+		phase: "likedSongs",
+		fetched: 0,
+		total: 0,
+		likedSongs: { fetched: 0, total: 0 },
+		playlists: { fetched: 0, total: 0 },
+		playlistTracks: { fetched: 0, total: 0 },
+		artistImages: { fetched: 0, total: 0 },
+		error: null,
+	});
 	try {
 		if (!cachedProfile) {
 			cachedProfile = await fetchProfile(token);
@@ -116,13 +241,49 @@ async function performSync(): Promise<SyncResult> {
 		const likedSongs = await fetchAllLikedTracks(
 			token,
 			async (fetched, total) => {
-				await setSyncState({ fetched, total });
+				await setSyncState({
+					phase: "likedSongs",
+					fetched,
+					total,
+					likedSongs: { fetched, total },
+				});
 			},
 		);
 
 		const userUri = `spotify:user:${profile.spotifyId}`;
-		const playlists = await fetchUserPlaylists(token, userUri);
+		const playlists = await fetchUserPlaylists(
+			token,
+			userUri,
+			async (fetched) => {
+				await setSyncState({
+					phase: "playlists",
+					fetched,
+					total: 0,
+					playlists: { fetched, total: 0 },
+				});
+			},
+		);
+		await setSyncState({
+			phase: "playlists",
+			fetched: playlists.length,
+			total: playlists.length,
+			playlists: { fetched: playlists.length, total: playlists.length },
+		});
 		const userProfile = profile;
+		const playlistTracksTotal = playlists.reduce(
+			(sum, playlist) => sum + (playlist.track_count ?? 0),
+			0,
+		);
+		let fetchedPlaylistTracks = 0;
+		await setSyncState({
+			phase: "playlistTracks",
+			fetched: fetchedPlaylistTracks,
+			total: playlistTracksTotal,
+			playlistTracks: {
+				fetched: fetchedPlaylistTracks,
+				total: playlistTracksTotal,
+			},
+		});
 
 		// Fetch tracks for all owned playlists
 		const playlistTracks: Array<{
@@ -131,9 +292,24 @@ async function performSync(): Promise<SyncResult> {
 		}> = [];
 		for (const pl of playlists) {
 			try {
+				let currentPlaylistTrackCount = 0;
 				const tracks = await fetchPlaylistTracks(
 					token,
 					`spotify:playlist:${pl.id}`,
+					async (playlistFetched) => {
+						fetchedPlaylistTracks +=
+							playlistFetched - currentPlaylistTrackCount;
+						currentPlaylistTrackCount = playlistFetched;
+						await setSyncState({
+							phase: "playlistTracks",
+							fetched: fetchedPlaylistTracks,
+							total: playlistTracksTotal,
+							playlistTracks: {
+								fetched: fetchedPlaylistTracks,
+								total: playlistTracksTotal,
+							},
+						});
+					},
 				);
 				playlistTracks.push({ playlistSpotifyId: pl.id, tracks });
 			} catch (err) {
@@ -149,17 +325,32 @@ async function performSync(): Promise<SyncResult> {
 			`[hearted.] Sync complete: ${likedSongs.length} liked songs, ${playlists.length} playlists, ${totalTracks} playlist tracks`,
 		);
 
+		const artistImageUrls = await fetchArtistImageUrls(token, [
+			...likedSongs,
+			...playlistTracks.flatMap((entry) => entry.tracks),
+		]);
+		const hydratedLikedSongs = attachArtistImagesToTracks(
+			likedSongs,
+			artistImageUrls,
+		);
+		const hydratedPlaylistTracks = playlistTracks.map((entry) => ({
+			...entry,
+			tracks: attachArtistImagesToTracks(entry.tracks, artistImageUrls),
+		}));
+		await setSyncState({ phase: "uploading" });
+
 		try {
 			const res = await postToBackend("/api/extension/sync", {
-				likedSongs,
+				likedSongs: hydratedLikedSongs,
 				playlists,
-				playlistTracks,
+				playlistTracks: hydratedPlaylistTracks,
 				userProfile,
 			});
 			if (res.ok) {
 				const result = await res.json();
 				await setSyncState({
 					status: "done",
+					phase: "idle",
 					fetched: likedSongs.length,
 					total: likedSongs.length,
 					lastSyncAt: Date.now(),
@@ -359,6 +550,23 @@ chrome.runtime.onMessageExternal.addListener(
 					type: "SPOTIFY_STATUS",
 					hasToken: hasUsableToken,
 					hasSession: true,
+				});
+			})();
+			return true;
+		}
+
+		if (message.type === "GET_STATUS") {
+			(async () => {
+				if (!cachedToken) {
+					const { spotifyToken } =
+						await chrome.storage.local.get("spotifyToken");
+					if (spotifyToken) cachedToken = spotifyToken as SpotifyTokenPayload;
+				}
+				const state = await getSyncState();
+				sendResponse({
+					hasToken: isTokenValid(),
+					tokenExpiresAtMs: cachedToken?.expiresAtMs ?? null,
+					sync: state,
 				});
 			})();
 			return true;

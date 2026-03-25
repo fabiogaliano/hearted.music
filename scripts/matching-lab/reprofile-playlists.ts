@@ -1,7 +1,7 @@
 /**
  * Re-profile playlists with cold-start HyDE expansion.
  *
- * For each destination playlist, runs LLM expansion → embeds the rich
+ * For each target playlist, runs LLM expansion → embeds the rich
  * pseudo-document → upserts the profile. Useful for verifying that
  * cold-start profiling produces discriminative embeddings.
  *
@@ -39,11 +39,11 @@ async function main() {
 		llmService,
 	);
 
-	// Load all destination playlists
+	// Load all target playlists
 	const { data: playlists, error } = await supabase
 		.from("playlist")
 		.select("id, name, description, account_id")
-		.eq("is_destination", true)
+		.eq("is_target", true)
 		.order("name");
 
 	if (error || !playlists) {
@@ -51,7 +51,7 @@ async function main() {
 		process.exit(1);
 	}
 
-	console.log(`  Found ${playlists.length} destination playlists\n`);
+	console.log(`  Found ${playlists.length} target playlists\n`);
 
 	for (const playlist of playlists) {
 		console.log(`  ┌─ ${playlist.name}`);

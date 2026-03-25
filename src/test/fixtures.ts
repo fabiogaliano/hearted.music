@@ -18,7 +18,7 @@ export const PLAYLISTS = {
 		name: "作業・勉強用 / lo-fi tokyo City Pop",
 		description:
 			"作業・勉強用 / Lo-Fi tokyo City Pop, テラスハウス by @_K__T____",
-		is_destination: false,
+		is_target: false,
 		song_count: 1136,
 		image_url:
 			"https://image-cdn-fa.spotifycdn.com/image/ab67706c0000da8451ff2030389ee2791a89a616",
@@ -28,7 +28,7 @@ export const PLAYLISTS = {
 		spotify_id: "2xxuGkB7fld589tVd03L7L",
 		name: "liked songs public for anna.",
 		description: "",
-		is_destination: false,
+		is_target: false,
 		song_count: 616,
 		image_url:
 			"https://mosaic.scdn.co/640/ab67616d00001e027ac9593478963cbbe6f47277ab67616d00001e028c697f553a46006a5d8886b2ab67616d00001e0296b331e479adacf1ca778c2cab67616d00001e02bbd45c8d36e0e045ef640411",
@@ -38,7 +38,7 @@ export const PLAYLISTS = {
 		spotify_id: "5W7E0pC3pc0AXJTUchYFk7",
 		name: "old rock - coding zone",
 		description: "",
-		is_destination: false,
+		is_target: false,
 		song_count: 507,
 		image_url:
 			"https://mosaic.scdn.co/640/ab67616d00001e0251136aeb3f6b077a3f9d9a0fab67616d00001e025d11c2fe73a7d376d3b06107ab67616d00001e026e042c39906a7c7d49b67b91ab67616d00001e02dc30583ba717007b00cceb25",
@@ -48,7 +48,7 @@ export const PLAYLISTS = {
 		spotify_id: "6P0Jk3KKbCC4mtkbbUounl",
 		name: "2009~2013",
 		description: "",
-		is_destination: true,
+		is_target: true,
 		song_count: 244,
 		image_url:
 			"https://mosaic.scdn.co/640/ab67616d00001e021488c6ffb241dc6306581a2eab67616d00001e02c7d00568db33ae806cfdcbdfab67616d00001e02e198b6b9c5bfe013458e8ec9ab67616d00001e02e9a18c4792e88f34bd17bbaf",
@@ -58,7 +58,7 @@ export const PLAYLISTS = {
 		spotify_id: "4VbX8XosHo1ZeqjknJnNMf",
 		name: "focus - v2",
 		description: "",
-		is_destination: false,
+		is_target: false,
 		song_count: 202,
 		image_url:
 			"https://mosaic.scdn.co/640/ab67616d00001e02014080d39d56c94c0b285362ab67616d00001e022057743ed6bf8bd21f5e68f2ab67616d00001e02b35037d0dedbd9f7d8e26fe8ab67616d00001e02d87ab9da3347b385930734aa",
@@ -167,7 +167,7 @@ export interface OnboardingPlaylist {
 	description: string | null;
 	imageUrl: string | null;
 	songCount: number | null;
-	isDestination: boolean;
+	isTarget: boolean;
 }
 
 type PlaylistFixture = (typeof PLAYLISTS)[keyof typeof PLAYLISTS];
@@ -182,7 +182,7 @@ export function toOnboardingPlaylist(
 		description: playlist.description || null,
 		imageUrl: playlist.image_url,
 		songCount: playlist.song_count,
-		isDestination: playlist.is_destination,
+		isTarget: playlist.is_target,
 		...overrides,
 	};
 }
@@ -204,7 +204,7 @@ export interface SpotifyApiSavedTrack {
 	track: {
 		id: string;
 		name: string;
-		artists: Array<{ id: string; name: string }>;
+		artists: Array<{ id: string; name: string; imageUrl?: string | null }>;
 		album: {
 			id: string;
 			name: string;

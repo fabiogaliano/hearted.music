@@ -1,5 +1,5 @@
 /**
- * Flag Playlists step - select destination playlists.
+ * Flag Playlists step - select target playlists.
  * Full-bleed layout with horizontal-scrolling playlist grid.
  *
  * Uses scroll-jacking: vertical scroll → horizontal playlist movement.
@@ -15,7 +15,7 @@ import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import {
 	type OnboardingPlaylist,
-	savePlaylistDestinations,
+	savePlaylistTargets,
 } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
@@ -38,8 +38,7 @@ export function FlagPlaylistsStep({
 	const location = useLocation();
 	const syncStats = location.state?.syncStats ?? EMPTY_SYNC_STATS;
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(
-		() =>
-			new Set(initialPlaylists.filter((p) => p.isDestination).map((p) => p.id)),
+		() => new Set(initialPlaylists.filter((p) => p.isTarget).map((p) => p.id)),
 	);
 	const [isSaving, setIsSaving] = useState(false);
 
@@ -110,12 +109,12 @@ export function FlagPlaylistsStep({
 	const handleContinue = async () => {
 		setIsSaving(true);
 		try {
-			await savePlaylistDestinations({
+			await savePlaylistTargets({
 				data: { playlistIds: Array.from(selectedIds) },
 			});
 			await goToStep("ready", { syncStats });
 		} catch (error) {
-			console.error("Failed to save playlist destinations:", error);
+			console.error("Failed to save playlist targets:", error);
 			toast.error("Failed to save playlist selections. Please try again.");
 			setIsSaving(false);
 		}
@@ -125,7 +124,7 @@ export function FlagPlaylistsStep({
 		setIsSaving(true);
 		try {
 			// Skip: save empty selection so user can configure later
-			await savePlaylistDestinations({ data: { playlistIds: [] } });
+			await savePlaylistTargets({ data: { playlistIds: [] } });
 			await goToStep("ready", { syncStats });
 		} catch (error) {
 			console.error("Failed to skip playlists:", error);
@@ -175,7 +174,7 @@ export function FlagPlaylistsStep({
 
 					<p className="sr-only">
 						Scroll down to browse playlists horizontally. Select playlists to
-						mark them as destinations.
+						mark them as targets.
 					</p>
 				</header>
 

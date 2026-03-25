@@ -1,15 +1,9 @@
 import { Result } from "better-result";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
-import {
-	getOrCreateEnrichmentJob,
-	getOrCreateRematchJob,
-} from "@/lib/data/jobs";
-import {
-	updateEnrichmentJobId,
-	updateRematchJobId,
-} from "@/lib/domains/library/accounts/preferences-queries";
-import { getLatestMatchContext } from "@/lib/domains/taste/song-matching/queries";
-import { getPlaylists } from "@/lib/domains/library/playlists/queries";
+import { getOrCreateEnrichmentJob } from "@/lib/data/jobs";
+import { updateEnrichmentJobId } from "@/lib/domains/library/accounts/preferences-queries";
+import { getTargetPlaylists } from "@/lib/domains/library/playlists/queries";
+import { requestTargetPlaylistMatchRefresh } from "@/lib/workflows/target-playlist-match-refresh/trigger";
 import { makeInitialProgress } from "./progress";
 
 /**
@@ -44,65 +38,19 @@ export async function requestEnrichment(
 }
 
 /**
- * Checks if rematch is needed and creates a background job if so.
- * Does NOT execute matching — the worker picks up the job asynchronously.
- *
- * Guards:
- * - No playlists AND no prior context → nothing to do
- * - No prior match_context → let initial enrichment pipeline handle it
- * - Playlists removed AND prior context had playlists → create rematch job
- * - Playlists exist AND prior context exists → create rematch job (worker dedup via contextHash)
+ * Called after enrichment queue drains (hasMoreSongs = false).
+ * Requests target-playlist refresh if the account has target playlists.
  */
-export async function checkAndRematch(
+export async function requestRefreshAfterDrain(
 	accountId: string,
-): Promise<{ triggered: boolean; rematchJobId?: string }> {
-	const playlistsResult = await getPlaylists(accountId);
-	const currentPlaylists = Result.isOk(playlistsResult)
-		? playlistsResult.value
-		: [];
-
-	const latestCtxResult = await getLatestMatchContext(accountId);
-	const latestCtx = Result.isOk(latestCtxResult) ? latestCtxResult.value : null;
-
-	if (currentPlaylists.length === 0) {
-		if (latestCtx && latestCtx.playlist_count > 0) {
-			// User removed all playlists — worker will create empty context
-			return createRematchJobForAccount(accountId);
-		}
-		return { triggered: false };
+): Promise<string | null> {
+	const targetResult = await getTargetPlaylists(accountId);
+	if (Result.isError(targetResult) || targetResult.value.length === 0) {
+		return null;
 	}
 
-	if (!latestCtx) {
-		return { triggered: false };
-	}
-
-	// Playlists exist and prior context exists — always create job.
-	// contextHash dedup inside requestRematch will short-circuit if nothing changed.
-	console.info(
-		`[enrichment] Playlist change check for ${accountId}, creating rematch job`,
-	);
-	return createRematchJobForAccount(accountId);
-}
-
-async function createRematchJobForAccount(
-	accountId: string,
-): Promise<{ triggered: boolean; rematchJobId?: string }> {
-	const result = await getOrCreateRematchJob(accountId);
-	if (Result.isError(result)) {
-		console.error(
-			`[enrichment] Failed to create rematch job for ${accountId}:`,
-			result.error.message,
-		);
-		return { triggered: false };
-	}
-
-	const updateResult = await updateRematchJobId(accountId, result.value.id);
-	if (Result.isError(updateResult)) {
-		console.error(
-			"[enrichment] Failed to update rematch pointer:",
-			updateResult.error.message,
-		);
-	}
-
-	return { triggered: true, rematchJobId: result.value.id };
+	return requestTargetPlaylistMatchRefresh({
+		accountId,
+		source: "enrichment_drain",
+	});
 }

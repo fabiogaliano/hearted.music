@@ -1,7 +1,7 @@
 /**
  * Backfill playlist_song junction table from Spotify.
  *
- * Fetches each destination playlist's tracks via Pathfinder API,
+ * Fetches each target playlist's tracks via Pathfinder API,
  * cross-references with songs already in the DB, and inserts
  * playlist_song rows. This fixes the empty-profile cascade where
  * profiling produces intent-only embeddings with no audio/genre data.
@@ -140,7 +140,7 @@ async function main() {
 	const { data: playlists, error } = await supabase
 		.from("playlist")
 		.select("id, spotify_id, name, song_count")
-		.eq("is_destination", true)
+		.eq("is_target", true)
 		.order("name");
 
 	if (error || !playlists) {
@@ -148,7 +148,7 @@ async function main() {
 		process.exit(1);
 	}
 
-	console.log(`  Found ${playlists.length} destination playlists\n`);
+	console.log(`  Found ${playlists.length} target playlists\n`);
 
 	const { data: songs, error: songsError } = await supabase
 		.from("song")

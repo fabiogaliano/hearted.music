@@ -6,13 +6,11 @@
  */
 
 import { Result } from "better-result";
-import { z } from "zod";
+import * as artists from "@/lib/domains/library/artists/queries";
 import type { LikedSong } from "@/lib/domains/library/liked-songs/queries";
 import * as likedSongsData from "@/lib/domains/library/liked-songs/queries";
-import * as artists from "@/lib/domains/library/artists/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import * as songs from "@/lib/domains/library/songs/queries";
-import { appFetch } from "@/lib/integrations/spotify/app-auth";
 import { completeJob, failJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import { emitError, emitStatus } from "@/lib/platform/jobs/progress/helpers";
 import type { DbError } from "@/lib/shared/errors/database";
@@ -85,8 +83,8 @@ export function mapSpotifyTrackToSongData(st: SpotifyTrackDTO) {
 		album_name: st.track.album.name,
 		image_url: st.track.album.images[0]?.url ?? null,
 		isrc: null,
-		artists: st.track.artists.map((a: { id: string; name: string }) => a.name),
-		artist_ids: st.track.artists.map((a: { id: string; name: string }) => a.id),
+		artists: st.track.artists.map((a) => a.name),
+		artist_ids: st.track.artists.map((a) => a.id),
 		duration_ms: st.track.duration_ms,
 		popularity: null,
 		preview_url: null,
@@ -95,7 +93,7 @@ export function mapSpotifyTrackToSongData(st: SpotifyTrackDTO) {
 
 /**
  * Shared import path for Spotify tracks used by both liked-song and playlist-track sync.
- * Maps tracks → catalog upsert (no genre overwrite) → sync artists → return spotify_id→Song map.
+ * Maps tracks → catalog upsert (no genre overwrite) → persist artist metadata → return spotify_id→Song map.
  */
 export async function importSpotifyTracks(
 	tracks: SpotifyTrackDTO[],
@@ -107,76 +105,51 @@ export async function importSpotifyTracks(
 		return Result.err(upsertedResult.error);
 	}
 
-	// Best-effort artist image sync
-	syncArtists(tracks).catch((err) => console.warn("Artist sync failed:", err));
+	const artistData = collectArtistUpsertData(tracks);
+	if (artistData.length > 0) {
+		const artistResult = await artists.upsert(artistData);
+		if (Result.isError(artistResult)) {
+			console.warn("Artist upsert failed:", artistResult.error.message);
+		}
+	}
 
 	const songMap = new Map(upsertedResult.value.map((s) => [s.spotify_id, s]));
 	return Result.ok(songMap);
 }
 
-const SpotifyArtistsSchema = z.object({
-	artists: z.array(
-		z
-			.object({
-				id: z.string(),
-				name: z.string(),
-				images: z.array(z.object({ url: z.string() })),
-			})
-			.nullable(),
-	),
-});
-
 /**
- * Fetches artist images from Spotify and upserts to the artist table.
- * Batches in groups of 50 (Spotify API limit).
- * Best-effort: logs warnings but doesn't fail the sync.
+ * Extracts unique artist metadata from extension-provided track payloads.
+ * Prefers the first non-null image URL when the same artist appears multiple times.
  */
-async function syncArtists(tracks: SpotifyTrackDTO[]): Promise<void> {
-	const uniqueArtists = new Map<string, string>();
+function collectArtistUpsertData(
+	tracks: SpotifyTrackDTO[],
+): artists.ArtistUpsertData[] {
+	const uniqueArtists = new Map<string, artists.ArtistUpsertData>();
+
 	for (const st of tracks) {
 		for (const a of st.track.artists) {
-			if (!uniqueArtists.has(a.id)) {
-				uniqueArtists.set(a.id, a.name);
+			const existing = uniqueArtists.get(a.id);
+			if (!existing) {
+				uniqueArtists.set(a.id, {
+					spotify_id: a.id,
+					name: a.name,
+					image_url: a.imageUrl ?? null,
+				});
+				continue;
+			}
+
+			if (existing.image_url == null && a.imageUrl != null) {
+				existing.image_url = a.imageUrl;
 			}
 		}
 	}
 
-	if (uniqueArtists.size === 0) return;
-
-	const artistIds = [...uniqueArtists.keys()];
-	const BATCH_SIZE = 50;
-
-	for (let i = 0; i < artistIds.length; i += BATCH_SIZE) {
-		const batch = artistIds.slice(i, i + BATCH_SIZE);
-		const result = await appFetch(
-			`/artists?ids=${batch.join(",")}`,
-			SpotifyArtistsSchema,
-		);
-
-		if (Result.isError(result)) {
-			console.warn(
-				"Failed to fetch artist images batch:",
-				result.error.message,
-			);
-			continue;
-		}
-
-		const artistData = result.value.artists.filter(Boolean).map((a) => ({
-			spotify_id: a!.id,
-			name: a!.name,
-			image_url: a!.images[0]?.url ?? null,
-		}));
-
-		const upsertResult = await artists.upsert(artistData);
-		if (Result.isError(upsertResult)) {
-			console.warn("Failed to upsert artists:", upsertResult.error.message);
-		}
-	}
+	return [...uniqueArtists.values()];
 }
 
 /**
  * Imports tracks into a user's liked songs.
- * Uses the shared import path for catalog upsert + artist sync,
+ * Uses the shared import path for catalog upsert + artist metadata persistence,
  * then links songs to the user's liked_songs.
  */
 export async function importLikedTracks(

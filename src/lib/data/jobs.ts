@@ -7,9 +7,9 @@
 
 import { Result } from "better-result";
 import {
+	type EnrichmentChunkProgress,
 	JobProgressSchema as JobProgressSchemaImpl,
 	type JobProgress as JobProgressType,
-	type EnrichmentChunkProgress,
 } from "@/lib/platform/jobs/progress/types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
@@ -412,17 +412,19 @@ export async function markDeadEnrichmentJobs(
 }
 
 // ---------------------------------------------------------------------------
-// Rematch job helpers
+// Target-playlist refresh job helpers
 // ---------------------------------------------------------------------------
 
 /**
- * Creates a new rematch job in pending status.
+ * Creates a new target-playlist match refresh job in pending status.
+ * Stores a TargetPlaylistRefreshPlan in progress for the orchestrator.
  */
-export function createRematchJob(
+export function createTargetPlaylistMatchRefreshJob(
 	accountId: string,
+	progress?: JobProgress,
 ): Promise<Result<Job, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const initialProgress: JobProgress = {
+	const initialProgress: JobProgress = progress ?? {
 		total: 0,
 		done: 0,
 		succeeded: 0,
@@ -434,7 +436,7 @@ export function createRematchJob(
 			.from("job")
 			.insert({
 				account_id: accountId,
-				type: "rematch" as JobType,
+				type: "target_playlist_match_refresh" as JobType,
 				status: "pending" as const,
 				progress: initialProgress,
 			})
@@ -444,21 +446,56 @@ export function createRematchJob(
 }
 
 /**
- * Gets or creates a rematch job for an account.
+ * Gets or creates a target-playlist match refresh job for an account.
  * Reuses an existing active (pending/running) job if one exists.
- * A partial unique index enforces at most one active rematch job per account.
+ * When reusing, sets rerunRequested in progress so the worker runs an extra pass.
  */
-export async function getOrCreateRematchJob(
+export async function getOrCreateTargetPlaylistMatchRefreshJob(
 	accountId: string,
+	progress?: JobProgress,
 ): Promise<Result<Job, DbError>> {
-	const existing = await getActiveJob(accountId, "rematch");
+	const existing = await getActiveJob(
+		accountId,
+		"target_playlist_match_refresh",
+	);
 	if (Result.isError(existing)) return existing;
-	if (existing.value) return Result.ok(existing.value);
+	if (existing.value) {
+		const job = existing.value;
+		const currentProgress = (job.progress ?? {}) as Record<string, unknown>;
+		const nextPlan = (progress as Record<string, unknown> | undefined)?.plan as
+			| Record<string, unknown>
+			| undefined;
+		const currentPlan = currentProgress.plan as
+			| Record<string, unknown>
+			| undefined;
+		const shouldEnrichTargetPlaylistSongs =
+			nextPlan?.shouldEnrichTargetPlaylistSongs === true ||
+			currentPlan?.shouldEnrichTargetPlaylistSongs === true;
 
-	const created = await createRematchJob(accountId);
+		await updateJobProgress(job.id, {
+			...currentProgress,
+			plan: nextPlan
+				? {
+						...currentPlan,
+						...nextPlan,
+						shouldEnrichTargetPlaylistSongs,
+					}
+				: currentPlan,
+			rerunRequested: true,
+		} as any);
+		return Result.ok(job);
+	}
+
+	const created = await createTargetPlaylistMatchRefreshJob(
+		accountId,
+		progress,
+	);
 
 	if (Result.isError(created) && created.error._tag === "ConstraintError") {
-		const retry = await getActiveJob(accountId, "rematch");
+		const retry = await getActiveJob(
+			accountId,
+			"target_playlist_match_refresh",
+		);
 		if (Result.isError(retry)) return retry;
 		if (retry.value) return Result.ok(retry.value);
 	}
@@ -467,39 +504,16 @@ export async function getOrCreateRematchJob(
 }
 
 /**
- * Claims the next pending rematch job via database RPC.
- * Returns null if no pending rematch job is available.
- */
-export async function claimRematchJob(): Promise<Result<Job | null, DbError>> {
-	const supabase = createAdminSupabaseClient();
-
-	const { data, error } = await supabase.rpc("claim_pending_rematch_job");
-
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
-
-	if (!data || (Array.isArray(data) && data.length === 0)) {
-		return Result.ok(null);
-	}
-
-	const job = Array.isArray(data) ? data[0] : data;
-	return Result.ok(job as Job);
-}
-
-/**
- * Claims the next pending lightweight enrichment job via database RPC.
+ * Claims the next pending target-playlist match refresh job via database RPC.
  * Returns null if no pending job is available.
  */
-export async function claimLightweightEnrichmentJob(): Promise<
+export async function claimTargetPlaylistMatchRefreshJob(): Promise<
 	Result<Job | null, DbError>
 > {
 	const supabase = createAdminSupabaseClient();
 
-	const { data, error } = await supabase.rpc(
-		"claim_pending_lightweight_enrichment_job",
+	const { data, error } = await (supabase.rpc as any)(
+		"claim_pending_target_playlist_match_refresh_job",
 	);
 
 	if (error) {
@@ -517,16 +531,17 @@ export async function claimLightweightEnrichmentJob(): Promise<
 }
 
 /**
- * Sweeps stale rematch jobs back to pending so they can be re-claimed.
+ * Sweeps stale target-playlist refresh jobs back to pending.
  */
-export async function sweepStaleRematchJobs(
+export async function sweepStaleTargetPlaylistMatchRefreshJobs(
 	staleThreshold: string,
 ): Promise<Result<Job[], DbError>> {
 	const supabase = createAdminSupabaseClient();
 
-	const { data, error } = await supabase.rpc("sweep_stale_rematch_jobs", {
-		stale_threshold: staleThreshold,
-	});
+	const { data, error } = await (supabase.rpc as any)(
+		"sweep_stale_target_playlist_match_refresh_jobs",
+		{ stale_threshold: staleThreshold },
+	);
 
 	if (error) {
 		return Result.err(
@@ -538,16 +553,17 @@ export async function sweepStaleRematchJobs(
 }
 
 /**
- * Marks rematch jobs as failed if they've been stale beyond recovery.
+ * Marks target-playlist refresh jobs as failed if stale beyond recovery.
  */
-export async function markDeadRematchJobs(
+export async function markDeadTargetPlaylistMatchRefreshJobs(
 	staleThreshold: string,
 ): Promise<Result<Job[], DbError>> {
 	const supabase = createAdminSupabaseClient();
 
-	const { data, error } = await supabase.rpc("mark_dead_rematch_jobs", {
-		stale_threshold: staleThreshold,
-	});
+	const { data, error } = await (supabase.rpc as any)(
+		"mark_dead_target_playlist_match_refresh_jobs",
+		{ stale_threshold: staleThreshold },
+	);
 
 	if (error) {
 		return Result.err(

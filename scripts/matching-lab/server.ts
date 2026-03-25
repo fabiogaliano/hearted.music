@@ -100,7 +100,7 @@ async function loadAccountOptions(): Promise<AccountOption[]> {
 	const { data, error } = await supabase
 		.from("playlist")
 		.select("account_id")
-		.eq("is_destination", true);
+		.eq("is_target", true);
 	if (error) throw error;
 
 	const counts = new Map<string, number>();
@@ -324,7 +324,7 @@ async function loadDataSummary(accountId?: string) {
 		.from("playlist")
 		.select("id")
 		.eq("account_id", accountId)
-		.eq("is_destination", true);
+		.eq("is_target", true);
 	const playlistIds = (playlistIdsData ?? []).map((playlist) => playlist.id);
 
 	if (likedSongIds.length === 0) {
@@ -773,7 +773,7 @@ async function reprofilePlaylists(accountId?: string) {
 	let playlistQuery = supabase
 		.from("playlist")
 		.select("id, name, description, account_id")
-		.eq("is_destination", true)
+		.eq("is_target", true)
 		.order("name");
 	if (accountId) {
 		playlistQuery = playlistQuery.eq("account_id", accountId);

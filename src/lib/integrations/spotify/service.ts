@@ -15,12 +15,18 @@ import { fetchAllPages } from "./pagination";
 import { fetchWithRetry } from "./request";
 
 /** Spotify track from saved tracks endpoint */
+export interface SpotifyTrackArtistDTO {
+	id: string;
+	name: string;
+	imageUrl?: string | null;
+}
+
 export interface SpotifyTrackDTO {
 	added_at: string;
 	track: {
 		id: string;
 		name: string;
-		artists: Array<{ id: string; name: string }>;
+		artists: SpotifyTrackArtistDTO[];
 		album: {
 			id: string;
 			name: string;
@@ -39,7 +45,13 @@ const spotifyTrackItemSchema = z.object({
 		.object({
 			id: z.string(),
 			name: z.string(),
-			artists: z.array(z.object({ id: z.string(), name: z.string() })),
+			artists: z.array(
+				z.object({
+					id: z.string(),
+					name: z.string(),
+					imageUrl: z.string().nullable().optional(),
+				}),
+			),
 			album: z.object({
 				id: z.string(),
 				name: z.string(),

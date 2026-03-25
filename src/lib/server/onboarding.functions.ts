@@ -8,32 +8,31 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
-import { requireAuthSession } from "@/lib/platform/auth/auth.server";
-import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
-import { requestEnrichment } from "@/lib/workflows/enrichment-pipeline/trigger";
-import { triggerLightweightEnrichment } from "@/lib/workflows/playlist-sync/trigger-lightweight-enrichment";
-import {
-	getPlaylistCount,
-	getPlaylists,
-	setPlaylistDestination,
-} from "@/lib/domains/library/playlists/queries";
 import {
 	clearPhaseJobIds,
 	completeOnboarding,
 	getOrCreatePreferences,
-	getPhaseJobIds,
 	isOnboardingComplete,
 	ONBOARDING_STEPS,
 	type OnboardingStep,
 	updateOnboardingStep,
 	updateTheme,
 } from "@/lib/domains/library/accounts/preferences-queries";
+import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
+import {
+	getPlaylistCount,
+	getPlaylists,
+	setPlaylistTarget,
+} from "@/lib/domains/library/playlists/queries";
+import { requireAuthSession } from "@/lib/platform/auth/auth.server";
 import {
 	type PhaseJobIds,
 	PhaseJobIdsSchema,
 } from "@/lib/platform/jobs/progress/types";
 import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
 import { type ThemeColor, themeSchema } from "@/lib/theme/types";
+import { requestEnrichment } from "@/lib/workflows/enrichment-pipeline/trigger";
+import { requestTargetPlaylistMatchRefresh } from "@/lib/workflows/target-playlist-match-refresh/trigger";
 
 /** Playlist view model for onboarding UI (camelCase frontend format) */
 export interface OnboardingPlaylist {
@@ -42,7 +41,7 @@ export interface OnboardingPlaylist {
 	description: string | null;
 	imageUrl: string | null;
 	songCount: number | null;
-	isDestination: boolean;
+	isTarget: boolean;
 }
 
 /** Sync statistics for the ready step */
@@ -125,7 +124,7 @@ export const getOnboardingData = createServerFn({ method: "GET" }).handler(
 			description: p.description,
 			imageUrl: p.image_url,
 			songCount: p.song_count,
-			isDestination: p.is_destination ?? false,
+			isTarget: p.is_target ?? false,
 		}));
 
 		// Validate currentStep with Zod instead of unsafe type assertion
@@ -223,24 +222,6 @@ export const resetSyncJobs = createServerFn({ method: "POST" }).handler(
 );
 
 /**
- * Polls for phaseJobIds from the database.
- * Used by SyncingStep when waiting for the extension to trigger sync.
- * Returns null if no active sync jobs exist yet.
- */
-export const pollPhaseJobIds = createServerFn({ method: "GET" }).handler(
-	async (): Promise<PhaseJobIds | null> => {
-		const { session } = await requireAuthSession();
-
-		const result = await getPhaseJobIds(session.accountId);
-		if (Result.isError(result)) {
-			throw new OnboardingError("poll_phase_job_ids", result.error);
-		}
-
-		return result.value;
-	},
-);
-
-/**
  * Saves the current onboarding step for resumability.
  * Clears phaseJobIds when transitioning past syncing step.
  * Updates the DB every time the user navigates to a new step.
@@ -287,11 +268,11 @@ export const markOnboardingComplete = createServerFn({
 });
 
 /**
- * Saves playlist destinations (batch update).
- * Takes an array of playlist IDs to mark as destinations.
+ * Saves target playlist selection (batch update).
+ * Takes an array of playlist IDs to mark as targets.
  * All other playlists for this account will be unmarked.
  */
-export const savePlaylistDestinations = createServerFn({ method: "POST" })
+export const savePlaylistTargets = createServerFn({ method: "POST" })
 	.inputValidator(playlistIdsInputSchema)
 	.handler(async ({ data }): Promise<{ success: true }> => {
 		const { session } = await requireAuthSession();
@@ -302,26 +283,55 @@ export const savePlaylistDestinations = createServerFn({ method: "POST" })
 			throw new OnboardingError("get_playlists", playlistsResult.error);
 		}
 
+		const previousTargetIds = new Set(
+			playlistsResult.value
+				.filter((playlist) => playlist.is_target)
+				.map((playlist) => playlist.id),
+		);
+		const nextTargetIds = new Set(data.playlistIds);
+		const addedTargetIds = [...nextTargetIds].filter(
+			(playlistId) => !previousTargetIds.has(playlistId),
+		);
+		const removedTargetIds = [...previousTargetIds].filter(
+			(playlistId) => !nextTargetIds.has(playlistId),
+		);
+
 		const updates = playlistsResult.value.map((playlist) => {
-			const shouldBeDestination = data.playlistIds.includes(playlist.id);
-			return setPlaylistDestination(playlist.id, shouldBeDestination);
+			const shouldBeTarget = data.playlistIds.includes(playlist.id);
+			return setPlaylistTarget(playlist.id, shouldBeTarget);
 		});
 
 		const results = await Promise.all(updates);
 
 		const firstError = results.find(Result.isError);
 		if (firstError) {
-			throw new OnboardingError(
-				"update_playlist_destinations",
-				firstError.error,
+			throw new OnboardingError("update_playlist_targets", firstError.error);
+		}
+
+		const followOnWork: Promise<unknown>[] = [];
+
+		if (addedTargetIds.length > 0) {
+			followOnWork.push(
+				requestTargetPlaylistMatchRefresh({
+					accountId: session.accountId,
+					source: "target_selection",
+				}),
+			);
+			followOnWork.push(requestEnrichment(session.accountId));
+		} else if (removedTargetIds.length > 0) {
+			followOnWork.push(
+				requestTargetPlaylistMatchRefresh({
+					accountId: session.accountId,
+					source:
+						nextTargetIds.size === 0
+							? "sync_all_targets_removed"
+							: "sync_target_removal",
+				}),
 			);
 		}
 
-		if (data.playlistIds.length > 0) {
-			await Promise.all([
-				requestEnrichment(session.accountId),
-				triggerLightweightEnrichment(session.accountId, "destination_toggle"),
-			]);
+		if (followOnWork.length > 0) {
+			await Promise.all(followOnWork);
 		}
 
 		return { success: true };

@@ -2,23 +2,19 @@ import { Result } from "better-result";
 import type { Job } from "@/lib/data/jobs";
 import {
 	claimEnrichmentJob,
-	claimLightweightEnrichmentJob,
-	claimRematchJob,
+	claimTargetPlaylistMatchRefreshJob,
 	markJobCompleted,
 	markJobFailed,
 } from "@/lib/data/jobs";
 import {
 	updateEnrichmentJobId,
 	clearEnrichmentJobId,
-	clearRematchJobId,
+	clearTargetPlaylistMatchRefreshJobId,
 } from "@/lib/domains/library/accounts/preferences-queries";
+import { requestRefreshAfterDrain } from "@/lib/workflows/enrichment-pipeline/trigger";
 import { chainNextChunk } from "./chain";
 import { workerConfig } from "./config";
-import {
-	executeJob,
-	executeLightweightEnrichmentJob,
-	executeRematchJob,
-} from "./execute";
+import { executeJob, executeTargetPlaylistMatchRefreshJob } from "./execute";
 import { log } from "./logger";
 
 let shouldPoll = true;
@@ -73,6 +69,14 @@ async function processEnrichmentJob(job: Job): Promise<void> {
 							error: clearResult.error.message,
 						});
 					}
+					// Queue drain — request target-playlist refresh if targets exist
+					const refreshJobId = await requestRefreshAfterDrain(result.accountId);
+					if (refreshJobId) {
+						log.info("drain-triggered-refresh", {
+							accountId: result.accountId,
+							refreshJobId,
+						});
+					}
 					break;
 				}
 				case "error": {
@@ -114,9 +118,9 @@ async function processEnrichmentJob(job: Job): Promise<void> {
 	}
 }
 
-async function processLightweightEnrichmentJob(job: Job): Promise<void> {
+async function processTargetPlaylistMatchRefreshJob(job: Job): Promise<void> {
 	try {
-		await executeLightweightEnrichmentJob(job);
+		await executeTargetPlaylistMatchRefreshJob(job);
 
 		const completedResult = await markJobCompleted(job.id);
 		if (Result.isError(completedResult)) {
@@ -125,29 +129,7 @@ async function processLightweightEnrichmentJob(job: Job): Promise<void> {
 				error: completedResult.error.message,
 			});
 		}
-		log.info("lightweight-enrichment-job-complete", {
-			jobId: job.id,
-			accountId: job.account_id,
-		});
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		await markJobFailedSafe(job, message);
-		throw error;
-	}
-}
-
-async function processRematchJob(job: Job): Promise<void> {
-	try {
-		await executeRematchJob(job);
-
-		const completedResult = await markJobCompleted(job.id);
-		if (Result.isError(completedResult)) {
-			log.error("mark-completed-failed", {
-				jobId: job.id,
-				error: completedResult.error.message,
-			});
-		}
-		log.info("rematch-job-complete", {
+		log.info("target-refresh-job-complete", {
 			jobId: job.id,
 			accountId: job.account_id,
 		});
@@ -156,9 +138,11 @@ async function processRematchJob(job: Job): Promise<void> {
 		await markJobFailedSafe(job, message);
 		throw error;
 	} finally {
-		const clearResult = await clearRematchJobId(job.account_id);
+		const clearResult = await clearTargetPlaylistMatchRefreshJobId(
+			job.account_id,
+		);
 		if (Result.isError(clearResult)) {
-			log.error("clear-rematch-pointer-failed", {
+			log.error("clear-refresh-pointer-failed", {
 				accountId: job.account_id,
 				error: clearResult.error.message,
 			});
@@ -200,7 +184,7 @@ export async function startPolling(): Promise<void> {
 			continue;
 		}
 
-		// Enrichment gets priority — gates first-time results
+		// Enrichment gets priority — candidate-side work gates suggestions
 		let job: Job | null = null;
 
 		const enrichResult = await claimEnrichmentJob();
@@ -211,28 +195,17 @@ export async function startPolling(): Promise<void> {
 		}
 		job = enrichResult.value;
 
-		// Lightweight enrichment gets second priority — enriches destination playlist songs
+		// Target-playlist refresh gets second priority
 		if (!job) {
-			const lightweightResult = await claimLightweightEnrichmentJob();
-			if (Result.isError(lightweightResult)) {
-				log.error("claim-lightweight-error", {
-					error: lightweightResult.error.message,
-				});
-			} else {
-				job = lightweightResult.value;
-			}
-		}
-
-		if (!job) {
-			const rematchResult = await claimRematchJob();
-			if (Result.isError(rematchResult)) {
-				log.error("claim-rematch-error", {
-					error: rematchResult.error.message,
+			const refreshResult = await claimTargetPlaylistMatchRefreshJob();
+			if (Result.isError(refreshResult)) {
+				log.error("claim-refresh-error", {
+					error: refreshResult.error.message,
 				});
 				await Bun.sleep(workerConfig.pollIntervalMs);
 				continue;
 			}
-			job = rematchResult.value;
+			job = refreshResult.value;
 		}
 
 		if (!job) {
@@ -250,10 +223,8 @@ export async function startPolling(): Promise<void> {
 
 		(async () => {
 			try {
-				if (claimed.type === "playlist_lightweight_enrichment") {
-					await processLightweightEnrichmentJob(claimed);
-				} else if (claimed.type === "rematch") {
-					await processRematchJob(claimed);
+				if (claimed.type === "target_playlist_match_refresh") {
+					await processTargetPlaylistMatchRefreshJob(claimed);
 				} else {
 					await processEnrichmentJob(claimed);
 				}

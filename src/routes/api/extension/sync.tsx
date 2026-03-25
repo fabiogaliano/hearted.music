@@ -17,43 +17,46 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
 import { z } from "zod";
-import {
-	extensionCorsPreflightResponse,
-	getExtensionCorsHeaders,
-} from "@/lib/server/extension-cors";
-import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
-import { PlaylistSyncService } from "@/lib/workflows/spotify-sync/playlist-sync";
-import {
-	initialSync,
-	incrementalSync,
-	runPhase,
-} from "@/lib/workflows/spotify-sync/sync-helpers";
-import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import { validateApiToken } from "@/lib/data/api-tokens";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { createJob } from "@/lib/data/jobs";
 import { updatePhaseJobIds } from "@/lib/domains/library/accounts/preferences-queries";
-import {
-	requestEnrichment,
-	checkAndRematch,
-} from "@/lib/workflows/enrichment-pipeline/trigger";
-import { triggerLightweightEnrichment } from "@/lib/workflows/playlist-sync/trigger-lightweight-enrichment";
+import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
 import * as playlistData from "@/lib/domains/library/playlists/queries";
-import { emitItem, emitStatus } from "@/lib/platform/jobs/progress/helpers";
-import { completeJob, startJob } from "@/lib/platform/jobs/lifecycle";
-import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type {
+	SpotifyPlaylistDTO,
 	SpotifyService,
 	SpotifyTrackDTO,
-	SpotifyPlaylistDTO,
 } from "@/lib/integrations/spotify/service";
+import { getAuthSession } from "@/lib/platform/auth/auth.server";
+import { completeJob, startJob } from "@/lib/platform/jobs/lifecycle";
+import { emitItem, emitStatus } from "@/lib/platform/jobs/progress/helpers";
+import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
+import {
+	extensionCorsPreflightResponse,
+	getExtensionCorsHeaders,
+} from "@/lib/server/extension-cors";
+import { requestEnrichment } from "@/lib/workflows/enrichment-pipeline/trigger";
+import { PlaylistSyncService } from "@/lib/workflows/spotify-sync/playlist-sync";
+import {
+	incrementalSync,
+	initialSync,
+	runPhase,
+} from "@/lib/workflows/spotify-sync/sync-helpers";
+import { requestTargetPlaylistMatchRefresh } from "@/lib/workflows/target-playlist-match-refresh/trigger";
 
 const SpotifyTrackDTOSchema = z.object({
 	added_at: z.string(),
 	track: z.object({
 		id: z.string(),
 		name: z.string(),
-		artists: z.array(z.object({ id: z.string(), name: z.string() })),
+		artists: z.array(
+			z.object({
+				id: z.string(),
+				name: z.string(),
+				imageUrl: z.string().nullable().optional(),
+			}),
+		),
 		album: z.object({
 			id: z.string(),
 			name: z.string(),
@@ -372,6 +375,10 @@ export const Route = createFileRoute("/api/extension/sync")({
 						created: playlistResult.value.created,
 						updated: playlistResult.value.updated,
 						removed: playlistResult.value.removed,
+						removedTargetPlaylistIds:
+							playlistResult.value.removedTargetPlaylistIds,
+						updatedTargetPlaylistIds:
+							playlistResult.value.updatedTargetPlaylistIds,
 					};
 				} else {
 					emitItem(phaseJobIds.playlists, {
@@ -446,16 +453,18 @@ export const Route = createFileRoute("/api/extension/sync")({
 						playlistsChanged: changedPlaylistIds.length,
 					};
 
-					// Identify affected destination playlists and enqueue lightweight enrichment
-					const destResult =
-						await playlistData.getDestinationPlaylists(accountId);
-					if (Result.isOk(destResult)) {
-						const destIds = new Set(destResult.value.map((p) => p.id));
-						const affectedDests = changedPlaylistIds.filter((id) =>
-							destIds.has(id),
+					// Check if changed playlists intersect current target set
+					const targetResult = await playlistData.getTargetPlaylists(accountId);
+					if (Result.isOk(targetResult)) {
+						const targetIds = new Set(targetResult.value.map((p) => p.id));
+						const affectedTargets = changedPlaylistIds.filter((id) =>
+							targetIds.has(id),
 						);
-						if (affectedDests.length > 0) {
-							await triggerLightweightEnrichment(accountId, "sync");
+						if (affectedTargets.length > 0) {
+							await requestTargetPlaylistMatchRefresh({
+								accountId,
+								source: "sync_target_track_change",
+							});
 						}
 					}
 				} else {
@@ -470,11 +479,58 @@ export const Route = createFileRoute("/api/extension/sync")({
 					await completeJob(phaseJobIds.playlist_tracks);
 				}
 
-				// Phase 4: Request enrichment if account has songs
-				const enrichmentJobId = await requestEnrichment(accountId);
+				// Phase 4: Request enrichment only when liked-song additions need candidate-side work
+				const likedSongsResult = results.likedSongs as
+					| { added?: number; removed?: number }
+					| undefined;
+				const shouldRequestEnrichment = (likedSongsResult?.added ?? 0) > 0;
+				const enrichmentJobId = shouldRequestEnrichment
+					? await requestEnrichment(accountId)
+					: null;
 
-				// Phase 5: Check for playlist changes and create rematch job if needed
-				const rematch = await checkAndRematch(accountId);
+				// Phase 5: Classify sync results and queue target-playlist refresh
+				let refreshJobId: string | null = null;
+				const playlistSyncResult = results.playlists as
+					| {
+							removedTargetPlaylistIds?: string[];
+							updatedTargetPlaylistIds?: string[];
+					  }
+					| undefined;
+
+				// Liked-song removals need immediate refresh
+				if (likedSongsResult?.removed && likedSongsResult.removed > 0) {
+					refreshJobId = await requestTargetPlaylistMatchRefresh({
+						accountId,
+						source: "sync_liked_removal",
+					});
+				}
+
+				// Target playlist removals need refresh
+				const removedTargets =
+					playlistSyncResult?.removedTargetPlaylistIds ?? [];
+				if (removedTargets.length > 0 && !refreshJobId) {
+					// Check if any targets remain
+					const remainingTargets =
+						await playlistData.getTargetPlaylists(accountId);
+					const hasRemainingTargets =
+						Result.isOk(remainingTargets) && remainingTargets.value.length > 0;
+					refreshJobId = await requestTargetPlaylistMatchRefresh({
+						accountId,
+						source: hasRemainingTargets
+							? "sync_target_removal"
+							: "sync_all_targets_removed",
+					});
+				}
+
+				// Target-playlist metadata changes (name/description/image) invalidate profiles
+				const updatedTargets =
+					playlistSyncResult?.updatedTargetPlaylistIds ?? [];
+				if (updatedTargets.length > 0 && !refreshJobId) {
+					refreshJobId = await requestTargetPlaylistMatchRefresh({
+						accountId,
+						source: "sync_target_metadata_change",
+					});
+				}
 
 				return Response.json(
 					{
@@ -482,8 +538,7 @@ export const Route = createFileRoute("/api/extension/sync")({
 						results,
 						phaseJobIds,
 						enrichmentJobId,
-						rematchTriggered: rematch.triggered,
-						rematchJobId: rematch.rematchJobId ?? null,
+						refreshJobId,
 					},
 					{ headers: corsHeaders },
 				);

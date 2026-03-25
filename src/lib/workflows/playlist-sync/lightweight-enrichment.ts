@@ -1,5 +1,5 @@
 /**
- * Lightweight enrichment workflow for playlist-only songs.
+ * Lightweight enrichment workflow for target-playlist-only songs.
  *
  * Runs cheap/free enrichment steps only:
  * 1. Audio features (ReccoBeats — free)
@@ -7,24 +7,24 @@
  * 3. Lyrics-based embeddings (Genius + ML provider)
  *
  * No LLM analysis, no reranking, no paid steps.
- * Callable from worker jobs, destination toggles, or manual scripts.
+ * Called by the target-playlist refresh orchestrator.
  */
 
 import { Result } from "better-result";
-import * as playlists from "@/lib/domains/library/playlists/queries";
-import * as songs from "@/lib/domains/library/songs/queries";
-import type { Song } from "@/lib/domains/library/songs/queries";
-import {
-	createAudioFeaturesService,
-	type TrackInfo,
-} from "@/lib/integrations/audio/service";
-import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
+import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import {
 	createGenreEnrichmentService,
 	type GenreEnrichmentInput,
 } from "@/lib/domains/enrichment/genre-tagging/service";
 import { createLyricsService } from "@/lib/domains/enrichment/lyrics/service";
-import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import * as playlists from "@/lib/domains/library/playlists/queries";
+import type { Song } from "@/lib/domains/library/songs/queries";
+import * as songs from "@/lib/domains/library/songs/queries";
+import {
+	createAudioFeaturesService,
+	type TrackInfo,
+} from "@/lib/integrations/audio/service";
+import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import type { DbError } from "@/lib/shared/errors/database";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -33,7 +33,7 @@ import type { DbError } from "@/lib/shared/errors/database";
 
 export interface LightweightEnrichmentOptions {
 	accountId: string;
-	/** Restrict to specific playlists (default: all destination playlists) */
+	/** Restrict to specific playlists (default: all target playlists) */
 	playlistIds?: string[];
 	/** Restrict to specific songs (skip candidate selection) */
 	songIds?: string[];
@@ -69,15 +69,15 @@ async function selectCandidates(
 	// Determine target playlists
 	let targetPlaylists: playlists.Playlist[];
 	if (opts.playlistIds && opts.playlistIds.length > 0) {
-		const allResult = await playlists.getPlaylists(opts.accountId);
-		if (Result.isError(allResult)) return allResult;
-		targetPlaylists = allResult.value.filter((p) =>
+		const targetResult = await playlists.getTargetPlaylists(opts.accountId);
+		if (Result.isError(targetResult)) return targetResult;
+		targetPlaylists = targetResult.value.filter((p) =>
 			opts.playlistIds!.includes(p.id),
 		);
 	} else {
-		const destResult = await playlists.getDestinationPlaylists(opts.accountId);
-		if (Result.isError(destResult)) return destResult;
-		targetPlaylists = destResult.value;
+		const targetResult = await playlists.getTargetPlaylists(opts.accountId);
+		if (Result.isError(targetResult)) return targetResult;
+		targetPlaylists = targetResult.value;
 	}
 
 	if (targetPlaylists.length === 0) {
@@ -114,7 +114,7 @@ async function selectCandidates(
 		.from("liked_song")
 		.select("song_id")
 		.eq("account_id", opts.accountId)
-		.is("deleted_at", null)
+		.is("unliked_at", null)
 		.in("song_id", [...allSongIds]);
 
 	const likedSongIds = new Set((likedRows ?? []).map((r) => r.song_id));

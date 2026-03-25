@@ -21,7 +21,7 @@ export async function runPlaylistProfiling(ctx: EnrichmentContext): Promise<{
 }> {
 	let playlists: Playlist[];
 	try {
-		const playlistsResult = await playlistData.getDestinationPlaylists(
+		const playlistsResult = await playlistData.getTargetPlaylists(
 			ctx.accountId,
 		);
 		if (Result.isError(playlistsResult)) {
