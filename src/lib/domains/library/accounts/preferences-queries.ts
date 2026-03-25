@@ -7,14 +7,14 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Enums, Tables } from "@/lib/data/database.types";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Enums, Tables } from "@/lib/data/database.types";
 
 export type UserPreferences = Tables<"user_preferences">;
 
@@ -254,27 +254,6 @@ export function clearPhaseJobIds(
 	);
 }
 
-export async function getPhaseJobIds(
-	accountId: string,
-): Promise<Result<PhaseJobIds | null, DbError>> {
-	const result = await getPreferences(accountId);
-
-	if (Result.isError(result)) {
-		return Result.err(result.error);
-	}
-
-	if (!result.value?.phase_job_ids) {
-		return Result.ok(null);
-	}
-
-	const { PhaseJobIdsSchema } = await import(
-		"@/lib/platform/jobs/progress/types"
-	);
-	const parsed = PhaseJobIdsSchema.safeParse(result.value.phase_job_ids);
-
-	return Result.ok(parsed.success ? parsed.data : null);
-}
-
 export function updateEnrichmentJobId(
 	accountId: string,
 	jobId: string,
@@ -321,7 +300,7 @@ export async function getEnrichmentJobId(
 	return Result.ok(result.value?.enrichment_job_id ?? null);
 }
 
-export function updateRematchJobId(
+export function updateTargetPlaylistMatchRefreshJobId(
 	accountId: string,
 	jobId: string,
 ): Promise<Result<UserPreferences, DbError>> {
@@ -332,7 +311,7 @@ export function updateRematchJobId(
 			.upsert(
 				{
 					account_id: accountId,
-					rematch_job_id: jobId,
+					target_playlist_match_refresh_job_id: jobId,
 				},
 				{ onConflict: "account_id" },
 			)
@@ -341,21 +320,21 @@ export function updateRematchJobId(
 	);
 }
 
-export function clearRematchJobId(
+export function clearTargetPlaylistMatchRefreshJobId(
 	accountId: string,
 ): Promise<Result<UserPreferences, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
 		supabase
 			.from("user_preferences")
-			.update({ rematch_job_id: null })
+			.update({ target_playlist_match_refresh_job_id: null })
 			.eq("account_id", accountId)
 			.select()
 			.single(),
 	);
 }
 
-export async function getRematchJobId(
+export async function getTargetPlaylistMatchRefreshJobId(
 	accountId: string,
 ): Promise<Result<string | null, DbError>> {
 	const result = await getPreferences(accountId);
@@ -364,5 +343,5 @@ export async function getRematchJobId(
 		return Result.err(result.error);
 	}
 
-	return Result.ok(result.value?.rematch_job_id ?? null);
+	return Result.ok(result.value?.target_playlist_match_refresh_job_id ?? null);
 }

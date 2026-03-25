@@ -1,32 +1,22 @@
 import { Result } from "better-result";
-import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
-import { createLlmService } from "@/lib/integrations/llm/service";
-import type { LlmService } from "@/lib/integrations/llm/service";
-import { RerankerService } from "@/lib/integrations/reranker/service";
-import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
-import { updateJobProgress } from "@/lib/data/jobs";
 import { getTerminallyFailedSongIds } from "@/lib/data/job-failures";
+import { updateJobProgress } from "@/lib/data/jobs";
+import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import { markPipelineProcessed } from "@/lib/domains/library/liked-songs/status-queries";
+import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
+import type { LlmService } from "@/lib/integrations/llm/service";
+import { createLlmService } from "@/lib/integrations/llm/service";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/types";
-import { selectPipelineBatch, selectDataEnrichmentBatch } from "./batch";
-import {
-	markItemsNew,
-	markPipelineProcessed,
-} from "@/lib/domains/library/liked-songs/status-queries";
+import { selectPipelineBatch } from "./batch";
+import { makeInitialProgress } from "./progress";
 import { runAudioFeatures } from "./stages/audio-features";
 import { runGenreTagging } from "./stages/genre-tagging";
 import { runSongAnalysis } from "./stages/song-analysis";
 import { runSongEmbedding } from "./stages/song-embedding";
-import { runPlaylistProfiling } from "./stages/playlist-profiling";
 import {
-	loadExclusionSet,
-	runMatching,
-	type MatchingStageResult,
-} from "./stages/matching";
-import { makeInitialProgress } from "./progress";
-import {
-	PipelineBootstrapError,
 	type EnrichmentContext,
 	type EnrichmentStageName,
+	PipelineBootstrapError,
 } from "./types";
 
 type StageResult = { total: number; succeeded: number; failed: number };
@@ -60,12 +50,6 @@ function buildContext(
 	embeddingService: EmbeddingService,
 ): EnrichmentContext {
 	const llmService = initLlmService();
-	let rerankerService: RerankerService | undefined;
-	try {
-		rerankerService = new RerankerService();
-	} catch {
-		// Reranker unavailable — scoring falls back to original order
-	}
 
 	return {
 		accountId,
@@ -75,7 +59,6 @@ function buildContext(
 			llmService,
 		),
 		llmService,
-		rerankerService,
 	};
 }
 
@@ -186,108 +169,6 @@ async function enrichSongs(
 	);
 }
 
-// --- Matching phases (D-E) ---
-
-interface MatchingSongsResult {
-	matchedSongIds: string[];
-	noMatchSongIds: string[];
-	skipped: boolean;
-}
-
-async function matchSongs(
-	ctx: EnrichmentContext,
-	batch: Awaited<ReturnType<typeof selectPipelineBatch>>,
-	jobId: string,
-	progress: EnrichmentChunkProgress,
-): Promise<MatchingSongsResult> {
-	// Phase D: playlist_profiling
-	progress.currentStage = "playlist_profiling";
-	progress.stages.playlist_profiling.status = "running";
-	await persistProgress(jobId, progress);
-
-	let profilingPlaylists: Awaited<
-		ReturnType<typeof runPlaylistProfiling>
-	>["playlists"] = [];
-	const profilingResult = await (async (): Promise<StageResult> => {
-		try {
-			const r = await runPlaylistProfiling(ctx);
-			profilingPlaylists = r.playlists;
-			return { total: r.total, succeeded: r.succeeded, failed: r.failed };
-		} catch (error) {
-			console.error("[worker-chunk] Stage playlist_profiling threw:", error);
-			return { total: 0, succeeded: 0, failed: 0 };
-		}
-	})();
-	applyStageResult(
-		progress,
-		"playlist_profiling",
-		profilingResult,
-		stageStatus(profilingResult),
-	);
-
-	if (profilingPlaylists.length === 0) {
-		progress.stages.matching.status = "skipped";
-		await persistProgress(jobId, progress);
-		return {
-			matchedSongIds: [],
-			noMatchSongIds: [],
-			skipped: true,
-		};
-	}
-
-	// Load exclusion set before matching
-	let exclusionSet: Set<string> | undefined;
-	try {
-		exclusionSet = await loadExclusionSet(ctx.accountId);
-	} catch (error) {
-		console.error("[worker-chunk] Failed to load exclusion set:", error);
-	}
-
-	// Phase E: matching
-	progress.currentStage = "matching";
-	progress.stages.matching.status = "running";
-	await persistProgress(jobId, progress);
-
-	let matchingStageResult: MatchingStageResult;
-	try {
-		matchingStageResult = await runMatching(
-			ctx,
-			batch,
-			profilingPlaylists,
-			exclusionSet,
-		);
-	} catch (error) {
-		console.error("[worker-chunk] Stage matching threw:", error);
-		matchingStageResult = {
-			total: 0,
-			succeeded: 0,
-			noMatch: 0,
-			matchedSongIds: [],
-			noMatchSongIds: [],
-			excludedSongIds: [],
-			skipped: true,
-		};
-	}
-
-	const matchStageForProgress: StageResult = {
-		total: matchingStageResult.total,
-		succeeded: matchingStageResult.succeeded,
-		failed: matchingStageResult.noMatch,
-	};
-	applyStageResult(
-		progress,
-		"matching",
-		matchStageForProgress,
-		stageStatus(matchStageForProgress),
-	);
-
-	return {
-		matchedSongIds: matchingStageResult.matchedSongIds,
-		noMatchSongIds: matchingStageResult.noMatchSongIds,
-		skipped: matchingStageResult.skipped,
-	};
-}
-
 // --- Worker-owned chunk orchestration ---
 
 export async function executeWorkerChunk(
@@ -321,32 +202,22 @@ export async function executeWorkerChunk(
 		batch.songIds.length,
 	);
 
+	// Candidate-side enrichment only (phases A-C)
 	await enrichSongs(ctx, batch, jobId, progress);
-	const matchingResult = await matchSongs(ctx, batch, jobId, progress);
 
-	// Write item_status for ALL batch songs per spec design decision 6.
-	// markItemsNew for songs with suggestions (is_new = true).
-	// markPipelineProcessed for everything else (is_new = false, no viewed_at).
-	if (matchingResult.matchedSongIds.length > 0) {
-		await markItemsNew(accountId, "song", matchingResult.matchedSongIds);
-	}
-
-	const nonMatchedIds = batch.songIds.filter(
-		(id) => !matchingResult.matchedSongIds.includes(id),
-	);
-	if (nonMatchedIds.length > 0) {
-		await markPipelineProcessed(accountId, "song", nonMatchedIds);
+	// Write item_status for ALL batch songs — pipeline processing state only.
+	// Snapshot publication is owned by target-playlist refresh, not here.
+	if (batch.songIds.length > 0) {
+		await markPipelineProcessed(accountId, "song", batch.songIds);
 	}
 
 	progress.currentStage = undefined;
 	await persistProgress(jobId, progress);
 
-	// Two-mode hasMoreSongs probe:
-	// If matching was skipped (no playlists), only check for songs needing shared data artifacts.
-	// Otherwise check full pipeline including item_status.
+	// Check if more songs still need pipeline processing.
+	// This must include songs that already have shared artifacts but still need
+	// account-scoped item_status written.
 	const probeExcludeIds = excludeIds.length > 0 ? excludeIds : undefined;
-	const nextBatch = matchingResult.skipped
-		? await selectDataEnrichmentBatch(accountId, 1, probeExcludeIds)
-		: await selectPipelineBatch(accountId, 1, probeExcludeIds);
+	const nextBatch = await selectPipelineBatch(accountId, 1, probeExcludeIds);
 	return { hasMoreSongs: nextBatch.songIds.length > 0 };
 }

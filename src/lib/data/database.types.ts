@@ -564,8 +564,8 @@ export type Database = {
 					description: string | null;
 					id: string;
 					image_url: string | null;
-					is_destination: boolean | null;
 					is_public: boolean | null;
+					is_target: boolean | null;
 					name: string;
 					snapshot_id: string | null;
 					song_count: number | null;
@@ -578,8 +578,8 @@ export type Database = {
 					description?: string | null;
 					id?: string;
 					image_url?: string | null;
-					is_destination?: boolean | null;
 					is_public?: boolean | null;
+					is_target?: boolean | null;
 					name: string;
 					snapshot_id?: string | null;
 					song_count?: number | null;
@@ -592,8 +592,8 @@ export type Database = {
 					description?: string | null;
 					id?: string;
 					image_url?: string | null;
-					is_destination?: boolean | null;
 					is_public?: boolean | null;
+					is_target?: boolean | null;
 					name?: string;
 					snapshot_id?: string | null;
 					song_count?: number | null;
@@ -1048,7 +1048,7 @@ export type Database = {
 					onboarding_completed_at: string | null;
 					onboarding_step: string;
 					phase_job_ids: Json | null;
-					rematch_job_id: string | null;
+					target_playlist_match_refresh_job_id: string | null;
 					theme: Database["public"]["Enums"]["theme"] | null;
 					updated_at: string;
 				};
@@ -1060,7 +1060,7 @@ export type Database = {
 					onboarding_completed_at?: string | null;
 					onboarding_step?: string;
 					phase_job_ids?: Json | null;
-					rematch_job_id?: string | null;
+					target_playlist_match_refresh_job_id?: string | null;
 					theme?: Database["public"]["Enums"]["theme"] | null;
 					updated_at?: string;
 				};
@@ -1072,7 +1072,7 @@ export type Database = {
 					onboarding_completed_at?: string | null;
 					onboarding_step?: string;
 					phase_job_ids?: Json | null;
-					rematch_job_id?: string | null;
+					target_playlist_match_refresh_job_id?: string | null;
 					theme?: Database["public"]["Enums"]["theme"] | null;
 					updated_at?: string;
 				};
@@ -1093,7 +1093,7 @@ export type Database = {
 					},
 					{
 						foreignKeyName: "user_preferences_rematch_job_id_fkey";
-						columns: ["rematch_job_id"];
+						columns: ["target_playlist_match_refresh_job_id"];
 						isOneToOne: false;
 						referencedRelation: "job";
 						referencedColumns: ["id"];
@@ -1222,6 +1222,30 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
+			claim_pending_target_playlist_match_refresh_job: {
+				Args: never;
+				Returns: {
+					account_id: string;
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error: string | null;
+					heartbeat_at: string | null;
+					id: string;
+					max_attempts: number;
+					progress: Json | null;
+					started_at: string | null;
+					status: Database["public"]["Enums"]["job_status"];
+					type: Database["public"]["Enums"]["job_type"];
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 			count_analyzed_songs_for_account: {
 				Args: { p_account_id: string };
 				Returns: number;
@@ -1311,6 +1335,44 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
+			mark_dead_target_playlist_match_refresh_jobs: {
+				Args: { stale_threshold: string };
+				Returns: {
+					account_id: string;
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error: string | null;
+					heartbeat_at: string | null;
+					id: string;
+					max_attempts: number;
+					progress: Json | null;
+					started_at: string | null;
+					status: Database["public"]["Enums"]["job_status"];
+					type: Database["public"]["Enums"]["job_type"];
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
+			publish_match_snapshot: {
+				Args: {
+					p_account_id: string;
+					p_algorithm_version: string;
+					p_candidate_set_hash: string;
+					p_config_hash: string;
+					p_context_hash: string;
+					p_playlist_count: number;
+					p_playlist_set_hash: string;
+					p_results?: Json;
+					p_song_count: number;
+				};
+				Returns: string;
+			};
 			sweep_stale_enrichment_jobs: {
 				Args: { stale_threshold: string };
 				Returns: {
@@ -1359,6 +1421,30 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
+			sweep_stale_target_playlist_match_refresh_jobs: {
+				Args: { stale_threshold: string };
+				Returns: {
+					account_id: string;
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error: string | null;
+					heartbeat_at: string | null;
+					id: string;
+					max_attempts: number;
+					progress: Json | null;
+					started_at: string | null;
+					status: Database["public"]["Enums"]["job_status"];
+					type: Database["public"]["Enums"]["job_type"];
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 		};
 		Enums: {
 			item_type: "song" | "playlist";
@@ -1376,7 +1462,8 @@ export type Database = {
 				| "genre_tagging"
 				| "enrichment"
 				| "rematch"
-				| "playlist_lightweight_enrichment";
+				| "playlist_lightweight_enrichment"
+				| "target_playlist_match_refresh";
 			theme: "blue" | "green" | "rose" | "lavender";
 		};
 		CompositeTypes: {
@@ -1527,6 +1614,7 @@ export const Constants = {
 				"enrichment",
 				"rematch",
 				"playlist_lightweight_enrichment",
+				"target_playlist_match_refresh",
 			],
 			theme: ["blue", "green", "rose", "lavender"],
 		},

@@ -81,6 +81,7 @@ export async function fetchAllLikedTracks(
 export async function fetchUserPlaylists(
 	token: string,
 	userUri: string,
+	onProgress?: ProgressCallback,
 ): Promise<SpotifyPlaylistDTO[]> {
 	const allPlaylists: SpotifyPlaylistDTO[] = [];
 	let offset = 0;
@@ -120,6 +121,8 @@ export async function fetchUserPlaylists(
 		allPlaylists.push(...mapped);
 		offset += limit;
 
+		onProgress?.(allPlaylists.length, total);
+
 		console.log(
 			`[hearted.] Fetched ${allPlaylists.length} owned playlists (scanned ${offset}/${total})`,
 		);
@@ -135,6 +138,7 @@ export async function fetchUserPlaylists(
 export async function fetchPlaylistTracks(
 	token: string,
 	playlistUri: string,
+	onProgress?: ProgressCallback,
 ): Promise<SpotifyTrackDTO[]> {
 	const allTracks: SpotifyTrackDTO[] = [];
 	let offset = 0;
@@ -156,6 +160,8 @@ export async function fetchPlaylistTracks(
 			.filter((t): t is SpotifyTrackDTO => t !== null);
 		allTracks.push(...mapped);
 		offset += limit;
+
+		onProgress?.(allTracks.length, total);
 
 		console.log(`[hearted.] Playlist tracks: ${allTracks.length}/${total}`);
 

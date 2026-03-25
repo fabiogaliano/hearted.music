@@ -138,8 +138,8 @@ export class SyncOrchestrator {
 			}
 			playlistsToSync = allResult.value;
 		} else {
-			// Sync all destination playlists (default behavior)
-			const destResult = await playlists.getDestinationPlaylists(accountId);
+			// Sync all target playlists (default behavior)
+			const destResult = await playlists.getTargetPlaylists(accountId);
 			if (Result.isError(destResult)) {
 				return Result.err(destResult.error);
 			}

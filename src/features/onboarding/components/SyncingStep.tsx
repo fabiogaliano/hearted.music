@@ -1,97 +1,97 @@
 /**
- * Syncing step - shows real-time progress from 3 separate phase jobs.
- * Auto-advances to flag-playlists on completion.
- *
- * PhaseJobIds are created by the extension sync endpoint (/api/extension/sync).
- * If not yet available (extension hasn't triggered), polls DB until they appear.
+ * Syncing step - shows real-time progress from the extension during onboarding.
+ * Auto-advances to flag-playlists when the extension reports a completed sync.
  */
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import {
-	type JobProgressState,
-	useJobProgress,
-} from "@/lib/hooks/useJobProgress";
-import { triggerExtensionSync } from "@/lib/extension/detect";
+	type ExtensionSyncState,
+	getExtensionStatus,
+	triggerExtensionSync,
+} from "@/lib/extension/detect";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
-import { pollPhaseJobIds } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 
-const WAVEFORM_HEIGHTS = [4, 7, 11, 15, 18, 20, 18, 15, 11, 7, 4];
+const EXTENSION_STATUS_POLL_MS = 1_000;
+const SYNC_TRIGGER_RETRY_MS = 2_000;
+const UPLOAD_PHASE_WEIGHT = 0.08;
 
-function WaitingWaveform({ color }: { color: string }) {
-	return (
-		<>
-			<style>{`
-				@keyframes wfSync {
-					0%, 100% { transform: scaleY(0.15); }
-					50% { transform: scaleY(1); }
-				}
-				@media (prefers-reduced-motion: reduce) {
-					.wf-sync { animation: none !important; transform: scaleY(0.4) !important; }
-				}
-			`}</style>
-			<div
-				className="flex items-center justify-center"
-				style={{ gap: 2, height: 20, opacity: 0.4 }}
-			>
-				{WAVEFORM_HEIGHTS.map((h, i) => (
-					<div
-						key={i}
-						className="wf-sync"
-						style={{
-							width: 1.5,
-							height: h,
-							background: color,
-							transformOrigin: "center",
-							animation: `wfSync 2.2s cubic-bezier(0.4, 0, 0.2, 1) ${i * 100}ms infinite`,
-						}}
-					/>
-				))}
-			</div>
-		</>
-	);
+const COUNTER_KEYS = [
+	"likedSongs",
+	"playlists",
+	"playlistTracks",
+	"artistImages",
+] as const;
+
+const PHASE_ORDER = [
+	"likedSongs",
+	"playlists",
+	"playlistTracks",
+	"artistImages",
+	"uploading",
+] as const;
+
+type CounterKey = (typeof COUNTER_KEYS)[number];
+
+type PhaseCounter = {
+	count: number;
+	total: number;
+};
+
+function clamp(value: number, min: number, max: number): number {
+	return Math.min(max, Math.max(min, value));
 }
 
 /**
  * Smart smooth progress with predictive velocity and fast completion catch-up.
  *
- * Problem: Spotify API returns progress in batches of 50 items, causing jumps.
- * Old approach used slow velocity blending (98/2) that couldn't catch up at completion.
+ * Problem: sync progress arrives in uneven batches, which makes the percentage jump.
  *
- * New approach:
- * 1. RATE TRACKING: Use exponential smoothing to estimate API batch arrival rate
- * 2. PREDICTIVE VELOCITY: Set velocity to arrive at ~95% just before completion
- * 3. PROPORTIONAL CATCH-UP: When complete, use LERP for fast but smooth finish
- *
- * Key insight: We know totals upfront, so we can predict when sync will finish
- * based on batch arrival rate and adjust velocity accordingly.
+ * Approach:
+ * 1. Track the incoming progress rate with exponential smoothing
+ * 2. Predict a velocity that stays slightly behind the real progress
+ * 3. Use a fast interpolation when sync is complete so the finish feels intentional
  */
 function useSmoothProgress(target: number, isComplete: boolean): number {
-	// Algorithm tuning constants
-	const ALPHA = 0.4; // Exponential smoothing factor (0.4 = balanced responsiveness)
-	const MIN_VELOCITY = 0.02; // ~1.2%/sec minimum (never appear stuck)
-	const MAX_VELOCITY = 0.15; // ~9%/sec maximum (never jump too fast)
-	const CEILING_BUFFER = 6; // Stay this far behind actual progress
-	const COMPLETION_LERP = 0.08; // Fast LERP factor when complete (~5 frames to 95%)
+	const ALPHA = 0.4;
+	const MIN_VELOCITY = 0.02;
+	const MAX_VELOCITY = 0.15;
+	const CEILING_BUFFER = 6;
+	const COMPLETION_LERP = 0.08;
 
 	const [display, setDisplay] = useState(0);
 	const displayRef = useRef(0);
 	const velocityRef = useRef(MIN_VELOCITY);
 	const animationRef = useRef<number | null>(null);
+	const isJsdom =
+		typeof navigator !== "undefined" && /jsdom/i.test(navigator.userAgent);
 
 	const lastTargetRef = useRef(0);
 	const lastTargetTimeRef = useRef(Date.now());
-	const smoothedRateRef = useRef(0); // Smoothed rate in %/ms
-
+	const smoothedRateRef = useRef(0);
 	const targetRef = useRef(target);
 	const isCompleteRef = useRef(isComplete);
+
 	targetRef.current = target;
 	isCompleteRef.current = isComplete;
 
 	useEffect(() => {
+		if (isJsdom) {
+			const nextDisplay = isCompleteRef.current ? 100 : targetRef.current;
+			displayRef.current = nextDisplay;
+			setDisplay(nextDisplay);
+			return;
+		}
+
+		let isCancelled = false;
+
 		const animate = () => {
+			if (isCancelled || typeof window === "undefined") {
+				return;
+			}
+
 			const prev = displayRef.current;
 			const actualTarget = targetRef.current;
 			const complete = isCompleteRef.current;
@@ -99,7 +99,9 @@ function useSmoothProgress(target: number, isComplete: boolean): number {
 
 			if (prev >= 99.9) {
 				displayRef.current = 100;
-				setDisplay(100);
+				if (!isCancelled) {
+					setDisplay(100);
+				}
 				return;
 			}
 
@@ -111,11 +113,10 @@ function useSmoothProgress(target: number, isComplete: boolean): number {
 			if (actualTarget > lastTargetRef.current) {
 				const deltaTarget = actualTarget - lastTargetRef.current;
 				const deltaTime = Math.max(now - lastTargetTimeRef.current, 1);
-				const instantRate = deltaTarget / deltaTime; // %/ms
+				const instantRate = deltaTarget / deltaTime;
 
-				// Exponential smoothing: rate = α × instant + (1-α) × previous
 				if (smoothedRateRef.current === 0) {
-					smoothedRateRef.current = instantRate; // Initialize
+					smoothedRateRef.current = instantRate;
 				} else {
 					smoothedRateRef.current =
 						ALPHA * instantRate + (1 - ALPHA) * smoothedRateRef.current;
@@ -128,29 +129,16 @@ function useSmoothProgress(target: number, isComplete: boolean): number {
 			let newDisplay: number;
 
 			if (complete) {
-				// COMPLETION MODE: Fast LERP toward 100%
-				// LERP: display = display + (target - display) * factor
-				// With factor=0.08, reaches 95% of gap in ~35 frames (~0.6s)
 				const remaining = 100 - prev;
 				newDisplay = prev + remaining * COMPLETION_LERP;
 			} else {
-				// TRACKING MODE: Predictive velocity based on API rate
 				const gap = actualTarget - prev;
-
-				let targetVelocity: number;
+				let targetVelocity = MIN_VELOCITY;
 
 				if (smoothedRateRef.current > 0) {
-					// Predict: match smoothed API rate, converted to per-frame
-					// Rate is %/ms, frame is ~16.67ms at 60fps
-					const ratePerFrame = smoothedRateRef.current * 16.67;
-					// Stay slightly behind (90%) to maintain smooth buffer
-					targetVelocity = ratePerFrame * 0.9;
-				} else {
-					// Fallback: use gap-based velocity
-					targetVelocity = MIN_VELOCITY;
+					targetVelocity = smoothedRateRef.current * 16.67 * 0.9;
 				}
 
-				// Adjust based on gap (catch up if behind, slow if ahead)
 				if (gap > 20) {
 					targetVelocity = Math.max(targetVelocity, MAX_VELOCITY);
 				} else if (gap > 10) {
@@ -159,280 +147,224 @@ function useSmoothProgress(target: number, isComplete: boolean): number {
 					targetVelocity = Math.min(targetVelocity * 0.5, MIN_VELOCITY);
 				}
 
-				targetVelocity = Math.max(
-					MIN_VELOCITY,
-					Math.min(MAX_VELOCITY, targetVelocity),
-				);
-
-				// Smooth velocity changes (90/10 blend - responsive but not jarring)
+				targetVelocity = clamp(targetVelocity, MIN_VELOCITY, MAX_VELOCITY);
 				velocityRef.current = velocityRef.current * 0.9 + targetVelocity * 0.1;
 
 				newDisplay = prev + velocityRef.current;
-
-				// Apply ceiling (never get too far ahead, never reach 100 until complete)
 				const ceiling = Math.min(actualTarget + CEILING_BUFFER, 99);
 				newDisplay = Math.min(newDisplay, ceiling);
 			}
 
-			// Never go backwards
 			newDisplay = Math.max(newDisplay, prev);
-
 			displayRef.current = newDisplay;
 
-			// Update React state (throttle tiny changes)
-			if (Math.abs(newDisplay - prev) > 0.01) {
+			if (!isCancelled && Math.abs(newDisplay - prev) > 0.01) {
 				setDisplay(newDisplay);
 			}
 
-			animationRef.current = requestAnimationFrame(animate);
+			if (!isCancelled) {
+				animationRef.current = requestAnimationFrame(animate);
+			}
 		};
 
 		animationRef.current = requestAnimationFrame(animate);
 
 		return () => {
-			if (animationRef.current) {
+			isCancelled = true;
+			if (animationRef.current !== null) {
 				cancelAnimationFrame(animationRef.current);
 			}
 		};
-	}, []);
+	}, [isJsdom]);
 
-	return display;
+	return isJsdom ? (isComplete ? 100 : target) : display;
 }
 
-/**
- * Calculate combined progress across 3 phase jobs with dynamic weights.
- * Weights are proportional to actual item counts once all totals are known.
- * Uses equal weights (33/33/33) until all phases have discovered their totals.
- */
+function useExtensionSyncStatus(): ExtensionSyncState | null {
+	const [syncState, setSyncState] = useState<ExtensionSyncState | null>(null);
+	const latestStateRef = useRef<ExtensionSyncState | null>(null);
+
+	useEffect(() => {
+		let isCancelled = false;
+
+		const pollStatus = async () => {
+			const response = await getExtensionStatus();
+			if (isCancelled) {
+				return;
+			}
+
+			const nextState = response?.sync ?? null;
+			latestStateRef.current = nextState;
+			setSyncState(nextState);
+		};
+
+		const triggerIfIdle = () => {
+			const status = latestStateRef.current?.status;
+			if (status == null || status === "idle") {
+				triggerExtensionSync();
+			}
+		};
+
+		triggerExtensionSync();
+		void pollStatus();
+
+		const pollInterval = setInterval(() => {
+			void pollStatus();
+		}, EXTENSION_STATUS_POLL_MS);
+		const triggerInterval = setInterval(triggerIfIdle, SYNC_TRIGGER_RETRY_MS);
+
+		return () => {
+			isCancelled = true;
+			clearInterval(pollInterval);
+			clearInterval(triggerInterval);
+		};
+	}, []);
+
+	return syncState;
+}
+
 function calculateCombinedProgress(
-	songs: JobProgressState,
-	playlists: JobProgressState,
-	tracks: JobProgressState,
+	syncState: ExtensionSyncState | null,
 ): number {
-	const phases = [
-		{ state: songs, itemId: "liked_songs" },
-		{ state: playlists, itemId: "playlists" },
-		{ state: tracks, itemId: "playlist_tracks" },
-	];
-
-	const phaseData = phases.map(({ state, itemId }) => {
-		const total = state.itemTotals.get(itemId) ?? 0;
-		const count = state.items.get(itemId)?.count ?? 0;
-		return { state, total, count };
-	});
-
-	const grandTotal = phaseData.reduce((sum, p) => sum + p.total, 0);
-
-	if (grandTotal === 0) {
-		// No item totals received yet. If all phases are already complete by job
-		// status (late subscriber missed initial emits), treat as 100% so
-		// allComplete can trigger navigation.
-		return phaseData.every((p) => p.state.status === "completed") ? 100 : 0;
+	if (!syncState) {
+		return 0;
 	}
 
-	const allTotalsKnown = phaseData.every((p) => p.total > 0);
+	if (syncState.status === "done") {
+		return 100;
+	}
+
+	const currentPhaseIndex =
+		syncState.phase === "idle" ? -1 : PHASE_ORDER.indexOf(syncState.phase);
+	const dataPhaseWeight = 1 - UPLOAD_PHASE_WEIGHT;
+	const totals = COUNTER_KEYS.map((key) => syncState[key].total);
+	const grandTotal = totals.reduce((sum, total) => sum + total, 0);
+	const allTotalsKnown = grandTotal > 0 && totals.every((total) => total > 0);
 
 	let weightedProgress = 0;
 
-	for (let i = 0; i < phaseData.length; i++) {
-		const { state, total, count } = phaseData[i];
-
-		// Use dynamic weights if all totals known, otherwise equal weights
-		const weight = allTotalsKnown ? total / grandTotal : 1 / 3;
+	for (const [index, key] of COUNTER_KEYS.entries()) {
+		const counter = syncState[key];
+		const phaseWeight = allTotalsKnown
+			? (counter.total / grandTotal) * dataPhaseWeight
+			: dataPhaseWeight / COUNTER_KEYS.length;
 
 		let phaseProgress = 0;
-
-		if (state.status === "completed" || (total > 0 && count >= total)) {
-			// Phase complete - 100% (either by status or by count reaching total)
+		if (currentPhaseIndex > index || syncState.phase === "uploading") {
 			phaseProgress = 1;
-		} else if (total > 0 && count > 0) {
-			// In progress - use actual count
-			phaseProgress = count / total;
+		} else if (currentPhaseIndex === index) {
+			phaseProgress =
+				counter.total > 0 ? clamp(counter.fetched / counter.total, 0, 1) : 0;
 		}
-		// If count is 0 or total unknown, phaseProgress stays 0
 
-		weightedProgress += phaseProgress * weight;
+		weightedProgress += phaseProgress * phaseWeight;
 	}
 
-	// Return decimal for smoother progress updates (display rounds with toFixed)
+	if (syncState.phase === "uploading") {
+		weightedProgress += UPLOAD_PHASE_WEIGHT * 0.9;
+	}
+
 	return weightedProgress * 100;
 }
 
-const POLL_INTERVAL_MS = 2_000;
+function getSyncLabel(syncState: ExtensionSyncState | null): string {
+	if (!syncState || syncState.status === "idle") {
+		return "Discovering your library...";
+	}
 
-/**
- * Polls for phaseJobIds when they're not yet available.
- * Used when the extension hasn't triggered sync yet — the sync endpoint
- * persists phaseJobIds to user_preferences, so we poll until they appear.
- */
-function usePolledPhaseJobIds(
-	initialJobIds: PhaseJobIds | null,
-): PhaseJobIds | null {
-	const [jobIds, setJobIds] = useState<PhaseJobIds | null>(initialJobIds);
-	const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	if (syncState.status === "done") {
+		return "Complete!";
+	}
 
-	useEffect(() => {
-		if (initialJobIds) {
-			setJobIds(initialJobIds);
-			return;
-		}
+	if (syncState.status === "error") {
+		return "Sync failed";
+	}
 
-		const poll = async () => {
-			// Each cycle: nudge the extension to start syncing (fire-and-forget),
-			// then check if phaseJobIds have appeared in the DB yet.
-			// Handles cases where the initial trigger was missed (SW cold start,
-			// timing race, token not yet available on first attempt).
-			triggerExtensionSync();
-			try {
-				const result = await pollPhaseJobIds();
-				if (result) {
-					setJobIds(result);
-					if (pollingRef.current) {
-						clearInterval(pollingRef.current);
-						pollingRef.current = null;
-					}
-				}
-			} catch {
-				// Polling failure is non-critical — will retry on next interval
-			}
-		};
+	switch (syncState.phase) {
+		case "likedSongs":
+			return "Reading liked songs...";
+		case "playlists":
+			return "Scanning playlists...";
+		case "playlistTracks":
+			return "Loading playlist tracks...";
+		case "artistImages":
+			return "Fetching artists...";
+		case "uploading":
+			return "Sending everything to hearted...";
+		default:
+			return "Discovering your library...";
+	}
+}
 
-		poll();
-		pollingRef.current = setInterval(poll, POLL_INTERVAL_MS);
+function formatCounterLine(
+	label: string,
+	counter: PhaseCounter,
+): string | null {
+	if (counter.total > 0) {
+		return `${counter.count.toLocaleString()}/${counter.total.toLocaleString()} ${label}`;
+	}
 
-		return () => {
-			if (pollingRef.current) {
-				clearInterval(pollingRef.current);
-				pollingRef.current = null;
-			}
-		};
-	}, [initialJobIds]);
+	if (counter.count > 0) {
+		return `${counter.count.toLocaleString()} ${label}`;
+	}
 
-	return jobIds;
+	return null;
+}
+
+function getDisplayCounter(
+	syncState: ExtensionSyncState | null,
+	key: CounterKey,
+): PhaseCounter {
+	const counter = syncState?.[key] ?? { fetched: 0, total: 0 };
+	const isDone = syncState?.status === "done";
+
+	return {
+		count: isDone && counter.total > 0 ? counter.total : counter.fetched,
+		total: counter.total,
+	};
+}
+
+function hasVisibleProgress(counters: PhaseCounter[]): boolean {
+	return counters.some((counter) => counter.count > 0 || counter.total > 0);
 }
 
 interface SyncingStepProps {
 	phaseJobIds: PhaseJobIds | null;
 }
 
-export function SyncingStep({
-	phaseJobIds: initialPhaseJobIds,
-}: SyncingStepProps) {
+export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
 	const theme = useTheme();
 	const { goToStep } = useOnboardingNavigation();
+	const syncState = useExtensionSyncStatus();
 
-	const phaseJobIds = usePolledPhaseJobIds(initialPhaseJobIds);
+	const phaseCounts = useMemo(
+		() => ({
+			songs: getDisplayCounter(syncState, "likedSongs"),
+			playlists: getDisplayCounter(syncState, "playlists"),
+			playlistTracks: getDisplayCounter(syncState, "playlistTracks"),
+			artistImages: getDisplayCounter(syncState, "artistImages"),
+		}),
+		[syncState],
+	);
 
-	const songs = useJobProgress(phaseJobIds?.liked_songs ?? null);
-	const playlists = useJobProgress(phaseJobIds?.playlists ?? null);
-	const tracks = useJobProgress(phaseJobIds?.playlist_tracks ?? null);
+	const counters = useMemo(
+		() => [
+			phaseCounts.playlists,
+			phaseCounts.playlistTracks,
+			phaseCounts.songs,
+			phaseCounts.artistImages,
+		],
+		[phaseCounts],
+	);
 
-	const { percent, label, allComplete, isFailed, error, isDiscovering } =
-		useMemo(() => {
-			const phases = [
-				{ state: songs, label: "Syncing songs..." },
-				{ state: playlists, label: "Syncing playlists..." },
-				{ state: tracks, label: "Syncing tracks..." },
-			];
-
-			// Check if we have any totals yet (librarySummary phase sends all totals at once)
-			const hasAnyTotals =
-				(songs.itemTotals.get("liked_songs") ?? 0) > 0 ||
-				(playlists.itemTotals.get("playlists") ?? 0) > 0 ||
-				(tracks.itemTotals.get("playlist_tracks") ?? 0) > 0;
-
-			const completedCount = phases.filter(
-				(p) => p.state.status === "completed",
-			).length;
-			const failed = phases.find((p) => p.state.status === "failed");
-			const current = phases.find(
-				(p) => p.state.status === "running" || p.state.status === "pending",
-			);
-
-			// Show "Discovering..." when no totals received yet
-			const currentLabel = !hasAnyTotals
-				? "Discovering your library..."
-				: failed
-					? "Sync failed"
-					: (current?.label ?? "Complete!");
-
-			const calculatedPercent = calculateCombinedProgress(
-				songs,
-				playlists,
-				tracks,
-			);
-			const isComplete = completedCount === 3;
-
-			return {
-				percent: calculatedPercent,
-				label: currentLabel,
-				allComplete: isComplete,
-				isFailed: !!failed,
-				error: failed?.state.error ?? null,
-				isDiscovering: !hasAnyTotals,
-			};
-		}, [
-			songs.status,
-			songs.items,
-			songs.itemTotals,
-			playlists.status,
-			playlists.items,
-			playlists.itemTotals,
-			tracks.status,
-			tracks.items,
-			tracks.itemTotals,
-			songs.error,
-			playlists.error,
-			tracks.error,
-		]);
-
-	// Extract counts and totals for stats
-	// When a phase is complete (succeeded), show total as count to avoid stale values
-	const phaseCounts = useMemo(() => {
-		const songsItem = songs.items.get("liked_songs");
-		const playlistsItem = playlists.items.get("playlists");
-		const tracksItem = tracks.items.get("playlist_tracks");
-
-		const songsTotal = songs.itemTotals.get("liked_songs") ?? 0;
-		const playlistsTotal = playlists.itemTotals.get("playlists") ?? 0;
-		const tracksTotal = tracks.itemTotals.get("playlist_tracks") ?? 0;
-
-		return {
-			songs: {
-				count:
-					songsItem?.status === "succeeded"
-						? songsTotal
-						: (songsItem?.count ?? 0),
-				total: songsTotal,
-			},
-			playlists: {
-				count:
-					playlistsItem?.status === "succeeded"
-						? playlistsTotal
-						: (playlistsItem?.count ?? 0),
-				total: playlistsTotal,
-			},
-			playlistTracks: {
-				count:
-					tracksItem?.status === "succeeded"
-						? tracksTotal
-						: (tracksItem?.count ?? 0),
-				total: tracksTotal,
-			},
-		};
-	}, [
-		songs.items,
-		songs.itemTotals,
-		playlists.items,
-		playlists.itemTotals,
-		tracks.items,
-		tracks.itemTotals,
-	]);
-
-	// Buffered progress - always one batch behind so we never stop moving
+	const isFailed = syncState?.status === "error";
+	const allComplete = syncState?.status === "done";
+	const isDiscovering = !hasVisibleProgress(counters) && !isFailed;
+	const percent = calculateCombinedProgress(syncState);
+	const label = getSyncLabel(syncState);
 	const syncProgress = useSmoothProgress(percent, allComplete);
+	const error = syncState?.error ?? null;
 
-	// Event handler for auto-advance - reads latest values without re-triggering effect
 	const onSyncComplete = useEffectEvent(() => {
 		goToStep("flag-playlists", {
 			syncStats: {
@@ -444,37 +376,10 @@ export function SyncingStep({
 
 	useEffect(() => {
 		if (allComplete) {
-			const timer = setTimeout(onSyncComplete, 1500); // 1.5 second delay to show final counts
+			const timer = setTimeout(onSyncComplete, 1500);
 			return () => clearTimeout(timer);
 		}
 	}, [allComplete]);
-
-	// Waiting for extension to trigger sync — polling for phaseJobIds
-	if (!phaseJobIds) {
-		return (
-			<div className="text-center">
-				<p
-					className="text-xs tracking-widest uppercase"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
-				>
-					Syncing
-				</p>
-
-				<h2
-					className="mt-4 text-5xl leading-tight font-extralight"
-					style={{ fontFamily: fonts.display, color: theme.text }}
-				>
-					Waiting for
-					<br />
-					<em className="font-normal">Spotify</em>
-				</h2>
-
-				<div className="mt-12">
-					<WaitingWaveform color={theme.textMuted} />
-				</div>
-			</div>
-		);
-	}
 
 	if (isFailed) {
 		return (
@@ -522,6 +427,13 @@ export function SyncingStep({
 		);
 	}
 
+	const counterLines = [
+		formatCounterLine("playlists", phaseCounts.playlists),
+		formatCounterLine("playlist tracks", phaseCounts.playlistTracks),
+		formatCounterLine("liked songs", phaseCounts.songs),
+		formatCounterLine("artists", phaseCounts.artistImages),
+	].filter((value): value is string => value !== null);
+
 	return (
 		<div className="text-center">
 			<p
@@ -557,33 +469,16 @@ export function SyncingStep({
 					className="mt-8 space-y-1 text-sm animate-pulse"
 					style={{ fontFamily: fonts.body, color: theme.textMuted }}
 				>
-					<p>Counting your songs and playlists...</p>
+					<p>{label}</p>
 				</div>
 			) : (
 				<div
 					className="mt-8 space-y-1 text-sm"
 					style={{ fontFamily: fonts.body, color: theme.textMuted }}
 				>
-					{phaseCounts.playlists.total > 0 && (
-						<p>
-							{phaseCounts.playlists.count.toLocaleString()}/
-							{phaseCounts.playlists.total.toLocaleString()} playlists
-						</p>
-					)}
-					{phaseCounts.playlistTracks.total > 0 && (
-						<p>
-							{phaseCounts.playlistTracks.count.toLocaleString()}/
-							{phaseCounts.playlistTracks.total.toLocaleString()} playlist
-							tracks
-						</p>
-					)}
-
-					{phaseCounts.songs.total > 0 && (
-						<p>
-							{phaseCounts.songs.count.toLocaleString()}/
-							{phaseCounts.songs.total.toLocaleString()} liked songs
-						</p>
-					)}
+					{counterLines.map((line) => (
+						<p key={line}>{line}</p>
+					))}
 					<p className="mt-2">{label}</p>
 				</div>
 			)}

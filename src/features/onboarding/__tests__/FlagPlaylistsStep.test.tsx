@@ -1,5 +1,5 @@
 /**
- * Tests for FlagPlaylistsStep - playlist destination selection.
+ * Tests for FlagPlaylistsStep - playlist target selection.
  *
  * Focus: Selection logic, save behavior, skip functionality.
  * Skipped: Keyboard navigation (complex hook mocking), scroll behavior (visual).
@@ -21,7 +21,7 @@ import {
 import { render, screen, waitFor } from "@/test/utils/render";
 import { FlagPlaylistsStep } from "../components/FlagPlaylistsStep";
 
-const mockSavePlaylistDestinations = vi.fn();
+const mockSavePlaylistTargets = vi.fn();
 
 vi.mock("../hooks/useOnboardingNavigation", () =>
 	setupOnboardingNavigationMock(),
@@ -33,8 +33,7 @@ vi.mock("@/lib/keyboard/useListNavigation", () => setupListNavigationMock());
 vi.mock("@/lib/keyboard/useShortcut", () => setupShortcutMock());
 
 vi.mock("@/lib/server/onboarding.functions", () => ({
-	savePlaylistDestinations: (args: unknown) =>
-		mockSavePlaylistDestinations(args),
+	savePlaylistTargets: (args: unknown) => mockSavePlaylistTargets(args),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -50,7 +49,7 @@ const testPlaylists = [
 describe("FlagPlaylistsStep", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockSavePlaylistDestinations.mockResolvedValue(undefined);
+		mockSavePlaylistTargets.mockResolvedValue(undefined);
 		mockGoToStep.mockResolvedValue(undefined);
 	});
 
@@ -58,14 +57,20 @@ describe("FlagPlaylistsStep", () => {
 		render(<FlagPlaylistsStep playlists={testPlaylists} />);
 
 		expect(
-			screen.getByRole("button", { name: /lo-fi tokyo City Pop/i }),
-		).toBeInTheDocument();
+			document.querySelector(
+				`[data-playlist-id="${ONBOARDING_PLAYLISTS.lofiCityPop.id}"]`,
+			),
+		).toHaveAttribute("title", ONBOARDING_PLAYLISTS.lofiCityPop.name);
 		expect(
-			screen.getByRole("button", { name: /old rock - coding zone/i }),
-		).toBeInTheDocument();
+			document.querySelector(
+				`[data-playlist-id="${ONBOARDING_PLAYLISTS.oldRock.id}"]`,
+			),
+		).toHaveAttribute("title", ONBOARDING_PLAYLISTS.oldRock.name);
 		expect(
-			screen.getByRole("button", { name: /focus - v2/i }),
-		).toBeInTheDocument();
+			document.querySelector(
+				`[data-playlist-id="${ONBOARDING_PLAYLISTS.focus.id}"]`,
+			),
+		).toHaveAttribute("title", ONBOARDING_PLAYLISTS.focus.name);
 	});
 
 	it("toggles selection on click", async () => {
@@ -97,13 +102,14 @@ describe("FlagPlaylistsStep", () => {
 		await user.click(lofiButton);
 		await user.click(focusButton);
 
-		const continueButtons = screen.getAllByRole("button", {
-			name: /Continue with/i,
-		});
-		await user.click(continueButtons[0]);
+		const continueButton = screen
+			.getByText("Continue with 2 playlists")
+			.closest("button");
+		expect(continueButton).toBeTruthy();
+		await user.click(continueButton!);
 
 		await waitFor(() => {
-			expect(mockSavePlaylistDestinations).toHaveBeenCalledWith({
+			expect(mockSavePlaylistTargets).toHaveBeenCalledWith({
 				data: {
 					playlistIds: expect.arrayContaining([
 						ONBOARDING_PLAYLISTS.lofiCityPop.id,
@@ -120,14 +126,14 @@ describe("FlagPlaylistsStep", () => {
 		});
 	});
 
-	it("initializes selection from isDestination flag", () => {
-		const playlistsWithDestinations = [
-			toOnboardingPlaylist(PLAYLISTS.lofiCityPop, { isDestination: true }),
-			toOnboardingPlaylist(PLAYLISTS.oldRock, { isDestination: false }),
+	it("initializes selection from isTarget flag", () => {
+		const playlistsWithTargets = [
+			toOnboardingPlaylist(PLAYLISTS.lofiCityPop, { isTarget: true }),
+			toOnboardingPlaylist(PLAYLISTS.oldRock, { isTarget: false }),
 			toOnboardingPlaylist(PLAYLISTS.years2009to2013), // already true in fixture
 		];
 
-		render(<FlagPlaylistsStep playlists={playlistsWithDestinations} />);
+		render(<FlagPlaylistsStep playlists={playlistsWithTargets} />);
 
 		const lofiBtn = document.querySelector(
 			`[data-playlist-id="${PLAYLISTS.lofiCityPop.id}"]`,
@@ -158,7 +164,7 @@ describe("FlagPlaylistsStep", () => {
 		await user.click(enabledSkipButton!);
 
 		await waitFor(() => {
-			expect(mockSavePlaylistDestinations).toHaveBeenCalledWith({
+			expect(mockSavePlaylistTargets).toHaveBeenCalledWith({
 				data: { playlistIds: [] },
 			});
 		});

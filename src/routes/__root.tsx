@@ -4,6 +4,7 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
+	type ErrorComponentProps,
 	HeadContent,
 	Link,
 	Outlet,
@@ -82,6 +83,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 	}),
 
 	component: RootComponent,
+	errorComponent: RootErrorComponent,
 	notFoundComponent: NotFoundPage,
 	shellComponent: RootDocument,
 });
@@ -93,6 +95,81 @@ function RootComponent() {
 				<Outlet />
 			</KeyboardShortcutProvider>
 		</ThemeHueProvider>
+	);
+}
+
+function RootErrorComponent({ error, reset }: ErrorComponentProps) {
+	const theme = themes.rose;
+	const themeHue = extractHue(theme.primary);
+	const pastelColor = getPastelColor(themeHue);
+
+	useEffect(() => {
+		console.error("[RootError]", error);
+	}, [error]);
+
+	return (
+		<div
+			className="flex min-h-screen flex-col items-center justify-center px-8"
+			style={{ background: theme.bg }}
+		>
+			<p
+				className="text-xs tracking-widest uppercase"
+				style={{
+					fontFamily: fonts.body,
+					color: theme.textOnPrimary,
+					opacity: 0.7,
+				}}
+			>
+				Something broke
+			</p>
+
+			<h1
+				className="mt-4 text-4xl leading-tight font-extralight md:text-5xl"
+				style={{ fontFamily: fonts.display, color: pastelColor }}
+			>
+				a wrong <span className="italic">note</span>
+			</h1>
+
+			<p
+				className="mt-6 max-w-md text-center text-lg leading-relaxed"
+				style={{
+					fontFamily: fonts.body,
+					color: theme.textOnPrimary,
+					opacity: 0.8,
+				}}
+			>
+				{error.message || "An unexpected error occurred."}
+			</p>
+
+			<div className="mt-10 flex items-center gap-6">
+				<button
+					type="button"
+					onClick={reset}
+					className="group inline-flex items-center gap-2"
+					style={{ fontFamily: fonts.body, color: theme.textOnPrimary }}
+				>
+					<span className="text-lg font-medium tracking-wide">Try again</span>
+					<span
+						className="inline-block transition-transform group-hover:rotate-45"
+						style={{ opacity: 0.7 }}
+					>
+						↻
+					</span>
+				</button>
+
+				<Link
+					to="/"
+					className="text-sm underline"
+					style={{
+						fontFamily: fonts.body,
+						color: theme.textOnPrimary,
+						opacity: 0.7,
+					}}
+				>
+					Back to hearted.
+				</Link>
+			</div>
+		</div>
 	);
 }
 

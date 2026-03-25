@@ -8,7 +8,7 @@ interface ActivityFeedProps {
 	activities: ActivityItemType[];
 }
 
-export function ActivityFeed({ activities }: ActivityFeedProps) {
+export function ActivityFeed({ activities = [] }: ActivityFeedProps) {
 	const theme = useTheme();
 
 	if (activities.length === 0) return null;

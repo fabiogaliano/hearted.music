@@ -56,6 +56,10 @@ export const PlaylistSyncResultSchema = z.object({
 	updated: z.number(),
 	/** Playlists that were removed from Spotify */
 	removed: z.number(),
+	/** IDs of removed playlists that were targets (captured before delete) */
+	removedTargetPlaylistIds: z.array(z.string()),
+	/** DB IDs of target playlists whose metadata changed (name/description/image) */
+	updatedTargetPlaylistIds: z.array(z.string()),
 	/** Details of changes */
 	changes: PlaylistSyncChangesSchema,
 });
@@ -187,7 +191,7 @@ export class PlaylistSyncService {
 				is_public: true,
 				song_count:
 					sp.track_count ?? existingBySpotifyId.get(sp.id)?.song_count ?? 0,
-				is_destination: existingBySpotifyId.get(sp.id)?.is_destination ?? false,
+				is_target: existingBySpotifyId.get(sp.id)?.is_target ?? false,
 				image_url: sp.image_url,
 			}));
 
@@ -199,6 +203,17 @@ export class PlaylistSyncService {
 				return Result.err(upsertResult.error);
 			}
 		}
+
+		// Capture target-playlist removal facts BEFORE deleting rows
+		const removedTargetIds = toRemove
+			.filter((p) => p.is_target)
+			.map((p) => p.id);
+
+		// Capture target-playlist metadata-change facts (name/description/image)
+		const updatedTargetIds = toUpdate
+			.map((sp) => existingBySpotifyId.get(sp.id))
+			.filter((p): p is Playlist => p?.is_target === true)
+			.map((p) => p.id);
 
 		for (const playlist of toRemove) {
 			const deleteResult = await playlists.deletePlaylist(playlist.id);
@@ -212,6 +227,8 @@ export class PlaylistSyncService {
 			created: toCreate.length,
 			updated: toUpdate.length,
 			removed: toRemove.length,
+			removedTargetPlaylistIds: removedTargetIds,
+			updatedTargetPlaylistIds: updatedTargetIds,
 			changes: {
 				created: toCreate.map((p: SpotifyPlaylistDTO) => ({
 					id: p.id,
@@ -411,7 +428,7 @@ export class PlaylistSyncService {
 				snapshot_id: null,
 				is_public: false,
 				song_count: 0,
-				is_destination: true,
+				is_target: true,
 			},
 		];
 
@@ -475,7 +492,7 @@ export class PlaylistSyncService {
 				snapshot_id: dbPlaylist.snapshot_id,
 				is_public: dbPlaylist.is_public,
 				song_count: dbPlaylist.song_count,
-				is_destination: dbPlaylist.is_destination,
+				is_target: dbPlaylist.is_target,
 				image_url: dbPlaylist.image_url,
 			},
 		]);

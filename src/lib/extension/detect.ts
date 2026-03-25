@@ -18,6 +18,36 @@ declare const chrome: {
 
 const EXTENSION_ID = env.VITE_CHROME_EXTENSION_ID ?? "";
 
+export type ExtensionSyncCounter = {
+	fetched: number;
+	total: number;
+};
+
+export type ExtensionSyncState = {
+	status: "idle" | "syncing" | "done" | "error";
+	phase:
+		| "idle"
+		| "likedSongs"
+		| "playlists"
+		| "playlistTracks"
+		| "artistImages"
+		| "uploading";
+	fetched: number;
+	total: number;
+	likedSongs: ExtensionSyncCounter;
+	playlists: ExtensionSyncCounter;
+	playlistTracks: ExtensionSyncCounter;
+	artistImages: ExtensionSyncCounter;
+	lastSyncAt: number | null;
+	error: string | null;
+};
+
+export type ExtensionStatusResponse = {
+	hasToken: boolean;
+	tokenExpiresAtMs: number | null;
+	sync: ExtensionSyncState;
+};
+
 export async function sendExtensionCommand<T = unknown>(
 	message: Record<string, unknown>,
 ): Promise<T | null> {
@@ -77,6 +107,10 @@ export async function getSpotifyConnectionStatus(): Promise<boolean> {
 	} catch {
 		return false;
 	}
+}
+
+export async function getExtensionStatus(): Promise<ExtensionStatusResponse | null> {
+	return sendExtensionCommand<ExtensionStatusResponse>({ type: "GET_STATUS" });
 }
 
 export async function connectExtension(

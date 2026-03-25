@@ -49,13 +49,19 @@ export type UserProfile = {
 	avatarUrl: string | null;
 };
 
+export type SpotifyTrackArtistDTO = {
+	id: string;
+	name: string;
+	imageUrl?: string | null;
+};
+
 /** Mirrors backend SpotifyTrackDTO — extension cannot import from app source */
 export type SpotifyTrackDTO = {
 	added_at: string;
 	track: {
 		id: string;
 		name: string;
-		artists: Array<{ id: string; name: string }>;
+		artists: SpotifyTrackArtistDTO[];
 		album: {
 			id: string;
 			name: string;

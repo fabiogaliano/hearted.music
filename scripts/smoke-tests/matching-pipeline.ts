@@ -110,7 +110,7 @@ const TEST_TRACKS: TestTrack[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Mock Playlist Profiles (simulating user's destination playlists)
+// Mock Playlist Profiles (simulating user's target playlists)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MOCK_PLAYLISTS: MatchingPlaylistProfile[] = [
