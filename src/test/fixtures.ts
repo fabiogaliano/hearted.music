@@ -2,8 +2,7 @@
  * Test fixtures with real data from Spotify account kapran0s (fabiogaliano)
  */
 
-import type { SimplifiedPlaylist } from "@fostertheweb/spotify-web-sdk";
-import type { SpotifyPlaylistDTO } from "@/lib/integrations/spotify/service";
+import type { SpotifyPlaylistDTO } from "@/lib/workflows/spotify-sync/types";
 
 export const TEST_ACCOUNT = {
 	id: "11111111-1111-1111-1111-111111111111",
@@ -237,27 +236,6 @@ export function toSpotifyApiSavedTrack(
 			uri: `spotify:track:${song.spotify_id}`,
 		},
 	};
-}
-
-export type SpotifyApiPlaylist = Pick<
-	SimplifiedPlaylist,
-	"id" | "name" | "description" | "owner" | "images"
-> & {
-	tracks: { total: number };
-};
-
-export function toSpotifyApiPlaylist(
-	playlist: PlaylistFixture,
-	ownerId: string,
-): SpotifyApiPlaylist {
-	return {
-		id: playlist.spotify_id,
-		name: playlist.name,
-		description: playlist.description || null,
-		owner: { id: ownerId },
-		tracks: { total: playlist.song_count },
-		images: playlist.image_url ? [{ url: playlist.image_url }] : null,
-	} as SpotifyApiPlaylist;
 }
 
 export function toSpotifyPlaylistDTO(

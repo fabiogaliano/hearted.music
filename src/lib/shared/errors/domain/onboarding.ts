@@ -4,10 +4,9 @@
 
 import { TaggedError } from "better-result";
 import type { DbError } from "../database";
-import type { SpotifyError } from "../external/spotify";
 
 /** All possible onboarding error causes */
-export type OnboardingErrorCause = DbError | SpotifyError | Error;
+export type OnboardingErrorCause = DbError | Error;
 
 /** Onboarding operation failed */
 export class OnboardingError extends TaggedError("OnboardingError")<{

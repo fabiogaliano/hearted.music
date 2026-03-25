@@ -25,9 +25,8 @@ import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
 import * as playlistData from "@/lib/domains/library/playlists/queries";
 import type {
 	SpotifyPlaylistDTO,
-	SpotifyService,
 	SpotifyTrackDTO,
-} from "@/lib/integrations/spotify/service";
+} from "@/lib/workflows/spotify-sync/types";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import { completeJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import { emitItem, emitStatus } from "@/lib/platform/jobs/progress/helpers";
@@ -37,7 +36,10 @@ import {
 	getExtensionCorsHeaders,
 } from "@/lib/server/extension-cors";
 import { requestEnrichment } from "@/lib/workflows/enrichment-pipeline/trigger";
-import { PlaylistSyncService } from "@/lib/workflows/spotify-sync/playlist-sync";
+import {
+	syncPlaylists,
+	syncPlaylistTracksFromData,
+} from "@/lib/workflows/spotify-sync/playlist-sync";
 import {
 	incrementalSync,
 	initialSync,
@@ -339,12 +341,10 @@ export const Route = createFileRoute("/api/extension/sync")({
 					const playlistResult = await runPhase(
 						phaseJobIds.playlists,
 						async () => {
-							const playlistSync = new PlaylistSyncService(
-								null as unknown as SpotifyService,
+							const syncResult = await syncPlaylists(
+								accountId,
+								extensionPlaylists,
 							);
-							const syncResult = await playlistSync.syncPlaylists(accountId, {
-								cachedPlaylists: extensionPlaylists,
-							});
 
 							if (Result.isOk(syncResult)) {
 								emitItem(phaseJobIds.playlists, {
@@ -405,16 +405,11 @@ export const Route = createFileRoute("/api/extension/sync")({
 					let tracksProcessed = 0;
 					const changedPlaylistIds: string[] = [];
 
-					const playlistSync = new PlaylistSyncService(
-						null as unknown as SpotifyService,
-					);
-
 					for (const entry of incomingPlaylistTracks) {
 						const dbPlaylist = dbPlaylistMap.get(entry.playlistSpotifyId);
 						if (!dbPlaylist) continue;
 
-						const trackResult = await playlistSync.syncPlaylistTracksFromData(
-							accountId,
+						const trackResult = await syncPlaylistTracksFromData(
 							dbPlaylist,
 							entry.tracks as unknown as SpotifyTrackDTO[],
 						);

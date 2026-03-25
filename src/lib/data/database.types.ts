@@ -113,27 +113,6 @@ export type Database = {
 					},
 				];
 			};
-			app_token: {
-				Row: {
-					access_token: string;
-					id: string;
-					token_expires_at: string;
-					updated_at: string;
-				};
-				Insert: {
-					access_token: string;
-					id?: string;
-					token_expires_at: string;
-					updated_at?: string;
-				};
-				Update: {
-					access_token?: string;
-					id?: string;
-					token_expires_at?: string;
-					updated_at?: string;
-				};
-				Relationships: [];
-			};
 			artist: {
 				Row: {
 					created_at: string;
@@ -1263,6 +1242,9 @@ export type Database = {
 					analysis_id: string;
 					analysis_model: string;
 					artist_image_url: string;
+					audio_energy: number;
+					audio_tempo: number;
+					audio_valence: number;
 					id: string;
 					liked_at: string;
 					matching_status: string;

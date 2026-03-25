@@ -4,8 +4,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireAuthSession } from "@/lib/platform/auth/auth.server";
 import * as likedSong from "@/lib/domains/library/liked-songs/queries";
 import type { LikedSongPageRow } from "@/lib/domains/library/liked-songs/queries";
-import { appFetch } from "@/lib/integrations/spotify/app-auth";
-import type { FilterOption } from "@/features/liked-songs/queries";
 import type {
 	LikedSong,
 	MatchingStatus,
@@ -13,20 +11,17 @@ import type {
 } from "@/features/liked-songs/types";
 
 const LikedSongsPageSchema = z.object({
-	filter: z.enum(["all", "pending", "matched", "analyzed"]),
+	filter: z.enum([
+		"all",
+		"pending",
+		"has_suggestions",
+		"acted",
+		"no_suggestions",
+		"analyzed",
+	]),
 	cursor: z.string().optional(),
 	limit: z.number().int().min(1).max(100).optional(),
 });
-
-const ArtistImageByIdSchema = z.object({
-	artistId: z.string().min(1),
-});
-
-export interface LikedSongsPageParams {
-	filter: FilterOption;
-	cursor?: string;
-	limit?: number;
-}
 
 export interface LikedSongsPageResult {
 	songs: LikedSong[];
@@ -126,35 +121,3 @@ export const getLikedSongsStats = createServerFn({ method: "GET" }).handler(
 		};
 	},
 );
-
-export interface ArtistImageResult {
-	url: string | null;
-}
-
-const ArtistsSchema = z.object({
-	artists: z.array(
-		z
-			.object({
-				images: z.array(z.object({ url: z.string() })),
-			})
-			.nullable(),
-	),
-});
-
-export interface ArtistImageByIdParams {
-	artistId: string;
-}
-
-export const getArtistImageById = createServerFn({ method: "GET" })
-	.inputValidator((data) => ArtistImageByIdSchema.parse(data))
-	.handler(async ({ data }): Promise<ArtistImageResult> => {
-		await requireAuthSession();
-
-		const artistsResult = await appFetch(
-			`/artists?ids=${data.artistId}`,
-			ArtistsSchema,
-		);
-		if (Result.isError(artistsResult)) return { url: null };
-
-		return { url: artistsResult.value.artists[0]?.images[0]?.url ?? null };
-	});
