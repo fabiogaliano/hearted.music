@@ -1,15 +1,7 @@
 /**
- * PlaylistSyncService - Handles Spotify playlist sync operations.
+ * Playlist sync operations.
  *
- * Responsibilities:
- * - Sync playlists from Spotify to database
- * - Sync playlist tracks from Spotify to database
- * - Create/update playlists on Spotify
- *
- * Uses:
- * - SpotifyService for Spotify API calls
- * - data/playlists.ts for database operations
- * - sync-helpers.ts for shared track import
+ * Syncs pre-fetched playlist data (from extension Pathfinder API) to the database.
  */
 
 import { Result } from "better-result";
@@ -20,15 +12,10 @@ import type {
 } from "@/lib/domains/library/playlists/queries";
 import * as playlists from "@/lib/domains/library/playlists/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
-import { dedupeTracksBySpotifyId } from "@/lib/integrations/spotify/mappers";
-import type {
-	SpotifyPlaylistDTO,
-	SpotifyService,
-	SpotifyTrackDTO,
-} from "@/lib/integrations/spotify/service";
+import { dedupeTracksBySpotifyId } from "./dedupe";
 import type { DbError } from "@/lib/shared/errors/database";
 import { SyncFailedError } from "@/lib/shared/errors/domain/sync";
-import type { SpotifyError } from "@/lib/shared/errors/external/spotify";
+import type { SpotifyPlaylistDTO, SpotifyTrackDTO } from "./types";
 import { importSpotifyTracks } from "./sync-helpers";
 
 /** Playlist change entry */
@@ -48,19 +35,12 @@ export type PlaylistSyncChanges = z.infer<typeof PlaylistSyncChangesSchema>;
 
 /** Result of syncing playlists */
 export const PlaylistSyncResultSchema = z.object({
-	/** Total playlists processed */
 	total: z.number(),
-	/** New playlists created */
 	created: z.number(),
-	/** Existing playlists updated */
 	updated: z.number(),
-	/** Playlists that were removed from Spotify */
 	removed: z.number(),
-	/** IDs of removed playlists that were targets (captured before delete) */
 	removedTargetPlaylistIds: z.array(z.string()),
-	/** DB IDs of target playlists whose metadata changed (name/description/image) */
 	updatedTargetPlaylistIds: z.array(z.string()),
-	/** Details of changes */
 	changes: PlaylistSyncChangesSchema,
 });
 export type PlaylistSyncResult = z.infer<typeof PlaylistSyncResultSchema>;
@@ -82,11 +62,8 @@ export type RemovedTrackEntry = z.infer<typeof RemovedTrackEntrySchema>;
 export const PlaylistTrackSyncResultSchema = z.object({
 	playlistId: z.string(),
 	playlistName: z.string(),
-	/** Tracks added to playlist */
 	added: z.number(),
-	/** Tracks removed from playlist */
 	removed: z.number(),
-	/** Details of changes */
 	addedTracks: z.array(AddedTrackEntrySchema),
 	removedTracks: z.array(RemovedTrackEntrySchema),
 });
@@ -94,428 +71,249 @@ export type PlaylistTrackSyncResult = z.infer<
 	typeof PlaylistTrackSyncResultSchema
 >;
 
-type PlaylistSyncFailedError = DbError | SpotifyError | SyncFailedError;
+type PlaylistSyncError = DbError | SyncFailedError;
 
 /** Options for syncPlaylists */
 export interface SyncPlaylistsOptions {
-	/** Pre-fetched playlists from discovery phase (skips API call) */
-	cachedPlaylists?: SpotifyPlaylistDTO[];
-	/** Progress callback (called with count of playlists processed) */
 	onProgress?: (count: number) => void;
-	/** Total discovered callback (called when total is known) */
 	onTotalDiscovered?: (total: number) => void;
 }
 
-export class PlaylistSyncService {
-	constructor(private spotify: SpotifyService) {}
+function playlistNeedsUpdate(
+	existing: Playlist,
+	spotify: SpotifyPlaylistDTO,
+): boolean {
+	return (
+		existing.name !== spotify.name ||
+		existing.description !== spotify.description ||
+		(spotify.track_count !== null &&
+			existing.song_count !== spotify.track_count) ||
+		existing.image_url !== spotify.image_url
+	);
+}
 
-	/**
-	 * Syncs all playlists from Spotify to database for an account.
-	 * Creates new playlists, updates existing ones, marks removed ones.
-	 *
-	 * If cachedPlaylists is provided (from discovery phase), uses those
-	 * directly without making any API calls - enabling zero-cost sync.
-	 */
-	async syncPlaylists(
-		accountId: string,
-		options: SyncPlaylistsOptions = {},
-	): Promise<Result<PlaylistSyncResult, PlaylistSyncFailedError>> {
-		const { cachedPlaylists, onProgress, onTotalDiscovered } = options;
+/**
+ * Syncs pre-fetched playlists to the database.
+ * Creates new playlists, updates existing ones, removes deleted ones.
+ */
+export async function syncPlaylists(
+	accountId: string,
+	cachedPlaylists: SpotifyPlaylistDTO[],
+	options: SyncPlaylistsOptions = {},
+): Promise<Result<PlaylistSyncResult, PlaylistSyncError>> {
+	const { onProgress, onTotalDiscovered } = options;
 
-		let spotifyPlaylists: SpotifyPlaylistDTO[];
+	onTotalDiscovered?.(cachedPlaylists.length);
+	onProgress?.(cachedPlaylists.length);
 
-		if (cachedPlaylists) {
-			// Use cached playlists from discovery - ZERO API calls!
-			spotifyPlaylists = cachedPlaylists;
-			// Emit total immediately since we already know it
-			onTotalDiscovered?.(cachedPlaylists.length);
-			// Emit progress immediately since we have all data
-			onProgress?.(cachedPlaylists.length);
-		} else {
-			// Fallback to fetching (for incremental sync use cases)
-			const spotifyPlaylistsResult = await this.spotify.getPlaylists(
-				onProgress,
-				onTotalDiscovered,
-			);
+	const existingResult = await playlists.getPlaylists(accountId);
+	if (Result.isError(existingResult)) {
+		return Result.err(existingResult.error);
+	}
+	const existingPlaylists = existingResult.value;
+	const existingBySpotifyId = new Map(
+		existingPlaylists.map((p: Playlist) => [p.spotify_id, p]),
+	);
 
-			if (Result.isError(spotifyPlaylistsResult)) {
-				return Result.err(
-					new SyncFailedError(
-						"playlists",
-						accountId,
-						spotifyPlaylistsResult.error.message,
-					),
-				);
-			}
-			spotifyPlaylists = spotifyPlaylistsResult.value;
+	const spotifyIds = new Set(
+		cachedPlaylists.map((p: SpotifyPlaylistDTO) => p.id),
+	);
+	const toCreate: SpotifyPlaylistDTO[] = [];
+	const toUpdate: SpotifyPlaylistDTO[] = [];
+	const toRemove: Playlist[] = [];
+
+	for (const sp of cachedPlaylists) {
+		const existing = existingBySpotifyId.get(sp.id);
+		if (!existing) {
+			toCreate.push(sp);
+		} else if (playlistNeedsUpdate(existing, sp)) {
+			toUpdate.push(sp);
 		}
-
-		const existingResult = await playlists.getPlaylists(accountId);
-		if (Result.isError(existingResult)) {
-			return Result.err(existingResult.error);
-		}
-		const existingPlaylists = existingResult.value;
-		const existingBySpotifyId = new Map(
-			existingPlaylists.map((p: Playlist) => [p.spotify_id, p]),
-		);
-
-		const spotifyIds = new Set(
-			spotifyPlaylists.map((p: SpotifyPlaylistDTO) => p.id),
-		);
-		const toCreate: SpotifyPlaylistDTO[] = [];
-		const toUpdate: SpotifyPlaylistDTO[] = [];
-		const toRemove: Playlist[] = [];
-
-		for (const sp of spotifyPlaylists) {
-			const existing = existingBySpotifyId.get(sp.id);
-			if (!existing) {
-				toCreate.push(sp);
-			} else if (this.playlistNeedsUpdate(existing, sp)) {
-				toUpdate.push(sp);
-			}
-		}
-
-		for (const existing of existingPlaylists) {
-			if (!spotifyIds.has(existing.spotify_id)) {
-				toRemove.push(existing);
-			}
-		}
-
-		const toUpsert = [...toCreate, ...toUpdate];
-		if (toUpsert.length > 0) {
-			const upsertData = toUpsert.map((sp: SpotifyPlaylistDTO) => ({
-				spotify_id: sp.id,
-				name: sp.name,
-				description: sp.description,
-				snapshot_id: null,
-				is_public: true,
-				song_count:
-					sp.track_count ?? existingBySpotifyId.get(sp.id)?.song_count ?? 0,
-				is_target: existingBySpotifyId.get(sp.id)?.is_target ?? false,
-				image_url: sp.image_url,
-			}));
-
-			const upsertResult = await playlists.upsertPlaylists(
-				accountId,
-				upsertData,
-			);
-			if (Result.isError(upsertResult)) {
-				return Result.err(upsertResult.error);
-			}
-		}
-
-		// Capture target-playlist removal facts BEFORE deleting rows
-		const removedTargetIds = toRemove
-			.filter((p) => p.is_target)
-			.map((p) => p.id);
-
-		// Capture target-playlist metadata-change facts (name/description/image)
-		const updatedTargetIds = toUpdate
-			.map((sp) => existingBySpotifyId.get(sp.id))
-			.filter((p): p is Playlist => p?.is_target === true)
-			.map((p) => p.id);
-
-		for (const playlist of toRemove) {
-			const deleteResult = await playlists.deletePlaylist(playlist.id);
-			if (Result.isError(deleteResult)) {
-				return Result.err(deleteResult.error);
-			}
-		}
-
-		const result: PlaylistSyncResult = {
-			total: spotifyPlaylists.length,
-			created: toCreate.length,
-			updated: toUpdate.length,
-			removed: toRemove.length,
-			removedTargetPlaylistIds: removedTargetIds,
-			updatedTargetPlaylistIds: updatedTargetIds,
-			changes: {
-				created: toCreate.map((p: SpotifyPlaylistDTO) => ({
-					id: p.id,
-					name: p.name,
-				})),
-				updated: toUpdate.map((p: SpotifyPlaylistDTO) => ({
-					id: p.id,
-					name: p.name,
-				})),
-				removed: toRemove.map((p: Playlist) => ({ id: p.id, name: p.name })),
-			},
-		};
-
-		return Result.ok(result);
 	}
 
-	/**
-	 * Syncs tracks for a specific playlist from Spotify to database.
-	 * Fetches tracks from Spotify API, then delegates to syncPlaylistTracksFromData.
-	 */
-	async syncPlaylistTracks(
-		accountId: string,
-		playlist: Playlist,
-	): Promise<Result<PlaylistTrackSyncResult, PlaylistSyncFailedError>> {
-		const spotifyTracksResult = await this.spotify.getPlaylistTracks(
-			playlist.spotify_id,
-		);
-
-		if (Result.isError(spotifyTracksResult)) {
-			return Result.err(
-				new SyncFailedError(
-					"playlist_tracks",
-					accountId,
-					spotifyTracksResult.error.message,
-				),
-			);
+	for (const existing of existingPlaylists) {
+		if (!spotifyIds.has(existing.spotify_id)) {
+			toRemove.push(existing);
 		}
-
-		return this.syncPlaylistTracksFromData(
-			accountId,
-			playlist,
-			spotifyTracksResult.value,
-		);
 	}
 
-	/**
-	 * Syncs pre-fetched tracks for a playlist to database.
-	 * Accepts tracks from any source (OAuth API or extension pathfinder).
-	 */
-	async syncPlaylistTracksFromData(
-		_accountId: string,
-		playlist: Playlist,
-		rawTracks: SpotifyTrackDTO[],
-	): Promise<Result<PlaylistTrackSyncResult, PlaylistSyncFailedError>> {
-		const spotifyTracks = dedupeTracksBySpotifyId(rawTracks);
+	const toUpsert = [...toCreate, ...toUpdate];
+	if (toUpsert.length > 0) {
+		const upsertData = toUpsert.map((sp: SpotifyPlaylistDTO) => ({
+			spotify_id: sp.id,
+			name: sp.name,
+			description: sp.description,
+			snapshot_id: null,
+			is_public: true,
+			song_count:
+				sp.track_count ?? existingBySpotifyId.get(sp.id)?.song_count ?? 0,
+			is_target: existingBySpotifyId.get(sp.id)?.is_target ?? false,
+			image_url: sp.image_url,
+		}));
 
-		const [existingResult, songMapResult] = await Promise.all([
-			playlists.getPlaylistSongs(playlist.id),
-			importSpotifyTracks(spotifyTracks),
-		]);
-		if (Result.isError(existingResult)) {
-			return Result.err(existingResult.error);
+		const upsertResult = await playlists.upsertPlaylists(accountId, upsertData);
+		if (Result.isError(upsertResult)) {
+			return Result.err(upsertResult.error);
 		}
-		if (Result.isError(songMapResult)) {
-			return Result.err(songMapResult.error);
+	}
+
+	const removedTargetIds = toRemove.filter((p) => p.is_target).map((p) => p.id);
+
+	const updatedTargetIds = toUpdate
+		.map((sp) => existingBySpotifyId.get(sp.id))
+		.filter((p): p is Playlist => p?.is_target === true)
+		.map((p) => p.id);
+
+	for (const playlist of toRemove) {
+		const deleteResult = await playlists.deletePlaylist(playlist.id);
+		if (Result.isError(deleteResult)) {
+			return Result.err(deleteResult.error);
 		}
-		const existingSongs = existingResult.value;
-		const existingBySongId = new Map(
-			existingSongs.map((ps: PlaylistSong) => [ps.song_id, ps]),
-		);
+	}
 
-		const songBySpotifyId = songMapResult.value;
-		const upsertedSongs = [...songBySpotifyId.values()];
-
-		const spotifyTrackIds = new Set(
-			spotifyTracks.map((t: SpotifyTrackDTO) => t.track.id),
-		);
-		const toAdd: Array<{
-			song: Song;
-			spotifyTrack: SpotifyTrackDTO;
-			position: number;
-		}> = [];
-		const toUpdate: Array<{
-			song: Song;
-			position: number;
-			addedAt: string | null;
-		}> = [];
-		const toRemove: PlaylistSong[] = [];
-
-		spotifyTracks.forEach((st: SpotifyTrackDTO, index: number) => {
-			const song = songBySpotifyId.get(st.track.id);
-			if (!song) {
-				return;
-			}
-			const existing = existingBySongId.get(song.id);
-			if (!existing) {
-				toAdd.push({ song, spotifyTrack: st, position: index });
-				return;
-			}
-			if (existing.position !== index) {
-				toUpdate.push({
-					song,
-					position: index,
-					addedAt: existing.added_at,
-				});
-			}
-		});
-
-		for (const existing of existingSongs) {
-			const song = upsertedSongs.find((s: Song) => s.id === existing.song_id);
-			if (!song || !spotifyTrackIds.has(song.spotify_id)) {
-				toRemove.push(existing);
-			}
-		}
-
-		const upsertData = [
-			...toAdd.map((item) => ({
-				song_id: item.song.id,
-				position: item.position,
-				added_at: item.spotifyTrack.added_at,
+	const result: PlaylistSyncResult = {
+		total: cachedPlaylists.length,
+		created: toCreate.length,
+		updated: toUpdate.length,
+		removed: toRemove.length,
+		removedTargetPlaylistIds: removedTargetIds,
+		updatedTargetPlaylistIds: updatedTargetIds,
+		changes: {
+			created: toCreate.map((p: SpotifyPlaylistDTO) => ({
+				id: p.id,
+				name: p.name,
 			})),
-			...toUpdate.map((item) => ({
-				song_id: item.song.id,
-				position: item.position,
-				added_at: item.addedAt ?? null,
+			updated: toUpdate.map((p: SpotifyPlaylistDTO) => ({
+				id: p.id,
+				name: p.name,
 			})),
-		];
+			removed: toRemove.map((p: Playlist) => ({ id: p.id, name: p.name })),
+		},
+	};
 
-		if (upsertData.length > 0) {
-			const upsertResult = await playlists.upsertPlaylistSongs(
-				playlist.id,
-				upsertData,
-			);
-			if (Result.isError(upsertResult)) {
-				return Result.err(upsertResult.error);
-			}
+	return Result.ok(result);
+}
+
+/**
+ * Syncs pre-fetched tracks for a playlist to database.
+ */
+export async function syncPlaylistTracksFromData(
+	playlist: Playlist,
+	rawTracks: SpotifyTrackDTO[],
+): Promise<Result<PlaylistTrackSyncResult, PlaylistSyncError>> {
+	const spotifyTracks = dedupeTracksBySpotifyId(rawTracks);
+
+	const [existingResult, songMapResult] = await Promise.all([
+		playlists.getPlaylistSongs(playlist.id),
+		importSpotifyTracks(spotifyTracks),
+	]);
+	if (Result.isError(existingResult)) {
+		return Result.err(existingResult.error);
+	}
+	if (Result.isError(songMapResult)) {
+		return Result.err(songMapResult.error);
+	}
+	const existingSongs = existingResult.value;
+	const existingBySongId = new Map(
+		existingSongs.map((ps: PlaylistSong) => [ps.song_id, ps]),
+	);
+
+	const songBySpotifyId = songMapResult.value;
+	const upsertedSongs = [...songBySpotifyId.values()];
+
+	const spotifyTrackIds = new Set(
+		spotifyTracks.map((t: SpotifyTrackDTO) => t.track.id),
+	);
+	const toAdd: Array<{
+		song: Song;
+		spotifyTrack: SpotifyTrackDTO;
+		position: number;
+	}> = [];
+	const toUpdate: Array<{
+		song: Song;
+		position: number;
+		addedAt: string | null;
+	}> = [];
+	const toRemove: PlaylistSong[] = [];
+
+	spotifyTracks.forEach((st: SpotifyTrackDTO, index: number) => {
+		const song = songBySpotifyId.get(st.track.id);
+		if (!song) {
+			return;
 		}
-
-		if (toRemove.length > 0) {
-			const removeResult = await playlists.removePlaylistSongs(
-				playlist.id,
-				toRemove.map((ps: PlaylistSong) => ps.song_id),
-			);
-			if (Result.isError(removeResult)) {
-				return Result.err(removeResult.error);
-			}
+		const existing = existingBySongId.get(song.id);
+		if (!existing) {
+			toAdd.push({ song, spotifyTrack: st, position: index });
+			return;
 		}
+		if (existing.position !== index) {
+			toUpdate.push({
+				song,
+				position: index,
+				addedAt: existing.added_at,
+			});
+		}
+	});
 
-		const countResult = await playlists.updatePlaylistSongCount(
+	for (const existing of existingSongs) {
+		const song = upsertedSongs.find((s: Song) => s.id === existing.song_id);
+		if (!song || !spotifyTrackIds.has(song.spotify_id)) {
+			toRemove.push(existing);
+		}
+	}
+
+	const upsertData = [
+		...toAdd.map((item) => ({
+			song_id: item.song.id,
+			position: item.position,
+			added_at: item.spotifyTrack.added_at,
+		})),
+		...toUpdate.map((item) => ({
+			song_id: item.song.id,
+			position: item.position,
+			added_at: item.addedAt ?? null,
+		})),
+	];
+
+	if (upsertData.length > 0) {
+		const upsertResult = await playlists.upsertPlaylistSongs(
 			playlist.id,
-			spotifyTracks.length,
-		);
-		if (Result.isError(countResult)) {
-			return Result.err(countResult.error);
-		}
-
-		const result: PlaylistTrackSyncResult = {
-			playlistId: playlist.id,
-			playlistName: playlist.name,
-			added: toAdd.length,
-			removed: toRemove.length,
-			addedTracks: toAdd.map((item) => ({
-				name: item.song.name,
-				artist: item.song.artists[0] ?? "Unknown",
-			})),
-			removedTracks: toRemove.map((ps: PlaylistSong) => ({ id: ps.song_id })),
-		};
-
-		return Result.ok(result);
-	}
-
-	/**
-	 * Creates a new playlist on Spotify and saves to database.
-	 */
-	async createPlaylist(
-		accountId: string,
-		name: string,
-		description: string,
-	): Promise<Result<Playlist, PlaylistSyncFailedError>> {
-		const spotifyResult = await this.spotify.createPlaylist(name, description);
-
-		if (Result.isError(spotifyResult)) {
-			return Result.err(
-				new SyncFailedError(
-					"playlists",
-					accountId,
-					spotifyResult.error.message,
-				),
-			);
-		}
-
-		const playlistData = [
-			{
-				spotify_id: spotifyResult.value.id,
-				name: spotifyResult.value.name,
-				description,
-				snapshot_id: null,
-				is_public: false,
-				song_count: 0,
-				is_target: true,
-			},
-		];
-
-		const upsertResult = await playlists.upsertPlaylists(
-			accountId,
-			playlistData,
+			upsertData,
 		);
 		if (Result.isError(upsertResult)) {
 			return Result.err(upsertResult.error);
 		}
-
-		return Result.ok(upsertResult.value[0]);
 	}
 
-	/**
-	 * Updates a playlist on Spotify.
-	 */
-	async updatePlaylist(
-		accountId: string,
-		playlistId: string,
-		name: string,
-		description: string,
-	): Promise<Result<void, PlaylistSyncFailedError>> {
-		const playlistResult = await playlists.getPlaylistById(playlistId);
-		if (Result.isError(playlistResult)) {
-			return Result.err(playlistResult.error);
-		}
-
-		if (playlistResult.value === null) {
-			return Result.err(
-				new SyncFailedError(
-					"playlists",
-					accountId,
-					`Playlist ${playlistId} not found`,
-				),
-			);
-		}
-		const dbPlaylist = playlistResult.value;
-
-		const spotifyResult = await this.spotify.updatePlaylist(
-			dbPlaylist.spotify_id,
-			name,
-			description,
+	if (toRemove.length > 0) {
+		const removeResult = await playlists.removePlaylistSongs(
+			playlist.id,
+			toRemove.map((ps: PlaylistSong) => ps.song_id),
 		);
-
-		if (Result.isError(spotifyResult)) {
-			return Result.err(
-				new SyncFailedError(
-					"playlists",
-					accountId,
-					spotifyResult.error.message,
-				),
-			);
+		if (Result.isError(removeResult)) {
+			return Result.err(removeResult.error);
 		}
-
-		const updateResult = await playlists.upsertPlaylists(accountId, [
-			{
-				spotify_id: dbPlaylist.spotify_id,
-				name,
-				description,
-				snapshot_id: dbPlaylist.snapshot_id,
-				is_public: dbPlaylist.is_public,
-				song_count: dbPlaylist.song_count,
-				is_target: dbPlaylist.is_target,
-				image_url: dbPlaylist.image_url,
-			},
-		]);
-		if (Result.isError(updateResult)) {
-			return Result.err(updateResult.error);
-		}
-
-		return Result.ok(undefined);
 	}
 
-	/**
-	 * Checks if a playlist needs to be updated based on Spotify data.
-	 */
-	private playlistNeedsUpdate(
-		existing: Playlist,
-		spotify: SpotifyPlaylistDTO,
-	): boolean {
-		return (
-			existing.name !== spotify.name ||
-			existing.description !== spotify.description ||
-			(spotify.track_count !== null &&
-				existing.song_count !== spotify.track_count) ||
-			existing.image_url !== spotify.image_url
-		);
+	const countResult = await playlists.updatePlaylistSongCount(
+		playlist.id,
+		spotifyTracks.length,
+	);
+	if (Result.isError(countResult)) {
+		return Result.err(countResult.error);
 	}
+
+	const result: PlaylistTrackSyncResult = {
+		playlistId: playlist.id,
+		playlistName: playlist.name,
+		added: toAdd.length,
+		removed: toRemove.length,
+		addedTracks: toAdd.map((item) => ({
+			name: item.song.name,
+			artist: item.song.artists[0] ?? "Unknown",
+		})),
+		removedTracks: toRemove.map((ps: PlaylistSong) => ({ id: ps.song_id })),
+	};
+
+	return Result.ok(result);
 }

@@ -18,7 +18,6 @@ import { Route as DevExtensionStepRouteImport } from './routes/dev-extension-ste
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
-import { Route as ApiArtistImagesForTracksRouteImport } from './routes/api/artist-images-for-tracks'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedPlaylistsRouteImport } from './routes/_authenticated/playlists'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
@@ -76,12 +75,6 @@ const AuthLogoutRoute = AuthLogoutRouteImport.update({
   path: '/auth/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiArtistImagesForTracksRoute =
-  ApiArtistImagesForTracksRouteImport.update({
-    id: '/api/artist-images-for-tracks',
-    path: '/api/artist-images-for-tracks',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -158,7 +151,6 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/playlists': typeof AuthenticatedPlaylistsRoute
   '/settings': typeof AuthenticatedSettingsRoute
-  '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
@@ -181,7 +173,6 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/playlists': typeof AuthenticatedPlaylistsRoute
   '/settings': typeof AuthenticatedSettingsRoute
-  '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
@@ -206,7 +197,6 @@ export interface FileRoutesById {
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/playlists': typeof AuthenticatedPlaylistsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
-  '/api/artist-images-for-tracks': typeof ApiArtistImagesForTracksRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
@@ -231,7 +221,6 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/playlists'
     | '/settings'
-    | '/api/artist-images-for-tracks'
     | '/auth/logout'
     | '/api/auth/$'
     | '/api/extension/status'
@@ -254,7 +243,6 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/playlists'
     | '/settings'
-    | '/api/artist-images-for-tracks'
     | '/auth/logout'
     | '/api/auth/$'
     | '/api/extension/status'
@@ -278,7 +266,6 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding'
     | '/_authenticated/playlists'
     | '/_authenticated/settings'
-    | '/api/artist-images-for-tracks'
     | '/auth/logout'
     | '/api/auth/$'
     | '/api/extension/status'
@@ -297,7 +284,6 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
-  ApiArtistImagesForTracksRoute: typeof ApiArtistImagesForTracksRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiExtensionStatusRoute: typeof ApiExtensionStatusRoute
@@ -370,13 +356,6 @@ declare module '@tanstack/react-router' {
       path: '/auth/logout'
       fullPath: '/auth/logout'
       preLoaderRoute: typeof AuthLogoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/artist-images-for-tracks': {
-      id: '/api/artist-images-for-tracks'
-      path: '/api/artist-images-for-tracks'
-      fullPath: '/api/artist-images-for-tracks'
-      preLoaderRoute: typeof ApiArtistImagesForTracksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/settings': {
@@ -496,7 +475,6 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
-  ApiArtistImagesForTracksRoute: ApiArtistImagesForTracksRoute,
   AuthLogoutRoute: AuthLogoutRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiExtensionStatusRoute: ApiExtensionStatusRoute,
@@ -508,12 +486,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

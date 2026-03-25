@@ -1,8 +1,5 @@
 /**
- * Sync Helpers - Pure functions for sync operations.
- *
- * These are stateless functions extracted from SyncOrchestrator
- * to improve testability and reduce class complexity.
+ * Sync helpers — stateless functions for sync operations.
  */
 
 import { Result } from "better-result";
@@ -15,61 +12,9 @@ import { completeJob, failJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import { emitError, emitStatus } from "@/lib/platform/jobs/progress/helpers";
 import type { DbError } from "@/lib/shared/errors/database";
 import { SyncFailedError } from "@/lib/shared/errors/domain/sync";
-import type { SpotifyError } from "@/lib/shared/errors/external/spotify";
-import type {
-	SpotifyService,
-	SpotifyTrackDTO,
-} from "../../integrations/spotify/service";
-import type { LikedSongsSyncResult } from "./orchestrator";
+import type { LikedSongsSyncResult, SpotifyTrackDTO } from "./types";
 
-/** Errors that can occur during sync operations (infrastructure + domain) */
-type SyncOperationError = DbError | SpotifyError | SyncFailedError;
-
-/**
- * Fetches liked tracks from Spotify API and filters out unavailable tracks.
- * Returns both the filtered tracks and a Set of their Spotify IDs for efficient lookup.
- */
-export async function fetchLikedSongs(
-	spotify: SpotifyService,
-	accountId: string,
-	options: {
-		since?: string | null;
-		onProgress?: (count: number) => void;
-		onTotalDiscovered?: (total: number) => void;
-	},
-): Promise<
-	Result<
-		{ likedSongs: SpotifyTrackDTO[]; likedSongsIds: Set<string> },
-		SyncOperationError
-	>
-> {
-	const likedSongsResult = await spotify.getLikedTracks(
-		options.since,
-		options.onProgress,
-		options.onTotalDiscovered,
-	);
-
-	if (Result.isError(likedSongsResult)) {
-		return Result.err(
-			new SyncFailedError(
-				"liked_songs",
-				accountId,
-				likedSongsResult.error.message,
-				likedSongsResult.error,
-			),
-		);
-	}
-
-	// Spotify returns null for tracks removed from catalog (licensing, artist request)
-	const likedSongs = likedSongsResult.value.filter(
-		(t: SpotifyTrackDTO) => t.track != null,
-	);
-	const likedSongsIds = new Set(
-		likedSongs.map((t: SpotifyTrackDTO) => t.track.id),
-	);
-
-	return Result.ok({ likedSongs, likedSongsIds });
-}
+type SyncOperationError = DbError | SyncFailedError;
 
 /**
  * Transforms a SpotifyTrackDTO to catalog metadata for song upsert.

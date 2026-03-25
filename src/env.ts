@@ -20,9 +20,6 @@ export const env = createEnv({
 		DATABASE_URL: z.string().min(1),
 		GOOGLE_CLIENT_ID: z.string().min(1).optional(),
 		GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
-		// Spotify Client Credentials (optional - used for album art fetching, not user auth)
-		SPOTIFY_CLIENT_ID: z.string().min(1).optional(),
-		SPOTIFY_CLIENT_SECRET: z.string().min(1).optional(),
 		// Matching pipeline services (optional - graceful degradation)
 		LASTFM_API_KEY: z.string().min(1).optional(),
 		DEEPINFRA_API_KEY: z.string().min(1).optional(),
@@ -61,8 +58,6 @@ export const env = createEnv({
 		DATABASE_URL: serverEnv.DATABASE_URL,
 		GOOGLE_CLIENT_ID: serverEnv.GOOGLE_CLIENT_ID,
 		GOOGLE_CLIENT_SECRET: serverEnv.GOOGLE_CLIENT_SECRET,
-		SPOTIFY_CLIENT_ID: serverEnv.SPOTIFY_CLIENT_ID,
-		SPOTIFY_CLIENT_SECRET: serverEnv.SPOTIFY_CLIENT_SECRET,
 		LASTFM_API_KEY: serverEnv.LASTFM_API_KEY,
 		DEEPINFRA_API_KEY: serverEnv.DEEPINFRA_API_KEY,
 		HF_TOKEN: serverEnv.HF_TOKEN,

@@ -4,8 +4,9 @@ import {
 	getLikedSongsPage,
 	getLikedSongsStats,
 } from "@/lib/server/liked-songs.functions";
+import type { LikedSongFilter } from "@/lib/domains/library/liked-songs/queries";
 
-export type FilterOption = "all" | "pending" | "matched" | "analyzed";
+export type FilterOption = LikedSongFilter;
 
 export const PAGE_SIZE = 15;
 
@@ -16,7 +17,6 @@ export const likedSongsKeys = {
 		[...likedSongsKeys.all, "infinite", { filter }] as const,
 	page: (filter: FilterOption, cursor?: string) =>
 		[...likedSongsKeys.all, "page", { filter, cursor }] as const,
-	artistImage: (artistId: string) => ["artist-image", artistId] as const,
 };
 
 export function likedSongsStatsQueryOptions(accountId: string) {
