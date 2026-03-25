@@ -83,7 +83,7 @@ The system SHALL include an "Install Extension" step in the onboarding flow betw
 
 ### Requirement: Playlist Flagging Step
 
-The system SHALL allow users to save destination playlist selection without treating destination-side enrichment completion as part of the save barrier.
+The system SHALL allow users to save target playlist selection without treating target-playlist refresh completion as part of the save barrier.
 
 #### Scenario: Selection UI displayed
 - **WHEN** sync completes
@@ -98,23 +98,24 @@ The system SHALL allow users to save destination playlist selection without trea
 - **THEN** show hint: "Pick playlists that have a clear theme or mood"
 
 #### Scenario: Successful save advances immediately
-- **WHEN** destination playlist selection is saved successfully
+- **WHEN** target playlist selection is saved successfully
 - **THEN** onboarding progression MAY advance to `ready` immediately
-- **AND** the save response SHALL NOT wait for destination profiling or matching to finish
+- **AND** the save response SHALL NOT wait for target-playlist refresh or liked-song enrichment follow-on work to finish
 
-#### Scenario: Empty destination selection skips follow-on work
-- **WHEN** the saved selection contains zero destination playlists
+#### Scenario: Empty initial target selection skips immediate follow-on work
+- **WHEN** the saved selection contains zero target playlists and the account has no previously published target snapshot to clear
 - **THEN** the system SHALL return success for the save
-- **AND** it SHALL NOT trigger destination profiling or matching
+- **AND** it SHALL NOT trigger target-playlist refresh solely for that initial empty selection
 
-#### Scenario: Zero liked songs skips follow-on work
-- **WHEN** destination playlists are saved but the account has zero liked songs to match
+#### Scenario: Target selection with zero liked songs still refreshes published state
+- **WHEN** one or more target playlists are saved and the account has zero data-enriched liked-song candidates
 - **THEN** the system SHALL return success for the save
-- **AND** it SHALL NOT trigger destination profiling or matching
+- **AND** it SHALL queue target-playlist refresh follow-on work so the published snapshot reflects the current empty candidate set
 
-#### Scenario: Valid selection triggers destination-side follow-on work
-- **WHEN** one or more destination playlists are saved and liked-song candidates exist
-- **THEN** the system SHALL trigger destination profiling followed by matching as follow-on work
+#### Scenario: Valid selection triggers target-playlist follow-on work
+- **WHEN** one or more target playlists are saved and liked-song candidates may contribute to matching
+- **THEN** the system SHALL trigger `target_playlist_match_refresh` as follow-on work
+- **AND** it MAY also request candidate-side liked-song enrichment if liked-song enrichment is incomplete
 - **AND** failure in that follow-on work SHALL NOT roll back the successful save
 
 ---
