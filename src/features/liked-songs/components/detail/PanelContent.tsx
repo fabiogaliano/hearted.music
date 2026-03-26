@@ -1,10 +1,10 @@
 import { useState } from "react";
 
 import { fonts } from "@/lib/theme/fonts";
+import type { SongSuggestion } from "@/lib/server/matching.functions";
 import type { AnalysisContent, LikedSong } from "../../types";
 import { HorizontalJourney } from "./HorizontalJourney";
 import { KeyLinesSection } from "./KeyLinesSection";
-import { mockPlaylists } from "./panel-constants";
 import { PlaylistsSection } from "./PlaylistsSection";
 import type { ColorProps, PanelColors } from "./types";
 
@@ -144,9 +144,8 @@ interface PanelContentProps {
 	toggleAnalysis: () => void;
 	expandedSections: Set<string>;
 	toggleSection: (section: string) => void;
-	addedTo: number[];
-	handleAddToPlaylist: (playlistId: number) => void;
-	onClose: () => void;
+	suggestions: SongSuggestion[] | null;
+	isEnrichmentRunning: boolean;
 	getStaggerRef: (index: number) => (el: HTMLDivElement | null) => void;
 	refs: {
 		contentRef: React.RefObject<HTMLDivElement | null>;
@@ -165,12 +164,13 @@ export function PanelContent({
 	toggleAnalysis,
 	expandedSections,
 	toggleSection,
-	addedTo,
-	handleAddToPlaylist,
-	onClose,
+	suggestions,
+	isEnrichmentRunning,
 	getStaggerRef,
 	refs: { contentRef, spacerRef, crossfadeContentRef, analysisPhaseRef },
 }: PanelContentProps) {
+	const hasSuggestions = suggestions != null && suggestions.length > 0;
+
 	return (
 		<div
 			ref={contentRef}
@@ -297,18 +297,20 @@ export function PanelContent({
 							)}
 						</div>
 
-						<div ref={getStaggerRef(2)} className="mt-5" style={{ opacity: 0 }}>
-							<PlaylistsSection
-								playlists={mockPlaylists}
-								addedTo={addedTo}
-								isOtherExpanded={expandedSections.has("other-playlists")}
-								onAdd={handleAddToPlaylist}
-								onToggleOther={() => toggleSection("other-playlists")}
-								onSkip={onClose}
-								onMarkSorted={onClose}
-								colors={colorProps}
-							/>
-						</div>
+						{hasSuggestions && (
+							<div
+								ref={getStaggerRef(2)}
+								className="mt-5"
+								style={{ opacity: 0 }}
+							>
+								<PlaylistsSection
+									suggestions={suggestions}
+									isOtherExpanded={expandedSections.has("other-playlists")}
+									onToggleOther={() => toggleSection("other-playlists")}
+									colors={colorProps}
+								/>
+							</div>
+						)}
 					</>
 				) : (
 					<div ref={getStaggerRef(0)} style={{ opacity: 0 }}>
@@ -319,7 +321,9 @@ export function PanelContent({
 								color: colors.textMuted,
 							}}
 						>
-							Analysis in progress...
+							{isEnrichmentRunning
+								? "Analysis in progress..."
+								: "We couldn't find enough information about this song"}
 						</p>
 					</div>
 				)}

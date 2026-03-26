@@ -10,6 +10,7 @@ import {
 import {
 	getLatestMatchContext,
 	getMatchResults,
+	getMatchResultsForSong,
 } from "@/lib/domains/taste/song-matching/queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
 import { createAdminSupabaseClient } from "@/lib/data/client";
@@ -130,6 +131,86 @@ export const getMatchingSession = createServerFn({ method: "GET" }).handler(
 		return { contextId: context.id, totalSongs: undecided.length };
 	},
 );
+
+// ============================================================================
+// Song suggestions (read-only, for liked-song detail panel)
+// ============================================================================
+
+export interface SongSuggestion {
+	playlistId: string;
+	playlistName: string;
+	score: number;
+}
+
+export interface SongSuggestionsResult {
+	contextId: string;
+	matches: SongSuggestion[];
+}
+
+const GetSongSuggestionsSchema = z.object({
+	songId: z.uuid(),
+});
+
+export const getSongSuggestions = createServerFn({ method: "GET" })
+	.inputValidator((data) => GetSongSuggestionsSchema.parse(data))
+	.handler(async ({ data }): Promise<SongSuggestionsResult | null> => {
+		const { session } = await requireAuthSession();
+
+		const contextResult = await getLatestMatchContext(session.accountId);
+		if (Result.isError(contextResult) || !contextResult.value) return null;
+
+		const context = contextResult.value;
+
+		const [matchResultsResult, decisionsResult] = await Promise.all([
+			getMatchResultsForSong(context.id, data.songId),
+			getMatchDecisions(session.accountId),
+		]);
+
+		if (Result.isError(matchResultsResult) || Result.isError(decisionsResult))
+			return { contextId: context.id, matches: [] };
+
+		const decidedPairs = new Set(
+			decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
+		);
+
+		const undecidedResults = matchResultsResult.value.filter(
+			(mr) => !decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`),
+		);
+
+		if (undecidedResults.length === 0) {
+			return { contextId: context.id, matches: [] };
+		}
+
+		const supabase = createAdminSupabaseClient();
+		const playlistIds = undecidedResults.map((mr) => mr.playlist_id);
+		const { data: playlistRows } = await supabase
+			.from("playlist")
+			.select("id, name")
+			.in("id", playlistIds);
+
+		const playlistMap = new Map(
+			(playlistRows ?? []).map((p) => [p.id, p.name]),
+		);
+
+		const matches: SongSuggestion[] = undecidedResults
+			.map((mr) => {
+				const name = playlistMap.get(mr.playlist_id);
+				if (!name) return null;
+				return {
+					playlistId: mr.playlist_id,
+					playlistName: name,
+					score: mr.score,
+				};
+			})
+			.filter((m): m is SongSuggestion => m !== null)
+			.sort((a, b) => b.score - a.score);
+
+		return { contextId: context.id, matches };
+	});
+
+// ============================================================================
+// Song matches (for /match page)
+// ============================================================================
 
 const GetSongMatchesSchema = z.object({
 	contextId: z.uuid(),

@@ -2,6 +2,7 @@ import { Result } from "better-result";
 import { getOrCreateEnrichmentJob } from "@/lib/data/jobs";
 import { makeInitialProgress } from "@/lib/workflows/enrichment-pipeline/progress";
 import { getChunkSize } from "./batch-size";
+import { workerConfig } from "./config";
 import { log } from "./logger";
 
 export type ChainOutcome =
@@ -16,6 +17,18 @@ export async function chainNextChunk(
 ): Promise<ChainOutcome> {
 	if (!hasMoreSongs) {
 		log.info("chain-complete", { accountId, finalSequence: currentSequence });
+		return { status: "completed" };
+	}
+
+	if (
+		workerConfig.enrichmentMaxChunks > 0 &&
+		currentSequence + 1 >= workerConfig.enrichmentMaxChunks
+	) {
+		log.info("chain-capped", {
+			accountId,
+			maxChunks: workerConfig.enrichmentMaxChunks,
+			finalSequence: currentSequence,
+		});
 		return { status: "completed" };
 	}
 

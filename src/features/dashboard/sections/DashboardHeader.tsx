@@ -6,12 +6,16 @@ import type { DashboardStats } from "../types";
 
 interface DashboardHeaderProps {
 	stats: DashboardStats;
+	isEnrichmentRunning: boolean;
+	smoothAnalyzedPercent: number;
 	displayName: string | null;
 	lastSyncText: string;
 }
 
 export function DashboardHeader({
 	stats,
+	isEnrichmentRunning,
+	smoothAnalyzedPercent,
 	displayName,
 	lastSyncText,
 }: DashboardHeaderProps) {
@@ -44,8 +48,10 @@ export function DashboardHeader({
 				</span>
 				<span className="opacity-40">·</span>
 				<span className="tabular-nums">
-					{stats.analyzedPercent}%{" "}
-					<span className="tracking-widest uppercase">analyzed</span>
+					{isEnrichmentRunning ? smoothAnalyzedPercent : stats.analyzedPercent}%{" "}
+					<span className="tracking-widest uppercase">
+						{isEnrichmentRunning ? "analyzing" : "analyzed"}
+					</span>
 				</span>
 				<span className="mx-1 opacity-40">|</span>
 				<span className="flex items-center gap-2">

@@ -42,30 +42,3 @@ export const ANIMATION_TIMING = {
 	parallaxRatio: 0.4,
 	clusterToContentGap: 10,
 } as const;
-
-export const mockPlaylists = [
-	{
-		id: 1,
-		name: "crying in the car",
-		matchScore: 0.94,
-		reason: "for when you're driving and it hits you",
-	},
-	{
-		id: 2,
-		name: "sweaty and happy",
-		matchScore: 0.89,
-		reason: "movement that feels good",
-	},
-	{
-		id: 3,
-		name: "feeling everything",
-		matchScore: 0.82,
-		reason: "songs that meet you where you are",
-	},
-	{
-		id: 4,
-		name: "easy does it",
-		matchScore: 0.45,
-		reason: "a bit much for gentle mornings",
-	},
-];

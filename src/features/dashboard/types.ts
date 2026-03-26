@@ -60,5 +60,7 @@ export interface DashboardProps {
 	recentActivity: ActivityItem[];
 	matchPreviews: MatchPreview[];
 	stats: DashboardStats;
+	isEnrichmentRunning: boolean;
+	smoothAnalyzedPercent: number;
 	lastSyncText: string;
 }

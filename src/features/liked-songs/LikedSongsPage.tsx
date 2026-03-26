@@ -17,6 +17,7 @@ import {
 	useState,
 } from "react";
 
+import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
@@ -53,6 +54,7 @@ export function LikedSongsPage({
 	accountId,
 }: LikedSongsPageProps) {
 	const theme = useTheme();
+	const { isEnrichmentRunning } = useActiveJobs(accountId);
 	const [isDarkMode, setIsDarkMode] = useState(initialDarkMode);
 
 	useShortcut({
@@ -108,8 +110,10 @@ export function LikedSongsPage({
 
 	const artistImageUrl = selectedSong?.track.artist_image_url ?? undefined;
 
-	// Stats - fetched from server for accurate totals independent of pagination
-	const { data: stats } = useQuery(likedSongsStatsQueryOptions(accountId));
+	const { data: stats } = useQuery({
+		...likedSongsStatsQueryOptions(accountId),
+		refetchInterval: isEnrichmentRunning ? 5_000 : undefined,
+	});
 
 	// Keyboard list navigation using centralized shortcut system
 	const {
@@ -318,6 +322,7 @@ export function LikedSongsPage({
 					onNext={handleNext}
 					onPrevious={handlePrevious}
 					isDark={isDarkMode}
+					isEnrichmentRunning={isEnrichmentRunning}
 				/>
 			)}
 

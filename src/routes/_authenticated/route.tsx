@@ -18,6 +18,7 @@ import {
 import { Sidebar } from "./-components/Sidebar";
 import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getOnboardingData } from "@/lib/server/onboarding.functions";
+import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
 import { matchingSessionQueryOptions } from "@/features/matching/queries";
 import { useRegisterTheme } from "@/lib/theme/ThemeHueProvider";
 import { getTheme } from "@/lib/theme/useTheme";
@@ -50,6 +51,8 @@ function AuthenticatedLayout() {
 	const isOnboarding = location.pathname.startsWith("/onboarding");
 
 	useRegisterTheme(isOnboarding ? null : theme);
+
+	useActiveJobCompletionEffects(session.accountId, !isOnboarding);
 
 	const { data: matchingSession } = useQuery(
 		matchingSessionQueryOptions(session.accountId),

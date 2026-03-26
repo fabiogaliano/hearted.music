@@ -8,4 +8,5 @@ export const workerConfig = {
 	sweepIntervalMs: Number(process.env.WORKER_SWEEP_INTERVAL_MS ?? 60000),
 	drainTimeoutMs: Number(process.env.WORKER_DRAIN_TIMEOUT_MS ?? 30000),
 	healthPort: Number(process.env.WORKER_HEALTH_PORT ?? 3002),
+	enrichmentMaxChunks: Number(process.env.WORKER_ENRICHMENT_MAX_CHUNKS ?? 0),
 };

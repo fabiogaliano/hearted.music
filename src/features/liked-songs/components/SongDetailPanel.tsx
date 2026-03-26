@@ -16,9 +16,11 @@
  * - Warm pastels: Monochromatic HSL-based colors
  * - High contrast: Clear text readability
  */
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { useShortcut } from "@/lib/keyboard/useShortcut";
+import { songSuggestionsQueryOptions } from "../queries";
 import { useThemeWithOverride } from "@/lib/theme/ThemeHueProvider";
 import type { ThemeConfig } from "@/lib/theme/types";
 import { extractHue } from "@/lib/utils/color";
@@ -53,6 +55,8 @@ export interface SongDetailPanelProps {
 	hasPrevious: boolean;
 	/** Dark mode (default: true). Uses theme-derived dark colors when true. */
 	isDark?: boolean;
+	/** Whether the enrichment pipeline is currently running */
+	isEnrichmentRunning?: boolean;
 }
 
 export function SongDetailPanel({
@@ -68,6 +72,7 @@ export function SongDetailPanel({
 	hasNext,
 	hasPrevious,
 	isDark = false,
+	isEnrichmentRunning = false,
 }: SongDetailPanelProps) {
 	const baseTheme = useThemeWithOverride(themeOverride);
 	const darkPalette = isDark ? getThemedDarkColors(baseTheme) : null;
@@ -90,7 +95,10 @@ export function SongDetailPanel({
 	const [expandedSections, setExpandedSections] = useState<Set<string>>(
 		new Set(),
 	);
-	const [addedTo, setAddedTo] = useState<number[]>([]);
+
+	const { data: suggestions } = useQuery(
+		songSuggestionsQueryOptions(song.track.id),
+	);
 
 	const analysis = song.analysis?.analysis as AnalysisContent | undefined;
 	const heroHeight = artistImageUrl
@@ -164,12 +172,6 @@ export function SongDetailPanel({
 			}
 			return next;
 		});
-	};
-
-	const handleAddToPlaylist = (playlistId: number) => {
-		if (!addedTo.includes(playlistId)) {
-			setAddedTo([...addedTo, playlistId]);
-		}
 	};
 
 	const {
@@ -284,9 +286,8 @@ export function SongDetailPanel({
 						toggleAnalysis={toggleAnalysis}
 						expandedSections={expandedSections}
 						toggleSection={toggleSection}
-						addedTo={addedTo}
-						handleAddToPlaylist={handleAddToPlaylist}
-						onClose={onClose}
+						suggestions={suggestions?.matches ?? null}
+						isEnrichmentRunning={isEnrichmentRunning}
 						getStaggerRef={getStaggerRef}
 						refs={{
 							contentRef,

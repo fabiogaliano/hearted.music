@@ -1,6 +1,6 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Matching } from "@/features/matching/Matching";
 import { MatchingEmptyState } from "@/features/matching/components/MatchingEmptyState";
@@ -14,6 +14,8 @@ import type {
 	Playlist,
 	SongForMatching,
 } from "@/features/matching/types";
+import { fonts } from "@/lib/theme/fonts";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import {
 	addSongToPlaylist,
 	dismissSong,
@@ -29,33 +31,117 @@ export const Route = createFileRoute("/_authenticated/match")({
 	component: MatchPage,
 });
 
+interface DisplayedSession {
+	contextId: string;
+	totalSongs: number;
+}
+
 function MatchPage() {
 	const { session } = Route.useRouteContext();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
+	const theme = useTheme();
 
-	const { data: matchingSession } = useSuspenseQuery(
+	const { data: latestSession } = useSuspenseQuery(
 		matchingSessionQueryOptions(session.accountId),
 	);
 
-	if (!matchingSession || matchingSession.totalSongs === 0) {
+	const [displayedSession, setDisplayedSession] =
+		useState<DisplayedSession | null>(() =>
+			latestSession && latestSession.totalSongs > 0
+				? {
+						contextId: latestSession.contextId,
+						totalSongs: latestSession.totalSongs,
+					}
+				: null,
+		);
+
+	// Track whether we've ever initialized from a non-null session
+	const initializedRef = useRef(displayedSession !== null);
+
+	// Auto-initialize displayed session when first non-null data arrives
+	useEffect(() => {
+		if (
+			!initializedRef.current &&
+			latestSession &&
+			latestSession.totalSongs > 0
+		) {
+			initializedRef.current = true;
+			setDisplayedSession({
+				contextId: latestSession.contextId,
+				totalSongs: latestSession.totalSongs,
+			});
+		}
+	}, [latestSession]);
+
+	const hasNewContext =
+		displayedSession != null &&
+		latestSession != null &&
+		latestSession.contextId !== displayedSession.contextId &&
+		latestSession.totalSongs > 0;
+
+	const handleRefresh = useCallback(() => {
+		if (!latestSession || latestSession.totalSongs === 0) return;
+		setDisplayedSession({
+			contextId: latestSession.contextId,
+			totalSongs: latestSession.totalSongs,
+		});
+	}, [latestSession]);
+
+	// No session at all and never had one
+	if (!displayedSession && (!latestSession || latestSession.totalSongs === 0)) {
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
 				<MatchingEmptyState
-					reason={!matchingSession ? "no-context" : "all-decided"}
+					reason={!latestSession ? "no-context" : "all-decided"}
 				/>
 			</div>
 		);
 	}
 
+	// Had a session but it's now empty (all decided) and no new one
+	if (!displayedSession) {
+		return (
+			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
+				<MatchingEmptyState reason="all-decided" />
+			</div>
+		);
+	}
+
 	return (
-		<MatchingPageContent
-			contextId={matchingSession.contextId}
-			totalSongs={matchingSession.totalSongs}
-			accountId={session.accountId}
-			onExit={() => navigate({ to: "/" })}
-			queryClient={queryClient}
-		/>
+		<div className="mx-auto w-full max-w-[min(1600px,100%)]">
+			{hasNewContext && (
+				<div
+					className="mb-4 flex items-center justify-between rounded-lg px-5 py-3"
+					style={{
+						background: theme.surface,
+						border: `1px solid ${theme.border}`,
+					}}
+				>
+					<p
+						className="text-sm"
+						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					>
+						New match suggestions are available.
+					</p>
+					<button
+						onClick={handleRefresh}
+						className="cursor-pointer text-xs font-medium uppercase tracking-widest transition-opacity hover:opacity-70"
+						style={{ fontFamily: fonts.body, color: theme.primary }}
+					>
+						Refresh
+					</button>
+				</div>
+			)}
+			<MatchingPageContent
+				key={displayedSession.contextId}
+				contextId={displayedSession.contextId}
+				totalSongs={displayedSession.totalSongs}
+				accountId={session.accountId}
+				onExit={() => navigate({ to: "/" })}
+				queryClient={queryClient}
+			/>
+		</div>
 	);
 }
 
@@ -77,14 +163,12 @@ function MatchingPageContent({
 	const [offset, setOffset] = useState(0);
 	const [addedTo, setAddedTo] = useState<string[]>([]);
 
-	// Tracks stats for completion screen
 	const [sessionStats, setSessionStats] = useState({
 		addedCount: 0,
 		dismissedCount: 0,
 		songsWithAdditions: new Set<string>(),
 	});
 
-	// Tracks recent song appearances for completion screen album art
 	const [recentSongs, setRecentSongs] = useState<
 		Array<{ id: string; albumArtUrl?: string | null; name: string }>
 	>([]);
@@ -97,14 +181,12 @@ function MatchingPageContent({
 		songMatchesQueryOptions(contextId, offset),
 	);
 
-	// Prefetch next two songs
 	useEffect(() => {
 		if (!songData) return;
 		queryClient.prefetchQuery(songMatchesQueryOptions(contextId, offset + 1));
 		queryClient.prefetchQuery(songMatchesQueryOptions(contextId, offset + 2));
 	}, [queryClient, contextId, offset, songData]);
 
-	// Accumulate song info for completion screen (mark-seen happens on user action)
 	useEffect(() => {
 		if (!songData) return;
 		setRecentSongs((prev) => {

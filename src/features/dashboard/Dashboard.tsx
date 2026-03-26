@@ -12,12 +12,16 @@ export function Dashboard({
 	recentActivity,
 	matchPreviews,
 	stats,
+	isEnrichmentRunning,
+	smoothAnalyzedPercent,
 	lastSyncText,
 }: DashboardProps) {
 	return (
 		<div className="max-w-4xl">
 			<DashboardHeader
 				stats={stats}
+				isEnrichmentRunning={isEnrichmentRunning}
+				smoothAnalyzedPercent={smoothAnalyzedPercent}
 				displayName={displayName}
 				lastSyncText={lastSyncText}
 			/>
