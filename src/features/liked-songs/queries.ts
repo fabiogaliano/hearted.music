@@ -4,6 +4,7 @@ import {
 	getLikedSongsPage,
 	getLikedSongsStats,
 } from "@/lib/server/liked-songs.functions";
+import { getSongSuggestions } from "@/lib/server/matching.functions";
 import type { LikedSongFilter } from "@/lib/domains/library/liked-songs/queries";
 
 export type FilterOption = LikedSongFilter;
@@ -17,12 +18,23 @@ export const likedSongsKeys = {
 		[...likedSongsKeys.all, "infinite", { filter }] as const,
 	page: (filter: FilterOption, cursor?: string) =>
 		[...likedSongsKeys.all, "page", { filter, cursor }] as const,
+	songSuggestions: (songId: string) =>
+		[...likedSongsKeys.all, "song-suggestions", songId] as const,
 };
 
 export function likedSongsStatsQueryOptions(accountId: string) {
 	return queryOptions({
 		queryKey: likedSongsKeys.stats(accountId),
 		queryFn: () => getLikedSongsStats(),
+		staleTime: 60_000,
+	});
+}
+
+export function songSuggestionsQueryOptions(songId: string | null) {
+	return queryOptions({
+		queryKey: likedSongsKeys.songSuggestions(songId ?? ""),
+		queryFn: () => getSongSuggestions({ data: { songId: songId! } }),
+		enabled: songId != null,
 		staleTime: 60_000,
 	});
 }

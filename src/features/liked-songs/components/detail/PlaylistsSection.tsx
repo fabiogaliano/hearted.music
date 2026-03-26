@@ -1,314 +1,162 @@
 /**
- * PlaylistsSection: "Add to Your Playlists" - Playlist matching and actions
- * Internal sub-components: PlaylistRow, AddedSummary
+ * PlaylistsSection: Read-only playlist suggestions from match results.
+ * Shows prominent matches (score >= 0.6) expanded, others collapsed.
  */
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
+import type { SongSuggestion } from "@/lib/server/matching.functions";
 import { getMatchQuality } from "./utils";
 import type { ColorProps } from "./types";
 
-// ─────────────────────────────────────────────────────────────────────────
-// Type definitions
-// ─────────────────────────────────────────────────────────────────────────
-
-interface Playlist {
-	id: number;
-	name: string;
-	matchScore: number;
-	reason: string;
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Internal: Single playlist row (prominent or other)
-// ─────────────────────────────────────────────────────────────────────────
-
 function PlaylistRow({
-	playlist,
-	isAdded,
+	suggestion,
 	isOther,
-	onAdd,
 	colors,
 }: {
-	playlist: Playlist;
-	isAdded: boolean;
+	suggestion: SongSuggestion;
 	isOther: boolean;
-	onAdd: () => void;
 	colors?: ColorProps;
 }) {
-	const theme = useTheme();
 	if (isOther) {
-		// Compact version for "other" playlists
 		return (
 			<div className="flex items-center justify-between py-2">
-				<div>
-					<span
-						className="text-sm"
-						style={{
-							fontFamily: fonts.body,
-							color: colors ? colors.textMuted : theme.textMuted,
-						}}
-					>
-						{playlist.name}
-					</span>
-					<span
-						className="ml-3 text-xs"
-						style={{
-							fontFamily: fonts.body,
-							color: colors ? colors.border : theme.border,
-						}}
-					>
-						{playlist.reason}
-					</span>
-				</div>
-				{!isAdded && (
-					<button
-						onClick={onAdd}
-						className="text-xs opacity-50 transition-opacity hover:opacity-100"
-						style={{
-							fontFamily: fonts.body,
-							color: colors ? colors.textMuted : theme.textMuted,
-						}}
-					>
-						Add anyway
-					</button>
-				)}
+				<span
+					className="text-sm"
+					style={{
+						fontFamily: fonts.body,
+						color: colors?.textMuted,
+					}}
+				>
+					{suggestion.playlistName}
+				</span>
+				<span
+					className="text-xs tabular-nums"
+					style={{
+						fontFamily: fonts.body,
+						color: colors?.border,
+					}}
+				>
+					{Math.round(suggestion.score * 100)}%
+				</span>
 			</div>
 		);
 	}
 
-	// Full version for prominent playlists
-	const quality = getMatchQuality(playlist.matchScore);
+	const quality = getMatchQuality(suggestion.score);
 
 	return (
-		<div className="group flex items-center justify-between py-3">
+		<div className="flex items-center justify-between py-3">
 			<div className="min-w-0 flex-1">
 				<div className="flex items-center gap-3">
 					<h5
 						className="text-base font-light"
 						style={{
 							fontFamily: fonts.display,
-							color: colors ? colors.text : theme.text,
+							color: colors?.text,
 						}}
 					>
-						{playlist.name}
+						{suggestion.playlistName}
 					</h5>
 					<span
 						className="text-xs tracking-wide"
 						style={{
 							fontFamily: fonts.body,
-							color: colors ? colors.textMuted : theme.textMuted,
+							color: colors?.textMuted,
 						}}
 					>
 						{quality.label}
 					</span>
 				</div>
-				<p
-					className="mt-1 truncate text-xs"
-					style={{
-						fontFamily: fonts.body,
-						color: colors ? colors.textMuted : theme.textMuted,
-					}}
-				>
-					{playlist.reason}
-				</p>
 			</div>
-
-			{isAdded ? (
-				<span
-					className="ml-4 px-4 py-2 text-xs tracking-widest uppercase"
-					style={{
-						fontFamily: fonts.body,
-						color: colors ? colors.textMuted : theme.textMuted,
-						background: colors ? colors.surface : theme.surfaceDim,
-					}}
-				>
-					Added
-				</span>
-			) : (
-				<button
-					onClick={onAdd}
-					className="ml-4 px-4 py-2 text-xs tracking-widest uppercase opacity-60 transition-all hover:opacity-100"
-					style={{
-						fontFamily: fonts.body,
-						color: colors ? colors.bg : theme.textOnPrimary,
-						background: colors ? colors.accent : theme.primary,
-					}}
-				>
-					Add
-				</button>
-			)}
-		</div>
-	);
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Internal: Summary of added playlists
-// ─────────────────────────────────────────────────────────────────────────
-
-function AddedSummary({
-	addedCount,
-	colors,
-}: {
-	addedCount: number;
-	colors?: ColorProps;
-}) {
-	const theme = useTheme();
-	if (addedCount === 0) return null;
-
-	return (
-		<div
-			className="mt-6 border-t pt-4"
-			style={{ borderColor: colors ? colors.border : theme.border }}
-		>
 			<span
-				className="text-sm"
+				className="ml-4 text-xs tabular-nums"
 				style={{
 					fontFamily: fonts.body,
-					color: colors ? colors.textMuted : theme.textMuted,
+					color: colors?.textMuted,
 				}}
 			>
-				Added to {addedCount} playlist{addedCount > 1 ? "s" : ""}
+				{Math.round(suggestion.score * 100)}%
 			</span>
 		</div>
 	);
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Main Section Component
-// ─────────────────────────────────────────────────────────────────────────
-
 interface PlaylistsSectionProps {
-	playlists: Playlist[];
-	addedTo: number[];
+	suggestions: SongSuggestion[];
 	isOtherExpanded: boolean;
-	onAdd: (playlistId: number) => void;
 	onToggleOther: () => void;
-	onSkip: () => void;
-	onMarkSorted: () => void;
 	colors?: ColorProps;
 }
 
 export function PlaylistsSection({
-	playlists,
-	addedTo,
+	suggestions,
 	isOtherExpanded,
-	onAdd,
 	onToggleOther,
-	onSkip,
-	onMarkSorted,
 	colors,
 }: PlaylistsSectionProps) {
-	const theme = useTheme();
-	// Separate prominent and other matches
-	const sortedPlaylists = [...playlists].sort(
-		(a, b) => b.matchScore - a.matchScore,
+	const sorted = [...suggestions].sort((a, b) => b.score - a.score);
+	const prominentMatches = sorted.filter(
+		(s) => getMatchQuality(s.score).showProminent,
 	);
-	const prominentMatches = sortedPlaylists.filter(
-		(p) => getMatchQuality(p.matchScore).showProminent,
-	);
-	const otherMatches = sortedPlaylists.filter(
-		(p) => !getMatchQuality(p.matchScore).showProminent,
+	const otherMatches = sorted.filter(
+		(s) => !getMatchQuality(s.score).showProminent,
 	);
 
 	return (
-		<>
-			{/* Add to Playlists Section */}
-			<section
-				className="border-t pt-6"
-				style={{ borderColor: colors ? colors.border : theme.border }}
+		<section className="border-t pt-6" style={{ borderColor: colors?.border }}>
+			<h4
+				className="mb-5 text-xs tracking-widest uppercase"
+				style={{
+					fontFamily: fonts.body,
+					color: colors?.textMuted,
+				}}
 			>
-				<h4
-					className="mb-5 text-xs tracking-widest uppercase"
-					style={{
-						fontFamily: fonts.body,
-						color: colors ? colors.textMuted : theme.textMuted,
-					}}
-				>
-					Add to Your Playlists
-				</h4>
+				Playlist Suggestions
+			</h4>
 
-				<div className="space-y-3">
-					{/* Prominent matches */}
-					{prominentMatches.map((playlist) => (
-						<PlaylistRow
-							key={playlist.id}
-							playlist={playlist}
-							isAdded={addedTo.includes(playlist.id)}
-							isOther={false}
-							onAdd={() => onAdd(playlist.id)}
-							colors={colors}
-						/>
-					))}
+			<div className="space-y-1">
+				{prominentMatches.map((suggestion) => (
+					<PlaylistRow
+						key={suggestion.playlistId}
+						suggestion={suggestion}
+						isOther={false}
+						colors={colors}
+					/>
+				))}
 
-					{/* Other matches - Collapsed */}
-					{otherMatches.length > 0 && (
-						<button
-							onClick={onToggleOther}
-							className="group w-full py-2 text-left"
+				{otherMatches.length > 0 && (
+					<button
+						onClick={onToggleOther}
+						className="group w-full py-2 text-left"
+					>
+						<span
+							className="text-xs tracking-wide"
+							style={{
+								fontFamily: fonts.body,
+								color: colors?.textMuted,
+							}}
 						>
-							<span
-								className="text-xs tracking-wide"
-								style={{
-									fontFamily: fonts.body,
-									color: colors ? colors.textMuted : theme.textMuted,
-								}}
-							>
-								{otherMatches.length} other playlist
-								{otherMatches.length > 1 ? "s" : ""}
-								<span className="ml-2 opacity-40 transition-opacity group-hover:opacity-70">
-									{isOtherExpanded ? "−" : "+"}
-								</span>
+							{otherMatches.length} other playlist
+							{otherMatches.length > 1 ? "s" : ""}
+							<span className="ml-2 opacity-40 transition-opacity group-hover:opacity-70">
+								{isOtherExpanded ? "−" : "+"}
 							</span>
-						</button>
-					)}
+						</span>
+					</button>
+				)}
 
-					{/* Other matches expanded */}
-					{isOtherExpanded && otherMatches.length > 0 && (
-						<div className="animate-in fade-in slide-in-from-top-2 mt-2 space-y-2 duration-300">
-							{otherMatches.map((playlist) => (
-								<PlaylistRow
-									key={playlist.id}
-									playlist={playlist}
-									isAdded={addedTo.includes(playlist.id)}
-									isOther={true}
-									onAdd={() => onAdd(playlist.id)}
-									colors={colors}
-								/>
-							))}
-						</div>
-					)}
-				</div>
-
-				<AddedSummary addedCount={addedTo.length} colors={colors} />
-			</section>
-
-			{/* Footer actions */}
-			<div
-				className="mt-10 flex items-center justify-between border-t pt-8"
-				style={{ borderColor: colors ? colors.border : theme.border }}
-			>
-				<button
-					onClick={onSkip}
-					className="text-xs tracking-wide transition-opacity hover:opacity-70"
-					style={{
-						fontFamily: fonts.body,
-						color: colors ? colors.textMuted : theme.textMuted,
-					}}
-				>
-					Skip this song
-				</button>
-				<button
-					onClick={onMarkSorted}
-					className="px-5 py-2.5 text-xs tracking-widest uppercase transition-opacity hover:opacity-80"
-					style={{
-						fontFamily: fonts.body,
-						background: colors ? colors.surface : theme.surface,
-						color: colors ? colors.text : theme.text,
-					}}
-				>
-					Mark as matched
-				</button>
+				{isOtherExpanded && otherMatches.length > 0 && (
+					<div className="animate-in fade-in slide-in-from-top-2 mt-2 space-y-1 duration-300">
+						{otherMatches.map((suggestion) => (
+							<PlaylistRow
+								key={suggestion.playlistId}
+								suggestion={suggestion}
+								isOther={true}
+								colors={colors}
+							/>
+						))}
+					</div>
+				)}
 			</div>
-		</>
+		</section>
 	);
 }
