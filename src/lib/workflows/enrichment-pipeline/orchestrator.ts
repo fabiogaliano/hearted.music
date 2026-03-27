@@ -1,5 +1,4 @@
 import { Result } from "better-result";
-import { getTerminallyFailedSongIds } from "@/lib/data/job-failures";
 import { updateJobProgress } from "@/lib/data/jobs";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { markPipelineProcessed } from "@/lib/domains/library/liked-songs/status-queries";
@@ -7,7 +6,7 @@ import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-pro
 import type { LlmService } from "@/lib/integrations/llm/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/types";
-import { selectPipelineBatch } from "./batch";
+import { hasMoreSongsNeedingProcessing, selectPipelineBatch } from "./batch";
 import { makeInitialProgress } from "./progress";
 import { runAudioFeatures } from "./stages/audio-features";
 import { runGenreTagging } from "./stages/genre-tagging";
@@ -171,12 +170,17 @@ async function enrichSongs(
 
 // --- Worker-owned chunk orchestration ---
 
+export interface ChunkResult {
+	hasMoreSongs: boolean;
+	newCandidatesAvailable: boolean;
+}
+
 export async function executeWorkerChunk(
 	accountId: string,
 	jobId: string,
 	batchSize: number,
 	batchSequence: number,
-): Promise<{ hasMoreSongs: boolean }> {
+): Promise<ChunkResult> {
 	const embeddingResult = initEmbeddingService();
 	if (Result.isError(embeddingResult)) {
 		throw new PipelineBootstrapError(
@@ -187,14 +191,7 @@ export async function executeWorkerChunk(
 
 	const ctx = { ...buildContext(accountId, embeddingResult.value), jobId };
 
-	const failedIdsResult = await getTerminallyFailedSongIds(accountId);
-	const excludeIds = Result.isOk(failedIdsResult) ? failedIdsResult.value : [];
-
-	const batch = await selectPipelineBatch(
-		accountId,
-		batchSize,
-		excludeIds.length > 0 ? excludeIds : undefined,
-	);
+	const batch = await selectPipelineBatch(accountId, batchSize);
 
 	const progress = makeInitialProgress(
 		batchSize,
@@ -206,7 +203,6 @@ export async function executeWorkerChunk(
 	await enrichSongs(ctx, batch, jobId, progress);
 
 	// Write item_status for ALL batch songs — pipeline processing state only.
-	// Snapshot publication is owned by target-playlist refresh, not here.
 	if (batch.songIds.length > 0) {
 		await markPipelineProcessed(accountId, "song", batch.songIds);
 	}
@@ -214,10 +210,11 @@ export async function executeWorkerChunk(
 	progress.currentStage = undefined;
 	await persistProgress(jobId, progress);
 
-	// Check if more songs still need pipeline processing.
-	// This must include songs that already have shared artifacts but still need
-	// account-scoped item_status written.
-	const probeExcludeIds = excludeIds.length > 0 ? excludeIds : undefined;
-	const nextBatch = await selectPipelineBatch(accountId, 1, probeExcludeIds);
-	return { hasMoreSongs: nextBatch.songIds.length > 0 };
+	// Probe whether more songs still need pipeline processing via the DB selector
+	const hasMoreSongs = await hasMoreSongsNeedingProcessing(accountId);
+
+	return {
+		hasMoreSongs,
+		newCandidatesAvailable: batch.songIds.length > 0,
+	};
 }

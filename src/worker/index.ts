@@ -1,9 +1,7 @@
 import { Result } from "better-result";
 import {
-	markDeadEnrichmentJobs,
-	markDeadTargetPlaylistMatchRefreshJobs,
-	sweepStaleEnrichmentJobs,
-	sweepStaleTargetPlaylistMatchRefreshJobs,
+	markDeadLibraryProcessingJobs,
+	sweepStaleLibraryProcessingJobs,
 } from "@/lib/data/jobs";
 import { workerConfig } from "./config";
 import { setShuttingDown, setUnhealthy, startHealthServer } from "./health";
@@ -12,7 +10,9 @@ import { getActiveJobCount, startPolling, stopPolling } from "./poll";
 
 function startSweep(): { stop: () => void } {
 	const interval = setInterval(async () => {
-		const swept = await sweepStaleEnrichmentJobs(workerConfig.staleThreshold);
+		const swept = await sweepStaleLibraryProcessingJobs(
+			workerConfig.staleThreshold,
+		);
 		if (Result.isError(swept)) {
 			log.error("sweep-error", { error: swept.error.message });
 		} else if (swept.value.length > 0) {
@@ -22,41 +22,15 @@ function startSweep(): { stop: () => void } {
 			});
 		}
 
-		const dead = await markDeadEnrichmentJobs(workerConfig.staleThreshold);
+		const dead = await markDeadLibraryProcessingJobs(
+			workerConfig.staleThreshold,
+		);
 		if (Result.isError(dead)) {
 			log.error("dead-letter-error", { error: dead.error.message });
 		} else if (dead.value.length > 0) {
 			log.warn("dead-lettered-jobs", {
 				count: dead.value.length,
 				jobIds: dead.value.map((j) => j.id),
-			});
-		}
-
-		const sweptTargetRefresh = await sweepStaleTargetPlaylistMatchRefreshJobs(
-			workerConfig.staleThreshold,
-		);
-		if (Result.isError(sweptTargetRefresh)) {
-			log.error("sweep-target-refresh-error", {
-				error: sweptTargetRefresh.error.message,
-			});
-		} else if (sweptTargetRefresh.value.length > 0) {
-			log.info("swept-stale-target-refresh-jobs", {
-				count: sweptTargetRefresh.value.length,
-				jobIds: sweptTargetRefresh.value.map((j) => j.id),
-			});
-		}
-
-		const deadTargetRefresh = await markDeadTargetPlaylistMatchRefreshJobs(
-			workerConfig.staleThreshold,
-		);
-		if (Result.isError(deadTargetRefresh)) {
-			log.error("dead-letter-target-refresh-error", {
-				error: deadTargetRefresh.error.message,
-			});
-		} else if (deadTargetRefresh.value.length > 0) {
-			log.warn("dead-lettered-target-refresh-jobs", {
-				count: deadTargetRefresh.value.length,
-				jobIds: deadTargetRefresh.value.map((j) => j.id),
 			});
 		}
 	}, workerConfig.sweepIntervalMs);
@@ -106,7 +80,6 @@ async function main() {
 
 	await startPolling();
 
-	// Poll loop resolved without a shutdown signal — worker is broken
 	if (!draining) {
 		log.error("poll-loop-exited-unexpectedly");
 		setUnhealthy();

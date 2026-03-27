@@ -9,191 +9,92 @@ export interface PipelineBatch {
 	readonly spotifyIdBySongId: Map<string, string>;
 }
 
-const ENRICHMENT_CHUNK = 200;
-
-async function getSharedArtifactSongIds(
-	supabase: ReturnType<typeof createAdminSupabaseClient>,
-	chunk: string[],
-): Promise<{
-	hasAudio: Set<string>;
-	hasGenres: Set<string>;
-	hasAnalysis: Set<string>;
-	hasEmbedding: Set<string>;
-}> {
-	const [audioRes, songRes, analysisRes, embeddingRes] = await Promise.all([
-		supabase.from("song_audio_feature").select("song_id").in("song_id", chunk),
-		supabase.from("song").select("id, genres").in("id", chunk),
-		supabase.from("song_analysis").select("song_id").in("song_id", chunk),
-		supabase.from("song_embedding").select("song_id").in("song_id", chunk),
-	]);
-
-	return {
-		hasAudio: new Set((audioRes.data ?? []).map((r) => r.song_id)),
-		hasGenres: new Set(
-			(songRes.data ?? [])
-				.filter((r) => r.genres && r.genres.length > 0)
-				.map((r) => r.id),
-		),
-		hasAnalysis: new Set((analysisRes.data ?? []).map((r) => r.song_id)),
-		hasEmbedding: new Set((embeddingRes.data ?? []).map((r) => r.song_id)),
-	};
-}
-
-function hasAllSharedArtifacts(
-	id: string,
-	artifacts: Awaited<ReturnType<typeof getSharedArtifactSongIds>>,
-): boolean {
-	return (
-		artifacts.hasAudio.has(id) &&
-		artifacts.hasGenres.has(id) &&
-		artifacts.hasAnalysis.has(id) &&
-		artifacts.hasEmbedding.has(id)
-	);
-}
-
-async function getLikedSongIds(
-	supabase: ReturnType<typeof createAdminSupabaseClient>,
+/**
+ * Selects the next batch of liked songs needing full pipeline processing
+ * via the DB-side selector RPC. Replaces the old app-side exclusion-list approach.
+ */
+export async function selectPipelineBatch(
 	accountId: string,
-): Promise<string[]> {
-	const likedResult = await supabase
-		.from("liked_song")
-		.select("song_id")
-		.eq("account_id", accountId)
-		.is("unliked_at", null);
-
-	if (likedResult.error || !likedResult.data) return [];
-	return likedResult.data.map((r) => r.song_id);
-}
-
-async function getFullyEnrichedSongIds(accountId: string): Promise<string[]> {
+	maxSongs: number,
+): Promise<PipelineBatch> {
 	const supabase = createAdminSupabaseClient();
-	const allSongIds = await getLikedSongIds(supabase, accountId);
-	if (allSongIds.length === 0) return [];
 
-	const fullyEnriched: string[] = [];
+	const { data, error } = await supabase.rpc(
+		"select_liked_song_ids_needing_pipeline_processing",
+		{ p_account_id: accountId, p_limit: maxSongs },
+	);
 
-	for (let i = 0; i < allSongIds.length; i += ENRICHMENT_CHUNK) {
-		const chunk = allSongIds.slice(i, i + ENRICHMENT_CHUNK);
-
-		const [artifacts, itemStatusRes] = await Promise.all([
-			getSharedArtifactSongIds(supabase, chunk),
-			supabase
-				.from("item_status")
-				.select("item_id")
-				.eq("account_id", accountId)
-				.eq("item_type", "song")
-				.in("item_id", chunk),
-		]);
-
-		const hasItemStatus = new Set(
-			(itemStatusRes.data ?? []).map((r) => r.item_id),
-		);
-
-		for (const id of chunk) {
-			if (hasAllSharedArtifacts(id, artifacts) && hasItemStatus.has(id)) {
-				fullyEnriched.push(id);
-			}
-		}
+	if (error) {
+		throw new Error(`Failed to select pipeline batch: ${error.message}`);
 	}
 
-	return fullyEnriched;
+	const songIds = (data ?? []).map((row: { song_id: string }) => row.song_id);
+
+	if (songIds.length === 0) {
+		return { songIds: [], songs: [], spotifyIdBySongId: new Map() };
+	}
+
+	return loadBatchSongs(songIds);
 }
 
+/**
+ * Returns liked song IDs that have all 4 shared data artifacts.
+ * Used by match snapshot refresh for candidate loading.
+ */
 export async function getDataEnrichedSongIds(
 	accountId: string,
 ): Promise<string[]> {
 	const supabase = createAdminSupabaseClient();
-	const allSongIds = await getLikedSongIds(supabase, accountId);
-	if (allSongIds.length === 0) return [];
 
-	const dataEnriched: string[] = [];
-
-	for (let i = 0; i < allSongIds.length; i += ENRICHMENT_CHUNK) {
-		const chunk = allSongIds.slice(i, i + ENRICHMENT_CHUNK);
-		const artifacts = await getSharedArtifactSongIds(supabase, chunk);
-
-		for (const id of chunk) {
-			if (hasAllSharedArtifacts(id, artifacts)) {
-				dataEnriched.push(id);
-			}
-		}
-	}
-
-	return dataEnriched;
-}
-
-async function buildBatch(
-	accountId: string,
-	enrichedIds: string[],
-	maxSongs: number,
-	excludeSongIds?: string[],
-): Promise<PipelineBatch> {
-	const supabase = createAdminSupabaseClient();
-
-	const allExcluded = new Set<string>(excludeSongIds ?? []);
-	for (const id of enrichedIds) {
-		allExcluded.add(id);
-	}
-
-	let query = supabase
-		.from("liked_song")
-		.select("song_id, song:song_id(id, spotify_id)")
-		.eq("account_id", accountId)
-		.is("unliked_at", null)
-		.order("liked_at", { ascending: false })
-		.limit(maxSongs);
-
-	if (allExcluded.size > 0) {
-		query = query.not("song_id", "in", `(${[...allExcluded].join(",")})`);
-	}
-
-	const { data, error } = await query;
+	const { data, error } = await supabase.rpc(
+		"select_data_enriched_liked_song_ids",
+		{ p_account_id: accountId },
+	);
 
 	if (error) {
-		throw new Error(`Failed to query liked songs: ${error.message}`);
+		throw new Error(`Failed to select data-enriched songs: ${error.message}`);
 	}
 
-	type LikedSongRow = {
-		song_id: string;
-		song: { id: string; spotify_id: string } | null;
-	};
-	const rows = (data ?? []) as LikedSongRow[];
+	return (data ?? []).map((row: { song_id: string }) => row.song_id);
+}
 
-	const songIds: string[] = [];
+/**
+ * Probes whether more songs still need pipeline processing.
+ * Used to determine requestSatisfied after a chunk completes.
+ */
+export async function hasMoreSongsNeedingProcessing(
+	accountId: string,
+): Promise<boolean> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase.rpc(
+		"select_liked_song_ids_needing_pipeline_processing",
+		{ p_account_id: accountId, p_limit: 1 },
+	);
+
+	if (error) return false;
+	return (data ?? []).length > 0;
+}
+
+async function loadBatchSongs(songIds: string[]): Promise<PipelineBatch> {
+	const songsResult = await songData.getByIds(songIds);
+	if (Result.isError(songsResult)) {
+		throw new Error(`Failed to load batch songs: ${songsResult.error.message}`);
+	}
+
 	const spotifyIdBySongId = new Map<string, string>();
+	const validSongIds: string[] = [];
 
-	for (const row of rows) {
-		if (row.song?.spotify_id) {
-			songIds.push(row.song.id);
-			spotifyIdBySongId.set(row.song.id, row.song.spotify_id);
+	for (const song of songsResult.value) {
+		if (song.spotify_id) {
+			validSongIds.push(song.id);
+			spotifyIdBySongId.set(song.id, song.spotify_id);
 		}
 	}
 
-	let songs: Song[] = [];
-	if (songIds.length > 0) {
-		const songsResult = await songData.getByIds(songIds);
-		if (Result.isOk(songsResult)) {
-			songs = songsResult.value;
-		}
-	}
-
-	return { songIds, songs, spotifyIdBySongId };
-}
-
-export async function selectPipelineBatch(
-	accountId: string,
-	maxSongs: number,
-	excludeSongIds?: string[],
-): Promise<PipelineBatch> {
-	const enrichedIds = await getFullyEnrichedSongIds(accountId);
-	return buildBatch(accountId, enrichedIds, maxSongs, excludeSongIds);
-}
-
-export async function selectDataEnrichmentBatch(
-	accountId: string,
-	maxSongs: number,
-	excludeSongIds?: string[],
-): Promise<PipelineBatch> {
-	const enrichedIds = await getDataEnrichedSongIds(accountId);
-	return buildBatch(accountId, enrichedIds, maxSongs, excludeSongIds);
+	return {
+		songIds: validSongIds,
+		songs: songsResult.value,
+		spotifyIdBySongId,
+	};
 }

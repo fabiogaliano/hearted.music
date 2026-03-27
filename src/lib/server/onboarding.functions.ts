@@ -31,8 +31,8 @@ import {
 } from "@/lib/platform/jobs/progress/types";
 import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
 import { type ThemeColor, themeSchema } from "@/lib/theme/types";
-import { requestEnrichment } from "@/lib/workflows/enrichment-pipeline/trigger";
-import { requestTargetPlaylistMatchRefresh } from "@/lib/workflows/target-playlist-match-refresh/trigger";
+import { OnboardingChanges } from "@/lib/workflows/library-processing/changes/onboarding";
+import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 
 /** Playlist view model for onboarding UI (camelCase frontend format) */
 export interface OnboardingPlaylist {
@@ -283,18 +283,7 @@ export const savePlaylistTargets = createServerFn({ method: "POST" })
 			throw new OnboardingError("get_playlists", playlistsResult.error);
 		}
 
-		const previousTargetIds = new Set(
-			playlistsResult.value
-				.filter((playlist) => playlist.is_target)
-				.map((playlist) => playlist.id),
-		);
 		const nextTargetIds = new Set(data.playlistIds);
-		const addedTargetIds = [...nextTargetIds].filter(
-			(playlistId) => !previousTargetIds.has(playlistId),
-		);
-		const removedTargetIds = [...previousTargetIds].filter(
-			(playlistId) => !nextTargetIds.has(playlistId),
-		);
 
 		const updates = playlistsResult.value.map((playlist) => {
 			const shouldBeTarget = data.playlistIds.includes(playlist.id);
@@ -308,30 +297,10 @@ export const savePlaylistTargets = createServerFn({ method: "POST" })
 			throw new OnboardingError("update_playlist_targets", firstError.error);
 		}
 
-		const followOnWork: Promise<unknown>[] = [];
-
-		if (addedTargetIds.length > 0) {
-			followOnWork.push(
-				requestTargetPlaylistMatchRefresh({
-					accountId: session.accountId,
-					source: "target_selection",
-				}),
+		if (nextTargetIds.size > 0) {
+			await applyLibraryProcessingChange(
+				OnboardingChanges.targetSelectionConfirmed(session.accountId),
 			);
-			followOnWork.push(requestEnrichment(session.accountId));
-		} else if (removedTargetIds.length > 0) {
-			followOnWork.push(
-				requestTargetPlaylistMatchRefresh({
-					accountId: session.accountId,
-					source:
-						nextTargetIds.size === 0
-							? "sync_all_targets_removed"
-							: "sync_target_removal",
-				}),
-			);
-		}
-
-		if (followOnWork.length > 0) {
-			await Promise.all(followOnWork);
 		}
 
 		return { success: true };
