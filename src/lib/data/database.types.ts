@@ -7,6 +7,11 @@ export type Json =
 	| Json[];
 
 export type Database = {
+	// Allows to automatically instantiate createClient with right options
+	// instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+	__InternalSupabase: {
+		PostgrestVersion: "14.1";
+	};
 	graphql_public: {
 		Tables: {
 			[_ in never]: never;
@@ -189,6 +194,8 @@ export type Database = {
 					id: string;
 					max_attempts: number;
 					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
 					started_at: string | null;
 					status: Database["public"]["Enums"]["job_status"];
 					type: Database["public"]["Enums"]["job_type"];
@@ -204,6 +211,8 @@ export type Database = {
 					id?: string;
 					max_attempts?: number;
 					progress?: Json | null;
+					queue_priority?: number | null;
+					satisfies_requested_at?: string | null;
 					started_at?: string | null;
 					status?: Database["public"]["Enums"]["job_status"];
 					type: Database["public"]["Enums"]["job_type"];
@@ -219,6 +228,8 @@ export type Database = {
 					id?: string;
 					max_attempts?: number;
 					progress?: Json | null;
+					queue_priority?: number | null;
+					satisfies_requested_at?: string | null;
 					started_at?: string | null;
 					status?: Database["public"]["Enums"]["job_status"];
 					type?: Database["public"]["Enums"]["job_type"];
@@ -230,6 +241,66 @@ export type Database = {
 						columns: ["account_id"];
 						isOneToOne: false;
 						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			job_execution_measurement: {
+				Row: {
+					account_id: string;
+					attempt_number: number;
+					created_at: string;
+					details: Json | null;
+					finished_at: string | null;
+					id: string;
+					job_id: string;
+					outcome: string;
+					queue_priority: number | null;
+					queued_at: string | null;
+					started_at: string | null;
+					workflow: string;
+				};
+				Insert: {
+					account_id: string;
+					attempt_number?: number;
+					created_at?: string;
+					details?: Json | null;
+					finished_at?: string | null;
+					id?: string;
+					job_id: string;
+					outcome: string;
+					queue_priority?: number | null;
+					queued_at?: string | null;
+					started_at?: string | null;
+					workflow: string;
+				};
+				Update: {
+					account_id?: string;
+					attempt_number?: number;
+					created_at?: string;
+					details?: Json | null;
+					finished_at?: string | null;
+					id?: string;
+					job_id?: string;
+					outcome?: string;
+					queue_priority?: number | null;
+					queued_at?: string | null;
+					started_at?: string | null;
+					workflow?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "job_execution_measurement_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "job_execution_measurement_job_id_fkey";
+						columns: ["job_id"];
+						isOneToOne: false;
+						referencedRelation: "job";
 						referencedColumns: ["id"];
 					},
 				];
@@ -266,6 +337,67 @@ export type Database = {
 					{
 						foreignKeyName: "job_failure_job_id_fkey";
 						columns: ["job_id"];
+						isOneToOne: false;
+						referencedRelation: "job";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			library_processing_state: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					enrichment_active_job_id: string | null;
+					enrichment_requested_at: string | null;
+					enrichment_settled_at: string | null;
+					id: string;
+					match_snapshot_refresh_active_job_id: string | null;
+					match_snapshot_refresh_requested_at: string | null;
+					match_snapshot_refresh_settled_at: string | null;
+					updated_at: string;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					enrichment_active_job_id?: string | null;
+					enrichment_requested_at?: string | null;
+					enrichment_settled_at?: string | null;
+					id?: string;
+					match_snapshot_refresh_active_job_id?: string | null;
+					match_snapshot_refresh_requested_at?: string | null;
+					match_snapshot_refresh_settled_at?: string | null;
+					updated_at?: string;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					enrichment_active_job_id?: string | null;
+					enrichment_requested_at?: string | null;
+					enrichment_settled_at?: string | null;
+					id?: string;
+					match_snapshot_refresh_active_job_id?: string | null;
+					match_snapshot_refresh_requested_at?: string | null;
+					match_snapshot_refresh_settled_at?: string | null;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "library_processing_state_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: true;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "library_processing_state_enrichment_active_job_id_fkey";
+						columns: ["enrichment_active_job_id"];
+						isOneToOne: false;
+						referencedRelation: "job";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "library_processing_state_match_snapshot_refresh_active_job_fkey";
+						columns: ["match_snapshot_refresh_active_job_id"];
 						isOneToOne: false;
 						referencedRelation: "job";
 						referencedColumns: ["id"];
@@ -1022,36 +1154,30 @@ export type Database = {
 				Row: {
 					account_id: string;
 					created_at: string;
-					enrichment_job_id: string | null;
 					id: string;
 					onboarding_completed_at: string | null;
 					onboarding_step: string;
 					phase_job_ids: Json | null;
-					target_playlist_match_refresh_job_id: string | null;
 					theme: Database["public"]["Enums"]["theme"] | null;
 					updated_at: string;
 				};
 				Insert: {
 					account_id: string;
 					created_at?: string;
-					enrichment_job_id?: string | null;
 					id?: string;
 					onboarding_completed_at?: string | null;
 					onboarding_step?: string;
 					phase_job_ids?: Json | null;
-					target_playlist_match_refresh_job_id?: string | null;
 					theme?: Database["public"]["Enums"]["theme"] | null;
 					updated_at?: string;
 				};
 				Update: {
 					account_id?: string;
 					created_at?: string;
-					enrichment_job_id?: string | null;
 					id?: string;
 					onboarding_completed_at?: string | null;
 					onboarding_step?: string;
 					phase_job_ids?: Json | null;
-					target_playlist_match_refresh_job_id?: string | null;
 					theme?: Database["public"]["Enums"]["theme"] | null;
 					updated_at?: string;
 				};
@@ -1061,20 +1187,6 @@ export type Database = {
 						columns: ["account_id"];
 						isOneToOne: true;
 						referencedRelation: "account";
-						referencedColumns: ["id"];
-					},
-					{
-						foreignKeyName: "user_preferences_enrichment_job_id_fkey";
-						columns: ["enrichment_job_id"];
-						isOneToOne: false;
-						referencedRelation: "job";
-						referencedColumns: ["id"];
-					},
-					{
-						foreignKeyName: "user_preferences_rematch_job_id_fkey";
-						columns: ["target_playlist_match_refresh_job_id"];
-						isOneToOne: false;
-						referencedRelation: "job";
 						referencedColumns: ["id"];
 					},
 				];
@@ -1129,7 +1241,7 @@ export type Database = {
 			[_ in never]: never;
 		};
 		Functions: {
-			claim_pending_enrichment_job: {
+			claim_pending_library_processing_job: {
 				Args: never;
 				Returns: {
 					account_id: string;
@@ -1141,6 +1253,8 @@ export type Database = {
 					id: string;
 					max_attempts: number;
 					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
 					started_at: string | null;
 					status: Database["public"]["Enums"]["job_status"];
 					type: Database["public"]["Enums"]["job_type"];
@@ -1165,6 +1279,8 @@ export type Database = {
 					id: string;
 					max_attempts: number;
 					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
 					started_at: string | null;
 					status: Database["public"]["Enums"]["job_status"];
 					type: Database["public"]["Enums"]["job_type"];
@@ -1189,30 +1305,8 @@ export type Database = {
 					id: string;
 					max_attempts: number;
 					progress: Json | null;
-					started_at: string | null;
-					status: Database["public"]["Enums"]["job_status"];
-					type: Database["public"]["Enums"]["job_type"];
-					updated_at: string;
-				}[];
-				SetofOptions: {
-					from: "*";
-					to: "job";
-					isOneToOne: false;
-					isSetofReturn: true;
-				};
-			};
-			claim_pending_target_playlist_match_refresh_job: {
-				Args: never;
-				Returns: {
-					account_id: string;
-					attempts: number;
-					completed_at: string | null;
-					created_at: string;
-					error: string | null;
-					heartbeat_at: string | null;
-					id: string;
-					max_attempts: number;
-					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
 					started_at: string | null;
 					status: Database["public"]["Enums"]["job_status"];
 					type: Database["public"]["Enums"]["job_type"];
@@ -1269,7 +1363,7 @@ export type Database = {
 					total: number;
 				}[];
 			};
-			mark_dead_enrichment_jobs: {
+			mark_dead_library_processing_jobs: {
 				Args: { stale_threshold: string };
 				Returns: {
 					account_id: string;
@@ -1281,6 +1375,8 @@ export type Database = {
 					id: string;
 					max_attempts: number;
 					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
 					started_at: string | null;
 					status: Database["public"]["Enums"]["job_status"];
 					type: Database["public"]["Enums"]["job_type"];
@@ -1305,30 +1401,8 @@ export type Database = {
 					id: string;
 					max_attempts: number;
 					progress: Json | null;
-					started_at: string | null;
-					status: Database["public"]["Enums"]["job_status"];
-					type: Database["public"]["Enums"]["job_type"];
-					updated_at: string;
-				}[];
-				SetofOptions: {
-					from: "*";
-					to: "job";
-					isOneToOne: false;
-					isSetofReturn: true;
-				};
-			};
-			mark_dead_target_playlist_match_refresh_jobs: {
-				Args: { stale_threshold: string };
-				Returns: {
-					account_id: string;
-					attempts: number;
-					completed_at: string | null;
-					created_at: string;
-					error: string | null;
-					heartbeat_at: string | null;
-					id: string;
-					max_attempts: number;
-					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
 					started_at: string | null;
 					status: Database["public"]["Enums"]["job_status"];
 					type: Database["public"]["Enums"]["job_type"];
@@ -1355,7 +1429,19 @@ export type Database = {
 				};
 				Returns: string;
 			};
-			sweep_stale_enrichment_jobs: {
+			select_data_enriched_liked_song_ids: {
+				Args: { p_account_id: string };
+				Returns: {
+					song_id: string;
+				}[];
+			};
+			select_liked_song_ids_needing_pipeline_processing: {
+				Args: { p_account_id: string; p_limit: number };
+				Returns: {
+					song_id: string;
+				}[];
+			};
+			sweep_stale_library_processing_jobs: {
 				Args: { stale_threshold: string };
 				Returns: {
 					account_id: string;
@@ -1367,6 +1453,8 @@ export type Database = {
 					id: string;
 					max_attempts: number;
 					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
 					started_at: string | null;
 					status: Database["public"]["Enums"]["job_status"];
 					type: Database["public"]["Enums"]["job_type"];
@@ -1391,30 +1479,8 @@ export type Database = {
 					id: string;
 					max_attempts: number;
 					progress: Json | null;
-					started_at: string | null;
-					status: Database["public"]["Enums"]["job_status"];
-					type: Database["public"]["Enums"]["job_type"];
-					updated_at: string;
-				}[];
-				SetofOptions: {
-					from: "*";
-					to: "job";
-					isOneToOne: false;
-					isSetofReturn: true;
-				};
-			};
-			sweep_stale_target_playlist_match_refresh_jobs: {
-				Args: { stale_threshold: string };
-				Returns: {
-					account_id: string;
-					attempts: number;
-					completed_at: string | null;
-					created_at: string;
-					error: string | null;
-					heartbeat_at: string | null;
-					id: string;
-					max_attempts: number;
-					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
 					started_at: string | null;
 					status: Database["public"]["Enums"]["job_status"];
 					type: Database["public"]["Enums"]["job_type"];
@@ -1445,7 +1511,8 @@ export type Database = {
 				| "enrichment"
 				| "rematch"
 				| "playlist_lightweight_enrichment"
-				| "target_playlist_match_refresh";
+				| "target_playlist_match_refresh"
+				| "match_snapshot_refresh";
 			theme: "blue" | "green" | "rose" | "lavender";
 		};
 		CompositeTypes: {
@@ -1597,6 +1664,7 @@ export const Constants = {
 				"rematch",
 				"playlist_lightweight_enrichment",
 				"target_playlist_match_refresh",
+				"match_snapshot_refresh",
 			],
 			theme: ["blue", "green", "rose", "lavender"],
 		},

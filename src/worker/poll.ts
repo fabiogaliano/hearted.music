@@ -1,20 +1,19 @@
 import { Result } from "better-result";
 import type { Job } from "@/lib/data/jobs";
 import {
-	claimEnrichmentJob,
-	claimTargetPlaylistMatchRefreshJob,
+	claimLibraryProcessingJob,
 	markJobCompleted,
 	markJobFailed,
 } from "@/lib/data/jobs";
-import {
-	updateEnrichmentJobId,
-	clearEnrichmentJobId,
-	clearTargetPlaylistMatchRefreshJobId,
-} from "@/lib/domains/library/accounts/preferences-queries";
-import { requestRefreshAfterDrain } from "@/lib/workflows/enrichment-pipeline/trigger";
-import { chainNextChunk } from "./chain";
+import { recordExecutionMeasurement } from "@/lib/data/job-measurements";
+import { EnrichmentChanges } from "@/lib/workflows/library-processing/changes/enrichment";
+import { MatchSnapshotChanges } from "@/lib/workflows/library-processing/changes/match-snapshot";
+import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 import { workerConfig } from "./config";
-import { executeJob, executeTargetPlaylistMatchRefreshJob } from "./execute";
+import {
+	executeEnrichmentJob,
+	executeMatchSnapshotRefreshJob,
+} from "./execute";
 import { log } from "./logger";
 
 let shouldPoll = true;
@@ -29,8 +28,9 @@ export function getActiveJobCount() {
 }
 
 async function processEnrichmentJob(job: Job): Promise<void> {
+	const startedAt = new Date().toISOString();
 	try {
-		const result = await executeJob(job);
+		const result = await executeEnrichmentJob(job);
 
 		const completedResult = await markJobCompleted(job.id);
 		if (Result.isError(completedResult)) {
@@ -42,86 +42,59 @@ async function processEnrichmentJob(job: Job): Promise<void> {
 		}
 		log.info("job-complete", { jobId: job.id, accountId: job.account_id });
 
+		const requestSatisfied = !result.hasMoreSongs;
+
+		await recordMeasurement(job, "enrichment", startedAt, "completed", {
+			requestSatisfied,
+			newCandidatesAvailable: result.newCandidatesAvailable,
+			batchSequence: result.batchSequence,
+		});
+
 		try {
-			const outcome = await chainNextChunk(
-				result.accountId,
-				result.batchSequence,
-				result.hasMoreSongs,
+			await applyLibraryProcessingChange(
+				EnrichmentChanges.completed({
+					accountId: result.accountId,
+					jobId: result.jobId,
+					requestSatisfied,
+					newCandidatesAvailable: result.newCandidatesAvailable,
+				}),
 			);
-			switch (outcome.status) {
-				case "chained": {
-					const updateResult = await updateEnrichmentJobId(
-						result.accountId,
-						outcome.jobId,
-					);
-					if (Result.isError(updateResult)) {
-						log.error("update-enrichment-pointer-failed", {
-							accountId: result.accountId,
-							error: updateResult.error.message,
-						});
-					}
-					break;
-				}
-				case "completed": {
-					const clearResult = await clearEnrichmentJobId(result.accountId);
-					if (Result.isError(clearResult)) {
-						log.error("clear-enrichment-pointer-failed", {
-							accountId: result.accountId,
-							error: clearResult.error.message,
-						});
-					}
-					// Queue drain — request target-playlist refresh if targets exist
-					const refreshJobId = await requestRefreshAfterDrain(result.accountId);
-					if (refreshJobId) {
-						log.info("drain-triggered-refresh", {
-							accountId: result.accountId,
-							refreshJobId,
-						});
-					}
-					break;
-				}
-				case "error": {
-					log.error("chain-error", {
-						jobId: job.id,
-						accountId: job.account_id,
-						error: outcome.error,
-					});
-					const clearResult = await clearEnrichmentJobId(result.accountId);
-					if (Result.isError(clearResult)) {
-						log.error("clear-enrichment-pointer-failed", {
-							accountId: result.accountId,
-							error: clearResult.error.message,
-						});
-					}
-					break;
-				}
-			}
-		} catch (chainError) {
-			const message =
-				chainError instanceof Error ? chainError.message : String(chainError);
-			log.error("chain-error", {
+		} catch (settleError) {
+			log.error("enrichment-settle-error", {
 				jobId: job.id,
 				accountId: job.account_id,
-				error: message,
+				error:
+					settleError instanceof Error
+						? settleError.message
+						: String(settleError),
 			});
-			const clearResult = await clearEnrichmentJobId(result.accountId);
-			if (Result.isError(clearResult)) {
-				log.error("clear-enrichment-pointer-failed", {
-					accountId: result.accountId,
-					error: clearResult.error.message,
-				});
-			}
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		await markJobFailedSafe(job, message);
+
+		await recordMeasurement(job, "enrichment", startedAt, "error");
+
+		try {
+			await applyLibraryProcessingChange(
+				EnrichmentChanges.stopped({
+					accountId: job.account_id,
+					jobId: job.id,
+					reason: "error",
+				}),
+			);
+		} catch {
+			// Already logged in markJobFailedSafe
+		}
+
 		throw error;
 	}
 }
 
-async function processTargetPlaylistMatchRefreshJob(job: Job): Promise<void> {
+async function processMatchSnapshotRefreshJob(job: Job): Promise<void> {
+	const startedAt = new Date().toISOString();
 	try {
-		await executeTargetPlaylistMatchRefreshJob(job);
+		const result = await executeMatchSnapshotRefreshJob(job);
 
 		const completedResult = await markJobCompleted(job.id);
 		if (Result.isError(completedResult)) {
@@ -130,24 +103,88 @@ async function processTargetPlaylistMatchRefreshJob(job: Job): Promise<void> {
 				error: completedResult.error.message,
 			});
 		}
-		log.info("target-refresh-job-complete", {
+		log.info("match-snapshot-refresh-job-complete", {
 			jobId: job.id,
 			accountId: job.account_id,
 		});
+
+		await recordMeasurement(
+			job,
+			"match_snapshot_refresh",
+			startedAt,
+			"completed",
+			{ published: result.published, isEmpty: result.isEmpty },
+		);
+
+		try {
+			await applyLibraryProcessingChange(
+				MatchSnapshotChanges.published({
+					accountId: result.accountId,
+					jobId: result.jobId,
+				}),
+			);
+		} catch (settleError) {
+			log.error("refresh-settle-error", {
+				jobId: job.id,
+				accountId: job.account_id,
+				error:
+					settleError instanceof Error
+						? settleError.message
+						: String(settleError),
+			});
+		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		await markJobFailedSafe(job, message);
+
+		await recordMeasurement(job, "match_snapshot_refresh", startedAt, "error");
+
+		try {
+			await applyLibraryProcessingChange(
+				MatchSnapshotChanges.failed({
+					accountId: job.account_id,
+					jobId: job.id,
+				}),
+			);
+		} catch {
+			// Already logged in markJobFailedSafe
+		}
+
 		throw error;
-	} finally {
-		const clearResult = await clearTargetPlaylistMatchRefreshJobId(
-			job.account_id,
-		);
-		if (Result.isError(clearResult)) {
-			log.error("clear-refresh-pointer-failed", {
-				accountId: job.account_id,
-				error: clearResult.error.message,
+	}
+}
+
+async function recordMeasurement(
+	job: Job,
+	workflow: "enrichment" | "match_snapshot_refresh",
+	startedAt: string,
+	outcome: string,
+	details?: Record<string, unknown>,
+): Promise<void> {
+	try {
+		const result = await recordExecutionMeasurement({
+			jobId: job.id,
+			accountId: job.account_id,
+			workflow,
+			queuePriority: job.queue_priority ?? null,
+			attemptNumber: job.attempts,
+			queuedAt: job.created_at,
+			startedAt,
+			finishedAt: new Date().toISOString(),
+			outcome,
+			details,
+		});
+		if (Result.isError(result)) {
+			log.warn("measurement-write-failed", {
+				jobId: job.id,
+				error: result.error.message,
 			});
 		}
+	} catch (err) {
+		log.warn("measurement-write-error", {
+			jobId: job.id,
+			error: err instanceof Error ? err.message : String(err),
+		});
 	}
 }
 
@@ -186,54 +223,41 @@ export async function startPolling(): Promise<void> {
 			continue;
 		}
 
-		// Enrichment gets priority — candidate-side work gates suggestions
-		let job: Job | null = null;
-
-		const enrichResult = await claimEnrichmentJob();
-		if (Result.isError(enrichResult)) {
-			log.error("claim-error", { error: enrichResult.error.message });
+		// Unified claim: DB orders by queue_priority DESC, created_at ASC
+		const claimResult = await claimLibraryProcessingJob();
+		if (Result.isError(claimResult)) {
+			log.error("claim-error", { error: claimResult.error.message });
 			await Bun.sleep(workerConfig.pollIntervalMs);
 			continue;
 		}
-		job = enrichResult.value;
 
-		// Target-playlist refresh gets second priority
-		if (!job) {
-			const refreshResult = await claimTargetPlaylistMatchRefreshJob();
-			if (Result.isError(refreshResult)) {
-				log.error("claim-refresh-error", {
-					error: refreshResult.error.message,
-				});
-				await Bun.sleep(workerConfig.pollIntervalMs);
-				continue;
-			}
-			job = refreshResult.value;
-		}
-
+		const job = claimResult.value;
 		if (!job) {
 			await Bun.sleep(workerConfig.pollIntervalMs);
 			continue;
 		}
 
-		const claimed = job;
-		activeJobs.add(claimed.id);
+		activeJobs.add(job.id);
 		log.info("job-claimed", {
-			jobId: claimed.id,
-			type: claimed.type,
-			accountId: claimed.account_id,
+			jobId: job.id,
+			type: job.type,
+			accountId: job.account_id,
 		});
 
 		(async () => {
 			try {
-				if (claimed.type === "target_playlist_match_refresh") {
-					await processTargetPlaylistMatchRefreshJob(claimed);
+				if (
+					job.type === "match_snapshot_refresh" ||
+					job.type === "target_playlist_match_refresh"
+				) {
+					await processMatchSnapshotRefreshJob(job);
 				} else {
-					await processEnrichmentJob(claimed);
+					await processEnrichmentJob(job);
 				}
 			} catch {
 				// Already logged + marked failed inside process* functions
 			} finally {
-				activeJobs.delete(claimed.id);
+				activeJobs.delete(job.id);
 			}
 		})();
 	}

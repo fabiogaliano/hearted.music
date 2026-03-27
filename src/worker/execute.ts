@@ -1,21 +1,28 @@
 import { Result } from "better-result";
 import type { Job } from "@/lib/data/jobs";
-import {
-	getJobById,
-	updateHeartbeat,
-	updateJobProgress,
-} from "@/lib/data/jobs";
+import { updateHeartbeat } from "@/lib/data/jobs";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/types";
+import type { ChunkResult } from "@/lib/workflows/enrichment-pipeline/orchestrator";
 import { executeWorkerChunk } from "@/lib/workflows/enrichment-pipeline/orchestrator";
 import { executeRefresh } from "@/lib/workflows/target-playlist-match-refresh/orchestrator";
 import type { TargetPlaylistRefreshPlan } from "@/lib/workflows/target-playlist-match-refresh/types";
+import type { RefreshResult } from "@/lib/workflows/target-playlist-match-refresh/types";
 import { workerConfig } from "./config";
 import { log } from "./logger";
 
-export interface ExecuteResult {
-	hasMoreSongs: boolean;
+export interface EnrichmentExecuteResult {
 	accountId: string;
+	jobId: string;
 	batchSequence: number;
+	hasMoreSongs: boolean;
+	newCandidatesAvailable: boolean;
+}
+
+export interface RefreshExecuteResult {
+	accountId: string;
+	jobId: string;
+	published: boolean;
+	isEmpty: boolean;
 }
 
 export function startHeartbeat(jobId: string): { stop: () => void } {
@@ -28,7 +35,9 @@ export function startHeartbeat(jobId: string): { stop: () => void } {
 	return { stop: () => clearInterval(interval) };
 }
 
-export async function executeJob(job: Job): Promise<ExecuteResult> {
+export async function executeEnrichmentJob(
+	job: Job,
+): Promise<EnrichmentExecuteResult> {
 	const heartbeat = startHeartbeat(job.id);
 	const accountId = job.account_id;
 	const progress = (job.progress ?? {}) as Partial<EnrichmentChunkProgress>;
@@ -41,7 +50,7 @@ export async function executeJob(job: Job): Promise<ExecuteResult> {
 	});
 
 	try {
-		const result = await executeWorkerChunk(
+		const result: ChunkResult = await executeWorkerChunk(
 			accountId,
 			job.id,
 			progress.batchSize ?? 5,
@@ -49,9 +58,11 @@ export async function executeJob(job: Job): Promise<ExecuteResult> {
 		);
 
 		return {
-			hasMoreSongs: result.hasMoreSongs,
 			accountId,
+			jobId: job.id,
 			batchSequence: progress.batchSequence ?? 0,
+			hasMoreSongs: result.hasMoreSongs,
+			newCandidatesAvailable: result.newCandidatesAvailable,
 		};
 	} finally {
 		heartbeat.stop();
@@ -59,73 +70,41 @@ export async function executeJob(job: Job): Promise<ExecuteResult> {
 }
 
 /**
- * Executes a target-playlist match refresh job.
- * Runs the refresh orchestrator, then checks rerunRequested for a follow-up pass.
+ * Executes a match_snapshot_refresh job as a single pass.
+ * No rerun loop — if a new change arrives, library-processing ensures a later job.
  */
-export async function executeTargetPlaylistMatchRefreshJob(
+export async function executeMatchSnapshotRefreshJob(
 	job: Job,
-): Promise<void> {
+): Promise<RefreshExecuteResult> {
 	const heartbeat = startHeartbeat(job.id);
 	const accountId = job.account_id;
 	const initialProgress = (job.progress ?? {}) as Record<string, unknown>;
-	let plan = (initialProgress.plan ?? {
-		source: "manual",
+	const plan = (initialProgress.plan ?? {
 		shouldEnrichTargetPlaylistSongs: false,
 	}) as TargetPlaylistRefreshPlan;
 
-	log.info("target-refresh-start", { jobId: job.id, accountId });
+	log.info("match-snapshot-refresh-start", { jobId: job.id, accountId });
 
 	try {
-		let pass = 0;
-		while (true) {
-			const result = await executeRefresh(accountId, plan);
+		const result: RefreshResult = await executeRefresh(accountId, plan);
 
-			log.info(
-				pass === 0
-					? "target-refresh-complete"
-					: "target-refresh-rerun-complete",
-				{
-					jobId: job.id,
-					accountId,
-					published: result.published,
-					matched: result.matchedSongCount,
-					candidates: result.candidateCount,
-					playlists: result.playlistCount,
-					noOp: result.noOp,
-					isEmpty: result.isEmpty,
-					pass,
-				},
-			);
+		log.info("match-snapshot-refresh-complete", {
+			jobId: job.id,
+			accountId,
+			published: result.published,
+			matched: result.matchedSongCount,
+			candidates: result.candidateCount,
+			playlists: result.playlistCount,
+			noOp: result.noOp,
+			isEmpty: result.isEmpty,
+		});
 
-			const freshJobResult = await getJobById(job.id);
-			const freshProgress =
-				Result.isOk(freshJobResult) && freshJobResult.value
-					? ((freshJobResult.value.progress ?? {}) as Record<string, unknown>)
-					: initialProgress;
-
-			if (!freshProgress.rerunRequested) {
-				break;
-			}
-
-			log.info("target-refresh-rerun", {
-				jobId: job.id,
-				accountId,
-				pass: pass + 1,
-			});
-			const clearResult = await updateJobProgress(job.id, {
-				...freshProgress,
-				rerunRequested: false,
-			} as any);
-			if (Result.isError(clearResult)) break;
-
-			const latestPlan = (freshProgress.plan ??
-				plan) as TargetPlaylistRefreshPlan;
-			plan = {
-				...latestPlan,
-				shouldEnrichTargetPlaylistSongs: true,
-			};
-			pass += 1;
-		}
+		return {
+			accountId,
+			jobId: job.id,
+			published: result.published || result.noOp,
+			isEmpty: result.isEmpty,
+		};
 	} finally {
 		heartbeat.stop();
 	}
