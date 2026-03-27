@@ -24,7 +24,11 @@ export interface SpotifyTrackDTO {
 		album: {
 			id: string;
 			name: string;
-			images: Array<{ url: string; width: number; height: number }>;
+			images: Array<{
+				url: string;
+				width?: number;
+				height?: number;
+			}>;
 		};
 		duration_ms: number;
 		uri: string;

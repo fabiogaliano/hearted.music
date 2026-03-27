@@ -1,7 +1,10 @@
 import { Result } from "better-result";
 import { updateJobProgress } from "@/lib/data/jobs";
+import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
 import { markPipelineProcessed } from "@/lib/domains/library/liked-songs/status-queries";
+import * as songData from "@/lib/domains/library/songs/queries";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
@@ -105,6 +108,51 @@ function stageStatus(result: StageResult): "completed" | "failed" {
 	return result.failed > 0 && result.succeeded === 0 ? "failed" : "completed";
 }
 
+async function loadDataEnrichedSongIds(
+	batch: Awaited<ReturnType<typeof selectPipelineBatch>>,
+	embeddingService: EmbeddingService,
+	songs = batch.songs,
+): Promise<Set<string>> {
+	if (batch.songIds.length === 0) {
+		return new Set();
+	}
+
+	const [audioFeaturesResult, analysisResult, embeddingsResult] =
+		await Promise.all([
+			audioFeatureData.getBatch(batch.songIds),
+			songAnalysisData.get(batch.songIds),
+			embeddingService.getEmbeddings(batch.songIds),
+		]);
+
+	if (
+		Result.isError(audioFeaturesResult) ||
+		Result.isError(analysisResult) ||
+		Result.isError(embeddingsResult)
+	) {
+		throw new Error("Failed to resolve data-enriched songs for batch");
+	}
+
+	const songById = new Map(songs.map((song) => [song.id, song]));
+	const enrichedSongIds = new Set<string>();
+
+	for (const songId of batch.songIds) {
+		const song = songById.get(songId);
+		if (!song || !song.genres || song.genres.length === 0) {
+			continue;
+		}
+
+		if (
+			audioFeaturesResult.value.has(songId) &&
+			analysisResult.value.has(songId) &&
+			embeddingsResult.value.has(songId)
+		) {
+			enrichedSongIds.add(songId);
+		}
+	}
+
+	return enrichedSongIds;
+}
+
 // --- Song enrichment phases (A-C) ---
 
 async function enrichSongs(
@@ -173,6 +221,10 @@ async function enrichSongs(
 export interface ChunkResult {
 	hasMoreSongs: boolean;
 	newCandidatesAvailable: boolean;
+	readyCount: number;
+	doneCount: number;
+	succeededCount: number;
+	failedCount: number;
 }
 
 export async function executeWorkerChunk(
@@ -192,6 +244,10 @@ export async function executeWorkerChunk(
 	const ctx = { ...buildContext(accountId, embeddingResult.value), jobId };
 
 	const batch = await selectPipelineBatch(accountId, batchSize);
+	const enrichedBefore = await loadDataEnrichedSongIds(
+		batch,
+		embeddingResult.value,
+	);
 
 	const progress = makeInitialProgress(
 		batchSize,
@@ -210,11 +266,33 @@ export async function executeWorkerChunk(
 	progress.currentStage = undefined;
 	await persistProgress(jobId, progress);
 
+	const songsResult = await songData.getByIds(batch.songIds);
+	let newCandidatesAvailable = batch.songIds.length > 0;
+	if (Result.isOk(songsResult)) {
+		try {
+			const enrichedAfter = await loadDataEnrichedSongIds(
+				batch,
+				embeddingResult.value,
+				songsResult.value,
+			);
+			newCandidatesAvailable = [...enrichedAfter].some(
+				(songId) => !enrichedBefore.has(songId),
+			);
+		} catch {
+			// Preserve the prior behavior if post-run readiness checks fail.
+			newCandidatesAvailable = batch.songIds.length > 0;
+		}
+	}
+
 	// Probe whether more songs still need pipeline processing via the DB selector
 	const hasMoreSongs = await hasMoreSongsNeedingProcessing(accountId);
 
 	return {
 		hasMoreSongs,
-		newCandidatesAvailable: batch.songIds.length > 0,
+		newCandidatesAvailable,
+		readyCount: batch.songIds.length,
+		doneCount: progress.done,
+		succeededCount: progress.succeeded,
+		failedCount: progress.failed,
 	};
 }

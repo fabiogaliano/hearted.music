@@ -1,4 +1,5 @@
 import { Result } from "better-result";
+import type { Json } from "@/lib/data/database.types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { createAdminSupabaseClient } from "./client";
 
@@ -12,7 +13,7 @@ export interface MeasurementInput {
 	startedAt: string | null;
 	finishedAt: string;
 	outcome: string;
-	details?: Record<string, unknown>;
+	details?: Record<string, Json>;
 }
 
 export async function recordExecutionMeasurement(

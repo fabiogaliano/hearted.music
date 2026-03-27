@@ -1,11 +1,20 @@
 import { Result } from "better-result";
+import { createAdminSupabaseClient } from "@/lib/data/client";
 import {
 	ensureEnrichmentJob,
 	ensureMatchSnapshotRefreshJob,
+	getJobById,
 } from "@/lib/data/jobs";
-import { getTargetPlaylists } from "@/lib/domains/library/playlists/queries";
+import { EnrichmentChunkProgressSchema } from "@/lib/platform/jobs/progress/types";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
-import { makeInitialProgress } from "@/lib/workflows/enrichment-pipeline/progress";
+import {
+	getPlaylistSongs,
+	getTargetPlaylists,
+} from "@/lib/domains/library/playlists/queries";
+import {
+	batchSizeForSequence,
+	makeInitialProgress,
+} from "@/lib/workflows/enrichment-pipeline/progress";
 import {
 	getOrCreateLibraryProcessingState,
 	persistLibraryProcessingState,
@@ -18,11 +27,12 @@ import type {
 	LibraryProcessingState,
 } from "./types";
 
-/**
- * Derives needsTargetSongEnrichment from the change that caused the refresh.
- * True when the change could have brought new un-enriched target-playlist-only songs.
- */
-function deriveNeedsTargetSongEnrichment(
+interface JobOutcomeMetadata {
+	satisfiedMarker: string | null;
+	batchSequence: number | null;
+}
+
+function changeMayNeedTargetSongEnrichment(
 	change: LibraryProcessingChange,
 ): boolean {
 	switch (change.kind) {
@@ -30,17 +40,109 @@ function deriveNeedsTargetSongEnrichment(
 			return true;
 		case "library_synced":
 			return change.changes.targetPlaylists.trackMembershipChanged;
-		case "enrichment_completed":
-			return change.newCandidatesAvailable;
 		default:
 			return false;
 	}
+}
+
+async function loadJobOutcomeMetadata(
+	change: LibraryProcessingChange,
+): Promise<JobOutcomeMetadata> {
+	if (
+		change.kind !== "enrichment_completed" &&
+		change.kind !== "match_snapshot_published"
+	) {
+		return { satisfiedMarker: null, batchSequence: null };
+	}
+
+	const jobResult = await getJobById(change.jobId);
+	if (Result.isError(jobResult) || jobResult.value === null) {
+		return { satisfiedMarker: null, batchSequence: null };
+	}
+
+	if (change.kind === "match_snapshot_published") {
+		return {
+			satisfiedMarker: jobResult.value.satisfies_requested_at,
+			batchSequence: null,
+		};
+	}
+
+	const progressResult = EnrichmentChunkProgressSchema.partial().safeParse(
+		jobResult.value.progress ?? {},
+	);
+
+	return {
+		satisfiedMarker: jobResult.value.satisfies_requested_at,
+		batchSequence: progressResult.success
+			? (progressResult.data.batchSequence ?? null)
+			: null,
+	};
+}
+
+async function deriveNeedsTargetSongEnrichment(
+	accountId: string,
+	change: LibraryProcessingChange,
+): Promise<boolean> {
+	if (!changeMayNeedTargetSongEnrichment(change)) {
+		return false;
+	}
+
+	const targetPlaylistsResult = await getTargetPlaylists(accountId);
+	if (
+		Result.isError(targetPlaylistsResult) ||
+		targetPlaylistsResult.value.length === 0
+	) {
+		return false;
+	}
+
+	const playlistSongResults = await Promise.all(
+		targetPlaylistsResult.value.map((playlist) =>
+			getPlaylistSongs(playlist.id),
+		),
+	);
+
+	const targetSongIds = new Set<string>();
+	for (const playlistSongResult of playlistSongResults) {
+		if (Result.isError(playlistSongResult)) {
+			continue;
+		}
+
+		for (const playlistSong of playlistSongResult.value) {
+			targetSongIds.add(playlistSong.song_id);
+		}
+	}
+
+	if (targetSongIds.size === 0) {
+		return false;
+	}
+
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase
+		.from("liked_song")
+		.select("song_id")
+		.eq("account_id", accountId)
+		.is("unliked_at", null)
+		.in("song_id", [...targetSongIds]);
+
+	if (error) {
+		return false;
+	}
+
+	const likedSongIds = new Set((data ?? []).map((row) => row.song_id));
+	for (const targetSongId of targetSongIds) {
+		if (!likedSongIds.has(targetSongId)) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 async function executeEffect(
 	effect: LibraryProcessingEffect,
 	state: LibraryProcessingState,
 	change: LibraryProcessingChange,
+	jobOutcomeMetadata: JobOutcomeMetadata,
 ): Promise<LibraryProcessingState> {
 	const band = await resolveQueuePriority(effect.accountId);
 	const queuePriority = bandToNumeric(band);
@@ -48,7 +150,13 @@ async function executeEffect(
 	if (effect.kind === "ensure_enrichment_job") {
 		const countResult = await getLikedSongCount(effect.accountId);
 		const total = Result.isOk(countResult) ? countResult.value : 0;
-		const progress = makeInitialProgress(1, 0, total);
+
+		// Carry batch progression across re-ensured jobs (1 → 5 → 10 → 25 → 50)
+		const previousBatchSequence = jobOutcomeMetadata.batchSequence ?? 0;
+		const nextSequence =
+			change.kind === "enrichment_completed" ? previousBatchSequence + 1 : 0;
+		const nextBatchSize = batchSizeForSequence(nextSequence);
+		const progress = makeInitialProgress(nextBatchSize, nextSequence, total);
 
 		const result = await ensureEnrichmentJob({
 			accountId: effect.accountId,
@@ -68,7 +176,10 @@ async function executeEffect(
 	}
 
 	if (effect.kind === "ensure_match_snapshot_refresh_job") {
-		const needsTargetSongEnrichment = deriveNeedsTargetSongEnrichment(change);
+		const needsTargetSongEnrichment = await deriveNeedsTargetSongEnrichment(
+			effect.accountId,
+			change,
+		);
 
 		const result = await ensureMatchSnapshotRefreshJob({
 			accountId: effect.accountId,
@@ -113,13 +224,17 @@ export async function applyLibraryProcessingChange(
 
 	const requestMarker = new Date().toISOString();
 
-	const hasTargets = await resolveHasTargetPlaylists(change.accountId);
+	const [jobOutcomeMetadata, hasTargets] = await Promise.all([
+		loadJobOutcomeMetadata(change),
+		resolveHasTargetPlaylists(change.accountId),
+	]);
 
 	const { state: newState, effects } = reconcileLibraryProcessing({
 		state: stateResult.value,
 		change,
 		requestMarker,
 		hasTargetPlaylists: hasTargets,
+		satisfiedMarker: jobOutcomeMetadata.satisfiedMarker,
 	});
 
 	const persistResult = await persistLibraryProcessingState(newState);
@@ -135,7 +250,12 @@ export async function applyLibraryProcessingChange(
 
 	for (const effect of effects) {
 		try {
-			currentState = await executeEffect(effect, currentState, change);
+			currentState = await executeEffect(
+				effect,
+				currentState,
+				change,
+				jobOutcomeMetadata,
+			);
 		} catch (err) {
 			console.error(`[library-processing] Effect ${effect.kind} failed:`, err);
 		}

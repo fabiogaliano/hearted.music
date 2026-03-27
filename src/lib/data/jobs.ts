@@ -18,7 +18,7 @@ import {
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
-import type { Enums, Tables } from "./database.types";
+import type { Enums, Json, Tables } from "./database.types";
 
 /** Job row type */
 export type Job = Tables<"job">;
@@ -35,6 +35,43 @@ export type JobStatus = Enums<"job_status">;
 // Re-export JobProgress from SSE types (single source of truth)
 export type JobProgress = JobProgressType;
 export const JobProgressSchema = JobProgressSchemaImpl;
+
+function enrichmentProgressToJson(progress: EnrichmentChunkProgress): Json {
+	const stages: { [key: string]: Json | undefined } = {};
+
+	for (const [stageName, stageProgress] of Object.entries(progress.stages)) {
+		stages[stageName] = {
+			status: stageProgress.status,
+			succeeded: stageProgress.succeeded,
+			failed: stageProgress.failed,
+		};
+	}
+
+	return {
+		total: progress.total,
+		done: progress.done,
+		succeeded: progress.succeeded,
+		failed: progress.failed,
+		currentStage: progress.currentStage,
+		stages,
+		batchSize: progress.batchSize,
+		batchSequence: progress.batchSequence,
+	};
+}
+
+function matchSnapshotRefreshProgressToJson(
+	needsTargetSongEnrichment: boolean,
+): Json {
+	return {
+		total: 0,
+		done: 0,
+		succeeded: 0,
+		failed: 0,
+		plan: {
+			needsTargetSongEnrichment,
+		},
+	};
+}
 
 /**
  * Gets a job by its UUID.
@@ -268,7 +305,7 @@ export function createEnrichmentJob(
 				account_id: accountId,
 				type: "enrichment" as JobType,
 				status: "pending" as const,
-				progress: progress as any,
+				progress: enrichmentProgressToJson(progress),
 			})
 			.select()
 			.single(),
@@ -367,7 +404,7 @@ export async function ensureEnrichmentJob(opts: {
 				account_id: opts.accountId,
 				type: "enrichment" as JobType,
 				status: "pending" as const,
-				progress: opts.progress as any,
+				progress: enrichmentProgressToJson(opts.progress),
 				satisfies_requested_at: opts.satisfiesRequestedAt,
 				queue_priority: opts.queuePriority,
 			})
@@ -400,16 +437,6 @@ export async function ensureMatchSnapshotRefreshJob(opts: {
 	if (existing.value) return Result.ok(existing.value);
 
 	const supabase = createAdminSupabaseClient();
-	const progress = {
-		total: 0,
-		done: 0,
-		succeeded: 0,
-		failed: 0,
-		plan: {
-			shouldEnrichTargetPlaylistSongs: opts.needsTargetSongEnrichment,
-		},
-	};
-
 	const created = await fromSupabaseSingle(
 		supabase
 			.from("job")
@@ -417,7 +444,9 @@ export async function ensureMatchSnapshotRefreshJob(opts: {
 				account_id: opts.accountId,
 				type: "match_snapshot_refresh" as JobType,
 				status: "pending" as const,
-				progress: progress as any,
+				progress: matchSnapshotRefreshProgressToJson(
+					opts.needsTargetSongEnrichment,
+				),
 				satisfies_requested_at: opts.satisfiesRequestedAt,
 				queue_priority: opts.queuePriority,
 			})
