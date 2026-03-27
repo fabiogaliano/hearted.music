@@ -1,12 +1,18 @@
 import { Result } from "better-result";
 import type { Job } from "@/lib/data/jobs";
 import { updateHeartbeat } from "@/lib/data/jobs";
-import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/types";
+import {
+	EnrichmentChunkProgressSchema,
+	type EnrichmentChunkProgress,
+} from "@/lib/platform/jobs/progress/types";
 import type { ChunkResult } from "@/lib/workflows/enrichment-pipeline/orchestrator";
 import { executeWorkerChunk } from "@/lib/workflows/enrichment-pipeline/orchestrator";
-import { executeRefresh } from "@/lib/workflows/target-playlist-match-refresh/orchestrator";
-import type { TargetPlaylistRefreshPlan } from "@/lib/workflows/target-playlist-match-refresh/types";
-import type { RefreshResult } from "@/lib/workflows/target-playlist-match-refresh/types";
+import { executeMatchSnapshotRefresh } from "@/lib/workflows/match-snapshot-refresh/orchestrator";
+import {
+	MatchSnapshotRefreshPlanSchema,
+	type MatchSnapshotRefreshPlan,
+	type MatchSnapshotRefreshResult,
+} from "@/lib/workflows/match-snapshot-refresh/types";
 import { workerConfig } from "./config";
 import { log } from "./logger";
 
@@ -16,9 +22,13 @@ export interface EnrichmentExecuteResult {
 	batchSequence: number;
 	hasMoreSongs: boolean;
 	newCandidatesAvailable: boolean;
+	readyCount: number;
+	doneCount: number;
+	succeededCount: number;
+	failedCount: number;
 }
 
-export interface RefreshExecuteResult {
+export interface MatchSnapshotRefreshExecuteResult {
 	accountId: string;
 	jobId: string;
 	published: boolean;
@@ -40,7 +50,12 @@ export async function executeEnrichmentJob(
 ): Promise<EnrichmentExecuteResult> {
 	const heartbeat = startHeartbeat(job.id);
 	const accountId = job.account_id;
-	const progress = (job.progress ?? {}) as Partial<EnrichmentChunkProgress>;
+	const progressResult = EnrichmentChunkProgressSchema.partial().safeParse(
+		job.progress ?? {},
+	);
+	const progress: Partial<EnrichmentChunkProgress> = progressResult.success
+		? progressResult.data
+		: {};
 
 	log.info("job-start", {
 		jobId: job.id,
@@ -53,7 +68,7 @@ export async function executeEnrichmentJob(
 		const result: ChunkResult = await executeWorkerChunk(
 			accountId,
 			job.id,
-			progress.batchSize ?? 5,
+			progress.batchSize ?? 1,
 			progress.batchSequence ?? 0,
 		);
 
@@ -63,6 +78,10 @@ export async function executeEnrichmentJob(
 			batchSequence: progress.batchSequence ?? 0,
 			hasMoreSongs: result.hasMoreSongs,
 			newCandidatesAvailable: result.newCandidatesAvailable,
+			readyCount: result.readyCount,
+			doneCount: result.doneCount,
+			succeededCount: result.succeededCount,
+			failedCount: result.failedCount,
 		};
 	} finally {
 		heartbeat.stop();
@@ -75,18 +94,25 @@ export async function executeEnrichmentJob(
  */
 export async function executeMatchSnapshotRefreshJob(
 	job: Job,
-): Promise<RefreshExecuteResult> {
+): Promise<MatchSnapshotRefreshExecuteResult> {
 	const heartbeat = startHeartbeat(job.id);
 	const accountId = job.account_id;
-	const initialProgress = (job.progress ?? {}) as Record<string, unknown>;
-	const plan = (initialProgress.plan ?? {
-		shouldEnrichTargetPlaylistSongs: false,
-	}) as TargetPlaylistRefreshPlan;
+	const initialProgress =
+		typeof job.progress === "object" && job.progress !== null
+			? job.progress
+			: {};
+	const planValue =
+		"plan" in initialProgress ? initialProgress["plan"] : undefined;
+	const planResult = MatchSnapshotRefreshPlanSchema.safeParse(planValue);
+	const plan: MatchSnapshotRefreshPlan = planResult.success
+		? planResult.data
+		: { needsTargetSongEnrichment: false };
 
 	log.info("match-snapshot-refresh-start", { jobId: job.id, accountId });
 
 	try {
-		const result: RefreshResult = await executeRefresh(accountId, plan);
+		const result: MatchSnapshotRefreshResult =
+			await executeMatchSnapshotRefresh(accountId, plan);
 
 		log.info("match-snapshot-refresh-complete", {
 			jobId: job.id,
@@ -102,7 +128,7 @@ export async function executeMatchSnapshotRefreshJob(
 		return {
 			accountId,
 			jobId: job.id,
-			published: result.published || result.noOp,
+			published: result.published,
 			isEmpty: result.isEmpty,
 		};
 	} finally {

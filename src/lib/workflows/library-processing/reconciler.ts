@@ -10,6 +10,7 @@ export interface ReconcileInput {
 	change: LibraryProcessingChange;
 	requestMarker: string;
 	hasTargetPlaylists: boolean;
+	satisfiedMarker: string | null;
 }
 
 export interface ReconcileResult {
@@ -28,20 +29,35 @@ function advanceRequestedAt(
 	wf: LibraryProcessingWorkflowState,
 	marker: string,
 ): LibraryProcessingWorkflowState {
+	if (wf.requestedAt !== null && wf.requestedAt > marker) {
+		return wf;
+	}
+
 	return { ...wf, requestedAt: marker };
 }
 
 function settleWorkflow(
 	wf: LibraryProcessingWorkflowState,
 	satisfiedMarker: string,
+	jobId: string,
 ): LibraryProcessingWorkflowState {
-	return { ...wf, settledAt: satisfiedMarker, activeJobId: null };
+	const settledAt =
+		wf.settledAt !== null && wf.settledAt > satisfiedMarker
+			? wf.settledAt
+			: satisfiedMarker;
+
+	return {
+		...wf,
+		settledAt,
+		activeJobId: wf.activeJobId === jobId ? null : wf.activeJobId,
+	};
 }
 
 function clearActiveJob(
 	wf: LibraryProcessingWorkflowState,
+	jobId: string,
 ): LibraryProcessingWorkflowState {
-	return { ...wf, activeJobId: null };
+	return wf.activeJobId === jobId ? { ...wf, activeJobId: null } : wf;
 }
 
 export function reconcileLibraryProcessing(
@@ -97,12 +113,13 @@ export function reconcileLibraryProcessing(
 
 		case "enrichment_completed": {
 			if (change.requestSatisfied) {
-				enrichment = settleWorkflow(
-					enrichment,
-					enrichment.requestedAt ?? requestMarker,
-				);
+				// Settle at the marker the job was scheduled to satisfy, not the
+				// current requestedAt — a concurrent request may have advanced it.
+				const marker =
+					input.satisfiedMarker ?? enrichment.requestedAt ?? requestMarker;
+				enrichment = settleWorkflow(enrichment, marker, change.jobId);
 			} else {
-				enrichment = clearActiveJob(enrichment);
+				enrichment = clearActiveJob(enrichment, change.jobId);
 			}
 
 			if (change.newCandidatesAvailable && hasTargetPlaylists) {
@@ -115,20 +132,25 @@ export function reconcileLibraryProcessing(
 		}
 
 		case "enrichment_stopped": {
-			enrichment = clearActiveJob(enrichment);
+			enrichment = clearActiveJob(enrichment, change.jobId);
 			break;
 		}
 
 		case "match_snapshot_published": {
+			const marker =
+				input.satisfiedMarker ??
+				matchSnapshotRefresh.requestedAt ??
+				requestMarker;
 			matchSnapshotRefresh = settleWorkflow(
 				matchSnapshotRefresh,
-				matchSnapshotRefresh.requestedAt ?? requestMarker,
+				marker,
+				change.jobId,
 			);
 			break;
 		}
 
 		case "match_snapshot_failed": {
-			matchSnapshotRefresh = clearActiveJob(matchSnapshotRefresh);
+			matchSnapshotRefresh = clearActiveJob(matchSnapshotRefresh, change.jobId);
 			break;
 		}
 	}
@@ -140,19 +162,25 @@ export function reconcileLibraryProcessing(
 		change.kind === "match_snapshot_failed";
 
 	if (!isFailureChange) {
-		if (isStale(enrichment) && !enrichment.activeJobId) {
+		const enrichmentRequested = enrichment.requestedAt;
+		if (isStale(enrichment) && !enrichment.activeJobId && enrichmentRequested) {
 			effects.push({
 				kind: "ensure_enrichment_job",
 				accountId: input.state.accountId,
-				satisfiesRequestedAt: enrichment.requestedAt!,
+				satisfiesRequestedAt: enrichmentRequested,
 			});
 		}
 
-		if (isStale(matchSnapshotRefresh) && !matchSnapshotRefresh.activeJobId) {
+		const refreshRequested = matchSnapshotRefresh.requestedAt;
+		if (
+			isStale(matchSnapshotRefresh) &&
+			!matchSnapshotRefresh.activeJobId &&
+			refreshRequested
+		) {
 			effects.push({
 				kind: "ensure_match_snapshot_refresh_job",
 				accountId: input.state.accountId,
-				satisfiesRequestedAt: matchSnapshotRefresh.requestedAt!,
+				satisfiesRequestedAt: refreshRequested,
 			});
 		}
 	}

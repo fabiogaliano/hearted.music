@@ -40,7 +40,8 @@ export const PlaylistSyncResultSchema = z.object({
 	updated: z.number(),
 	removed: z.number(),
 	removedTargetPlaylistIds: z.array(z.string()),
-	updatedTargetPlaylistIds: z.array(z.string()),
+	updatedTargetMetadataPlaylistIds: z.array(z.string()),
+	updatedTargetProfileTextPlaylistIds: z.array(z.string()),
 	changes: PlaylistSyncChangesSchema,
 });
 export type PlaylistSyncResult = z.infer<typeof PlaylistSyncResultSchema>;
@@ -79,13 +80,22 @@ export interface SyncPlaylistsOptions {
 	onTotalDiscovered?: (total: number) => void;
 }
 
-function playlistNeedsUpdate(
+function playlistProfileTextChanged(
 	existing: Playlist,
 	spotify: SpotifyPlaylistDTO,
 ): boolean {
 	return (
 		existing.name !== spotify.name ||
-		existing.description !== spotify.description ||
+		existing.description !== spotify.description
+	);
+}
+
+function playlistNeedsUpdate(
+	existing: Playlist,
+	spotify: SpotifyPlaylistDTO,
+): boolean {
+	return (
+		playlistProfileTextChanged(existing, spotify) ||
 		(spotify.track_count !== null &&
 			existing.song_count !== spotify.track_count) ||
 		existing.image_url !== spotify.image_url
@@ -159,10 +169,21 @@ export async function syncPlaylists(
 
 	const removedTargetIds = toRemove.filter((p) => p.is_target).map((p) => p.id);
 
-	const updatedTargetIds = toUpdate
+	const updatedTargetMetadataIds = toUpdate
 		.map((sp) => existingBySpotifyId.get(sp.id))
 		.filter((p): p is Playlist => p?.is_target === true)
 		.map((p) => p.id);
+
+	const updatedTargetProfileTextIds = toUpdate
+		.filter((sp) => {
+			const existing = existingBySpotifyId.get(sp.id);
+			return (
+				existing?.is_target === true && playlistProfileTextChanged(existing, sp)
+			);
+		})
+		.map((sp) => existingBySpotifyId.get(sp.id))
+		.filter((playlist): playlist is Playlist => playlist !== undefined)
+		.map((playlist) => playlist.id);
 
 	for (const playlist of toRemove) {
 		const deleteResult = await playlists.deletePlaylist(playlist.id);
@@ -177,7 +198,8 @@ export async function syncPlaylists(
 		updated: toUpdate.length,
 		removed: toRemove.length,
 		removedTargetPlaylistIds: removedTargetIds,
-		updatedTargetPlaylistIds: updatedTargetIds,
+		updatedTargetMetadataPlaylistIds: updatedTargetMetadataIds,
+		updatedTargetProfileTextPlaylistIds: updatedTargetProfileTextIds,
 		changes: {
 			created: toCreate.map((p: SpotifyPlaylistDTO) => ({
 				id: p.id,

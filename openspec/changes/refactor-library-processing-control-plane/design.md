@@ -6,7 +6,7 @@ Library-processing follow-on decisions are currently split across multiple bound
 - `src/routes/api/extension/sync.tsx` classifies several follow-on cases inline and directly calls the same trigger helpers
 - `src/lib/workflows/enrichment-pipeline/trigger.ts` still encodes refresh-after-drain policy
 - `src/worker/poll.ts`, `src/worker/chain.ts`, and `src/worker/execute.ts` still own enrichment chaining and refresh rerun behavior
-- `src/lib/workflows/target-playlist-match-refresh/trigger.ts` and `src/lib/data/jobs.ts` still coalesce refresh work through `rerunRequested` in `job.progress`
+- `src/lib/workflows/match-snapshot-refresh/trigger.ts` and `src/lib/data/jobs.ts` still coalesce refresh work through `rerunRequested` in `job.progress`
 - `src/lib/domains/library/accounts/preferences-queries.ts` still stores orchestration pointers in `user_preferences`
 - `src/lib/workflows/enrichment-pipeline/batch.ts` still loads all processed song IDs into application memory and builds `.not("song_id", "in", ...)` exclusion lists that can exceed PostgREST URL limits
 
@@ -107,14 +107,14 @@ Those helpers will set the job request marker and queue priority, and the refres
 That removes policy ownership from:
 
 - `src/lib/workflows/enrichment-pipeline/trigger.ts`
-- `src/lib/workflows/target-playlist-match-refresh/trigger.ts`
+- `src/lib/workflows/match-snapshot-refresh/trigger.ts`
 - any refresh-after-drain or rerun-coalescing helper logic
 
 The alternative was to keep policy-shaped trigger helpers and try to route them through the new state. That would blur the control-plane boundary and make it harder to reason about why a job exists.
 
 ### Decision: Refresh becomes single-pass; repeated passes are scheduler-owned, not worker-owned
 
-`src/lib/workflows/target-playlist-match-refresh/orchestrator.ts` should keep owning snapshot publication, but each claimed `match_snapshot_refresh` job should execute exactly one pass. `src/worker/execute.ts` should stop looping on `rerunRequested`, and `src/lib/data/jobs.ts` should stop persisting rerun orchestration in `job.progress`.
+`src/lib/workflows/match-snapshot-refresh/orchestrator.ts` should keep owning snapshot publication, but each claimed `match_snapshot_refresh` job should execute exactly one pass. `src/worker/execute.ts` should stop looping on `rerunRequested`, and `src/lib/data/jobs.ts` should stop persisting rerun orchestration in `job.progress`.
 
 If a new change arrives while refresh is running, the control plane will leave `matchSnapshotRefresh` stale and ensure another job after the current job settles. That keeps all follow-on scheduling in one place.
 
@@ -135,7 +135,7 @@ The alternative was to keep inline worker chaining and merely persist more metad
 
 ### Decision: Replace `batch.ts` app-side exclusion lists with two DB-side selectors/RPCs
 
-`src/lib/workflows/enrichment-pipeline/batch.ts` and `src/lib/workflows/target-playlist-match-refresh/orchestrator.ts` currently depend on application-side exclusion and large ID lists.
+`src/lib/workflows/enrichment-pipeline/batch.ts` and `src/lib/workflows/match-snapshot-refresh/orchestrator.ts` currently depend on application-side exclusion and large ID lists.
 
 The refactor should add two DB-native selectors:
 

@@ -1,4 +1,5 @@
 import { Result } from "better-result";
+import type { Json } from "@/lib/data/database.types";
 import type { Job } from "@/lib/data/jobs";
 import {
 	claimLibraryProcessingJob,
@@ -28,7 +29,7 @@ export function getActiveJobCount() {
 }
 
 async function processEnrichmentJob(job: Job): Promise<void> {
-	const startedAt = new Date().toISOString();
+	const startedAt = job.started_at ?? new Date().toISOString();
 	try {
 		const result = await executeEnrichmentJob(job);
 
@@ -48,6 +49,10 @@ async function processEnrichmentJob(job: Job): Promise<void> {
 			requestSatisfied,
 			newCandidatesAvailable: result.newCandidatesAvailable,
 			batchSequence: result.batchSequence,
+			readyCount: result.readyCount,
+			doneCount: result.doneCount,
+			succeededCount: result.succeededCount,
+			failedCount: result.failedCount,
 		});
 
 		try {
@@ -92,7 +97,7 @@ async function processEnrichmentJob(job: Job): Promise<void> {
 }
 
 async function processMatchSnapshotRefreshJob(job: Job): Promise<void> {
-	const startedAt = new Date().toISOString();
+	const startedAt = job.started_at ?? new Date().toISOString();
 	try {
 		const result = await executeMatchSnapshotRefreshJob(job);
 
@@ -159,7 +164,7 @@ async function recordMeasurement(
 	workflow: "enrichment" | "match_snapshot_refresh",
 	startedAt: string,
 	outcome: string,
-	details?: Record<string, unknown>,
+	details?: Record<string, Json>,
 ): Promise<void> {
 	try {
 		const result = await recordExecutionMeasurement({
@@ -246,10 +251,7 @@ export async function startPolling(): Promise<void> {
 
 		(async () => {
 			try {
-				if (
-					job.type === "match_snapshot_refresh" ||
-					job.type === "target_playlist_match_refresh"
-				) {
+				if (job.type === "match_snapshot_refresh") {
 					await processMatchSnapshotRefreshJob(job);
 				} else {
 					await processEnrichmentJob(job);

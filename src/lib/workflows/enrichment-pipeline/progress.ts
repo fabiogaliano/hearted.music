@@ -9,9 +9,13 @@ export const ALL_STAGE_NAMES: EnrichmentStageName[] = [
 	"genre_tagging",
 	"song_analysis",
 	"song_embedding",
-	"playlist_profiling",
-	"matching",
 ];
+
+const BATCH_SIZES = [1, 5, 10, 25, 50];
+
+export function batchSizeForSequence(sequence: number): number {
+	return BATCH_SIZES[Math.min(sequence, BATCH_SIZES.length - 1)];
+}
 
 export function makeInitialProgress(
 	batchSize: number,

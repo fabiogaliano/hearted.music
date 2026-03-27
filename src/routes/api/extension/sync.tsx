@@ -210,9 +210,8 @@ export const Route = createFileRoute("/api/extension/sync")({
 					}
 				}
 
-				const likedSongs = payload.likedSongs as unknown as SpotifyTrackDTO[];
-				const extensionPlaylists =
-					payload.playlists as unknown as SpotifyPlaylistDTO[];
+				const likedSongs: SpotifyTrackDTO[] = payload.likedSongs;
+				const extensionPlaylists: SpotifyPlaylistDTO[] = payload.playlists;
 				const incomingPlaylistTracks = payload.playlistTracks ?? [];
 
 				// Create job records for SSE progress tracking
@@ -378,8 +377,10 @@ export const Route = createFileRoute("/api/extension/sync")({
 						removed: playlistResult.value.removed,
 						removedTargetPlaylistIds:
 							playlistResult.value.removedTargetPlaylistIds,
-						updatedTargetPlaylistIds:
-							playlistResult.value.updatedTargetPlaylistIds,
+						updatedTargetMetadataPlaylistIds:
+							playlistResult.value.updatedTargetMetadataPlaylistIds,
+						updatedTargetProfileTextPlaylistIds:
+							playlistResult.value.updatedTargetProfileTextPlaylistIds,
 					};
 				} else {
 					emitItem(phaseJobIds.playlists, {
@@ -411,7 +412,7 @@ export const Route = createFileRoute("/api/extension/sync")({
 
 						const trackResult = await syncPlaylistTracksFromData(
 							dbPlaylist,
-							entry.tracks as unknown as SpotifyTrackDTO[],
+							entry.tracks,
 						);
 
 						if (Result.isOk(trackResult)) {
@@ -466,7 +467,7 @@ export const Route = createFileRoute("/api/extension/sync")({
 				const playlistSyncResult = results.playlists as
 					| {
 							removedTargetPlaylistIds?: string[];
-							updatedTargetPlaylistIds?: string[];
+							updatedTargetProfileTextPlaylistIds?: string[];
 					  }
 					| undefined;
 
@@ -482,27 +483,31 @@ export const Route = createFileRoute("/api/extension/sync")({
 
 				const removedTargets =
 					playlistSyncResult?.removedTargetPlaylistIds ?? [];
-				const updatedTargets =
-					playlistSyncResult?.updatedTargetPlaylistIds ?? [];
+				const updatedProfileTextTargets =
+					playlistSyncResult?.updatedTargetProfileTextPlaylistIds ?? [];
 
 				const trackMembershipChanged =
 					(playlistTracksResult?.playlistsChanged ?? 0) > 0 &&
 					changedPlaylistIds.some((id) => currentTargetIds.has(id));
 
 				const profileTextChanged =
-					updatedTargets.length > 0 &&
-					updatedTargets.some((id) => currentTargetIds.has(id));
+					updatedProfileTextTargets.length > 0 &&
+					updatedProfileTextTargets.some((id) => currentTargetIds.has(id));
+
+				const likedSongsAdded = (likedSongsResult?.added ?? 0) > 0;
+				const likedSongsRemoved = (likedSongsResult?.removed ?? 0) > 0;
+				const targetPlaylistsRemoved = removedTargets.length > 0;
 
 				await applyLibraryProcessingChange(
 					SyncChanges.librarySynced(accountId, {
 						likedSongs: {
-							added: (likedSongsResult?.added ?? 0) > 0,
-							removed: (likedSongsResult?.removed ?? 0) > 0,
+							added: likedSongsAdded,
+							removed: likedSongsRemoved,
 						},
 						targetPlaylists: {
 							trackMembershipChanged,
 							profileTextChanged,
-							removed: removedTargets.length > 0,
+							removed: targetPlaylistsRemoved,
 						},
 					}),
 				);

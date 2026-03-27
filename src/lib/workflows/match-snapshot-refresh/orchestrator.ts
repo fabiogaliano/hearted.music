@@ -1,5 +1,5 @@
 /**
- * Target-playlist match refresh orchestrator.
+ * matchSnapshotRefresh orchestrator.
  *
  * The sole owner of match_context / match_result publication.
  * Re-reads current DB state on each pass (plan is a hint only).
@@ -24,17 +24,20 @@ import { loadExclusionSet } from "@/lib/workflows/enrichment-pipeline/stages/mat
 import { rerankMatches } from "@/lib/workflows/enrichment-pipeline/reranking";
 import { runLightweightEnrichment } from "@/lib/workflows/playlist-sync/lightweight-enrichment";
 import { loadTargetPlaylistProfiles } from "./profiles";
-import type { RefreshResult, TargetPlaylistRefreshPlan } from "./types";
+import type {
+	MatchSnapshotRefreshPlan,
+	MatchSnapshotRefreshResult,
+} from "./types";
 import { writeEmptySnapshot, writeMatchSnapshot } from "./write-match-snapshot";
 
 /**
  * Executes a single refresh pass against current DB state.
  * The plan is used only for optional work decisions (e.g. target-song enrichment).
  */
-export async function executeRefresh(
+export async function executeMatchSnapshotRefresh(
 	accountId: string,
-	plan: TargetPlaylistRefreshPlan,
-): Promise<RefreshResult> {
+	plan: MatchSnapshotRefreshPlan,
+): Promise<MatchSnapshotRefreshResult> {
 	let embeddingService: EmbeddingService;
 	try {
 		embeddingService = new EmbeddingService();
@@ -64,7 +67,7 @@ export async function executeRefresh(
 	);
 
 	// Optional: run lightweight enrichment for target-playlist-only songs
-	if (plan.shouldEnrichTargetPlaylistSongs) {
+	if (plan.needsTargetSongEnrichment) {
 		try {
 			await runLightweightEnrichment({ accountId });
 		} catch (err) {
@@ -213,7 +216,11 @@ export async function executeRefresh(
 				playlist_id: r.playlistId,
 				score: r.score,
 				rank: r.rank,
-				factors: r.factors as unknown as Json,
+				factors: {
+					embedding: r.factors.embedding,
+					audio: r.factors.audio,
+					genre: r.factors.genre,
+				},
 			});
 		}
 	}

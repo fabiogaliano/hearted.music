@@ -16,7 +16,7 @@ export const dashboardStatsKey = (accountId: string) =>
 	["dashboard", "stats", accountId] as const;
 
 function hasActiveJob(data: ActiveJobs | undefined): boolean {
-	return !!(data?.enrichment || data?.targetPlaylistMatchRefresh);
+	return !!(data?.enrichment || data?.matchSnapshotRefresh);
 }
 
 export function activeJobsQueryOptions(accountId: string, enabled = true) {
@@ -34,7 +34,7 @@ export function useActiveJobs(accountId: string, enabled = true) {
 
 	return {
 		isEnrichmentRunning: !!data?.enrichment,
-		isMatchRefreshRunning: !!data?.targetPlaylistMatchRefresh,
+		isMatchSnapshotRefreshRunning: !!data?.matchSnapshotRefresh,
 		enrichmentProgress: data?.enrichment?.progress ?? null,
 	};
 }
@@ -65,7 +65,7 @@ export function useActiveJobCompletionEffects(
 			});
 		}
 
-		if (prev.targetPlaylistMatchRefresh && !data.targetPlaylistMatchRefresh) {
+		if (prev.matchSnapshotRefresh && !data.matchSnapshotRefresh) {
 			queryClient.invalidateQueries({
 				queryKey: matchingKeys.session(accountId),
 			});

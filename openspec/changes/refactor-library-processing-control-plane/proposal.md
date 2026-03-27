@@ -39,7 +39,7 @@ Library-processing follow-on scheduling is currently split across onboarding sav
 
 ## Impact
 
-- Affected code: `src/lib/workflows/library-processing/*` (new), `src/lib/workflows/enrichment-pipeline/*`, `src/lib/workflows/target-playlist-match-refresh/*`, `src/routes/api/extension/sync.tsx`, `src/lib/server/onboarding.functions.ts`, `src/lib/data/jobs.ts`, `src/lib/data/job-failures.ts`, `src/lib/platform/jobs/progress/types.ts`, `src/lib/domains/library/accounts/preferences-queries.ts`, `src/lib/server/jobs.functions.ts`, `src/worker/*`
+- Affected code: `src/lib/workflows/library-processing/*` (new), `src/lib/workflows/enrichment-pipeline/*`, `src/lib/workflows/match-snapshot-refresh/*`, `src/routes/api/extension/sync.tsx`, `src/lib/server/onboarding.functions.ts`, `src/lib/data/jobs.ts`, `src/lib/data/job-failures.ts`, `src/lib/platform/jobs/progress/types.ts`, `src/lib/domains/library/accounts/preferences-queries.ts`, `src/lib/server/jobs.functions.ts`, `src/worker/*`
 - Affected data model: new `library_processing_state` table, new job request-marker column, new `queue_priority` column, new `match_snapshot_refresh` job type/helpers, DB-side selector RPCs, removal of old orchestration pointer fields from `user_preferences`, and follow-up execution-measurement storage
 - Affected systems: Supabase migrations and RPCs, queue claim ordering, onboarding/save flows, extension sync follow-on scheduling, worker settlement paths, background progress read models, and match snapshot publication
 - Migration/tooling impact: forward-only migrations created with `supabase migration new <name>` and validated as one coordinated hard-cut release

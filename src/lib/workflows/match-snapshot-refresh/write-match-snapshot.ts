@@ -14,7 +14,7 @@ import type {
 	MatchingPlaylistProfile,
 	MatchingSong,
 } from "@/lib/domains/taste/song-matching/types";
-import type { RefreshResult } from "./types";
+import type { MatchSnapshotRefreshResult } from "./types";
 
 interface MatchResultEntry {
 	song_id: string;
@@ -22,6 +22,16 @@ interface MatchResultEntry {
 	score: number;
 	rank: number | null;
 	factors: Json;
+}
+
+function toResultsJson(entries: MatchResultEntry[]): Json {
+	return entries.map((entry) => ({
+		song_id: entry.song_id,
+		playlist_id: entry.playlist_id,
+		score: entry.score,
+		rank: entry.rank,
+		factors: entry.factors,
+	}));
 }
 
 /**
@@ -35,7 +45,7 @@ export async function writeMatchSnapshot(opts: {
 	results: MatchResultEntry[];
 	matchedSongIds: string[];
 	exclusionSet?: Set<string>;
-}): Promise<RefreshResult> {
+}): Promise<MatchSnapshotRefreshResult> {
 	const { accountId, songs, profiles, results, matchedSongIds } = opts;
 
 	// Compute context metadata for dedup
@@ -48,21 +58,18 @@ export async function writeMatchSnapshot(opts: {
 
 	const supabase = createAdminSupabaseClient();
 
-	const { data, error } = await (supabase.rpc as any)(
-		"publish_match_snapshot",
-		{
-			p_account_id: accountId,
-			p_algorithm_version: MATCHING_ALGO_VERSION,
-			p_config_hash: contextMeta.configHash,
-			p_playlist_set_hash: contextMeta.playlistSetHash,
-			p_candidate_set_hash: contextMeta.candidateSetHash,
-			p_context_hash: contextMeta.contextHash,
-			p_playlist_count: profiles.length,
-			p_song_count: songs.length,
-			p_results: JSON.stringify(results),
-		},
-	);
-	const contextId = (data as string | null) ?? null;
+	const { data, error } = await supabase.rpc("publish_match_snapshot", {
+		p_account_id: accountId,
+		p_algorithm_version: MATCHING_ALGO_VERSION,
+		p_config_hash: contextMeta.configHash,
+		p_playlist_set_hash: contextMeta.playlistSetHash,
+		p_candidate_set_hash: contextMeta.candidateSetHash,
+		p_context_hash: contextMeta.contextHash,
+		p_playlist_count: profiles.length,
+		p_song_count: songs.length,
+		p_results: toResultsJson(results),
+	});
+	const contextId = data ?? null;
 
 	if (error) {
 		throw new Error(
@@ -105,25 +112,22 @@ export async function writeMatchSnapshot(opts: {
  */
 export async function writeEmptySnapshot(
 	accountId: string,
-): Promise<RefreshResult> {
+): Promise<MatchSnapshotRefreshResult> {
 	const supabase = createAdminSupabaseClient();
 	const emptyHash = "empty_target_playlist_snapshot";
 
-	const { data, error } = await (supabase.rpc as any)(
-		"publish_match_snapshot",
-		{
-			p_account_id: accountId,
-			p_algorithm_version: MATCHING_ALGO_VERSION,
-			p_config_hash: "empty",
-			p_playlist_set_hash: "empty",
-			p_candidate_set_hash: "empty",
-			p_context_hash: emptyHash,
-			p_playlist_count: 0,
-			p_song_count: 0,
-			p_results: "[]",
-		},
-	);
-	const contextId = (data as string | null) ?? null;
+	const { data, error } = await supabase.rpc("publish_match_snapshot", {
+		p_account_id: accountId,
+		p_algorithm_version: MATCHING_ALGO_VERSION,
+		p_config_hash: "empty",
+		p_playlist_set_hash: "empty",
+		p_candidate_set_hash: "empty",
+		p_context_hash: emptyHash,
+		p_playlist_count: 0,
+		p_song_count: 0,
+		p_results: [],
+	});
+	const contextId = data ?? null;
 
 	if (error) {
 		throw new Error(

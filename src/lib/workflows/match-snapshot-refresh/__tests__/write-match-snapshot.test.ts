@@ -149,7 +149,7 @@ describe("writeEmptySnapshot", () => {
 				p_context_hash: "empty_target_playlist_snapshot",
 				p_playlist_count: 0,
 				p_song_count: 0,
-				p_results: "[]",
+				p_results: [],
 			}),
 		);
 	});
