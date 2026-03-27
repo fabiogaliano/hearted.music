@@ -254,12 +254,12 @@ async function performSync(): Promise<SyncResult> {
 		const playlists = await fetchUserPlaylists(
 			token,
 			userUri,
-			async (fetched) => {
+			async (fetched, total) => {
 				await setSyncState({
 					phase: "playlists",
 					fetched,
-					total: 0,
-					playlists: { fetched, total: 0 },
+					total,
+					playlists: { fetched, total },
 				});
 			},
 		);

@@ -38,6 +38,7 @@ async function processEnrichmentJob(job: Job): Promise<void> {
 				jobId: job.id,
 				error: completedResult.error.message,
 			});
+			return;
 		}
 		log.info("job-complete", { jobId: job.id, accountId: job.account_id });
 
@@ -173,6 +174,7 @@ async function markJobFailedSafe(job: Job, message: string): Promise<void> {
 }
 
 export async function startPolling(): Promise<void> {
+	shouldPoll = true;
 	log.info("polling-start", {
 		concurrency: workerConfig.concurrency,
 		intervalMs: workerConfig.pollIntervalMs,

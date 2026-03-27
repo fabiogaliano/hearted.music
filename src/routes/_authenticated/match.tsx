@@ -217,7 +217,9 @@ function MatchingPageContent({
 		songsMatched: sessionStats.songsWithAdditions.size,
 		totalAdditions: sessionStats.addedCount,
 		skippedCount:
-			offset - sessionStats.addedCount - sessionStats.dismissedCount,
+			offset -
+			sessionStats.songsWithAdditions.size -
+			sessionStats.dismissedCount,
 	};
 
 	const handleAdd = async (playlistId: string) => {

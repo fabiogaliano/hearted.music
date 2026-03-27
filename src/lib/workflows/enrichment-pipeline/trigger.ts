@@ -20,7 +20,7 @@ export async function requestEnrichment(
 
 	const result = await getOrCreateEnrichmentJob(
 		accountId,
-		makeInitialProgress(1, 0, 0),
+		makeInitialProgress(1, 0, songCount.value),
 	);
 	if (Result.isError(result)) {
 		console.error("[enrichment] Failed to create job:", result.error.message);

@@ -472,7 +472,7 @@ export async function getOrCreateTargetPlaylistMatchRefreshJob(
 			nextPlan?.shouldEnrichTargetPlaylistSongs === true ||
 			currentPlan?.shouldEnrichTargetPlaylistSongs === true;
 
-		await updateJobProgress(job.id, {
+		const updateResult = await updateJobProgress(job.id, {
 			...currentProgress,
 			plan: nextPlan
 				? {
@@ -483,6 +483,7 @@ export async function getOrCreateTargetPlaylistMatchRefreshJob(
 				: currentPlan,
 			rerunRequested: true,
 		} as any);
+		if (Result.isError(updateResult)) return updateResult;
 		return Result.ok(job);
 	}
 

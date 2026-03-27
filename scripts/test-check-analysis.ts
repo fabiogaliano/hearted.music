@@ -24,14 +24,14 @@ console.log(`Batch song IDs: ${songIds.join(", ")}`);
 
 const { data: analyses, error } = await supabase
 	.from("song_analysis")
-	.select("song_id, created_at, llm_model")
+	.select("song_id, created_at, model")
 	.in("song_id", songIds);
 
 console.log(`\nAnalysis rows found: ${analyses?.length ?? 0}`);
 if (error) console.error("Query error:", error);
 
 for (const a of analyses ?? []) {
-	console.log(`  ${a.song_id} — model: ${a.llm_model}, created: ${a.created_at}`);
+	console.log(`  ${a.song_id} — model: ${a.model}, created: ${a.created_at}`);
 }
 
 const missing = songIds.filter(id => !analyses?.some(a => a.song_id === id));

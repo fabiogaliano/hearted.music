@@ -151,6 +151,20 @@ export class MatchingService {
 
 			if (eligibleProfiles.length === 0) {
 				excluded.push(song.id);
+				progress.done++;
+				if (jobId) {
+					emitItem(jobId, {
+						itemId: song.id,
+						itemKind: "match",
+						status: "succeeded",
+						label: `${songLabel} (excluded)`,
+						index: i,
+					});
+					if (progress.done % 10 === 0 || progress.done === songs.length) {
+						emitProgress(jobId, progress);
+					}
+				}
+				onProgress?.(progress);
 				continue;
 			}
 

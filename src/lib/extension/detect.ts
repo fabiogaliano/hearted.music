@@ -59,23 +59,19 @@ export async function sendExtensionCommand<T = unknown>(
 		return null;
 	}
 	const runtime = chrome.runtime;
-	try {
-		return new Promise<T | null>((resolve) => {
-			runtime.sendMessage(EXTENSION_ID, message, (response) => {
-				if (runtime.lastError) {
-					console.warn(
-						"[hearted.] Extension command error:",
-						runtime.lastError.message,
-					);
-					resolve(null);
-					return;
-				}
-				resolve((response ?? null) as T | null);
-			});
+	return new Promise<T | null>((resolve) => {
+		runtime.sendMessage(EXTENSION_ID, message, (response) => {
+			if (runtime.lastError) {
+				console.warn(
+					"[hearted.] Extension command error:",
+					runtime.lastError.message,
+				);
+				resolve(null);
+				return;
+			}
+			resolve((response ?? null) as T | null);
 		});
-	} catch {
-		return null;
-	}
+	}).catch(() => null);
 }
 
 export async function getSpotifyConnectionStatus(): Promise<boolean> {
@@ -87,26 +83,22 @@ export async function getSpotifyConnectionStatus(): Promise<boolean> {
 		return false;
 	}
 	const runtime = chrome.runtime;
-	try {
-		return new Promise((resolve) => {
-			runtime.sendMessage(
-				EXTENSION_ID,
-				{ type: "SPOTIFY_STATUS" },
-				(response) => {
-					if (runtime.lastError) {
-						resolve(false);
-						return;
-					}
-					resolve(
-						response?.type === "SPOTIFY_STATUS" &&
-							(response as unknown as { hasToken: boolean }).hasToken === true,
-					);
-				},
-			);
-		});
-	} catch {
-		return false;
-	}
+	return new Promise<boolean>((resolve) => {
+		runtime.sendMessage(
+			EXTENSION_ID,
+			{ type: "SPOTIFY_STATUS" },
+			(response) => {
+				if (runtime.lastError) {
+					resolve(false);
+					return;
+				}
+				resolve(
+					response?.type === "SPOTIFY_STATUS" &&
+						(response as unknown as { hasToken: boolean }).hasToken === true,
+				);
+			},
+		);
+	}).catch(() => false);
 }
 
 export async function getExtensionStatus(): Promise<ExtensionStatusResponse | null> {
@@ -125,23 +117,19 @@ export async function connectExtension(
 		return false;
 	}
 	const runtime = chrome.runtime;
-	try {
-		return new Promise((resolve) => {
-			runtime.sendMessage(
-				EXTENSION_ID,
-				{ type: "CONNECT", token, backendUrl },
-				(response) => {
-					if (runtime.lastError) {
-						resolve(false);
-						return;
-					}
-					resolve(response?.type === "CONNECTED");
-				},
-			);
-		});
-	} catch {
-		return false;
-	}
+	return new Promise<boolean>((resolve) => {
+		runtime.sendMessage(
+			EXTENSION_ID,
+			{ type: "CONNECT", token, backendUrl },
+			(response) => {
+				if (runtime.lastError) {
+					resolve(false);
+					return;
+				}
+				resolve(response?.type === "CONNECTED");
+			},
+		);
+	}).catch(() => false);
 }
 
 export function triggerExtensionSync(): void {
@@ -163,7 +151,7 @@ export function triggerExtensionSync(): void {
 			}
 		});
 	} catch {
-		// best-effort fire-and-forget
+		// fire-and-forget — sync call doesn't return a promise
 	}
 }
 
@@ -192,26 +180,21 @@ export async function isExtensionInstalled(): Promise<boolean> {
 		return false;
 	}
 	const runtime = chrome.runtime;
-	try {
-		return new Promise((resolve) => {
-			runtime.sendMessage(EXTENSION_ID, { type: "PING" }, (response) => {
-				if (runtime.lastError) {
-					console.warn(
-						"[hearted.detect] PING failed:",
-						runtime.lastError.message,
-					);
-					resolve(false);
-					return;
-				}
-				const detected = response?.type === "PONG";
-				if (!detected) {
-					console.warn("[hearted.detect] Unexpected PING response:", response);
-				}
-				resolve(detected);
-			});
+	return new Promise<boolean>((resolve) => {
+		runtime.sendMessage(EXTENSION_ID, { type: "PING" }, (response) => {
+			if (runtime.lastError) {
+				console.warn(
+					"[hearted.detect] PING failed:",
+					runtime.lastError.message,
+				);
+				resolve(false);
+				return;
+			}
+			const detected = response?.type === "PONG";
+			if (!detected) {
+				console.warn("[hearted.detect] Unexpected PING response:", response);
+			}
+			resolve(detected);
 		});
-	} catch (err) {
-		console.warn("[hearted.detect] sendMessage threw:", err);
-		return false;
-	}
+	}).catch(() => false);
 }
