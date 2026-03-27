@@ -98,7 +98,7 @@ async function runStage(
 		return await fn();
 	} catch (error) {
 		console.error(`[worker-chunk] Stage ${stageName} threw:`, error);
-		return { total: 0, succeeded: 0, failed: 0 };
+		return { total: 1, succeeded: 0, failed: 1 };
 	}
 }
 

@@ -112,10 +112,11 @@ export async function executeTargetPlaylistMatchRefreshJob(
 				accountId,
 				pass: pass + 1,
 			});
-			await updateJobProgress(job.id, {
+			const clearResult = await updateJobProgress(job.id, {
 				...freshProgress,
 				rerunRequested: false,
 			} as any);
+			if (Result.isError(clearResult)) break;
 
 			const latestPlan = (freshProgress.plan ??
 				plan) as TargetPlaylistRefreshPlan;

@@ -110,6 +110,7 @@ async function main() {
 	if (!draining) {
 		log.error("poll-loop-exited-unexpectedly");
 		setUnhealthy();
+		process.exit(1);
 	}
 }
 

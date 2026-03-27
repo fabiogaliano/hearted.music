@@ -47,6 +47,7 @@ export function MatchingSession({
 				>
 					<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
 						<SongSection
+							songKey={currentSong.id}
 							song={{
 								name: currentSong.name,
 								album: currentSong.album ?? "",
