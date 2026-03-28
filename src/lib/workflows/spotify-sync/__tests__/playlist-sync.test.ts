@@ -72,6 +72,84 @@ describe("syncPlaylists", () => {
 		}
 	});
 
+	it("upserts (not duplicates) an acknowledged provisional playlist row when sync sees it from Spotify", async () => {
+		const acknowledgedRow = makePlaylist({
+			spotify_id: "ack-new-1",
+			name: "Created via ack",
+			description: null,
+			image_url: null,
+			song_count: 0,
+			is_target: false,
+		});
+		mockGetPlaylists.mockResolvedValue(Result.ok([acknowledgedRow]));
+
+		const result = await syncPlaylists("acct-1", [
+			makeSpotifyPlaylist({
+				id: "ack-new-1",
+				name: "Created via ack",
+				description: "Full description from Spotify",
+				image_url: "https://img.example/enriched.jpg",
+				track_count: 5,
+			}),
+		]);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.created).toBe(0);
+			expect(result.value.updated).toBe(1);
+			expect(mockUpsertPlaylists).toHaveBeenCalledWith("acct-1", [
+				expect.objectContaining({
+					spotify_id: "ack-new-1",
+					name: "Created via ack",
+					description: "Full description from Spotify",
+					image_url: "https://img.example/enriched.jpg",
+					song_count: 5,
+				}),
+			]);
+		}
+	});
+
+	it("does not recreate an acknowledged-deleted playlist absent from Spotify", async () => {
+		mockGetPlaylists.mockResolvedValue(Result.ok([]));
+
+		const result = await syncPlaylists("acct-1", []);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.created).toBe(0);
+			expect(result.value.removed).toBe(0);
+		}
+		expect(mockUpsertPlaylists).not.toHaveBeenCalled();
+		expect(mockDeletePlaylist).not.toHaveBeenCalled();
+	});
+
+	it("preserves is_target on acknowledged row during sync enrichment", async () => {
+		const acknowledgedRow = makePlaylist({
+			spotify_id: "ack-target-1",
+			name: "Target Playlist",
+			is_target: true,
+			image_url: null,
+			song_count: 0,
+		});
+		mockGetPlaylists.mockResolvedValue(Result.ok([acknowledgedRow]));
+
+		await syncPlaylists("acct-1", [
+			makeSpotifyPlaylist({
+				id: "ack-target-1",
+				name: "Target Playlist",
+				image_url: "https://img.example/new.jpg",
+				track_count: 12,
+			}),
+		]);
+
+		expect(mockUpsertPlaylists).toHaveBeenCalledWith("acct-1", [
+			expect.objectContaining({
+				spotify_id: "ack-target-1",
+				is_target: true,
+			}),
+		]);
+	});
+
 	it("does not flag image-only target updates as profile text changes", async () => {
 		mockGetPlaylists.mockResolvedValue(Result.ok([makePlaylist()]));
 

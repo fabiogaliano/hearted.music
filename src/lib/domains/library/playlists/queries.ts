@@ -200,6 +200,27 @@ export function setPlaylistTarget(
 	);
 }
 
+/**
+ * Updates only name/description for a playlist identified by (account_id, spotify_id).
+ * Preserves all other fields (is_target, song_count, image_url, etc.).
+ */
+export function updatePlaylistMetadata(
+	accountId: string,
+	spotifyId: string,
+	metadata: { name?: string; description?: string },
+): Promise<Result<Playlist, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("playlist")
+			.update(metadata)
+			.eq("account_id", accountId)
+			.eq("spotify_id", spotifyId)
+			.select()
+			.single(),
+	);
+}
+
 export function updatePlaylistSongCount(
 	playlistId: string,
 	songCount: number,
