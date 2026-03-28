@@ -72,7 +72,11 @@ export async function hasMoreSongsNeedingProcessing(
 		{ p_account_id: accountId, p_limit: 1 },
 	);
 
-	if (error) return false;
+	if (error) {
+		throw new Error(
+			`Failed to probe songs needing processing: ${error.message}`,
+		);
+	}
 	return (data ?? []).length > 0;
 }
 

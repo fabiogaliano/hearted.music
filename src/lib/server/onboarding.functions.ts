@@ -283,8 +283,6 @@ export const savePlaylistTargets = createServerFn({ method: "POST" })
 			throw new OnboardingError("get_playlists", playlistsResult.error);
 		}
 
-		const nextTargetIds = new Set(data.playlistIds);
-
 		const updates = playlistsResult.value.map((playlist) => {
 			const shouldBeTarget = data.playlistIds.includes(playlist.id);
 			return setPlaylistTarget(playlist.id, shouldBeTarget);
@@ -297,11 +295,9 @@ export const savePlaylistTargets = createServerFn({ method: "POST" })
 			throw new OnboardingError("update_playlist_targets", firstError.error);
 		}
 
-		if (nextTargetIds.size > 0) {
-			await applyLibraryProcessingChange(
-				OnboardingChanges.targetSelectionConfirmed(session.accountId),
-			);
-		}
+		await applyLibraryProcessingChange(
+			OnboardingChanges.targetSelectionConfirmed(session.accountId),
+		);
 
 		return { success: true };
 	});

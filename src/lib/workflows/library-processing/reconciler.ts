@@ -70,7 +70,9 @@ export function reconcileLibraryProcessing(
 
 	switch (change.kind) {
 		case "onboarding_target_selection_confirmed": {
-			enrichment = advanceRequestedAt(enrichment, requestMarker);
+			if (hasTargetPlaylists) {
+				enrichment = advanceRequestedAt(enrichment, requestMarker);
+			}
 			matchSnapshotRefresh = advanceRequestedAt(
 				matchSnapshotRefresh,
 				requestMarker,

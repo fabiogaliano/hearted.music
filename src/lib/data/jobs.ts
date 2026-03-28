@@ -392,33 +392,36 @@ export async function ensureEnrichmentJob(opts: {
 	queuePriority: number;
 	progress: EnrichmentChunkProgress;
 }): Promise<Result<Job, DbError>> {
-	const existing = await getActiveEnrichmentJob(opts.accountId);
-	if (Result.isError(existing)) return existing;
-	if (existing.value) return Result.ok(existing.value);
+	let lastError: Result<Job, DbError> | undefined;
 
-	const supabase = createAdminSupabaseClient();
-	const created = await fromSupabaseSingle(
-		supabase
-			.from("job")
-			.insert({
-				account_id: opts.accountId,
-				type: "enrichment" as JobType,
-				status: "pending" as const,
-				progress: enrichmentProgressToJson(opts.progress),
-				satisfies_requested_at: opts.satisfiesRequestedAt,
-				queue_priority: opts.queuePriority,
-			})
-			.select()
-			.single(),
-	);
+	for (let attempt = 0; attempt < 2; attempt++) {
+		const existing = await getActiveEnrichmentJob(opts.accountId);
+		if (Result.isError(existing)) return existing;
+		if (existing.value) return Result.ok(existing.value);
 
-	if (Result.isError(created) && created.error._tag === "ConstraintError") {
-		const retry = await getActiveEnrichmentJob(opts.accountId);
-		if (Result.isError(retry)) return retry;
-		if (retry.value) return Result.ok(retry.value);
+		const supabase = createAdminSupabaseClient();
+		const created = await fromSupabaseSingle(
+			supabase
+				.from("job")
+				.insert({
+					account_id: opts.accountId,
+					type: "enrichment" as JobType,
+					status: "pending" as const,
+					progress: enrichmentProgressToJson(opts.progress),
+					satisfies_requested_at: opts.satisfiesRequestedAt,
+					queue_priority: opts.queuePriority,
+				})
+				.select()
+				.single(),
+		);
+
+		if (Result.isOk(created)) return created;
+		if (created.error._tag !== "ConstraintError") return created;
+		// Constraint race: competing job existed at insert time — loop to find or retry
+		lastError = created;
 	}
 
-	return created;
+	return lastError!;
 }
 
 /**
@@ -432,35 +435,41 @@ export async function ensureMatchSnapshotRefreshJob(opts: {
 	queuePriority: number;
 	needsTargetSongEnrichment: boolean;
 }): Promise<Result<Job, DbError>> {
-	const existing = await getActiveJob(opts.accountId, "match_snapshot_refresh");
-	if (Result.isError(existing)) return existing;
-	if (existing.value) return Result.ok(existing.value);
+	let lastError: Result<Job, DbError> | undefined;
 
-	const supabase = createAdminSupabaseClient();
-	const created = await fromSupabaseSingle(
-		supabase
-			.from("job")
-			.insert({
-				account_id: opts.accountId,
-				type: "match_snapshot_refresh" as JobType,
-				status: "pending" as const,
-				progress: matchSnapshotRefreshProgressToJson(
-					opts.needsTargetSongEnrichment,
-				),
-				satisfies_requested_at: opts.satisfiesRequestedAt,
-				queue_priority: opts.queuePriority,
-			})
-			.select()
-			.single(),
-	);
+	for (let attempt = 0; attempt < 2; attempt++) {
+		const existing = await getActiveJob(
+			opts.accountId,
+			"match_snapshot_refresh",
+		);
+		if (Result.isError(existing)) return existing;
+		if (existing.value) return Result.ok(existing.value);
 
-	if (Result.isError(created) && created.error._tag === "ConstraintError") {
-		const retry = await getActiveJob(opts.accountId, "match_snapshot_refresh");
-		if (Result.isError(retry)) return retry;
-		if (retry.value) return Result.ok(retry.value);
+		const supabase = createAdminSupabaseClient();
+		const created = await fromSupabaseSingle(
+			supabase
+				.from("job")
+				.insert({
+					account_id: opts.accountId,
+					type: "match_snapshot_refresh" as JobType,
+					status: "pending" as const,
+					progress: matchSnapshotRefreshProgressToJson(
+						opts.needsTargetSongEnrichment,
+					),
+					satisfies_requested_at: opts.satisfiesRequestedAt,
+					queue_priority: opts.queuePriority,
+				})
+				.select()
+				.single(),
+		);
+
+		if (Result.isOk(created)) return created;
+		if (created.error._tag !== "ConstraintError") return created;
+		// Constraint race: competing job existed at insert time — loop to find or retry
+		lastError = created;
 	}
 
-	return created;
+	return lastError!;
 }
 
 /**

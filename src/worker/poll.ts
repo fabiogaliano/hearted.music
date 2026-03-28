@@ -107,6 +107,7 @@ async function processMatchSnapshotRefreshJob(job: Job): Promise<void> {
 				jobId: job.id,
 				error: completedResult.error.message,
 			});
+			return;
 		}
 		log.info("match-snapshot-refresh-job-complete", {
 			jobId: job.id,
