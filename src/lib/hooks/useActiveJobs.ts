@@ -3,6 +3,7 @@ import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getActiveJobs, type ActiveJobs } from "@/lib/server/jobs.functions";
 import { matchingKeys } from "@/features/matching/queries";
 import { likedSongsKeys } from "@/features/liked-songs/queries";
+import { playlistKeys } from "@/features/playlists/queries";
 
 const ACTIVE_POLL_MS = 5_000;
 const IDLE_POLL_MS = 15_000;
@@ -71,6 +72,9 @@ export function useActiveJobCompletionEffects(
 			});
 			queryClient.invalidateQueries({
 				queryKey: matchingKeys.all,
+			});
+			queryClient.invalidateQueries({
+				queryKey: playlistKeys.management(accountId),
 			});
 		}
 	}, [data, accountId, queryClient]);

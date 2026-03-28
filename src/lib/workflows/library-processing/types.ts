@@ -54,6 +54,12 @@ export type LibraryProcessingChange =
 			kind: "match_snapshot_failed";
 			accountId: string;
 			jobId: string;
+	  }
+	| {
+			kind: "playlist_management_session_flushed";
+			accountId: string;
+			targetMembershipChanged: boolean;
+			targetMetadataChanged: boolean;
 	  };
 
 export type LibraryProcessingEffect =
