@@ -13,7 +13,7 @@
  */
 
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { generateSongSlug } from "@/lib/utils/slug";
@@ -65,15 +65,15 @@ export function useSongExpansion(
 	const containerRef = useRef<HTMLDivElement>(null);
 	const isInitialized = useRef(false);
 
-	// Get the currently selected song
-	const selectedSong = selectedSongId
-		? (songs.find((s) => s.track.id === selectedSongId) ?? null)
-		: null;
-
-	// Get index for navigation
-	const selectedIndex = selectedSong
-		? songs.findIndex((s) => s.track.id === selectedSong.track.id)
-		: -1;
+	// Derive selected song + index in a single pass
+	const { selectedSong, selectedIndex } = useMemo(() => {
+		if (!selectedSongId) return { selectedSong: null, selectedIndex: -1 };
+		const idx = songs.findIndex((s) => s.track.id === selectedSongId);
+		return {
+			selectedSong: idx >= 0 ? songs[idx] : null,
+			selectedIndex: idx,
+		};
+	}, [songs, selectedSongId]);
 
 	const hasNext = selectedIndex >= 0 && selectedIndex < songs.length - 1;
 	const hasPrevious = selectedIndex > 0;

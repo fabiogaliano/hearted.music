@@ -79,11 +79,9 @@ export class MatchingService {
 			// Skip failed matches (graceful degradation)
 		}
 
-		// Sort by score descending
-		results.sort((a, b) => b.score - a.score);
-
 		// Assign ranks and filter by threshold
 		const ranked = results
+			.toSorted((a, b) => b.score - a.score)
 			.filter((r) => r.score >= this.config.minScoreThreshold)
 			.slice(0, this.config.maxResultsPerSong)
 			.map((r, i) => ({ ...r, rank: i + 1 }));

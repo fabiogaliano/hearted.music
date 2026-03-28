@@ -190,12 +190,14 @@ const SONG_PLAYLIST_MATCHES: Record<
 	],
 };
 
+const PLAYLIST_BY_ID = new Map(PLAYLISTS.map((p) => [p.id, p]));
+
 function getPlaylistsForSong(trackId: string) {
 	const matches =
 		SONG_PLAYLIST_MATCHES[trackId] ??
 		SONG_PLAYLIST_MATCHES["7lPN2DXiMsVn7XUKtOW1CS"]!;
 	return matches.map(({ id, matchScore }) => {
-		const def = PLAYLISTS.find((p) => p.id === id)!;
+		const def = PLAYLIST_BY_ID.get(id)!;
 		return { id: def.id, name: def.name, reason: def.reason, matchScore };
 	});
 }

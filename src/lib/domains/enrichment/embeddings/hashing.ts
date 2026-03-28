@@ -115,7 +115,7 @@ export async function hashPlaylistProfile(params: {
 
 	const content = stableStringify({
 		playlistId: params.playlistId,
-		songIds: [...params.songIds].sort(),
+		songIds: params.songIds.toSorted(),
 		descriptionText: params.descriptionText?.trim() || null,
 		embeddingCentroid: roundedEmbedding,
 		audioCentroid: roundedCentroid,
@@ -149,8 +149,8 @@ export async function hashCandidateSet(
 	contentHashes: string[],
 ): Promise<string> {
 	const content = stableStringify({
-		songIds: [...songIds].sort(),
-		contentHashes: [...contentHashes].sort(),
+		songIds: songIds.toSorted(),
+		contentHashes: contentHashes.toSorted(),
 	});
 	const hash = await shortHash(content);
 	return `cs_${hash}`;
@@ -165,8 +165,8 @@ export async function hashPlaylistSet(
 	profileHashes: string[],
 ): Promise<string> {
 	const content = stableStringify({
-		playlistIds: [...playlistIds].sort(),
-		profileHashes: [...profileHashes].sort(),
+		playlistIds: playlistIds.toSorted(),
+		profileHashes: profileHashes.toSorted(),
 	});
 	const hash = await shortHash(content);
 	return `ps_${hash}`;
@@ -177,7 +177,7 @@ export async function hashPlaylistSet(
  * Prefix: xs_
  */
 export async function hashExclusionSet(exclusions: string[]): Promise<string> {
-	const content = stableStringify({ exclusions: [...exclusions].sort() });
+	const content = stableStringify({ exclusions: exclusions.toSorted() });
 	const hash = await shortHash(content);
 	return `xs_${hash}`;
 }

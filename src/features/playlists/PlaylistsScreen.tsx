@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+
 import { useQuery } from "@tanstack/react-query";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
@@ -116,6 +117,11 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 		}
 	}, [selectedPlaylistId, focusFocusedItem]);
 
+	const expandedPlaylist = useMemo(
+		() => data?.playlists.find((p) => p.id === selectedPlaylistId) ?? null,
+		[data?.playlists, selectedPlaylistId],
+	);
+
 	if (!data) {
 		return (
 			<div className="flex min-h-[60vh] items-center justify-center">
@@ -157,10 +163,6 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 			</div>
 		);
 	}
-
-	const expandedPlaylist = data.playlists.find(
-		(p) => p.id === selectedPlaylistId,
-	);
 
 	const handleToggleTarget = (id: string, isTarget: boolean) => {
 		void toggleTarget(id, isTarget);

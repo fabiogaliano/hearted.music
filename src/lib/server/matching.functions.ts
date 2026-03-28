@@ -203,7 +203,7 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 				};
 			})
 			.filter((m): m is SongSuggestion => m !== null)
-			.sort((a, b) => b.score - a.score);
+			.toSorted((a, b) => b.score - a.score);
 
 		return { contextId: context.id, matches };
 	});
@@ -236,7 +236,7 @@ export const getSongMatches = createServerFn({ method: "GET" })
 		if (Result.isError(newSongIds)) return null;
 
 		const newSet = new Set(newSongIds.value);
-		undecided.sort((a, b) => {
+		const sorted = undecided.toSorted((a, b) => {
 			const aNew = newSet.has(a.songId) ? 1 : 0;
 			const bNew = newSet.has(b.songId) ? 1 : 0;
 			if (aNew !== bNew) return bNew - aNew;
@@ -244,9 +244,9 @@ export const getSongMatches = createServerFn({ method: "GET" })
 			return a.songId.localeCompare(b.songId);
 		});
 
-		if (data.offset >= undecided.length) return null;
+		if (data.offset >= sorted.length) return null;
 
-		const targetSongId = undecided[data.offset].songId;
+		const targetSongId = sorted[data.offset].songId;
 
 		// Fetch all details in parallel
 		const [
@@ -337,7 +337,7 @@ export const getSongMatches = createServerFn({ method: "GET" })
 				};
 			})
 			.filter((m): m is MatchingPlaylistMatch => m !== null)
-			.sort((a, b) => b.score - a.score);
+			.toSorted((a, b) => b.score - a.score);
 
 		return {
 			song: {

@@ -206,6 +206,12 @@ code {
   .song-card:hover {
     background: var(--hover-bg);
   }
+
+  /* Skip layout/paint for off-screen song cards in long lists */
+  .song-card {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 80px;
+  }
 }
 
 /* View Transitions - Song Detail Panel shared element morphing */

@@ -266,10 +266,10 @@ export class LocalProvider implements MLProvider {
 				}),
 			);
 
-			scores.sort((a, b) => b.score - a.score);
+			const sorted = scores.toSorted((a, b) => b.score - a.score);
 
 			const topK = options?.topK ?? 0;
-			const finalScores = topK > 0 ? scores.slice(0, topK) : scores;
+			const finalScores = topK > 0 ? sorted.slice(0, topK) : sorted;
 
 			return Result.ok({
 				scores: finalScores,

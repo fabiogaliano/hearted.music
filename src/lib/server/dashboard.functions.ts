@@ -76,7 +76,7 @@ export const getRecentActivity = createServerFn({ method: "GET" }).handler(
 					}))
 				: [];
 
-		return likedActivities.sort(
+		return likedActivities.toSorted(
 			(a, b) =>
 				new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
 		);
@@ -99,7 +99,7 @@ export const getMatchPreviews = createServerFn({ method: "GET" }).handler(
 		if (Result.isError(newSongIds) || undecided.length === 0) return [];
 
 		const newSet = new Set(newSongIds.value);
-		undecided.sort((a, b) => {
+		const sorted = undecided.toSorted((a, b) => {
 			const aNew = newSet.has(a.songId) ? 1 : 0;
 			const bNew = newSet.has(b.songId) ? 1 : 0;
 			if (aNew !== bNew) return bNew - aNew;
@@ -107,7 +107,7 @@ export const getMatchPreviews = createServerFn({ method: "GET" }).handler(
 			return a.songId.localeCompare(b.songId);
 		});
 
-		const topIds = undecided.slice(0, 3).map((s) => s.songId);
+		const topIds = sorted.slice(0, 3).map((s) => s.songId);
 
 		const supabase = createAdminSupabaseClient();
 		const { data, error } = await supabase

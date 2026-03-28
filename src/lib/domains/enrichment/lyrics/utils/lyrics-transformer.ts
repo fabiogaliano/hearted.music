@@ -130,7 +130,7 @@ export class LyricsTransformer {
 		processedIds: Set<number>,
 		sequentialId: number,
 	) {
-		const sortedLineIds = group.lineIds.sort((a, b) => a - b);
+		const sortedLineIds = group.lineIds.toSorted((a, b) => a - b);
 		const mergedText = LyricsTransformer.getMergedText(sortedLineIds, section);
 
 		if (mergedText) {
