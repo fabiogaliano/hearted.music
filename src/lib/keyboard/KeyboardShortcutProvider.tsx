@@ -119,6 +119,7 @@ export function KeyboardShortcutProvider({
 	children,
 }: KeyboardShortcutProviderProps) {
 	const [shortcuts, setShortcuts] = useState<Shortcut[]>([]);
+	const shortcutsRef = useRef<Shortcut[]>([]);
 	const [isHelpOpen, setIsHelpOpen] = useState(false);
 	const idCounter = useRef(0);
 
@@ -161,7 +162,9 @@ export function KeyboardShortcutProvider({
 						`[Keyboard] Shortcut conflict: "${shortcut.key}" already registered in scope "${shortcut.scope}"`,
 					);
 				}
-				return [...prev, shortcut];
+				const next = [...prev, shortcut];
+				shortcutsRef.current = next;
+				return next;
 			});
 
 			return id;
@@ -170,7 +173,11 @@ export function KeyboardShortcutProvider({
 	);
 
 	const unregister = useCallback((id: string) => {
-		setShortcuts((prev) => prev.filter((s) => s.id !== id));
+		setShortcuts((prev) => {
+			const next = prev.filter((s) => s.id !== id);
+			shortcutsRef.current = next;
+			return next;
+		});
 	}, []);
 
 	const openHelp = useCallback(() => setIsHelpOpen(true), []);
@@ -194,20 +201,22 @@ export function KeyboardShortcutProvider({
 				return;
 			}
 
-			const enabledShortcuts = shortcuts.filter((s) => s.enabled !== false);
+			const enabledShortcuts = shortcutsRef.current.filter(
+				(s) => s.enabled !== false,
+			);
 			const matchingShortcuts = enabledShortcuts.filter((s) =>
 				eventMatchesShortcut(event, s.key),
 			);
 
 			if (matchingShortcuts.length === 0) return;
 
-			matchingShortcuts.sort((a, b) => {
+			const sorted = matchingShortcuts.toSorted((a, b) => {
 				const priorityA = SCOPE_PRIORITY[a.scope] ?? 0;
 				const priorityB = SCOPE_PRIORITY[b.scope] ?? 0;
 				return priorityB - priorityA;
 			});
 
-			const shortcut = matchingShortcuts[0];
+			const shortcut = sorted[0];
 			if (shortcut.preventDefault) {
 				event.preventDefault();
 			}
@@ -216,7 +225,7 @@ export function KeyboardShortcutProvider({
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [shortcuts]);
+	}, []);
 
 	const contextValue = useMemo<ShortcutContextValue>(
 		() => ({

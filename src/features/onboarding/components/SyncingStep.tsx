@@ -202,25 +202,23 @@ export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
 	const { goToStep } = useOnboardingNavigation();
 	const syncState = useExtensionSyncStatus();
 
-	const phaseCounts = useMemo(
-		() => ({
+	const { phaseCounts, counters } = useMemo(() => {
+		const counts = {
 			songs: getDisplayCounter(syncState, "likedSongs"),
 			playlists: getDisplayCounter(syncState, "playlists"),
 			playlistTracks: getDisplayCounter(syncState, "playlistTracks"),
 			artistImages: getDisplayCounter(syncState, "artistImages"),
-		}),
-		[syncState],
-	);
-
-	const counters = useMemo(
-		() => [
-			phaseCounts.playlists,
-			phaseCounts.playlistTracks,
-			phaseCounts.songs,
-			phaseCounts.artistImages,
-		],
-		[phaseCounts],
-	);
+		};
+		return {
+			phaseCounts: counts,
+			counters: [
+				counts.playlists,
+				counts.playlistTracks,
+				counts.songs,
+				counts.artistImages,
+			],
+		};
+	}, [syncState]);
 
 	const isFailed = syncState?.status === "error";
 	const allComplete = syncState?.status === "done";

@@ -166,11 +166,11 @@ export class RerankerService {
 			},
 		);
 
-		// Sort reranked by new blended score
-		rerankedCandidates.sort((a, b) => b.score - a.score);
-
-		// Combine reranked + not reranked
-		const allCandidates = [...rerankedCandidates, ...notReranked];
+		// Combine reranked (sorted by blended score) + not reranked
+		const allCandidates = [
+			...rerankedCandidates.toSorted((a, b) => b.score - a.score),
+			...notReranked,
+		];
 
 		// Calculate stats
 		const originalTopScore = candidates[0]?.score ?? 0;

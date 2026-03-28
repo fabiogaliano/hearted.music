@@ -59,41 +59,40 @@ function MatchPage() {
 	// Track whether we've ever initialized from a non-null session
 	const initializedRef = useRef(displayedSession !== null);
 
+	const latestContextId = latestSession?.contextId ?? null;
+	const latestTotalSongs = latestSession?.totalSongs ?? 0;
+
 	// Auto-initialize displayed session when first non-null data arrives
 	useEffect(() => {
-		if (
-			!initializedRef.current &&
-			latestSession &&
-			latestSession.totalSongs > 0
-		) {
+		if (!initializedRef.current && latestContextId && latestTotalSongs > 0) {
 			initializedRef.current = true;
 			setDisplayedSession({
-				contextId: latestSession.contextId,
-				totalSongs: latestSession.totalSongs,
+				contextId: latestContextId,
+				totalSongs: latestTotalSongs,
 			});
 		}
-	}, [latestSession]);
+	}, [latestContextId, latestTotalSongs]);
 
 	const hasNewContext =
 		displayedSession != null &&
-		latestSession != null &&
-		latestSession.contextId !== displayedSession.contextId &&
-		latestSession.totalSongs > 0;
+		latestContextId != null &&
+		latestContextId !== displayedSession.contextId &&
+		latestTotalSongs > 0;
 
 	const handleRefresh = useCallback(() => {
-		if (!latestSession || latestSession.totalSongs === 0) return;
+		if (!latestContextId || latestTotalSongs === 0) return;
 		setDisplayedSession({
-			contextId: latestSession.contextId,
-			totalSongs: latestSession.totalSongs,
+			contextId: latestContextId,
+			totalSongs: latestTotalSongs,
 		});
-	}, [latestSession]);
+	}, [latestContextId, latestTotalSongs]);
 
 	// No session at all and never had one
-	if (!displayedSession && (!latestSession || latestSession.totalSongs === 0)) {
+	if (!displayedSession && (!latestContextId || latestTotalSongs === 0)) {
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
 				<MatchingEmptyState
-					reason={!latestSession ? "no-context" : "all-decided"}
+					reason={!latestContextId ? "no-context" : "all-decided"}
 				/>
 			</div>
 		);
@@ -163,11 +162,11 @@ function MatchingPageContent({
 	const [offset, setOffset] = useState(0);
 	const [addedTo, setAddedTo] = useState<string[]>([]);
 
-	const [sessionStats, setSessionStats] = useState({
+	const [sessionStats, setSessionStats] = useState(() => ({
 		addedCount: 0,
 		dismissedCount: 0,
 		songsWithAdditions: new Set<string>(),
-	});
+	}));
 
 	const [recentSongs, setRecentSongs] = useState<
 		Array<{ id: string; albumArtUrl?: string | null; name: string }>
@@ -232,11 +231,15 @@ function MatchingPageContent({
 			},
 		});
 		setAddedTo((prev) => [...prev, playlistId]);
-		setSessionStats((prev) => ({
-			...prev,
-			addedCount: prev.addedCount + 1,
-			songsWithAdditions: new Set([...prev.songsWithAdditions, currentSong.id]),
-		}));
+		setSessionStats((prev) => {
+			const next = new Set(prev.songsWithAdditions);
+			next.add(currentSong.id);
+			return {
+				...prev,
+				addedCount: prev.addedCount + 1,
+				songsWithAdditions: next,
+			};
+		});
 	};
 
 	const handleDismiss = async () => {

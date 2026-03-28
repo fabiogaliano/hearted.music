@@ -209,8 +209,7 @@ export async function embedBatch(
 			}
 			const data = parseResult.data;
 
-			// Sort by index to ensure order matches input
-			const sortedData = [...data.data].sort((a, b) => a.index - b.index);
+			const sortedData = data.data.toSorted((a, b) => a.index - b.index);
 
 			const results: EmbeddingResult[] = sortedData.map((item) => ({
 				embedding: item.embedding,
@@ -294,11 +293,8 @@ export async function rerank(
 				score: item.relevance_score,
 			}));
 
-			// Sort by score descending
-			scores.sort((a, b) => b.score - a.score);
-
 			return Result.ok({
-				scores,
+				scores: scores.toSorted((a, b) => b.score - a.score),
 				model: "Qwen/Qwen3-Reranker-0.6B",
 			});
 		} catch (error) {

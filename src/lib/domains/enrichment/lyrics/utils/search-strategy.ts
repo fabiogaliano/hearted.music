@@ -272,10 +272,9 @@ export function findBestMatch(
 		.slice(0, MAX_RESULTS_TO_SCAN)
 		.map((result) => scoreResult(result, targetArtist, targetTitle));
 
-	// Sort by combined score descending
-	candidates.sort((a, b) => b.score - a.score);
+	const sorted = candidates.toSorted((a, b) => b.score - a.score);
 
-	const best = candidates[0];
+	const best = sorted[0];
 
 	// Check if best match meets minimum threshold
 	if (best.score >= MIN_COMBINED_SCORE) {
@@ -304,10 +303,9 @@ export function debugCandidates(
 		.slice(0, MAX_RESULTS_TO_SCAN)
 		.map((result) => scoreResult(result, targetArtist, targetTitle));
 
-	candidates.sort((a, b) => b.score - a.score);
+	const sortedCandidates = candidates.toSorted((a, b) => b.score - a.score);
 
-	// Only log top 3 candidates in a compact format
-	const top3 = candidates.slice(0, 3).map((c, i) => ({
+	const top3 = sortedCandidates.slice(0, 3).map((c, i) => ({
 		rank: i + 1,
 		match: `${c.artistName} - ${c.title}`,
 		score: `${(c.score * 100).toFixed(0)}%`,

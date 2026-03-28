@@ -2,6 +2,7 @@
  * PlaylistsSection: Read-only playlist suggestions from match results.
  * Shows prominent matches (score >= 0.6) expanded, others collapsed.
  */
+import { useMemo } from "react";
 import { fonts } from "@/lib/theme/fonts";
 import type { SongSuggestion } from "@/lib/server/matching.functions";
 import { getMatchQuality } from "./utils";
@@ -93,13 +94,16 @@ export function PlaylistsSection({
 	onToggleOther,
 	colors,
 }: PlaylistsSectionProps) {
-	const sorted = [...suggestions].sort((a, b) => b.score - a.score);
-	const prominentMatches = sorted.filter(
-		(s) => getMatchQuality(s.score).showProminent,
-	);
-	const otherMatches = sorted.filter(
-		(s) => !getMatchQuality(s.score).showProminent,
-	);
+	const { prominentMatches, otherMatches } = useMemo(() => {
+		const sorted = suggestions.toSorted((a, b) => b.score - a.score);
+		const prominent: SongSuggestion[] = [];
+		const other: SongSuggestion[] = [];
+		for (const s of sorted) {
+			if (getMatchQuality(s.score).showProminent) prominent.push(s);
+			else other.push(s);
+		}
+		return { prominentMatches: prominent, otherMatches: other };
+	}, [suggestions]);
 
 	return (
 		<section className="border-t pt-6" style={{ borderColor: colors?.border }}>

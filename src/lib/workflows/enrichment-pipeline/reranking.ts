@@ -89,11 +89,11 @@ export async function rerankMatches(
 				return { ...r, score: newScore, rerankedScore: newScore };
 			});
 
-			// Re-sort by score and re-assign ranks
-			updated.sort((a, b) => b.score - a.score);
 			matches.set(
 				songId,
-				updated.map((r, i) => ({ ...r, rank: i + 1 })),
+				updated
+					.toSorted((a, b) => b.score - a.score)
+					.map((r, i) => ({ ...r, rank: i + 1 })),
 			);
 		}
 	}

@@ -32,14 +32,16 @@ export const getActiveJobs = createServerFn({ method: "GET" }).handler(
 		if (Result.isOk(stateResult) && stateResult.value) {
 			const state = stateResult.value;
 
-			if (state.enrichment.activeJobId) {
-				enrichment = await resolveJobInfo(state.enrichment.activeJobId);
-			}
-			if (state.matchSnapshotRefresh.activeJobId) {
-				matchSnapshotRefresh = await resolveJobInfo(
-					state.matchSnapshotRefresh.activeJobId,
-				);
-			}
+			const [enrichmentResult, matchRefreshResult] = await Promise.all([
+				state.enrichment.activeJobId
+					? resolveJobInfo(state.enrichment.activeJobId)
+					: null,
+				state.matchSnapshotRefresh.activeJobId
+					? resolveJobInfo(state.matchSnapshotRefresh.activeJobId)
+					: null,
+			]);
+			enrichment = enrichmentResult;
+			matchSnapshotRefresh = matchRefreshResult;
 		}
 
 		return {
