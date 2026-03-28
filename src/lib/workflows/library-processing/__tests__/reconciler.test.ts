@@ -39,11 +39,15 @@ function reconcile(
 
 describe("reconcileLibraryProcessing", () => {
 	describe("onboarding_target_selection_confirmed", () => {
-		it("advances both workflows", () => {
-			const { state, effects } = reconcile(makeState(), {
-				kind: "onboarding_target_selection_confirmed",
-				accountId: "acct-1",
-			});
+		it("advances both workflows when targets exist", () => {
+			const { state, effects } = reconcile(
+				makeState(),
+				{
+					kind: "onboarding_target_selection_confirmed",
+					accountId: "acct-1",
+				},
+				{ hasTargetPlaylists: true },
+			);
 
 			expect(state.enrichment.requestedAt).toBe("2026-03-27T12:00:00Z");
 			expect(state.matchSnapshotRefresh.requestedAt).toBe(
@@ -52,6 +56,24 @@ describe("reconcileLibraryProcessing", () => {
 			expect(effects).toHaveLength(2);
 			expect(effects[0].kind).toBe("ensure_enrichment_job");
 			expect(effects[1].kind).toBe("ensure_match_snapshot_refresh_job");
+		});
+
+		it("advances only match snapshot refresh without targets", () => {
+			const { state, effects } = reconcile(
+				makeState(),
+				{
+					kind: "onboarding_target_selection_confirmed",
+					accountId: "acct-1",
+				},
+				{ hasTargetPlaylists: false },
+			);
+
+			expect(state.enrichment.requestedAt).toBeNull();
+			expect(state.matchSnapshotRefresh.requestedAt).toBe(
+				"2026-03-27T12:00:00Z",
+			);
+			expect(effects).toHaveLength(1);
+			expect(effects[0].kind).toBe("ensure_match_snapshot_refresh_job");
 		});
 	});
 

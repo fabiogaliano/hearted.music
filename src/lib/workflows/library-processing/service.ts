@@ -173,6 +173,10 @@ async function executeEffect(
 				},
 			};
 		}
+		console.error(
+			`[library-processing] Failed to ensure enrichment job:`,
+			result.error.message,
+		);
 	}
 
 	if (effect.kind === "ensure_match_snapshot_refresh_job") {
@@ -196,6 +200,10 @@ async function executeEffect(
 				},
 			};
 		}
+		console.error(
+			`[library-processing] Failed to ensure match snapshot refresh job:`,
+			result.error.message,
+		);
 	}
 
 	return state;
