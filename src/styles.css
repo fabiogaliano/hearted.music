@@ -240,12 +240,54 @@ code {
 }
 
 
+/* View Transitions - Playlist Detail Panel shared element morphing */
+::view-transition-group(playlist-cover),
+::view-transition-group(playlist-title),
+::view-transition-group(playlist-description) {
+  animation-duration: 250ms;
+  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+::view-transition-old(playlist-cover),
+::view-transition-new(playlist-cover) {
+  animation: none;
+  mix-blend-mode: normal;
+  object-fit: cover;
+}
+
+::view-transition-old(playlist-title),
+::view-transition-old(playlist-description) {
+  animation: none;
+  opacity: 0;
+}
+
+::view-transition-new(playlist-title),
+::view-transition-new(playlist-description) {
+  animation: none;
+}
+
+@keyframes playlist-track-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
 /* Accessibility: disable View Transition animations for reduced motion */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
   ::view-transition-old(*),
   ::view-transition-new(*) {
     animation: none !important;
+  }
+}
+
+/* Accessibility: disable playlist panel animations for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  [data-playlist-panel],
+  [data-playlist-panel] * {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
   }
 }
 

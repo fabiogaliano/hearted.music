@@ -155,6 +155,16 @@ export function reconcileLibraryProcessing(
 			matchSnapshotRefresh = clearActiveJob(matchSnapshotRefresh, change.jobId);
 			break;
 		}
+
+		case "playlist_management_session_flushed": {
+			if (change.targetMembershipChanged || change.targetMetadataChanged) {
+				matchSnapshotRefresh = advanceRequestedAt(
+					matchSnapshotRefresh,
+					requestMarker,
+				);
+			}
+			break;
+		}
 	}
 
 	// V1 failure handling: do not auto-reensure after stop/failure outcomes.

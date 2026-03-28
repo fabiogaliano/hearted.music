@@ -9,13 +9,14 @@ const mockGetPlaylistBySpotifyId = vi.fn();
 const mockDeletePlaylist = vi.fn();
 const mockUpdatePlaylistMetadata = vi.fn();
 
-vi.mock("@tanstack/react-start", () => ({
-	createServerFn: () => ({
-		inputValidator: () => ({
-			handler: <T>(fn: T) => fn,
-		}),
-	}),
-}));
+vi.mock("@tanstack/react-start", () => {
+	const builder = (): Record<string, unknown> => ({
+		middleware: () => builder(),
+		inputValidator: () => builder(),
+		handler: <T>(fn: T) => fn,
+	});
+	return { createServerFn: builder };
+});
 
 vi.mock("@/lib/platform/auth/auth.server", () => ({
 	requireAuthSession: (...args: unknown[]) => mockRequireAuthSession(...args),
@@ -23,11 +24,23 @@ vi.mock("@/lib/platform/auth/auth.server", () => ({
 
 vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	upsertPlaylists: (...args: unknown[]) => mockUpsertPlaylists(...args),
+	getPlaylists: vi.fn().mockResolvedValue({ ok: true, value: [] }),
+	getTargetPlaylists: vi.fn().mockResolvedValue({ ok: true, value: [] }),
 	getPlaylistBySpotifyId: (...args: unknown[]) =>
 		mockGetPlaylistBySpotifyId(...args),
+	getPlaylistSongs: vi.fn().mockResolvedValue({ ok: true, value: [] }),
 	deletePlaylist: (...args: unknown[]) => mockDeletePlaylist(...args),
+	setPlaylistTarget: vi.fn(),
 	updatePlaylistMetadata: (...args: unknown[]) =>
 		mockUpdatePlaylistMetadata(...args),
+}));
+
+vi.mock("@/lib/domains/library/songs/queries", () => ({
+	getByIds: vi.fn().mockResolvedValue({ ok: true, value: [] }),
+}));
+
+vi.mock("@/lib/workflows/library-processing/service", () => ({
+	applyLibraryProcessingChange: vi.fn(),
 }));
 
 const {
