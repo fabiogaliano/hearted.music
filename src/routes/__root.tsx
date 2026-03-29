@@ -11,7 +11,7 @@ import {
 	Scripts,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { scan } from "react-scan";
 import { Toaster } from "sonner";
 import {
@@ -88,11 +88,27 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 	shellComponent: RootDocument,
 });
 
+const shouldLoadDevWorkflowUi =
+	import.meta.env.DEV && import.meta.env.MODE !== "test";
+
+const DevDialRoot = shouldLoadDevWorkflowUi
+	? lazy(async () => {
+			const { DialRoot } = await import("dialkit");
+			await import("dialkit/styles.css");
+			return { default: () => <DialRoot position="top-right" /> };
+		})
+	: null;
+
 function RootComponent() {
 	return (
 		<ThemeHueProvider>
 			<KeyboardShortcutProvider>
 				<Outlet />
+				{DevDialRoot && (
+					<Suspense fallback={null}>
+						<DevDialRoot />
+					</Suspense>
+				)}
 			</KeyboardShortcutProvider>
 		</ThemeHueProvider>
 	);

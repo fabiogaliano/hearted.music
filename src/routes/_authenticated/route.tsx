@@ -8,6 +8,7 @@
  *   - theme: ThemeColor
  */
 
+import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
 	createFileRoute,
@@ -23,6 +24,17 @@ import { matchingSessionQueryOptions } from "@/features/matching/queries";
 import { useRegisterTheme } from "@/lib/theme/ThemeHueProvider";
 import { getTheme } from "@/lib/theme/useTheme";
 import { DEFAULT_THEME } from "@/lib/theme/types";
+
+const shouldLoadDevWorkflowPanel =
+	import.meta.env.DEV && import.meta.env.MODE !== "test";
+
+const DevWorkflowPanel = shouldLoadDevWorkflowPanel
+	? lazy(() =>
+			import("@/features/devtools/workflow-panel/DevWorkflowPanel").then(
+				(m) => ({ default: m.DevWorkflowPanel }),
+			),
+		)
+	: null;
 
 export const Route = createFileRoute("/_authenticated")({
 	beforeLoad: async ({ location }) => {
@@ -59,8 +71,19 @@ function AuthenticatedLayout() {
 	);
 	const pendingSuggestions = matchingSession?.totalSongs ?? 0;
 
+	const devPanel = DevWorkflowPanel ? (
+		<Suspense fallback={null}>
+			<DevWorkflowPanel />
+		</Suspense>
+	) : null;
+
 	if (isOnboarding) {
-		return <Outlet />;
+		return (
+			<>
+				<Outlet />
+				{devPanel}
+			</>
+		);
 	}
 
 	return (
@@ -79,6 +102,7 @@ function AuthenticatedLayout() {
 			<main className="flex-1 p-8">
 				<Outlet />
 			</main>
+			{devPanel}
 		</div>
 	);
 }
