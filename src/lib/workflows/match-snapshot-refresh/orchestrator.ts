@@ -1,27 +1,28 @@
-/**
- * matchSnapshotRefresh orchestrator.
- *
- * The sole owner of match_context / match_result publication.
- * Re-reads current DB state on each pass (plan is a hint only).
- */
-
 import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
+import { updateJobProgress } from "@/lib/data/jobs";
 import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
-import { createLlmService } from "@/lib/integrations/llm/service";
-import type { LlmService } from "@/lib/integrations/llm/service";
-import { RerankerService } from "@/lib/integrations/reranker/service";
-import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import * as songData from "@/lib/domains/library/songs/queries";
+import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import { createMatchingService } from "@/lib/domains/taste/song-matching/service";
 import type {
 	MatchingAudioFeatures,
 	MatchingSong,
 } from "@/lib/domains/taste/song-matching/types";
+import type { LlmService } from "@/lib/integrations/llm/service";
+import { createLlmService } from "@/lib/integrations/llm/service";
+import { RerankerService } from "@/lib/integrations/reranker/service";
+import {
+	createInitialMatchSnapshotRefreshProgress,
+	MATCH_REFRESH_STAGE_NAMES,
+	type MatchRefreshStageName,
+	type MatchSnapshotRefreshProgress,
+} from "@/lib/platform/jobs/progress/match-snapshot-refresh";
 import { getDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
-import { loadExclusionSet } from "@/lib/workflows/enrichment-pipeline/stages/matching";
 import { rerankMatches } from "@/lib/workflows/enrichment-pipeline/reranking";
+import { loadExclusionSet } from "@/lib/workflows/enrichment-pipeline/stages/matching";
+import { maybeDevDelay } from "@/lib/workflows/library-processing/devtools/delay";
 import { runLightweightEnrichment } from "@/lib/workflows/playlist-sync/lightweight-enrichment";
 import { loadTargetPlaylistProfiles } from "./profiles";
 import type {
@@ -30,14 +31,111 @@ import type {
 } from "./types";
 import { writeEmptySnapshot, writeMatchSnapshot } from "./write-match-snapshot";
 
-/**
- * Executes a single refresh pass against current DB state.
- * The plan is used only for optional work decisions (e.g. target-song enrichment).
- */
+async function persistRefreshProgress(
+	jobId: string | undefined,
+	progress: MatchSnapshotRefreshProgress,
+): Promise<void> {
+	if (!jobId) {
+		return;
+	}
+
+	const result = await updateJobProgress(jobId, progress);
+	if (Result.isError(result)) {
+		console.error(
+			`[match-refresh] Failed to persist progress for job ${jobId}: ${result.error.message}`,
+		);
+	}
+}
+
+function syncAggregateCounts(progress: MatchSnapshotRefreshProgress): void {
+	progress.total = MATCH_REFRESH_STAGE_NAMES.length;
+	progress.done = 0;
+	progress.succeeded = 0;
+	progress.failed = 0;
+
+	for (const stageName of MATCH_REFRESH_STAGE_NAMES) {
+		const stage = progress.stages[stageName];
+		if (!stage) {
+			continue;
+		}
+
+		if (
+			stage.status === "completed" ||
+			stage.status === "failed" ||
+			stage.status === "skipped"
+		) {
+			progress.done += 1;
+		}
+
+		if (stage.status === "completed" || stage.status === "skipped") {
+			progress.succeeded += 1;
+		}
+
+		if (stage.status === "failed") {
+			progress.failed += 1;
+		}
+	}
+}
+
+function startStage(
+	progress: MatchSnapshotRefreshProgress,
+	stage: MatchRefreshStageName,
+): void {
+	progress.currentStage = stage;
+	progress.stages[stage] = { status: "running", succeeded: 0, failed: 0 };
+	syncAggregateCounts(progress);
+}
+
+function finishStage(
+	progress: MatchSnapshotRefreshProgress,
+	stage: MatchRefreshStageName,
+	succeeded: number,
+	failed: number,
+): void {
+	progress.stages[stage] = {
+		status: failed > 0 && succeeded === 0 ? "failed" : "completed",
+		succeeded,
+		failed,
+	};
+	syncAggregateCounts(progress);
+}
+
+function skipStage(
+	progress: MatchSnapshotRefreshProgress,
+	stage: MatchRefreshStageName,
+): void {
+	progress.stages[stage] = { status: "skipped", succeeded: 0, failed: 0 };
+	syncAggregateCounts(progress);
+}
+
+async function publishSnapshot(opts: {
+	jobId?: string;
+	progress: MatchSnapshotRefreshProgress;
+	stageDelayMs?: number;
+	writer: () => Promise<MatchSnapshotRefreshResult>;
+}): Promise<MatchSnapshotRefreshResult> {
+	await maybeDevDelay(opts.stageDelayMs);
+	startStage(opts.progress, "publishing");
+	await persistRefreshProgress(opts.jobId, opts.progress);
+
+	const snapshotResult = await opts.writer();
+	finishStage(opts.progress, "publishing", 1, 0);
+	opts.progress.published = snapshotResult.published;
+	opts.progress.noOp = snapshotResult.noOp;
+	opts.progress.isEmpty = snapshotResult.isEmpty;
+	opts.progress.currentStage = undefined;
+	await persistRefreshProgress(opts.jobId, opts.progress);
+
+	return snapshotResult;
+}
+
 export async function executeMatchSnapshotRefresh(
 	accountId: string,
 	plan: MatchSnapshotRefreshPlan,
+	jobId?: string,
+	stageDelayMs?: number,
 ): Promise<MatchSnapshotRefreshResult> {
+	const progress = createInitialMatchSnapshotRefreshProgress(plan);
 	let embeddingService: EmbeddingService;
 	try {
 		embeddingService = new EmbeddingService();
@@ -51,14 +149,14 @@ export async function executeMatchSnapshotRefresh(
 	try {
 		llmService = createLlmService();
 	} catch {
-		// LLM unavailable — cold-start expansion disabled
+		// LLM unavailable — cold-start expansion disabled.
 	}
 
 	let rerankerService: RerankerService | undefined;
 	try {
 		rerankerService = new RerankerService();
 	} catch {
-		// Reranker unavailable
+		// Reranker unavailable.
 	}
 
 	const profilingService = createPlaylistProfilingService(
@@ -66,51 +164,81 @@ export async function executeMatchSnapshotRefresh(
 		llmService,
 	);
 
-	// Optional: run lightweight enrichment for target-playlist-only songs
 	if (plan.needsTargetSongEnrichment) {
+		startStage(progress, "target_song_enrichment");
+		await persistRefreshProgress(jobId, progress);
 		try {
 			await runLightweightEnrichment({ accountId });
+			finishStage(progress, "target_song_enrichment", 1, 0);
 		} catch (err) {
 			console.warn(
 				"[target-refresh] Target-playlist-song enrichment failed, continuing:",
 				err,
 			);
+			finishStage(progress, "target_song_enrichment", 0, 1);
 		}
+		await persistRefreshProgress(jobId, progress);
+	} else {
+		skipStage(progress, "target_song_enrichment");
+		await persistRefreshProgress(jobId, progress);
 	}
 
-	// Load current target playlist profiles (re-reads DB state)
+	await maybeDevDelay(stageDelayMs);
+	startStage(progress, "playlist_profiling");
+	await persistRefreshProgress(jobId, progress);
+
 	const { playlists, profiles } = await loadTargetPlaylistProfiles(
 		accountId,
 		profilingService,
 	);
 
-	// No target playlists → explicit empty snapshot
+	finishStage(progress, "playlist_profiling", playlists.length, 0);
+	progress.playlistCount = playlists.length;
+	await persistRefreshProgress(jobId, progress);
+
 	if (playlists.length === 0) {
-		return writeEmptySnapshot(accountId);
+		progress.candidateCount = 0;
+		progress.matchedSongCount = 0;
+		return publishSnapshot({
+			jobId,
+			progress,
+			stageDelayMs,
+			writer: () => writeEmptySnapshot(accountId),
+		});
 	}
 
-	// Full-snapshot invariant: every target playlist must have a profile
 	if (profiles.length !== playlists.length) {
 		throw new Error(
 			`[target-refresh] Profile count mismatch: ${profiles.length} profiles for ${playlists.length} target playlists`,
 		);
 	}
 
-	// Load all data-enriched liked songs as candidates
-	const songIds = await getDataEnrichedSongIds(accountId);
+	await maybeDevDelay(stageDelayMs);
+	startStage(progress, "candidate_loading");
+	await persistRefreshProgress(jobId, progress);
 
-	// Zero candidates but playlists exist → publish zero-match snapshot
+	const songIds = await getDataEnrichedSongIds(accountId);
+	finishStage(progress, "candidate_loading", songIds.length, 0);
+	progress.candidateCount = songIds.length;
+	await persistRefreshProgress(jobId, progress);
+
 	if (songIds.length === 0) {
-		return writeMatchSnapshot({
-			accountId,
-			songs: [],
-			profiles,
-			results: [],
-			matchedSongIds: [],
+		progress.matchedSongCount = 0;
+		return publishSnapshot({
+			jobId,
+			progress,
+			stageDelayMs,
+			writer: () =>
+				writeMatchSnapshot({
+					accountId,
+					songs: [],
+					profiles,
+					results: [],
+					matchedSongIds: [],
+				}),
 		});
 	}
 
-	// Load song data
 	const songsResult = await songData.getByIds(songIds);
 	if (Result.isError(songsResult)) {
 		throw new Error(
@@ -118,25 +246,24 @@ export async function executeMatchSnapshotRefresh(
 		);
 	}
 
-	// Build matching songs with audio features
 	const audioFeaturesResult = await audioFeatureData.getBatch(songIds);
 	const audioFeaturesMap = Result.isOk(audioFeaturesResult)
 		? audioFeaturesResult.value
 		: new Map();
 
 	const matchingSongs: MatchingSong[] = songsResult.value.map((song) => {
-		const af = audioFeaturesMap.get(song.id);
-		const audioFeatures: MatchingAudioFeatures | null = af
+		const audioFeatureRow = audioFeaturesMap.get(song.id);
+		const audioFeatures: MatchingAudioFeatures | null = audioFeatureRow
 			? {
-					energy: af.energy ?? 0,
-					valence: af.valence ?? 0,
-					danceability: af.danceability ?? 0,
-					acousticness: af.acousticness ?? 0,
-					instrumentalness: af.instrumentalness ?? 0,
-					speechiness: af.speechiness ?? 0,
-					liveness: af.liveness ?? 0,
-					tempo: af.tempo ?? 0,
-					loudness: af.loudness ?? 0,
+					energy: audioFeatureRow.energy ?? 0,
+					valence: audioFeatureRow.valence ?? 0,
+					danceability: audioFeatureRow.danceability ?? 0,
+					acousticness: audioFeatureRow.acousticness ?? 0,
+					instrumentalness: audioFeatureRow.instrumentalness ?? 0,
+					speechiness: audioFeatureRow.speechiness ?? 0,
+					liveness: audioFeatureRow.liveness ?? 0,
+					tempo: audioFeatureRow.tempo ?? 0,
+					loudness: audioFeatureRow.loudness ?? 0,
 				}
 			: null;
 
@@ -150,7 +277,6 @@ export async function executeMatchSnapshotRefresh(
 		};
 	});
 
-	// Load exclusion set
 	let exclusionSet: Set<string> | undefined;
 	try {
 		exclusionSet = await loadExclusionSet(accountId);
@@ -158,22 +284,27 @@ export async function executeMatchSnapshotRefresh(
 		console.warn("[target-refresh] Failed to load exclusion set");
 	}
 
-	// Get embeddings
 	const embeddingsResult = await embeddingService.getEmbeddings(songIds);
 	const songEmbeddings = new Map<string, number[]>();
 	if (Result.isOk(embeddingsResult)) {
-		for (const [id, emb] of embeddingsResult.value) {
-			const parsed =
-				typeof emb.embedding === "string"
-					? (JSON.parse(emb.embedding) as number[])
-					: emb.embedding;
-			if (Array.isArray(parsed)) {
-				songEmbeddings.set(id, parsed);
+		for (const [songId, embeddingRow] of embeddingsResult.value) {
+			const parsedEmbedding =
+				typeof embeddingRow.embedding === "string"
+					? JSON.parse(embeddingRow.embedding)
+					: embeddingRow.embedding;
+			if (
+				Array.isArray(parsedEmbedding) &&
+				parsedEmbedding.every((value) => typeof value === "number")
+			) {
+				songEmbeddings.set(songId, parsedEmbedding);
 			}
 		}
 	}
 
-	// Run matching
+	await maybeDevDelay(stageDelayMs);
+	startStage(progress, "matching");
+	await persistRefreshProgress(jobId, progress);
+
 	const matchingService = createMatchingService(
 		embeddingService,
 		profilingService,
@@ -186,10 +317,11 @@ export async function executeMatchSnapshotRefresh(
 	);
 
 	if (Result.isError(matchResult)) {
+		finishStage(progress, "matching", 0, 1);
+		await persistRefreshProgress(jobId, progress);
 		throw new Error("[target-refresh] Matching failed");
 	}
 
-	// Rerank
 	if (rerankerService && matchResult.value.matches.size > 0) {
 		await rerankMatches(
 			matchResult.value.matches,
@@ -199,38 +331,47 @@ export async function executeMatchSnapshotRefresh(
 		);
 	}
 
-	// Build result entries for atomic publish
 	const matchedSongIds = [...matchResult.value.matches.keys()];
-	const resultEntries: {
+	finishStage(progress, "matching", matchedSongIds.length, 0);
+	progress.matchedSongCount = matchedSongIds.length;
+	await persistRefreshProgress(jobId, progress);
+
+	const resultEntries: Array<{
 		song_id: string;
 		playlist_id: string;
 		score: number;
 		rank: number | null;
 		factors: Json;
-	}[] = [];
+	}> = [];
 
 	for (const [songId, results] of matchResult.value.matches) {
-		for (const r of results) {
+		for (const result of results) {
 			resultEntries.push({
 				song_id: songId,
-				playlist_id: r.playlistId,
-				score: r.score,
-				rank: r.rank,
+				playlist_id: result.playlistId,
+				score: result.score,
+				rank: result.rank,
 				factors: {
-					embedding: r.factors.embedding,
-					audio: r.factors.audio,
-					genre: r.factors.genre,
+					embedding: result.factors.embedding,
+					audio: result.factors.audio,
+					genre: result.factors.genre,
 				},
 			});
 		}
 	}
 
-	return writeMatchSnapshot({
-		accountId,
-		songs: matchingSongs,
-		profiles,
-		results: resultEntries,
-		matchedSongIds,
-		exclusionSet,
+	return publishSnapshot({
+		jobId,
+		progress,
+		stageDelayMs,
+		writer: () =>
+			writeMatchSnapshot({
+				accountId,
+				songs: matchingSongs,
+				profiles,
+				results: resultEntries,
+				matchedSongIds,
+				exclusionSet,
+			}),
 	});
 }

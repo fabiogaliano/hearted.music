@@ -5,7 +5,7 @@ import {
 	ensureMatchSnapshotRefreshJob,
 	getJobById,
 } from "@/lib/data/jobs";
-import { EnrichmentChunkProgressSchema } from "@/lib/platform/jobs/progress/types";
+import { EnrichmentChunkProgressSchema } from "@/lib/platform/jobs/progress/enrichment";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
 import {
 	getPlaylistSongs,
