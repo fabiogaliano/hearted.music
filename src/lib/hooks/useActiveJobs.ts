@@ -1,12 +1,21 @@
-import { useEffect, useRef } from "react";
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getActiveJobs, type ActiveJobs } from "@/lib/server/jobs.functions";
-import { matchingKeys } from "@/features/matching/queries";
+import { useEffect, useRef } from "react";
 import { likedSongsKeys } from "@/features/liked-songs/queries";
+import { matchingKeys } from "@/features/matching/queries";
 import { playlistKeys } from "@/features/playlists/queries";
+import { type ActiveJobs, getActiveJobs } from "@/lib/server/jobs.functions";
+import { readWorkflowDevSettings } from "@/lib/workflows/library-processing/devtools/settings";
 
 const ACTIVE_POLL_MS = 5_000;
 const IDLE_POLL_MS = 15_000;
+
+function getDevActiveJobsPollMs(): number | null {
+	if (!import.meta.env.DEV) {
+		return null;
+	}
+
+	return readWorkflowDevSettings().client.activeJobsPollMs;
+}
 
 const activeJobsKeys = {
 	all: ["active-jobs"] as const,
@@ -25,8 +34,14 @@ export function activeJobsQueryOptions(accountId: string, enabled = true) {
 		queryKey: activeJobsKeys.byAccount(accountId),
 		queryFn: () => getActiveJobs(),
 		enabled,
-		refetchInterval: (query) =>
-			hasActiveJob(query.state.data) ? ACTIVE_POLL_MS : IDLE_POLL_MS,
+		refetchInterval: (query) => {
+			const devPollMs = getDevActiveJobsPollMs();
+			if (devPollMs !== null) {
+				return devPollMs;
+			}
+
+			return hasActiveJob(query.state.data) ? ACTIVE_POLL_MS : IDLE_POLL_MS;
+		},
 	});
 }
 

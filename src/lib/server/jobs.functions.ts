@@ -1,14 +1,28 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
-import { requireAuthSession } from "@/lib/platform/auth/auth.server";
+import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { getJobById, JobProgressSchema } from "@/lib/data/jobs";
+import { getJobById, type Job } from "@/lib/data/jobs";
+import { requireAuthSession } from "@/lib/platform/auth/auth.server";
+import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
+import type { MatchSnapshotRefreshProgress } from "@/lib/platform/jobs/progress/match-snapshot-refresh";
+import {
+	type ParsedJobProgress,
+	parseJobProgress,
+} from "@/lib/platform/jobs/progress/parse";
 import { loadLibraryProcessingState } from "@/lib/workflows/library-processing/queries";
+
+interface ProgressCounts {
+	done: number;
+	total: number;
+	succeeded: number;
+	failed: number;
+}
 
 export interface ActiveJobInfo {
 	id: string;
 	status: "pending" | "running";
-	progress: { done: number; total: number; succeeded: number; failed: number };
+	progress: ProgressCounts;
 }
 
 export interface ActiveJobs {
@@ -59,20 +73,10 @@ async function resolveJobInfo(jobId: string): Promise<ActiveJobInfo | null> {
 	const job = result.value;
 	if (job.status !== "pending" && job.status !== "running") return null;
 
-	const progressResult = JobProgressSchema.partial().safeParse(
-		job.progress ?? {},
-	);
-	const progress = progressResult.success ? progressResult.data : {};
-
 	return {
 		id: job.id,
 		status: job.status,
-		progress: {
-			done: progress.done ?? 0,
-			total: progress.total ?? 0,
-			succeeded: progress.succeeded ?? 0,
-			failed: progress.failed ?? 0,
-		},
+		progress: extractProgressCounts(parseJobProgress(job.type, job.progress)),
 	};
 }
 
@@ -103,4 +107,79 @@ async function deriveFirstMatchReady(accountId: string): Promise<boolean> {
 	}
 
 	return latestMatchResult !== null;
+}
+
+export type LibraryProcessingJobProgress =
+	| {
+			jobId: string;
+			type: "enrichment";
+			status: Job["status"];
+			error: string | null;
+			progress: EnrichmentChunkProgress;
+	  }
+	| {
+			jobId: string;
+			type: "match_snapshot_refresh";
+			status: Job["status"];
+			error: string | null;
+			progress: MatchSnapshotRefreshProgress;
+	  };
+
+const LibraryProcessingJobProgressInputSchema = z.object({
+	jobId: z.string().uuid(),
+});
+
+export const getLibraryProcessingJobProgress = createServerFn({
+	method: "GET",
+})
+	.inputValidator((data) => LibraryProcessingJobProgressInputSchema.parse(data))
+	.handler(async ({ data }): Promise<LibraryProcessingJobProgress | null> => {
+		const { session } = await requireAuthSession();
+
+		const jobResult = await getJobById(data.jobId);
+		if (Result.isError(jobResult) || !jobResult.value) return null;
+
+		const job = jobResult.value;
+		if (job.account_id !== session.accountId) return null;
+
+		const parsed = parseJobProgress(job.type, job.progress);
+		if (parsed.type === "unknown") {
+			return null;
+		}
+
+		if (parsed.type === "enrichment") {
+			return {
+				jobId: job.id,
+				type: "enrichment",
+				status: job.status,
+				error: job.error ?? null,
+				progress: parsed.progress,
+			};
+		}
+
+		return {
+			jobId: job.id,
+			type: "match_snapshot_refresh",
+			status: job.status,
+			error: job.error ?? null,
+			progress: parsed.progress,
+		};
+	});
+
+function extractProgressCounts(parsed: ParsedJobProgress): ProgressCounts {
+	if (parsed.type === "unknown") {
+		return {
+			done: 0,
+			total: 0,
+			succeeded: 0,
+			failed: 0,
+		};
+	}
+
+	return {
+		done: parsed.progress.done,
+		total: parsed.progress.total,
+		succeeded: parsed.progress.succeeded,
+		failed: parsed.progress.failed,
+	};
 }

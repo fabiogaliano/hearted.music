@@ -6,8 +6,9 @@
  */
 
 import { Result } from "better-result";
+import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
+import { createInitialMatchSnapshotRefreshProgress } from "@/lib/platform/jobs/progress/match-snapshot-refresh";
 import {
-	type EnrichmentChunkProgress,
 	JobProgressSchema as JobProgressSchemaImpl,
 	type JobProgress as JobProgressType,
 } from "@/lib/platform/jobs/progress/types";
@@ -62,15 +63,9 @@ function enrichmentProgressToJson(progress: EnrichmentChunkProgress): Json {
 function matchSnapshotRefreshProgressToJson(
 	needsTargetSongEnrichment: boolean,
 ): Json {
-	return {
-		total: 0,
-		done: 0,
-		succeeded: 0,
-		failed: 0,
-		plan: {
-			needsTargetSongEnrichment,
-		},
-	};
+	return createInitialMatchSnapshotRefreshProgress({
+		needsTargetSongEnrichment,
+	});
 }
 
 /**
@@ -190,7 +185,10 @@ export function createJob(
  */
 export function updateJobProgress(
 	id: string,
-	progress: JobProgress | EnrichmentChunkProgress,
+	progress:
+		| JobProgress
+		| EnrichmentChunkProgress
+		| import("@/lib/platform/jobs/progress/match-snapshot-refresh").MatchSnapshotRefreshProgress,
 ): Promise<Result<Job, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
@@ -421,7 +419,16 @@ export async function ensureEnrichmentJob(opts: {
 		lastError = created;
 	}
 
-	return lastError!;
+	return (
+		lastError ??
+		Result.err(
+			new DatabaseError({
+				code: "library_processing_job_ensure_failed",
+				message:
+					"Failed to ensure enrichment job after retrying constraint races",
+			}),
+		)
+	);
 }
 
 /**
@@ -469,8 +476,22 @@ export async function ensureMatchSnapshotRefreshJob(opts: {
 		lastError = created;
 	}
 
-	return lastError!;
+	return (
+		lastError ??
+		Result.err(
+			new DatabaseError({
+				code: "library_processing_job_ensure_failed",
+				message:
+					"Failed to ensure match snapshot refresh job after retrying constraint races",
+			}),
+		)
+	);
 }
+
+const LIBRARY_PROCESSING_JOB_TYPES: JobType[] = [
+	"enrichment",
+	"match_snapshot_refresh",
+];
 
 /**
  * Claims the next pending library-processing job via unified claim RPC.
@@ -498,6 +519,66 @@ export async function claimLibraryProcessingJob(): Promise<
 
 	const job = Array.isArray(data) ? data[0] : data;
 	return Result.ok(job as Job);
+}
+
+/**
+ * Claims the next pending library-processing job for a specific account.
+ * Preserves mixed-workflow ordering while avoiding double-claims by only
+ * transitioning rows that are still pending.
+ */
+export async function claimNextLibraryProcessingJobForAccount(
+	accountId: string,
+): Promise<Result<Job | null, DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	for (let attempt = 0; attempt < 5; attempt++) {
+		const candidateResult = await fromSupabaseMaybe(
+			supabase
+				.from("job")
+				.select("*")
+				.eq("account_id", accountId)
+				.in("type", LIBRARY_PROCESSING_JOB_TYPES)
+				.eq("status", "pending")
+				.order("queue_priority", { ascending: false, nullsFirst: false })
+				.order("created_at", { ascending: true })
+				.limit(1)
+				.maybeSingle(),
+		);
+		if (Result.isError(candidateResult)) {
+			return candidateResult;
+		}
+
+		const candidate = candidateResult.value;
+		if (candidate === null) {
+			return Result.ok(null);
+		}
+
+		const claimedAt = new Date().toISOString();
+		const claimedResult = await fromSupabaseMaybe(
+			supabase
+				.from("job")
+				.update({
+					status: "running",
+					attempts: candidate.attempts + 1,
+					started_at: claimedAt,
+					heartbeat_at: claimedAt,
+					updated_at: claimedAt,
+				})
+				.eq("id", candidate.id)
+				.eq("status", "pending")
+				.select("*")
+				.maybeSingle(),
+		);
+		if (Result.isError(claimedResult)) {
+			return claimedResult;
+		}
+
+		if (claimedResult.value !== null) {
+			return Result.ok(claimedResult.value);
+		}
+	}
+
+	return Result.ok(null);
 }
 
 /**

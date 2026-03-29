@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as DevPlaygroundRouteImport } from './routes/dev-playground'
 import { Route as DevExtensionStepRouteImport } from './routes/dev-extension-step'
+import { Route as DevErrorRouteImport } from './routes/dev-error'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
@@ -29,7 +30,6 @@ import { Route as ApiExtensionSyncRouteImport } from './routes/api/extension/syn
 import { Route as ApiExtensionStatusRouteImport } from './routes/api/extension/status'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiJobsIdProgressRouteImport } from './routes/api/jobs/$id/progress'
-import { Route as ApiJobsIdEnrichmentProgressRouteImport } from './routes/api/jobs/$id/enrichment-progress'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -59,6 +59,11 @@ const DevPlaygroundRoute = DevPlaygroundRouteImport.update({
 const DevExtensionStepRoute = DevExtensionStepRouteImport.update({
   id: '/dev-extension-step',
   path: '/dev-extension-step',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevErrorRoute = DevErrorRouteImport.update({
+  id: '/dev-error',
+  path: '/dev-error',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -130,15 +135,10 @@ const ApiJobsIdProgressRoute = ApiJobsIdProgressRouteImport.update({
   path: '/api/jobs/$id/progress',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiJobsIdEnrichmentProgressRoute =
-  ApiJobsIdEnrichmentProgressRouteImport.update({
-    id: '/api/jobs/$id/enrichment-progress',
-    path: '/api/jobs/$id/enrichment-progress',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dev-error': typeof DevErrorRoute
   '/dev-extension-step': typeof DevExtensionStepRoute
   '/dev-playground': typeof DevPlaygroundRoute
   '/faq': typeof FaqRoute
@@ -156,11 +156,11 @@ export interface FileRoutesByFullPath {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
-  '/api/jobs/$id/enrichment-progress': typeof ApiJobsIdEnrichmentProgressRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dev-error': typeof DevErrorRoute
   '/dev-extension-step': typeof DevExtensionStepRoute
   '/dev-playground': typeof DevPlaygroundRoute
   '/faq': typeof FaqRoute
@@ -178,13 +178,13 @@ export interface FileRoutesByTo {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
-  '/api/jobs/$id/enrichment-progress': typeof ApiJobsIdEnrichmentProgressRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/dev-error': typeof DevErrorRoute
   '/dev-extension-step': typeof DevExtensionStepRoute
   '/dev-playground': typeof DevPlaygroundRoute
   '/faq': typeof FaqRoute
@@ -202,13 +202,13 @@ export interface FileRoutesById {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
-  '/api/jobs/$id/enrichment-progress': typeof ApiJobsIdEnrichmentProgressRoute
   '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/dev-error'
     | '/dev-extension-step'
     | '/dev-playground'
     | '/faq'
@@ -226,11 +226,11 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
-    | '/api/jobs/$id/enrichment-progress'
     | '/api/jobs/$id/progress'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/dev-error'
     | '/dev-extension-step'
     | '/dev-playground'
     | '/faq'
@@ -248,12 +248,12 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
-    | '/api/jobs/$id/enrichment-progress'
     | '/api/jobs/$id/progress'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/dev-error'
     | '/dev-extension-step'
     | '/dev-playground'
     | '/faq'
@@ -271,13 +271,13 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
-    | '/api/jobs/$id/enrichment-progress'
     | '/api/jobs/$id/progress'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  DevErrorRoute: typeof DevErrorRoute
   DevExtensionStepRoute: typeof DevExtensionStepRoute
   DevPlaygroundRoute: typeof DevPlaygroundRoute
   FaqRoute: typeof FaqRoute
@@ -289,7 +289,6 @@ export interface RootRouteChildren {
   ApiExtensionStatusRoute: typeof ApiExtensionStatusRoute
   ApiExtensionSyncRoute: typeof ApiExtensionSyncRoute
   ApiExtensionTokenRoute: typeof ApiExtensionTokenRoute
-  ApiJobsIdEnrichmentProgressRoute: typeof ApiJobsIdEnrichmentProgressRoute
   ApiJobsIdProgressRoute: typeof ApiJobsIdProgressRoute
 }
 
@@ -335,6 +334,13 @@ declare module '@tanstack/react-router' {
       path: '/dev-extension-step'
       fullPath: '/dev-extension-step'
       preLoaderRoute: typeof DevExtensionStepRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev-error': {
+      id: '/dev-error'
+      path: '/dev-error'
+      fullPath: '/dev-error'
+      preLoaderRoute: typeof DevErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -435,13 +441,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiJobsIdProgressRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/jobs/$id/enrichment-progress': {
-      id: '/api/jobs/$id/enrichment-progress'
-      path: '/api/jobs/$id/enrichment-progress'
-      fullPath: '/api/jobs/$id/enrichment-progress'
-      preLoaderRoute: typeof ApiJobsIdEnrichmentProgressRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -469,6 +468,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  DevErrorRoute: DevErrorRoute,
   DevExtensionStepRoute: DevExtensionStepRoute,
   DevPlaygroundRoute: DevPlaygroundRoute,
   FaqRoute: FaqRoute,
@@ -480,7 +480,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiExtensionStatusRoute: ApiExtensionStatusRoute,
   ApiExtensionSyncRoute: ApiExtensionSyncRoute,
   ApiExtensionTokenRoute: ApiExtensionTokenRoute,
-  ApiJobsIdEnrichmentProgressRoute: ApiJobsIdEnrichmentProgressRoute,
   ApiJobsIdProgressRoute: ApiJobsIdProgressRoute,
 }
 export const routeTree = rootRouteImport
