@@ -6,11 +6,11 @@
 
 ## Removed Requirements
 
-All requirements in this spec have been replaced by the `target-playlist-match-refresh` capability:
+All requirements in this spec have been replaced by the `target-playlist-match-refresh` and `library-processing` capabilities:
 
 - **Re-match Operation** — Replaced by refresh workflow snapshot publication
-- **Re-match is Separate from Pipeline** — Replaced by refresh workflow that owns target-playlist-side enrichment, profiling, and publishing under one job type
+- **Re-match is Separate from Pipeline** — Replaced by library-processing-managed `match_snapshot_refresh` jobs where liked-song enrichment remains candidate-side only
 - **Playlist Change Detection** — Replaced by target-playlist-aware sync and onboarding planners with execution-time DB reads
-- **Re-match Trigger Integration** — Replaced by `target_playlist_match_refresh` jobs with coalescing via `rerunRequested`
+- **Re-match Trigger Integration** — Replaced by library-processing change application and scheduler-owned refresh re-ensure
 
-See: [target-playlist-match-refresh spec](/openspec/specs/target-playlist-match-refresh/spec.md)
+See: [target-playlist-match-refresh spec](/openspec/specs/target-playlist-match-refresh/spec.md), [library-processing spec](/openspec/specs/library-processing/spec.md)

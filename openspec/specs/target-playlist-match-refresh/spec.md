@@ -13,22 +13,22 @@ TBD - Define the target-playlist match refresh workflow that owns all snapshot p
 ## Requirements
 
 ### Requirement: Refresh workflow owns snapshot publication
-The system SHALL use `target_playlist_match_refresh` as the only workflow and job type allowed to publish `match_context` and `match_result` for an account.
+The system SHALL use `match_snapshot_refresh` as the only workflow and durable job type allowed to publish `match_context` and `match_result` for an account, while library-processing owns follow-on scheduling.
 
-#### Scenario: Sync or onboarding requests refresh
-- **WHEN** sync, target playlist selection, manual action, or enrichment drain determines that the published suggestion set may have changed
-- **THEN** the system SHALL create or reuse an account-scoped `target_playlist_match_refresh` job
-- **AND** the job progress SHALL persist a `TargetPlaylistRefreshPlan`
+#### Scenario: Library-processing ensures refresh when state is stale
+- **WHEN** sync, onboarding, or a worker outcome leaves `matchSnapshotRefresh` stale in `library_processing_state`
+- **THEN** the system SHALL create or reuse an account-scoped `match_snapshot_refresh` job
+- **AND** it SHALL do so through library-processing job ensuring rather than direct refresh trigger policy scattered across callers
 
-#### Scenario: Single active refresh coalesces triggers
-- **WHEN** an account already has a pending or running `target_playlist_match_refresh` job
-- **THEN** the system SHALL NOT create a second active refresh job
-- **AND** the existing job SHALL record `rerunRequested = true` when another refresh-triggering change arrives
+#### Scenario: Single active refresh job exists per account
+- **WHEN** an account already has a pending or running `match_snapshot_refresh` job for the current stale request marker
+- **THEN** the system SHALL NOT create a second active refresh job for that account
+- **AND** the active job association SHALL be tracked through library-processing state and job uniqueness rather than `rerunRequested` orchestration in `job.progress`
 
 #### Scenario: Liked-song enrichment never publishes snapshots
-- **WHEN** the liked-song enrichment pipeline completes a chunk or drains its queue
+- **WHEN** the liked-song enrichment pipeline completes a chunk or settles its current request marker
 - **THEN** it SHALL NOT write `match_context` or `match_result`
-- **AND** it MAY only request `target_playlist_match_refresh` follow-on work
+- **AND** it MAY only report outcomes back to library-processing so refresh ownership stays singular
 
 ---
 
@@ -78,26 +78,21 @@ The system SHALL publish snapshot state atomically and skip writes when the curr
 ---
 
 ### Requirement: Refresh controls target-playlist-only lightweight enrichment
-The system SHALL optionally run lightweight enrichment for target-playlist songs that are not currently liked songs before profiling target playlists.
+The system SHALL optionally run lightweight enrichment for target-playlist songs that are not currently liked songs before profiling target playlists, based on an execution hint derived when the job is ensured.
 
-#### Scenario: Plan requests target-playlist-song enrichment
-- **WHEN** `TargetPlaylistRefreshPlan.shouldEnrichTargetPlaylistSongs` is true
-- **THEN** the refresh workflow SHALL select songs that belong to current target playlists but are not currently liked by the account
-- **AND** it SHALL run the lightweight target-playlist-song enrichment path before loading target playlist profiles
-
-#### Scenario: Plan skips target-playlist-song enrichment
-- **WHEN** `TargetPlaylistRefreshPlan.shouldEnrichTargetPlaylistSongs` is false
-- **THEN** the refresh workflow SHALL skip the lightweight target-playlist-song enrichment step
-- **AND** it SHALL continue with current cached or recomputed target playlist profiles
+#### Scenario: Ensure-time state requests target-playlist-song enrichment
+- **WHEN** current database state shows that target-playlist refresh needs target-playlist-only song enrichment
+- **THEN** the ensured `match_snapshot_refresh` job SHALL carry `needsTargetSongEnrichment = true`
+- **AND** the refresh workflow SHALL run the lightweight target-playlist-song enrichment path before loading target playlist profiles
 
 #### Scenario: Metadata-only target changes skip target-playlist-song enrichment
-- **WHEN** the refresh plan was built from target playlist metadata-only changes
-- **THEN** `TargetPlaylistRefreshPlan.shouldEnrichTargetPlaylistSongs` SHALL be false
-- **AND** the refresh workflow SHALL reuse cached profiles when valid and recompute only stale or missing profiles
+- **WHEN** refresh was requested only because target playlist metadata changed
+- **THEN** the ensured `match_snapshot_refresh` job SHALL carry `needsTargetSongEnrichment = false`
+- **AND** the refresh workflow SHALL skip target-playlist-song enrichment for that pass
 
 #### Scenario: Liked-song removal skips target-playlist-song enrichment
-- **WHEN** the refresh plan was built because liked songs were removed from the candidate set
-- **THEN** `TargetPlaylistRefreshPlan.shouldEnrichTargetPlaylistSongs` SHALL be false
+- **WHEN** refresh was requested because liked songs were removed from the candidate set
+- **THEN** the ensured `match_snapshot_refresh` job SHALL carry `needsTargetSongEnrichment = false`
 - **AND** the refresh workflow SHALL publish against the current target playlist set without running target-playlist-song enrichment
 
 #### Scenario: Song belongs to both target playlists and liked songs
@@ -108,14 +103,14 @@ The system SHALL optionally run lightweight enrichment for target-playlist songs
 ---
 
 ### Requirement: Refresh re-reads current state on each pass
-The system SHALL treat the persisted refresh plan as a hint and re-read current database state at execution time.
+The system SHALL execute each `match_snapshot_refresh` job as a single pass against current database state, treating any ensure-time execution hint as optional input and leaving repeated passes to library-processing.
 
-#### Scenario: Mid-flight change requests follow-up pass
-- **WHEN** another refresh-triggering change arrives while a refresh job is already running
-- **THEN** the active job SHALL record `rerunRequested = true`
-- **AND** the worker SHALL run one additional refresh pass against current database state after the in-flight pass finishes
+#### Scenario: Mid-flight change requests a later pass through the scheduler
+- **WHEN** another refresh-triggering change arrives while a `match_snapshot_refresh` job is already running
+- **THEN** the in-flight job SHALL remain a single pass
+- **AND** library-processing SHALL ensure a later stale refresh job after settlement instead of setting `rerunRequested = true`
 
-#### Scenario: Persisted plan differs from current database state
-- **WHEN** execution starts with a stored `TargetPlaylistRefreshPlan`
-- **THEN** the refresh workflow SHALL use the plan only to choose optional work such as target-playlist-song enrichment
-- **AND** it SHALL determine the actual target playlist set and candidate set from current database rows
+#### Scenario: Ensure-time hint differs from current database state
+- **WHEN** execution starts with an ensure-time hint such as `needsTargetSongEnrichment`
+- **THEN** the refresh workflow SHALL still determine the actual target playlist set and candidate set from current database rows at execution time
+- **AND** it SHALL treat the hint only as optional guidance for extra execution work

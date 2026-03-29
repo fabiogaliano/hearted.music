@@ -5,7 +5,7 @@ Chrome extension-based data pipeline for ingesting Spotify data (liked songs, pl
 ## Requirements
 ### Requirement: Extension as Primary Data Source
 
-The system SHALL use the Chrome extension as the primary mechanism for ingesting Spotify data and triggering only the durable background work required after sync-time change classification.
+The system SHALL use the Chrome extension as the primary mechanism for ingesting Spotify data and emitting one aggregated `library_synced` change that drives durable background library-processing after sync-time change classification.
 
 #### Scenario: Extension syncs liked songs to backend
 - **WHEN** the extension triggers a sync
@@ -19,23 +19,30 @@ The system SHALL use the Chrome extension as the primary mechanism for ingesting
 - **AND** includes playlist data in the POST to `/api/extension/sync`
 - **AND** the backend upserts playlist records for the authenticated user
 
-#### Scenario: Sync queues classified background follow-on work
+#### Scenario: Sync emits one aggregated library-processing change
 - **WHEN** `/api/extension/sync` completes its persistence phases successfully
-- **THEN** the system SHALL create or reuse an active account-scoped `enrichment` background job only when liked-song candidate-side enrichment work is needed
-- **AND** it SHALL create or reuse an active account-scoped `target_playlist_match_refresh` job when liked-song removals or target-playlist-side changes require published suggestion refresh
-- **AND** that follow-on work SHALL run outside the sync request lifecycle
-- **AND** the sync request SHALL NOT wait for either background job to finish
+- **THEN** the backend SHALL call `applyLibraryProcessingChange(...)` exactly once with a backend-internal `library_synced` change for that request
+- **AND** that change SHALL carry required liked-song and target-playlist booleans without timestamps or request markers
 
-#### Scenario: Liked-song additions rely on enrichment drain for refresh
-- **WHEN** sync detects newly added liked songs and no target-playlist-side change requires immediate refresh
-- **THEN** the system SHALL queue `enrichment` when candidate-side work is needed
-- **AND** it SHALL NOT queue `target_playlist_match_refresh` immediately for those additions alone
-- **AND** the later enrichment-drain follow-on SHALL own the publish trigger
+#### Scenario: All-false sync results still emit a semantic sync change
+- **WHEN** a sync request completes with no processing-relevant changes
+- **THEN** the backend SHALL still emit one aggregated `library_synced` change for that request
+- **AND** all change booleans SHALL be `false`
 
-#### Scenario: Non-target playlist-only changes do not queue refresh work
+#### Scenario: Liked-song additions with current targets request both workflows
+- **WHEN** sync detects newly added liked songs and the account currently has one or more target playlists
+- **THEN** the aggregated `library_synced` change SHALL allow library-processing to invalidate both `enrichment` and `matchSnapshotRefresh`
+- **AND** follow-on work SHALL run outside the sync request lifecycle
+
+#### Scenario: Liked-song additions without current targets request enrichment only
+- **WHEN** sync detects newly added liked songs and the account currently has zero target playlists
+- **THEN** the aggregated `library_synced` change SHALL allow library-processing to invalidate `enrichment`
+- **AND** it SHALL not force immediate refresh invalidation for that addition alone
+
+#### Scenario: Non-target playlist-only changes do not request follow-on work
 - **WHEN** sync detects changes only in playlists that are not currently targets
-- **THEN** the system SHALL NOT queue `target_playlist_match_refresh` for that reason alone
-- **AND** it SHALL leave the current published snapshot unchanged unless another qualifying change occurred
+- **THEN** the emitted `library_synced` change SHALL leave the processing-relevant booleans false for that reason alone
+- **AND** the sync request SHALL not schedule library-processing follow-on work from those non-target changes alone
 
 #### Scenario: No Spotify OAuth tokens required
 - **WHEN** data ingestion occurs
@@ -46,38 +53,32 @@ The system SHALL use the Chrome extension as the primary mechanism for ingesting
 
 ### Requirement: Sync captures target-playlist change facts before refresh planning
 
-The system SHALL preserve the target-playlist facts needed for refresh planning before destructive playlist writes remove that information from the database.
+The system SHALL preserve the target-playlist facts needed to emit correct `library_synced` change booleans before destructive playlist writes remove that information from the database.
 
 #### Scenario: Target playlist removal is detected before delete
 - **WHEN** sync determines that a playlist has been removed from Spotify
 - **THEN** it SHALL record whether that playlist was part of the current target set before deleting the playlist row
-- **AND** it SHALL use that fact when deciding whether to queue `target_playlist_match_refresh`
+- **AND** it SHALL use that fact when computing `targetPlaylists.removed`
 
 #### Scenario: Target playlist track changes are classified from current target membership
 - **WHEN** playlist-track sync changes membership for one or more playlists
-- **THEN** sync planning SHALL determine whether the changed playlist IDs intersect the current target set
-- **AND** it SHALL request target-playlist-song enrichment only for target-side changes
+- **THEN** sync classification SHALL determine whether the changed playlist IDs intersect the current target set
+- **AND** it SHALL use that fact when computing `targetPlaylists.trackMembershipChanged`
 
-#### Scenario: Metadata-only target changes queue refresh without target-song enrichment
-- **WHEN** sync detects only name or description changes on current target playlists
-- **THEN** it SHALL queue `target_playlist_match_refresh`
-- **AND** the refresh plan SHALL set `shouldEnrichTargetPlaylistSongs = false`
+#### Scenario: Metadata-only target changes use profile-text booleans
+- **WHEN** sync detects name or description changes on current target playlists without processing-relevant track membership changes
+- **THEN** it SHALL set `targetPlaylists.profileTextChanged = true`
+- **AND** it SHALL avoid broadening that fact into a less specific metadata bucket
 
-#### Scenario: Target removal with remaining targets queues refresh without target-song enrichment
-- **WHEN** sync detects that a current target playlist was removed or toggled off and one or more target playlists still remain
-- **THEN** it SHALL queue `target_playlist_match_refresh`
-- **AND** the refresh plan SHALL set `shouldEnrichTargetPlaylistSongs = false`
+#### Scenario: Processing-relevant target removals share one public boolean
+- **WHEN** sync detects that some or all current target playlists were removed or toggled off
+- **THEN** it SHALL set `targetPlaylists.removed = true`
+- **AND** later reconciliation or execution-time DB reads SHALL determine whether refresh publishes remaining-target or empty-target state
 
-#### Scenario: All target playlists removed queue empty-snapshot refresh
-- **WHEN** sync detects that the current target playlist set became empty
-- **THEN** it SHALL queue `target_playlist_match_refresh`
-- **AND** the refresh plan SHALL set `shouldEnrichTargetPlaylistSongs = false`
-- **AND** the refresh workflow SHALL be responsible for publishing the explicit empty snapshot
-
-#### Scenario: Incomplete track sync does not create a false refresh plan
+#### Scenario: Incomplete track sync does not invent false target facts
 - **WHEN** playlist-track sync cannot confidently classify whether target playlists changed
-- **THEN** the planner SHALL avoid inventing a more specific target-playlist refresh plan from incomplete facts
-- **AND** it SHALL rely on current execution-time database reads to preserve correctness
+- **THEN** the emitted `library_synced` change SHALL avoid inventing more specific target-side booleans than the source data supports
+- **AND** later execution-time DB reads SHALL preserve correctness for any follow-on refresh work
 
 ---
 

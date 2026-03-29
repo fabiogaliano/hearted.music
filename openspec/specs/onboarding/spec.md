@@ -83,7 +83,7 @@ The system SHALL include an "Install Extension" step in the onboarding flow betw
 
 ### Requirement: Playlist Flagging Step
 
-The system SHALL allow users to save target playlist selection without treating target-playlist refresh completion as part of the save barrier.
+The system SHALL allow users to save target playlist selection without treating library-processing follow-on work as part of the save barrier.
 
 #### Scenario: Selection UI displayed
 - **WHEN** sync completes
@@ -100,22 +100,26 @@ The system SHALL allow users to save target playlist selection without treating 
 #### Scenario: Successful save advances immediately
 - **WHEN** target playlist selection is saved successfully
 - **THEN** onboarding progression MAY advance to `ready` immediately
-- **AND** the save response SHALL NOT wait for target-playlist refresh or liked-song enrichment follow-on work to finish
+- **AND** the save response SHALL NOT wait for library-processing follow-on work to finish
 
-#### Scenario: Empty initial target selection skips immediate follow-on work
-- **WHEN** the saved selection contains zero target playlists and the account has no previously published target snapshot to clear
+#### Scenario: Empty initial target selection skips immediate library-processing work
+- **WHEN** the saved initial onboarding selection contains zero target playlists
 - **THEN** the system SHALL return success for the save
-- **AND** it SHALL NOT trigger target-playlist refresh solely for that initial empty selection
+- **AND** it SHALL NOT emit a library-processing change for that initial empty selection
+
+#### Scenario: Initial target selection emits onboarding library-processing change
+- **WHEN** one or more target playlists are saved during onboarding
+- **THEN** the source boundary SHALL emit `onboarding_target_selection_confirmed`
+- **AND** follow-on scheduling SHALL be delegated to `applyLibraryProcessingChange(...)` rather than direct trigger helpers
 
 #### Scenario: Target selection with zero liked songs still refreshes published state
 - **WHEN** one or more target playlists are saved and the account has zero data-enriched liked-song candidates
 - **THEN** the system SHALL return success for the save
-- **AND** it SHALL queue target-playlist refresh follow-on work so the published snapshot reflects the current empty candidate set
+- **AND** library-processing SHALL still ensure `match_snapshot_refresh` follow-on work so the published snapshot reflects the current empty candidate set
 
-#### Scenario: Valid selection triggers target-playlist follow-on work
-- **WHEN** one or more target playlists are saved and liked-song candidates may contribute to matching
-- **THEN** the system SHALL trigger `target_playlist_match_refresh` as follow-on work
-- **AND** it MAY also request candidate-side liked-song enrichment if liked-song enrichment is incomplete
+#### Scenario: Valid selection may ensure enrichment without rolling back the save
+- **WHEN** one or more target playlists are saved and liked-song candidate-side work is still owed
+- **THEN** library-processing SHALL ensure the needed `match_snapshot_refresh` and `enrichment` follow-on work
 - **AND** failure in that follow-on work SHALL NOT roll back the successful save
 
 ---
