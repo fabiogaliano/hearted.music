@@ -15,6 +15,7 @@ import { runAudioFeatures } from "./stages/audio-features";
 import { runGenreTagging } from "./stages/genre-tagging";
 import { runSongAnalysis } from "./stages/song-analysis";
 import { runSongEmbedding } from "./stages/song-embedding";
+import { maybeDevDelay } from "@/lib/workflows/library-processing/devtools/delay";
 import {
 	type EnrichmentContext,
 	type EnrichmentStageName,
@@ -160,6 +161,7 @@ async function enrichSongs(
 	batch: Awaited<ReturnType<typeof selectPipelineBatch>>,
 	jobId: string,
 	progress: EnrichmentChunkProgress,
+	stageDelayMs?: number,
 ): Promise<void> {
 	// Phase A: audio_features + genre_tagging (parallel)
 	progress.currentStage = "audio_features";
@@ -186,6 +188,7 @@ async function enrichSongs(
 	);
 
 	// Phase B: song_analysis
+	await maybeDevDelay(stageDelayMs);
 	progress.currentStage = "song_analysis";
 	progress.stages.song_analysis.status = "running";
 	await persistProgress(jobId, progress);
@@ -201,6 +204,7 @@ async function enrichSongs(
 	);
 
 	// Phase C: song_embedding
+	await maybeDevDelay(stageDelayMs);
 	progress.currentStage = "song_embedding";
 	progress.stages.song_embedding.status = "running";
 	await persistProgress(jobId, progress);
@@ -232,6 +236,7 @@ export async function executeWorkerChunk(
 	jobId: string,
 	batchSize: number,
 	batchSequence: number,
+	stageDelayMs?: number,
 ): Promise<ChunkResult> {
 	const embeddingResult = initEmbeddingService();
 	if (Result.isError(embeddingResult)) {
@@ -256,7 +261,7 @@ export async function executeWorkerChunk(
 	);
 
 	// Candidate-side enrichment only (phases A-C)
-	await enrichSongs(ctx, batch, jobId, progress);
+	await enrichSongs(ctx, batch, jobId, progress, stageDelayMs);
 
 	// Write item_status for ALL batch songs — pipeline processing state only.
 	if (batch.songIds.length > 0) {
