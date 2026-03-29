@@ -1,0 +1,3563 @@
+{
+	"likedSongs": [
+		{
+			"liked_at": "2025-06-06T14:08:26+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "8439160d-8245-4cc1-8871-c94bbe3ff23b",
+				"spotify_track_id": "2ekn2ttSfGqwhhate0LSR0",
+				"name": "New Rules",
+				"artist": "Dua Lipa",
+				"artist_id": "6M2wZ9GZgrQXHCFfjv46we",
+				"artist_image_url": null,
+				"album": "Dua Lipa (Deluxe)",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e02838698485511bd9108fadadc",
+				"genres": ["pop", "electropop", "dance"],
+				"audio_features": {
+					"tempo": 116.073,
+					"energy": 0.7,
+					"valence": 0.608
+				}
+			},
+			"analysis": {
+				"id": "bc438441-47a8-4b9c-a79b-7b7fa90181a6",
+				"track_id": "8439160d-8245-4cc1-8871-c94bbe3ff23b",
+				"analysis": {
+					"themes": [
+						{
+							"name": "self-restraint",
+							"description": "The conscious effort to hold back from old, comfortable, yet destructive habits."
+						},
+						{
+							"name": "reclaiming agency",
+							"description": "Taking control of one's decisions and emotional well-being after a period of being pulled back and forth."
+						},
+						{
+							"name": "pattern breaking",
+							"description": "The deliberate act of disrupting ingrained cycles of a toxic relationship."
+						},
+						{
+							"name": "false intimacy",
+							"description": "Recognizing the ex's overtures as manipulative attempts for convenience, not genuine connection."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Urgent reminder",
+							"section": "Intro",
+							"description": "A single, urgent word rings out, a self-imposed warning of the first hurdle in breaking free."
+						},
+						{
+							"mood": "Internal turmoil",
+							"section": "Verse 1",
+							"description": "A frantic internal monologue unfolds, revealing the desperate attempt to write down sanity and escape a recurring cycle."
+						},
+						{
+							"mood": "Defiant declaration",
+							"section": "Pre-Chorus",
+							"description": "Rules are laid bare, a firm line in the sand against temptation, building to a clear, defiant declaration of boundaries."
+						},
+						{
+							"mood": "Empowered mantra",
+							"section": "Chorus",
+							"description": "The rules become an unbreakable mantra, shouted over a driving beat, a public act of self-affirmation solidifying newfound resolve."
+						},
+						{
+							"mood": "Ongoing effort",
+							"section": "Bridge",
+							"description": "A moment of reflection acknowledges the hard truth of the ongoing effort, realizing that breaking habits is a continuous performance, not an instant fix."
+						},
+						{
+							"mood": "Echoing vigilance",
+							"section": "Outro",
+							"description": "The rules echo, a final, insistent warning that doesn't quite fade, remaining a constant presence of required vigilance."
+						}
+					],
+					"headline": "The disciplined battle to sever a toxic connection, fought on the dancefloor of self-respect.",
+					"key_lines": [
+						{
+							"line": "One, don't pick up the phone You know he's only callin' 'cause he's drunk and alone",
+							"insight": "The blunt reality of being an ex's convenience, stripping away any illusion of genuine care."
+						},
+						{
+							"line": "And if you're under him, you ain't gettin' over him",
+							"insight": "A stark, visceral truth about how physical entanglement directly prevents emotional progress."
+						},
+						{
+							"line": "I gotta tell them to myself",
+							"insight": "The core of self-reliance, making the commitment an internal, deeply personal one, not reliant on external validation."
+						},
+						{
+							"line": "Practice makes perfect I'm still tryna learn it by heart",
+							"insight": "The vulnerability of an ongoing struggle, showing that healing is a process, not an instant victory."
+						}
+					],
+					"compound_mood": "Vigilant Empowerment",
+					"sonic_texture": "A bright, propulsive dance track built on driving synth basslines, sharp electronic percussion, and a clean, confident vocal delivery that cuts through the layered production. It feels energetic and highly polished.",
+					"audio_features": {
+						"tempo": 116.073,
+						"energy": 0.7,
+						"valence": 0.608,
+						"liveness": 0.153,
+						"loudness": -6.021,
+						"speechiness": 0.0694,
+						"acousticness": 0.00261,
+						"danceability": 0.762,
+						"instrumentalness": 0.0000156
+					},
+					"interpretation": "Breaking free from a destructive on-again, off-again relationship requires setting explicit, non-negotiable rules for oneself. This isn't just about cutting ties with an ex; it's about re-training your own instincts, recognizing patterns of manipulation, and building the internal fortitude to resist the magnetic pull of past comfort, even when it's harmful. The bright, confident production masks the active, daily fight to uphold these boundaries, making the self-affirmation both a rallying cry and a desperate plea.",
+					"mood_description": "A potent mix of determined self-talk and an irresistible beat. It feels like dancing through a breakup, armed with unwavering resolve."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:07:28.587888+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T14:08:24+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "8fdfd85a-ddc4-47b0-9c71-0f02e25cda3c",
+				"spotify_track_id": "6D8y7Bck8h11byRY88Pt2z",
+				"name": "Houdini",
+				"artist": "Dua Lipa",
+				"artist_id": "6M2wZ9GZgrQXHCFfjv46we",
+				"artist_image_url": null,
+				"album": "Radical Optimism",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e022f8790ed72296c2614607575",
+				"genres": ["pop", "dance-pop", "disco"],
+				"audio_features": {
+					"tempo": 116.985,
+					"energy": 0.789,
+					"valence": 0.866
+				}
+			},
+			"analysis": {
+				"id": "e482a0e9-4406-4aef-956a-fb4c225b4da9",
+				"track_id": "8fdfd85a-ddc4-47b0-9c71-0f02e25cda3c",
+				"analysis": {
+					"themes": [
+						{
+							"name": "conditional commitment",
+							"description": "Testing a partner's sincerity before fully investing in a connection."
+						},
+						{
+							"name": "playful power",
+							"description": "Using allure and a hint of unavailability to dictate the terms of engagement."
+						},
+						{
+							"name": "the chase",
+							"description": "Finding excitement in the pursuit, making someone work for attention and affection."
+						},
+						{
+							"name": "guarded vulnerability",
+							"description": "A hint of wanting to stay, carefully hidden beneath a confident exterior."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Anticipatory hum",
+							"section": "Intro",
+							"description": "A soft, inviting shimmer, hinting at the energy about to unfold."
+						},
+						{
+							"mood": "Confident challenge",
+							"section": "Chorus",
+							"description": "The central premise arrives, a clear, playful dare set against a driving, undeniable beat."
+						},
+						{
+							"mood": "Seductive observation",
+							"section": "Verse 1",
+							"description": "Watching for a reaction, an invitation to step closer before time runs out."
+						},
+						{
+							"mood": "Guarded hope",
+							"section": "Post-Chorus",
+							"description": "A moment of rare vulnerability, hinting that the right effort could change everything."
+						},
+						{
+							"mood": "Skeptical inquiry",
+							"section": "Verse 2",
+							"description": "Questioning superficial promises, seeking real proof of dedication."
+						},
+						{
+							"mood": "Lingering mystery",
+							"section": "Outro",
+							"description": "The vanishing act is complete, leaving the challenge echoing in the air."
+						}
+					],
+					"headline": "A playful dare, setting the stage for a high-stakes game of commitment and allure.",
+					"key_lines": [
+						{
+							"line": "Catch me or I go Houdini",
+							"insight": "A playful threat, asserting control over one's own presence and departure."
+						},
+						{
+							"line": "Time is passin' like a solar eclipse",
+							"insight": "The fleeting nature of opportunity, urging quick action from a hesitant suitor."
+						},
+						{
+							"line": "Maybe you could be the one to make me stay",
+							"insight": "A rare glimpse of longing, a crack in the confident facade revealing a desire for genuine connection."
+						},
+						{
+							"line": "But do you practise everything that you preach?",
+							"insight": "Demanding substance over shallow words, seeking proof of real intent."
+						}
+					],
+					"compound_mood": "Flirtatious Defiance",
+					"sonic_texture": "A shimmering tapestry of crisp synth hooks and a relentlessly driving bassline, creating a vibrant dancefloor energy. Vocals are clear and confident, gliding effortlessly over the meticulously produced disco-pop groove.",
+					"audio_features": {
+						"tempo": 116.985,
+						"energy": 0.789,
+						"valence": 0.866,
+						"liveness": 0.0947,
+						"loudness": -4.876,
+						"speechiness": 0.059,
+						"acousticness": 0.0036,
+						"danceability": 0.744,
+						"instrumentalness": 0.00144
+					},
+					"interpretation": "It's a bold declaration of self-worth, daring a potential lover to truly earn their place. There's a playful power dynamic at play, where commitment isn't given freely but must be proven. The upbeat, shimmering production creates an atmosphere of confident independence, almost masking the underlying vulnerability of someone who wants to stay, but only if it's real.",
+					"mood_description": "A shimmering invitation to the dancefloor, laced with the thrill of a chase. The pulsing bass pulls you in, but a playful detachment keeps you guessing."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:08:06.55859+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T14:08:23+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "24836914-590b-41fb-8912-1c12640ca54a",
+				"spotify_track_id": "3gJAFFELdZyIM8tiwLAikg",
+				"name": "Handlebars (feat. Dua Lipa)",
+				"artist": "JENNIE",
+				"artist_id": "250b0Wlc5Vk0CoUsaCY84M",
+				"artist_image_url": null,
+				"album": "Ruby",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e02dcf27dec5e479b2e39c4c993",
+				"genres": ["k-pop", "r&b", "hip-hop"],
+				"audio_features": {
+					"tempo": 152.018,
+					"energy": 0.855,
+					"valence": 0.669
+				}
+			},
+			"analysis": {
+				"id": "3be1c5ac-65ca-42ef-bb50-ff3bde4d264b",
+				"track_id": "24836914-590b-41fb-8912-1c12640ca54a",
+				"analysis": {
+					"themes": [
+						{
+							"name": "reckless abandon",
+							"description": "Leaping into love with no brakes, consequences be damned."
+						},
+						{
+							"name": "addiction to feeling",
+							"description": "The craving for intense romantic highs, even when they come with a painful crash."
+						},
+						{
+							"name": "self-aware foolishness",
+							"description": "Knowing the pattern of falling too hard and getting hurt, yet repeating it anyway."
+						},
+						{
+							"name": "the intoxicating crash",
+							"description": "Finding a strange, almost thrilling energy in the destructive cycle of intense love."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Reckless dive",
+							"section": "Chorus: JENNIE",
+							"description": "A sudden, head-first plunge into love, with the blunt admission of falling hard, again and again, like an accident waiting to happen."
+						},
+						{
+							"mood": "Wounded questioning",
+							"section": "Verse 1: JENNIE, Dua Lipa",
+							"description": "A moment of questioning the pain love brings, acknowledging a foolish tendency to rush in, but still drawn to the heat."
+						},
+						{
+							"mood": "Hypnotic obsession",
+							"section": "Pre-Chorus: Dua Lipa, JENNIE & Both",
+							"description": "The desire takes over, a fantasy of forever and physical connection, overriding any lingering hesitation with impulsive certainty."
+						},
+						{
+							"mood": "Buzzed surrender",
+							"section": "Verse 2: Dua Lipa",
+							"description": "Deeper into the intoxicating haze, trying to resist but utterly consumed by the thought of the other person, on the verge of spilling every crazy thought."
+						},
+						{
+							"mood": "Amplified crash",
+							"section": "Chorus: JENNIE & Dua Lipa, Dua Lipa",
+							"description": "The cycle repeats, reinforced by both voices, an even more emphatic declaration of the reckless fall, loud and inescapable."
+						},
+						{
+							"mood": "Dismissive aftermath",
+							"section": "Outro: Dua Lipa & JENNIE",
+							"description": "A shrug of acceptance, brushing off the intensity with a casual \"we ain't gotta talk about it,\" leaving the emotional chaos to simply hang in the air."
+						}
+					],
+					"headline": "A dizzying dive into love, knowing it'll end in a crash, but unable to resist the thrill of the fall.",
+					"key_lines": [
+						{
+							"line": "I trip and fall in love Just like a Tuesday drunk",
+							"insight": "The messy, almost pathetic nature of falling, not elegant but a stumble."
+						},
+						{
+							"line": "Over the handlebars Hitting the ground so hard",
+							"insight": "The inevitable, painful outcome of giving in completely, a metaphor for romantic collision."
+						},
+						{
+							"line": "So why am I still fixing for this frying pan",
+							"insight": "A resigned, almost sarcastic understanding of self-sabotage, knowing the burn is coming but leaning into it."
+						},
+						{
+							"line": "I'm a little too buzzed on your love to play it cute",
+							"insight": "The honest, uninhibited state of being overwhelmed by affection, losing all pretense."
+						},
+						{
+							"line": "We ain't gotta talk about it",
+							"insight": "A dismissive wave, a way to avoid confronting the intense, perhaps destructive, patterns of love."
+						}
+					],
+					"compound_mood": "Reckless Euphoria",
+					"sonic_texture": "High energy, prominent bass, crisp trap-infused beats. JENNIE's smooth R&B vocals blend seamlessly with Dua Lipa's confident pop delivery, all layered over driving synths and a propulsive rhythm that feels both slick and relentless.",
+					"audio_features": {
+						"tempo": 152.018,
+						"energy": 0.855,
+						"valence": 0.669,
+						"liveness": 0.0524,
+						"loudness": -4.208,
+						"speechiness": 0.0426,
+						"acousticness": 0.00377,
+						"danceability": 0.51,
+						"instrumentalness": 0
+					},
+					"interpretation": "This is about the irresistible pull of intense, all-consuming love, even when past experiences prove it leads to pain. There's a self-aware foolishness, a conscious decision to dive headfirst into something potentially destructive because the desire for connection overrides all caution. The upbeat, danceable production adds a layer of intoxicating thrill, making the self-inflicted wounds feel almost exhilarating in the moment.",
+					"mood_description": "It feels like a headrush, a high-octane blend of pop energy and R&B swagger. There's a thrill of impending chaos, like speeding down a hill knowing a crash is coming."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:07:54.794482+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T14:08:20+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "1505fdb8-98ab-41ba-a89f-826f449deab1",
+				"spotify_track_id": "76dIZzTdrNO15mGBrU3MHi",
+				"name": "One Kiss (with Dua Lipa)",
+				"artist": "Calvin Harris",
+				"artist_id": "7CajNmpbOovFoOoasH2HaY",
+				"artist_image_url": null,
+				"album": "96 Months",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e028daa8ac6367fc997c1873b9b",
+				"genres": ["house", "electronic", "dance"],
+				"audio_features": {
+					"tempo": 123.992,
+					"energy": 0.862,
+					"valence": 0.593
+				}
+			},
+			"analysis": {
+				"id": "91efa162-608c-40b5-8433-43b3ac48c2aa",
+				"track_id": "1505fdb8-98ab-41ba-a89f-826f449deab1",
+				"analysis": {
+					"themes": [
+						{
+							"name": "instant magnetism",
+							"description": "The potent force of attraction ignited by a single glance or touch, leading to an immediate, powerful connection."
+						},
+						{
+							"name": "confident allure",
+							"description": "Projecting an irresistible self-assurance, openly declaring oneself as the desired focus of another's affection."
+						},
+						{
+							"name": "fleeting ecstasy",
+							"description": "The desire to fully immerse in a joyous, high-energy moment, knowing it might not last beyond the night."
+						},
+						{
+							"name": "the dancefloor spell",
+							"description": "The intoxicating environment of a club or party, where inhibitions fade and connections feel amplified by music and movement."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Magnetic invitation",
+							"section": "Intro",
+							"description": "A smooth, confident declaration sets the stage, promising an irresistible connection that begins with something as simple as one kiss."
+						},
+						{
+							"mood": "Easy seduction",
+							"section": "Verse 1",
+							"description": "The embrace of the night unfolds, a relaxed confidence in extending the moment into the quiet hours, fueled by music and intimacy."
+						},
+						{
+							"mood": "Internal ignition",
+							"section": "Pre-Chorus",
+							"description": "A sudden, intense feeling takes hold internally, like a light switching on, making sleep impossible and losing oneself in the other's movements."
+						},
+						{
+							"mood": "Irresistible declaration",
+							"section": "Chorus",
+							"description": "The central, undeniable truth is laid bare: a single kiss is all it takes for profound connection, an assertion of being everything the other person needs."
+						},
+						{
+							"mood": "Deepening gaze",
+							"section": "Bridge",
+							"description": "Eyes meet and reveal a sense of wonder, solidifying the desire to prolong this magical encounter beyond the immediate moment."
+						},
+						{
+							"mood": "Hypnotic repetition",
+							"section": "Outro",
+							"description": "The core sentiment echoes and fades, a singular focus on the power of 'one' — one kiss, one person, one essential need — leaving a lingering, captivating impression."
+						}
+					],
+					"headline": "A confident invitation to an intoxicating, fleeting dancefloor romance, born from a single spark.",
+					"key_lines": [
+						{
+							"line": "One kiss is all it takes",
+							"insight": "The absolute power of a single spark to ignite everything, an immediate, life-changing moment."
+						},
+						{
+							"line": "I look like all you need",
+							"insight": "Projecting an irresistible self-assurance, openly declaring one's essential place in another's desires."
+						},
+						{
+							"line": "Lit up heaven in me",
+							"insight": "The sudden, bright transformation felt internally from another's presence, like pure joy illuminating the soul."
+						},
+						{
+							"line": "Feel your eyes do the exploring",
+							"insight": "The intimate, unspoken communication of desire and curiosity, building connection through a silent gaze and physical proximity."
+						},
+						{
+							"line": "Might need your company tonight",
+							"insight": "A tender extension of the moment, hoping to prolong the enchantment and keep the nascent connection alive."
+						}
+					],
+					"compound_mood": "Seductive Euphoria",
+					"sonic_texture": "A vibrant blend of driving house beats, shimmering synth layers, and crisp, confident vocals that propel the listener onto an electrifying dancefloor. The rhythm is relentless, perfectly suited for movement, with a bright, clean production that feels both classic and fresh.",
+					"audio_features": {
+						"tempo": 123.992,
+						"energy": 0.862,
+						"valence": 0.593,
+						"liveness": 0.0814,
+						"loudness": -3.24,
+						"speechiness": 0.11,
+						"acousticness": 0.037,
+						"danceability": 0.79,
+						"instrumentalness": 0.0000225
+					},
+					"interpretation": "An immediate, undeniable attraction blooms from a single interaction, painting a picture of confident allure and the thrill of new possibilities. It's about owning that magnetic pull and inviting someone into a moment that feels both spontaneous and destined, fully embracing the intoxicating rush of instant connection.",
+					"mood_description": "An undeniable magnetic pull, wrapped in a pulsing beat that feels like an instant connection. The air vibrates with electric possibilities, inviting you to get lost in the moment."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:08:06.099962+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T14:08:18+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "87f29f14-0938-431f-853f-a3d649de0934",
+				"spotify_track_id": "5b5cPscqVEMChvDqscVw26",
+				"name": "Training Season",
+				"artist": "Dua Lipa",
+				"artist_id": "6M2wZ9GZgrQXHCFfjv46we",
+				"artist_image_url": null,
+				"album": "Radical Optimism",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e022f8790ed72296c2614607575",
+				"genres": ["pop", "dance-pop", "disco"],
+				"audio_features": {
+					"tempo": 123.041,
+					"energy": 0.587,
+					"valence": 0.664
+				}
+			},
+			"analysis": {
+				"id": "fd812ba7-67f9-4f51-8974-6baaebfe8bac",
+				"track_id": "87f29f14-0938-431f-853f-a3d649de0934",
+				"analysis": {
+					"themes": [
+						{
+							"name": "boundary setting",
+							"description": "Drawing a firm line in relationships, unwilling to invest in those who don't meet fundamental expectations."
+						},
+						{
+							"name": "emotional education",
+							"description": "The weariness of having to teach a partner how to love or understand basic desires."
+						},
+						{
+							"name": "passionate connection",
+							"description": "A deep longing for a love that is exciting, all-consuming, and takes control when needed."
+						},
+						{
+							"name": "time as currency",
+							"description": "Valuing personal time and energy too much to spend it on unfulfilling or immature romantic pursuits."
+						}
+					],
+					"journey": [
+						{
+							"mood": "wary self-protection",
+							"section": "Verse 1",
+							"description": "A hesitant voice wonders if a new connection is a blessing or another trap, having learned hard lessons before."
+						},
+						{
+							"mood": "soaring expectation",
+							"section": "Pre-Chorus & Chorus",
+							"description": "The energy builds, culminating in a powerful, almost dizzying demand for a love that's deep, thrilling, and knows how to lead when needed."
+						},
+						{
+							"mood": "firm declaration",
+							"section": "Post-Chorus",
+							"description": "A clear line is drawn, an impatient confidence declaring that the time for teaching and compromises is finally over."
+						},
+						{
+							"mood": "playful challenge",
+							"section": "Bridge",
+							"description": "A competitive spirit emerges, daring new connections to prove their worth and join the team, or stay stuck on the sidelines."
+						},
+						{
+							"mood": "confident resolve",
+							"section": "Outro",
+							"description": "The message solidifies into an unshakeable truth, repeating until it's clear: the wait is over."
+						}
+					],
+					"headline": "The sharp realization that time is too precious for half-hearted love, dancing into a future where desires are met.",
+					"key_lines": [
+						{
+							"line": "Or just the poison that I'm drawn to?",
+							"insight": "The weary acknowledgment of a past tendency to gravitate towards what's ultimately harmful."
+						},
+						{
+							"line": "Whose love feels like a rodeo",
+							"insight": "A longing for a love that's both thrillingly chaotic and expertly managed."
+						},
+						{
+							"line": "He's straight talking to my soul",
+							"insight": "The profound desire for communication that cuts through noise and connects on a deeper plane."
+						},
+						{
+							"line": "'Cause training season's over",
+							"insight": "A definitive, empowered end to the cycle of teaching partners how to simply show up."
+						}
+					],
+					"compound_mood": "Assertive Euphoria",
+					"sonic_texture": "A pulsating, groovy bassline propels the track forward, woven with bright, shimmering synth chords and a relentless four-on-the-floor beat, creating an infectious, confident dancefloor energy around crisp, commanding vocals.",
+					"audio_features": {
+						"tempo": 123.041,
+						"energy": 0.587,
+						"valence": 0.664,
+						"liveness": 0.123,
+						"loudness": -4.483,
+						"speechiness": 0.0477,
+						"acousticness": 0.0349,
+						"danceability": 0.812,
+						"instrumentalness": 0.00000264
+					},
+					"interpretation": "Refusing to settle for anything less than a profound, exciting connection, a clear line is drawn for potential partners: either step up to meet her needs or step aside. There's no more time for teaching or compromise; the expectation is a partner who inherently knows how to engage deeply and passionately, propelled by an electrifying beat that makes this ultimatum feel like an undeniable act of self-worth.",
+					"mood_description": "The thrumming beat lifts your spirit, but a firm voice cuts through the glitter, making you feel the exhilarating truth of knowing what you deserve."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:08:01.077564+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T14:08:17+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "9f1e88d2-8249-4800-a389-deb68e854e2f",
+				"spotify_track_id": "3PfIrDoz19wz7qK7tYeu62",
+				"name": "Don't Start Now",
+				"artist": "Dua Lipa",
+				"artist_id": "6M2wZ9GZgrQXHCFfjv46we",
+				"artist_image_url": null,
+				"album": "Future Nostalgia",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e02c88bae7846e62a8ba59ee0bd",
+				"genres": ["pop", "disco", "dance-pop"],
+				"audio_features": {
+					"tempo": 123.95,
+					"energy": 0.793,
+					"valence": 0.679
+				}
+			},
+			"analysis": {
+				"id": "3c2e4469-4832-471a-af8e-2bb31dad5beb",
+				"track_id": "9f1e88d2-8249-4800-a389-deb68e854e2f",
+				"analysis": {
+					"themes": [
+						{
+							"name": "radical self-ownership",
+							"description": "Taking full command of one's happiness and personal space after a relationship ends."
+						},
+						{
+							"name": "defiant joy",
+							"description": "Celebrating personal growth and happiness in the face of a past attempt to cause pain."
+						},
+						{
+							"name": "unwanted return",
+							"description": "Dealing with an ex who suddenly shows interest once you've clearly moved on."
+						}
+					],
+					"journey": [
+						{
+							"mood": "calm challenge",
+							"section": "Intro",
+							"description": "A hushed opening, almost a dare, setting a subtle trap for the coming energy."
+						},
+						{
+							"mood": "blossoming confidence",
+							"section": "Verse 1 & Refrain",
+							"description": "A quick glance back at past pain, then a shrug and a beaming smile, reveling in how far things have come."
+						},
+						{
+							"mood": "unapologetic dismissal",
+							"section": "Chorus",
+							"description": "The beat drops, and a clear, joyful warning echoes through the room: the door is closed, and there’s no looking back now."
+						},
+						{
+							"mood": "sharp recollection",
+							"section": "Verse 2",
+							"description": "A direct jab at the past hurt, acknowledging survival with a knowing smirk."
+						},
+						{
+							"mood": "insistent declaration",
+							"section": "Bridge & Chorus",
+							"description": "The message becomes a hypnotic chant, pushing away old ghosts with every vibrant beat."
+						},
+						{
+							"mood": "radiant departure",
+							"section": "Outro",
+							"description": "A final, lingering refusal, fading out with the undeniable sparkle of freedom."
+						}
+					],
+					"headline": "The triumphant sting of moving on, basking in the glow of a life the past can't touch.",
+					"key_lines": [
+						{
+							"line": "Did the heartbreak change me? MaybeBut look at where I ended up",
+							"insight": "The quiet triumph of transformation, finding strength and success not despite heartbreak, but because of it."
+						},
+						{
+							"line": "I'm all good alreadySo moved on, it's scary",
+							"insight": "The overwhelming, almost disorienting feeling of complete liberation from a past connection."
+						},
+						{
+							"line": "Don't start caring about me now",
+							"insight": "The sting of belated attention, knowing it only surfaces once you've become unreachable."
+						},
+						{
+							"line": "Aren't you the guy who tried toHurt me with the word \"goodbye\"?",
+							"insight": "A direct, confident calling-out of past cruelty, now powerless against a changed person."
+						}
+					],
+					"compound_mood": "Liberated Defiance",
+					"sonic_texture": "A tight, irresistible disco groove driven by a propulsive bassline and crisp drums. Shimmering synth layers and funky guitar riffs create a bright, polished dancefloor sound that feels both classic and fresh.",
+					"audio_features": {
+						"tempo": 123.95,
+						"energy": 0.793,
+						"valence": 0.679,
+						"liveness": 0.0951,
+						"loudness": -4.521,
+						"speechiness": 0.083,
+						"acousticness": 0.0123,
+						"danceability": 0.793,
+						"instrumentalness": 0
+					},
+					"interpretation": "The refusal to let a past love disrupt the peace and joy found after their departure. It's a powerful statement of self-sufficiency, realizing that moving on means closing the door firmly on anyone who only cared when it was convenient. The vibrant production amplifies this sense of liberation, turning past pain into pure, unadulterated confidence.",
+					"mood_description": "A bright, pulsing groove sweeps you onto the dancefloor, even as every word pushes away a lingering ghost. It feels like celebrating freedom under disco lights."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:07:55.491641+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T14:08:15+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "d7ab3c7a-ed18-4eb3-a3a7-fbf6d364f5d4",
+				"spotify_track_id": "7rglLriMNBPAyuJOMGwi39",
+				"name": "Cold Heart - PNAU Remix",
+				"artist": "Elton John",
+				"artist_id": "3PhoLpVuITZKcymswpck5b",
+				"artist_image_url": null,
+				"album": "The Lockdown Sessions",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e02523458c391fe8180a19a1069",
+				"genres": ["rock", "pop", "electronic"],
+				"audio_features": null
+			},
+			"analysis": {
+				"id": "789804c4-0158-44d9-ae2e-36c6c4fc6def",
+				"track_id": "d7ab3c7a-ed18-4eb3-a3a7-fbf6d364f5d4",
+				"analysis": {
+					"themes": [
+						{
+							"name": "unspoken regret",
+							"description": "The weight of words never spoken, shaping a different reality than the one desired."
+						},
+						{
+							"name": "identity fracture",
+							"description": "The chasm between who you are inside and the person others perceive, a lonely performance."
+						},
+						{
+							"name": "emotional numbness",
+							"description": "A heart grown cold from past hurts, a defense mechanism that isolates."
+						},
+						{
+							"name": "lingering temptation",
+							"description": "The persistent pull of old habits or desires, even when trying to move on."
+						}
+					],
+					"journey": [
+						{
+							"mood": "distant hum",
+							"section": "Intro",
+							"description": "A faint memory takes shape, hinting at something familiar yet new."
+						},
+						{
+							"mood": "quiet storm",
+							"section": "Verse",
+							"description": "A confession about human fallibility and the enduring pull of temptation."
+						},
+						{
+							"mood": "chilling realization",
+							"section": "Pre-Chorus",
+							"description": "The hardening of a once-open heart, a defense against the very love that caused pain."
+						},
+						{
+							"mood": "cosmic lament",
+							"section": "Chorus",
+							"description": "A yearning for home and understanding, for the real self to be seen, mixed with the regret of what was left unsaid. This section expands, repeats, becoming more insistent as the core themes are re-emphasized."
+						},
+						{
+							"mood": "emotional core solidifies",
+							"section": "Pre-Chorus Reprise",
+							"description": "The cold heart returns, unwavering, as fleeting attractions offer no true escape."
+						},
+						{
+							"mood": "fading echoes",
+							"section": "Outro",
+							"description": "A final, almost nonsensical plea or an empty call into the void, as the borrowed memories slowly dissipate."
+						}
+					],
+					"headline": "The unsettling dance between a past self and a present performance, haunted by words left unsaid.",
+					"key_lines": [
+						{
+							"line": "When the scent of her lingers and temptation's strong",
+							"insight": "The ghost of a past desire, still potent, still capable of leading astray."
+						},
+						{
+							"line": "Cold, cold heart, hardened by you",
+							"insight": "A deep-seated hurt that has reshaped a person, building walls around vulnerability."
+						},
+						{
+							"line": "I'm not the man they think I am at home",
+							"insight": "The isolating burden of maintaining a facade, feeling fundamentally misunderstood by those closest."
+						},
+						{
+							"line": "Well, I thought it, but I kept it hid",
+							"insight": "The silent agony of unspoken truths, the moments of courage that dissolved into regret."
+						},
+						{
+							"line": "Shoorah",
+							"insight": "A final, almost childlike plea for joy or clarity, lost in the fading sound."
+						}
+					],
+					"compound_mood": "Nostalgic Anguish",
+					"sonic_texture": "A driving, pulsating electronic beat underpins swirling synth textures, creating an energetic dancefloor feel. Familiar vocal samples are woven in, sometimes soaring, sometimes echoing, against a backdrop of steady percussion and warm, layered harmonies.",
+					"interpretation": "Living with the echoes of past mistakes and unspoken truths. It’s a collision of public persona and private pain, where the longing for an authentic self battles a heart grown numb. The urge to break free from a hardened emotional shell meets the stark reality of how much time has passed since genuine connection felt possible, all while the world keeps spinning in a blur of borrowed memories.",
+					"mood_description": "A familiar melody plays, but underneath the vibrant beat, a quiet regret pulses. It feels like dancing alone in a crowded room, lost in thoughts of what used to be."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:08:48.705017+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T13:38:43+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "d74c23a9-b486-4239-91b2-e4765b9d19c8",
+				"spotify_track_id": "7mJvI2K63TtchC9Eyiia9W",
+				"name": "Closer",
+				"artist": "Patrick Holland",
+				"artist_id": "0dns940bo2pILe1Flk0WH3",
+				"artist_image_url": null,
+				"album": "Beaubien Dream",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e021db4cb9c0fa798be1e5e9ad5",
+				"genres": ["house", "electronic", "indie pop"],
+				"audio_features": {
+					"tempo": 122.014,
+					"energy": 0.945,
+					"valence": 0.238
+				}
+			},
+			"analysis": {
+				"id": "6d3f48b9-6e16-4150-9e6f-f450c45e1127",
+				"track_id": "d74c23a9-b486-4239-91b2-e4765b9d19c8",
+				"analysis": {
+					"headline": "You're caught in a powerful current, moving with an unstoppable force toward something just out of reach.",
+					"compound_mood": "Propulsive Yearning",
+					"sonic_texture": "A solid, unyielding kick drum drives the pulse, forming a bedrock for the thrumming, resonant bassline. Evolving synth pads shimmer and spiral upwards, building a dense, almost dizzying atmosphere. Sharp, bright melodic synth lines cut through the layers, creating a sense of relentless forward movement and a lingering, poignant echo.",
+					"audio_features": {
+						"tempo": 122.014,
+						"energy": 0.945,
+						"valence": 0.238,
+						"liveness": 0.132,
+						"loudness": -8.324,
+						"speechiness": 0.0569,
+						"acousticness": 0.186,
+						"danceability": 0.719,
+						"instrumentalness": 0.884
+					},
+					"mood_description": "A steady pulse takes over your rhythm, urging your body to move. But beneath the insistent beat, a quiet ache of longing threads through the sound, giving every step a deeper meaning."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:08:36.502303+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T13:30:04+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "1428aac6-5c42-4e30-bb4f-b2a5d95c3438",
+				"spotify_track_id": "3SUusuA9jH1v6PVwtYMbdv",
+				"name": "Last Nite",
+				"artist": "The Strokes",
+				"artist_id": "0epOFNiUfyON9EYx7Tpr6V",
+				"artist_image_url": null,
+				"album": "Is This It",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e0213f2466b83507515291acce4",
+				"genres": ["indie rock", "rock", "indie"],
+				"audio_features": null
+			},
+			"analysis": {
+				"id": "1f408465-d23d-4a7d-aad2-6713f1e76007",
+				"track_id": "1428aac6-5c42-4e30-bb4f-b2a5d95c3438",
+				"analysis": {
+					"themes": [
+						{
+							"name": "emotional distance",
+							"description": "The chasm created between two people when one actively pulls away, and the internal wall built by the speaker."
+						},
+						{
+							"name": "unacknowledged pain",
+							"description": "The speaker's sudden, unexplained moments of feeling 'down' that contradict their outward indifference and dismissal."
+						},
+						{
+							"name": "casual rejection",
+							"description": "The ease and almost automatic way feelings and connections are brushed aside and abandoned."
+						},
+						{
+							"name": "universal misunderstanding",
+							"description": "The deep-seated conviction that no one truly comprehends the speaker's inner world or experience."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Friction & Dismissal",
+							"section": "Verse 1",
+							"description": "A partner's vulnerable plea is met with a cold, almost automatic dismissal, quickly followed by the speaker's abrupt exit strategy."
+						},
+						{
+							"mood": "Restless Sadness",
+							"section": "Pre-Chorus",
+							"description": "A sudden, unexplained wave of sadness washes over, a feeling of being lost and aimless, despite the earlier defiance."
+						},
+						{
+							"mood": "Isolated Frustration",
+							"section": "Chorus",
+							"description": "The feeling of frustration bursts into a wider declaration. No one understands, not friends, not family, and certainly not oneself."
+						},
+						{
+							"mood": "Hollow Comfort",
+							"section": "Verse 2",
+							"description": "A repeat performance, but with a twist. A quick, hollow promise of comfort is given before abandoning the situation entirely."
+						},
+						{
+							"mood": "Absurd Disconnect",
+							"section": "Chorus",
+							"description": "The world contracts. The feeling of being misunderstood now extends to the absurd, emphasizing a deep, personal chasm that even the speaker can't bridge."
+						},
+						{
+							"mood": "Final Cut-Off",
+							"section": "Outro",
+							"description": "A final, dismissive reiteration. The door is slammed shut, leaving the situation unresolved and the underlying ache unaddressed."
+						}
+					],
+					"headline": "A dismissive shrug hides a deeper, restless ache, leaving emotional wreckage in its wake.",
+					"key_lines": [
+						{
+							"line": "Oh, baby, I feel so down",
+							"insight": "The raw vulnerability that is almost immediately shut down by a defensive response."
+						},
+						{
+							"line": "Oh, babe, I don't care no more",
+							"insight": "The immediate, defensive, and almost cruel detachment, a quick reflex to avoid emotional depth."
+						},
+						{
+							"line": "And see, people, they don't understand",
+							"insight": "The deep-seated belief that one is uniquely isolated in their experience, unable to connect with others."
+						},
+						{
+							"line": "It was a great big lie 'Cause I left that night, yeah",
+							"insight": "The hollow comfort given, instantly betrayed by action, revealing the speaker's true intent or profound lack thereof."
+						},
+						{
+							"line": "I keep walkin' for miles...",
+							"insight": "A restless, aimless sadness that underpins the earlier dismissal, hinting at a deeper, unresolved internal struggle."
+						}
+					],
+					"compound_mood": "Callous Detachment",
+					"sonic_texture": "A raw, garage rock strum, lean and immediate. The drums drive with a restless energy, while the vocals deliver lines with a deadpan coolness, betraying just a hint of underlying tension.",
+					"interpretation": "The song captures the raw, often uncomfortable reality of emotional immaturity and self-sabotage in relationships. It's about the reflex to push away intimacy and vulnerability, mistaking indifference for strength, only to be left with a vague, unsettling emptiness. The casual dismissal of a partner's feelings serves as a defense mechanism, a shield against deeper engagement or acknowledging one's own underlying sadness and confusion.",
+					"mood_description": "A cool, almost indifferent front barely masks a swirling internal confusion. It's walking away from something important, but not knowing why it hurts so much."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:08:47.618158+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T13:28:30+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "7ae992c0-4557-4f99-bce3-26bdff41c4d3",
+				"spotify_track_id": "57Xjny5yNzAcsxnusKmAfA",
+				"name": "Reptilia",
+				"artist": "The Strokes",
+				"artist_id": "0epOFNiUfyON9EYx7Tpr6V",
+				"artist_image_url": null,
+				"album": "Room On Fire",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e020f35726025e0f025da4c688f",
+				"genres": ["indie rock", "rock", "indie"],
+				"audio_features": {
+					"tempo": 158.009,
+					"energy": 0.649,
+					"valence": 0.77
+				}
+			},
+			"analysis": {
+				"id": "18e19d55-4b13-41d4-9afb-436a6124c187",
+				"track_id": "7ae992c0-4557-4f99-bce3-26bdff41c4d3",
+				"analysis": {
+					"headline": "A shot of pure, unbridled confidence, moving forward with an unstoppable, joyful momentum.",
+					"compound_mood": "Propulsive Elation",
+					"sonic_texture": "The sound is a bright, buzzing current of electric guitar, sharp and immediate, woven through a relentless, tight drumbeat. A powerful bass underpins the whole thing, creating a compact, driving force that just pulls you along.",
+					"audio_features": {
+						"tempo": 158.009,
+						"energy": 0.649,
+						"valence": 0.77,
+						"liveness": 0.101,
+						"loudness": -5.11,
+						"speechiness": 0.0336,
+						"acousticness": 0.000603,
+						"danceability": 0.489,
+						"instrumentalness": 0.713
+					},
+					"mood_description": "A current of pure electric energy courses through you, pulling you forward with a grin. Every beat feels like a jolt of pure excitement."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:08:35.334047+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T13:28:08+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "d7c43928-6a96-4b70-b54c-bf09b8db7680",
+				"spotify_track_id": "5ruzrDWcT0vuJIOMW7gMnW",
+				"name": "The Adults Are Talking",
+				"artist": "The Strokes",
+				"artist_id": "0epOFNiUfyON9EYx7Tpr6V",
+				"artist_image_url": null,
+				"album": "The New Abnormal",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e02e3f1ba3de4659708c25d0f39",
+				"genres": ["indie rock", "new wave", "synthpop"],
+				"audio_features": {
+					"tempo": 164.959,
+					"energy": 0.749,
+					"valence": 0.649
+				}
+			},
+			"analysis": {
+				"id": "590fc1c9-7d1a-4308-b802-aa3c2de0bf3f",
+				"track_id": "d7c43928-6a96-4b70-b54c-bf09b8db7680",
+				"analysis": {
+					"themes": [
+						{
+							"name": "societal hypocrisy",
+							"description": "The 'adults' preach one thing but act another, creating a world where genuine effort is mocked and corruption thrives."
+						},
+						{
+							"name": "generational clash",
+							"description": "A tension between those seeking change and the entrenched powers that blame and shame them for being a 'problem'."
+						},
+						{
+							"name": "struggle for integrity",
+							"description": "Trying to maintain moral standing in a system that offers no reward for honesty, pushing towards cynical compromises."
+						},
+						{
+							"name": "information age anxiety",
+							"description": "The overwhelming presence of information makes excuses obsolete, but doesn't necessarily lead to clarity or better choices."
+						}
+					],
+					"journey": [
+						{
+							"mood": "coolly observing",
+							"section": "Opening observation",
+							"description": "A sleek, almost detached observation of the world unfolds, feeling aligned with someone who speaks unspoken truths."
+						},
+						{
+							"mood": "agitated pursuit",
+							"section": "Rising tension",
+							"description": "The energy builds with a sense of being blamed and shamed, pushing hard for recognition and a chance to be heard."
+						},
+						{
+							"mood": "weary caution",
+							"section": "Cynical warning",
+							"description": "The chorus hits with a sharp warning against political traps and moral compromises, revealing the confusing logic of those trying to do good without reward."
+						},
+						{
+							"mood": "overwhelmed clarity",
+							"section": "Information overload",
+							"description": "A brief return to the observational, noting the ubiquitous nature of information, making ignorance a choice but offering no solace."
+						},
+						{
+							"mood": "resigned withdrawal",
+							"section": "Bridge of detachment",
+							"description": "A moment of personal disengagement, declaring a desire for nothing and accepting that the mess isn't a personal fault, stepping back from the fray."
+						},
+						{
+							"mood": "bitter persistence",
+							"section": "Lingering critique",
+							"description": "The final, direct jabs at the unseen powers continue, repeating a sense of delayed hope or resignation, acknowledging the ongoing cycle of injustice."
+						}
+					],
+					"headline": "The unsettling dance between wanting to do good and the pull of conformity, under the watchful eye of a cynical world.",
+					"key_lines": [
+						{
+							"line": "Don't go there 'cause you'll never return",
+							"insight": "A stark warning against venturing into corrupting systems, knowing there's no way back to innocence."
+						},
+						{
+							"line": "To do the right thing but without recompense",
+							"insight": "The unfairness of genuine effort going unrewarded, making cynical choices seem rational."
+						},
+						{
+							"line": "Because you're all confused 'cause you want me to / But then you want me to do it the same way as you",
+							"insight": "The frustrating contradiction of being asked for authenticity only to be forced into imitation."
+						},
+						{
+							"line": "No more askin' questions or excuses / The information's here / Here and everywhere",
+							"insight": "A commentary on the overwhelming presence of knowledge, making ignorance a choice but not necessarily a path to wisdom."
+						},
+						{
+							"line": "Stockholders / Same shit, a different life",
+							"insight": "A direct, biting indictment of the hidden powers and the cyclical nature of systemic injustice."
+						}
+					],
+					"compound_mood": "Sardonic Drive",
+					"sonic_texture": "A taut, propulsive groove driven by a snappy drum beat and a restless bassline. Angular, jangling guitars weave in and out, creating a bright but slightly anxious atmosphere, all topped with a cool, almost conversational vocal delivery.",
+					"audio_features": {
+						"tempo": 164.959,
+						"energy": 0.749,
+						"valence": 0.649,
+						"liveness": 0.314,
+						"loudness": -5.67,
+						"speechiness": 0.0475,
+						"acousticness": 0.0113,
+						"danceability": 0.593,
+						"instrumentalness": 0.106
+					},
+					"interpretation": "The song explores the inherent conflict between individual integrity and societal pressures, particularly in the realm of politics and power. It’s about being caught between idealism and the cynical realities of a world where doing the right thing often goes unrewarded, while compromise is celebrated. There's a deep frustration with hypocrisy and the pervasive influence of established systems, leading to a weary detachment from the fight.",
+					"mood_description": "A driving beat and crisp guitars carry a feeling of observing a messy world from a slight distance. There's a nervous energy pushing forward, even as disillusionment settles in."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:08:41.839125+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T01:00:58+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "5743c908-e95b-4088-91f7-f907e53b4c21",
+				"spotify_track_id": "5gikplVdSoYfG0YKCRuicp",
+				"name": "Music For Love",
+				"artist": "Mario",
+				"artist_id": "20s0P9QLxGqKuCsGwFsp7w",
+				"artist_image_url": null,
+				"album": "Go",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e025744f67dd17f6f20ee85e2ab",
+				"genres": ["rnb", "funky", "soul"],
+				"audio_features": {
+					"tempo": 123.431,
+					"energy": 0.423,
+					"valence": 0.466
+				}
+			},
+			"analysis": {
+				"id": "ddc155ec-d9fd-4aa5-8702-cb43f69ace3c",
+				"track_id": "5743c908-e95b-4088-91f7-f907e53b4c21",
+				"analysis": {
+					"themes": [
+						{
+							"name": "seduction by sound",
+							"description": "Using musical metaphors to invite intimacy and pleasure, making every beat a suggestive whisper."
+						},
+						{
+							"name": "shared rhythm",
+							"description": "The merging of two individuals into a harmonious, synchronized experience, moving together as one."
+						},
+						{
+							"name": "intimate playfulness",
+							"description": "A lighthearted yet confident approach to connection, free from inhibition and full of suggestive games."
+						},
+						{
+							"name": "unfiltered desire",
+							"description": "Expressing a direct, unashamed longing for physical and emotional closeness, without holding anything back."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Confident anticipation",
+							"section": "Intro",
+							"description": "A brief, direct call to attention, setting the stage for an exciting encounter with a simple, intriguing command."
+						},
+						{
+							"mood": "Irresistible invitation",
+							"section": "Chorus",
+							"description": "The main proposition lands immediately, using vivid musical terms to open a world of intimate connection, promising a deep, body-rocking experience that's all about love."
+						},
+						{
+							"mood": "Playful escalation",
+							"section": "Verse 1",
+							"description": "The invitation becomes more personal, hinting at private moments and using DJ controls like 'fast forward' and 'rewind' to symbolize the control and replayability of their shared pleasure."
+						},
+						{
+							"mood": "Private performance",
+							"section": "Verse 2",
+							"description": "Taking on the role of a personal DJ, the scene is set for an exclusive, grown-up party where their 'music' is made just for two, without any need for parental advisory."
+						},
+						{
+							"mood": "Lingering desire",
+							"section": "Bridge",
+							"description": "A persistent call reinforces the idea of being 'on repeat' and 'in heavy rotation,' wanting to hear and experience this intimate connection all night long."
+						},
+						{
+							"mood": "Echoing appeal",
+							"section": "Outro",
+							"description": "The request for more fades out, leaving behind the feeling of an ongoing, desired connection, a loop that begs to be played again."
+						}
+					],
+					"headline": "A smooth invitation to intimacy, where the language of sound becomes the rhythm of connection.",
+					"key_lines": [
+						{
+							"line": "Girl, turn me up, and let me come through your speakers",
+							"insight": "The merging of two worlds, inviting complete immersion into a shared experience."
+						},
+						{
+							"line": "Boom boom, all up in your system",
+							"insight": "The physical, undeniable impact of deep connection, resonating through the whole being."
+						},
+						{
+							"line": "Baby, come push my buttons, I'll show you all my functions",
+							"insight": "A playful surrender to control, openly inviting exploration and shared pleasure."
+						},
+						{
+							"line": "Oh, you ain't gotta worry about parental advisory, cause girl, we're grown",
+							"insight": "The freedom to explore intimacy without judgment, embracing adult desire and agency."
+						},
+						{
+							"line": "Girl, we in heavy rotation, I'll be all on your station",
+							"insight": "The desire for this connection to be a constant, recurring presence in life, always available."
+						}
+					],
+					"compound_mood": "Groovy Seduction",
+					"sonic_texture": "A slinky, mid-tempo groove driven by a warm, pulsing bassline and crisp, snapping drums. Smooth, soulful vocals glide effortlessly over layers of understated synths and subtle guitar licks, creating a rich, inviting soundscape that feels both modern R&B and classic funk.",
+					"audio_features": {
+						"tempo": 123.431,
+						"energy": 0.423,
+						"valence": 0.466,
+						"liveness": 0.209,
+						"loudness": -5.855,
+						"speechiness": 0.0451,
+						"acousticness": 0.106,
+						"danceability": 0.705,
+						"instrumentalness": 0
+					},
+					"interpretation": "Physical and emotional intimacy are intertwined, playfully framed through the universal language of music. The act of \"making music for love\" is a clear, sensual double entendre, inviting someone to merge not just bodies, but rhythms and frequencies. It’s a bold, confident proposition, using the shared experience of sound as a vehicle for desire and deep connection.",
+					"mood_description": "A smooth groove washes over, pulling you into a playful game of seduction. The air thrums with confident energy, promising an intimate connection."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:09:10.562936+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T01:00:53+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "6a74cd96-b15e-4196-8b0f-3a91956a82a8",
+				"spotify_track_id": "1Nxx1LHMLKxC6yGaZjpPO5",
+				"name": "Like Her Too",
+				"artist": "Mario",
+				"artist_id": "20s0P9QLxGqKuCsGwFsp7w",
+				"artist_image_url": null,
+				"album": "Like Her Too",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e0222e58692f79ab88363df21f3",
+				"genres": ["rnb", "soul", "hip-hop"],
+				"audio_features": {
+					"tempo": 124.034,
+					"energy": 0.379,
+					"valence": 0.629
+				}
+			},
+			"analysis": {
+				"id": "7901301c-4a89-491f-94bd-366b29b2a24c",
+				"track_id": "6a74cd96-b15e-4196-8b0f-3a91956a82a8",
+				"analysis": {
+					"themes": [
+						{
+							"name": "shared desire",
+							"description": "Unpacking the mutual attraction between multiple people, moving beyond conventional relationship structures."
+						},
+						{
+							"name": "new intimacy",
+							"description": "Exploring what connection feels like when established norms are set aside for shared pleasure."
+						},
+						{
+							"name": "deliberate escapism",
+							"description": "Choosing to enjoy the moment and the physical connection without getting bogged down by complicated thoughts or societal judgments."
+						}
+					],
+					"journey": [
+						{
+							"mood": "seductive invitation",
+							"section": "[Verse 1]",
+							"description": "Opening the invitation. A smooth, intimate welcome into a private world of unspoken desires and subtle hints."
+						},
+						{
+							"mood": "gentle confession",
+							"section": "[Chorus]",
+							"description": "The shared secret surfaces. A gentle admission of a mutual attraction, a new understanding dawning for everyone involved."
+						},
+						{
+							"mood": "present moment",
+							"section": "[Post-Chorus]",
+							"description": "Leaning into the moment. A plea to stay present, to let the good feelings unfold without overthinking the implications."
+						},
+						{
+							"mood": "embracing uniqueness",
+							"section": "[Verse 2]",
+							"description": "Embracing the new dynamic. A deeper dive into the shared experience, celebrating the unique connection that feels right in the moment."
+						},
+						{
+							"mood": "satiated linger",
+							"section": "[Outro]",
+							"description": "Lingering in the pleasure. The feeling extends, affirming the mutual enjoyment and the unique bond forged in shared desire."
+						}
+					],
+					"headline": "A smooth invitation to a new kind of intimacy, where shared desires unlock unexpected pleasures.",
+					"key_lines": [
+						{
+							"line": "I know you like her too",
+							"insight": "The direct address of a truth that's been in the air, shifting the dynamic of connection."
+						},
+						{
+							"line": "This point of view is something new",
+							"insight": "Acknowledging a fresh perspective on relationships and desire, pushing against the familiar."
+						},
+						{
+							"line": "Girl, I don't really want to think this through",
+							"insight": "Prioritizing the immediate experience over analysis or potential complications, opting for pure sensation."
+						},
+						{
+							"line": "It's okay to share",
+							"insight": "Normalizing a less conventional arrangement, making space for acceptance and shared happiness."
+						},
+						{
+							"line": "So don't be jealous of your reflection",
+							"insight": "Encouraging self-acceptance and seeing the beauty in a shared experience, not just individual attention."
+						}
+					],
+					"compound_mood": "Sensual Revelation",
+					"sonic_texture": "A velvet-smooth R&B groove built on a steady, mid-tempo beat and warm, slightly acoustic textures. Mario's vocals float over a subtle bassline and understated harmonies, creating an intimate, almost whispered atmosphere that still feels effortlessly danceable.",
+					"audio_features": {
+						"tempo": 124.034,
+						"energy": 0.379,
+						"valence": 0.629,
+						"liveness": 0.109,
+						"loudness": -7.739,
+						"speechiness": 0.0395,
+						"acousticness": 0.538,
+						"danceability": 0.66,
+						"instrumentalness": 0.00000212
+					},
+					"interpretation": "Mario dives headfirst into the nuanced territory of shared attraction, painting a scene where desire isn't confined to a binary. It's about acknowledging and embracing a mutual pull towards another person, creating an open space for exploration without the need for traditional labels or overthinking. The focus remains on the immediate pleasure and the intriguing dynamic that arises when everyone involved is on board with a new kind of connection.",
+					"mood_description": "A warm, pulsing groove invites you into a private space where desires intertwine and boundaries gently blur. It feels like a late-night confession, both intimate and thrillingly new."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:09:09.13358+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T01:00:52+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "3a0e5457-2714-43a0-817f-587ad5fe30f4",
+				"spotify_track_id": "3FpxgSaFXy0UkJ1oQ9c3Lg",
+				"name": "Skippin'",
+				"artist": "Mario",
+				"artist_id": "20s0P9QLxGqKuCsGwFsp7w",
+				"artist_image_url": null,
+				"album": "Go",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e025744f67dd17f6f20ee85e2ab",
+				"genres": ["rnb", "funky", "soul"],
+				"audio_features": {
+					"tempo": 123.898,
+					"energy": 0.65,
+					"valence": 0.617
+				}
+			},
+			"analysis": {
+				"id": "6bfeb025-079c-4a3c-b250-3424eb9db62b",
+				"track_id": "3a0e5457-2714-43a0-817f-587ad5fe30f4",
+				"analysis": {
+					"themes": [
+						{
+							"name": "instant attraction",
+							"description": "The powerful, undeniable pull felt the moment someone walks into a room."
+						},
+						{
+							"name": "physical allure",
+							"description": "An intense focus on appearance, movement, and the intoxicating presence of another person."
+						},
+						{
+							"name": "playful pursuit",
+							"description": "The confident yet slightly vulnerable dance of trying to get closer to someone new."
+						},
+						{
+							"name": "overwhelming desire",
+							"description": "The feeling of being completely swept away, heart pounding, almost losing control."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Confident anticipation",
+							"section": "Intro",
+							"description": "A direct, assured voice sets the stage, pulling you right into the moment."
+						},
+						{
+							"mood": "Captivated initiation",
+							"section": "Verse 1",
+							"description": "The narrative begins, detailing the immediate impact of a new presence and the quick shift from casual offer to undeniable longing."
+						},
+						{
+							"mood": "Candid desire",
+							"section": "Pre-Chorus",
+							"description": "A moment of playful honesty, clarifying that this isn't love, but a raw, undeniable physical attraction taking hold."
+						},
+						{
+							"mood": "Euphoric infatuation",
+							"section": "Chorus",
+							"description": "The music explodes into an infectious, danceable groove, mirroring the heart's frantic, joyful beat as the feeling of being utterly captivated takes over."
+						},
+						{
+							"mood": "Intensified pursuit",
+							"section": "Verse 2",
+							"description": "The awe deepens, and the initial attraction grows bolder, moving from admiration to a direct invitation for something more intimate."
+						},
+						{
+							"mood": "Sustained exhilaration",
+							"section": "Outro",
+							"description": "The irresistible chorus repeats, keeping the energy high, a continuous loop of a heart joyfully skipping with every beat."
+						}
+					],
+					"headline": "A dizzying rush of immediate infatuation, where every beat is a thumping heart.",
+					"key_lines": [
+						{
+							"line": "And if feels like I'm losing control",
+							"insight": "The sheer power of attraction, making self-possession feel impossible."
+						},
+						{
+							"line": "Now I'm not falling in love with you But I think that you are hot, shawty",
+							"insight": "An unapologetic declaration of pure, unadulterated physical attraction, unburdened by deeper romantic claims."
+						},
+						{
+							"line": "From your stop to your walk to your fragrance",
+							"insight": "Every detail, no matter how small, contributing to an overwhelming sense of allure."
+						},
+						{
+							"line": "Baby girl, you got my heart ski-ski-skippin'",
+							"insight": "The physical manifestation of intense excitement, a palpable, rhythmic flutter that overtakes everything."
+						},
+						{
+							"line": "Maybe you're just born with it, maybe it's Maybelline",
+							"insight": "A playful, knowing nod to stunning beauty, acknowledging both innate charm and effortless style."
+						}
+					],
+					"compound_mood": "Jubilant Fascination",
+					"sonic_texture": "Smooth, buoyant R&B grooves built on a punchy bassline and crisp, driving drums. Bright, syncopated keyboards create a playful, almost bouncy feel, while the vocals glide effortlessly over the infectious rhythm, making it impossible not to move.",
+					"audio_features": {
+						"tempo": 123.898,
+						"energy": 0.65,
+						"valence": 0.617,
+						"liveness": 0.123,
+						"loudness": -6.882,
+						"speechiness": 0.216,
+						"acousticness": 0.198,
+						"danceability": 0.795,
+						"instrumentalness": 0
+					},
+					"interpretation": "It's about the immediate, overwhelming physical and emotional response to seeing someone incredibly attractive. It's less about the slow burn of romance and more about the exhilarating thrill of the chase and the intoxicating power of pure desire. The connection is electric, consuming the moment with an almost playful acknowledgment that this isn't necessarily love, but it's definitely something potent.",
+					"mood_description": "Pure, unadulterated excitement bubbles up with a funky swagger. The rhythm takes over, making it impossible to stand still as a crush becomes an obsession."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:08:59.077651+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T01:00:51+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "7f7efe4c-0f5a-4f87-bf41-06080b91486a",
+				"spotify_track_id": "2mnkgopUgJq09Na8JXgMIh",
+				"name": "Love Ya (feat. Mario)",
+				"artist": "Luciano",
+				"artist_id": "3CJKkU0XuElRT1z8rEtIYg",
+				"artist_image_url": null,
+				"album": "Seductive",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e02d811db49fcc425d11b713498",
+				"genres": ["reggae", "minimal", "roots reggae"],
+				"audio_features": {
+					"tempo": 115.02,
+					"energy": 0.541,
+					"valence": 0.359
+				}
+			},
+			"analysis": {
+				"id": "5bb8eee2-f516-4031-baa5-8e814257a9f5",
+				"track_id": "7f7efe4c-0f5a-4f87-bf41-06080b91486a",
+				"analysis": {
+					"themes": [
+						{
+							"name": "healing past wounds",
+							"description": "Acknowledging and seeking to overcome the emotional baggage carried from previous experiences."
+						},
+						{
+							"name": "unconditional commitment",
+							"description": "Promising unwavering loyalty and a willingness to adapt for the sake of the relationship."
+						},
+						{
+							"name": "public vulnerability",
+							"description": "Encouraging an open and visible display of affection despite potential scrutiny."
+						},
+						{
+							"name": "conflicting lifestyles",
+							"description": "Navigating the challenge of different routines and preferences to find common ground."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Tender Regret",
+							"section": "Opening Plea",
+							"description": "A voice acknowledges a loved one's pain and different way of life, hinting at personal change to bridge the gap."
+						},
+						{
+							"mood": "Warm Reassurance",
+							"section": "Earnest Invitation",
+							"description": "A direct appeal for a new beginning, promising to provide what's needed and let love unfold with time."
+						},
+						{
+							"mood": "Insistent Comfort",
+							"section": "Healing Urgency",
+							"description": "Another voice steps in, urging to shed the past, recognizing a newly opened heart, and committing to fulfill every dream."
+						},
+						{
+							"mood": "Fierce Devotion",
+							"section": "Protective Vow",
+							"description": "The first voice returns, declaring a protective, intense love, brushing aside yesterday's worries and vowing to fight for the connection."
+						},
+						{
+							"mood": "Unwavering Trust",
+							"section": "Deepening Promise",
+							"description": "Renewed pledges to forget past hurts and ex-partners, offering deeper love and unwavering presence, solidifying the bond."
+						},
+						{
+							"mood": "Lingering Affirmation",
+							"section": "Final Embrace",
+							"description": "The central invitation repeats, a final gentle pull into a love that is patient, fulfilling, and ever-present."
+						}
+					],
+					"headline": "A soulful plea to abandon the past and embrace a love that promises protection and a shared future.",
+					"key_lines": [
+						{
+							"line": "Ich versteh' deinen Pain, deshalb werd' ich mich ändern",
+							"insight": "Recognizing past hurt and committing to personal growth as the foundation for a new relationship."
+						},
+						{
+							"line": "Your heart, now it's open again, I'm signin' up",
+							"insight": "Seizing a moment of vulnerability to fully invest in the potential for love."
+						},
+						{
+							"line": "So what we in public? They gon' look at us either way",
+							"insight": "Dismissing external judgment to openly embrace affection and connection."
+						},
+						{
+							"line": "I'm a gangster in love, baby, fight for us, ja",
+							"insight": "A declaration of a fierce, protective love that challenges expectations of identity."
+						},
+						{
+							"line": "Komm, vergess jetzt dein'n Ex-Boyfriend",
+							"insight": "A direct, urgent call to fully release the past and commit to the present love."
+						}
+					],
+					"compound_mood": "Smooth Yearning",
+					"sonic_texture": "A smooth, laid-back reggae groove with a head-nodding drum beat and a prominent, warm bassline. Minimalist instrumentation allows Luciano's and Mario's intertwined vocals to drift effortlessly, creating a gentle yet danceable atmosphere.",
+					"audio_features": {
+						"tempo": 115.02,
+						"energy": 0.541,
+						"valence": 0.359,
+						"liveness": 0.0909,
+						"loudness": -7.397,
+						"speechiness": 0.0914,
+						"acousticness": 0.321,
+						"danceability": 0.9,
+						"instrumentalness": 0.000363
+					},
+					"interpretation": "This isn't just about starting a new relationship; it's about actively dismantling the barriers of past hurt and differing lifestyles to build something real. Both voices acknowledge the partner's pain and skepticism, offering reassurance and pledging commitment. It's a dual narrative of convincing someone to take a leap of faith while simultaneously promising to be the safe landing.",
+					"mood_description": "A gentle, head-nodding rhythm carries a deep, earnest request. It feels like a late-night conversation, heavy with longing but still holding onto hope."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:09:00.706557+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T01:00:48+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "a21c964c-1334-4b2b-917d-ccd42bd7e5ee",
+				"spotify_track_id": "3lMgczyYCjVDpJX8Wl2ilu",
+				"name": "Crying Out For Me",
+				"artist": "Mario",
+				"artist_id": "20s0P9QLxGqKuCsGwFsp7w",
+				"artist_image_url": null,
+				"album": "Go",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e025744f67dd17f6f20ee85e2ab",
+				"genres": ["rnb", "funky", "soul"],
+				"audio_features": {
+					"tempo": 130.063,
+					"energy": 0.72,
+					"valence": 0.505
+				}
+			},
+			"analysis": {
+				"id": "1a550c58-8ae7-421d-b84b-dc6f1ba5d95a",
+				"track_id": "a21c964c-1334-4b2b-917d-ccd42bd7e5ee",
+				"analysis": {
+					"themes": [
+						{
+							"name": "unspoken suffering",
+							"description": "The hidden pain and emotional baggage carried by someone in a bad relationship, which is visible to those on the outside."
+						},
+						{
+							"name": "hero complex",
+							"description": "The overwhelming desire to save a loved one from their current predicament, believing oneself to be the ideal solution to their problems."
+						},
+						{
+							"name": "forbidden longing",
+							"description": "Developing deep romantic feelings for someone who is already committed, leading to an internal struggle with loyalty and desire."
+						},
+						{
+							"name": "emotional intuition",
+							"description": "A profound connection that allows one to perceive another's true feelings and pain, even when they're not explicitly stated."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Confident anticipation",
+							"section": "Intro",
+							"description": "A swaggering, playful welcome. It starts with a casual assurance, setting a scene that feels like an easy, confident approach to a new connection."
+						},
+						{
+							"mood": "Smooth persuasion",
+							"section": "Verse 1",
+							"description": "A smooth, almost conversational attempt to win someone over. Lil Wayne's lines hint at past hurts for the person, suggesting a history of disappointment while subtly positioning himself as the reliable alternative, a protective figure."
+						},
+						{
+							"mood": "Urgent empathy",
+							"section": "Chorus",
+							"description": "The core emotion breaks through, a direct address to the silent pain. The feeling of hearing someone's heart literally 'crying out' becomes palpable, a plea for intervention that is both desperate and tender."
+						},
+						{
+							"mood": "Conflicted realization",
+							"section": "Verse 2 & Pre-Chorus",
+							"description": "The intimacy deepens, admitting to catching feelings while witnessing the recurring cycle of hurt. There's a poignant awareness of the other person's continued loyalty, even as the internal 'cry' for help grows undeniably louder."
+						},
+						{
+							"mood": "Vulnerable declaration",
+							"section": "Bridge",
+							"description": "Honesty takes over, acknowledging the risk of confusion but refusing to lie about the depth of feeling. It becomes a heartfelt offer to be the answer, to end the suffering and fulfill a silent yearning."
+						},
+						{
+							"mood": "Lingering plea",
+							"section": "Outro",
+							"description": "The 'crying out' becomes an almost physical echo, fading into a soulful, drawn-out plea. The hope for rescue lingers, an insistent, emotive whisper that continues even as the music winds down."
+						}
+					],
+					"headline": "The silent ache of watching someone you care about suffer, knowing you could offer them solace but aren't yet allowed to.",
+					"key_lines": [
+						{
+							"line": "Shawty like a valet service, I swear she been through a lot",
+							"insight": "The cumulative weight of repeated heartbreaks, making someone guarded and weary from constant emotional turnover."
+						},
+						{
+							"line": "I listen to her heart beat because it plays my favorite song",
+							"insight": "Finding profound resonance and joy in the quiet, inner life of another, a deeper connection than any external artifice."
+						},
+						{
+							"line": "But I’m stuck in the middle of seein' you hurt I know when you love him, and you wanna make it work",
+							"insight": "The painful paradox of witnessing someone's suffering while understanding their enduring, perhaps misguided, loyalty to the source of their pain."
+						},
+						{
+							"line": "I don’t wanna confuse things But I just can’t keep lyin' to myself",
+							"insight": "The breaking point where personal truth overrides social decorum or the fear of complicating an already delicate situation."
+						}
+					],
+					"compound_mood": "Tender Desperation",
+					"sonic_texture": "A warm, mid-tempo R&B groove driven by a strong, melodic bassline and a steady, danceable beat. Smooth, layered vocals float over a foundational funk influence, creating a rich, soulful sound that feels both polished and deeply emotive.",
+					"audio_features": {
+						"tempo": 130.063,
+						"energy": 0.72,
+						"valence": 0.505,
+						"liveness": 0.284,
+						"loudness": -6.935,
+						"speechiness": 0.0682,
+						"acousticness": 0.196,
+						"danceability": 0.509,
+						"instrumentalness": 0
+					},
+					"interpretation": "Being helplessly drawn to someone in a troubled relationship, feeling their silent cries for help, and struggling with the urge to step in as their rescuer. It's about the internal conflict of respecting boundaries while being overwhelmed by a growing desire to alleviate their pain and claim them for oneself, even when they're still holding onto the person who's hurting them.",
+					"mood_description": "A smooth, mid-tempo groove carries a heavy heart. It feels like leaning in close, hearing someone's unspoken pain over a rhythm that wants to move, but the movement is slow and careful."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:08:58.974599+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T01:00:47+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "ca8b6a52-17ae-4f77-aee4-93ef0cfd2b81",
+				"spotify_track_id": "1KKpOFUTS8B9pD5x3PevoX",
+				"name": "I Choose You",
+				"artist": "Mario",
+				"artist_id": "20s0P9QLxGqKuCsGwFsp7w",
+				"artist_image_url": null,
+				"album": "D.N.A.",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e029380a3ac28541aefabe9f76e",
+				"genres": ["rnb"],
+				"audio_features": {
+					"tempo": 90.107,
+					"energy": 0.628,
+					"valence": 0.708
+				}
+			},
+			"analysis": {
+				"id": "b60e6fd8-4f93-4281-9028-daf48689fbe9",
+				"track_id": "ca8b6a52-17ae-4f77-aee4-93ef0cfd2b81",
+				"analysis": {
+					"themes": [
+						{
+							"name": "reconciliation",
+							"description": "Acknowledging past missteps and personal 'madness' as a foundation for a stronger, more honest future."
+						},
+						{
+							"name": "unwavering choice",
+							"description": "The active, persistent decision to dedicate oneself to a relationship, moving beyond passive feeling to deliberate action."
+						},
+						{
+							"name": "redemptive love",
+							"description": "Finding clarity, meaning, and a sense of reality through a profound connection that makes everything else make sense."
+						}
+					],
+					"journey": [
+						{
+							"mood": "confessional anticipation",
+							"section": "Intro",
+							"description": "A quiet admission of past failures, setting up a turning point with a promise of change and a readiness to truly listen."
+						},
+						{
+							"mood": "dawning clarity",
+							"section": "Verse 1",
+							"description": "Recalling a time of confusion and obscured vision, then realizing everything clicked into place the moment one person appeared."
+						},
+						{
+							"mood": "visionary hope",
+							"section": "Pre-Chorus",
+							"description": "Seeing a future shared through all seasons, a timeless bond unfolding, with an unshakeable image of togetherness."
+						},
+						{
+							"mood": "joyful affirmation",
+							"section": "Chorus",
+							"description": "A powerful, repeated declaration of chosen love, inviting complete trust and partnership, ready to meet every need."
+						},
+						{
+							"mood": "destined gratitude",
+							"section": "Bridge",
+							"description": "Reflecting on life's universal search for meaning, finding gratitude for the path that led directly to this singular, undeniable connection."
+						},
+						{
+							"mood": "enduring pledge",
+							"section": "Outro Chorus",
+							"description": "The commitment deepens and expands, an insistent, joyful reaffirmation that leaves no room for doubt, sealing the choice decisively."
+						}
+					],
+					"headline": "A heartfelt pledge of unwavering commitment, navigating past missteps to fully embrace a chosen love.",
+					"key_lines": [
+						{
+							"line": "Until the day I saw your faceWhen I saw everything",
+							"insight": "A moment of profound recognition, where a whole world snaps into focus and previous chaos dissolves."
+						},
+						{
+							"line": "I felt you inside myselfBefore I could even feel",
+							"insight": "A connection so fundamental it preceded conscious awareness, an instinctual belonging that was always there."
+						},
+						{
+							"line": "Throughout our times, people have searched their livesHoping that they might find the chance where they can make things right",
+							"insight": "The universal yearning for redemption and alignment, fulfilled through this specific, profound bond."
+						},
+						{
+							"line": "I choose you",
+							"insight": "The simplest, most powerful act of will, a consistent, deliberate embrace of partnership."
+						}
+					],
+					"compound_mood": "Earnest Commitment",
+					"sonic_texture": "A smooth, mid-tempo R&B groove with a prominent, warm bassline and shimmering, almost ethereal synths. The beat is steady and danceable, providing a confident backdrop for the clear, heartfelt vocals that carry the emotional weight.",
+					"audio_features": {
+						"tempo": 90.107,
+						"energy": 0.628,
+						"valence": 0.708,
+						"liveness": 0.0812,
+						"loudness": -5.192,
+						"speechiness": 0.0683,
+						"acousticness": 0.0819,
+						"danceability": 0.673,
+						"instrumentalness": 0
+					},
+					"interpretation": "It's about the profound shift that happens when one person clarifies everything. All past doubts, confusion, and mistakes fall away, replaced by an undeniable certainty. It's not just falling in love, but actively choosing it, day after day, and recognizing that this decision brings a sense of purpose and rightness that was previously missing. The journey is from internal chaos to absolute clarity through the lens of a deep connection.",
+					"mood_description": "A steady rhythm underpins a heartfelt declaration, carrying you into a space of unwavering loyalty. There's a joyful confidence in finding exactly where you belong."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:09:55.415087+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T01:00:46+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "40169717-1ce2-480e-9dae-33cbb92dc90e",
+				"spotify_track_id": "2cxbxpHrND6i4uvUGVvC9J",
+				"name": "Just a Friend 2002 - Radio Edit",
+				"artist": "Mario",
+				"artist_id": "20s0P9QLxGqKuCsGwFsp7w",
+				"artist_image_url": null,
+				"album": "Mario",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e024c656f9f445e091d4953f783",
+				"genres": ["soul", "rnb"],
+				"audio_features": {
+					"tempo": 132.346,
+					"energy": 0.677,
+					"valence": 0.913
+				}
+			},
+			"analysis": {
+				"id": "5f356012-da69-4ff2-839b-12dba95290b5",
+				"track_id": "40169717-1ce2-480e-9dae-33cbb92dc90e",
+				"analysis": {
+					"themes": [
+						{
+							"name": "unrequited desire",
+							"description": "A deep longing for romance with someone who only sees a platonic bond."
+						},
+						{
+							"name": "friend zone purgatory",
+							"description": "The specific agony of being trapped in a platonic relationship when wanting much more."
+						},
+						{
+							"name": "undeterred confidence",
+							"description": "An unwavering belief in one's own appeal, despite repeated romantic rejection."
+						},
+						{
+							"name": "the chase",
+							"description": "The relentless and perhaps slightly self-defeating pursuit of a person who is clearly not interested romantically."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Confident anticipation",
+							"section": "Opening Invitation",
+							"description": "A direct, almost cocky question sets the stage, pulling you in with an assertive charm, ready to make a move."
+						},
+						{
+							"mood": "Persistent questioning",
+							"section": "Eager Inquiry",
+							"description": "A rapid-fire list of desires and curiosities unfolds, full of hopeful intent, only to be met with the first, deflating blow of \"just a friend.\""
+						},
+						{
+							"mood": "Earnest frustration",
+							"section": "The Friend Zone Lament",
+							"description": "The heart of the plea, a soaring vocal insistence on worth and desire, contrasted sharply with the repetitive, painful dismissal of being \"just a friend.\""
+						},
+						{
+							"mood": "Confident challenge",
+							"section": "Challenging the Rejection",
+							"description": "A direct confrontation, demanding an explanation for the rejection, showcasing an unshakeable belief in self-worth and a promise of undeniable satisfaction."
+						},
+						{
+							"mood": "Emotional persuasion",
+							"section": "Final Appeal",
+							"description": "The energy softens slightly, shifting to a heartfelt plea, trying to coax out a hidden romantic feeling, unable to comprehend the persistent \"friend\" label."
+						},
+						{
+							"mood": "Unresolved longing",
+							"section": "Lingering Question",
+							"description": "The song fades out on the same unanswered question, the hopeful beat continuing even as the \"just a friend\" echoes, leaving the desire still unfulfilled."
+						}
+					],
+					"headline": "An insistent plea for something more, caught between hopeful pursuit and the painful reality of being \"just a friend.\"",
+					"key_lines": [
+						{
+							"line": "But you're tellin' me I'm just a friend",
+							"insight": "The crushing finality of a label that denies all romantic possibility."
+						},
+						{
+							"line": "'Cause I can be your fantasy",
+							"insight": "The unwavering conviction of offering something extraordinary, met with a casual dismissal."
+						},
+						{
+							"line": "Oh, can you give me one reason why You wouldn't want this kinda guy?",
+							"insight": "The honest bewilderment of someone who sees themselves as a catch, unable to fathom rejection."
+						},
+						{
+							"line": "Don't fight the feeling that you feel, I can tell that its real",
+							"insight": "A desperate attempt to project romantic interest onto the other person, hoping they'll finally see it too."
+						}
+					],
+					"compound_mood": "Insistent Yearning",
+					"sonic_texture": "A bouncy, uptempo drum beat and a bright, almost chirpy synth line form a foundation of pure R&B energy. Smooth, layered vocals, often echoing themselves, create a rich texture, all propelled by a driving bass, making it feel simultaneously lighthearted and deeply grooving.",
+					"audio_features": {
+						"tempo": 132.346,
+						"energy": 0.677,
+						"valence": 0.913,
+						"liveness": 0.236,
+						"loudness": -6.099,
+						"speechiness": 0.187,
+						"acousticness": 0.00541,
+						"danceability": 0.538,
+						"instrumentalness": 0
+					},
+					"interpretation": "The relentless pursuit of a romantic connection with someone who only offers friendship, creating a push and pull between fervent desire and the repeated, deflating reality. It's the conviction of knowing what you could be to someone, combined with the powerlessness of being unable to change their perception, played out over a bright, almost celebratory beat that feels both hopeful and a little oblivious to the underlying heartbreak.",
+					"mood_description": "The beat bounces with an almost desperate optimism, a bright energy trying to outrun the sting of rejection. There’s a relentless, almost pleading quality to the desire that won't give up."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:09:59.391384+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T01:00:46+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "b225d2b7-3843-4ed6-a64a-75da6ef1e840",
+				"spotify_track_id": "174rZBKJAqD10VBnOjlQQ3",
+				"name": "How Do I Breathe",
+				"artist": "Mario",
+				"artist_id": "20s0P9QLxGqKuCsGwFsp7w",
+				"artist_image_url": null,
+				"album": "Go",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e025744f67dd17f6f20ee85e2ab",
+				"genres": ["rnb", "funky", "soul"],
+				"audio_features": {
+					"tempo": 97.956,
+					"energy": 0.455,
+					"valence": 0.487
+				}
+			},
+			"analysis": {
+				"id": "b4a3c521-cc0e-43a0-b8e4-5b45380a062d",
+				"track_id": "b225d2b7-3843-4ed6-a64a-75da6ef1e840",
+				"analysis": {
+					"themes": [
+						{
+							"name": "self-inflicted wounds",
+							"description": "The bitter realization that one's own actions caused irreparable harm to a cherished relationship."
+						},
+						{
+							"name": "disorientation of loss",
+							"description": "Losing not just a person, but the sense of direction and purpose they provided."
+						},
+						{
+							"name": "unbearable regret",
+							"description": "The constant, gnawing pain of wishing things could be undone, of realizing a mistake when it's too late."
+						},
+						{
+							"name": "the illusion of control",
+							"description": "Believing one could let go, only to find themselves completely adrift without the other person."
+						}
+					],
+					"journey": [
+						{
+							"mood": "a breath held captive",
+							"section": "Intro",
+							"description": "The opening question hangs in the air, a raw, immediate expression of suffocation, setting a tone of desperate vulnerability."
+						},
+						{
+							"mood": "wandering lost",
+							"section": "Verse 1",
+							"description": "A smooth, steady beat underpins a candid confession of disorientation and inability to move on, constantly haunted by memories of a past love."
+						},
+						{
+							"mood": "the dawning truth",
+							"section": "Pre-Chorus",
+							"description": "A moment of brutal clarity hits, acknowledging responsibility for the breakup, laced with painful regret for pushing away what was truly cherished."
+						},
+						{
+							"mood": "a desperate plea",
+							"section": "Chorus",
+							"description": "The central question repeats, a desperate, almost primal cry for understanding how to function when the very source of light and stability is gone."
+						},
+						{
+							"mood": "echoes of what's lost",
+							"section": "Verse 2",
+							"description": "The groove continues, but the words sink deeper into the painful truth of irreplaceable absence and the devastating impact of another person stepping in."
+						},
+						{
+							"mood": "begging for return",
+							"section": "Bridge",
+							"description": "A final, vulnerable confession and an earnest plea for the lost love to come back, admitting the world feels unbreathable without them."
+						}
+					],
+					"headline": "A smooth, mid-tempo groove carries the weight of a shattered relationship, where every beat echoes a desperate plea for a lost love.",
+					"key_lines": [
+						{
+							"line": "How do I breathe?",
+							"insight": "The visceral, immediate panic of existing without a fundamental life source."
+						},
+						{
+							"line": "I don't know why I let it go too far",
+							"insight": "The quiet horror of realizing one's own hand in a devastating loss."
+						},
+						{
+							"line": "Baby you are not to blame at allWhen I'm the one that pushed you away",
+							"insight": "Accepting full culpability, a painful admission of fault."
+						},
+						{
+							"line": "Another dude is replacing meGod this can't be happening",
+							"insight": "The gut-punch of seeing one's place filled, amplifying the despair and denial."
+						},
+						{
+							"line": "The grind has got a tight hold",
+							"insight": "A fleeting glimpse into external pressures that may have contributed to the relationship's demise, but without excusing personal responsibility."
+						}
+					],
+					"compound_mood": "Grooving Despair",
+					"sonic_texture": "A warm, slinky R&B bassline sets a confident, mid-tempo groove, supported by crisp drums and understated keys. Smooth, layered vocals float over the steady rhythm, carrying a heavy emotion that contrasts with the song's outwardly danceable feel.",
+					"audio_features": {
+						"tempo": 97.956,
+						"energy": 0.455,
+						"valence": 0.487,
+						"liveness": 0.263,
+						"loudness": -8.216,
+						"speechiness": 0.0307,
+						"acousticness": 0.215,
+						"danceability": 0.684,
+						"instrumentalness": 0.00000108
+					},
+					"interpretation": "A stark reckoning with self-inflicted loss. The track captures the disorienting aftermath of pushing away someone vital, realizing too late the depth of their importance. It's not just missing a partner; it's a fundamental questioning of how to exist when a core part of your world has vanished, leaving behind an unbearable void. The smooth production provides a stark, almost ironic, contrast to the raw, unraveling emotion.",
+					"mood_description": "A smooth, soulful rhythm pulls you into a familiar R&B sway, but a heavy heart anchors every word. It's a dance with regret, where the body moves but the spirit aches for what's gone."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:10:12.343744+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T01:00:45+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "4344e615-cd37-47e8-bb00-fecebd9176a1",
+				"spotify_track_id": "5WphWTUIfRe7x8NZss79cY",
+				"name": "Let Me Love You",
+				"artist": "Mario",
+				"artist_id": "20s0P9QLxGqKuCsGwFsp7w",
+				"artist_image_url": null,
+				"album": "Turning Point",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e02c2248a5b79dededa74edfde0",
+				"genres": ["rnb", "soul", "pop"],
+				"audio_features": {
+					"tempo": 94.364,
+					"energy": 0.593,
+					"valence": 0.607
+				}
+			},
+			"analysis": {
+				"id": "9eb5e3fb-716f-4329-928d-c936b2172fd9",
+				"track_id": "4344e615-cd37-47e8-bb00-fecebd9176a1",
+				"analysis": {
+					"themes": [
+						{
+							"name": "unrecognized worth",
+							"description": "Seeing someone's true value when they are unable to see it in themselves."
+						},
+						{
+							"name": "protective devotion",
+							"description": "Offering love as a shield and a guide away from harmful relationships."
+						},
+						{
+							"name": "redemptive offer",
+							"description": "Presenting an escape from a cycle of hurt with a promise of genuine happiness."
+						},
+						{
+							"name": "steadfast promise",
+							"description": "The unwavering commitment to a better, more loving future."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Mellow anticipation",
+							"section": "Intro",
+							"description": "A gentle, inviting hum sets the stage, hinting at something sincere about to unfold."
+						},
+						{
+							"mood": "Pained observation",
+							"section": "Verse 1",
+							"description": "The current painful reality is laid bare, directly questioning why someone would accept such hurt, noticing all the signs of betrayal."
+						},
+						{
+							"mood": "Confident declaration",
+							"section": "Pre-Chorus",
+							"description": "A stark contrast is drawn, promising a life free from worry and filled with genuine affection, painting a picture of what true partnership should be."
+						},
+						{
+							"mood": "Heartfelt appeal",
+							"section": "Chorus",
+							"description": "The central plea emerges, a strong, clear offer of unconditional care, protection, and the chance to finally experience love as it's meant to be."
+						},
+						{
+							"mood": "Passionate insistence",
+							"section": "Bridge",
+							"description": "The argument for a better path becomes more direct and urgent, emphasizing deserving better and pushing for a shared future together."
+						},
+						{
+							"mood": "Lingering reassurance",
+							"section": "Outro",
+							"description": "The core message is softly repeated, an enduring promise of love that gently fades, leaving a lasting feeling of warmth and hope."
+						}
+					],
+					"headline": "A steadfast promise of unwavering devotion, born from watching someone endure heartbreak.",
+					"key_lines": [
+						{
+							"line": "Baby, I just don't get it, do you enjoy bein' hurt?",
+							"insight": "The profound disbelief at someone accepting less than they're worth, a direct challenge to their self-destructive patterns."
+						},
+						{
+							"line": "You're a dime, plus 99, and it's a shame Don't even know what you're worth",
+							"insight": "The exasperation of seeing undeniable beauty and value overlooked, both by others and by the person themselves."
+						},
+						{
+							"line": "If I was your man, baby, you'd never worry 'bout what I do",
+							"insight": "A stark, compelling contrast to current betrayal, promising unwavering loyalty and peace of mind."
+						},
+						{
+							"line": "Show you the way love's supposed to be",
+							"insight": "Positioning the offer as the true benchmark for affection and respect, not just a casual fling."
+						},
+						{
+							"line": "You deserve better, girl",
+							"insight": "The simple, undeniable core truth, cutting through all the pain with clear validation."
+						}
+					],
+					"compound_mood": "Earnest Conviction",
+					"sonic_texture": "Silky R&B vocals ride a polished, mid-tempo beat. Lush synths and a smooth bassline create a rich, enveloping soundscape, making the whole thing feel like a confident, heartfelt serenade.",
+					"audio_features": {
+						"tempo": 94.364,
+						"energy": 0.593,
+						"valence": 0.607,
+						"liveness": 0.0979,
+						"loudness": -8.352,
+						"speechiness": 0.0916,
+						"acousticness": 0.163,
+						"danceability": 0.622,
+						"instrumentalness": 0
+					},
+					"interpretation": "It's about the deep frustration of witnessing someone you care for repeatedly choose pain, and the overwhelming desire to step in and provide the love and respect they truly deserve. It’s an offer to redefine what love can be.",
+					"mood_description": "Smooth, confident R&B flows, wrapped in a sincere plea for a chance to heal. It feels like a warm hand reaching out, offering solace and strength."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:10:06.807259+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T00:35:56+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "6245c793-f85d-407f-b643-85dfaa273a65",
+				"spotify_track_id": "7xYnUQigPoIDAMPVK79NEq",
+				"name": "Run It! (feat. Juelz Santana)",
+				"artist": "Chris Brown",
+				"artist_id": "7bXgB6jMjp9ATFy66eO08Z",
+				"artist_image_url": null,
+				"album": "Chris Brown (Expanded Edition)",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e02f9685817281327d5fecb244e",
+				"genres": ["rnb", "hip-hop", "r&b"],
+				"audio_features": {
+					"tempo": 100.969,
+					"energy": 0.482,
+					"valence": 0.212
+				}
+			},
+			"analysis": {
+				"id": "54dc9fd5-426e-4373-bca4-2807d832c100",
+				"track_id": "6245c793-f85d-407f-b643-85dfaa273a65",
+				"analysis": {
+					"themes": [
+						{
+							"name": "youthful bravado",
+							"description": "The bold, sometimes audacious confidence of being young and uninhibited."
+						},
+						{
+							"name": "performative desire",
+							"description": "A public display of attraction and intent, where the act of pursuit is as important as the outcome."
+						},
+						{
+							"name": "fleeting connection",
+							"description": "The search for momentary bonds and physical encounters, often without deeper emotional investment."
+						},
+						{
+							"name": "unseen yearning",
+							"description": "A subtle undercurrent of dissatisfaction or sadness hidden beneath the energetic surface."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Swaggering invitation",
+							"section": "Intro: Juelz Santana",
+							"description": "A confident, almost arrogant challenge to step out and command attention on the dancefloor."
+						},
+						{
+							"mood": "Direct, eager pursuit",
+							"section": "Verse 1: Chris Brown",
+							"description": "An immediate attraction takes hold, leading to a bold approach and a proposition for the night."
+						},
+						{
+							"mood": "Persistent challenge",
+							"section": "Chorus",
+							"description": "A persistent, almost confrontational demand for an answer, pushing the interaction forward with an insistent rhythm."
+						},
+						{
+							"mood": "Asserting dominance",
+							"section": "Verse 2: Chris Brown",
+							"description": "Youthful confidence dismisses age as a barrier, promising an unforgettable experience behind the club's facade."
+						},
+						{
+							"mood": "Explicit temptation",
+							"section": "Verse 3: Juelz Santana",
+							"description": "The initial flirtation gives way to overt innuendo, subtly referencing deeper, more private desires."
+						},
+						{
+							"mood": "Lingering energy",
+							"section": "Outro",
+							"description": "The insistent beat and ad-libs fade, leaving behind the echo of a night that was all about the chase."
+						}
+					],
+					"headline": "A whirlwind of youthful bravado masking an unsettling emptiness, driven by the relentless pursuit of fleeting connection on the dancefloor.",
+					"key_lines": [
+						{
+							"line": "I know what girls want (Want) I know what they like (Like) They wanna stay up (Ayy!) and party all night",
+							"insight": "A confident, almost programmatic view of desire, laying out the night's agenda."
+						},
+						{
+							"line": "Let me see if you can run it, run it Girl, indeed I can run it, run it",
+							"insight": "A direct challenge and a confident assertion of ability, framing the interaction as a game of skill and control."
+						},
+						{
+							"line": "Don't believe my age is gonna slow us down I can definitely show you things To have you sayin' I can't be sixteen",
+							"insight": "A defiant embrace of youth, suggesting that allure and experience transcend expectations."
+						},
+						{
+							"line": "Plus I heard if you can dance, you can bump Well dance time is up, let's go, let's go",
+							"insight": "The shift from public performance to private intimacy, signaling an escalation beyond the dancefloor."
+						}
+					],
+					"compound_mood": "Prowling Melancholy",
+					"sonic_texture": "A slick, propulsive hip-hop beat drives the track, featuring crisp snares, a throbbing bassline, and clean, confident vocals that glide over a spacious, club-ready production.",
+					"audio_features": {
+						"tempo": 100.969,
+						"energy": 0.482,
+						"valence": 0.212,
+						"liveness": 0.393,
+						"loudness": -6.721,
+						"speechiness": 0.129,
+						"acousticness": 0.0246,
+						"danceability": 0.846,
+						"instrumentalness": 0
+					},
+					"interpretation": "The track is a potent blend of adolescent confidence and underlying desperation, where the vibrant energy of the dancefloor becomes a stage for an almost frantic quest for validation. The overt bravado and suggestive invitations are not just about physical connection, but an attempt to fill a void, hinting at a surprising sadness beneath the surface. This creates a tension between the outward display of control and an unspoken longing for something more substantial.",
+					"mood_description": "A propulsive beat pushes relentlessly forward, but beneath the confident swagger, there\n\t\tis a surprising ache, a hollowness that keeps the party from ever truly lifting."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:10:04.501066+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T00:35:53+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "8a723375-56ce-4aa2-837d-136ea0b68b35",
+				"spotify_track_id": "3XqM8hLCEYlbnFjoWwqtFv",
+				"name": "Angel Numbers / Ten Toes",
+				"artist": "Chris Brown",
+				"artist_id": "7bXgB6jMjp9ATFy66eO08Z",
+				"artist_image_url": null,
+				"album": "11:11",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e025a4382d28ea0d58b5a422a21",
+				"genres": ["rnb", "hip-hop"],
+				"audio_features": {
+					"tempo": 157.984,
+					"energy": 0.5,
+					"valence": 0.0905
+				}
+			},
+			"analysis": {
+				"id": "bd38c519-3fd6-4d19-983c-b0c970be193c",
+				"track_id": "8a723375-56ce-4aa2-837d-136ea0b68b35",
+				"analysis": {
+					"themes": [
+						{
+							"name": "spiritual seeking",
+							"description": "A quiet hope for divine guidance amidst turmoil, looking for signs and healing energy."
+						},
+						{
+							"name": "street loyalty",
+							"description": "An unshakeable bond with one's crew, ready to face any challenge for them."
+						},
+						{
+							"name": "personal anxiety",
+							"description": "The silent struggle with stress and paranoia, hidden from the world while maintaining a strong front."
+						},
+						{
+							"name": "reckoning with the past",
+							"description": "Acknowledging past mistakes and their heavy consequences, trying to move forward somehow."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Lost and Regretful",
+							"section": "Opening Reflection",
+							"description": "A lonely feeling of having strayed far from where one should be, haunted by tragic memories and the weight of letting others down."
+						},
+						{
+							"mood": "Urgent Hope",
+							"section": "Wish for Healing",
+							"description": "A desperate plea for spiritual healing and a wish for protection, centered around the mystical power of '11:11' and angel numbers."
+						},
+						{
+							"mood": "Assertive Confidence",
+							"section": "Grounded Defiance",
+							"description": "A hard shift to a confident, almost aggressive stance, declaring resilience and faith in a higher power despite the dangers that linger."
+						},
+						{
+							"mood": "Paranoid Determination",
+							"section": "Anxious Resolve",
+							"description": "A declaration of standing firm ('ten toes'), underscored by a hidden anxiety and the constant pressure of street life and unseen threats."
+						},
+						{
+							"mood": "Mature Reflection",
+							"section": "Life Lessons",
+							"description": "A look back at past relationships and personal growth, realizing that life demands learning and accountability for one's actions."
+						},
+						{
+							"mood": "Resigned Strength",
+							"section": "Unwavering Stand",
+							"description": "The acceptance of conflict and pressure, reiterating loyalty and an underlying, persistent worry that remains unseen, as the sound fades."
+						}
+					],
+					"headline": "A conflicted plea for divine intervention, battling street pressures and personal demons with a weary defiance.",
+					"key_lines": [
+						{
+							"line": "I lost my way, somewhere in another galaxy",
+							"insight": "Feeling utterly detached and disoriented from one's true path, drifting in a vast emptiness."
+						},
+						{
+							"line": "Healing energy on me / When it's 11:11, I need it",
+							"insight": "A direct appeal to a higher power or cosmic alignment for solace and protection in moments of need."
+						},
+						{
+							"line": "You know that God did, he never gon' fail on us",
+							"insight": "An unwavering belief in divine support as the ultimate safeguard and source of strength."
+						},
+						{
+							"line": "I be paranoid, but nobody knows",
+							"insight": "The silent burden of internal fear contrasting sharply with an outward display of strength and composure."
+						},
+						{
+							"line": "Walkin' in Giuseppe, I be ten on my toes",
+							"insight": "Maintaining an expensive facade while staying fully alert and grounded in harsh realities, ready for anything."
+						}
+					],
+					"compound_mood": "Weary Defiance",
+					"sonic_texture": "A dark, synth-heavy R&B foundation gives way to a grittier hip-hop beat. Sparse, echoing vocals on the first half create a hazy, melancholic atmosphere, evolving into a more assertive, almost spoken-word delivery over a persistent, driving rhythm section.",
+					"audio_features": {
+						"tempo": 157.984,
+						"energy": 0.5,
+						"valence": 0.0905,
+						"liveness": 0.175,
+						"loudness": -8.452,
+						"speechiness": 0.0501,
+						"acousticness": 0.192,
+						"danceability": 0.406,
+						"instrumentalness": 0
+					},
+					"interpretation": "This two-part track navigates the complexities of seeking spiritual and emotional healing while simultaneously asserting dominance and navigating the perils of street life. It's a candid look at the internal conflict of wanting peace and protection ('Angel Numbers') alongside the unwavering commitment to survival and loyalty ('Ten Toes'), even when it means embracing confrontation and carrying deep-seated paranoia. The longing for a higher power's guidance clashes with the gritty reality of self-reliance and the constant threat of opposition, revealing a soul caught between redemption and rugged perseverance.",
+					"mood_description": "A shadowed intensity pulses through the beat, carrying the weight of past regrets and the anxious energy of facing down present threats."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:10:24.160963+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T00:35:53+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "b022d7de-839c-4428-b722-1c3576678265",
+				"spotify_track_id": "6XHVuErjQ4XNm6nDPVCxVX",
+				"name": "No Guidance (feat. Drake)",
+				"artist": "Chris Brown",
+				"artist_id": "7bXgB6jMjp9ATFy66eO08Z",
+				"artist_image_url": null,
+				"album": "Indigo",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e020bf1b932009c0bff47b8cb86",
+				"genres": ["rnb", "urban"],
+				"audio_features": {
+					"tempo": 92.928,
+					"energy": 0.454,
+					"valence": 0.136
+				}
+			},
+			"analysis": {
+				"id": "29a43945-cfa6-4c40-af56-d42f60d66797",
+				"track_id": "b022d7de-839c-4428-b722-1c3576678265",
+				"analysis": {
+					"themes": [
+						{
+							"name": "casual ambition",
+							"description": "Recognizing a partner's drive and success, but within a context that remains largely uncommitted and free-wheeling."
+						},
+						{
+							"name": "performative commitment",
+							"description": "Expressing a desire for seriousness and \"no games,\" yet the emotional foundation feels too flimsy to support it."
+						},
+						{
+							"name": "magnetic independence",
+							"description": "Appreciating a woman who \"has her own bag\" and \"wilds out,\" creating an attraction that pulls at the desire for both freedom and connection."
+						},
+						{
+							"name": "undercurrent of loneliness",
+							"description": "A subtle, almost imperceptible sense of emotional distance, even amidst claims of affection and desire."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Hazy Confession",
+							"section": "Intro",
+							"description": "A voice openly states its raw, immediate desire, followed by a quick, almost casual dismissal of potential consequences, setting a tone of impulsive connection."
+						},
+						{
+							"mood": "Smooth Admiration",
+							"section": "Verse 1 (Drake)",
+							"description": "A detailed portrait of a confident, independent woman unfolds, celebrated for her self-made success and alluring mystery, drawing us into her world."
+						},
+						{
+							"mood": "Undeniable Appeal",
+							"section": "Chorus",
+							"description": "A simple, hypnotic affirmation celebrates her power, a repeated phrase that solidifies her magnetic presence, making her the center of attention."
+						},
+						{
+							"mood": "Yearning for More",
+							"section": "Verse 2 & Pre-Chorus (Chris Brown)",
+							"description": "The admiration deepens into a plea for genuine connection, a desire to move beyond superficial encounters and offer something lasting, pushing against the casual vibe."
+						},
+						{
+							"mood": "Back to the Chase",
+							"section": "Verse 4 (Drake & Chris Brown)",
+							"description": "A playful yet calculating pursuit returns, acknowledging the thrill of the chase and the partner's intensity, while still hinting at a guarded, self-preserving stance, leaving the ultimate outcome uncertain."
+						},
+						{
+							"mood": "Quiet Resignation",
+							"section": "Outro",
+							"description": "The lingering thought of not playing games echoes, fading into a silent acknowledgment that some desires remain unspoken or unresolved, as the moment slips away."
+						}
+					],
+					"headline": "The smooth talk of desire masking a fleeting connection, a promise of permanence whispered in a space built for temporary thrills.",
+					"key_lines": [
+						{
+							"line": "Before I die, I'm tryna fuck you, baby, Hopefully, we don't have no babies",
+							"insight": "The immediate, unvarnished urge to connect, quickly followed by a pragmatic, almost cynical awareness of the potential entanglements."
+						},
+						{
+							"line": "Flew the coop at seventeen, no guidance",
+							"insight": "A shared history of forging one's own path, recognizing the strength and perhaps the vulnerability that comes from navigating life independently."
+						},
+						{
+							"line": "I don't wanna play no games, play no games, Fuck around, give you my last name",
+							"insight": "The tension between a stated desire for sincerity and a casual delivery that keeps things from feeling truly earnest."
+						},
+						{
+							"line": "I can tell you crazy, but shit kind of intrigue me",
+							"insight": "The pull towards someone's complexity and unpredictability, finding fascination in what might be considered a challenge or a red flag."
+						},
+						{
+							"line": "Good to have me on your side, I ain't sayin' that you need me",
+							"insight": "A subtle power play, offering support and presence without conceding essential independence or vulnerability."
+						}
+					],
+					"compound_mood": "Smoothly Melancholic",
+					"sonic_texture": "A laid-back, late-night R&B groove driven by a mellow, pulsating bassline and crisp, understated drums. Gentle, shimmering synth pads float in the background, creating an atmospheric haze that feels both smooth and slightly detached, with a sampled vocal loop weaving through it all like a recurring thought.",
+					"audio_features": {
+						"tempo": 92.928,
+						"energy": 0.454,
+						"valence": 0.136,
+						"liveness": 0.155,
+						"loudness": -6.756,
+						"speechiness": 0.153,
+						"acousticness": 0.123,
+						"danceability": 0.696,
+						"instrumentalness": 0
+					},
+					"interpretation": "The true core of this isn't the direct praise or the talk of commitment, but the underlying tension between proclaimed desire and a deeper, almost resigned cynicism about lasting relationships. It's about the allure of a moment, of recognizing someone's shine, while subtly acknowledging the impermanence of such connections. The desire to \"play no games\" and even \"give you my last name\" feels less like a solid vow and more like a hopeful, perhaps even transactional, fantasy projected onto a transient beat. The overall feeling is one of wanting something real, but being fully aware it might not actually happen in this kind of world.",
+					"mood_description": "A low-slung, confident groove that feels like late-night thoughts after the club. There's a magnetic pull to the rhythm, but a quiet sadness hums beneath the surface, a hint of something unresolved."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:10:28.836949+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T00:35:52+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "c0e71c88-062e-4875-90da-9106f4ba1481",
+				"spotify_track_id": "6txAWGckgEGJIhLjhNdtE9",
+				"name": "Residuals",
+				"artist": "Chris Brown",
+				"artist_id": "7bXgB6jMjp9ATFy66eO08Z",
+				"artist_image_url": null,
+				"album": "11:11 (Deluxe)",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e021abf43c4daa3767d9357aee2",
+				"genres": ["rnb", "hip-hop"],
+				"audio_features": {
+					"tempo": 114.905,
+					"energy": 0.645,
+					"valence": 0.171
+				}
+			},
+			"analysis": {
+				"id": "325c52c0-0939-4211-9fcf-86a341e6864d",
+				"track_id": "c0e71c88-062e-4875-90da-9106f4ba1481",
+				"analysis": {
+					"themes": [
+						{
+							"name": "lingering attachment",
+							"description": "Still emotionally tied to an ex, even when trying to move on with someone new."
+						},
+						{
+							"name": "possessive pain",
+							"description": "The sharp sting of seeing someone else inherit the intimacy and affection that once belonged to you."
+						},
+						{
+							"name": "unresolved confusion",
+							"description": "Struggling to understand why a relationship ended and feeling lost in the emotional aftermath."
+						},
+						{
+							"name": "wasted investments",
+							"description": "The feeling that all the time, effort, and vulnerability poured into a relationship were ultimately in vain."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Dazed Confusion",
+							"section": "Verse 1",
+							"description": "Nights are complicated, mornings blurred, a spiral of jaded feelings. Trying to cage wild emotions, but the past keeps breaking through, leaving the present wasted."
+						},
+						{
+							"mood": "Fragile Reflection",
+							"section": "Pre-Chorus",
+							"description": "A quiet moment of realizing how easily something so carefully built can just disappear. Wondering if it was all set up to fail from the start, watching it all wash away."
+						},
+						{
+							"mood": "Burning Questions",
+							"section": "Chorus",
+							"description": "The dam breaks into a torrent of anxious demands, needing to know who's getting all the love, time, and shared intimacies that used to be theirs. The thought is unbearable, wearing down all resistance."
+						},
+						{
+							"mood": "Hard Acceptance",
+							"section": "Verse 2",
+							"description": "A brief, quiet admission of the painful truth: it wasn't mutual, they're different, and love really can blind you. A moment of clarity amidst the lingering hurt."
+						},
+						{
+							"mood": "Heightened Obsession",
+							"section": "Chorus",
+							"description": "The questions return with more urgency, the desperation amplified. The pain of thinking about what's lost becomes a visceral weight, a constant burden that wears down."
+						},
+						{
+							"mood": "Echoing Loss",
+							"section": "Outro",
+							"description": "The questions fade, but the empty space remains. The absence of an answer lingers, a haunting whisper of all the 'residuals' gone to someone else, leaving a quiet void."
+						}
+					],
+					"headline": "A raw, possessive ache for what’s gone, demanding to know who inherited the remnants of a broken love.",
+					"key_lines": [
+						{
+							"line": "Can’t recall my mornings ever bein' this faded",
+							"insight": "The blurring of time and self that comes with deep emotional turmoil, losing grip on reality."
+						},
+						{
+							"line": "Did we build it up, build it upJust to let it wash away?",
+							"insight": "The agonizing question of whether effort in love is inherently futile, like sandcastles against an inevitable tide."
+						},
+						{
+							"line": "Better not give him my nickname",
+							"insight": "The sharp, intimate pain of shared endearments becoming public domain, stripped of their exclusivity and cherished meaning."
+						},
+						{
+							"line": "I swear that it's wearin' me down, no",
+							"insight": "The sheer exhaustion of carrying heavy emotional baggage, feeling the relentless weight of lingering pain."
+						},
+						{
+							"line": "Who's gettin' all of my residuals?",
+							"insight": "The bitter realization that love leaves behind fragments, and another person is now claiming those cherished pieces of a shared past."
+						}
+					],
+					"compound_mood": "Bitter Longing",
+					"sonic_texture": "A smooth R&B groove with a persistent, almost anxious pulse. Dark, echoing synths shimmer around a steady, understated beat, creating a melancholic yet compelling backdrop for the raw, introspective vocals.",
+					"audio_features": {
+						"tempo": 114.905,
+						"energy": 0.645,
+						"valence": 0.171,
+						"liveness": 0.108,
+						"loudness": -7.793,
+						"speechiness": 0.0821,
+						"acousticness": 0.342,
+						"danceability": 0.58,
+						"instrumentalness": 0
+					},
+					"interpretation": "The agonizing possessiveness that comes from watching a past love move on, feeling robbed of all the intimate 'residuals' — the shared memories, teachings, and nicknames that now belong to someone new. It's a bitter struggle to accept that what was once deeply personal and exclusive is now freely given to another, leaving a gaping wound of confusion and hurt.",
+					"mood_description": "A restless heartache keeps swirling, trying to make sense of what's lost while a persistent beat pulls forward. It’s a melancholic groove that keeps you moving, even as the words dig into a deep wound."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:10:36.533358+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		},
+		{
+			"liked_at": "2025-06-06T00:35:51+00:00",
+			"matching_status": null,
+			"track": {
+				"id": "dc7f9432-abcd-4d24-a37d-aca2dbcb9cc0",
+				"spotify_track_id": "5Lgcn7u07bHuqbOtXkN62u",
+				"name": "With You",
+				"artist": "Chris Brown",
+				"artist_id": "7bXgB6jMjp9ATFy66eO08Z",
+				"artist_image_url": null,
+				"album": "Exclusive (Expanded Edition)",
+				"image_url": "https://i.scdn.co/image/ab67616d00001e0239509cc5eadf803928f2f167",
+				"genres": ["rnb", "hip-hop"],
+				"audio_features": {
+					"tempo": 86.009,
+					"energy": 0.693,
+					"valence": 0.655
+				}
+			},
+			"analysis": {
+				"id": "855771d4-430a-488f-b83e-e36d769b7d9e",
+				"track_id": "dc7f9432-abcd-4d24-a37d-aca2dbcb9cc0",
+				"analysis": {
+					"themes": [
+						{
+							"name": "unwavering devotion",
+							"description": "A deep, committed love that sees no alternatives."
+						},
+						{
+							"name": "singular adoration",
+							"description": "Focusing all attention and value on one person, almost to the exclusion of everything else."
+						},
+						{
+							"name": "shared experience of love",
+							"description": "The idea that this intense love isn't unique, but a universal feeling connecting people worldwide."
+						},
+						{
+							"name": "essential need",
+							"description": "The feeling that this person is absolutely necessary for life and happiness."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Urgent Longing",
+							"section": "Intro",
+							"description": "A simple, repeated plea for connection, setting up the core need that drives the song. The global heart beat idea starts here."
+						},
+						{
+							"mood": "Dazzled Adoration",
+							"section": "Verse 1",
+							"description": "A detailed praise of the loved one, describing their beauty and effect, shifting to a personal, possessive joy."
+						},
+						{
+							"mood": "Soaring Declaration",
+							"section": "Pre-Chorus/Chorus",
+							"description": "The emotional core bursts open, expressing deep infatuation and the profound impact of their love, expanding the personal feeling to a universal one."
+						},
+						{
+							"mood": "Deepening Commitment",
+							"section": "Verse 2",
+							"description": "Reaffirming exclusivity and loyalty, comparing the loved one to something highly desired, promising dedication and truth."
+						},
+						{
+							"mood": "Absolute Dependence",
+							"section": "Bridge",
+							"description": "The devotion intensifies, becoming essential to existence, echoing the intro's plea with even greater intensity and universality."
+						},
+						{
+							"mood": "Endless Affirmation",
+							"section": "Outro Chorus",
+							"description": "A final, extended reiteration of total absorption in the loved one, fading out with the joyful recognition of this all-encompassing bond."
+						}
+					],
+					"headline": "A soaring declaration of devotion, radiating the pure joy of finding your everything.",
+					"key_lines": [
+						{
+							"line": "You mean to me what I mean to you",
+							"insight": "The dream of perfectly reciprocated, mirrored love."
+						},
+						{
+							"line": "Cause if I got you, I don't need money, I don't need cars",
+							"insight": "The ultimate declaration of what truly holds value."
+						},
+						{
+							"line": "You're like Jordan's on Saturday",
+							"insight": "The thrill of eagerly anticipating something rare and cherished."
+						},
+						{
+							"line": "And I will never try to deny that you are my whole life",
+							"insight": "A complete surrender to love's overwhelming power, becoming central to existence."
+						},
+						{
+							"line": "I don't need another woman, I just need your all-or-nothin'",
+							"insight": "The demand for total commitment, no half measures allowed."
+						}
+					],
+					"compound_mood": "Ardent Yearning",
+					"sonic_texture": "Smooth R&B production with a steady, danceable hip-hop beat. Warm synth pads create an enveloping atmosphere, while a clean, confident vocal delivery glides over a deep, resonant bassline, creating a feeling of effortless charm and undeniable appeal.",
+					"audio_features": {
+						"tempo": 86.009,
+						"energy": 0.693,
+						"valence": 0.655,
+						"liveness": 0.145,
+						"loudness": -4.298,
+						"speechiness": 0.0698,
+						"acousticness": 0.134,
+						"danceability": 0.662,
+						"instrumentalness": 0
+					},
+					"interpretation": "It’s the intense, all-consuming joy of finding a person who makes everything else fade away. The world stops, priorities shift, and suddenly, they are the singular, most valuable thing, transforming every moment into pure adoration and an almost universal feeling of connection.",
+					"mood_description": "A smooth, pulsing groove wraps around a heart-on-sleeve declaration. It's the feeling of total infatuation, wanting to shout it from the rooftops while swaying close."
+				},
+				"model_name": "google:gemini-2.5-flash",
+				"version": "2",
+				"created_at": "2026-03-28T08:10:26.598351+00:00"
+			},
+			"uiAnalysisStatus": "analyzed"
+		}
+	],
+	"matchingSongs": [
+		{
+			"song": {
+				"id": "8439160d-8245-4cc1-8871-c94bbe3ff23b",
+				"name": "New Rules",
+				"artist": "Dua Lipa",
+				"album": "Dua Lipa (Deluxe)",
+				"albumArtUrl": "https://i.scdn.co/image/ab67616d00001e02838698485511bd9108fadadc",
+				"genres": ["pop", "electropop", "dance"],
+				"audioFeatures": {
+					"tempo": 116.073,
+					"energy": 0.7,
+					"valence": 0.608
+				},
+				"analysis": {
+					"themes": [
+						{
+							"name": "self-restraint",
+							"description": "The conscious effort to hold back from old, comfortable, yet destructive habits."
+						},
+						{
+							"name": "reclaiming agency",
+							"description": "Taking control of one's decisions and emotional well-being after a period of being pulled back and forth."
+						},
+						{
+							"name": "pattern breaking",
+							"description": "The deliberate act of disrupting ingrained cycles of a toxic relationship."
+						},
+						{
+							"name": "false intimacy",
+							"description": "Recognizing the ex's overtures as manipulative attempts for convenience, not genuine connection."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Urgent reminder",
+							"section": "Intro",
+							"description": "A single, urgent word rings out, a self-imposed warning of the first hurdle in breaking free."
+						},
+						{
+							"mood": "Internal turmoil",
+							"section": "Verse 1",
+							"description": "A frantic internal monologue unfolds, revealing the desperate attempt to write down sanity and escape a recurring cycle."
+						},
+						{
+							"mood": "Defiant declaration",
+							"section": "Pre-Chorus",
+							"description": "Rules are laid bare, a firm line in the sand against temptation, building to a clear, defiant declaration of boundaries."
+						},
+						{
+							"mood": "Empowered mantra",
+							"section": "Chorus",
+							"description": "The rules become an unbreakable mantra, shouted over a driving beat, a public act of self-affirmation solidifying newfound resolve."
+						},
+						{
+							"mood": "Ongoing effort",
+							"section": "Bridge",
+							"description": "A moment of reflection acknowledges the hard truth of the ongoing effort, realizing that breaking habits is a continuous performance, not an instant fix."
+						},
+						{
+							"mood": "Echoing vigilance",
+							"section": "Outro",
+							"description": "The rules echo, a final, insistent warning that doesn't quite fade, remaining a constant presence of required vigilance."
+						}
+					],
+					"headline": "The disciplined battle to sever a toxic connection, fought on the dancefloor of self-respect.",
+					"key_lines": [
+						{
+							"line": "One, don't pick up the phone You know he's only callin' 'cause he's drunk and alone",
+							"insight": "The blunt reality of being an ex's convenience, stripping away any illusion of genuine care."
+						},
+						{
+							"line": "And if you're under him, you ain't gettin' over him",
+							"insight": "A stark, visceral truth about how physical entanglement directly prevents emotional progress."
+						},
+						{
+							"line": "I gotta tell them to myself",
+							"insight": "The core of self-reliance, making the commitment an internal, deeply personal one, not reliant on external validation."
+						},
+						{
+							"line": "Practice makes perfect I'm still tryna learn it by heart",
+							"insight": "The vulnerability of an ongoing struggle, showing that healing is a process, not an instant victory."
+						}
+					],
+					"compound_mood": "Vigilant Empowerment",
+					"sonic_texture": "A bright, propulsive dance track built on driving synth basslines, sharp electronic percussion, and a clean, confident vocal delivery that cuts through the layered production. It feels energetic and highly polished.",
+					"audio_features": {
+						"tempo": 116.073,
+						"energy": 0.7,
+						"valence": 0.608,
+						"liveness": 0.153,
+						"loudness": -6.021,
+						"speechiness": 0.0694,
+						"acousticness": 0.00261,
+						"danceability": 0.762,
+						"instrumentalness": 0.0000156
+					},
+					"interpretation": "Breaking free from a destructive on-again, off-again relationship requires setting explicit, non-negotiable rules for oneself. This isn't just about cutting ties with an ex; it's about re-training your own instincts, recognizing patterns of manipulation, and building the internal fortitude to resist the magnetic pull of past comfort, even when it's harmful. The bright, confident production masks the active, daily fight to uphold these boundaries, making the self-affirmation both a rallying cry and a desperate plea.",
+					"mood_description": "A potent mix of determined self-talk and an irresistible beat. It feels like dancing through a breakup, armed with unwavering resolve."
+				}
+			},
+			"playlists": [
+				{
+					"id": "77909656-c853-41c9-8c9c-1e03d0dd1961",
+					"name": "main character energy!!!!",
+					"reason": "Strong thematic and sonic match",
+					"matchScore": 0.882252
+				}
+			]
+		},
+		{
+			"song": {
+				"id": "8fdfd85a-ddc4-47b0-9c71-0f02e25cda3c",
+				"name": "Houdini",
+				"artist": "Dua Lipa",
+				"album": "Radical Optimism",
+				"albumArtUrl": "https://i.scdn.co/image/ab67616d00001e022f8790ed72296c2614607575",
+				"genres": ["pop", "dance-pop", "disco"],
+				"audioFeatures": {
+					"tempo": 116.985,
+					"energy": 0.789,
+					"valence": 0.866
+				},
+				"analysis": {
+					"themes": [
+						{
+							"name": "conditional commitment",
+							"description": "Testing a partner's sincerity before fully investing in a connection."
+						},
+						{
+							"name": "playful power",
+							"description": "Using allure and a hint of unavailability to dictate the terms of engagement."
+						},
+						{
+							"name": "the chase",
+							"description": "Finding excitement in the pursuit, making someone work for attention and affection."
+						},
+						{
+							"name": "guarded vulnerability",
+							"description": "A hint of wanting to stay, carefully hidden beneath a confident exterior."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Anticipatory hum",
+							"section": "Intro",
+							"description": "A soft, inviting shimmer, hinting at the energy about to unfold."
+						},
+						{
+							"mood": "Confident challenge",
+							"section": "Chorus",
+							"description": "The central premise arrives, a clear, playful dare set against a driving, undeniable beat."
+						},
+						{
+							"mood": "Seductive observation",
+							"section": "Verse 1",
+							"description": "Watching for a reaction, an invitation to step closer before time runs out."
+						},
+						{
+							"mood": "Guarded hope",
+							"section": "Post-Chorus",
+							"description": "A moment of rare vulnerability, hinting that the right effort could change everything."
+						},
+						{
+							"mood": "Skeptical inquiry",
+							"section": "Verse 2",
+							"description": "Questioning superficial promises, seeking real proof of dedication."
+						},
+						{
+							"mood": "Lingering mystery",
+							"section": "Outro",
+							"description": "The vanishing act is complete, leaving the challenge echoing in the air."
+						}
+					],
+					"headline": "A playful dare, setting the stage for a high-stakes game of commitment and allure.",
+					"key_lines": [
+						{
+							"line": "Catch me or I go Houdini",
+							"insight": "A playful threat, asserting control over one's own presence and departure."
+						},
+						{
+							"line": "Time is passin' like a solar eclipse",
+							"insight": "The fleeting nature of opportunity, urging quick action from a hesitant suitor."
+						},
+						{
+							"line": "Maybe you could be the one to make me stay",
+							"insight": "A rare glimpse of longing, a crack in the confident facade revealing a desire for genuine connection."
+						},
+						{
+							"line": "But do you practise everything that you preach?",
+							"insight": "Demanding substance over shallow words, seeking proof of real intent."
+						}
+					],
+					"compound_mood": "Flirtatious Defiance",
+					"sonic_texture": "A shimmering tapestry of crisp synth hooks and a relentlessly driving bassline, creating a vibrant dancefloor energy. Vocals are clear and confident, gliding effortlessly over the meticulously produced disco-pop groove.",
+					"audio_features": {
+						"tempo": 116.985,
+						"energy": 0.789,
+						"valence": 0.866,
+						"liveness": 0.0947,
+						"loudness": -4.876,
+						"speechiness": 0.059,
+						"acousticness": 0.0036,
+						"danceability": 0.744,
+						"instrumentalness": 0.00144
+					},
+					"interpretation": "It's a bold declaration of self-worth, daring a potential lover to truly earn their place. There's a playful power dynamic at play, where commitment isn't given freely but must be proven. The upbeat, shimmering production creates an atmosphere of confident independence, almost masking the underlying vulnerability of someone who wants to stay, but only if it's real.",
+					"mood_description": "A shimmering invitation to the dancefloor, laced with the thrill of a chase. The pulsing bass pulls you in, but a playful detachment keeps you guessing."
+				}
+			},
+			"playlists": [
+				{
+					"id": "77909656-c853-41c9-8c9c-1e03d0dd1961",
+					"name": "main character energy!!!!",
+					"reason": "Strong thematic and sonic match",
+					"matchScore": 0.88105
+				}
+			]
+		},
+		{
+			"song": {
+				"id": "87f29f14-0938-431f-853f-a3d649de0934",
+				"name": "Training Season",
+				"artist": "Dua Lipa",
+				"album": "Radical Optimism",
+				"albumArtUrl": "https://i.scdn.co/image/ab67616d00001e022f8790ed72296c2614607575",
+				"genres": ["pop", "dance-pop", "disco"],
+				"audioFeatures": {
+					"tempo": 123.041,
+					"energy": 0.587,
+					"valence": 0.664
+				},
+				"analysis": {
+					"themes": [
+						{
+							"name": "boundary setting",
+							"description": "Drawing a firm line in relationships, unwilling to invest in those who don't meet fundamental expectations."
+						},
+						{
+							"name": "emotional education",
+							"description": "The weariness of having to teach a partner how to love or understand basic desires."
+						},
+						{
+							"name": "passionate connection",
+							"description": "A deep longing for a love that is exciting, all-consuming, and takes control when needed."
+						},
+						{
+							"name": "time as currency",
+							"description": "Valuing personal time and energy too much to spend it on unfulfilling or immature romantic pursuits."
+						}
+					],
+					"journey": [
+						{
+							"mood": "wary self-protection",
+							"section": "Verse 1",
+							"description": "A hesitant voice wonders if a new connection is a blessing or another trap, having learned hard lessons before."
+						},
+						{
+							"mood": "soaring expectation",
+							"section": "Pre-Chorus & Chorus",
+							"description": "The energy builds, culminating in a powerful, almost dizzying demand for a love that's deep, thrilling, and knows how to lead when needed."
+						},
+						{
+							"mood": "firm declaration",
+							"section": "Post-Chorus",
+							"description": "A clear line is drawn, an impatient confidence declaring that the time for teaching and compromises is finally over."
+						},
+						{
+							"mood": "playful challenge",
+							"section": "Bridge",
+							"description": "A competitive spirit emerges, daring new connections to prove their worth and join the team, or stay stuck on the sidelines."
+						},
+						{
+							"mood": "confident resolve",
+							"section": "Outro",
+							"description": "The message solidifies into an unshakeable truth, repeating until it's clear: the wait is over."
+						}
+					],
+					"headline": "The sharp realization that time is too precious for half-hearted love, dancing into a future where desires are met.",
+					"key_lines": [
+						{
+							"line": "Or just the poison that I'm drawn to?",
+							"insight": "The weary acknowledgment of a past tendency to gravitate towards what's ultimately harmful."
+						},
+						{
+							"line": "Whose love feels like a rodeo",
+							"insight": "A longing for a love that's both thrillingly chaotic and expertly managed."
+						},
+						{
+							"line": "He's straight talking to my soul",
+							"insight": "The profound desire for communication that cuts through noise and connects on a deeper plane."
+						},
+						{
+							"line": "'Cause training season's over",
+							"insight": "A definitive, empowered end to the cycle of teaching partners how to simply show up."
+						}
+					],
+					"compound_mood": "Assertive Euphoria",
+					"sonic_texture": "A pulsating, groovy bassline propels the track forward, woven with bright, shimmering synth chords and a relentless four-on-the-floor beat, creating an infectious, confident dancefloor energy around crisp, commanding vocals.",
+					"audio_features": {
+						"tempo": 123.041,
+						"energy": 0.587,
+						"valence": 0.664,
+						"liveness": 0.123,
+						"loudness": -4.483,
+						"speechiness": 0.0477,
+						"acousticness": 0.0349,
+						"danceability": 0.812,
+						"instrumentalness": 0.00000264
+					},
+					"interpretation": "Refusing to settle for anything less than a profound, exciting connection, a clear line is drawn for potential partners: either step up to meet her needs or step aside. There's no more time for teaching or compromise; the expectation is a partner who inherently knows how to engage deeply and passionately, propelled by an electrifying beat that makes this ultimatum feel like an undeniable act of self-worth.",
+					"mood_description": "The thrumming beat lifts your spirit, but a firm voice cuts through the glitter, making you feel the exhilarating truth of knowing what you deserve."
+				}
+			},
+			"playlists": [
+				{
+					"id": "77909656-c853-41c9-8c9c-1e03d0dd1961",
+					"name": "main character energy!!!!",
+					"reason": "Strong thematic and sonic match",
+					"matchScore": 0.880292
+				}
+			]
+		},
+		{
+			"song": {
+				"id": "9f1e88d2-8249-4800-a389-deb68e854e2f",
+				"name": "Don't Start Now",
+				"artist": "Dua Lipa",
+				"album": "Future Nostalgia",
+				"albumArtUrl": "https://i.scdn.co/image/ab67616d00001e02c88bae7846e62a8ba59ee0bd",
+				"genres": ["pop", "disco", "dance-pop"],
+				"audioFeatures": {
+					"tempo": 123.95,
+					"energy": 0.793,
+					"valence": 0.679
+				},
+				"analysis": {
+					"themes": [
+						{
+							"name": "radical self-ownership",
+							"description": "Taking full command of one's happiness and personal space after a relationship ends."
+						},
+						{
+							"name": "defiant joy",
+							"description": "Celebrating personal growth and happiness in the face of a past attempt to cause pain."
+						},
+						{
+							"name": "unwanted return",
+							"description": "Dealing with an ex who suddenly shows interest once you've clearly moved on."
+						}
+					],
+					"journey": [
+						{
+							"mood": "calm challenge",
+							"section": "Intro",
+							"description": "A hushed opening, almost a dare, setting a subtle trap for the coming energy."
+						},
+						{
+							"mood": "blossoming confidence",
+							"section": "Verse 1 & Refrain",
+							"description": "A quick glance back at past pain, then a shrug and a beaming smile, reveling in how far things have come."
+						},
+						{
+							"mood": "unapologetic dismissal",
+							"section": "Chorus",
+							"description": "The beat drops, and a clear, joyful warning echoes through the room: the door is closed, and there’s no looking back now."
+						},
+						{
+							"mood": "sharp recollection",
+							"section": "Verse 2",
+							"description": "A direct jab at the past hurt, acknowledging survival with a knowing smirk."
+						},
+						{
+							"mood": "insistent declaration",
+							"section": "Bridge & Chorus",
+							"description": "The message becomes a hypnotic chant, pushing away old ghosts with every vibrant beat."
+						},
+						{
+							"mood": "radiant departure",
+							"section": "Outro",
+							"description": "A final, lingering refusal, fading out with the undeniable sparkle of freedom."
+						}
+					],
+					"headline": "The triumphant sting of moving on, basking in the glow of a life the past can't touch.",
+					"key_lines": [
+						{
+							"line": "Did the heartbreak change me? MaybeBut look at where I ended up",
+							"insight": "The quiet triumph of transformation, finding strength and success not despite heartbreak, but because of it."
+						},
+						{
+							"line": "I'm all good alreadySo moved on, it's scary",
+							"insight": "The overwhelming, almost disorienting feeling of complete liberation from a past connection."
+						},
+						{
+							"line": "Don't start caring about me now",
+							"insight": "The sting of belated attention, knowing it only surfaces once you've become unreachable."
+						},
+						{
+							"line": "Aren't you the guy who tried toHurt me with the word \"goodbye\"?",
+							"insight": "A direct, confident calling-out of past cruelty, now powerless against a changed person."
+						}
+					],
+					"compound_mood": "Liberated Defiance",
+					"sonic_texture": "A tight, irresistible disco groove driven by a propulsive bassline and crisp drums. Shimmering synth layers and funky guitar riffs create a bright, polished dancefloor sound that feels both classic and fresh.",
+					"audio_features": {
+						"tempo": 123.95,
+						"energy": 0.793,
+						"valence": 0.679,
+						"liveness": 0.0951,
+						"loudness": -4.521,
+						"speechiness": 0.083,
+						"acousticness": 0.0123,
+						"danceability": 0.793,
+						"instrumentalness": 0
+					},
+					"interpretation": "The refusal to let a past love disrupt the peace and joy found after their departure. It's a powerful statement of self-sufficiency, realizing that moving on means closing the door firmly on anyone who only cared when it was convenient. The vibrant production amplifies this sense of liberation, turning past pain into pure, unadulterated confidence.",
+					"mood_description": "A bright, pulsing groove sweeps you onto the dancefloor, even as every word pushes away a lingering ghost. It feels like celebrating freedom under disco lights."
+				}
+			},
+			"playlists": [
+				{
+					"id": "77909656-c853-41c9-8c9c-1e03d0dd1961",
+					"name": "main character energy!!!!",
+					"reason": "Strong thematic and sonic match",
+					"matchScore": 0.869714
+				}
+			]
+		},
+		{
+			"song": {
+				"id": "d74c23a9-b486-4239-91b2-e4765b9d19c8",
+				"name": "Closer",
+				"artist": "Patrick Holland",
+				"album": "Beaubien Dream",
+				"albumArtUrl": "https://i.scdn.co/image/ab67616d00001e021db4cb9c0fa798be1e5e9ad5",
+				"genres": ["house", "electronic", "indie pop"],
+				"audioFeatures": {
+					"tempo": 122.014,
+					"energy": 0.945,
+					"valence": 0.238
+				},
+				"analysis": {
+					"headline": "You're caught in a powerful current, moving with an unstoppable force toward something just out of reach.",
+					"compound_mood": "Propulsive Yearning",
+					"sonic_texture": "A solid, unyielding kick drum drives the pulse, forming a bedrock for the thrumming, resonant bassline. Evolving synth pads shimmer and spiral upwards, building a dense, almost dizzying atmosphere. Sharp, bright melodic synth lines cut through the layers, creating a sense of relentless forward movement and a lingering, poignant echo.",
+					"audio_features": {
+						"tempo": 122.014,
+						"energy": 0.945,
+						"valence": 0.238,
+						"liveness": 0.132,
+						"loudness": -8.324,
+						"speechiness": 0.0569,
+						"acousticness": 0.186,
+						"danceability": 0.719,
+						"instrumentalness": 0.884
+					},
+					"mood_description": "A steady pulse takes over your rhythm, urging your body to move. But beneath the insistent beat, a quiet ache of longing threads through the sound, giving every step a deeper meaning."
+				}
+			},
+			"playlists": [
+				{
+					"id": "ad198160-0b74-4e5a-9e64-4a940d3c5e6e",
+					"name": "house?",
+					"reason": "Strong thematic and sonic match",
+					"matchScore": 0.858624
+				}
+			]
+		},
+		{
+			"song": {
+				"id": "4344e615-cd37-47e8-bb00-fecebd9176a1",
+				"name": "Let Me Love You",
+				"artist": "Mario",
+				"album": "Turning Point",
+				"albumArtUrl": "https://i.scdn.co/image/ab67616d00001e02c2248a5b79dededa74edfde0",
+				"genres": ["rnb", "soul", "pop"],
+				"audioFeatures": {
+					"tempo": 94.364,
+					"energy": 0.593,
+					"valence": 0.607
+				},
+				"analysis": {
+					"themes": [
+						{
+							"name": "unrecognized worth",
+							"description": "Seeing someone's true value when they are unable to see it in themselves."
+						},
+						{
+							"name": "protective devotion",
+							"description": "Offering love as a shield and a guide away from harmful relationships."
+						},
+						{
+							"name": "redemptive offer",
+							"description": "Presenting an escape from a cycle of hurt with a promise of genuine happiness."
+						},
+						{
+							"name": "steadfast promise",
+							"description": "The unwavering commitment to a better, more loving future."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Mellow anticipation",
+							"section": "Intro",
+							"description": "A gentle, inviting hum sets the stage, hinting at something sincere about to unfold."
+						},
+						{
+							"mood": "Pained observation",
+							"section": "Verse 1",
+							"description": "The current painful reality is laid bare, directly questioning why someone would accept such hurt, noticing all the signs of betrayal."
+						},
+						{
+							"mood": "Confident declaration",
+							"section": "Pre-Chorus",
+							"description": "A stark contrast is drawn, promising a life free from worry and filled with genuine affection, painting a picture of what true partnership should be."
+						},
+						{
+							"mood": "Heartfelt appeal",
+							"section": "Chorus",
+							"description": "The central plea emerges, a strong, clear offer of unconditional care, protection, and the chance to finally experience love as it's meant to be."
+						},
+						{
+							"mood": "Passionate insistence",
+							"section": "Bridge",
+							"description": "The argument for a better path becomes more direct and urgent, emphasizing deserving better and pushing for a shared future together."
+						},
+						{
+							"mood": "Lingering reassurance",
+							"section": "Outro",
+							"description": "The core message is softly repeated, an enduring promise of love that gently fades, leaving a lasting feeling of warmth and hope."
+						}
+					],
+					"headline": "A steadfast promise of unwavering devotion, born from watching someone endure heartbreak.",
+					"key_lines": [
+						{
+							"line": "Baby, I just don't get it, do you enjoy bein' hurt?",
+							"insight": "The profound disbelief at someone accepting less than they're worth, a direct challenge to their self-destructive patterns."
+						},
+						{
+							"line": "You're a dime, plus 99, and it's a shame Don't even know what you're worth",
+							"insight": "The exasperation of seeing undeniable beauty and value overlooked, both by others and by the person themselves."
+						},
+						{
+							"line": "If I was your man, baby, you'd never worry 'bout what I do",
+							"insight": "A stark, compelling contrast to current betrayal, promising unwavering loyalty and peace of mind."
+						},
+						{
+							"line": "Show you the way love's supposed to be",
+							"insight": "Positioning the offer as the true benchmark for affection and respect, not just a casual fling."
+						},
+						{
+							"line": "You deserve better, girl",
+							"insight": "The simple, undeniable core truth, cutting through all the pain with clear validation."
+						}
+					],
+					"compound_mood": "Earnest Conviction",
+					"sonic_texture": "Silky R&B vocals ride a polished, mid-tempo beat. Lush synths and a smooth bassline create a rich, enveloping soundscape, making the whole thing feel like a confident, heartfelt serenade.",
+					"audio_features": {
+						"tempo": 94.364,
+						"energy": 0.593,
+						"valence": 0.607,
+						"liveness": 0.0979,
+						"loudness": -8.352,
+						"speechiness": 0.0916,
+						"acousticness": 0.163,
+						"danceability": 0.622,
+						"instrumentalness": 0
+					},
+					"interpretation": "It's about the deep frustration of witnessing someone you care for repeatedly choose pain, and the overwhelming desire to step in and provide the love and respect they truly deserve. It’s an offer to redefine what love can be.",
+					"mood_description": "Smooth, confident R&B flows, wrapped in a sincere plea for a chance to heal. It feels like a warm hand reaching out, offering solace and strength."
+				}
+			},
+			"playlists": [
+				{
+					"id": "77909656-c853-41c9-8c9c-1e03d0dd1961",
+					"name": "main character energy!!!!",
+					"reason": "Strong thematic and sonic match",
+					"matchScore": 0.844428
+				}
+			]
+		},
+		{
+			"song": {
+				"id": "1505fdb8-98ab-41ba-a89f-826f449deab1",
+				"name": "One Kiss (with Dua Lipa)",
+				"artist": "Calvin Harris",
+				"album": "96 Months",
+				"albumArtUrl": "https://i.scdn.co/image/ab67616d00001e028daa8ac6367fc997c1873b9b",
+				"genres": ["house", "electronic", "dance"],
+				"audioFeatures": {
+					"tempo": 123.992,
+					"energy": 0.862,
+					"valence": 0.593
+				},
+				"analysis": {
+					"themes": [
+						{
+							"name": "instant magnetism",
+							"description": "The potent force of attraction ignited by a single glance or touch, leading to an immediate, powerful connection."
+						},
+						{
+							"name": "confident allure",
+							"description": "Projecting an irresistible self-assurance, openly declaring oneself as the desired focus of another's affection."
+						},
+						{
+							"name": "fleeting ecstasy",
+							"description": "The desire to fully immerse in a joyous, high-energy moment, knowing it might not last beyond the night."
+						},
+						{
+							"name": "the dancefloor spell",
+							"description": "The intoxicating environment of a club or party, where inhibitions fade and connections feel amplified by music and movement."
+						}
+					],
+					"journey": [
+						{
+							"mood": "Magnetic invitation",
+							"section": "Intro",
+							"description": "A smooth, confident declaration sets the stage, promising an irresistible connection that begins with something as simple as one kiss."
+						},
+						{
+							"mood": "Easy seduction",
+							"section": "Verse 1",
+							"description": "The embrace of the night unfolds, a relaxed confidence in extending the moment into the quiet hours, fueled by music and intimacy."
+						},
+						{
+							"mood": "Internal ignition",
+							"section": "Pre-Chorus",
+							"description": "A sudden, intense feeling takes hold internally, like a light switching on, making sleep impossible and losing oneself in the other's movements."
+						},
+						{
+							"mood": "Irresistible declaration",
+							"section": "Chorus",
+							"description": "The central, undeniable truth is laid bare: a single kiss is all it takes for profound connection, an assertion of being everything the other person needs."
+						},
+						{
+							"mood": "Deepening gaze",
+							"section": "Bridge",
+							"description": "Eyes meet and reveal a sense of wonder, solidifying the desire to prolong this magical encounter beyond the immediate moment."
+						},
+						{
+							"mood": "Hypnotic repetition",
+							"section": "Outro",
+							"description": "The core sentiment echoes and fades, a singular focus on the power of 'one' — one kiss, one person, one essential need — leaving a lingering, captivating impression."
+						}
+					],
+					"headline": "A confident invitation to an intoxicating, fleeting dancefloor romance, born from a single spark.",
+					"key_lines": [
+						{
+							"line": "One kiss is all it takes",
+							"insight": "The absolute power of a single spark to ignite everything, an immediate, life-changing moment."
+						},
+						{
+							"line": "I look like all you need",
+							"insight": "Projecting an irresistible self-assurance, openly declaring one's essential place in another's desires."
+						},
+						{
+							"line": "Lit up heaven in me",
+							"insight": "The sudden, bright transformation felt internally from another's presence, like pure joy illuminating the soul."
+						},
+						{
+							"line": "Feel your eyes do the exploring",
+							"insight": "The intimate, unspoken communication of desire and curiosity, building connection through a silent gaze and physical proximity."
+						},
+						{
+							"line": "Might need your company tonight",
+							"insight": "A tender extension of the moment, hoping to prolong the enchantment and keep the nascent connection alive."
+						}
+					],
+					"compound_mood": "Seductive Euphoria",
+					"sonic_texture": "A vibrant blend of driving house beats, shimmering synth layers, and crisp, confident vocals that propel the listener onto an electrifying dancefloor. The rhythm is relentless, perfectly suited for movement, with a bright, clean production that feels both classic and fresh.",
+					"audio_features": {
+						"tempo": 123.992,
+						"energy": 0.862,
+						"valence": 0.593,
+						"liveness": 0.0814,
+						"loudness": -3.24,
+						"speechiness": 0.11,
+						"acousticness": 0.037,
+						"danceability": 0.79,
+						"instrumentalness": 0.0000225
+					},
+					"interpretation": "An immediate, undeniable attraction blooms from a single interaction, painting a picture of confident allure and the thrill of new possibilities. It's about owning that magnetic pull and inviting someone into a moment that feels both spontaneous and destined, fully embracing the intoxicating rush of instant connection.",
+					"mood_description": "An undeniable magnetic pull, wrapped in a pulsing beat that feels like an instant connection. The air vibrates with electric possibilities, inviting you to get lost in the moment."
+				}
+			},
+			"playlists": [
+				{
+					"id": "ad198160-0b74-4e5a-9e64-4a940d3c5e6e",
+					"name": "house?",
+					"reason": "Strong thematic and sonic match",
+					"matchScore": 0.840313
+				}
+			]
+		}
+	],
+	"dashboard": {
+		"displayName": "ghr",
+		"stats": {
+			"totalSongs": 25,
+			"analyzedPercent": 100,
+			"matchedCount": 25,
+			"playlistCount": 8,
+			"reviewCount": 5
+		},
+		"recentActivity": [
+			{
+				"id": "activity-0",
+				"timestamp": "2025-06-06T14:08:26+00:00",
+				"type": "matched",
+				"songId": "8439160d-8245-4cc1-8871-c94bbe3ff23b",
+				"songName": "New Rules",
+				"artistName": "Dua Lipa",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02838698485511bd9108fadadc",
+				"playlistId": "79ec2948-dce7-4635-bb17-673349ab4b58",
+				"playlistName": "yilkes!"
+			},
+			{
+				"id": "activity-1",
+				"timestamp": "2025-06-06T14:08:24+00:00",
+				"type": "liked",
+				"songId": "8fdfd85a-ddc4-47b0-9c71-0f02e25cda3c",
+				"songName": "Houdini",
+				"artistName": "Dua Lipa",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e022f8790ed72296c2614607575"
+			},
+			{
+				"id": "activity-2",
+				"timestamp": "2025-06-06T14:08:23+00:00",
+				"type": "liked",
+				"songId": "24836914-590b-41fb-8912-1c12640ca54a",
+				"songName": "Handlebars (feat. Dua Lipa)",
+				"artistName": "JENNIE",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02dcf27dec5e479b2e39c4c993"
+			},
+			{
+				"id": "activity-3",
+				"timestamp": "2025-06-06T14:08:20+00:00",
+				"type": "matched",
+				"songId": "1505fdb8-98ab-41ba-a89f-826f449deab1",
+				"songName": "One Kiss (with Dua Lipa)",
+				"artistName": "Calvin Harris",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e028daa8ac6367fc997c1873b9b",
+				"playlistId": "79ec2948-dce7-4635-bb17-673349ab4b58",
+				"playlistName": "yilkes!"
+			},
+			{
+				"id": "activity-4",
+				"timestamp": "2025-06-06T14:08:18+00:00",
+				"type": "liked",
+				"songId": "87f29f14-0938-431f-853f-a3d649de0934",
+				"songName": "Training Season",
+				"artistName": "Dua Lipa",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e022f8790ed72296c2614607575"
+			}
+		],
+		"matchPreviews": [],
+		"isEnrichmentRunning": false,
+		"smoothAnalyzedPercent": 100,
+		"lastSyncText": "Just now"
+	},
+	"sidebar": {
+		"unsortedCount": 5,
+		"userName": "ghr",
+		"userPlan": "Free Plan"
+	},
+	"playlists": [
+		{
+			"id": "79ec2948-dce7-4635-bb17-673349ab4b58",
+			"name": "yilkes!",
+			"trackCount": 1,
+			"image": "https://i.scdn.co/image/ab67616d00001e02382514f0114ba8f4a16d5db4",
+			"description": "✨: 2!!",
+			"lastUpdated": "2d ago",
+			"flagged": false
+		},
+		{
+			"id": "fc25b449-b47e-4132-8885-9db40bb57fba",
+			"name": "jj",
+			"trackCount": 0,
+			"image": "",
+			"description": "✨: AI: make it make sense bestie",
+			"lastUpdated": "2d ago",
+			"flagged": false
+		},
+		{
+			"id": "ec26f2d0-cef6-4f0f-bd1d-ff094d9409a5",
+			"name": "Super Bock Super Rock 2021",
+			"trackCount": 14,
+			"image": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84c1975a91a3224aa534fc35ba",
+			"description": "made with ♪ by @inotbeingf",
+			"lastUpdated": "2d ago",
+			"flagged": false
+		},
+		{
+			"id": "c5d99528-2427-4fe6-9a5d-fdb344cfccda",
+			"name": "Dubolt Mix: Kendrick Lamar / Ross from Friends / KAYTRANADA / Totally Enormous Extinct Dinosaurs / J. Cole",
+			"trackCount": 25,
+			"image": "https://mosaic.scdn.co/640/ab67616d00001e0201dbb413cc80ae630f1e66a3ab67616d00001e02107d051e4c35ac3c8fe3470dab67616d00001e02203f8c1682441cdd02d0fa85ab67616d00001e02d3e8d904b8b9beca4d33583e",
+			"description": "",
+			"lastUpdated": "2d ago",
+			"flagged": false
+		},
+		{
+			"id": "77909656-c853-41c9-8c9c-1e03d0dd1961",
+			"name": "main character energy!!!!",
+			"trackCount": 0,
+			"image": "",
+			"description": "✨: songs that make me feel like the main character in my own movie!!!!!",
+			"lastUpdated": "2d ago",
+			"flagged": false
+		},
+		{
+			"id": "ad198160-0b74-4e5a-9e64-4a940d3c5e6e",
+			"name": "house?",
+			"trackCount": 6,
+			"image": "https://mosaic.scdn.co/640/ab67616d00001e022b89c8de96dcc7d5e05a48edab67616d00001e0237b51b1bfcf7028ef9e11bf1ab67616d00001e0268881375078c577509bb8681ab67616d00001e02b6fb5de52e6fa161dde9c38f",
+			"description": "AI: house music",
+			"lastUpdated": "2d ago",
+			"flagged": false
+		},
+		{
+			"id": "c8bf07ad-dee3-4dbb-9082-6b9593866175",
+			"name": "souvenir",
+			"trackCount": 0,
+			"image": "",
+			"description": "AI: make it make sense bestie",
+			"lastUpdated": "2d ago",
+			"flagged": false
+		},
+		{
+			"id": "972a74b8-a30f-4b98-9023-67dbf94f3d1a",
+			"name": "hello",
+			"trackCount": 0,
+			"image": "",
+			"description": "AI: make it make sense bestie",
+			"lastUpdated": "2d ago",
+			"flagged": false
+		}
+	]
+}

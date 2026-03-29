@@ -4,11 +4,9 @@
 	"type": "module",
 	"scripts": {
 		"prepare": "lefthook install",
-		"dev": "concurrently -n web,worker -c cyan,magenta --kill-others \"ML_PROVIDER=local vite dev\" \"sleep 3 && bun src/worker/index.ts\"",
-		"dev:web": "ML_PROVIDER=local vite dev",
+		"dev": "ML_PROVIDER=local vite dev",
+		"dev:ui": "VITE_DEVTOOLS=false vite dev",
 		"dev:worker": "bun src/worker/index.ts",
-		"dev:guided": "ML_PROVIDER=local vite dev",
-		"dev:clean": "VITE_DEVTOOLS=false vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
 		"test": "vitest run",
@@ -25,7 +23,11 @@
 		"dev:embeddings": "bun scripts/embedding-server.ts",
 		"ext:build": "bun extension/scripts/build.ts",
 		"ext:dev": "bun extension/scripts/build.ts --watch",
-		"ext:store": "bun extension/scripts/build.ts --store"
+		"ext:store": "bun extension/scripts/build.ts --store",
+		"reset:onboarding": "bun scripts/reset-onboarding.ts",
+		"ladle": "ladle serve",
+		"ladle:build": "ladle build",
+		"fixtures": "bun src/stories/fixtures/build-fixtures.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^3.0.47",
@@ -70,6 +72,7 @@
 		"tailwind-merge": "^3.5.0",
 		"tailwindcss": "^4.2.1",
 		"tw-animate-css": "^1.4.0",
+		"uipane": "file:../../uipane",
 		"vite-tsconfig-paths": "^6.1.1",
 		"wretch": "^3.0.6",
 		"zod": "^4.3.6"
@@ -77,6 +80,8 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.4.4",
 		"@esbuild/darwin-arm64": "0.27.3",
+		"@ladle/react": "^5.1.1",
+		"@tailwindcss/postcss": "^4.2.2",
 		"@tanstack/devtools-vite": "^0.5.1",
 		"@testing-library/dom": "^10.4.1",
 		"@testing-library/jest-dom": "^6.9.1",
