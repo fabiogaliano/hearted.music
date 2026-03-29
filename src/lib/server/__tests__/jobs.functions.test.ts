@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Result } from "better-result";
+import type { Job } from "@/lib/data/jobs";
 
 const mockRequireAuthSession = vi.fn();
 const mockLoadLibraryProcessingState = vi.fn();
@@ -8,9 +9,13 @@ const mockMatchContextMaybeSingle = vi.fn();
 const mockMatchResultMaybeSingle = vi.fn();
 
 vi.mock("@tanstack/react-start", () => ({
-	createServerFn: () => ({
-		handler: <T>(fn: T) => fn,
-	}),
+	createServerFn: () => {
+		const chain = {
+			handler: <T>(fn: T) => fn,
+			inputValidator: () => chain,
+		};
+		return chain;
+	},
 }));
 
 vi.mock("@/lib/platform/auth/auth.server", () => ({
@@ -62,9 +67,32 @@ vi.mock("@/lib/data/client", () => ({
 	}),
 }));
 
-const { getActiveJobs } = await import("../jobs.functions");
+const { getActiveJobs, getLibraryProcessingJobProgress } = await import(
+	"../jobs.functions"
+);
 
-describe("getActiveJobs", () => {
+function makeJob(overrides: Partial<Job> = {}): Job {
+	return {
+		id: "job-1",
+		account_id: "acct-1",
+		type: "enrichment",
+		status: "running",
+		progress: {},
+		error: null,
+		attempts: 1,
+		max_attempts: 3,
+		created_at: "2026-03-26T00:00:00Z",
+		updated_at: "2026-03-26T00:00:00Z",
+		started_at: "2026-03-26T00:00:00Z",
+		completed_at: null,
+		heartbeat_at: "2026-03-26T00:00:00Z",
+		queue_priority: 0,
+		satisfies_requested_at: null,
+		...overrides,
+	};
+}
+
+describe("jobs.functions", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockRequireAuthSession.mockResolvedValue({
@@ -101,5 +129,45 @@ describe("getActiveJobs", () => {
 		const result = await getActiveJobs();
 
 		expect(result.firstMatchReady).toBe(true);
+	});
+
+	it("returns typed enrichment progress for the authenticated account", async () => {
+		mockGetJobById.mockResolvedValue(
+			Result.ok(
+				makeJob({
+					progress: {
+						total: 20,
+						done: 10,
+						succeeded: 8,
+						failed: 2,
+						currentStage: "song_analysis",
+						batchSize: 5,
+						batchSequence: 1,
+					},
+				}),
+			),
+		);
+
+		const result = await getLibraryProcessingJobProgress({
+			data: { jobId: "job-1" },
+		});
+
+		expect(result?.type).toBe("enrichment");
+		if (result?.type === "enrichment") {
+			expect(result.progress.currentStage).toBe("song_analysis");
+			expect(result.progress.batchSequence).toBe(1);
+		}
+	});
+
+	it("returns null for library-processing jobs owned by another account", async () => {
+		mockGetJobById.mockResolvedValue(
+			Result.ok(makeJob({ account_id: "acct-2" })),
+		);
+
+		const result = await getLibraryProcessingJobProgress({
+			data: { jobId: "job-1" },
+		});
+
+		expect(result).toBeNull();
 	});
 });
