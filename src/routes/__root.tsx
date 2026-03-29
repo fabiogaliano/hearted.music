@@ -11,7 +11,7 @@ import {
 	Scripts,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { scan } from "react-scan";
 import { Toaster } from "sonner";
 import {
@@ -88,36 +88,18 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 	shellComponent: RootDocument,
 });
 
-const shouldLoadDevWorkflowUi =
-	import.meta.env.DEV && import.meta.env.MODE !== "test";
-
-const DevDialRoot = shouldLoadDevWorkflowUi
-	? lazy(async () => {
-			const { DialRoot } = await import("dialkit");
-			await import("dialkit/styles.css");
-			return { default: () => <DialRoot position="top-right" /> };
-		})
-	: null;
-
 function RootComponent() {
 	return (
 		<ThemeHueProvider>
 			<KeyboardShortcutProvider>
 				<Outlet />
-				{DevDialRoot && (
-					<Suspense fallback={null}>
-						<DevDialRoot />
-					</Suspense>
-				)}
 			</KeyboardShortcutProvider>
 		</ThemeHueProvider>
 	);
 }
 
-function RootErrorComponent({ error, reset }: ErrorComponentProps) {
+function RootErrorComponent({ error }: ErrorComponentProps) {
 	const theme = themes.rose;
-	const themeHue = extractHue(theme.primary);
-	const pastelColor = getPastelColor(themeHue);
 
 	useEffect(() => {
 		console.error("[RootError]", error);
@@ -132,8 +114,7 @@ function RootErrorComponent({ error, reset }: ErrorComponentProps) {
 				className="text-xs tracking-widest uppercase"
 				style={{
 					fontFamily: fonts.body,
-					color: theme.textOnPrimary,
-					opacity: 0.7,
+					color: theme.textMuted,
 				}}
 			>
 				Something broke
@@ -141,28 +122,17 @@ function RootErrorComponent({ error, reset }: ErrorComponentProps) {
 
 			<h1
 				className="mt-4 text-4xl leading-tight font-extralight md:text-5xl"
-				style={{ fontFamily: fonts.display, color: pastelColor }}
+				style={{ fontFamily: fonts.display, color: theme.primary }}
 			>
 				a wrong <span className="italic">note</span>
 			</h1>
 
-			<p
-				className="mt-6 max-w-md text-center text-lg leading-relaxed"
-				style={{
-					fontFamily: fonts.body,
-					color: theme.textOnPrimary,
-					opacity: 0.8,
-				}}
-			>
-				{error.message || "An unexpected error occurred."}
-			</p>
-
-			<div className="mt-10 flex items-center gap-6">
+			<div className="mt-10 flex flex-col items-center gap-4">
 				<button
 					type="button"
-					onClick={reset}
-					className="group inline-flex items-center gap-2"
-					style={{ fontFamily: fonts.body, color: theme.textOnPrimary }}
+					onClick={() => window.location.reload()}
+					className="group inline-flex cursor-pointer items-center gap-2"
+					style={{ fontFamily: fonts.body, color: theme.text }}
 				>
 					<span className="text-lg font-medium tracking-wide">Try again</span>
 					<span
@@ -178,8 +148,7 @@ function RootErrorComponent({ error, reset }: ErrorComponentProps) {
 					className="text-sm underline"
 					style={{
 						fontFamily: fonts.body,
-						color: theme.textOnPrimary,
-						opacity: 0.7,
+						color: theme.textMuted,
 					}}
 				>
 					Back to hearted.

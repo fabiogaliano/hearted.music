@@ -1,16 +1,3 @@
-const legacyEnrichmentChunkCap = Number(
-	process.env.WORKER_ENRICHMENT_MAX_CHUNKS ?? 0,
-);
-
-if (
-	legacyEnrichmentChunkCap !== 0 &&
-	(process.env.NODE_ENV === "production" || !import.meta.env.DEV)
-) {
-	throw new Error(
-		"WORKER_ENRICHMENT_MAX_CHUNKS is a deprecated dev-only hack. Use guided workflow mode instead.",
-	);
-}
-
 export const workerConfig = {
 	concurrency: Number(process.env.WORKER_CONCURRENCY ?? 2),
 	pollIntervalMs: Number(process.env.WORKER_POLL_INTERVAL_MS ?? 5_000),

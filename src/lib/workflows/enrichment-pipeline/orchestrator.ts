@@ -1,21 +1,21 @@
 import { Result } from "better-result";
 import { updateJobProgress } from "@/lib/data/jobs";
 import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
-import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
+import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { markPipelineProcessed } from "@/lib/domains/library/liked-songs/status-queries";
 import * as songData from "@/lib/domains/library/songs/queries";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
-import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/types";
+import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
+import { maybeDevDelay } from "@/lib/workflows/library-processing/devtools/delay";
 import { hasMoreSongsNeedingProcessing, selectPipelineBatch } from "./batch";
 import { makeInitialProgress } from "./progress";
 import { runAudioFeatures } from "./stages/audio-features";
 import { runGenreTagging } from "./stages/genre-tagging";
 import { runSongAnalysis } from "./stages/song-analysis";
 import { runSongEmbedding } from "./stages/song-embedding";
-import { maybeDevDelay } from "@/lib/workflows/library-processing/devtools/delay";
 import {
 	type EnrichmentContext,
 	type EnrichmentStageName,

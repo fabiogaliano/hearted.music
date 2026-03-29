@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { EnrichmentChunkProgressSchema } from "@/lib/platform/jobs/progress/types";
+import { describe, expect, it } from "vitest";
+import { EnrichmentChunkProgressSchema } from "@/lib/platform/jobs/progress/enrichment";
 
 describe("EnrichmentChunkProgressSchema", () => {
 	it("validates a complete progress object", () => {
