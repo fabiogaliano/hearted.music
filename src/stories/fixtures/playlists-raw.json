@@ -1,0 +1,66 @@
+[
+	{
+		"id": "79ec2948-dce7-4635-bb17-673349ab4b58",
+		"name": "yilkes!",
+		"description": "✨: 2!!",
+		"is_target": false,
+		"song_count": 1,
+		"image_url": "https://i.scdn.co/image/ab67616d00001e02382514f0114ba8f4a16d5db4"
+	},
+	{
+		"id": "fc25b449-b47e-4132-8885-9db40bb57fba",
+		"name": "jj",
+		"description": "✨: AI: make it make sense bestie",
+		"is_target": false,
+		"song_count": 0,
+		"image_url": null
+	},
+	{
+		"id": "ec26f2d0-cef6-4f0f-bd1d-ff094d9409a5",
+		"name": "Super Bock Super Rock 2021",
+		"description": "made with ♪ by @inotbeingf",
+		"is_target": false,
+		"song_count": 14,
+		"image_url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84c1975a91a3224aa534fc35ba"
+	},
+	{
+		"id": "c5d99528-2427-4fe6-9a5d-fdb344cfccda",
+		"name": "Dubolt Mix: Kendrick Lamar / Ross from Friends / KAYTRANADA / Totally Enormous Extinct Dinosaurs / J. Cole",
+		"description": null,
+		"is_target": false,
+		"song_count": 25,
+		"image_url": "https://mosaic.scdn.co/640/ab67616d00001e0201dbb413cc80ae630f1e66a3ab67616d00001e02107d051e4c35ac3c8fe3470dab67616d00001e02203f8c1682441cdd02d0fa85ab67616d00001e02d3e8d904b8b9beca4d33583e"
+	},
+	{
+		"id": "77909656-c853-41c9-8c9c-1e03d0dd1961",
+		"name": "main character energy!!!!",
+		"description": "✨: songs that make me feel like the main character in my own movie!!!!!",
+		"is_target": true,
+		"song_count": 0,
+		"image_url": null
+	},
+	{
+		"id": "ad198160-0b74-4e5a-9e64-4a940d3c5e6e",
+		"name": "house?",
+		"description": "AI: house music",
+		"is_target": true,
+		"song_count": 6,
+		"image_url": "https://mosaic.scdn.co/640/ab67616d00001e022b89c8de96dcc7d5e05a48edab67616d00001e0237b51b1bfcf7028ef9e11bf1ab67616d00001e0268881375078c577509bb8681ab67616d00001e02b6fb5de52e6fa161dde9c38f"
+	},
+	{
+		"id": "c8bf07ad-dee3-4dbb-9082-6b9593866175",
+		"name": "souvenir",
+		"description": "AI: make it make sense bestie",
+		"is_target": false,
+		"song_count": 0,
+		"image_url": null
+	},
+	{
+		"id": "972a74b8-a30f-4b98-9023-67dbf94f3d1a",
+		"name": "hello",
+		"description": "AI: make it make sense bestie",
+		"is_target": false,
+		"song_count": 0,
+		"image_url": null
+	}
+]
