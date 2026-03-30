@@ -19,6 +19,7 @@ import {
 	calculateCentroid,
 	computeGenreDistribution,
 	computeIntentWeight,
+	toAudioCentroidRecord,
 } from "./calculations";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import {
@@ -133,7 +134,7 @@ export class PlaylistProfilingService {
 			songIds: [...songIds],
 			descriptionText: intentText,
 			embeddingCentroid: songCentroid.length > 0 ? songCentroid : undefined,
-			audioCentroid,
+			audioCentroid: toAudioCentroidRecord(audioCentroid),
 			genreDistribution,
 		});
 		const expectsIntentBlend = !!intentText;

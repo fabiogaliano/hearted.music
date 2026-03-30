@@ -5,9 +5,25 @@
  * focused unit testing without service orchestration complexity.
  */
 
-import type { Song } from "@/lib/domains/library/songs/queries";
 import type * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
+import type { Song } from "@/lib/domains/library/songs/queries";
 import type { AudioCentroid, GenreDistribution } from "./types";
+
+const AUDIO_CENTROID_KEYS = [
+	"energy",
+	"valence",
+	"danceability",
+	"acousticness",
+	"instrumentalness",
+	"speechiness",
+	"liveness",
+	"tempo",
+	"loudness",
+] as const;
+
+type MutableAudioCentroid = {
+	-readonly [K in keyof AudioCentroid]: AudioCentroid[K];
+};
 
 /**
  * Calculate vector centroid (mean).
@@ -39,21 +55,9 @@ export function calculateAudioCentroid(
 ): AudioCentroid {
 	if (features.length === 0) return {};
 
-	const keys = [
-		"energy",
-		"valence",
-		"danceability",
-		"acousticness",
-		"instrumentalness",
-		"speechiness",
-		"liveness",
-		"tempo",
-		"loudness",
-	] as const;
+	const centroid: MutableAudioCentroid = {};
 
-	const centroid: Record<string, number> = {};
-
-	for (const key of keys) {
+	for (const key of AUDIO_CENTROID_KEYS) {
 		const values = features
 			.map((f) => f[key])
 			.filter((v): v is number => typeof v === "number" && !Number.isNaN(v));
@@ -62,7 +66,22 @@ export function calculateAudioCentroid(
 		}
 	}
 
-	return centroid as AudioCentroid;
+	return centroid;
+}
+
+export function toAudioCentroidRecord(
+	audioCentroid: AudioCentroid,
+): Record<string, number> {
+	const record: Record<string, number> = {};
+
+	for (const key of AUDIO_CENTROID_KEYS) {
+		const value = audioCentroid[key];
+		if (typeof value === "number" && !Number.isNaN(value)) {
+			record[key] = value;
+		}
+	}
+
+	return record;
 }
 
 // Intent blending tuning constants

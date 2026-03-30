@@ -16,6 +16,7 @@ import {
 	createGenreEnrichmentService,
 	type GenreEnrichmentInput,
 } from "@/lib/domains/enrichment/genre-tagging/service";
+import { toAudioCentroidRecord } from "@/lib/domains/taste/playlist-profiling/calculations";
 import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { MatchingPlaylistProfile } from "@/lib/domains/taste/song-matching/types";
 
@@ -106,8 +107,8 @@ export async function loadTargetPlaylistProfiles(
 		profiles.push({
 			playlistId: p.playlistId,
 			embedding: p.embedding,
-			audioCentroid: p.audioCentroid as Record<string, number>,
-			genreDistribution: p.genreDistribution as Record<string, number>,
+			audioCentroid: toAudioCentroidRecord(p.audioCentroid),
+			genreDistribution: p.genreDistribution,
 		});
 	}
 
