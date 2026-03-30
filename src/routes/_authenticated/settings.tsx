@@ -1,26 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getTheme } from "@/lib/theme/useTheme";
-import { DEFAULT_THEME } from "@/lib/theme/types";
+import { SettingsPage } from "@/features/settings/SettingsPage";
+import { useAuthenticatedTheme } from "@/lib/theme/authenticated-theme";
 
 export const Route = createFileRoute("/_authenticated/settings")({
-	component: SettingsPage,
+	component: SettingsRoute,
 });
 
-function SettingsPage() {
-	const { theme: themeColor } = Route.useRouteContext();
-	const theme = getTheme(themeColor ?? DEFAULT_THEME);
+function SettingsRoute() {
+	const { account } = Route.useRouteContext();
+	const { themeColor, setThemeColor } = useAuthenticatedTheme();
 
 	return (
-		<div className="flex items-center justify-center min-h-[60vh]">
-			<div className="text-center">
-				<h1
-					className="text-2xl font-semibold mb-2"
-					style={{ color: theme.text }}
-				>
-					Settings
-				</h1>
-				<p style={{ color: theme.textMuted }}>Coming Soon</p>
-			</div>
-		</div>
+		<SettingsPage
+			displayName={account?.display_name ?? null}
+			email={account?.email ?? null}
+			imageUrl={account?.image_url ?? null}
+			currentTheme={themeColor}
+			onThemeChange={setThemeColor}
+		/>
 	);
 }

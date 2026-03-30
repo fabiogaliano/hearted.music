@@ -3,7 +3,8 @@
  * Editorial magazine aesthetic with typography-driven design.
  */
 
-import { useMatchRoute } from "@tanstack/react-router";
+import { Link, useMatchRoute } from "@tanstack/react-router";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { NavItem } from "./NavItem";
@@ -26,50 +27,7 @@ const NAV_ITEMS: NavItemConfig[] = [
 	{ to: "/match", label: "Match Songs", hasBadge: true },
 	{ to: "/liked-songs", label: "Liked Songs" },
 	{ to: "/playlists", label: "Playlists" },
-	{ to: "/settings", label: "Settings" },
 ];
-
-function getInitials(name: string | null): string {
-	if (!name) return "?";
-	const parts = name.trim().split(/\s+/);
-	if (parts.length >= 2) {
-		return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase();
-	}
-	return name[0]?.toUpperCase() ?? "?";
-}
-
-function UserAvatar({
-	name,
-	imageUrl,
-}: {
-	name: string | null;
-	imageUrl?: string | null;
-}) {
-	const theme = useTheme();
-
-	if (imageUrl) {
-		return (
-			<img
-				src={imageUrl}
-				alt=""
-				className="h-8 w-8 shrink-0 rounded-full object-cover"
-			/>
-		);
-	}
-
-	return (
-		<div
-			className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium"
-			style={{
-				background: theme.surfaceDim,
-				color: theme.text,
-				fontFamily: fonts.body,
-			}}
-		>
-			{getInitials(name)}
-		</div>
-	);
-}
 
 export function Sidebar({
 	unsortedCount,
@@ -113,8 +71,9 @@ export function Sidebar({
 				</div>
 			</nav>
 
-			<div
-				className="flex items-center gap-3 border-t pt-6"
+			<Link
+				to="/settings"
+				className="flex items-center gap-3 border-t pt-6 transition-opacity hover:opacity-70"
 				style={{ borderColor: theme.border }}
 			>
 				<UserAvatar name={userName} imageUrl={userImageUrl} />
@@ -122,7 +81,13 @@ export function Sidebar({
 					{userName && (
 						<p
 							className="truncate text-sm"
-							style={{ fontFamily: fonts.body, color: theme.text }}
+							style={{
+								fontFamily: fonts.body,
+								color: isRouteActive("/settings")
+									? theme.text
+									: theme.textMuted,
+								fontWeight: isRouteActive("/settings") ? 500 : 400,
+							}}
 						>
 							{userName}
 						</p>
@@ -134,7 +99,7 @@ export function Sidebar({
 						{userPlan}
 					</p>
 				</div>
-			</div>
+			</Link>
 		</aside>
 	);
 }
