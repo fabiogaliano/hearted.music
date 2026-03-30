@@ -6,6 +6,13 @@
  *   - session: { accountId }
  *   - account: { display_name, email, ... }
  *   - theme: ThemeColor
+ *
+ * Performance: Auth + onboarding data are cached in TanStack Query.
+ * On first entry (cause === "enter"), we fetch and cache both.
+ * On subsequent navigations (cause === "stay"), we read from the
+ * query cache synchronously — zero server round-trips.
+ * Cache invalidates on logout (full page reload) or via
+ * queryClient.invalidateQueries().
  */
 
 import { lazy, Suspense } from "react";
@@ -36,10 +43,24 @@ const DevWorkflowPanel = shouldLoadDevWorkflowPanel
 		)
 	: null;
 
+const authQueryKey = ["auth", "session"] as const;
+const onboardingQueryKey = ["auth", "onboarding"] as const;
+
 export const Route = createFileRoute("/_authenticated")({
-	beforeLoad: async ({ location }) => {
-		const { session, account } = await requireAuthSession();
-		const onboarding = await getOnboardingData();
+	beforeLoad: async ({ location, cause, context }) => {
+		const { queryClient } = context;
+
+		const { session, account } = await queryClient.ensureQueryData({
+			queryKey: authQueryKey,
+			queryFn: () => requireAuthSession(),
+			staleTime: 5 * 60 * 1000,
+		});
+
+		const onboarding = await queryClient.ensureQueryData({
+			queryKey: onboardingQueryKey,
+			queryFn: () => getOnboardingData(),
+			staleTime: cause === "enter" ? 0 : 5 * 60 * 1000,
+		});
 
 		const isOnboardingRoute = location.pathname.startsWith("/onboarding");
 
@@ -96,7 +117,7 @@ function AuthenticatedShell({
 	pendingSuggestions,
 	devPanel,
 }: {
-	account: Awaited<ReturnType<typeof requireAuthSession>>["account"];
+	account: Awaited<ReturnType<typeof requireAuthSession>>["account"] | null;
 	pendingSuggestions: number;
 	devPanel: React.ReactNode;
 }) {
