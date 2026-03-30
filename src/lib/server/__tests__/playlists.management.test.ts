@@ -4,9 +4,14 @@ import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
 
-const mockRequireAuthSession = vi.fn();
+const mockAuthContext = {
+	session: { accountId: "acct-1" },
+	account: null,
+};
+
 const mockGetPlaylists = vi.fn();
 const mockGetTargetPlaylists = vi.fn();
+const mockGetPlaylistById = vi.fn();
 const mockGetPlaylistSongs = vi.fn();
 const mockGetSongsByIds = vi.fn();
 const mockSetPlaylistTarget = vi.fn();
@@ -16,19 +21,23 @@ vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
 		inputValidator: () => builder(),
-		handler: <T>(fn: T) => fn,
+		handler: (fn: Function) => (input?: { data?: unknown }) =>
+			fn({ context: mockAuthContext, data: input?.data }),
 	});
-	return { createServerFn: builder };
+	return {
+		createServerFn: builder,
+		createMiddleware: () => ({
+			server: () => ({}),
+			type: () => ({ server: () => ({}) }),
+		}),
+	};
 });
-
-vi.mock("@/lib/platform/auth/auth.server", () => ({
-	requireAuthSession: (...args: unknown[]) => mockRequireAuthSession(...args),
-}));
 
 vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	upsertPlaylists: vi.fn(),
 	getPlaylists: (...args: unknown[]) => mockGetPlaylists(...args),
 	getTargetPlaylists: (...args: unknown[]) => mockGetTargetPlaylists(...args),
+	getPlaylistById: (...args: unknown[]) => mockGetPlaylistById(...args),
 	getPlaylistBySpotifyId: vi.fn(),
 	getPlaylistSongs: (...args: unknown[]) => mockGetPlaylistSongs(...args),
 	deletePlaylist: vi.fn(),
@@ -94,9 +103,6 @@ function makeSong(overrides: Partial<Song> = {}): Song {
 describe("getPlaylistManagementData", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockRequireAuthSession.mockResolvedValue({
-			session: { accountId: "acct-1" },
-		});
 	});
 
 	it("returns playlists and target IDs", async () => {
@@ -136,9 +142,9 @@ describe("getPlaylistManagementData", () => {
 describe("getPlaylistTrackPreview", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockRequireAuthSession.mockResolvedValue({
-			session: { accountId: "acct-1" },
-		});
+		mockGetPlaylistById.mockResolvedValue(
+			Result.ok(makePlaylist({ account_id: "acct-1" })),
+		);
 	});
 
 	it("joins playlist songs with song data", async () => {
@@ -204,9 +210,9 @@ describe("getPlaylistTrackPreview", () => {
 describe("setPlaylistTargetMutation", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockRequireAuthSession.mockResolvedValue({
-			session: { accountId: "acct-1" },
-		});
+		mockGetPlaylistById.mockResolvedValue(
+			Result.ok(makePlaylist({ account_id: "acct-1" })),
+		);
 	});
 
 	it("sets target flag via setPlaylistTarget", async () => {
@@ -237,9 +243,6 @@ describe("setPlaylistTargetMutation", () => {
 describe("flushPlaylistManagementSession", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockRequireAuthSession.mockResolvedValue({
-			session: { accountId: "acct-1" },
-		});
 		mockApplyLibraryProcessingChange.mockResolvedValue(undefined);
 	});
 

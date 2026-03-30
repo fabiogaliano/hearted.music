@@ -3,7 +3,7 @@ import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { getJobById, type Job } from "@/lib/data/jobs";
-import { requireAuthSession } from "@/lib/platform/auth/auth.server";
+import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
 import type { MatchSnapshotRefreshProgress } from "@/lib/platform/jobs/progress/match-snapshot-refresh";
 import {
@@ -31,9 +31,10 @@ export interface ActiveJobs {
 	firstMatchReady: boolean;
 }
 
-export const getActiveJobs = createServerFn({ method: "GET" }).handler(
-	async (): Promise<ActiveJobs> => {
-		const { session } = await requireAuthSession();
+export const getActiveJobs = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.handler(async ({ context }): Promise<ActiveJobs> => {
+		const { session } = context;
 
 		const [stateResult, firstMatchResult] = await Promise.all([
 			loadLibraryProcessingState(session.accountId),
@@ -63,8 +64,7 @@ export const getActiveJobs = createServerFn({ method: "GET" }).handler(
 			matchSnapshotRefresh,
 			firstMatchReady: firstMatchResult,
 		};
-	},
-);
+	});
 
 async function resolveJobInfo(jobId: string): Promise<ActiveJobInfo | null> {
 	const result = await getJobById(jobId);
@@ -132,39 +132,42 @@ const LibraryProcessingJobProgressInputSchema = z.object({
 export const getLibraryProcessingJobProgress = createServerFn({
 	method: "GET",
 })
+	.middleware([authMiddleware])
 	.inputValidator((data) => LibraryProcessingJobProgressInputSchema.parse(data))
-	.handler(async ({ data }): Promise<LibraryProcessingJobProgress | null> => {
-		const { session } = await requireAuthSession();
+	.handler(
+		async ({ data, context }): Promise<LibraryProcessingJobProgress | null> => {
+			const { session } = context;
 
-		const jobResult = await getJobById(data.jobId);
-		if (Result.isError(jobResult) || !jobResult.value) return null;
+			const jobResult = await getJobById(data.jobId);
+			if (Result.isError(jobResult) || !jobResult.value) return null;
 
-		const job = jobResult.value;
-		if (job.account_id !== session.accountId) return null;
+			const job = jobResult.value;
+			if (job.account_id !== session.accountId) return null;
 
-		const parsed = parseJobProgress(job.type, job.progress);
-		if (parsed.type === "unknown") {
-			return null;
-		}
+			const parsed = parseJobProgress(job.type, job.progress);
+			if (parsed.type === "unknown") {
+				return null;
+			}
 
-		if (parsed.type === "enrichment") {
+			if (parsed.type === "enrichment") {
+				return {
+					jobId: job.id,
+					type: "enrichment",
+					status: job.status,
+					error: job.error ?? null,
+					progress: parsed.progress,
+				};
+			}
+
 			return {
 				jobId: job.id,
-				type: "enrichment",
+				type: "match_snapshot_refresh",
 				status: job.status,
 				error: job.error ?? null,
 				progress: parsed.progress,
 			};
-		}
-
-		return {
-			jobId: job.id,
-			type: "match_snapshot_refresh",
-			status: job.status,
-			error: job.error ?? null,
-			progress: parsed.progress,
-		};
-	});
+		},
+	);
 
 function extractProgressCounts(parsed: ParsedJobProgress): ProgressCounts {
 	if (parsed.type === "unknown") {

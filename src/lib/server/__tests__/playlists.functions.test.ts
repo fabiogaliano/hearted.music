@@ -3,7 +3,11 @@ import { Result } from "better-result";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
 
-const mockRequireAuthSession = vi.fn();
+const mockAuthContext = {
+	session: { accountId: "acct-1" },
+	account: null,
+};
+
 const mockUpsertPlaylists = vi.fn();
 const mockGetPlaylistBySpotifyId = vi.fn();
 const mockDeletePlaylist = vi.fn();
@@ -13,14 +17,17 @@ vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
 		inputValidator: () => builder(),
-		handler: <T>(fn: T) => fn,
+		handler: (fn: Function) => (input?: { data?: unknown }) =>
+			fn({ context: mockAuthContext, data: input?.data }),
 	});
-	return { createServerFn: builder };
+	return {
+		createServerFn: builder,
+		createMiddleware: () => ({
+			server: () => ({}),
+			type: () => ({ server: () => ({}) }),
+		}),
+	};
 });
-
-vi.mock("@/lib/platform/auth/auth.server", () => ({
-	requireAuthSession: (...args: unknown[]) => mockRequireAuthSession(...args),
-}));
 
 vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	upsertPlaylists: (...args: unknown[]) => mockUpsertPlaylists(...args),
@@ -70,9 +77,6 @@ function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
 describe("acknowledgePlaylistCreate", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockRequireAuthSession.mockResolvedValue({
-			session: { accountId: "acct-1" },
-		});
 	});
 
 	it("upserts a provisional playlist row from the create URI and name", async () => {
@@ -113,9 +117,6 @@ describe("acknowledgePlaylistCreate", () => {
 describe("acknowledgePlaylistUpdate", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockRequireAuthSession.mockResolvedValue({
-			session: { accountId: "acct-1" },
-		});
 	});
 
 	it("updates metadata for the account-scoped playlist", async () => {
@@ -167,9 +168,6 @@ describe("acknowledgePlaylistUpdate", () => {
 describe("acknowledgePlaylistDelete", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockRequireAuthSession.mockResolvedValue({
-			session: { accountId: "acct-1" },
-		});
 	});
 
 	it("looks up and deletes the playlist row", async () => {
@@ -197,9 +195,7 @@ describe("acknowledgePlaylistDelete", () => {
 	});
 
 	it("scopes lookup to authenticated account only", async () => {
-		mockRequireAuthSession.mockResolvedValue({
-			session: { accountId: "acct-other" },
-		});
+		mockAuthContext.session = { accountId: "acct-other" };
 		mockGetPlaylistBySpotifyId.mockResolvedValue(Result.ok(null));
 
 		await acknowledgePlaylistDelete({
@@ -210,6 +206,7 @@ describe("acknowledgePlaylistDelete", () => {
 			"acct-other",
 			"abc123",
 		);
+		mockAuthContext.session = { accountId: "acct-1" };
 	});
 
 	it("throws when lookup fails", async () => {

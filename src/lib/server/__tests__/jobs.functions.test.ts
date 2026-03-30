@@ -2,25 +2,31 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Result } from "better-result";
 import type { Job } from "@/lib/data/jobs";
 
-const mockRequireAuthSession = vi.fn();
+const mockAuthContext = {
+	session: { accountId: "acct-1" },
+	account: null,
+};
+
 const mockLoadLibraryProcessingState = vi.fn();
 const mockGetJobById = vi.fn();
 const mockMatchContextMaybeSingle = vi.fn();
 const mockMatchResultMaybeSingle = vi.fn();
 
-vi.mock("@tanstack/react-start", () => ({
-	createServerFn: () => {
-		const chain = {
-			handler: <T>(fn: T) => fn,
-			inputValidator: () => chain,
-		};
-		return chain;
-	},
-}));
-
-vi.mock("@/lib/platform/auth/auth.server", () => ({
-	requireAuthSession: (...args: unknown[]) => mockRequireAuthSession(...args),
-}));
+vi.mock("@tanstack/react-start", () => {
+	const builder = (): Record<string, unknown> => ({
+		middleware: () => builder(),
+		inputValidator: () => builder(),
+		handler: (fn: Function) => (input?: { data?: unknown }) =>
+			fn({ context: mockAuthContext, data: input?.data }),
+	});
+	return {
+		createServerFn: builder,
+		createMiddleware: () => ({
+			server: () => ({}),
+			type: () => ({ server: () => ({}) }),
+		}),
+	};
+});
 
 vi.mock("@/lib/workflows/library-processing/queries", () => ({
 	loadLibraryProcessingState: (...args: unknown[]) =>
@@ -95,9 +101,6 @@ function makeJob(overrides: Partial<Job> = {}): Job {
 describe("jobs.functions", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockRequireAuthSession.mockResolvedValue({
-			session: { accountId: "acct-1" },
-		});
 		mockLoadLibraryProcessingState.mockResolvedValue(Result.ok(null));
 		mockGetJobById.mockResolvedValue(Result.ok(null));
 	});

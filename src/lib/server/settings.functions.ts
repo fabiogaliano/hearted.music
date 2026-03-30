@@ -8,7 +8,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { updateTheme } from "@/lib/domains/library/accounts/preferences-queries";
-import { requireAuthSession } from "@/lib/platform/auth/auth.server";
+import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { themeSchema } from "@/lib/theme/types";
 import { z } from "zod";
 
@@ -22,11 +22,10 @@ const updateThemeInput = z.object({
  * but scoped to settings for clean imports.
  */
 export const updateThemePreference = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
 	.inputValidator(updateThemeInput)
-	.handler(async ({ data }): Promise<{ success: true }> => {
-		const { session } = await requireAuthSession();
-
-		const result = await updateTheme(session.accountId, data.theme);
+	.handler(async ({ data, context }): Promise<{ success: true }> => {
+		const result = await updateTheme(context.session.accountId, data.theme);
 
 		if (Result.isError(result)) {
 			throw new Error("Failed to save theme preference");
