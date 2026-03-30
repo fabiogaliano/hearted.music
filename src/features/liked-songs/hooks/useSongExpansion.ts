@@ -57,6 +57,21 @@ interface UseSongExpansionOptions {
 	isSelectedSlugResolved?: boolean;
 }
 
+type PendingRouteSelection =
+	| { type: "song"; slug: string }
+	| { type: "closed" };
+
+function routeMatchesPendingSelection(
+	selectedSlug: string | null | undefined,
+	pendingRouteSelection: PendingRouteSelection,
+): boolean {
+	if (pendingRouteSelection.type === "closed") {
+		return selectedSlug == null;
+	}
+
+	return selectedSlug === pendingRouteSelection.slug;
+}
+
 function findSongForSlug(
 	songs: LikedSong[],
 	slug: string | null | undefined,
@@ -108,6 +123,7 @@ export function useSongExpansion(
 	const [closingToSongId, setClosingToSongId] = useState<string | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const isClosingRef = useRef(false);
+	const pendingRouteSelectionRef = useRef<PendingRouteSelection | null>(null);
 
 	// Derive selected song + index in a single pass
 	const { selectedSong, selectedIndex } = useMemo(() => {
@@ -134,6 +150,15 @@ export function useSongExpansion(
 	const hasPrevious = selectedIndex > 0;
 
 	useEffect(() => {
+		const pendingRouteSelection = pendingRouteSelectionRef.current;
+		if (pendingRouteSelection !== null) {
+			if (!routeMatchesPendingSelection(selectedSlug, pendingRouteSelection)) {
+				return;
+			}
+
+			pendingRouteSelectionRef.current = null;
+		}
+
 		if (!selectedSlug) {
 			if (isClosingRef.current || selectedSongId === null) return;
 			setIsExpanded(false);
@@ -186,6 +211,8 @@ export function useSongExpansion(
 			const itemRect = element.getBoundingClientRect();
 			const slug = generateSongSlug(song.track.artist, song.track.name);
 
+			pendingRouteSelectionRef.current = { type: "song", slug };
+
 			// Set state and update URL
 			setStartRect({
 				top: itemRect.top,
@@ -209,6 +236,7 @@ export function useSongExpansion(
 		if (hasNext && selectedIndex >= 0) {
 			const nextSong = songs[selectedIndex + 1];
 			const slug = generateSongSlug(nextSong.track.artist, nextSong.track.name);
+			pendingRouteSelectionRef.current = { type: "song", slug };
 			setSelectedSongId(nextSong.track.id);
 			updateUrl(slug);
 		}
@@ -219,6 +247,7 @@ export function useSongExpansion(
 		if (hasPrevious && selectedIndex >= 0) {
 			const prevSong = songs[selectedIndex - 1];
 			const slug = generateSongSlug(prevSong.track.artist, prevSong.track.name);
+			pendingRouteSelectionRef.current = { type: "song", slug };
 			setSelectedSongId(prevSong.track.id);
 			updateUrl(slug);
 		}
@@ -228,6 +257,7 @@ export function useSongExpansion(
 	const handleClose = useCallback(async () => {
 		const targetId = selectedSongId;
 		isClosingRef.current = true;
+		pendingRouteSelectionRef.current = { type: "closed" };
 		updateUrl(null);
 
 		// Use View Transitions API for smooth shared element animation
