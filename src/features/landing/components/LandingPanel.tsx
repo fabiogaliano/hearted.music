@@ -33,6 +33,8 @@ export function LandingPanel({
 	const baseTheme = useTheme();
 	const panelRootRef = useRef<HTMLDivElement>(null);
 	const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+	// TODO: Replace ResizeObserver layout correction with CSS container queries
+	// to avoid post-mount reflow on first paint. See audit finding #7.
 	const [stackMetaBelowArt, setStackMetaBelowArt] = useState(true);
 
 	useEffect(() => {
