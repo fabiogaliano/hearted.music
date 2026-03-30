@@ -16,7 +16,7 @@ export function playlistManagementQueryOptions(accountId: string) {
 	return queryOptions({
 		queryKey: playlistKeys.management(accountId),
 		queryFn: () => getPlaylistManagementData(),
-		staleTime: 30_000,
+		staleTime: 30 * 60_000,
 	});
 }
 
@@ -26,6 +26,6 @@ export function playlistTrackPreviewQueryOptions(playlistId: string | null) {
 		queryFn: () =>
 			getPlaylistTrackPreview({ data: { playlistId: playlistId! } }),
 		enabled: playlistId != null,
-		staleTime: 60_000,
+		staleTime: 30 * 60_000,
 	});
 }

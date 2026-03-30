@@ -93,7 +93,7 @@ export function useActiveJobCompletionEffects(
 				queryKey: matchingKeys.all,
 			});
 			queryClient.invalidateQueries({
-				queryKey: playlistKeys.management(accountId),
+				queryKey: playlistKeys.all,
 			});
 		}
 	}, [data, accountId, queryClient]);
