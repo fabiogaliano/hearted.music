@@ -15,15 +15,16 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute("/_authenticated/liked-songs")({
 	validateSearch: zodValidator(searchSchema),
-	loaderDeps: ({ search }) => ({ filter: search.filter, song: search.song }),
-	loader: async ({ deps, context }) => {
+	loaderDeps: ({ search }) => ({ filter: search.filter }),
+	loader: async ({ deps, context, location }) => {
 		await context.queryClient.ensureInfiniteQueryData(
 			likedSongsInfiniteQueryOptions(deps.filter),
 		);
 
-		if (deps.song) {
+		const song = (location.search as { song?: string }).song;
+		if (song) {
 			await context.queryClient.ensureQueryData(
-				likedSongBySlugQueryOptions(context.session.accountId, deps.song),
+				likedSongBySlugQueryOptions(context.session.accountId, song),
 			);
 		}
 	},
