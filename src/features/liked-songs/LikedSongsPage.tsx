@@ -7,7 +7,11 @@
  * URL Sync: Uses shallow routing (window.history.pushState) for smooth
  * animations without React Router navigation overhead.
  */
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import {
+	useInfiniteQuery,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import {
 	useCallback,
 	useEffect,
@@ -35,6 +39,7 @@ import {
 	likedSongBySlugQueryOptions,
 	likedSongsInfiniteQueryOptions,
 	likedSongsStatsQueryOptions,
+	songSuggestionsQueryOptions,
 } from "./queries";
 import type { LikedSong } from "./types";
 
@@ -150,6 +155,22 @@ export function LikedSongsPage({
 		isSelectedSlugResolved,
 	});
 
+	const queryClient = useQueryClient();
+
+	const prefetchAdjacentSuggestions = useCallback(
+		(songIndex: number) => {
+			const adjacent = [
+				displayedSongs[songIndex + 1]?.track.id,
+				displayedSongs[songIndex - 1]?.track.id,
+			].filter((id): id is string => id != null);
+
+			for (const id of adjacent) {
+				queryClient.prefetchQuery(songSuggestionsQueryOptions(id));
+			}
+		},
+		[queryClient, displayedSongs],
+	);
+
 	const artistImageUrl = selectedSong?.track.artist_image_url ?? undefined;
 	const selectedSongIdFromUrl = selectedSongFromUrl?.track.id ?? null;
 	const prevUrlSelectedSongIdRef = useRef<string | null>(null);
@@ -174,10 +195,11 @@ export function LikedSongsPage({
 		items: displayedSongs,
 		scope: "liked-list",
 		enabled: !isExpanded && displayedSongs.length > 0,
-		onSelect: (song, _index, element) => {
+		onSelect: (song, index, element) => {
 			if (!element) return;
 			pendingRouteSelectionSourceRef.current = "keyboard";
 			handleExpand(song, element);
+			prefetchAdjacentSuggestions(index);
 		},
 		getId: (song) => song.track.id,
 		onLoadMore: handleLoadMore,
@@ -197,6 +219,7 @@ export function LikedSongsPage({
 
 			pendingRouteSelectionSourceRef.current = "keyboard";
 			handleExpand(song, element);
+			prefetchAdjacentSuggestions(focusedIndex);
 		},
 		description: "Open song details",
 		scope: "liked-list",
@@ -252,8 +275,10 @@ export function LikedSongsPage({
 		(song: LikedSong, element: HTMLElement) => {
 			pendingRouteSelectionSourceRef.current = "pointer";
 			handleExpand(song, element);
+			const idx = displayedSongs.findIndex((s) => s.track.id === song.track.id);
+			if (idx >= 0) prefetchAdjacentSuggestions(idx);
 		},
-		[handleExpand],
+		[handleExpand, displayedSongs, prefetchAdjacentSuggestions],
 	);
 
 	const handleNextSong = useCallback(() => {
@@ -270,7 +295,14 @@ export function LikedSongsPage({
 		});
 		pendingRouteSelectionSourceRef.current = "panel-nav";
 		handleNext();
-	}, [displayedSongs, handleNext, selectedSongId, syncFocusedIndex]);
+		prefetchAdjacentSuggestions(selectedIndex + 1);
+	}, [
+		displayedSongs,
+		handleNext,
+		selectedSongId,
+		syncFocusedIndex,
+		prefetchAdjacentSuggestions,
+	]);
 
 	const handlePreviousSong = useCallback(() => {
 		const selectedIndex = displayedSongs.findIndex(
@@ -286,7 +318,14 @@ export function LikedSongsPage({
 		});
 		pendingRouteSelectionSourceRef.current = "panel-nav";
 		handlePrevious();
-	}, [displayedSongs, handlePrevious, selectedSongId, syncFocusedIndex]);
+		prefetchAdjacentSuggestions(selectedIndex - 1);
+	}, [
+		displayedSongs,
+		handlePrevious,
+		selectedSongId,
+		syncFocusedIndex,
+		prefetchAdjacentSuggestions,
+	]);
 
 	return (
 		<div ref={containerRef} className="relative min-h-[600px] max-w-5xl">

@@ -1,5 +1,6 @@
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import { dashboardKeys } from "@/features/dashboard/queries";
 import { likedSongsKeys } from "@/features/liked-songs/queries";
 import { matchingKeys } from "@/features/matching/queries";
 import { playlistKeys } from "@/features/playlists/queries";
@@ -21,9 +22,6 @@ const activeJobsKeys = {
 	all: ["active-jobs"] as const,
 	byAccount: (accountId: string) => ["active-jobs", accountId] as const,
 };
-
-export const dashboardStatsKey = (accountId: string) =>
-	["dashboard", "stats", accountId] as const;
 
 function hasActiveJob(data: ActiveJobs | undefined): boolean {
 	return !!(data?.enrichment || data?.matchSnapshotRefresh);
@@ -71,7 +69,10 @@ export function useActiveJobCompletionEffects(
 
 		if (prev.enrichment && !data.enrichment) {
 			queryClient.invalidateQueries({
-				queryKey: dashboardStatsKey(accountId),
+				queryKey: dashboardKeys.stats(accountId),
+			});
+			queryClient.invalidateQueries({
+				queryKey: dashboardKeys.recentActivity(accountId),
 			});
 			queryClient.invalidateQueries({
 				queryKey: likedSongsKeys.stats(accountId),
@@ -82,6 +83,9 @@ export function useActiveJobCompletionEffects(
 		}
 
 		if (prev.matchSnapshotRefresh && !data.matchSnapshotRefresh) {
+			queryClient.invalidateQueries({
+				queryKey: dashboardKeys.matchPreviews(accountId),
+			});
 			queryClient.invalidateQueries({
 				queryKey: matchingKeys.session(accountId),
 			});
