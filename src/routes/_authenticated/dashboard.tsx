@@ -1,36 +1,43 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Dashboard } from "@/features/dashboard/Dashboard";
-import { dashboardStatsQueryOptions } from "@/features/dashboard/queries";
+import {
+	dashboardStatsQueryOptions,
+	matchPreviewsQueryOptions,
+	recentActivityQueryOptions,
+} from "@/features/dashboard/queries";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { useSmoothProgress } from "@/lib/hooks/useSmoothProgress";
-import {
-	getMatchPreviews,
-	getRecentActivity,
-} from "@/lib/server/dashboard.functions";
 import { formatRelativeTime } from "@/lib/shared/utils/format-time";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
 	loader: async ({ context }) => {
-		const [, recentActivity, matchPreviews] = await Promise.all([
+		const accountId = context.session.accountId;
+		await Promise.all([
 			context.queryClient.ensureQueryData(
-				dashboardStatsQueryOptions(context.session.accountId),
+				dashboardStatsQueryOptions(accountId),
 			),
-			getRecentActivity(),
-			getMatchPreviews(),
+			context.queryClient.ensureQueryData(
+				recentActivityQueryOptions(accountId),
+			),
+			context.queryClient.ensureQueryData(matchPreviewsQueryOptions(accountId)),
 		]);
-		return { recentActivity, matchPreviews };
 	},
 	component: DashboardHome,
 });
 
 function DashboardHome() {
 	const { account, session } = Route.useRouteContext();
-	const { recentActivity, matchPreviews } = Route.useLoaderData();
 	const displayName = account?.display_name ?? account?.email ?? null;
 
 	const { data: stats } = useSuspenseQuery(
 		dashboardStatsQueryOptions(session.accountId),
+	);
+	const { data: recentActivity } = useSuspenseQuery(
+		recentActivityQueryOptions(session.accountId),
+	);
+	const { data: matchPreviews } = useSuspenseQuery(
+		matchPreviewsQueryOptions(session.accountId),
 	);
 
 	const { isEnrichmentRunning, enrichmentProgress } = useActiveJobs(
