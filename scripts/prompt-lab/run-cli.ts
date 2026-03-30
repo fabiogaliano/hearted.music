@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+/// <reference types="bun" />
 
 /**
  * Runs prompt lab analysis via Claude Code CLI (`claude -p`).
@@ -20,12 +21,7 @@ import { PROMPT_VARIANTS, type PromptContext } from "./prompts";
 import { DEFAULT_TEST_SONGS, type TestSong } from "./test-songs";
 import { DataFetcher, type SongData } from "./data-fetcher";
 import { generateReport, type AnalysisRun } from "./report";
-import {
-	saveResult,
-	loadResult,
-	loadAllResults,
-	listCachedVariants,
-} from "./result-cache";
+import { saveResult, loadResult, loadAllResults } from "./result-cache";
 
 const colors = {
 	reset: "\x1b[0m",

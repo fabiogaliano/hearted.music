@@ -1,10 +1,13 @@
+/// <reference types="bun" />
+
 /**
- * Dev server for email template preview + heart ripple capture.
+ * Dev server for waitlist email preview, copy preview, and asset capture.
  *
- * Usage: bun --hot scripts/preview-email.ts
+ * Usage: bun --hot scripts/dev-email-preview.ts
  *
  * Routes:
  *   /         → Email preview with responsive width toggles
+ *   /waitlist → Waitlist success copy preview
  *   /capture  → Heart ripple capture tool (exact prod shader + palette)
  *   /raw      → Raw email HTML
  */
@@ -16,7 +19,6 @@ const ROOT = resolve(
 	"..",
 );
 const EMAIL_FILE = resolve(ROOT, "src/lib/email/waitlist-confirmation.ts");
-
 
 async function getEmailHtml(): Promise<string> {
 	const file = await Bun.file(EMAIL_FILE).text();
@@ -54,7 +56,7 @@ const PORT = 4321;
 
 Bun.serve({
 	port: PORT,
-	async fetch(req) {
+	async fetch(req: Request) {
 		const url = new URL(req.url);
 
 		// ── Raw email HTML ──

@@ -1,11 +1,13 @@
+/// <reference types="bun" />
+
 /**
- * Local Embedding Sidecar Server (Dev Only).
+ * Local embedding sidecar server for development.
  *
  * Wraps LocalProvider's ONNX inference in a Bun HTTP server so that
  * Workerd-based dev servers (TanStack Start / Cloudflare Vite plugin)
  * can use local embeddings via HTTP fallback.
  *
- * Usage: bun scripts/embedding-server.ts
+ * Usage: bun scripts/dev-embedding-sidecar.ts
  *        bun run dev:embeddings
  */
 
@@ -19,7 +21,7 @@ const metadata = provider.getMetadata();
 
 const server = Bun.serve({
 	port: PORT,
-	async fetch(req) {
+	async fetch(req: Request) {
 		const url = new URL(req.url);
 
 		if (req.method === "GET" && url.pathname === "/health") {
