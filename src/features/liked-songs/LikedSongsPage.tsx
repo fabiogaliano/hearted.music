@@ -18,6 +18,8 @@ import {
 } from "react";
 
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
+import { scrollListElementIntoView } from "@/lib/keyboard/listScroll";
+import type { ListNavigationSource } from "@/lib/keyboard/types";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
@@ -47,13 +49,6 @@ interface LikedSongsPageProps {
 	isDarkMode?: boolean;
 	/** Account ID for query cache isolation */
 	accountId: string;
-}
-
-type SelectionSource = "keyboard" | "panel-nav" | "pointer" | "url";
-
-interface SelectionSyncRequest {
-	songId: string;
-	source: SelectionSource;
 }
 
 function findSongForSlug(
@@ -156,20 +151,10 @@ export function LikedSongsPage({
 	});
 
 	const artistImageUrl = selectedSong?.track.artist_image_url ?? undefined;
-	const lastSelectionElementRef = useRef<HTMLElement | null>(null);
-	const pendingSelectionSyncRef = useRef<SelectionSyncRequest | null>(
-		selectedSongId ? { songId: selectedSongId, source: "url" } : null,
-	);
-	const pendingScrollRef = useRef<SelectionSource | null>(null);
 	const selectedSongIdFromUrl = selectedSongFromUrl?.track.id ?? null;
-	const prevUrlSelectedSongIdRef = useRef<string | null>(selectedSongIdFromUrl);
-
-	const requestSelectionSync = useCallback(
-		(request: SelectionSyncRequest, element?: HTMLElement | null) => {
-			pendingSelectionSyncRef.current = request;
-			lastSelectionElementRef.current = element ?? null;
-		},
-		[],
+	const prevUrlSelectedSongIdRef = useRef<string | null>(null);
+	const pendingRouteSelectionSourceRef = useRef<ListNavigationSource | null>(
+		null,
 	);
 
 	const { data: stats } = useQuery({
@@ -177,11 +162,12 @@ export function LikedSongsPage({
 		refetchInterval: isEnrichmentRunning ? 5_000 : undefined,
 	});
 
-	// Keyboard list navigation using centralized shortcut system
 	const {
 		focusedIndex,
+		lastCursorChange,
 		syncFocusedIndex,
 		getFocusedElement,
+		getElementAtIndex,
 		focusFocusedItem,
 		getItemProps,
 	} = useListNavigation<LikedSong>({
@@ -189,35 +175,28 @@ export function LikedSongsPage({
 		scope: "liked-list",
 		enabled: !isExpanded && displayedSongs.length > 0,
 		onSelect: (song, _index, element) => {
-			if (element) {
-				requestSelectionSync(
-					{ songId: song.track.id, source: "keyboard" },
-					element,
-				);
-				handleExpand(song, element);
-			}
+			if (!element) return;
+			pendingRouteSelectionSourceRef.current = "keyboard";
+			handleExpand(song, element);
 		},
 		getId: (song) => song.track.id,
 		onLoadMore: handleLoadMore,
 		hasMore,
 		scrollBlock: "center",
+		autoScroll: false,
 	});
 
-	// Enter to select focused song (useListNavigation only binds Space by default)
 	useShortcut({
 		key: "enter",
 		handler: () => {
-			if (focusedIndex >= 0 && focusedIndex < displayedSongs.length) {
-				const song = displayedSongs[focusedIndex];
-				const element = getFocusedElement();
-				if (element) {
-					requestSelectionSync(
-						{ songId: song.track.id, source: "keyboard" },
-						element,
-					);
-					handleExpand(song, element);
-				}
-			}
+			if (focusedIndex < 0 || focusedIndex >= displayedSongs.length) return;
+
+			const song = displayedSongs[focusedIndex];
+			const element = getFocusedElement();
+			if (!element) return;
+
+			pendingRouteSelectionSourceRef.current = "keyboard";
+			handleExpand(song, element);
 		},
 		description: "Open song details",
 		scope: "liked-list",
@@ -230,80 +209,51 @@ export function LikedSongsPage({
 		prevUrlSelectedSongIdRef.current = selectedSongIdFromUrl;
 
 		if (!selectedSongIdFromUrl || selectedSongIdFromUrl === prev) return;
-		if (pendingSelectionSyncRef.current !== null) return;
 
-		requestSelectionSync({ songId: selectedSongIdFromUrl, source: "url" });
-	}, [requestSelectionSync, selectedSongIdFromUrl]);
-
-	// Phase 1: Update focusedIndex WITHOUT scrolling.
-	// The scroll is deferred to phase 2 so it happens after React has committed
-	// the new focus indicator to the DOM. This prevents the "scroll first,
-	// indicator catches up later" visual split.
-	useIsomorphicLayoutEffect(() => {
-		if (!selectedSongId) return;
-
-		const pendingSelectionSync = pendingSelectionSyncRef.current;
-		if (
-			!pendingSelectionSync ||
-			pendingSelectionSync.songId !== selectedSongId
-		) {
+		if (pendingRouteSelectionSourceRef.current !== null) {
+			pendingRouteSelectionSourceRef.current = null;
 			return;
 		}
 
 		const index = displayedSongs.findIndex(
-			(s) => s.track.id === selectedSongId,
+			(song) => song.track.id === selectedSongIdFromUrl,
 		);
 		if (index < 0) return;
 
-		syncFocusedIndex(index, { focus: false, scroll: false });
-		pendingScrollRef.current = pendingSelectionSync.source;
-		pendingSelectionSyncRef.current = null;
-	}, [selectedSongId, displayedSongs, syncFocusedIndex]);
+		syncFocusedIndex(index, {
+			focus: false,
+			source: "url",
+		});
+	}, [displayedSongs, selectedSongIdFromUrl, syncFocusedIndex]);
 
-	// Phase 2: Scroll AFTER focusedIndex has been committed to the DOM.
-	// React flushes the setFocusedIndex from phase 1 synchronously (layout effect),
-	// so this runs in the same frame but after the indicator has moved.
 	useIsomorphicLayoutEffect(() => {
-		const source = pendingScrollRef.current;
-		if (!source) return;
-		pendingScrollRef.current = null;
+		const change = lastCursorChange;
+		if (!change) return;
 
-		if (source === "pointer") {
-			lastSelectionElementRef.current?.scrollIntoView({
-				behavior: "auto",
-				block: "nearest",
-				inline: "nearest",
-			});
-		} else {
-			const element = getFocusedElement();
-			element?.scrollIntoView({
-				behavior: "auto",
-				block: "center",
-				inline: "nearest",
-			});
-		}
-	}, [focusedIndex, getFocusedElement]);
+		const element = getElementAtIndex(change.index);
+		if (!element) return;
 
-	// After the panel fully closes (selectedSongId cleared), restore focus to the current cursor item
-	// and engage list navigation visuals (no native outline flicker).
+		scrollListElementIntoView(
+			element,
+			change.source === "pointer" ? "nearest" : "center",
+		);
+	}, [getElementAtIndex, lastCursorChange]);
+
 	const prevSelectedSongIdRef = useRef<string | null>(null);
 	useEffect(() => {
 		const prev = prevSelectedSongIdRef.current;
 		prevSelectedSongIdRef.current = selectedSongId;
 		if (prev && !selectedSongId) {
-			focusFocusedItem({ engage: true });
+			focusFocusedItem({ mode: "keyboard" });
 		}
 	}, [selectedSongId, focusFocusedItem]);
 
 	const handlePointerExpand = useCallback(
 		(song: LikedSong, element: HTMLElement) => {
-			requestSelectionSync(
-				{ songId: song.track.id, source: "pointer" },
-				element,
-			);
+			pendingRouteSelectionSourceRef.current = "pointer";
 			handleExpand(song, element);
 		},
-		[handleExpand, requestSelectionSync],
+		[handleExpand],
 	);
 
 	const handleNextSong = useCallback(() => {
@@ -314,9 +264,13 @@ export function LikedSongsPage({
 			selectedIndex >= 0 ? displayedSongs[selectedIndex + 1] : undefined;
 		if (!nextSong) return;
 
-		requestSelectionSync({ songId: nextSong.track.id, source: "panel-nav" });
+		syncFocusedIndex(selectedIndex + 1, {
+			focus: false,
+			source: "panel-nav",
+		});
+		pendingRouteSelectionSourceRef.current = "panel-nav";
 		handleNext();
-	}, [displayedSongs, handleNext, requestSelectionSync, selectedSongId]);
+	}, [displayedSongs, handleNext, selectedSongId, syncFocusedIndex]);
 
 	const handlePreviousSong = useCallback(() => {
 		const selectedIndex = displayedSongs.findIndex(
@@ -326,12 +280,13 @@ export function LikedSongsPage({
 			selectedIndex > 0 ? displayedSongs[selectedIndex - 1] : undefined;
 		if (!previousSong) return;
 
-		requestSelectionSync({
-			songId: previousSong.track.id,
+		syncFocusedIndex(selectedIndex - 1, {
+			focus: false,
 			source: "panel-nav",
 		});
+		pendingRouteSelectionSourceRef.current = "panel-nav";
 		handlePrevious();
-	}, [displayedSongs, handlePrevious, requestSelectionSync, selectedSongId]);
+	}, [displayedSongs, handlePrevious, selectedSongId, syncFocusedIndex]);
 
 	return (
 		<div ref={containerRef} className="relative min-h-[600px] max-w-5xl">

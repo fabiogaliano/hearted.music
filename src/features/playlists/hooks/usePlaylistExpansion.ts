@@ -55,25 +55,22 @@ export function usePlaylistExpansion() {
 		};
 	}, []);
 
-	const handleExpand = useCallback(
-		(id: string, e: React.MouseEvent<HTMLDivElement>) => {
-			const itemRect = e.currentTarget.getBoundingClientRect();
-			setStartRect({
-				top: itemRect.top,
-				left: itemRect.left,
-				width: itemRect.width,
-				height: itemRect.height,
-			});
+	const handleExpand = useCallback((id: string, element: HTMLElement) => {
+		const itemRect = element.getBoundingClientRect();
+		setStartRect({
+			top: itemRect.top,
+			left: itemRect.left,
+			width: itemRect.width,
+			height: itemRect.height,
+		});
 
-			setSelectedPlaylistId(id);
+		setSelectedPlaylistId(id);
+		requestAnimationFrame(() => {
 			requestAnimationFrame(() => {
-				requestAnimationFrame(() => {
-					setIsExpanded(true);
-				});
+				setIsExpanded(true);
 			});
-		},
-		[],
-	);
+		});
+	}, []);
 
 	const handleClose = useCallback(async () => {
 		const targetId = selectedPlaylistId;

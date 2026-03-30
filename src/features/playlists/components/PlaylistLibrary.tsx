@@ -1,13 +1,13 @@
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import type { ListNavigationResult } from "@/lib/keyboard/types";
-import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { PlaylistCard } from "./PlaylistCard";
 
 interface PlaylistLibraryProps {
 	theme: ThemeConfig;
 	playlists: Playlist[];
-	onSelectPlaylist: (id: string, e: React.MouseEvent<HTMLDivElement>) => void;
+	onSelectPlaylist: (id: string, element: HTMLElement) => void;
 	onAddPlaylist: (id: string) => void;
 	columnRef: React.RefObject<HTMLDivElement | null>;
 	isExpanded: boolean;

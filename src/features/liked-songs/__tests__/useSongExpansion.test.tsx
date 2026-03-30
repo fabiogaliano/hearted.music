@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { generateSongSlug } from "@/lib/utils/slug";
 import { useSongExpansion } from "../hooks/useSongExpansion";
@@ -63,6 +63,32 @@ function HookHarness({
 				{selectedSong?.track.name ?? "none"}
 			</div>
 			<div data-testid="is-expanded">{String(isExpanded)}</div>
+		</div>
+	);
+}
+
+function InteractiveHookHarness({
+	songs,
+	selectedSlug,
+	targetSong,
+}: {
+	songs: LikedSong[];
+	selectedSlug?: string | null;
+	targetSong: LikedSong;
+}) {
+	const { selectedSongId, handleExpand } = useSongExpansion(songs, {
+		selectedSlug,
+	});
+
+	return (
+		<div>
+			<div data-testid="selected-song-id">{selectedSongId ?? "none"}</div>
+			<button
+				type="button"
+				onClick={(event) => handleExpand(targetSong, event.currentTarget)}
+			>
+				Open target song
+			</button>
 		</div>
 	);
 }
@@ -172,6 +198,49 @@ describe("useSongExpansion", () => {
 		);
 		expect(screen.getByTestId("selected-song-name")).toHaveTextContent(
 			secondSong.track.name,
+		);
+	});
+
+	it("keeps the locally selected song while the router is still catching up", () => {
+		const firstSong = createSong();
+		const secondSong = createSong({
+			id: "song-2",
+			spotify_track_id: "spotify-song-2",
+			name: "Supercut",
+		});
+		const firstSlug = generateSongSlug(
+			firstSong.track.artist,
+			firstSong.track.name,
+		);
+		const secondSlug = generateSongSlug(
+			secondSong.track.artist,
+			secondSong.track.name,
+		);
+		const { rerender } = render(
+			<InteractiveHookHarness
+				songs={[firstSong, secondSong]}
+				selectedSlug={firstSlug}
+				targetSong={secondSong}
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: "Open target song" }));
+
+		expect(screen.getByTestId("selected-song-id")).toHaveTextContent(
+			secondSong.track.id,
+		);
+		expect(navigateMock).toHaveBeenCalledTimes(1);
+
+		rerender(
+			<InteractiveHookHarness
+				songs={[firstSong, secondSong]}
+				selectedSlug={secondSlug}
+				targetSong={secondSong}
+			/>,
+		);
+
+		expect(screen.getByTestId("selected-song-id")).toHaveTextContent(
+			secondSong.track.id,
 		);
 	});
 

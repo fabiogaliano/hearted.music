@@ -1,12 +1,12 @@
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
-import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
+import type { ThemeConfig } from "@/lib/theme/types";
 
 interface PlaylistCardProps {
 	playlist: Playlist;
 	theme: ThemeConfig;
 	status: "active" | "available";
-	onSelect?: (id: string, e: React.MouseEvent<HTMLDivElement>) => void;
+	onSelect?: (id: string, element: HTMLElement) => void;
 	onRemove?: (id: string) => void;
 	onAction?: (id: string) => void;
 	isAnimatingTo?: boolean;
@@ -88,6 +88,7 @@ export function PlaylistCard({
 					)}
 				</div>
 				<button
+					type="button"
 					onClick={() => onRemove?.(playlist.id)}
 					className="p-1.5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100"
 					aria-label={`Remove ${playlist.name} from matching`}
@@ -121,7 +122,7 @@ export function PlaylistCard({
 					? `3px solid ${theme.primary}`
 					: "3px solid transparent",
 			}}
-			onClick={(e) => onSelect?.(playlist.id, e)}
+			onClick={(event) => onSelect?.(playlist.id, event.currentTarget)}
 		>
 			<div
 				className="h-16 w-16 flex-shrink-0 overflow-hidden"
@@ -171,6 +172,7 @@ export function PlaylistCard({
 			</div>
 
 			<button
+				type="button"
 				onClick={(e) => {
 					e.stopPropagation();
 					onAction?.(playlist.id);

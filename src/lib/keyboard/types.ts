@@ -65,15 +65,84 @@ export interface ShortcutContextValue {
 }
 
 export type NavigationDirection = "horizontal" | "vertical" | "grid";
+export type ListScrollBlock = "nearest" | "center";
+export type ListNavigationSource =
+	| "keyboard"
+	| "pointer"
+	| "panel-nav"
+	| "url"
+	| "programmatic";
+export type ListInteractionMode = "idle" | "keyboard" | "pointer";
 
-export interface ListNavigationOptions<T> {
+export interface ListCursorChange {
+	index: number;
+	source: ListNavigationSource;
+	sequence: number;
+}
+
+export interface ListItemNavigationProps {
+	ref: (el: HTMLElement | null) => void;
+	"data-focused": boolean;
+	"data-nav-engaged": boolean;
+	onPointerDown?: import("react").PointerEventHandler<HTMLElement>;
+	onFocus?: import("react").FocusEventHandler<HTMLElement>;
+	onBlur?: import("react").FocusEventHandler<HTMLElement>;
+	tabIndex: number;
+}
+
+export interface ListFocusOptions {
+	mode?: ListInteractionMode;
+}
+
+export interface ListCursorMoveOptions extends ListFocusOptions {
+	source?: ListNavigationSource;
+}
+
+export interface ListCursorSyncOptions extends ListFocusOptions {
+	focus?: boolean;
+	source?: ListNavigationSource;
+}
+
+export interface ListNavigationFocusOptions extends ListFocusOptions {
+	scroll?: boolean;
+}
+
+export interface ListNavigationSyncOptions extends ListCursorSyncOptions {
+	scroll?: boolean;
+}
+
+export interface ListCursorOptions<T> {
 	items: readonly T[];
-	scope: ShortcutScope;
 	enabled?: boolean;
-	/** Called with (item, index, element) on Space key (for selection/toggle) */
-	onSelect?: (item: T, index: number, element: HTMLElement | null) => void;
 	getId: (item: T) => string | number;
 	onFocusChange?: (index: number, item: T | null) => void;
+	onCursorChange?: (change: ListCursorChange, item: T | null) => void;
+}
+
+export interface ListCursorResult<T> {
+	focusedIndex: number;
+	focusedItem: T | null;
+	interactionMode: ListInteractionMode;
+	lastCursorChange: ListCursorChange | null;
+	getFocusedElement: () => HTMLElement | null;
+	getElementAtIndex: (index: number) => HTMLElement | null;
+	moveFocusedIndex: (
+		step: number,
+		options?: ListCursorMoveOptions,
+	) => ListCursorChange | null;
+	syncFocusedIndex: (
+		index: number,
+		options?: ListCursorSyncOptions,
+	) => ListCursorChange | null;
+	focusIndex: (index: number, options?: ListFocusOptions) => void;
+	focusFocusedItem: (options?: ListFocusOptions) => void;
+	getItemProps: (item: T, index: number) => ListItemNavigationProps;
+}
+
+export interface ListNavigationOptions<T> extends ListCursorOptions<T> {
+	scope: ShortcutScope;
+	/** Called with (item, index, element) on Space key (for selection/toggle) */
+	onSelect?: (item: T, index: number, element: HTMLElement | null) => void;
 	onLoadMore?: () => void;
 	hasMore?: boolean;
 	/** horizontal (h/l), vertical (j/k), or grid (all) */
@@ -83,33 +152,25 @@ export interface ListNavigationOptions<T> {
 	/** For column-major grids: left/right skips by this amount */
 	rows?: number;
 	/** Scroll alignment for focused item — "center" for Vim scrolloff=999 behavior (default: "nearest") */
-	scrollBlock?: "nearest" | "center";
+	scrollBlock?: ListScrollBlock;
+	/** Default: true. Disable when the consumer wants to own scroll timing/policy. */
+	autoScroll?: boolean;
 }
 
-export interface ListNavigationResult<T> {
-	focusedIndex: number;
-	setFocusedIndex: (index: number) => void;
-	/**
-	 * Programmatic cursor sync for external navigation sources (e.g., detail panel).
-	 * Uses the same scroll policy as keyboard navigation.
-	 */
+export interface ListNavigationResult<T>
+	extends Pick<
+		ListCursorResult<T>,
+		| "focusedIndex"
+		| "focusedItem"
+		| "interactionMode"
+		| "lastCursorChange"
+		| "getFocusedElement"
+		| "getElementAtIndex"
+		| "getItemProps"
+	> {
 	syncFocusedIndex: (
 		index: number,
-		options?: { engage?: boolean; focus?: boolean; scroll?: boolean },
-	) => void;
-	getFocusedElement: () => HTMLElement | null;
-	focusFocusedItem: (options?: { engage?: boolean; scroll?: boolean }) => void;
-	getItemProps: (
-		item: T,
-		index: number,
-	) => {
-		ref: (el: HTMLElement | null) => void;
-		"data-focused": boolean;
-		"data-nav-engaged": boolean;
-		onPointerDown?: import("react").PointerEventHandler<HTMLElement>;
-		onFocus?: import("react").FocusEventHandler<HTMLElement>;
-		onBlur?: import("react").FocusEventHandler<HTMLElement>;
-		tabIndex: number;
-	};
-	focusedItem: T | null;
+		options?: ListNavigationSyncOptions,
+	) => ListCursorChange | null;
+	focusFocusedItem: (options?: ListNavigationFocusOptions) => void;
 }

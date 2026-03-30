@@ -1,18 +1,17 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
-import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
-import { playlistManagementQueryOptions } from "./queries";
+import type { ThemeConfig } from "@/lib/theme/types";
+import { ActivePlaylistsPanel } from "./components/ActivePlaylistsPanel";
+import { PlaylistDetailView } from "./components/PlaylistDetailView";
+import { PlaylistLibrary } from "./components/PlaylistLibrary";
+import { useExtensionStatus } from "./hooks/useExtensionStatus";
 import { usePlaylistExpansion } from "./hooks/usePlaylistExpansion";
 import { usePlaylistSession } from "./hooks/usePlaylistSession";
-import { useExtensionStatus } from "./hooks/useExtensionStatus";
-import { ActivePlaylistsPanel } from "./components/ActivePlaylistsPanel";
-import { PlaylistLibrary } from "./components/PlaylistLibrary";
-import { PlaylistDetailView } from "./components/PlaylistDetailView";
+import { playlistManagementQueryOptions } from "./queries";
 
 const useIsomorphicLayoutEffect =
 	typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -69,9 +68,7 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 		enabled: !isExpanded && availablePlaylists.length > 0,
 		onSelect: (playlist, _index, element) => {
 			if (element) {
-				handleExpand(playlist.id, {
-					currentTarget: element,
-				} as React.MouseEvent<HTMLDivElement>);
+				handleExpand(playlist.id, element);
 			}
 		},
 		getId: (playlist) => playlist.id,
@@ -85,9 +82,7 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 				const playlist = availablePlaylists[focusedIndex];
 				const element = getFocusedElement();
 				if (element) {
-					handleExpand(playlist.id, {
-						currentTarget: element,
-					} as React.MouseEvent<HTMLDivElement>);
+					handleExpand(playlist.id, element);
 				}
 			}
 		},
@@ -103,7 +98,11 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 				(p) => p.id === selectedPlaylistId,
 			);
 			if (index >= 0) {
-				syncFocusedIndex(index, { focus: false, scroll: true });
+				syncFocusedIndex(index, {
+					focus: false,
+					scroll: true,
+					source: "programmatic",
+				});
 			}
 		}
 	}, [selectedPlaylistId, availablePlaylists, syncFocusedIndex]);
@@ -113,7 +112,7 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 		const prev = prevSelectedIdRef.current;
 		prevSelectedIdRef.current = selectedPlaylistId;
 		if (prev && !selectedPlaylistId) {
-			focusFocusedItem({ engage: true });
+			focusFocusedItem({ mode: "keyboard" });
 		}
 	}, [selectedPlaylistId, focusFocusedItem]);
 

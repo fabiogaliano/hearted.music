@@ -26,8 +26,13 @@ export function setupListNavigationMock() {
 	return {
 		useListNavigation: () => ({
 			focusedIndex: -1,
+			focusedItem: null,
+			interactionMode: "idle",
+			lastCursorChange: null,
+			syncFocusedIndex: () => null,
 			focusFocusedItem: () => {},
 			getFocusedElement: () => null,
+			getElementAtIndex: () => null,
 			getItemProps: (_item: unknown, index: number) => ({
 				ref: () => {},
 				tabIndex: index === 0 ? 0 : -1,
