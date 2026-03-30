@@ -11,7 +11,10 @@ import { createLlmService } from "@/lib/integrations/llm/service";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
 import { maybeDevDelay } from "@/lib/workflows/library-processing/devtools/delay";
 import { hasMoreSongsNeedingProcessing, selectPipelineBatch } from "./batch";
-import { makeInitialProgress } from "./progress";
+import {
+	makeInitialProgress,
+	type InitializedEnrichmentChunkProgress,
+} from "./progress";
 import { runAudioFeatures } from "./stages/audio-features";
 import { runGenreTagging } from "./stages/genre-tagging";
 import { runSongAnalysis } from "./stages/song-analysis";
@@ -66,7 +69,7 @@ function buildContext(
 }
 
 function applyStageResult(
-	progress: EnrichmentChunkProgress,
+	progress: InitializedEnrichmentChunkProgress,
 	stageName: EnrichmentStageName,
 	result: StageResult,
 	status: "completed" | "failed" | "skipped",
@@ -160,7 +163,7 @@ async function enrichSongs(
 	ctx: EnrichmentContext,
 	batch: Awaited<ReturnType<typeof selectPipelineBatch>>,
 	jobId: string,
-	progress: EnrichmentChunkProgress,
+	progress: InitializedEnrichmentChunkProgress,
 	stageDelayMs?: number,
 ): Promise<void> {
 	// Phase A: audio_features + genre_tagging (parallel)
