@@ -12,6 +12,7 @@ interface SidebarProps {
 	unsortedCount: number;
 	userName: string | null;
 	userPlan: string;
+	userImageUrl?: string | null;
 }
 
 interface NavItemConfig {
@@ -28,7 +29,54 @@ const NAV_ITEMS: NavItemConfig[] = [
 	{ to: "/settings", label: "Settings" },
 ];
 
-export function Sidebar({ unsortedCount, userName, userPlan }: SidebarProps) {
+function getInitials(name: string | null): string {
+	if (!name) return "?";
+	const parts = name.trim().split(/\s+/);
+	if (parts.length >= 2) {
+		return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase();
+	}
+	return name[0]?.toUpperCase() ?? "?";
+}
+
+function UserAvatar({
+	name,
+	imageUrl,
+}: {
+	name: string | null;
+	imageUrl?: string | null;
+}) {
+	const theme = useTheme();
+
+	if (imageUrl) {
+		return (
+			<img
+				src={imageUrl}
+				alt=""
+				className="h-8 w-8 shrink-0 rounded-full object-cover"
+			/>
+		);
+	}
+
+	return (
+		<div
+			className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium"
+			style={{
+				background: theme.surfaceDim,
+				color: theme.text,
+				fontFamily: fonts.body,
+			}}
+		>
+			{getInitials(name)}
+		</div>
+	);
+}
+
+export function Sidebar({
+	unsortedCount,
+	userName,
+	userPlan,
+	userImageUrl,
+}: SidebarProps) {
 	const theme = useTheme();
 	const matchRoute = useMatchRoute();
 
@@ -65,21 +113,27 @@ export function Sidebar({ unsortedCount, userName, userPlan }: SidebarProps) {
 				</div>
 			</nav>
 
-			<div className="border-t pt-6" style={{ borderColor: theme.border }}>
-				{userName && (
+			<div
+				className="flex items-center gap-3 border-t pt-6"
+				style={{ borderColor: theme.border }}
+			>
+				<UserAvatar name={userName} imageUrl={userImageUrl} />
+				<div className="min-w-0">
+					{userName && (
+						<p
+							className="truncate text-sm"
+							style={{ fontFamily: fonts.body, color: theme.text }}
+						>
+							{userName}
+						</p>
+					)}
 					<p
-						className="text-sm"
-						style={{ fontFamily: fonts.body, color: theme.text }}
+						className="text-xs uppercase tracking-widest"
+						style={{ fontFamily: fonts.body, color: theme.textMuted }}
 					>
-						{userName}
+						{userPlan}
 					</p>
-				)}
-				<p
-					className="text-xs uppercase tracking-widest"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
-				>
-					{userPlan}
-				</p>
+				</div>
 			</div>
 		</aside>
 	);

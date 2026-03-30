@@ -29,21 +29,32 @@ ThemeDispatchContext.displayName = "ThemeDispatch";
 const ThemeStateContext = createContext<ThemeConfig | null>(null);
 ThemeStateContext.displayName = "ThemeState";
 
-export function ThemeHueProvider({ children }: { children: ReactNode }) {
-	const [theme, setTheme] = useState<ThemeConfig>(() => themes[DEFAULT_THEME]);
+export function ThemeHueProvider({
+	children,
+	initialTheme,
+	theme: controlledTheme,
+}: {
+	children: ReactNode;
+	initialTheme?: ThemeConfig;
+	theme?: ThemeConfig;
+}) {
+	const [themeState, setThemeState] = useState<ThemeConfig>(
+		() => controlledTheme ?? initialTheme ?? themes[DEFAULT_THEME],
+	);
+	const activeTheme = controlledTheme ?? themeState;
 
 	const registerTheme = useCallback<RegisterTheme>((newTheme) => {
-		setTheme((current) => (current === newTheme ? current : newTheme));
+		setThemeState((current) => (current === newTheme ? current : newTheme));
 	}, []);
 
 	useEffect(() => {
-		const hue = getThemeHue(theme);
+		const hue = getThemeHue(activeTheme);
 		document.documentElement.style.setProperty("--theme-hue", String(hue));
-	}, [theme]);
+	}, [activeTheme]);
 
 	return (
 		<ThemeDispatchContext.Provider value={registerTheme}>
-			<ThemeStateContext.Provider value={theme}>
+			<ThemeStateContext.Provider value={activeTheme}>
 				{children}
 			</ThemeStateContext.Provider>
 		</ThemeDispatchContext.Provider>

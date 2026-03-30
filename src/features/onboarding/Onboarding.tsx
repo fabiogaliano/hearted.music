@@ -5,16 +5,15 @@
 
 import { useLocation } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useState } from "react";
 import {
 	ONBOARDING_STEPS,
 	type OnboardingStep,
 } from "@/lib/domains/library/accounts/preferences-queries";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type { OnboardingData } from "@/lib/server/onboarding.functions";
-import { themes } from "@/lib/theme/colors";
-import { useRegisterTheme, useTheme } from "@/lib/theme/ThemeHueProvider";
-import { DEFAULT_THEME, type ThemeColor } from "@/lib/theme/types";
+import { useAuthenticatedTheme } from "@/lib/theme/authenticated-theme";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
+import type { ThemeColor } from "@/lib/theme/types";
 import { AnimatedStep } from "./components/AnimatedStep";
 import { FlagPlaylistsStep } from "./components/FlagPlaylistsStep";
 import { InstallExtensionStep } from "./components/InstallExtensionStep";
@@ -83,21 +82,15 @@ const INDICATOR_STEPS = ONBOARDING_STEPS.options.filter(
 
 export function Onboarding({ step, data }: OnboardingProps) {
 	const location = useLocation();
-	const [localTheme, setLocalTheme] = useState<ThemeColor>(
-		data.theme ?? DEFAULT_THEME,
-	);
-
-	// Onboarding owns theme registration - starts with default (rose),
-	// updates live as user picks colors in PickColorStep
-	useRegisterTheme(themes[localTheme]);
+	const { themeColor, setThemeColor } = useAuthenticatedTheme();
 
 	const locationPhaseJobIds = location.state?.phaseJobIds;
 	const phaseJobIds =
 		locationPhaseJobIds !== undefined ? locationPhaseJobIds : data.phaseJobIds;
 
 	const stepContext: StepContext = {
-		localTheme,
-		setLocalTheme,
+		localTheme: themeColor,
+		setLocalTheme: setThemeColor,
 		phaseJobIds,
 		playlists: data.playlists,
 		syncStats: data.syncStats,

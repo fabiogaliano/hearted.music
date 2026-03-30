@@ -17,12 +17,12 @@ import {
 	useLocation,
 } from "@tanstack/react-router";
 import { Sidebar } from "./-components/Sidebar";
+import { matchingSessionQueryOptions } from "@/features/matching/queries";
+import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
 import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getOnboardingData } from "@/lib/server/onboarding.functions";
-import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
-import { matchingSessionQueryOptions } from "@/features/matching/queries";
-import { useRegisterTheme } from "@/lib/theme/ThemeHueProvider";
-import { getTheme } from "@/lib/theme/useTheme";
+import { AuthenticatedThemeProvider } from "@/lib/theme/authenticated-theme";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { DEFAULT_THEME } from "@/lib/theme/types";
 
 const shouldLoadDevWorkflowPanel =
@@ -41,7 +41,6 @@ export const Route = createFileRoute("/_authenticated")({
 		const { session, account } = await requireAuthSession();
 		const onboarding = await getOnboardingData();
 
-		// Skip onboarding check if already heading there (prevents redirect loop)
 		const isOnboardingRoute = location.pathname.startsWith("/onboarding");
 
 		if (!onboarding.isComplete && !isOnboardingRoute) {
@@ -58,11 +57,8 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthenticatedLayout() {
 	const { theme: themeColor, account, session } = Route.useRouteContext();
-	const theme = getTheme(themeColor ?? DEFAULT_THEME);
 	const location = useLocation();
 	const isOnboarding = location.pathname.startsWith("/onboarding");
-
-	useRegisterTheme(isOnboarding ? null : theme);
 
 	useActiveJobCompletionEffects(session.accountId, !isOnboarding);
 
@@ -77,14 +73,34 @@ function AuthenticatedLayout() {
 		</Suspense>
 	) : null;
 
-	if (isOnboarding) {
-		return (
-			<>
-				<Outlet />
-				{devPanel}
-			</>
-		);
-	}
+	return (
+		<AuthenticatedThemeProvider initialThemeColor={themeColor ?? DEFAULT_THEME}>
+			{isOnboarding ? (
+				<>
+					<Outlet />
+					{devPanel}
+				</>
+			) : (
+				<AuthenticatedShell
+					account={account}
+					pendingSuggestions={pendingSuggestions}
+					devPanel={devPanel}
+				/>
+			)}
+		</AuthenticatedThemeProvider>
+	);
+}
+
+function AuthenticatedShell({
+	account,
+	pendingSuggestions,
+	devPanel,
+}: {
+	account: Awaited<ReturnType<typeof requireAuthSession>>["account"];
+	pendingSuggestions: number;
+	devPanel: React.ReactNode;
+}) {
+	const theme = useTheme();
 
 	return (
 		<div
@@ -98,6 +114,7 @@ function AuthenticatedLayout() {
 				unsortedCount={pendingSuggestions}
 				userName={account?.display_name ?? account?.email ?? null}
 				userPlan="Free Plan"
+				userImageUrl={account?.image_url}
 			/>
 			<main className="flex-1 p-8">
 				<Outlet />
