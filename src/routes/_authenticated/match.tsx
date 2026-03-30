@@ -1,6 +1,6 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Matching } from "@/features/matching/Matching";
 import { MatchingEmptyState } from "@/features/matching/components/MatchingEmptyState";
@@ -56,22 +56,8 @@ function MatchPage() {
 				: null,
 		);
 
-	// Track whether we've ever initialized from a non-null session
-	const initializedRef = useRef(displayedSession !== null);
-
 	const latestContextId = latestSession?.contextId ?? null;
 	const latestTotalSongs = latestSession?.totalSongs ?? 0;
-
-	// Auto-initialize displayed session when first non-null data arrives
-	useEffect(() => {
-		if (!initializedRef.current && latestContextId && latestTotalSongs > 0) {
-			initializedRef.current = true;
-			setDisplayedSession({
-				contextId: latestContextId,
-				totalSongs: latestTotalSongs,
-			});
-		}
-	}, [latestContextId, latestTotalSongs]);
 
 	const hasNewContext =
 		displayedSession != null &&
@@ -168,7 +154,7 @@ function MatchingPageContent({
 		songsWithAdditions: new Set<string>(),
 	}));
 
-	const [recentSongs, setRecentSongs] = useState<
+	const [pastSongs, setPastSongs] = useState<
 		Array<{ id: string; albumArtUrl?: string | null; name: string }>
 	>([]);
 
@@ -186,21 +172,18 @@ function MatchingPageContent({
 		queryClient.prefetchQuery(songMatchesQueryOptions(contextId, offset + 2));
 	}, [queryClient, contextId, offset, songData]);
 
-	useEffect(() => {
-		if (!songData) return;
-		setRecentSongs((prev) => {
-			if (prev.some((s) => s.id === songData.song.id)) return prev;
-			return [
-				...prev,
-				{
-					id: songData.song.id,
-					albumArtUrl: songData.song.albumArtUrl,
-					name: songData.song.name,
-				},
-			];
-		});
-		setAddedTo((prev) => (prev.length === 0 ? prev : []));
-	}, [songData]);
+	const recentSongs = useMemo(() => {
+		if (!songData || pastSongs.some((s) => s.id === songData.song.id))
+			return pastSongs;
+		return [
+			...pastSongs,
+			{
+				id: songData.song.id,
+				albumArtUrl: songData.song.albumArtUrl,
+				name: songData.song.name,
+			},
+		];
+	}, [songData, pastSongs]);
 
 	const currentSong: SongForMatching | null = songData?.song ?? null;
 	const currentMatches: Playlist[] =
@@ -242,9 +225,25 @@ function MatchingPageContent({
 		});
 	};
 
+	const recordCurrentSong = useCallback(() => {
+		if (!currentSong) return;
+		setPastSongs((prev) => {
+			if (prev.some((s) => s.id === currentSong.id)) return prev;
+			return [
+				...prev,
+				{
+					id: currentSong.id,
+					albumArtUrl: currentSong.albumArtUrl,
+					name: currentSong.name,
+				},
+			];
+		});
+	}, [currentSong]);
+
 	const handleDismiss = async () => {
 		if (!currentSong) return;
 		addPresented(currentSong.id);
+		recordCurrentSong();
 		const playlistIds = currentMatches.map((m) => m.id);
 		if (playlistIds.length > 0) {
 			await dismissSong({ data: { songId: currentSong.id, playlistIds } });
@@ -253,11 +252,14 @@ function MatchingPageContent({
 			...prev,
 			dismissedCount: prev.dismissedCount + 1,
 		}));
+		setAddedTo([]);
 		setOffset((prev) => prev + 1);
 	};
 
 	const handleNext = () => {
 		if (currentSong) addPresented(currentSong.id);
+		recordCurrentSong();
+		setAddedTo([]);
 		setOffset((prev) => prev + 1);
 	};
 
