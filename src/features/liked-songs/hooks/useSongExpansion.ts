@@ -7,13 +7,13 @@
  * URL Sync Strategy: Uses TanStack Router search params
  * - Updates URL via navigate({ search: ... })
  * - TanStack Router handles browser back/forward automatically
- * - initialSlug prop used for deep linking on page load
+ * - selectedSlug prop keeps local state in sync with deep links and browser navigation
  *
  * This is the standard pattern for modals/panels with URLs (Linear, Notion, etc.)
  */
 
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { generateSongSlug } from "@/lib/utils/slug";
@@ -49,52 +49,121 @@ interface StartRect {
 }
 
 interface UseSongExpansionOptions {
-	/** Initial slug from URL (for deep linking on page load) */
-	initialSlug?: string | null;
+	/** Selected slug from URL (supports deep links and browser navigation) */
+	selectedSlug?: string | null;
+	/** Song resolved outside the loaded list, e.g. via direct slug lookup */
+	fallbackSelectedSong?: LikedSong | null;
+	/** Whether the current selected slug has finished resolving */
+	isSelectedSlugResolved?: boolean;
 }
 
-function findSongIdForSlug(
+function findSongForSlug(
 	songs: LikedSong[],
 	slug: string | null | undefined,
-): string | null {
+): LikedSong | null {
 	if (!slug) return null;
 
-	const song = songs.find(
-		(candidate) =>
-			generateSongSlug(candidate.track.artist, candidate.track.name) === slug,
+	return (
+		songs.find(
+			(candidate) =>
+				generateSongSlug(candidate.track.artist, candidate.track.name) === slug,
+		) ?? null
 	);
+}
 
-	return song?.track.id ?? null;
+function songMatchesSlug(
+	song: LikedSong,
+	slug: string | null | undefined,
+): boolean {
+	if (!slug) {
+		return false;
+	}
+
+	return generateSongSlug(song.track.artist, song.track.name) === slug;
 }
 
 export function useSongExpansion(
 	songs: LikedSong[],
 	options: UseSongExpansionOptions = {},
 ) {
-	const { initialSlug } = options;
+	const { selectedSlug, fallbackSelectedSong = null } = options;
 	const navigate = useNavigate();
-	const initialSelectedSongId = findSongIdForSlug(songs, initialSlug);
+	const routeSelectedSongFromList = findSongForSlug(songs, selectedSlug);
+	const routeSelectedSong =
+		routeSelectedSongFromList ??
+		(fallbackSelectedSong !== null &&
+		songMatchesSlug(fallbackSelectedSong, selectedSlug)
+			? fallbackSelectedSong
+			: null);
+	const routeSelectedSongId = routeSelectedSong?.track.id ?? null;
+	const isSelectedSlugResolved =
+		options.isSelectedSlugResolved ??
+		(selectedSlug == null || routeSelectedSongId !== null || songs.length > 0);
 	const [selectedSongId, setSelectedSongId] = useState<string | null>(
-		initialSelectedSongId,
+		routeSelectedSongId,
 	);
-	const [isExpanded, setIsExpanded] = useState(initialSelectedSongId !== null);
+	const [isExpanded, setIsExpanded] = useState(routeSelectedSongId !== null);
 	const [startRect, setStartRect] = useState<StartRect | null>(null);
 	// Track the song ID we're animating back to during close (for view transitions)
 	const [closingToSongId, setClosingToSongId] = useState<string | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
+	const isClosingRef = useRef(false);
 
 	// Derive selected song + index in a single pass
 	const { selectedSong, selectedIndex } = useMemo(() => {
 		if (!selectedSongId) return { selectedSong: null, selectedIndex: -1 };
 		const idx = songs.findIndex((s) => s.track.id === selectedSongId);
-		return {
-			selectedSong: idx >= 0 ? songs[idx] : null,
-			selectedIndex: idx,
-		};
-	}, [songs, selectedSongId]);
+		if (idx >= 0) {
+			return {
+				selectedSong: songs[idx],
+				selectedIndex: idx,
+			};
+		}
+
+		if (fallbackSelectedSong?.track.id === selectedSongId) {
+			return {
+				selectedSong: fallbackSelectedSong,
+				selectedIndex: -1,
+			};
+		}
+
+		return { selectedSong: null, selectedIndex: -1 };
+	}, [fallbackSelectedSong, songs, selectedSongId]);
 
 	const hasNext = selectedIndex >= 0 && selectedIndex < songs.length - 1;
 	const hasPrevious = selectedIndex > 0;
+
+	useEffect(() => {
+		if (!selectedSlug) {
+			if (isClosingRef.current || selectedSongId === null) return;
+			setIsExpanded(false);
+			setSelectedSongId(null);
+			setStartRect(null);
+			setClosingToSongId(null);
+			return;
+		}
+
+		if (!routeSelectedSongId) {
+			if (!isSelectedSlugResolved || isClosingRef.current) return;
+			setIsExpanded(false);
+			setSelectedSongId(null);
+			setStartRect(null);
+			setClosingToSongId(null);
+			return;
+		}
+
+		if (routeSelectedSongId === selectedSongId) return;
+
+		setStartRect(null);
+		setClosingToSongId(null);
+		setSelectedSongId(routeSelectedSongId);
+		setIsExpanded(true);
+	}, [
+		isSelectedSlugResolved,
+		routeSelectedSongId,
+		selectedSlug,
+		selectedSongId,
+	]);
 
 	// Helper: Update URL via TanStack Router search params
 	const updateUrl = useCallback(
@@ -113,8 +182,8 @@ export function useSongExpansion(
 
 	// Trigger expansion animation
 	const handleExpand = useCallback(
-		(song: LikedSong, e: React.MouseEvent<HTMLElement>) => {
-			const itemRect = e.currentTarget.getBoundingClientRect();
+		(song: LikedSong, element: HTMLElement) => {
+			const itemRect = element.getBoundingClientRect();
 			const slug = generateSongSlug(song.track.artist, song.track.name);
 
 			// Set state and update URL
@@ -158,6 +227,7 @@ export function useSongExpansion(
 	// Trigger collapse animation and cleanup
 	const handleClose = useCallback(async () => {
 		const targetId = selectedSongId;
+		isClosingRef.current = true;
 		updateUrl(null);
 
 		// Use View Transitions API for smooth shared element animation
@@ -182,6 +252,7 @@ export function useSongExpansion(
 		setSelectedSongId(null);
 		setStartRect(null);
 		setClosingToSongId(null);
+		isClosingRef.current = false;
 	}, [selectedSongId, updateUrl]);
 
 	return {

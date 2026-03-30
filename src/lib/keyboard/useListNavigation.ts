@@ -268,13 +268,11 @@ export function useListNavigation<T>(
 			const element = getElementAtIndex(index);
 			if (!element) return;
 
-			requestAnimationFrame(() => {
-				isProgrammaticFocusRef.current = true;
-				element.focus({ preventScroll: true });
-				isProgrammaticFocusRef.current = false;
-				if (opts?.scroll === false) return;
-				scrollElementIntoView(element);
-			});
+			isProgrammaticFocusRef.current = true;
+			element.focus({ preventScroll: true });
+			isProgrammaticFocusRef.current = false;
+			if (opts?.scroll === false) return;
+			scrollElementIntoView(element);
 		},
 		[enabled, items.length, getElementAtIndex, scrollElementIntoView],
 	);
@@ -350,7 +348,7 @@ export function useListNavigation<T>(
 				"data-focused": isVisuallyFocused,
 				"data-nav-engaged": isEngaged,
 				onPointerDown: () => {
-					setIsEngaged(true);
+					setIsEngaged(false);
 					setFocusedIndex(index);
 				},
 				onFocus: () => {

@@ -42,17 +42,18 @@ export function FlagPlaylistsStep({
 	);
 	const [isSaving, setIsSaving] = useState(false);
 
-	const [rowCount, setRowCount] = useState(3);
+	const [rowCount, setRowCount] = useState(() =>
+		typeof window !== "undefined" &&
+		window.matchMedia("(max-height: 900px)").matches
+			? 2
+			: 3,
+	);
 
 	useEffect(() => {
 		const mediaQuery = window.matchMedia("(max-height: 900px)");
-
-		const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
+		const handleChange = (e: MediaQueryListEvent) => {
 			setRowCount(e.matches ? 2 : 3);
 		};
-
-		handleChange(mediaQuery);
-
 		mediaQuery.addEventListener("change", handleChange);
 		return () => mediaQuery.removeEventListener("change", handleChange);
 	}, []);
@@ -181,10 +182,9 @@ export function FlagPlaylistsStep({
 				<div ref={viewportRef} className="mt-8 flex-1 overflow-hidden">
 					<div ref={trackRef} className="flex h-full items-center">
 						<div
-							className="grid h-full auto-cols-[min(200px,40vw)] content-center gap-4 py-1 pl-[max(1.5rem,env(safe-area-inset-left))] md:pl-[max(3rem,env(safe-area-inset-left))]"
+							className="playlist-grid grid h-full auto-cols-[min(200px,40vw)] content-center gap-4 py-1 pl-[max(1.5rem,env(safe-area-inset-left))] md:pl-[max(3rem,env(safe-area-inset-left))]"
 							style={{
 								gridAutoFlow: "column",
-								gridTemplateRows: `repeat(${rowCount}, minmax(0, 1fr))`,
 							}}
 						>
 							{initialPlaylists.map((playlist, index) => {

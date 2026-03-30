@@ -22,6 +22,7 @@ import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
+import { generateSongSlug } from "@/lib/utils/slug";
 
 import { SongCard } from "./components/SongCard";
 import { SongDetailPanel } from "./components/SongDetailPanel";
@@ -29,6 +30,7 @@ import { useInfiniteScroll } from "./hooks/useInfiniteScroll";
 import { useSongExpansion } from "./hooks/useSongExpansion";
 import {
 	type FilterOption,
+	likedSongBySlugQueryOptions,
 	likedSongsInfiniteQueryOptions,
 	likedSongsStatsQueryOptions,
 } from "./queries";
@@ -45,6 +47,29 @@ interface LikedSongsPageProps {
 	isDarkMode?: boolean;
 	/** Account ID for query cache isolation */
 	accountId: string;
+}
+
+type SelectionSource = "keyboard" | "panel-nav" | "pointer" | "url";
+
+interface SelectionSyncRequest {
+	songId: string;
+	source: SelectionSource;
+}
+
+function findSongForSlug(
+	songs: LikedSong[],
+	slug: string | null | undefined,
+): LikedSong | null {
+	if (!slug) {
+		return null;
+	}
+
+	return (
+		songs.find(
+			(candidate) =>
+				generateSongSlug(candidate.track.artist, candidate.track.name) === slug,
+		) ?? null
+	);
 }
 
 export function LikedSongsPage({
@@ -77,6 +102,26 @@ export function LikedSongsPage({
 
 	const displayedSongs = songs;
 	const hasMore = hasNextPage ?? false;
+	const selectedSongFromLoadedPages = useMemo(
+		() => findSongForSlug(displayedSongs, selectedSlug),
+		[displayedSongs, selectedSlug],
+	);
+	const shouldFetchSelectedSongBySlug =
+		selectedSlug != null && selectedSongFromLoadedPages === null;
+	const {
+		data: selectedSongFromSlugLookup,
+		isPending: isSelectedSongSlugLookupPending,
+	} = useQuery({
+		...likedSongBySlugQueryOptions(accountId, selectedSlug),
+		enabled: shouldFetchSelectedSongBySlug,
+	});
+	const selectedSongFromUrl =
+		selectedSongFromLoadedPages ?? selectedSongFromSlugLookup ?? null;
+	const isSelectedSlugResolved =
+		selectedSlug == null ||
+		selectedSongFromLoadedPages !== null ||
+		!shouldFetchSelectedSongBySlug ||
+		!isSelectedSongSlugLookupPending;
 
 	const handleLoadMore = useCallback(() => {
 		if (!isFetchingNextPage && hasNextPage) {
@@ -105,10 +150,27 @@ export function LikedSongsPage({
 		handleClose,
 		closingToSongId,
 	} = useSongExpansion(displayedSongs, {
-		initialSlug: selectedSlug,
+		selectedSlug,
+		fallbackSelectedSong: selectedSongFromUrl,
+		isSelectedSlugResolved,
 	});
 
 	const artistImageUrl = selectedSong?.track.artist_image_url ?? undefined;
+	const lastSelectionElementRef = useRef<HTMLElement | null>(null);
+	const pendingSelectionSyncRef = useRef<SelectionSyncRequest | null>(
+		selectedSongId ? { songId: selectedSongId, source: "url" } : null,
+	);
+	const pendingScrollRef = useRef<SelectionSource | null>(null);
+	const selectedSongIdFromUrl = selectedSongFromUrl?.track.id ?? null;
+	const prevUrlSelectedSongIdRef = useRef<string | null>(selectedSongIdFromUrl);
+
+	const requestSelectionSync = useCallback(
+		(request: SelectionSyncRequest, element?: HTMLElement | null) => {
+			pendingSelectionSyncRef.current = request;
+			lastSelectionElementRef.current = element ?? null;
+		},
+		[],
+	);
 
 	const { data: stats } = useQuery({
 		...likedSongsStatsQueryOptions(accountId),
@@ -128,9 +190,11 @@ export function LikedSongsPage({
 		enabled: !isExpanded && displayedSongs.length > 0,
 		onSelect: (song, _index, element) => {
 			if (element) {
-				handleExpand(song, {
-					currentTarget: element,
-				} as React.MouseEvent<HTMLElement>);
+				requestSelectionSync(
+					{ songId: song.track.id, source: "keyboard" },
+					element,
+				);
+				handleExpand(song, element);
 			}
 		},
 		getId: (song) => song.track.id,
@@ -147,9 +211,11 @@ export function LikedSongsPage({
 				const song = displayedSongs[focusedIndex];
 				const element = getFocusedElement();
 				if (element) {
-					handleExpand(song, {
-						currentTarget: element,
-					} as React.MouseEvent<HTMLElement>);
+					requestSelectionSync(
+						{ songId: song.track.id, source: "keyboard" },
+						element,
+					);
+					handleExpand(song, element);
 				}
 			}
 		},
@@ -159,21 +225,64 @@ export function LikedSongsPage({
 		enabled: !isExpanded && focusedIndex >= 0,
 	});
 
-	// Sync focus with selected song - keeps list focus indicator aligned with panel
-	// This runs when:
-	// - Panel opens (focus moves to clicked song)
-	// - j/k navigation in panel (focus follows to new song)
-	// - Panel closes (focus stays on last viewed song)
+	useEffect(() => {
+		const prev = prevUrlSelectedSongIdRef.current;
+		prevUrlSelectedSongIdRef.current = selectedSongIdFromUrl;
+
+		if (!selectedSongIdFromUrl || selectedSongIdFromUrl === prev) return;
+		if (pendingSelectionSyncRef.current !== null) return;
+
+		requestSelectionSync({ songId: selectedSongIdFromUrl, source: "url" });
+	}, [requestSelectionSync, selectedSongIdFromUrl]);
+
+	// Phase 1: Update focusedIndex WITHOUT scrolling.
+	// The scroll is deferred to phase 2 so it happens after React has committed
+	// the new focus indicator to the DOM. This prevents the "scroll first,
+	// indicator catches up later" visual split.
 	useIsomorphicLayoutEffect(() => {
-		if (selectedSongId) {
-			const index = displayedSongs.findIndex(
-				(s) => s.track.id === selectedSongId,
-			);
-			if (index >= 0) {
-				syncFocusedIndex(index, { focus: false, scroll: true });
-			}
+		if (!selectedSongId) return;
+
+		const pendingSelectionSync = pendingSelectionSyncRef.current;
+		if (
+			!pendingSelectionSync ||
+			pendingSelectionSync.songId !== selectedSongId
+		) {
+			return;
 		}
+
+		const index = displayedSongs.findIndex(
+			(s) => s.track.id === selectedSongId,
+		);
+		if (index < 0) return;
+
+		syncFocusedIndex(index, { focus: false, scroll: false });
+		pendingScrollRef.current = pendingSelectionSync.source;
+		pendingSelectionSyncRef.current = null;
 	}, [selectedSongId, displayedSongs, syncFocusedIndex]);
+
+	// Phase 2: Scroll AFTER focusedIndex has been committed to the DOM.
+	// React flushes the setFocusedIndex from phase 1 synchronously (layout effect),
+	// so this runs in the same frame but after the indicator has moved.
+	useIsomorphicLayoutEffect(() => {
+		const source = pendingScrollRef.current;
+		if (!source) return;
+		pendingScrollRef.current = null;
+
+		if (source === "pointer") {
+			lastSelectionElementRef.current?.scrollIntoView({
+				behavior: "auto",
+				block: "nearest",
+				inline: "nearest",
+			});
+		} else {
+			const element = getFocusedElement();
+			element?.scrollIntoView({
+				behavior: "auto",
+				block: "center",
+				inline: "nearest",
+			});
+		}
+	}, [focusedIndex, getFocusedElement]);
 
 	// After the panel fully closes (selectedSongId cleared), restore focus to the current cursor item
 	// and engage list navigation visuals (no native outline flicker).
@@ -185,6 +294,44 @@ export function LikedSongsPage({
 			focusFocusedItem({ engage: true });
 		}
 	}, [selectedSongId, focusFocusedItem]);
+
+	const handlePointerExpand = useCallback(
+		(song: LikedSong, element: HTMLElement) => {
+			requestSelectionSync(
+				{ songId: song.track.id, source: "pointer" },
+				element,
+			);
+			handleExpand(song, element);
+		},
+		[handleExpand, requestSelectionSync],
+	);
+
+	const handleNextSong = useCallback(() => {
+		const selectedIndex = displayedSongs.findIndex(
+			(song) => song.track.id === selectedSongId,
+		);
+		const nextSong =
+			selectedIndex >= 0 ? displayedSongs[selectedIndex + 1] : undefined;
+		if (!nextSong) return;
+
+		requestSelectionSync({ songId: nextSong.track.id, source: "panel-nav" });
+		handleNext();
+	}, [displayedSongs, handleNext, requestSelectionSync, selectedSongId]);
+
+	const handlePreviousSong = useCallback(() => {
+		const selectedIndex = displayedSongs.findIndex(
+			(song) => song.track.id === selectedSongId,
+		);
+		const previousSong =
+			selectedIndex > 0 ? displayedSongs[selectedIndex - 1] : undefined;
+		if (!previousSong) return;
+
+		requestSelectionSync({
+			songId: previousSong.track.id,
+			source: "panel-nav",
+		});
+		handlePrevious();
+	}, [displayedSongs, handlePrevious, requestSelectionSync, selectedSongId]);
 
 	return (
 		<div ref={containerRef} className="relative min-h-[600px] max-w-5xl">
@@ -284,7 +431,7 @@ export function LikedSongsPage({
 									onPointerDown={itemProps.onPointerDown}
 									onFocus={itemProps.onFocus}
 									onBlur={itemProps.onBlur}
-									onClick={(e) => handleExpand(song, e)}
+									onClick={(e) => handlePointerExpand(song, e.currentTarget)}
 									isAnimatingTo={closingToSongId === song.track.id}
 								/>
 							);
@@ -319,8 +466,8 @@ export function LikedSongsPage({
 					hasNext={hasNext}
 					hasPrevious={hasPrevious}
 					onClose={handleClose}
-					onNext={handleNext}
-					onPrevious={handlePrevious}
+					onNext={handleNextSong}
+					onPrevious={handlePreviousSong}
 					isDark={isDarkMode}
 					isEnrichmentRunning={isEnrichmentRunning}
 				/>
