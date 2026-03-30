@@ -69,6 +69,9 @@ export function useActiveJobCompletionEffects(
 
 		if (prev.enrichment && !data.enrichment) {
 			queryClient.invalidateQueries({
+				queryKey: dashboardKeys.pageData(accountId),
+			});
+			queryClient.invalidateQueries({
 				queryKey: dashboardKeys.stats(accountId),
 			});
 			queryClient.invalidateQueries({
@@ -83,6 +86,9 @@ export function useActiveJobCompletionEffects(
 		}
 
 		if (prev.matchSnapshotRefresh && !data.matchSnapshotRefresh) {
+			queryClient.invalidateQueries({
+				queryKey: dashboardKeys.pageData(accountId),
+			});
 			queryClient.invalidateQueries({
 				queryKey: dashboardKeys.matchPreviews(accountId),
 			});

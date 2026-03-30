@@ -168,6 +168,7 @@ describe("acknowledgePlaylistUpdate", () => {
 describe("acknowledgePlaylistDelete", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockAuthContext.session = { accountId: "acct-1" };
 	});
 
 	it("looks up and deletes the playlist row", async () => {
@@ -206,7 +207,6 @@ describe("acknowledgePlaylistDelete", () => {
 			"acct-other",
 			"abc123",
 		);
-		mockAuthContext.session = { accountId: "acct-1" };
 	});
 
 	it("throws when lookup fails", async () => {
