@@ -109,7 +109,7 @@
 					"mood_description": "A potent mix of determined self-talk and an irresistible beat. It feels like dancing through a breakup, armed with unwavering resolve."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:07:28.587888+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -223,7 +223,7 @@
 					"mood_description": "A shimmering invitation to the dancefloor, laced with the thrill of a chase. The pulsing bass pulls you in, but a playful detachment keeps you guessing."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:08:06.55859+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -341,7 +341,7 @@
 					"mood_description": "It feels like a headrush, a high-octane blend of pop energy and R&B swagger. There's a thrill of impending chaos, like speeding down a hill knowing a crash is coming."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:07:54.794482+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -459,7 +459,7 @@
 					"mood_description": "An undeniable magnetic pull, wrapped in a pulsing beat that feels like an instant connection. The air vibrates with electric possibilities, inviting you to get lost in the moment."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:08:06.099962+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -568,7 +568,7 @@
 					"mood_description": "The thrumming beat lifts your spirit, but a firm voice cuts through the glitter, making you feel the exhilarating truth of knowing what you deserve."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:08:01.077564+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -678,7 +678,7 @@
 					"mood_description": "A bright, pulsing groove sweeps you onto the dancefloor, even as every word pushes away a lingering ghost. It feels like celebrating freedom under disco lights."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:07:55.491641+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -781,7 +781,7 @@
 					"mood_description": "A familiar melody plays, but underneath the vibrant beat, a quiet regret pulses. It feels like dancing alone in a crowded room, lost in thoughts of what used to be."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:08:48.705017+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -826,7 +826,7 @@
 					"mood_description": "A steady pulse takes over your rhythm, urging your body to move. But beneath the insistent beat, a quiet ache of longing threads through the sound, giving every step a deeper meaning."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:08:36.502303+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -929,7 +929,7 @@
 					"mood_description": "A cool, almost indifferent front barely masks a swirling internal confusion. It's walking away from something important, but not knowing why it hurts so much."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:08:47.618158+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -974,7 +974,7 @@
 					"mood_description": "A current of pure electric energy courses through you, pulling you forward with a grin. Every beat feels like a jolt of pure excitement."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:08:35.334047+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -1092,7 +1092,7 @@
 					"mood_description": "A driving beat and crisp guitars carry a feeling of observing a messy world from a slight distance. There's a nervous energy pushing forward, even as disillusionment settles in."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:08:41.839125+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -1210,7 +1210,7 @@
 					"mood_description": "A smooth groove washes over, pulling you into a playful game of seduction. The air thrums with confident energy, promising an intimate connection."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:09:10.562936+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -1319,7 +1319,7 @@
 					"mood_description": "A warm, pulsing groove invites you into a private space where desires intertwine and boundaries gently blur. It feels like a late-night confession, both intimate and thrillingly new."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:09:09.13358+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -1437,7 +1437,7 @@
 					"mood_description": "Pure, unadulterated excitement bubbles up with a funky swagger. The rhythm takes over, making it impossible to stand still as a crush becomes an obsession."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:08:59.077651+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -1555,7 +1555,7 @@
 					"mood_description": "A gentle, head-nodding rhythm carries a deep, earnest request. It feels like a late-night conversation, heavy with longing but still holding onto hope."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:09:00.706557+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -1669,7 +1669,7 @@
 					"mood_description": "A smooth, mid-tempo groove carries a heavy heart. It feels like leaning in close, hearing someone's unspoken pain over a rhythm that wants to move, but the movement is slow and careful."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:08:58.974599+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -1779,7 +1779,7 @@
 					"mood_description": "A steady rhythm underpins a heartfelt declaration, carrying you into a space of unwavering loyalty. There's a joyful confidence in finding exactly where you belong."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:09:55.415087+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -1893,7 +1893,7 @@
 					"mood_description": "The beat bounces with an almost desperate optimism, a bright energy trying to outrun the sting of rejection. There’s a relentless, almost pleading quality to the desire that won't give up."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:09:59.391384+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -2011,7 +2011,7 @@
 					"mood_description": "A smooth, soulful rhythm pulls you into a familiar R&B sway, but a heavy heart anchors every word. It's a dance with regret, where the body moves but the spirit aches for what's gone."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:10:12.343744+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -2129,7 +2129,7 @@
 					"mood_description": "Smooth, confident R&B flows, wrapped in a sincere plea for a chance to heal. It feels like a warm hand reaching out, offering solace and strength."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:10:06.807259+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -2243,7 +2243,7 @@
 					"mood_description": "A propulsive beat pushes relentlessly forward, but beneath the confident swagger, there\n\t\tis a surprising ache, a hollowness that keeps the party from ever truly lifting."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:10:04.501066+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -2361,7 +2361,7 @@
 					"mood_description": "A shadowed intensity pulses through the beat, carrying the weight of past regrets and the anxious energy of facing down present threats."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:10:24.160963+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -2479,7 +2479,7 @@
 					"mood_description": "A low-slung, confident groove that feels like late-night thoughts after the club. There's a magnetic pull to the rhythm, but a quiet sadness hums beneath the surface, a hint of something unresolved."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:10:28.836949+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -2597,7 +2597,7 @@
 					"mood_description": "A restless heartache keeps swirling, trying to make sense of what's lost while a persistent beat pulls forward. It’s a melancholic groove that keeps you moving, even as the words dig into a deep wound."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:10:36.533358+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
@@ -2715,7 +2715,7 @@
 					"mood_description": "A smooth, pulsing groove wraps around a heart-on-sleeve declaration. It's the feeling of total infatuation, wanting to shout it from the rooftops while swaying close."
 				},
 				"model_name": "google:gemini-2.5-flash",
-				"version": "2",
+				"version": 2,
 				"created_at": "2026-03-28T08:10:26.598351+00:00"
 			},
 			"uiAnalysisStatus": "analyzed"
