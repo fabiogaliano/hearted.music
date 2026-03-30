@@ -1,9 +1,16 @@
-import type { StageProgress } from "@/lib/platform/jobs/progress/base";
 import {
 	createPendingEnrichmentStages,
 	type EnrichmentChunkProgress,
+	type EnrichmentStageProgressMap,
 } from "@/lib/platform/jobs/progress/enrichment";
 import type { EnrichmentStageName } from "./types";
+
+export type InitializedEnrichmentChunkProgress = Omit<
+	EnrichmentChunkProgress,
+	"stages"
+> & {
+	stages: Required<EnrichmentStageProgressMap>;
+};
 
 export const ALL_STAGE_NAMES: EnrichmentStageName[] = [
 	"audio_features",
@@ -22,8 +29,8 @@ export function makeInitialProgress(
 	batchSize: number,
 	batchSequence: number,
 	totalSongs: number,
-): EnrichmentChunkProgress {
-	const stages: Record<string, StageProgress> = createPendingEnrichmentStages();
+): InitializedEnrichmentChunkProgress {
+	const stages = createPendingEnrichmentStages();
 
 	return {
 		total: totalSongs * ALL_STAGE_NAMES.length,
