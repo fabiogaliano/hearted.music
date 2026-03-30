@@ -13,30 +13,32 @@
  */
 
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { generateSongSlug } from "@/lib/utils/slug";
 
 import type { LikedSong } from "../types";
 
-// Helper: Check if View Transitions API is supported
 const supportsViewTransitions =
 	typeof document !== "undefined" && "startViewTransition" in document;
 
-// Helper: Run callback with View Transition if supported
-// Returns a promise that resolves when the transition animation completes
+interface ViewTransitionDocument {
+	startViewTransition: (callback: () => void) => { finished: Promise<void> };
+}
+
 function withViewTransition(callback: () => void): Promise<void> {
 	if (supportsViewTransitions) {
-		const transition = (document as any).startViewTransition(() => {
+		const transition = (
+			document as unknown as ViewTransitionDocument
+		).startViewTransition(() => {
 			flushSync(callback);
 		});
-		// Return the finished promise - resolves when animation completes
 		return transition.finished;
-	} else {
-		callback();
-		return Promise.resolve();
 	}
+
+	callback();
+	return Promise.resolve();
 }
 
 interface StartRect {
@@ -51,19 +53,35 @@ interface UseSongExpansionOptions {
 	initialSlug?: string | null;
 }
 
+function findSongIdForSlug(
+	songs: LikedSong[],
+	slug: string | null | undefined,
+): string | null {
+	if (!slug) return null;
+
+	const song = songs.find(
+		(candidate) =>
+			generateSongSlug(candidate.track.artist, candidate.track.name) === slug,
+	);
+
+	return song?.track.id ?? null;
+}
+
 export function useSongExpansion(
 	songs: LikedSong[],
 	options: UseSongExpansionOptions = {},
 ) {
 	const { initialSlug } = options;
 	const navigate = useNavigate();
-	const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
-	const [isExpanded, setIsExpanded] = useState(false);
+	const initialSelectedSongId = findSongIdForSlug(songs, initialSlug);
+	const [selectedSongId, setSelectedSongId] = useState<string | null>(
+		initialSelectedSongId,
+	);
+	const [isExpanded, setIsExpanded] = useState(initialSelectedSongId !== null);
 	const [startRect, setStartRect] = useState<StartRect | null>(null);
 	// Track the song ID we're animating back to during close (for view transitions)
 	const [closingToSongId, setClosingToSongId] = useState<string | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
-	const isInitialized = useRef(false);
 
 	// Derive selected song + index in a single pass
 	const { selectedSong, selectedIndex } = useMemo(() => {
@@ -92,32 +110,6 @@ export function useSongExpansion(
 		},
 		[navigate],
 	);
-
-	// Handle initial slug from URL (deep linking on page load)
-	useEffect(() => {
-		if (isInitialized.current || songs.length === 0) return;
-		isInitialized.current = true;
-
-		if (initialSlug) {
-			const song = songs.find(
-				(s) => generateSongSlug(s.track.artist, s.track.name) === initialSlug,
-			);
-			if (song) {
-				setSelectedSongId(song.track.id);
-				// Set default rect for deep-linked expansion (center of viewport)
-				setStartRect({
-					top: window.innerHeight / 2,
-					left: window.innerWidth / 2,
-					width: 0,
-					height: 0,
-				});
-				// Delay expansion slightly to allow layout
-				requestAnimationFrame(() => {
-					setIsExpanded(true);
-				});
-			}
-		}
-	}, [initialSlug, songs]);
 
 	// Trigger expansion animation
 	const handleExpand = useCallback(

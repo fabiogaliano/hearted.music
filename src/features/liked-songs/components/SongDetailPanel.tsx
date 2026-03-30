@@ -41,7 +41,7 @@ export interface SongDetailPanelProps {
 	albumArtUrl?: string;
 	artistImageUrl?: string;
 	isExpanded: boolean;
-	/** Starting rect for FLIP animation origin (null = no animation) */
+	/** Starting rect for FLIP animation origin (null = render without enter animation) */
 	startRect: {
 		top: number;
 		left: number;
@@ -65,7 +65,7 @@ export function SongDetailPanel({
 	albumArtUrl,
 	artistImageUrl,
 	isExpanded,
-	startRect,
+	startRect: _startRect,
 	onClose,
 	onNext,
 	onPrevious,
@@ -208,8 +208,6 @@ export function SongDetailPanel({
 		sonicTextureText: analysis?.sonic_texture,
 		heroHeight,
 	});
-
-	if (!startRect) return null;
 
 	const vignetteGradient = isDark
 		? `radial-gradient(ellipse at center, transparent 20%, ${darkPalette!.bgVignette} 100%),
