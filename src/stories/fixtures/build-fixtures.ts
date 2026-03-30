@@ -100,10 +100,12 @@ const matchingSongs = matchResultsRaw
 const account = accountRaw[0];
 const dashboardStats = {
 	totalSongs: likedSongs.length,
-	analyzedPercent: Math.round(
-		(likedSongs.filter((s: any) => s.analysis).length / likedSongs.length) *
-			100,
-	),
+	analyzedPercent: likedSongs.length
+		? Math.round(
+				(likedSongs.filter((s: any) => s.analysis).length / likedSongs.length) *
+					100,
+			)
+		: 0,
 	matchedCount: matchResultsRaw.length,
 	playlistCount: playlistsRaw.length,
 	reviewCount: Math.min(5, matchResultsRaw.length),

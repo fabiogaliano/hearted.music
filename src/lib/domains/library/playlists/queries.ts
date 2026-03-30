@@ -209,11 +209,27 @@ export function updatePlaylistMetadata(
 	spotifyId: string,
 	metadata: { name?: string; description?: string },
 ): Promise<Result<Playlist, DbError>> {
+	const fields: Record<string, string> = {};
+	if (metadata.name !== undefined) fields.name = metadata.name;
+	if (metadata.description !== undefined)
+		fields.description = metadata.description;
+
+	if (Object.keys(fields).length === 0) {
+		return Promise.resolve(
+			Result.err(
+				new DatabaseError({
+					code: "EMPTY_UPDATE",
+					message: "No fields to update",
+				}),
+			),
+		);
+	}
+
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
 		supabase
 			.from("playlist")
-			.update(metadata)
+			.update(fields)
 			.eq("account_id", accountId)
 			.eq("spotify_id", spotifyId)
 			.select()

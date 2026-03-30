@@ -6,6 +6,7 @@ import {
 	upsertPlaylists,
 	getPlaylists,
 	getTargetPlaylists,
+	getPlaylistById,
 	getPlaylistBySpotifyId,
 	getPlaylistSongs,
 	deletePlaylist,
@@ -66,7 +67,16 @@ const PlaylistTracksSchema = z.object({
 export const getPlaylistTrackPreview = createServerFn({ method: "GET" })
 	.inputValidator((data) => PlaylistTracksSchema.parse(data))
 	.handler(async ({ data }): Promise<PlaylistTrackPreview[]> => {
-		await requireAuthSession();
+		const { session } = await requireAuthSession();
+
+		const playlistResult = await getPlaylistById(data.playlistId);
+		if (
+			Result.isError(playlistResult) ||
+			!playlistResult.value ||
+			playlistResult.value.account_id !== session.accountId
+		) {
+			return [];
+		}
 
 		const songsResult = await getPlaylistSongs(data.playlistId);
 		if (Result.isError(songsResult) || songsResult.value.length === 0) {
@@ -111,7 +121,16 @@ const SetTargetSchema = z.object({
 export const setPlaylistTargetMutation = createServerFn({ method: "POST" })
 	.inputValidator((data) => SetTargetSchema.parse(data))
 	.handler(async ({ data }) => {
-		await requireAuthSession();
+		const { session } = await requireAuthSession();
+
+		const playlistResult = await getPlaylistById(data.playlistId);
+		if (
+			Result.isError(playlistResult) ||
+			!playlistResult.value ||
+			playlistResult.value.account_id !== session.accountId
+		) {
+			throw new Error("Playlist not found");
+		}
 
 		const result = await setPlaylistTarget(data.playlistId, data.isTarget);
 

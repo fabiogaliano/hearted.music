@@ -61,11 +61,7 @@ async function runEnrichmentJob(
 			console.error(
 				`[runner] mark-completed-failed job=${job.id}: ${completedResult.error.message}`,
 			);
-			return {
-				status: "failed",
-				workflow: "enrichment",
-				error: completedResult.error.message,
-			};
+			throw new Error(completedResult.error.message);
 		}
 
 		const requestSatisfied = !result.hasMoreSongs;
@@ -133,11 +129,7 @@ async function runMatchSnapshotRefreshJob(
 			console.error(
 				`[runner] mark-completed-failed job=${job.id}: ${completedResult.error.message}`,
 			);
-			return {
-				status: "failed",
-				workflow: "match_snapshot_refresh",
-				error: completedResult.error.message,
-			};
+			throw new Error(completedResult.error.message);
 		}
 
 		await writeMeasurement(
