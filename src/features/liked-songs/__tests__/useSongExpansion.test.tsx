@@ -41,13 +41,19 @@ function createSong(overrides?: Partial<LikedSong["track"]>): LikedSong {
 
 function HookHarness({
 	songs,
-	initialSlug,
+	selectedSlug,
+	fallbackSelectedSong,
+	isSelectedSlugResolved,
 }: {
 	songs: LikedSong[];
-	initialSlug?: string | null;
+	selectedSlug?: string | null;
+	fallbackSelectedSong?: LikedSong | null;
+	isSelectedSlugResolved?: boolean;
 }) {
 	const { selectedSongId, selectedSong, isExpanded } = useSongExpansion(songs, {
-		initialSlug,
+		selectedSlug,
+		fallbackSelectedSong,
+		isSelectedSlugResolved,
 	});
 
 	return (
@@ -62,6 +68,7 @@ function HookHarness({
 }
 
 afterEach(() => {
+	navigateMock.mockReset();
 	cleanup();
 });
 
@@ -70,7 +77,7 @@ describe("useSongExpansion", () => {
 		const song = createSong();
 		const slug = generateSongSlug(song.track.artist, song.track.name);
 
-		render(<HookHarness songs={[song]} initialSlug={slug} />);
+		render(<HookHarness songs={[song]} selectedSlug={slug} />);
 
 		expect(screen.getByTestId("selected-song-id")).toHaveTextContent(
 			song.track.id,
@@ -81,10 +88,101 @@ describe("useSongExpansion", () => {
 		expect(screen.getByTestId("is-expanded")).toHaveTextContent("true");
 	});
 
-	it("stays closed when the deep-linked slug does not match a song", () => {
-		const song = createSong();
+	it("opens the deep-linked song from direct lookup when it is not in loaded pages", () => {
+		const song = createSong({
+			id: "song-2",
+			spotify_track_id: "spotify-song-2",
+			artist: "A L E X",
+			name: "Proud of You",
+		});
+		const slug = generateSongSlug(song.track.artist, song.track.name);
 
-		render(<HookHarness songs={[song]} initialSlug="unknown-song" />);
+		render(
+			<HookHarness
+				songs={[]}
+				selectedSlug={slug}
+				fallbackSelectedSong={song}
+				isSelectedSlugResolved
+			/>,
+		);
+
+		expect(screen.getByTestId("selected-song-id")).toHaveTextContent(
+			song.track.id,
+		);
+		expect(screen.getByTestId("selected-song-name")).toHaveTextContent(
+			song.track.name,
+		);
+		expect(screen.getByTestId("is-expanded")).toHaveTextContent("true");
+	});
+
+	it("stays closed when the deep-linked slug resolves to no song", () => {
+		render(
+			<HookHarness
+				songs={[]}
+				selectedSlug="unknown-song"
+				isSelectedSlugResolved
+			/>,
+		);
+
+		expect(screen.getByTestId("selected-song-id")).toHaveTextContent("none");
+		expect(screen.getByTestId("is-expanded")).toHaveTextContent("false");
+	});
+
+	it("opens the deep-linked song after songs load", () => {
+		const song = createSong();
+		const slug = generateSongSlug(song.track.artist, song.track.name);
+		const { rerender } = render(<HookHarness songs={[]} selectedSlug={slug} />);
+
+		expect(screen.getByTestId("selected-song-id")).toHaveTextContent("none");
+		expect(screen.getByTestId("is-expanded")).toHaveTextContent("false");
+
+		rerender(<HookHarness songs={[song]} selectedSlug={slug} />);
+
+		expect(screen.getByTestId("selected-song-id")).toHaveTextContent(
+			song.track.id,
+		);
+		expect(screen.getByTestId("is-expanded")).toHaveTextContent("true");
+	});
+
+	it("updates selection when the URL song changes", () => {
+		const firstSong = createSong();
+		const secondSong = createSong({
+			id: "song-2",
+			spotify_track_id: "spotify-song-2",
+			name: "Supercut",
+		});
+		const firstSlug = generateSongSlug(
+			firstSong.track.artist,
+			firstSong.track.name,
+		);
+		const secondSlug = generateSongSlug(
+			secondSong.track.artist,
+			secondSong.track.name,
+		);
+		const { rerender } = render(
+			<HookHarness songs={[firstSong, secondSong]} selectedSlug={firstSlug} />,
+		);
+
+		rerender(
+			<HookHarness songs={[firstSong, secondSong]} selectedSlug={secondSlug} />,
+		);
+
+		expect(screen.getByTestId("selected-song-id")).toHaveTextContent(
+			secondSong.track.id,
+		);
+		expect(screen.getByTestId("selected-song-name")).toHaveTextContent(
+			secondSong.track.name,
+		);
+	});
+
+	it("closes when the URL song is removed", () => {
+		const song = createSong();
+		const slug = generateSongSlug(song.track.artist, song.track.name);
+		const { rerender } = render(
+			<HookHarness songs={[song]} selectedSlug={slug} />,
+		);
+
+		rerender(<HookHarness songs={[song]} selectedSlug={null} />);
 
 		expect(screen.getByTestId("selected-song-id")).toHaveTextContent("none");
 		expect(screen.getByTestId("is-expanded")).toHaveTextContent("false");

@@ -1,6 +1,7 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 
 import {
+	getLikedSongBySlug,
 	getLikedSongsPage,
 	getLikedSongsStats,
 } from "@/lib/server/liked-songs.functions";
@@ -14,6 +15,8 @@ export const PAGE_SIZE = 15;
 export const likedSongsKeys = {
 	all: ["liked-songs"] as const,
 	stats: (accountId: string) => ["liked-songs", "stats", accountId] as const,
+	bySlug: (accountId: string, slug: string) =>
+		[...likedSongsKeys.all, "by-slug", accountId, slug] as const,
 	infinite: (filter: FilterOption) =>
 		[...likedSongsKeys.all, "infinite", { filter }] as const,
 	page: (filter: FilterOption, cursor?: string) =>
@@ -35,6 +38,24 @@ export function songSuggestionsQueryOptions(songId: string | null) {
 		queryKey: likedSongsKeys.songSuggestions(songId ?? ""),
 		queryFn: () => getSongSuggestions({ data: { songId: songId! } }),
 		enabled: songId != null,
+		staleTime: 60_000,
+	});
+}
+
+export function likedSongBySlugQueryOptions(
+	accountId: string,
+	slug: string | null | undefined,
+) {
+	return queryOptions({
+		queryKey: likedSongsKeys.bySlug(accountId, slug ?? ""),
+		queryFn: () => {
+			if (!slug) {
+				return Promise.resolve(null);
+			}
+
+			return getLikedSongBySlug({ data: { slug } });
+		},
+		enabled: slug != null,
 		staleTime: 60_000,
 	});
 }

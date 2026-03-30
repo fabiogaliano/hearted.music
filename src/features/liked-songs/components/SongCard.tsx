@@ -67,7 +67,6 @@ export function SongCard({
 							? `3px solid ${theme.primary}`
 							: "3px solid transparent",
 					marginLeft: "-3px",
-					transition: "background 200ms ease",
 				} as React.CSSProperties
 			}
 		>

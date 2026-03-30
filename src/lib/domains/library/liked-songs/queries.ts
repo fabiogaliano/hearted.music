@@ -13,6 +13,7 @@ import {
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Database, Tables, TablesInsert } from "@/lib/data/database.types";
+import { generateSongSlug } from "@/lib/utils/slug";
 
 /** Liked song row type */
 export type LikedSong = Tables<"liked_song">;
@@ -54,6 +55,8 @@ export type LikedSongFilter =
 	| "acted"
 	| "no_suggestions"
 	| "analyzed";
+
+const SLUG_LOOKUP_PAGE_SIZE = 100;
 
 /**
  * Gets all liked songs for an account.
@@ -174,6 +177,47 @@ export async function getPageWithDetails(
 	const nextCursor = hasMore ? items[items.length - 1].liked_at : null;
 
 	return Result.ok({ items, nextCursor });
+}
+
+/**
+ * Finds a liked song row by its deep-link slug.
+ * Reuses the paginated RPC so the lookup returns the exact same row shape as the list.
+ */
+export async function getPageRowBySlug(
+	accountId: string,
+	slug: string,
+): Promise<Result<LikedSongPageRow | null, DbError>> {
+	let cursor: string | undefined;
+
+	for (;;) {
+		const pageResult = await getPageWithDetails(accountId, {
+			cursor,
+			filter: "all",
+			limit: SLUG_LOOKUP_PAGE_SIZE,
+		});
+
+		if (Result.isError(pageResult)) {
+			return Result.err(pageResult.error);
+		}
+
+		const matchingRow = pageResult.value.items.find(
+			(row) =>
+				generateSongSlug(
+					row.song_artists[0] ?? "Unknown Artist",
+					row.song_name,
+				) === slug,
+		);
+
+		if (matchingRow) {
+			return Result.ok(matchingRow);
+		}
+
+		if (pageResult.value.nextCursor === null) {
+			return Result.ok(null);
+		}
+
+		cursor = pageResult.value.nextCursor;
+	}
 }
 
 /**
