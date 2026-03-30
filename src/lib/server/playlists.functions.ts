@@ -1,7 +1,7 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
-import { requireAuthSession } from "@/lib/platform/auth/auth.server";
+import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import {
 	upsertPlaylists,
 	getPlaylists,
@@ -29,27 +29,29 @@ function parsePlaylistSpotifyId(uri: string): string | null {
 
 export const getPlaylistManagementData = createServerFn({
 	method: "GET",
-}).handler(async () => {
-	const { session } = await requireAuthSession();
+})
+	.middleware([authMiddleware])
+	.handler(async ({ context }) => {
+		const { session } = context;
 
-	const [allResult, targetResult] = await Promise.all([
-		getPlaylists(session.accountId),
-		getTargetPlaylists(session.accountId),
-	]);
+		const [allResult, targetResult] = await Promise.all([
+			getPlaylists(session.accountId),
+			getTargetPlaylists(session.accountId),
+		]);
 
-	if (Result.isError(allResult)) {
-		throw new Error(`Failed to load playlists: ${allResult.error.message}`);
-	}
+		if (Result.isError(allResult)) {
+			throw new Error(`Failed to load playlists: ${allResult.error.message}`);
+		}
 
-	const targetIds = new Set(
-		Result.isOk(targetResult) ? targetResult.value.map((p) => p.id) : [],
-	);
+		const targetIds = new Set(
+			Result.isOk(targetResult) ? targetResult.value.map((p) => p.id) : [],
+		);
 
-	return {
-		playlists: allResult.value,
-		targetPlaylistIds: [...targetIds],
-	};
-});
+		return {
+			playlists: allResult.value,
+			targetPlaylistIds: [...targetIds],
+		};
+	});
 
 export interface PlaylistTrackPreview {
 	position: number;
@@ -65,9 +67,10 @@ const PlaylistTracksSchema = z.object({
 });
 
 export const getPlaylistTrackPreview = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
 	.inputValidator((data) => PlaylistTracksSchema.parse(data))
-	.handler(async ({ data }): Promise<PlaylistTrackPreview[]> => {
-		const { session } = await requireAuthSession();
+	.handler(async ({ data, context }): Promise<PlaylistTrackPreview[]> => {
+		const { session } = context;
 
 		const playlistResult = await getPlaylistById(data.playlistId);
 		if (
@@ -119,9 +122,10 @@ const SetTargetSchema = z.object({
 });
 
 export const setPlaylistTargetMutation = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
 	.inputValidator((data) => SetTargetSchema.parse(data))
-	.handler(async ({ data }) => {
-		const { session } = await requireAuthSession();
+	.handler(async ({ data, context }) => {
+		const { session } = context;
 
 		const playlistResult = await getPlaylistById(data.playlistId);
 		if (
@@ -151,9 +155,10 @@ const AcknowledgeCreateSchema = z.object({
 });
 
 export const acknowledgePlaylistCreate = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
 	.inputValidator((data) => AcknowledgeCreateSchema.parse(data))
-	.handler(async ({ data }) => {
-		const { session } = await requireAuthSession();
+	.handler(async ({ data, context }) => {
+		const { session } = context;
 		const spotifyId = parsePlaylistSpotifyId(data.uri)!;
 
 		const result = await upsertPlaylists(session.accountId, [
@@ -189,9 +194,10 @@ const AcknowledgeUpdateSchema = z.object({
 });
 
 export const acknowledgePlaylistUpdate = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
 	.inputValidator((data) => AcknowledgeUpdateSchema.parse(data))
-	.handler(async ({ data }) => {
-		const { session } = await requireAuthSession();
+	.handler(async ({ data, context }) => {
+		const { session } = context;
 		const metadata: { name?: string; description?: string } = {};
 		if (data.name !== undefined) metadata.name = data.name;
 		if (data.description !== undefined) metadata.description = data.description;
@@ -220,9 +226,10 @@ const AcknowledgeDeleteSchema = z.object({
 });
 
 export const acknowledgePlaylistDelete = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
 	.inputValidator((data) => AcknowledgeDeleteSchema.parse(data))
-	.handler(async ({ data }) => {
-		const { session } = await requireAuthSession();
+	.handler(async ({ data, context }) => {
+		const { session } = context;
 		const spotifyId = parsePlaylistSpotifyId(data.uri)!;
 
 		const existing = await getPlaylistBySpotifyId(session.accountId, spotifyId);
@@ -259,9 +266,10 @@ const FlushSessionSchema = z.object({
 export const flushPlaylistManagementSession = createServerFn({
 	method: "POST",
 })
+	.middleware([authMiddleware])
 	.inputValidator((data) => FlushSessionSchema.parse(data))
-	.handler(async ({ data }) => {
-		const { session } = await requireAuthSession();
+	.handler(async ({ data, context }) => {
+		const { session } = context;
 
 		if (!data.targetMembershipChanged && !data.targetMetadataChanged) {
 			return { flushed: false };

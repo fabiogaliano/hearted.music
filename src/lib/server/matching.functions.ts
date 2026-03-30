@@ -1,7 +1,7 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
-import { requireAuthSession } from "@/lib/platform/auth/auth.server";
+import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import {
 	insertMatchDecision,
 	insertMatchDecisions,
@@ -118,19 +118,22 @@ export async function getUndecidedSongs(
 // Server functions
 // ============================================================================
 
-export const getMatchingSession = createServerFn({ method: "GET" }).handler(
-	async (): Promise<MatchingSessionResult | null> => {
-		const { session } = await requireAuthSession();
+export const getMatchingSession = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.handler(async ({ context }): Promise<MatchingSessionResult | null> => {
+		const { session } = context;
 
 		const contextResult = await getLatestMatchContext(session.accountId);
 		if (Result.isError(contextResult) || !contextResult.value) return null;
 
-		const context = contextResult.value;
-		const undecided = await getUndecidedSongs(context.id, session.accountId);
+		const matchContext = contextResult.value;
+		const undecided = await getUndecidedSongs(
+			matchContext.id,
+			session.accountId,
+		);
 
-		return { contextId: context.id, totalSongs: undecided.length };
-	},
-);
+		return { contextId: matchContext.id, totalSongs: undecided.length };
+	});
 
 // ============================================================================
 // Song suggestions (read-only, for liked-song detail panel)
@@ -152,22 +155,23 @@ const GetSongSuggestionsSchema = z.object({
 });
 
 export const getSongSuggestions = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
 	.inputValidator((data) => GetSongSuggestionsSchema.parse(data))
-	.handler(async ({ data }): Promise<SongSuggestionsResult | null> => {
-		const { session } = await requireAuthSession();
+	.handler(async ({ data, context }): Promise<SongSuggestionsResult | null> => {
+		const { session } = context;
 
 		const contextResult = await getLatestMatchContext(session.accountId);
 		if (Result.isError(contextResult) || !contextResult.value) return null;
 
-		const context = contextResult.value;
+		const matchContext = contextResult.value;
 
 		const [matchResultsResult, decisionsResult] = await Promise.all([
-			getMatchResultsForSong(context.id, data.songId),
+			getMatchResultsForSong(matchContext.id, data.songId),
 			getMatchDecisions(session.accountId),
 		]);
 
 		if (Result.isError(matchResultsResult) || Result.isError(decisionsResult))
-			return { contextId: context.id, matches: [] };
+			return { contextId: matchContext.id, matches: [] };
 
 		const decidedPairs = new Set(
 			decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
@@ -178,7 +182,7 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 		);
 
 		if (undecidedResults.length === 0) {
-			return { contextId: context.id, matches: [] };
+			return { contextId: matchContext.id, matches: [] };
 		}
 
 		const supabase = createAdminSupabaseClient();
@@ -205,7 +209,7 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 			.filter((m): m is SongSuggestion => m !== null)
 			.toSorted((a, b) => b.score - a.score);
 
-		return { contextId: context.id, matches };
+		return { contextId: matchContext.id, matches };
 	});
 
 // ============================================================================
@@ -223,9 +227,10 @@ export interface GetSongMatchesParams {
 }
 
 export const getSongMatches = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
 	.inputValidator((data) => GetSongMatchesSchema.parse(data))
-	.handler(async ({ data }): Promise<SongMatchesResult | null> => {
-		const { session } = await requireAuthSession();
+	.handler(async ({ data, context }): Promise<SongMatchesResult | null> => {
+		const { session } = context;
 		const supabase = createAdminSupabaseClient();
 
 		const [undecided, newSongIds] = await Promise.all([
@@ -375,9 +380,10 @@ export interface AddToPlaylistResult {
 }
 
 export const addSongToPlaylist = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
 	.inputValidator((data) => AddToPlaylistSchema.parse(data))
-	.handler(async ({ data }): Promise<AddToPlaylistResult> => {
-		const { session } = await requireAuthSession();
+	.handler(async ({ data, context }): Promise<AddToPlaylistResult> => {
+		const { session } = context;
 		const result = await insertMatchDecision(
 			session.accountId,
 			data.songId,
@@ -398,9 +404,10 @@ export interface DismissSongParams {
 }
 
 export const dismissSong = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
 	.inputValidator((data) => DismissSongSchema.parse(data))
-	.handler(async ({ data }) => {
-		const { session } = await requireAuthSession();
+	.handler(async ({ data, context }) => {
+		const { session } = context;
 		const decisions = data.playlistIds.map((playlistId) => ({
 			accountId: session.accountId,
 			songId: data.songId,
@@ -420,10 +427,11 @@ const MarkSeenSchema = z.object({
 });
 
 export const markSeenSongs = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
 	.inputValidator((data) => MarkSeenSchema.parse(data))
-	.handler(async ({ data }) => {
+	.handler(async ({ data, context }) => {
 		if (data.songIds.length === 0) return { success: true };
-		const { session } = await requireAuthSession();
+		const { session } = context;
 		const supabase = createAdminSupabaseClient();
 		const now = new Date().toISOString();
 		const { error } = await supabase.from("item_status").upsert(

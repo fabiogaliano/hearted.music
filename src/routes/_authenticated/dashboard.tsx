@@ -2,9 +2,11 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Dashboard } from "@/features/dashboard/Dashboard";
 import {
+	dashboardPageDataQueryOptions,
 	dashboardStatsQueryOptions,
 	matchPreviewsQueryOptions,
 	recentActivityQueryOptions,
+	seedDashboardCaches,
 } from "@/features/dashboard/queries";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { useSmoothProgress } from "@/lib/hooks/useSmoothProgress";
@@ -13,15 +15,10 @@ import { formatRelativeTime } from "@/lib/shared/utils/format-time";
 export const Route = createFileRoute("/_authenticated/dashboard")({
 	loader: async ({ context }) => {
 		const accountId = context.session.accountId;
-		await Promise.all([
-			context.queryClient.ensureQueryData(
-				dashboardStatsQueryOptions(accountId),
-			),
-			context.queryClient.ensureQueryData(
-				recentActivityQueryOptions(accountId),
-			),
-			context.queryClient.ensureQueryData(matchPreviewsQueryOptions(accountId)),
-		]);
+		const pageData = await context.queryClient.ensureQueryData(
+			dashboardPageDataQueryOptions(accountId),
+		);
+		seedDashboardCaches(context.queryClient, accountId, pageData);
 	},
 	component: DashboardHome,
 });

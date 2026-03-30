@@ -1,7 +1,7 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
-import { requireAuthSession } from "@/lib/platform/auth/auth.server";
+import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import * as likedSong from "@/lib/domains/library/liked-songs/queries";
 import type { LikedSongPageRow } from "@/lib/domains/library/liked-songs/queries";
 import type {
@@ -84,9 +84,10 @@ function mapLikedSongPageRow(row: LikedSongPageRow): LikedSong {
 }
 
 export const getLikedSongsPage = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
 	.inputValidator((data) => LikedSongsPageSchema.parse(data))
-	.handler(async ({ data }): Promise<LikedSongsPageResult> => {
-		const { session } = await requireAuthSession();
+	.handler(async ({ data, context }): Promise<LikedSongsPageResult> => {
+		const { session } = context;
 
 		const limit = data.limit ?? 15;
 
@@ -106,9 +107,10 @@ export const getLikedSongsPage = createServerFn({ method: "GET" })
 	});
 
 export const getLikedSongBySlug = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
 	.inputValidator((data) => LikedSongBySlugSchema.parse(data))
-	.handler(async ({ data }): Promise<LikedSong | null> => {
-		const { session } = await requireAuthSession();
+	.handler(async ({ data, context }): Promise<LikedSong | null> => {
+		const { session } = context;
 
 		const result = await likedSong.getPageRowBySlug(
 			session.accountId,
@@ -134,9 +136,10 @@ export type LikedSongsStatsResult =
 	  }
 	| { success: false; error: string };
 
-export const getLikedSongsStats = createServerFn({ method: "GET" }).handler(
-	async (): Promise<LikedSongsStatsResult> => {
-		const { session } = await requireAuthSession();
+export const getLikedSongsStats = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.handler(async ({ context }): Promise<LikedSongsStatsResult> => {
+		const { session } = context;
 
 		const result = await likedSong.getStats(session.accountId);
 
@@ -154,5 +157,4 @@ export const getLikedSongsStats = createServerFn({ method: "GET" }).handler(
 			new_suggestions: Number(row.new_suggestions),
 			pending: Number(row.pending),
 		};
-	},
-);
+	});

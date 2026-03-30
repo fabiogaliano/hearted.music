@@ -24,7 +24,7 @@ import {
 	getPlaylists,
 	setPlaylistTarget,
 } from "@/lib/domains/library/playlists/queries";
-import { requireAuthSession } from "@/lib/platform/auth/auth.server";
+import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import {
 	type PhaseJobIds,
 	PhaseJobIdsSchema,
@@ -81,9 +81,10 @@ const playlistIdsInputSchema = z.object({
  *
  * Throws error if user is not authenticated or DB operations fail.
  */
-export const getOnboardingData = createServerFn({ method: "GET" }).handler(
-	async (): Promise<OnboardingData> => {
-		const { session } = await requireAuthSession();
+export const getOnboardingData = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.handler(async ({ context }): Promise<OnboardingData> => {
+		const { session } = context;
 
 		const [
 			prefsResult,
@@ -147,17 +148,17 @@ export const getOnboardingData = createServerFn({ method: "GET" }).handler(
 				playlists: playlistsCountResult.value,
 			},
 		};
-	},
-);
+	});
 
 /**
  * Saves the user's theme preference.
  * Creates preferences record if it doesn't exist.
  */
 export const saveThemePreference = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
 	.inputValidator(themeInputSchema)
-	.handler(async ({ data }): Promise<{ success: true }> => {
-		const { session } = await requireAuthSession();
+	.handler(async ({ data, context }): Promise<{ success: true }> => {
+		const { session } = context;
 
 		const result = await updateTheme(session.accountId, data.theme);
 
@@ -172,37 +173,42 @@ export const saveThemePreference = createServerFn({ method: "POST" })
  * Returns library summary counts from DB (populated by extension sync).
  * Replaces the old Spotify API-based discovery that required OAuth tokens.
  */
-export const getLibrarySummary = createServerFn({ method: "GET" }).handler(
-	async (): Promise<{ songs: number; playlists: number }> => {
-		const { session } = await requireAuthSession();
+export const getLibrarySummary = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.handler(
+		async ({ context }): Promise<{ songs: number; playlists: number }> => {
+			const { session } = context;
 
-		const [songsResult, playlistsResult] = await Promise.all([
-			getLikedSongCount(session.accountId),
-			getPlaylistCount(session.accountId),
-		]);
+			const [songsResult, playlistsResult] = await Promise.all([
+				getLikedSongCount(session.accountId),
+				getPlaylistCount(session.accountId),
+			]);
 
-		if (Result.isError(songsResult)) {
-			throw new OnboardingError("load_songs_count", songsResult.error);
-		}
-		if (Result.isError(playlistsResult)) {
-			throw new OnboardingError("load_playlists_count", playlistsResult.error);
-		}
+			if (Result.isError(songsResult)) {
+				throw new OnboardingError("load_songs_count", songsResult.error);
+			}
+			if (Result.isError(playlistsResult)) {
+				throw new OnboardingError(
+					"load_playlists_count",
+					playlistsResult.error,
+				);
+			}
 
-		return {
-			songs: songsResult.value,
-			playlists: playlistsResult.value,
-		};
-	},
-);
+			return {
+				songs: songsResult.value,
+				playlists: playlistsResult.value,
+			};
+		},
+	);
 
 /**
  * No-op sync executor - sync is now handled externally by the Chrome extension.
  * Kept for type compatibility; the extension POSTs data directly via /api/extension/sync.
  */
 export const executeSync = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
 	.inputValidator(z.object({ phaseJobIds: PhaseJobIdsSchema }))
 	.handler(async (): Promise<{ success: true }> => {
-		await requireAuthSession();
 		return { success: true };
 	});
 
@@ -210,16 +216,16 @@ export const executeSync = createServerFn({ method: "POST" })
  * Clears phaseJobIds so SyncingStep starts fresh when a new sync is triggered.
  * Called from InstallExtensionStep before navigating to the syncing step.
  */
-export const resetSyncJobs = createServerFn({ method: "POST" }).handler(
-	async (): Promise<{ success: true }> => {
-		const { session } = await requireAuthSession();
+export const resetSyncJobs = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
+	.handler(async ({ context }): Promise<{ success: true }> => {
+		const { session } = context;
 		const result = await clearPhaseJobIds(session.accountId);
 		if (Result.isError(result)) {
 			console.warn("Failed to reset sync jobs:", result.error);
 		}
 		return { success: true };
-	},
-);
+	});
 
 /**
  * Saves the current onboarding step for resumability.
@@ -227,9 +233,10 @@ export const resetSyncJobs = createServerFn({ method: "POST" }).handler(
  * Updates the DB every time the user navigates to a new step.
  */
 export const saveOnboardingStep = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
 	.inputValidator(stepInputSchema)
-	.handler(async ({ data }): Promise<{ success: true }> => {
-		const { session } = await requireAuthSession();
+	.handler(async ({ data, context }): Promise<{ success: true }> => {
+		const { session } = context;
 
 		const result = await updateOnboardingStep(session.accountId, data.step);
 
@@ -255,17 +262,19 @@ export const saveOnboardingStep = createServerFn({ method: "POST" })
  */
 export const markOnboardingComplete = createServerFn({
 	method: "POST",
-}).handler(async (): Promise<{ success: true }> => {
-	const { session } = await requireAuthSession();
+})
+	.middleware([authMiddleware])
+	.handler(async ({ context }): Promise<{ success: true }> => {
+		const { session } = context;
 
-	const result = await completeOnboarding(session.accountId);
+		const result = await completeOnboarding(session.accountId);
 
-	if (Result.isError(result)) {
-		throw new OnboardingError("complete_onboarding", result.error);
-	}
+		if (Result.isError(result)) {
+			throw new OnboardingError("complete_onboarding", result.error);
+		}
 
-	return { success: true };
-});
+		return { success: true };
+	});
 
 /**
  * Saves target playlist selection (batch update).
@@ -273,9 +282,10 @@ export const markOnboardingComplete = createServerFn({
  * All other playlists for this account will be unmarked.
  */
 export const savePlaylistTargets = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
 	.inputValidator(playlistIdsInputSchema)
-	.handler(async ({ data }): Promise<{ success: true }> => {
-		const { session } = await requireAuthSession();
+	.handler(async ({ data, context }): Promise<{ success: true }> => {
+		const { session } = context;
 
 		const playlistsResult = await getPlaylists(session.accountId);
 

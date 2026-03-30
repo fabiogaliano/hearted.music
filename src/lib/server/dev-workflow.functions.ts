@@ -3,7 +3,7 @@ import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Job } from "@/lib/data/jobs";
-import { requireAuthSession } from "@/lib/platform/auth/auth.server";
+import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import {
 	type ParsedJobProgress,
 	parseJobProgress,
@@ -94,55 +94,57 @@ export interface GuidedWorkflowState {
 
 export const getGuidedWorkflowState = createServerFn({
 	method: "GET",
-}).handler(async (): Promise<GuidedWorkflowState> => {
-	assertDevOnly();
-	const { session } = await requireAuthSession();
+})
+	.middleware([authMiddleware])
+	.handler(async ({ context }): Promise<GuidedWorkflowState> => {
+		assertDevOnly();
+		const { session } = context;
 
-	const stateResult = await loadLibraryProcessingState(session.accountId);
-	const state =
-		Result.isOk(stateResult) && stateResult.value
-			? stateResult.value
-			: {
-					enrichment: {
-						requestedAt: null,
-						settledAt: null,
-						activeJobId: null,
-					},
-					matchSnapshotRefresh: {
-						requestedAt: null,
-						settledAt: null,
-						activeJobId: null,
-					},
-				};
+		const stateResult = await loadLibraryProcessingState(session.accountId);
+		const state =
+			Result.isOk(stateResult) && stateResult.value
+				? stateResult.value
+				: {
+						enrichment: {
+							requestedAt: null,
+							settledAt: null,
+							activeJobId: null,
+						},
+						matchSnapshotRefresh: {
+							requestedAt: null,
+							settledAt: null,
+							activeJobId: null,
+						},
+					};
 
-	const supabase = createAdminSupabaseClient();
-	const { data: pendingRows, error } = await supabase
-		.from("job")
-		.select("id, type, status, progress, created_at")
-		.eq("account_id", session.accountId)
-		.in("type", ["enrichment", "match_snapshot_refresh"])
-		.in("status", ["pending", "running"])
-		.order("queue_priority", { ascending: false, nullsFirst: false })
-		.order("created_at", { ascending: true });
+		const supabase = createAdminSupabaseClient();
+		const { data: pendingRows, error } = await supabase
+			.from("job")
+			.select("id, type, status, progress, created_at")
+			.eq("account_id", session.accountId)
+			.in("type", ["enrichment", "match_snapshot_refresh"])
+			.in("status", ["pending", "running"])
+			.order("queue_priority", { ascending: false, nullsFirst: false })
+			.order("created_at", { ascending: true });
 
-	if (error) {
-		throw new Error(`Failed to load guided workflow jobs: ${error.message}`);
-	}
+		if (error) {
+			throw new Error(`Failed to load guided workflow jobs: ${error.message}`);
+		}
 
-	const pendingJobs = (pendingRows ?? []).map((row) => ({
-		id: row.id,
-		type: row.type,
-		status: row.status,
-		progress: parseJobProgress(row.type, row.progress),
-		createdAt: row.created_at,
-	}));
+		const pendingJobs = (pendingRows ?? []).map((row) => ({
+			id: row.id,
+			type: row.type,
+			status: row.status,
+			progress: parseJobProgress(row.type, row.progress),
+			createdAt: row.created_at,
+		}));
 
-	return {
-		enrichment: state.enrichment,
-		matchSnapshotRefresh: state.matchSnapshotRefresh,
-		pendingJobs,
-	};
-});
+		return {
+			enrichment: state.enrichment,
+			matchSnapshotRefresh: state.matchSnapshotRefresh,
+			pendingJobs,
+		};
+	});
 
 export interface StepResult {
 	stepped: boolean;
@@ -154,10 +156,11 @@ export interface StepResult {
 export const stepLibraryProcessing = createServerFn({
 	method: "POST",
 })
+	.middleware([authMiddleware])
 	.inputValidator((data) => GuidedWorkflowInputSchema.parse(data))
-	.handler(async ({ data }): Promise<StepResult> => {
+	.handler(async ({ data, context }): Promise<StepResult> => {
 		assertDevOnly();
-		const { session } = await requireAuthSession();
+		const { session } = context;
 		const claimResult = await claimNextGuidedJob(session.accountId);
 		if (Result.isError(claimResult)) {
 			throw new Error(
@@ -195,10 +198,11 @@ export interface RunUntilIdleResult {
 export const runLibraryProcessingUntilIdle = createServerFn({
 	method: "POST",
 })
+	.middleware([authMiddleware])
 	.inputValidator((data) => GuidedWorkflowInputSchema.parse(data))
-	.handler(async ({ data }): Promise<RunUntilIdleResult> => {
+	.handler(async ({ data, context }): Promise<RunUntilIdleResult> => {
 		assertDevOnly();
-		const { session } = await requireAuthSession();
+		const { session } = context;
 		const settings = resolveGuidedWorkflowSettings(data.settings);
 		const outcomes: RunUntilIdleResult["outcomes"] = [];
 		let jobsRun = 0;
@@ -242,15 +246,17 @@ export interface WarmReplayResetResult {
 
 export const resetLibraryProcessingWarmReplay = createServerFn({
 	method: "POST",
-}).handler(async (): Promise<WarmReplayResetResult> => {
-	assertDevOnly();
-	const { session } = await requireAuthSession();
+})
+	.middleware([authMiddleware])
+	.handler(async ({ context }): Promise<WarmReplayResetResult> => {
+		assertDevOnly();
+		const { session } = context;
 
-	const resetResult = await runWarmReplayReset(session.accountId);
-	const reseedResult = await runReseedAfterReset(session.accountId);
+		const resetResult = await runWarmReplayReset(session.accountId);
+		const reseedResult = await runReseedAfterReset(session.accountId);
 
-	return { reset: resetResult, reseed: reseedResult };
-});
+		return { reset: resetResult, reseed: reseedResult };
+	});
 
 export interface MatchOnlyResetResult {
 	reset: {
@@ -265,12 +271,14 @@ export interface MatchOnlyResetResult {
 
 export const resetMatchSnapshotReplay = createServerFn({
 	method: "POST",
-}).handler(async (): Promise<MatchOnlyResetResult> => {
-	assertDevOnly();
-	const { session } = await requireAuthSession();
+})
+	.middleware([authMiddleware])
+	.handler(async ({ context }): Promise<MatchOnlyResetResult> => {
+		assertDevOnly();
+		const { session } = context;
 
-	const resetResult = await runMatchOnlyReset(session.accountId);
-	const reseedResult = await runReseedAfterReset(session.accountId);
+		const resetResult = await runMatchOnlyReset(session.accountId);
+		const reseedResult = await runReseedAfterReset(session.accountId);
 
-	return { reset: resetResult, reseed: reseedResult };
-});
+		return { reset: resetResult, reseed: reseedResult };
+	});
