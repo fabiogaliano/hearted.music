@@ -1,30 +1,13 @@
 /**
- * ThemeHueProvider - Central theme management with optimized context splitting
+ * ThemeHueProvider - render-time theme context with SSR-safe hue output.
  *
- * PROBLEM: Single context with {theme, registerTheme} causes 38 components to
- * re-render whenever theme changes, even though only 3 routes ever call
- * registerTheme (WRITE) while the rest only read state.
- *
- * SOLUTION: Split into two contexts - stable dispatch (never re-renders readers)
- * and state (only re-renders when theme actually changes).
+ * The active theme is already knowable during render, so both the context value
+ * and the `--theme-hue` CSS variable are emitted during render too.
  */
-import {
-	createContext,
-	useCallback,
-	useContext,
-	useEffect,
-	useLayoutEffect,
-	useState,
-	type ReactNode,
-} from "react";
+import { createContext, useContext, type ReactNode } from "react";
 
 import { getThemeHue, themes } from "./colors";
 import { DEFAULT_THEME, type ThemeConfig } from "./types";
-
-type RegisterTheme = (theme: ThemeConfig) => void;
-
-const ThemeDispatchContext = createContext<RegisterTheme | null>(null);
-ThemeDispatchContext.displayName = "ThemeDispatch";
 
 const ThemeStateContext = createContext<ThemeConfig | null>(null);
 ThemeStateContext.displayName = "ThemeState";
@@ -32,53 +15,27 @@ ThemeStateContext.displayName = "ThemeState";
 export function ThemeHueProvider({
 	children,
 	initialTheme,
-	theme: controlledTheme,
+	theme,
 }: {
 	children: ReactNode;
 	initialTheme?: ThemeConfig;
 	theme?: ThemeConfig;
 }) {
-	const [themeState, setThemeState] = useState<ThemeConfig>(
-		() => controlledTheme ?? initialTheme ?? themes[DEFAULT_THEME],
-	);
-	const activeTheme = controlledTheme ?? themeState;
-
-	const registerTheme = useCallback<RegisterTheme>((newTheme) => {
-		setThemeState((current) => (current === newTheme ? current : newTheme));
-	}, []);
-
-	useEffect(() => {
-		const hue = getThemeHue(activeTheme);
-		document.documentElement.style.setProperty("--theme-hue", String(hue));
-	}, [activeTheme]);
+	const activeTheme = theme ?? initialTheme ?? themes[DEFAULT_THEME];
+	const hue = getThemeHue(activeTheme);
 
 	return (
-		<ThemeDispatchContext.Provider value={registerTheme}>
-			<ThemeStateContext.Provider value={activeTheme}>
-				{children}
-			</ThemeStateContext.Provider>
-		</ThemeDispatchContext.Provider>
+		<ThemeStateContext.Provider value={activeTheme}>
+			<style>{`:root { --theme-hue: ${hue}; }`}</style>
+			{children}
+		</ThemeStateContext.Provider>
 	);
 }
 ThemeHueProvider.displayName = "ThemeHueProvider";
 
 /**
- * Hook for routes to register their theme with the provider.
- * Call this in any route/layout that determines the active theme.
- *
- * Pass `null` to skip registration (e.g., when a child component owns the theme).
- */
-export function useRegisterTheme(theme: ThemeConfig | null): void {
-	const registerTheme = useContext(ThemeDispatchContext);
-
-	useLayoutEffect(() => {
-		if (theme) registerTheme?.(theme);
-	}, [theme, registerTheme]);
-}
-
-/**
  * Hook for components to consume the current theme.
- * Returns the theme registered by the nearest route/layout.
+ * Returns the theme from the nearest ThemeHueProvider.
  *
  * @throws Error if used outside ThemeHueProvider
  */

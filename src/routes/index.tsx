@@ -11,7 +11,6 @@ import { Landing } from "@/features/landing/Landing";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import { getShuffledLandingData } from "@/lib/data/landing-songs.server";
 import { themes } from "@/lib/theme/colors";
-import { useRegisterTheme } from "@/lib/theme/ThemeHueProvider";
 import { DEFAULT_THEME } from "@/lib/theme/types";
 
 const checkAuth = createServerFn({ method: "GET" }).handler(async () => {
@@ -38,8 +37,6 @@ export const Route = createFileRoute("/")({
 function LandingPage() {
 	const theme = themes[DEFAULT_THEME];
 	const { manifest, initialDetail } = Route.useLoaderData();
-
-	useRegisterTheme(theme);
 
 	return (
 		<div className="relative min-h-screen" style={{ background: theme.bg }}>

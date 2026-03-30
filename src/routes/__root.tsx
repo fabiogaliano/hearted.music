@@ -22,10 +22,7 @@ import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
 import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
-import {
-	ThemeHueProvider,
-	useRegisterTheme,
-} from "@/lib/theme/ThemeHueProvider";
+import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
 import { extractHue, getPastelColor } from "@/lib/utils/color";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import appCss from "../styles.css?url";
@@ -163,8 +160,6 @@ function NotFoundPage() {
 	const [isBackgroundReady, setIsBackgroundReady] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const heartRippleRef = useRef<HeartRippleHandle>(null);
-
-	useRegisterTheme(theme);
 
 	useEffect(() => {
 		const container = containerRef.current;
