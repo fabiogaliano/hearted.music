@@ -15,7 +15,7 @@ export function matchingSessionQueryOptions(accountId: string) {
 	return queryOptions({
 		queryKey: matchingKeys.session(accountId),
 		queryFn: () => getMatchingSession(),
-		staleTime: 30_000,
+		staleTime: 30 * 60_000,
 	});
 }
 
@@ -23,6 +23,6 @@ export function songMatchesQueryOptions(contextId: string, offset: number) {
 	return queryOptions({
 		queryKey: matchingKeys.song(contextId, offset),
 		queryFn: () => getSongMatches({ data: { contextId, offset } }),
-		staleTime: 60_000,
+		staleTime: 30 * 60_000,
 	});
 }

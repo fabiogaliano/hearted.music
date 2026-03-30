@@ -27,7 +27,7 @@ export function dashboardPageDataQueryOptions(accountId: string) {
 	return queryOptions({
 		queryKey: dashboardKeys.pageData(accountId),
 		queryFn: () => getDashboardPageData(),
-		staleTime: 30_000,
+		staleTime: 30 * 60_000,
 	});
 }
 
@@ -60,7 +60,7 @@ export function dashboardStatsQueryOptions(accountId: string) {
 	return queryOptions({
 		queryKey: dashboardKeys.stats(accountId),
 		queryFn: () => getDashboardStats(),
-		staleTime: 30_000,
+		staleTime: 30 * 60_000,
 	});
 }
 
@@ -68,7 +68,7 @@ export function recentActivityQueryOptions(accountId: string) {
 	return queryOptions({
 		queryKey: dashboardKeys.recentActivity(accountId),
 		queryFn: () => getRecentActivity(),
-		staleTime: 30_000,
+		staleTime: 30 * 60_000,
 	});
 }
 
@@ -76,6 +76,6 @@ export function matchPreviewsQueryOptions(accountId: string) {
 	return queryOptions({
 		queryKey: dashboardKeys.matchPreviews(accountId),
 		queryFn: () => getMatchPreviews(),
-		staleTime: 30_000,
+		staleTime: 30 * 60_000,
 	});
 }

@@ -29,7 +29,7 @@ export function likedSongsStatsQueryOptions(accountId: string) {
 	return queryOptions({
 		queryKey: likedSongsKeys.stats(accountId),
 		queryFn: () => getLikedSongsStats(),
-		staleTime: 60_000,
+		staleTime: 30 * 60_000,
 	});
 }
 
@@ -38,7 +38,7 @@ export function songSuggestionsQueryOptions(songId: string | null) {
 		queryKey: likedSongsKeys.songSuggestions(songId ?? ""),
 		queryFn: () => getSongSuggestions({ data: { songId: songId! } }),
 		enabled: songId != null,
-		staleTime: 60_000,
+		staleTime: 30 * 60_000,
 	});
 }
 
@@ -56,7 +56,7 @@ export function likedSongBySlugQueryOptions(
 			return getLikedSongBySlug({ data: { slug } });
 		},
 		enabled: slug != null,
-		staleTime: 60_000,
+		staleTime: 30 * 60_000,
 	});
 }
 
@@ -70,5 +70,6 @@ export function likedSongsInfiniteQueryOptions(filter: FilterOption) {
 		},
 		initialPageParam: undefined as string | undefined,
 		getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+		staleTime: 30 * 60_000,
 	});
 }
