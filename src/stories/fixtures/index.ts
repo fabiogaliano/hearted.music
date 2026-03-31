@@ -58,8 +58,6 @@ export function simulateDashboard(
 			...dashboardData.stats,
 			totalSongs: songs.length,
 			analyzedPercent: pct,
-			matchedCount:
-				enrichedCount >= songs.length ? dashboardData.stats.matchedCount : 0,
 			reviewCount:
 				enrichedCount >= songs.length ? dashboardData.stats.reviewCount : 0,
 		},

@@ -45,7 +45,6 @@ export type ActivityItem = LikedActivity | MatchedActivity;
 export interface DashboardStats {
 	totalSongs: number;
 	analyzedPercent: number;
-	matchedCount: number;
 	playlistCount: number;
 	reviewCount: number;
 }

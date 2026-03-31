@@ -48,6 +48,11 @@ export function DashboardHeader({
 				</span>
 				<span className="opacity-40">·</span>
 				<span className="tabular-nums">
+					{stats.playlistCount}{" "}
+					<span className="tracking-widest uppercase">playlists</span>
+				</span>
+				<span className="opacity-40">·</span>
+				<span className="tabular-nums">
 					{isEnrichmentRunning ? smoothAnalyzedPercent : stats.analyzedPercent}%{" "}
 					<span className="tracking-widest uppercase">
 						{isEnrichmentRunning ? "analyzing" : "analyzed"}

@@ -23,6 +23,7 @@ import {
 import { getAnalyzedCountForAccount } from "@/lib/domains/enrichment/content-analysis/queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
 import { getLatestMatchContext } from "@/lib/domains/taste/song-matching/queries";
+import { getPlaylistCount } from "@/lib/domains/library/playlists/queries";
 import { getUndecidedSongs } from "@/lib/server/matching.functions";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { ActivityItem, MatchPreview } from "@/features/dashboard/types";
@@ -36,6 +37,7 @@ export interface DashboardStats {
 	analyzedPercent: number;
 	lastSyncAt: string | null;
 	newSuggestions: number;
+	playlistCount: number;
 }
 
 export interface DashboardPageData {
@@ -49,19 +51,28 @@ export interface DashboardPageData {
 // ============================================================================
 
 async function fetchDashboardStats(accountId: string): Promise<DashboardStats> {
-	const [totalResult, analyzedResult, lastSyncResult, statsResult] =
-		await Promise.all([
-			getLikedSongCount(accountId),
-			getAnalyzedCountForAccount(accountId),
-			getLastCompletedSync(accountId),
-			getLikedSongStats(accountId),
-		]);
+	const [
+		totalResult,
+		analyzedResult,
+		lastSyncResult,
+		statsResult,
+		playlistCountResult,
+	] = await Promise.all([
+		getLikedSongCount(accountId),
+		getAnalyzedCountForAccount(accountId),
+		getLastCompletedSync(accountId),
+		getLikedSongStats(accountId),
+		getPlaylistCount(accountId),
+	]);
 
 	const totalSongs = Result.isOk(totalResult) ? totalResult.value : 0;
 	const analyzedCount = Result.isOk(analyzedResult) ? analyzedResult.value : 0;
 	const lastSync = Result.isOk(lastSyncResult) ? lastSyncResult.value : null;
 	const newSuggestions = Result.isOk(statsResult)
 		? Number(statsResult.value.new_suggestions)
+		: 0;
+	const playlistCount = Result.isOk(playlistCountResult)
+		? playlistCountResult.value
 		: 0;
 
 	return {
@@ -70,6 +81,7 @@ async function fetchDashboardStats(accountId: string): Promise<DashboardStats> {
 			totalSongs > 0 ? Math.round((analyzedCount / totalSongs) * 100) : 0,
 		lastSyncAt: lastSync?.completed_at ?? null,
 		newSuggestions,
+		playlistCount,
 	};
 }
 

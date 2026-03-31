@@ -61,8 +61,7 @@ function DashboardHome() {
 			stats={{
 				totalSongs: stats.totalSongs,
 				analyzedPercent: stats.analyzedPercent,
-				matchedCount: 421,
-				playlistCount: 4,
+				playlistCount: stats.playlistCount,
 				reviewCount: stats.newSuggestions,
 			}}
 			isEnrichmentRunning={isEnrichmentRunning}

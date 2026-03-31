@@ -1,3 +1,4 @@
+import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
@@ -152,21 +153,7 @@ export function PlaylistDetailView({
 										className="h-full w-full object-cover"
 									/>
 								) : (
-									<div
-										className="flex h-full w-full items-center justify-center"
-										style={{
-											background: theme.surfaceDim,
-										}}
-									>
-										<span
-											className="text-4xl"
-											style={{
-												color: theme.textMuted,
-											}}
-										>
-											♪
-										</span>
-									</div>
+									<AlbumPlaceholder />
 								)}
 							</div>
 						)}

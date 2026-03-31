@@ -1,3 +1,4 @@
+import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { fonts } from "@/lib/theme/fonts";
 import type { ThemeConfig } from "@/lib/theme/types";
@@ -58,10 +59,7 @@ export function PlaylistCard({
 							className="h-full w-full object-cover"
 						/>
 					) : (
-						<div
-							className="h-full w-full"
-							style={{ background: theme.surfaceDim }}
-						/>
+						<AlbumPlaceholder />
 					)}
 				</div>
 				<div className="min-w-0 flex-1">
@@ -137,10 +135,7 @@ export function PlaylistCard({
 						className="h-full w-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
 					/>
 				) : (
-					<div
-						className="h-full w-full"
-						style={{ background: theme.surfaceDim }}
-					/>
+					<AlbumPlaceholder />
 				)}
 			</div>
 
