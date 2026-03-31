@@ -1,6 +1,3 @@
-// react-scan must be imported before React
-
-import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
@@ -10,9 +7,7 @@ import {
 	Outlet,
 	Scripts,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-import { useEffect, useRef, useState } from "react";
-import { scan } from "react-scan";
+import { lazy, useEffect, useRef, useState } from "react";
 import { Toaster } from "sonner";
 import {
 	HeartRippleBackground,
@@ -24,8 +19,11 @@ import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
 import { extractHue, getPastelColor } from "@/lib/utils/color";
-import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import appCss from "../styles.css?url";
+
+const DevToolsShell = import.meta.env.DEV
+	? lazy(() => import("@/components/dev/DevToolsShell"))
+	: null;
 
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -279,17 +277,6 @@ function NotFoundPage() {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-	useEffect(() => {
-		if (import.meta.env.DEV && import.meta.env.VITE_DEVTOOLS !== "false") {
-			scan({
-				enabled: true,
-				showToolbar: true,
-				log: true,
-				animationSpeed: "fast",
-			});
-		}
-	}, []);
-
 	return (
 		<html lang="en">
 			<head>
@@ -298,20 +285,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			<body>
 				{children}
 				<Toaster richColors position="top-right" />
-				{import.meta.env.VITE_DEVTOOLS !== "false" && (
-					<TanStackDevtools
-						config={{
-							position: "bottom-right",
-						}}
-						plugins={[
-							{
-								name: "Tanstack Router",
-								render: <TanStackRouterDevtoolsPanel />,
-							},
-							TanStackQueryDevtools,
-						]}
-					/>
-				)}
+				{DevToolsShell && <DevToolsShell />}
 				<Scripts />
 			</body>
 		</html>
