@@ -13,9 +13,6 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FaqRouteImport } from './routes/faq'
-import { Route as DevPlaygroundRouteImport } from './routes/dev-playground'
-import { Route as DevExtensionStepRouteImport } from './routes/dev-extension-step'
-import { Route as DevErrorRouteImport } from './routes/dev-error'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
@@ -49,21 +46,6 @@ const LoginRoute = LoginRouteImport.update({
 const FaqRoute = FaqRouteImport.update({
   id: '/faq',
   path: '/faq',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DevPlaygroundRoute = DevPlaygroundRouteImport.update({
-  id: '/dev-playground',
-  path: '/dev-playground',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DevExtensionStepRoute = DevExtensionStepRouteImport.update({
-  id: '/dev-extension-step',
-  path: '/dev-extension-step',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DevErrorRoute = DevErrorRouteImport.update({
-  id: '/dev-error',
-  path: '/dev-error',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -138,9 +120,6 @@ const ApiJobsIdProgressRoute = ApiJobsIdProgressRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/dev-error': typeof DevErrorRoute
-  '/dev-extension-step': typeof DevExtensionStepRoute
-  '/dev-playground': typeof DevPlaygroundRoute
   '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
@@ -160,9 +139,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dev-error': typeof DevErrorRoute
-  '/dev-extension-step': typeof DevExtensionStepRoute
-  '/dev-playground': typeof DevPlaygroundRoute
   '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
@@ -184,9 +160,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/dev-error': typeof DevErrorRoute
-  '/dev-extension-step': typeof DevExtensionStepRoute
-  '/dev-playground': typeof DevPlaygroundRoute
   '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
@@ -208,9 +181,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/dev-error'
-    | '/dev-extension-step'
-    | '/dev-playground'
     | '/faq'
     | '/login'
     | '/privacy'
@@ -230,9 +200,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/dev-error'
-    | '/dev-extension-step'
-    | '/dev-playground'
     | '/faq'
     | '/login'
     | '/privacy'
@@ -253,9 +220,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
-    | '/dev-error'
-    | '/dev-extension-step'
-    | '/dev-playground'
     | '/faq'
     | '/login'
     | '/privacy'
@@ -277,9 +241,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  DevErrorRoute: typeof DevErrorRoute
-  DevExtensionStepRoute: typeof DevExtensionStepRoute
-  DevPlaygroundRoute: typeof DevPlaygroundRoute
   FaqRoute: typeof FaqRoute
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -320,27 +281,6 @@ declare module '@tanstack/react-router' {
       path: '/faq'
       fullPath: '/faq'
       preLoaderRoute: typeof FaqRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dev-playground': {
-      id: '/dev-playground'
-      path: '/dev-playground'
-      fullPath: '/dev-playground'
-      preLoaderRoute: typeof DevPlaygroundRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dev-extension-step': {
-      id: '/dev-extension-step'
-      path: '/dev-extension-step'
-      fullPath: '/dev-extension-step'
-      preLoaderRoute: typeof DevExtensionStepRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dev-error': {
-      id: '/dev-error'
-      path: '/dev-error'
-      fullPath: '/dev-error'
-      preLoaderRoute: typeof DevErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -468,9 +408,6 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  DevErrorRoute: DevErrorRoute,
-  DevExtensionStepRoute: DevExtensionStepRoute,
-  DevPlaygroundRoute: DevPlaygroundRoute,
   FaqRoute: FaqRoute,
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,

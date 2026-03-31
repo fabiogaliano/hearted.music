@@ -94,8 +94,14 @@ const config = defineConfig({
 		// Cloudflare must come BEFORE tanstackStart per Cloudflare docs:
 		// https://developers.cloudflare.com/changelog/2025-10-24-tanstack-start/
 		!isTest && cloudflare({ viteEnvironment: { name: "ssr" } }),
-		// @ts-expect-error - preset exists at runtime but missing from types
-		!isTest && tanstackStart({ preset: "node-ws" }),
+		!isTest &&
+			tanstackStart({
+				// @ts-expect-error - preset exists at runtime but missing from types
+				preset: "node-ws",
+				router: {
+					routeFileIgnorePattern: "^dev-",
+				},
+			}),
 		viteReact(),
 	].filter(Boolean),
 });
