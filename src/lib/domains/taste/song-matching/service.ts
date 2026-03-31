@@ -11,7 +11,6 @@ import { Result } from "better-result";
 import type { JobProgress } from "@/lib/data/jobs";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
-import { emitItem, emitProgress } from "@/lib/platform/jobs/progress/helpers";
 import { computeAdaptiveWeights, DEFAULT_MATCHING_CONFIG } from "./config";
 import { computeAudioFeatureScore } from "./scoring";
 import { cosineSimilarity } from "./semantic";
@@ -27,10 +26,7 @@ import type {
 	ScoreFactors,
 } from "./types";
 
-/** Options for batch matching with SSE support */
 export interface BatchMatchOptions {
-	/** Job ID for SSE progress events (optional) */
-	jobId?: string;
 	/** Progress callback (optional) */
 	onProgress?: (progress: JobProgress) => void;
 	/** Song:playlist pairs to skip (format: "songId:playlistId") */
@@ -96,7 +92,7 @@ export class MatchingService {
 	 * @param songs - Songs to match
 	 * @param profiles - Playlist profiles to match against
 	 * @param songEmbeddings - Optional pre-computed embeddings
-	 * @param options - Optional SSE options with jobId for progress events
+	 * @param options - Optional batch options (progress callback, exclusion set)
 	 */
 	async matchBatch(
 		songs: MatchingSong[],
@@ -120,7 +116,7 @@ export class MatchingService {
 			});
 		}
 
-		const { jobId, onProgress, exclusionSet } = options ?? {};
+		const { onProgress, exclusionSet } = options ?? {};
 		const matches = new Map<string, MatchResult[]>();
 		const noMatch: string[] = [];
 		const excluded: string[] = [];
@@ -136,9 +132,6 @@ export class MatchingService {
 
 		for (let i = 0; i < songs.length; i++) {
 			const song = songs[i];
-			const songLabel = song.name
-				? `${song.name}`
-				: `Song ${song.id.slice(0, 8)}`;
 
 			// Filter out excluded playlists for this song
 			const eligibleProfiles = exclusionSet
@@ -150,31 +143,8 @@ export class MatchingService {
 			if (eligibleProfiles.length === 0) {
 				excluded.push(song.id);
 				progress.done++;
-				if (jobId) {
-					emitItem(jobId, {
-						itemId: song.id,
-						itemKind: "match",
-						status: "succeeded",
-						label: `${songLabel} (excluded)`,
-						index: i,
-					});
-					if (progress.done % 10 === 0 || progress.done === songs.length) {
-						emitProgress(jobId, progress);
-					}
-				}
 				onProgress?.(progress);
 				continue;
-			}
-
-			// Emit: song matching in progress
-			if (jobId) {
-				emitItem(jobId, {
-					itemId: song.id,
-					itemKind: "match",
-					status: "in_progress",
-					label: songLabel,
-					index: i,
-				});
 			}
 
 			const embedding = songEmbeddings?.get(song.id) ?? null;
@@ -184,43 +154,13 @@ export class MatchingService {
 				matches.set(song.id, result.value);
 				computed++;
 				progress.succeeded++;
-
-				// Emit: song matched successfully
-				if (jobId) {
-					const bestMatch = result.value[0];
-					emitItem(jobId, {
-						itemId: song.id,
-						itemKind: "match",
-						status: "succeeded",
-						label: `${songLabel} → score ${bestMatch.score.toFixed(2)}`,
-						index: i,
-					});
-				}
 			} else {
 				noMatch.push(song.id);
 				progress.failed++;
-
-				// Emit: song had no match
-				if (jobId) {
-					emitItem(jobId, {
-						itemId: song.id,
-						itemKind: "match",
-						status: "failed",
-						label: `${songLabel} (no match)`,
-						index: i,
-					});
-				}
 			}
 
 			progress.done++;
 
-			// Emit progress updates periodically (every 10 songs or at end)
-			if (
-				jobId &&
-				(progress.done % 10 === 0 || progress.done === songs.length)
-			) {
-				emitProgress(jobId, progress);
-			}
 			onProgress?.(progress);
 		}
 

@@ -8,8 +8,7 @@
  * (via intercepted session tokens) to fetch data without OAuth, then
  * pushes it here for persistence.
  *
- * Creates job records for each sync phase and emits SSE progress events
- * so the web app can subscribe via /api/jobs/$id/progress.
+ * Creates job records for each sync phase so the web app can poll progress.
  *
  * Auth: Better Auth session cookie OR Bearer token (extension API token)
  */
@@ -29,7 +28,6 @@ import type {
 } from "@/lib/workflows/spotify-sync/types";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import { completeJob, startJob } from "@/lib/platform/jobs/lifecycle";
-import { emitItem, emitStatus } from "@/lib/platform/jobs/progress/helpers";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import {
 	extensionCorsPreflightResponse,
@@ -214,7 +212,7 @@ export const Route = createFileRoute("/api/extension/sync")({
 				const extensionPlaylists: SpotifyPlaylistDTO[] = payload.playlists;
 				const incomingPlaylistTracks = payload.playlistTracks ?? [];
 
-				// Create job records for SSE progress tracking
+				// Create job records for progress tracking
 				const [songsJobResult, playlistsJobResult, tracksJobResult] =
 					await Promise.all([
 						createJob(accountId, "sync_liked_songs"),
@@ -245,33 +243,6 @@ export const Route = createFileRoute("/api/extension/sync")({
 					console.warn("Failed to persist phaseJobIds:", persistResult.error);
 				}
 
-				// Emit initial totals so subscribers see progress immediately
-				emitItem(phaseJobIds.liked_songs, {
-					itemId: "liked_songs",
-					itemKind: "song",
-					status: "in_progress",
-					count: 0,
-					total: likedSongs.length,
-				});
-				emitItem(phaseJobIds.playlists, {
-					itemId: "playlists",
-					itemKind: "playlist",
-					status: "in_progress",
-					count: 0,
-					total: extensionPlaylists.length,
-				});
-				const playlistTrackTotal = incomingPlaylistTracks.reduce(
-					(sum, pt) => sum + pt.tracks.length,
-					0,
-				);
-				emitItem(phaseJobIds.playlist_tracks, {
-					itemId: "playlist_tracks",
-					itemKind: "song",
-					status: "in_progress",
-					count: 0,
-					total: playlistTrackTotal,
-				});
-
 				const results: Record<string, unknown> = {};
 				const changedPlaylistIds: string[] = [];
 
@@ -294,16 +265,6 @@ export const Route = createFileRoute("/api/extension/sync")({
 										likedSongsIds: new Set(likedSongs.map((t) => t.track.id)),
 									});
 
-							if (Result.isOk(syncResult)) {
-								emitItem(phaseJobIds.liked_songs, {
-									itemId: "liked_songs",
-									itemKind: "song",
-									status: "succeeded",
-									count: syncResult.value.total,
-									total: likedSongs.length,
-								});
-							}
-
 							return syncResult;
 						},
 					);
@@ -324,15 +285,6 @@ export const Route = createFileRoute("/api/extension/sync")({
 						removed: songsResult.value.removed,
 					};
 				} else {
-					// No liked songs to sync — immediately complete the phase
-					emitItem(phaseJobIds.liked_songs, {
-						itemId: "liked_songs",
-						itemKind: "song",
-						status: "succeeded",
-						count: 0,
-						total: 0,
-					});
-					emitStatus(phaseJobIds.liked_songs, "completed");
 					await completeJob(phaseJobIds.liked_songs);
 				}
 
@@ -345,16 +297,6 @@ export const Route = createFileRoute("/api/extension/sync")({
 								accountId,
 								extensionPlaylists,
 							);
-
-							if (Result.isOk(syncResult)) {
-								emitItem(phaseJobIds.playlists, {
-									itemId: "playlists",
-									itemKind: "playlist",
-									status: "succeeded",
-									count: syncResult.value.total,
-									total: extensionPlaylists.length,
-								});
-							}
 
 							return syncResult;
 						},
@@ -383,14 +325,6 @@ export const Route = createFileRoute("/api/extension/sync")({
 							playlistResult.value.updatedTargetProfileTextPlaylistIds,
 					};
 				} else {
-					emitItem(phaseJobIds.playlists, {
-						itemId: "playlists",
-						itemKind: "playlist",
-						status: "succeeded",
-						count: 0,
-						total: 0,
-					});
-					emitStatus(phaseJobIds.playlists, "completed");
 					await completeJob(phaseJobIds.playlists);
 				}
 
@@ -423,24 +357,9 @@ export const Route = createFileRoute("/api/extension/sync")({
 							) {
 								changedPlaylistIds.push(dbPlaylist.id);
 							}
-							emitItem(phaseJobIds.playlist_tracks, {
-								itemId: "playlist_tracks",
-								itemKind: "song",
-								status: "in_progress",
-								count: tracksProcessed,
-								total: playlistTrackTotal,
-							});
 						}
 					}
 
-					emitItem(phaseJobIds.playlist_tracks, {
-						itemId: "playlist_tracks",
-						itemKind: "song",
-						status: "succeeded",
-						count: tracksProcessed,
-						total: playlistTrackTotal,
-					});
-					emitStatus(phaseJobIds.playlist_tracks, "completed");
 					await completeJob(phaseJobIds.playlist_tracks);
 
 					results.playlistTracks = {
@@ -449,14 +368,6 @@ export const Route = createFileRoute("/api/extension/sync")({
 						playlistsChanged: changedPlaylistIds.length,
 					};
 				} else {
-					emitItem(phaseJobIds.playlist_tracks, {
-						itemId: "playlist_tracks",
-						itemKind: "song",
-						status: "succeeded",
-						count: 0,
-						total: 0,
-					});
-					emitStatus(phaseJobIds.playlist_tracks, "completed");
 					await completeJob(phaseJobIds.playlist_tracks);
 				}
 

@@ -15,7 +15,6 @@ import {
 import {
 	mockGoToStep,
 	setupFlagPlaylistsScrollMock,
-	setupJobProgressMock,
 	setupListNavigationMock,
 	setupOnboardingNavigationMock,
 	setupShortcutMock,
@@ -36,8 +35,6 @@ vi.mock("../hooks/useFlagPlaylistsScroll", () =>
 );
 vi.mock("@/lib/keyboard/useListNavigation", () => setupListNavigationMock());
 vi.mock("@/lib/keyboard/useShortcut", () => setupShortcutMock());
-vi.mock("@/lib/hooks/useJobProgress", () => setupJobProgressMock());
-
 vi.mock("@/lib/server/onboarding.functions", () => ({
 	savePlaylistTargets: (args: unknown) => mockSavePlaylistTargets(args),
 	saveThemePreference: (args: unknown) => mockSaveThemePreference(args),

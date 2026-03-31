@@ -5,7 +5,7 @@
  * - Create and manage analysis jobs via data/jobs.ts
  * - Prefetch lyrics via LyricsService before analysis
  * - Orchestrate batch song analysis with concurrency control
- * - Report progress for SSE streaming (Phase 5)
+ * - Report progress to DB for polling (Phase 5)
  * - Finalize job status on completion or failure
  *
  * Merges functionality from old_app's:
@@ -30,12 +30,6 @@ import * as songs from "@/lib/domains/library/songs/queries";
 import * as songAnalysis from "@/lib/domains/enrichment/content-analysis/queries";
 import * as audioFeatures from "@/lib/domains/enrichment/audio-features/queries";
 import { finalizeJob, startJob } from "@/lib/platform/jobs/lifecycle";
-import {
-	emitError,
-	emitItem,
-	emitProgress,
-	emitStatus,
-} from "@/lib/platform/jobs/progress/helpers";
 import type { DbError } from "@/lib/shared/errors/database";
 import { PipelineConfigError } from "@/lib/shared/errors/domain/analysis";
 import { LlmService } from "@/lib/integrations/llm/service";
@@ -173,9 +167,6 @@ export class AnalysisPipeline {
 			return Result.err(runningResult.error);
 		}
 
-		// Emit SSE: job started
-		emitStatus(job.id, "running");
-
 		// 3. Initialize progress
 		const progress: JobProgress = {
 			total: songsToAnalyze.length,
@@ -187,13 +178,6 @@ export class AnalysisPipeline {
 		await this.updateProgress(job.id, progress, onProgress);
 
 		// 4. Prefetch lyrics + audio features in parallel
-		emitItem(job.id, {
-			itemId: "prefetch",
-			itemKind: "song",
-			status: "in_progress",
-			label: "Prefetching lyrics and audio features",
-			index: 0,
-		});
 		const songIds = songsToAnalyze.map((s) => s.songId);
 
 		const [lyricsCache, audioFeaturesResult, songsResult] = await Promise.all([
@@ -201,14 +185,6 @@ export class AnalysisPipeline {
 			audioFeatures.getBatch(songIds),
 			songs.getByIds(songIds),
 		]);
-
-		emitItem(job.id, {
-			itemId: "prefetch",
-			itemKind: "song",
-			status: "succeeded",
-			label: "Prefetch complete",
-			index: 0,
-		});
 
 		const audioFeaturesMap = Result.isOk(audioFeaturesResult)
 			? audioFeaturesResult.value
@@ -225,29 +201,12 @@ export class AnalysisPipeline {
 
 		// 5. Process songs with concurrency control
 		const chunks = this.chunkArray(songsToAnalyze, this.config.concurrency);
-		let songIndex = 1; // Start at 1 (prefetch was 0)
 
 		for (const chunk of chunks) {
 			const promises = chunk.map(async (song) => {
-				const currentIndex = songIndex++;
-				const songLabel = `${song.artist} - ${song.title}`;
-
 				const cachedLyrics = lyricsCache.get(song.songId);
 				const lyrics = cachedLyrics?.lyrics ?? song.lyrics;
 				const af = audioFeaturesMap.get(song.songId) ?? null;
-				const isInstrumental = this.detectInstrumentalPath(
-					lyrics,
-					af?.instrumentalness,
-				);
-
-				// Emit: song analysis starting (with instrumental hint)
-				emitItem(job.id, {
-					itemId: song.songId,
-					itemKind: "song",
-					status: "in_progress",
-					label: isInstrumental ? `${songLabel} (instrumental)` : songLabel,
-					index: currentIndex,
-				});
 
 				const input: AnalyzeSongInput = {
 					songId: song.songId,
@@ -260,15 +219,6 @@ export class AnalysisPipeline {
 				};
 
 				const result = await this.songAnalysis.analyzeSong(input);
-
-				// Emit: song succeeded or failed
-				emitItem(job.id, {
-					itemId: song.songId,
-					itemKind: "song",
-					status: Result.isOk(result) ? "succeeded" : "failed",
-					label: isInstrumental ? `${songLabel} (instrumental)` : songLabel,
-					index: currentIndex,
-				});
 
 				return { songId: song.songId, result };
 			});
@@ -295,17 +245,7 @@ export class AnalysisPipeline {
 			"All songs failed analysis",
 		);
 		if (Result.isError(finalizeResult)) {
-			emitError(job.id, finalizeResult.error.message);
-			emitStatus(job.id, "failed");
 			return Result.err(finalizeResult.error);
-		}
-
-		// Emit final status based on results
-		if (progress.failed === progress.total) {
-			emitError(job.id, "All songs failed analysis");
-			emitStatus(job.id, "failed");
-		} else {
-			emitStatus(job.id, "completed");
 		}
 
 		return Result.ok({
@@ -338,9 +278,6 @@ export class AnalysisPipeline {
 			return Result.err(runningResult.error);
 		}
 
-		// Emit SSE: job started
-		emitStatus(job.id, "running");
-
 		// 3. Initialize progress
 		const progress: JobProgress = {
 			total: 1,
@@ -352,14 +289,6 @@ export class AnalysisPipeline {
 		await this.updateProgress(job.id, progress, onProgress);
 
 		// 4. Analyze playlist
-		emitItem(job.id, {
-			itemId: playlist.playlistId,
-			itemKind: "playlist",
-			status: "in_progress",
-			label: playlist.name,
-			index: 0,
-		});
-
 		const input: AnalyzePlaylistInput = {
 			playlistId: playlist.playlistId,
 			name: playlist.name,
@@ -373,22 +302,8 @@ export class AnalysisPipeline {
 		progress.done = 1;
 		if (Result.isOk(result)) {
 			progress.succeeded = 1;
-			emitItem(job.id, {
-				itemId: playlist.playlistId,
-				itemKind: "playlist",
-				status: "succeeded",
-				label: playlist.name,
-				index: 0,
-			});
 		} else {
 			progress.failed = 1;
-			emitItem(job.id, {
-				itemId: playlist.playlistId,
-				itemKind: "playlist",
-				status: "failed",
-				label: playlist.name,
-				index: 0,
-			});
 		}
 
 		await this.updateProgress(job.id, progress, onProgress);
@@ -400,17 +315,7 @@ export class AnalysisPipeline {
 
 		const finalizeResult = await finalizeJob(job.id, progress, errorMsg);
 		if (Result.isError(finalizeResult)) {
-			emitError(job.id, finalizeResult.error.message);
-			emitStatus(job.id, "failed");
 			return Result.err(finalizeResult.error);
-		}
-
-		// Emit final status
-		if (progress.failed > 0) {
-			emitError(job.id, errorMsg ?? "Playlist analysis failed");
-			emitStatus(job.id, "failed");
-		} else {
-			emitStatus(job.id, "completed");
 		}
 
 		return Result.ok({
@@ -534,7 +439,7 @@ export class AnalysisPipeline {
 	}
 
 	/**
-	 * Updates job progress, emits SSE event, and calls callback.
+	 * Updates job progress in DB and calls callback.
 	 */
 	private async updateProgress(
 		jobId: string,
@@ -547,25 +452,9 @@ export class AnalysisPipeline {
 				`[Pipeline] Failed to update job progress for ${jobId}: ${updateResult.error.message}`,
 			);
 		}
-		// Emit SSE progress event
-		emitProgress(jobId, progress);
 		if (onProgress) {
 			await onProgress(progress);
 		}
-	}
-
-	/**
-	 * Quick instrumental check for SSE labeling.
-	 * Mirrors SongAnalysisService.detectInstrumental() logic.
-	 */
-	private detectInstrumentalPath(
-		lyrics: string | null | undefined,
-		instrumentalness: number | null | undefined,
-	): boolean {
-		if (!lyrics || lyrics.trim().length === 0) return true;
-		if (instrumentalness != null && instrumentalness > 0.5) return true;
-		if (lyrics.trim().split(/\s+/).length < 50) return true;
-		return false;
 	}
 
 	/**

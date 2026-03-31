@@ -26,7 +26,6 @@ import { Route as ApiExtensionTokenRouteImport } from './routes/api/extension/to
 import { Route as ApiExtensionSyncRouteImport } from './routes/api/extension/sync'
 import { Route as ApiExtensionStatusRouteImport } from './routes/api/extension/status'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as ApiJobsIdProgressRouteImport } from './routes/api/jobs/$id/progress'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -112,11 +111,6 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiJobsIdProgressRoute = ApiJobsIdProgressRouteImport.update({
-  id: '/api/jobs/$id/progress',
-  path: '/api/jobs/$id/progress',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -135,7 +129,6 @@ export interface FileRoutesByFullPath {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
-  '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -154,7 +147,6 @@ export interface FileRoutesByTo {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
-  '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -175,7 +167,6 @@ export interface FileRoutesById {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
-  '/api/jobs/$id/progress': typeof ApiJobsIdProgressRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -196,7 +187,6 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
-    | '/api/jobs/$id/progress'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -215,7 +205,6 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
-    | '/api/jobs/$id/progress'
   id:
     | '__root__'
     | '/'
@@ -235,7 +224,6 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
-    | '/api/jobs/$id/progress'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -250,7 +238,6 @@ export interface RootRouteChildren {
   ApiExtensionStatusRoute: typeof ApiExtensionStatusRoute
   ApiExtensionSyncRoute: typeof ApiExtensionSyncRoute
   ApiExtensionTokenRoute: typeof ApiExtensionTokenRoute
-  ApiJobsIdProgressRoute: typeof ApiJobsIdProgressRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -374,13 +361,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/jobs/$id/progress': {
-      id: '/api/jobs/$id/progress'
-      path: '/api/jobs/$id/progress'
-      fullPath: '/api/jobs/$id/progress'
-      preLoaderRoute: typeof ApiJobsIdProgressRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -417,7 +397,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiExtensionStatusRoute: ApiExtensionStatusRoute,
   ApiExtensionSyncRoute: ApiExtensionSyncRoute,
   ApiExtensionTokenRoute: ApiExtensionTokenRoute,
-  ApiJobsIdProgressRoute: ApiJobsIdProgressRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

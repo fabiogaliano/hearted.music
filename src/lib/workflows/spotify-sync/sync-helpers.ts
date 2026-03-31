@@ -9,7 +9,6 @@ import * as likedSongsData from "@/lib/domains/library/liked-songs/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import * as songs from "@/lib/domains/library/songs/queries";
 import { completeJob, failJob, startJob } from "@/lib/platform/jobs/lifecycle";
-import { emitError, emitStatus } from "@/lib/platform/jobs/progress/helpers";
 import type { DbError } from "@/lib/shared/errors/database";
 import { SyncFailedError } from "@/lib/shared/errors/domain/sync";
 import type { LikedSongsSyncResult, SpotifyTrackDTO } from "./types";
@@ -214,13 +213,10 @@ export async function runPhase<T>(
 	const result = await syncFn();
 
 	if (Result.isError(result)) {
-		emitError(jobId, result.error.message);
-		emitStatus(jobId, "failed");
 		await failJob(jobId, result.error.message);
 		return result;
 	}
 
-	emitStatus(jobId, "completed");
 	await completeJob(jobId);
 	return result;
 }

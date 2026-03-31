@@ -63,9 +63,3 @@ export function setupRouterLocationMock(search = {}) {
 		useLocation: () => ({ search }),
 	};
 }
-
-export function setupJobProgressMock(state = {}) {
-	return {
-		useJobProgress: () => state,
-	};
-}

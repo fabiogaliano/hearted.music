@@ -72,24 +72,6 @@ export const JobEventSchema = z.discriminatedUnion("type", [
 ]);
 export type JobEvent = z.infer<typeof JobEventSchema>;
 
-export function serializeSSEEvent(event: JobEvent): string {
-	return `data: ${JSON.stringify(event)}\n\n`;
-}
-
-export function serializeSSEPing(): string {
-	return ": ping\n\n";
-}
-
-export function parseSSEEvent(data: string): JobEvent | null {
-	try {
-		const parsed = JSON.parse(data);
-		const result = JobEventSchema.safeParse(parsed);
-		return result.success ? result.data : null;
-	} catch {
-		return null;
-	}
-}
-
 export const PhaseJobIdsSchema = z.object({
 	liked_songs: z.uuid(),
 	playlists: z.uuid(),

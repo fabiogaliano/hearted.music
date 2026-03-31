@@ -33,7 +33,7 @@ export type JobType = Enums<"job_type">;
  */
 export type JobStatus = Enums<"job_status">;
 
-// Re-export JobProgress from SSE types (single source of truth)
+// Re-export JobProgress from job types (single source of truth)
 export type JobProgress = JobProgressType;
 export const JobProgressSchema = JobProgressSchemaImpl;
 
