@@ -25,6 +25,7 @@ import type {
 	ShortcutRegistration,
 	ShortcutScope,
 } from "@/lib/keyboard/types";
+import { ShortcutsHelpModal } from "./ShortcutsHelpModal";
 
 const ShortcutContext = createContext<ShortcutContextValue | undefined>(
 	undefined,
@@ -251,6 +252,7 @@ export function KeyboardShortcutProvider({
 	return (
 		<ShortcutContext.Provider value={contextValue}>
 			{children}
+			<ShortcutsHelpModal />
 		</ShortcutContext.Provider>
 	);
 }
