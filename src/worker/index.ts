@@ -5,6 +5,7 @@ import {
 } from "@/lib/data/jobs";
 import { workerConfig } from "./config";
 import { setShuttingDown, setUnhealthy, startHealthServer } from "./health";
+import { startKeepAlive } from "./keep-alive";
 import { log } from "./logger";
 import { getActiveJobCount, startPolling, stopPolling } from "./poll";
 
@@ -46,6 +47,7 @@ async function main() {
 	const healthServer = startHealthServer();
 	log.info("health-server-started", { port: workerConfig.healthPort });
 
+	const keepAlive = startKeepAlive();
 	const sweep = startSweep();
 
 	const shutdown = async (signal: string) => {
@@ -55,6 +57,7 @@ async function main() {
 
 		setShuttingDown();
 		stopPolling();
+		keepAlive.stop();
 		sweep.stop();
 
 		const deadline = Date.now() + workerConfig.drainTimeoutMs;
