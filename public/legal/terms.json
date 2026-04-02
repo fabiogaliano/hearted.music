@@ -1,6 +1,6 @@
 {
   "lastUpdated": "January 31, 2026",
-  "summary": "By using hearted., you agree to these terms. The basics:\n\nYou need a Spotify account to use the service\nThe service helps you explore your music — it doesn't guarantee perfect results\nCredits cost money; refunds aren't provided for used credits\nDon't abuse the service or use it to harm others\nYour account can be terminated for violating these terms",
+  "summary": "By using hearted., you agree to these terms. The basics:\n\nYou need a Google account to use the service\nThe service helps you explore your music — it doesn't guarantee perfect results\nSong packs and subscriptions cost money; refunds aren't provided for used purchases\nDon't abuse the service or use it to harm others\nYour account can be terminated for violating these terms",
   "sections": [
     {
       "number": 1,
@@ -13,7 +13,7 @@
         {
           "type": "list",
           "items": [
-            "A valid Spotify account is required",
+            "A valid Google account is required",
             "You must be at least 13 years old (or the minimum age in your country)",
             "One account per person — no shared or automated accounts"
           ]
@@ -51,29 +51,28 @@
         {
           "type": "list",
           "items": [
-            "50 credits to start",
-            "3 credits earned monthly (up to 36 banked, expires after 1 year)",
+            "15 songs unlocked automatically after completing onboarding",
             "Only music analysis and playlist matching are available"
           ]
         },
         {
           "type": "sub-heading",
-          "text": "Purchasing Credits:"
+          "text": "Song Packs:"
         },
         {
           "type": "list",
           "items": [
-            "Credits are purchased through the platform",
+            "Song packs are purchased through the platform",
             "Prices are displayed before purchase",
-            "Credits expire after 1 year",
-            "Credits are delivered immediately upon purchase",
+            "Songs unlocked by a pack never expire",
+            "Songs are unlocked immediately upon purchase",
             "By purchasing, you consent to immediate delivery and waive your 14-day withdrawal right",
-            "All credit purchases are final — no refunds"
+            "All pack purchases are final — no refunds"
           ]
         },
         {
           "type": "sub-heading",
-          "text": "Supporter Subscriptions:"
+          "text": "Backstage Pass:"
         },
         {
           "type": "list",
@@ -105,7 +104,6 @@
           "items": [
             "Use automated tools to access the service",
             "Use the service to harass, spam, or harm others",
-            "Violate Spotify's terms of service through hearted."
           ]
         },
         {
@@ -143,7 +141,7 @@
           "items": [
             { "term": "\"As Is\" Service", "description": "hearted. is provided as-is, without warranties of any kind. There's no guarantee the service will be available, accurate, or error-free." },
             { "term": "AI Limitations", "description": "Song analyses are AI-generated interpretations. They may be wrong, incomplete, or miss nuance. Use your own judgment." },
-            { "term": "Third-Party Services", "description": "hearted. depends on Spotify and AI providers. If those services change or become unavailable, hearted. functionality may be affected." }
+            { "term": "Third-Party Services", "description": "hearted. depends on Spotify (for library access), Google (for sign-in and AI), and other third-party services. If those change or become unavailable, hearted. functionality may be affected." }
           ]
         }
       ]
@@ -183,7 +181,7 @@
         },
         {
           "type": "paragraph",
-          "text": "If an account is terminated for violations, remaining credits may be forfeited."
+          "text": "If an account is terminated for violations, remaining song pack balance and any active subscription may be forfeited."
         }
       ]
     },

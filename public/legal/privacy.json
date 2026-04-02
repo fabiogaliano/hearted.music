@@ -100,7 +100,7 @@
             { "term": "Correct your data", "description": "If something is wrong, request a correction." },
             { "term": "Delete your data", "description": "Delete your account anytime. All personal data (profile, preferences, match history, liked songs associations) is removed. Global song analyses remain since they're not personal data." },
             { "term": "Export your data", "description": "Request your data in a portable format." },
-            { "term": "Withdraw consent", "description": "Revoke Spotify access anytime through your Spotify account settings." }
+            { "term": "Withdraw consent", "description": "Delete your account anytime from the app settings. You can also uninstall the hearted. extension to stop Spotify library syncing at any time." }
           ]
         },
         {
