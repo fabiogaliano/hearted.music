@@ -417,6 +417,8 @@ type LibraryProcessingChange =
     };
 ```
 
+This is the core pre-monetization union shape. If monetization adds new sources of follow-on work, extend the union rather than bypassing the control plane — for example billing-shaped changes such as `songs_unlocked` or `unlimited_activated`.
+
 ### Grouped Source Helpers
 
 Use grouped source helpers to create valid changes:
