@@ -8,7 +8,7 @@ import {
 	getMatchDecisions,
 } from "@/lib/data/match-decision-queries";
 import {
-	getLatestMatchContext,
+	getLatestMatchSnapshot,
 	getMatchResults,
 	getMatchResultsForSong,
 } from "@/lib/domains/taste/song-matching/queries";
@@ -21,7 +21,7 @@ import type { Json } from "@/lib/data/database.types";
 // ============================================================================
 
 export interface MatchingSessionResult {
-	contextId: string;
+	snapshotId: string;
 	totalSongs: number;
 }
 
@@ -73,11 +73,11 @@ export interface SongMatchesResult {
 
 /** Returns song IDs that have at least one undecided match result, with ordering info. */
 export async function getUndecidedSongs(
-	contextId: string,
+	snapshotId: string,
 	accountId: string,
 ): Promise<Array<{ songId: string; maxScore: number }>> {
 	const [matchResultsResult, decisionsResult] = await Promise.all([
-		getMatchResults(contextId),
+		getMatchResults(snapshotId),
 		getMatchDecisions(accountId),
 	]);
 
@@ -123,16 +123,16 @@ export const getMatchingSession = createServerFn({ method: "GET" })
 	.handler(async ({ context }): Promise<MatchingSessionResult | null> => {
 		const { session } = context;
 
-		const contextResult = await getLatestMatchContext(session.accountId);
-		if (Result.isError(contextResult) || !contextResult.value) return null;
+		const snapshotResult = await getLatestMatchSnapshot(session.accountId);
+		if (Result.isError(snapshotResult) || !snapshotResult.value) return null;
 
-		const matchContext = contextResult.value;
+		const matchSnapshot = snapshotResult.value;
 		const undecided = await getUndecidedSongs(
-			matchContext.id,
+			matchSnapshot.id,
 			session.accountId,
 		);
 
-		return { contextId: matchContext.id, totalSongs: undecided.length };
+		return { snapshotId: matchSnapshot.id, totalSongs: undecided.length };
 	});
 
 // ============================================================================
@@ -146,7 +146,7 @@ export interface SongSuggestion {
 }
 
 export interface SongSuggestionsResult {
-	contextId: string;
+	snapshotId: string;
 	matches: SongSuggestion[];
 }
 
@@ -160,18 +160,18 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 	.handler(async ({ data, context }): Promise<SongSuggestionsResult | null> => {
 		const { session } = context;
 
-		const contextResult = await getLatestMatchContext(session.accountId);
-		if (Result.isError(contextResult) || !contextResult.value) return null;
+		const snapshotResult = await getLatestMatchSnapshot(session.accountId);
+		if (Result.isError(snapshotResult) || !snapshotResult.value) return null;
 
-		const matchContext = contextResult.value;
+		const matchSnapshot = snapshotResult.value;
 
 		const [matchResultsResult, decisionsResult] = await Promise.all([
-			getMatchResultsForSong(matchContext.id, data.songId),
+			getMatchResultsForSong(matchSnapshot.id, data.songId),
 			getMatchDecisions(session.accountId),
 		]);
 
 		if (Result.isError(matchResultsResult) || Result.isError(decisionsResult))
-			return { contextId: matchContext.id, matches: [] };
+			return { snapshotId: matchSnapshot.id, matches: [] };
 
 		const decidedPairs = new Set(
 			decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
@@ -182,7 +182,7 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 		);
 
 		if (undecidedResults.length === 0) {
-			return { contextId: matchContext.id, matches: [] };
+			return { snapshotId: matchSnapshot.id, matches: [] };
 		}
 
 		const supabase = createAdminSupabaseClient();
@@ -209,7 +209,7 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 			.filter((m): m is SongSuggestion => m !== null)
 			.toSorted((a, b) => b.score - a.score);
 
-		return { contextId: matchContext.id, matches };
+		return { snapshotId: matchSnapshot.id, matches };
 	});
 
 // ============================================================================
@@ -217,12 +217,12 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 // ============================================================================
 
 const GetSongMatchesSchema = z.object({
-	contextId: z.uuid(),
+	snapshotId: z.uuid(),
 	offset: z.number().int().min(0),
 });
 
 export interface GetSongMatchesParams {
-	contextId: string;
+	snapshotId: string;
 	offset: number;
 }
 
@@ -234,7 +234,7 @@ export const getSongMatches = createServerFn({ method: "GET" })
 		const supabase = createAdminSupabaseClient();
 
 		const [undecided, newSongIds] = await Promise.all([
-			getUndecidedSongs(data.contextId, session.accountId),
+			getUndecidedSongs(data.snapshotId, session.accountId),
 			getNewItemIds(session.accountId, "song"),
 		]);
 
@@ -274,7 +274,7 @@ export const getSongMatches = createServerFn({ method: "GET" })
 				.select("tempo, energy, valence")
 				.eq("song_id", targetSongId)
 				.maybeSingle(),
-			getMatchResults(data.contextId),
+			getMatchResults(data.snapshotId),
 			getMatchDecisions(session.accountId),
 		]);
 

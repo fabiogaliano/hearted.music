@@ -7,11 +7,6 @@ export type Json =
 	| Json[];
 
 export type Database = {
-	// Allows to automatically instantiate createClient with right options
-	// instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-	__InternalSupabase: {
-		PostgrestVersion: "14.1";
-	};
 	graphql_public: {
 		Tables: {
 			[_ in never]: never;
@@ -449,68 +444,6 @@ export type Database = {
 					},
 				];
 			};
-			match_context: {
-				Row: {
-					account_id: string;
-					algorithm_version: string;
-					analysis_model: string | null;
-					analysis_version: string | null;
-					candidate_set_hash: string;
-					config_hash: string;
-					context_hash: string;
-					created_at: string;
-					embedding_model: string | null;
-					embedding_version: string | null;
-					id: string;
-					playlist_count: number;
-					playlist_set_hash: string;
-					song_count: number;
-					weights: Json;
-				};
-				Insert: {
-					account_id: string;
-					algorithm_version: string;
-					analysis_model?: string | null;
-					analysis_version?: string | null;
-					candidate_set_hash: string;
-					config_hash: string;
-					context_hash: string;
-					created_at?: string;
-					embedding_model?: string | null;
-					embedding_version?: string | null;
-					id?: string;
-					playlist_count?: number;
-					playlist_set_hash: string;
-					song_count?: number;
-					weights?: Json;
-				};
-				Update: {
-					account_id?: string;
-					algorithm_version?: string;
-					analysis_model?: string | null;
-					analysis_version?: string | null;
-					candidate_set_hash?: string;
-					config_hash?: string;
-					context_hash?: string;
-					created_at?: string;
-					embedding_model?: string | null;
-					embedding_version?: string | null;
-					id?: string;
-					playlist_count?: number;
-					playlist_set_hash?: string;
-					song_count?: number;
-					weights?: Json;
-				};
-				Relationships: [
-					{
-						foreignKeyName: "match_context_account_id_fkey";
-						columns: ["account_id"];
-						isOneToOne: false;
-						referencedRelation: "account";
-						referencedColumns: ["id"];
-					},
-				];
-			};
 			match_decision: {
 				Row: {
 					account_id: string;
@@ -565,43 +498,36 @@ export type Database = {
 			};
 			match_result: {
 				Row: {
-					context_id: string;
 					created_at: string;
 					factors: Json;
 					id: string;
 					playlist_id: string;
 					rank: number | null;
 					score: number;
+					snapshot_id: string;
 					song_id: string;
 				};
 				Insert: {
-					context_id: string;
 					created_at?: string;
 					factors?: Json;
 					id?: string;
 					playlist_id: string;
 					rank?: number | null;
 					score: number;
+					snapshot_id: string;
 					song_id: string;
 				};
 				Update: {
-					context_id?: string;
 					created_at?: string;
 					factors?: Json;
 					id?: string;
 					playlist_id?: string;
 					rank?: number | null;
 					score?: number;
+					snapshot_id?: string;
 					song_id?: string;
 				};
 				Relationships: [
-					{
-						foreignKeyName: "match_result_context_id_fkey";
-						columns: ["context_id"];
-						isOneToOne: false;
-						referencedRelation: "match_context";
-						referencedColumns: ["id"];
-					},
 					{
 						foreignKeyName: "match_result_playlist_id_fkey";
 						columns: ["playlist_id"];
@@ -610,10 +536,79 @@ export type Database = {
 						referencedColumns: ["id"];
 					},
 					{
+						foreignKeyName: "match_result_snapshot_id_fkey";
+						columns: ["snapshot_id"];
+						isOneToOne: false;
+						referencedRelation: "match_snapshot";
+						referencedColumns: ["id"];
+					},
+					{
 						foreignKeyName: "match_result_song_id_fkey";
 						columns: ["song_id"];
 						isOneToOne: false;
 						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			match_snapshot: {
+				Row: {
+					account_id: string;
+					algorithm_version: string;
+					analysis_model: string | null;
+					analysis_version: string | null;
+					candidate_set_hash: string;
+					config_hash: string;
+					created_at: string;
+					embedding_model: string | null;
+					embedding_version: string | null;
+					id: string;
+					playlist_count: number;
+					playlist_set_hash: string;
+					snapshot_hash: string;
+					song_count: number;
+					weights: Json;
+				};
+				Insert: {
+					account_id: string;
+					algorithm_version: string;
+					analysis_model?: string | null;
+					analysis_version?: string | null;
+					candidate_set_hash: string;
+					config_hash: string;
+					created_at?: string;
+					embedding_model?: string | null;
+					embedding_version?: string | null;
+					id?: string;
+					playlist_count?: number;
+					playlist_set_hash: string;
+					snapshot_hash: string;
+					song_count?: number;
+					weights?: Json;
+				};
+				Update: {
+					account_id?: string;
+					algorithm_version?: string;
+					analysis_model?: string | null;
+					analysis_version?: string | null;
+					candidate_set_hash?: string;
+					config_hash?: string;
+					created_at?: string;
+					embedding_model?: string | null;
+					embedding_version?: string | null;
+					id?: string;
+					playlist_count?: number;
+					playlist_set_hash?: string;
+					snapshot_hash?: string;
+					song_count?: number;
+					weights?: Json;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "match_snapshot_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
 						referencedColumns: ["id"];
 					},
 				];
@@ -1421,10 +1416,10 @@ export type Database = {
 					p_algorithm_version: string;
 					p_candidate_set_hash: string;
 					p_config_hash: string;
-					p_context_hash: string;
 					p_playlist_count: number;
 					p_playlist_set_hash: string;
 					p_results?: Json;
+					p_snapshot_hash: string;
 					p_song_count: number;
 				};
 				Returns: string;

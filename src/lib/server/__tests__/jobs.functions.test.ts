@@ -9,7 +9,7 @@ const mockAuthContext = {
 
 const mockLoadLibraryProcessingState = vi.fn();
 const mockGetJobById = vi.fn();
-const mockMatchContextMaybeSingle = vi.fn();
+const mockMatchSnapshotMaybeSingle = vi.fn();
 const mockMatchResultMaybeSingle = vi.fn();
 
 vi.mock("@tanstack/react-start", () => {
@@ -46,13 +46,13 @@ vi.mock("@/lib/data/jobs", async () => {
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: () => ({
 		from: (table: string) => {
-			if (table === "match_context") {
+			if (table === "match_snapshot") {
 				return {
 					select: () => ({
 						eq: () => ({
 							order: () => ({
 								limit: () => ({
-									maybeSingle: mockMatchContextMaybeSingle,
+									maybeSingle: mockMatchSnapshotMaybeSingle,
 								}),
 							}),
 						}),
@@ -106,7 +106,7 @@ describe("jobs.functions", () => {
 	});
 
 	it("reports firstMatchReady=false when the latest snapshot has no matches", async () => {
-		mockMatchContextMaybeSingle.mockResolvedValue({
+		mockMatchSnapshotMaybeSingle.mockResolvedValue({
 			data: { id: "ctx-1" },
 			error: null,
 		});
@@ -120,7 +120,7 @@ describe("jobs.functions", () => {
 	});
 
 	it("reports firstMatchReady=true when the latest snapshot has at least one match", async () => {
-		mockMatchContextMaybeSingle.mockResolvedValue({
+		mockMatchSnapshotMaybeSingle.mockResolvedValue({
 			data: { id: "ctx-2" },
 			error: null,
 		});

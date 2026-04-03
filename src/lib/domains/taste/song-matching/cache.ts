@@ -1,7 +1,7 @@
 /**
- * Match context metadata computation.
+ * Match snapshot metadata computation.
  *
- * Computes context hash from songs, playlists, and config
+ * Computes snapshot hash from songs, playlists, and config
  * for deduplication of matching runs.
  */
 
@@ -9,7 +9,7 @@ import { Result } from "better-result";
 import {
 	hashCandidateSet,
 	hashExclusionSet,
-	hashMatchContext,
+	hashMatchSnapshot,
 	hashMatchingConfig,
 	hashPlaylistSet,
 	hashRerankerConfig,
@@ -25,13 +25,13 @@ import type {
 	MatchingSong,
 } from "./types";
 
-export async function computeMatchContextMetadata(
+export async function computeMatchSnapshotMetadata(
 	songs: MatchingSong[],
 	profiles: MatchingPlaylistProfile[],
 	matchingConfig: Partial<MatchingConfig> = {},
 	exclusionSet?: Set<string>,
 ): Promise<{
-	contextHash: string;
+	snapshotHash: string;
 	candidateSetHash: string;
 	playlistSetHash: string;
 	configHash: string;
@@ -84,7 +84,7 @@ export async function computeMatchContextMetadata(
 		throw modelBundleHashResult.error;
 	}
 
-	const contextHash = await hashMatchContext({
+	const snapshotHash = await hashMatchSnapshot({
 		candidateSetHash,
 		playlistSetHash,
 		configHash,
@@ -94,7 +94,7 @@ export async function computeMatchContextMetadata(
 	});
 
 	return {
-		contextHash,
+		snapshotHash,
 		candidateSetHash,
 		playlistSetHash,
 		configHash,

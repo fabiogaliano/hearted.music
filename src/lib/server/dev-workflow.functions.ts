@@ -236,7 +236,7 @@ export interface WarmReplayResetResult {
 	reset: {
 		cancelledJobs: number;
 		clearedItemStatuses: number;
-		clearedMatchContexts: number;
+		clearedMatchSnapshots: number;
 	};
 	reseed: {
 		enrichmentRequested: boolean;
@@ -261,7 +261,7 @@ export const resetLibraryProcessingWarmReplay = createServerFn({
 export interface MatchOnlyResetResult {
 	reset: {
 		cancelledJobs: number;
-		clearedMatchContexts: number;
+		clearedMatchSnapshots: number;
 	};
 	reseed: {
 		enrichmentRequested: boolean;

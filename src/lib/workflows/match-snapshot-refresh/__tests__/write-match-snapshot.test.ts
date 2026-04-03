@@ -10,8 +10,8 @@ vi.mock("@/lib/data/client", () => ({
 }));
 
 vi.mock("@/lib/domains/taste/song-matching/cache", () => ({
-	computeMatchContextMetadata: vi.fn().mockResolvedValue({
-		contextHash: "hash-abc",
+	computeMatchSnapshotMetadata: vi.fn().mockResolvedValue({
+		snapshotHash: "hash-abc",
 		configHash: "cfg-1",
 		playlistSetHash: "pls-1",
 		candidateSetHash: "cnd-1",
@@ -70,7 +70,7 @@ describe("writeMatchSnapshot", () => {
 		});
 
 		expect(result.published).toBe(true);
-		expect(result.contextId).toBe("ctx-123");
+		expect(result.snapshotId).toBe("ctx-123");
 		expect(result.matchedSongCount).toBe(1);
 		expect(result.candidateCount).toBe(2);
 		expect(result.playlistCount).toBe(1);
@@ -78,7 +78,7 @@ describe("writeMatchSnapshot", () => {
 		expect(mockMarkItemsNew).toHaveBeenCalledWith("acc-1", "song", ["s1"]);
 	});
 
-	it("returns no-op when contextHash matches latest (RPC returns null)", async () => {
+	it("returns no-op when snapshotHash matches latest (RPC returns null)", async () => {
 		mockRpc.mockResolvedValue({ data: null, error: null });
 
 		const result = await writeMatchSnapshot({
@@ -91,7 +91,7 @@ describe("writeMatchSnapshot", () => {
 
 		expect(result.published).toBe(false);
 		expect(result.noOp).toBe(true);
-		expect(result.contextId).toBeNull();
+		expect(result.snapshotId).toBeNull();
 		expect(mockMarkItemsNew).not.toHaveBeenCalled();
 	});
 
@@ -146,7 +146,7 @@ describe("writeEmptySnapshot", () => {
 		expect(mockRpc).toHaveBeenCalledWith(
 			"publish_match_snapshot",
 			expect.objectContaining({
-				p_context_hash: "empty_target_playlist_snapshot",
+				p_snapshot_hash: "empty_target_playlist_snapshot",
 				p_playlist_count: 0,
 				p_song_count: 0,
 				p_results: [],

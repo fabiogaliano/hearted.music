@@ -10,7 +10,7 @@ export type MatchSnapshotRefreshPlan = z.infer<
 
 export interface MatchSnapshotRefreshResult {
 	readonly published: boolean;
-	readonly contextId: string | null;
+	readonly snapshotId: string | null;
 	readonly matchedSongCount: number;
 	readonly candidateCount: number;
 	readonly playlistCount: number;

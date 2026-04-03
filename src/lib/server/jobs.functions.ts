@@ -82,15 +82,15 @@ async function resolveJobInfo(jobId: string): Promise<ActiveJobInfo | null> {
 
 async function deriveFirstMatchReady(accountId: string): Promise<boolean> {
 	const supabase = createAdminSupabaseClient();
-	const { data: latestContext, error: latestContextError } = await supabase
-		.from("match_context")
+	const { data: latestSnapshot, error: latestSnapshotError } = await supabase
+		.from("match_snapshot")
 		.select("id")
 		.eq("account_id", accountId)
 		.order("created_at", { ascending: false })
 		.limit(1)
 		.maybeSingle();
 
-	if (latestContextError || latestContext === null) {
+	if (latestSnapshotError || latestSnapshot === null) {
 		return false;
 	}
 
@@ -98,7 +98,7 @@ async function deriveFirstMatchReady(accountId: string): Promise<boolean> {
 		await supabase
 			.from("match_result")
 			.select("id")
-			.eq("context_id", latestContext.id)
+			.eq("snapshot_id", latestSnapshot.id)
 			.limit(1)
 			.maybeSingle();
 

@@ -17,12 +17,12 @@ import type { LibraryProcessingState } from "../types";
 export interface WarmResetResult {
 	cancelledJobs: number;
 	clearedItemStatuses: number;
-	clearedMatchContexts: number;
+	clearedMatchSnapshots: number;
 }
 
 export interface MatchOnlyResetResult {
 	cancelledJobs: number;
-	clearedMatchContexts: number;
+	clearedMatchSnapshots: number;
 }
 
 /**
@@ -45,14 +45,14 @@ export async function warmReplayReset(
 		.eq("account_id", accountId)
 		.select("item_id");
 
-	const clearedMatchContexts = await clearMatchSnapshots(supabase, accountId);
+	const clearedMatchSnapshots = await clearMatchSnapshots(supabase, accountId);
 
 	await resetLibraryProcessingState(accountId);
 
 	return {
 		cancelledJobs,
 		clearedItemStatuses: deletedStatuses?.length ?? 0,
-		clearedMatchContexts,
+		clearedMatchSnapshots,
 	};
 }
 
@@ -70,7 +70,7 @@ export async function matchOnlyReset(
 		"match_snapshot_refresh",
 	);
 
-	const clearedMatchContexts = await clearMatchSnapshots(supabase, accountId);
+	const clearedMatchSnapshots = await clearMatchSnapshots(supabase, accountId);
 
 	const stateResult = await loadLibraryProcessingState(accountId);
 	if (Result.isOk(stateResult) && stateResult.value) {
@@ -87,7 +87,7 @@ export async function matchOnlyReset(
 
 	return {
 		cancelledJobs: cancelledRefreshJobs,
-		clearedMatchContexts,
+		clearedMatchSnapshots,
 	};
 }
 
@@ -132,19 +132,19 @@ async function clearMatchSnapshots(
 	supabase: ReturnType<typeof createAdminSupabaseClient>,
 	accountId: string,
 ): Promise<number> {
-	const { data: contexts } = await supabase
-		.from("match_context")
+	const { data: snapshots } = await supabase
+		.from("match_snapshot")
 		.select("id")
 		.eq("account_id", accountId);
 
-	if (!contexts || contexts.length === 0) return 0;
+	if (!snapshots || snapshots.length === 0) return 0;
 
-	const contextIds = contexts.map((c) => c.id);
+	const snapshotIds = snapshots.map((s) => s.id);
 
-	await supabase.from("match_result").delete().in("context_id", contextIds);
-	await supabase.from("match_context").delete().eq("account_id", accountId);
+	await supabase.from("match_result").delete().in("snapshot_id", snapshotIds);
+	await supabase.from("match_snapshot").delete().eq("account_id", accountId);
 
-	return contexts.length;
+	return snapshots.length;
 }
 
 async function resetLibraryProcessingState(accountId: string): Promise<void> {

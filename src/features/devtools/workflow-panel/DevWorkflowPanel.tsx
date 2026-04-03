@@ -426,7 +426,7 @@ export function DevWorkflowPanel() {
 		try {
 			const r = await resetMatchSnapshotReplay();
 			setLastAction(
-				`Match reset · ${r.reset.cancelledJobs} cancelled · ${r.reset.clearedMatchContexts} snapshots cleared`,
+				`Match reset · ${r.reset.cancelledJobs} cancelled · ${r.reset.clearedMatchSnapshots} snapshots cleared`,
 			);
 			invalidateWorkflowQueries();
 			await refreshState(false);

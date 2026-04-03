@@ -1,6 +1,6 @@
 /**
  * Atomic snapshot publication — the ONLY path allowed to write
- * match_context + match_result for an account.
+ * match_snapshot + match_result for an account.
  *
  * Uses the publish_match_snapshot database function for transactional safety.
  */
@@ -9,7 +9,7 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json } from "@/lib/data/database.types";
 import { MATCHING_ALGO_VERSION } from "@/lib/domains/enrichment/embeddings/versioning";
 import { markItemsNew } from "@/lib/domains/library/liked-songs/status-queries";
-import { computeMatchContextMetadata } from "@/lib/domains/taste/song-matching/cache";
+import { computeMatchSnapshotMetadata } from "@/lib/domains/taste/song-matching/cache";
 import type {
 	MatchingPlaylistProfile,
 	MatchingSong,
@@ -36,7 +36,7 @@ function toResultsJson(entries: MatchResultEntry[]): Json {
 
 /**
  * Publishes a full match snapshot atomically.
- * Returns a no-op result if the contextHash matches the latest published snapshot.
+ * Returns a no-op result if the snapshotHash matches the latest published snapshot.
  */
 export async function writeMatchSnapshot(opts: {
 	accountId: string;
@@ -49,7 +49,7 @@ export async function writeMatchSnapshot(opts: {
 	const { accountId, songs, profiles, results, matchedSongIds } = opts;
 
 	// Compute context metadata for dedup
-	const contextMeta = await computeMatchContextMetadata(
+	const snapshotMeta = await computeMatchSnapshotMetadata(
 		songs,
 		profiles,
 		{},
@@ -61,15 +61,15 @@ export async function writeMatchSnapshot(opts: {
 	const { data, error } = await supabase.rpc("publish_match_snapshot", {
 		p_account_id: accountId,
 		p_algorithm_version: MATCHING_ALGO_VERSION,
-		p_config_hash: contextMeta.configHash,
-		p_playlist_set_hash: contextMeta.playlistSetHash,
-		p_candidate_set_hash: contextMeta.candidateSetHash,
-		p_context_hash: contextMeta.contextHash,
+		p_config_hash: snapshotMeta.configHash,
+		p_playlist_set_hash: snapshotMeta.playlistSetHash,
+		p_candidate_set_hash: snapshotMeta.candidateSetHash,
+		p_snapshot_hash: snapshotMeta.snapshotHash,
 		p_playlist_count: profiles.length,
 		p_song_count: songs.length,
 		p_results: toResultsJson(results),
 	});
-	const contextId = data ?? null;
+	const snapshotId = data ?? null;
 
 	if (error) {
 		throw new Error(
@@ -77,11 +77,11 @@ export async function writeMatchSnapshot(opts: {
 		);
 	}
 
-	// NULL return means context_hash is already the latest published (no-op)
-	if (!contextId) {
+	// NULL return means snapshot_hash is already the latest published (no-op)
+	if (!snapshotId) {
 		return {
 			published: false,
-			contextId: null,
+			snapshotId: null,
 			matchedSongCount: 0,
 			candidateCount: songs.length,
 			playlistCount: profiles.length,
@@ -97,7 +97,7 @@ export async function writeMatchSnapshot(opts: {
 
 	return {
 		published: true,
-		contextId,
+		snapshotId,
 		matchedSongCount: matchedSongIds.length,
 		candidateCount: songs.length,
 		playlistCount: profiles.length,
@@ -108,7 +108,7 @@ export async function writeMatchSnapshot(opts: {
 
 /**
  * Publishes an explicit empty snapshot when no target playlists remain.
- * Uses a stable empty context_hash so repeated zero-target refreshes no-op.
+ * Uses a stable empty snapshot_hash so repeated zero-target refreshes no-op.
  */
 export async function writeEmptySnapshot(
 	accountId: string,
@@ -122,12 +122,12 @@ export async function writeEmptySnapshot(
 		p_config_hash: "empty",
 		p_playlist_set_hash: "empty",
 		p_candidate_set_hash: "empty",
-		p_context_hash: emptyHash,
+		p_snapshot_hash: emptyHash,
 		p_playlist_count: 0,
 		p_song_count: 0,
 		p_results: [],
 	});
-	const contextId = data ?? null;
+	const snapshotId = data ?? null;
 
 	if (error) {
 		throw new Error(
@@ -135,10 +135,10 @@ export async function writeEmptySnapshot(
 		);
 	}
 
-	if (!contextId) {
+	if (!snapshotId) {
 		return {
 			published: false,
-			contextId: null,
+			snapshotId: null,
 			matchedSongCount: 0,
 			candidateCount: 0,
 			playlistCount: 0,
@@ -149,7 +149,7 @@ export async function writeEmptySnapshot(
 
 	return {
 		published: true,
-		contextId,
+		snapshotId,
 		matchedSongCount: 0,
 		candidateCount: 0,
 		playlistCount: 0,

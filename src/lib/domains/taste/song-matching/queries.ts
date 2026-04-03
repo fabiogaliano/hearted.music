@@ -19,15 +19,15 @@ import type { Json, Tables, TablesInsert } from "@/lib/data/database.types";
 // Type Exports
 // ============================================================================
 
-/** Match context row type */
-export type MatchContext = Tables<"match_context">;
+/** Match snapshot row type */
+export type MatchSnapshot = Tables<"match_snapshot">;
 
 /** Match result row type */
 export type MatchResult = Tables<"match_result">;
 
-/** Insert type for match context */
-export type InsertMatchContext = Pick<
-	TablesInsert<"match_context">,
+/** Insert type for match snapshot */
+export type InsertMatchSnapshot = Pick<
+	TablesInsert<"match_snapshot">,
 	| "account_id"
 	| "algorithm_version"
 	| "analysis_model"
@@ -38,7 +38,7 @@ export type InsertMatchContext = Pick<
 	| "config_hash"
 	| "playlist_set_hash"
 	| "candidate_set_hash"
-	| "context_hash"
+	| "snapshot_hash"
 	| "playlist_count"
 	| "song_count"
 >;
@@ -46,7 +46,7 @@ export type InsertMatchContext = Pick<
 /** Insert type for match result */
 export type InsertMatchResult = Pick<
 	TablesInsert<"match_result">,
-	"context_id" | "song_id" | "playlist_id" | "score" | "rank" | "factors"
+	"snapshot_id" | "song_id" | "playlist_id" | "score" | "rank" | "factors"
 >;
 
 /** Aggregated top match result with song info */
@@ -63,32 +63,32 @@ export type TopMatch = {
 // ============================================================================
 
 /**
- * Gets a match context by its ID.
+ * Gets a match snapshot by its ID.
  * Returns null if not found.
  */
-export function getMatchContext(
-	contextId: string,
-): Promise<Result<MatchContext | null, DbError>> {
+export function getMatchSnapshot(
+	snapshotId: string,
+): Promise<Result<MatchSnapshot | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseMaybe(
-		supabase.from("match_context").select("*").eq("id", contextId).single(),
+		supabase.from("match_snapshot").select("*").eq("id", snapshotId).single(),
 	);
 }
 
 /**
- * Gets a match context by its context hash.
+ * Gets a match snapshot by its snapshot hash.
  * Used for cache-first lookup before computing new matches.
  * Returns null if not found.
  */
-export function getMatchContextByHash(
-	contextHash: string,
+export function getMatchSnapshotByHash(
+	snapshotHash: string,
 	accountId?: string,
-): Promise<Result<MatchContext | null, DbError>> {
+): Promise<Result<MatchSnapshot | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	let query = supabase
-		.from("match_context")
+		.from("match_snapshot")
 		.select("*")
-		.eq("context_hash", contextHash);
+		.eq("snapshot_hash", snapshotHash);
 
 	if (accountId) {
 		query = query.eq("account_id", accountId);
@@ -100,16 +100,16 @@ export function getMatchContextByHash(
 }
 
 /**
- * Gets the latest match context for an account.
+ * Gets the latest match snapshot for an account.
  * Returns null if none found.
  */
-export function getLatestMatchContext(
+export function getLatestMatchSnapshot(
 	accountId: string,
-): Promise<Result<MatchContext | null, DbError>> {
+): Promise<Result<MatchSnapshot | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseMaybe(
 		supabase
-			.from("match_context")
+			.from("match_snapshot")
 			.select("*")
 			.eq("account_id", accountId)
 			.order("created_at", { ascending: false })
@@ -119,16 +119,16 @@ export function getLatestMatchContext(
 }
 
 /**
- * Gets all match contexts for an account.
+ * Gets all match snapshots for an account.
  * Returns empty array if none found.
  */
-export function getMatchContexts(
+export function getMatchSnapshots(
 	accountId: string,
-): Promise<Result<MatchContext[], DbError>> {
+): Promise<Result<MatchSnapshot[], DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseMany(
 		supabase
-			.from("match_context")
+			.from("match_snapshot")
 			.select("*")
 			.eq("account_id", accountId)
 			.order("created_at", { ascending: false }),
@@ -136,17 +136,17 @@ export function getMatchContexts(
 }
 
 /**
- * Creates a new match context.
- * Each context represents a snapshot of the matching algorithm's configuration
+ * Creates a new match snapshot.
+ * Each snapshot represents the matching algorithm's configuration
  * and the state of playlists/songs at match time.
  */
-export function createMatchContext(
-	data: InsertMatchContext,
-): Promise<Result<MatchContext, DbError>> {
+export function createMatchSnapshot(
+	data: InsertMatchSnapshot,
+): Promise<Result<MatchSnapshot, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
 		supabase
-			.from("match_context")
+			.from("match_snapshot")
 			.insert({
 				account_id: data.account_id,
 				algorithm_version: data.algorithm_version,
@@ -158,7 +158,7 @@ export function createMatchContext(
 				config_hash: data.config_hash,
 				playlist_set_hash: data.playlist_set_hash,
 				candidate_set_hash: data.candidate_set_hash,
-				context_hash: data.context_hash,
+				snapshot_hash: data.snapshot_hash,
 				playlist_count: data.playlist_count ?? 0,
 				song_count: data.song_count ?? 0,
 			})
@@ -168,8 +168,8 @@ export function createMatchContext(
 }
 
 /**
- * Gets the playlist_set_hash from the latest match context for an account.
- * Returns null if no context exists.
+ * Gets the playlist_set_hash from the latest match snapshot for an account.
+ * Returns null if no snapshot exists.
  */
 export async function getLatestPlaylistSetHash(
 	accountId: string,
@@ -177,7 +177,7 @@ export async function getLatestPlaylistSetHash(
 	const supabase = createAdminSupabaseClient();
 	const result = await fromSupabaseMaybe(
 		supabase
-			.from("match_context")
+			.from("match_snapshot")
 			.select("playlist_set_hash")
 			.eq("account_id", accountId)
 			.order("created_at", { ascending: false })
@@ -197,29 +197,29 @@ export async function getLatestPlaylistSetHash(
 // ============================================================================
 
 /**
- * Gets all match results for a context.
+ * Gets all match results for a snapshot.
  * Results are ordered by score descending, with song_id tiebreaker for determinism.
  */
 export function getMatchResults(
-	contextId: string,
+	snapshotId: string,
 ): Promise<Result<MatchResult[], DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseMany(
 		supabase
 			.from("match_result")
 			.select("*")
-			.eq("context_id", contextId)
+			.eq("snapshot_id", snapshotId)
 			.order("score", { ascending: false })
 			.order("song_id", { ascending: true }),
 	);
 }
 
 /**
- * Gets match results for a specific song in a context.
+ * Gets match results for a specific song in a snapshot.
  * Results are ordered by score descending.
  */
 export function getMatchResultsForSong(
-	contextId: string,
+	snapshotId: string,
 	songId: string,
 ): Promise<Result<MatchResult[], DbError>> {
 	const supabase = createAdminSupabaseClient();
@@ -227,18 +227,18 @@ export function getMatchResultsForSong(
 		supabase
 			.from("match_result")
 			.select("*")
-			.eq("context_id", contextId)
+			.eq("snapshot_id", snapshotId)
 			.eq("song_id", songId)
 			.order("score", { ascending: false }),
 	);
 }
 
 /**
- * Gets match results for multiple songs in a context.
+ * Gets match results for multiple songs in a snapshot.
  * Returns a map of songId -> array of results.
  */
 export async function getMatchResultsForSongs(
-	contextId: string,
+	snapshotId: string,
 	songIds: string[],
 ): Promise<Result<Map<string, MatchResult[]>, DbError>> {
 	if (songIds.length === 0) {
@@ -250,7 +250,7 @@ export async function getMatchResultsForSongs(
 		supabase
 			.from("match_result")
 			.select("*")
-			.eq("context_id", contextId)
+			.eq("snapshot_id", snapshotId)
 			.in("song_id", songIds)
 			.order("score", { ascending: false }),
 	);
@@ -287,7 +287,7 @@ export function insertMatchResults(
 			.from("match_result")
 			.insert(
 				results.map((r) => ({
-					context_id: r.context_id,
+					snapshot_id: r.snapshot_id,
 					song_id: r.song_id,
 					playlist_id: r.playlist_id,
 					score: r.score,
@@ -300,14 +300,14 @@ export function insertMatchResults(
 }
 
 /**
- * Gets the top N matches per playlist in a context.
+ * Gets the top N matches per playlist in a snapshot.
  * Groups results by playlist and returns the highest-scoring songs.
  *
  * Note: This fetches all results and processes in memory.
  * For large datasets, consider a database function.
  */
 export async function getTopMatchesPerPlaylist(
-	contextId: string,
+	snapshotId: string,
 	limit: number = 10,
 ): Promise<Result<Map<string, TopMatch[]>, DbError>> {
 	const supabase = createAdminSupabaseClient();
@@ -315,7 +315,7 @@ export async function getTopMatchesPerPlaylist(
 		supabase
 			.from("match_result")
 			.select("song_id, playlist_id, score, rank, factors")
-			.eq("context_id", contextId)
+			.eq("snapshot_id", snapshotId)
 			.order("score", { ascending: false }),
 	);
 
@@ -344,18 +344,18 @@ export async function getTopMatchesPerPlaylist(
 }
 
 /**
- * Gets the best match (highest score) for each song in a context.
+ * Gets the best match (highest score) for each song in a snapshot.
  * Useful for showing the recommended playlist for each song.
  */
 export async function getBestMatchPerSong(
-	contextId: string,
+	snapshotId: string,
 ): Promise<Result<Map<string, MatchResult>, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	const result = await fromSupabaseMany(
 		supabase
 			.from("match_result")
 			.select("*")
-			.eq("context_id", contextId)
+			.eq("snapshot_id", snapshotId)
 			.order("score", { ascending: false }),
 	);
 

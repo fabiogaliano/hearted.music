@@ -195,10 +195,10 @@ export async function hashRerankerConfig(
 }
 
 /**
- * Hash full match context for cache lookup.
- * Prefix: ctx_
+ * Hash full match snapshot for cache lookup.
+ * Prefix: snap_
  */
-export async function hashMatchContext(params: {
+export async function hashMatchSnapshot(params: {
 	candidateSetHash: string;
 	playlistSetHash: string;
 	configHash: string;
@@ -208,7 +208,7 @@ export async function hashMatchContext(params: {
 }): Promise<string> {
 	const content = stableStringify(params);
 	const hash = await shortHash(content);
-	return `ctx_${hash}`;
+	return `snap_${hash}`;
 }
 
 /**

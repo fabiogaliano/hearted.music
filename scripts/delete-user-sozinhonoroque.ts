@@ -9,7 +9,7 @@
  *   bun scripts/delete-user.ts
  *
  * What gets deleted (in FK-safe order):
- *   - match_result, match_context (matching data)
+ *   - match_result, match_snapshot (matching data)
  *   - job_failure, job (background jobs)
  *   - item_status (UI state)
  *   - playlist_profile, playlist_analysis, playlist_song, playlist (playlists)
@@ -95,23 +95,23 @@ async function main() {
 
 	info("Phase 1: Deleting account data...");
 
-	const { data: contexts } = await supabase
-		.from("match_context")
+	const { data: snapshots } = await supabase
+		.from("match_snapshot")
 		.select("id")
 		.eq("account_id", accountId);
-	const contextIds = contexts?.map((c) => c.id) ?? [];
+	const snapshotIds = snapshots?.map((s) => s.id) ?? [];
 
 	let matchResults = 0;
-	if (contextIds.length > 0) {
+	if (snapshotIds.length > 0) {
 		const { count } = await supabase
 			.from("match_result")
 			.delete({ count: "exact" })
-			.in("context_id", contextIds);
+			.in("snapshot_id", snapshotIds);
 		matchResults = count ?? 0;
 	}
 
-	const { count: matchContexts } = await supabase
-		.from("match_context")
+	const { count: matchSnapshots } = await supabase
+		.from("match_snapshot")
 		.delete({ count: "exact" })
 		.eq("account_id", accountId);
 
@@ -191,7 +191,7 @@ async function main() {
 
 	console.log(`   ${colors.dim}Deleted:${colors.reset}`);
 	deleted("match results", matchResults);
-	deleted("match contexts", matchContexts ?? 0);
+	deleted("match snapshots", matchSnapshots ?? 0);
 	deleted("job failures", jobFailures);
 	deleted("jobs", jobCount ?? 0);
 	deleted("item statuses", itemStatuses ?? 0);

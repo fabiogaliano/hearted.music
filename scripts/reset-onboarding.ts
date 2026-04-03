@@ -91,7 +91,7 @@ interface ResetCounts {
 	libraryProcessingStates: number;
 	matchDecisions: number;
 	matchResults: number;
-	matchContexts: number;
+	matchSnapshots: number;
 	jobFailures: number;
 	jobs: number;
 	itemStatuses: number;
@@ -190,7 +190,7 @@ function makeEmptyCounts(): ResetCounts {
 		libraryProcessingStates: 0,
 		matchDecisions: 0,
 		matchResults: 0,
-		matchContexts: 0,
+		matchSnapshots: 0,
 		jobFailures: 0,
 		jobs: 0,
 		itemStatuses: 0,
@@ -208,7 +208,7 @@ async function deleteCount(
 	supabase: ReturnType<typeof createAdminSupabaseClient>,
 	table:
 		| "library_processing_state"
-		| "match_context"
+		| "match_snapshot"
 		| "match_decision"
 		| "job"
 		| "item_status"
@@ -263,22 +263,22 @@ async function resetTargetPlaylists(
 async function clearMatchData(
 	supabase: ReturnType<typeof createAdminSupabaseClient>,
 	accountId: string,
-): Promise<Pick<ResetCounts, "matchResults" | "matchContexts" | "matchDecisions">> {
-	const { data: contexts, error: contextsError } = await supabase
-		.from("match_context")
+): Promise<Pick<ResetCounts, "matchResults" | "matchSnapshots" | "matchDecisions">> {
+	const { data: snapshots, error: snapshotsError } = await supabase
+		.from("match_snapshot")
 		.select("id")
 		.eq("account_id", accountId);
-	if (contextsError) {
-		throw new Error(`Failed to load match contexts: ${contextsError.message}`);
+	if (snapshotsError) {
+		throw new Error(`Failed to load match snapshots: ${snapshotsError.message}`);
 	}
 
-	const contextIds = (contexts ?? []).map((context) => context.id);
+	const snapshotIds = (snapshots ?? []).map((snapshot) => snapshot.id);
 	let matchResults = 0;
-	if (contextIds.length > 0) {
+	if (snapshotIds.length > 0) {
 		const { count, error: matchResultsError } = await supabase
 			.from("match_result")
 			.delete({ count: "exact" })
-			.in("context_id", contextIds);
+			.in("snapshot_id", snapshotIds);
 		if (matchResultsError) {
 			throw new Error(
 				`Failed to delete match results: ${matchResultsError.message}`,
@@ -287,14 +287,14 @@ async function clearMatchData(
 		matchResults = count ?? 0;
 	}
 
-	const matchContexts = await deleteCount(supabase, "match_context", accountId);
+	const matchSnapshots = await deleteCount(supabase, "match_snapshot", accountId);
 	const matchDecisions = await deleteCount(
 		supabase,
 		"match_decision",
 		accountId,
 	);
 
-	return { matchResults, matchContexts, matchDecisions };
+	return { matchResults, matchSnapshots, matchDecisions };
 }
 
 async function clearJobs(
@@ -434,7 +434,7 @@ async function resetOnboarding(
 
 	const matchCounts = await clearMatchData(supabase, accountId);
 	counts.matchResults = matchCounts.matchResults;
-	counts.matchContexts = matchCounts.matchContexts;
+	counts.matchSnapshots = matchCounts.matchSnapshots;
 	counts.matchDecisions = matchCounts.matchDecisions;
 
 	const jobCounts = await clearJobs(supabase, accountId);
@@ -467,7 +467,7 @@ function printCounts(counts: ResetCounts): void {
 		["library processing state", counts.libraryProcessingStates],
 		["match decisions", counts.matchDecisions],
 		["match results", counts.matchResults],
-		["match contexts", counts.matchContexts],
+		["match snapshots", counts.matchSnapshots],
 		["job failures", counts.jobFailures],
 		["jobs", counts.jobs],
 		["item statuses", counts.itemStatuses],

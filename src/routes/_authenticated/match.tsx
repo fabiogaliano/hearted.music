@@ -32,7 +32,7 @@ export const Route = createFileRoute("/_authenticated/match")({
 });
 
 interface DisplayedSession {
-	contextId: string;
+	snapshotId: string;
 	totalSongs: number;
 }
 
@@ -50,35 +50,35 @@ function MatchPage() {
 		useState<DisplayedSession | null>(() =>
 			latestSession && latestSession.totalSongs > 0
 				? {
-						contextId: latestSession.contextId,
+						snapshotId: latestSession.snapshotId,
 						totalSongs: latestSession.totalSongs,
 					}
 				: null,
 		);
 
-	const latestContextId = latestSession?.contextId ?? null;
+	const latestSnapshotId = latestSession?.snapshotId ?? null;
 	const latestTotalSongs = latestSession?.totalSongs ?? 0;
 
-	const hasNewContext =
+	const hasNewSnapshot =
 		displayedSession != null &&
-		latestContextId != null &&
-		latestContextId !== displayedSession.contextId &&
+		latestSnapshotId != null &&
+		latestSnapshotId !== displayedSession.snapshotId &&
 		latestTotalSongs > 0;
 
 	const handleRefresh = useCallback(() => {
-		if (!latestContextId || latestTotalSongs === 0) return;
+		if (!latestSnapshotId || latestTotalSongs === 0) return;
 		setDisplayedSession({
-			contextId: latestContextId,
+			snapshotId: latestSnapshotId,
 			totalSongs: latestTotalSongs,
 		});
-	}, [latestContextId, latestTotalSongs]);
+	}, [latestSnapshotId, latestTotalSongs]);
 
 	// No session at all and never had one
-	if (!displayedSession && (!latestContextId || latestTotalSongs === 0)) {
+	if (!displayedSession && (!latestSnapshotId || latestTotalSongs === 0)) {
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
 				<MatchingEmptyState
-					reason={!latestContextId ? "no-context" : "all-decided"}
+					reason={!latestSnapshotId ? "no-context" : "all-decided"}
 				/>
 			</div>
 		);
@@ -95,7 +95,7 @@ function MatchPage() {
 
 	return (
 		<div className="mx-auto w-full max-w-[min(1600px,100%)]">
-			{hasNewContext && (
+			{hasNewSnapshot && (
 				<div
 					className="mb-4 flex items-center justify-between rounded-lg px-5 py-3"
 					style={{
@@ -119,8 +119,8 @@ function MatchPage() {
 				</div>
 			)}
 			<MatchingPageContent
-				key={displayedSession.contextId}
-				contextId={displayedSession.contextId}
+				key={displayedSession.snapshotId}
+				snapshotId={displayedSession.snapshotId}
 				totalSongs={displayedSession.totalSongs}
 				accountId={session.accountId}
 				onExit={() => navigate({ to: "/" })}
@@ -131,7 +131,7 @@ function MatchPage() {
 }
 
 interface MatchingPageContentProps {
-	contextId: string;
+	snapshotId: string;
 	totalSongs: number;
 	accountId: string;
 	onExit: () => void;
@@ -139,7 +139,7 @@ interface MatchingPageContentProps {
 }
 
 function MatchingPageContent({
-	contextId,
+	snapshotId,
 	totalSongs,
 	accountId,
 	onExit,
@@ -163,14 +163,14 @@ function MatchingPageContent({
 	const isComplete = offset >= totalSongs;
 
 	const { data: songData } = useSuspenseQuery(
-		songMatchesQueryOptions(contextId, offset),
+		songMatchesQueryOptions(snapshotId, offset),
 	);
 
 	useEffect(() => {
 		if (!songData) return;
-		queryClient.prefetchQuery(songMatchesQueryOptions(contextId, offset + 1));
-		queryClient.prefetchQuery(songMatchesQueryOptions(contextId, offset + 2));
-	}, [queryClient, contextId, offset, songData]);
+		queryClient.prefetchQuery(songMatchesQueryOptions(snapshotId, offset + 1));
+		queryClient.prefetchQuery(songMatchesQueryOptions(snapshotId, offset + 2));
+	}, [queryClient, snapshotId, offset, songData]);
 
 	const recentSongs = useMemo(() => {
 		if (!songData || pastSongs.some((s) => s.id === songData.song.id))

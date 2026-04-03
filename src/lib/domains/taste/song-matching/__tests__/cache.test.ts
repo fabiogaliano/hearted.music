@@ -20,7 +20,7 @@ vi.mock("@/lib/integrations/providers/factory", () => ({
 }));
 
 import { hashMatchingConfig } from "@/lib/domains/enrichment/embeddings/hashing";
-import { computeMatchContextMetadata } from "../cache";
+import { computeMatchSnapshotMetadata } from "../cache";
 import { DEFAULT_MATCHING_CONFIG } from "../config";
 
 describe("hashMatchingConfig", () => {
@@ -87,7 +87,7 @@ describe("hashMatchingConfig", () => {
 		expect(a).toBe(b);
 	});
 
-	it("changing exclusionSet changes contextHash", async () => {
+	it("changing exclusionSet changes snapshotHash", async () => {
 		const songs = [
 			{
 				id: "song-1",
@@ -106,14 +106,14 @@ describe("hashMatchingConfig", () => {
 			},
 		];
 
-		const baseline = await computeMatchContextMetadata(songs, profiles);
-		const withExclusions = await computeMatchContextMetadata(
+		const baseline = await computeMatchSnapshotMetadata(songs, profiles);
+		const withExclusions = await computeMatchSnapshotMetadata(
 			songs,
 			profiles,
 			{},
 			new Set(["song-1:playlist-1"]),
 		);
 
-		expect(withExclusions.contextHash).not.toBe(baseline.contextHash);
+		expect(withExclusions.snapshotHash).not.toBe(baseline.snapshotHash);
 	});
 });

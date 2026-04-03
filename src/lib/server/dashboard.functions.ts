@@ -22,7 +22,7 @@ import {
 } from "@/lib/domains/library/liked-songs/queries";
 import { getAnalyzedCountForAccount } from "@/lib/domains/enrichment/content-analysis/queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
-import { getLatestMatchContext } from "@/lib/domains/taste/song-matching/queries";
+import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import { getPlaylistCount } from "@/lib/domains/library/playlists/queries";
 import { getUndecidedSongs } from "@/lib/server/matching.functions";
 import { createAdminSupabaseClient } from "@/lib/data/client";
@@ -109,11 +109,11 @@ async function fetchRecentActivity(accountId: string): Promise<ActivityItem[]> {
 }
 
 async function fetchMatchPreviews(accountId: string): Promise<MatchPreview[]> {
-	const contextResult = await getLatestMatchContext(accountId);
-	if (Result.isError(contextResult) || !contextResult.value) return [];
+	const snapshotResult = await getLatestMatchSnapshot(accountId);
+	if (Result.isError(snapshotResult) || !snapshotResult.value) return [];
 
 	const [undecided, newSongIds] = await Promise.all([
-		getUndecidedSongs(contextResult.value.id, accountId),
+		getUndecidedSongs(snapshotResult.value.id, accountId),
 		getNewItemIds(accountId, "song"),
 	]);
 
