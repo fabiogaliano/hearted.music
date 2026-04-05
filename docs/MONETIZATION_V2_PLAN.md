@@ -1,15 +1,18 @@
 # Monetization Plan v2 — Manual Selection + Unlimited Passes
 
-> This document is the canonical source of truth for monetization, billing, entitlement, and onboarding monetization behavior in `v1_hearted/`.
-> Legacy exploration artifacts — including `.pi/todos/*` monetization notes and older monetization plan docs — are superseded by this file and should not be used for implementation decisions.
+> **Target-state implementation plan.** This document describes the intended monetization, billing, entitlement, and onboarding design for `v1_hearted/`. None of the billing infrastructure described here exists in the repo yet — schema, RPCs, billing service, env flags, and checkout/portal bridges are all planned and unbuilt. Existing repo context is labeled explicitly where referenced.
+>
+> This is the canonical planning reference for monetization work. Legacy exploration artifacts — including `.pi/todos/*` monetization notes and older monetization plan docs — are superseded by this file and should not be used for implementation decisions.
+>
+> **Terminology:** See `docs/monetization/TERMINOLOGY.md` for canonical naming conventions used throughout this plan.
 
 ## TL;DR
 
-- **Free tier**: one-time onboarding allocation of up to 15 songs, auto-selected from the most recent liked songs
-- **Song packs**: every pack purchase grants 500 purchased songs-to-explore plus up to 25 most-recent liked songs auto-unlocked at no charge
-- **3-month unlimited**: current auto-processing behavior, no selection needed
-- **Yearly unlimited**: same + priority queue 
-- **Billing object**: per-account song unlock; purchased balance is spent on unlock requests, not cache misses or raw compute
+- **Free tier**: one-time free allocation of up to 15 songs, auto-selected from the most recent liked songs
+- **Song packs**: every pack purchase grants 500 purchased songs to explore plus up to 25 most-recent liked songs as pack bonus unlocks at no charge; unused purchased pack value can become a first-invoice unlimited upgrade discount
+- **3-month unlimited**: full-library auto-processing (same as today's ungated behavior), no selection needed; upgrade applies any unused purchased pack value as a one-time first-invoice discount
+- **Yearly unlimited**: same + priority queue; upgrade applies any unused purchased pack value as a one-time first-invoice discount
+- **Billing objects**: per-account song unlock plus explicit pack-purchase lots and upgrade-conversion records; purchased balance is spent on unlock requests, not cache misses or raw compute
 - **Global cache**: affects COGS only, not user billing
 - **Pipeline split**: audio features + genres run for all songs at no cost; LLM analysis + embedding + matching are gated by effective entitlement; the value boundary is Phase B analysis
 - **Repo split**: `v1_hearted/` owns product enforcement; `v1_hearted_brand/` owns Stripe integration + billing writes
@@ -22,49 +25,55 @@
 - **15 songs** total
 - unlocked after onboarding completion if the user stays free
 - v1 selection policy: auto-select up to the 15 most recent liked songs; user does not manually pick free songs
-- free is a **one-time onboarding allocation**, not a persistent general balance
+- free is a **one-time free allocation**, not a persistent general balance
 - if the user has fewer than 15 currently liked songs at onboarding completion, only those songs are unlocked; unused free allocation is forfeited for v1
 - songs stay unlocked forever for that account
 
-### Song Pack — $5.99 / 500 songs + 25 instant unlocks
+### Song Pack — $5.99 / 500 songs + 25 pack bonus unlocks
 - one-time purchase, buy as many as needed
-- each pack purchase grants **500 purchased songs-to-explore** into `credit_balance`
-- each pack purchase also auto-unlocks up to **25** of the account's most-recent currently liked songs that are not already unlocked, at no charge and separate from the purchased balance
+- each pack purchase grants **500 purchased songs to explore** into `credit_balance`
+- each pack purchase also grants up to **25 pack bonus unlocks** of the account's most-recent currently liked songs that are not already unlocked, at no charge and separate from the purchased balance
 - user explicitly selects which songs to explore from the purchased balance
 - songs never expire, stay unlocked forever
 - 1 song = 1 exploration unlock
-- if fewer than 25 currently liked songs that are still locked exist at purchase fulfillment time, only those songs are auto-unlocked; unused bonus does not carry forward
+- if fewer than 25 currently liked songs that are still locked exist at purchase fulfillment time, only those songs receive pack bonus unlocks; unused bonus does not carry forward
+- if the user later upgrades to unlimited, any remaining unused purchased pack value becomes a one-time proportional discount on the initial unlimited invoice
+- only unused purchased pack value converts; existing `source='pack'` unlocks stay permanent and are never reclassified as unlimited
 
 ### 3-Month Unlimited — $14.99/quarter
 - unlimited explorations while active
-- current auto-processing behavior (full library)
+- full-library auto-processing (replicates today's ungated behavior)
 - target: users who want to organize their library in a burst
 - cancellable anytime, access continues through paid period
 - ~$5/mo equivalent; yearly is clearly better value at $3.33/mo (saves ~$20/yr, ~4 months free)
-- implemented in schema and billing service; **hidden behind `BILLING_OFFER_QUARTERLY_ENABLED` feature flag until confirmed**
+- will be **hidden behind `QUARTERLY_PLAN_ENABLED` feature flag until confirmed**
+- upgrading into this plan converts any unused purchased pack value into a one-time first-invoice discount at fulfillment time
+- while unlimited is active, pack purchase entry points are hidden/disabled in v1
 
 ### Backstage Pass (Yearly Unlimited) — $39.99/yr
 - unlimited explorations while active
-- current auto-processing behavior (full library)
+- full-library auto-processing (replicates today's ungated behavior)
 - priority processing queue
 - patron / best-value tier
+- upgrading into this plan converts any unused purchased pack value into a one-time first-invoice discount at fulfillment time
+- while unlimited is active, pack purchase entry points are hidden/disabled in v1
 
 ### User-facing language
 - "songs to explore" — never "credits"
 - "Explore more songs" — not "buy credits"
-- internal code uses `credit_balance` for purchased/manual-use balance
+- internal code uses `credit_balance` for the songs-to-explore balance cache
 
 ---
 
 ## Architecture Review Revisions
 
-These revisions tighten the original plan so it fits the current repo architecture more cleanly and avoids hidden edge-case traps.
+These revisions tighten the original plan so it fits the existing repo architecture more cleanly and avoids hidden edge-case traps.
 
 ### 1. Add a dedicated billing domain boundary in `v1_hearted/`
 
 Do **not** spread billing rules across onboarding, route loaders, and workflow modules.
 
-Create a focused billing domain, e.g.:
+Plan: create a focused billing domain, e.g.:
 
 - `src/lib/domains/billing/state.ts` — read model + derived access flags
 - `src/lib/domains/billing/queries.ts` — Supabase reads/writes
@@ -73,22 +82,22 @@ Create a focused billing domain, e.g.:
 
 This keeps pricing logic out of `library-processing` and matches the repo's domain-first structure.
 
-### 2. Separate raw billing facts from effective access
+### 2. Separate raw billing facts from effective entitlement
 
 The app should not treat `plan !== 'free'` as the whole truth.
 
-Use this distinction:
+Planned distinction:
 
-- **raw billing facts**: `plan`, `subscription_status`, `subscription_period_end`, `cancel_at_period_end`, `credit_balance`
-- **effective access**: whether the account may run Phase B/C + matching for a song right now
+- **raw billing facts**: `plan`, `subscription_status`, `subscription_period_end`, `cancel_at_period_end`, `credit_balance`, `unlimited_access_source`
+- **effective entitlement**: whether the account may run Phase B/C + matching for a song right now
 
-Effective access to a song is:
+Effective entitlement for a song is:
 
 - `true` if the song already has an `account_song_unlock` row
 - `true` if the account currently has active unlimited access
 - `false` otherwise
 
-This is the key architectural correction for unlimited users: active unlimited access must work **before** unlock rows exist.
+This is the key architectural correction for unlimited users: active unlimited entitlement must work **before** unlock rows exist.
 
 ### 3. Keep the control plane pricing-neutral
 
@@ -131,13 +140,23 @@ All server-to-server HMAC in v1 — both app-to-billing and billing-service-to-a
 
 Shared-secret HMAC without a timestamp is replayable.
 
+Replay protection is necessary but not sufficient for checkout creation.
+
+- transport auth prevents stale/replayed signed requests
+- checkout endpoints also need business idempotency for fresh retries / double-submits
+- v1 will use `checkout_attempt_id` (UUID) for that business idempotency on `/checkout/pack` and `/checkout/unlimited`
+- the public app will generate one `checkout_attempt_id` per specific checkout intent / offer choice, reuse it across retries of that same intent, and mint a new one if the offer changes or the user starts a new checkout flow later
+- the billing service must include `checkout_attempt_id` as Stripe's `idempotency_key` when calling `checkout.sessions.create(...)`
+- `checkout_attempt_id` must be part of the signed request body so HMAC covers the idempotency contract itself
+- `/portal/session` does not need a separate business-idempotency contract in v1; duplicate portal sessions are acceptable
+
 ### 7. Billing-driven work still belongs to the control plane
 
-The existing `library-processing` architecture says all external follow-on inputs should become typed `LibraryProcessingChange` values.
+The existing `library-processing` architecture requires all external follow-on inputs to become typed `LibraryProcessingChange` values.
 
-That needs to stay true for billing-driven work.
+That must stay true for billing-driven work.
 
-For this plan, add a billing helper group alongside the existing change helpers:
+Plan: add a billing helper group alongside the existing change helpers:
 
 - `BillingChanges.songsUnlocked(accountId, songIds)`
 - `BillingChanges.unlimitedActivated(accountId)`
@@ -146,7 +165,7 @@ This keeps billing-triggered scheduling inside the same control-plane contract a
 
 ### 8. Do not split enrichment into a second workflow slice in v1
 
-`library_processing_state` currently has one enrichment slice and one match-snapshot-refresh slice.
+`library_processing_state` has one enrichment slice and one match-snapshot-refresh slice today (existing repo state).
 
 For v1 monetization, keep that shape.
 
@@ -157,7 +176,7 @@ Implementation strategy:
 - make the enrichment selector and orchestrator billing-aware per song
 - do **not** introduce a second durable workflow just for Phase A vs Phase B/C
 
-This is the minimal change that fits the current control-plane design.
+This is the minimal change that fits the existing control-plane design.
 
 ### 9. Read-model enforcement is a first-class billing concern
 
@@ -170,7 +189,7 @@ Rules:
 - global shared artifacts (`song_analysis`, `song_embedding`, shared audio features, shared genres) do **not** imply account access
 - liked-song read models must return account-visible state, not raw artifact existence
 - `song_analysis` may exist globally for a locked song, but the read model must still return `locked` and must not expose that analysis text to the account
-- `match_result` is account-scoped (via `match_context.account_id`), not a global shared artifact; it still requires billing-aware visibility filtering because stale match results can reference songs whose access was later revoked
+- `match_result` is account-scoped (via `match_snapshot.account_id`), not a global shared artifact; it still requires billing-aware visibility filtering because stale match results can reference songs whose access was later revoked
 - locked songs must not expose shared analysis text or match output
 - dashboard/stats counts such as "analyzed" must be billing-aware
 - existing user-facing read contracts must be rewritten accordingly, including liked songs page/stats loaders, analyzed-count/dashboard stats loaders, song suggestion loaders, and match/session detail loaders
@@ -189,7 +208,7 @@ Read-time access filtering for match/session loaders:
 - match result and suggestion loaders must filter by current entitlement at read time, not only by snapshot contents
 - this ensures revoked songs disappear immediately from matching UI, without waiting for the next match snapshot refresh
 - the canonical entitlement predicate (`unlock row with revoked_at IS NULL` OR `active unlimited access`) must be applied in both liked-song read models and match/session read models
-- match snapshots (`match_context` / `match_result`) are append-only; revocations do **not** delete old snapshots — the latest context supersedes, and read-time filtering handles the gap
+- match snapshots (`match_snapshot` / `match_result`) are append-only; revocations do **not** delete old snapshots — the latest snapshot supersedes, and read-time filtering handles the gap
 
 ### 10. Credit billing is triggered by LLM analysis, not audio features
 
@@ -230,37 +249,45 @@ Canonical onboarding sequence:
 
 Notes:
 
-- steps 1–5 and 10 already exist and are preserved; steps 6–8 are additions, step 9 needs updated copy
-- the current `ReadyStep` copy assumes full-library processing for all users ("Going through every song. An email's on its way when it's ready."); this must be updated to reflect billing-aware behavior (free: 15 songs, pack: selected songs, unlimited: full library)
+- steps 1–5 and 10 exist today and will be preserved; steps 6–8 are additions, step 9 needs updated copy
+- the existing `ReadyStep` copy assumes full-library processing for all users ("Going through every song. An email's on its way when it's ready."); this must be updated to reflect billing-aware behavior (free: 15 songs, pack: selected songs, unlimited: full library)
 - the guided showcase uses a pre-seeded demo song and dedicated onboarding matching path, not the user's real liked-song pipeline as the primary first-value experience
 - the demo song is completely outside monetization: no unlock row, no credit use, no replacement-credit semantics
 - plan selection happens after the user has seen both song analysis and match output
-- monetization logic begins only after that guided flow: free users get auto-allocation, pack buyers receive the pack offer plus bonus unlocks, and unlimited users begin full-library processing through active entitlement
+- when `BILLING_ENABLED=false`, onboarding auto-skips the `plan-selection` step and account provisioning grants `self_hosted` unlimited access
+- monetization logic begins only after that guided flow: free users get their free allocation, pack buyers receive the pack offer plus pack bonus unlocks, and unlimited users begin full-library processing through active entitlement
 
 ### After onboarding completes
 
 **If user stays free:**
 - system auto-unlocks up to 15 most recent liked songs
-- onboarding/free allocation does **not** use purchased `credit_balance`
+- free allocation does **not** use purchased `credit_balance`
 - if fewer than 15 songs are currently liked at onboarding completion, only those songs are unlocked; no unused free allocation carries forward in v1
 - Phase B/C + matching processes those songs in background
 - user sees results as they complete
 
 **If user buys a pack:**
-- the pack grants 500 purchased songs-to-explore into `credit_balance`
-- the pack also auto-unlocks up to 25 most-recent currently liked songs that are not already unlocked, without spending purchased balance
-- after the bonus auto-unlocks, the user manually selects additional songs from the purchased balance
-- the bonus auto-unlocks and the purchased balance are both part of the pack entitlement; refunds/chargebacks reverse both
+- the pack grants 500 purchased songs to explore into `credit_balance`
+- the pack also grants up to 25 pack bonus unlocks of most-recent currently liked songs that are not already unlocked, without spending purchased balance
+- after the pack bonus unlocks, the user manually selects additional songs from the purchased balance
+- the pack bonus unlocks and the purchased balance are both part of the pack entitlement; refunds/chargebacks reverse both
 
 **If user upgrades to unlimited:**
-- skip auto-allocation
+- skip free allocation
+- any remaining unused purchased pack value is reserved for checkout and applied as a one-time discount on the initial subscription invoice
 - full library processing begins through active unlimited entitlement
-- `credit_balance` is preserved while unlimited is active and becomes usable again if unlimited later ends
+- on successful initial subscription payment, the reserved purchased pack value is consumed; normal subscription end does not restore it
+
+**If `BILLING_ENABLED=false`:**
+- onboarding auto-skips plan selection
+- the account already has `self_hosted` unlimited access
+- full library processing begins through the same unlimited entitlement path, without checkout or purchased-balance flows
 
 ### Billing availability during onboarding
 
-- no pack or unlimited purchase entry points are shown before the onboarding upgrade step
-- billing UI becomes available after the guided first-result / first-match path demonstrates value
+- in provider-enabled deployments, no pack or unlimited purchase entry points are shown before the onboarding upgrade step
+- in provider-enabled deployments, billing UI becomes available after the guided first-result / first-match path demonstrates value
+- when `BILLING_ENABLED=false`, purchase entry points remain hidden throughout onboarding
 
 ### Why this flow works
 - user experiences the full product value before seeing a price
@@ -300,14 +327,14 @@ User → v1_hearted (Cloudflare Workers)
 - billing state reads from Supabase
 - song unlock enforcement
 - credit deduction (atomic RPCs)
-- free auto-allocation logic
+- free allocation logic
 - onboarding flow integration with the song-showcase / match-showcase / plan-selection sequence
-- song selection UI for pack users
-- paywall / upgrade UI
-- balance display
+- song selection UI for pack users (provider-enabled deployments only)
+- paywall / upgrade UI *(provider-enabled deployments only)*
+- balance display *(provider-enabled deployments only)*
 - queue priority resolution
 - pipeline gating (Phase A vs Phase B/C)
-- app-to-billing-service bridge (server functions)
+- app-to-billing-service bridge (server functions, provider-enabled deployments only)
 
 #### `v1_hearted_brand/` (private) owns
 - Stripe SDK integration
@@ -320,11 +347,11 @@ User → v1_hearted (Cloudflare Workers)
 - operational billing docs
 - HMAC auth for app-to-service calls
 
-### What stays in Supabase (shared)
-- billing tables (schema owned by `v1_hearted/` migrations)
+### What will live in Supabase (shared)
+- billing tables (schema to be owned by `v1_hearted/` migrations)
 - billing RPCs (atomic operations)
-- billing state is the single source of truth
-- both repos read/write via service role
+- billing state will be the single source of truth
+- both repos will read/write via service role
 
 ---
 
@@ -341,6 +368,8 @@ CREATE TABLE account_billing (
                   CHECK (plan IN ('free', 'quarterly', 'yearly')),
   credit_balance INTEGER NOT NULL DEFAULT 0
                   CHECK (credit_balance >= 0),
+  unlimited_access_source TEXT
+                  CHECK (unlimited_access_source IN ('subscription', 'self_hosted')),
 
   -- Stripe refs (null until first interaction)
   stripe_customer_id       TEXT UNIQUE,
@@ -361,10 +390,17 @@ CREATE TABLE account_billing (
 Notes:
 - every account gets an `account_billing` row in every deployment; missing row is an invariant violation, not a valid entitlement mode
 - `plan` reflects the current paid offer, not the full access decision by itself
-- `credit_balance` = purchased/manual-use songs available to explore
-- effective unlimited access is derived from `plan` + `subscription_status` + `subscription_period_end`
-- when subscription ends, `plan` reverts to `free`; `credit_balance` preserved
-- unlimited users don't spend credits; balance sits untouched
+- `credit_balance` = total songs-to-explore balance currently available on the account (spendable + reserved)
+- `unlimited_access_source` records the current non-song-specific unlimited access grant: `subscription` for paid unlimited, `self_hosted` for OSS / provider-disabled deployments
+- `unlimited_access_source IS NULL` means the account currently has no non-song-specific unlimited access; this maps to `UnlimitedAccess.kind = 'none'` in the app read model
+- `self_hosted` unlimited access is orthogonal to `plan`; those deployments may still keep `plan='free'` and `credit_balance=0`
+- upgrade discount eligibility must be computed from unused `pack_credit_lot` rows, not from `credit_balance` alone
+- accounting: `credit_balance = non_lot_balance + SUM(open pack_credit_lot.remaining_credits)`
+- spendable balance: `credit_balance - SUM(reserved_credits across pending subscription_credit_conversion_allocation rows)`
+- effective unlimited access is derived from `unlimited_access_source`; `subscription` grants access only while the subscription lifecycle is active, while `self_hosted` grants access without Stripe state
+- when subscription ends, `plan` reverts to `free`; any pre-upgrade purchased pack value that was converted into the initial unlimited discount stays consumed
+- when subscription ends, `unlimited_access_source` must be cleared unless another source explicitly replaces it
+- pack purchases are unavailable while unlimited is active in v1
 - `cancel_at_period_end` is needed for correct UI and portal state reflection
 
 ### `account_song_unlock`
@@ -378,7 +414,7 @@ CREATE TABLE account_song_unlock (
   song_id     UUID NOT NULL REFERENCES song(id) ON DELETE CASCADE,
   source      TEXT NOT NULL
                 CHECK (source IN (
-                  'free_auto', 'pack', 'unlimited', 'admin'
+                  'free_auto', 'pack', 'unlimited', 'self_hosted', 'admin'
                 )),
   granted_stripe_event_id TEXT,
   granted_stripe_subscription_id TEXT,
@@ -403,13 +439,108 @@ Notes:
 - `granted_stripe_subscription_id` and `granted_subscription_period_end` are the reversal key for unlimited-period refunds/chargebacks (all unlocks in a period share the same values)
 - `granted_stripe_event_id` is the reversal key for pack refunds/chargebacks (one event = one pack); for unlimited unlock rows it is optional audit metadata, not a reversal key
 - active unlimited access is dynamic; unlock rows are still written as songs reach account-visible analysis during active unlimited access so access survives cancellation without mass pre-materialization
+- `source='self_hosted'` is the durable unlock provenance for provider-disabled/self-hosted deployments; it never carries Stripe provenance and is never revoked by subscription refund logic
 - `admin` is reserved for manual support actions or goodwill adjustments
 - unique constraint prevents double-unlock / double-charge
 - if a previously revoked song is unlocked again, v1 reuses the existing row by clearing revocation fields and updating `source` to the new active provenance
 - unlocks persist independently of current liked-state; if a song is later unliked and then re-liked, the prior active unlock becomes effective again without spending additional purchased balance
-- v1 does not add a separate UI for currently unliked songs; the prior unlock matters only if the song is later re-liked in Spotify and returns on a future sync
-- effective access from an unlock row requires `revoked_at IS NULL`
-- refunded/chargebacked pack usage can revoke pack-funded unlocks without deleting history
+- v1 will not add a separate UI for currently unliked songs; the prior unlock matters only if the song is later re-liked in Spotify and returns on a future sync
+- effective entitlement from an unlock row requires `revoked_at IS NULL`
+- refunded/chargebacked pack usage can revoke pack bonus unlocks without deleting history
+
+### `pack_credit_lot`
+
+Tracks unused purchased pack value separately from the aggregate account balance so upgrade discounts can be computed from real purchase provenance.
+
+```sql
+CREATE TABLE pack_credit_lot (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id        UUID NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+  stripe_event_id   TEXT NOT NULL UNIQUE,
+  offer_id          TEXT NOT NULL,
+  original_credits  INTEGER NOT NULL CHECK (original_credits > 0),
+  remaining_credits INTEGER NOT NULL
+                   CHECK (remaining_credits >= 0 AND remaining_credits <= original_credits),
+  price_cents       INTEGER NOT NULL CHECK (price_cents > 0),
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_pack_credit_lot_account_open
+  ON pack_credit_lot(account_id, created_at)
+  WHERE remaining_credits > 0;
+```
+
+Notes:
+- one successful canonical pack fulfillment creates one lot row
+- `remaining_credits` is the source of truth for upgrade-discount eligibility; `credit_balance` is only the aggregate spendable cache
+- `unlock_songs_for_account` decrements open lots in a deterministic order when purchased balance is spent
+- replacement/admin/manual grants must not create `pack_credit_lot` rows, so they never become subscription-discount value by accident
+
+### `subscription_credit_conversion`
+
+Durable reservation + fulfillment record for converting unused purchased pack value into the first invoice of an unlimited upgrade.
+
+```sql
+CREATE TABLE subscription_credit_conversion (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id            UUID NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+  checkout_session_id   TEXT,
+  target_plan           TEXT NOT NULL
+                        CHECK (target_plan IN ('quarterly', 'yearly')),
+  status                TEXT NOT NULL
+                        CHECK (status IN ('pending', 'applied', 'released', 'reversed')),
+  converted_credits     INTEGER NOT NULL CHECK (converted_credits >= 0),
+  discount_cents        INTEGER NOT NULL CHECK (discount_cents >= 0),
+  stripe_subscription_id TEXT,
+  stripe_invoice_id     TEXT,
+  applied_stripe_event_id TEXT,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_subscription_credit_conversion_account
+  ON subscription_credit_conversion(account_id, created_at DESC);
+
+CREATE UNIQUE INDEX idx_subscription_credit_conversion_checkout_session
+  ON subscription_credit_conversion(checkout_session_id)
+  WHERE checkout_session_id IS NOT NULL;
+
+CREATE UNIQUE INDEX idx_subscription_credit_conversion_pending_per_account
+  ON subscription_credit_conversion(account_id)
+  WHERE status = 'pending';
+```
+
+Notes:
+- at most one `pending` conversion may exist per account at a time
+- `id` / `conversion_id` is the primary identifier for the reservation lifecycle; Stripe checkout/session identifiers are linked after Checkout creation succeeds
+- `pending` reserves unused purchased pack value for an in-flight unlimited checkout
+- `applied` means the initial unlimited invoice succeeded and the reserved purchased pack value has been consumed
+- `released` means the checkout expired or was abandoned before activation
+- `reversed` means the initial unlimited invoice was refunded/disputed and the converted purchased pack value was restored
+
+### `subscription_credit_conversion_allocation`
+
+Per-lot reservation details for an upgrade conversion.
+
+```sql
+CREATE TABLE subscription_credit_conversion_allocation (
+  conversion_id           UUID NOT NULL REFERENCES subscription_credit_conversion(id) ON DELETE CASCADE,
+  pack_credit_lot_id      UUID NOT NULL REFERENCES pack_credit_lot(id) ON DELETE CASCADE,
+  reserved_credits        INTEGER NOT NULL CHECK (reserved_credits > 0),
+  reserved_discount_cents INTEGER NOT NULL CHECK (reserved_discount_cents >= 0),
+  PRIMARY KEY (conversion_id, pack_credit_lot_id)
+);
+
+CREATE INDEX idx_subscription_credit_conversion_allocation_lot
+  ON subscription_credit_conversion_allocation(pack_credit_lot_id);
+```
+
+Notes:
+- `prepare_subscription_upgrade_conversion(...)` materializes one allocation row per participating pack lot
+- `unlock_songs_for_account(...)` must exclude credits reserved by any `pending` conversion allocations when deciding what remains spendable
+- `apply_subscription_upgrade_conversion(...)` consumes the exact allocated lot amounts
+- `reverse_subscription_upgrade_conversion(...)` restores the exact allocated lot amounts rather than minting synthetic replacement balance
+- lot consumption and restoration must use FIFO ordering (`ORDER BY pack_credit_lot.created_at ASC, pack_credit_lot.id ASC`) for deterministic accounting
 
 ### `credit_transaction`
 
@@ -425,6 +556,8 @@ CREATE TABLE credit_transaction (
                     CHECK (reason IN (
                       'song_unlock',
                       'pack_purchase',
+                      'credit_conversion',
+                      'credit_conversion_reversal',
                       'replacement_grant',
                       'refund',
                       'chargeback_reversal',
@@ -442,6 +575,8 @@ CREATE INDEX idx_credit_txn_account
 Suggested metadata payloads:
 - `song_unlock` → `{ source, songIds, requestedCount, netNewCount }`
 - `pack_purchase` → `{ offerId, checkoutSessionId, stripeEventId }`
+- `credit_conversion` → `{ checkoutSessionId, conversionId, targetPlan, convertedCredits, discountCents, stripeInvoiceId, stripeEventId }`
+- `credit_conversion_reversal` → `{ conversionId, restoredCredits, restoredDiscountCents, stripeInvoiceId, stripeEventId, reason }`
 - `replacement_grant` → `{ trigger: 'processing_failure', relatedSongId }`
 - `refund` / `chargeback_reversal` → `{ refundedCredits, revokedSongIds, stripeEventId }`
 - `admin_adjustment` → `{ actor, reason }`
@@ -463,8 +598,8 @@ CREATE TABLE billing_webhook_event (
 ```
 
 Notes:
-- `processed` events are safe to ignore on duplicate delivery
-- `failed` events must be retryable; do not permanently skip solely because the row already exists
+- `processed` events will be safe to ignore on duplicate delivery
+- `failed` events must be retryable; do not permanently skip solely because the row exists
 
 ### `billing_activation`
 
@@ -485,9 +620,9 @@ CREATE TABLE billing_activation (
 ```
 
 Notes:
-- this table keeps durable orchestration markers out of `account_billing`, which remains focused on current billing facts
+- this table will keep durable orchestration markers out of `account_billing`, which should remain focused on current billing facts
 - `stripe_subscription_id` and `subscription_period_end` are NOT NULL because PostgreSQL treats NULLs as always distinct in UNIQUE constraints; nullable columns would silently break the idempotency guarantee
-- for v1, `unlimited_activated` should be emitted at most once per `(account_id, stripe_subscription_id, subscription_period_end)`
+- for v1, `unlimited_period_activated` should be emitted at most once per `(account_id, stripe_subscription_id, subscription_period_end)`
 - `v1_hearted/` should check/insert this marker transactionally before emitting `BillingChanges.unlimitedActivated(...)`
 
 ### `billing_bridge_event`
@@ -511,10 +646,10 @@ CREATE TABLE billing_bridge_event (
 ```
 
 Notes:
-- v1_hearted inserts into this table before emitting control-plane changes for any bridge call
-- duplicate bridge deliveries for the same `stripe_event_id` are no-ops: `INSERT ... ON CONFLICT DO NOTHING` and check whether the insert succeeded before proceeding
-- this is the app-side complement to `billing_webhook_event` (which is billing-service-side / webhook-oriented)
-- all billing-driven control-plane triggers (packs, unlimited, revocations) flow through this table
+- v1_hearted will insert into this table before emitting control-plane changes for any bridge call
+- duplicate bridge deliveries for the same `stripe_event_id` will be no-ops: `INSERT ... ON CONFLICT DO NOTHING` and check whether the insert succeeded before proceeding
+- this will be the app-side complement to `billing_webhook_event` (which is billing-service-side / webhook-oriented)
+- all billing-driven control-plane triggers (packs, unlimited, revocations) will flow through this table
 
 ### RLS for new billing tables
 
@@ -573,11 +708,18 @@ CREATE FUNCTION unlock_songs_for_account(
 )
 ```
 
+Notes:
+- spend non-lot operational/manual balance before any purchased pack lots
+- then consume open `pack_credit_lot` rows in FIFO order (`ORDER BY created_at ASC, id ASC`)
+- any credits reserved through `subscription_credit_conversion_allocation` rows for a `pending` conversion are not spendable until that conversion is either applied or released
+- operational/manual credits must never create `pack_credit_lot` rows
+
 ### `insert_song_unlocks_without_charge`
 
 ```sql
 -- Insert unlock rows without deducting purchased balance
--- Used by: free auto-allocation, pack bonus auto-unlocks, admin fixes
+-- Used by: free allocation, pack bonus unlocks,
+--          self-hosted unlimited activation, admin fixes
 -- Returns: unlocked song IDs
 CREATE FUNCTION insert_song_unlocks_without_charge(
   p_account_id UUID,
@@ -586,14 +728,19 @@ CREATE FUNCTION insert_song_unlocks_without_charge(
 ) RETURNS UUID[]
 ```
 
+Notes:
+- valid v1 sources here are `free_auto`, `pack`, `self_hosted`, and `admin`
+- subscription-backed unlimited uses `activate_unlimited_songs(...)` so Stripe provenance is preserved
+
 ### `activate_unlimited_songs`
 
 ```sql
--- Account-activation RPC for unlimited users.
+-- Content-activation RPC for unlimited users.
 -- Atomically:
 --   1. upsert item_status for songs that are now account-visible
 --   2. insert missing unlimited unlock rows with subscription provenance
--- Used by: enrichment orchestrator account-activation step for unlimited users
+-- Used by: enrichment orchestrator content-activation step for
+--          subscription-backed unlimited users
 -- Returns: newly unlocked song IDs
 CREATE FUNCTION activate_unlimited_songs(
   p_account_id UUID,
@@ -608,7 +755,7 @@ Notes:
 - `granted_stripe_event_id` is not required here; `(subscription_id, period_end)` is the reversal key for unlimited periods
 - does NOT deduct purchased balance
 - sets `source='unlimited'` on all created unlock rows
-- this is distinct from `insert_song_unlocks_without_charge`, which is for free/pack/admin paths that don't need subscription provenance
+- this is distinct from `insert_song_unlocks_without_charge`, which is for free/pack/self-hosted/admin paths that don't need subscription provenance
 
 ### `reverse_unlimited_period_entitlement`
 
@@ -618,7 +765,7 @@ Notes:
 -- granted_stripe_subscription_id and granted_subscription_period_end
 -- match the refunded period.
 -- Contract: only source='unlimited' rows for the matching period are revoked;
---           free_auto/pack/admin unlocks are never touched.
+--           free_auto/pack/self_hosted/admin unlocks are never touched.
 CREATE FUNCTION reverse_unlimited_period_entitlement(
   p_account_id UUID,
   p_stripe_subscription_id TEXT,
@@ -648,6 +795,10 @@ CREATE FUNCTION grant_credits(
 ) RETURNS INTEGER  -- new balance
 ```
 
+Notes:
+- `grant_credits` is for operational/manual remediation only; it must not create upgrade-convertible pack value
+- admin/replacement grants should prefer direct unlocks when possible; if spendable balance is granted, it remains outside pack-lot conversion
+
 ### `fulfill_pack_purchase`
 
 ```sql
@@ -671,6 +822,11 @@ CREATE FUNCTION fulfill_pack_purchase(
 )
 ```
 
+Notes:
+- creates one `pack_credit_lot` row for the purchased 500-credit portion of the entitlement
+- the 25 pack bonus unlocks are part of the pack entitlement for refund purposes, but they do not increase `pack_credit_lot.remaining_credits`
+- as its final step, this RPC must call `reprioritize_pending_jobs_for_account(p_account_id)` so free → pack transitions immediately move existing pending jobs from `low` to `standard`
+
 ### `reverse_pack_entitlement`
 
 ```sql
@@ -678,8 +834,8 @@ CREATE FUNCTION fulfill_pack_purchase(
 -- Order of operations:
 --   1. subtract refunded credits from current purchased balance
 --   2. if refunded amount exceeds current balance, revoke newest active pack unlocks
--- Contract: free_auto/unlimited unlocks are never revoked by this RPC;
---           pack-funded bonus unlocks are revocable because they are part of
+-- Contract: free_auto/unlimited/self_hosted unlocks are never revoked by this RPC;
+--           pack bonus unlocks are revocable because they are part of
 --           the pack entitlement
 CREATE FUNCTION reverse_pack_entitlement(
   p_account_id UUID,
@@ -692,10 +848,89 @@ CREATE FUNCTION reverse_pack_entitlement(
 )
 ```
 
+Notes:
+- as its final step, this RPC must call `reprioritize_pending_jobs_for_account(p_account_id)` so pack refund/chargeback balance changes immediately update pending job priority
+
+### `prepare_subscription_upgrade_conversion`
+
+```sql
+-- Reserve unused purchased pack value for a new unlimited checkout.
+-- Used by: billing-service /checkout/unlimited before creating Stripe Checkout.
+-- Creates or reuses a pending subscription_credit_conversion row plus per-lot
+-- subscription_credit_conversion_allocation rows so the quoted discount matches
+-- the value that will later be consumed on successful activation.
+CREATE FUNCTION prepare_subscription_upgrade_conversion(
+  p_account_id UUID,
+  p_target_plan TEXT
+) RETURNS TABLE (
+  converted_credits INTEGER,
+  discount_cents INTEGER,
+  conversion_id UUID
+)
+```
+
+### `release_subscription_upgrade_conversion`
+
+```sql
+-- Release a pending upgrade conversion after checkout expiration/abandonment
+-- or billing-service-side Checkout creation failure.
+CREATE FUNCTION release_subscription_upgrade_conversion(
+  p_account_id UUID,
+  p_conversion_id UUID
+) RETURNS VOID
+```
+
+### `link_subscription_upgrade_checkout`
+
+```sql
+-- Attach the real Stripe Checkout Session id after Checkout creation succeeds.
+CREATE FUNCTION link_subscription_upgrade_checkout(
+  p_account_id UUID,
+  p_conversion_id UUID,
+  p_checkout_session_id TEXT
+) RETURNS VOID
+```
+
+### `apply_subscription_upgrade_conversion`
+
+```sql
+-- Consume the reserved purchased pack value after the initial unlimited invoice
+-- has actually been paid.
+CREATE FUNCTION apply_subscription_upgrade_conversion(
+  p_account_id UUID,
+  p_conversion_id UUID,
+  p_stripe_subscription_id TEXT,
+  p_stripe_invoice_id TEXT,
+  p_stripe_event_id TEXT
+) RETURNS TABLE (
+  converted_credits INTEGER,
+  discount_cents INTEGER,
+  remaining_balance INTEGER
+)
+```
+
+### `reverse_subscription_upgrade_conversion`
+
+```sql
+-- Restore previously converted purchased pack value when the initial unlimited
+-- invoice is refunded or disputed.
+CREATE FUNCTION reverse_subscription_upgrade_conversion(
+  p_account_id UUID,
+  p_stripe_subscription_id TEXT,
+  p_stripe_invoice_id TEXT,
+  p_reason TEXT,
+  p_stripe_event_id TEXT
+) RETURNS INTEGER  -- restored balance
+```
+
+Notes:
+- if this RPC is part of a refund/dispute flow that changes spendable purchased balance, that flow must leave pending jobs reprioritized to the final post-refund band
+- do not rely on app bridge delivery for that reprioritization; it should happen via the queue-band-affecting billing mutation(s) in the same flow
+
 ### `activate_subscription`
 
 ```sql
--- Set plan + Stripe refs + lifecycle state
+-- Set plan + Stripe refs + lifecycle state and mark paid unlimited access
 CREATE FUNCTION activate_subscription(
   p_account_id UUID,
   p_plan TEXT,
@@ -705,14 +940,24 @@ CREATE FUNCTION activate_subscription(
 ) RETURNS VOID
 ```
 
+Notes:
+- sets `unlimited_access_source = 'subscription'`
+- as its final step, this RPC must call `reprioritize_pending_jobs_for_account(p_account_id)`
+
 ### `deactivate_subscription`
 
 ```sql
--- Revert plan to 'free', preserve credit_balance
+-- Revert plan to 'free' and clear subscription-backed unlimited access
+-- without recreating any previously converted pack value.
 CREATE FUNCTION deactivate_subscription(
   p_account_id UUID
 ) RETURNS VOID
 ```
+
+Notes:
+- normal subscription end does not restore previously converted pack value; only refund/dispute reversal does that
+- clears `unlimited_access_source` when the current source is `subscription`
+- as its final step, this RPC must call `reprioritize_pending_jobs_for_account(p_account_id)` so pending jobs fall back to the band implied by remaining balance/state
 
 ### `update_subscription_state`
 
@@ -729,6 +974,10 @@ CREATE FUNCTION update_subscription_state(
 ) RETURNS VOID
 ```
 
+Notes:
+- updates Stripe lifecycle fields for subscription-backed unlimited access; it does not mint `self_hosted` access
+- as its final step, this RPC must call `reprioritize_pending_jobs_for_account(p_account_id)` so `past_due` / recovery transitions cannot leave pending jobs at a stale priority
+
 ### `reprioritize_pending_jobs_for_account`
 
 ```sql
@@ -738,6 +987,7 @@ CREATE FUNCTION update_subscription_state(
 -- Trigger conditions:
 --   - yearly activation → priority
 --   - quarterly activation → standard
+--   - self_hosted provisioning → priority
 --   - pack purchase on a free account (balance 0 → positive) → standard
 --   - subscription deactivation → resolve from remaining state
 --     (positive purchased balance → standard, otherwise → low)
@@ -751,6 +1001,10 @@ Notes:
 - updates `queue_priority` on all `status = 'pending'` jobs for the account (both enrichment and match_snapshot_refresh)
 - no-ops if no pending jobs exist
 - does not affect jobs already in `claimed` or `running` status
+- reprioritization must be wired at the billing-write boundary, not only at bridge ingress
+- every billing mutation that can change the resolved queue band must invoke this RPC as its final step; in v1 that includes `fulfill_pack_purchase`, `activate_subscription`, `update_subscription_state`, `deactivate_subscription`, and `reverse_pack_entitlement`
+- refund/dispute flows that combine multiple billing mutations must still leave pending jobs reprioritized to the final post-refund band before returning
+- app-layer provisioning paths that set or clear `self_hosted` unlimited access must also call this RPC immediately after the billing write, since deployment mode lives in the app layer rather than SQL contracts
 
 ### RPC guardrails
 
@@ -761,9 +1015,15 @@ Notes:
 - pack purchase fulfillment must stay idempotent at the Stripe-event level
 - any authenticated billing-service → app bridge that reports fulfillment or revocation outcomes must also be idempotent on `stripe_event_id`
 - duplicate bridge deliveries must not emit duplicate `songs_unlocked`, `unlimited_activated`, or revocation side effects
+- queue-band-affecting billing mutations must invoke `reprioritize_pending_jobs_for_account(account_id)` as their final step; app bridge handlers must not be the only reprioritization path
 - refund/chargeback reversal must revoke newest active `source='pack'` unlocks first after purchased balance is exhausted
-- full pack refund reversal must account for the whole pack entitlement, not only purchased balance (for the canonical pack offer, that means reversing 500 purchased credits plus the 25 pack-funded bonus unlocks)
-- all balance-mutating RPCs must lock `account_billing` with `SELECT ... FOR UPDATE` before reading `credit_balance`
+- full pack refund reversal must account for the whole pack entitlement, not only purchased balance (for the canonical pack offer, that means reversing 500 purchased credits plus the 25 pack bonus unlocks)
+- upgrade conversion must be derived from open `pack_credit_lot` rows, not inferred from `credit_balance`
+- billing-service unlimited checkout creation must release any prepared conversion if coupon creation or Stripe Checkout Session creation fails after reservation
+- initial unlimited activation must apply any pending upgrade conversion before `activate_subscription(...)`
+- if the initial unlimited invoice is refunded/disputed, billing must call both `reverse_subscription_upgrade_conversion(...)` and `reverse_unlimited_period_entitlement(...)`
+- pack purchase entry points must be blocked while unlimited is active
+- all balance-mutating RPCs must lock `account_billing` with `SELECT ... FOR UPDATE` before reading `credit_balance`, and conversion RPCs must also lock the participating `pack_credit_lot` / `subscription_credit_conversion` rows
 
 ---
 
@@ -804,8 +1064,8 @@ Grouped source helpers should expand to include:
 
 ### When these changes are emitted
 
-- free auto-allocation → emit `songs_unlocked`
-- pack purchase bonus unlock fulfillment → emit `songs_unlocked`
+- free allocation → emit `songs_unlocked`
+- pack bonus unlock fulfillment → emit `songs_unlocked`
 - manual finite-user selection → emit `songs_unlocked`
 - first transition into a newly active unlimited subscription period should emit `unlimited_activated`; the billing service triggers this via the same bridge pattern as pack fulfillment, and `v1_hearted/` records it durably in `billing_activation` and `billing_bridge_event`
 - pack refund/chargeback reversal or unlimited-period refund that actually removed access → emit `candidate_access_revoked`; the billing domain in `v1_hearted/` determines whether access was actually removed before emitting — the control plane never sees billing details
@@ -820,7 +1080,7 @@ Grouped source helpers should expand to include:
 That means:
 
 - the billing service does **not** import or run `applyLibraryProcessingChange(...)`
-- `songs_unlocked` is emitted directly in `v1_hearted/` after successful unlock RPCs (manual selection, free auto-allocation)
+- `songs_unlocked` is emitted directly in `v1_hearted/` after successful unlock RPCs (manual selection, free allocation)
 - all billing-service-driven control-plane triggers (pack fulfillment, unlimited activation, revocations) use **one bridge pattern**: the billing service calls an authenticated bridge endpoint in `v1_hearted/` after writing raw billing facts
 - the bridge uses HMAC + timestamp + raw-body-hash + replay-window authentication
 - `v1_hearted/` claims each bridge call in `billing_bridge_event` before emitting control-plane changes; duplicate deliveries for the same `stripe_event_id` are no-ops
@@ -834,12 +1094,12 @@ This keeps the repo boundary clean, uses one ingress model for all billing-drive
 
 ## Pipeline Changes
 
-### Current pipeline stages
+### Existing pipeline stages (current repo state)
 1. **audio_features** — ReccoBeats API (Phase A)
 2. **genre_tagging** — Last.fm API (Phase A)
 3. **song_analysis** — LLM via AI SDK (Phase B)
 4. **song_embedding** — embedding model (Phase C)
-5. **account_activation** — account-scoped content-ready + unlock persistence
+5. **content_activation** — account-scoped content-ready + unlock persistence
 6. **matching** — vector similarity + scoring (separate workflow)
 
 ### New behavior
@@ -849,33 +1109,33 @@ This keeps the repo boundary clean, uses one ingress model for all billing-drive
 - selector returns per-song stage work, not a coarse tier
 
 #### Phase B/C (gated by effective entitlement)
-- LLM analysis + embedding only run when the song currently has effective entitlement
-- entitlement remains `unlock row OR active unlimited access`; billing-disabled mode is an explicit deployment-level bypass and must never be inferred from missing `account_billing` rows
+- LLM analysis + embedding will only run when the song has effective entitlement
+- entitlement remains `unlock row OR active unlimited access`; self-hosted / provider-disabled deployments work by provisioning accounts with explicit `self_hosted` unlimited access, never by bypassing SQL or inferring mode from missing `account_billing` rows
 - these remain shared artifact stages; they do not themselves finalize account-visible state
 
 #### Account activation (account-scoped, after shared stages)
-- after shared stages run, the orchestrator performs an explicit account activation step for the selected songs
+- after shared stages run, the orchestrator performs an explicit content activation step for the selected songs
 - this step is driven by current DB truth, not by "which songs ran B/C in this chunk"
 - activation responsibilities:
   - create/update `item_status` only for songs that are now account-visible for this account
-  - persist `account_song_unlock` rows with `source='unlimited'` for unlimited users whose songs have become account-visible but are not yet durably unlocked
+  - persist `account_song_unlock` rows for unlimited users whose songs have become account-visible but are not yet durably unlocked (`source='unlimited'` for subscription-backed access, `source='self_hosted'` for provider-disabled/self-hosted access)
 - account-visible threshold = `is_account_song_entitled(...) = true` **and** `song_analysis` exists
 - this intentionally does **not** wait for embedding; analysis is the paid, user-visible value and should survive later cancellation once shown
 
 #### Matching (gated by effective entitlement)
 - match snapshot refresh only considers entitled + fully-enriched songs
-- `select_data_enriched_liked_song_ids` should be replaced or extended so it filters by the same entitlement predicate as Phase B/C
+- `select_data_enriched_liked_song_ids` (exists in the repo today) should be replaced or extended so it filters by the same entitlement predicate as Phase B/C; the billing-aware replacement will be `select_entitled_data_enriched_liked_song_ids`
 - candidate eligibility remains stricter than content visibility: audio features + genres + analysis + embedding + entitlement
 
 ### Pipeline split implementation strategy
 
-Use **one enrichment workflow** with an explicit **per-song work plan** and a first-class account activation stage.
+Use **one enrichment workflow** with an explicit **per-song work plan** and a first-class content activation stage.
 
 - keep the current `enrichment` job type
 - keep one `enrichment` slice in `library_processing_state`
 - the selector returns exact per-song stage flags, not `lightweight | full | both`
 - the orchestrator runs each shared stage against the exact sub-batch that still needs it
-- the orchestrator then runs `account_activation` for the selected songs based on post-stage DB truth
+- the orchestrator then runs `content_activation` for the selected songs based on post-stage DB truth
 - stage runners remain idempotent; activation is the account-scoped reconciliation step
 - enrichment progress totals are derived from the actual planned stage flags for the selected songs, not from `songs * 4`
 - `newCandidatesAvailable` is computed from before/after candidate snapshots across the whole selected set, not only songs that ran analysis/embedding in this chunk
@@ -885,16 +1145,16 @@ This avoids introducing a second workflow slice, second active-job pointer, or s
 
 ### `item_status` semantics under billing
 
-Current code writes `item_status` after full enrichment finishes, and the current liked-songs read models treat `item_status` absence as `pending`.
+The existing code writes `item_status` after full enrichment finishes, and the current liked-songs read models treat `item_status` absence as `pending` (current repo behavior).
 
-Under billing:
+Under the planned billing model:
 
 - `item_status` should mean **account-visible content has been activated for this account**
 - row existence supports newness/account-scoped activation, not entitlement or display-state derivation by itself
 - songs that only completed Phase A should **not** get `item_status`
 - locked songs are **not** the same thing as pending songs
 - missing `item_status` is only a scheduling reason through the activation stage for entitled songs; it is not a standalone top-level requeue reason
-- existing generic pipeline-completion writes to `item_status` must be replaced; in billing-enabled mode, `item_status` is written only by the account-activation step
+- existing generic pipeline-completion writes to `item_status` must be replaced; in this design, `item_status` is written only by the content-activation step
 
 Implication:
 
@@ -902,9 +1162,9 @@ Implication:
 
 ### Selector contract
 
-When billing enforcement is enabled, replace the current full-pipeline selector shape with a billing-aware contract.
+When billing enforcement is implemented, replace the existing full-pipeline selector shape with a billing-aware contract.
 
-Recommended selector shape:
+Recommended selector shape (replaces the current `select_liked_song_ids_needing_pipeline_processing`):
 
 ```sql
 CREATE FUNCTION select_liked_song_ids_needing_enrichment_work(
@@ -935,7 +1195,7 @@ Rules:
 Implementation note:
 
 - `is_account_song_entitled(...)` remains the semantic source of truth for entitlement
-- billing-disabled mode should be passed into billing-aware SQL explicitly, preferably as a boolean function/RPC parameter such as `p_billing_enabled`; SQL must not infer billing mode from row absence
+- provider-disabled deployments should provision accounts with explicit `self_hosted` unlimited access so billing-aware SQL can keep one canonical entitlement predicate; SQL must not infer deployment mode from row absence
 - the selector may still compute account-level billing facts once per query internally for efficiency, as long as it preserves the exact entitlement semantics
 
 For match refresh candidates, add a billing-aware candidate selector such as:
@@ -964,7 +1224,7 @@ Use one orchestrator pass with explicit sub-batches per stage:
 4. run `genre_tagging` on songs with `needs_genre_tagging`
 5. run `song_analysis` on songs with `needs_analysis`
 6. run `song_embedding` on songs with `needs_embedding`
-7. run `account_activation` by re-querying the selected song IDs and reconciling:
+7. run `content_activation` by re-querying the selected song IDs and reconciling:
    - which songs are now account-visible
    - which of those still need `item_status`
    - which unlimited songs still need durable unlock rows
@@ -973,7 +1233,7 @@ Use one orchestrator pass with explicit sub-batches per stage:
 Why this shape is preferred:
 
 - it matches the real execution graph: shared artifact production first, account-scoped activation second
-- it avoids conflating "needs analysis/embedding" with "needs account activation"
+- it avoids conflating "needs analysis/embedding" with "needs content activation"
 - it correctly handles cached shared artifacts, where a Phase-A-only chunk can still create new match candidates
 - it preserves one durable workflow without hiding account-scoped state changes in ad hoc post-processing
 
@@ -997,7 +1257,7 @@ Trigger chain in v1:
 - `src/lib/workflows/library-processing/types.ts` — new billing change variants
 - `src/lib/workflows/library-processing/reconciler.ts` — billing-aware staleness rules
 - `src/lib/workflows/enrichment-pipeline/batch.ts` — work-plan selector + candidate snapshot helpers
-- `src/lib/workflows/enrichment-pipeline/orchestrator.ts` — stage sub-batching + account activation
+- `src/lib/workflows/enrichment-pipeline/orchestrator.ts` — stage sub-batching + content activation
 - `src/lib/workflows/enrichment-pipeline/progress.ts` — totals derived from planned stage work, including activation
 - `src/lib/workflows/match-snapshot-refresh/orchestrator.ts` — candidate filter
 - `src/lib/workflows/library-processing/queue-priority.ts` — resolve from billing
@@ -1012,7 +1272,7 @@ Unlimited should **not** rely on pre-writing unlock rows for the whole library.
 Instead:
 - active unlimited access authorizes full processing dynamically
 - all liked songs remain eligible for full pipeline while unlimited is active
-- unlock rows are written when songs reach account-visible analysis during active unlimited access (for post-cancel durability)
+- unlock rows are written when songs reach account-visible analysis during active unlimited access (for post-cancel durability): `source='unlimited'` for subscription-backed access, `source='self_hosted'` for provider-disabled/self-hosted access
 - newly synced songs while unlimited is active are also eligible immediately
 
 ---
@@ -1032,7 +1292,7 @@ Instead:
 | Method | Path                  | Purpose                                                        |
 | ------ | --------------------- | -------------------------------------------------------------- |
 | POST   | `/checkout/pack`      | create Checkout session for song pack                          |
-| POST   | `/checkout/unlimited` | create Checkout session for subscription (quarterly or yearly) |
+| POST   | `/checkout/unlimited` | create Checkout session for subscription (quarterly or yearly), applying any pending pack-to-unlimited upgrade discount |
 | POST   | `/portal/session`     | create Stripe Customer Portal session                          |
 | POST   | `/webhooks/stripe`    | receive + verify + fulfill Stripe events                       |
 | GET    | `/health`             | health check                                                   |
@@ -1042,30 +1302,43 @@ Instead:
 - billing-service-to-app bridge: same HMAC shared secret pattern with timestamped request signature and replay protection
 - webhook endpoint: Stripe signature verification (not HMAC)
 
+### Checkout request contract
+- `/checkout/pack` request body includes `{ account_id, offer_id, checkout_attempt_id }`
+- `/checkout/unlimited` request body includes `{ account_id, offer_id, checkout_attempt_id }`
+- `checkout_attempt_id` is a UUID generated by the public app for one specific checkout intent / offer choice and reused across retries of that same intent
+- the billing service forwards `checkout_attempt_id` to Stripe as the `idempotency_key` on `checkout.sessions.create(...)`
+- the billing service must not mint a fresh idempotency key per retry, or duplicate app requests could still create multiple Stripe Checkout Sessions
+
 ### Webhook events to handle
 
 | Event                                            | Action                                                                                                                                                                                                                                                    |
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `checkout.session.completed` (mode=payment)      | call `fulfill_pack_purchase` RPC, then call app bridge with fulfillment outcome                                                                                                                                                                           |
+| `checkout.session.completed` (mode=payment)      | call `fulfill_pack_purchase` RPC (which also reprioritizes pending jobs if the queue band changed), then call app bridge with fulfillment outcome                                                                                                       |
 | `checkout.session.completed` (mode=subscription) | store customer/subscription mapping                                                                                                                                                                                                                       |
-| `invoice.paid`                                   | call `activate_subscription` RPC (initial) or `update_subscription_state` (renewal), then call app bridge for unlimited activation on initial                                                                                                             |
-| `invoice.payment_failed`                         | call `update_subscription_state` to reflect `past_due` / payment-problem state                                                                                                                                                                            |
-| `customer.subscription.updated`                  | call `update_subscription_state` for cancel/uncancel/status changes                                                                                                                                                                                       |
-| `customer.subscription.deleted`                  | call `deactivate_subscription` RPC                                                                                                                                                                                                                        |
-| `charge.refunded` / `charge.dispute.created`     | for pack purchases: call `reverse_pack_entitlement`, then call app bridge with reversal outcome; for unlimited periods: call `reverse_unlimited_period_entitlement`, then call app bridge with reversal outcome; create admin task for anything ambiguous |
+| `checkout.session.expired`                       | read `conversion_id` from Stripe metadata, then call `release_subscription_upgrade_conversion` for that pending unlimited-upgrade conversion                                                                                                           |
+| `invoice.paid`                                   | on initial subscription invoices: read `conversion_id` from Stripe metadata, apply any pending upgrade conversion, then call `activate_subscription` (which also reprioritizes pending jobs), then call app bridge for unlimited activation; on renewals: call `update_subscription_state` (which also reprioritizes if the resolved band changed) |
+| `invoice.payment_failed`                         | call `update_subscription_state` to reflect `past_due` / payment-problem state; that RPC also reprioritizes pending jobs so stale unlimited priority cannot linger                                                                                     |
+| `customer.subscription.updated`                  | call `update_subscription_state` for cancel/uncancel/status changes; that RPC also reprioritizes pending jobs if the lifecycle change affects the resolved band                                                                                        |
+| `customer.subscription.deleted`                  | call `deactivate_subscription` RPC; that RPC also reprioritizes pending jobs based on the post-cancellation state                                                                                                                                        |
+| `charge.refunded` / `charge.dispute.created`     | for pack purchases: call `reverse_pack_entitlement` (which also reprioritizes pending jobs), then call app bridge with reversal outcome; for the initial unlimited invoice: call `reverse_subscription_upgrade_conversion`, `reverse_unlimited_period_entitlement`, and any needed subscription-state mutation (`deactivate_subscription` or `update_subscription_state`) so the overall refund/dispute flow leaves pending jobs at the final post-refund band before calling app bridge; create admin task for anything ambiguous |
 
 ### Subscription fulfillment strategy
 - `checkout.session.completed` (payment): fulfill the canonical pack offer via `fulfill_pack_purchase(...)`
 - `checkout.session.completed` (subscription): store Stripe refs, do NOT grant access
-- `invoice.paid` + subscription active: grant access on initial purchase (`activate_subscription`) and refresh lifecycle fields on renewal (`update_subscription_state`)
+- `/checkout/pack`: create Stripe Checkout with `checkout_attempt_id` forwarded as Stripe `idempotency_key`
+- `/checkout/unlimited`: if open pack-credit lots exist, call `prepare_subscription_upgrade_conversion(...)`, create the one-time first-invoice discount, create Stripe Checkout with `checkout_attempt_id` forwarded as Stripe `idempotency_key`, then persist the real Checkout Session id via `link_subscription_upgrade_checkout(...)`
+- if Stripe coupon creation or Checkout Session creation fails after prepare succeeds, immediately call `release_subscription_upgrade_conversion(...)` before returning an error
+- `invoice.paid` + subscription active: on initial purchase, apply any pending upgrade conversion first (`apply_subscription_upgrade_conversion(...)` using metadata `conversion_id`), then grant access (`activate_subscription`); on renewal, refresh lifecycle fields only (`update_subscription_state`)
 - this avoids double-granting on initial subscription
 - renewals: `invoice.paid` with `billing_reason=subscription_cycle` confirms continued access
 - accept `customer.subscription.updated` with `cancel_at_period_end = false` as the uncancel path
+- `checkout.session.expired` must release any still-pending upgrade conversion so the user can keep using those songs to explore if they abandon checkout
 - use `billing_webhook_event` table for idempotency on all handlers
 
 ### Metadata strategy
-- `metadata` on Checkout Session: `{ account_id }` (available in `checkout.session.completed`)
-- `subscription_data.metadata` on subscription Checkout: `{ account_id }` (available via subscription on `invoice.paid` events at `subscription_details.metadata`)
+- `metadata` on Checkout Session: `{ account_id, conversion_id? }` (available in `checkout.session.completed`)
+- `subscription_data.metadata` on subscription Checkout: `{ account_id, conversion_id? }` (available via subscription on `invoice.paid` events at `subscription_details.metadata`)
+- unlimited checkout metadata should include `conversion_id` so later Stripe webhooks can resolve the prepared reservation without depending on the Stripe-generated session id
 - public app sends internal offer IDs; billing service resolves Stripe product/price IDs server-side
 - when `account_billing.stripe_customer_id` already exists, Checkout creation should reuse it instead of creating a new Stripe customer
 
@@ -1082,35 +1355,56 @@ Instead:
 ### New server functions
 - `getBillingState(accountId)` — reads `account_billing`, returns plan/balance/flags
 - `requestSongUnlock({ songIds })` — validates balance, calls `unlock_songs_for_account` RPC, triggers processing
-- `createCheckoutSession({ offer })` — bridge to billing service
-- `createPortalSession()` — bridge to billing service
+- `createCheckoutSession({ offer, checkoutAttemptId })` — bridge to billing service (provider-enabled deployments only)
+- `createPortalSession()` — bridge to billing service (provider-enabled deployments only)
+
+Notes:
+- `checkoutAttemptId` is generated by the public app per specific checkout intent / offer choice, then reused across retries of that same intent
+- `createCheckoutSession(...)` must forward `checkoutAttemptId` in the signed request body to the billing service
+
+Provider-disabled behavior:
+
+- `createCheckoutSession` / `createPortalSession` should fail fast with a typed unsupported-mode error when `BILLING_ENABLED=false`
 
 ### New env vars
-- `BILLING_ENABLED` — feature flag (default: false)
-- `BILLING_SERVICE_URL` — e.g. `https://billing.hearted.music`
-- `BILLING_SHARED_SECRET` — HMAC key for app-to-service auth
+- `BILLING_ENABLED` — billing-provider integration flag (default: false); planned, not yet added
+- `BILLING_SERVICE_URL` — e.g. `https://billing.hearted.music`; planned, not yet added
+- `BILLING_SHARED_SECRET` — HMAC key for app-to-service auth; planned, not yet added
 
-### Billing-disabled mode
-- all songs processed freely (current behavior)
-- no paywall, no balance display
-- self-hosted / dev environments work without billing
-- `account_billing` rows still exist; billing-disabled mode is controlled explicitly by deployment config, not by row absence
-- SQL entitlement/read-model helpers must receive an explicit billing-enabled input, preferably as a boolean function/RPC parameter such as `p_billing_enabled`
+### Provider-disabled / self-hosted mode
+- no checkout, portal, or billing-service bridge
+- no paywall and no songs-to-explore balance UI
+- self-hosted / dev environments work without a billing provider
+- `account_billing` rows still exist in every deployment; missing row is still a bug, not a mode signal
+- when `BILLING_ENABLED=false`, account provisioning must grant explicit `self_hosted` unlimited access (for example via `account_billing.unlimited_access_source = 'self_hosted'` or an equivalent billing-state representation)
+- keep normal library/product UI, but hide or deactivate purchase contact points such as onboarding plan selection, upgrade CTAs, checkout launches, and portal launches
+- billing-aware SQL keeps one canonical entitlement model and sees these accounts as unlimited; do **not** thread a deployment-mode bypass through every RPC and do **not** fake Stripe subscription ids or statuses
 
 ### Billing state read model
 
 ```ts
 type BillingPlan = "free" | "quarterly" | "yearly";
 
+type UnlimitedAccess =
+  | { kind: "none" }
+  | { kind: "subscription" }
+  | { kind: "self_hosted" };
+
 interface BillingState {
   plan: BillingPlan;
   creditBalance: number;
   subscriptionStatus: "none" | "active" | "ending" | "past_due";
   cancelAtPeriodEnd: boolean;
-  hasUnlimitedAccess: boolean;
+  unlimitedAccess: UnlimitedAccess;
   queueBand: QueueBand;
 }
 ```
+
+Derived flag:
+
+- `hasUnlimitedAccess = billingState.unlimitedAccess.kind !== 'none'`
+- `account_billing.unlimited_access_source IS NULL` maps to `unlimitedAccess.kind = 'none'`
+- in self-hosted/provider-disabled deployments, `plan` may still be `'free'`; unlimited access comes from `unlimitedAccess.kind = 'self_hosted'`, not from pretending the account purchased a hosted plan
 
 Read-model mapping:
 
@@ -1121,25 +1415,30 @@ Read-model mapping:
 
 Entitlement rule for v1:
 
-- only `subscription_status = 'active'` grants unlimited access
-- `past_due` and `unpaid` do **not** grant unlimited access
+- `unlimitedAccess.kind = 'subscription'` grants unlimited access only while `subscription_status = 'active'`
+- `unlimitedAccess.kind = 'self_hosted'` grants unlimited access without Stripe state and is used for OSS / provider-disabled deployments
+- `past_due` and `unpaid` do **not** grant unlimited access for `subscription` accounts
 - when a subscription becomes `past_due` or `unpaid`, the account keeps access only to songs already unlocked for that account
 
 Explicit product decision for v1:
 
-- `creditBalance` is preserved while unlimited is active
-- credits are **not** converted into subscription time
-- UI should explain that unused songs-to-explore remain available if unlimited later ends
-- in billing-enabled mode, `creditBalance` means purchased/manual-use balance only
+- if a user upgrades from pack usage to unlimited, remaining unused purchased pack value is converted into a one-time proportional discount on the initial unlimited invoice
+- conversion is derived from canonical pack-purchase lots, not from `creditBalance` alone
+- conversion is reserved at checkout creation, applied only after the initial `invoice.paid`, and released if checkout expires or is abandoned
+- pack purchase entry points are unavailable while unlimited is active
+- already unlocked `source='pack'` songs remain permanent; only songs unlocked during the paid unlimited period are revocable on unlimited refund/chargeback
+- in provider-enabled deployments, `creditBalance` remains the spendable balance cache, but upgrade-discount eligibility comes only from unused pack-purchase lots
 
 ### Queue priority mapping
 - `free` (no purchased balance) → `low`
 - any non-unlimited account with positive purchased balance → `standard`
 - `quarterly` → `standard`
 - `yearly` → `priority`
+- `self_hosted` unlimited access → `priority`
 - relevant billing changes should also reprioritize existing **pending** library-processing jobs, not only newly ensured jobs
-- v1 does this through `reprioritize_pending_jobs_for_account(account_id)` which resolves the current band from billing state and updates all pending jobs
-- the bridge ingress handler in `v1_hearted/` should call this after processing any billing-driven trigger that could change the queue band
+- v1 will do this through `reprioritize_pending_jobs_for_account(account_id)` which resolves the current band from billing state and updates all pending jobs
+- v1 will wire this at the billing-write boundary: queue-band-affecting billing RPCs call `reprioritize_pending_jobs_for_account(account_id)` themselves, and app-layer `self_hosted` provisioning paths call it immediately after provisioning
+- bridge ingress remains responsible for control-plane reactions (`BillingChanges.*`), but pending-job reprioritization must not depend on bridge delivery because lifecycle updates like `invoice.payment_failed`, renewal recovery, and `customer.subscription.deleted` can change the queue band without needing any other app-side side effect
 
 Implementation boundary:
 
@@ -1147,19 +1446,22 @@ Implementation boundary:
 - `src/lib/workflows/library-processing/queue-priority.ts` remains the scheduler-facing adapter only
 
 ### UI surfaces
-- sidebar: plan label + balance display
-- song selection UI: drag-to-select list from full liked songs library, most-recent ordered (see hearted-design skill for interaction pattern)
-- paywall: "Out of explorations. Explore more songs." with pricing — shown at onboarding upgrade step and in-app when purchased balance hits 0
-- settings/billing: plan info + manage subscription + buy packs
-- onboarding: song-showcase + match-showcase + plan-selection flow
+- sidebar: plan label + balance display in provider-enabled deployments; self-hosted deployments may still show unlimited status but should not show a songs-to-explore balance
+- song selection UI: drag-to-select list from full liked songs library, most-recent ordered for pack users in provider-enabled deployments (see hearted-design skill for interaction pattern)
+- paywall: "Out of explorations. Explore more songs." with pricing — shown in provider-enabled deployments at the onboarding upgrade step and in-app when purchased balance hits 0
+- settings/billing: plan info + manage subscription + buy packs (buy-pack actions hidden while unlimited is active); in self-hosted mode this can collapse to a simple unlimited/self-hosted status view with no purchase actions
+- onboarding: song-showcase + match-showcase + plan-selection flow (auto-skip `plan-selection` when `BILLING_ENABLED=false`)
 - liked songs page: explicit locked / exploring / analyzed states instead of collapsing everything without `item_status` into pending
+- unlimited upgrade UI should explain any applied first-invoice discount from unused purchased pack value before redirecting to Stripe Checkout
+- when `BILLING_ENABLED=false`, hide or deactivate upgrade contact points (checkout, portal launch, paywall CTA, onboarding `plan-selection`) while leaving the normal unlimited app experience intact
 
 ### Billing row creation
-- Better Auth `databaseHooks.user.create.after` ensures billing row exists in every deployment
-- fallback: `getBillingState` creates row if missing (self-healing on read)
+- Better Auth `databaseHooks.user.create.after` will ensure billing row exists in every deployment
+- fallback: `getBillingState` will create row if missing (self-healing on read)
 - idempotent: `INSERT ... ON CONFLICT DO NOTHING`
+- when `BILLING_ENABLED=false`, the same provisioning path should also ensure explicit `self_hosted` unlimited access for the account
 - fallback creation must not also grant purchased balance
-- missing row in steady state is a bug to repair, not a valid billing-disabled signal
+- missing row in steady state is a bug to repair, not a valid provider-disabled/self-hosted signal
 
 ### Preprod bootstrap
 - add idempotent setup for local/staging accounts that need `account_billing` rows
@@ -1195,6 +1497,7 @@ That is materially tighter than the yearly tier, so quarterly pricing should be 
 - **Price:** $5.99
 - **Checkout mode:** `payment`
 - **Metadata:** `{ account_id }`
+- this is the canonical pack basis for v1 upgrade conversion math; if pricing/pack shapes change later, conversion must use stored lot provenance rather than a hardcoded global rate
 
 ### Product 2: 3-Month Unlimited
 - **Name:** 3-Month Unlimited
@@ -1220,18 +1523,26 @@ That is materially tighter than the yearly tier, so quarterly pricing should be 
 signup
   → account created
   → account_billing row created (plan=free, credit_balance=0)
+  → if `BILLING_ENABLED=false`: provision `unlimited_access_source='self_hosted'`
 
 onboarding
   → install extension
   → sync library
   → pick target playlists
   → guided song-showcase uses the pre-seeded demo song + dedicated onboarding matching path
-  → user sees song-showcase, then match-showcase, then plan-selection
+  → user sees song-showcase, then match-showcase, then plan-selection when provider-enabled
+  → if `BILLING_ENABLED=false`: auto-skip `plan-selection`
+
+if `BILLING_ENABLED=false`:
+  → account already has self-hosted unlimited access
+  → full library processing is eligible immediately through the normal unlimited path
+  → songs get durable unlock rows with `source='self_hosted'` as they reach account-visible analysis
+  → no paywall, checkout, portal, or balance UI is shown
 
 if user stays free:
-  → insert_song_unlocks_without_charge(up to 15 recent liked songs, source='free_auto')
+  → insert_song_unlocks_without_charge(up to 15 recent liked songs, source='free_auto')  [free allocation]
   → applyLibraryProcessingChange(BillingChanges.songsUnlocked(...))
-  → enrichment jobs enqueued; shared stages + account activation run as eligible
+  → enrichment jobs enqueued; shared stages + content activation run as eligible
   → results appear as processing completes
 
 if user has fewer than 15 liked songs at onboarding completion:
@@ -1241,14 +1552,15 @@ if user has fewer than 15 liked songs at onboarding completion:
 if user buys a pack:
   → checkout flow → canonical pack fulfilled
   → credit_balance += 500
-  → up to 25 most-recent currently liked songs that are not already unlocked are auto-unlocked with source='pack' without spending purchased balance
-  → BillingChanges.songsUnlocked(...) emitted for the bonus auto-unlocks
+  → up to 25 most-recent currently liked songs that are not already unlocked receive pack bonus unlocks with source='pack' without spending purchased balance
+  → BillingChanges.songsUnlocked(...) emitted for the pack bonus unlocks
   → user manually selects additional songs from purchased balance
 
 if user upgrades to unlimited:
-  → checkout flow → subscription activated
+  → checkout flow reserves any remaining unused purchased pack value and applies it as a one-time first-invoice discount
+  → initial subscription payment finalizes that conversion
   → full library processing begins through active unlimited entitlement
-  → credit_balance preserved (unused while unlimited)
+  → previously unlocked `source='pack'` songs remain permanent
 ```
 
 ### Flow 2 — Pack purchase
@@ -1257,6 +1569,7 @@ if user upgrades to unlimited:
 user runs out of songs to explore
   → paywall: "Explore more songs"
   → user clicks "500 Songs + 25 Instant Unlocks — $5.99"
+  → app reuses the current `checkoutAttemptId` for this pack intent
   → server function calls billing service
   → billing service creates Stripe Checkout (mode=payment)
   → user completes payment on Stripe
@@ -1266,17 +1579,17 @@ webhook: checkout.session.completed (mode=payment)
   → checks billing_webhook_event for idempotency
   → calls fulfill_pack_purchase(account_id, 500, 25, offer_id, event_id)
   → credit_balance += 500
-  → up to 25 most-recent currently liked songs that are not already unlocked are auto-unlocked with source='pack'
+  → up to 25 most-recent currently liked songs that are not already unlocked receive pack bonus unlocks with source='pack'
   → billing service reports bonus_unlocked_song_ids to a narrow authenticated bridge in v1_hearted
   → v1_hearted emits BillingChanges.songsUnlocked(...)
 
 user returns to app
-  → sees updated balance and any bonus auto-unlocked songs
+  → sees updated balance and any pack bonus unlocked songs
   → selects additional songs to explore
   → requestSongUnlock({ songIds })
   → unlock_songs_for_account(songIds, source='pack')
   → applyLibraryProcessingChange(BillingChanges.songsUnlocked(...))
-  → enrichment jobs enqueued; entitled shared stages + account activation run as eligible
+  → enrichment jobs enqueued; entitled shared stages + content activation run as eligible
   → results appear as processing completes
 ```
 
@@ -1284,18 +1597,33 @@ user returns to app
 
 ```
 user clicks "3-Month Unlimited" or "Yearly Unlimited"
+  → app creates or reuses `checkoutAttemptId` for the selected unlimited offer
   → server function calls billing service
-  → billing service creates Stripe Checkout (mode=subscription)
+  → billing service calls prepare_subscription_upgrade_conversion(...) if unused purchased pack lots exist
+  → billing service creates Stripe Checkout (mode=subscription) with any returned first-invoice discount
+  → billing service calls link_subscription_upgrade_checkout(...) with the returned Stripe Checkout Session id
   → user completes payment on Stripe
+
+if Stripe Checkout creation fails after prepare succeeds:
+  → billing service calls release_subscription_upgrade_conversion(account_id, conversion_id)
+  → endpoint returns error without leaving a stuck pending conversion
 
 webhook: checkout.session.completed (mode=subscription)
   → billing service stores customer/subscription refs
   → does NOT activate yet
 
+if checkout expires or is abandoned before payment succeeds:
+webhook: checkout.session.expired
+  → billing service reads conversion_id from Stripe metadata
+  → billing service calls release_subscription_upgrade_conversion(account_id, conversion_id)
+  → reserved purchased pack value becomes spendable again
+
 webhook: invoice.paid (billing_reason=subscription_create)
   → billing service verifies event
+  → if checkout included a pending upgrade conversion: read conversion_id from Stripe metadata and call apply_subscription_upgrade_conversion(...)
   → calls activate_subscription(account_id, plan, ...)
   → plan set to 'quarterly' or 'yearly'
+  → unlimited_access_source set to 'subscription'
   → billing service calls bridge endpoint in v1_hearted with stripe_event_id, account_id, stripe_subscription_id, subscription_period_end
   → v1_hearted claims event in billing_bridge_event (duplicate → no-op)
   → v1_hearted inserts billing_activation marker
@@ -1328,16 +1656,17 @@ when period ends:
 webhook: customer.subscription.deleted
   → billing service calls deactivate_subscription(account_id)
   → plan reverts to 'free'
-  → credit_balance preserved
+  → unlimited_access_source cleared
+  → previously converted purchased pack value is not restored on normal subscription end
   → previously unlocked songs stay unlocked (account_song_unlock rows persist)
   → new songs require credits
 
 if unlimited access ends while jobs are already running:
   → already-claimed jobs may finish shared/background stages
   → no new unlimited-authorized full-processing jobs are scheduled after deactivation
-  → when a song reaches account activation, the app re-checks whether the account is still entitled at that moment
-  → if entitlement was lost before activation, the song does not become visible, does not get an unlimited unlock row, and does not expose analysis or matches
-  → only songs whose account-visible activation completed before the cutoff keep their unlock rows
+  → when a song reaches content activation, the app re-checks whether the account is still entitled at that moment
+  → if entitlement was lost before content activation, the song does not become visible, does not get an unlimited unlock row, and does not expose analysis or matches
+  → only songs whose content activation completed before the cutoff keep their unlock rows
 
 if user reverses cancellation before period end:
 webhook: customer.subscription.updated
@@ -1352,7 +1681,7 @@ user navigates to liked songs list
   → sees songs with Phase A data (audio features, genres)
   → songs without analysis show "locked" / "explore" state
   → user selects songs to explore
-  → confirms: "Explore 12 songs? (12 songs to explore remaining)"
+  → confirms: "Explore 12 songs? (488 songs to explore remaining)"
 
 requestSongUnlock({ songIds })
   → calls unlock_songs_for_account(songIds, source='pack')
@@ -1360,7 +1689,7 @@ requestSongUnlock({ songIds })
   → if insufficient balance: return error, show paywall
   → if sufficient: deduct, insert unlock rows, write ledger entries
   → applyLibraryProcessingChange(BillingChanges.songsUnlocked(...))
-  → trigger enrichment work for those songs; entitled shared stages + account activation run as eligible
+  → trigger enrichment work for those songs; entitled shared stages + content activation run as eligible
   → results appear as they complete
 ```
 
@@ -1413,10 +1742,14 @@ If you re-run analyses for quality improvement, users should NOT be re-charged.
 `account_song_unlock` persists regardless of reprocessing.
 Pipeline re-creates `song_analysis` rows; unlock status is separate.
 
-### 7. Unlimited user buys a pack
-Credits sit unused while unlimited is active.
-If subscription ends, credits become available.
-Not worth preventing in v1.
+### 7. User with unused pack value upgrades to unlimited
+The user should not feel punished for upgrading after trying the finite model.
+
+Mitigation:
+- reserve any unused purchased pack value at unlimited checkout creation
+- apply that value as a one-time proportional discount on the initial unlimited invoice
+- if checkout expires/aborts, or Stripe session creation fails after reservation, release the reservation so the user keeps that pack value
+- once unlimited is active, pack purchase entry points stay hidden/disabled in v1
 
 ### 8. Webhook double delivery
 `billing_webhook_event` table with stripe_event_id primary key.
@@ -1433,10 +1766,11 @@ Mitigation:
 - for confirmed pack refunds/chargebacks, reverse the full pack entitlement in this order:
   1. subtract remaining unused purchased balance
   2. if needed, revoke newest active `source='pack'` unlocks until the refunded entitlement is fully reversed
-- for the canonical pack offer, a full refund reverses the whole 525-song entitlement footprint (500 purchased balance + 25 pack-funded bonus unlocks)
+- for the canonical pack offer, a full refund reverses the whole 525-song entitlement footprint (500 purchased balance + 25 pack bonus unlocks)
 - do **not** revoke `free_auto` or `unlimited` unlocks through pack refund logic
-- do revoke pack-funded bonus unlocks because they are part of the pack entitlement
+- do revoke pack bonus unlocks because they are part of the pack entitlement
 - if a paid unlimited subscription period is refunded or successfully disputed, songs that became account-visible from that refunded subscription period are revoked and return to locked state
+- if that refunded/disputed unlimited charge was the initial activation invoice and it consumed a pack-to-unlimited upgrade conversion, restore the converted purchased pack value before returning the account to its post-refund steady state
 - unlimited-period revocation must use `(granted_stripe_subscription_id, granted_subscription_period_end)` stored on `account_song_unlock` as the reversal key, rather than relying on row creation time or `granted_stripe_event_id`
 - revoked songs return to locked state unless repurchased later or re-unlocked through a later active entitlement
 - ambiguous cases still create an admin/support task
@@ -1449,7 +1783,7 @@ Acceptable risk for v1. Monitor signup rate.
 Audio features (ReccoBeats) and genre tagging (Last.fm) are free APIs.
 No billing concern. Only LLM + embedding have meaningful cost.
 
-### 12. Selector ordering for free auto-allocation
+### 12. Selector ordering for free allocation
 Most recent liked songs selected first.
 Could be refined later (e.g., prioritize songs in target playlists).
 Acceptable for v1.
@@ -1462,7 +1796,7 @@ Mitigation:
 - also validate with a reseeded account that has sync data but no billing history
 
 ### 14. Unlimited activation can silently process nothing if selectors only read unlock rows
-This is the biggest architectural trap in the original draft.
+This is the biggest architectural trap to avoid.
 
 Mitigation:
 - selectors must authorize Phase B/C through `unlock row OR active unlimited`
@@ -1511,8 +1845,8 @@ Mitigation:
 - narrow replay window
 - reject stale requests
 
-### 20. Current public/legal copy is already inconsistent with this plan
-This repo already contains stale monetization copy in shipped JSON docs.
+### 20. Public/legal copy will be inconsistent with this plan
+The repo contains monetization copy in shipped JSON docs that does not reflect this plan.
 
 Mitigation:
 - update public legal/FAQ copy before launch, not after
@@ -1531,8 +1865,8 @@ Mitigation:
 - document this as an accepted limitation
 - revisit only if it becomes a material support burden
 
-### 23. Locked songs can be misclassified as pending in current read models
-Current SQL read models treat missing `item_status` as pending processing.
+### 23. Locked songs would be misclassified as pending in existing read models
+Existing SQL read models treat missing `item_status` as pending processing.
 
 Mitigation:
 - add billing-aware liked-song read-model state
@@ -1561,65 +1895,67 @@ Mitigation:
 - ~~finalize free tier size~~ → 15 songs
 - ~~finalize 3-month unlimited price~~ → $14.99/quarter, feature-flagged
 - create Stripe test-mode products (pack $5.99, quarterly $14.99, yearly $39.99)
+- treat the 500-for-$5.99 pack as the canonical v1 upgrade-conversion basis
 - ensure Coolify + domain setup for billing service
 - canonicalize brand docs (retire old pricing/credit references)
 - freeze canonical public domain as `hearted.music` (`liked.music` may redirect/alias but is not the primary brand domain)
-- add `BILLING_OFFER_QUARTERLY_ENABLED` env var (default: false)
+- add `QUARTERLY_PLAN_ENABLED` env var (default: false)
 
 ### Phase 1 — billing foundation (`v1_hearted/`)
 - introduce `src/lib/domains/billing/*` boundary
-- billing schema migration (account_billing, account_song_unlock, credit_transaction, billing_webhook_event, billing_activation, billing_bridge_event)
+- billing schema migration (account_billing, account_song_unlock, pack_credit_lot, subscription_credit_conversion, subscription_credit_conversion_allocation, credit_transaction, billing_webhook_event, billing_activation, billing_bridge_event)
 - RLS enable + deny-all policies for all new billing tables
-- billing RPCs (`unlock_songs_for_account`, `insert_song_unlocks_without_charge`, `activate_unlimited_songs`, `grant_credits`, `fulfill_pack_purchase`, `activate_subscription`, `update_subscription_state`, `deactivate_subscription`, `reverse_pack_entitlement`, `reverse_unlimited_period_entitlement`, `reprioritize_pending_jobs_for_account`)
+- billing RPCs (`unlock_songs_for_account`, `insert_song_unlocks_without_charge`, `activate_unlimited_songs`, `grant_credits`, `fulfill_pack_purchase`, `prepare_subscription_upgrade_conversion`, `link_subscription_upgrade_checkout`, `release_subscription_upgrade_conversion`, `apply_subscription_upgrade_conversion`, `reverse_subscription_upgrade_conversion`, `activate_subscription`, `update_subscription_state`, `deactivate_subscription`, `reverse_pack_entitlement`, `reverse_unlimited_period_entitlement`, `reprioritize_pending_jobs_for_account`)
 - billing row creation on account creation in every deployment + preprod bootstrap path
 - reset/reseed path for local and staging accounts
-- billing state read model + feature flag
+- billing state read model + `BILLING_ENABLED` deployment flag
 - song_analysis measurement columns
 
 ### Phase 2 — pipeline gating (`v1_hearted/`)
 - add `BillingChanges.*` helpers and extend `LibraryProcessingChange`
 - split enrichment: Phase A unbounded, Phase B/C gated by effective entitlement
-- keep one enrichment workflow/job type with conditional per-song stages plus explicit account activation
+- keep one enrichment workflow/job type with conditional per-song stages plus explicit content activation
 - new selector contract: stage-level work-plan flags (`needs_audio_features`, `needs_genre_tagging`, `needs_analysis`, `needs_embedding`, `needs_content_activation`)
 - match snapshot refresh: filter candidates to entitled songs
 - liked-song read-model changes for locked vs pending semantics
 - queue priority from billing state (resolveQueuePriority)
 - reprioritize pending jobs on billing state changes via `reprioritize_pending_jobs_for_account`
-- billing-disabled mode: all songs processed freely through an explicit deployment bypass, passed into billing-aware SQL as an explicit input such as `p_billing_enabled`, not inferred from row absence
+- provider-disabled deployment mode: provision accounts with explicit `self_hosted` unlimited access so the same entitlement-aware SQL continues to work without Stripe
 
 ### Phase 3 — billing service + app bridge
 - scaffold Bun HTTP server + Hono routing (`v1_hearted_brand/`)
 - HMAC auth middleware with replay protection
 - health endpoint
-- checkout session endpoints (pack + unlimited)
+- checkout session endpoints (pack + unlimited, including app-supplied `checkout_attempt_id` forwarded as Stripe `idempotency_key`, and pending upgrade-conversion reservation for unlimited)
 - customer portal session endpoint
 - Stripe webhook endpoint with signature verification
-- fulfillment handlers (`fulfill_pack_purchase`, `activate_subscription`, `update_subscription_state`, `deactivate_subscription`)
-- explicit `past_due` / refund / dispute handling, including pack-entitlement reversal
+- fulfillment handlers (`fulfill_pack_purchase`, `link_subscription_upgrade_checkout`, `apply_subscription_upgrade_conversion`, `activate_subscription`, `update_subscription_state`, `deactivate_subscription`)
+- explicit `past_due` / refund / dispute handling, including pack-entitlement reversal, upgrade-conversion release on `checkout.session.expired`, and initial-invoice conversion reversal
 - Stripe customer reuse policy
 - webhook ownership race handling
 - idempotency via billing_webhook_event
 - Dockerfile + Coolify deploy config
-- billing bridge ingress endpoint in `v1_hearted/` (receives pack fulfillment, unlimited activation, revocation outcomes from billing service)
+- billing bridge ingress endpoint in `v1_hearted/` (provider-enabled deployments; receives pack fulfillment, unlimited activation, revocation outcomes from billing service)
 - `billing_bridge_event`-based idempotency for all bridge calls
-- server function bridges in `v1_hearted/` (createCheckoutSession, createPortalSession)
+- server function bridges in `v1_hearted/` (createCheckoutSession, createPortalSession; provider-enabled deployments only)
 
 ### Phase 4 — onboarding flow (`v1_hearted/`)
 - song-showcase + match-showcase + plan-selection steps
 - dedicated onboarding matching path for the showcase flow
-- free auto-allocation on onboarding completion (if user stays free)
-- pack fulfillment branch: 500 purchased credits + 25 pack-funded auto-unlocks
-- onboarding state-machine expansion: add `song-showcase`, `match-showcase`, `plan-selection` to `ONBOARDING_STEPS` enum; update route loader, step persistence, and new step components
+- free allocation on onboarding completion (if user stays free)
+- pack fulfillment branch: 500 purchased credits + 25 pack bonus unlocks
+- unlimited upgrade branch: show any first-invoice discount derived from unused purchased pack value before redirecting to Stripe Checkout
+- onboarding state-machine expansion: add `song-showcase`, `match-showcase`, `plan-selection` to `ONBOARDING_STEPS` enum; update route loader, step persistence, and new step components, with auto-skip of `plan-selection` when `BILLING_ENABLED=false`
 - update `ReadyStep` copy to reflect billing-aware behavior (free/pack/unlimited variants)
 - explicit queue-priority override to `priority` only where the onboarding showcase flow still needs it
-- post-checkout polling/success state for onboarding plan-selection
+- post-checkout polling/success state for onboarding plan-selection (provider-enabled deployments only)
 
 ### Phase 5 — public UI (`v1_hearted/`)
-- balance display in sidebar/shell
-- song selection UI for pack users
-- paywall / upgrade CTA
-- settings/billing page
-- manage subscription (portal launch)
+- balance display in sidebar/shell (provider-enabled deployments only)
+- song selection UI for pack users (provider-enabled deployments only)
+- paywall / upgrade CTA (provider-enabled deployments only)
+- settings/billing page (self-hosted mode may render a simple unlimited/self-hosted status view with no purchase actions)
+- manage subscription (portal launch, provider-enabled deployments only)
 
 ### Phase 6 — hardening + launch
 - end-to-end Stripe test mode validation
