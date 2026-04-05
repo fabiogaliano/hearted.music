@@ -9,6 +9,7 @@ import type {
 	MatchingStatus,
 	AnalysisContent,
 } from "@/features/liked-songs/types";
+import type { SongDisplayState } from "@/lib/domains/billing/state";
 
 const MatchingStatusSchema = z.enum([
 	"pending",
@@ -45,6 +46,9 @@ function parseMatchingStatus(status: string | null): MatchingStatus | null {
 }
 
 function mapLikedSongPageRow(row: LikedSongPageRow): LikedSong {
+	const displayState = row.display_state as SongDisplayState;
+	const isLocked = displayState === "locked";
+
 	return {
 		liked_at: row.liked_at,
 		matching_status: parseMatchingStatus(row.matching_status),
@@ -69,17 +73,20 @@ function mapLikedSongPageRow(row: LikedSongPageRow): LikedSong {
 						}
 					: null,
 		},
-		analysis: row.analysis_id
-			? {
-					id: row.analysis_id,
-					track_id: row.song_id,
-					analysis: row.analysis_content as AnalysisContent,
-					model_name: row.analysis_model ?? "unknown",
-					version: 1,
-					created_at: row.analysis_created_at,
-				}
-			: null,
-		uiAnalysisStatus: row.analysis_id ? "analyzed" : "not_analyzed",
+		analysis:
+			!isLocked && row.analysis_id
+				? {
+						id: row.analysis_id,
+						track_id: row.song_id,
+						analysis: row.analysis_content as AnalysisContent,
+						model_name: row.analysis_model ?? "unknown",
+						version: 1,
+						created_at: row.analysis_created_at,
+					}
+				: null,
+		uiAnalysisStatus:
+			!isLocked && row.analysis_id ? "analyzed" : "not_analyzed",
+		displayState,
 	};
 }
 

@@ -165,6 +165,40 @@ export function reconcileLibraryProcessing(
 			}
 			break;
 		}
+
+		case "songs_unlocked": {
+			enrichment = advanceRequestedAt(enrichment, requestMarker);
+			if (hasTargetPlaylists) {
+				matchSnapshotRefresh = advanceRequestedAt(
+					matchSnapshotRefresh,
+					requestMarker,
+				);
+			}
+			break;
+		}
+
+		case "unlimited_activated": {
+			enrichment = advanceRequestedAt(enrichment, requestMarker);
+			if (hasTargetPlaylists) {
+				matchSnapshotRefresh = advanceRequestedAt(
+					matchSnapshotRefresh,
+					requestMarker,
+				);
+			}
+			break;
+		}
+
+		case "candidate_access_revoked": {
+			matchSnapshotRefresh = advanceRequestedAt(
+				matchSnapshotRefresh,
+				requestMarker,
+			);
+			break;
+		}
+
+		default: {
+			change satisfies never;
+		}
 	}
 
 	// V1 failure handling: do not auto-reensure after stop/failure outcomes.

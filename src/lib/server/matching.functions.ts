@@ -122,17 +122,35 @@ export const getMatchingSession = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.handler(async ({ context }): Promise<MatchingSessionResult | null> => {
 		const { session } = context;
+		const supabase = createAdminSupabaseClient();
 
 		const snapshotResult = await getLatestMatchSnapshot(session.accountId);
 		if (Result.isError(snapshotResult) || !snapshotResult.value) return null;
 
 		const matchSnapshot = snapshotResult.value;
-		const undecided = await getUndecidedSongs(
-			matchSnapshot.id,
-			session.accountId,
+
+		const [undecided, entitledResult] = await Promise.all([
+			getUndecidedSongs(matchSnapshot.id, session.accountId),
+			supabase.rpc("select_entitled_data_enriched_liked_song_ids", {
+				p_account_id: session.accountId,
+			}),
+		]);
+
+		const entitledSet = new Set(
+			(!entitledResult.error && entitledResult.data
+				? entitledResult.data
+				: []
+			).map((r: { song_id: string }) => r.song_id),
 		);
 
-		return { snapshotId: matchSnapshot.id, totalSongs: undecided.length };
+		const entitledUndecided = undecided.filter((s) =>
+			entitledSet.has(s.songId),
+		);
+
+		return {
+			snapshotId: matchSnapshot.id,
+			totalSongs: entitledUndecided.length,
+		};
 	});
 
 // ============================================================================
@@ -159,11 +177,20 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 	.inputValidator((data) => GetSongSuggestionsSchema.parse(data))
 	.handler(async ({ data, context }): Promise<SongSuggestionsResult | null> => {
 		const { session } = context;
+		const supabase = createAdminSupabaseClient();
 
 		const snapshotResult = await getLatestMatchSnapshot(session.accountId);
 		if (Result.isError(snapshotResult) || !snapshotResult.value) return null;
 
 		const matchSnapshot = snapshotResult.value;
+
+		const entitledCheck = await supabase.rpc("is_account_song_entitled", {
+			p_account_id: session.accountId,
+			p_song_id: data.songId,
+		});
+		if (entitledCheck.error || !entitledCheck.data) {
+			return null;
+		}
 
 		const [matchResultsResult, decisionsResult] = await Promise.all([
 			getMatchResultsForSong(matchSnapshot.id, data.songId),
@@ -185,7 +212,6 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 			return { snapshotId: matchSnapshot.id, matches: [] };
 		}
 
-		const supabase = createAdminSupabaseClient();
 		const playlistIds = undecidedResults.map((mr) => mr.playlist_id);
 		const { data: playlistRows } = await supabase
 			.from("playlist")
@@ -233,21 +259,33 @@ export const getSongMatches = createServerFn({ method: "GET" })
 		const { session } = context;
 		const supabase = createAdminSupabaseClient();
 
-		const [undecided, newSongIds] = await Promise.all([
+		const [undecided, newSongIds, entitledResult] = await Promise.all([
 			getUndecidedSongs(data.snapshotId, session.accountId),
 			getNewItemIds(session.accountId, "song"),
+			supabase.rpc("select_entitled_data_enriched_liked_song_ids", {
+				p_account_id: session.accountId,
+			}),
 		]);
 
 		if (Result.isError(newSongIds)) return null;
 
+		const entitledSet = new Set(
+			(!entitledResult.error && entitledResult.data
+				? entitledResult.data
+				: []
+			).map((r: { song_id: string }) => r.song_id),
+		);
+
 		const newSet = new Set(newSongIds.value);
-		const sorted = undecided.toSorted((a, b) => {
-			const aNew = newSet.has(a.songId) ? 1 : 0;
-			const bNew = newSet.has(b.songId) ? 1 : 0;
-			if (aNew !== bNew) return bNew - aNew;
-			if (b.maxScore !== a.maxScore) return b.maxScore - a.maxScore;
-			return a.songId.localeCompare(b.songId);
-		});
+		const sorted = undecided
+			.filter((s) => entitledSet.has(s.songId))
+			.toSorted((a, b) => {
+				const aNew = newSet.has(a.songId) ? 1 : 0;
+				const bNew = newSet.has(b.songId) ? 1 : 0;
+				if (aNew !== bNew) return bNew - aNew;
+				if (b.maxScore !== a.maxScore) return b.maxScore - a.maxScore;
+				return a.songId.localeCompare(b.songId);
+			});
 
 		if (data.offset >= sorted.length) return null;
 

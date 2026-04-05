@@ -526,6 +526,128 @@ describe("reconcileLibraryProcessing", () => {
 		});
 	});
 
+	describe("billing changes", () => {
+		describe("songs_unlocked", () => {
+			it("advances enrichment regardless of hasTargetPlaylists", () => {
+				const { state } = reconcile(
+					makeState(),
+					{ kind: "songs_unlocked", accountId: "acct-1", songIds: ["s1"] },
+					{ hasTargetPlaylists: false },
+				);
+
+				expect(state.enrichment.requestedAt).toBe("2026-03-27T12:00:00Z");
+			});
+
+			it("advances match refresh when hasTargetPlaylists is true", () => {
+				const { state, effects } = reconcile(
+					makeState(),
+					{ kind: "songs_unlocked", accountId: "acct-1", songIds: ["s1"] },
+					{ hasTargetPlaylists: true },
+				);
+
+				expect(state.enrichment.requestedAt).toBe("2026-03-27T12:00:00Z");
+				expect(state.matchSnapshotRefresh.requestedAt).toBe(
+					"2026-03-27T12:00:00Z",
+				);
+				expect(effects).toHaveLength(2);
+				expect(effects[0].kind).toBe("ensure_enrichment_job");
+				expect(effects[1].kind).toBe("ensure_match_snapshot_refresh_job");
+			});
+
+			it("does not advance match refresh when hasTargetPlaylists is false", () => {
+				const { state, effects } = reconcile(
+					makeState(),
+					{ kind: "songs_unlocked", accountId: "acct-1", songIds: ["s1"] },
+					{ hasTargetPlaylists: false },
+				);
+
+				expect(state.matchSnapshotRefresh.requestedAt).toBeNull();
+				expect(effects).toHaveLength(1);
+				expect(effects[0].kind).toBe("ensure_enrichment_job");
+			});
+		});
+
+		describe("unlimited_activated", () => {
+			it("advances enrichment regardless of hasTargetPlaylists", () => {
+				const { state } = reconcile(
+					makeState(),
+					{ kind: "unlimited_activated", accountId: "acct-1" },
+					{ hasTargetPlaylists: false },
+				);
+
+				expect(state.enrichment.requestedAt).toBe("2026-03-27T12:00:00Z");
+			});
+
+			it("advances both workflows when hasTargetPlaylists is true", () => {
+				const { state, effects } = reconcile(
+					makeState(),
+					{ kind: "unlimited_activated", accountId: "acct-1" },
+					{ hasTargetPlaylists: true },
+				);
+
+				expect(state.enrichment.requestedAt).toBe("2026-03-27T12:00:00Z");
+				expect(state.matchSnapshotRefresh.requestedAt).toBe(
+					"2026-03-27T12:00:00Z",
+				);
+				expect(effects).toHaveLength(2);
+				expect(effects[0].kind).toBe("ensure_enrichment_job");
+				expect(effects[1].kind).toBe("ensure_match_snapshot_refresh_job");
+			});
+
+			it("does not advance match refresh when hasTargetPlaylists is false", () => {
+				const { state, effects } = reconcile(
+					makeState(),
+					{ kind: "unlimited_activated", accountId: "acct-1" },
+					{ hasTargetPlaylists: false },
+				);
+
+				expect(state.matchSnapshotRefresh.requestedAt).toBeNull();
+				expect(effects).toHaveLength(1);
+				expect(effects[0].kind).toBe("ensure_enrichment_job");
+			});
+		});
+
+		describe("candidate_access_revoked", () => {
+			it("advances match refresh unconditionally (with targets)", () => {
+				const { state, effects } = reconcile(
+					makeState(),
+					{ kind: "candidate_access_revoked", accountId: "acct-1" },
+					{ hasTargetPlaylists: true },
+				);
+
+				expect(state.matchSnapshotRefresh.requestedAt).toBe(
+					"2026-03-27T12:00:00Z",
+				);
+				expect(effects).toHaveLength(1);
+				expect(effects[0].kind).toBe("ensure_match_snapshot_refresh_job");
+			});
+
+			it("advances match refresh unconditionally (without targets)", () => {
+				const { state, effects } = reconcile(
+					makeState(),
+					{ kind: "candidate_access_revoked", accountId: "acct-1" },
+					{ hasTargetPlaylists: false },
+				);
+
+				expect(state.matchSnapshotRefresh.requestedAt).toBe(
+					"2026-03-27T12:00:00Z",
+				);
+				expect(effects).toHaveLength(1);
+				expect(effects[0].kind).toBe("ensure_match_snapshot_refresh_job");
+			});
+
+			it("does not advance enrichment", () => {
+				const { state } = reconcile(
+					makeState(),
+					{ kind: "candidate_access_revoked", accountId: "acct-1" },
+					{ hasTargetPlaylists: true },
+				);
+
+				expect(state.enrichment.requestedAt).toBeNull();
+			});
+		});
+	});
+
 	describe("staleness and effect generation", () => {
 		it("does not ensure job when active job already exists", () => {
 			const { effects } = reconcile(

@@ -99,6 +99,7 @@ export function toLikedSong(song: LandingSongForUI): LikedSong {
 		},
 		analysis: detail ? toLikedSongAnalysis(detail) : null,
 		uiAnalysisStatus: detail ? "analyzed" : "analyzing",
+		displayState: detail ? "analyzed" : "pending",
 	};
 }
 
