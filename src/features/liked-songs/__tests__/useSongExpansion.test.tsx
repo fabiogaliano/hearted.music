@@ -22,6 +22,7 @@ function createSong(overrides?: Partial<LikedSong["track"]>): LikedSong {
 		liked_at: "2026-03-30T00:00:00Z",
 		matching_status: null,
 		uiAnalysisStatus: "analyzed",
+		displayState: "analyzed",
 		analysis: null,
 		track: {
 			id: "song-1",

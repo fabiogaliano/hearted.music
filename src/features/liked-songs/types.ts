@@ -4,6 +4,7 @@
  * Maps to TrackWithAnalysis from the API but with UI-specific additions
  */
 import type { ThemeConfig } from "@/lib/theme/types";
+import type { SongDisplayState } from "@/lib/domains/billing/state";
 
 // Re-export the API types for convenience
 export type MatchingStatus =
@@ -38,6 +39,7 @@ export interface LikedSong {
 	};
 	analysis: SongAnalysis | null;
 	uiAnalysisStatus: UIAnalysisStatus;
+	displayState: SongDisplayState;
 }
 
 // Full analysis structure from the database

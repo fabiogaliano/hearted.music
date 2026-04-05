@@ -19,7 +19,7 @@ import {
 	type MatchRefreshStageName,
 	type MatchSnapshotRefreshProgress,
 } from "@/lib/platform/jobs/progress/match-snapshot-refresh";
-import { getDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
+import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
 import { rerankMatches } from "@/lib/workflows/enrichment-pipeline/reranking";
 import { loadExclusionSet } from "@/lib/workflows/enrichment-pipeline/stages/matching";
 import { maybeDevDelay } from "@/lib/workflows/library-processing/devtools/delay";
@@ -217,7 +217,7 @@ export async function executeMatchSnapshotRefresh(
 	startStage(progress, "candidate_loading");
 	await persistRefreshProgress(jobId, progress);
 
-	const songIds = await getDataEnrichedSongIds(accountId);
+	const songIds = await getEntitledDataEnrichedSongIds(accountId);
 	finishStage(progress, "candidate_loading", songIds.length, 0);
 	progress.candidateCount = songIds.length;
 	await persistRefreshProgress(jobId, progress);

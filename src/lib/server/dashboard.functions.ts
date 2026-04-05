@@ -112,25 +112,38 @@ async function fetchMatchPreviews(accountId: string): Promise<MatchPreview[]> {
 	const snapshotResult = await getLatestMatchSnapshot(accountId);
 	if (Result.isError(snapshotResult) || !snapshotResult.value) return [];
 
-	const [undecided, newSongIds] = await Promise.all([
+	const supabase = createAdminSupabaseClient();
+
+	const [undecided, newSongIds, entitledResult] = await Promise.all([
 		getUndecidedSongs(snapshotResult.value.id, accountId),
 		getNewItemIds(accountId, "song"),
+		supabase.rpc("select_entitled_data_enriched_liked_song_ids", {
+			p_account_id: accountId,
+		}),
 	]);
 
 	if (Result.isError(newSongIds) || undecided.length === 0) return [];
 
+	const entitledSet = new Set(
+		(!entitledResult.error && entitledResult.data
+			? entitledResult.data
+			: []
+		).map((r: { song_id: string }) => r.song_id),
+	);
+
 	const newSet = new Set(newSongIds.value);
-	const sorted = undecided.toSorted((a, b) => {
-		const aNew = newSet.has(a.songId) ? 1 : 0;
-		const bNew = newSet.has(b.songId) ? 1 : 0;
-		if (aNew !== bNew) return bNew - aNew;
-		if (b.maxScore !== a.maxScore) return b.maxScore - a.maxScore;
-		return a.songId.localeCompare(b.songId);
-	});
+	const sorted = undecided
+		.filter((s) => entitledSet.has(s.songId))
+		.toSorted((a, b) => {
+			const aNew = newSet.has(a.songId) ? 1 : 0;
+			const bNew = newSet.has(b.songId) ? 1 : 0;
+			if (aNew !== bNew) return bNew - aNew;
+			if (b.maxScore !== a.maxScore) return b.maxScore - a.maxScore;
+			return a.songId.localeCompare(b.songId);
+		});
 
 	const topIds = sorted.slice(0, 3).map((s) => s.songId);
 
-	const supabase = createAdminSupabaseClient();
 	const { data, error } = await supabase
 		.from("song")
 		.select("id, image_url")
