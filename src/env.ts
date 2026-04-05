@@ -29,6 +29,11 @@ export const env = createEnv({
 		ML_PROVIDER: z.enum(["deepinfra", "huggingface", "local"]).optional(),
 		// Email (optional - waitlist confirmation emails skipped if not set)
 		RESEND_API_KEY: z.string().min(1).optional(),
+		// Billing integration
+		BILLING_ENABLED: z.coerce.boolean().default(false),
+		BILLING_SERVICE_URL: z.url().optional(),
+		BILLING_SHARED_SECRET: z.string().min(1).optional(),
+		QUARTERLY_PLAN_ENABLED: z.coerce.boolean().default(false),
 	},
 
 	clientPrefix: "VITE_",
@@ -64,6 +69,10 @@ export const env = createEnv({
 		GENIUS_CLIENT_TOKEN: serverEnv.GENIUS_CLIENT_TOKEN,
 		ML_PROVIDER: serverEnv.ML_PROVIDER,
 		RESEND_API_KEY: serverEnv.RESEND_API_KEY,
+		BILLING_ENABLED: serverEnv.BILLING_ENABLED,
+		BILLING_SERVICE_URL: serverEnv.BILLING_SERVICE_URL,
+		BILLING_SHARED_SECRET: serverEnv.BILLING_SHARED_SECRET,
+		QUARTERLY_PLAN_ENABLED: serverEnv.QUARTERLY_PLAN_ENABLED,
 		VITE_APP_TITLE: import.meta.env.VITE_APP_TITLE,
 		VITE_CHROME_EXTENSION_ID: import.meta.env.VITE_CHROME_EXTENSION_ID,
 	},
