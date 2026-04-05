@@ -10,14 +10,13 @@ export function bandToNumeric(band: QueueBand): number {
 	return BAND_VALUES[band];
 }
 
+import type { BillingState } from "@/lib/domains/billing/state";
+
 /**
- * Resolves the queue priority band for an account.
- * Hides entitlement lookup behind a thin boundary.
- * Defaults to "low" until billing/entitlement data exists.
+ * Derives the queue band from resolved billing state.
+ * Billing domain owns the band-derivation logic (BillingState.queueBand);
+ * this is the scheduler-facing adapter that reads it.
  */
-export async function resolveQueuePriority(
-	_accountId: string,
-): Promise<QueueBand> {
-	// No entitlement table yet — default to free/baseline band
-	return "low";
+export function resolveQueuePriority(state: BillingState): QueueBand {
+	return state.queueBand;
 }

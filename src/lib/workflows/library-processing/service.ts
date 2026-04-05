@@ -6,6 +6,8 @@ import {
 	getJobById,
 } from "@/lib/data/jobs";
 import { EnrichmentChunkProgressSchema } from "@/lib/platform/jobs/progress/enrichment";
+import { readBillingState } from "@/lib/domains/billing/queries";
+import type { BillingState } from "@/lib/domains/billing/state";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
 import {
 	getPlaylistSongs,
@@ -26,6 +28,15 @@ import type {
 	LibraryProcessingEffect,
 	LibraryProcessingState,
 } from "./types";
+
+const FREE_DEFAULT_BILLING_STATE: BillingState = {
+	plan: "free",
+	creditBalance: 0,
+	subscriptionStatus: "none",
+	cancelAtPeriodEnd: false,
+	unlimitedAccess: { kind: "none" },
+	queueBand: "low",
+};
 
 interface JobOutcomeMetadata {
 	satisfiedMarker: string | null;
@@ -144,7 +155,13 @@ async function executeEffect(
 	change: LibraryProcessingChange,
 	jobOutcomeMetadata: JobOutcomeMetadata,
 ): Promise<LibraryProcessingState> {
-	const band = await resolveQueuePriority(effect.accountId);
+	const supabase = createAdminSupabaseClient();
+	const billingResult = await readBillingState(supabase, effect.accountId);
+	const band = resolveQueuePriority(
+		Result.isOk(billingResult)
+			? billingResult.value
+			: FREE_DEFAULT_BILLING_STATE,
+	);
 	const queuePriority = bandToNumeric(band);
 
 	if (effect.kind === "ensure_enrichment_job") {

@@ -60,7 +60,10 @@ export type LibraryProcessingChange =
 			accountId: string;
 			targetMembershipChanged: boolean;
 			targetMetadataChanged: boolean;
-	  };
+	  }
+	| { kind: "songs_unlocked"; accountId: string; songIds: string[] }
+	| { kind: "unlimited_activated"; accountId: string }
+	| { kind: "candidate_access_revoked"; accountId: string };
 
 export type LibraryProcessingEffect =
 	| {

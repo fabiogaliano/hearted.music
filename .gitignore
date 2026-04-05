@@ -20,3 +20,4 @@ scripts/prompt-lab/.cache
 scripts/prompt-lab/report.html
 v1_hearted_brand
 .overseer/
+.pi/conductor-sessions/

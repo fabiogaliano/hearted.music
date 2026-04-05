@@ -237,10 +237,12 @@ export interface WarmReplayResetResult {
 		cancelledJobs: number;
 		clearedItemStatuses: number;
 		clearedMatchSnapshots: number;
+		clearedBillingRows: number;
 	};
 	reseed: {
 		enrichmentRequested: boolean;
 		matchRefreshRequested: boolean;
+		billingSeeded: boolean;
 	};
 }
 
@@ -266,6 +268,7 @@ export interface MatchOnlyResetResult {
 	reseed: {
 		enrichmentRequested: boolean;
 		matchRefreshRequested: boolean;
+		billingSeeded: boolean;
 	};
 }
 
