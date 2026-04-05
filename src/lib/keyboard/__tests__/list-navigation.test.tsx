@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
 import { useListCursor } from "@/lib/keyboard/useListCursor";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
+import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
 
 const ITEMS = ["first", "second", "third"] as const;
 
@@ -121,9 +122,11 @@ describe("useListNavigation", () => {
 		});
 
 		render(
-			<KeyboardShortcutProvider>
-				<NavigationHarness />
-			</KeyboardShortcutProvider>,
+			<ThemeHueProvider>
+				<KeyboardShortcutProvider>
+					<NavigationHarness />
+				</KeyboardShortcutProvider>
+			</ThemeHueProvider>,
 		);
 
 		fireEvent.keyDown(window, { key: "j" });
