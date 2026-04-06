@@ -16,6 +16,7 @@ import { Route as FaqRouteImport } from './routes/faq'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
+import { Route as ApiBillingBridgeRouteImport } from './routes/api/billing-bridge'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedPlaylistsRouteImport } from './routes/_authenticated/playlists'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
@@ -59,6 +60,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthLogoutRoute = AuthLogoutRouteImport.update({
   id: '/auth/logout',
   path: '/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBillingBridgeRoute = ApiBillingBridgeRouteImport.update({
+  id: '/api/billing-bridge',
+  path: '/api/billing-bridge',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
@@ -124,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/playlists': typeof AuthenticatedPlaylistsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/api/billing-bridge': typeof ApiBillingBridgeRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/playlists': typeof AuthenticatedPlaylistsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/api/billing-bridge': typeof ApiBillingBridgeRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/playlists': typeof AuthenticatedPlaylistsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/api/billing-bridge': typeof ApiBillingBridgeRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
@@ -182,6 +191,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/playlists'
     | '/settings'
+    | '/api/billing-bridge'
     | '/auth/logout'
     | '/api/auth/$'
     | '/api/extension/status'
@@ -200,6 +210,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/playlists'
     | '/settings'
+    | '/api/billing-bridge'
     | '/auth/logout'
     | '/api/auth/$'
     | '/api/extension/status'
@@ -219,6 +230,7 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding'
     | '/_authenticated/playlists'
     | '/_authenticated/settings'
+    | '/api/billing-bridge'
     | '/auth/logout'
     | '/api/auth/$'
     | '/api/extension/status'
@@ -233,6 +245,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
+  ApiBillingBridgeRoute: typeof ApiBillingBridgeRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiExtensionStatusRoute: typeof ApiExtensionStatusRoute
@@ -289,6 +302,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/logout'
       fullPath: '/auth/logout'
       preLoaderRoute: typeof AuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/billing-bridge': {
+      id: '/api/billing-bridge'
+      path: '/api/billing-bridge'
+      fullPath: '/api/billing-bridge'
+      preLoaderRoute: typeof ApiBillingBridgeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/settings': {
@@ -392,6 +412,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
+  ApiBillingBridgeRoute: ApiBillingBridgeRoute,
   AuthLogoutRoute: AuthLogoutRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiExtensionStatusRoute: ApiExtensionStatusRoute,
