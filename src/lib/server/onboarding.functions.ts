@@ -8,6 +8,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
+import { get as getAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
 import {
 	clearPhaseJobIds,
 	completeOnboarding,
@@ -24,6 +25,9 @@ import {
 	getPlaylists,
 	setPlaylistTarget,
 } from "@/lib/domains/library/playlists/queries";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Json } from "@/lib/data/database.types";
+import { env } from "@/env";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import {
 	type PhaseJobIds,
@@ -245,7 +249,13 @@ export const saveOnboardingStep = createServerFn({ method: "POST" })
 		}
 
 		// Clear phase job IDs when transitioning past syncing step
-		if (data.step === "flag-playlists" || data.step === "ready") {
+		if (
+			data.step === "flag-playlists" ||
+			data.step === "song-showcase" ||
+			data.step === "match-showcase" ||
+			data.step === "plan-selection" ||
+			data.step === "ready"
+		) {
 			const clearResult = await clearPhaseJobIds(session.accountId);
 			if (Result.isError(clearResult)) {
 				// Log but don't fail - cleanup is not critical
@@ -310,4 +320,59 @@ export const savePlaylistTargets = createServerFn({ method: "POST" })
 		);
 
 		return { success: true };
+	});
+
+/** Demo song data returned for the onboarding showcase */
+export interface DemoSongData {
+	song: {
+		name: string;
+		artists: string[];
+		albumName: string | null;
+		imageUrl: string | null;
+		genres: string[];
+	};
+	analysis: Json;
+}
+
+/**
+ * Fetches the pre-seeded demo song and its analysis for the onboarding showcase.
+ * Returns null if DEMO_SONG_ID is not configured or the song/analysis is missing.
+ */
+export const getDemoSongShowcase = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.handler(async (): Promise<DemoSongData | null> => {
+		const demoSongId = env.DEMO_SONG_ID;
+		if (!demoSongId) {
+			return null;
+		}
+
+		const supabase = createAdminSupabaseClient();
+
+		const { data: song, error: songError } = await supabase
+			.from("song")
+			.select("name, artists, album_name, image_url, genres")
+			.eq("id", demoSongId)
+			.single();
+
+		if (songError || !song) {
+			console.warn("Demo song not found:", demoSongId, songError?.message);
+			return null;
+		}
+
+		const analysisResult = await getAnalysis(demoSongId);
+		if (Result.isError(analysisResult) || !analysisResult.value) {
+			console.warn("Demo song analysis not found:", demoSongId);
+			return null;
+		}
+
+		return {
+			song: {
+				name: song.name,
+				artists: song.artists,
+				albumName: song.album_name,
+				imageUrl: song.image_url,
+				genres: song.genres,
+			},
+			analysis: analysisResult.value.analysis,
+		};
 	});

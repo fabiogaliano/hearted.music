@@ -16,6 +16,7 @@ import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { Onboarding } from "@/features/onboarding/Onboarding";
 import { ONBOARDING_STEPS } from "@/lib/domains/library/accounts/preferences-queries";
+import { env } from "@/env";
 import { getOnboardingData } from "@/lib/server/onboarding.functions";
 
 /**
@@ -49,16 +50,24 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 		const urlStepIndex = stepOrder.indexOf(search.step);
 		const savedStepIndex = stepOrder.indexOf(savedStep);
 
-		// Special case: auto-skip flag-playlists → ready when user has no playlists
+		// Special case: auto-skip flag-playlists → song-showcase when user has no playlists
 		// This is a valid forward jump that should bypass the guard
-		const isAutoSkipToReady =
-			search.step === "ready" &&
+		const isAutoSkipFlagPlaylists =
+			search.step === "song-showcase" &&
 			savedStep === "flag-playlists" &&
 			data.playlists.length === 0;
 
+		// Special case: auto-skip plan-selection → ready when billing is disabled
+		const isAutoSkipPlanSelection =
+			search.step === "ready" &&
+			savedStep === "plan-selection" &&
+			!env.BILLING_ENABLED;
+
+		const isAutoSkip = isAutoSkipFlagPlaylists || isAutoSkipPlanSelection;
+
 		// Guard: If URL step is ahead of saved step, redirect back to saved step
 		// (unless it's the valid auto-skip case)
-		if (urlStepIndex > savedStepIndex && !isAutoSkipToReady) {
+		if (urlStepIndex > savedStepIndex && !isAutoSkip) {
 			throw redirect({
 				to: "/onboarding",
 				search: { step: savedStep },
@@ -75,6 +84,14 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 
 		// Skip flag-playlists step if user has no playlists
 		if (search.step === "flag-playlists" && data.playlists.length === 0) {
+			throw redirect({
+				to: "/onboarding",
+				search: { step: "song-showcase" },
+			});
+		}
+
+		// Skip plan-selection step when billing is disabled
+		if (search.step === "plan-selection" && !env.BILLING_ENABLED) {
 			throw redirect({
 				to: "/onboarding",
 				search: { step: "ready" },
