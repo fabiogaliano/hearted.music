@@ -21,19 +21,38 @@ export interface UnlimitedActivatedBridgePayload {
 	/** Stripe event ID — used as bridge idempotency key. */
 	stripeEventId: string;
 	accountId: string;
+	stripeSubscriptionId: string;
+	subscriptionPeriodEnd: string;
 }
 
-/** Payload for an access revocation outcome bridge call. */
-export interface RevocationOutcomeBridgePayload {
-	/** Stripe event ID — used as bridge idempotency key. */
+/** Payload for a pack reversal bridge call. */
+export interface PackReversedBridgePayload {
 	stripeEventId: string;
 	accountId: string;
-	/**
-	 * The event kind that produced this revocation.
-	 * Maps to billing_bridge_event.event_kind frozen values.
-	 */
-	eventKind:
-		| "pack_reversed"
-		| "unlimited_period_reversed"
-		| "subscription_deactivated";
+	eventKind: "pack_reversed";
+	packStripeEventId: string;
+	reason: "refund" | "chargeback";
 }
+
+/** Payload for an unlimited period reversal bridge call. */
+export interface UnlimitedPeriodReversedBridgePayload {
+	stripeEventId: string;
+	accountId: string;
+	eventKind: "unlimited_period_reversed";
+	stripeSubscriptionId: string;
+	subscriptionPeriodEnd: string;
+	reason: "refund" | "chargeback";
+}
+
+/** Payload for a subscription deactivation bridge call. */
+export interface SubscriptionDeactivatedBridgePayload {
+	stripeEventId: string;
+	accountId: string;
+	eventKind: "subscription_deactivated";
+}
+
+/** Union of all revocation-related bridge payloads. */
+export type RevocationBridgePayload =
+	| PackReversedBridgePayload
+	| UnlimitedPeriodReversedBridgePayload
+	| SubscriptionDeactivatedBridgePayload;
