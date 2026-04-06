@@ -7,37 +7,14 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import { ThemeHueProvider, useRegisterTheme } from "@/lib/theme/ThemeHueProvider";
+import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
 import { getTheme } from "@/lib/theme/useTheme";
 import type { ThemeColor } from "@/lib/theme/types";
+import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
 import "./ladle.css";
 import "@/styles.css";
 
 const THEME_COLORS: ThemeColor[] = ["blue", "green", "rose", "lavender"];
-
-function ThemeInjector({
-	children,
-	themeColor,
-}: {
-	children: React.ReactNode;
-	themeColor: ThemeColor;
-}) {
-	const theme = getTheme(themeColor);
-	useRegisterTheme(theme);
-
-	return (
-		<div
-			style={{
-				background: theme.bg,
-				color: theme.text,
-				minHeight: "100vh",
-				padding: 0,
-			}}
-		>
-			{children}
-		</div>
-	);
-}
 
 function StoryRouter({ children }: { children: React.ReactNode }) {
 	const rootRoute = createRootRoute({
@@ -76,11 +53,22 @@ export const Provider: GlobalProvider = ({ children, globalState }) => {
 			? (raw as ThemeColor)
 			: "blue";
 
+	const theme = getTheme(themeColor);
+
 	return (
-		<ThemeHueProvider>
-			<ThemeInjector themeColor={themeColor}>
-				<StoryRouter>{children}</StoryRouter>
-			</ThemeInjector>
+		<ThemeHueProvider theme={theme}>
+			<div
+				style={{
+					background: theme.bg,
+					color: theme.text,
+					minHeight: "100vh",
+					padding: 0,
+				}}
+			>
+				<KeyboardShortcutProvider>
+					<StoryRouter>{children}</StoryRouter>
+				</KeyboardShortcutProvider>
+			</div>
 		</ThemeHueProvider>
 	);
 };
