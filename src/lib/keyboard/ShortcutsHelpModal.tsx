@@ -27,6 +27,7 @@ const SCOPE_LABELS: Record<ShortcutScope, string> = {
 	"onboarding-extension": "Onboarding",
 	"onboarding-playlists": "Onboarding",
 	"onboarding-song-showcase": "Onboarding",
+	"onboarding-match-showcase": "Onboarding",
 	"onboarding-ready": "Onboarding",
 };
 

@@ -10,7 +10,10 @@ import {
 	type OnboardingStep,
 } from "@/lib/domains/library/accounts/preferences-queries";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
-import type { OnboardingData } from "@/lib/server/onboarding.functions";
+import type {
+	OnboardingData,
+	ReadyCopyVariant,
+} from "@/lib/server/onboarding.functions";
 import { useAuthenticatedTheme } from "@/lib/theme/authenticated-theme";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import type { ThemeColor } from "@/lib/theme/types";
@@ -21,19 +24,11 @@ import { PickColorStep } from "./components/PickColorStep";
 import { ReadyStep } from "./components/ReadyStep";
 import { StepContainer } from "./components/StepContainer";
 import { PlanSelectionStep } from "./components/PlanSelectionStep";
+import { MatchShowcaseStep } from "./components/MatchShowcaseStep";
 import { SongShowcaseStep } from "./components/SongShowcaseStep";
 import { SyncingStep } from "./components/SyncingStep";
 import { WelcomeStep } from "./components/WelcomeStep";
 import "./types"; // Import to ensure HistoryState augmentation is loaded
-
-function PlaceholderStep({ name }: { name: string }) {
-	return (
-		<div className="flex flex-col items-center justify-center gap-4 py-12">
-			<h2 className="text-2xl font-semibold">{name}</h2>
-			<p className="text-muted-foreground">Coming soon</p>
-		</div>
-	);
-}
 
 interface OnboardingProps {
 	step: OnboardingStep;
@@ -46,6 +41,7 @@ interface StepContext {
 	phaseJobIds: PhaseJobIds | null;
 	playlists: OnboardingData["playlists"];
 	syncStats: OnboardingData["syncStats"];
+	readyCopyVariant: ReadyCopyVariant;
 }
 
 interface StepConfig {
@@ -81,13 +77,15 @@ const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 		render: () => <SongShowcaseStep />,
 	},
 	"match-showcase": {
-		render: () => <PlaceholderStep name="Match Showcase" />,
+		render: () => <MatchShowcaseStep />,
 	},
 	"plan-selection": {
 		render: () => <PlanSelectionStep />,
 	},
 	ready: {
-		render: (ctx) => <ReadyStep syncStats={ctx.syncStats} />,
+		render: (ctx) => (
+			<ReadyStep syncStats={ctx.syncStats} copyVariant={ctx.readyCopyVariant} />
+		),
 	},
 	complete: {
 		render: () => null, // Handled by redirect
@@ -114,6 +112,7 @@ export function Onboarding({ step, data }: OnboardingProps) {
 		phaseJobIds,
 		playlists: data.playlists,
 		syncStats: data.syncStats,
+		readyCopyVariant: data.readyCopyVariant,
 	};
 
 	const config = STEP_CONFIG[step];

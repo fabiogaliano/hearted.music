@@ -157,11 +157,15 @@ async function executeEffect(
 ): Promise<LibraryProcessingState> {
 	const supabase = createAdminSupabaseClient();
 	const billingResult = await readBillingState(supabase, effect.accountId);
-	const band = resolveQueuePriority(
+	const billingBand = resolveQueuePriority(
 		Result.isOk(billingResult)
 			? billingResult.value
 			: FREE_DEFAULT_BILLING_STATE,
 	);
+	const band =
+		change.kind === "onboarding_target_selection_confirmed"
+			? "priority"
+			: billingBand;
 	const queuePriority = bandToNumeric(band);
 
 	if (effect.kind === "ensure_enrichment_job") {
