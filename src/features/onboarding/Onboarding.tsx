@@ -20,9 +20,20 @@ import { InstallExtensionStep } from "./components/InstallExtensionStep";
 import { PickColorStep } from "./components/PickColorStep";
 import { ReadyStep } from "./components/ReadyStep";
 import { StepContainer } from "./components/StepContainer";
+import { PlanSelectionStep } from "./components/PlanSelectionStep";
+import { SongShowcaseStep } from "./components/SongShowcaseStep";
 import { SyncingStep } from "./components/SyncingStep";
 import { WelcomeStep } from "./components/WelcomeStep";
 import "./types"; // Import to ensure HistoryState augmentation is loaded
+
+function PlaceholderStep({ name }: { name: string }) {
+	return (
+		<div className="flex flex-col items-center justify-center gap-4 py-12">
+			<h2 className="text-2xl font-semibold">{name}</h2>
+			<p className="text-muted-foreground">Coming soon</p>
+		</div>
+	);
+}
 
 interface OnboardingProps {
 	step: OnboardingStep;
@@ -65,6 +76,15 @@ const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 	"flag-playlists": {
 		render: (ctx) => <FlagPlaylistsStep playlists={ctx.playlists} />,
 		fullBleed: true,
+	},
+	"song-showcase": {
+		render: () => <SongShowcaseStep />,
+	},
+	"match-showcase": {
+		render: () => <PlaceholderStep name="Match Showcase" />,
+	},
+	"plan-selection": {
+		render: () => <PlanSelectionStep />,
 	},
 	ready: {
 		render: (ctx) => <ReadyStep syncStats={ctx.syncStats} />,

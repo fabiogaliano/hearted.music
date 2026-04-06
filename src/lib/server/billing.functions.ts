@@ -302,3 +302,19 @@ export const createPortalSession = createServerFn({ method: "POST" })
 
 		return { success: true, portalUrl: json.portal_url };
 	});
+
+// ---------------------------------------------------------------------------
+// Plan selection config (client-safe env flags)
+// ---------------------------------------------------------------------------
+
+export interface PlanSelectionConfig {
+	quarterlyPlanEnabled: boolean;
+}
+
+export const getPlanSelectionConfig = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.handler(async (): Promise<PlanSelectionConfig> => {
+		return {
+			quarterlyPlanEnabled: env.QUARTERLY_PLAN_ENABLED,
+		};
+	});
