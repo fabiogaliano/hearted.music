@@ -34,7 +34,13 @@ export const Route = createFileRoute("/_authenticated/liked-songs")({
 function LikedSongsRoute() {
 	// TODO: pass filter to LikedSongsPage when filter UI is built
 	const { song } = Route.useSearch();
-	const { session } = Route.useRouteContext();
+	const { session, billingState } = Route.useRouteContext();
 
-	return <LikedSongsPage selectedSlug={song} accountId={session.accountId} />;
+	return (
+		<LikedSongsPage
+			selectedSlug={song}
+			accountId={session.accountId}
+			billingState={billingState}
+		/>
+	);
 }
