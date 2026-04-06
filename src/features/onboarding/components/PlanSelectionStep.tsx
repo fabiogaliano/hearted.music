@@ -1,9 +1,12 @@
 /**
  * Plan selection step — presents free, pack, and unlimited options.
  * Only renders when BILLING_ENABLED=true (auto-skip handled by route loader).
+ *
+ * After Stripe checkout redirect, enters polling mode to detect billing
+ * state update before navigating to ready.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { toast } from "sonner";
 import {
 	SONG_PACK_500,
@@ -17,7 +20,17 @@ import {
 } from "@/lib/server/billing.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
+import {
+	clearCheckoutIntent,
+	loadCheckoutIntent,
+	saveCheckoutIntent,
+	type CheckoutIntent,
+} from "../checkout-intent";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
+import {
+	useCheckoutPolling,
+	type CheckoutPollingState,
+} from "../hooks/useCheckoutPolling";
 
 type ConfigState =
 	| { status: "loading" }
@@ -29,6 +42,11 @@ type CheckoutTarget =
 	| typeof UNLIMITED_QUARTERLY
 	| typeof UNLIMITED_YEARLY;
 
+const FALLBACK_MESSAGE =
+	"Your purchase is being processed. Your songs to explore will appear shortly.";
+
+const AUTO_NAVIGATE_DELAY_MS = 2_000;
+
 export function PlanSelectionStep() {
 	const theme = useTheme();
 	const { goToStep } = useOnboardingNavigation();
@@ -39,6 +57,13 @@ export function PlanSelectionStep() {
 		null,
 	);
 	const [isNavigatingFree, setIsNavigatingFree] = useState(false);
+
+	// Recover pending checkout from sessionStorage after Stripe redirect
+	const [pendingIntent, setPendingIntent] = useState<CheckoutIntent | null>(
+		() => loadCheckoutIntent(),
+	);
+
+	const pollingState = useCheckoutPolling(pendingIntent?.offer ?? null);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -54,8 +79,22 @@ export function PlanSelectionStep() {
 		};
 	}, []);
 
+	const navigateToReady = useEffectEvent(() => {
+		clearCheckoutIntent();
+		goToStep("ready");
+	});
+
+	// Auto-navigate after confirmation or timeout
+	useEffect(() => {
+		if (!pollingState) return;
+		if (pollingState.status === "polling") return;
+
+		const timer = setTimeout(navigateToReady, AUTO_NAVIGATE_DELAY_MS);
+		return () => clearTimeout(timer);
+	}, [pollingState]);
+
 	const handleFree = async () => {
-		if (isNavigatingFree || activeCheckout) return;
+		if (isNavigatingFree || activeCheckout || pendingIntent) return;
 		setIsNavigatingFree(true);
 		try {
 			await goToStep("ready");
@@ -65,15 +104,22 @@ export function PlanSelectionStep() {
 	};
 
 	const handleCheckout = async (offer: CheckoutTarget) => {
-		if (activeCheckout || isNavigatingFree) return;
+		if (activeCheckout || isNavigatingFree || pendingIntent) return;
 		setActiveCheckout(offer);
+
+		// Reuse checkoutAttemptId from a previous intent for the same offer
+		const existingIntent = loadCheckoutIntent();
+		const checkoutAttemptId =
+			existingIntent?.offer === offer
+				? existingIntent.checkoutAttemptId
+				: crypto.randomUUID();
+
+		const intent: CheckoutIntent = { offer, checkoutAttemptId };
+		saveCheckoutIntent(intent);
 
 		try {
 			const result = await createCheckoutSession({
-				data: {
-					offer,
-					checkoutAttemptId: crypto.randomUUID(),
-				},
+				data: { offer, checkoutAttemptId },
 			});
 
 			if (!result.success) {
@@ -97,7 +143,23 @@ export function PlanSelectionStep() {
 		}
 	};
 
-	const isBusy = isNavigatingFree || activeCheckout !== null;
+	// Post-checkout polling UI
+	if (pendingIntent && pollingState) {
+		return (
+			<PostCheckoutView
+				theme={theme}
+				pollingState={pollingState}
+				offer={pendingIntent.offer}
+				onRetry={() => {
+					clearCheckoutIntent();
+					setPendingIntent(null);
+				}}
+			/>
+		);
+	}
+
+	const isBusy =
+		isNavigatingFree || activeCheckout !== null || pendingIntent !== null;
 
 	if (configState.status === "loading") {
 		return (
@@ -208,6 +270,115 @@ export function PlanSelectionStep() {
 					/>
 				)}
 			</div>
+		</div>
+	);
+}
+
+function PostCheckoutView({
+	theme,
+	pollingState,
+	offer,
+	onRetry,
+}: {
+	theme: ReturnType<typeof useTheme>;
+	pollingState: CheckoutPollingState;
+	offer: CheckoutTarget;
+	onRetry: () => void;
+}) {
+	const offerLabel =
+		offer === SONG_PACK_500 ? "Song Pack" : "Unlimited subscription";
+
+	if (pollingState.status === "polling") {
+		return (
+			<div className="text-center">
+				<p
+					className="text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				>
+					Confirming
+				</p>
+
+				<h2
+					className="mt-4 text-4xl leading-tight font-extralight"
+					style={{ fontFamily: fonts.display, color: theme.text }}
+				>
+					Confirming your purchase...
+				</h2>
+
+				<p
+					className="mt-6 text-base font-light animate-pulse"
+					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				>
+					Waiting for {offerLabel} to activate.
+				</p>
+			</div>
+		);
+	}
+
+	if (pollingState.status === "confirmed") {
+		const confirmMessage =
+			offer === SONG_PACK_500
+				? `${String(pollingState.billingState.creditBalance)} songs ready to explore.`
+				: "Unlimited access activated.";
+
+		return (
+			<div className="text-center">
+				<p
+					className="text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				>
+					Confirmed
+				</p>
+
+				<h2
+					className="mt-4 text-4xl leading-tight font-extralight"
+					style={{ fontFamily: fonts.display, color: theme.text }}
+				>
+					You're all set.
+				</h2>
+
+				<p
+					className="mt-6 text-base font-light"
+					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				>
+					{confirmMessage}
+				</p>
+			</div>
+		);
+	}
+
+	// Timeout
+	return (
+		<div className="text-center">
+			<p
+				className="text-xs tracking-widest uppercase"
+				style={{ fontFamily: fonts.body, color: theme.textMuted }}
+			>
+				Processing
+			</p>
+
+			<h2
+				className="mt-4 text-4xl leading-tight font-extralight"
+				style={{ fontFamily: fonts.display, color: theme.text }}
+			>
+				Almost there.
+			</h2>
+
+			<p
+				className="mt-6 text-base font-light"
+				style={{ fontFamily: fonts.body, color: theme.textMuted }}
+			>
+				{FALLBACK_MESSAGE}
+			</p>
+
+			<button
+				type="button"
+				onClick={onRetry}
+				className="mt-8 text-sm font-medium tracking-wide"
+				style={{ fontFamily: fonts.body, color: theme.primary }}
+			>
+				Choose a different plan
+			</button>
 		</div>
 	);
 }

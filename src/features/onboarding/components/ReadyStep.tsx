@@ -8,15 +8,25 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Kbd } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
-import { markOnboardingComplete } from "@/lib/server/onboarding.functions";
+import {
+	markOnboardingComplete,
+	type ReadyCopyVariant,
+} from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 interface ReadyStepProps {
 	syncStats: { songs: number; playlists: number };
+	copyVariant: ReadyCopyVariant;
 }
 
-export function ReadyStep({ syncStats }: ReadyStepProps) {
+const READY_COPY: Record<ReadyCopyVariant, string> = {
+	free: "Exploring your 15 songs. An email's on its way when it's ready.",
+	pack: "Exploring your selected songs. An email's on its way when it's ready.",
+	unlimited: "Going through every song. An email's on its way when it's ready.",
+};
+
+export function ReadyStep({ syncStats, copyVariant }: ReadyStepProps) {
 	const theme = useTheme();
 	const navigate = useNavigate();
 	const [isCompleting, setIsCompleting] = useState(false);
@@ -64,7 +74,7 @@ export function ReadyStep({ syncStats }: ReadyStepProps) {
 				className="mt-6 text-lg font-light"
 				style={{ fontFamily: fonts.body, color: theme.textMuted }}
 			>
-				Going through every song. An email's on its way when it's ready.
+				{READY_COPY[copyVariant]}
 			</p>
 
 			<div className="mt-16 flex justify-center gap-16">

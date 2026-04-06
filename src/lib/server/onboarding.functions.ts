@@ -19,12 +19,19 @@ import {
 	updateOnboardingStep,
 	updateTheme,
 } from "@/lib/domains/library/accounts/preferences-queries";
+import { readBillingState } from "@/lib/domains/billing/queries";
+import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
+import { grantFreeAllocation } from "@/lib/domains/billing/unlocks";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
 import {
 	getPlaylistCount,
 	getPlaylists,
 	setPlaylistTarget,
 } from "@/lib/domains/library/playlists/queries";
+import {
+	getLatestMatchSnapshot,
+	getMatchResultsForSong,
+} from "@/lib/domains/taste/song-matching/queries";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json } from "@/lib/data/database.types";
 import { env } from "@/env";
@@ -54,6 +61,9 @@ export interface SyncStats {
 	playlists: number;
 }
 
+/** Copy variant for ReadyStep, derived from billing state */
+export type ReadyCopyVariant = "free" | "pack" | "unlimited";
+
 /** Combined onboarding data loaded on route entry */
 export interface OnboardingData {
 	/** User's theme preference (null = hasn't chosen yet) */
@@ -65,6 +75,8 @@ export interface OnboardingData {
 	phaseJobIds: PhaseJobIds | null;
 	/** Library stats (liked songs + playlists count) from DB */
 	syncStats: SyncStats;
+	/** Copy variant for ReadyStep based on billing state */
+	readyCopyVariant: ReadyCopyVariant;
 }
 
 const themeInputSchema = z.object({
@@ -90,18 +102,22 @@ export const getOnboardingData = createServerFn({ method: "GET" })
 	.handler(async ({ context }): Promise<OnboardingData> => {
 		const { session } = context;
 
+		const supabase = createAdminSupabaseClient();
+
 		const [
 			prefsResult,
 			playlistsResult,
 			completionResult,
 			songsCountResult,
 			playlistsCountResult,
+			billingResult,
 		] = await Promise.all([
 			getOrCreatePreferences(session.accountId),
 			getPlaylists(session.accountId),
 			isOnboardingComplete(session.accountId),
 			getLikedSongCount(session.accountId),
 			getPlaylistCount(session.accountId),
+			readBillingState(supabase, session.accountId),
 		]);
 
 		if (Result.isError(prefsResult)) {
@@ -133,6 +149,16 @@ export const getOnboardingData = createServerFn({ method: "GET" })
 		}));
 
 		// Validate currentStep with Zod instead of unsafe type assertion
+		let readyCopyVariant: ReadyCopyVariant = "free";
+		if (Result.isOk(billingResult)) {
+			const billing = billingResult.value;
+			if (hasUnlimitedAccess(billing)) {
+				readyCopyVariant = "unlimited";
+			} else if (billing.creditBalance > 0) {
+				readyCopyVariant = "pack";
+			}
+		}
+
 		const stepParse = ONBOARDING_STEPS.safeParse(
 			prefsResult.value.onboarding_step,
 		);
@@ -151,6 +177,7 @@ export const getOnboardingData = createServerFn({ method: "GET" })
 				songs: songsCountResult.value,
 				playlists: playlistsCountResult.value,
 			},
+			readyCopyVariant,
 		};
 	});
 
@@ -269,6 +296,7 @@ export const saveOnboardingStep = createServerFn({ method: "POST" })
 /**
  * Marks onboarding as complete.
  * Sets onboarding_completed_at timestamp in the database.
+ * For free-plan users, grants up to 15 most-recent liked songs as free allocation.
  */
 export const markOnboardingComplete = createServerFn({
 	method: "POST",
@@ -281,6 +309,35 @@ export const markOnboardingComplete = createServerFn({
 
 		if (Result.isError(result)) {
 			throw new OnboardingError("complete_onboarding", result.error);
+		}
+
+		const supabase = createAdminSupabaseClient();
+		const billingResult = await readBillingState(supabase, session.accountId);
+
+		if (Result.isOk(billingResult)) {
+			const billing = billingResult.value;
+			const isFree =
+				billing.plan === "free" &&
+				!hasUnlimitedAccess(billing) &&
+				billing.creditBalance === 0;
+
+			if (isFree) {
+				const allocationResult = await grantFreeAllocation(
+					supabase,
+					session.accountId,
+				);
+				if (Result.isError(allocationResult)) {
+					console.error(
+						"[onboarding] Free allocation failed:",
+						allocationResult.error,
+					);
+				}
+			}
+		} else {
+			console.error(
+				"[onboarding] Failed to read billing state for free allocation:",
+				billingResult.error,
+			);
 		}
 
 		return { success: true };
@@ -375,4 +432,85 @@ export const getDemoSongShowcase = createServerFn({ method: "GET" })
 			},
 			analysis: analysisResult.value.analysis,
 		};
+	});
+
+/** Match result for a single playlist in the demo song showcase */
+export interface DemoMatchPlaylist {
+	id: string;
+	name: string;
+	description: string | null;
+	songCount: number | null;
+	score: number;
+}
+
+/** Result of matching the demo song against target playlists */
+export type DemoMatchResult =
+	| { status: "ready"; matches: DemoMatchPlaylist[] }
+	| { status: "pending" }
+	| { status: "unavailable" };
+
+/**
+ * Fetches live match results for the demo song against the user's target playlists.
+ * Returns "pending" if the match snapshot hasn't been published yet,
+ * "unavailable" if no demo song is configured, or "ready" with sorted matches.
+ */
+export const getDemoSongMatches = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.handler(async ({ context }): Promise<DemoMatchResult> => {
+		const demoSongId = env.DEMO_SONG_ID;
+		if (!demoSongId) {
+			return { status: "unavailable" };
+		}
+
+		const { session } = context;
+
+		const snapshotResult = await getLatestMatchSnapshot(session.accountId);
+		if (Result.isError(snapshotResult) || !snapshotResult.value) {
+			return { status: "pending" };
+		}
+
+		const snapshot = snapshotResult.value;
+		const matchResultsResult = await getMatchResultsForSong(
+			snapshot.id,
+			demoSongId,
+		);
+
+		if (Result.isError(matchResultsResult)) {
+			return { status: "pending" };
+		}
+
+		const matchResults = matchResultsResult.value;
+		if (matchResults.length === 0) {
+			return { status: "pending" };
+		}
+
+		const playlistIds = matchResults.map((mr) => mr.playlist_id);
+		const supabase = createAdminSupabaseClient();
+		const { data: playlistRows, error: playlistError } = await supabase
+			.from("playlist")
+			.select("id, name, description, song_count")
+			.in("id", playlistIds);
+
+		if (playlistError || !playlistRows) {
+			return { status: "pending" };
+		}
+
+		const playlistMap = new Map(playlistRows.map((p) => [p.id, p]));
+
+		const matches: DemoMatchPlaylist[] = matchResults
+			.map((mr) => {
+				const playlist = playlistMap.get(mr.playlist_id);
+				if (!playlist) return null;
+				return {
+					id: playlist.id,
+					name: playlist.name,
+					description: playlist.description,
+					songCount: playlist.song_count,
+					score: mr.score,
+				};
+			})
+			.filter((m): m is DemoMatchPlaylist => m !== null)
+			.toSorted((a, b) => b.score - a.score);
+
+		return { status: "ready", matches };
 	});

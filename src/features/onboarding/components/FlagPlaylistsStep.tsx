@@ -113,7 +113,7 @@ export function FlagPlaylistsStep({
 			await savePlaylistTargets({
 				data: { playlistIds: Array.from(selectedIds) },
 			});
-			await goToStep("ready", { syncStats });
+			await goToStep("song-showcase", { syncStats });
 		} catch (error) {
 			console.error("Failed to save playlist targets:", error);
 			toast.error("Failed to save playlist selections. Please try again.");

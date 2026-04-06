@@ -120,7 +120,7 @@ describe("FlagPlaylistsStep", () => {
 		});
 
 		await waitFor(() => {
-			expect(mockGoToStep).toHaveBeenCalledWith("ready", {
+			expect(mockGoToStep).toHaveBeenCalledWith("song-showcase", {
 				syncStats: { songs: 100, playlists: 5 },
 			});
 		});
