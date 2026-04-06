@@ -24,6 +24,8 @@ import {
 	useLocation,
 } from "@tanstack/react-router";
 import { Sidebar } from "./-components/Sidebar";
+import { usePostPurchaseReturn } from "@/features/billing/hooks/usePostPurchaseReturn";
+import { billingKeys } from "@/features/billing/query-keys";
 import { matchingSessionQueryOptions } from "@/features/matching/queries";
 import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
 import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
@@ -48,7 +50,6 @@ const DevWorkflowPanel = shouldLoadDevWorkflowPanel
 
 const authQueryKey = ["auth", "session"] as const;
 const onboardingQueryKey = ["auth", "onboarding"] as const;
-const billingQueryKey = ["billing", "state"] as const;
 
 export const Route = createFileRoute("/_authenticated")({
 	beforeLoad: async ({ location, cause, context }) => {
@@ -76,7 +77,7 @@ export const Route = createFileRoute("/_authenticated")({
 		}
 
 		const billingState = await queryClient.ensureQueryData({
-			queryKey: billingQueryKey,
+			queryKey: billingKeys.state,
 			queryFn: () => getBillingState(),
 			staleTime: 5 * 60 * 1000,
 		});
@@ -97,6 +98,7 @@ function AuthenticatedLayout() {
 	const isOnboarding = location.pathname.startsWith("/onboarding");
 
 	useActiveJobCompletionEffects(session.accountId, !isOnboarding);
+	usePostPurchaseReturn(session.accountId, billingState);
 
 	const { data: matchingSession } = useQuery(
 		matchingSessionQueryOptions(session.accountId),

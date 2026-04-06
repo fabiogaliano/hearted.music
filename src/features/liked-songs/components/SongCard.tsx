@@ -4,7 +4,7 @@
  * Clickable song row in the list. When clicked, triggers FLIP expansion
  * to the SongDetailView overlay.
  */
-import { Lock } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { fonts } from "@/lib/theme/fonts";
@@ -28,6 +28,12 @@ interface SongCardProps {
 	onClick: (e: React.MouseEvent<HTMLElement>) => void;
 	/** True when this card is the target of a close animation (view transitions) */
 	isAnimatingTo?: boolean;
+	/** When true, locked songs show a checkbox for multi-select */
+	selectionMode?: boolean;
+	/** Whether this song is checked in selection mode */
+	isChecked?: boolean;
+	/** Toggle selection in multi-select mode */
+	onToggleSelect?: (songId: string) => void;
 }
 
 export function SongCard({
@@ -44,15 +50,26 @@ export function SongCard({
 	onBlur,
 	onClick,
 	isAnimatingTo,
+	selectionMode,
+	isChecked,
+	onToggleSelect,
 }: SongCardProps) {
 	const theme = useTheme();
 	const isNew = isNewSong(song.liked_at);
 	const isLocked = song.displayState === "locked";
+	const isSelectable = selectionMode && isLocked;
 
 	return (
 		<button
 			type="button"
-			onClick={onClick}
+			onClick={
+				isSelectable
+					? (e) => {
+							e.stopPropagation();
+							onToggleSelect?.(song.track.id);
+						}
+					: onClick
+			}
 			ref={itemRef}
 			tabIndex={tabIndex}
 			data-focused={dataFocused}
@@ -132,8 +149,18 @@ export function SongCard({
 				</p>
 			</div>
 
-			{/* Locked: unlock affordance / Normal: time added */}
-			{isLocked ? (
+			{/* Selection checkbox / Lock affordance / Time added */}
+			{isSelectable ? (
+				<span
+					className="flex h-5 w-5 shrink-0 items-center justify-center rounded border"
+					style={{
+						borderColor: isChecked ? theme.primary : theme.border,
+						background: isChecked ? theme.primary : "transparent",
+					}}
+				>
+					{isChecked && <Check size={12} color={theme.bg} strokeWidth={3} />}
+				</span>
+			) : isLocked ? (
 				<span
 					className="flex shrink-0 items-center gap-1 text-xs"
 					style={{ fontFamily: fonts.body, color: theme.textMuted }}

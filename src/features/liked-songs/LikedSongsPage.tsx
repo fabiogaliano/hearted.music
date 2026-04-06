@@ -21,7 +21,10 @@ import {
 	useState,
 } from "react";
 
+import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
+import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
+import type { BillingState } from "@/lib/domains/billing/state";
 import { scrollListElementIntoView } from "@/lib/keyboard/listScroll";
 import type { ListNavigationSource } from "@/lib/keyboard/types";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
@@ -32,8 +35,11 @@ import { generateSongSlug } from "@/lib/utils/slug";
 
 import { SongCard } from "./components/SongCard";
 import { SongDetailPanel } from "./components/SongDetailPanel";
+import { SongSelectionBar } from "./components/SongSelectionBar";
+import { UnlockConfirmDialog } from "./components/UnlockConfirmDialog";
 import { useInfiniteScroll } from "./hooks/useInfiniteScroll";
 import { useSongExpansion } from "./hooks/useSongExpansion";
+import { useSongUnlock } from "./hooks/useSongUnlock";
 import {
 	type FilterOption,
 	likedSongBySlugQueryOptions,
@@ -54,6 +60,8 @@ interface LikedSongsPageProps {
 	isDarkMode?: boolean;
 	/** Account ID for query cache isolation */
 	accountId: string;
+	/** Billing state for song unlock selection UI (pack users only) */
+	billingState?: BillingState;
 }
 
 function findSongForSlug(
@@ -77,10 +85,63 @@ export function LikedSongsPage({
 	selectedSlug,
 	isDarkMode: initialDarkMode = true,
 	accountId,
+	billingState,
 }: LikedSongsPageProps) {
 	const theme = useTheme();
 	const { isEnrichmentRunning } = useActiveJobs(accountId);
 	const [isDarkMode, setIsDarkMode] = useState(initialDarkMode);
+
+	const showSelectionUI =
+		billingState != null &&
+		!hasUnlimitedAccess(billingState) &&
+		billingState.creditBalance > 0;
+
+	const showPaywall =
+		billingState != null &&
+		!hasUnlimitedAccess(billingState) &&
+		billingState.creditBalance === 0;
+
+	const [selectionMode, setSelectionMode] = useState(false);
+	const [selectedSongIds, setSelectedSongIds] = useState<Set<string>>(
+		new Set(),
+	);
+
+	const toggleSongSelection = useCallback((songId: string) => {
+		setSelectedSongIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(songId)) {
+				next.delete(songId);
+			} else {
+				next.add(songId);
+			}
+			return next;
+		});
+	}, []);
+
+	const exitSelectionMode = useCallback(() => {
+		setSelectionMode(false);
+		setSelectedSongIds(new Set());
+	}, []);
+
+	const {
+		flowState,
+		requestConfirmation,
+		cancelConfirmation,
+		confirmUnlock,
+		dismiss: dismissFlow,
+	} = useSongUnlock(accountId);
+
+	const handleUnlockConfirm = useCallback(() => {
+		if (selectedSongIds.size === 0) return;
+		requestConfirmation(Array.from(selectedSongIds));
+	}, [selectedSongIds, requestConfirmation]);
+
+	const handleFlowDismiss = useCallback(() => {
+		dismissFlow();
+		if (flowState.step === "success") {
+			exitSelectionMode();
+		}
+	}, [dismissFlow, flowState.step, exitSelectionMode]);
 
 	useShortcut({
 		key: "mod+d",
@@ -398,8 +459,39 @@ export function LikedSongsPage({
 							</span>
 						</>
 					)}
+					{showSelectionUI &&
+						stats?.success &&
+						stats.locked > 0 &&
+						!selectionMode && (
+							<button
+								type="button"
+								onClick={() => setSelectionMode(true)}
+								className="cursor-pointer rounded-full border px-3 py-1 text-xs tracking-wide uppercase transition-opacity hover:opacity-80"
+								style={{
+									fontFamily: fonts.body,
+									borderColor: theme.border,
+									color: theme.text,
+									background: "transparent",
+								}}
+							>
+								Unlock Songs
+							</button>
+						)}
 				</div>
 			</div>
+
+			{/* Zero-balance paywall CTA */}
+			{showPaywall && billingState && (
+				<div
+					className="mb-6 rounded-xl px-6 py-4"
+					style={{
+						background: theme.surfaceDim,
+						border: `1px solid ${theme.border}`,
+					}}
+				>
+					<PaywallCTA billingState={billingState} />
+				</div>
+			)}
 
 			{/* Song list */}
 			<div className="border-t pt-6" style={{ borderColor: theme.border }}>
@@ -443,6 +535,9 @@ export function LikedSongsPage({
 									onBlur={itemProps.onBlur}
 									onClick={(e) => handlePointerExpand(song, e.currentTarget)}
 									isAnimatingTo={closingToSongId === song.track.id}
+									selectionMode={selectionMode && showSelectionUI}
+									isChecked={selectedSongIds.has(song.track.id)}
+									onToggleSelect={toggleSongSelection}
 								/>
 							);
 						})}
@@ -483,8 +578,30 @@ export function LikedSongsPage({
 				/>
 			)}
 
+			{/* Selection bar for pack users */}
+			{selectionMode && showSelectionUI && billingState && (
+				<SongSelectionBar
+					selectedCount={selectedSongIds.size}
+					remainingBalance={billingState.creditBalance}
+					onConfirm={handleUnlockConfirm}
+					onCancel={exitSelectionMode}
+				/>
+			)}
+
+			{/* Unlock confirmation / progress / error dialog */}
+			{flowState.step !== "idle" && billingState && (
+				<UnlockConfirmDialog
+					flowState={flowState}
+					remainingBalance={billingState.creditBalance}
+					billingState={billingState}
+					onConfirm={confirmUnlock}
+					onCancel={cancelConfirmation}
+					onDismiss={handleFlowDismiss}
+				/>
+			)}
+
 			{/* Dark mode toggle indicator */}
-			{!isExpanded && (
+			{!isExpanded && !selectionMode && (
 				<button
 					type="button"
 					className="fixed right-6 bottom-6 z-40 cursor-pointer rounded-full px-3 py-2 backdrop-blur-md transition-transform hover:scale-105"
