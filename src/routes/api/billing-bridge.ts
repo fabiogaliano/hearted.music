@@ -13,8 +13,13 @@ import { z } from "zod";
 import { env } from "@/env";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { verifyBridgeHmac } from "@/lib/domains/billing/hmac";
-import { BillingChanges } from "@/lib/workflows/library-processing/changes/billing";
-import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
+import {
+	handlePackFulfilled,
+	handleUnlimitedActivated,
+	handlePackReversed,
+	handleUnlimitedPeriodReversed,
+	handleSubscriptionDeactivated,
+} from "@/lib/domains/billing/bridge-handlers";
 
 const BridgePayloadSchema = z.discriminatedUnion("event_kind", [
 	z.object({
@@ -27,16 +32,23 @@ const BridgePayloadSchema = z.discriminatedUnion("event_kind", [
 		stripe_event_id: z.string().min(1),
 		event_kind: z.literal("unlimited_activated"),
 		account_id: z.string().uuid(),
+		stripe_subscription_id: z.string().min(1),
+		subscription_period_end: z.string().min(1),
 	}),
 	z.object({
 		stripe_event_id: z.string().min(1),
 		event_kind: z.literal("pack_reversed"),
 		account_id: z.string().uuid(),
+		pack_stripe_event_id: z.string().min(1),
+		reason: z.enum(["refund", "chargeback"]),
 	}),
 	z.object({
 		stripe_event_id: z.string().min(1),
 		event_kind: z.literal("unlimited_period_reversed"),
 		account_id: z.string().uuid(),
+		stripe_subscription_id: z.string().min(1),
+		subscription_period_end: z.string().min(1),
+		reason: z.enum(["refund", "chargeback"]),
 	}),
 	z.object({
 		stripe_event_id: z.string().min(1),
@@ -125,25 +137,46 @@ export const Route = createFileRoute("/api/billing-bridge")({
 });
 
 async function dispatchBridgeEvent(payload: BridgePayload): Promise<void> {
+	const supabase = createAdminSupabaseClient();
+
 	switch (payload.event_kind) {
 		case "pack_fulfilled": {
-			const change = BillingChanges.songsUnlocked(
-				payload.account_id,
-				payload.bonus_unlocked_song_ids,
-			);
-			await applyLibraryProcessingChange(change);
+			await handlePackFulfilled(supabase, {
+				accountId: payload.account_id,
+				bonusUnlockedSongIds: payload.bonus_unlocked_song_ids,
+			});
 			break;
 		}
 		case "unlimited_activated": {
-			const change = BillingChanges.unlimitedActivated(payload.account_id);
-			await applyLibraryProcessingChange(change);
+			await handleUnlimitedActivated(supabase, {
+				accountId: payload.account_id,
+				stripeSubscriptionId: payload.stripe_subscription_id,
+				subscriptionPeriodEnd: payload.subscription_period_end,
+				stripeEventId: payload.stripe_event_id,
+			});
 			break;
 		}
-		case "pack_reversed":
-		case "unlimited_period_reversed":
+		case "pack_reversed": {
+			await handlePackReversed(supabase, {
+				accountId: payload.account_id,
+				packStripeEventId: payload.pack_stripe_event_id,
+				stripeEventId: payload.stripe_event_id,
+				reason: payload.reason,
+			});
+			break;
+		}
+		case "unlimited_period_reversed": {
+			await handleUnlimitedPeriodReversed(supabase, {
+				accountId: payload.account_id,
+				stripeSubscriptionId: payload.stripe_subscription_id,
+				subscriptionPeriodEnd: payload.subscription_period_end,
+				stripeEventId: payload.stripe_event_id,
+				reason: payload.reason,
+			});
+			break;
+		}
 		case "subscription_deactivated": {
-			const change = BillingChanges.candidateAccessRevoked(payload.account_id);
-			await applyLibraryProcessingChange(change);
+			await handleSubscriptionDeactivated(payload.account_id);
 			break;
 		}
 	}
