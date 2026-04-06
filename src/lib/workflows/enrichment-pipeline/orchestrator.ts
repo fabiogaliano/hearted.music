@@ -3,7 +3,6 @@ import { updateJobProgress } from "@/lib/data/jobs";
 import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
 import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
-import { markPipelineProcessed } from "@/lib/domains/library/liked-songs/status-queries";
 import * as songData from "@/lib/domains/library/songs/queries";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { LlmService } from "@/lib/integrations/llm/service";
@@ -304,16 +303,11 @@ export async function executeWorkerChunk(
 	const progress = makeInitialProgress(
 		batchSize,
 		batchSequence,
-		batch.songIds.length,
+		workPlan.flags,
 	);
 
 	// Candidate-side enrichment only (phases A-C)
 	await enrichSongs(ctx, workPlan, batch, jobId, progress, stageDelayMs);
-
-	// Write item_status for ALL batch songs — pipeline processing state only.
-	if (batch.songIds.length > 0) {
-		await markPipelineProcessed(accountId, "song", batch.songIds);
-	}
 
 	progress.currentStage = undefined;
 	await persistProgress(jobId, progress);
