@@ -175,7 +175,9 @@ export async function hasMoreSongsNeedingEnrichmentWork(
 	return (data ?? []).length > 0;
 }
 
-async function loadBatchSongs(songIds: string[]): Promise<PipelineBatch> {
+export async function loadBatchSongs(
+	songIds: string[],
+): Promise<PipelineBatch> {
 	const songsResult = await songData.getByIds(songIds);
 	if (Result.isError(songsResult)) {
 		throw new Error(`Failed to load batch songs: ${songsResult.error.message}`);

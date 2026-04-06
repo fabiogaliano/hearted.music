@@ -61,7 +61,7 @@ const likedSongs = likedSongsRaw.map((ls: any) => {
 					created_at: analysis.created_at,
 				}
 			: null,
-		uiAnalysisStatus: analysis ? "analyzed" : "not_analyzed",
+		displayState: analysis ? "analyzed" : "pending",
 	};
 });
 

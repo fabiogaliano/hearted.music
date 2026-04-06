@@ -1750,6 +1750,7 @@ export type Database = {
 					audio_energy: number;
 					audio_tempo: number;
 					audio_valence: number;
+					display_state: string;
 					id: string;
 					liked_at: string;
 					matching_status: string;
@@ -1768,6 +1769,7 @@ export type Database = {
 				Returns: {
 					analyzed: number;
 					has_suggestions: number;
+					locked: number;
 					matched: number;
 					new_suggestions: number;
 					pending: number;
