@@ -4,6 +4,8 @@
  * Clickable song row in the list. When clicked, triggers FLIP expansion
  * to the SongDetailView overlay.
  */
+import { Lock } from "lucide-react";
+
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
@@ -45,6 +47,7 @@ export function SongCard({
 }: SongCardProps) {
 	const theme = useTheme();
 	const isNew = isNewSong(song.liked_at);
+	const isLocked = song.displayState === "locked";
 
 	return (
 		<button
@@ -67,6 +70,7 @@ export function SongCard({
 							? `3px solid ${theme.primary}`
 							: "3px solid transparent",
 					marginLeft: "-3px",
+					opacity: isLocked ? 0.6 : 1,
 				} as React.CSSProperties
 			}
 		>
@@ -74,7 +78,6 @@ export function SongCard({
 			<div
 				className="relative h-12 w-12 shrink-0 overflow-hidden"
 				style={{
-					// View Transition: only the target card gets the name during close animation
 					viewTransitionName: isAnimatingTo ? "song-album" : "none",
 				}}
 			>
@@ -83,12 +86,20 @@ export function SongCard({
 						src={albumArtUrl}
 						alt={`${song.track.album || song.track.name} album art`}
 						className="h-full w-full object-cover"
+						style={isLocked ? { filter: "grayscale(0.5)" } : undefined}
 					/>
 				) : (
 					<AlbumPlaceholder />
 				)}
-				{/* New indicator dot */}
-				{isNew && (
+				{isLocked && (
+					<div
+						className="absolute inset-0 flex items-center justify-center"
+						style={{ background: "rgba(0,0,0,0.35)" }}
+					>
+						<Lock size={16} color="white" strokeWidth={2} />
+					</div>
+				)}
+				{!isLocked && isNew && (
 					<div
 						className="absolute top-1 right-1 h-2 w-2 rounded-full"
 						style={{ background: theme.primary }}
@@ -102,9 +113,8 @@ export function SongCard({
 					className="truncate text-base"
 					style={{
 						fontFamily: fonts.display,
-						color: theme.text,
+						color: isLocked ? theme.textMuted : theme.text,
 						fontWeight: isSelected ? 400 : 300,
-						// View Transition: only the target card gets the name during close animation
 						viewTransitionName: isAnimatingTo ? "song-title" : "none",
 					}}
 				>
@@ -115,7 +125,6 @@ export function SongCard({
 					style={{
 						fontFamily: fonts.body,
 						color: theme.textMuted,
-						// View Transition: only the target card gets the name during close animation
 						viewTransitionName: isAnimatingTo ? "song-artist" : "none",
 					}}
 				>
@@ -123,13 +132,23 @@ export function SongCard({
 				</p>
 			</div>
 
-			{/* Time added - hidden on small/medium screens to save space */}
-			<span
-				className="hidden shrink-0 text-xs lg:block"
-				style={{ fontFamily: fonts.body, color: theme.textMuted }}
-			>
-				{formatRelativeTime(song.liked_at)}
-			</span>
+			{/* Locked: unlock affordance / Normal: time added */}
+			{isLocked ? (
+				<span
+					className="flex shrink-0 items-center gap-1 text-xs"
+					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				>
+					<Lock size={11} strokeWidth={2} />
+					<span className="hidden lg:inline">Unlock</span>
+				</span>
+			) : (
+				<span
+					className="hidden shrink-0 text-xs lg:block"
+					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				>
+					{formatRelativeTime(song.liked_at)}
+				</span>
+			)}
 		</button>
 	);
 }

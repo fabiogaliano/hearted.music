@@ -13,6 +13,7 @@ interface SidebarProps {
 	unsortedCount: number;
 	userName: string | null;
 	userPlan: string;
+	userBalance?: number | null;
 	userImageUrl?: string | null;
 }
 
@@ -33,6 +34,7 @@ export function Sidebar({
 	unsortedCount,
 	userName,
 	userPlan,
+	userBalance,
 	userImageUrl,
 }: SidebarProps) {
 	const theme = useTheme();
@@ -98,6 +100,14 @@ export function Sidebar({
 					>
 						{userPlan}
 					</p>
+					{userBalance != null && (
+						<p
+							className="text-xs"
+							style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						>
+							{userBalance} {userBalance === 1 ? "song" : "songs"} to explore
+						</p>
+					)}
 				</div>
 			</Link>
 		</aside>

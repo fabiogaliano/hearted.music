@@ -26,7 +26,10 @@ import {
 import { Sidebar } from "./-components/Sidebar";
 import { matchingSessionQueryOptions } from "@/features/matching/queries";
 import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
+import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
+import type { BillingState } from "@/lib/domains/billing/state";
 import { requireAuthSession } from "@/lib/server/auth.functions";
+import { getBillingState } from "@/lib/server/billing.functions";
 import { getOnboardingData } from "@/lib/server/onboarding.functions";
 import { AuthenticatedThemeProvider } from "@/lib/theme/authenticated-theme";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
@@ -45,6 +48,7 @@ const DevWorkflowPanel = shouldLoadDevWorkflowPanel
 
 const authQueryKey = ["auth", "session"] as const;
 const onboardingQueryKey = ["auth", "onboarding"] as const;
+const billingQueryKey = ["billing", "state"] as const;
 
 export const Route = createFileRoute("/_authenticated")({
 	beforeLoad: async ({ location, cause, context }) => {
@@ -71,13 +75,24 @@ export const Route = createFileRoute("/_authenticated")({
 			});
 		}
 
-		return { session, account, theme: onboarding.theme };
+		const billingState = await queryClient.ensureQueryData({
+			queryKey: billingQueryKey,
+			queryFn: () => getBillingState(),
+			staleTime: 5 * 60 * 1000,
+		});
+
+		return { session, account, theme: onboarding.theme, billingState };
 	},
 	component: AuthenticatedLayout,
 });
 
 function AuthenticatedLayout() {
-	const { theme: themeColor, account, session } = Route.useRouteContext();
+	const {
+		theme: themeColor,
+		account,
+		session,
+		billingState,
+	} = Route.useRouteContext();
 	const location = useLocation();
 	const isOnboarding = location.pathname.startsWith("/onboarding");
 
@@ -104,6 +119,7 @@ function AuthenticatedLayout() {
 			) : (
 				<AuthenticatedShell
 					account={account}
+					billingState={billingState}
 					pendingSuggestions={pendingSuggestions}
 					devPanel={devPanel}
 				/>
@@ -114,10 +130,12 @@ function AuthenticatedLayout() {
 
 function AuthenticatedShell({
 	account,
+	billingState,
 	pendingSuggestions,
 	devPanel,
 }: {
 	account: Awaited<ReturnType<typeof requireAuthSession>>["account"] | null;
+	billingState: BillingState;
 	pendingSuggestions: number;
 	devPanel: React.ReactNode;
 }) {
@@ -134,7 +152,8 @@ function AuthenticatedShell({
 			<Sidebar
 				unsortedCount={pendingSuggestions}
 				userName={account?.display_name ?? account?.email ?? null}
-				userPlan="Free Plan"
+				userPlan={getPlanLabel(billingState)}
+				userBalance={getDisplayBalance(billingState)}
 				userImageUrl={account?.image_url}
 			/>
 			<main className="flex-1 p-8">

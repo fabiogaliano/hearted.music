@@ -9,12 +9,14 @@ import { useCallback, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import type { BillingState } from "@/lib/domains/billing/state";
 import { signOut } from "@/lib/platform/auth/auth-client";
 import { updateThemePreference } from "@/lib/server/settings.functions";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { COLOR_LABELS, THEME_COLORS, type ThemeColor } from "@/lib/theme/types";
+import { BillingSection } from "./components/BillingSection";
 import { ExtensionStatusRow } from "./components/ExtensionStatusRow";
 
 interface SettingsPageProps {
@@ -23,6 +25,7 @@ interface SettingsPageProps {
 	imageUrl: string | null;
 	currentTheme: ThemeColor;
 	onThemeChange: (theme: ThemeColor) => void;
+	billingState: BillingState;
 }
 
 export function SettingsPage({
@@ -31,6 +34,7 @@ export function SettingsPage({
 	imageUrl,
 	currentTheme,
 	onThemeChange,
+	billingState,
 }: SettingsPageProps) {
 	const theme = useTheme();
 	const navigate = useNavigate();
@@ -154,6 +158,8 @@ export function SettingsPage({
 						</div>
 					</div>
 				</section>
+
+				<BillingSection billingState={billingState} />
 
 				<section>
 					<ExtensionStatusRow />
