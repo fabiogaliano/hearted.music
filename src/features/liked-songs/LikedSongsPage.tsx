@@ -382,6 +382,22 @@ export function LikedSongsPage({
 					>
 						{stats?.success ? stats.pending : "—"} pending
 					</span>
+					{stats?.success && stats.locked > 0 && (
+						<>
+							<span
+								className="text-sm"
+								style={{ fontFamily: fonts.body, color: theme.textMuted }}
+							>
+								·
+							</span>
+							<span
+								className="text-sm tabular-nums"
+								style={{ fontFamily: fonts.body, color: theme.textMuted }}
+							>
+								{stats.locked} locked
+							</span>
+						</>
+					)}
 				</div>
 			</div>
 
