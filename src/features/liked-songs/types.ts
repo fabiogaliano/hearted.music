@@ -12,12 +12,6 @@ export type MatchingStatus =
 	| "has_suggestions"
 	| "acted"
 	| "no_suggestions";
-export type UIAnalysisStatus =
-	| "not_analyzed"
-	| "analyzing"
-	| "analyzed"
-	| "failed";
-
 export interface LikedSong {
 	liked_at: string;
 	matching_status: MatchingStatus | null;
@@ -38,7 +32,6 @@ export interface LikedSong {
 		} | null;
 	};
 	analysis: SongAnalysis | null;
-	uiAnalysisStatus: UIAnalysisStatus;
 	displayState: SongDisplayState;
 }
 

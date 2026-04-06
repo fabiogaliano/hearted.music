@@ -98,7 +98,6 @@ export function toLikedSong(song: LandingSongForUI): LikedSong {
 			audio_features: audioFeatures,
 		},
 		analysis: detail ? toLikedSongAnalysis(detail) : null,
-		uiAnalysisStatus: detail ? "analyzed" : "analyzing",
 		displayState: detail ? "analyzed" : "pending",
 	};
 }

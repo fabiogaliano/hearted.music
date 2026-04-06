@@ -84,8 +84,6 @@ function mapLikedSongPageRow(row: LikedSongPageRow): LikedSong {
 						created_at: row.analysis_created_at,
 					}
 				: null,
-		uiAnalysisStatus:
-			!isLocked && row.analysis_id ? "analyzed" : "not_analyzed",
 		displayState,
 	};
 }
@@ -140,6 +138,7 @@ export type LikedSongsStatsResult =
 			has_suggestions: number;
 			new_suggestions: number;
 			pending: number;
+			locked: number;
 	  }
 	| { success: false; error: string };
 
@@ -163,5 +162,6 @@ export const getLikedSongsStats = createServerFn({ method: "GET" })
 			has_suggestions: Number(row.has_suggestions),
 			new_suggestions: Number(row.new_suggestions),
 			pending: Number(row.pending),
+			locked: Number(row.locked),
 		};
 	});

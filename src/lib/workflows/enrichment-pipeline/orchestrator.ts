@@ -10,7 +10,12 @@ import type { LlmService } from "@/lib/integrations/llm/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
 import { maybeDevDelay } from "@/lib/workflows/library-processing/devtools/delay";
-import { hasMoreSongsNeedingProcessing, selectPipelineBatch } from "./batch";
+import {
+	hasMoreSongsNeedingEnrichmentWork,
+	loadBatchSongs,
+	selectEnrichmentWorkPlan,
+	type PipelineBatch,
+} from "./batch";
 import {
 	makeInitialProgress,
 	type InitializedEnrichmentChunkProgress,
@@ -18,10 +23,12 @@ import {
 import { runAudioFeatures } from "./stages/audio-features";
 import { runGenreTagging } from "./stages/genre-tagging";
 import { runSongAnalysis } from "./stages/song-analysis";
+import { runContentActivation } from "./stages/content-activation";
 import { runSongEmbedding } from "./stages/song-embedding";
 import {
 	type EnrichmentContext,
 	type EnrichmentStageName,
+	type EnrichmentWorkPlan,
 	PipelineBootstrapError,
 } from "./types";
 
@@ -112,8 +119,19 @@ function stageStatus(result: StageResult): "completed" | "failed" {
 	return result.failed > 0 && result.succeeded === 0 ? "failed" : "completed";
 }
 
+function filterBatch(batch: PipelineBatch, songIds: string[]): PipelineBatch {
+	const idSet = new Set(songIds);
+	return {
+		songIds: batch.songIds.filter((id) => idSet.has(id)),
+		songs: batch.songs.filter((s) => idSet.has(s.id)),
+		spotifyIdBySongId: new Map(
+			[...batch.spotifyIdBySongId].filter(([id]) => idSet.has(id)),
+		),
+	};
+}
+
 async function loadDataEnrichedSongIds(
-	batch: Awaited<ReturnType<typeof selectPipelineBatch>>,
+	batch: PipelineBatch,
 	embeddingService: EmbeddingService,
 	songs = batch.songs,
 ): Promise<Set<string>> {
@@ -161,66 +179,91 @@ async function loadDataEnrichedSongIds(
 
 async function enrichSongs(
 	ctx: EnrichmentContext,
-	batch: Awaited<ReturnType<typeof selectPipelineBatch>>,
+	workPlan: EnrichmentWorkPlan,
+	batch: PipelineBatch,
 	jobId: string,
 	progress: InitializedEnrichmentChunkProgress,
 	stageDelayMs?: number,
 ): Promise<void> {
-	// Phase A: audio_features + genre_tagging (parallel)
+	// Phase A: audio_features + genre_tagging (parallel, unbounded)
 	progress.currentStage = "audio_features";
 	progress.stages.audio_features.status = "running";
 	progress.stages.genre_tagging.status = "running";
 	await persistProgress(jobId, progress);
 
+	const audioSubBatch = filterBatch(batch, workPlan.needAudioFeatures);
+	const genreSubBatch = filterBatch(batch, workPlan.needGenreTagging);
+
 	const [audioResult, genreResult] = await Promise.all([
-		runStage("audio_features", () => runAudioFeatures(ctx, batch)),
-		runStage("genre_tagging", () => runGenreTagging(ctx, batch)),
+		audioSubBatch.songIds.length > 0
+			? runStage("audio_features", () => runAudioFeatures(ctx, audioSubBatch))
+			: Promise.resolve({ total: 0, succeeded: 0, failed: 0 }),
+		genreSubBatch.songIds.length > 0
+			? runStage("genre_tagging", () => runGenreTagging(ctx, genreSubBatch))
+			: Promise.resolve({ total: 0, succeeded: 0, failed: 0 }),
 	]);
 
 	applyStageResult(
 		progress,
 		"audio_features",
 		audioResult,
-		stageStatus(audioResult),
+		audioSubBatch.songIds.length > 0 ? stageStatus(audioResult) : "skipped",
 	);
 	applyStageResult(
 		progress,
 		"genre_tagging",
 		genreResult,
-		stageStatus(genreResult),
+		genreSubBatch.songIds.length > 0 ? stageStatus(genreResult) : "skipped",
 	);
 
-	// Phase B: song_analysis
+	// Phase B: song_analysis (entitled only)
 	await maybeDevDelay(stageDelayMs);
 	progress.currentStage = "song_analysis";
 	progress.stages.song_analysis.status = "running";
 	await persistProgress(jobId, progress);
 
-	const analysisResult = await runStage("song_analysis", () =>
-		runSongAnalysis(ctx, batch),
-	);
+	const analysisSubBatch = filterBatch(batch, workPlan.needAnalysis);
+	const analysisResult =
+		analysisSubBatch.songIds.length > 0
+			? await runStage("song_analysis", () =>
+					runSongAnalysis(ctx, analysisSubBatch),
+				)
+			: { total: 0, succeeded: 0, failed: 0 };
+
 	applyStageResult(
 		progress,
 		"song_analysis",
 		analysisResult,
-		stageStatus(analysisResult),
+		analysisSubBatch.songIds.length > 0
+			? stageStatus(analysisResult)
+			: "skipped",
 	);
 
-	// Phase C: song_embedding
+	// Phase C: song_embedding (entitled only)
 	await maybeDevDelay(stageDelayMs);
 	progress.currentStage = "song_embedding";
 	progress.stages.song_embedding.status = "running";
 	await persistProgress(jobId, progress);
 
-	const embeddingStageResult = await runStage("song_embedding", () =>
-		runSongEmbedding(ctx, batch),
-	);
+	const embeddingSubBatch = filterBatch(batch, workPlan.needEmbedding);
+	const embeddingResult =
+		embeddingSubBatch.songIds.length > 0
+			? await runStage("song_embedding", () =>
+					runSongEmbedding(ctx, embeddingSubBatch),
+				)
+			: { total: 0, succeeded: 0, failed: 0 };
+
 	applyStageResult(
 		progress,
 		"song_embedding",
-		embeddingStageResult,
-		stageStatus(embeddingStageResult),
+		embeddingResult,
+		embeddingSubBatch.songIds.length > 0
+			? stageStatus(embeddingResult)
+			: "skipped",
 	);
+
+	// Content activation: write item_status + persist unlock rows for entitled + analyzed songs
+	await runContentActivation(ctx, workPlan.needContentActivation);
 }
 
 // --- Worker-owned chunk orchestration ---
@@ -251,7 +294,8 @@ export async function executeWorkerChunk(
 
 	const ctx = { ...buildContext(accountId, embeddingResult.value), jobId };
 
-	const batch = await selectPipelineBatch(accountId, batchSize);
+	const workPlan = await selectEnrichmentWorkPlan(accountId, batchSize);
+	const batch = await loadBatchSongs(workPlan.allSongIds);
 	const enrichedBefore = await loadDataEnrichedSongIds(
 		batch,
 		embeddingResult.value,
@@ -264,7 +308,7 @@ export async function executeWorkerChunk(
 	);
 
 	// Candidate-side enrichment only (phases A-C)
-	await enrichSongs(ctx, batch, jobId, progress, stageDelayMs);
+	await enrichSongs(ctx, workPlan, batch, jobId, progress, stageDelayMs);
 
 	// Write item_status for ALL batch songs — pipeline processing state only.
 	if (batch.songIds.length > 0) {
@@ -293,7 +337,7 @@ export async function executeWorkerChunk(
 	}
 
 	// Probe whether more songs still need pipeline processing via the DB selector
-	const hasMoreSongs = await hasMoreSongsNeedingProcessing(accountId);
+	const hasMoreSongs = await hasMoreSongsNeedingEnrichmentWork(accountId);
 
 	return {
 		hasMoreSongs,
