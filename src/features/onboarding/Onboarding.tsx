@@ -78,6 +78,7 @@ const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 	},
 	"pick-demo-song": {
 		render: (ctx) => <PickDemoSongStep songs={ctx.landingSongs} />,
+		fullBleed: true,
 	},
 	"song-showcase": {
 		render: () => <SongShowcaseStep />,
