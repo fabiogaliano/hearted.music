@@ -68,6 +68,7 @@ const createMockOnboardingData = (
 	phaseJobIds: null,
 	syncStats: { songs: 0, playlists: 0 },
 	readyCopyVariant: "free",
+	landingSongs: [],
 	...overrides,
 });
 

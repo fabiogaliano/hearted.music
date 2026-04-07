@@ -10,6 +10,7 @@ import {
 	type OnboardingStep,
 } from "@/lib/domains/library/accounts/preferences-queries";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
+import type { LandingSongManifest } from "@/lib/data/landing-songs";
 import type {
 	OnboardingData,
 	ReadyCopyVariant,
@@ -21,6 +22,7 @@ import { AnimatedStep } from "./components/AnimatedStep";
 import { FlagPlaylistsStep } from "./components/FlagPlaylistsStep";
 import { InstallExtensionStep } from "./components/InstallExtensionStep";
 import { PickColorStep } from "./components/PickColorStep";
+import { PickDemoSongStep } from "./components/PickDemoSongStep";
 import { ReadyStep } from "./components/ReadyStep";
 import { StepContainer } from "./components/StepContainer";
 import { PlanSelectionStep } from "./components/PlanSelectionStep";
@@ -40,6 +42,7 @@ interface StepContext {
 	setLocalTheme: (theme: ThemeColor) => void;
 	phaseJobIds: PhaseJobIds | null;
 	playlists: OnboardingData["playlists"];
+	landingSongs: LandingSongManifest[];
 	syncStats: OnboardingData["syncStats"];
 	readyCopyVariant: ReadyCopyVariant;
 }
@@ -72,6 +75,9 @@ const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 	"flag-playlists": {
 		render: (ctx) => <FlagPlaylistsStep playlists={ctx.playlists} />,
 		fullBleed: true,
+	},
+	"pick-demo-song": {
+		render: (ctx) => <PickDemoSongStep songs={ctx.landingSongs} />,
 	},
 	"song-showcase": {
 		render: () => <SongShowcaseStep />,
@@ -111,6 +117,7 @@ export function Onboarding({ step, data }: OnboardingProps) {
 		setLocalTheme: setThemeColor,
 		phaseJobIds,
 		playlists: data.playlists,
+		landingSongs: data.landingSongs,
 		syncStats: data.syncStats,
 		readyCopyVariant: data.readyCopyVariant,
 	};

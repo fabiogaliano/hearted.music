@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Kbd } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
+import { getDemoMatchesForSong } from "@/lib/data/demo-matches";
 import {
 	getDemoSongMatches,
 	getDemoSongShowcase,
@@ -21,26 +22,9 @@ import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 const POLL_INTERVAL_MS = 2000;
 const TIMEOUT_MS = 12_000;
 
-const CANNED_MATCHES: DemoMatchPlaylist[] = [
-	{
-		id: "canned-1",
-		name: "Your top playlist",
-		description: null,
-		songCount: null,
-		score: 0.92,
-	},
-	{
-		id: "canned-2",
-		name: "A great fit",
-		description: null,
-		songCount: null,
-		score: 0.85,
-	},
-];
-
 type MatchState =
 	| { status: "loading" }
-	| { status: "ready"; matches: DemoMatchPlaylist[]; isCanned: boolean }
+	| { status: "ready"; matches: DemoMatchPlaylist[]; isDemo: boolean }
 	| { status: "unavailable" };
 
 export function MatchShowcaseStep() {
@@ -51,13 +35,17 @@ export function MatchShowcaseStep() {
 		status: "loading",
 	});
 	const [songData, setSongData] = useState<DemoSongData | null>(null);
+	const songDataRef = useRef<DemoSongData | null>(null);
 	const timedOutRef = useRef(false);
 
 	useEffect(() => {
 		let cancelled = false;
 		getDemoSongShowcase()
 			.then((data) => {
-				if (!cancelled) setSongData(data);
+				if (!cancelled) {
+					songDataRef.current = data;
+					setSongData(data);
+				}
 			})
 			.catch(() => {});
 		return () => {
@@ -74,10 +62,19 @@ export function MatchShowcaseStep() {
 			timedOutRef.current = true;
 			setMatchState((prev) => {
 				if (prev.status === "loading") {
+					const trackId = songDataRef.current?.song.spotifyTrackId;
+					const demoMatches = getDemoMatchesForSong(trackId ?? "");
+					const matches: DemoMatchPlaylist[] = demoMatches.map((m) => ({
+						id: m.id,
+						name: m.name,
+						description: m.reason,
+						songCount: null,
+						score: m.matchScore,
+					}));
 					return {
 						status: "ready",
-						matches: CANNED_MATCHES,
-						isCanned: true,
+						matches,
+						isDemo: true,
 					};
 				}
 				return prev;
@@ -93,9 +90,8 @@ export function MatchShowcaseStep() {
 				if (result.status === "ready") {
 					setMatchState({
 						status: "ready",
-						matches:
-							result.matches.length > 0 ? result.matches : CANNED_MATCHES,
-						isCanned: result.matches.length === 0,
+						matches: result.matches,
+						isDemo: result.isDemo,
 					});
 					return;
 				}
@@ -201,7 +197,7 @@ export function MatchShowcaseStep() {
 		);
 	}
 
-	const { matches, isCanned } = matchState;
+	const { matches, isDemo } = matchState;
 	const topMatches = matches.slice(0, 5);
 
 	return (
@@ -210,7 +206,7 @@ export function MatchShowcaseStep() {
 				className="text-xs tracking-widest uppercase"
 				style={{ fontFamily: fonts.body, color: theme.textMuted }}
 			>
-				{isCanned ? "Here's what to expect" : "Your matches"}
+				{isDemo ? "Here's what to expect" : "Your matches"}
 			</p>
 
 			{songData && (
@@ -243,8 +239,8 @@ export function MatchShowcaseStep() {
 				className="mt-6 text-3xl leading-tight font-extralight"
 				style={{ fontFamily: fonts.display, color: theme.text }}
 			>
-				{isCanned
-					? "Matching is still running"
+				{isDemo
+					? "Here's how songs find their playlists."
 					: "We found where this song belongs."}
 			</h2>
 
@@ -275,9 +271,9 @@ export function MatchShowcaseStep() {
 									color: theme.text,
 								}}
 							>
-								{isCanned ? match.name : match.name}
+								{match.name}
 							</p>
-							{!isCanned && match.songCount !== null && (
+							{!isDemo && match.songCount !== null && (
 								<p
 									className="text-xs"
 									style={{
@@ -302,13 +298,13 @@ export function MatchShowcaseStep() {
 				))}
 			</div>
 
-			{isCanned && (
+			{isDemo && (
 				<p
 					className="mx-auto mt-4 max-w-sm text-xs font-light"
 					style={{ fontFamily: fonts.body, color: theme.textMuted }}
 				>
-					Matching is still processing — you'll see real results on your
-					dashboard.
+					These are example matches — yours will be based on your real
+					playlists.
 				</p>
 			)}
 

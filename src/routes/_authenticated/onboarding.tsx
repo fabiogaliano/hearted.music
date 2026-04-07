@@ -53,7 +53,7 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 		// Special case: auto-skip flag-playlists → song-showcase when user has no playlists
 		// This is a valid forward jump that should bypass the guard
 		const isAutoSkipFlagPlaylists =
-			search.step === "song-showcase" &&
+			search.step === "pick-demo-song" &&
 			savedStep === "flag-playlists" &&
 			data.playlists.length === 0;
 
@@ -86,7 +86,7 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 		if (search.step === "flag-playlists" && data.playlists.length === 0) {
 			throw redirect({
 				to: "/onboarding",
-				search: { step: "song-showcase" },
+				search: { step: "pick-demo-song" },
 			});
 		}
 

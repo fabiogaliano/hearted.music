@@ -34,8 +34,6 @@ export const env = createEnv({
 		BILLING_SERVICE_URL: z.url().optional(),
 		BILLING_SHARED_SECRET: z.string().min(1).optional(),
 		QUARTERLY_PLAN_ENABLED: z.coerce.boolean().default(false),
-		// Onboarding demo song (UUID of song row used in guided showcase)
-		DEMO_SONG_ID: z.uuid().optional(),
 	},
 
 	clientPrefix: "VITE_",
@@ -75,7 +73,6 @@ export const env = createEnv({
 		BILLING_SERVICE_URL: serverEnv.BILLING_SERVICE_URL,
 		BILLING_SHARED_SECRET: serverEnv.BILLING_SHARED_SECRET,
 		QUARTERLY_PLAN_ENABLED: serverEnv.QUARTERLY_PLAN_ENABLED,
-		DEMO_SONG_ID: serverEnv.DEMO_SONG_ID,
 		VITE_APP_TITLE: import.meta.env.VITE_APP_TITLE,
 		VITE_CHROME_EXTENSION_ID: import.meta.env.VITE_CHROME_EXTENSION_ID,
 	},
