@@ -26,10 +26,6 @@ vi.mock("@/lib/platform/auth/auth.middleware", () => ({
 	authMiddleware: {},
 }));
 
-vi.mock("@/env", () => ({
-	env: { DEMO_SONG_ID: undefined },
-}));
-
 const mockCompleteOnboarding = vi.fn();
 vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
 	completeOnboarding: (...args: unknown[]) => mockCompleteOnboarding(...args),
@@ -77,6 +73,10 @@ vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
 
 vi.mock("@/lib/workflows/library-processing/service", () => ({
 	applyLibraryProcessingChange: vi.fn(),
+}));
+
+vi.mock("@/lib/data/demo-matches", () => ({
+	getDemoMatchesForSong: vi.fn(() => []),
 }));
 
 import type { BillingState } from "@/lib/domains/billing/state";

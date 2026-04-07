@@ -34,6 +34,18 @@ export interface OnboardingData {
 	phaseJobIds: Record<string, string> | null;
 	syncStats: SyncStats | null;
 	readyCopyVariant: ReadyCopyVariant;
+	landingSongs: Array<{
+		id: number;
+		spotifyTrackId: string;
+		name: string;
+		artist: string;
+		album: string;
+		albumArtUrl: string;
+		artistImageUrl?: string;
+		spotifyArtistId: string;
+		genres: string[];
+		detailPath: string;
+	}>;
 }
 
 export interface DemoSongData {
@@ -43,6 +55,7 @@ export interface DemoSongData {
 		albumName: string | null;
 		imageUrl: string | null;
 		genres: string[];
+		spotifyTrackId: string;
 	};
 	analysis: Json;
 }
@@ -56,7 +69,7 @@ export interface DemoMatchPlaylist {
 }
 
 export type DemoMatchResult =
-	| { status: "ready"; matches: DemoMatchPlaylist[] }
+	| { status: "ready"; matches: DemoMatchPlaylist[]; isDemo: boolean }
 	| { status: "pending" }
 	| { status: "unavailable" };
 
@@ -84,3 +97,6 @@ export const getDemoSongShowcase =
 	reject as unknown as () => Promise<DemoSongData | null>;
 export const getDemoSongMatches =
 	reject as unknown as () => Promise<DemoMatchResult>;
+export const saveDemoSongSelection = reject as unknown as (opts: {
+	data: { spotifyTrackId: string };
+}) => Promise<{ success: true }>;

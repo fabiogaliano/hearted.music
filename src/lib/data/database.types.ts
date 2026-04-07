@@ -282,6 +282,39 @@ export type Database = {
 					},
 				];
 			};
+			billing_admin_task: {
+				Row: {
+					charge_id: string;
+					created_at: string;
+					description: string;
+					id: string;
+					resolved_at: string | null;
+					status: string;
+					stripe_event_id: string;
+					updated_at: string;
+				};
+				Insert: {
+					charge_id: string;
+					created_at?: string;
+					description: string;
+					id?: string;
+					resolved_at?: string | null;
+					status: string;
+					stripe_event_id: string;
+					updated_at?: string;
+				};
+				Update: {
+					charge_id?: string;
+					created_at?: string;
+					description?: string;
+					id?: string;
+					resolved_at?: string | null;
+					status?: string;
+					stripe_event_id?: string;
+					updated_at?: string;
+				};
+				Relationships: [];
+			};
 			billing_bridge_event: {
 				Row: {
 					event_kind: string;
@@ -1522,6 +1555,7 @@ export type Database = {
 				Row: {
 					account_id: string;
 					created_at: string;
+					demo_song_id: string | null;
 					id: string;
 					onboarding_completed_at: string | null;
 					onboarding_step: string;
@@ -1532,6 +1566,7 @@ export type Database = {
 				Insert: {
 					account_id: string;
 					created_at?: string;
+					demo_song_id?: string | null;
 					id?: string;
 					onboarding_completed_at?: string | null;
 					onboarding_step?: string;
@@ -1542,6 +1577,7 @@ export type Database = {
 				Update: {
 					account_id?: string;
 					created_at?: string;
+					demo_song_id?: string | null;
 					id?: string;
 					onboarding_completed_at?: string | null;
 					onboarding_step?: string;
@@ -1555,6 +1591,13 @@ export type Database = {
 						columns: ["account_id"];
 						isOneToOne: true;
 						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "user_preferences_demo_song_id_fkey";
+						columns: ["demo_song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
 						referencedColumns: ["id"];
 					},
 				];

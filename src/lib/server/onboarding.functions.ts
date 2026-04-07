@@ -34,7 +34,9 @@ import {
 } from "@/lib/domains/taste/song-matching/queries";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json } from "@/lib/data/database.types";
-import { env } from "@/env";
+import { getDemoMatchesForSong } from "@/lib/data/demo-matches";
+import type { LandingSongManifest } from "@/lib/data/landing-songs";
+import { getLandingSongsManifest } from "@/lib/data/landing-songs.server";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import {
 	type PhaseJobIds,
@@ -77,6 +79,8 @@ export interface OnboardingData {
 	syncStats: SyncStats;
 	/** Copy variant for ReadyStep based on billing state */
 	readyCopyVariant: ReadyCopyVariant;
+	/** Landing songs manifest for pick-demo-song step */
+	landingSongs: LandingSongManifest[];
 }
 
 const themeInputSchema = z.object({
@@ -178,6 +182,7 @@ export const getOnboardingData = createServerFn({ method: "GET" })
 				playlists: playlistsCountResult.value,
 			},
 			readyCopyVariant,
+			landingSongs: getLandingSongsManifest(),
 		};
 	});
 
@@ -278,6 +283,7 @@ export const saveOnboardingStep = createServerFn({ method: "POST" })
 		// Clear phase job IDs when transitioning past syncing step
 		if (
 			data.step === "flag-playlists" ||
+			data.step === "pick-demo-song" ||
 			data.step === "song-showcase" ||
 			data.step === "match-showcase" ||
 			data.step === "plan-selection" ||
@@ -379,6 +385,47 @@ export const savePlaylistTargets = createServerFn({ method: "POST" })
 		return { success: true };
 	});
 
+const saveDemoSongSelectionInputSchema = z.object({
+	spotifyTrackId: z.string().min(1),
+});
+
+/**
+ * Saves the user's demo song selection during onboarding.
+ * Looks up the song by Spotify ID and stores the UUID in user_preferences.
+ */
+export const saveDemoSongSelection = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
+	.inputValidator(saveDemoSongSelectionInputSchema)
+	.handler(async ({ data, context }): Promise<{ success: true }> => {
+		const { session } = context;
+		const supabase = createAdminSupabaseClient();
+
+		const { data: song, error: songError } = await supabase
+			.from("song")
+			.select("id")
+			.eq("spotify_id", data.spotifyTrackId)
+			.single();
+
+		if (songError || !song) {
+			throw new OnboardingError(
+				"lookup_demo_song",
+				songError ??
+					new Error(`Song not found for spotify_id: ${data.spotifyTrackId}`),
+			);
+		}
+
+		const { error: updateError } = await supabase
+			.from("user_preferences")
+			.update({ demo_song_id: song.id })
+			.eq("account_id", session.accountId);
+
+		if (updateError) {
+			throw new OnboardingError("save_demo_song_selection", updateError);
+		}
+
+		return { success: true };
+	});
+
 /** Demo song data returned for the onboarding showcase */
 export interface DemoSongData {
 	song: {
@@ -387,18 +434,27 @@ export interface DemoSongData {
 		albumName: string | null;
 		imageUrl: string | null;
 		genres: string[];
+		spotifyTrackId: string;
 	};
 	analysis: Json;
 }
 
 /**
- * Fetches the pre-seeded demo song and its analysis for the onboarding showcase.
- * Returns null if DEMO_SONG_ID is not configured or the song/analysis is missing.
+ * Fetches the user's selected demo song and its analysis for the onboarding showcase.
+ * Returns null if user hasn't selected a demo song or the song/analysis is missing.
  */
 export const getDemoSongShowcase = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.handler(async (): Promise<DemoSongData | null> => {
-		const demoSongId = env.DEMO_SONG_ID;
+	.handler(async ({ context }): Promise<DemoSongData | null> => {
+		const { session } = context;
+
+		const prefsResult = await getOrCreatePreferences(session.accountId);
+		if (Result.isError(prefsResult)) {
+			console.warn("Failed to load preferences for demo song showcase");
+			return null;
+		}
+
+		const demoSongId = prefsResult.value.demo_song_id;
 		if (!demoSongId) {
 			return null;
 		}
@@ -407,7 +463,7 @@ export const getDemoSongShowcase = createServerFn({ method: "GET" })
 
 		const { data: song, error: songError } = await supabase
 			.from("song")
-			.select("name, artists, album_name, image_url, genres")
+			.select("name, artists, album_name, image_url, genres, spotify_id")
 			.eq("id", demoSongId)
 			.single();
 
@@ -429,6 +485,7 @@ export const getDemoSongShowcase = createServerFn({ method: "GET" })
 				albumName: song.album_name,
 				imageUrl: song.image_url,
 				genres: song.genres,
+				spotifyTrackId: song.spotify_id,
 			},
 			analysis: analysisResult.value.analysis,
 		};
@@ -445,25 +502,64 @@ export interface DemoMatchPlaylist {
 
 /** Result of matching the demo song against target playlists */
 export type DemoMatchResult =
-	| { status: "ready"; matches: DemoMatchPlaylist[] }
+	| { status: "ready"; matches: DemoMatchPlaylist[]; isDemo: boolean }
 	| { status: "pending" }
 	| { status: "unavailable" };
 
 /**
- * Fetches live match results for the demo song against the user's target playlists.
+ * Fetches match results for the demo song against the user's target playlists.
+ * No-playlists path: returns static demo matches immediately.
+ * Real-playlists path: returns live match results from the match snapshot.
  * Returns "pending" if the match snapshot hasn't been published yet,
- * "unavailable" if no demo song is configured, or "ready" with sorted matches.
+ * "unavailable" if no demo song is selected, or "ready" with sorted matches.
  */
 export const getDemoSongMatches = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.handler(async ({ context }): Promise<DemoMatchResult> => {
-		const demoSongId = env.DEMO_SONG_ID;
+		const { session } = context;
+
+		const prefsResult = await getOrCreatePreferences(session.accountId);
+		if (Result.isError(prefsResult)) {
+			return { status: "unavailable" };
+		}
+
+		const demoSongId = prefsResult.value.demo_song_id;
 		if (!demoSongId) {
 			return { status: "unavailable" };
 		}
 
-		const { session } = context;
+		// Check if user has target playlists
+		const playlistsResult = await getPlaylists(session.accountId);
+		const hasTargetPlaylists =
+			Result.isOk(playlistsResult) &&
+			playlistsResult.value.some((p) => p.is_target);
 
+		if (!hasTargetPlaylists) {
+			// No-playlists path: look up spotify_id, return static demo matches
+			const supabase = createAdminSupabaseClient();
+			const { data: song } = await supabase
+				.from("song")
+				.select("spotify_id")
+				.eq("id", demoSongId)
+				.single();
+
+			if (!song) {
+				return { status: "unavailable" };
+			}
+
+			const demoMatches = getDemoMatchesForSong(song.spotify_id);
+			const matches: DemoMatchPlaylist[] = demoMatches.map((m) => ({
+				id: m.id,
+				name: m.name,
+				description: m.reason,
+				songCount: null,
+				score: m.matchScore,
+			}));
+
+			return { status: "ready", matches, isDemo: true };
+		}
+
+		// Real-playlists path: fetch live match results
 		const snapshotResult = await getLatestMatchSnapshot(session.accountId);
 		if (Result.isError(snapshotResult) || !snapshotResult.value) {
 			return { status: "pending" };
@@ -512,5 +608,5 @@ export const getDemoSongMatches = createServerFn({ method: "GET" })
 			.filter((m): m is DemoMatchPlaylist => m !== null)
 			.toSorted((a, b) => b.score - a.score);
 
-		return { status: "ready", matches };
+		return { status: "ready", matches, isDemo: false };
 	});
