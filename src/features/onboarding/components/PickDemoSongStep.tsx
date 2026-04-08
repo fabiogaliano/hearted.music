@@ -142,7 +142,7 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 				<div ref={viewportRef} className="mt-8 flex-1 overflow-hidden">
 					<div ref={trackRef} className="flex h-full items-center">
 						<div
-							className="grid h-full auto-cols-[min(200px,40vw)] content-center gap-4 py-1 pl-[max(1.5rem,env(safe-area-inset-left))] md:pl-[max(3rem,env(safe-area-inset-left))]"
+							className="playlist-grid grid h-full auto-cols-[min(200px,40vw)] content-center gap-4 py-1 pl-[max(1.5rem,env(safe-area-inset-left))] md:pl-[max(3rem,env(safe-area-inset-left))]"
 							style={{
 								gridAutoFlow: "column",
 							}}
@@ -176,43 +176,41 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 											}),
 										}}
 									>
-										<div className="relative">
-											<div
-												className="transition-all duration-300"
+										<div
+											className="transition-all duration-300"
+											style={{
+												filter: isSelected
+													? "grayscale(0%)"
+													: "grayscale(100%)",
+												opacity: isSelected ? 1 : 0.35,
+											}}
+										>
+											<CDCase
+												src={song.albumArtUrl}
+												alt={`${song.name} by ${song.artist}`}
+											/>
+										</div>
+										<div className="mt-2 min-w-0 max-w-full">
+											<p
+												className="truncate text-sm font-medium"
 												style={{
-													filter: isSelected
-														? "grayscale(0%)"
-														: "grayscale(100%)",
-													opacity: isSelected ? 1 : 0.35,
+													fontFamily: fonts.body,
+													color: theme.text,
+													opacity: isSelected ? 1 : 0.6,
 												}}
 											>
-												<CDCase
-													src={song.albumArtUrl}
-													alt={`${song.name} by ${song.artist}`}
-												/>
-											</div>
-											<div
-												className="absolute flex items-center justify-center overflow-hidden"
+												{song.name}
+											</p>
+											<p
+												className="truncate text-xs"
 												style={{
-													top: "8%",
-													bottom: "8%",
-													left: 0,
-													width: "12.67%",
+													fontFamily: fonts.body,
+													color: theme.textMuted,
+													opacity: isSelected ? 1 : 0.5,
 												}}
 											>
-												<p
-													className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-light uppercase tracking-wider"
-													style={{
-														fontFamily: fonts.body,
-														color: theme.text,
-														writingMode: "vertical-rl",
-														transform: "rotate(180deg)",
-														maxHeight: "100%",
-													}}
-												>
-													{song.name}
-												</p>
-											</div>
+												{song.artist}
+											</p>
 										</div>
 									</button>
 								);
