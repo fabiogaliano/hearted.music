@@ -82,24 +82,19 @@ export function SongShowcaseStep() {
 					className="text-xs tracking-widest uppercase"
 					style={{ fontFamily: fonts.body, color: theme.textMuted }}
 				>
-					Song Showcase
+					One moment
 				</p>
 				<h2
 					className="mt-4 text-4xl leading-tight font-extralight"
 					style={{ fontFamily: fonts.display, color: theme.text }}
 				>
-					This is what hearted. does.
+					Still working on this one.
 				</h2>
-				<p
-					className="mt-6 text-lg font-light"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
-				>
-					Every song you've liked — understood deeply.
-				</p>
 				<ContinueButton
 					theme={theme}
 					isNavigating={isNavigating}
 					onClick={handleContinue}
+					label="Continue"
 				/>
 			</div>
 		);
@@ -232,10 +227,12 @@ function ContinueButton({
 	theme,
 	isNavigating,
 	onClick,
+	label = "See Your Matches",
 }: {
 	theme: ReturnType<typeof useTheme>;
 	isNavigating: boolean;
 	onClick: () => void;
+	label?: string;
 }) {
 	return (
 		<>
@@ -250,9 +247,7 @@ function ContinueButton({
 					opacity: isNavigating ? 0.5 : 1,
 				}}
 			>
-				<span className="text-lg font-medium tracking-wide">
-					See Your Matches
-				</span>
+				<span className="text-lg font-medium tracking-wide">{label}</span>
 				<span
 					className="inline-block transition-transform group-hover:translate-x-1"
 					style={{ color: theme.textMuted }}

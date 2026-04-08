@@ -1,6 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
 import {
-	getDefaultWorkflowDevSettings,
 	readWorkflowDevSettings,
 	resetWorkflowDevSettings,
 	subscribeWorkflowDevSettings,
@@ -12,7 +11,7 @@ export function useWorkflowDevSettings() {
 	const settings = useSyncExternalStore(
 		subscribeWorkflowDevSettings,
 		readWorkflowDevSettings,
-		getDefaultWorkflowDevSettings,
+		readWorkflowDevSettings,
 	);
 
 	const updateClient = useCallback(

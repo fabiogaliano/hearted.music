@@ -98,10 +98,15 @@ export function useFlagPlaylistsScroll(
 
 		let dimensions = measureDimensions();
 
-		// Skip if content fits in viewport (no scroll needed)
-		if (dimensions.maxScroll <= 0) {
-			return;
-		}
+		const applyOverflowState = () => {
+			if (dimensions.maxScroll <= 0) {
+				section.style.overflow = "hidden";
+			} else {
+				section.style.overflow = "";
+			}
+		};
+
+		applyOverflowState();
 
 		// Set initial position
 		gsap.set(track, { x: 0 });
@@ -110,6 +115,8 @@ export function useFlagPlaylistsScroll(
 
 		// Handle wheel events
 		const handleWheel = (e: WheelEvent) => {
+			if (dimensions.maxScroll <= 0) return;
+
 			e.preventDefault();
 
 			// Calculate new target position
@@ -144,6 +151,7 @@ export function useFlagPlaylistsScroll(
 		// Handle resize
 		const handleResize = () => {
 			dimensions = measureDimensions();
+			applyOverflowState();
 			// Clamp current position to new bounds
 			targetX.current = Math.max(
 				-dimensions.maxScroll,
@@ -159,6 +167,7 @@ export function useFlagPlaylistsScroll(
 
 		// Cleanup
 		return () => {
+			section.style.overflow = "";
 			section.removeEventListener("wheel", handleWheel);
 			window.removeEventListener("resize", handleResize);
 			if (tweenRef.current) {

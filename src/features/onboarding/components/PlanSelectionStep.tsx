@@ -238,10 +238,10 @@ export function PlanSelectionStep() {
 					onClick={() => handleCheckout(SONG_PACK_500)}
 				/>
 
-				{/* Unlimited Yearly */}
+				{/* Backstage Pass */}
 				<PlanCard
 					theme={theme}
-					title="Unlimited Yearly"
+					title="Backstage Pass"
 					price="$39.99/yr"
 					description="Every song, priority queue"
 					buttonLabel={
