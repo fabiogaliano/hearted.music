@@ -27,6 +27,8 @@ import { Route as ApiExtensionTokenRouteImport } from './routes/api/extension/to
 import { Route as ApiExtensionSyncRouteImport } from './routes/api/extension/sync'
 import { Route as ApiExtensionStatusRouteImport } from './routes/api/extension/status'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthenticatedCheckoutSuccessRouteImport } from './routes/_authenticated/checkout/success'
+import { Route as AuthenticatedCheckoutCancelRouteImport } from './routes/_authenticated/checkout/cancel'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -117,6 +119,18 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedCheckoutSuccessRoute =
+  AuthenticatedCheckoutSuccessRouteImport.update({
+    id: '/checkout/success',
+    path: '/checkout/success',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCheckoutCancelRoute =
+  AuthenticatedCheckoutCancelRouteImport.update({
+    id: '/checkout/cancel',
+    path: '/checkout/cancel',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -132,6 +146,8 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/api/billing-bridge': typeof ApiBillingBridgeRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
+  '/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
@@ -151,6 +167,8 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/api/billing-bridge': typeof ApiBillingBridgeRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
+  '/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
@@ -172,6 +190,8 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/api/billing-bridge': typeof ApiBillingBridgeRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/_authenticated/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
+  '/_authenticated/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
@@ -193,6 +213,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/api/billing-bridge'
     | '/auth/logout'
+    | '/checkout/cancel'
+    | '/checkout/success'
     | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
@@ -212,6 +234,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/api/billing-bridge'
     | '/auth/logout'
+    | '/checkout/cancel'
+    | '/checkout/success'
     | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
@@ -232,6 +256,8 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/api/billing-bridge'
     | '/auth/logout'
+    | '/_authenticated/checkout/cancel'
+    | '/_authenticated/checkout/success'
     | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
@@ -381,6 +407,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/checkout/success': {
+      id: '/_authenticated/checkout/success'
+      path: '/checkout/success'
+      fullPath: '/checkout/success'
+      preLoaderRoute: typeof AuthenticatedCheckoutSuccessRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/checkout/cancel': {
+      id: '/_authenticated/checkout/cancel'
+      path: '/checkout/cancel'
+      fullPath: '/checkout/cancel'
+      preLoaderRoute: typeof AuthenticatedCheckoutCancelRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -391,6 +431,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedPlaylistsRoute: typeof AuthenticatedPlaylistsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedCheckoutCancelRoute: typeof AuthenticatedCheckoutCancelRoute
+  AuthenticatedCheckoutSuccessRoute: typeof AuthenticatedCheckoutSuccessRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -400,6 +442,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedPlaylistsRoute: AuthenticatedPlaylistsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedCheckoutCancelRoute: AuthenticatedCheckoutCancelRoute,
+  AuthenticatedCheckoutSuccessRoute: AuthenticatedCheckoutSuccessRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

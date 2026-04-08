@@ -3,6 +3,7 @@
  * Shows stats and redirects to main app.
  */
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -10,6 +11,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import {
 	markOnboardingComplete,
+	type OnboardingData,
 	type ReadyCopyVariant,
 } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
@@ -26,16 +28,30 @@ const READY_COPY: Record<ReadyCopyVariant, string> = {
 	unlimited: "Going through every song. An email's on its way when it's ready.",
 };
 
+const ONBOARDING_QUERY_KEY = ["auth", "onboarding"] as const;
+
 export function ReadyStep({ syncStats, copyVariant }: ReadyStepProps) {
 	const theme = useTheme();
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const [isCompleting, setIsCompleting] = useState(false);
 
 	const handleStart = async () => {
 		setIsCompleting(true);
 		try {
 			await markOnboardingComplete();
-			await navigate({ to: "/" });
+			queryClient.setQueryData<OnboardingData>(
+				ONBOARDING_QUERY_KEY,
+				(existing) =>
+					existing
+						? {
+								...existing,
+								isComplete: true,
+							}
+						: existing,
+			);
+			await queryClient.invalidateQueries({ queryKey: ONBOARDING_QUERY_KEY });
+			await navigate({ to: "/dashboard" });
 		} catch (error) {
 			console.error("Failed to complete onboarding:", error);
 			toast.error("Failed to complete onboarding. Please try again.");
