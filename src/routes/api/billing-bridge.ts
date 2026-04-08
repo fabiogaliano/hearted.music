@@ -120,8 +120,15 @@ export const Route = createFileRoute("/api/billing-bridge")({
 					return Response.json({ ok: true, duplicate: true });
 				}
 
+				console.log(
+					`[billing-bridge] Received event_kind=${payload.event_kind} stripe_event=${payload.stripe_event_id}`,
+				);
+
 				try {
 					await dispatchBridgeEvent(payload);
+					console.log(
+						`[billing-bridge] Dispatched event_kind=${payload.event_kind}`,
+					);
 				} catch (err) {
 					console.error("[billing-bridge] Handler dispatch failed:", err);
 					return Response.json(

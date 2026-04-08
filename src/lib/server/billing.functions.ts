@@ -120,10 +120,10 @@ const CreateCheckoutSessionSchema = z.object({
 function checkoutEndpointForOffer(offer: OfferId): string {
 	switch (offer) {
 		case SONG_PACK_500:
-			return "/checkout/pack";
+			return "/api/checkout/pack";
 		case UNLIMITED_QUARTERLY:
 		case UNLIMITED_YEARLY:
-			return "/checkout/unlimited";
+			return "/api/checkout/unlimited";
 	}
 }
 
@@ -267,7 +267,7 @@ export const createPortalSession = createServerFn({ method: "POST" })
 		let response: Response;
 		try {
 			response = await signedPost(
-				`${config.serviceUrl}/portal/session`,
+				`${config.serviceUrl}/api/portal/session`,
 				requestBody,
 				config.sharedSecret,
 			);
