@@ -275,6 +275,10 @@ export async function applyLibraryProcessingChange(
 		return;
 	}
 
+	console.log(
+		`[library-processing] change=${change.kind} effects=[${effects.map((e) => e.kind).join(", ")}]`,
+	);
+
 	let currentState = persistResult.value;
 
 	for (const effect of effects) {
@@ -285,6 +289,7 @@ export async function applyLibraryProcessingChange(
 				change,
 				jobOutcomeMetadata,
 			);
+			console.log(`[library-processing] Effect ${effect.kind} executed`);
 		} catch (err) {
 			console.error(`[library-processing] Effect ${effect.kind} failed:`, err);
 		}
