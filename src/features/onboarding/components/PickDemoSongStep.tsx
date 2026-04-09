@@ -29,13 +29,13 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 
 	const [rowCount, setRowCount] = useState(() =>
 		typeof window !== "undefined" &&
-		window.matchMedia("(max-height: 900px)").matches
+		window.matchMedia("(max-height: 1050px)").matches
 			? 2
 			: 3,
 	);
 
 	useEffect(() => {
-		const mediaQuery = window.matchMedia("(max-height: 900px)");
+		const mediaQuery = window.matchMedia("(max-height: 1050px)");
 		const handleChange = (e: MediaQueryListEvent) => {
 			setRowCount(e.matches ? 2 : 3);
 		};
@@ -142,9 +142,10 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 				<div ref={viewportRef} className="mt-8 flex-1 overflow-hidden">
 					<div ref={trackRef} className="flex h-full items-center">
 						<div
-							className="playlist-grid grid h-full auto-cols-[min(200px,40vw)] content-center gap-4 py-1 pl-[max(1.5rem,env(safe-area-inset-left))] md:pl-[max(3rem,env(safe-area-inset-left))]"
+							className="playlist-grid grid h-full auto-cols-[min(200px,40vw)] items-center gap-4 py-1 pl-[max(1.5rem,env(safe-area-inset-left))] md:pl-[max(3rem,env(safe-area-inset-left))]"
 							style={{
 								gridAutoFlow: "column",
+								gridTemplateRows: `repeat(${rowCount}, 1fr)`,
 							}}
 						>
 							{songs.map((song, index) => {
