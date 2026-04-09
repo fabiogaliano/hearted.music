@@ -29,6 +29,7 @@ import { Route as ApiExtensionStatusRouteImport } from './routes/api/extension/s
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedCheckoutSuccessRouteImport } from './routes/_authenticated/checkout/success'
 import { Route as AuthenticatedCheckoutCancelRouteImport } from './routes/_authenticated/checkout/cancel'
+import { Route as ApiExtensionArtistsCheckRouteImport } from './routes/api/extension/artists/check'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -131,6 +132,12 @@ const AuthenticatedCheckoutCancelRoute =
     path: '/checkout/cancel',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiExtensionArtistsCheckRoute =
+  ApiExtensionArtistsCheckRouteImport.update({
+    id: '/api/extension/artists/check',
+    path: '/api/extension/artists/check',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -152,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
+  '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -173,6 +181,7 @@ export interface FileRoutesByTo {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
+  '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -196,6 +205,7 @@ export interface FileRoutesById {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
+  '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
+    | '/api/extension/artists/check'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -240,6 +251,7 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
+    | '/api/extension/artists/check'
   id:
     | '__root__'
     | '/'
@@ -262,6 +274,7 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
+    | '/api/extension/artists/check'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -277,6 +290,7 @@ export interface RootRouteChildren {
   ApiExtensionStatusRoute: typeof ApiExtensionStatusRoute
   ApiExtensionSyncRoute: typeof ApiExtensionSyncRoute
   ApiExtensionTokenRoute: typeof ApiExtensionTokenRoute
+  ApiExtensionArtistsCheckRoute: typeof ApiExtensionArtistsCheckRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -421,6 +435,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCheckoutCancelRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/extension/artists/check': {
+      id: '/api/extension/artists/check'
+      path: '/api/extension/artists/check'
+      fullPath: '/api/extension/artists/check'
+      preLoaderRoute: typeof ApiExtensionArtistsCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -462,6 +483,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiExtensionStatusRoute: ApiExtensionStatusRoute,
   ApiExtensionSyncRoute: ApiExtensionSyncRoute,
   ApiExtensionTokenRoute: ApiExtensionTokenRoute,
+  ApiExtensionArtistsCheckRoute: ApiExtensionArtistsCheckRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -6,16 +6,18 @@ import {
 	fetchPlaylistTracks,
 	getCurrentUserProfile as fetchProfile,
 	fetchUserPlaylists,
-	queryArtistOverview,
 } from "../shared/spotify-client/reads";
 import { getSyncState, setSyncState } from "../shared/storage";
 import type {
 	ExtensionMessage,
 	SpotifyTokenPayload,
-	SpotifyTrackDTO,
 	StatusResponse,
 	UserProfile,
 } from "../shared/types";
+import {
+	attachArtistImagesToTracks,
+	fetchArtistImageUrls,
+} from "./artist-image-hydration";
 import { handleSpotifyCommand } from "./command-handler";
 
 let cachedToken: SpotifyTokenPayload | null = null;
@@ -97,119 +99,6 @@ type SyncResult = {
 	backendResult?: unknown;
 	backendError?: string;
 };
-
-const ARTIST_OVERVIEW_CONCURRENCY = 8;
-
-function pickBestArtistImageUrl(
-	artist: Awaited<ReturnType<typeof queryArtistOverview>>,
-): string | null {
-	if (artist.avatarImages.length === 0) {
-		return null;
-	}
-
-	const bestImage = artist.avatarImages.reduce((best, current) => {
-		const bestArea = (best.width ?? 0) * (best.height ?? 0);
-		const currentArea = (current.width ?? 0) * (current.height ?? 0);
-		return currentArea > bestArea ? current : best;
-	});
-
-	return bestImage.url;
-}
-
-async function fetchArtistImageUrls(
-	token: string,
-	tracks: SpotifyTrackDTO[],
-): Promise<Map<string, string | null>> {
-	const artistImageUrls = new Map<string, string | null>();
-	const artistsToHydrate = new Map<string, string>();
-
-	for (const track of tracks) {
-		for (const artist of track.track.artists) {
-			if (artist.imageUrl != null) {
-				artistImageUrls.set(artist.id, artist.imageUrl);
-				artistsToHydrate.delete(artist.id);
-				continue;
-			}
-
-			if (!artistImageUrls.has(artist.id) && !artistsToHydrate.has(artist.id)) {
-				artistsToHydrate.set(artist.id, artist.name);
-			}
-		}
-	}
-
-	const artistEntries = [...artistsToHydrate.entries()];
-	let hydratedArtists = 0;
-	await setSyncState({
-		phase: "artistImages",
-		fetched: hydratedArtists,
-		total: artistEntries.length,
-		artistImages: { fetched: hydratedArtists, total: artistEntries.length },
-	});
-
-	for (
-		let index = 0;
-		index < artistEntries.length;
-		index += ARTIST_OVERVIEW_CONCURRENCY
-	) {
-		const batch = artistEntries.slice(
-			index,
-			index + ARTIST_OVERVIEW_CONCURRENCY,
-		);
-		const results = await Promise.allSettled(
-			batch.map(async ([artistId]) => {
-				const artistOverview = await queryArtistOverview(
-					token,
-					`spotify:artist:${artistId}`,
-				);
-				return {
-					artistId,
-					imageUrl: pickBestArtistImageUrl(artistOverview),
-				};
-			}),
-		);
-
-		results.forEach((result, batchIndex) => {
-			const [artistId, artistName] = batch[batchIndex];
-
-			if (result.status === "fulfilled") {
-				artistImageUrls.set(result.value.artistId, result.value.imageUrl);
-				return;
-			}
-
-			artistImageUrls.set(artistId, null);
-			console.warn(
-				`[hearted.] Failed to fetch artist overview for ${artistName} (${artistId}):`,
-				result.reason,
-			);
-		});
-
-		hydratedArtists += batch.length;
-		await setSyncState({
-			phase: "artistImages",
-			fetched: hydratedArtists,
-			total: artistEntries.length,
-			artistImages: { fetched: hydratedArtists, total: artistEntries.length },
-		});
-	}
-
-	return artistImageUrls;
-}
-
-function attachArtistImagesToTracks(
-	tracks: SpotifyTrackDTO[],
-	artistImageUrls: ReadonlyMap<string, string | null>,
-): SpotifyTrackDTO[] {
-	return tracks.map((track) => ({
-		...track,
-		track: {
-			...track.track,
-			artists: track.track.artists.map((artist) => ({
-				...artist,
-				imageUrl: artistImageUrls.get(artist.id) ?? null,
-			})),
-		},
-	}));
-}
 
 async function performSync(): Promise<SyncResult> {
 	if (!isTokenValid()) throw new Error("No valid token");
@@ -325,10 +214,14 @@ async function performSync(): Promise<SyncResult> {
 			`[hearted.] Sync complete: ${likedSongs.length} liked songs, ${playlists.length} playlists, ${totalTracks} playlist tracks`,
 		);
 
-		const artistImageUrls = await fetchArtistImageUrls(token, [
-			...likedSongs,
-			...playlistTracks.flatMap((entry) => entry.tracks),
-		]);
+		const artistImageUrls = await fetchArtistImageUrls({
+			token,
+			tracks: [
+				...likedSongs,
+				...playlistTracks.flatMap((entry) => entry.tracks),
+			],
+			postToBackend,
+		});
 		const hydratedLikedSongs = attachArtistImagesToTracks(
 			likedSongs,
 			artistImageUrls,
