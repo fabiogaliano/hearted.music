@@ -31,8 +31,7 @@ export const joinWaitlist = createServerFn({ method: "POST" })
 			return { success: false, error: "Something went wrong. Try again." };
 		}
 
-		// Fire-and-forget — don't block the response on email delivery
-		sendWaitlistConfirmation(email).catch((err: unknown) =>
+		await sendWaitlistConfirmation(email).catch((err: unknown) =>
 			console.error("[waitlist] email failed:", err),
 		);
 

@@ -7,7 +7,7 @@
 import { Resend } from "resend";
 import { env } from "@/env";
 
-const FROM_EMAIL = "hello@hearted.music";
+const FROM_EMAIL = "hi@hearted.music";
 const FROM_NAME = "hearted.";
 
 export async function sendWaitlistConfirmation(email: string) {
@@ -30,12 +30,13 @@ export async function sendWaitlistConfirmation(email: string) {
 function waitlistPlainText() {
 	return `You're on the waitlist.
 
-Every song you've hearted has been waiting to be noticed. Their moment is coming — that's what April is for.
+Every song you've hearted has been waiting to be noticed. Their moment is coming!
 
 More soon.
 
 — ♡ hearted.
-https://hearted.music`;
+https://hearted.music
+`;
 }
 
 function waitlistHtml() {
@@ -46,16 +47,16 @@ function waitlistHtml() {
   <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px;">
     <tr><td align="center">
       <table width="100%" style="max-width:520px;">
-        <tr><td style="padding-bottom:32px;">
+        <tr><td style="padding-bottom:40px;">
           <span style="font-size:24px;font-weight:200;letter-spacing:-0.5px;color:#1a1a1a;">hearted.</span>
         </td></tr>
-        <tr><td style="font-size:17px;line-height:1.7;color:#333;">
-          <p style="margin:0 0 16px;">You're on the waitlist.</p>
-          <p style="margin:0 0 16px;">Every song you've hearted has been waiting to be noticed. Their moment is coming — that's what April is for.</p>
-          <p style="margin:0 0 24px;color:#666;font-style:italic;">More soon.</p>
+        <tr><td style="font-size:18px;line-height:1.8;color:#1a1a1a;">
+          <p style="margin:0 0 24px;">You're on the waitlist.</p>
+          <p style="margin:0 0 24px;color:#333;">Every song you've hearted has been waiting to be noticed. Their moment is coming!</p>
+          <p style="margin:0 0 32px;color:#666;font-style:italic;font-size:16px;">More soon.</p>
         </td></tr>
         <tr><td style="padding-top:24px;border-top:1px solid #e5e5e5;font-size:13px;color:#999;">
-          <p style="margin:0;">— ♡ hearted. · <a href="https://hearted.music" style="color:#999;">hearted.music</a></p>
+          <p style="margin:0;">— ♡ hearted. · <a href="https://hearted.music" style="color:#999;text-decoration:none;">hearted.music</a></p>
         </td></tr>
       </table>
     </td></tr>
