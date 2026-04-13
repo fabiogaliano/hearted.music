@@ -42,7 +42,7 @@
     },
     {
       "number": 2,
-      "title": "Credits & payments",
+      "title": "Purchases & payments",
       "content": [
         {
           "type": "sub-heading",
@@ -65,7 +65,7 @@
             "Song packs are purchased through the platform",
             "Prices are displayed before purchase",
             "Songs unlocked by a pack never expire",
-            "Songs are unlocked immediately upon purchase",
+            "25 of your most recent liked songs are ready immediately; remaining songs are explored as you choose them",
             "By purchasing, you consent to immediate delivery and waive your 14-day withdrawal right",
             "All pack purchases are final — no refunds"
           ]
@@ -103,7 +103,7 @@
           "type": "list",
           "items": [
             "Use automated tools to access the service",
-            "Use the service to harass, spam, or harm others",
+            "Use the service to harass, spam, or harm others"
           ]
         },
         {
@@ -181,7 +181,7 @@
         },
         {
           "type": "paragraph",
-          "text": "If an account is terminated for violations, remaining song pack balance and any active subscription may be forfeited."
+          "text": "If an account is terminated for violations, remaining songs to explore and any active subscription may be forfeited."
         }
       ]
     },

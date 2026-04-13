@@ -44,15 +44,15 @@
       "items": [
         {
           "q": "Is Hearted free?",
-          "a": "There's a free tier: 15 song analyses to start. Sadly, running the service has real costs that can grow quickly depending on library size."
+          "a": "There's a free tier: 15 songs to get a feel for what hearted. is about. Sadly, running the service has real costs that can grow quickly depending on library size."
         },
         {
           "q": "How does pricing work after the free songs?",
-          "a": "Song packs let you unlock 500 songs for $5.99. Or go unlimited with the Backstage Pass ($39.99/yr) and process your whole library at once. Songs you unlock stay unlocked."
+          "a": "Song packs give you 500 songs to explore for $5.99, with 25 of your most recent likes ready to go as a bonus for your support. Or go unlimited with the Backstage Pass ($39.99/yr) and explore your whole library. Every song you explore stays yours forever."
         },
         {
           "q": "What's included in the Backstage Pass?",
-          "a": "Unlimited analysis and matching, with priority processing. Plus a direct line to shape where hearted. goes next — feature requests, bugs fixed faster. It's for people who want to support the project and get the most out of their library."
+          "a": "Unlimited song exploration and matching across your whole library, with priority processing so things move faster. Plus a direct line to shape where hearted. goes next. It's for people who want to support the project and get the most out of their library."
         }
       ]
     },

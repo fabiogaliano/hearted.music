@@ -62,7 +62,8 @@
           "type": "definition-list",
           "items": [
             { "term": "Spotify", "description": "Handles login authentication. Provides access to your music library." },
-            { "term": "Google (Gemini AI)", "description": "Song lyrics and metadata are sent to generate analyses. No personal information is included in these requests." }
+            { "term": "Google (Gemini AI)", "description": "Song lyrics and metadata are sent to generate analyses. No personal information is included in these requests." },
+            { "term": "Stripe", "description": "Handles payment processing. Receives your email and payment details when you make a purchase. hearted. does not store credit card information." }
           ]
         },
         {
