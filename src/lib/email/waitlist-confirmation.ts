@@ -55,7 +55,7 @@ function waitlistHtml() {
           <p style="margin:0 0 32px;color:hsl(340,20%,45%);font-style:italic;font-size:16px;">More soon.</p>
         </td></tr>
         <tr><td style="padding-top:24px;border-top:1px solid hsl(340,20%,75%);font-size:13px;color:hsl(340,20%,45%);">
-          <p style="margin:0;">— ♡ hearted. · <a href="https://hearted.music" style="color:hsl(340,20%,45%);text-decoration:none;">hearted.music</a></p>
+          <p style="margin:0;">— ♡ <a href="https://hearted.music" style="color:hsl(340,20%,45%);text-decoration:none;">hearted.music</a></p>
         </td></tr>
       </table>
     </td></tr>
