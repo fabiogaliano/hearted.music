@@ -69,6 +69,7 @@ const createMockOnboardingData = (
 	syncStats: { songs: 0, playlists: 0 },
 	readyCopyVariant: "free",
 	landingSongs: [],
+	walkthroughSong: null,
 	...overrides,
 });
 

@@ -44,8 +44,10 @@ import {
 } from "@/lib/platform/jobs/progress/types";
 import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
 import { type ThemeColor, themeSchema } from "@/lib/theme/types";
+import { generateSongSlug } from "@/lib/utils/slug";
 import { OnboardingChanges } from "@/lib/workflows/library-processing/changes/onboarding";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
+import type { WalkthroughSong } from "@/features/onboarding/step-resolver";
 
 /** Playlist view model for onboarding UI (camelCase frontend format) */
 export interface OnboardingPlaylist {
@@ -81,6 +83,8 @@ export interface OnboardingData {
 	readyCopyVariant: ReadyCopyVariant;
 	/** Landing songs manifest for pick-demo-song step */
 	landingSongs: LandingSongManifest[];
+	/** Demo song identity for walkthrough steps (null if not yet selected) */
+	walkthroughSong: WalkthroughSong | null;
 }
 
 const themeInputSchema = z.object({
@@ -171,6 +175,29 @@ export const getOnboardingData = createServerFn({ method: "GET" })
 			prefsResult.value.phase_job_ids,
 		);
 
+		let walkthroughSong: WalkthroughSong | null = null;
+		const demoSongId = prefsResult.value.demo_song_id;
+		if (demoSongId) {
+			const { data: song } = await supabase
+				.from("song")
+				.select("id, spotify_id, name, artists, album_name, image_url")
+				.eq("id", demoSongId)
+				.single();
+
+			if (song) {
+				const artist = song.artists[0] ?? "Unknown Artist";
+				walkthroughSong = {
+					id: song.id,
+					spotifyTrackId: song.spotify_id,
+					slug: generateSongSlug(artist, song.name),
+					name: song.name,
+					artist,
+					album: song.album_name,
+					albumArtUrl: song.image_url,
+				};
+			}
+		}
+
 		return {
 			theme: prefsResult.value.theme,
 			playlists,
@@ -183,6 +210,7 @@ export const getOnboardingData = createServerFn({ method: "GET" })
 			},
 			readyCopyVariant,
 			landingSongs: getLandingSongsManifest(),
+			walkthroughSong,
 		};
 	});
 

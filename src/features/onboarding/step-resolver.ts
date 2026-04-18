@@ -2,6 +2,16 @@ import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-
 
 export type OnboardingMode = "complete" | "steps" | "walkthrough";
 
+export type WalkthroughSong = {
+	id: string;
+	spotifyTrackId: string;
+	slug: string;
+	name: string;
+	artist: string;
+	album: string | null;
+	albumArtUrl: string | null;
+};
+
 export type AllowedPath = "/onboarding" | "/liked-songs" | "/match";
 
 export type ResolvedStep = {
