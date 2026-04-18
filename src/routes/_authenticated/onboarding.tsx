@@ -49,7 +49,7 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 		const urlStepIndex = stepOrder.indexOf(search.step);
 		const savedStepIndex = stepOrder.indexOf(savedStep);
 
-		// Special case: auto-skip flag-playlists → song-showcase when user has no playlists
+		// Special case: auto-skip flag-playlists → pick-demo-song when user has no playlists
 		// This is a valid forward jump that should bypass the guard
 		const isAutoSkipFlagPlaylists =
 			search.step === "pick-demo-song" &&

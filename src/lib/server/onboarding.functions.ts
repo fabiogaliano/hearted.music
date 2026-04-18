@@ -8,7 +8,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
-import { get as getAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
+
 import {
 	clearPhaseJobIds,
 	completeOnboarding,
@@ -33,7 +33,7 @@ import {
 	getMatchResultsForSong,
 } from "@/lib/domains/taste/song-matching/queries";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Json } from "@/lib/data/database.types";
+
 import { getDemoMatchesForSong } from "@/lib/data/demo-matches";
 import type { LandingSongManifest } from "@/lib/data/landing-songs";
 import { getLandingSongsManifest } from "@/lib/data/landing-songs.server";
@@ -79,7 +79,7 @@ export interface OnboardingData {
 	phaseJobIds: PhaseJobIds | null;
 	/** Library stats (liked songs + playlists count) from DB */
 	syncStats: SyncStats;
-	/** Copy variant for ReadyStep based on billing state */
+	/** Copy variant for plan-selection success state based on billing state */
 	readyCopyVariant: ReadyCopyVariant;
 	/** Landing songs manifest for pick-demo-song step */
 	landingSongs: LandingSongManifest[];
@@ -451,71 +451,6 @@ export const saveDemoSongSelection = createServerFn({ method: "POST" })
 		}
 
 		return { success: true };
-	});
-
-/** Demo song data returned for the onboarding showcase */
-export interface DemoSongData {
-	song: {
-		name: string;
-		artists: string[];
-		albumName: string | null;
-		imageUrl: string | null;
-		genres: string[];
-		spotifyTrackId: string;
-	};
-	analysis: Json;
-}
-
-/**
- * Fetches the user's selected demo song and its analysis for the onboarding showcase.
- * Returns null if user hasn't selected a demo song or the song/analysis is missing.
- */
-export const getDemoSongShowcase = createServerFn({ method: "GET" })
-	.middleware([authMiddleware])
-	.handler(async ({ context }): Promise<DemoSongData | null> => {
-		const { session } = context;
-
-		const prefsResult = await getOrCreatePreferences(session.accountId);
-		if (Result.isError(prefsResult)) {
-			console.warn("Failed to load preferences for demo song showcase");
-			return null;
-		}
-
-		const demoSongId = prefsResult.value.demo_song_id;
-		if (!demoSongId) {
-			return null;
-		}
-
-		const supabase = createAdminSupabaseClient();
-
-		const { data: song, error: songError } = await supabase
-			.from("song")
-			.select("name, artists, album_name, image_url, genres, spotify_id")
-			.eq("id", demoSongId)
-			.single();
-
-		if (songError || !song) {
-			console.warn("Demo song not found:", demoSongId, songError?.message);
-			return null;
-		}
-
-		const analysisResult = await getAnalysis(demoSongId);
-		if (Result.isError(analysisResult) || !analysisResult.value) {
-			console.warn("Demo song analysis not found:", demoSongId);
-			return null;
-		}
-
-		return {
-			song: {
-				name: song.name,
-				artists: song.artists,
-				albumName: song.album_name,
-				imageUrl: song.image_url,
-				genres: song.genres,
-				spotifyTrackId: song.spotify_id,
-			},
-			analysis: analysisResult.value.analysis,
-		};
 	});
 
 /** Match result for a single playlist in the demo song showcase */
