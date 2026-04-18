@@ -16,7 +16,6 @@ import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { Onboarding } from "@/features/onboarding/Onboarding";
 import { ONBOARDING_STEPS } from "@/lib/domains/library/accounts/preferences-queries";
-import { env } from "@/env";
 import { getOnboardingData } from "@/lib/server/onboarding.functions";
 
 /**
@@ -57,13 +56,7 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 			savedStep === "flag-playlists" &&
 			data.playlists.length === 0;
 
-		// Special case: auto-skip plan-selection → ready when billing is disabled
-		const isAutoSkipPlanSelection =
-			search.step === "ready" &&
-			savedStep === "plan-selection" &&
-			!env.BILLING_ENABLED;
-
-		const isAutoSkip = isAutoSkipFlagPlaylists || isAutoSkipPlanSelection;
+		const isAutoSkip = isAutoSkipFlagPlaylists;
 
 		// Guard: If URL step is ahead of saved step, redirect back to saved step
 		// (unless it's the valid auto-skip case)
@@ -87,14 +80,6 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 			throw redirect({
 				to: "/onboarding",
 				search: { step: "pick-demo-song" },
-			});
-		}
-
-		// Skip plan-selection step when billing is disabled
-		if (search.step === "plan-selection" && !env.BILLING_ENABLED) {
-			throw redirect({
-				to: "/onboarding",
-				search: { step: "ready" },
 			});
 		}
 
