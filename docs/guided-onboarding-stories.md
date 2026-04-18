@@ -14,7 +14,7 @@
 |----|-------|------------|-------|
 | S1 | ~~Enum rename + step resolver~~ ✅ `553590a` | — | 1 |
 | S2 | ~~Extend `getOnboardingData` with `walkthroughSong`~~ ✅ `8fd2019` | S1 | 1 |
-| S3 | Route context, auth gate, sidebar, layout effects | S1, S2 | 1 |
+| S3 | ~~Route context, auth gate, sidebar, layout effects~~ ✅ `8165849` | S1, S2 | 1 |
 | S4 | ~~Cross-surface navigation hook (`useStepNavigation`)~~ ✅ `2f23d0c` | S1 | 2b |
 | S5 | `PlanSelectionStep` absorbs `ReadyStep` | S1, S3 | 2a |
 | S6 | Song walkthrough — component props (`SongCard`, `SongDetailPanel`) | S4 | 3 |
@@ -189,16 +189,16 @@ TypeScript compiler will flag every reference to the old enum values after renam
 
 ### Acceptance Criteria
 
-- [ ] Route context includes `onboardingMode: OnboardingMode` and `walkthroughSong: WalkthroughSong | null`
-- [ ] Completed users: no route restrictions, sidebar visible, `onboardingMode === "complete"`
-- [ ] Incomplete users on disallowed path: redirected to `resolved.allowedPath`
-- [ ] `song-walkthrough` step allows `/liked-songs`, blocks all other paths
-- [ ] `match-walkthrough` step allows `/match`, blocks all other paths
-- [ ] Standard onboarding steps still redirect to `/onboarding`
-- [ ] Sidebar hidden during `"steps"` and `"walkthrough"` modes
-- [ ] Layout effects suppressed when `onboardingMode !== "complete"`
-- [ ] No `ready`-based auto-skip or billing redirect in `/onboarding` beforeLoad
-- [ ] App compiles, existing tests pass
+- [x] Route context includes `onboardingMode: OnboardingMode` and `walkthroughSong: WalkthroughSong | null`
+- [x] Completed users: no route restrictions, sidebar visible, `onboardingMode === "complete"`
+- [x] Incomplete users on disallowed path: redirected to `resolved.allowedPath`
+- [x] `song-walkthrough` step allows `/liked-songs`, blocks all other paths
+- [x] `match-walkthrough` step allows `/match`, blocks all other paths
+- [x] Standard onboarding steps still redirect to `/onboarding`
+- [x] Sidebar hidden during `"steps"` and `"walkthrough"` modes
+- [x] Layout effects suppressed when `onboardingMode !== "complete"`
+- [x] No `ready`-based auto-skip or billing redirect in `/onboarding` beforeLoad
+- [x] App compiles, existing tests pass
 
 ### Notes
 
