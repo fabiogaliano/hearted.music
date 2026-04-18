@@ -16,7 +16,7 @@
 | S2 | ~~Extend `getOnboardingData` with `walkthroughSong`~~ ✅ `8fd2019` | S1 | 1 |
 | S3 | ~~Route context, auth gate, sidebar, layout effects~~ ✅ `8165849` | S1, S2 | 1 |
 | S4 | ~~Cross-surface navigation hook (`useStepNavigation`)~~ ✅ `2f23d0c` | S1 | 2b |
-| S5 | `PlanSelectionStep` absorbs `ReadyStep` | S1, S3 | 2a |
+| S5 | ~~`PlanSelectionStep` absorbs `ReadyStep`~~ ✅ `9fba0c4` | S1, S3 | 2a |
 | S6 | Song walkthrough — component props (`SongCard`, `SongDetailPanel`) | S4 | 3 |
 | S7 | Song walkthrough — page wiring + showcase deletion | S3, S6 | 3 |
 | S8 | Match walkthrough — data adapter, actions, showcase deletion | S4, S7 | 4 |
@@ -318,19 +318,19 @@ Reference `useOnboardingNavigation` at `src/features/onboarding/hooks/useOnboard
 
 ### Acceptance Criteria
 
-- [ ] `PlanSelectionStep` has four internal states: `initial`, `polling`, `retry`, `success`
-- [ ] Free plan selected → `success` state (no navigation to `ready`)
-- [ ] Stripe confirmed → `success` state immediately (no 2s timer)
-- [ ] Stripe timeout → `retry` state with two actions
-- [ ] Billing-disabled → `success` renders immediately (free-tier copy)
-- [ ] Success state shows overline, headline, stats, tier copy, CTA
-- [ ] `Start Exploring →` calls `markOnboardingComplete()` → navigates to `/dashboard`
-- [ ] CTA shows disable + dim on click (no spinner)
-- [ ] `ReadyStep.tsx` and test deleted
-- [ ] `"ready"` removed from `ONBOARDING_STEPS` enum — no compilation errors
-- [ ] No string literal `"ready"` remains in source code (except docs)
-- [ ] `STEP_CONFIG` has no `ready` entry
-- [ ] App compiles, existing tests pass (with ready-specific tests removed/updated)
+- [x] `PlanSelectionStep` has four internal states: `initial`, `polling`, `retry`, `success`
+- [x] Free plan selected → `success` state (no navigation to `ready`)
+- [x] Stripe confirmed → `success` state immediately (no 2s timer)
+- [x] Stripe timeout → `retry` state with two actions
+- [x] Billing-disabled → `success` renders immediately (free-tier copy)
+- [x] Success state shows overline, headline, stats, tier copy, CTA
+- [x] `Start Exploring →` calls `markOnboardingComplete()` → navigates to `/dashboard`
+- [x] CTA shows disable + dim on click (no spinner)
+- [x] `ReadyStep.tsx` and test deleted
+- [x] `"ready"` removed from `ONBOARDING_STEPS` enum — no compilation errors
+- [x] No string literal `"ready"` remains in source code (except docs)
+- [x] `STEP_CONFIG` has no `ready` entry
+- [x] App compiles, existing tests pass (with ready-specific tests removed/updated)
 
 ### Notes
 
