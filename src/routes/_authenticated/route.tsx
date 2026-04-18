@@ -17,14 +17,15 @@
 
 import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-	createFileRoute,
-	Outlet,
-	redirect,
-	useLocation,
-} from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { Sidebar } from "./-components/Sidebar";
 import { usePostPurchaseReturn } from "@/features/billing/hooks/usePostPurchaseReturn";
+import {
+	resolveStep,
+	isPathAllowed,
+	type OnboardingMode,
+	type WalkthroughSong,
+} from "@/features/onboarding/step-resolver";
 import { billingKeys } from "@/features/billing/query-keys";
 import { matchingSessionQueryOptions } from "@/features/matching/queries";
 import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
@@ -67,13 +68,25 @@ export const Route = createFileRoute("/_authenticated")({
 			staleTime: cause === "enter" ? 0 : 5 * 60 * 1000,
 		});
 
-		const isOnboardingRoute = location.pathname.startsWith("/onboarding");
+		let onboardingMode: OnboardingMode;
+		let walkthroughSong: WalkthroughSong | null = null;
 
-		if (!onboarding.isComplete && !isOnboardingRoute) {
-			throw redirect({
-				to: "/onboarding",
-				search: { step: onboarding.currentStep },
-			});
+		if (onboarding.isComplete) {
+			onboardingMode = "complete";
+		} else {
+			const resolved = resolveStep(onboarding.currentStep);
+			onboardingMode = resolved.onboardingMode;
+			walkthroughSong = onboarding.walkthroughSong;
+
+			if (!isPathAllowed(location.pathname, resolved)) {
+				if (resolved.allowedPath === "/onboarding") {
+					throw redirect({
+						to: "/onboarding",
+						search: { step: onboarding.currentStep },
+					});
+				}
+				throw redirect({ to: resolved.allowedPath });
+			}
 		}
 
 		const billingState = await queryClient.ensureQueryData({
@@ -82,7 +95,14 @@ export const Route = createFileRoute("/_authenticated")({
 			staleTime: 5 * 60 * 1000,
 		});
 
-		return { session, account, theme: onboarding.theme, billingState };
+		return {
+			session,
+			account,
+			theme: onboarding.theme,
+			billingState,
+			onboardingMode,
+			walkthroughSong,
+		};
 	},
 	component: AuthenticatedLayout,
 });
@@ -93,11 +113,12 @@ function AuthenticatedLayout() {
 		account,
 		session,
 		billingState,
+		onboardingMode,
 	} = Route.useRouteContext();
-	const location = useLocation();
-	const isOnboarding = location.pathname.startsWith("/onboarding");
 
-	useActiveJobCompletionEffects(session.accountId, !isOnboarding);
+	const isComplete = onboardingMode === "complete";
+
+	useActiveJobCompletionEffects(session.accountId, isComplete);
 	usePostPurchaseReturn(session.accountId, billingState);
 
 	const { data: matchingSession } = useQuery(
@@ -113,18 +134,18 @@ function AuthenticatedLayout() {
 
 	return (
 		<AuthenticatedThemeProvider initialThemeColor={themeColor ?? DEFAULT_THEME}>
-			{isOnboarding ? (
-				<>
-					<Outlet />
-					{devPanel}
-				</>
-			) : (
+			{isComplete ? (
 				<AuthenticatedShell
 					account={account}
 					billingState={billingState}
 					pendingSuggestions={pendingSuggestions}
 					devPanel={devPanel}
 				/>
+			) : (
+				<>
+					<Outlet />
+					{devPanel}
+				</>
 			)}
 		</AuthenticatedThemeProvider>
 	);
