@@ -284,8 +284,8 @@ export const saveOnboardingStep = createServerFn({ method: "POST" })
 		if (
 			data.step === "flag-playlists" ||
 			data.step === "pick-demo-song" ||
-			data.step === "song-showcase" ||
-			data.step === "match-showcase" ||
+			data.step === "song-walkthrough" ||
+			data.step === "match-walkthrough" ||
 			data.step === "plan-selection" ||
 			data.step === "ready"
 		) {

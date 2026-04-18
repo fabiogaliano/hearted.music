@@ -86,7 +86,7 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 			await saveDemoSongSelection({
 				data: { spotifyTrackId: selectedTrackId },
 			});
-			await goToStep("song-showcase");
+			await goToStep("song-walkthrough");
 		} catch (error) {
 			console.error("Failed to save demo song selection:", error);
 			toast.error("Failed to save selection. Please try again.");
