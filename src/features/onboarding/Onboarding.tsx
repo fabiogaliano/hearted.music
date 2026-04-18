@@ -26,7 +26,6 @@ import { PickDemoSongStep } from "./components/PickDemoSongStep";
 import { StepContainer } from "./components/StepContainer";
 import { PlanSelectionStep } from "./components/PlanSelectionStep";
 import { MatchShowcaseStep } from "./components/MatchShowcaseStep";
-import { SongShowcaseStep } from "./components/SongShowcaseStep";
 import { SyncingStep } from "./components/SyncingStep";
 import { WelcomeStep } from "./components/WelcomeStep";
 import "./types"; // Import to ensure HistoryState augmentation is loaded
@@ -80,7 +79,8 @@ const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 		fullBleed: true,
 	},
 	"song-walkthrough": {
-		render: () => <SongShowcaseStep />,
+		render: () => null,
+		hideIndicator: true,
 	},
 	"match-walkthrough": {
 		render: () => <MatchShowcaseStep />,
