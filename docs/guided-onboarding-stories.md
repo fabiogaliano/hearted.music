@@ -13,7 +13,7 @@
 | ID | Title | Depends on | Phase |
 |----|-------|------------|-------|
 | S1 | ~~Enum rename + step resolver~~ ✅ `553590a` | — | 1 |
-| S2 | Extend `getOnboardingData` with `walkthroughSong` | S1 | 1 |
+| S2 | ~~Extend `getOnboardingData` with `walkthroughSong`~~ ✅ `8fd2019` | S1 | 1 |
 | S3 | Route context, auth gate, sidebar, layout effects | S1, S2 | 1 |
 | S4 | Cross-surface navigation hook (`useStepNavigation`) | S1 | 2b |
 | S5 | `PlanSelectionStep` absorbs `ReadyStep` | S1, S3 | 2a |
@@ -136,11 +136,11 @@ TypeScript compiler will flag every reference to the old enum values after renam
 
 ### Acceptance Criteria
 
-- [ ] `OnboardingData` type includes `walkthroughSong: WalkthroughSong | null`
-- [ ] `getOnboardingData()` returns populated `walkthroughSong` when `demo_song_id` is set
-- [ ] `getOnboardingData()` returns `walkthroughSong: null` when no demo song selected
-- [ ] `WalkthroughSong` type is exported from `step-resolver.ts`
-- [ ] App compiles, existing tests pass
+- [x] `OnboardingData` type includes `walkthroughSong: WalkthroughSong | null`
+- [x] `getOnboardingData()` returns populated `walkthroughSong` when `demo_song_id` is set
+- [x] `getOnboardingData()` returns `walkthroughSong: null` when no demo song selected
+- [x] `WalkthroughSong` type is exported from `step-resolver.ts`
+- [x] App compiles, existing tests pass
 
 ### Notes
 
