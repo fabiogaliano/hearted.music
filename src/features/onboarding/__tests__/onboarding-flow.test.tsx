@@ -159,19 +159,4 @@ describe("Onboarding Flow", () => {
 		await user.click(lofiButton);
 		expect(lofiButton).toHaveAttribute("aria-pressed", "true");
 	});
-
-	it("renders ready step with completion message", () => {
-		renderOnboarding(
-			"ready",
-			createMockOnboardingData({
-				syncStats: { songs: 500, playlists: 10 },
-			}),
-		);
-
-		const stepContainer = document.querySelector('[data-step="ready"]');
-		expect(stepContainer).toBeInTheDocument();
-
-		const container = within(stepContainer as HTMLElement);
-		expect(container.getByText(/Start Exploring/i)).toBeInTheDocument();
-	});
 });

@@ -23,7 +23,6 @@ import { FlagPlaylistsStep } from "./components/FlagPlaylistsStep";
 import { InstallExtensionStep } from "./components/InstallExtensionStep";
 import { PickColorStep } from "./components/PickColorStep";
 import { PickDemoSongStep } from "./components/PickDemoSongStep";
-import { ReadyStep } from "./components/ReadyStep";
 import { StepContainer } from "./components/StepContainer";
 import { PlanSelectionStep } from "./components/PlanSelectionStep";
 import { MatchShowcaseStep } from "./components/MatchShowcaseStep";
@@ -87,11 +86,11 @@ const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 		render: () => <MatchShowcaseStep />,
 	},
 	"plan-selection": {
-		render: () => <PlanSelectionStep />,
-	},
-	ready: {
 		render: (ctx) => (
-			<ReadyStep syncStats={ctx.syncStats} copyVariant={ctx.readyCopyVariant} />
+			<PlanSelectionStep
+				syncStats={ctx.syncStats}
+				readyCopyVariant={ctx.readyCopyVariant}
+			/>
 		),
 	},
 	complete: {

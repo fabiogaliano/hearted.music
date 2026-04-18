@@ -65,7 +65,7 @@ export interface SyncStats {
 	playlists: number;
 }
 
-/** Copy variant for ReadyStep, derived from billing state */
+/** Copy variant for the plan selection success state, derived from billing state */
 export type ReadyCopyVariant = "free" | "pack" | "unlimited";
 
 /** Combined onboarding data loaded on route entry */
@@ -314,8 +314,7 @@ export const saveOnboardingStep = createServerFn({ method: "POST" })
 			data.step === "pick-demo-song" ||
 			data.step === "song-walkthrough" ||
 			data.step === "match-walkthrough" ||
-			data.step === "plan-selection" ||
-			data.step === "ready"
+			data.step === "plan-selection"
 		) {
 			const clearResult = await clearPhaseJobIds(session.accountId);
 			if (Result.isError(clearResult)) {

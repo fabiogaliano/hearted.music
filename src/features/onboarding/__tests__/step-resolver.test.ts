@@ -27,7 +27,6 @@ describe("resolveStep", () => {
 		"flag-playlists",
 		"pick-demo-song",
 		"plan-selection",
-		"ready",
 		"complete",
 	];
 

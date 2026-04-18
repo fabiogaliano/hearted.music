@@ -111,7 +111,7 @@ const SCOPE_PRIORITY: Record<ShortcutScope, number> = {
 	"onboarding-pick-demo-song": 3,
 	"onboarding-song-showcase": 3,
 	"onboarding-match-showcase": 3,
-	"onboarding-ready": 3,
+	"onboarding-plan-selection": 3,
 	modal: 10,
 };
 
