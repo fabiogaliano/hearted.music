@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -16,6 +16,17 @@ const searchSchema = z.object({
 export const Route = createFileRoute("/_authenticated/liked-songs")({
 	validateSearch: zodValidator(searchSchema),
 	loaderDeps: ({ search }) => ({ filter: search.filter }),
+	beforeLoad: ({ context }) => {
+		if (
+			context.onboardingMode === "walkthrough" &&
+			context.walkthroughSong === null
+		) {
+			throw redirect({
+				to: "/onboarding",
+				search: { step: "pick-demo-song" },
+			});
+		}
+	},
 	loader: async ({ deps, context, location }) => {
 		await context.queryClient.ensureInfiniteQueryData(
 			likedSongsInfiniteQueryOptions(deps.filter),
@@ -34,13 +45,16 @@ export const Route = createFileRoute("/_authenticated/liked-songs")({
 function LikedSongsRoute() {
 	// TODO: pass filter to LikedSongsPage when filter UI is built
 	const { song } = Route.useSearch();
-	const { session, billingState } = Route.useRouteContext();
+	const { session, billingState, onboardingMode, walkthroughSong } =
+		Route.useRouteContext();
 
 	return (
 		<LikedSongsPage
 			selectedSlug={song}
 			accountId={session.accountId}
 			billingState={billingState}
+			onboardingMode={onboardingMode}
+			walkthroughSong={walkthroughSong}
 		/>
 	);
 }

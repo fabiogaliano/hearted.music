@@ -15,7 +15,7 @@ import { saveDemoSongSelection } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useFlagPlaylistsScroll } from "../hooks/useFlagPlaylistsScroll";
-import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
+import { useStepNavigation } from "../hooks/useStepNavigation";
 
 interface PickDemoSongStepProps {
 	songs: LandingSongManifest[];
@@ -23,7 +23,7 @@ interface PickDemoSongStepProps {
 
 export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 	const theme = useTheme();
-	const { goToStep } = useOnboardingNavigation();
+	const { navigateTo } = useStepNavigation();
 	const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 
@@ -86,7 +86,7 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 			await saveDemoSongSelection({
 				data: { spotifyTrackId: selectedTrackId },
 			});
-			await goToStep("song-walkthrough");
+			await navigateTo("song-walkthrough");
 		} catch (error) {
 			console.error("Failed to save demo song selection:", error);
 			toast.error("Failed to save selection. Please try again.");
