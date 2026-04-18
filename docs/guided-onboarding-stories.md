@@ -18,7 +18,7 @@
 | S4 | ~~Cross-surface navigation hook (`useStepNavigation`)~~ ✅ `2f23d0c` | S1 | 2b |
 | S5 | ~~`PlanSelectionStep` absorbs `ReadyStep`~~ ✅ `9fba0c4` | S1, S3 | 2a |
 | S6 | ~~Song walkthrough — component props (`SongCard`, `SongDetailPanel`)~~ ✅ `072a850` | S4 | 3 |
-| S7 | Song walkthrough — page wiring + showcase deletion | S3, S6 | 3 |
+| S7 | ~~Song walkthrough — page wiring + showcase deletion~~ ✅ `5b29c46` | S3, S6 | 3 |
 | S8 | Match walkthrough — data adapter, actions, showcase deletion | S4, S7 | 4 |
 | S9 | Cleanup and verification | S5, S8 | 5 |
 
@@ -467,25 +467,25 @@ For the pulse animation, check if the theme primary color is available via CSS v
 
 ### Acceptance Criteria
 
-- [ ] `song-walkthrough` step routes user to `/liked-songs` (not `/onboarding`)
-- [ ] Demo song renders at top, full opacity, with pulse animation
-- [ ] Real songs render below, greyed (`opacity-50`, non-interactive)
-- [ ] Clicking demo song opens detail panel with analysis (no lock gate)
-- [ ] `PlaylistsSection` hidden in walkthrough panel
-- [ ] Sticky CTA "See where this song belongs →" at panel bottom
-- [ ] CTA click → saves `match-walkthrough` → navigates to `/match`
-- [ ] Detail panel does NOT auto-open on entry
-- [ ] `?song=` not set in URL on initial walkthrough entry
-- [ ] Refresh on `/liked-songs` during `song-walkthrough` → restores walkthrough state
-- [ ] Refresh with `?song=<slug>` → reopens detail panel
-- [ ] Missing `walkthroughSong` → redirect to `pick-demo-song`
-- [ ] Keyboard nav limited to demo song only
-- [ ] Infinite scroll disabled
-- [ ] Stats row shows real totals
-- [ ] Sidebar hidden
-- [ ] `SongShowcaseStep.tsx` deleted
-- [ ] Edge: 0 liked songs → only demo song shown
-- [ ] Edge: demo song in liked songs → de-duplicated, shown once
+- [x] `song-walkthrough` step routes user to `/liked-songs` (not `/onboarding`)
+- [x] Demo song renders at top, full opacity, with pulse animation
+- [x] Real songs render below, greyed (`opacity-50`, non-interactive)
+- [x] Clicking demo song opens detail panel with analysis (no lock gate)
+- [x] `PlaylistsSection` hidden in walkthrough panel
+- [x] Sticky CTA "See where this song belongs →" at panel bottom
+- [x] CTA click → saves `match-walkthrough` → navigates to `/match`
+- [x] Detail panel does NOT auto-open on entry
+- [x] `?song=` not set in URL on initial walkthrough entry
+- [x] Refresh on `/liked-songs` during `song-walkthrough` → restores walkthrough state
+- [x] Refresh with `?song=<slug>` → reopens detail panel
+- [x] Missing `walkthroughSong` → redirect to `pick-demo-song`
+- [x] Keyboard nav limited to demo song only
+- [x] Infinite scroll disabled
+- [x] Stats row shows real totals
+- [x] Sidebar hidden
+- [x] `SongShowcaseStep.tsx` deleted
+- [x] Edge: 0 liked songs → only demo song shown
+- [x] Edge: demo song in liked songs → de-duplicated, shown once
 
 ### Notes
 
