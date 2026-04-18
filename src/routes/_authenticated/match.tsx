@@ -1,8 +1,9 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Matching } from "@/features/matching/Matching";
+import { WalkthroughMatchContent } from "@/features/matching/WalkthroughMatchContent";
 import { MatchingEmptyState } from "@/features/matching/components/MatchingEmptyState";
 import { useMatchingSession } from "@/features/matching/hooks/useMatchingSession";
 import {
@@ -22,7 +23,19 @@ import {
 } from "@/lib/server/matching.functions";
 
 export const Route = createFileRoute("/_authenticated/match")({
+	beforeLoad: ({ context }) => {
+		if (
+			context.onboardingMode === "walkthrough" &&
+			context.walkthroughSong === null
+		) {
+			throw redirect({
+				to: "/onboarding",
+				search: { step: "pick-demo-song" },
+			});
+		}
+	},
 	loader: async ({ context }) => {
+		if (context.onboardingMode === "walkthrough") return;
 		const { session, queryClient } = context;
 		await queryClient.ensureQueryData(
 			matchingSessionQueryOptions(session.accountId),
@@ -37,6 +50,20 @@ interface DisplayedSession {
 }
 
 function MatchPage() {
+	const { onboardingMode, walkthroughSong } = Route.useRouteContext();
+
+	if (onboardingMode === "walkthrough" && walkthroughSong) {
+		return (
+			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
+				<WalkthroughMatchContent walkthroughSong={walkthroughSong} />
+			</div>
+		);
+	}
+
+	return <NormalMatchPage />;
+}
+
+function NormalMatchPage() {
 	const { session } = Route.useRouteContext();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();

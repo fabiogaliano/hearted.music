@@ -25,7 +25,7 @@ import { PickColorStep } from "./components/PickColorStep";
 import { PickDemoSongStep } from "./components/PickDemoSongStep";
 import { StepContainer } from "./components/StepContainer";
 import { PlanSelectionStep } from "./components/PlanSelectionStep";
-import { MatchShowcaseStep } from "./components/MatchShowcaseStep";
+
 import { SyncingStep } from "./components/SyncingStep";
 import { WelcomeStep } from "./components/WelcomeStep";
 import "./types"; // Import to ensure HistoryState augmentation is loaded
@@ -83,7 +83,8 @@ const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 		hideIndicator: true,
 	},
 	"match-walkthrough": {
-		render: () => <MatchShowcaseStep />,
+		render: () => null,
+		hideIndicator: true,
 	},
 	"plan-selection": {
 		render: (ctx) => (
