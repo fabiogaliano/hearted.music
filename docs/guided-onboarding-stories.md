@@ -15,7 +15,7 @@
 | S1 | ~~Enum rename + step resolver~~ ✅ `553590a` | — | 1 |
 | S2 | ~~Extend `getOnboardingData` with `walkthroughSong`~~ ✅ `8fd2019` | S1 | 1 |
 | S3 | Route context, auth gate, sidebar, layout effects | S1, S2 | 1 |
-| S4 | Cross-surface navigation hook (`useStepNavigation`) | S1 | 2b |
+| S4 | ~~Cross-surface navigation hook (`useStepNavigation`)~~ ✅ `2f23d0c` | S1 | 2b |
 | S5 | `PlanSelectionStep` absorbs `ReadyStep` | S1, S3 | 2a |
 | S6 | Song walkthrough — component props (`SongCard`, `SongDetailPanel`) | S4 | 3 |
 | S7 | Song walkthrough — page wiring + showcase deletion | S3, S6 | 3 |
@@ -249,12 +249,12 @@ Finding from exploration: `isOnboarding` is currently a path check (`location.pa
 
 ### Acceptance Criteria
 
-- [ ] `useStepNavigation()` exported from `hooks/useStepNavigation.ts`
-- [ ] `navigateTo("song-walkthrough")` saves step, syncs cache, navigates to `/liked-songs`
-- [ ] `navigateTo("plan-selection")` saves step, syncs cache, navigates to `/onboarding?step=plan-selection`
-- [ ] Save failure → error toast, no navigation, no cache update
-- [ ] Hook is importable by Phase 3/4 consumers
-- [ ] Tests cover success and failure paths
+- [x] `useStepNavigation()` exported from `hooks/useStepNavigation.ts`
+- [x] `navigateTo("song-walkthrough")` saves step, syncs cache, navigates to `/liked-songs`
+- [x] `navigateTo("plan-selection")` saves step, syncs cache, navigates to `/onboarding?step=plan-selection`
+- [x] Save failure → error toast, no navigation, no cache update
+- [x] Hook is importable by Phase 3/4 consumers
+- [x] Tests cover success and failure paths
 
 ### Notes
 
