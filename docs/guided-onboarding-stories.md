@@ -17,7 +17,7 @@
 | S3 | ~~Route context, auth gate, sidebar, layout effects~~ ✅ `8165849` | S1, S2 | 1 |
 | S4 | ~~Cross-surface navigation hook (`useStepNavigation`)~~ ✅ `2f23d0c` | S1 | 2b |
 | S5 | ~~`PlanSelectionStep` absorbs `ReadyStep`~~ ✅ `9fba0c4` | S1, S3 | 2a |
-| S6 | Song walkthrough — component props (`SongCard`, `SongDetailPanel`) | S4 | 3 |
+| S6 | ~~Song walkthrough — component props (`SongCard`, `SongDetailPanel`)~~ ✅ `072a850` | S4 | 3 |
 | S7 | Song walkthrough — page wiring + showcase deletion | S3, S6 | 3 |
 | S8 | Match walkthrough — data adapter, actions, showcase deletion | S4, S7 | 4 |
 | S9 | Cleanup and verification | S5, S8 | 5 |
@@ -393,16 +393,16 @@ Also: the current auto-skip for billing-disabled lives in the `/onboarding` rout
 
 ### Acceptance Criteria
 
-- [ ] `SongCard` with `isEnabled={false}` renders with `opacity-50`, no pointer events, no hover
-- [ ] `SongCard` with `isWalkthroughHighlight={true}` shows left border + pulse animation
-- [ ] `prefers-reduced-motion` → pulse replaced with static border
-- [ ] `SongCard` with no new props → unchanged behavior (defaults: `isEnabled=true`, `isWalkthroughHighlight=false`)
-- [ ] `SongDetailPanel` with `isWalkthrough={true}` forces unlocked display state
-- [ ] `PanelContent` with `isWalkthrough={true}` hides `PlaylistsSection`
-- [ ] Sticky CTA renders at panel bottom with correct copy
-- [ ] CTA click calls `navigateTo("match-walkthrough")`
-- [ ] CTA shows disable + dim on click
-- [ ] App compiles, existing tests pass
+- [x] `SongCard` with `isEnabled={false}` renders with `opacity-50`, no pointer events, no hover
+- [x] `SongCard` with `isWalkthroughHighlight={true}` shows left border + pulse animation
+- [x] `prefers-reduced-motion` → pulse replaced with static border
+- [x] `SongCard` with no new props → unchanged behavior (defaults: `isEnabled=true`, `isWalkthroughHighlight=false`)
+- [x] `SongDetailPanel` with `isWalkthrough={true}` forces unlocked display state
+- [x] `PanelContent` with `isWalkthrough={true}` hides `PlaylistsSection`
+- [x] Sticky CTA renders at panel bottom with correct copy
+- [x] CTA click calls `navigateTo("match-walkthrough")`
+- [x] CTA shows disable + dim on click
+- [x] App compiles, existing tests pass
 
 ### Notes
 
