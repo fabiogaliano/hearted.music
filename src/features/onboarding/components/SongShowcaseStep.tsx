@@ -48,7 +48,7 @@ export function SongShowcaseStep() {
 		if (isNavigating) return;
 		setIsNavigating(true);
 		try {
-			await goToStep("match-showcase");
+			await goToStep("match-walkthrough");
 		} catch {
 			setIsNavigating(false);
 		}
