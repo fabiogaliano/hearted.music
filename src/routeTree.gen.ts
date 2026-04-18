@@ -16,6 +16,7 @@ import { Route as FaqRouteImport } from './routes/faq'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
+import { Route as ApiBillingBridgeRouteImport } from './routes/api/billing-bridge'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedPlaylistsRouteImport } from './routes/_authenticated/playlists'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
@@ -26,6 +27,9 @@ import { Route as ApiExtensionTokenRouteImport } from './routes/api/extension/to
 import { Route as ApiExtensionSyncRouteImport } from './routes/api/extension/sync'
 import { Route as ApiExtensionStatusRouteImport } from './routes/api/extension/status'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthenticatedCheckoutSuccessRouteImport } from './routes/_authenticated/checkout/success'
+import { Route as AuthenticatedCheckoutCancelRouteImport } from './routes/_authenticated/checkout/cancel'
+import { Route as ApiExtensionArtistsCheckRouteImport } from './routes/api/extension/artists/check'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -59,6 +63,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthLogoutRoute = AuthLogoutRouteImport.update({
   id: '/auth/logout',
   path: '/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBillingBridgeRoute = ApiBillingBridgeRouteImport.update({
+  id: '/api/billing-bridge',
+  path: '/api/billing-bridge',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
@@ -111,6 +120,24 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedCheckoutSuccessRoute =
+  AuthenticatedCheckoutSuccessRouteImport.update({
+    id: '/checkout/success',
+    path: '/checkout/success',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCheckoutCancelRoute =
+  AuthenticatedCheckoutCancelRouteImport.update({
+    id: '/checkout/cancel',
+    path: '/checkout/cancel',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const ApiExtensionArtistsCheckRoute =
+  ApiExtensionArtistsCheckRouteImport.update({
+    id: '/api/extension/artists/check',
+    path: '/api/extension/artists/check',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -124,11 +151,15 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/playlists': typeof AuthenticatedPlaylistsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/api/billing-bridge': typeof ApiBillingBridgeRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
+  '/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
+  '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -142,11 +173,15 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/playlists': typeof AuthenticatedPlaylistsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/api/billing-bridge': typeof ApiBillingBridgeRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
+  '/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
+  '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -162,11 +197,15 @@ export interface FileRoutesById {
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/playlists': typeof AuthenticatedPlaylistsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/api/billing-bridge': typeof ApiBillingBridgeRoute
   '/auth/logout': typeof AuthLogoutRoute
+  '/_authenticated/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
+  '/_authenticated/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
+  '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -182,11 +221,15 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/playlists'
     | '/settings'
+    | '/api/billing-bridge'
     | '/auth/logout'
+    | '/checkout/cancel'
+    | '/checkout/success'
     | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
+    | '/api/extension/artists/check'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -200,11 +243,15 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/playlists'
     | '/settings'
+    | '/api/billing-bridge'
     | '/auth/logout'
+    | '/checkout/cancel'
+    | '/checkout/success'
     | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
+    | '/api/extension/artists/check'
   id:
     | '__root__'
     | '/'
@@ -219,11 +266,15 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding'
     | '/_authenticated/playlists'
     | '/_authenticated/settings'
+    | '/api/billing-bridge'
     | '/auth/logout'
+    | '/_authenticated/checkout/cancel'
+    | '/_authenticated/checkout/success'
     | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
+    | '/api/extension/artists/check'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -233,11 +284,13 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
+  ApiBillingBridgeRoute: typeof ApiBillingBridgeRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiExtensionStatusRoute: typeof ApiExtensionStatusRoute
   ApiExtensionSyncRoute: typeof ApiExtensionSyncRoute
   ApiExtensionTokenRoute: typeof ApiExtensionTokenRoute
+  ApiExtensionArtistsCheckRoute: typeof ApiExtensionArtistsCheckRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -289,6 +342,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/logout'
       fullPath: '/auth/logout'
       preLoaderRoute: typeof AuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/billing-bridge': {
+      id: '/api/billing-bridge'
+      path: '/api/billing-bridge'
+      fullPath: '/api/billing-bridge'
+      preLoaderRoute: typeof ApiBillingBridgeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/settings': {
@@ -361,6 +421,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/checkout/success': {
+      id: '/_authenticated/checkout/success'
+      path: '/checkout/success'
+      fullPath: '/checkout/success'
+      preLoaderRoute: typeof AuthenticatedCheckoutSuccessRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/checkout/cancel': {
+      id: '/_authenticated/checkout/cancel'
+      path: '/checkout/cancel'
+      fullPath: '/checkout/cancel'
+      preLoaderRoute: typeof AuthenticatedCheckoutCancelRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/extension/artists/check': {
+      id: '/api/extension/artists/check'
+      path: '/api/extension/artists/check'
+      fullPath: '/api/extension/artists/check'
+      preLoaderRoute: typeof ApiExtensionArtistsCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -371,6 +452,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedPlaylistsRoute: typeof AuthenticatedPlaylistsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedCheckoutCancelRoute: typeof AuthenticatedCheckoutCancelRoute
+  AuthenticatedCheckoutSuccessRoute: typeof AuthenticatedCheckoutSuccessRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -380,6 +463,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedPlaylistsRoute: AuthenticatedPlaylistsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedCheckoutCancelRoute: AuthenticatedCheckoutCancelRoute,
+  AuthenticatedCheckoutSuccessRoute: AuthenticatedCheckoutSuccessRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -392,11 +477,13 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
+  ApiBillingBridgeRoute: ApiBillingBridgeRoute,
   AuthLogoutRoute: AuthLogoutRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiExtensionStatusRoute: ApiExtensionStatusRoute,
   ApiExtensionSyncRoute: ApiExtensionSyncRoute,
   ApiExtensionTokenRoute: ApiExtensionTokenRoute,
+  ApiExtensionArtistsCheckRoute: ApiExtensionArtistsCheckRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

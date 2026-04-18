@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { Lock } from "lucide-react";
+
+import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
 
 import { fonts } from "@/lib/theme/fonts";
 import type { SongSuggestion } from "@/lib/server/matching.functions";
@@ -146,6 +149,8 @@ interface PanelContentProps {
 	toggleSection: (section: string) => void;
 	suggestions: SongSuggestion[] | null;
 	isEnrichmentRunning: boolean;
+	/** Walkthrough mode: hide PlaylistsSection, show sticky CTA */
+	isWalkthrough?: boolean;
 	getStaggerRef: (index: number) => (el: HTMLDivElement | null) => void;
 	refs: {
 		contentRef: React.RefObject<HTMLDivElement | null>;
@@ -166,10 +171,13 @@ export function PanelContent({
 	toggleSection,
 	suggestions,
 	isEnrichmentRunning,
+	isWalkthrough = false,
 	getStaggerRef,
 	refs: { contentRef, spacerRef, crossfadeContentRef, analysisPhaseRef },
 }: PanelContentProps) {
-	const hasSuggestions = suggestions != null && suggestions.length > 0;
+	const hasSuggestions =
+		!isWalkthrough && suggestions != null && suggestions.length > 0;
+	const isLocked = song.displayState === "locked";
 
 	return (
 		<div
@@ -182,7 +190,45 @@ export function PanelContent({
 		>
 			<div ref={spacerRef} style={{ height: 0 }} />
 			<div ref={crossfadeContentRef}>
-				{analysis ? (
+				{isLocked ? (
+					<div ref={getStaggerRef(0)} style={{ opacity: 0 }}>
+						<div className="flex flex-col items-center gap-4 py-8 text-center">
+							<div
+								className="flex h-12 w-12 items-center justify-center rounded-full"
+								style={{
+									background: `color-mix(in srgb, ${colors.accent} 15%, transparent)`,
+								}}
+							>
+								<Lock size={20} color={colors.accent} strokeWidth={1.5} />
+							</div>
+							<div>
+								<p
+									style={{
+										fontFamily: fonts.display,
+										fontSize: 18,
+										fontWeight: 400,
+										color: colors.text,
+										margin: 0,
+									}}
+								>
+									This song is locked
+								</p>
+								<p
+									className="mt-2"
+									style={{
+										fontFamily: fonts.body,
+										fontSize: 13,
+										lineHeight: 1.5,
+										color: colors.textMuted,
+										margin: 0,
+									}}
+								>
+									Unlock to see its full analysis, themes, and playlist matches.
+								</p>
+							</div>
+						</div>
+					</div>
+				) : analysis ? (
 					<>
 						<div ref={getStaggerRef(0)} className="mb-6" style={{ opacity: 0 }}>
 							<GenrePills genres={song.track.genres} colorProps={colorProps} />
@@ -328,6 +374,53 @@ export function PanelContent({
 					</div>
 				)}
 			</div>
+			{isWalkthrough && <WalkthroughCta colors={colors} />}
+		</div>
+	);
+}
+
+function WalkthroughCta({ colors }: { colors: PanelColors }) {
+	const { navigateTo, isPending } = useStepNavigation();
+	const [isNavigating, setIsNavigating] = useState(false);
+
+	const handleClick = async () => {
+		setIsNavigating(true);
+		await navigateTo("match-walkthrough");
+	};
+
+	const disabled = isNavigating || isPending.current;
+
+	return (
+		<div
+			style={{
+				position: "sticky",
+				bottom: 0,
+				padding: "16px 0",
+				background: `linear-gradient(to bottom, transparent, ${colors.bg} 30%)`,
+			}}
+		>
+			<button
+				type="button"
+				onClick={handleClick}
+				disabled={disabled}
+				aria-label="See where this song belongs"
+				style={{
+					width: "100%",
+					padding: "14px 20px",
+					fontFamily: fonts.body,
+					fontSize: 15,
+					fontWeight: 500,
+					color: colors.bg,
+					background: colors.accent,
+					border: "none",
+					borderRadius: 8,
+					cursor: disabled ? "default" : "pointer",
+					opacity: disabled ? 0.5 : 1,
+					transition: "opacity 150ms ease",
+				}}
+			>
+				See where this song belongs &rarr;
+			</button>
 		</div>
 	);
 }

@@ -20,7 +20,8 @@ export type ShortcutScope =
 	| "onboarding-colors" // Onboarding color picker step
 	| "onboarding-extension" // Onboarding extension install step
 	| "onboarding-playlists" // Onboarding playlists step
-	| "onboarding-ready"; // Onboarding ready/complete step
+	| "onboarding-pick-demo-song" // Onboarding pick demo song step
+	| "onboarding-plan-selection"; // Onboarding plan selection step
 
 /**
  * Category for grouping shortcuts in help modal

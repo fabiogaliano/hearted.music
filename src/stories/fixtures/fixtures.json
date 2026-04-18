@@ -103,7 +103,7 @@
 						"speechiness": 0.0694,
 						"acousticness": 0.00261,
 						"danceability": 0.762,
-						"instrumentalness": 0.0000156
+						"instrumentalness": 1.56e-5
 					},
 					"interpretation": "Breaking free from a destructive on-again, off-again relationship requires setting explicit, non-negotiable rules for oneself. This isn't just about cutting ties with an ex; it's about re-training your own instincts, recognizing patterns of manipulation, and building the internal fortitude to resist the magnetic pull of past comfort, even when it's harmful. The bright, confident production masks the active, daily fight to uphold these boundaries, making the self-affirmation both a rallying cry and a desperate plea.",
 					"mood_description": "A potent mix of determined self-talk and an irresistible beat. It feels like dancing through a breakup, armed with unwavering resolve."
@@ -112,7 +112,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:07:28.587888+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T14:08:24+00:00",
@@ -226,7 +226,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:08:06.55859+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T14:08:23+00:00",
@@ -344,7 +344,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:07:54.794482+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T14:08:20+00:00",
@@ -416,7 +416,7 @@
 						{
 							"mood": "Hypnotic repetition",
 							"section": "Outro",
-							"description": "The core sentiment echoes and fades, a singular focus on the power of 'one' — one kiss, one person, one essential need — leaving a lingering, captivating impression."
+							"description": "The core sentiment echoes and fades, a singular focus on the power of 'one' \u2014 one kiss, one person, one essential need \u2014 leaving a lingering, captivating impression."
 						}
 					],
 					"headline": "A confident invitation to an intoxicating, fleeting dancefloor romance, born from a single spark.",
@@ -453,7 +453,7 @@
 						"speechiness": 0.11,
 						"acousticness": 0.037,
 						"danceability": 0.79,
-						"instrumentalness": 0.0000225
+						"instrumentalness": 2.25e-5
 					},
 					"interpretation": "An immediate, undeniable attraction blooms from a single interaction, painting a picture of confident allure and the thrill of new possibilities. It's about owning that magnetic pull and inviting someone into a moment that feels both spontaneous and destined, fully embracing the intoxicating rush of instant connection.",
 					"mood_description": "An undeniable magnetic pull, wrapped in a pulsing beat that feels like an instant connection. The air vibrates with electric possibilities, inviting you to get lost in the moment."
@@ -462,7 +462,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:08:06.099962+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T14:08:18+00:00",
@@ -562,7 +562,7 @@
 						"speechiness": 0.0477,
 						"acousticness": 0.0349,
 						"danceability": 0.812,
-						"instrumentalness": 0.00000264
+						"instrumentalness": 2.64e-6
 					},
 					"interpretation": "Refusing to settle for anything less than a profound, exciting connection, a clear line is drawn for potential partners: either step up to meet her needs or step aside. There's no more time for teaching or compromise; the expectation is a partner who inherently knows how to engage deeply and passionately, propelled by an electrifying beat that makes this ultimatum feel like an undeniable act of self-worth.",
 					"mood_description": "The thrumming beat lifts your spirit, but a firm voice cuts through the glitter, making you feel the exhilarating truth of knowing what you deserve."
@@ -571,7 +571,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:08:01.077564+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T14:08:17+00:00",
@@ -624,7 +624,7 @@
 						{
 							"mood": "unapologetic dismissal",
 							"section": "Chorus",
-							"description": "The beat drops, and a clear, joyful warning echoes through the room: the door is closed, and there’s no looking back now."
+							"description": "The beat drops, and a clear, joyful warning echoes through the room: the door is closed, and there\u2019s no looking back now."
 						},
 						{
 							"mood": "sharp recollection",
@@ -681,7 +681,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:07:55.491641+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T14:08:15+00:00",
@@ -777,14 +777,14 @@
 					],
 					"compound_mood": "Nostalgic Anguish",
 					"sonic_texture": "A driving, pulsating electronic beat underpins swirling synth textures, creating an energetic dancefloor feel. Familiar vocal samples are woven in, sometimes soaring, sometimes echoing, against a backdrop of steady percussion and warm, layered harmonies.",
-					"interpretation": "Living with the echoes of past mistakes and unspoken truths. It’s a collision of public persona and private pain, where the longing for an authentic self battles a heart grown numb. The urge to break free from a hardened emotional shell meets the stark reality of how much time has passed since genuine connection felt possible, all while the world keeps spinning in a blur of borrowed memories.",
+					"interpretation": "Living with the echoes of past mistakes and unspoken truths. It\u2019s a collision of public persona and private pain, where the longing for an authentic self battles a heart grown numb. The urge to break free from a hardened emotional shell meets the stark reality of how much time has passed since genuine connection felt possible, all while the world keeps spinning in a blur of borrowed memories.",
 					"mood_description": "A familiar melody plays, but underneath the vibrant beat, a quiet regret pulses. It feels like dancing alone in a crowded room, lost in thoughts of what used to be."
 				},
 				"model_name": "google:gemini-2.5-flash",
 				"version": 2,
 				"created_at": "2026-03-28T08:08:48.705017+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T13:38:43+00:00",
@@ -829,7 +829,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:08:36.502303+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T13:30:04+00:00",
@@ -932,7 +932,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:08:47.618158+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T13:28:30+00:00",
@@ -977,7 +977,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:08:35.334047+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T13:28:08+00:00",
@@ -1088,14 +1088,14 @@
 						"danceability": 0.593,
 						"instrumentalness": 0.106
 					},
-					"interpretation": "The song explores the inherent conflict between individual integrity and societal pressures, particularly in the realm of politics and power. It’s about being caught between idealism and the cynical realities of a world where doing the right thing often goes unrewarded, while compromise is celebrated. There's a deep frustration with hypocrisy and the pervasive influence of established systems, leading to a weary detachment from the fight.",
+					"interpretation": "The song explores the inherent conflict between individual integrity and societal pressures, particularly in the realm of politics and power. It\u2019s about being caught between idealism and the cynical realities of a world where doing the right thing often goes unrewarded, while compromise is celebrated. There's a deep frustration with hypocrisy and the pervasive influence of established systems, leading to a weary detachment from the fight.",
 					"mood_description": "A driving beat and crisp guitars carry a feeling of observing a messy world from a slight distance. There's a nervous energy pushing forward, even as disillusionment settles in."
 				},
 				"model_name": "google:gemini-2.5-flash",
 				"version": 2,
 				"created_at": "2026-03-28T08:08:41.839125+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T01:00:58+00:00",
@@ -1206,14 +1206,14 @@
 						"danceability": 0.705,
 						"instrumentalness": 0
 					},
-					"interpretation": "Physical and emotional intimacy are intertwined, playfully framed through the universal language of music. The act of \"making music for love\" is a clear, sensual double entendre, inviting someone to merge not just bodies, but rhythms and frequencies. It’s a bold, confident proposition, using the shared experience of sound as a vehicle for desire and deep connection.",
+					"interpretation": "Physical and emotional intimacy are intertwined, playfully framed through the universal language of music. The act of \"making music for love\" is a clear, sensual double entendre, inviting someone to merge not just bodies, but rhythms and frequencies. It\u2019s a bold, confident proposition, using the shared experience of sound as a vehicle for desire and deep connection.",
 					"mood_description": "A smooth groove washes over, pulling you into a playful game of seduction. The air thrums with confident energy, promising an intimate connection."
 				},
 				"model_name": "google:gemini-2.5-flash",
 				"version": 2,
 				"created_at": "2026-03-28T08:09:10.562936+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T01:00:53+00:00",
@@ -1313,7 +1313,7 @@
 						"speechiness": 0.0395,
 						"acousticness": 0.538,
 						"danceability": 0.66,
-						"instrumentalness": 0.00000212
+						"instrumentalness": 2.12e-6
 					},
 					"interpretation": "Mario dives headfirst into the nuanced territory of shared attraction, painting a scene where desire isn't confined to a binary. It's about acknowledging and embracing a mutual pull towards another person, creating an open space for exploration without the need for traditional labels or overthinking. The focus remains on the immediate pleasure and the intriguing dynamic that arises when everyone involved is on board with a new kind of connection.",
 					"mood_description": "A warm, pulsing groove invites you into a private space where desires intertwine and boundaries gently blur. It feels like a late-night confession, both intimate and thrillingly new."
@@ -1322,7 +1322,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:09:09.13358+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T01:00:52+00:00",
@@ -1440,7 +1440,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:08:59.077651+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T01:00:51+00:00",
@@ -1518,7 +1518,7 @@
 					"headline": "A soulful plea to abandon the past and embrace a love that promises protection and a shared future.",
 					"key_lines": [
 						{
-							"line": "Ich versteh' deinen Pain, deshalb werd' ich mich ändern",
+							"line": "Ich versteh' deinen Pain, deshalb werd' ich mich \u00e4ndern",
 							"insight": "Recognizing past hurt and committing to personal growth as the foundation for a new relationship."
 						},
 						{
@@ -1558,7 +1558,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:09:00.706557+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T01:00:48+00:00",
@@ -1644,11 +1644,11 @@
 							"insight": "Finding profound resonance and joy in the quiet, inner life of another, a deeper connection than any external artifice."
 						},
 						{
-							"line": "But I’m stuck in the middle of seein' you hurt I know when you love him, and you wanna make it work",
+							"line": "But I\u2019m stuck in the middle of seein' you hurt I know when you love him, and you wanna make it work",
 							"insight": "The painful paradox of witnessing someone's suffering while understanding their enduring, perhaps misguided, loyalty to the source of their pain."
 						},
 						{
-							"line": "I don’t wanna confuse things But I just can’t keep lyin' to myself",
+							"line": "I don\u2019t wanna confuse things But I just can\u2019t keep lyin' to myself",
 							"insight": "The breaking point where personal truth overrides social decorum or the fear of complicating an already delicate situation."
 						}
 					],
@@ -1672,7 +1672,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:08:58.974599+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T01:00:47+00:00",
@@ -1782,7 +1782,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:09:55.415087+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T01:00:46+00:00",
@@ -1890,13 +1890,13 @@
 						"instrumentalness": 0
 					},
 					"interpretation": "The relentless pursuit of a romantic connection with someone who only offers friendship, creating a push and pull between fervent desire and the repeated, deflating reality. It's the conviction of knowing what you could be to someone, combined with the powerlessness of being unable to change their perception, played out over a bright, almost celebratory beat that feels both hopeful and a little oblivious to the underlying heartbreak.",
-					"mood_description": "The beat bounces with an almost desperate optimism, a bright energy trying to outrun the sting of rejection. There’s a relentless, almost pleading quality to the desire that won't give up."
+					"mood_description": "The beat bounces with an almost desperate optimism, a bright energy trying to outrun the sting of rejection. There\u2019s a relentless, almost pleading quality to the desire that won't give up."
 				},
 				"model_name": "google:gemini-2.5-flash",
 				"version": 2,
 				"created_at": "2026-03-28T08:09:59.391384+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T01:00:46+00:00",
@@ -2005,7 +2005,7 @@
 						"speechiness": 0.0307,
 						"acousticness": 0.215,
 						"danceability": 0.684,
-						"instrumentalness": 0.00000108
+						"instrumentalness": 1.08e-6
 					},
 					"interpretation": "A stark reckoning with self-inflicted loss. The track captures the disorienting aftermath of pushing away someone vital, realizing too late the depth of their importance. It's not just missing a partner; it's a fundamental questioning of how to exist when a core part of your world has vanished, leaving behind an unbearable void. The smooth production provides a stark, almost ironic, contrast to the raw, unraveling emotion.",
 					"mood_description": "A smooth, soulful rhythm pulls you into a familiar R&B sway, but a heavy heart anchors every word. It's a dance with regret, where the body moves but the spirit aches for what's gone."
@@ -2014,7 +2014,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:10:12.343744+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T01:00:45+00:00",
@@ -2125,14 +2125,14 @@
 						"danceability": 0.622,
 						"instrumentalness": 0
 					},
-					"interpretation": "It's about the deep frustration of witnessing someone you care for repeatedly choose pain, and the overwhelming desire to step in and provide the love and respect they truly deserve. It’s an offer to redefine what love can be.",
+					"interpretation": "It's about the deep frustration of witnessing someone you care for repeatedly choose pain, and the overwhelming desire to step in and provide the love and respect they truly deserve. It\u2019s an offer to redefine what love can be.",
 					"mood_description": "Smooth, confident R&B flows, wrapped in a sincere plea for a chance to heal. It feels like a warm hand reaching out, offering solace and strength."
 				},
 				"model_name": "google:gemini-2.5-flash",
 				"version": 2,
 				"created_at": "2026-03-28T08:10:06.807259+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T00:35:56+00:00",
@@ -2246,7 +2246,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:10:04.501066+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T00:35:53+00:00",
@@ -2364,7 +2364,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:10:24.160963+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T00:35:53+00:00",
@@ -2482,7 +2482,7 @@
 				"version": 2,
 				"created_at": "2026-03-28T08:10:28.836949+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T00:35:52+00:00",
@@ -2557,10 +2557,10 @@
 							"description": "The questions fade, but the empty space remains. The absence of an answer lingers, a haunting whisper of all the 'residuals' gone to someone else, leaving a quiet void."
 						}
 					],
-					"headline": "A raw, possessive ache for what’s gone, demanding to know who inherited the remnants of a broken love.",
+					"headline": "A raw, possessive ache for what\u2019s gone, demanding to know who inherited the remnants of a broken love.",
 					"key_lines": [
 						{
-							"line": "Can’t recall my mornings ever bein' this faded",
+							"line": "Can\u2019t recall my mornings ever bein' this faded",
 							"insight": "The blurring of time and self that comes with deep emotional turmoil, losing grip on reality."
 						},
 						{
@@ -2593,14 +2593,14 @@
 						"danceability": 0.58,
 						"instrumentalness": 0
 					},
-					"interpretation": "The agonizing possessiveness that comes from watching a past love move on, feeling robbed of all the intimate 'residuals' — the shared memories, teachings, and nicknames that now belong to someone new. It's a bitter struggle to accept that what was once deeply personal and exclusive is now freely given to another, leaving a gaping wound of confusion and hurt.",
-					"mood_description": "A restless heartache keeps swirling, trying to make sense of what's lost while a persistent beat pulls forward. It’s a melancholic groove that keeps you moving, even as the words dig into a deep wound."
+					"interpretation": "The agonizing possessiveness that comes from watching a past love move on, feeling robbed of all the intimate 'residuals' \u2014 the shared memories, teachings, and nicknames that now belong to someone new. It's a bitter struggle to accept that what was once deeply personal and exclusive is now freely given to another, leaving a gaping wound of confusion and hurt.",
+					"mood_description": "A restless heartache keeps swirling, trying to make sense of what's lost while a persistent beat pulls forward. It\u2019s a melancholic groove that keeps you moving, even as the words dig into a deep wound."
 				},
 				"model_name": "google:gemini-2.5-flash",
 				"version": 2,
 				"created_at": "2026-03-28T08:10:36.533358+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		},
 		{
 			"liked_at": "2025-06-06T00:35:51+00:00",
@@ -2711,14 +2711,14 @@
 						"danceability": 0.662,
 						"instrumentalness": 0
 					},
-					"interpretation": "It’s the intense, all-consuming joy of finding a person who makes everything else fade away. The world stops, priorities shift, and suddenly, they are the singular, most valuable thing, transforming every moment into pure adoration and an almost universal feeling of connection.",
+					"interpretation": "It\u2019s the intense, all-consuming joy of finding a person who makes everything else fade away. The world stops, priorities shift, and suddenly, they are the singular, most valuable thing, transforming every moment into pure adoration and an almost universal feeling of connection.",
 					"mood_description": "A smooth, pulsing groove wraps around a heart-on-sleeve declaration. It's the feeling of total infatuation, wanting to shout it from the rooftops while swaying close."
 				},
 				"model_name": "google:gemini-2.5-flash",
 				"version": 2,
 				"created_at": "2026-03-28T08:10:26.598351+00:00"
 			},
-			"uiAnalysisStatus": "analyzed"
+			"displayState": "analyzed"
 		}
 	],
 	"matchingSongs": [
@@ -2816,7 +2816,7 @@
 						"speechiness": 0.0694,
 						"acousticness": 0.00261,
 						"danceability": 0.762,
-						"instrumentalness": 0.0000156
+						"instrumentalness": 1.56e-5
 					},
 					"interpretation": "Breaking free from a destructive on-again, off-again relationship requires setting explicit, non-negotiable rules for oneself. This isn't just about cutting ties with an ex; it's about re-training your own instincts, recognizing patterns of manipulation, and building the internal fortitude to resist the magnetic pull of past comfort, even when it's harmful. The bright, confident production masks the active, daily fight to uphold these boundaries, making the self-affirmation both a rallying cry and a desperate plea.",
 					"mood_description": "A potent mix of determined self-talk and an irresistible beat. It feels like dancing through a breakup, armed with unwavering resolve."
@@ -3029,7 +3029,7 @@
 						"speechiness": 0.0477,
 						"acousticness": 0.0349,
 						"danceability": 0.812,
-						"instrumentalness": 0.00000264
+						"instrumentalness": 2.64e-6
 					},
 					"interpretation": "Refusing to settle for anything less than a profound, exciting connection, a clear line is drawn for potential partners: either step up to meet her needs or step aside. There's no more time for teaching or compromise; the expectation is a partner who inherently knows how to engage deeply and passionately, propelled by an electrifying beat that makes this ultimatum feel like an undeniable act of self-worth.",
 					"mood_description": "The thrumming beat lifts your spirit, but a firm voice cuts through the glitter, making you feel the exhilarating truth of knowing what you deserve."
@@ -3086,7 +3086,7 @@
 						{
 							"mood": "unapologetic dismissal",
 							"section": "Chorus",
-							"description": "The beat drops, and a clear, joyful warning echoes through the room: the door is closed, and there’s no looking back now."
+							"description": "The beat drops, and a clear, joyful warning echoes through the room: the door is closed, and there\u2019s no looking back now."
 						},
 						{
 							"mood": "sharp recollection",
@@ -3289,7 +3289,7 @@
 						"danceability": 0.622,
 						"instrumentalness": 0
 					},
-					"interpretation": "It's about the deep frustration of witnessing someone you care for repeatedly choose pain, and the overwhelming desire to step in and provide the love and respect they truly deserve. It’s an offer to redefine what love can be.",
+					"interpretation": "It's about the deep frustration of witnessing someone you care for repeatedly choose pain, and the overwhelming desire to step in and provide the love and respect they truly deserve. It\u2019s an offer to redefine what love can be.",
 					"mood_description": "Smooth, confident R&B flows, wrapped in a sincere plea for a chance to heal. It feels like a warm hand reaching out, offering solace and strength."
 				}
 			},
@@ -3363,7 +3363,7 @@
 						{
 							"mood": "Hypnotic repetition",
 							"section": "Outro",
-							"description": "The core sentiment echoes and fades, a singular focus on the power of 'one' — one kiss, one person, one essential need — leaving a lingering, captivating impression."
+							"description": "The core sentiment echoes and fades, a singular focus on the power of 'one' \u2014 one kiss, one person, one essential need \u2014 leaving a lingering, captivating impression."
 						}
 					],
 					"headline": "A confident invitation to an intoxicating, fleeting dancefloor romance, born from a single spark.",
@@ -3400,7 +3400,7 @@
 						"speechiness": 0.11,
 						"acousticness": 0.037,
 						"danceability": 0.79,
-						"instrumentalness": 0.0000225
+						"instrumentalness": 2.25e-5
 					},
 					"interpretation": "An immediate, undeniable attraction blooms from a single interaction, painting a picture of confident allure and the thrill of new possibilities. It's about owning that magnetic pull and inviting someone into a moment that feels both spontaneous and destined, fully embracing the intoxicating rush of instant connection.",
 					"mood_description": "An undeniable magnetic pull, wrapped in a pulsing beat that feels like an instant connection. The air vibrates with electric possibilities, inviting you to get lost in the moment."
@@ -3492,7 +3492,7 @@
 			"name": "yilkes!",
 			"trackCount": 1,
 			"image": "https://i.scdn.co/image/ab67616d00001e02382514f0114ba8f4a16d5db4",
-			"description": "✨: 2!!",
+			"description": "\u2728: 2!!",
 			"lastUpdated": "2d ago",
 			"flagged": false
 		},
@@ -3501,7 +3501,7 @@
 			"name": "jj",
 			"trackCount": 0,
 			"image": "",
-			"description": "✨: AI: make it make sense bestie",
+			"description": "\u2728: AI: make it make sense bestie",
 			"lastUpdated": "2d ago",
 			"flagged": false
 		},
@@ -3510,7 +3510,7 @@
 			"name": "Super Bock Super Rock 2021",
 			"trackCount": 14,
 			"image": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84c1975a91a3224aa534fc35ba",
-			"description": "made with ♪ by @inotbeingf",
+			"description": "made with \u266a by @inotbeingf",
 			"lastUpdated": "2d ago",
 			"flagged": false
 		},
@@ -3528,7 +3528,7 @@
 			"name": "main character energy!!!!",
 			"trackCount": 0,
 			"image": "",
-			"description": "✨: songs that make me feel like the main character in my own movie!!!!!",
+			"description": "\u2728: songs that make me feel like the main character in my own movie!!!!!",
 			"lastUpdated": "2d ago",
 			"flagged": false
 		},

@@ -10,7 +10,11 @@ import {
 	type OnboardingStep,
 } from "@/lib/domains/library/accounts/preferences-queries";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
-import type { OnboardingData } from "@/lib/server/onboarding.functions";
+import type { LandingSongManifest } from "@/lib/data/landing-songs";
+import type {
+	OnboardingData,
+	ReadyCopyVariant,
+} from "@/lib/server/onboarding.functions";
 import { useAuthenticatedTheme } from "@/lib/theme/authenticated-theme";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import type { ThemeColor } from "@/lib/theme/types";
@@ -18,8 +22,10 @@ import { AnimatedStep } from "./components/AnimatedStep";
 import { FlagPlaylistsStep } from "./components/FlagPlaylistsStep";
 import { InstallExtensionStep } from "./components/InstallExtensionStep";
 import { PickColorStep } from "./components/PickColorStep";
-import { ReadyStep } from "./components/ReadyStep";
+import { PickDemoSongStep } from "./components/PickDemoSongStep";
 import { StepContainer } from "./components/StepContainer";
+import { PlanSelectionStep } from "./components/PlanSelectionStep";
+
 import { SyncingStep } from "./components/SyncingStep";
 import { WelcomeStep } from "./components/WelcomeStep";
 import "./types"; // Import to ensure HistoryState augmentation is loaded
@@ -34,7 +40,9 @@ interface StepContext {
 	setLocalTheme: (theme: ThemeColor) => void;
 	phaseJobIds: PhaseJobIds | null;
 	playlists: OnboardingData["playlists"];
+	landingSongs: LandingSongManifest[];
 	syncStats: OnboardingData["syncStats"];
+	readyCopyVariant: ReadyCopyVariant;
 }
 
 interface StepConfig {
@@ -66,8 +74,25 @@ const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 		render: (ctx) => <FlagPlaylistsStep playlists={ctx.playlists} />,
 		fullBleed: true,
 	},
-	ready: {
-		render: (ctx) => <ReadyStep syncStats={ctx.syncStats} />,
+	"pick-demo-song": {
+		render: (ctx) => <PickDemoSongStep songs={ctx.landingSongs} />,
+		fullBleed: true,
+	},
+	"song-walkthrough": {
+		render: () => null,
+		hideIndicator: true,
+	},
+	"match-walkthrough": {
+		render: () => null,
+		hideIndicator: true,
+	},
+	"plan-selection": {
+		render: (ctx) => (
+			<PlanSelectionStep
+				syncStats={ctx.syncStats}
+				readyCopyVariant={ctx.readyCopyVariant}
+			/>
+		),
 	},
 	complete: {
 		render: () => null, // Handled by redirect
@@ -93,7 +118,9 @@ export function Onboarding({ step, data }: OnboardingProps) {
 		setLocalTheme: setThemeColor,
 		phaseJobIds,
 		playlists: data.playlists,
+		landingSongs: data.landingSongs,
 		syncStats: data.syncStats,
+		readyCopyVariant: data.readyCopyVariant,
 	};
 
 	const config = STEP_CONFIG[step];

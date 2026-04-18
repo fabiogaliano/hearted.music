@@ -18,6 +18,7 @@
  *   bun scripts/reset-onboarding.ts <email> --wipe-library --clear-api-token
  */
 
+import { env } from "@/env";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 
 const colors = {
@@ -102,6 +103,7 @@ interface ResetCounts {
 	playlistAnalysesDeleted: number;
 	playlistsDeleted: number;
 	apiTokensDeleted: number;
+	billingRowsCleared: number;
 }
 
 function parseArgs(argv: string[]): ResetOptions {
@@ -201,6 +203,7 @@ function makeEmptyCounts(): ResetCounts {
 		playlistAnalysesDeleted: 0,
 		playlistsDeleted: 0,
 		apiTokensDeleted: 0,
+		billingRowsCleared: 0,
 	};
 }
 
@@ -326,6 +329,72 @@ async function clearJobs(
 	return { jobFailures, jobs: jobsDeleted };
 }
 
+async function resetBillingState(
+	supabase: ReturnType<typeof createAdminSupabaseClient>,
+	accountId: string,
+): Promise<number> {
+	let total = 0;
+
+	const { count: unlocks } = await supabase
+		.from("account_song_unlock")
+		.delete({ count: "exact" })
+		.eq("account_id", accountId);
+	total += unlocks ?? 0;
+
+	const { count: txns } = await supabase
+		.from("credit_transaction")
+		.delete({ count: "exact" })
+		.eq("account_id", accountId);
+	total += txns ?? 0;
+
+	// Delete conversions first — CASCADE removes allocation rows
+	const { count: conversions } = await supabase
+		.from("subscription_credit_conversion")
+		.delete({ count: "exact" })
+		.eq("account_id", accountId);
+	total += conversions ?? 0;
+
+	const { count: lots } = await supabase
+		.from("pack_credit_lot")
+		.delete({ count: "exact" })
+		.eq("account_id", accountId);
+	total += lots ?? 0;
+
+	const { count: activations } = await supabase
+		.from("billing_activation")
+		.delete({ count: "exact" })
+		.eq("account_id", accountId);
+	total += activations ?? 0;
+
+	const unlimitedAccessSource = env.BILLING_ENABLED ? null : "self_hosted";
+
+	const { count: updated } = await supabase
+		.from("account_billing")
+		.update(
+			{
+				plan: "free",
+				credit_balance: 0,
+				subscription_status: "none",
+				cancel_at_period_end: false,
+				stripe_customer_id: null,
+				stripe_subscription_id: null,
+				subscription_period_end: null,
+				unlimited_access_source: unlimitedAccessSource,
+			},
+			{ count: "exact" },
+		)
+		.eq("account_id", accountId);
+	total += updated ?? 0;
+
+	if (!env.BILLING_ENABLED) {
+		await supabase.rpc("reprioritize_pending_jobs_for_account", {
+			p_account_id: accountId,
+		});
+	}
+
+	return total;
+}
+
 async function wipeLibraryRows(
 	supabase: ReturnType<typeof createAdminSupabaseClient>,
 	accountId: string,
@@ -443,6 +512,8 @@ async function resetOnboarding(
 
 	counts.itemStatuses = await deleteCount(supabase, "item_status", accountId);
 
+	counts.billingRowsCleared = await resetBillingState(supabase, accountId);
+
 	if (options.wipeLibrary) {
 		const libraryCounts = await wipeLibraryRows(supabase, accountId);
 		counts.likedSongsDeleted = libraryCounts.likedSongsDeleted;
@@ -478,6 +549,7 @@ function printCounts(counts: ResetCounts): void {
 		["playlist analyses deleted", counts.playlistAnalysesDeleted],
 		["playlists deleted", counts.playlistsDeleted],
 		["api tokens deleted", counts.apiTokensDeleted],
+		["billing rows cleared", counts.billingRowsCleared],
 	];
 
 	for (const [label, count] of rows) {
@@ -532,6 +604,7 @@ async function main(): Promise<void> {
 	console.log("     - onboarding_step -> 'welcome'");
 	console.log("     - onboarding_completed_at -> NULL");
 	console.log("     - phase_job_ids -> NULL");
+	console.log("     - billing state -> defaults (plan=free, balance=0)");
 	if (!options.wipeLibrary) {
 		console.log("     - playlist.is_target -> false");
 		console.log("     - liked songs / playlists preserved");

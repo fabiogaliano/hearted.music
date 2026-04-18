@@ -1,5 +1,5 @@
 import data from "./fixtures.json";
-import type { LikedSong, UIAnalysisStatus } from "@/features/liked-songs/types";
+import type { LikedSong } from "@/features/liked-songs/types";
 import type { DashboardProps, ActivityItem } from "@/features/dashboard/types";
 import type { SongForMatching, Playlist } from "@/features/matching/types";
 
@@ -30,7 +30,7 @@ export function simulateEnrichment(
 		return {
 			...song,
 			analysis: null,
-			uiAnalysisStatus: "not_analyzed" as UIAnalysisStatus,
+			displayState: "pending",
 			track: {
 				...song.track,
 				audio_features: null,

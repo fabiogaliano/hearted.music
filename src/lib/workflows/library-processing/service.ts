@@ -6,6 +6,8 @@ import {
 	getJobById,
 } from "@/lib/data/jobs";
 import { EnrichmentChunkProgressSchema } from "@/lib/platform/jobs/progress/enrichment";
+import { readBillingState } from "@/lib/domains/billing/queries";
+import type { BillingState } from "@/lib/domains/billing/state";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
 import {
 	getPlaylistSongs,
@@ -26,6 +28,15 @@ import type {
 	LibraryProcessingEffect,
 	LibraryProcessingState,
 } from "./types";
+
+const FREE_DEFAULT_BILLING_STATE: BillingState = {
+	plan: "free",
+	creditBalance: 0,
+	subscriptionStatus: "none",
+	cancelAtPeriodEnd: false,
+	unlimitedAccess: { kind: "none" },
+	queueBand: "low",
+};
 
 interface JobOutcomeMetadata {
 	satisfiedMarker: string | null;
@@ -144,7 +155,17 @@ async function executeEffect(
 	change: LibraryProcessingChange,
 	jobOutcomeMetadata: JobOutcomeMetadata,
 ): Promise<LibraryProcessingState> {
-	const band = await resolveQueuePriority(effect.accountId);
+	const supabase = createAdminSupabaseClient();
+	const billingResult = await readBillingState(supabase, effect.accountId);
+	const billingBand = resolveQueuePriority(
+		Result.isOk(billingResult)
+			? billingResult.value
+			: FREE_DEFAULT_BILLING_STATE,
+	);
+	const band =
+		change.kind === "onboarding_target_selection_confirmed"
+			? "priority"
+			: billingBand;
 	const queuePriority = bandToNumeric(band);
 
 	if (effect.kind === "ensure_enrichment_job") {
@@ -254,6 +275,10 @@ export async function applyLibraryProcessingChange(
 		return;
 	}
 
+	console.log(
+		`[library-processing] change=${change.kind} effects=[${effects.map((e) => e.kind).join(", ")}]`,
+	);
+
 	let currentState = persistResult.value;
 
 	for (const effect of effects) {
@@ -264,6 +289,7 @@ export async function applyLibraryProcessingChange(
 				change,
 				jobOutcomeMetadata,
 			);
+			console.log(`[library-processing] Effect ${effect.kind} executed`);
 		} catch (err) {
 			console.error(`[library-processing] Effect ${effect.kind} failed:`, err);
 		}

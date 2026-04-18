@@ -21,7 +21,12 @@ import {
 	useState,
 } from "react";
 
+import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
+import type { OnboardingMode } from "@/features/onboarding/step-resolver";
+import type { WalkthroughSong } from "@/features/onboarding/step-resolver";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
+import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
+import type { BillingState } from "@/lib/domains/billing/state";
 import { scrollListElementIntoView } from "@/lib/keyboard/listScroll";
 import type { ListNavigationSource } from "@/lib/keyboard/types";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
@@ -32,8 +37,11 @@ import { generateSongSlug } from "@/lib/utils/slug";
 
 import { SongCard } from "./components/SongCard";
 import { SongDetailPanel } from "./components/SongDetailPanel";
+import { SongSelectionBar } from "./components/SongSelectionBar";
+import { UnlockConfirmDialog } from "./components/UnlockConfirmDialog";
 import { useInfiniteScroll } from "./hooks/useInfiniteScroll";
 import { useSongExpansion } from "./hooks/useSongExpansion";
+import { useSongUnlock } from "./hooks/useSongUnlock";
 import {
 	type FilterOption,
 	likedSongBySlugQueryOptions,
@@ -54,6 +62,33 @@ interface LikedSongsPageProps {
 	isDarkMode?: boolean;
 	/** Account ID for query cache isolation */
 	accountId: string;
+	/** Billing state for song unlock selection UI (pack users only) */
+	billingState?: BillingState;
+	/** Onboarding mode from route context */
+	onboardingMode?: OnboardingMode;
+	/** Demo song for walkthrough spotlight */
+	walkthroughSong?: WalkthroughSong | null;
+}
+
+function buildSyntheticLikedSong(ws: WalkthroughSong): LikedSong {
+	return {
+		liked_at: new Date().toISOString(),
+		matching_status: null,
+		displayState: "analyzed",
+		analysis: null,
+		track: {
+			id: ws.id,
+			spotify_track_id: ws.spotifyTrackId,
+			name: ws.name,
+			artist: ws.artist,
+			artist_id: null,
+			artist_image_url: null,
+			album: ws.album,
+			image_url: ws.albumArtUrl,
+			genres: [],
+			audio_features: null,
+		},
+	};
 }
 
 function findSongForSlug(
@@ -77,10 +112,68 @@ export function LikedSongsPage({
 	selectedSlug,
 	isDarkMode: initialDarkMode = true,
 	accountId,
+	billingState,
+	onboardingMode,
+	walkthroughSong,
 }: LikedSongsPageProps) {
 	const theme = useTheme();
 	const { isEnrichmentRunning } = useActiveJobs(accountId);
 	const [isDarkMode, setIsDarkMode] = useState(initialDarkMode);
+	const isWalkthrough = onboardingMode === "walkthrough";
+
+	const showSelectionUI =
+		!isWalkthrough &&
+		billingState != null &&
+		!hasUnlimitedAccess(billingState) &&
+		billingState.creditBalance > 0;
+
+	const showPaywall =
+		!isWalkthrough &&
+		billingState != null &&
+		!hasUnlimitedAccess(billingState) &&
+		billingState.creditBalance === 0;
+
+	const [selectionMode, setSelectionMode] = useState(false);
+	const [selectedSongIds, setSelectedSongIds] = useState<Set<string>>(
+		new Set(),
+	);
+
+	const toggleSongSelection = useCallback((songId: string) => {
+		setSelectedSongIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(songId)) {
+				next.delete(songId);
+			} else {
+				next.add(songId);
+			}
+			return next;
+		});
+	}, []);
+
+	const exitSelectionMode = useCallback(() => {
+		setSelectionMode(false);
+		setSelectedSongIds(new Set());
+	}, []);
+
+	const {
+		flowState,
+		requestConfirmation,
+		cancelConfirmation,
+		confirmUnlock,
+		dismiss: dismissFlow,
+	} = useSongUnlock(accountId);
+
+	const handleUnlockConfirm = useCallback(() => {
+		if (selectedSongIds.size === 0) return;
+		requestConfirmation(Array.from(selectedSongIds));
+	}, [selectedSongIds, requestConfirmation]);
+
+	const handleFlowDismiss = useCallback(() => {
+		dismissFlow();
+		if (flowState.step === "success") {
+			exitSelectionMode();
+		}
+	}, [dismissFlow, flowState.step, exitSelectionMode]);
 
 	useShortcut({
 		key: "mod+d",
@@ -100,8 +193,14 @@ export function LikedSongsPage({
 		[data?.pages],
 	);
 
-	const displayedSongs = songs;
-	const hasMore = hasNextPage ?? false;
+	const displayedSongs = useMemo(() => {
+		if (!isWalkthrough || !walkthroughSong) return songs;
+		const demoSong = buildSyntheticLikedSong(walkthroughSong);
+		const deduped = songs.filter((s) => s.track.id !== walkthroughSong.id);
+		return [demoSong, ...deduped];
+	}, [songs, isWalkthrough, walkthroughSong]);
+
+	const hasMore = isWalkthrough ? false : (hasNextPage ?? false);
 	const selectedSongFromLoadedPages = useMemo(
 		() => findSongForSlug(displayedSongs, selectedSlug),
 		[displayedSongs, selectedSlug],
@@ -183,6 +282,14 @@ export function LikedSongsPage({
 		refetchInterval: isEnrichmentRunning ? 5_000 : undefined,
 	});
 
+	const navItems = useMemo(
+		() =>
+			isWalkthrough && walkthroughSong
+				? displayedSongs.filter((s) => s.track.id === walkthroughSong.id)
+				: displayedSongs,
+		[displayedSongs, isWalkthrough, walkthroughSong],
+	);
+
 	const {
 		focusedIndex,
 		lastCursorChange,
@@ -192,9 +299,9 @@ export function LikedSongsPage({
 		focusFocusedItem,
 		getItemProps,
 	} = useListNavigation<LikedSong>({
-		items: displayedSongs,
+		items: navItems,
 		scope: "liked-list",
-		enabled: !isExpanded && displayedSongs.length > 0,
+		enabled: !isExpanded && navItems.length > 0,
 		onSelect: (song, index, element) => {
 			if (!element) return;
 			pendingRouteSelectionSourceRef.current = "keyboard";
@@ -211,9 +318,9 @@ export function LikedSongsPage({
 	useShortcut({
 		key: "enter",
 		handler: () => {
-			if (focusedIndex < 0 || focusedIndex >= displayedSongs.length) return;
+			if (focusedIndex < 0 || focusedIndex >= navItems.length) return;
 
-			const song = displayedSongs[focusedIndex];
+			const song = navItems[focusedIndex];
 			const element = getFocusedElement();
 			if (!element) return;
 
@@ -327,6 +434,8 @@ export function LikedSongsPage({
 		prefetchAdjacentSuggestions,
 	]);
 
+	const noopItemRef = useCallback(() => {}, []);
+
 	return (
 		<div ref={containerRef} className="relative min-h-[600px] max-w-5xl">
 			{/* Header */}
@@ -382,8 +491,55 @@ export function LikedSongsPage({
 					>
 						{stats?.success ? stats.pending : "—"} pending
 					</span>
+					{stats?.success && stats.locked > 0 && (
+						<>
+							<span
+								className="text-sm"
+								style={{ fontFamily: fonts.body, color: theme.textMuted }}
+							>
+								·
+							</span>
+							<span
+								className="text-sm tabular-nums"
+								style={{ fontFamily: fonts.body, color: theme.textMuted }}
+							>
+								{stats.locked} locked
+							</span>
+						</>
+					)}
+					{showSelectionUI &&
+						stats?.success &&
+						stats.locked > 0 &&
+						!selectionMode && (
+							<button
+								type="button"
+								onClick={() => setSelectionMode(true)}
+								className="cursor-pointer rounded-full border px-3 py-1 text-xs tracking-wide uppercase transition-opacity hover:opacity-80"
+								style={{
+									fontFamily: fonts.body,
+									borderColor: theme.border,
+									color: theme.text,
+									background: "transparent",
+								}}
+							>
+								Unlock Songs
+							</button>
+						)}
 				</div>
 			</div>
+
+			{/* Zero-balance paywall CTA */}
+			{showPaywall && billingState && (
+				<div
+					className="mb-6 rounded-xl px-6 py-4"
+					style={{
+						background: theme.surfaceDim,
+						border: `1px solid ${theme.border}`,
+					}}
+				>
+					<PaywallCTA billingState={billingState} />
+				</div>
+			)}
 
 			{/* Song list */}
 			<div className="border-t pt-6" style={{ borderColor: theme.border }}>
@@ -409,24 +565,42 @@ export function LikedSongsPage({
 					</div>
 				) : (
 					<div className="space-y-1">
-						{displayedSongs.map((song, index) => {
-							const itemProps = getItemProps(song, index);
+						{displayedSongs.map((song) => {
+							const isDemoSong =
+								isWalkthrough &&
+								walkthroughSong &&
+								song.track.id === walkthroughSong.id;
+							const isSongEnabled = !isWalkthrough || !!isDemoSong;
+							const navIndex = isSongEnabled
+								? navItems.findIndex((s) => s.track.id === song.track.id)
+								: -1;
+							const itemProps =
+								navIndex >= 0 ? getItemProps(song, navIndex) : null;
 							return (
 								<SongCard
 									key={song.track.id}
 									song={song}
 									albumArtUrl={song.track.image_url ?? undefined}
 									isSelected={selectedSongId === song.track.id}
-									isFocused={itemProps["data-focused"]}
-									itemRef={itemProps.ref}
-									tabIndex={itemProps.tabIndex}
-									dataFocused={itemProps["data-focused"]}
-									navEngaged={itemProps["data-nav-engaged"]}
-									onPointerDown={itemProps.onPointerDown}
-									onFocus={itemProps.onFocus}
-									onBlur={itemProps.onBlur}
-									onClick={(e) => handlePointerExpand(song, e.currentTarget)}
+									isFocused={itemProps?.["data-focused"] ?? false}
+									itemRef={itemProps?.ref ?? noopItemRef}
+									tabIndex={itemProps?.tabIndex ?? -1}
+									dataFocused={itemProps?.["data-focused"] ?? false}
+									navEngaged={itemProps?.["data-nav-engaged"] ?? false}
+									onPointerDown={itemProps?.onPointerDown}
+									onFocus={itemProps?.onFocus}
+									onBlur={itemProps?.onBlur}
+									onClick={(e) =>
+										isSongEnabled
+											? handlePointerExpand(song, e.currentTarget)
+											: undefined
+									}
 									isAnimatingTo={closingToSongId === song.track.id}
+									selectionMode={selectionMode && showSelectionUI}
+									isChecked={selectedSongIds.has(song.track.id)}
+									onToggleSelect={toggleSongSelection}
+									isEnabled={isSongEnabled}
+									isWalkthroughHighlight={!!isDemoSong && !isExpanded}
 								/>
 							);
 						})}
@@ -457,18 +631,41 @@ export function LikedSongsPage({
 					artistImageUrl={artistImageUrl}
 					isExpanded={isExpanded}
 					startRect={startRect}
-					hasNext={hasNext}
-					hasPrevious={hasPrevious}
+					hasNext={isWalkthrough ? false : hasNext}
+					hasPrevious={isWalkthrough ? false : hasPrevious}
 					onClose={handleClose}
 					onNext={handleNextSong}
 					onPrevious={handlePreviousSong}
 					isDark={isDarkMode}
 					isEnrichmentRunning={isEnrichmentRunning}
+					isWalkthrough={isWalkthrough}
+				/>
+			)}
+
+			{/* Selection bar for pack users */}
+			{selectionMode && showSelectionUI && billingState && (
+				<SongSelectionBar
+					selectedCount={selectedSongIds.size}
+					remainingBalance={billingState.creditBalance}
+					onConfirm={handleUnlockConfirm}
+					onCancel={exitSelectionMode}
+				/>
+			)}
+
+			{/* Unlock confirmation / progress / error dialog */}
+			{flowState.step !== "idle" && billingState && (
+				<UnlockConfirmDialog
+					flowState={flowState}
+					remainingBalance={billingState.creditBalance}
+					billingState={billingState}
+					onConfirm={confirmUnlock}
+					onCancel={cancelConfirmation}
+					onDismiss={handleFlowDismiss}
 				/>
 			)}
 
 			{/* Dark mode toggle indicator */}
-			{!isExpanded && (
+			{!isExpanded && !selectionMode && (
 				<button
 					type="button"
 					className="fixed right-6 bottom-6 z-40 cursor-pointer rounded-full px-3 py-2 backdrop-blur-md transition-transform hover:scale-105"

@@ -108,7 +108,8 @@ const SCOPE_PRIORITY: Record<ShortcutScope, number> = {
 	"onboarding-colors": 3,
 	"onboarding-extension": 3,
 	"onboarding-playlists": 3,
-	"onboarding-ready": 3,
+	"onboarding-pick-demo-song": 3,
+	"onboarding-plan-selection": 3,
 	modal: 10,
 };
 

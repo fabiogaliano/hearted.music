@@ -27,6 +27,10 @@ for (const [path, data] of Object.entries(allModules)) {
 	}
 }
 
+export function getLandingSongsManifest(): LandingSongManifest[] {
+	return manifest;
+}
+
 function shuffleArray<T>(arr: T[]): T[] {
 	const shuffled = [...arr];
 	for (let i = shuffled.length - 1; i > 0; i--) {

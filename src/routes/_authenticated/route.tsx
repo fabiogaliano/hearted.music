@@ -17,16 +17,22 @@
 
 import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-	createFileRoute,
-	Outlet,
-	redirect,
-	useLocation,
-} from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { Sidebar } from "./-components/Sidebar";
+import { usePostPurchaseReturn } from "@/features/billing/hooks/usePostPurchaseReturn";
+import {
+	resolveStep,
+	isPathAllowed,
+	type OnboardingMode,
+	type WalkthroughSong,
+} from "@/features/onboarding/step-resolver";
+import { billingKeys } from "@/features/billing/query-keys";
 import { matchingSessionQueryOptions } from "@/features/matching/queries";
 import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
+import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
+import type { BillingState } from "@/lib/domains/billing/state";
 import { requireAuthSession } from "@/lib/server/auth.functions";
+import { getBillingState } from "@/lib/server/billing.functions";
 import { getOnboardingData } from "@/lib/server/onboarding.functions";
 import { AuthenticatedThemeProvider } from "@/lib/theme/authenticated-theme";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
@@ -62,26 +68,58 @@ export const Route = createFileRoute("/_authenticated")({
 			staleTime: cause === "enter" ? 0 : 5 * 60 * 1000,
 		});
 
-		const isOnboardingRoute = location.pathname.startsWith("/onboarding");
+		let onboardingMode: OnboardingMode;
+		let walkthroughSong: WalkthroughSong | null = null;
 
-		if (!onboarding.isComplete && !isOnboardingRoute) {
-			throw redirect({
-				to: "/onboarding",
-				search: { step: onboarding.currentStep },
-			});
+		if (onboarding.isComplete) {
+			onboardingMode = "complete";
+		} else {
+			const resolved = resolveStep(onboarding.currentStep);
+			onboardingMode = resolved.onboardingMode;
+			walkthroughSong = onboarding.walkthroughSong;
+
+			if (!isPathAllowed(location.pathname, resolved)) {
+				if (resolved.allowedPath === "/onboarding") {
+					throw redirect({
+						to: "/onboarding",
+						search: { step: onboarding.currentStep },
+					});
+				}
+				throw redirect({ to: resolved.allowedPath });
+			}
 		}
 
-		return { session, account, theme: onboarding.theme };
+		const billingState = await queryClient.ensureQueryData({
+			queryKey: billingKeys.state,
+			queryFn: () => getBillingState(),
+			staleTime: 5 * 60 * 1000,
+		});
+
+		return {
+			session,
+			account,
+			theme: onboarding.theme,
+			billingState,
+			onboardingMode,
+			walkthroughSong,
+		};
 	},
 	component: AuthenticatedLayout,
 });
 
 function AuthenticatedLayout() {
-	const { theme: themeColor, account, session } = Route.useRouteContext();
-	const location = useLocation();
-	const isOnboarding = location.pathname.startsWith("/onboarding");
+	const {
+		theme: themeColor,
+		account,
+		session,
+		billingState,
+		onboardingMode,
+	} = Route.useRouteContext();
 
-	useActiveJobCompletionEffects(session.accountId, !isOnboarding);
+	const isComplete = onboardingMode === "complete";
+
+	useActiveJobCompletionEffects(session.accountId, isComplete);
+	usePostPurchaseReturn(session.accountId, billingState);
 
 	const { data: matchingSession } = useQuery(
 		matchingSessionQueryOptions(session.accountId),
@@ -96,17 +134,18 @@ function AuthenticatedLayout() {
 
 	return (
 		<AuthenticatedThemeProvider initialThemeColor={themeColor ?? DEFAULT_THEME}>
-			{isOnboarding ? (
+			{isComplete ? (
+				<AuthenticatedShell
+					account={account}
+					billingState={billingState}
+					pendingSuggestions={pendingSuggestions}
+					devPanel={devPanel}
+				/>
+			) : (
 				<>
 					<Outlet />
 					{devPanel}
 				</>
-			) : (
-				<AuthenticatedShell
-					account={account}
-					pendingSuggestions={pendingSuggestions}
-					devPanel={devPanel}
-				/>
 			)}
 		</AuthenticatedThemeProvider>
 	);
@@ -114,10 +153,12 @@ function AuthenticatedLayout() {
 
 function AuthenticatedShell({
 	account,
+	billingState,
 	pendingSuggestions,
 	devPanel,
 }: {
 	account: Awaited<ReturnType<typeof requireAuthSession>>["account"] | null;
+	billingState: BillingState;
 	pendingSuggestions: number;
 	devPanel: React.ReactNode;
 }) {
@@ -134,7 +175,8 @@ function AuthenticatedShell({
 			<Sidebar
 				unsortedCount={pendingSuggestions}
 				userName={account?.display_name ?? account?.email ?? null}
-				userPlan="Free Plan"
+				userPlan={getPlanLabel(billingState)}
+				userBalance={getDisplayBalance(billingState)}
 				userImageUrl={account?.image_url}
 			/>
 			<main className="flex-1 p-8">

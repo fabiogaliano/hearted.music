@@ -75,6 +75,113 @@ export type Database = {
 					},
 				];
 			};
+			account_billing: {
+				Row: {
+					account_id: string;
+					cancel_at_period_end: boolean;
+					created_at: string;
+					credit_balance: number;
+					plan: string;
+					stripe_customer_id: string | null;
+					stripe_subscription_id: string | null;
+					subscription_period_end: string | null;
+					subscription_status: string;
+					unlimited_access_source: string | null;
+					updated_at: string;
+				};
+				Insert: {
+					account_id: string;
+					cancel_at_period_end?: boolean;
+					created_at?: string;
+					credit_balance?: number;
+					plan?: string;
+					stripe_customer_id?: string | null;
+					stripe_subscription_id?: string | null;
+					subscription_period_end?: string | null;
+					subscription_status?: string;
+					unlimited_access_source?: string | null;
+					updated_at?: string;
+				};
+				Update: {
+					account_id?: string;
+					cancel_at_period_end?: boolean;
+					created_at?: string;
+					credit_balance?: number;
+					plan?: string;
+					stripe_customer_id?: string | null;
+					stripe_subscription_id?: string | null;
+					subscription_period_end?: string | null;
+					subscription_status?: string;
+					unlimited_access_source?: string | null;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "account_billing_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: true;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			account_song_unlock: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					granted_stripe_event_id: string | null;
+					granted_stripe_subscription_id: string | null;
+					granted_subscription_period_end: string | null;
+					id: string;
+					revoked_at: string | null;
+					revoked_reason: string | null;
+					revoked_stripe_event_id: string | null;
+					song_id: string;
+					source: string;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					granted_stripe_event_id?: string | null;
+					granted_stripe_subscription_id?: string | null;
+					granted_subscription_period_end?: string | null;
+					id?: string;
+					revoked_at?: string | null;
+					revoked_reason?: string | null;
+					revoked_stripe_event_id?: string | null;
+					song_id: string;
+					source: string;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					granted_stripe_event_id?: string | null;
+					granted_stripe_subscription_id?: string | null;
+					granted_subscription_period_end?: string | null;
+					id?: string;
+					revoked_at?: string | null;
+					revoked_reason?: string | null;
+					revoked_stripe_event_id?: string | null;
+					song_id?: string;
+					source?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "account_song_unlock_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "account_song_unlock_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			api_token: {
 				Row: {
 					account_id: string;
@@ -136,6 +243,163 @@ export type Database = {
 					updated_at?: string;
 				};
 				Relationships: [];
+			};
+			billing_activation: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					id: string;
+					kind: string;
+					stripe_event_id: string;
+					stripe_subscription_id: string;
+					subscription_period_end: string;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					id?: string;
+					kind: string;
+					stripe_event_id: string;
+					stripe_subscription_id: string;
+					subscription_period_end: string;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					id?: string;
+					kind?: string;
+					stripe_event_id?: string;
+					stripe_subscription_id?: string;
+					subscription_period_end?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "billing_activation_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			billing_admin_task: {
+				Row: {
+					charge_id: string;
+					created_at: string;
+					description: string;
+					id: string;
+					resolved_at: string | null;
+					status: string;
+					stripe_event_id: string;
+					updated_at: string;
+				};
+				Insert: {
+					charge_id: string;
+					created_at?: string;
+					description: string;
+					id?: string;
+					resolved_at?: string | null;
+					status: string;
+					stripe_event_id: string;
+					updated_at?: string;
+				};
+				Update: {
+					charge_id?: string;
+					created_at?: string;
+					description?: string;
+					id?: string;
+					resolved_at?: string | null;
+					status?: string;
+					stripe_event_id?: string;
+					updated_at?: string;
+				};
+				Relationships: [];
+			};
+			billing_bridge_event: {
+				Row: {
+					event_kind: string;
+					processed_at: string;
+					stripe_event_id: string;
+				};
+				Insert: {
+					event_kind: string;
+					processed_at?: string;
+					stripe_event_id: string;
+				};
+				Update: {
+					event_kind?: string;
+					processed_at?: string;
+					stripe_event_id?: string;
+				};
+				Relationships: [];
+			};
+			billing_webhook_event: {
+				Row: {
+					created_at: string;
+					error_message: string | null;
+					processed_at: string | null;
+					status: string;
+					stripe_event_id: string;
+					updated_at: string;
+				};
+				Insert: {
+					created_at?: string;
+					error_message?: string | null;
+					processed_at?: string | null;
+					status: string;
+					stripe_event_id: string;
+					updated_at?: string;
+				};
+				Update: {
+					created_at?: string;
+					error_message?: string | null;
+					processed_at?: string | null;
+					status?: string;
+					stripe_event_id?: string;
+					updated_at?: string;
+				};
+				Relationships: [];
+			};
+			credit_transaction: {
+				Row: {
+					account_id: string;
+					amount: number;
+					balance_after: number;
+					created_at: string;
+					id: string;
+					metadata: Json;
+					reason: string;
+					stripe_event_id: string | null;
+				};
+				Insert: {
+					account_id: string;
+					amount: number;
+					balance_after: number;
+					created_at?: string;
+					id?: string;
+					metadata?: Json;
+					reason: string;
+					stripe_event_id?: string | null;
+				};
+				Update: {
+					account_id?: string;
+					amount?: number;
+					balance_after?: number;
+					created_at?: string;
+					id?: string;
+					metadata?: Json;
+					reason?: string;
+					stripe_event_id?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "credit_transaction_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
 			};
 			item_status: {
 				Row: {
@@ -663,6 +927,47 @@ export type Database = {
 					},
 				];
 			};
+			pack_credit_lot: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					id: string;
+					offer_id: string;
+					original_credits: number;
+					price_cents: number;
+					remaining_credits: number;
+					stripe_event_id: string;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					id?: string;
+					offer_id: string;
+					original_credits: number;
+					price_cents: number;
+					remaining_credits: number;
+					stripe_event_id: string;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					id?: string;
+					offer_id?: string;
+					original_credits?: number;
+					price_cents?: number;
+					remaining_credits?: number;
+					stripe_event_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "pack_credit_lot_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			playlist: {
 				Row: {
 					account_id: string;
@@ -963,10 +1268,14 @@ export type Database = {
 				Row: {
 					analysis: Json;
 					cost_cents: number | null;
+					cost_usd: number | null;
 					created_at: string;
 					id: string;
+					input_tokens: number | null;
 					model: string;
+					output_tokens: number | null;
 					prompt_version: string | null;
+					provider: string | null;
 					song_id: string;
 					tokens_used: number | null;
 					updated_at: string;
@@ -974,10 +1283,14 @@ export type Database = {
 				Insert: {
 					analysis: Json;
 					cost_cents?: number | null;
+					cost_usd?: number | null;
 					created_at?: string;
 					id?: string;
+					input_tokens?: number | null;
 					model: string;
+					output_tokens?: number | null;
 					prompt_version?: string | null;
+					provider?: string | null;
 					song_id: string;
 					tokens_used?: number | null;
 					updated_at?: string;
@@ -985,10 +1298,14 @@ export type Database = {
 				Update: {
 					analysis?: Json;
 					cost_cents?: number | null;
+					cost_usd?: number | null;
 					created_at?: string;
 					id?: string;
+					input_tokens?: number | null;
 					model?: string;
+					output_tokens?: number | null;
 					prompt_version?: string | null;
+					provider?: string | null;
 					song_id?: string;
 					tokens_used?: number | null;
 					updated_at?: string;
@@ -1115,6 +1432,95 @@ export type Database = {
 					},
 				];
 			};
+			subscription_credit_conversion: {
+				Row: {
+					account_id: string;
+					applied_stripe_event_id: string | null;
+					checkout_session_id: string | null;
+					converted_credits: number;
+					created_at: string;
+					discount_cents: number;
+					id: string;
+					status: string;
+					stripe_invoice_id: string | null;
+					stripe_subscription_id: string | null;
+					target_plan: string;
+					updated_at: string;
+				};
+				Insert: {
+					account_id: string;
+					applied_stripe_event_id?: string | null;
+					checkout_session_id?: string | null;
+					converted_credits: number;
+					created_at?: string;
+					discount_cents: number;
+					id?: string;
+					status: string;
+					stripe_invoice_id?: string | null;
+					stripe_subscription_id?: string | null;
+					target_plan: string;
+					updated_at?: string;
+				};
+				Update: {
+					account_id?: string;
+					applied_stripe_event_id?: string | null;
+					checkout_session_id?: string | null;
+					converted_credits?: number;
+					created_at?: string;
+					discount_cents?: number;
+					id?: string;
+					status?: string;
+					stripe_invoice_id?: string | null;
+					stripe_subscription_id?: string | null;
+					target_plan?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "subscription_credit_conversion_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			subscription_credit_conversion_allocation: {
+				Row: {
+					conversion_id: string;
+					pack_credit_lot_id: string;
+					reserved_credits: number;
+					reserved_discount_cents: number;
+				};
+				Insert: {
+					conversion_id: string;
+					pack_credit_lot_id: string;
+					reserved_credits: number;
+					reserved_discount_cents: number;
+				};
+				Update: {
+					conversion_id?: string;
+					pack_credit_lot_id?: string;
+					reserved_credits?: number;
+					reserved_discount_cents?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "subscription_credit_conversion_allocati_pack_credit_lot_id_fkey";
+						columns: ["pack_credit_lot_id"];
+						isOneToOne: false;
+						referencedRelation: "pack_credit_lot";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "subscription_credit_conversion_allocation_conversion_id_fkey";
+						columns: ["conversion_id"];
+						isOneToOne: false;
+						referencedRelation: "subscription_credit_conversion";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			user: {
 				Row: {
 					created_at: string;
@@ -1149,6 +1555,7 @@ export type Database = {
 				Row: {
 					account_id: string;
 					created_at: string;
+					demo_song_id: string | null;
 					id: string;
 					onboarding_completed_at: string | null;
 					onboarding_step: string;
@@ -1159,6 +1566,7 @@ export type Database = {
 				Insert: {
 					account_id: string;
 					created_at?: string;
+					demo_song_id?: string | null;
 					id?: string;
 					onboarding_completed_at?: string | null;
 					onboarding_step?: string;
@@ -1169,6 +1577,7 @@ export type Database = {
 				Update: {
 					account_id?: string;
 					created_at?: string;
+					demo_song_id?: string | null;
 					id?: string;
 					onboarding_completed_at?: string | null;
 					onboarding_step?: string;
@@ -1182,6 +1591,13 @@ export type Database = {
 						columns: ["account_id"];
 						isOneToOne: true;
 						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "user_preferences_demo_song_id_fkey";
+						columns: ["demo_song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
 						referencedColumns: ["id"];
 					},
 				];
@@ -1236,6 +1652,35 @@ export type Database = {
 			[_ in never]: never;
 		};
 		Functions: {
+			activate_subscription: {
+				Args: {
+					p_account_id: string;
+					p_plan: string;
+					p_stripe_customer_id: string;
+					p_stripe_subscription_id: string;
+					p_subscription_period_end: string;
+				};
+				Returns: undefined;
+			};
+			activate_unlimited_songs: {
+				Args: {
+					p_account_id: string;
+					p_granted_stripe_subscription_id: string;
+					p_granted_subscription_period_end: string;
+				};
+				Returns: {
+					song_id: string;
+				}[];
+			};
+			apply_subscription_upgrade_conversion: {
+				Args: {
+					p_applied_stripe_event_id: string;
+					p_conversion_id: string;
+					p_stripe_invoice_id: string;
+					p_stripe_subscription_id: string;
+				};
+				Returns: undefined;
+			};
 			claim_pending_library_processing_job: {
 				Args: never;
 				Returns: {
@@ -1318,6 +1763,20 @@ export type Database = {
 				Args: { p_account_id: string };
 				Returns: number;
 			};
+			deactivate_subscription: {
+				Args: { p_account_id: string };
+				Returns: undefined;
+			};
+			fulfill_pack_purchase: {
+				Args: {
+					p_account_id: string;
+					p_credits: number;
+					p_offer_id: string;
+					p_price_cents: number;
+					p_stripe_event_id: string;
+				};
+				Returns: Json;
+			};
 			get_liked_songs_page: {
 				Args: {
 					p_account_id: string;
@@ -1334,6 +1793,7 @@ export type Database = {
 					audio_energy: number;
 					audio_tempo: number;
 					audio_valence: number;
+					display_state: string;
 					id: string;
 					liked_at: string;
 					matching_status: string;
@@ -1352,11 +1812,40 @@ export type Database = {
 				Returns: {
 					analyzed: number;
 					has_suggestions: number;
+					locked: number;
 					matched: number;
 					new_suggestions: number;
 					pending: number;
 					total: number;
 				}[];
+			};
+			grant_credits: {
+				Args: {
+					p_account_id: string;
+					p_amount: number;
+					p_reason: string;
+					p_stripe_event_id?: string;
+				};
+				Returns: number;
+			};
+			insert_song_unlocks_without_charge: {
+				Args: {
+					p_account_id: string;
+					p_granted_stripe_event_id?: string;
+					p_song_ids: string[];
+					p_source: string;
+				};
+				Returns: {
+					song_id: string;
+				}[];
+			};
+			is_account_song_entitled: {
+				Args: { p_account_id: string; p_song_id: string };
+				Returns: boolean;
+			};
+			link_subscription_upgrade_checkout: {
+				Args: { p_checkout_session_id: string; p_conversion_id: string };
+				Returns: undefined;
 			};
 			mark_dead_library_processing_jobs: {
 				Args: { stale_threshold: string };
@@ -1410,6 +1899,14 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
+			prepare_subscription_upgrade_conversion: {
+				Args: { p_account_id: string; p_target_plan: string };
+				Returns: {
+					conversion_id: string;
+					converted_credits: number;
+					discount_cents: number;
+				}[];
+			};
 			publish_match_snapshot: {
 				Args: {
 					p_account_id: string;
@@ -1424,9 +1921,58 @@ export type Database = {
 				};
 				Returns: string;
 			};
+			release_subscription_upgrade_conversion: {
+				Args: { p_conversion_id: string };
+				Returns: undefined;
+			};
+			reprioritize_pending_jobs_for_account: {
+				Args: { p_account_id: string };
+				Returns: number;
+			};
+			reverse_pack_entitlement: {
+				Args: {
+					p_account_id: string;
+					p_pack_stripe_event_id: string;
+					p_reason: string;
+					p_stripe_event_id: string;
+				};
+				Returns: Json;
+			};
+			reverse_subscription_upgrade_conversion: {
+				Args: { p_conversion_id: string; p_stripe_event_id: string };
+				Returns: undefined;
+			};
+			reverse_unlimited_period_entitlement: {
+				Args: {
+					p_revoked_reason: string;
+					p_stripe_event_id: string;
+					p_stripe_subscription_id: string;
+					p_subscription_period_end: string;
+				};
+				Returns: {
+					song_id: string;
+				}[];
+			};
 			select_data_enriched_liked_song_ids: {
 				Args: { p_account_id: string };
 				Returns: {
+					song_id: string;
+				}[];
+			};
+			select_entitled_data_enriched_liked_song_ids: {
+				Args: { p_account_id: string };
+				Returns: {
+					song_id: string;
+				}[];
+			};
+			select_liked_song_ids_needing_enrichment_work: {
+				Args: { p_account_id: string; p_limit: number };
+				Returns: {
+					needs_analysis: boolean;
+					needs_audio_features: boolean;
+					needs_content_activation: boolean;
+					needs_embedding: boolean;
+					needs_genre_tagging: boolean;
 					song_id: string;
 				}[];
 			};
@@ -1487,6 +2033,19 @@ export type Database = {
 					isOneToOne: false;
 					isSetofReturn: true;
 				};
+			};
+			unlock_songs_for_account: {
+				Args: { p_account_id: string; p_song_ids: string[] };
+				Returns: Json;
+			};
+			update_subscription_state: {
+				Args: {
+					p_account_id: string;
+					p_cancel_at_period_end: boolean;
+					p_subscription_period_end: string;
+					p_subscription_status: string;
+				};
+				Returns: undefined;
 			};
 		};
 		Enums: {

@@ -7,7 +7,7 @@ export const Route = createFileRoute("/_authenticated/settings")({
 });
 
 function SettingsRoute() {
-	const { account } = Route.useRouteContext();
+	const { account, billingState } = Route.useRouteContext();
 	const { themeColor, setThemeColor } = useAuthenticatedTheme();
 
 	return (
@@ -17,6 +17,7 @@ function SettingsRoute() {
 			imageUrl={account?.image_url ?? null}
 			currentTheme={themeColor}
 			onThemeChange={setThemeColor}
+			billingState={billingState}
 		/>
 	);
 }

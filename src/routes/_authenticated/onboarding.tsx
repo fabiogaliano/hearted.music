@@ -49,16 +49,18 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 		const urlStepIndex = stepOrder.indexOf(search.step);
 		const savedStepIndex = stepOrder.indexOf(savedStep);
 
-		// Special case: auto-skip flag-playlists → ready when user has no playlists
+		// Special case: auto-skip flag-playlists → pick-demo-song when user has no playlists
 		// This is a valid forward jump that should bypass the guard
-		const isAutoSkipToReady =
-			search.step === "ready" &&
+		const isAutoSkipFlagPlaylists =
+			search.step === "pick-demo-song" &&
 			savedStep === "flag-playlists" &&
 			data.playlists.length === 0;
 
+		const isAutoSkip = isAutoSkipFlagPlaylists;
+
 		// Guard: If URL step is ahead of saved step, redirect back to saved step
 		// (unless it's the valid auto-skip case)
-		if (urlStepIndex > savedStepIndex && !isAutoSkipToReady) {
+		if (urlStepIndex > savedStepIndex && !isAutoSkip) {
 			throw redirect({
 				to: "/onboarding",
 				search: { step: savedStep },
@@ -77,7 +79,7 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 		if (search.step === "flag-playlists" && data.playlists.length === 0) {
 			throw redirect({
 				to: "/onboarding",
-				search: { step: "ready" },
+				search: { step: "pick-demo-song" },
 			});
 		}
 

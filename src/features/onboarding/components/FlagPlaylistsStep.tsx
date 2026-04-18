@@ -113,7 +113,7 @@ export function FlagPlaylistsStep({
 			await savePlaylistTargets({
 				data: { playlistIds: Array.from(selectedIds) },
 			});
-			await goToStep("ready", { syncStats });
+			await goToStep("pick-demo-song", { syncStats });
 		} catch (error) {
 			console.error("Failed to save playlist targets:", error);
 			toast.error("Failed to save playlist selections. Please try again.");
@@ -126,7 +126,7 @@ export function FlagPlaylistsStep({
 		try {
 			// Skip: save empty selection so user can configure later
 			await savePlaylistTargets({ data: { playlistIds: [] } });
-			await goToStep("ready", { syncStats });
+			await goToStep("pick-demo-song", { syncStats });
 		} catch (error) {
 			console.error("Failed to skip playlists:", error);
 			toast.error("Failed to skip playlists. Please try again.");

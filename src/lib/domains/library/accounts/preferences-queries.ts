@@ -33,7 +33,10 @@ export const ONBOARDING_STEPS = z.enum([
 	"install-extension",
 	"syncing",
 	"flag-playlists",
-	"ready",
+	"pick-demo-song",
+	"song-walkthrough",
+	"match-walkthrough",
+	"plan-selection",
 	"complete",
 ]);
 

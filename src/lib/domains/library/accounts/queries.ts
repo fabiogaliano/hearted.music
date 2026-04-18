@@ -5,14 +5,16 @@
  * Returns Result<T, DbError> for composable error handling.
  */
 
-import type { Result } from "better-result";
+import { Result } from "better-result";
 import type { DbError } from "@/lib/shared/errors/database";
+import { DatabaseError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Tables, TablesInsert } from "@/lib/data/database.types";
+import { env } from "@/env";
 
 /** Account row type */
 export type Account = Tables<"account">;
@@ -101,12 +103,17 @@ export function getAccountByBetterAuthUserId(
  * Creates an account record linked to a Better Auth user.
  * Called from Better Auth's databaseHooks.user.create.after hook
  * on first social login. spotify_id is null until first extension sync.
+ *
+ * Always provisions an account_billing row alongside the account.
+ * In self-hosted mode (BILLING_ENABLED=false), sets unlimited_access_source='self_hosted'
+ * and reprioritizes any pending jobs for the new account.
  */
 export async function createAccountForBetterAuthUser(
 	data: CreateBetterAuthAccountData,
 ): Promise<Result<Account, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseSingle(
+
+	const accountResult = await fromSupabaseSingle(
 		supabase
 			.from("account")
 			.insert({
@@ -117,4 +124,36 @@ export async function createAccountForBetterAuthUser(
 			.select()
 			.single(),
 	);
+
+	if (Result.isError(accountResult)) return accountResult;
+
+	const account = accountResult.value;
+
+	const billingInsert = env.BILLING_ENABLED
+		? { account_id: account.id }
+		: {
+				account_id: account.id,
+				unlimited_access_source: "self_hosted" as const,
+			};
+
+	const { error: billingError } = await supabase
+		.from("account_billing")
+		.insert(billingInsert);
+
+	if (billingError && billingError.code !== "23505") {
+		return Result.err(
+			new DatabaseError({
+				code: billingError.code,
+				message: `Failed to provision account_billing for account ${account.id}: ${billingError.message}`,
+			}),
+		);
+	}
+
+	if (!env.BILLING_ENABLED) {
+		await supabase.rpc("reprioritize_pending_jobs_for_account", {
+			p_account_id: account.id,
+		});
+	}
+
+	return Result.ok(account);
 }
