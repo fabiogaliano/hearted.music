@@ -21,8 +21,6 @@ export type ShortcutScope =
 	| "onboarding-extension" // Onboarding extension install step
 	| "onboarding-playlists" // Onboarding playlists step
 	| "onboarding-pick-demo-song" // Onboarding pick demo song step
-	| "onboarding-song-showcase" // Onboarding song showcase step
-	| "onboarding-match-showcase" // Onboarding match showcase step
 	| "onboarding-plan-selection"; // Onboarding plan selection step
 
 /**

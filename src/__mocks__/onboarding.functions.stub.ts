@@ -5,7 +5,6 @@
  * with async rejects so components fall to their error/unavailable states.
  */
 
-import type { Json } from "@/lib/data/database.types";
 import type { ThemeColor } from "@/lib/theme/types";
 
 // ── Types (re-exported as-is) ──────────────────────────────────────────
@@ -57,18 +56,6 @@ export interface OnboardingData {
 	} | null;
 }
 
-export interface DemoSongData {
-	song: {
-		name: string;
-		artists: string[];
-		albumName: string | null;
-		imageUrl: string | null;
-		genres: string[];
-		spotifyTrackId: string;
-	};
-	analysis: Json;
-}
-
 export interface DemoMatchPlaylist {
 	id: string;
 	name: string;
@@ -102,8 +89,7 @@ export const markOnboardingComplete = reject as unknown as () => Promise<void>;
 export const savePlaylistTargets = reject as unknown as (opts: {
 	data: { playlistIds: string[] };
 }) => Promise<void>;
-export const getDemoSongShowcase =
-	reject as unknown as () => Promise<DemoSongData | null>;
+
 export const getDemoSongMatches =
 	reject as unknown as () => Promise<DemoMatchResult>;
 export const saveDemoSongSelection = reject as unknown as (opts: {
