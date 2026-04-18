@@ -29,7 +29,7 @@ const SCOPE_LABELS: Record<ShortcutScope, string> = {
 	"onboarding-pick-demo-song": "Onboarding",
 	"onboarding-song-showcase": "Onboarding",
 	"onboarding-match-showcase": "Onboarding",
-	"onboarding-ready": "Onboarding",
+	"onboarding-plan-selection": "Onboarding",
 };
 
 /** 'mod+s' → '⌘S' on Mac, 'Ctrl+S' on Windows */

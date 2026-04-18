@@ -37,7 +37,6 @@ export const ONBOARDING_STEPS = z.enum([
 	"song-walkthrough",
 	"match-walkthrough",
 	"plan-selection",
-	"ready",
 	"complete",
 ]);
 

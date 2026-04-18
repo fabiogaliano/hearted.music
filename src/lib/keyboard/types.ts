@@ -23,7 +23,7 @@ export type ShortcutScope =
 	| "onboarding-pick-demo-song" // Onboarding pick demo song step
 	| "onboarding-song-showcase" // Onboarding song showcase step
 	| "onboarding-match-showcase" // Onboarding match showcase step
-	| "onboarding-ready"; // Onboarding ready/complete step
+	| "onboarding-plan-selection"; // Onboarding plan selection step
 
 /**
  * Category for grouping shortcuts in help modal

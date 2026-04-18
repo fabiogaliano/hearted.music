@@ -308,6 +308,7 @@ export const createPortalSession = createServerFn({ method: "POST" })
 // ---------------------------------------------------------------------------
 
 export interface PlanSelectionConfig {
+	billingEnabled: boolean;
 	quarterlyPlanEnabled: boolean;
 }
 
@@ -315,6 +316,7 @@ export const getPlanSelectionConfig = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.handler(async (): Promise<PlanSelectionConfig> => {
 		return {
+			billingEnabled: env.BILLING_ENABLED,
 			quarterlyPlanEnabled: env.QUARTERLY_PLAN_ENABLED,
 		};
 	});
