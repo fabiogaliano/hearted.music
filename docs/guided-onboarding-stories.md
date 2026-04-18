@@ -20,7 +20,7 @@
 | S6 | ~~Song walkthrough — component props (`SongCard`, `SongDetailPanel`)~~ ✅ `072a850` | S4 | 3 |
 | S7 | ~~Song walkthrough — page wiring + showcase deletion~~ ✅ `5b29c46` | S3, S6 | 3 |
 | S8 | ~~Match walkthrough — data adapter, actions, showcase deletion~~ ✅ `419b898` | S4, S7 | 4 |
-| S9 | Cleanup and verification | S5, S8 | 5 |
+| S9 | ~~Cleanup and verification~~ ✅ `fd6ae75` | S5, S8 | 5 |
 
 ```
 S1 ──→ S2 ──→ S3 ──→ S7 ──→ S8 ──→ S9
@@ -614,14 +614,14 @@ The real matching UI components (`MatchingHeader`, `SongSection`, `MatchesSectio
 
 ### Acceptance Criteria
 
-- [ ] Zero references to `"song-showcase"`, `"match-showcase"`, `"ready"` in source code
-- [ ] Zero imports of deleted component files
-- [ ] `getDemoSongShowcase` deleted if unreferenced
-- [ ] All new modules have unit tests (step resolver, `useStepNavigation`, PlanSelectionStep states)
-- [ ] Auth gate routing tested for all onboarding modes
-- [ ] Full onboarding flow verified end-to-end:
+- [x] Zero references to `"song-showcase"`, `"match-showcase"`, `"ready"` in source code
+- [x] Zero imports of deleted component files
+- [x] `getDemoSongShowcase` deleted if unreferenced
+- [x] All new modules have unit tests (step resolver, `useStepNavigation`, PlanSelectionStep states)
+- [x] Auth gate routing tested for all onboarding modes
+- [x] Full onboarding flow verified end-to-end:
   `welcome → pick-color → install-extension → syncing → flag-playlists → pick-demo-song → song-walkthrough (/liked-songs) → match-walkthrough (/match) → plan-selection (/onboarding) → complete → /dashboard`
-- [ ] Refresh/resume works at every walkthrough step
-- [ ] Back button during walkthrough → silent redirect to allowed path
-- [ ] No keyboard shortcut or layout effect leaks between modes
-- [ ] Sidebar transitions correctly: hidden → hidden → visible
+- [x] Refresh/resume works at every walkthrough step
+- [x] Back button during walkthrough → silent redirect to allowed path
+- [x] No keyboard shortcut or layout effect leaks between modes
+- [x] Sidebar transitions correctly: hidden → hidden → visible
