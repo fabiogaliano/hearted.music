@@ -19,7 +19,7 @@
 | S5 | ~~`PlanSelectionStep` absorbs `ReadyStep`~~ ✅ `9fba0c4` | S1, S3 | 2a |
 | S6 | ~~Song walkthrough — component props (`SongCard`, `SongDetailPanel`)~~ ✅ `072a850` | S4 | 3 |
 | S7 | ~~Song walkthrough — page wiring + showcase deletion~~ ✅ `5b29c46` | S3, S6 | 3 |
-| S8 | Match walkthrough — data adapter, actions, showcase deletion | S4, S7 | 4 |
+| S8 | ~~Match walkthrough — data adapter, actions, showcase deletion~~ ✅ `419b898` | S4, S7 | 4 |
 | S9 | Cleanup and verification | S5, S8 | 5 |
 
 ```
@@ -552,21 +552,21 @@ Synthetic `LikedSong` construction: the `LikedSong` type includes `track.*` fiel
 
 ### Acceptance Criteria
 
-- [ ] `match-walkthrough` step routes to `/match` with walkthrough UI
-- [ ] Demo song info renders immediately in left column (from route context, no fetch)
-- [ ] Skeleton placeholders render in right column during loading
-- [ ] Match results appear (live poll or canned fallback after 12s)
-- [ ] No-playlists path → canned data renders immediately
-- [ ] Any action (Add/Dismiss/Next) → saves `plan-selection` → navigates to `/onboarding?step=plan-selection`
-- [ ] No real `addSongToPlaylist` or `dismissSong` calls during walkthrough
-- [ ] Keyboard shortcuts for match actions route through walkthrough handler
-- [ ] Header shows "1 of 1", progress at 100%
-- [ ] `CompletionScreen` never renders
-- [ ] Missing `walkthroughSong` → redirect to `pick-demo-song`
-- [ ] Sidebar hidden
-- [ ] `MatchShowcaseStep.tsx` deleted
-- [ ] Refresh on `/match` during `match-walkthrough` → restores walkthrough state
-- [ ] Action buttons show disable + dim on click
+- [x] `match-walkthrough` step routes to `/match` with walkthrough UI
+- [x] Demo song info renders immediately in left column (from route context, no fetch)
+- [x] Skeleton placeholders render in right column during loading
+- [x] Match results appear (live poll or canned fallback after 12s)
+- [x] No-playlists path → canned data renders immediately
+- [x] Any action (Add/Dismiss/Next) → saves `plan-selection` → navigates to `/onboarding?step=plan-selection`
+- [x] No real `addSongToPlaylist` or `dismissSong` calls during walkthrough
+- [x] Keyboard shortcuts for match actions route through walkthrough handler
+- [x] Header shows "1 of 1", progress at 100%
+- [x] `CompletionScreen` never renders
+- [x] Missing `walkthroughSong` → redirect to `pick-demo-song`
+- [x] Sidebar hidden
+- [x] `MatchShowcaseStep.tsx` deleted
+- [x] Refresh on `/match` during `match-walkthrough` → restores walkthrough state
+- [x] Action buttons show disable + dim on click
 
 ### Notes
 
