@@ -57,6 +57,8 @@ export interface SongDetailPanelProps {
 	isDark?: boolean;
 	/** Whether the enrichment pipeline is currently running */
 	isEnrichmentRunning?: boolean;
+	/** Walkthrough mode: force unlocked display, hide playlists, show CTA */
+	isWalkthrough?: boolean;
 }
 
 export function SongDetailPanel({
@@ -73,6 +75,7 @@ export function SongDetailPanel({
 	hasPrevious,
 	isDark = false,
 	isEnrichmentRunning = false,
+	isWalkthrough = false,
 }: SongDetailPanelProps) {
 	const baseTheme = useThemeWithOverride(themeOverride);
 	const darkPalette = isDark ? getThemedDarkColors(baseTheme) : null;
@@ -92,6 +95,10 @@ export function SongDetailPanel({
 		accentMuted: isDark ? darkPalette!.accentMuted : baseTheme.primaryHover,
 	};
 
+	const displaySong: LikedSong = isWalkthrough
+		? { ...song, displayState: "analyzed" }
+		: song;
+
 	const [expandedSections, setExpandedSections] = useState<Set<string>>(
 		new Set(),
 	);
@@ -100,7 +107,9 @@ export function SongDetailPanel({
 		songSuggestionsQueryOptions(song.track.id),
 	);
 
-	const analysis = song.analysis?.analysis as AnalysisContent | undefined;
+	const analysis = displaySong.analysis?.analysis as
+		| AnalysisContent
+		| undefined;
 	const heroHeight = artistImageUrl
 		? LAYOUT.heroHeight
 		: LAYOUT.heroHeightNoImage;
@@ -252,7 +261,7 @@ export function SongDetailPanel({
 						isExpanded={isExpanded}
 						isAnalysisOpen={isAnalysisOpen}
 						sonicTextureSingleLine={sonicTextureSingleLine}
-						song={song}
+						song={displaySong}
 						analysis={analysis}
 						baseTheme={baseTheme}
 						heroHeight={heroHeight}
@@ -278,7 +287,7 @@ export function SongDetailPanel({
 					<PanelContent
 						colors={panelColors}
 						colorProps={colorProps}
-						song={song}
+						song={displaySong}
 						analysis={analysis}
 						isAnalysisOpen={isAnalysisOpen}
 						toggleAnalysis={toggleAnalysis}
@@ -286,6 +295,7 @@ export function SongDetailPanel({
 						toggleSection={toggleSection}
 						suggestions={suggestions?.matches ?? null}
 						isEnrichmentRunning={isEnrichmentRunning}
+						isWalkthrough={isWalkthrough}
 						getStaggerRef={getStaggerRef}
 						refs={{
 							contentRef,
