@@ -46,6 +46,15 @@ export interface OnboardingData {
 		genres: string[];
 		detailPath: string;
 	}>;
+	walkthroughSong: {
+		id: string;
+		spotifyTrackId: string;
+		slug: string;
+		name: string;
+		artist: string;
+		album: string | null;
+		albumArtUrl: string | null;
+	} | null;
 }
 
 export interface DemoSongData {
