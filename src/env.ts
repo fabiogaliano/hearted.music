@@ -1,6 +1,11 @@
 import { createEnv } from "@t3-oss/env-core";
 import { z } from "zod";
 
+const boolString = z
+	.enum(["true", "false"])
+	.default("false")
+	.transform((v) => v === "true");
+
 /**
  * Safe access to process.env - returns undefined on client where process doesn't exist.
  * This is needed because runtimeEnv is evaluated at module load time.
@@ -30,10 +35,10 @@ export const env = createEnv({
 		// Email (optional - waitlist confirmation emails skipped if not set)
 		RESEND_API_KEY: z.string().min(1).optional(),
 		// Billing integration
-		BILLING_ENABLED: z.coerce.boolean().default(false),
+		BILLING_ENABLED: boolString,
 		BILLING_SERVICE_URL: z.url().optional(),
 		BILLING_SHARED_SECRET: z.string().min(1).optional(),
-		QUARTERLY_PLAN_ENABLED: z.coerce.boolean().default(false),
+		QUARTERLY_PLAN_ENABLED: boolString,
 	},
 
 	clientPrefix: "VITE_",
