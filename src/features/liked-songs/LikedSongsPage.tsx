@@ -75,17 +75,26 @@ function buildSyntheticLikedSong(ws: WalkthroughSong): LikedSong {
 		liked_at: new Date().toISOString(),
 		matching_status: null,
 		displayState: "analyzed",
-		analysis: null,
+		analysis: ws.analysis
+			? {
+					id: ws.analysis.id,
+					track_id: ws.id,
+					analysis: ws.analysis.content,
+					model_name: ws.analysis.model,
+					version: 1,
+					created_at: ws.analysis.createdAt,
+				}
+			: null,
 		track: {
 			id: ws.id,
 			spotify_track_id: ws.spotifyTrackId,
 			name: ws.name,
 			artist: ws.artist,
-			artist_id: null,
-			artist_image_url: null,
+			artist_id: ws.artistId,
+			artist_image_url: ws.artistImageUrl,
 			album: ws.album,
 			image_url: ws.albumArtUrl,
-			genres: [],
+			genres: ws.genres,
 			audio_features: null,
 		},
 	};
@@ -195,7 +204,15 @@ export function LikedSongsPage({
 
 	const displayedSongs = useMemo(() => {
 		if (!isWalkthrough || !walkthroughSong) return songs;
-		const demoSong = buildSyntheticLikedSong(walkthroughSong);
+		const realSong = songs.find((s) => s.track.id === walkthroughSong.id);
+		const synthetic = buildSyntheticLikedSong(walkthroughSong);
+		const demoSong: LikedSong = realSong
+			? {
+					...realSong,
+					displayState: "analyzed",
+					analysis: realSong.analysis ?? synthetic.analysis,
+				}
+			: synthetic;
 		const deduped = songs.filter((s) => s.track.id !== walkthroughSong.id);
 		return [demoSong, ...deduped];
 	}, [songs, isWalkthrough, walkthroughSong]);
@@ -637,7 +654,7 @@ export function LikedSongsPage({
 					onNext={handleNextSong}
 					onPrevious={handlePreviousSong}
 					isDark={isDarkMode}
-					isEnrichmentRunning={isEnrichmentRunning}
+					isEnrichmentRunning={isWalkthrough ? false : isEnrichmentRunning}
 					isWalkthrough={isWalkthrough}
 				/>
 			)}

@@ -48,6 +48,7 @@ import { generateSongSlug } from "@/lib/utils/slug";
 import { OnboardingChanges } from "@/lib/workflows/library-processing/changes/onboarding";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 import type { WalkthroughSong } from "@/features/onboarding/step-resolver";
+import type { AnalysisContent } from "@/features/liked-songs/types";
 
 /** Playlist view model for onboarding UI (camelCase frontend format) */
 export interface OnboardingPlaylist {
@@ -178,22 +179,57 @@ export const getOnboardingData = createServerFn({ method: "GET" })
 		let walkthroughSong: WalkthroughSong | null = null;
 		const demoSongId = prefsResult.value.demo_song_id;
 		if (demoSongId) {
-			const { data: song } = await supabase
-				.from("song")
-				.select("id, spotify_id, name, artists, album_name, image_url")
-				.eq("id", demoSongId)
-				.single();
+			const [{ data: song }, { data: analysisRow }] = await Promise.all([
+				supabase
+					.from("song")
+					.select(
+						"id, spotify_id, name, artists, artist_ids, genres, album_name, image_url",
+					)
+					.eq("id", demoSongId)
+					.single(),
+				supabase
+					.from("song_analysis")
+					.select("id, analysis, model, created_at")
+					.eq("song_id", demoSongId)
+					.order("created_at", { ascending: false })
+					.limit(1)
+					.maybeSingle(),
+			]);
 
 			if (song) {
 				const artist = song.artists[0] ?? "Unknown Artist";
+				const artistSpotifyId = song.artist_ids?.[0] ?? null;
+
+				// Fetch artist image if we have an artist ID
+				let artistImageUrl: string | null = null;
+				if (artistSpotifyId) {
+					const { data: artistRow } = await supabase
+						.from("artist")
+						.select("image_url")
+						.eq("spotify_id", artistSpotifyId)
+						.maybeSingle();
+					artistImageUrl = artistRow?.image_url ?? null;
+				}
+
 				walkthroughSong = {
 					id: song.id,
 					spotifyTrackId: song.spotify_id,
 					slug: generateSongSlug(artist, song.name),
 					name: song.name,
 					artist,
+					artistId: artistSpotifyId,
+					artistImageUrl,
 					album: song.album_name,
 					albumArtUrl: song.image_url,
+					genres: song.genres ?? [],
+					analysis: analysisRow
+						? {
+								id: analysisRow.id,
+								content: analysisRow.analysis as AnalysisContent,
+								model: analysisRow.model,
+								createdAt: analysisRow.created_at,
+							}
+						: null,
 				};
 			}
 		}
