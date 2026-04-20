@@ -1,9 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import { PaneRoot, PaneStore, useActiveTab, usePane } from "uipane";
 import {
 	useCallback,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 	type CSSProperties,
 } from "react";
@@ -30,6 +32,10 @@ import {
 	type WorkflowDevClientSettings,
 	type WorkflowDevServerSettings,
 } from "@/lib/workflows/library-processing/devtools/settings";
+import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
+import type { OnboardingData } from "@/lib/server/onboarding.functions";
+import { saveOnboardingStep } from "@/lib/server/onboarding.functions";
+import { resolveStep } from "@/features/onboarding/step-resolver";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -115,11 +121,31 @@ function applyPreset(
 }
 
 // ---------------------------------------------------------------------------
+// Onboarding step navigation
+// ---------------------------------------------------------------------------
+
+const ONBOARDING_STEPS: OnboardingStep[] = [
+	"welcome",
+	"pick-color",
+	"install-extension",
+	"syncing",
+	"flag-playlists",
+	"pick-demo-song",
+	"song-walkthrough",
+	"match-walkthrough",
+	"plan-selection",
+	"complete",
+];
+
+const ONBOARDING_QUERY_KEY = ["auth", "onboarding"] as const;
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
 export function DevWorkflowPanel() {
 	const queryClient = useQueryClient();
+	const router = useRouter();
 	const { client, server, updateClient, updateServer, resetAll } =
 		useWorkflowDevSettings();
 	const [wfState, setWfState] = useState<GuidedWorkflowState | null>(null);
@@ -280,6 +306,45 @@ export function DevWorkflowPanel() {
 		},
 	);
 
+	// ---- Tab 4: Onboarding ----
+	const onboardingParams = usePane(
+		"Onboarding",
+		{
+			stepIndex: {
+				type: "slider",
+				value: 0,
+				min: 0,
+				max: ONBOARDING_STEPS.length - 1,
+				step: 1,
+			},
+			goToStep: { type: "action", label: "Go to Step" },
+			prev: { type: "action", label: "← Prev" },
+			next: { type: "action", label: "Next →" },
+		},
+		{
+			onAction: (path) => {
+				switch (path) {
+					case "goToStep":
+						void handleOnboardingNav(
+							ONBOARDING_STEPS[onboardingStepRef.current]!,
+						);
+						break;
+					case "prev":
+						void handleOnboardingNav("prev");
+						break;
+					case "next":
+						void handleOnboardingNav("next");
+						break;
+				}
+			},
+		},
+	);
+
+	const onboardingStepRef = useRef(onboardingParams.stepIndex);
+	useEffect(() => {
+		onboardingStepRef.current = onboardingParams.stepIndex;
+	}, [onboardingParams.stepIndex]);
+
 	// ---- Sync settings ----
 	useEffect(() => {
 		updateClient({
@@ -439,6 +504,73 @@ export function DevWorkflowPanel() {
 		}
 	}, [invalidateWorkflowQueries, isRunning, refreshState]);
 
+	// ---- Onboarding step handler ----
+	const handleOnboardingNav = useCallback(
+		async (target: OnboardingStep | "prev" | "next") => {
+			if (isRunning) return;
+			setIsRunning(true);
+
+			const cached =
+				queryClient.getQueryData<OnboardingData>(ONBOARDING_QUERY_KEY);
+			const currentStep = cached?.currentStep ?? "welcome";
+			const currentIdx = ONBOARDING_STEPS.indexOf(currentStep);
+
+			let nextStep: OnboardingStep;
+			if (target === "prev") {
+				if (currentIdx <= 0) {
+					setLastAction(`Already at first step (${currentStep})`);
+					setIsRunning(false);
+					return;
+				}
+				nextStep = ONBOARDING_STEPS[currentIdx - 1]!;
+			} else if (target === "next") {
+				if (currentIdx >= ONBOARDING_STEPS.length - 1) {
+					setLastAction(`Already at last step (${currentStep})`);
+					setIsRunning(false);
+					return;
+				}
+				nextStep = ONBOARDING_STEPS[currentIdx + 1]!;
+			} else {
+				nextStep = target;
+			}
+
+			try {
+				setLastAction(`Setting step → ${nextStep}…`);
+				await saveOnboardingStep({ data: { step: nextStep } });
+
+				queryClient.setQueryData<OnboardingData>(
+					ONBOARDING_QUERY_KEY,
+					(prev) => (prev ? { ...prev, currentStep: nextStep } : prev),
+				);
+				await queryClient.invalidateQueries({ queryKey: ONBOARDING_QUERY_KEY });
+
+				const resolved = resolveStep(nextStep);
+				if (resolved.allowedPath === "/onboarding") {
+					await router.navigate({
+						to: "/onboarding",
+						search: { step: nextStep },
+					});
+				} else {
+					await router.navigate({ to: resolved.allowedPath });
+				}
+
+				setLastAction(`${currentStep} → ${nextStep}`);
+			} catch (e) {
+				setLastAction(
+					`Step error: ${e instanceof Error ? e.message : String(e)}`,
+				);
+			} finally {
+				setIsRunning(false);
+			}
+		},
+		[queryClient, router, isRunning],
+	);
+
+	// ---- Onboarding current step (from cache) ----
+	const cachedOnboarding =
+		queryClient.getQueryData<OnboardingData>(ONBOARDING_QUERY_KEY);
+	const currentOnboardingStep = cachedOnboarding?.currentStep ?? "welcome";
+
 	// ---- Progress hooks ----
 	const enrichProgress = useLibraryProcessingJobProgress(
 		wfState?.enrichment.activeJobId,
@@ -460,6 +592,8 @@ export function DevWorkflowPanel() {
 				matchProgress={matchProgress}
 				onStep={handleStep}
 				onRunUntilIdle={handleRunUntilIdle}
+				currentOnboardingStep={currentOnboardingStep}
+				onboardingSliderIndex={onboardingParams.stepIndex}
 			/>
 		</PaneRoot>
 	);
@@ -531,6 +665,8 @@ function PanelChildren({
 	matchProgress,
 	onStep,
 	onRunUntilIdle,
+	currentOnboardingStep,
+	onboardingSliderIndex,
 }: {
 	activeTab: string | null;
 	isRunning: boolean;
@@ -540,7 +676,11 @@ function PanelChildren({
 	matchProgress: LibraryProcessingJobProgress | null;
 	onStep: () => void;
 	onRunUntilIdle: () => void;
+	currentOnboardingStep: OnboardingStep;
+	onboardingSliderIndex: number;
 }) {
+	const currentIdx = ONBOARDING_STEPS.indexOf(currentOnboardingStep);
+
 	return (
 		<div style={S.root}>
 			{/* Action bar — only on Enrichment/Matching tabs */}
@@ -614,6 +754,70 @@ function PanelChildren({
 						))}
 					</div>
 				)}
+
+			{/* Onboarding tab — step list */}
+			{activeTab === "Onboarding" && (
+				<div style={S.card}>
+					<div style={S.row}>
+						<span style={{ color: "#fff", fontWeight: 700 }}>Steps</span>
+						<Badge
+							label={`${currentIdx + 1}/${ONBOARDING_STEPS.length}`}
+							status={
+								currentOnboardingStep === "complete" ? "completed" : "active"
+							}
+						/>
+					</div>
+					<div style={{ display: "grid", gap: 2 }}>
+						{ONBOARDING_STEPS.map((step, i) => {
+							const isCurrent = i === currentIdx;
+							const isSliderTarget = i === onboardingSliderIndex;
+							return (
+								<div
+									key={step}
+									style={{
+										display: "flex",
+										alignItems: "center",
+										gap: 6,
+										padding: "2px 4px",
+										borderRadius: 4,
+										background:
+											isSliderTarget && !isCurrent
+												? "rgba(255,255,255,0.04)"
+												: "transparent",
+									}}
+								>
+									<span
+										style={{
+											width: 14,
+											textAlign: "right",
+											color: "#525252",
+											fontSize: 10,
+										}}
+									>
+										{i}
+									</span>
+									<span
+										style={{
+											color: isCurrent
+												? "#86efac"
+												: isSliderTarget
+													? "#fde68a"
+													: "#737373",
+											fontWeight: isCurrent ? 700 : 400,
+										}}
+									>
+										{isCurrent ? "→ " : "  "}
+										{step}
+									</span>
+								</div>
+							);
+						})}
+					</div>
+					<div style={{ ...S.label, marginTop: 2 }}>
+						Slider target: {ONBOARDING_STEPS[onboardingSliderIndex]}
+					</div>
+				</div>
+			)}
 
 			{/* Last action */}
 			{lastAction && <div style={S.lastAction}>{lastAction}</div>}
