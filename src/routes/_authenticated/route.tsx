@@ -117,6 +117,7 @@ function AuthenticatedLayout() {
 	} = Route.useRouteContext();
 
 	const isComplete = onboardingMode === "complete";
+	const showShell = isComplete || onboardingMode === "walkthrough";
 
 	useActiveJobCompletionEffects(session.accountId, isComplete);
 	usePostPurchaseReturn(session.accountId, billingState);
@@ -134,12 +135,13 @@ function AuthenticatedLayout() {
 
 	return (
 		<AuthenticatedThemeProvider initialThemeColor={themeColor ?? DEFAULT_THEME}>
-			{isComplete ? (
+			{showShell ? (
 				<AuthenticatedShell
 					account={account}
 					billingState={billingState}
 					pendingSuggestions={pendingSuggestions}
 					devPanel={devPanel}
+					showSidebar={isComplete}
 				/>
 			) : (
 				<>
@@ -156,11 +158,13 @@ function AuthenticatedShell({
 	billingState,
 	pendingSuggestions,
 	devPanel,
+	showSidebar,
 }: {
 	account: Awaited<ReturnType<typeof requireAuthSession>>["account"] | null;
 	billingState: BillingState;
 	pendingSuggestions: number;
 	devPanel: React.ReactNode;
+	showSidebar: boolean;
 }) {
 	const theme = useTheme();
 
@@ -172,13 +176,15 @@ function AuthenticatedShell({
 				color: theme.text,
 			}}
 		>
-			<Sidebar
-				unsortedCount={pendingSuggestions}
-				userName={account?.display_name ?? account?.email ?? null}
-				userPlan={getPlanLabel(billingState)}
-				userBalance={getDisplayBalance(billingState)}
-				userImageUrl={account?.image_url}
-			/>
+			{showSidebar && (
+				<Sidebar
+					unsortedCount={pendingSuggestions}
+					userName={account?.display_name ?? account?.email ?? null}
+					userPlan={getPlanLabel(billingState)}
+					userBalance={getDisplayBalance(billingState)}
+					userImageUrl={account?.image_url}
+				/>
+			)}
 			<main className="flex-1 p-8">
 				<Outlet />
 			</main>

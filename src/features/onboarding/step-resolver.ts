@@ -1,6 +1,14 @@
 import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
+import type { AnalysisContent } from "@/features/liked-songs/types";
 
 export type OnboardingMode = "complete" | "steps" | "walkthrough";
+
+export type WalkthroughSongAnalysis = {
+	id: string;
+	content: AnalysisContent;
+	model: string;
+	createdAt: string | null;
+};
 
 export type WalkthroughSong = {
 	id: string;
@@ -8,8 +16,13 @@ export type WalkthroughSong = {
 	slug: string;
 	name: string;
 	artist: string;
+	artistId: string | null;
+	artistImageUrl: string | null;
 	album: string | null;
 	albumArtUrl: string | null;
+	genres: string[];
+	/** Pre-fetched analysis so the walkthrough panel can render immediately */
+	analysis: WalkthroughSongAnalysis | null;
 };
 
 export type AllowedPath = "/onboarding" | "/liked-songs" | "/match";
