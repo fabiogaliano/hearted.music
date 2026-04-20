@@ -317,19 +317,34 @@ export type Database = {
 			};
 			billing_bridge_event: {
 				Row: {
+					created_at: string;
+					error_message: string | null;
 					event_kind: string;
-					processed_at: string;
+					processed_at: string | null;
+					processing_started_at: string | null;
+					status: string;
 					stripe_event_id: string;
+					updated_at: string;
 				};
 				Insert: {
+					created_at?: string;
+					error_message?: string | null;
 					event_kind: string;
-					processed_at?: string;
+					processed_at?: string | null;
+					processing_started_at?: string | null;
+					status: string;
 					stripe_event_id: string;
+					updated_at?: string;
 				};
 				Update: {
+					created_at?: string;
+					error_message?: string | null;
 					event_kind?: string;
-					processed_at?: string;
+					processed_at?: string | null;
+					processing_started_at?: string | null;
+					status?: string;
 					stripe_event_id?: string;
+					updated_at?: string;
 				};
 				Relationships: [];
 			};
@@ -1681,6 +1696,14 @@ export type Database = {
 				};
 				Returns: undefined;
 			};
+			claim_billing_bridge_event: {
+				Args: {
+					p_event_kind: string;
+					p_lease_ms: number;
+					p_stripe_event_id: string;
+				};
+				Returns: string;
+			};
 			claim_pending_library_processing_job: {
 				Args: never;
 				Returns: {
@@ -1845,6 +1868,14 @@ export type Database = {
 			};
 			link_subscription_upgrade_checkout: {
 				Args: { p_checkout_session_id: string; p_conversion_id: string };
+				Returns: undefined;
+			};
+			mark_billing_bridge_event_failed: {
+				Args: { p_error_message: string; p_stripe_event_id: string };
+				Returns: undefined;
+			};
+			mark_billing_bridge_event_processed: {
+				Args: { p_stripe_event_id: string };
 				Returns: undefined;
 			};
 			mark_dead_library_processing_jobs: {

@@ -4,7 +4,16 @@
  * POST /api/billing-bridge — Receives billing-service → app bridge calls.
  *
  * Auth: HMAC signature verification using BILLING_SHARED_SECRET.
- * Idempotency: billing_bridge_event PK constraint on stripe_event_id.
+ *
+ * Idempotency: status-based claim on billing_bridge_event. We record
+ * processing *outcome*, not mere arrival, so a dispatch failure followed
+ * by an upstream retry re-drives the handler instead of being silently
+ * short-circuited as a duplicate. A lease window protects against rows
+ * stuck in 'processing' after a server crash mid-dispatch.
+ *
+ * Upstream contract: billing-service MUST treat 409 as transient-retryable.
+ * Full contract: docs/monetization/bridge-retry-contract.md
+ *
  * Guard: Only available when BILLING_ENABLED=true.
  */
 
@@ -59,6 +68,21 @@ const BridgePayloadSchema = z.discriminatedUnion("event_kind", [
 
 type BridgePayload = z.infer<typeof BridgePayloadSchema>;
 
+// Long enough to outlast any realistic handler run, short enough that a
+// crashed worker's stuck row becomes reclaimable within the same Stripe
+// retry cadence.
+const BRIDGE_PROCESSING_LEASE_MS = 5 * 60 * 1000;
+
+type ClaimOutcome = "claimed" | "duplicate_processed" | "in_progress";
+
+function isClaimOutcome(value: unknown): value is ClaimOutcome {
+	return (
+		value === "claimed" ||
+		value === "duplicate_processed" ||
+		value === "in_progress"
+	);
+}
+
 export const Route = createFileRoute("/api/billing-bridge")({
 	server: {
 		handlers: {
@@ -95,19 +119,16 @@ export const Route = createFileRoute("/api/billing-bridge")({
 				}
 
 				const supabase = createAdminSupabaseClient();
-				const { data, error } = await supabase
-					.from("billing_bridge_event")
-					.insert({
-						stripe_event_id: payload.stripe_event_id,
-						event_kind: payload.event_kind,
-					})
-					.select("stripe_event_id")
-					.single();
+				const claim = await supabase.rpc("claim_billing_bridge_event", {
+					p_stripe_event_id: payload.stripe_event_id,
+					p_event_kind: payload.event_kind,
+					p_lease_ms: BRIDGE_PROCESSING_LEASE_MS,
+				});
 
-				if (error && error.code !== "23505") {
+				if (claim.error || !isClaimOutcome(claim.data)) {
 					console.error(
-						"[billing-bridge] Failed to insert bridge event:",
-						error,
+						"[billing-bridge] Failed to claim bridge event:",
+						claim.error ?? { unexpected: claim.data },
 					);
 					return Response.json(
 						{ error: "Internal server error" },
@@ -115,27 +136,67 @@ export const Route = createFileRoute("/api/billing-bridge")({
 					);
 				}
 
-				// Duplicate delivery — no-op, return success
-				if (!data) {
+				if (claim.data === "duplicate_processed") {
 					return Response.json({ ok: true, duplicate: true });
 				}
 
+				if (claim.data === "in_progress") {
+					// Another worker holds a valid processing lease. Tell the
+					// upstream to retry after its usual backoff.
+					return Response.json({ error: "in_progress" }, { status: 409 });
+				}
+
 				console.log(
-					`[billing-bridge] Received event_kind=${payload.event_kind} stripe_event=${payload.stripe_event_id}`,
+					`[billing-bridge] Claimed event_kind=${payload.event_kind} stripe_event=${payload.stripe_event_id}`,
 				);
 
 				try {
 					await dispatchBridgeEvent(payload);
-					console.log(
-						`[billing-bridge] Dispatched event_kind=${payload.event_kind}`,
-					);
 				} catch (err) {
+					// Release the lease so the next upstream retry can reclaim
+					// this event instead of being short-circuited as a duplicate.
+					const message = err instanceof Error ? err.message : String(err);
+					const failMark = await supabase.rpc(
+						"mark_billing_bridge_event_failed",
+						{
+							p_stripe_event_id: payload.stripe_event_id,
+							p_error_message: message,
+						},
+					);
+					if (failMark.error) {
+						console.error(
+							"[billing-bridge] Failed to record dispatch failure:",
+							failMark.error,
+						);
+					}
 					console.error("[billing-bridge] Handler dispatch failed:", err);
 					return Response.json(
 						{ error: "Internal processing error" },
 						{ status: 500 },
 					);
 				}
+
+				const processMark = await supabase.rpc(
+					"mark_billing_bridge_event_processed",
+					{ p_stripe_event_id: payload.stripe_event_id },
+				);
+				if (processMark.error) {
+					// The handler succeeded but we couldn't record it. A retry
+					// will reclaim this row via the lease timeout and re-run the
+					// handler — handler-level idempotency must cover that case.
+					console.error(
+						"[billing-bridge] Failed to mark event processed:",
+						processMark.error,
+					);
+					return Response.json(
+						{ error: "Internal server error" },
+						{ status: 500 },
+					);
+				}
+
+				console.log(
+					`[billing-bridge] Dispatched event_kind=${payload.event_kind}`,
+				);
 
 				return Response.json({ ok: true });
 			},
