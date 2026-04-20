@@ -435,9 +435,55 @@ export const GENRE_WHITELIST: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Maps variant spellings to a single canonical form.
+ * Canonical form is the key; variants are listed as values.
+ */
+const CANONICAL_GROUPS: Record<string, string[]> = {
+	"hip-hop": ["hip hop", "hiphop"],
+	"k-pop": ["kpop", "k pop"],
+	"j-pop": ["jpop", "j pop"],
+	"j-rock": ["jrock", "j rock"],
+	rnb: ["r&b", "rhythm and blues"],
+	"trip-hop": ["trip hop"],
+	"lo-fi": ["lofi", "lo fi"],
+	"post-punk": ["post punk"],
+	"post-rock": ["post rock"],
+	"post-hardcore": ["post hardcore"],
+	synthpop: ["synth pop", "synth-pop"],
+	"folk rock": ["folk-rock"],
+	"pop rock": ["pop-rock"],
+	"nu-metal": ["nu metal"],
+	"singer-songwriter": ["singer songwriter"],
+	"neo-soul": ["neo soul"],
+	"drum and bass": ["drum n bass", "dnb"],
+	"alternative rock": ["alt rock"],
+	"avant-garde": ["avantgarde"],
+	chillout: ["chill out"],
+	"nu-jazz": ["nu jazz"],
+	"underground hip-hop": ["underground hip hop"],
+	"lo-fi hip-hop": ["lo-fi hip hop"],
+	"power pop": ["powerpop"],
+};
+
+const CANON_MAP: ReadonlyMap<string, string> = new Map(
+	Object.entries(CANONICAL_GROUPS).flatMap(([canonical, variants]) =>
+		variants.map((v) => [v, canonical] as const),
+	),
+);
+
+/**
  * Check if a tag is a recognized genre.
  * Performs case-insensitive lookup against the whitelist.
  */
 export function isGenre(tag: string): boolean {
 	return GENRE_WHITELIST.has(tag.toLowerCase());
+}
+
+/**
+ * Canonicalize a genre tag to its preferred spelling.
+ * Returns the canonical form (lowercase, hyphenated where appropriate).
+ */
+export function canonicalizeGenre(tag: string): string {
+	const lower = tag.toLowerCase();
+	return CANON_MAP.get(lower) ?? lower;
 }

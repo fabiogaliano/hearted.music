@@ -23,7 +23,7 @@ import {
 	LastFmErrorResponseSchema,
 	type LastFmTag,
 } from "./types";
-import { isGenre } from "./whitelist";
+import { canonicalizeGenre, isGenre } from "./whitelist";
 
 const BASE_URL = "https://ws.audioscrobbler.com/2.0";
 const MAX_GENRES = 3;
@@ -228,19 +228,28 @@ export class LastFmService {
 		tags: LastFmTag[],
 		sourceLevel: GenreSourceLevel,
 	): GenreLookupResult | null {
-		// Filter to only recognized genres
-		const genreTags = tags.filter((t) => isGenre(t.name));
+		// Filter to recognized genres, canonicalize, and deduplicate
+		const seen = new Set<string>();
+		const dedupedTags: Array<{ name: string; count: number }> = [];
 
-		if (genreTags.length === 0) {
+		for (const t of tags) {
+			if (!isGenre(t.name)) continue;
+			const canonical = canonicalizeGenre(t.name);
+			if (seen.has(canonical)) continue;
+			seen.add(canonical);
+			dedupedTags.push({ name: canonical, count: t.count });
+		}
+
+		if (dedupedTags.length === 0) {
 			return null; // Triggers fallback
 		}
 
-		const topGenres = genreTags.slice(0, MAX_GENRES);
+		const topGenres = dedupedTags.slice(0, MAX_GENRES);
 
 		return {
-			tags: topGenres.map((t) => t.name.toLowerCase()),
+			tags: topGenres.map((t) => t.name),
 			tagsWithScores: topGenres.map((t) => ({
-				name: t.name.toLowerCase(),
+				name: t.name,
 				score: t.count,
 			})),
 			sourceLevel,
