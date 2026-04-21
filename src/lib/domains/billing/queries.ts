@@ -48,6 +48,17 @@ function parseUnlimitedAccess(source: string | null): UnlimitedAccess {
 
 type QueueBand = "low" | "standard" | "priority";
 
+/**
+ * True while the subscription still entitles the account to its paid tier.
+ * `"ending"` = cancel_at_period_end=true but we're still inside the paid
+ * period, so entitlements must match `"active"`.
+ */
+function isPaidPeriodStatus(
+	status: NormalizedSubscriptionStatus,
+): status is "active" | "ending" {
+	return status === "active" || status === "ending";
+}
+
 function resolveQueueBand(
 	plan: BillingPlan,
 	unlimitedAccess: UnlimitedAccess,
@@ -59,14 +70,14 @@ function resolveQueueBand(
 	if (
 		plan === "yearly" &&
 		unlimitedAccess.kind === "subscription" &&
-		subscriptionStatus === "active"
+		isPaidPeriodStatus(subscriptionStatus)
 	)
 		return "priority";
 
 	if (
 		plan === "quarterly" &&
 		unlimitedAccess.kind === "subscription" &&
-		subscriptionStatus === "active"
+		isPaidPeriodStatus(subscriptionStatus)
 	)
 		return "standard";
 
