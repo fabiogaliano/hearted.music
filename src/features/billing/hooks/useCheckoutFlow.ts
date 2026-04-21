@@ -1,31 +1,29 @@
 /**
  * Hook for initiating checkout sessions from paywall CTAs.
  *
- * Saves checkout intent to sessionStorage before redirecting to Stripe,
- * so usePostPurchaseReturn can detect the return and invalidate caches.
+ * Saves a typed checkout intent to sessionStorage before redirecting to
+ * Stripe. Pack intents capture the current credit balance as a baseline so
+ * post-purchase fulfillment can distinguish a new purchase from residual
+ * credit. Unlimited intents only carry the offer.
  */
 
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import type {
-	SONG_PACK_500,
-	UNLIMITED_QUARTERLY,
-	UNLIMITED_YEARLY,
-} from "@/lib/domains/billing/offers";
+import { SONG_PACK_500 } from "@/lib/domains/billing/offers";
+import type { BillingState } from "@/lib/domains/billing/state";
 import { createCheckoutSession } from "@/lib/server/billing.functions";
-import { saveCheckoutIntent } from "@/features/onboarding/checkout-intent";
-
-type CheckoutOffer =
-	| typeof SONG_PACK_500
-	| typeof UNLIMITED_QUARTERLY
-	| typeof UNLIMITED_YEARLY;
+import {
+	saveCheckoutIntent,
+	type CheckoutIntent,
+	type CheckoutOffer,
+} from "@/features/onboarding/checkout-intent";
 
 type CheckoutFlowState =
 	| { status: "idle" }
 	| { status: "creating"; offer: CheckoutOffer }
 	| { status: "redirecting"; offer: CheckoutOffer };
 
-export function useCheckoutFlow() {
+export function useCheckoutFlow(billingState: BillingState) {
 	const [state, setState] = useState<CheckoutFlowState>({ status: "idle" });
 
 	const startCheckout = useCallback(
@@ -35,7 +33,16 @@ export function useCheckoutFlow() {
 			setState({ status: "creating", offer });
 
 			const checkoutAttemptId = crypto.randomUUID();
-			saveCheckoutIntent({ offer, checkoutAttemptId });
+			const intent: CheckoutIntent =
+				offer === SONG_PACK_500
+					? {
+							kind: "pack",
+							offer,
+							checkoutAttemptId,
+							baselineCreditBalance: billingState.creditBalance,
+						}
+					: { kind: "unlimited", offer, checkoutAttemptId };
+			saveCheckoutIntent(intent);
 
 			try {
 				const result = await createCheckoutSession({
@@ -63,7 +70,7 @@ export function useCheckoutFlow() {
 
 			setState({ status: "idle" });
 		},
-		[state.status],
+		[state.status, billingState.creditBalance],
 	);
 
 	const isBusy = state.status !== "idle";

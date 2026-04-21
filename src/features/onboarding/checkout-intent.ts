@@ -1,9 +1,10 @@
 /**
- * Persists checkout intent across Stripe redirect via sessionStorage.
+ * Persists checkout intent across the Stripe redirect via sessionStorage.
  *
- * Before redirecting to Stripe, we save which offer and checkoutAttemptId
- * the user chose. On return, the component reads this to enter polling mode
- * and reuse the same checkoutAttemptId on retry.
+ * Intent is a discriminated union: pack intents capture the credit-balance
+ * baseline at checkout start so fulfillment can detect any increase (even
+ * if the user already had credits); unlimited intents only need the offer.
+ * Preprod-only schema (v2) — no backward compatibility with older payloads.
  */
 
 import {
@@ -12,23 +13,28 @@ import {
 	UNLIMITED_YEARLY,
 } from "@/lib/domains/billing/offers";
 
-const STORAGE_KEY = "hearted:checkout-intent";
+const STORAGE_KEY = "hearted:checkout-intent:v2";
 
-const VALID_OFFERS = new Set<string>([
-	SONG_PACK_500,
-	UNLIMITED_QUARTERLY,
-	UNLIMITED_YEARLY,
-]);
-
-type OfferType =
-	| typeof SONG_PACK_500
+export type PackOffer = typeof SONG_PACK_500;
+export type UnlimitedOffer =
 	| typeof UNLIMITED_QUARTERLY
 	| typeof UNLIMITED_YEARLY;
+export type CheckoutOffer = PackOffer | UnlimitedOffer;
 
-export interface CheckoutIntent {
-	offer: OfferType;
+export interface PackCheckoutIntent {
+	kind: "pack";
+	offer: PackOffer;
+	checkoutAttemptId: string;
+	baselineCreditBalance: number;
+}
+
+export interface UnlimitedCheckoutIntent {
+	kind: "unlimited";
+	offer: UnlimitedOffer;
 	checkoutAttemptId: string;
 }
+
+export type CheckoutIntent = PackCheckoutIntent | UnlimitedCheckoutIntent;
 
 export function saveCheckoutIntent(intent: CheckoutIntent): void {
 	try {
@@ -42,22 +48,8 @@ export function loadCheckoutIntent(): CheckoutIntent | null {
 	try {
 		const raw = sessionStorage.getItem(STORAGE_KEY);
 		if (!raw) return null;
-
 		const parsed: unknown = JSON.parse(raw);
-		if (
-			typeof parsed !== "object" ||
-			parsed === null ||
-			!("offer" in parsed) ||
-			!("checkoutAttemptId" in parsed)
-		) {
-			return null;
-		}
-
-		const { offer, checkoutAttemptId } = parsed as Record<string, unknown>;
-		if (typeof offer !== "string" || !VALID_OFFERS.has(offer)) return null;
-		if (typeof checkoutAttemptId !== "string") return null;
-
-		return { offer: offer as OfferType, checkoutAttemptId };
+		return parseIntent(parsed);
 	} catch {
 		return null;
 	}
@@ -69,4 +61,41 @@ export function clearCheckoutIntent(): void {
 	} catch {
 		// Ignore
 	}
+}
+
+function parseIntent(value: unknown): CheckoutIntent | null {
+	if (typeof value !== "object" || value === null) return null;
+	const record = value as Record<string, unknown>;
+
+	const { kind, offer, checkoutAttemptId } = record;
+	if (typeof checkoutAttemptId !== "string" || checkoutAttemptId.length === 0) {
+		return null;
+	}
+
+	if (kind === "pack") {
+		if (offer !== SONG_PACK_500) return null;
+		const baseline = record.baselineCreditBalance;
+		if (
+			typeof baseline !== "number" ||
+			!Number.isFinite(baseline) ||
+			baseline < 0
+		) {
+			return null;
+		}
+		return {
+			kind: "pack",
+			offer,
+			checkoutAttemptId,
+			baselineCreditBalance: baseline,
+		};
+	}
+
+	if (kind === "unlimited") {
+		if (offer !== UNLIMITED_QUARTERLY && offer !== UNLIMITED_YEARLY) {
+			return null;
+		}
+		return { kind: "unlimited", offer, checkoutAttemptId };
+	}
+
+	return null;
 }

@@ -35,7 +35,7 @@ type ConfigState =
 
 export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 	const theme = useTheme();
-	const { startCheckout, isBusy } = useCheckoutFlow();
+	const { startCheckout, isBusy } = useCheckoutFlow(billingState);
 	const [configState, setConfigState] = useState<ConfigState>({
 		status: "loading",
 	});

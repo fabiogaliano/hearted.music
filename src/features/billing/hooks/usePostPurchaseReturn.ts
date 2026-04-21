@@ -17,22 +17,11 @@ import {
 	clearCheckoutIntent,
 	loadCheckoutIntent,
 } from "@/features/onboarding/checkout-intent";
+import { isCheckoutFulfilled } from "../checkout-fulfillment";
 import { billingKeys } from "../query-keys";
 
 const POLL_INTERVAL_MS = 2_000;
 const POLL_TIMEOUT_MS = 30_000;
-
-function isCheckoutFulfilled(offer: string, state: BillingState): boolean {
-	switch (offer) {
-		case "song_pack_500":
-			return state.creditBalance > 0;
-		case "unlimited_quarterly":
-		case "unlimited_yearly":
-			return state.unlimitedAccess.kind === "subscription";
-		default:
-			return false;
-	}
-}
 
 /**
  * Runs once on mount in the authenticated layout. If a checkout intent
@@ -54,7 +43,7 @@ export function usePostPurchaseReturn(
 
 		hasRunRef.current = true;
 
-		if (isCheckoutFulfilled(intent.offer, billingState)) {
+		if (isCheckoutFulfilled(intent, billingState)) {
 			clearCheckoutIntent();
 			queryClient.invalidateQueries({ queryKey: billingKeys.state });
 			queryClient.invalidateQueries({ queryKey: likedSongsKeys.all });
@@ -85,7 +74,7 @@ export function usePostPurchaseReturn(
 				const billing = await getBillingState();
 				if (cancelled) return;
 
-				if (isCheckoutFulfilled(intent.offer, billing)) {
+				if (isCheckoutFulfilled(intent, billing)) {
 					queryClient.setQueryData(billingKeys.state, billing);
 					invalidateAll();
 					return;
