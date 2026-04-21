@@ -155,6 +155,42 @@ describe("readBillingState", () => {
 		expect(result.value.cancelAtPeriodEnd).toBe(true);
 	});
 
+	it("returns priority queueBand for yearly subscription in ending state", async () => {
+		const { client } = mockSupabase(
+			makeRow({
+				plan: "yearly",
+				subscription_status: "active",
+				cancel_at_period_end: true,
+				unlimited_access_source: "subscription",
+			}),
+		);
+		const result = await readBillingState(client, "acc-1");
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+
+		expect(result.value.subscriptionStatus).toBe("ending");
+		expect(result.value.queueBand).toBe("priority");
+	});
+
+	it("returns standard queueBand for quarterly subscription in ending state", async () => {
+		const { client } = mockSupabase(
+			makeRow({
+				plan: "quarterly",
+				subscription_status: "active",
+				cancel_at_period_end: true,
+				unlimited_access_source: "subscription",
+			}),
+		);
+		const result = await readBillingState(client, "acc-1");
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+
+		expect(result.value.subscriptionStatus).toBe("ending");
+		expect(result.value.queueBand).toBe("standard");
+	});
+
 	it("normalizes past_due Stripe status to past_due and queueBand low", async () => {
 		const { client } = mockSupabase(
 			makeRow({
