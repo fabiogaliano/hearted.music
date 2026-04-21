@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { isCheckoutFulfilled } from "@/features/billing/checkout-fulfillment";
 import { billingKeys } from "@/features/billing/query-keys";
 import { loadCheckoutIntent } from "@/features/onboarding/checkout-intent";
 import type { CheckoutIntent } from "@/features/onboarding/checkout-intent";
@@ -25,42 +26,24 @@ export const Route = createFileRoute("/_authenticated/checkout/success")({
 
 const TIMEOUT_MS = 35_000;
 
-function isFulfilled(offer: string, state: BillingState): boolean {
-	switch (offer) {
-		case "song_pack_500":
-			return state.creditBalance > 0;
-		case "unlimited_quarterly":
-		case "unlimited_yearly":
-			return state.unlimitedAccess.kind === "subscription";
-		default:
-			return false;
-	}
-}
-
 function getHeadline(
 	intent: CheckoutIntent | null,
 	state: BillingState,
 ): { text: string; accent: string } {
-	if (
-		intent?.offer === "song_pack_500" ||
-		(!intent && state.creditBalance > 0 && !hasUnlimitedAccess(state))
-	) {
+	if (intent?.kind === "pack") {
 		return { text: "your songs are", accent: "waiting" };
 	}
-	if (hasUnlimitedAccess(state)) {
+	if (intent?.kind === "unlimited" || hasUnlimitedAccess(state)) {
 		return { text: "unlimited, all", accent: "yours" };
 	}
 	return { text: "you're all", accent: "set" };
 }
 
 function getDetail(intent: CheckoutIntent | null, state: BillingState): string {
-	if (
-		intent?.offer === "song_pack_500" ||
-		(!intent && state.creditBalance > 0 && !hasUnlimitedAccess(state))
-	) {
+	if (intent?.kind === "pack") {
 		return `${String(state.creditBalance)} songs ready to explore.`;
 	}
-	if (hasUnlimitedAccess(state)) {
+	if (intent?.kind === "unlimited" || hasUnlimitedAccess(state)) {
 		return "Every song in your library is ready to explore.";
 	}
 	return "Your purchase has been confirmed.";
@@ -78,7 +61,8 @@ function CheckoutSuccessPage() {
 		queryFn: () => getBillingState(),
 	});
 
-	const confirmed = intent !== null && isFulfilled(intent.offer, billingState);
+	const confirmed =
+		intent !== null && isCheckoutFulfilled(intent, billingState);
 	const pending = intent !== null && !confirmed && !timedOut;
 
 	useEffect(() => {

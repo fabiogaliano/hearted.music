@@ -7,18 +7,21 @@
  */
 
 import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Kbd } from "@/components/ui/kbd";
+import { billingKeys } from "@/features/billing/query-keys";
 import {
 	SONG_PACK_500,
 	UNLIMITED_QUARTERLY,
 	UNLIMITED_YEARLY,
 } from "@/lib/domains/billing/offers";
+import type { BillingState } from "@/lib/domains/billing/state";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import {
 	createCheckoutSession,
+	getBillingState,
 	getPlanSelectionConfig,
 	type PlanSelectionConfig,
 } from "@/lib/server/billing.functions";
@@ -35,6 +38,7 @@ import {
 	loadCheckoutIntent,
 	saveCheckoutIntent,
 	type CheckoutIntent,
+	type CheckoutOffer,
 } from "../checkout-intent";
 import { useCheckoutPolling } from "../hooks/useCheckoutPolling";
 
@@ -42,11 +46,6 @@ type ConfigState =
 	| { status: "loading" }
 	| { status: "loaded"; config: PlanSelectionConfig }
 	| { status: "error" };
-
-type CheckoutTarget =
-	| typeof SONG_PACK_500
-	| typeof UNLIMITED_QUARTERLY
-	| typeof UNLIMITED_YEARLY;
 
 type PlanState = "initial" | "polling" | "retry" | "success";
 
@@ -81,7 +80,7 @@ export function PlanSelectionStep({
 	const [configState, setConfigState] = useState<ConfigState>({
 		status: "loading",
 	});
-	const [activeCheckout, setActiveCheckout] = useState<CheckoutTarget | null>(
+	const [activeCheckout, setActiveCheckout] = useState<CheckoutOffer | null>(
 		null,
 	);
 
@@ -89,7 +88,12 @@ export function PlanSelectionStep({
 		() => loadCheckoutIntent(),
 	);
 
-	const pollingState = useCheckoutPolling(pendingIntent?.offer ?? null);
+	const { data: billingState } = useQuery<BillingState>({
+		queryKey: billingKeys.state,
+		queryFn: () => getBillingState(),
+	});
+
+	const pollingState = useCheckoutPolling(pendingIntent);
 
 	// Fetch plan config on mount
 	useEffect(() => {
@@ -129,8 +133,9 @@ export function PlanSelectionStep({
 		setPlanState("success");
 	};
 
-	const handleCheckout = async (offer: CheckoutTarget) => {
+	const handleCheckout = async (offer: CheckoutOffer) => {
 		if (activeCheckout || pendingIntent) return;
+		if (!billingState) return;
 		setActiveCheckout(offer);
 
 		const existingIntent = loadCheckoutIntent();
@@ -139,7 +144,15 @@ export function PlanSelectionStep({
 				? existingIntent.checkoutAttemptId
 				: crypto.randomUUID();
 
-		const intent: CheckoutIntent = { offer, checkoutAttemptId };
+		const intent: CheckoutIntent =
+			offer === SONG_PACK_500
+				? {
+						kind: "pack",
+						offer,
+						checkoutAttemptId,
+						baselineCreditBalance: billingState.creditBalance,
+					}
+				: { kind: "unlimited", offer, checkoutAttemptId };
 		saveCheckoutIntent(intent);
 
 		try {
