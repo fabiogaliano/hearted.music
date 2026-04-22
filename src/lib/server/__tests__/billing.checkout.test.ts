@@ -178,7 +178,7 @@ describe("createCheckoutSession", () => {
 		);
 
 		expect(mockFetch).toHaveBeenCalledWith(
-			"https://billing.example.com/checkout/pack",
+			"https://billing.example.com/api/checkout/pack",
 			expect.objectContaining({
 				method: "POST",
 				headers: expect.objectContaining({
@@ -227,7 +227,7 @@ describe("createCheckoutSession", () => {
 		});
 
 		expect(mockFetch).toHaveBeenCalledWith(
-			"https://billing.example.com/checkout/unlimited",
+			"https://billing.example.com/api/checkout/unlimited",
 			expect.anything(),
 		);
 	});
@@ -345,7 +345,7 @@ describe("createPortalSession", () => {
 		);
 
 		expect(mockFetch).toHaveBeenCalledWith(
-			"https://billing.example.com/portal/session",
+			"https://billing.example.com/api/portal/session",
 			expect.objectContaining({
 				method: "POST",
 				headers: expect.objectContaining({
