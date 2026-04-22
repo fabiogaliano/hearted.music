@@ -131,7 +131,11 @@ export async function isOnboardingComplete(
 		return Result.err(result.error);
 	}
 
-	return Result.ok(result.value?.onboarding_completed_at !== null);
+	if (result.value === null) {
+		return Result.ok(false);
+	}
+
+	return Result.ok(result.value.onboarding_completed_at !== null);
 }
 
 /**
