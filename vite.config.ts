@@ -63,7 +63,12 @@ const config = defineConfig({
 	test: {
 		environment: "jsdom",
 		setupFiles: ["./src/test/setup.tsx"],
-		exclude: ["**/node_modules/**", "**/old_app/**"],
+		exclude: [
+			"**/node_modules/**",
+			"**/old_app/**",
+			// Sibling Hono service mounted via symlink; runs from its own root.
+			"**/v1_hearted_brand/**",
+		],
 		server: {
 			deps: {
 				inline: ["tiny-warning"],
