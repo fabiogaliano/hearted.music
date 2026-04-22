@@ -105,6 +105,13 @@ export async function getExtensionStatus(): Promise<ExtensionStatusResponse | nu
 	return sendExtensionCommand<ExtensionStatusResponse>({ type: "GET_STATUS" });
 }
 
+export async function expectLoginReturn(): Promise<boolean> {
+	const response = await sendExtensionCommand<{ ok?: boolean }>({
+		type: "EXPECT_LOGIN_RETURN",
+	});
+	return response?.ok === true;
+}
+
 export async function connectExtension(
 	token: string,
 	backendUrl: string,

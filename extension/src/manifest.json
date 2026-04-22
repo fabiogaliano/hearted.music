@@ -26,6 +26,11 @@
 			"matches": ["https://open.spotify.com/*"],
 			"js": ["content/spotify-token.js"],
 			"run_at": "document_start"
+		},
+		{
+			"matches": ["https://open.spotify.com/*"],
+			"js": ["content/return-banner.js"],
+			"run_at": "document_idle"
 		}
 	],
 	"action": {

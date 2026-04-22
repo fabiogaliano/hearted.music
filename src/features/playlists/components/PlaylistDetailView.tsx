@@ -1,15 +1,33 @@
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
-import { useState } from "react";
+import { type MouseEvent, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
 import { updatePlaylistAcknowledged } from "@/lib/extension/playlist-write-acknowledgement";
+import { requiresSpotifyReconnect } from "@/lib/extension/spotify-reconnect";
+import {
+	expectLoginReturn,
+	isExtensionInstalled,
+} from "@/lib/extension/detect";
 import type { ExtensionAvailability } from "../hooks/useExtensionStatus";
 import { playlistKeys } from "../queries";
 import { PlaylistDescription } from "./PlaylistDescription";
 import { PlaylistTrackList } from "./PlaylistTrackList";
+
+const SPOTIFY_LOGIN_URL = "https://open.spotify.com/";
+const EXTENSION_STORE_URL =
+	"https://chrome.google.com/webstore/detail/hearted-spotify-sync/EXTENSION_ID";
+
+function armExpectedReturnBestEffort(
+	event: MouseEvent<HTMLAnchorElement>,
+): void {
+	if (event.type === "mousedown" && event.button !== 0) return;
+	if (event.type === "auxclick" && event.button !== 1) return;
+	if (event.type === "click" && event.detail !== 0) return;
+	void expectLoginReturn().catch(() => {});
+}
 
 interface PlaylistDetailViewProps {
 	theme: ThemeConfig;
@@ -51,9 +69,9 @@ export function PlaylistDetailView({
 	const queryClient = useQueryClient();
 	const [isEditingDescription, setIsEditingDescription] = useState(false);
 	const [draftDescription, setDraftDescription] = useState("");
-	const [editState, setEditState] = useState<"idle" | "saving" | "failed">(
-		"idle",
-	);
+	const [editState, setEditState] = useState<
+		"idle" | "saving" | "failed" | "reconnect-required" | "extension-required"
+	>("idle");
 
 	useShortcut({
 		key: "escape",
@@ -87,9 +105,24 @@ export function PlaylistDetailView({
 			queryClient.invalidateQueries({
 				queryKey: playlistKeys.management(accountId),
 			});
-		} else {
-			setEditState("failed");
+			return;
 		}
+
+		if (requiresSpotifyReconnect(result.commandResponse)) {
+			setEditState("reconnect-required");
+			return;
+		}
+
+		const cmd = result.commandResponse;
+		if (!cmd.ok && cmd.errorCode === "NETWORK_ERROR") {
+			const installed = await isExtensionInstalled();
+			if (!installed) {
+				setEditState("extension-required");
+				return;
+			}
+		}
+
+		setEditState("failed");
 	};
 
 	const handleCancelDescription = () => {
@@ -196,6 +229,71 @@ export function PlaylistDetailView({
 								>
 									Description update failed. Please try again.
 								</p>
+							)}
+
+							{editState === "reconnect-required" && isExpanded && (
+								<div className="mb-4 flex items-center gap-3">
+									<p
+										className="text-xs"
+										style={{
+											fontFamily: fonts.body,
+											color: theme.primary,
+										}}
+									>
+										Reconnect to Spotify, then repeat this edit.
+									</p>
+									<a
+										href={SPOTIFY_LOGIN_URL}
+										target="_blank"
+										rel="noopener noreferrer"
+										onClick={armExpectedReturnBestEffort}
+										onAuxClick={armExpectedReturnBestEffort}
+										onMouseDown={armExpectedReturnBestEffort}
+										className="inline-flex items-center gap-1.5 rounded-[20px] px-3 py-1 text-xs tracking-widest uppercase transition-all hover:opacity-80 active:scale-[0.98]"
+										style={{
+											fontFamily: fonts.body,
+											background: theme.surface,
+											border: `1px solid ${theme.border}`,
+											color: theme.text,
+										}}
+									>
+										Reconnect
+										<span className="text-xs" style={{ opacity: 0.45 }}>
+											↗
+										</span>
+									</a>
+								</div>
+							)}
+
+							{editState === "extension-required" && isExpanded && (
+								<div className="mb-4 flex items-center gap-3">
+									<p
+										className="text-xs"
+										style={{
+											fontFamily: fonts.body,
+											color: theme.primary,
+										}}
+									>
+										The extension is required to edit playlists.
+									</p>
+									<a
+										href={EXTENSION_STORE_URL}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="inline-flex items-center gap-1.5 rounded-[20px] px-3 py-1 text-xs tracking-widest uppercase transition-all hover:opacity-80 active:scale-[0.98]"
+										style={{
+											fontFamily: fonts.body,
+											background: theme.surface,
+											border: `1px solid ${theme.border}`,
+											color: theme.text,
+										}}
+									>
+										Install extension
+										<span className="text-xs" style={{ opacity: 0.45 }}>
+											↗
+										</span>
+									</a>
+								</div>
 							)}
 
 							<div

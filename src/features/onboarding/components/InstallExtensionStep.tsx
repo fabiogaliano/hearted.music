@@ -4,9 +4,10 @@
  * Keyboard: Enter = allow sync (when ready), S = skip.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { type MouseEvent, useCallback, useEffect, useState } from "react";
 import {
 	connectExtension,
+	expectLoginReturn,
 	getSpotifyConnectionStatus,
 	isExtensionInstalled,
 	triggerExtensionSync,
@@ -34,12 +35,14 @@ function ActionContent({
 	isExtensionDetected,
 	isSpotifyConnected,
 	onAccept,
+	onSpotifyLoginClick,
 	isAdvancing,
 }: {
 	theme: ThemeConfig;
 	isExtensionDetected: boolean;
 	isSpotifyConnected: boolean;
 	onAccept: () => void;
+	onSpotifyLoginClick: (event: MouseEvent<HTMLAnchorElement>) => void;
 	isAdvancing: boolean;
 }) {
 	const isReadyToSync = isExtensionDetected && isSpotifyConnected;
@@ -175,6 +178,9 @@ function ActionContent({
 				href={SPOTIFY_LOGIN_URL}
 				target="_blank"
 				rel="noopener noreferrer"
+				onClick={onSpotifyLoginClick}
+				onAuxClick={onSpotifyLoginClick}
+				onMouseDown={onSpotifyLoginClick}
 				className="self-start inline-flex items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-all duration-200 hover:opacity-80 active:scale-[0.98]"
 				style={{
 					fontFamily: fonts.body,
@@ -200,6 +206,18 @@ export function InstallExtensionStep() {
 	const [isExtensionDetected, setIsExtensionDetected] = useState(false);
 	const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
 	const [isAdvancing, setIsAdvancing] = useState(false);
+
+	const handleSpotifyLoginClick = useCallback(
+		(event: MouseEvent<HTMLAnchorElement>) => {
+			if (event.type === "mousedown" && event.button !== 0) return;
+			if (event.type === "auxclick" && event.button !== 1) return;
+			if (event.type === "click" && event.detail !== 0) return;
+			void expectLoginReturn().catch(() => {
+				// Best-effort: arming failure must not block the navigation to Spotify.
+			});
+		},
+		[],
+	);
 
 	const handleAccept = useCallback(async () => {
 		setIsAdvancing(true);
@@ -331,6 +349,7 @@ export function InstallExtensionStep() {
 							isExtensionDetected={isExtensionDetected}
 							isSpotifyConnected={isSpotifyConnected}
 							onAccept={handleAccept}
+							onSpotifyLoginClick={handleSpotifyLoginClick}
 							isAdvancing={isAdvancing}
 						/>
 					</div>

@@ -353,6 +353,43 @@ describe("handleSpotifyCommand", () => {
 			}
 		});
 
+		it.each([
+			["HTTP 401 response", "Spotify request failed: 401"],
+			["unauthorized", "Upstream said: unauthorized"],
+			["token expired", "Token expired"],
+			["auth required", "auth required"],
+		])("maps %s to AUTH_REQUIRED and clears cached token", async (_label, errMessage) => {
+			const { addToPlaylist } = await import(
+				"../shared/spotify-client/mutations"
+			);
+			vi.mocked(addToPlaylist).mockRejectedValueOnce(new Error(errMessage));
+
+			const clearCachedToken = vi.fn();
+			const provider: TokenProvider = {
+				...makeTokenProvider(true),
+				clearCachedToken,
+			};
+
+			const cmd: SpotifyCommand = {
+				type: "SPOTIFY_COMMAND",
+				command: "addToPlaylist",
+				payload: {
+					playlistUri: "spotify:playlist:1",
+					trackUris: ["spotify:track:1"],
+				},
+				commandId: "cmd-auth",
+			};
+
+			const result = await handleSpotifyCommand(cmd, provider);
+
+			expect(result.ok).toBe(false);
+			if (!result.ok) {
+				expect(result.errorCode).toBe("AUTH_REQUIRED");
+				expect(result.retryable).toBe(false);
+			}
+			expect(clearCachedToken).toHaveBeenCalledTimes(1);
+		});
+
 		it("maps generic errors to UPSTREAM_ERROR with retryable=false", async () => {
 			const { removeFromPlaylist } = await import(
 				"../shared/spotify-client/mutations"
