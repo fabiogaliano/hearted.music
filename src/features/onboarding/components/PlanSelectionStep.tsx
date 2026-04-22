@@ -102,8 +102,12 @@ export function PlanSelectionStep({
 			.then((config) => {
 				if (cancelled) return;
 				setConfigState({ status: "loaded", config });
-				// Billing-disabled: skip to success immediately
+				// Billing-disabled: skip to success immediately. Also drop any
+				// persisted intent so a leftover checkout-return doesn't keep
+				// polling and flip the UI to "retry" on timeout.
 				if (!config.billingEnabled) {
+					clearCheckoutIntent();
+					setPendingIntent(null);
 					setPlanState("success");
 				}
 			})
