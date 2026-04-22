@@ -31,18 +31,52 @@ export type GrantFreeAllocationResult = {
 	unlockedIds: string[];
 };
 
-interface UnlockRpcPayload {
-	newly_unlocked_song_ids: string[];
-	already_unlocked_song_ids: string[];
+type UnlockRpcPayload =
+	| {
+			status: "ok";
+			newly_unlocked_song_ids: string[];
+			already_unlocked_song_ids: string[];
+	  }
+	| {
+			status: "insufficient_balance";
+			required_credits: number;
+			available_credits: number;
+	  };
+
+function isStringArray(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
 
-function isUnlockRpcPayload(value: unknown): value is UnlockRpcPayload {
-	if (typeof value !== "object" || value === null) return false;
+function parseUnlockRpcPayload(value: unknown): UnlockRpcPayload | null {
+	if (typeof value !== "object" || value === null) return null;
 	const obj = value as Record<string, unknown>;
-	return (
-		Array.isArray(obj.newly_unlocked_song_ids) &&
-		Array.isArray(obj.already_unlocked_song_ids)
-	);
+	if (obj.status === "ok") {
+		if (
+			isStringArray(obj.newly_unlocked_song_ids) &&
+			isStringArray(obj.already_unlocked_song_ids)
+		) {
+			return {
+				status: "ok",
+				newly_unlocked_song_ids: obj.newly_unlocked_song_ids,
+				already_unlocked_song_ids: obj.already_unlocked_song_ids,
+			};
+		}
+		return null;
+	}
+	if (obj.status === "insufficient_balance") {
+		if (
+			typeof obj.required_credits === "number" &&
+			typeof obj.available_credits === "number"
+		) {
+			return {
+				status: "insufficient_balance",
+				required_credits: obj.required_credits,
+				available_credits: obj.available_credits,
+			};
+		}
+		return null;
+	}
+	return null;
 }
 
 export async function requestSongUnlock(
@@ -67,13 +101,6 @@ export async function requestSongUnlock(
 	});
 
 	if (error) {
-		if (error.message.includes("insufficient balance")) {
-			return Result.err({
-				kind: "insufficient_balance",
-				required: songIds.length,
-				available: billingState.creditBalance,
-			});
-		}
 		if (error.message.includes("not currently liked")) {
 			return Result.err({ kind: "invalid_songs", songIds });
 		}
@@ -86,7 +113,8 @@ export async function requestSongUnlock(
 		});
 	}
 
-	if (!isUnlockRpcPayload(data)) {
+	const payload = parseUnlockRpcPayload(data);
+	if (payload === null) {
 		return Result.err({
 			kind: "db_error",
 			cause: new DatabaseError({
@@ -96,8 +124,16 @@ export async function requestSongUnlock(
 		});
 	}
 
-	const newlyUnlockedIds = data.newly_unlocked_song_ids;
-	const alreadyUnlockedIds = data.already_unlocked_song_ids;
+	if (payload.status === "insufficient_balance") {
+		return Result.err({
+			kind: "insufficient_balance",
+			required: payload.required_credits,
+			available: payload.available_credits,
+		});
+	}
+
+	const newlyUnlockedIds = payload.newly_unlocked_song_ids;
+	const alreadyUnlockedIds = payload.already_unlocked_song_ids;
 	const remainingBalance = billingState.creditBalance - newlyUnlockedIds.length;
 
 	if (newlyUnlockedIds.length > 0) {
