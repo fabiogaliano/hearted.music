@@ -31,6 +31,12 @@ const configs: BuildOptions[] = [
   },
   {
     ...commonOptions,
+    entryPoints: [resolve(srcDir, "content/return-banner.ts")],
+    outfile: resolve(distDir, "content/return-banner.js"),
+    format: "iife",
+  },
+  {
+    ...commonOptions,
     entryPoints: [resolve(srcDir, "background/service-worker.ts")],
     outfile: resolve(distDir, "background/service-worker.js"),
     format: "esm",

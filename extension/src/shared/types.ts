@@ -34,7 +34,8 @@ export type ExtensionMessage =
 	| { type: "PATHFINDER_HASH"; payload: PathfinderHashPayload }
 	| { type: "GET_STATUS" }
 	| { type: "TRIGGER_SYNC" }
-	| { type: "GET_TOKEN" };
+	| { type: "GET_TOKEN" }
+	| { type: "CLOSE_AND_FOCUS_HEARTED" };
 
 export type StatusResponse = {
 	hasToken: boolean;
@@ -88,4 +89,5 @@ export type ExternalMessage =
 	| { type: "CONNECT"; token: string; backendUrl?: string }
 	| { type: "TRIGGER_SYNC" }
 	| { type: "SPOTIFY_STATUS" }
+	| { type: "EXPECT_LOGIN_RETURN" }
 	| SpotifyCommand;

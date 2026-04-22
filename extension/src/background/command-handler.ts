@@ -21,6 +21,7 @@ export type TokenProvider = {
 	getCachedToken: () => SpotifyTokenPayload | null;
 	setCachedToken: (token: SpotifyTokenPayload) => void;
 	isTokenValid: () => boolean;
+	clearCachedToken?: () => void;
 };
 
 type CommandResultMap = {
@@ -74,6 +75,15 @@ async function runCommandExecutor<K extends SpotifyCommandName>(
 	return execute(token, payload);
 }
 
+function isAuthLikeErrorMessage(message: string): boolean {
+	return (
+		/\b401\b/.test(message) ||
+		/unauthori[sz]ed/i.test(message) ||
+		/token\s*expired/i.test(message) ||
+		/auth(entication)?\s*required/i.test(message)
+	);
+}
+
 function mapErrorToResponse(
 	err: unknown,
 	commandId: string,
@@ -106,6 +116,16 @@ function mapErrorToResponse(
 			errorCode: "NETWORK_ERROR",
 			message,
 			retryable: true,
+			commandId,
+		};
+	}
+
+	if (isAuthLikeErrorMessage(message)) {
+		return {
+			ok: false,
+			errorCode: "AUTH_REQUIRED",
+			message,
+			retryable: false,
 			commandId,
 		};
 	}
@@ -172,6 +192,10 @@ export async function handleSpotifyCommand(
 	try {
 		return await executeSpotifyCommand(cmd, token);
 	} catch (err) {
-		return mapErrorToResponse(err, cmd.commandId);
+		const response = mapErrorToResponse(err, cmd.commandId);
+		if (!response.ok && response.errorCode === "AUTH_REQUIRED") {
+			tokenProvider.clearCachedToken?.();
+		}
+		return response;
 	}
 }

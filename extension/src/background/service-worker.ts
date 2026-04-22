@@ -19,12 +19,31 @@ import {
 	fetchArtistImageUrls,
 } from "./artist-image-hydration";
 import { handleSpotifyCommand } from "./command-handler";
+import {
+	consumeExpectLoginReturnIfValid,
+	setExpectLoginReturn,
+} from "./expect-login-return";
 
 let cachedToken: SpotifyTokenPayload | null = null;
 let cachedProfile: UserProfile | null = null;
 let isSyncing = false;
 
+// Track the hearted. tab that's talking to us so we can return focus after a
+// Spotify login. Refreshed on every externally_connectable message.
+let heartedTabId: number | null = null;
+let heartedTabLastSeenAt = 0;
+const HEARTED_TAB_FRESHNESS_MS = 60_000;
+
 const SPOTIFY_COOKIE_URL = "https://open.spotify.com/";
+const SPOTIFY_TAB_URL_MATCH = "https://open.spotify.com/*";
+// Kept in sync with manifest.externally_connectable.matches so we can fall
+// back to querying by URL when the cached tab id is stale.
+const HEARTED_TAB_URL_MATCHES = [
+	"https://hearted.app/*",
+	"https://*.hearted.app/*",
+	"http://localhost/*",
+	"http://127.0.0.1/*",
+];
 
 function normalizeBackendUrl(url: string): string {
 	return url.endsWith("/") ? url.slice(0, -1) : url;
@@ -68,6 +87,57 @@ async function hasSpotifySession(): Promise<boolean> {
 
 function isTokenValid(): boolean {
 	return cachedToken !== null && Date.now() < cachedToken.expiresAtMs;
+}
+
+function isUsableToken(token: SpotifyTokenPayload | null | undefined): boolean {
+	if (!token) return false;
+	if (token.isAnonymous) return false;
+	return Date.now() < token.expiresAtMs;
+}
+
+function rememberHeartedSender(sender: chrome.runtime.MessageSender): void {
+	if (sender.tab?.id !== undefined) {
+		heartedTabId = sender.tab.id;
+		heartedTabLastSeenAt = Date.now();
+	}
+}
+
+async function resolveHeartedTabId(): Promise<number | null> {
+	if (
+		heartedTabId !== null &&
+		Date.now() - heartedTabLastSeenAt < HEARTED_TAB_FRESHNESS_MS
+	) {
+		try {
+			await chrome.tabs.get(heartedTabId);
+			return heartedTabId;
+		} catch {
+			heartedTabId = null;
+		}
+	}
+	try {
+		const tabs = await chrome.tabs.query({ url: HEARTED_TAB_URL_MATCHES });
+		const first = tabs.find((t) => typeof t.id === "number");
+		return first?.id ?? null;
+	} catch {
+		return null;
+	}
+}
+
+async function broadcastShowReturnBanner(): Promise<void> {
+	try {
+		const tabs = await chrome.tabs.query({ url: SPOTIFY_TAB_URL_MATCH });
+		for (const tab of tabs) {
+			if (typeof tab.id !== "number") continue;
+			try {
+				await chrome.tabs.sendMessage(tab.id, { type: "SHOW_RETURN_BANNER" });
+			} catch {
+				// Content script may not have loaded yet (e.g. very early in page life).
+				// Banner only matters for logged-in, settled pages, so skip silently.
+			}
+		}
+	} catch (err) {
+		console.warn("[hearted.] broadcastShowReturnBanner failed:", err);
+	}
 }
 
 async function getApiToken(): Promise<string> {
@@ -280,6 +350,8 @@ type DebugSelf = {
 	fetchPlaylists: () => Promise<unknown>;
 	getProfile: () => Promise<unknown>;
 	fetchPlaylistTracks: (playlistUri: string) => Promise<unknown>;
+	resetSpotify: () => Promise<unknown>;
+	showReturnBanner: () => Promise<unknown>;
 };
 const dbg = self as unknown as DebugSelf;
 
@@ -331,12 +403,32 @@ dbg.fetchPlaylistTracks = async (playlistUri: string) => {
 	return tracks;
 };
 
+// Clear the extension's view of the Spotify session so the next authorized
+// fetch on open.spotify.com is treated as a fresh login transition. Does NOT
+// touch the sp_dc cookie — the browser stays signed in.
+dbg.resetSpotify = async () => {
+	clearSpotifyTokenCache();
+	await chrome.storage.local.remove("spotifyToken");
+	console.log(
+		"[hearted.] Spotify token cache cleared — reload the Spotify tab to re-trigger login detection.",
+	);
+	return { ok: true };
+};
+
+// Force-show the return banner on every open.spotify.com tab. Useful for
+// tweaking visuals without re-running the full login flow.
+dbg.showReturnBanner = async () => {
+	await broadcastShowReturnBanner();
+	return { ok: true };
+};
+
 const tokenProvider = {
 	getCachedToken: () => cachedToken,
 	setCachedToken: (token: SpotifyTokenPayload) => {
 		cachedToken = token;
 	},
 	isTokenValid,
+	clearCachedToken: clearSpotifyTokenCache,
 };
 
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -357,6 +449,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 				target: { tabId: tab.id },
 				files: ["content/spotify-token.js"],
 			});
+			await chrome.scripting.executeScript({
+				target: { tabId: tab.id },
+				files: ["content/return-banner.js"],
+			});
 			console.log("[hearted.] Re-injected content scripts into tab", tab.id);
 		}
 	} catch (err) {
@@ -366,6 +462,8 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
 chrome.runtime.onMessageExternal.addListener(
 	(message, _sender, sendResponse) => {
+		rememberHeartedSender(_sender);
+
 		if (message.type === "PING") {
 			sendResponse({ type: "PONG" });
 			return true;
@@ -413,6 +511,14 @@ chrome.runtime.onMessageExternal.addListener(
 					const error = err instanceof Error ? err.message : "Unknown error";
 					sendResponse({ ok: false, error });
 				}
+			})();
+			return true;
+		}
+
+		if (message.type === "EXPECT_LOGIN_RETURN") {
+			(async () => {
+				await setExpectLoginReturn();
+				sendResponse({ ok: true });
 			})();
 			return true;
 		}
@@ -499,16 +605,44 @@ chrome.runtime.onMessage.addListener(
 	(message: ExtensionMessage, _sender, sendResponse) => {
 		switch (message.type) {
 			case "SPOTIFY_TOKEN": {
-				cachedToken = message.payload;
-				cachedProfile = null;
-				// Persist so token survives service worker termination
-				chrome.storage.local.set({ spotifyToken: message.payload });
-				const expiresIn = Math.round(
-					(message.payload.expiresAtMs - Date.now()) / 1000,
-				);
-				console.log(`[hearted.] Token received (expires in ${expiresIn}s)`);
-				sendResponse({ ok: true });
-				break;
+				(async () => {
+					// Detect login transition: check BOTH in-memory and persisted token so
+					// a service-worker restart mid-session isn't misread as a fresh login.
+					let prevUsable = isUsableToken(cachedToken);
+					if (!prevUsable) {
+						const { spotifyToken } =
+							await chrome.storage.local.get("spotifyToken");
+						prevUsable = isUsableToken(
+							(spotifyToken ?? null) as SpotifyTokenPayload | null,
+						);
+					}
+					const nextUsable = isUsableToken(message.payload);
+
+					cachedToken = message.payload;
+					cachedProfile = null;
+					await chrome.storage.local.set({ spotifyToken: message.payload });
+					const expiresIn = Math.round(
+						(message.payload.expiresAtMs - Date.now()) / 1000,
+					);
+					console.log(`[hearted.] Token received (expires in ${expiresIn}s)`);
+
+					if (!prevUsable && nextUsable) {
+						const expected = await consumeExpectLoginReturnIfValid();
+						if (expected) {
+							console.log(
+								"[hearted.] Spotify login transition — expected return, broadcasting banner",
+							);
+							await broadcastShowReturnBanner();
+						} else {
+							console.log(
+								"[hearted.] Spotify login transition — return not expected, skipping banner",
+							);
+						}
+					}
+
+					sendResponse({ ok: true });
+				})();
+				return true;
 			}
 
 			case "PATHFINDER_HASH": {
@@ -551,6 +685,33 @@ chrome.runtime.onMessage.addListener(
 						sendResponse({ ok: true, ...result });
 					} catch (err) {
 						const error = err instanceof Error ? err.message : "Unknown error";
+						sendResponse({ ok: false, error });
+					}
+				})();
+				return true;
+			}
+
+			case "CLOSE_AND_FOCUS_HEARTED": {
+				(async () => {
+					const spotifyTabId = _sender.tab?.id;
+					const targetId = await resolveHeartedTabId();
+					try {
+						if (targetId !== null) {
+							const tab = await chrome.tabs.get(targetId);
+							await chrome.tabs.update(targetId, { active: true });
+							if (typeof tab.windowId === "number") {
+								await chrome.windows.update(tab.windowId, { focused: true });
+							}
+						}
+						// Remove Spotify tab AFTER focusing hearted so Chrome doesn't
+						// briefly activate an adjacent tab during the transition.
+						if (typeof spotifyTabId === "number") {
+							await chrome.tabs.remove(spotifyTabId);
+						}
+						sendResponse({ ok: true });
+					} catch (err) {
+						const error = err instanceof Error ? err.message : "Unknown error";
+						console.warn("[hearted.] CLOSE_AND_FOCUS_HEARTED failed:", error);
 						sendResponse({ ok: false, error });
 					}
 				})();
