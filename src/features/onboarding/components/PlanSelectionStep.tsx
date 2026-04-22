@@ -153,7 +153,6 @@ export function PlanSelectionStep({
 						baselineCreditBalance: billingState.creditBalance,
 					}
 				: { kind: "unlimited", offer, checkoutAttemptId };
-		saveCheckoutIntent(intent);
 
 		try {
 			const result = await createCheckoutSession({
@@ -170,13 +169,16 @@ export function PlanSelectionStep({
 								? result.message
 								: "Something went wrong. Please try again.";
 				toast.error(message);
+				clearCheckoutIntent();
 				setActiveCheckout(null);
 				return;
 			}
 
+			saveCheckoutIntent(intent);
 			window.location.href = result.checkoutUrl;
 		} catch {
 			toast.error("Failed to start checkout. Please try again.");
+			clearCheckoutIntent();
 			setActiveCheckout(null);
 		}
 	};
