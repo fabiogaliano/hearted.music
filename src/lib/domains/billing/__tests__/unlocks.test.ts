@@ -80,6 +80,7 @@ describe("requestSongUnlock", () => {
 		const rpcFn = mockRpc({
 			unlock_songs_for_account: {
 				data: {
+					status: "ok",
 					newly_unlocked_song_ids: ["s1", "s2"],
 					already_unlocked_song_ids: ["s3"],
 				},
@@ -114,18 +115,19 @@ describe("requestSongUnlock", () => {
 		});
 	});
 
-	it("returns insufficient_balance error", async () => {
+	it("returns insufficient_balance error from structured RPC payload", async () => {
 		mockedReadBillingState.mockResolvedValue(
 			Result.ok(makeBillingState({ creditBalance: 1 })),
 		);
 
 		const rpcFn = mockRpc({
 			unlock_songs_for_account: {
-				data: null,
-				error: {
-					code: "P0001",
-					message: "insufficient balance (credit_balance=1, required=3)",
+				data: {
+					status: "insufficient_balance",
+					required_credits: 3,
+					available_credits: 1,
 				},
+				error: null,
 			},
 		});
 
@@ -141,6 +143,28 @@ describe("requestSongUnlock", () => {
 			required: 3,
 			available: 1,
 		});
+	});
+
+	it("returns db_error when RPC payload has unexpected shape", async () => {
+		mockedReadBillingState.mockResolvedValue(
+			Result.ok(makeBillingState({ creditBalance: 5 })),
+		);
+
+		const rpcFn = mockRpc({
+			unlock_songs_for_account: {
+				data: { status: "ok", newly_unlocked_song_ids: "not-an-array" },
+				error: null,
+			},
+		});
+
+		const client = { rpc: rpcFn } as unknown as AdminSupabaseClient;
+
+		const result = await requestSongUnlock(client, "acc-1", ["s1"]);
+
+		expect(Result.isError(result)).toBe(true);
+		if (!Result.isError(result)) return;
+
+		expect(result.error.kind).toBe("db_error");
 	});
 
 	it("returns invalid_songs error when songs not currently liked", async () => {
@@ -200,6 +224,7 @@ describe("requestSongUnlock", () => {
 		const rpcFn = mockRpc({
 			unlock_songs_for_account: {
 				data: {
+					status: "ok",
 					newly_unlocked_song_ids: [],
 					already_unlocked_song_ids: ["s1", "s2"],
 				},
