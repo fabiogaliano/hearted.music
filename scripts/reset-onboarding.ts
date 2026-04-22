@@ -335,40 +335,65 @@ async function resetBillingState(
 ): Promise<number> {
 	let total = 0;
 
-	const { count: unlocks } = await supabase
+	const { count: unlocks, error: unlocksError } = await supabase
 		.from("account_song_unlock")
 		.delete({ count: "exact" })
 		.eq("account_id", accountId);
+	if (unlocksError) {
+		throw new Error(
+			`Failed to delete from account_song_unlock: ${unlocksError.message}`,
+		);
+	}
 	total += unlocks ?? 0;
 
-	const { count: txns } = await supabase
+	const { count: txns, error: txnsError } = await supabase
 		.from("credit_transaction")
 		.delete({ count: "exact" })
 		.eq("account_id", accountId);
+	if (txnsError) {
+		throw new Error(
+			`Failed to delete from credit_transaction: ${txnsError.message}`,
+		);
+	}
 	total += txns ?? 0;
 
 	// Delete conversions first — CASCADE removes allocation rows
-	const { count: conversions } = await supabase
+	const { count: conversions, error: conversionsError } = await supabase
 		.from("subscription_credit_conversion")
 		.delete({ count: "exact" })
 		.eq("account_id", accountId);
+	if (conversionsError) {
+		throw new Error(
+			`Failed to delete from subscription_credit_conversion: ${conversionsError.message}`,
+		);
+	}
 	total += conversions ?? 0;
 
-	const { count: lots } = await supabase
+	const { count: lots, error: lotsError } = await supabase
 		.from("pack_credit_lot")
 		.delete({ count: "exact" })
 		.eq("account_id", accountId);
+	if (lotsError) {
+		throw new Error(
+			`Failed to delete from pack_credit_lot: ${lotsError.message}`,
+		);
+	}
 	total += lots ?? 0;
 
-	const { count: activations } = await supabase
+	const { count: activations, error: activationsError } = await supabase
 		.from("billing_activation")
 		.delete({ count: "exact" })
 		.eq("account_id", accountId);
+	if (activationsError) {
+		throw new Error(
+			`Failed to delete from billing_activation: ${activationsError.message}`,
+		);
+	}
 	total += activations ?? 0;
 
 	const unlimitedAccessSource = env.BILLING_ENABLED ? null : "self_hosted";
 
-	const { count: updated } = await supabase
+	const { count: updated, error: updatedError } = await supabase
 		.from("account_billing")
 		.update(
 			{
@@ -384,12 +409,23 @@ async function resetBillingState(
 			{ count: "exact" },
 		)
 		.eq("account_id", accountId);
+	if (updatedError) {
+		throw new Error(
+			`Failed to update account_billing: ${updatedError.message}`,
+		);
+	}
 	total += updated ?? 0;
 
 	if (!env.BILLING_ENABLED) {
-		await supabase.rpc("reprioritize_pending_jobs_for_account", {
-			p_account_id: accountId,
-		});
+		const { error: rpcError } = await supabase.rpc(
+			"reprioritize_pending_jobs_for_account",
+			{ p_account_id: accountId },
+		);
+		if (rpcError) {
+			throw new Error(
+				`Failed to rpc reprioritize_pending_jobs_for_account: ${rpcError.message}`,
+			);
+		}
 	}
 
 	return total;
