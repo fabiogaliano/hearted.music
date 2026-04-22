@@ -27,7 +27,8 @@
 		"reset:onboarding": "bun scripts/reset-onboarding.ts",
 		"ladle": "ladle serve",
 		"ladle:build": "ladle build",
-		"fixtures": "bun src/stories/fixtures/build-fixtures.ts"
+		"fixtures": "bun src/stories/fixtures/build-fixtures.ts",
+		"voice-audit": "bun scripts/voice-audit/cli.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^3.0.47",

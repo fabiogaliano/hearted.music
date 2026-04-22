@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-04-22T18:37:40.967Z",
+  "totals": {
+    "low": 15,
+    "medium": 58,
+    "high": 199
+  },
+  "byRule": {
+    "puffery-adjective": 50,
+    "participial-closure": 188,
+    "copula-avoidance": 4,
+    "burstiness": 9,
+    "rule-of-three": 6,
+    "antithesis": 9,
+    "hedging": 4,
+    "book-report-opener": 1,
+    "self-reference": 1
+  }
+}
