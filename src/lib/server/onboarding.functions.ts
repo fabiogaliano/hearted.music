@@ -13,7 +13,6 @@ import {
 	clearPhaseJobIds,
 	completeOnboarding,
 	getOrCreatePreferences,
-	isOnboardingComplete,
 	ONBOARDING_STEPS,
 	type OnboardingStep,
 	updateOnboardingStep,
@@ -116,14 +115,12 @@ export const getOnboardingData = createServerFn({ method: "GET" })
 		const [
 			prefsResult,
 			playlistsResult,
-			completionResult,
 			songsCountResult,
 			playlistsCountResult,
 			billingResult,
 		] = await Promise.all([
 			getOrCreatePreferences(session.accountId),
 			getPlaylists(session.accountId),
-			isOnboardingComplete(session.accountId),
 			getLikedSongCount(session.accountId),
 			getPlaylistCount(session.accountId),
 			readBillingState(supabase, session.accountId),
@@ -134,9 +131,6 @@ export const getOnboardingData = createServerFn({ method: "GET" })
 		}
 		if (Result.isError(playlistsResult)) {
 			throw new OnboardingError("load_playlists", playlistsResult.error);
-		}
-		if (Result.isError(completionResult)) {
-			throw new OnboardingError("check_completion", completionResult.error);
 		}
 		if (Result.isError(songsCountResult)) {
 			throw new OnboardingError("load_songs_count", songsCountResult.error);
@@ -238,7 +232,7 @@ export const getOnboardingData = createServerFn({ method: "GET" })
 			theme: prefsResult.value.theme,
 			playlists,
 			currentStep: stepParse.success ? stepParse.data : "welcome",
-			isComplete: completionResult.value,
+			isComplete: prefsResult.value.onboarding_completed_at !== null,
 			phaseJobIds: phaseJobIdsParse.success ? phaseJobIdsParse.data : null,
 			syncStats: {
 				songs: songsCountResult.value,
