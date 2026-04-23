@@ -38,6 +38,8 @@ interface SongCardProps {
 	isEnabled?: boolean;
 	/** When true, card gets a left border + pulse glow and shows the "See what's inside →" hint */
 	isWalkthroughHighlight?: boolean;
+	/** Hide the "Unlock" badge on locked rows (used during onboarding where unlocking isn't available) */
+	hideLockedBadge?: boolean;
 }
 
 export function SongCard({
@@ -59,6 +61,7 @@ export function SongCard({
 	onToggleSelect,
 	isEnabled = true,
 	isWalkthroughHighlight = false,
+	hideLockedBadge = false,
 }: SongCardProps) {
 	const theme = useTheme();
 	const isNew = isNewSong(song.liked_at);
@@ -227,13 +230,15 @@ export function SongCard({
 								)}
 							</span>
 						) : isLocked ? (
-							<span
-								className="flex shrink-0 items-center gap-1 text-xs"
-								style={{ fontFamily: fonts.body, color: theme.textMuted }}
-							>
-								<Lock size={11} strokeWidth={2} />
-								<span className="hidden lg:inline">Unlock</span>
-							</span>
+							hideLockedBadge ? null : (
+								<span
+									className="flex shrink-0 items-center gap-1 text-xs"
+									style={{ fontFamily: fonts.body, color: theme.textMuted }}
+								>
+									<Lock size={11} strokeWidth={2} />
+									<span className="hidden lg:inline">Unlock</span>
+								</span>
+							)
 						) : (
 							<span
 								className="hidden shrink-0 text-xs lg:block"
