@@ -618,6 +618,7 @@ export function LikedSongsPage({
 									onToggleSelect={toggleSongSelection}
 									isEnabled={isSongEnabled}
 									isWalkthroughHighlight={!!isDemoSong && !isExpanded}
+									hideLockedBadge={isWalkthrough}
 								/>
 							);
 						})}
