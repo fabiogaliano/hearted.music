@@ -152,7 +152,7 @@ export async function requestSongUnlock(
 	return Result.ok({ newlyUnlockedIds, alreadyUnlockedIds, remainingBalance });
 }
 
-const FREE_ALLOCATION_LIMIT = 15;
+const FREE_ALLOCATION_LIMIT = 10;
 
 export async function grantFreeAllocation(
 	supabase: AdminSupabaseClient,

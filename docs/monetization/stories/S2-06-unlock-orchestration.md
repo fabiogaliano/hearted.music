@@ -25,7 +25,7 @@ Multiple code paths need to unlock songs (manual pack selection, free allocation
 
 ### `src/lib/domains/billing/unlocks.ts`
 - `requestSongUnlock(supabase, accountId, songIds)` — calls `unlock_songs_for_account` RPC, emits `BillingChanges.songsUnlocked`, calls `applyLibraryProcessingChange`
-- `grantFreeAllocation(supabase, accountId)` — determines up to 15 most-recent liked songs, calls `insert_song_unlocks_without_charge` with `source='free_auto'`, emits change
+- `grantFreeAllocation(supabase, accountId)` — determines up to 10 most-recent liked songs, calls `insert_song_unlocks_without_charge` with `source='free_auto'`, emits change
 - Returns structured results (newly unlocked IDs, already unlocked IDs, remaining balance) or typed errors (insufficient balance, invalid songs)
 
 ### `requestSongUnlock` server function
@@ -56,7 +56,7 @@ Multiple code paths need to unlock songs (manual pack selection, free allocation
 
 - [ ] `requestSongUnlock` calls RPC, emits control-plane change, returns structured result
 - [ ] Insufficient balance returns typed error (not thrown)
-- [ ] `grantFreeAllocation` unlocks up to 15 most-recent liked songs
+- [ ] `grantFreeAllocation` unlocks up to 10 most-recent liked songs
 - [ ] Free allocation uses `source='free_auto'`, does not deduct balance
 - [ ] Server function validates input and delegates correctly
 - [ ] Project compiles

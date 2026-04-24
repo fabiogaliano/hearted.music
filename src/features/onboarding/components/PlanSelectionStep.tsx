@@ -50,7 +50,7 @@ type ConfigState =
 type PlanState = "initial" | "polling" | "retry" | "success";
 
 const READY_COPY: Record<ReadyCopyVariant, string> = {
-	free: "Exploring your 15 songs. An email's on its way when it's ready.",
+	free: "Exploring your 10 songs. An email's on its way when it's ready.",
 	pack: "Exploring your selected songs. An email's on its way when it's ready.",
 	unlimited: "Going through every song. An email's on its way when it's ready.",
 };
@@ -342,7 +342,7 @@ export function PlanSelectionStep({
 					theme={theme}
 					title="Free"
 					price="$0"
-					description="15 songs — yours to keep"
+					description="10 songs — yours to keep"
 					buttonLabel="Continue Free"
 					disabled={isBusy}
 					onClick={handleFree}

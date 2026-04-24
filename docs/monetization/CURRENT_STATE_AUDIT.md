@@ -256,7 +256,7 @@ Migration `20260330000001_fix_function_search_paths.sql` pins `search_path = pub
 ## 5. Known Stale References / Assumptions
 
 ### `ReadyStep` copy assumes full-library processing
-`"Going through every song. An email's on its way when it's ready."` — must change to reflect billing-aware behavior (free: 15 songs, pack: selected songs, unlimited: full library).
+`"Going through every song. An email's on its way when it's ready."` — must change to reflect billing-aware behavior (free: 10 songs, pack: selected songs, unlimited: full library).
 
 ### Sidebar hardcodes `"Free Plan"`
 `route.tsx` line: `userPlan="Free Plan"`. Must be derived from billing state.
