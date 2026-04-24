@@ -22,8 +22,10 @@ import {
 } from "react";
 
 import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
-import type { OnboardingMode } from "@/features/onboarding/step-resolver";
-import type { WalkthroughSong } from "@/features/onboarding/step-resolver";
+import type {
+	OnboardingSession,
+	WalkthroughSong,
+} from "@/features/onboarding/step-resolver";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import type { BillingState } from "@/lib/domains/billing/state";
@@ -64,10 +66,12 @@ interface LikedSongsPageProps {
 	accountId: string;
 	/** Billing state for song unlock selection UI (pack users only) */
 	billingState?: BillingState;
-	/** Onboarding mode from route context */
-	onboardingMode?: OnboardingMode;
-	/** Demo song for walkthrough spotlight */
-	walkthroughSong?: WalkthroughSong | null;
+	/**
+	 * Onboarding session from route context. The `song-walkthrough` variant
+	 * carries its demo song inline via the discriminated union, so no separate
+	 * `walkthroughSong` prop is needed.
+	 */
+	onboardingSession?: OnboardingSession;
 }
 
 function buildSyntheticLikedSong(ws: WalkthroughSong): LikedSong {
@@ -122,13 +126,16 @@ export function LikedSongsPage({
 	isDarkMode: initialDarkMode = true,
 	accountId,
 	billingState,
-	onboardingMode,
-	walkthroughSong,
+	onboardingSession,
 }: LikedSongsPageProps) {
 	const theme = useTheme();
 	const { isEnrichmentRunning } = useActiveJobs(accountId);
 	const [isDarkMode, setIsDarkMode] = useState(initialDarkMode);
-	const isWalkthrough = onboardingMode === "walkthrough";
+	const walkthroughSong: WalkthroughSong | null =
+		onboardingSession?.status === "song-walkthrough"
+			? onboardingSession.song
+			: null;
+	const isWalkthrough = walkthroughSong !== null;
 
 	const showSelectionUI =
 		!isWalkthrough &&

@@ -384,7 +384,7 @@ function WalkthroughCta({ colors }: { colors: PanelColors }) {
 	const [isNavigating, setIsNavigating] = useState(false);
 
 	const handleClick = async () => {
-		if (isNavigating || isPending.current) return;
+		if (isNavigating || isPending) return;
 		setIsNavigating(true);
 		try {
 			await navigateTo("match-walkthrough");
@@ -393,7 +393,7 @@ function WalkthroughCta({ colors }: { colors: PanelColors }) {
 		}
 	};
 
-	const disabled = isNavigating || isPending.current;
+	const disabled = isNavigating || isPending;
 
 	return (
 		<div

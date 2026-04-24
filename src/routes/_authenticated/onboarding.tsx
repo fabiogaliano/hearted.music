@@ -27,24 +27,33 @@ const onboardingSearchSchema = z.object({
 });
 export type OnboardingSearch = z.infer<typeof onboardingSearchSchema>;
 
+const ONBOARDING_DATA_QUERY_KEY = ["auth", "onboarding-data"] as const;
+
 export const Route = createFileRoute("/_authenticated/onboarding")({
 	validateSearch: zodValidator(onboardingSearchSchema),
 	beforeLoad: async ({ search, context }) => {
 		// Session is available from parent _authenticated layout
-		const { session } = context;
+		const { session, queryClient } = context;
 		const accountId = session.accountId;
 
-		// Load onboarding data (auth errors throw via requireSession internally)
-		const data = await getOnboardingData();
+		// Route-scoped cache entry. `staleTime: 0` mirrors the auth-layer
+		// onboarding-session policy — guards must read a fresh snapshot every
+		// navigation, but we go through the query client so downstream
+		// components can subscribe to the same cache entry without refetching.
+		const data = await queryClient.ensureQueryData({
+			queryKey: ONBOARDING_DATA_QUERY_KEY,
+			queryFn: () => getOnboardingData(),
+			staleTime: 0,
+		});
 
 		// Completed onboarding? Go to dashboard
-		if (data.isComplete) {
+		if (data.session.status === "complete") {
 			throw redirect({ to: "/dashboard" });
 		}
 
 		// Step progression validation
 		// Prevents users from manually navigating ahead of their saved progress
-		const savedStep = data.currentStep;
+		const savedStep = data.session.status;
 		const stepOrder = ONBOARDING_STEPS.options;
 		const urlStepIndex = stepOrder.indexOf(search.step);
 		const savedStepIndex = stepOrder.indexOf(savedStep);

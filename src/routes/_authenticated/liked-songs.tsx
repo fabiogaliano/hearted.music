@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -15,27 +15,19 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute("/_authenticated/liked-songs")({
 	validateSearch: zodValidator(searchSchema),
-	loaderDeps: ({ search }) => ({ filter: search.filter }),
-	beforeLoad: ({ context }) => {
-		if (
-			context.onboardingMode === "walkthrough" &&
-			context.walkthroughSong === null
-		) {
-			throw redirect({
-				to: "/onboarding",
-				search: { step: "pick-demo-song" },
-			});
-		}
-	},
-	loader: async ({ deps, context, location }) => {
+	loaderDeps: ({ search }) => ({ filter: search.filter, song: search.song }),
+	// No precondition guard needed. `/_authenticated` already resolved the
+	// session via `resolveSession`; if the user is here and the session is
+	// in `song-walkthrough`, the DU guarantees `session.song` is populated.
+	// Illegal states (walkthrough without song) are unrepresentable.
+	loader: async ({ deps, context }) => {
 		await context.queryClient.ensureInfiniteQueryData(
 			likedSongsInfiniteQueryOptions(deps.filter),
 		);
 
-		const song = (location.search as { song?: string }).song;
-		if (song) {
+		if (deps.song) {
 			await context.queryClient.ensureQueryData(
-				likedSongBySlugQueryOptions(context.session.accountId, song),
+				likedSongBySlugQueryOptions(context.session.accountId, deps.song),
 			);
 		}
 	},
@@ -45,16 +37,14 @@ export const Route = createFileRoute("/_authenticated/liked-songs")({
 function LikedSongsRoute() {
 	// TODO: pass filter to LikedSongsPage when filter UI is built
 	const { song } = Route.useSearch();
-	const { session, billingState, onboardingMode, walkthroughSong } =
-		Route.useRouteContext();
+	const { session, billingState, onboardingSession } = Route.useRouteContext();
 
 	return (
 		<LikedSongsPage
 			selectedSlug={song}
 			accountId={session.accountId}
 			billingState={billingState}
-			onboardingMode={onboardingMode}
-			walkthroughSong={walkthroughSong}
+			onboardingSession={onboardingSession}
 		/>
 	);
 }

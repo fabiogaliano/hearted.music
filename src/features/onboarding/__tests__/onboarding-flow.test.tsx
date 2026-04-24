@@ -63,18 +63,16 @@ const createMockOnboardingData = (
 ): OnboardingData => ({
 	theme: "rose",
 	playlists: testPlaylists,
-	currentStep: "welcome",
-	isComplete: false,
+	session: { status: "welcome" },
 	phaseJobIds: null,
 	syncStats: { songs: 0, playlists: 0 },
 	readyCopyVariant: "free",
 	landingSongs: [],
-	walkthroughSong: null,
 	...overrides,
 });
 
 function renderOnboarding(
-	step: OnboardingData["currentStep"],
+	step: OnboardingData["session"]["status"],
 	data: OnboardingData,
 ) {
 	return render(

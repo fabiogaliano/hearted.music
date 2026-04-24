@@ -124,7 +124,7 @@ export function WalkthroughMatchContent({
 	const isLoading = matchState.status === "loading";
 
 	const handleWalkthroughAction = async () => {
-		if (isPending.current) return;
+		if (isPending) return;
 		await navigateTo("plan-selection");
 	};
 

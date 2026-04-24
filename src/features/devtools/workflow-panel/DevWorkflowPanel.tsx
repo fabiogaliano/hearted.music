@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { PaneRoot, PaneStore, useActiveTab, usePane } from "uipane";
 import {
@@ -33,9 +33,12 @@ import {
 	type WorkflowDevServerSettings,
 } from "@/lib/workflows/library-processing/devtools/settings";
 import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
-import type { OnboardingData } from "@/lib/server/onboarding.functions";
-import { saveOnboardingStep } from "@/lib/server/onboarding.functions";
-import { resolveStep } from "@/features/onboarding/step-resolver";
+import type { OnboardingAuthPayload } from "@/lib/server/onboarding.functions";
+import {
+	getOnboardingSession,
+	saveOnboardingStep,
+} from "@/lib/server/onboarding.functions";
+import { resolveSession } from "@/features/onboarding/step-resolver";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -137,7 +140,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
 	"complete",
 ];
 
-const ONBOARDING_QUERY_KEY = ["auth", "onboarding"] as const;
+const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -510,9 +513,13 @@ export function DevWorkflowPanel() {
 			if (isRunning) return;
 			setIsRunning(true);
 
-			const cached =
-				queryClient.getQueryData<OnboardingData>(ONBOARDING_QUERY_KEY);
-			const currentStep = cached?.currentStep ?? "welcome";
+			const cached = queryClient.getQueryData<OnboardingAuthPayload>(
+				ONBOARDING_SESSION_QUERY_KEY,
+			);
+			const currentStep: OnboardingStep =
+				cached?.session.status === "complete"
+					? "complete"
+					: (cached?.session.status ?? "welcome");
 			const currentIdx = ONBOARDING_STEPS.indexOf(currentStep);
 
 			let nextStep: OnboardingStep;
@@ -538,13 +545,15 @@ export function DevWorkflowPanel() {
 				setLastAction(`Setting step → ${nextStep}…`);
 				await saveOnboardingStep({ data: { step: nextStep } });
 
-				queryClient.setQueryData<OnboardingData>(
-					ONBOARDING_QUERY_KEY,
-					(prev) => (prev ? { ...prev, currentStep: nextStep } : prev),
-				);
-				await queryClient.invalidateQueries({ queryKey: ONBOARDING_QUERY_KEY });
+				// Fetch the authoritative session so the resolver can make routing
+				// decisions against it — jumping into a walkthrough step without a
+				// demo song trips the dev invariant loudly, which is what we want.
+				const nextSession = await queryClient.fetchQuery({
+					queryKey: ONBOARDING_SESSION_QUERY_KEY,
+					queryFn: () => getOnboardingSession(),
+				});
 
-				const resolved = resolveStep(nextStep);
+				const resolved = resolveSession(nextSession.session);
 				if (resolved.allowedPath === "/onboarding") {
 					await router.navigate({
 						to: "/onboarding",
@@ -566,10 +575,18 @@ export function DevWorkflowPanel() {
 		[queryClient, router, isRunning],
 	);
 
-	// ---- Onboarding current step (from cache) ----
-	const cachedOnboarding =
-		queryClient.getQueryData<OnboardingData>(ONBOARDING_QUERY_KEY);
-	const currentOnboardingStep = cachedOnboarding?.currentStep ?? "welcome";
+	// ---- Onboarding current step (reactive subscription) ----
+	// Subscribes to the same cache entry populated by `/_authenticated`'s
+	// `beforeLoad` — so the step label/highlight re-renders when a
+	// navigation or handler refetches the session.
+	const { data: liveOnboarding } = useQuery<OnboardingAuthPayload>({
+		queryKey: ONBOARDING_SESSION_QUERY_KEY,
+		queryFn: () => getOnboardingSession(),
+	});
+	const currentOnboardingStep: OnboardingStep =
+		liveOnboarding?.session.status === "complete"
+			? "complete"
+			: (liveOnboarding?.session.status ?? "welcome");
 
 	// ---- Progress hooks ----
 	const enrichProgress = useLibraryProcessingJobProgress(

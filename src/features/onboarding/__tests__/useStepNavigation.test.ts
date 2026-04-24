@@ -1,15 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
-const mockSetQueryData = vi.fn();
-const mockInvalidateQueries = vi.fn();
+const mockFetchQuery = vi.fn();
 const mockNavigate = vi.fn();
 const mockSaveOnboardingStep = vi.fn();
+const mockGetOnboardingSession = vi.fn();
 
 vi.mock("@tanstack/react-query", () => ({
 	useQueryClient: () => ({
-		setQueryData: mockSetQueryData,
-		invalidateQueries: mockInvalidateQueries,
+		fetchQuery: mockFetchQuery,
 	}),
 }));
 
@@ -21,6 +20,8 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("@/lib/server/onboarding.functions", () => ({
 	saveOnboardingStep: (...args: unknown[]) => mockSaveOnboardingStep(...args),
+	getOnboardingSession: (...args: unknown[]) =>
+		mockGetOnboardingSession(...args),
 }));
 
 // Use the real resolver
@@ -31,14 +32,34 @@ vi.mock("@/features/onboarding/step-resolver", async () => {
 
 import { useStepNavigation } from "../hooks/useStepNavigation";
 
+const SAMPLE_SONG = {
+	id: "song-uuid",
+	spotifyTrackId: "spotify:track:abc",
+	slug: "artist-name",
+	name: "Name",
+	artist: "Artist",
+	artistId: null,
+	artistImageUrl: null,
+	album: null,
+	albumArtUrl: null,
+	genres: [],
+	analysis: null,
+};
+
 describe("useStepNavigation", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockSaveOnboardingStep.mockResolvedValue({ success: true });
 		mockNavigate.mockResolvedValue(undefined);
+		mockFetchQuery.mockImplementation(async ({ queryFn }) => queryFn());
 	});
 
-	it("saves step, syncs cache, and navigates to /liked-songs for song-walkthrough", async () => {
+	it("saves step, fetches fresh session, and navigates to /liked-songs for song-walkthrough", async () => {
+		mockGetOnboardingSession.mockResolvedValue({
+			session: { status: "song-walkthrough", song: SAMPLE_SONG },
+			theme: null,
+		});
+
 		const { result } = renderHook(() => useStepNavigation());
 
 		await act(() => result.current.navigateTo("song-walkthrough"));
@@ -46,17 +67,18 @@ describe("useStepNavigation", () => {
 		expect(mockSaveOnboardingStep).toHaveBeenCalledWith({
 			data: { step: "song-walkthrough" },
 		});
-		expect(mockSetQueryData).toHaveBeenCalledWith(
-			["auth", "onboarding"],
-			expect.any(Function),
+		expect(mockFetchQuery).toHaveBeenCalledWith(
+			expect.objectContaining({ queryKey: ["auth", "onboarding-session"] }),
 		);
-		expect(mockInvalidateQueries).toHaveBeenCalledWith({
-			queryKey: ["auth", "onboarding"],
-		});
 		expect(mockNavigate).toHaveBeenCalledWith({ to: "/liked-songs" });
 	});
 
-	it("saves step, syncs cache, and navigates to /match for match-walkthrough", async () => {
+	it("saves step, fetches fresh session, and navigates to /match for match-walkthrough", async () => {
+		mockGetOnboardingSession.mockResolvedValue({
+			session: { status: "match-walkthrough", song: SAMPLE_SONG },
+			theme: null,
+		});
+
 		const { result } = renderHook(() => useStepNavigation());
 
 		await act(() => result.current.navigateTo("match-walkthrough"));
@@ -68,6 +90,11 @@ describe("useStepNavigation", () => {
 	});
 
 	it("saves step and navigates to /onboarding?step= for plan-selection", async () => {
+		mockGetOnboardingSession.mockResolvedValue({
+			session: { status: "plan-selection" },
+			theme: null,
+		});
+
 		const { result } = renderHook(() => useStepNavigation());
 
 		await act(() => result.current.navigateTo("plan-selection"));
@@ -81,10 +108,30 @@ describe("useStepNavigation", () => {
 		});
 	});
 
-	it("shows error toast and does not navigate on save failure", async () => {
-		const mockToastError = vi.fn();
-		vi.doMock("sonner", () => ({ toast: { error: mockToastError } }));
+	it("fetches the session after saving the step, before navigating", async () => {
+		const order: string[] = [];
+		mockSaveOnboardingStep.mockImplementation(async () => {
+			order.push("save");
+			return { success: true };
+		});
+		mockGetOnboardingSession.mockImplementation(async () => {
+			order.push("fetch");
+			return {
+				session: { status: "song-walkthrough", song: SAMPLE_SONG },
+				theme: null,
+			};
+		});
+		mockNavigate.mockImplementation(async () => {
+			order.push("navigate");
+		});
 
+		const { result } = renderHook(() => useStepNavigation());
+		await act(() => result.current.navigateTo("song-walkthrough"));
+
+		expect(order).toEqual(["save", "fetch", "navigate"]);
+	});
+
+	it("shows error toast and does not navigate on save failure", async () => {
 		mockSaveOnboardingStep.mockRejectedValue(new Error("Network error"));
 
 		const { result } = renderHook(() => useStepNavigation());
@@ -92,22 +139,6 @@ describe("useStepNavigation", () => {
 		await act(() => result.current.navigateTo("song-walkthrough"));
 
 		expect(mockNavigate).not.toHaveBeenCalled();
-		expect(mockSetQueryData).not.toHaveBeenCalled();
-	});
-
-	it("updates cache with correct currentStep via updater function", async () => {
-		const { result } = renderHook(() => useStepNavigation());
-
-		await act(() => result.current.navigateTo("song-walkthrough"));
-
-		const updater = mockSetQueryData.mock.calls[0][1] as (
-			prev: { currentStep: string } | undefined,
-		) => { currentStep: string } | undefined;
-
-		expect(updater({ currentStep: "pick-demo-song" } as any)).toEqual({
-			currentStep: "song-walkthrough",
-		});
-
-		expect(updater(undefined)).toBeUndefined();
+		expect(mockFetchQuery).not.toHaveBeenCalled();
 	});
 });

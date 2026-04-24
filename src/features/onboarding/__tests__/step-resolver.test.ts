@@ -1,25 +1,46 @@
 import { describe, expect, it } from "vitest";
-import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
-import { isPathAllowed, resolveStep } from "../step-resolver";
+import {
+	isPathAllowed,
+	resolveSession,
+	sessionMode,
+	type OnboardingSession,
+	type WalkthroughSong,
+} from "../step-resolver";
 
-describe("resolveStep", () => {
-	it("maps song-walkthrough to /liked-songs with walkthrough mode", () => {
-		const result = resolveStep("song-walkthrough");
-		expect(result).toEqual({
+const SAMPLE_SONG: WalkthroughSong = {
+	id: "song-uuid",
+	spotifyTrackId: "spotify:track:abc",
+	slug: "artist-name",
+	name: "Name",
+	artist: "Artist",
+	artistId: null,
+	artistImageUrl: null,
+	album: null,
+	albumArtUrl: null,
+	genres: [],
+	analysis: null,
+};
+
+describe("resolveSession", () => {
+	it("maps song-walkthrough to /liked-songs", () => {
+		expect(
+			resolveSession({ status: "song-walkthrough", song: SAMPLE_SONG }),
+		).toEqual({ allowedPath: "/liked-songs" });
+	});
+
+	it("maps match-walkthrough to /match", () => {
+		expect(
+			resolveSession({ status: "match-walkthrough", song: SAMPLE_SONG }),
+		).toEqual({ allowedPath: "/match" });
+	});
+
+	it("maps complete to /liked-songs", () => {
+		expect(resolveSession({ status: "complete" })).toEqual({
 			allowedPath: "/liked-songs",
-			onboardingMode: "walkthrough",
 		});
 	});
 
-	it("maps match-walkthrough to /match with walkthrough mode", () => {
-		const result = resolveStep("match-walkthrough");
-		expect(result).toEqual({
-			allowedPath: "/match",
-			onboardingMode: "walkthrough",
-		});
-	});
-
-	const stepsOnboardingSteps: OnboardingStep[] = [
+	it.each<OnboardingSession["status"]>([
 		"welcome",
 		"pick-color",
 		"install-extension",
@@ -27,53 +48,39 @@ describe("resolveStep", () => {
 		"flag-playlists",
 		"pick-demo-song",
 		"plan-selection",
-		"complete",
-	];
-
-	it.each(
-		stepsOnboardingSteps,
-	)('maps "%s" to /onboarding with steps mode', (step) => {
-		const result = resolveStep(step);
-		expect(result).toEqual({
+	])('maps steps variant "%s" to /onboarding', (status) => {
+		expect(resolveSession({ status } as OnboardingSession)).toEqual({
 			allowedPath: "/onboarding",
-			onboardingMode: "steps",
 		});
+	});
+});
+
+describe("sessionMode", () => {
+	it("returns 'walkthrough' for walkthrough variants", () => {
+		expect(sessionMode({ status: "song-walkthrough", song: SAMPLE_SONG })).toBe(
+			"walkthrough",
+		);
+		expect(
+			sessionMode({ status: "match-walkthrough", song: SAMPLE_SONG }),
+		).toBe("walkthrough");
+	});
+
+	it("returns 'complete' for the complete variant", () => {
+		expect(sessionMode({ status: "complete" })).toBe("complete");
+	});
+
+	it("returns 'steps' for all other variants", () => {
+		expect(sessionMode({ status: "welcome" })).toBe("steps");
+		expect(sessionMode({ status: "pick-demo-song" })).toBe("steps");
 	});
 });
 
 describe("isPathAllowed", () => {
 	it("returns true when pathname matches allowed path", () => {
-		const resolved = resolveStep("song-walkthrough");
-		expect(isPathAllowed("/liked-songs", resolved)).toBe(true);
+		expect(isPathAllowed("/liked-songs", "/liked-songs")).toBe(true);
 	});
 
 	it("returns false when pathname does not match allowed path", () => {
-		const resolved = resolveStep("song-walkthrough");
-		expect(isPathAllowed("/match", resolved)).toBe(false);
-	});
-
-	it("returns true for /match during match-walkthrough", () => {
-		const resolved = resolveStep("match-walkthrough");
-		expect(isPathAllowed("/match", resolved)).toBe(true);
-	});
-
-	it("returns false for /liked-songs during match-walkthrough", () => {
-		const resolved = resolveStep("match-walkthrough");
-		expect(isPathAllowed("/liked-songs", resolved)).toBe(false);
-	});
-
-	it("returns true for /onboarding during standard steps", () => {
-		const resolved = resolveStep("welcome");
-		expect(isPathAllowed("/onboarding", resolved)).toBe(true);
-	});
-
-	it("returns false for /dashboard during standard steps", () => {
-		const resolved = resolveStep("welcome");
-		expect(isPathAllowed("/dashboard", resolved)).toBe(false);
-	});
-
-	it("returns false for /onboarding during song-walkthrough", () => {
-		const resolved = resolveStep("song-walkthrough");
-		expect(isPathAllowed("/onboarding", resolved)).toBe(false);
+		expect(isPathAllowed("/match", "/liked-songs")).toBe(false);
 	});
 });

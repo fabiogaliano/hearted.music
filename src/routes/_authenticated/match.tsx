@@ -1,5 +1,5 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Matching } from "@/features/matching/Matching";
@@ -15,6 +15,7 @@ import type {
 	Playlist,
 	SongForMatching,
 } from "@/features/matching/types";
+import { sessionMode } from "@/features/onboarding/step-resolver";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import {
@@ -23,19 +24,14 @@ import {
 } from "@/lib/server/matching.functions";
 
 export const Route = createFileRoute("/_authenticated/match")({
-	beforeLoad: ({ context }) => {
-		if (
-			context.onboardingMode === "walkthrough" &&
-			context.walkthroughSong === null
-		) {
-			throw redirect({
-				to: "/onboarding",
-				search: { step: "pick-demo-song" },
-			});
-		}
-	},
+	// No precondition guard needed. `/_authenticated` already resolved the
+	// session via `resolveSession`; if the user is here and the session is
+	// in `match-walkthrough`, the DU guarantees `session.song` is populated.
 	loader: async ({ context }) => {
-		if (context.onboardingMode === "walkthrough") return;
+		// Walkthrough renders `WalkthroughMatchContent` from
+		// `onboardingSession.song` (DU-guaranteed present) — it never touches
+		// the real matching session, so skip prefetching it here.
+		if (sessionMode(context.onboardingSession) === "walkthrough") return;
 		const { session, queryClient } = context;
 		await queryClient.ensureQueryData(
 			matchingSessionQueryOptions(session.accountId),
@@ -50,12 +46,15 @@ interface DisplayedSession {
 }
 
 function MatchPage() {
-	const { onboardingMode, walkthroughSong } = Route.useRouteContext();
+	const { onboardingSession } = Route.useRouteContext();
 
-	if (onboardingMode === "walkthrough" && walkthroughSong) {
+	if (
+		onboardingSession.status === "match-walkthrough" ||
+		onboardingSession.status === "song-walkthrough"
+	) {
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
-				<WalkthroughMatchContent walkthroughSong={walkthroughSong} />
+				<WalkthroughMatchContent walkthroughSong={onboardingSession.song} />
 			</div>
 		);
 	}

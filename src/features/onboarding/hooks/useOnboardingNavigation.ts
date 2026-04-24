@@ -35,15 +35,22 @@
  * @see Onboarding.tsx for the fallback pattern implementation
  */
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 import { toast } from "sonner";
 import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
-import { saveOnboardingStep } from "@/lib/server/onboarding.functions";
+import {
+	getOnboardingSession,
+	saveOnboardingStep,
+} from "@/lib/server/onboarding.functions";
 import "../types"; // Import to ensure HistoryState augmentation is loaded
 
+const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
+
 export function useOnboardingNavigation() {
+	const queryClient = useQueryClient();
 	const navigate = useNavigate({ from: "/onboarding" });
 
 	const goToStep = useCallback(
@@ -58,8 +65,18 @@ export function useOnboardingNavigation() {
 				// Save step to DB for resumability
 				await saveOnboardingStep({ data: { step } });
 
-				// Update URL and pass state (merge current state with new options)
-				navigate({
+				// Authoritative refetch of the session before the next render.
+				// Prevents guards in `/_authenticated` from reading a stale
+				// session during the transition. Same pattern as useStepNavigation.
+				await queryClient.fetchQuery({
+					queryKey: ONBOARDING_SESSION_QUERY_KEY,
+					queryFn: () => getOnboardingSession(),
+				});
+
+				// Update URL and pass state (merge current state with new options).
+				// Awaiting matches `useStepNavigation` so `goToStep` resolves only
+				// after navigation settles — callers can rely on ordering.
+				await navigate({
 					search: (prev) => ({
 						...prev,
 						step,
@@ -80,7 +97,7 @@ export function useOnboardingNavigation() {
 				// Don't navigate if save fails - prevents state mismatch
 			}
 		},
-		[navigate],
+		[navigate, queryClient],
 	);
 
 	return { goToStep };

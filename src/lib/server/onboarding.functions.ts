@@ -15,6 +15,7 @@ import {
 	getOrCreatePreferences,
 	ONBOARDING_STEPS,
 	type OnboardingStep,
+	type UserPreferences,
 	updateOnboardingStep,
 	updateTheme,
 } from "@/lib/domains/library/accounts/preferences-queries";
@@ -46,7 +47,10 @@ import { type ThemeColor, themeSchema } from "@/lib/theme/types";
 import { generateSongSlug } from "@/lib/utils/slug";
 import { OnboardingChanges } from "@/lib/workflows/library-processing/changes/onboarding";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
-import type { WalkthroughSong } from "@/features/onboarding/step-resolver";
+import type {
+	OnboardingSession,
+	WalkthroughSong,
+} from "@/features/onboarding/step-resolver";
 import type { AnalysisContent } from "@/features/liked-songs/types";
 
 /** Playlist view model for onboarding UI (camelCase frontend format) */
@@ -68,13 +72,26 @@ export interface SyncStats {
 /** Copy variant for the plan selection success state, derived from billing state */
 export type ReadyCopyVariant = "free" | "pack" | "unlimited";
 
-/** Combined onboarding data loaded on route entry */
-export interface OnboardingData {
+/**
+ * Guard-critical payload. Tiny, canonical, always refetched fresh so route
+ * `beforeLoad` reads a fully-consistent session. Loaded via
+ * `getOnboardingSession` on the auth layout.
+ */
+export interface OnboardingAuthPayload {
+	/** Canonical lifecycle state. Walkthrough variants carry their song inline. */
+	session: OnboardingSession;
 	/** User's theme preference (null = hasn't chosen yet) */
 	theme: ThemeColor | null;
+}
+
+/**
+ * Full onboarding payload loaded by the `/onboarding` page. Extends the auth
+ * payload with page-specific data (playlists, landing songs, sync stats,
+ * copy variant, phase job ids). Guards should not read from this — they
+ * should read the narrower `OnboardingAuthPayload` from the session query.
+ */
+export interface OnboardingData extends OnboardingAuthPayload {
 	playlists: OnboardingPlaylist[];
-	currentStep: OnboardingStep;
-	isComplete: boolean;
 	/** Active phase job IDs for refresh resilience (null if no active sync) */
 	phaseJobIds: PhaseJobIds | null;
 	/** Library stats (liked songs + playlists count) from DB */
@@ -83,8 +100,6 @@ export interface OnboardingData {
 	readyCopyVariant: ReadyCopyVariant;
 	/** Landing songs manifest for pick-demo-song step */
 	landingSongs: LandingSongManifest[];
-	/** Demo song identity for walkthrough steps (null if not yet selected) */
-	walkthroughSong: WalkthroughSong | null;
 }
 
 const themeInputSchema = z.object({
@@ -100,6 +115,295 @@ const playlistIdsInputSchema = z.object({
 });
 
 /**
+ * Project a persisted `(onboarding_step, demo_song_id)` pair into the
+ * canonical `OnboardingSession` discriminated union.
+ *
+ * Pure — never writes to the DB. If the persisted step implies a precondition
+ * that isn't satisfied (e.g. `song-walkthrough` without a resolved song), we
+ * throw loudly in dev (catches the class of bug early during local testing)
+ * and fall back to `pick-demo-song` in prod so users don't get stuck in a
+ * redirect loop. Historical bad rows are cleaned by the corresponding
+ * migration; new bad rows can't be produced because
+ * `commitDemoSongAndEnterWalkthrough` writes both columns atomically.
+ */
+function deriveSession(
+	accountId: string,
+	onboardingStep: OnboardingStep,
+	onboardingCompletedAt: string | null,
+	walkthroughSong: WalkthroughSong | null,
+): OnboardingSession {
+	// `session.status === "complete"` is ONLY producible from a non-null
+	// completion timestamp. The persisted step column is advisory; the
+	// timestamp is the authority so partial writes can't fabricate a
+	// ghost-complete session.
+	if (onboardingCompletedAt !== null) {
+		return { status: "complete" };
+	}
+
+	// Inconsistent row: step="complete" without a timestamp. Loud in dev so
+	// the offending write path gets fixed; safe fallback in prod to the final
+	// pre-complete step so the user doesn't get stuck in a bogus complete
+	// state that skips `markOnboardingComplete`'s side effects.
+	if (onboardingStep === "complete") {
+		const message =
+			`[onboarding invariant] step="complete" for account ${accountId} ` +
+			`has no onboarding_completed_at. Falling back to "plan-selection".`;
+		if (import.meta.env.DEV) {
+			throw new Error(message);
+		}
+		console.error(message);
+		return { status: "plan-selection" };
+	}
+
+	const needsDemoSong =
+		onboardingStep === "song-walkthrough" ||
+		onboardingStep === "match-walkthrough";
+
+	if (needsDemoSong && walkthroughSong === null) {
+		const message =
+			`[onboarding invariant] step=${onboardingStep} for account ${accountId} ` +
+			`has no demo_song_id. Atomic transitions should make this impossible.`;
+		if (import.meta.env.DEV) {
+			// Loud: surface the invariant violation immediately during local
+			// development. If this fires, fix the code path that produced it
+			// instead of relying on the prod fallback below.
+			throw new Error(message);
+		}
+		console.error(message);
+		return { status: "pick-demo-song" };
+	}
+
+	if (onboardingStep === "song-walkthrough" && walkthroughSong) {
+		return { status: "song-walkthrough", song: walkthroughSong };
+	}
+	if (onboardingStep === "match-walkthrough" && walkthroughSong) {
+		return { status: "match-walkthrough", song: walkthroughSong };
+	}
+
+	// Exhaustive projection for the remaining non-complete, non-walkthrough
+	// steps. Replaces the previous unsafe `as OnboardingSession` cast —
+	// TypeScript now verifies every `OnboardingStep` value is handled.
+	switch (onboardingStep) {
+		case "welcome":
+		case "pick-color":
+		case "install-extension":
+		case "syncing":
+		case "flag-playlists":
+		case "pick-demo-song":
+		case "plan-selection":
+			return { status: onboardingStep };
+		case "song-walkthrough":
+		case "match-walkthrough":
+			// Unreachable: walkthrough-with-song returns above; walkthrough
+			// without song is coerced by the invariant branch. Kept so the
+			// compiler treats the switch as exhaustive without a `never`
+			// assertion on `onboardingStep`.
+			return { status: "pick-demo-song" };
+	}
+}
+
+/**
+ * Derives an `OnboardingAuthPayload` from already-fetched preferences so
+ * callers that need both session + additional page data can share a single
+ * prefs fetch. Resolves the walkthrough song lazily (only when `demo_song_id`
+ * is set) so the no-walkthrough path stays one round-trip.
+ */
+async function deriveAuthPayloadFromPrefs(
+	accountId: string,
+	prefs: UserPreferences,
+	supabase: ReturnType<typeof createAdminSupabaseClient>,
+): Promise<OnboardingAuthPayload> {
+	const stepParse = ONBOARDING_STEPS.safeParse(prefs.onboarding_step);
+	const onboardingStep: OnboardingStep = stepParse.success
+		? stepParse.data
+		: "welcome";
+
+	const walkthroughSong = await loadWalkthroughSong(
+		supabase,
+		prefs.demo_song_id,
+	);
+
+	const session = deriveSession(
+		accountId,
+		onboardingStep,
+		prefs.onboarding_completed_at,
+		walkthroughSong,
+	);
+
+	return { session, theme: prefs.theme };
+}
+
+/**
+ * Guard-critical loader. Fetches only prefs + (optionally) the demo song.
+ * Used by `getOnboardingSession`, which the auth layout polls on every
+ * navigation with `staleTime: 0`. Small object, cheap refetch.
+ */
+async function loadOnboardingSession(
+	accountId: string,
+): Promise<OnboardingAuthPayload> {
+	const supabase = createAdminSupabaseClient();
+	const prefsResult = await getOrCreatePreferences(accountId);
+	if (Result.isError(prefsResult)) {
+		throw new OnboardingError("load_preferences", prefsResult.error);
+	}
+
+	return deriveAuthPayloadFromPrefs(accountId, prefsResult.value, supabase);
+}
+
+/**
+ * Loads the persisted demo song (if any) as a `WalkthroughSong`. Returns
+ * `null` if no demo song is selected, or if the join fails — callers are
+ * expected to handle the null case (and `deriveSession` encodes what that
+ * null means for the session variant).
+ */
+async function loadWalkthroughSong(
+	supabase: ReturnType<typeof createAdminSupabaseClient>,
+	demoSongId: string | null,
+): Promise<WalkthroughSong | null> {
+	if (!demoSongId) return null;
+
+	const [{ data: song }, { data: analysisRow }] = await Promise.all([
+		supabase
+			.from("song")
+			.select(
+				"id, spotify_id, name, artists, artist_ids, genres, album_name, image_url",
+			)
+			.eq("id", demoSongId)
+			.single(),
+		supabase
+			.from("song_analysis")
+			.select("id, analysis, model, created_at")
+			.eq("song_id", demoSongId)
+			.order("created_at", { ascending: false })
+			.limit(1)
+			.maybeSingle(),
+	]);
+
+	if (!song) return null;
+
+	const artist = song.artists[0] ?? "Unknown Artist";
+	const artistSpotifyId = song.artist_ids?.[0] ?? null;
+
+	let artistImageUrl: string | null = null;
+	if (artistSpotifyId) {
+		const { data: artistRow } = await supabase
+			.from("artist")
+			.select("image_url")
+			.eq("spotify_id", artistSpotifyId)
+			.maybeSingle();
+		artistImageUrl = artistRow?.image_url ?? null;
+	}
+
+	return {
+		id: song.id,
+		spotifyTrackId: song.spotify_id,
+		slug: generateSongSlug(artist, song.name),
+		name: song.name,
+		artist,
+		artistId: artistSpotifyId,
+		artistImageUrl,
+		album: song.album_name,
+		albumArtUrl: song.image_url,
+		genres: song.genres ?? [],
+		analysis: analysisRow
+			? {
+					id: analysisRow.id,
+					content: analysisRow.analysis as AnalysisContent,
+					model: analysisRow.model,
+					createdAt: analysisRow.created_at,
+				}
+			: null,
+	};
+}
+
+/**
+ * Full page-data loader used by the `/onboarding` route. Supersets the
+ * guard payload with playlists, landing songs, sync stats, and the copy
+ * variant derived from billing. Pure projection — no DB writes.
+ */
+async function loadOnboardingData(accountId: string): Promise<OnboardingData> {
+	const supabase = createAdminSupabaseClient();
+
+	// Single prefs fetch shared with authPayload derivation. Walkthrough song
+	// (inside authPayloadPromise) runs concurrently with the other queries.
+	const prefsPromise = getOrCreatePreferences(accountId);
+	const authPayloadPromise = (async () => {
+		const prefsResult = await prefsPromise;
+		if (Result.isError(prefsResult)) {
+			throw new OnboardingError("load_preferences", prefsResult.error);
+		}
+		return deriveAuthPayloadFromPrefs(accountId, prefsResult.value, supabase);
+	})();
+
+	const [
+		authPayload,
+		prefsResult,
+		playlistsResult,
+		songsCountResult,
+		playlistsCountResult,
+		billingResult,
+	] = await Promise.all([
+		authPayloadPromise,
+		prefsPromise,
+		getPlaylists(accountId),
+		getLikedSongCount(accountId),
+		getPlaylistCount(accountId),
+		readBillingState(supabase, accountId),
+	]);
+
+	if (Result.isError(prefsResult)) {
+		throw new OnboardingError("load_preferences", prefsResult.error);
+	}
+	if (Result.isError(playlistsResult)) {
+		throw new OnboardingError("load_playlists", playlistsResult.error);
+	}
+	if (Result.isError(songsCountResult)) {
+		throw new OnboardingError("load_songs_count", songsCountResult.error);
+	}
+	if (Result.isError(playlistsCountResult)) {
+		throw new OnboardingError(
+			"load_playlists_count",
+			playlistsCountResult.error,
+		);
+	}
+
+	const playlists = playlistsResult.value.map((p) => ({
+		id: p.id,
+		name: p.name,
+		description: p.description,
+		imageUrl: p.image_url,
+		songCount: p.song_count,
+		isTarget: p.is_target ?? false,
+	}));
+
+	let readyCopyVariant: ReadyCopyVariant = "free";
+	if (Result.isOk(billingResult)) {
+		const billing = billingResult.value;
+		if (hasUnlimitedAccess(billing)) {
+			readyCopyVariant = "unlimited";
+		} else if (billing.creditBalance > 0) {
+			readyCopyVariant = "pack";
+		}
+	}
+
+	const phaseJobIdsParse = PhaseJobIdsSchema.safeParse(
+		prefsResult.value.phase_job_ids,
+	);
+
+	return {
+		...authPayload,
+		playlists,
+		phaseJobIds: phaseJobIdsParse.success ? phaseJobIdsParse.data : null,
+		syncStats: {
+			songs: songsCountResult.value,
+			playlists: playlistsCountResult.value,
+		},
+		readyCopyVariant,
+		landingSongs: getLandingSongsManifest(),
+	};
+}
+
+/**
  * Gets all onboarding data for the authenticated user.
  * Loads theme, playlists, current step, and completion status in parallel.
  *
@@ -107,142 +411,23 @@ const playlistIdsInputSchema = z.object({
  */
 export const getOnboardingData = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.handler(async ({ context }): Promise<OnboardingData> => {
-		const { session } = context;
+	.handler(
+		({ context }): Promise<OnboardingData> =>
+			loadOnboardingData(context.session.accountId),
+	);
 
-		const supabase = createAdminSupabaseClient();
-
-		const [
-			prefsResult,
-			playlistsResult,
-			songsCountResult,
-			playlistsCountResult,
-			billingResult,
-		] = await Promise.all([
-			getOrCreatePreferences(session.accountId),
-			getPlaylists(session.accountId),
-			getLikedSongCount(session.accountId),
-			getPlaylistCount(session.accountId),
-			readBillingState(supabase, session.accountId),
-		]);
-
-		if (Result.isError(prefsResult)) {
-			throw new OnboardingError("load_preferences", prefsResult.error);
-		}
-		if (Result.isError(playlistsResult)) {
-			throw new OnboardingError("load_playlists", playlistsResult.error);
-		}
-		if (Result.isError(songsCountResult)) {
-			throw new OnboardingError("load_songs_count", songsCountResult.error);
-		}
-		if (Result.isError(playlistsCountResult)) {
-			throw new OnboardingError(
-				"load_playlists_count",
-				playlistsCountResult.error,
-			);
-		}
-
-		const playlists = playlistsResult.value.map((p) => ({
-			id: p.id,
-			name: p.name,
-			description: p.description,
-			imageUrl: p.image_url,
-			songCount: p.song_count,
-			isTarget: p.is_target ?? false,
-		}));
-
-		// Validate currentStep with Zod instead of unsafe type assertion
-		let readyCopyVariant: ReadyCopyVariant = "free";
-		if (Result.isOk(billingResult)) {
-			const billing = billingResult.value;
-			if (hasUnlimitedAccess(billing)) {
-				readyCopyVariant = "unlimited";
-			} else if (billing.creditBalance > 0) {
-				readyCopyVariant = "pack";
-			}
-		}
-
-		const stepParse = ONBOARDING_STEPS.safeParse(
-			prefsResult.value.onboarding_step,
-		);
-
-		const phaseJobIdsParse = PhaseJobIdsSchema.safeParse(
-			prefsResult.value.phase_job_ids,
-		);
-
-		let walkthroughSong: WalkthroughSong | null = null;
-		const demoSongId = prefsResult.value.demo_song_id;
-		if (demoSongId) {
-			const [{ data: song }, { data: analysisRow }] = await Promise.all([
-				supabase
-					.from("song")
-					.select(
-						"id, spotify_id, name, artists, artist_ids, genres, album_name, image_url",
-					)
-					.eq("id", demoSongId)
-					.single(),
-				supabase
-					.from("song_analysis")
-					.select("id, analysis, model, created_at")
-					.eq("song_id", demoSongId)
-					.order("created_at", { ascending: false })
-					.limit(1)
-					.maybeSingle(),
-			]);
-
-			if (song) {
-				const artist = song.artists[0] ?? "Unknown Artist";
-				const artistSpotifyId = song.artist_ids?.[0] ?? null;
-
-				// Fetch artist image if we have an artist ID
-				let artistImageUrl: string | null = null;
-				if (artistSpotifyId) {
-					const { data: artistRow } = await supabase
-						.from("artist")
-						.select("image_url")
-						.eq("spotify_id", artistSpotifyId)
-						.maybeSingle();
-					artistImageUrl = artistRow?.image_url ?? null;
-				}
-
-				walkthroughSong = {
-					id: song.id,
-					spotifyTrackId: song.spotify_id,
-					slug: generateSongSlug(artist, song.name),
-					name: song.name,
-					artist,
-					artistId: artistSpotifyId,
-					artistImageUrl,
-					album: song.album_name,
-					albumArtUrl: song.image_url,
-					genres: song.genres ?? [],
-					analysis: analysisRow
-						? {
-								id: analysisRow.id,
-								content: analysisRow.analysis as AnalysisContent,
-								model: analysisRow.model,
-								createdAt: analysisRow.created_at,
-							}
-						: null,
-				};
-			}
-		}
-
-		return {
-			theme: prefsResult.value.theme,
-			playlists,
-			currentStep: stepParse.success ? stepParse.data : "welcome",
-			isComplete: prefsResult.value.onboarding_completed_at !== null,
-			phaseJobIds: phaseJobIdsParse.success ? phaseJobIdsParse.data : null,
-			syncStats: {
-				songs: songsCountResult.value,
-				playlists: playlistsCountResult.value,
-			},
-			readyCopyVariant,
-			landingSongs: getLandingSongsManifest(),
-			walkthroughSong,
-		};
-	});
+/**
+ * Small, guard-critical projection of onboarding state. Used by the
+ * authenticated layout's `beforeLoad` to drive route resolution. Returns
+ * only the `OnboardingSession` DU + theme — no playlists, landing songs,
+ * or sync stats. Safe to refetch with `staleTime: 0` on every navigation.
+ */
+export const getOnboardingSession = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.handler(
+		({ context }): Promise<OnboardingAuthPayload> =>
+			loadOnboardingSession(context.session.accountId),
+	);
 
 /**
  * Saves the user's theme preference.
@@ -481,6 +666,61 @@ export const saveDemoSongSelection = createServerFn({ method: "POST" })
 		}
 
 		return { success: true };
+	});
+
+/**
+ * Atomic transition from `pick-demo-song` → `song-walkthrough`.
+ *
+ * Writes `demo_song_id` and `onboarding_step` in a single UPDATE so the row
+ * can never land in the impossible state `step = "song-walkthrough"` with no
+ * `demo_song_id` (which would cause the onboarding redirect loop between
+ * /onboarding and /liked-songs). Returns the full new `OnboardingData` so
+ * the client can replace its cache authoritatively before navigating — no
+ * partial `setQueryData` patches, no stale reads by route guards.
+ */
+export const commitDemoSongAndEnterWalkthrough = createServerFn({
+	method: "POST",
+})
+	.middleware([authMiddleware])
+	.inputValidator(saveDemoSongSelectionInputSchema)
+	.handler(async ({ data, context }): Promise<OnboardingAuthPayload> => {
+		const { session } = context;
+		const supabase = createAdminSupabaseClient();
+
+		const { data: song, error: songError } = await supabase
+			.from("song")
+			.select("id")
+			.eq("spotify_id", data.spotifyTrackId)
+			.single();
+
+		if (songError || !song) {
+			throw new OnboardingError(
+				"lookup_demo_song",
+				songError ??
+					new Error(`Song not found for spotify_id: ${data.spotifyTrackId}`),
+			);
+		}
+
+		const { error: updateError } = await supabase
+			.from("user_preferences")
+			.update({
+				demo_song_id: song.id,
+				onboarding_step: "song-walkthrough",
+			})
+			.eq("account_id", session.accountId);
+
+		if (updateError) {
+			throw new OnboardingError("commit_demo_song_walkthrough", updateError);
+		}
+
+		// Mirror saveOnboardingStep's side-effect: clear phase job IDs when
+		// transitioning past syncing-related steps. Non-critical; log-only.
+		const clearResult = await clearPhaseJobIds(session.accountId);
+		if (Result.isError(clearResult)) {
+			console.warn("Failed to clear phase job IDs:", clearResult.error);
+		}
+
+		return loadOnboardingSession(session.accountId);
 	});
 
 /** Match result for a single playlist in the demo song showcase */
