@@ -1,7 +1,4 @@
-import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
 import type { AnalysisContent } from "@/features/liked-songs/types";
-
-export type OnboardingMode = "complete" | "steps" | "walkthrough";
 
 export type WalkthroughSongAnalysis = {
 	id: string;
@@ -27,34 +24,68 @@ export type WalkthroughSong = {
 
 export type AllowedPath = "/onboarding" | "/liked-songs" | "/match";
 
-export type ResolvedStep = {
+/**
+ * Discriminated union over the onboarding lifecycle.
+ *
+ * Walkthrough variants carry their required payload inline (`song`) so the
+ * type system forbids `{ status: "song-walkthrough", song: null }` — the
+ * shape that used to cause the onboarding redirect loop. Make illegal states
+ * unrepresentable: preconditions live in the type, not in scattered runtime
+ * guards.
+ */
+export type OnboardingSession =
+	| { status: "welcome" }
+	| { status: "pick-color" }
+	| { status: "install-extension" }
+	| { status: "syncing" }
+	| { status: "flag-playlists" }
+	| { status: "pick-demo-song" }
+	| { status: "song-walkthrough"; song: WalkthroughSong }
+	| { status: "match-walkthrough"; song: WalkthroughSong }
+	| { status: "plan-selection" }
+	| { status: "complete" };
+
+export type OnboardingStatus = OnboardingSession["status"];
+
+/** Broad categorization used by layout shells and UI branches. */
+export type OnboardingMode = "steps" | "walkthrough" | "complete";
+
+export function sessionMode(session: OnboardingSession): OnboardingMode {
+	switch (session.status) {
+		case "complete":
+			return "complete";
+		case "song-walkthrough":
+		case "match-walkthrough":
+			return "walkthrough";
+		default:
+			return "steps";
+	}
+}
+
+/**
+ * Route resolution from the canonical session.
+ *
+ * Because the DU already guarantees walkthrough variants carry their song,
+ * this function can't fail into a broken intermediate state — callers don't
+ * need separate precondition checks.
+ */
+export function resolveSession(session: OnboardingSession): {
 	allowedPath: AllowedPath;
-	onboardingMode: "steps" | "walkthrough";
-};
-
-const STEP_MAP: Partial<Record<OnboardingStep, ResolvedStep>> = {
-	"song-walkthrough": {
-		allowedPath: "/liked-songs",
-		onboardingMode: "walkthrough",
-	},
-	"match-walkthrough": {
-		allowedPath: "/match",
-		onboardingMode: "walkthrough",
-	},
-};
-
-const DEFAULT_RESOLVED: ResolvedStep = {
-	allowedPath: "/onboarding",
-	onboardingMode: "steps",
-};
-
-export function resolveStep(step: OnboardingStep): ResolvedStep {
-	return STEP_MAP[step] ?? DEFAULT_RESOLVED;
+} {
+	switch (session.status) {
+		case "complete":
+		case "song-walkthrough":
+			return { allowedPath: "/liked-songs" };
+		case "match-walkthrough":
+			return { allowedPath: "/match" };
+		default:
+			return { allowedPath: "/onboarding" };
+	}
 }
 
 export function isPathAllowed(
 	pathname: string,
-	resolved: ResolvedStep,
+	allowedPath: AllowedPath,
 ): boolean {
-	return pathname === resolved.allowedPath;
+	return pathname === allowedPath;
 }

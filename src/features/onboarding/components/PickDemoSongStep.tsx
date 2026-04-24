@@ -4,6 +4,8 @@
  * mirroring FlagPlaylistsStep's visual treatment.
  */
 
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CDCase } from "@/components/ui/CDCase";
@@ -11,19 +13,24 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import type { LandingSongManifest } from "@/lib/data/landing-songs";
-import { saveDemoSongSelection } from "@/lib/server/onboarding.functions";
+import {
+	commitDemoSongAndEnterWalkthrough,
+	type OnboardingAuthPayload,
+} from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useFlagPlaylistsScroll } from "../hooks/useFlagPlaylistsScroll";
-import { useStepNavigation } from "../hooks/useStepNavigation";
 
 interface PickDemoSongStepProps {
 	songs: LandingSongManifest[];
 }
 
+const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
+
 export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 	const theme = useTheme();
-	const { navigateTo } = useStepNavigation();
+	const queryClient = useQueryClient();
+	const router = useRouter();
 	const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 
@@ -83,12 +90,24 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 		if (!selectedTrackId || isSaving) return;
 		setIsSaving(true);
 		try {
-			await saveDemoSongSelection({
-				data: { spotifyTrackId: selectedTrackId },
-			});
-			await navigateTo("song-walkthrough");
+			// Atomic server transition: writes demo_song_id + onboarding_step in
+			// one UPDATE, then returns the full new session. Replacing the cache
+			// with this authoritative payload before navigating is what prevents
+			// the /onboarding ↔ /liked-songs redirect loop — route guards read a
+			// fully-consistent session, never a partially-patched one.
+			const nextPayload: OnboardingAuthPayload =
+				await commitDemoSongAndEnterWalkthrough({
+					data: { spotifyTrackId: selectedTrackId },
+				});
+
+			queryClient.setQueryData<OnboardingAuthPayload>(
+				ONBOARDING_SESSION_QUERY_KEY,
+				nextPayload,
+			);
+
+			await router.navigate({ to: "/liked-songs", search: { filter: "all" } });
 		} catch (error) {
-			console.error("Failed to save demo song selection:", error);
+			console.error("Failed to commit demo song walkthrough:", error);
 			toast.error("Failed to save selection. Please try again.");
 			setIsSaving(false);
 		}

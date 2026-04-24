@@ -5,6 +5,10 @@
  * with async rejects so components fall to their error/unavailable states.
  */
 
+import type {
+	OnboardingSession,
+	WalkthroughSong,
+} from "@/features/onboarding/step-resolver";
 import type { ThemeColor } from "@/lib/theme/types";
 
 // ── Types (re-exported as-is) ──────────────────────────────────────────
@@ -25,11 +29,13 @@ export interface SyncStats {
 
 export type ReadyCopyVariant = "free" | "pack" | "unlimited";
 
-export interface OnboardingData {
+export interface OnboardingAuthPayload {
+	session: OnboardingSession;
 	theme: ThemeColor | null;
+}
+
+export interface OnboardingData extends OnboardingAuthPayload {
 	playlists: OnboardingPlaylist[];
-	currentStep: string;
-	isComplete: boolean;
 	phaseJobIds: Record<string, string> | null;
 	syncStats: SyncStats | null;
 	readyCopyVariant: ReadyCopyVariant;
@@ -45,15 +51,6 @@ export interface OnboardingData {
 		genres: string[];
 		detailPath: string;
 	}>;
-	walkthroughSong: {
-		id: string;
-		spotifyTrackId: string;
-		slug: string;
-		name: string;
-		artist: string;
-		album: string | null;
-		albumArtUrl: string | null;
-	} | null;
 }
 
 export interface DemoMatchPlaylist {
@@ -69,6 +66,11 @@ export type DemoMatchResult =
 	| { status: "pending" }
 	| { status: "unavailable" };
 
+// Re-export the shared types so downstream ladle stories don't need to
+// import from step-resolver directly when they're already consuming the
+// onboarding stub.
+export type { OnboardingSession, WalkthroughSong };
+
 // ── Stub callables ─────────────────────────────────────────────────────
 
 const reject = () =>
@@ -76,6 +78,8 @@ const reject = () =>
 
 export const getOnboardingData =
 	reject as unknown as () => Promise<OnboardingData>;
+export const getOnboardingSession =
+	reject as unknown as () => Promise<OnboardingAuthPayload>;
 export const saveThemePreference = reject as unknown as (opts: {
 	data: { theme: ThemeColor };
 }) => Promise<void>;
@@ -95,3 +99,7 @@ export const getDemoSongMatches =
 export const saveDemoSongSelection = reject as unknown as (opts: {
 	data: { spotifyTrackId: string };
 }) => Promise<{ success: true }>;
+
+export const commitDemoSongAndEnterWalkthrough = reject as unknown as (opts: {
+	data: { spotifyTrackId: string };
+}) => Promise<OnboardingAuthPayload>;

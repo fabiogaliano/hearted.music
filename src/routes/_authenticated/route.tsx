@@ -21,10 +21,9 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { Sidebar } from "./-components/Sidebar";
 import { usePostPurchaseReturn } from "@/features/billing/hooks/usePostPurchaseReturn";
 import {
-	resolveStep,
 	isPathAllowed,
-	type OnboardingMode,
-	type WalkthroughSong,
+	resolveSession,
+	sessionMode,
 } from "@/features/onboarding/step-resolver";
 import { billingKeys } from "@/features/billing/query-keys";
 import { matchingSessionQueryOptions } from "@/features/matching/queries";
@@ -33,7 +32,7 @@ import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getBillingState } from "@/lib/server/billing.functions";
-import { getOnboardingData } from "@/lib/server/onboarding.functions";
+import { getOnboardingSession } from "@/lib/server/onboarding.functions";
 import { AuthenticatedThemeProvider } from "@/lib/theme/authenticated-theme";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { DEFAULT_THEME } from "@/lib/theme/types";
@@ -50,10 +49,10 @@ const DevWorkflowPanel = shouldLoadDevWorkflowPanel
 	: null;
 
 const authQueryKey = ["auth", "session"] as const;
-const onboardingQueryKey = ["auth", "onboarding"] as const;
+const onboardingSessionQueryKey = ["auth", "onboarding-session"] as const;
 
 export const Route = createFileRoute("/_authenticated")({
-	beforeLoad: async ({ location, cause, context }) => {
+	beforeLoad: async ({ location, context }) => {
 		const { queryClient } = context;
 
 		const { session, account } = await queryClient.ensureQueryData({
@@ -62,27 +61,24 @@ export const Route = createFileRoute("/_authenticated")({
 			staleTime: 5 * 60 * 1000,
 		});
 
-		const onboarding = await queryClient.ensureQueryData({
-			queryKey: onboardingQueryKey,
-			queryFn: () => getOnboardingData(),
-			staleTime: cause === "enter" ? 0 : 5 * 60 * 1000,
-		});
+		// Guard-critical onboarding payload — small object, always fresh. Child
+		// routes read `onboardingSession` and `theme` from context; they do
+		// NOT need the full page payload (playlists, landing songs, etc.),
+		// which lives in `/onboarding`'s own loader.
+		const { session: onboardingSession, theme } =
+			await queryClient.ensureQueryData({
+				queryKey: onboardingSessionQueryKey,
+				queryFn: () => getOnboardingSession(),
+				staleTime: 0,
+			});
 
-		let onboardingMode: OnboardingMode;
-		let walkthroughSong: WalkthroughSong | null = null;
-
-		if (onboarding.isComplete) {
-			onboardingMode = "complete";
-		} else {
-			const resolved = resolveStep(onboarding.currentStep);
-			onboardingMode = resolved.onboardingMode;
-			walkthroughSong = onboarding.walkthroughSong;
-
-			if (!isPathAllowed(location.pathname, resolved)) {
+		if (onboardingSession.status !== "complete") {
+			const resolved = resolveSession(onboardingSession);
+			if (!isPathAllowed(location.pathname, resolved.allowedPath)) {
 				if (resolved.allowedPath === "/onboarding") {
 					throw redirect({
 						to: "/onboarding",
-						search: { step: onboarding.currentStep },
+						search: { step: onboardingSession.status },
 					});
 				}
 				throw redirect({ to: resolved.allowedPath });
@@ -98,10 +94,9 @@ export const Route = createFileRoute("/_authenticated")({
 		return {
 			session,
 			account,
-			theme: onboarding.theme,
+			theme,
 			billingState,
-			onboardingMode,
-			walkthroughSong,
+			onboardingSession,
 		};
 	},
 	component: AuthenticatedLayout,
@@ -113,11 +108,12 @@ function AuthenticatedLayout() {
 		account,
 		session,
 		billingState,
-		onboardingMode,
+		onboardingSession,
 	} = Route.useRouteContext();
 
-	const isComplete = onboardingMode === "complete";
-	const showShell = isComplete || onboardingMode === "walkthrough";
+	const mode = sessionMode(onboardingSession);
+	const isComplete = mode === "complete";
+	const showShell = isComplete || mode === "walkthrough";
 
 	useActiveJobCompletionEffects(session.accountId, isComplete);
 	usePostPurchaseReturn(session.accountId, billingState);

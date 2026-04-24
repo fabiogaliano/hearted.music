@@ -26,8 +26,8 @@ import {
 	type PlanSelectionConfig,
 } from "@/lib/server/billing.functions";
 import {
+	getOnboardingSession,
 	markOnboardingComplete,
-	type OnboardingData,
 	type ReadyCopyVariant,
 	type SyncStats,
 } from "@/lib/server/onboarding.functions";
@@ -55,7 +55,7 @@ const READY_COPY: Record<ReadyCopyVariant, string> = {
 	unlimited: "Going through every song. An email's on its way when it's ready.",
 };
 
-const ONBOARDING_QUERY_KEY = ["auth", "onboarding"] as const;
+const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
 
 const FALLBACK_MESSAGE =
 	"Your purchase is being processed. Your songs to explore will appear shortly.";
@@ -411,11 +411,14 @@ function SuccessView({
 		setIsCompleting(true);
 		try {
 			await markOnboardingComplete();
-			queryClient.setQueryData<OnboardingData>(
-				ONBOARDING_QUERY_KEY,
-				(existing) => (existing ? { ...existing, isComplete: true } : existing),
-			);
-			await queryClient.invalidateQueries({ queryKey: ONBOARDING_QUERY_KEY });
+			// Refetch the authoritative session so `/_authenticated`'s
+			// beforeLoad reads `session.status === "complete"` on the next
+			// navigation — replaces the legacy mutation of a no-longer-read
+			// `["auth", "onboarding"]` / `isComplete` cache shape.
+			await queryClient.fetchQuery({
+				queryKey: ONBOARDING_SESSION_QUERY_KEY,
+				queryFn: () => getOnboardingSession(),
+			});
 			await navigate({ to: "/dashboard" });
 		} catch (error) {
 			console.error("Failed to complete onboarding:", error);
