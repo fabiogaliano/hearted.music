@@ -335,14 +335,12 @@ bun run ext:dev
 | Command                            | Description                                            |
 | ---------------------------------- | ------------------------------------------------------ |
 | `bun run dev`                      | Dev server (`ML_PROVIDER=local`)                       |
-| `bun run dev:ui`                   | Dev server without devtools overlay                    |
 | `bun run dev:worker`               | Background worker                                      |
 | `bun run dev:embeddings`           | Local embedding sidecar                                |
 | `bun run build`                    | Production Vite build                                  |
 | `bun run preview`                  | Preview production build locally                       |
 | `bun run deploy`                   | Build + `wrangler deploy`                              |
-| `bun run deploy:secrets:waitlist`  | Push env vars as Wrangler secrets (waitlist mode)      |
-| `bun run deploy:secrets:released`  | Push env vars as Wrangler secrets (released mode)      |
+| `bun run deploy:secrets`           | Push env vars as Wrangler secrets                      |
 | `bun run test`                     | Vitest (unit + integration)                            |
 | `bun run typecheck`                | `tsc --noEmit`                                         |
 | `bun run check`                    | Biome lint + format check                              |
@@ -351,7 +349,6 @@ bun run ext:dev
 | `bun run gen:types`                | Regenerate DB types from local Supabase schema         |
 | `bun run ladle`                    | Component workshop                                     |
 | `bun run fixtures`                 | Rebuild Ladle story fixtures from DB snapshots         |
-| `bun run lyrics:snapshot`          | Generate lyrics parser snapshots                       |
 | `bun run lyrics:validate`          | Run lyrics integration tests against snapshots         |
 | `bun run ext:build`                | Build Chrome extension (production)                    |
 | `bun run ext:dev`                  | Build Chrome extension (watch)                         |
