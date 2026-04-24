@@ -12,7 +12,7 @@
  * Run explicitly with: PARSER_VALIDATION=true bun test lyrics-service.integration
  *
  * To regenerate snapshots after intentional changes:
- *   bun run lyrics:snapshot
+ *   bun src/lib/domains/enrichment/lyrics/__tests__/generate-snapshots.ts
  */
 
 import { Result } from "better-result";

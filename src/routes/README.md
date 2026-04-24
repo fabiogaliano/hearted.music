@@ -386,20 +386,17 @@ All scripts run with `bun scripts/<name>.ts` unless noted.
 | Script / Command              | Purpose                                                                 |
 | ----------------------------- | ----------------------------------------------------------------------- |
 | `bun run dev`                 | Dev server with local ML provider (`ML_PROVIDER=local`)                 |
-| `bun run dev:ui`              | Dev server without devtools overlay                                     |
 | `bun run dev:worker`          | Background worker in watch mode                                         |
 | `bun run dev:embeddings`      | Local embedding sidecar for `ML_PROVIDER=local`                         |
 | `bun run build`               | Production Vite build                                                   |
 | `bun run deploy`              | Build + `wrangler deploy`                                               |
-| `bun run deploy:secrets:waitlist` | Push `.env.cloud` vars as Wrangler secrets (waitlist mode)          |
-| `bun run deploy:secrets:released` | Push `.env.cloud` vars as Wrangler secrets (released mode)          |
+| `bun run deploy:secrets`      | Push `.env.cloud` vars as Wrangler secrets                              |
 | `bun run test`                | Vitest (all unit tests)                                                 |
 | `bun run typecheck`           | `tsc --noEmit`                                                          |
 | `bun run check`               | Biome check (lint + format)                                             |
 | `bun run gen:types`           | Regenerate `src/lib/data/database.types.ts` from local Supabase schema  |
 | `bun run ladle`               | Component workshop (Ladle)                                              |
 | `bun run fixtures`            | Rebuild Ladle story fixtures from DB snapshots                          |
-| `bun run lyrics:snapshot`     | Generate lyrics parser snapshots                                        |
 | `bun run lyrics:validate`     | Run lyrics integration tests against snapshots                          |
 | `bun run ext:build`           | Build Chrome extension (production)                                     |
 | `bun run ext:dev`             | Build Chrome extension in watch mode                                    |
