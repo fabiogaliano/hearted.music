@@ -36,11 +36,10 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 		const { session, queryClient } = context;
 		const accountId = session.accountId;
 
-		// Route-scoped cache entry. `staleTime: 0` mirrors the auth-layer
-		// onboarding-session policy — guards must read a fresh snapshot every
-		// navigation, but we go through the query client so downstream
-		// components can subscribe to the same cache entry without refetching.
-		const data = await queryClient.ensureQueryData({
+		// Guard-critical data: force a fresh read on each navigation. `ensureQueryData`
+		// can reuse cached data for this key, which makes step guards lag behind
+		// recently-saved progress until a hard reload.
+		const data = await queryClient.fetchQuery({
 			queryKey: ONBOARDING_DATA_QUERY_KEY,
 			queryFn: () => getOnboardingData(),
 			staleTime: 0,

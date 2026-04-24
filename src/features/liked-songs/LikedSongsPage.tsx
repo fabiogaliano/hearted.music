@@ -461,7 +461,7 @@ export function LikedSongsPage({
 	const noopItemRef = useCallback(() => {}, []);
 
 	return (
-		<div ref={containerRef} className="relative min-h-[600px] max-w-5xl">
+		<div ref={containerRef} className="relative min-h-150 max-w-5xl">
 			{/* Header */}
 			<div className="mb-8">
 				<p
