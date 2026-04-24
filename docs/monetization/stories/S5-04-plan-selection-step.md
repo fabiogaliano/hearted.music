@@ -23,7 +23,7 @@ Plan selection is where the user converts — after seeing product value through
 
 - New component: `PlanSelectionStep`
 - Presents three paths:
-  - **Free**: continue with 15 songs → navigates to `ready`
+  - **Free**: continue with 10 songs → navigates to `ready`
   - **Pack**: 500 songs + 25 instant unlocks for $5.99 → initiates checkout
   - **Unlimited**: yearly $39.99/yr (quarterly $14.99/quarter if `QUARTERLY_PLAN_ENABLED`) → initiates checkout
 - For unlimited: show any first-invoice discount from unused purchased pack value

@@ -22,7 +22,7 @@ The current `ReadyStep` says "Going through every song" which is only true for u
 
 ### ReadyStep copy update
 - Update `src/features/onboarding/components/ReadyStep.tsx`:
-  - Free: "Exploring your 15 songs…" (or similar)
+  - Free: "Exploring your 10 songs…" (or similar)
   - Pack: "Exploring your selected songs…"
   - Unlimited: "Going through every song…" (current copy, retained for this branch)
   - Self-hosted: "Going through every song…"

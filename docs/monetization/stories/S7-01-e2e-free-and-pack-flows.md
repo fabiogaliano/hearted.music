@@ -18,7 +18,7 @@ These are the most common user paths. Validating them end to end in Stripe test 
 
 ## Scope
 
-- Fresh free onboarding: create account → onboarding → free allocation → 15 songs unlocked → Phase B/C processes → content activation → read models show analyzed → match results available
+- Fresh free onboarding: create account → onboarding → free allocation → 10 songs unlocked → Phase B/C processes → content activation → read models show analyzed → match results available
 - Pack purchase: exhaust/insufficient free balance → paywall → pack checkout → fulfillment → 500 balance + 25 bonus unlocks → manual selection → unlock → processing → results
 - Verify in Stripe test mode
 - Document any issues found; fix or create follow-up stories
@@ -43,7 +43,7 @@ These are the most common user paths. Validating them end to end in Stripe test 
 
 ## Acceptance criteria
 
-- [ ] Fresh free user gets 15 songs unlocked and processed
+- [ ] Fresh free user gets 10 songs unlocked and processed
 - [ ] Pack purchase updates balance and creates bonus unlocks
 - [ ] Manual selection unlocks songs and triggers processing
 - [ ] Results visible in liked songs and matching pages

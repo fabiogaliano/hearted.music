@@ -2,7 +2,7 @@
 
 ## Goal
 
-When a user completes onboarding and stays free, auto-unlock up to 15 most-recent liked songs via `insert_song_unlocks_without_charge` with `source='free_auto'`.
+When a user completes onboarding and stays free, auto-unlock up to 10 most-recent liked songs via `insert_song_unlocks_without_charge` with `source='free_auto'`.
 
 ## Why
 
@@ -22,8 +22,8 @@ Free allocation is the default path for users who don't purchase during onboardi
 
 - Wire the free path in onboarding completion:
   - When user stays free, call `grantFreeAllocation` from `unlocks.ts`
-  - Unlocks up to 15 most-recent liked songs with `source='free_auto'`
-  - If fewer than 15 liked songs exist, only those are unlocked; no carryforward
+  - Unlocks up to 10 most-recent liked songs with `source='free_auto'`
+  - If fewer than 10 liked songs exist, only those are unlocked; no carryforward
   - Emits `BillingChanges.songsUnlocked`
   - Calls `applyLibraryProcessingChange`
 - Update `markOnboardingComplete` or its caller to trigger free allocation on the free branch
@@ -51,7 +51,7 @@ Free allocation is the default path for users who don't purchase during onboardi
 
 ## Acceptance criteria
 
-- [ ] Up to 15 most-recent liked songs unlocked on free completion
+- [ ] Up to 10 most-recent liked songs unlocked on free completion
 - [ ] Uses `source='free_auto'`
 - [ ] No purchased balance deducted
 - [ ] Fewer than 15 liked songs → only available songs unlocked
@@ -71,4 +71,4 @@ Free allocation is the default path for users who don't purchase during onboardi
 
 ## Suggested PR title
 
-`feat(onboarding): free allocation of 15 songs on onboarding completion`
+`feat(onboarding): free allocation of 10 songs on onboarding completion`

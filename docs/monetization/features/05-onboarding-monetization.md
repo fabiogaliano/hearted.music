@@ -25,11 +25,11 @@ Building this on top of working entitlement enforcement (Feature 03) and checkou
 - **Match showcase step**: runs live match against real target playlists using the pre-seeded demo song with `priority` queue band; falls back to canned demo result after ~10–15s timeout
 - **Playlist profiling trigger**: trigger target-playlist profiling during `flag-playlists` step so profiles are ready for the match showcase
 - **Plan selection step**: presents free / pack / unlimited options; auto-skipped when `BILLING_ENABLED=false`
-- **Free allocation on completion**: calls `insert_song_unlocks_without_charge(up to 15 most-recent liked songs, source='free_auto')` and emits `BillingChanges.songsUnlocked(...)` when user stays free
+- **Free allocation on completion**: calls `insert_song_unlocks_without_charge(up to 10 most-recent liked songs, source='free_auto')` and emits `BillingChanges.songsUnlocked(...)` when user stays free
 - **Pack onboarding branch**: user purchases pack → 500 purchased credits + up to 25 pack bonus unlocks → user sees updated state
 - **Unlimited onboarding branch**: user starts unlimited checkout → conversion discount shown if applicable → checkout redirects to Stripe → activation flows through Feature 04 bridge
 - **Provider-disabled branch**: `plan-selection` auto-skipped; account already has `self_hosted` unlimited; full-library processing eligible immediately
-- **`ReadyStep` copy update**: billing-aware copy variants (free: "Exploring your 15 songs…", pack: "Exploring your selected songs…", unlimited: "Going through every song…")
+- **`ReadyStep` copy update**: billing-aware copy variants (free: "Exploring your 10 songs…", pack: "Exploring your selected songs…", unlimited: "Going through every song…")
 - **Post-checkout polling/success state**: checkout success page polls `getBillingState` for billing-state convergence
 
 ## What it does not own
@@ -67,7 +67,7 @@ Building this on top of working entitlement enforcement (Feature 03) and checkou
 3. **Playlist profiling trigger** — start target-playlist profiling when user saves playlists in `flag-playlists`; ensures profiles ready for match showcase
 4. **Match showcase step component** — runs live match for demo song against real playlists; `priority` queue band; timeout fallback to canned result
 5. **Plan selection step component** — presents free / pack / unlimited choices; auto-skip when `BILLING_ENABLED=false`; `QUARTERLY_PLAN_ENABLED` flag gates quarterly option
-6. **Free allocation on completion** — call `insert_song_unlocks_without_charge` for up to 15 songs when user stays free; emit `BillingChanges.songsUnlocked`
+6. **Free allocation on completion** — call `insert_song_unlocks_without_charge` for up to 10 songs when user stays free; emit `BillingChanges.songsUnlocked`
 7. **Pack onboarding branch** — initiate pack checkout from plan-selection; handle return/polling; display updated balance and bonus unlocks
 8. **Unlimited onboarding branch** — initiate unlimited checkout; show conversion discount if applicable; handle return/polling; display activation state
 9. **`ReadyStep` copy update** — billing-aware variants based on onboarding outcome

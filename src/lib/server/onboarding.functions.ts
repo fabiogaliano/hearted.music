@@ -544,7 +544,7 @@ export const saveOnboardingStep = createServerFn({ method: "POST" })
 /**
  * Marks onboarding as complete.
  * Sets onboarding_completed_at timestamp in the database.
- * For free-plan users, grants up to 15 most-recent liked songs as free allocation.
+ * For free-plan users, grants up to 10 most-recent liked songs as free allocation.
  */
 export const markOnboardingComplete = createServerFn({
 	method: "POST",

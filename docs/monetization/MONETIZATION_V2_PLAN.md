@@ -8,7 +8,7 @@
 
 ## TL;DR
 
-- **Free tier**: one-time free allocation of up to 15 songs, auto-selected from the most recent liked songs
+- **Free tier**: one-time free allocation of up to 10 songs, auto-selected from the most recent liked songs
 - **Song packs**: every pack purchase grants 500 purchased songs to explore plus up to 25 most-recent liked songs as pack bonus unlocks at no charge; unused purchased pack value can become a first-invoice unlimited upgrade discount
 - **3-month unlimited**: full-library auto-processing (same as today's ungated behavior), no selection needed; upgrade applies any unused purchased pack value as a one-time first-invoice discount
 - **Yearly unlimited**: same + priority queue; upgrade applies any unused purchased pack value as a one-time first-invoice discount
@@ -22,11 +22,11 @@
 ## Product Model
 
 ### Free Tier
-- **15 songs** total
+- **10 songs** total
 - unlocked after onboarding completion if the user stays free
 - v1 selection policy: auto-select up to the 15 most recent liked songs; user does not manually pick free songs
 - free is a **one-time free allocation**, not a persistent general balance
-- if the user has fewer than 15 currently liked songs at onboarding completion, only those songs are unlocked; unused free allocation is forfeited for v1
+- if the user has fewer than 10 currently liked songs at onboarding completion, only those songs are unlocked; unused free allocation is forfeited for v1
 - songs stay unlocked forever for that account
 
 ### Song Pack — $5.99 / 500 songs + 25 pack bonus unlocks
@@ -250,7 +250,7 @@ Canonical onboarding sequence:
 Notes:
 
 - steps 1–5 and 10 exist today and will be preserved; steps 6–8 are additions, step 9 needs updated copy
-- the existing `ReadyStep` copy assumes full-library processing for all users ("Going through every song. An email's on its way when it's ready."); this must be updated to reflect billing-aware behavior (free: 15 songs, pack: selected songs, unlimited: full library)
+- the existing `ReadyStep` copy assumes full-library processing for all users ("Going through every song. An email's on its way when it's ready."); this must be updated to reflect billing-aware behavior (free: 10 songs, pack: selected songs, unlimited: full library)
 - the guided showcase uses a pre-seeded demo song and dedicated onboarding matching path, not the user's real liked-song pipeline as the primary first-value experience
 - the demo song is completely outside monetization: no unlock row, no credit use, no replacement-credit semantics
 - plan selection happens after the user has seen both song analysis and match output
@@ -260,9 +260,9 @@ Notes:
 ### After onboarding completes
 
 **If user stays free:**
-- system auto-unlocks up to 15 most recent liked songs
+- system auto-unlocks up to 10 most recent liked songs
 - free allocation does **not** use purchased `credit_balance`
-- if fewer than 15 songs are currently liked at onboarding completion, only those songs are unlocked; no unused free allocation carries forward in v1
+- if fewer than 10 songs are currently liked at onboarding completion, only those songs are unlocked; no unused free allocation carries forward in v1
 - Phase B/C + matching processes those songs in background
 - user sees results as they complete
 
@@ -1540,12 +1540,12 @@ if `BILLING_ENABLED=false`:
   → no paywall, checkout, portal, or balance UI is shown
 
 if user stays free:
-  → insert_song_unlocks_without_charge(up to 15 recent liked songs, source='free_auto')  [free allocation]
+  → insert_song_unlocks_without_charge(up to 10 recent liked songs, source='free_auto')  [free allocation]
   → applyLibraryProcessingChange(BillingChanges.songsUnlocked(...))
   → enrichment jobs enqueued; shared stages + content activation run as eligible
   → results appear as processing completes
 
-if user has fewer than 15 liked songs at onboarding completion:
+if user has fewer than 10 liked songs at onboarding completion:
   → only currently liked songs are unlocked
   → no residual free allocation carries forward in v1
 
@@ -1892,7 +1892,7 @@ Mitigation:
 ## Delivery Phases
 
 ### Phase 0 — decisions + setup
-- ~~finalize free tier size~~ → 15 songs
+- ~~finalize free tier size~~ → 10 songs
 - ~~finalize 3-month unlimited price~~ → $14.99/quarter, feature-flagged
 - create Stripe test-mode products (pack $5.99, quarterly $14.99, yearly $39.99)
 - treat the 500-for-$5.99 pack as the canonical v1 upgrade-conversion basis

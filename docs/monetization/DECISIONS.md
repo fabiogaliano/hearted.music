@@ -12,9 +12,9 @@
 
 | Rule | Detail |
 |---|---|
-| Allocation size | 15 songs, one-time |
-| Selection policy | Auto-select up to 15 most-recent liked songs at onboarding completion |
-| Unused allocation | Forfeited in v1 if the user has fewer than 15 liked songs; no carryforward |
+| Allocation size | 10 songs, one-time |
+| Selection policy | Auto-select up to 10 most-recent liked songs at onboarding completion |
+| Unused allocation | Forfeited in v1 if the user has fewer than 10 liked songs; no carryforward |
 | Source | `free_auto` — never deducts purchased balance |
 | Durability | Unlocks persist forever; normal subscription changes never revoke `free_auto` unlocks |
 

@@ -270,8 +270,8 @@ describe("grantFreeAllocation", () => {
 		mockedApplyChange.mockResolvedValue(undefined);
 	});
 
-	it("unlocks up to 15 most-recent liked songs with source free_auto", async () => {
-		const likedSongs = Array.from({ length: 15 }, (_, i) => ({
+	it("unlocks up to 10 most-recent liked songs with source free_auto", async () => {
+		const likedSongs = Array.from({ length: 10 }, (_, i) => ({
 			song_id: `song-${i}`,
 		}));
 		const unlockedRows = likedSongs.map((s) => ({ song_id: s.song_id }));
@@ -299,7 +299,7 @@ describe("grantFreeAllocation", () => {
 		expect(Result.isOk(result)).toBe(true);
 		if (!Result.isOk(result)) return;
 
-		expect(result.value.unlockedIds).toHaveLength(15);
+		expect(result.value.unlockedIds).toHaveLength(10);
 
 		expect(rpcFn).toHaveBeenCalledWith("insert_song_unlocks_without_charge", {
 			p_account_id: "acc-1",

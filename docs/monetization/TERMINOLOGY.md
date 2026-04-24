@@ -98,7 +98,7 @@
 
 | Concept | Canonical term | Frozen? | Scope |
 |---|---|---|---|
-| Free songs granted at onboarding | **free allocation** — one-time, up to 15 songs, `source='free_auto'` | ✅ Yes | Internal |
+| Free songs granted at onboarding | **free allocation** — one-time, up to 10 songs, `source='free_auto'` | ✅ Yes | Internal |
 | Pack auto-unlocks at purchase | **pack bonus unlocks** — up to 25, part of pack entitlement, reversed on refund | ✅ Yes | Internal |
 | User-facing pack bonus label | **Instant Unlocks** (Stripe product name: "500 Songs + 25 Instant Unlocks") | ⏳ Soft (copy) | User-facing |
 | Onboarding step IDs | `song-showcase`, `match-showcase`, `plan-selection` | ✅ Yes | Internal |
