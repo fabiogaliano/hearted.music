@@ -1,9 +1,13 @@
 import { Result } from "better-result";
 import { createGenreEnrichmentService } from "@/lib/domains/enrichment/genre-tagging/service";
 import type { GenreEnrichmentInput } from "@/lib/domains/enrichment/genre-tagging/service";
-import { recordJobFailure } from "@/lib/data/job-failures";
+import { resolveStageFailures } from "@/lib/data/job-failures";
+import { FAILURE_CODES } from "../failure-policy";
+import { recordStageFailure } from "../record-failure";
 import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext, ReadyResult } from "../types";
+
+const STAGE = "genre_tagging";
 
 export function getReadyForGenreTagging(
 	batchSongs: PipelineBatch["songs"],
@@ -51,12 +55,12 @@ export async function runGenreTagging(
 		if (jobId) {
 			await Promise.all(
 				inputs.map((i) =>
-					recordJobFailure({
+					recordStageFailure({
 						jobId,
-						itemId: i.songId,
-						stage: "genre_tagging",
-						failureCode: "provider_transient",
-						isTerminal: false,
+						accountId: ctx.accountId,
+						songId: i.songId,
+						stage: STAGE,
+						failureCode: FAILURE_CODES.PROVIDER_TRANSIENT,
 						errorMessage: `Genre tagging batch failed: ${enrichResult.error.message}`,
 					}),
 				),
@@ -65,7 +69,20 @@ export async function runGenreTagging(
 		return { total: inputs.length, succeeded: 0, failed: inputs.length };
 	}
 
-	const { errors, notFound, unavailable } = enrichResult.value;
+	const { errors, notFound, unavailable, results } = enrichResult.value;
+
+	const succeededIds = Array.from(results.keys());
+	if (succeededIds.length > 0) {
+		await Promise.all(
+			succeededIds.map((songId) =>
+				resolveStageFailures({
+					accountId: ctx.accountId,
+					itemId: songId,
+					stage: STAGE,
+				}),
+			),
+		);
+	}
 
 	const jobId = ctx.jobId;
 	if (jobId && (errors.size > 0 || notFound.size > 0 || unavailable.size > 0)) {
@@ -73,12 +90,12 @@ export async function runGenreTagging(
 
 		for (const [songId, errorMsg] of errors) {
 			failures.push(
-				recordJobFailure({
+				recordStageFailure({
 					jobId,
-					itemId: songId,
-					stage: "genre_tagging",
-					failureCode: "provider_transient",
-					isTerminal: false,
+					accountId: ctx.accountId,
+					songId,
+					stage: STAGE,
+					failureCode: FAILURE_CODES.PROVIDER_TRANSIENT,
 					errorMessage: `Genre tagging failed: ${errorMsg}`,
 				}),
 			);
@@ -86,12 +103,12 @@ export async function runGenreTagging(
 
 		for (const songId of notFound) {
 			failures.push(
-				recordJobFailure({
+				recordStageFailure({
 					jobId,
-					itemId: songId,
-					stage: "genre_tagging",
-					failureCode: "source_not_found",
-					isTerminal: false,
+					accountId: ctx.accountId,
+					songId,
+					stage: STAGE,
+					failureCode: FAILURE_CODES.SOURCE_NOT_FOUND,
 					errorMessage: "No genre data found for track",
 				}),
 			);
@@ -102,12 +119,12 @@ export async function runGenreTagging(
 		// should pick these up.
 		for (const songId of unavailable) {
 			failures.push(
-				recordJobFailure({
+				recordStageFailure({
 					jobId,
-					itemId: songId,
-					stage: "genre_tagging",
-					failureCode: "provider_unavailable",
-					isTerminal: false,
+					accountId: ctx.accountId,
+					songId,
+					stage: STAGE,
+					failureCode: FAILURE_CODES.PROVIDER_UNAVAILABLE,
 					errorMessage: "Genre provider not configured",
 				}),
 			);

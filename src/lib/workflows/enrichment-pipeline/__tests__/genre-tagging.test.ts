@@ -9,7 +9,8 @@ import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext } from "../types";
 
 const mockEnrichBatch = vi.fn();
-const mockRecordJobFailure = vi.fn();
+const mockRecordStageFailure = vi.fn();
+const mockResolveStageFailures = vi.fn();
 
 vi.mock("@/lib/domains/enrichment/genre-tagging/service", () => ({
 	createGenreEnrichmentService: (): Pick<
@@ -20,8 +21,13 @@ vi.mock("@/lib/domains/enrichment/genre-tagging/service", () => ({
 	}),
 }));
 
+vi.mock("../record-failure", () => ({
+	recordStageFailure: (...args: unknown[]) => mockRecordStageFailure(...args),
+}));
+
 vi.mock("@/lib/data/job-failures", () => ({
-	recordJobFailure: (...args: unknown[]) => mockRecordJobFailure(...args),
+	resolveStageFailures: (...args: unknown[]) =>
+		mockResolveStageFailures(...args),
 }));
 
 import { runGenreTagging } from "../stages/genre-tagging";
@@ -97,7 +103,8 @@ function makeBatchResult(
 
 beforeEach(() => {
 	vi.clearAllMocks();
-	mockRecordJobFailure.mockResolvedValue(Result.ok(undefined));
+	mockRecordStageFailure.mockResolvedValue(Result.ok(undefined));
+	mockResolveStageFailures.mockResolvedValue(Result.ok(0));
 });
 
 describe("runGenreTagging stage totals", () => {
@@ -118,7 +125,7 @@ describe("runGenreTagging stage totals", () => {
 
 		expect(result).toEqual({ total: 4, succeeded: 1, failed: 3 });
 		// One job_failure row per non-success outcome
-		expect(mockRecordJobFailure).toHaveBeenCalledTimes(3);
+		expect(mockRecordStageFailure).toHaveBeenCalledTimes(3);
 	});
 
 	it("returns failed=0 on the all-success path", async () => {
@@ -130,7 +137,7 @@ describe("runGenreTagging stage totals", () => {
 		const result = await runGenreTagging(makeCtx(), batch);
 
 		expect(result).toEqual({ total: 3, succeeded: 3, failed: 0 });
-		expect(mockRecordJobFailure).not.toHaveBeenCalled();
+		expect(mockRecordStageFailure).not.toHaveBeenCalled();
 	});
 
 	it("sums errors + notFound + unavailable when all three are present", async () => {
