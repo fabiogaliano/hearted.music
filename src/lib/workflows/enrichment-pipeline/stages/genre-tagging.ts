@@ -116,10 +116,15 @@ export async function runGenreTagging(
 		await Promise.all(failures);
 	}
 
+	// Count every unsuccessful outcome: provider errors AND true catalog misses
+	// AND songs we never asked the provider about. Reading the per-bucket sizes
+	// directly (rather than stats.failed) keeps the count in lockstep with the
+	// failure rows we just wrote above.
+	const failed = errors.size + notFound.size + unavailable.size;
 	const stats = enrichResult.value.stats;
 	return {
 		total: inputs.length,
 		succeeded: stats.fetched + stats.cached,
-		failed: stats.failed,
+		failed,
 	};
 }
