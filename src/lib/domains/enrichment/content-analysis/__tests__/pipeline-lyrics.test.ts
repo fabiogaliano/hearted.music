@@ -10,7 +10,8 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock the lyrics service module with real GeniusNotFoundError for error testing
+// Mock the lyrics service module while preserving real Genius error classes
+// re-exported through it.
 vi.mock("@/lib/domains/enrichment/lyrics/service", async (importOriginal) => {
 	const actual =
 		await importOriginal<
@@ -41,6 +42,31 @@ vi.mock("@/lib/platform/jobs/lifecycle", () => ({
 vi.mock("@/lib/domains/enrichment/audio-features/queries", () => ({
 	getBatch: vi.fn().mockResolvedValue(Result.ok(new Map())),
 }));
+
+import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
+import { getBatch as getAudioFeaturesBatch } from "@/lib/domains/enrichment/audio-features/queries";
+
+function audioFeatureFor(songId: string): AudioFeature {
+	const now = new Date().toISOString();
+	return {
+		id: `af-${songId}`,
+		song_id: songId,
+		acousticness: 0.1,
+		danceability: 0.5,
+		energy: 0.6,
+		instrumentalness: 0.0,
+		key: 0,
+		liveness: 0.1,
+		loudness: -8.0,
+		mode: 1,
+		speechiness: 0.05,
+		tempo: 120,
+		time_signature: 4,
+		valence: 0.5,
+		created_at: now,
+		updated_at: now,
+	};
+}
 
 vi.mock("@/lib/domains/library/songs/queries", () => ({
 	getByIds: vi.fn().mockResolvedValue(Result.ok([])),
@@ -142,13 +168,16 @@ describe("Pipeline Lyrics Integration", () => {
 			expect(mockGetLyricsText).toHaveBeenCalledWith("Artist 2", "Song 2");
 		});
 
-		it("handles lyrics fetch failure gracefully", async () => {
+		it("handles lyrics fetch failure gracefully when audio features exist", async () => {
 			const { GeniusNotFoundError } = await import(
-				"@/lib/domains/enrichment/lyrics/service"
+				"@/lib/shared/errors/external/genius"
 			);
 
 			mockGetLyricsText.mockResolvedValueOnce(
 				Result.err(new GeniusNotFoundError("Artist 1", "Song 1")),
+			);
+			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
+				Result.ok(new Map([["1", audioFeatureFor("1")]])),
 			);
 
 			const pipeline = await unwrapPipeline();
@@ -157,14 +186,16 @@ describe("Pipeline Lyrics Integration", () => {
 				{ songId: "1", artist: "Artist 1", title: "Song 1", lyrics: "" },
 			];
 
-			// Should not throw - failures are recorded, not thrown
 			const result = await pipeline.analyzeSongs("account-123", songs);
 
 			expect(Result.isOk(result)).toBe(true);
 			if (Result.isOk(result)) {
-				// Song routes to instrumental analysis path when lyrics unavailable
 				expect(result.value.succeeded).toBe(1);
 				expect(result.value.failed).toBe(0);
+				expect(result.value.skippedConfirmedInputsMissing).toEqual([]);
+				expect(result.value.skippedUnconfirmedLyrics).toEqual([]);
+				expect(result.value.skippedUnconfirmedAudio).toEqual([]);
+				expect(result.value.skippedUnconfirmedBoth).toEqual([]);
 			}
 		});
 
@@ -256,6 +287,251 @@ describe("Pipeline Lyrics Integration", () => {
 					lyrics: "Original lyrics",
 				}),
 			);
+		});
+	});
+
+	describe("analysis-input gate (tri-state evidence)", () => {
+		const mockNoAnalyze = () =>
+			vi.fn().mockResolvedValue(Result.ok({ themes: ["x"], mood: "y" }));
+
+		async function withMockAnalyzer(): Promise<ReturnType<typeof vi.fn>> {
+			const { SongAnalysisService } = await import("../song-analysis");
+			const mockAnalyzeSong = mockNoAnalyze();
+			(
+				SongAnalysisService as unknown as ReturnType<typeof vi.fn>
+			).mockImplementation(() => ({ analyzeSong: mockAnalyzeSong }));
+			return mockAnalyzeSong;
+		}
+
+		it("Genius not_found + audio confirmed missing => terminal confirmed missing", async () => {
+			const { GeniusNotFoundError } = await import(
+				"@/lib/shared/errors/external/genius"
+			);
+			const mockAnalyzeSong = vi.fn();
+			const { SongAnalysisService } = await import("../song-analysis");
+			(
+				SongAnalysisService as unknown as ReturnType<typeof vi.fn>
+			).mockImplementation(() => ({ analyzeSong: mockAnalyzeSong }));
+
+			mockGetLyricsText.mockResolvedValueOnce(
+				Result.err(new GeniusNotFoundError("A", "T")),
+			);
+			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
+				Result.ok(new Map()),
+			);
+
+			const pipeline = await unwrapPipeline();
+			const result = await pipeline.analyzeSongs("account-123", [
+				{ songId: "skip-me", artist: "A", title: "T", lyrics: "" },
+			]);
+
+			expect(mockAnalyzeSong).not.toHaveBeenCalled();
+			if (Result.isOk(result)) {
+				expect(result.value.skippedConfirmedInputsMissing).toEqual(["skip-me"]);
+				expect(result.value.skippedUnconfirmedLyrics).toEqual([]);
+				expect(result.value.skippedUnconfirmedAudio).toEqual([]);
+				expect(result.value.skippedUnconfirmedBoth).toEqual([]);
+				expect(result.value.failed).toBe(1);
+				expect(result.value.total).toBe(1);
+			}
+		});
+
+		it("analyzes when only lyrics are available (no audio features row)", async () => {
+			const mockAnalyzeSong = await withMockAnalyzer();
+
+			mockGetLyricsText.mockResolvedValueOnce(Result.ok("Some lyrics here"));
+			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
+				Result.ok(new Map()),
+			);
+
+			const pipeline = await unwrapPipeline();
+			const result = await pipeline.analyzeSongs("account-123", [
+				{ songId: "lyrics-only", artist: "A", title: "T", lyrics: "" },
+			]);
+
+			expect(mockAnalyzeSong).toHaveBeenCalledOnce();
+			expect(mockAnalyzeSong).toHaveBeenCalledWith(
+				expect.objectContaining({
+					songId: "lyrics-only",
+					lyrics: "Some lyrics here",
+				}),
+			);
+			if (Result.isOk(result)) {
+				expect(result.value.skippedConfirmedInputsMissing).toEqual([]);
+				expect(result.value.skippedUnconfirmedLyrics).toEqual([]);
+				expect(result.value.skippedUnconfirmedAudio).toEqual([]);
+				expect(result.value.skippedUnconfirmedBoth).toEqual([]);
+				expect(result.value.succeeded).toBe(1);
+			}
+		});
+
+		it("analyzes when only audio features are available (no lyrics)", async () => {
+			const { GeniusNotFoundError } = await import(
+				"@/lib/shared/errors/external/genius"
+			);
+			const mockAnalyzeSong = await withMockAnalyzer();
+
+			mockGetLyricsText.mockResolvedValueOnce(
+				Result.err(new GeniusNotFoundError("A", "T")),
+			);
+			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
+				Result.ok(new Map([["audio-only", audioFeatureFor("audio-only")]])),
+			);
+
+			const pipeline = await unwrapPipeline();
+			const result = await pipeline.analyzeSongs("account-123", [
+				{ songId: "audio-only", artist: "A", title: "T", lyrics: "" },
+			]);
+
+			expect(mockAnalyzeSong).toHaveBeenCalledOnce();
+			expect(mockAnalyzeSong).toHaveBeenCalledWith(
+				expect.objectContaining({
+					songId: "audio-only",
+					audioFeatures: expect.objectContaining({ tempo: 120 }),
+				}),
+			);
+			if (Result.isOk(result)) {
+				expect(result.value.skippedConfirmedInputsMissing).toEqual([]);
+				expect(result.value.skippedUnconfirmedLyrics).toEqual([]);
+				expect(result.value.skippedUnconfirmedAudio).toEqual([]);
+				expect(result.value.skippedUnconfirmedBoth).toEqual([]);
+				expect(result.value.succeeded).toBe(1);
+			}
+		});
+
+		it("Genius not_found + audio query errored => unconfirmed_audio (non-terminal)", async () => {
+			const { GeniusNotFoundError } = await import(
+				"@/lib/shared/errors/external/genius"
+			);
+			const { DatabaseError } = await import("@/lib/shared/errors/database");
+			const mockAnalyzeSong = vi.fn();
+			const { SongAnalysisService } = await import("../song-analysis");
+			(
+				SongAnalysisService as unknown as ReturnType<typeof vi.fn>
+			).mockImplementation(() => ({ analyzeSong: mockAnalyzeSong }));
+
+			mockGetLyricsText.mockResolvedValueOnce(
+				Result.err(new GeniusNotFoundError("A", "T")),
+			);
+			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
+				Result.err(
+					new DatabaseError({ code: "TIMEOUT", message: "audio failed" }),
+				),
+			);
+
+			const pipeline = await unwrapPipeline();
+			const result = await pipeline.analyzeSongs("account-123", [
+				{ songId: "audio-down", artist: "A", title: "T", lyrics: "" },
+			]);
+
+			expect(mockAnalyzeSong).not.toHaveBeenCalled();
+			if (Result.isOk(result)) {
+				expect(result.value.skippedConfirmedInputsMissing).toEqual([]);
+				expect(result.value.skippedUnconfirmedLyrics).toEqual([]);
+				expect(result.value.skippedUnconfirmedAudio).toEqual(["audio-down"]);
+				expect(result.value.skippedUnconfirmedBoth).toEqual([]);
+				expect(result.value.failed).toBe(1);
+			}
+		});
+
+		it("no Genius token + audio confirmed missing => unconfirmed_lyrics (non-terminal, NOT terminal missing)", async () => {
+			delete process.env.GENIUS_CLIENT_TOKEN;
+			vi.resetModules();
+
+			const { SongAnalysisService } = await import("../song-analysis");
+			const mockAnalyzeSong = vi.fn();
+			(
+				SongAnalysisService as unknown as ReturnType<typeof vi.fn>
+			).mockImplementation(() => ({ analyzeSong: mockAnalyzeSong }));
+			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
+				Result.ok(new Map()),
+			);
+
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+			const pipeline = await unwrapPipeline();
+			const result = await pipeline.analyzeSongs("account-123", [
+				{ songId: "no-token", artist: "A", title: "T", lyrics: "" },
+			]);
+
+			expect(mockAnalyzeSong).not.toHaveBeenCalled();
+			if (Result.isOk(result)) {
+				expect(result.value.skippedConfirmedInputsMissing).toEqual([]);
+				expect(result.value.skippedUnconfirmedLyrics).toEqual(["no-token"]);
+				expect(result.value.skippedUnconfirmedAudio).toEqual([]);
+				expect(result.value.skippedUnconfirmedBoth).toEqual([]);
+				expect(result.value.failed).toBe(1);
+			}
+			warnSpy.mockRestore();
+		});
+
+		it("Genius fetch error + audio confirmed missing => unconfirmed_lyrics (non-terminal)", async () => {
+			const { GeniusFetchError } = await import(
+				"@/lib/shared/errors/external/genius"
+			);
+			const mockAnalyzeSong = vi.fn();
+			const { SongAnalysisService } = await import("../song-analysis");
+			(
+				SongAnalysisService as unknown as ReturnType<typeof vi.fn>
+			).mockImplementation(() => ({ analyzeSong: mockAnalyzeSong }));
+
+			mockGetLyricsText.mockResolvedValueOnce(
+				Result.err(new GeniusFetchError("https://genius.com/x", 503)),
+			);
+			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
+				Result.ok(new Map()),
+			);
+
+			const pipeline = await unwrapPipeline();
+			const result = await pipeline.analyzeSongs("account-123", [
+				{ songId: "lyrics-down", artist: "A", title: "T", lyrics: "" },
+			]);
+
+			expect(mockAnalyzeSong).not.toHaveBeenCalled();
+			if (Result.isOk(result)) {
+				expect(result.value.skippedConfirmedInputsMissing).toEqual([]);
+				expect(result.value.skippedUnconfirmedLyrics).toEqual(["lyrics-down"]);
+				expect(result.value.skippedUnconfirmedAudio).toEqual([]);
+				expect(result.value.skippedUnconfirmedBoth).toEqual([]);
+				expect(result.value.failed).toBe(1);
+			}
+		});
+
+		it("Genius fetch error + audio query errored => unconfirmed_both (non-terminal)", async () => {
+			const { GeniusFetchError } = await import(
+				"@/lib/shared/errors/external/genius"
+			);
+			const { DatabaseError } = await import("@/lib/shared/errors/database");
+			const mockAnalyzeSong = vi.fn();
+			const { SongAnalysisService } = await import("../song-analysis");
+			(
+				SongAnalysisService as unknown as ReturnType<typeof vi.fn>
+			).mockImplementation(() => ({ analyzeSong: mockAnalyzeSong }));
+
+			mockGetLyricsText.mockResolvedValueOnce(
+				Result.err(new GeniusFetchError("https://genius.com/x", 503)),
+			);
+			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
+				Result.err(
+					new DatabaseError({ code: "TIMEOUT", message: "audio failed" }),
+				),
+			);
+
+			const pipeline = await unwrapPipeline();
+			const result = await pipeline.analyzeSongs("account-123", [
+				{ songId: "everything-down", artist: "A", title: "T", lyrics: "" },
+			]);
+
+			expect(mockAnalyzeSong).not.toHaveBeenCalled();
+			if (Result.isOk(result)) {
+				expect(result.value.skippedConfirmedInputsMissing).toEqual([]);
+				expect(result.value.skippedUnconfirmedLyrics).toEqual([]);
+				expect(result.value.skippedUnconfirmedAudio).toEqual([]);
+				expect(result.value.skippedUnconfirmedBoth).toEqual([
+					"everything-down",
+				]);
+				expect(result.value.failed).toBe(1);
+			}
 		});
 	});
 });
