@@ -26,9 +26,9 @@ import type {
 	OnboardingSession,
 	WalkthroughSong,
 } from "@/features/onboarding/step-resolver";
-import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
-import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import type { BillingState } from "@/lib/domains/billing/state";
+import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
+import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { scrollListElementIntoView } from "@/lib/keyboard/listScroll";
 import type { ListNavigationSource } from "@/lib/keyboard/types";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
@@ -224,6 +224,14 @@ export function LikedSongsPage({
 		return [demoSong, ...deduped];
 	}, [songs, isWalkthrough, walkthroughSong]);
 
+	const visibleSongs = useMemo(
+		() =>
+			selectionMode && showSelectionUI
+				? displayedSongs.filter((s) => s.displayState === "locked")
+				: displayedSongs,
+		[displayedSongs, selectionMode, showSelectionUI],
+	);
+
 	const hasMore = isWalkthrough ? false : (hasNextPage ?? false);
 	const selectedSongFromLoadedPages = useMemo(
 		() => findSongForSlug(displayedSongs, selectedSlug),
@@ -281,7 +289,10 @@ export function LikedSongsPage({
 	const queryClient = useQueryClient();
 
 	const prefetchAdjacentSuggestions = useCallback(
-		(songIndex: number) => {
+		(songId: string) => {
+			const songIndex = displayedSongs.findIndex((s) => s.track.id === songId);
+			if (songIndex < 0) return;
+
 			const adjacent = [
 				displayedSongs[songIndex + 1]?.track.id,
 				displayedSongs[songIndex - 1]?.track.id,
@@ -310,8 +321,8 @@ export function LikedSongsPage({
 		() =>
 			isWalkthrough && walkthroughSong
 				? displayedSongs.filter((s) => s.track.id === walkthroughSong.id)
-				: displayedSongs,
-		[displayedSongs, isWalkthrough, walkthroughSong],
+				: visibleSongs,
+		[displayedSongs, visibleSongs, isWalkthrough, walkthroughSong],
 	);
 
 	const {
@@ -326,11 +337,11 @@ export function LikedSongsPage({
 		items: navItems,
 		scope: "liked-list",
 		enabled: !isExpanded && navItems.length > 0,
-		onSelect: (song, index, element) => {
+		onSelect: (song, _index, element) => {
 			if (!element) return;
 			pendingRouteSelectionSourceRef.current = "keyboard";
 			handleExpand(song, element);
-			prefetchAdjacentSuggestions(index);
+			prefetchAdjacentSuggestions(song.track.id);
 		},
 		getId: (song) => song.track.id,
 		onLoadMore: handleLoadMore,
@@ -350,7 +361,7 @@ export function LikedSongsPage({
 
 			pendingRouteSelectionSourceRef.current = "keyboard";
 			handleExpand(song, element);
-			prefetchAdjacentSuggestions(focusedIndex);
+			prefetchAdjacentSuggestions(song.track.id);
 		},
 		description: "Open song details",
 		scope: "liked-list",
@@ -369,7 +380,7 @@ export function LikedSongsPage({
 			return;
 		}
 
-		const index = displayedSongs.findIndex(
+		const index = navItems.findIndex(
 			(song) => song.track.id === selectedSongIdFromUrl,
 		);
 		if (index < 0) return;
@@ -378,11 +389,17 @@ export function LikedSongsPage({
 			focus: false,
 			source: "url",
 		});
-	}, [displayedSongs, selectedSongIdFromUrl, syncFocusedIndex]);
+	}, [navItems, selectedSongIdFromUrl, syncFocusedIndex]);
 
+	const lastScrolledCursorSequenceRef = useRef<number | null>(null);
 	useIsomorphicLayoutEffect(() => {
 		const change = lastCursorChange;
 		if (!change) return;
+		// Only scroll for a new cursor change. Dependency identity churn
+		// (e.g. mode toggle rebuilding navItems / getElementAtIndex) must not
+		// re-trigger a stale scroll.
+		if (lastScrolledCursorSequenceRef.current === change.sequence) return;
+		lastScrolledCursorSequenceRef.current = change.sequence;
 
 		const element = getElementAtIndex(change.index);
 		if (!element) return;
@@ -406,10 +423,9 @@ export function LikedSongsPage({
 		(song: LikedSong, element: HTMLElement) => {
 			pendingRouteSelectionSourceRef.current = "pointer";
 			handleExpand(song, element);
-			const idx = displayedSongs.findIndex((s) => s.track.id === song.track.id);
-			if (idx >= 0) prefetchAdjacentSuggestions(idx);
+			prefetchAdjacentSuggestions(song.track.id);
 		},
-		[handleExpand, displayedSongs, prefetchAdjacentSuggestions],
+		[handleExpand, prefetchAdjacentSuggestions],
 	);
 
 	const handleNextSong = useCallback(() => {
@@ -426,7 +442,7 @@ export function LikedSongsPage({
 		});
 		pendingRouteSelectionSourceRef.current = "panel-nav";
 		handleNext();
-		prefetchAdjacentSuggestions(selectedIndex + 1);
+		prefetchAdjacentSuggestions(nextSong.track.id);
 	}, [
 		displayedSongs,
 		handleNext,
@@ -449,7 +465,7 @@ export function LikedSongsPage({
 		});
 		pendingRouteSelectionSourceRef.current = "panel-nav";
 		handlePrevious();
-		prefetchAdjacentSuggestions(selectedIndex - 1);
+		prefetchAdjacentSuggestions(previousSong.track.id);
 	}, [
 		displayedSongs,
 		handlePrevious,
@@ -552,6 +568,16 @@ export function LikedSongsPage({
 				</div>
 			</div>
 
+			{/* Selection bar for pack users — sticky below header */}
+			{selectionMode && showSelectionUI && billingState && (
+				<SongSelectionBar
+					selectedCount={selectedSongIds.size}
+					remainingBalance={billingState.creditBalance}
+					onConfirm={handleUnlockConfirm}
+					onCancel={exitSelectionMode}
+				/>
+			)}
+
 			{/* Zero-balance paywall CTA */}
 			{showPaywall && billingState && (
 				<div
@@ -589,7 +615,17 @@ export function LikedSongsPage({
 					</div>
 				) : (
 					<div className="space-y-1">
-						{displayedSongs.map((song) => {
+						{visibleSongs.length === 0 && selectionMode && showSelectionUI && (
+							<div className="py-12 text-center">
+								<p
+									className="text-sm"
+									style={{ fontFamily: fonts.body, color: theme.textMuted }}
+								>
+									No locked songs available to unlock.
+								</p>
+							</div>
+						)}
+						{visibleSongs.map((song) => {
 							const isDemoSong =
 								isWalkthrough &&
 								walkthroughSong &&
@@ -614,11 +650,19 @@ export function LikedSongsPage({
 									onPointerDown={itemProps?.onPointerDown}
 									onFocus={itemProps?.onFocus}
 									onBlur={itemProps?.onBlur}
-									onClick={(e) =>
-										isSongEnabled
-											? handlePointerExpand(song, e.currentTarget)
-											: undefined
-									}
+									onClick={(e) => {
+										if (!isSongEnabled) return;
+										if (
+											song.displayState === "locked" &&
+											showSelectionUI &&
+											!selectionMode
+										) {
+											setSelectionMode(true);
+											toggleSongSelection(song.track.id);
+											return;
+										}
+										handlePointerExpand(song, e.currentTarget);
+									}}
 									isAnimatingTo={closingToSongId === song.track.id}
 									selectionMode={selectionMode && showSelectionUI}
 									isChecked={selectedSongIds.has(song.track.id)}
@@ -664,16 +708,6 @@ export function LikedSongsPage({
 					isDark={isDarkMode}
 					isEnrichmentRunning={isWalkthrough ? false : isEnrichmentRunning}
 					isWalkthrough={isWalkthrough}
-				/>
-			)}
-
-			{/* Selection bar for pack users */}
-			{selectionMode && showSelectionUI && billingState && (
-				<SongSelectionBar
-					selectedCount={selectedSongIds.size}
-					remainingBalance={billingState.creditBalance}
-					onConfirm={handleUnlockConfirm}
-					onCancel={exitSelectionMode}
 				/>
 			)}
 

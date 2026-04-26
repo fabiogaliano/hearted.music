@@ -21,9 +21,9 @@ export function SongSelectionBar({
 
 	return (
 		<div
-			className="fixed right-0 bottom-0 left-0 z-50 flex items-center justify-between px-6 py-4 backdrop-blur-md"
+			className="sticky top-0 z-50 flex items-center justify-between px-6 py-4"
 			style={{
-				background: `${theme.surface}f0`,
+				background: theme.bg,
 				borderTop: `1px solid ${theme.border}`,
 			}}
 		>
