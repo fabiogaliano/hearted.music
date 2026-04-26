@@ -1,11 +1,24 @@
 import { Result } from "better-result";
 import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
-import { createAudioFeaturesService } from "@/lib/integrations/audio/service";
-import type { TrackInfo } from "@/lib/integrations/audio/service";
+import {
+	type AudioFeaturesFailureKind,
+	createAudioFeaturesService,
+	type TrackInfo,
+} from "@/lib/integrations/audio/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import { recordJobFailure } from "@/lib/data/job-failures";
 import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext, ReadyResult } from "../types";
+
+function failureCodeFor(kind: AudioFeaturesFailureKind): string {
+	return kind === "not_found" ? "source_not_found" : "provider_transient";
+}
+
+function failureMessageFor(kind: AudioFeaturesFailureKind): string {
+	return kind === "not_found"
+		? "Track not in ReccoBeats catalog"
+		: "Audio features provider transient failure";
+}
 
 export async function getReadyForAudioFeatures(
 	batchSongIds: string[],
@@ -49,33 +62,45 @@ export async function runAudioFeatures(
 		return { total: 0, succeeded: 0, failed: 0 };
 	}
 
-	const tracksToFetch: TrackInfo[] = readiness.ready.map((id) => ({
-		songId: id,
-		spotifyTrackId: batch.spotifyIdBySongId.get(id)!,
-	}));
+	const tracksToFetch: TrackInfo[] = readiness.ready.map((id) => {
+		const spotifyTrackId = batch.spotifyIdBySongId.get(id);
+		if (!spotifyTrackId) {
+			throw new Error(`Missing Spotify ID for song ${id}`);
+		}
+		return { songId: id, spotifyTrackId };
+	});
 
 	const service = createAudioFeaturesService(createReccoBeatsService());
 	const fetchResult = await service.getOrFetchFeatures(tracksToFetch);
-	const succeededMap = Result.isOk(fetchResult) ? fetchResult.value : new Map();
+	const succeededMap = Result.isOk(fetchResult)
+		? fetchResult.value.features
+		: new Map<string, audioFeatureData.AudioFeature>();
+	const failureMap = Result.isOk(fetchResult)
+		? fetchResult.value.failures
+		: new Map<string, AudioFeaturesFailureKind>();
 	const succeeded = succeededMap.size;
 	const failed = tracksToFetch.length - succeeded;
 
-	if (failed > 0 && ctx.jobId) {
+	const jobId = ctx.jobId;
+	if (failed > 0 && jobId) {
 		const failedSongIds = tracksToFetch
 			.filter((t) => !succeededMap.has(t.songId))
 			.map((t) => t.songId);
 
 		await Promise.all(
-			failedSongIds.map((songId) =>
-				recordJobFailure({
-					jobId: ctx.jobId!,
+			failedSongIds.map((songId) => {
+				// Default unknown to transient so we keep retrying instead of giving up.
+				const kind: AudioFeaturesFailureKind =
+					failureMap.get(songId) ?? "transient";
+				return recordJobFailure({
+					jobId,
 					itemId: songId,
 					stage: "audio_features",
-					failureCode: "permanent",
-					isTerminal: true,
-					errorMessage: "Audio features unavailable for track",
-				}),
-			),
+					failureCode: failureCodeFor(kind),
+					isTerminal: false,
+					errorMessage: failureMessageFor(kind),
+				});
+			}),
 		);
 	}
 
