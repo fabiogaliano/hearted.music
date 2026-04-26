@@ -60,7 +60,9 @@ export async function getDataEnrichedSongIds(
 }
 
 /**
- * Returns liked song IDs that have all 4 shared data artifacts AND effective entitlement.
+ * Returns liked song IDs that are entitled and ready for matching candidacy.
+ * Readiness requires genres, song_analysis, and song_embedding;
+ * song_audio_feature is optional (the matching engine adapts when it is missing).
  * Used by match snapshot refresh for billing-aware candidate loading.
  * Revoked and locked songs are excluded.
  */

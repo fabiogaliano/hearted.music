@@ -1,6 +1,5 @@
 import { Result } from "better-result";
 import { updateJobProgress } from "@/lib/data/jobs";
-import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
 import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import * as songData from "@/lib/domains/library/songs/queries";
@@ -138,18 +137,14 @@ async function loadDataEnrichedSongIds(
 		return new Set();
 	}
 
-	const [audioFeaturesResult, analysisResult, embeddingsResult] =
-		await Promise.all([
-			audioFeatureData.getBatch(batch.songIds),
-			songAnalysisData.get(batch.songIds),
-			embeddingService.getEmbeddings(batch.songIds),
-		]);
+	// Mirrors select_entitled_data_enriched_liked_song_ids: audio_features is
+	// optional, so readiness is genres + analysis + embedding.
+	const [analysisResult, embeddingsResult] = await Promise.all([
+		songAnalysisData.get(batch.songIds),
+		embeddingService.getEmbeddings(batch.songIds),
+	]);
 
-	if (
-		Result.isError(audioFeaturesResult) ||
-		Result.isError(analysisResult) ||
-		Result.isError(embeddingsResult)
-	) {
+	if (Result.isError(analysisResult) || Result.isError(embeddingsResult)) {
 		throw new Error("Failed to resolve data-enriched songs for batch");
 	}
 
@@ -163,7 +158,6 @@ async function loadDataEnrichedSongIds(
 		}
 
 		if (
-			audioFeaturesResult.value.has(songId) &&
 			analysisResult.value.has(songId) &&
 			embeddingsResult.value.has(songId)
 		) {
