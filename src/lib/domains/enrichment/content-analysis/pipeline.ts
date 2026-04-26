@@ -25,15 +25,17 @@ import { Result } from "better-result";
 import { z } from "zod";
 import type { JobProgress } from "@/lib/data/jobs";
 import * as jobs from "@/lib/data/jobs";
+import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
+import * as audioFeatures from "@/lib/domains/enrichment/audio-features/queries";
+import * as songAnalysis from "@/lib/domains/enrichment/content-analysis/queries";
 import * as likedSongs from "@/lib/domains/library/liked-songs/queries";
 import * as songs from "@/lib/domains/library/songs/queries";
-import * as songAnalysis from "@/lib/domains/enrichment/content-analysis/queries";
-import * as audioFeatures from "@/lib/domains/enrichment/audio-features/queries";
+import { getApiKeyForProvider } from "@/lib/integrations/llm/config";
+import { LlmService } from "@/lib/integrations/llm/service";
 import { finalizeJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import type { DbError } from "@/lib/shared/errors/database";
 import { PipelineConfigError } from "@/lib/shared/errors/domain/analysis";
-import { LlmService } from "@/lib/integrations/llm/service";
-import { getApiKeyForProvider } from "@/lib/integrations/llm/config";
+import { GeniusNotFoundError } from "@/lib/shared/errors/external/genius";
 import { type GeniusError, LyricsService } from "../lyrics/service";
 import {
 	type AnalyzePlaylistInput,
@@ -95,6 +97,26 @@ export interface PipelineResult {
 	succeeded: number;
 	failed: number;
 	total: number;
+	/**
+	 * Both inputs are confirmed missing — Genius returned NotFound (or empty)
+	 * AND the audio features query succeeded with no row. Terminal failure.
+	 */
+	skippedConfirmedInputsMissing: string[];
+	/**
+	 * Audio is confirmed missing but lyrics evidence is unconfirmed (Genius
+	 * fetch/parse error, config error, or service not configured). Non-terminal.
+	 */
+	skippedUnconfirmedLyrics: string[];
+	/**
+	 * Lyrics are confirmed missing but audio evidence is unconfirmed (audio
+	 * query errored). Non-terminal.
+	 */
+	skippedUnconfirmedAudio: string[];
+	/**
+	 * Both inputs are unconfirmed — neither provider could be queried
+	 * authoritatively for this run. Non-terminal.
+	 */
+	skippedUnconfirmedBoth: string[];
 }
 
 type PipelineError = DbError | GeniusError;
@@ -113,6 +135,41 @@ interface LyricsCacheEntry {
 }
 
 type LyricsCache = Map<string, LyricsCacheEntry>;
+
+type InputEvidence = "present" | "missing_confirmed" | "missing_unconfirmed";
+
+function classifyLyricsEvidence(
+	song: SongToAnalyze,
+	cache: LyricsCache,
+): InputEvidence {
+	if (song.lyrics && song.lyrics.trim().length > 0) return "present";
+
+	const entry = cache.get(song.songId);
+	// No fetch attempt — service unconfigured, or song was filtered out before
+	// the fetch loop. Either way we never asked Genius.
+	if (!entry) return "missing_unconfirmed";
+
+	if (entry.lyrics !== null && entry.lyrics.trim().length > 0) return "present";
+
+	// GeniusNotFoundError is the only authoritative "this song has no lyrics
+	// in our catalog" signal. Empty success is treated the same way — Genius
+	// returned, just with nothing to extract.
+	if (entry.error instanceof GeniusNotFoundError) return "missing_confirmed";
+	if (entry.error === undefined) return "missing_confirmed";
+
+	// Fetch / parse / config errors and unknown thrown values: we couldn't
+	// verify, so audio alone must not push the failure to terminal.
+	return "missing_unconfirmed";
+}
+
+function classifyAudioEvidence(
+	songId: string,
+	audioFeaturesAvailable: boolean,
+	audioFeaturesMap: Map<string, AudioFeature>,
+): InputEvidence {
+	if (!audioFeaturesAvailable) return "missing_unconfirmed";
+	return audioFeaturesMap.has(songId) ? "present" : "missing_confirmed";
+}
 
 // ============================================================================
 // Pipeline
@@ -186,7 +243,8 @@ export class AnalysisPipeline {
 			songs.getByIds(songIds),
 		]);
 
-		const audioFeaturesMap = Result.isOk(audioFeaturesResult)
+		const audioFeaturesAvailable = Result.isOk(audioFeaturesResult);
+		const audioFeaturesMap = audioFeaturesAvailable
 			? audioFeaturesResult.value
 			: new Map();
 
@@ -199,8 +257,61 @@ export class AnalysisPipeline {
 			}
 		}
 
-		// 5. Process songs with concurrency control
-		const chunks = this.chunkArray(songsToAnalyze, this.config.concurrency);
+		// 5. Strict gate with tri-state evidence per input. Terminal-missing
+		// requires confirmed signals from BOTH providers; any unconfirmed
+		// side keeps the failure non-terminal so the song is retried once
+		// the provider recovers.
+		const skippedConfirmedInputsMissing: string[] = [];
+		const skippedUnconfirmedLyrics: string[] = [];
+		const skippedUnconfirmedAudio: string[] = [];
+		const skippedUnconfirmedBoth: string[] = [];
+		const analyzableSongs: SongToAnalyze[] = [];
+
+		for (const song of songsToAnalyze) {
+			const lyricsState = classifyLyricsEvidence(song, lyricsCache);
+			const audioState = classifyAudioEvidence(
+				song.songId,
+				audioFeaturesAvailable,
+				audioFeaturesMap,
+			);
+
+			if (lyricsState === "present" || audioState === "present") {
+				analyzableSongs.push(song);
+				continue;
+			}
+
+			if (
+				lyricsState === "missing_confirmed" &&
+				audioState === "missing_confirmed"
+			) {
+				skippedConfirmedInputsMissing.push(song.songId);
+			} else if (
+				lyricsState === "missing_unconfirmed" &&
+				audioState === "missing_unconfirmed"
+			) {
+				skippedUnconfirmedBoth.push(song.songId);
+			} else if (lyricsState === "missing_unconfirmed") {
+				// Audio is confirmed-missing.
+				skippedUnconfirmedLyrics.push(song.songId);
+			} else {
+				// Lyrics confirmed-missing, audio unconfirmed.
+				skippedUnconfirmedAudio.push(song.songId);
+			}
+		}
+
+		const skippedTotal =
+			skippedConfirmedInputsMissing.length +
+			skippedUnconfirmedLyrics.length +
+			skippedUnconfirmedAudio.length +
+			skippedUnconfirmedBoth.length;
+		if (skippedTotal > 0) {
+			progress.done += skippedTotal;
+			progress.failed += skippedTotal;
+			await this.updateProgress(job.id, progress, onProgress);
+		}
+
+		// 6. Process eligible songs with concurrency control
+		const chunks = this.chunkArray(analyzableSongs, this.config.concurrency);
 
 		for (const chunk of chunks) {
 			const promises = chunk.map(async (song) => {
@@ -238,7 +349,7 @@ export class AnalysisPipeline {
 			await this.updateProgress(job.id, progress, onProgress);
 		}
 
-		// 6. Finalize job status
+		// 7. Finalize job status
 		const finalizeResult = await finalizeJob(
 			job.id,
 			progress,
@@ -253,6 +364,10 @@ export class AnalysisPipeline {
 			succeeded: progress.succeeded,
 			failed: progress.failed,
 			total: progress.total,
+			skippedConfirmedInputsMissing,
+			skippedUnconfirmedLyrics,
+			skippedUnconfirmedAudio,
+			skippedUnconfirmedBoth,
 		});
 	}
 
@@ -323,6 +438,10 @@ export class AnalysisPipeline {
 			succeeded: progress.succeeded,
 			failed: progress.failed,
 			total: progress.total,
+			skippedConfirmedInputsMissing: [],
+			skippedUnconfirmedLyrics: [],
+			skippedUnconfirmedAudio: [],
+			skippedUnconfirmedBoth: [],
 		});
 	}
 
@@ -399,6 +518,7 @@ export class AnalysisPipeline {
 			);
 			return cache;
 		}
+		const lyricsService = this.lyricsService;
 
 		// Fetch lyrics for songs that don't already have them
 		const songsNeedingLyrics = songsToAnalyze.filter(
@@ -412,7 +532,7 @@ export class AnalysisPipeline {
 		// Fetch lyrics in parallel (LyricsService handles rate limiting internally)
 		const fetchPromises = songsNeedingLyrics.map(async (song) => {
 			try {
-				const lyricsResult = await this.lyricsService!.getLyricsText(
+				const lyricsResult = await lyricsService.getLyricsText(
 					song.artist,
 					song.title,
 				);

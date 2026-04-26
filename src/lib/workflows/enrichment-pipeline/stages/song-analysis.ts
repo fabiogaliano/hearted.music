@@ -1,7 +1,7 @@
 import { Result } from "better-result";
+import { recordJobFailure } from "@/lib/data/job-failures";
 import { createAnalysisPipeline } from "@/lib/domains/enrichment/content-analysis/pipeline";
 import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
-import { recordJobFailure } from "@/lib/data/job-failures";
 import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
@@ -81,18 +81,96 @@ export async function runSongAnalysis(
 		};
 	}
 
-	if (analyzeResult.value.failed > 0 && ctx.jobId) {
+	const {
+		skippedConfirmedInputsMissing,
+		skippedUnconfirmedLyrics,
+		skippedUnconfirmedAudio,
+		skippedUnconfirmedBoth,
+	} = analyzeResult.value;
+	const skippedSet = new Set<string>([
+		...skippedConfirmedInputsMissing,
+		...skippedUnconfirmedLyrics,
+		...skippedUnconfirmedAudio,
+		...skippedUnconfirmedBoth,
+	]);
+	const jobId = ctx.jobId;
+
+	if (jobId && skippedConfirmedInputsMissing.length > 0) {
+		await Promise.all(
+			skippedConfirmedInputsMissing.map((songId) =>
+				recordJobFailure({
+					jobId,
+					itemId: songId,
+					stage: "song_analysis",
+					failureCode: "analysis_inputs_missing",
+					isTerminal: true,
+					errorMessage:
+						"Analysis skipped: neither lyrics nor audio features available",
+				}),
+			),
+		);
+	}
+
+	if (jobId && skippedUnconfirmedLyrics.length > 0) {
+		await Promise.all(
+			skippedUnconfirmedLyrics.map((songId) =>
+				recordJobFailure({
+					jobId,
+					itemId: songId,
+					stage: "song_analysis",
+					failureCode: "analysis_inputs_unconfirmed_lyrics",
+					isTerminal: false,
+					errorMessage:
+						"Analysis skipped: audio confirmed missing, lyrics evidence unconfirmed",
+				}),
+			),
+		);
+	}
+
+	if (jobId && skippedUnconfirmedAudio.length > 0) {
+		await Promise.all(
+			skippedUnconfirmedAudio.map((songId) =>
+				recordJobFailure({
+					jobId,
+					itemId: songId,
+					stage: "song_analysis",
+					failureCode: "analysis_inputs_unconfirmed_audio",
+					isTerminal: false,
+					errorMessage:
+						"Analysis skipped: lyrics confirmed missing, audio evidence unconfirmed",
+				}),
+			),
+		);
+	}
+
+	if (jobId && skippedUnconfirmedBoth.length > 0) {
+		await Promise.all(
+			skippedUnconfirmedBoth.map((songId) =>
+				recordJobFailure({
+					jobId,
+					itemId: songId,
+					stage: "song_analysis",
+					failureCode: "analysis_inputs_unconfirmed_both",
+					isTerminal: false,
+					errorMessage:
+						"Analysis skipped: lyrics and audio evidence both unconfirmed",
+				}),
+			),
+		);
+	}
+
+	if (jobId && analyzeResult.value.failed > skippedSet.size) {
 		const analysisCheck = await songAnalysisData.get(readiness.ready);
 		if (Result.isOk(analysisCheck)) {
 			const analyzedSet = analysisCheck.value as Map<string, unknown>;
 			const failedSongIds = readiness.ready.filter(
-				(id) => !analyzedSet.has(id),
+				(id) => !analyzedSet.has(id) && !skippedSet.has(id),
 			);
 
 			await Promise.all(
 				failedSongIds.map((songId) =>
 					recordJobFailure({
-						jobId: ctx.jobId!,
+						jobId,
 						itemId: songId,
 						stage: "song_analysis",
 						failureCode: "permanent",
