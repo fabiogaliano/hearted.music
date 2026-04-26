@@ -40,9 +40,14 @@ vi.mock("../stages/song-embedding", () => ({
 	runSongEmbedding: (...args: unknown[]) => mockRunSongEmbedding(...args),
 }));
 
+const { mockGetEmbeddings, mockGetAnalysis } = vi.hoisted(() => ({
+	mockGetEmbeddings: vi.fn(),
+	mockGetAnalysis: vi.fn(),
+}));
+
 vi.mock("@/lib/domains/enrichment/embeddings/service", () => ({
 	EmbeddingService: vi.fn().mockImplementation(() => ({
-		getEmbeddings: vi.fn().mockResolvedValue(Result.ok(new Map())),
+		getEmbeddings: mockGetEmbeddings,
 	})),
 }));
 
@@ -55,15 +60,16 @@ vi.mock("@/lib/domains/enrichment/audio-features/queries", () => ({
 }));
 
 vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
-	get: vi.fn().mockResolvedValue(Result.ok(new Map())),
+	get: mockGetAnalysis,
 }));
 
 vi.mock("@/lib/domains/library/liked-songs/status-queries", () => ({
 	markPipelineProcessed: vi.fn().mockResolvedValue(Result.ok(undefined)),
 }));
 
+const { mockGetByIds } = vi.hoisted(() => ({ mockGetByIds: vi.fn() }));
 vi.mock("@/lib/domains/library/songs/queries", () => ({
-	getByIds: vi.fn().mockResolvedValue(Result.ok([])),
+	getByIds: mockGetByIds,
 }));
 
 vi.mock("@/lib/integrations/llm/service", () => ({
@@ -143,6 +149,9 @@ beforeEach(() => {
 	mockRunSongEmbedding.mockResolvedValue(stageSuccess);
 	mockRunContentActivation.mockResolvedValue(undefined);
 	mockHasMoreSongsNeedingEnrichmentWork.mockResolvedValue(false);
+	mockGetEmbeddings.mockResolvedValue(Result.ok(new Map()));
+	mockGetAnalysis.mockResolvedValue(Result.ok(new Map()));
+	mockGetByIds.mockResolvedValue(Result.ok([]));
 });
 
 describe("executeWorkerChunk sub-batching", () => {
@@ -290,5 +299,37 @@ describe("content activation", () => {
 			string[],
 		];
 		expect(songIds).toEqual([]);
+	});
+});
+
+describe("newCandidatesAvailable readiness (audio optional)", () => {
+	it("flips true when a song reaches genres+analysis+embedding even without audio_features", async () => {
+		const songId = "audioless-song";
+		const batch = makeBatch([songId]);
+
+		const workPlan = makeWorkPlan({
+			allSongIds: [songId],
+			needAnalysis: [songId],
+			needEmbedding: [songId],
+		});
+		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
+		mockLoadBatchSongs.mockResolvedValue(batch);
+
+		// Re-query of the batch songs after stages run — readiness rule still
+		// requires song.genres, which makeBatch already populates.
+		mockGetByIds.mockResolvedValue(Result.ok(batch.songs));
+
+		// Before stages: no analysis or embedding rows yet.
+		// After stages: analysis + embedding present (audio is intentionally absent).
+		mockGetAnalysis
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(Result.ok(new Map([[songId, { id: "a-1" }]])));
+		mockGetEmbeddings
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(Result.ok(new Map([[songId, { id: "e-1" }]])));
+
+		const result = await executeWorkerChunk("account-1", "job-1", 10, 0);
+
+		expect(result.newCandidatesAvailable).toBe(true);
 	});
 });
