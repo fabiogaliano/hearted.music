@@ -1,11 +1,15 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { recordJobFailure } from "@/lib/data/job-failures";
+import { resolveStageFailures } from "@/lib/data/job-failures";
 import { grantAnalysisFailureReplacementCredit } from "@/lib/domains/billing/compensation";
 import { createAnalysisPipeline } from "@/lib/domains/enrichment/content-analysis/pipeline";
 import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
+import { FAILURE_CODES } from "../failure-policy";
+import { recordStageFailure } from "../record-failure";
 import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext, ReadyResult } from "../types";
+
+const STAGE = "song_analysis";
 
 export async function getReadyForSongAnalysis(
 	batchSongIds: string[],
@@ -97,15 +101,77 @@ export async function runSongAnalysis(
 	]);
 	const jobId = ctx.jobId;
 
+	// Look up which ready songs now have an analysis. Both success-resolution
+	// and terminal `permanent` classification depend on knowing the post-run
+	// state. If the lookup fails we don't know which songs succeeded vs failed,
+	// so we must NOT classify any unaccounted-for song as permanently failed —
+	// otherwise a transient DB blip becomes a permanent block.
+	const postRunCheck = await songAnalysisData.get(readiness.ready);
+
+	if (Result.isError(postRunCheck)) {
+		// Songs whose state we genuinely don't know: ready candidates that were
+		// not in any skip bucket. Skip-bucket songs already have their own
+		// failure rows so excluding them here avoids double-suppression.
+		const uncertainSongIds = readiness.ready.filter(
+			(id) => !skippedSet.has(id),
+		);
+
+		console.warn(
+			"[song-analysis] post-run analysis lookup failed; deferring classification with non-terminal suppression",
+			{
+				accountId: ctx.accountId,
+				jobId: jobId ?? null,
+				candidateCount: readiness.ready.length,
+				skippedCount: skippedSet.size,
+				uncertainCount: uncertainSongIds.length,
+				failedReported: analyzeResult.value.failed,
+				error: postRunCheck.error,
+			},
+		);
+
+		// Write a durable, queryable signal per uncertain song. The lifecycle
+		// suppression (transient backoff) prevents churn while the DB recovers,
+		// and the dedicated failure_code makes the condition alertable in
+		// dashboards without parsing logs.
+		if (jobId && uncertainSongIds.length > 0) {
+			await Promise.all(
+				uncertainSongIds.map((songId) =>
+					recordStageFailure({
+						jobId,
+						accountId: ctx.accountId,
+						songId,
+						stage: STAGE,
+						failureCode: FAILURE_CODES.ANALYSIS_POSTRUN_LOOKUP_UNAVAILABLE,
+						errorMessage: `Post-run analysis lookup failed; classification deferred: ${postRunCheck.error.message}`,
+					}),
+				),
+			);
+		}
+	} else {
+		const analyzedSet = postRunCheck.value as Map<string, unknown>;
+		const succeededIds = readiness.ready.filter((id) => analyzedSet.has(id));
+		if (succeededIds.length > 0) {
+			await Promise.all(
+				succeededIds.map((songId) =>
+					resolveStageFailures({
+						accountId: ctx.accountId,
+						itemId: songId,
+						stage: STAGE,
+					}),
+				),
+			);
+		}
+	}
+
 	if (jobId && skippedConfirmedInputsMissing.length > 0) {
 		await Promise.all(
 			skippedConfirmedInputsMissing.map((songId) =>
-				recordJobFailure({
+				recordStageFailure({
 					jobId,
-					itemId: songId,
-					stage: "song_analysis",
-					failureCode: "analysis_inputs_missing",
-					isTerminal: true,
+					accountId: ctx.accountId,
+					songId,
+					stage: STAGE,
+					failureCode: FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
 					errorMessage:
 						"Analysis skipped: neither lyrics nor audio features available",
 				}),
@@ -121,7 +187,7 @@ export async function runSongAnalysis(
 						{
 							accountId: ctx.accountId,
 							songId,
-							failureCode: "analysis_inputs_missing",
+							failureCode: FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
 						},
 					);
 					if (Result.isError(outcome)) {
@@ -145,14 +211,14 @@ export async function runSongAnalysis(
 	if (jobId && skippedUnconfirmedLyrics.length > 0) {
 		await Promise.all(
 			skippedUnconfirmedLyrics.map((songId) =>
-				recordJobFailure({
+				recordStageFailure({
 					jobId,
-					itemId: songId,
-					stage: "song_analysis",
-					failureCode: "analysis_inputs_unconfirmed_lyrics",
-					isTerminal: false,
+					accountId: ctx.accountId,
+					songId,
+					stage: STAGE,
+					failureCode: FAILURE_CODES.ANALYSIS_BLOCKED_LYRICS_UNAVAILABLE,
 					errorMessage:
-						"Analysis skipped: audio confirmed missing, lyrics evidence unconfirmed",
+						"Analysis skipped: audio confirmed missing, lyrics provider unavailable",
 				}),
 			),
 		);
@@ -161,14 +227,14 @@ export async function runSongAnalysis(
 	if (jobId && skippedUnconfirmedAudio.length > 0) {
 		await Promise.all(
 			skippedUnconfirmedAudio.map((songId) =>
-				recordJobFailure({
+				recordStageFailure({
 					jobId,
-					itemId: songId,
-					stage: "song_analysis",
-					failureCode: "analysis_inputs_unconfirmed_audio",
-					isTerminal: false,
+					accountId: ctx.accountId,
+					songId,
+					stage: STAGE,
+					failureCode: FAILURE_CODES.ANALYSIS_BLOCKED_AUDIO_UNAVAILABLE,
 					errorMessage:
-						"Analysis skipped: lyrics confirmed missing, audio evidence unconfirmed",
+						"Analysis skipped: lyrics confirmed missing, audio provider unavailable",
 				}),
 			),
 		);
@@ -177,40 +243,44 @@ export async function runSongAnalysis(
 	if (jobId && skippedUnconfirmedBoth.length > 0) {
 		await Promise.all(
 			skippedUnconfirmedBoth.map((songId) =>
-				recordJobFailure({
+				recordStageFailure({
 					jobId,
-					itemId: songId,
-					stage: "song_analysis",
-					failureCode: "analysis_inputs_unconfirmed_both",
-					isTerminal: false,
+					accountId: ctx.accountId,
+					songId,
+					stage: STAGE,
+					failureCode: FAILURE_CODES.ANALYSIS_BLOCKED_BOTH_UNAVAILABLE,
 					errorMessage:
-						"Analysis skipped: lyrics and audio evidence both unconfirmed",
+						"Analysis skipped: lyrics and audio providers both unavailable",
 				}),
 			),
 		);
 	}
 
-	if (jobId && analyzeResult.value.failed > skippedSet.size) {
-		const analysisCheck = await songAnalysisData.get(readiness.ready);
-		if (Result.isOk(analysisCheck)) {
-			const analyzedSet = analysisCheck.value as Map<string, unknown>;
-			const failedSongIds = readiness.ready.filter(
-				(id) => !analyzedSet.has(id) && !skippedSet.has(id),
-			);
+	// Terminal permanent classification requires knowing the post-run state.
+	// We re-check the Result here (instead of capturing analyzedSet earlier)
+	// so the failure path skips this block entirely — see the warning above.
+	if (
+		jobId &&
+		analyzeResult.value.failed > skippedSet.size &&
+		Result.isOk(postRunCheck)
+	) {
+		const analyzedSet = postRunCheck.value as Map<string, unknown>;
+		const failedSongIds = readiness.ready.filter(
+			(id) => !analyzedSet.has(id) && !skippedSet.has(id),
+		);
 
-			await Promise.all(
-				failedSongIds.map((songId) =>
-					recordJobFailure({
-						jobId,
-						itemId: songId,
-						stage: "song_analysis",
-						failureCode: "permanent",
-						isTerminal: true,
-						errorMessage: "Song analysis failed",
-					}),
-				),
-			);
-		}
+		await Promise.all(
+			failedSongIds.map((songId) =>
+				recordStageFailure({
+					jobId,
+					accountId: ctx.accountId,
+					songId,
+					stage: STAGE,
+					failureCode: FAILURE_CODES.PERMANENT,
+					errorMessage: "Song analysis failed",
+				}),
+			),
+		);
 	}
 
 	return {

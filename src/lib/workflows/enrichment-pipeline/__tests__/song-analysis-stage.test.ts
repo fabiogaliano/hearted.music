@@ -1,14 +1,19 @@
 /**
  * Stage-level tests for runSongAnalysis. Verifies that songs skipped by the
- * analysis-input gate are recorded as terminal job_failure rows with the
- * structured `analysis_inputs_missing` code, and that LLM-failed songs still
- * use the existing `permanent` failure code without overlap.
+ * analysis-input gate are recorded with the correct lifecycle code and
+ * terminal flag, that LLM-failed songs use 'permanent' (terminal), and that
+ * compensation only fires for terminal `analysis_inputs_missing`.
+ *
+ * The stage now goes through `recordStageFailure`, which composes the
+ * failure-policy module + DB layer; we mock that wrapper so unit tests stay
+ * pure.
  */
 
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockRecordJobFailure = vi.fn().mockResolvedValue(Result.ok(undefined));
+const mockRecordStageFailure = vi.fn().mockResolvedValue(Result.ok(undefined));
+const mockResolveStageFailures = vi.fn().mockResolvedValue(Result.ok(0));
 const mockSongAnalysisGet = vi.fn();
 const mockAnalyzeSongs = vi.fn();
 const mockCreateAnalysisPipeline = vi.fn();
@@ -17,9 +22,14 @@ const mockGrantCompensation = vi
 	.mockResolvedValue(Result.ok({ kind: "granted", credits: 1, newBalance: 1 }));
 const mockCreateAdminClient = vi.fn().mockReturnValue({});
 
+vi.mock("../record-failure", () => ({
+	recordStageFailure: (params: Record<string, unknown>) =>
+		mockRecordStageFailure(params),
+}));
+
 vi.mock("@/lib/data/job-failures", () => ({
-	recordJobFailure: (params: Record<string, unknown>) =>
-		mockRecordJobFailure(params),
+	resolveStageFailures: (params: Record<string, unknown>) =>
+		mockResolveStageFailures(params),
 }));
 
 vi.mock("@/lib/data/client", () => ({
@@ -70,12 +80,20 @@ function makeBatch(songIds: string[]): PipelineBatch {
 	};
 }
 
-function makeCtx(jobId = "job-1"): EnrichmentContext {
+function makeCtx(): EnrichmentContext {
 	return {
 		accountId: "account-1",
 		embeddingService: {} as EnrichmentContext["embeddingService"],
 		profilingService: {} as EnrichmentContext["profilingService"],
-		jobId,
+		jobId: "job-1",
+	};
+}
+
+function makeCtxWithoutJobId(): EnrichmentContext {
+	return {
+		accountId: "account-1",
+		embeddingService: {} as EnrichmentContext["embeddingService"],
+		profilingService: {} as EnrichmentContext["profilingService"],
 	};
 }
 
@@ -89,16 +107,17 @@ beforeEach(() => {
 		Result.ok({ kind: "granted", credits: 1, newBalance: 1 }),
 	);
 	mockCreateAdminClient.mockReturnValue({});
+	mockResolveStageFailures.mockResolvedValue(Result.ok(0));
 });
 
 interface RecordedFailure {
-	itemId: string;
+	itemId?: string;
+	songId?: string;
 	failureCode: string;
-	isTerminal: boolean;
 }
 
 function recordedFailures(): RecordedFailure[] {
-	return mockRecordJobFailure.mock.calls.map(
+	return mockRecordStageFailure.mock.calls.map(
 		(call) => call[0] as RecordedFailure,
 	);
 }
@@ -130,14 +149,13 @@ describe("runSongAnalysis: analysis-input gate (tri-state)", () => {
 		const failures = recordedFailures();
 		expect(failures).toHaveLength(1);
 		expect(failures[0]).toMatchObject({
-			itemId: "skip-me",
+			songId: "skip-me",
 			failureCode: "analysis_inputs_missing",
-			isTerminal: true,
 		});
 		expect(result).toEqual({ total: 1, succeeded: 0, failed: 1 });
 	});
 
-	it("records non-terminal analysis_inputs_unconfirmed_lyrics", async () => {
+	it("records analysis_blocked_lyrics_unavailable for skippedUnconfirmedLyrics", async () => {
 		mockAnalyzeSongs.mockResolvedValue(
 			Result.ok({
 				jobId: "job-1",
@@ -154,13 +172,12 @@ describe("runSongAnalysis: analysis-input gate (tri-state)", () => {
 		const failures = recordedFailures();
 		expect(failures).toHaveLength(1);
 		expect(failures[0]).toMatchObject({
-			itemId: "lyrics-down",
-			failureCode: "analysis_inputs_unconfirmed_lyrics",
-			isTerminal: false,
+			songId: "lyrics-down",
+			failureCode: "analysis_blocked_lyrics_unavailable",
 		});
 	});
 
-	it("records non-terminal analysis_inputs_unconfirmed_audio", async () => {
+	it("records analysis_blocked_audio_unavailable for skippedUnconfirmedAudio", async () => {
 		mockAnalyzeSongs.mockResolvedValue(
 			Result.ok({
 				jobId: "job-1",
@@ -177,13 +194,12 @@ describe("runSongAnalysis: analysis-input gate (tri-state)", () => {
 		const failures = recordedFailures();
 		expect(failures).toHaveLength(1);
 		expect(failures[0]).toMatchObject({
-			itemId: "audio-down",
-			failureCode: "analysis_inputs_unconfirmed_audio",
-			isTerminal: false,
+			songId: "audio-down",
+			failureCode: "analysis_blocked_audio_unavailable",
 		});
 	});
 
-	it("records non-terminal analysis_inputs_unconfirmed_both", async () => {
+	it("records analysis_blocked_both_unavailable for skippedUnconfirmedBoth", async () => {
 		mockAnalyzeSongs.mockResolvedValue(
 			Result.ok({
 				jobId: "job-1",
@@ -200,9 +216,8 @@ describe("runSongAnalysis: analysis-input gate (tri-state)", () => {
 		const failures = recordedFailures();
 		expect(failures).toHaveLength(1);
 		expect(failures[0]).toMatchObject({
-			itemId: "everything-down",
-			failureCode: "analysis_inputs_unconfirmed_both",
-			isTerminal: false,
+			songId: "everything-down",
+			failureCode: "analysis_blocked_both_unavailable",
 		});
 	});
 
@@ -234,22 +249,18 @@ describe("runSongAnalysis: analysis-input gate (tri-state)", () => {
 
 		const failures = recordedFailures();
 		expect(failures).toHaveLength(4);
-		const byItem = new Map(failures.map((f) => [f.itemId, f]));
+		const byItem = new Map(failures.map((f) => [f.songId, f]));
 		expect(byItem.get("confirmed")).toMatchObject({
 			failureCode: "analysis_inputs_missing",
-			isTerminal: true,
 		});
 		expect(byItem.get("unconfirmed-lyrics")).toMatchObject({
-			failureCode: "analysis_inputs_unconfirmed_lyrics",
-			isTerminal: false,
+			failureCode: "analysis_blocked_lyrics_unavailable",
 		});
 		expect(byItem.get("unconfirmed-audio")).toMatchObject({
-			failureCode: "analysis_inputs_unconfirmed_audio",
-			isTerminal: false,
+			failureCode: "analysis_blocked_audio_unavailable",
 		});
 		expect(byItem.get("unconfirmed-both")).toMatchObject({
-			failureCode: "analysis_inputs_unconfirmed_both",
-			isTerminal: false,
+			failureCode: "analysis_blocked_both_unavailable",
 		});
 	});
 
@@ -274,18 +285,15 @@ describe("runSongAnalysis: analysis-input gate (tri-state)", () => {
 
 		const failures = recordedFailures();
 		expect(failures).toHaveLength(3);
-		const byItem = new Map(failures.map((f) => [f.itemId, f]));
+		const byItem = new Map(failures.map((f) => [f.songId, f]));
 		expect(byItem.get("confirmed")).toMatchObject({
 			failureCode: "analysis_inputs_missing",
-			isTerminal: true,
 		});
 		expect(byItem.get("unconfirmed-lyrics")).toMatchObject({
-			failureCode: "analysis_inputs_unconfirmed_lyrics",
-			isTerminal: false,
+			failureCode: "analysis_blocked_lyrics_unavailable",
 		});
 		expect(byItem.get("llm-fail")).toMatchObject({
 			failureCode: "permanent",
-			isTerminal: true,
 		});
 	});
 
@@ -302,7 +310,55 @@ describe("runSongAnalysis: analysis-input gate (tri-state)", () => {
 
 		await runSongAnalysis(makeCtx(), makeBatch(["ok"]));
 
-		expect(mockRecordJobFailure).not.toHaveBeenCalled();
+		expect(mockRecordStageFailure).not.toHaveBeenCalled();
+	});
+});
+
+describe("runSongAnalysis: stage-success resolution", () => {
+	it("resolves prior non-terminal failures for songs that produced an analysis", async () => {
+		mockAnalyzeSongs.mockResolvedValue(
+			Result.ok({
+				jobId: "job-1",
+				succeeded: 1,
+				failed: 0,
+				total: 1,
+				...emptySkipBuckets(),
+			}),
+		);
+		// Pre-run check: not yet analyzed (so song is "ready").
+		// Post-run check: analysis is present (this run produced it).
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(
+				Result.ok(new Map([["recovered-song", { id: "a-1" }]])),
+			);
+
+		await runSongAnalysis(makeCtx(), makeBatch(["recovered-song"]));
+
+		expect(mockResolveStageFailures).toHaveBeenCalledTimes(1);
+		expect(mockResolveStageFailures).toHaveBeenCalledWith({
+			accountId: "account-1",
+			itemId: "recovered-song",
+			stage: "song_analysis",
+		});
+	});
+
+	it("does not call resolve when no song produced an analysis", async () => {
+		mockAnalyzeSongs.mockResolvedValue(
+			Result.ok({
+				jobId: "job-1",
+				succeeded: 0,
+				failed: 1,
+				total: 1,
+				...emptySkipBuckets(),
+				skippedUnconfirmedBoth: ["still-down"],
+			}),
+		);
+		mockSongAnalysisGet.mockResolvedValue(Result.ok(new Map()));
+
+		await runSongAnalysis(makeCtx(), makeBatch(["still-down"]));
+
+		expect(mockResolveStageFailures).not.toHaveBeenCalled();
 	});
 });
 
@@ -358,7 +414,7 @@ describe("runSongAnalysis: replacement-credit compensation", () => {
 		);
 
 		expect(mockGrantCompensation).not.toHaveBeenCalled();
-		expect(mockRecordJobFailure).toHaveBeenCalledTimes(3);
+		expect(mockRecordStageFailure).toHaveBeenCalledTimes(3);
 	});
 
 	it("does not call compensation for LLM permanent failures", async () => {
@@ -379,9 +435,8 @@ describe("runSongAnalysis: replacement-credit compensation", () => {
 		const failures = recordedFailures();
 		expect(failures).toHaveLength(1);
 		expect(failures[0]).toMatchObject({
-			itemId: "llm-fail",
+			songId: "llm-fail",
 			failureCode: "permanent",
-			isTerminal: true,
 		});
 	});
 
@@ -406,7 +461,7 @@ describe("runSongAnalysis: replacement-credit compensation", () => {
 		const result = await runSongAnalysis(makeCtx(), makeBatch(["pack-song"]));
 
 		expect(result).toEqual({ total: 1, succeeded: 0, failed: 1 });
-		expect(mockRecordJobFailure).toHaveBeenCalledTimes(1);
+		expect(mockRecordStageFailure).toHaveBeenCalledTimes(1);
 		expect(mockGrantCompensation).toHaveBeenCalledTimes(1);
 	});
 
@@ -422,15 +477,137 @@ describe("runSongAnalysis: replacement-credit compensation", () => {
 			}),
 		);
 
-		const ctx: EnrichmentContext = {
-			accountId: "account-1",
-			embeddingService: {} as EnrichmentContext["embeddingService"],
-			profilingService: {} as EnrichmentContext["profilingService"],
-		};
+		const ctx = makeCtxWithoutJobId();
 
 		await runSongAnalysis(ctx, makeBatch(["pack-song"]));
 
-		expect(mockRecordJobFailure).not.toHaveBeenCalled();
+		expect(mockRecordStageFailure).not.toHaveBeenCalled();
 		expect(mockGrantCompensation).not.toHaveBeenCalled();
+	});
+});
+
+describe("runSongAnalysis: post-run lookup failure", () => {
+	it("records analysis_postrun_lookup_unavailable for uncertain songs (not permanent)", async () => {
+		const { DatabaseError } = await import("@/lib/shared/errors/database");
+
+		mockAnalyzeSongs.mockResolvedValue(
+			Result.ok({
+				jobId: "job-1",
+				succeeded: 0,
+				failed: 1,
+				total: 1,
+				...emptySkipBuckets(),
+			}),
+		);
+
+		// Pre-run check: empty (song is "ready").
+		// Post-run check: errors out — we don't know what succeeded.
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(
+				Result.err(
+					new DatabaseError({
+						code: "FAIL",
+						message: "post-run lookup down",
+					}),
+				),
+			);
+
+		await runSongAnalysis(makeCtx(), makeBatch(["uncertain"]));
+
+		// One recordStageFailure call: the new postrun-lookup-unavailable code.
+		// No resolves — state unknown. No `permanent` rows.
+		expect(mockResolveStageFailures).not.toHaveBeenCalled();
+		const failures = mockRecordStageFailure.mock.calls.map(
+			(call) => call[0] as { songId: string; failureCode: string },
+		);
+		expect(failures).toHaveLength(1);
+		expect(failures[0]).toMatchObject({
+			songId: "uncertain",
+			failureCode: "analysis_postrun_lookup_unavailable",
+		});
+		expect(failures.some((f) => f.failureCode === "permanent")).toBe(false);
+	});
+
+	it("does not record postrun-unavailable when no jobId is set", async () => {
+		const { DatabaseError } = await import("@/lib/shared/errors/database");
+
+		mockAnalyzeSongs.mockResolvedValue(
+			Result.ok({
+				jobId: undefined,
+				succeeded: 0,
+				failed: 1,
+				total: 1,
+				...emptySkipBuckets(),
+			}),
+		);
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(
+				Result.err(
+					new DatabaseError({
+						code: "FAIL",
+						message: "post-run lookup down",
+					}),
+				),
+			);
+
+		await runSongAnalysis(makeCtxWithoutJobId(), makeBatch(["uncertain"]));
+
+		expect(mockRecordStageFailure).not.toHaveBeenCalled();
+		expect(mockResolveStageFailures).not.toHaveBeenCalled();
+	});
+
+	it("still records skip-bucket failures and excludes them from uncertain set", async () => {
+		const { DatabaseError } = await import("@/lib/shared/errors/database");
+
+		mockAnalyzeSongs.mockResolvedValue(
+			Result.ok({
+				jobId: "job-1",
+				succeeded: 0,
+				failed: 3,
+				total: 3,
+				...emptySkipBuckets(),
+				skippedUnconfirmedBoth: ["both-down"],
+				skippedConfirmedInputsMissing: ["confirmed-missing"],
+			}),
+		);
+
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(
+				Result.err(
+					new DatabaseError({
+						code: "FAIL",
+						message: "post-run lookup down",
+					}),
+				),
+			);
+
+		await runSongAnalysis(
+			makeCtx(),
+			makeBatch(["both-down", "confirmed-missing", "uncertain-llm"]),
+		);
+
+		const failures = mockRecordStageFailure.mock.calls.map(
+			(call) => call[0] as { songId: string; failureCode: string },
+		);
+		expect(failures).toHaveLength(3);
+		const byId = new Map(failures.map((f) => [f.songId, f]));
+		// Skip-bucket rows still written with their dedicated codes.
+		expect(byId.get("both-down")?.failureCode).toBe(
+			"analysis_blocked_both_unavailable",
+		);
+		expect(byId.get("confirmed-missing")?.failureCode).toBe(
+			"analysis_inputs_missing",
+		);
+		// Only the non-skipped ready candidate gets the postrun-unavailable row.
+		expect(byId.get("uncertain-llm")?.failureCode).toBe(
+			"analysis_postrun_lookup_unavailable",
+		);
+		// Compensation still fires for the terminal confirmed-missing case.
+		expect(mockGrantCompensation).toHaveBeenCalledTimes(1);
+		// No resolves — post-run lookup failed so success state is unknown.
+		expect(mockResolveStageFailures).not.toHaveBeenCalled();
 	});
 });

@@ -1,9 +1,13 @@
 import { Result } from "better-result";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
-import { recordJobFailure } from "@/lib/data/job-failures";
+import { resolveStageFailures } from "@/lib/data/job-failures";
+import { FAILURE_CODES } from "../failure-policy";
+import { recordStageFailure } from "../record-failure";
 import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext, ReadyResult } from "../types";
+
+const STAGE = "song_embedding";
 
 export async function getReadyForSongEmbedding(
 	batchSongIds: string[],
@@ -70,21 +74,35 @@ export async function runSongEmbedding(
 	const songIds = readiness.ready;
 	const embedResult = await ctx.embeddingService.embedBatch(songIds);
 	if (Result.isOk(embedResult)) {
-		const { failed } = embedResult.value;
+		const { failed, succeeded } = embedResult.value;
+
+		if (succeeded.length > 0) {
+			await Promise.all(
+				succeeded.map((item) =>
+					resolveStageFailures({
+						accountId: ctx.accountId,
+						itemId: item.songId,
+						stage: STAGE,
+					}),
+				),
+			);
+		}
+
 		if (failed.length > 0) {
 			console.error("[pipeline] embedBatch failed items:", failed);
 
-			if (ctx.jobId) {
+			const jobId = ctx.jobId;
+			if (jobId) {
 				await Promise.all(
 					failed.map((item) =>
-						recordJobFailure({
-							jobId: ctx.jobId!,
-							itemId: item.songId,
-							stage: "song_embedding",
+						recordStageFailure({
+							jobId,
+							accountId: ctx.accountId,
+							songId: item.songId,
+							stage: STAGE,
 							failureCode: item.error.includes("Missing analysis")
-								? "validation"
-								: "permanent",
-							isTerminal: true,
+								? FAILURE_CODES.VALIDATION
+								: FAILURE_CODES.PERMANENT,
 							errorMessage: `Embedding failed: ${item.error}`,
 						}),
 					),
@@ -93,7 +111,7 @@ export async function runSongEmbedding(
 		}
 		return {
 			total: songIds.length,
-			succeeded: embedResult.value.succeeded.length,
+			succeeded: succeeded.length,
 			failed: failed.length,
 		};
 	}

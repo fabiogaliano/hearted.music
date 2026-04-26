@@ -6,12 +6,18 @@ import {
 	type TrackInfo,
 } from "@/lib/integrations/audio/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
-import { recordJobFailure } from "@/lib/data/job-failures";
+import { resolveStageFailures } from "@/lib/data/job-failures";
+import { FAILURE_CODES } from "../failure-policy";
+import { recordStageFailure } from "../record-failure";
 import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
+const STAGE = "audio_features";
+
 function failureCodeFor(kind: AudioFeaturesFailureKind): string {
-	return kind === "not_found" ? "source_not_found" : "provider_transient";
+	return kind === "not_found"
+		? FAILURE_CODES.SOURCE_NOT_FOUND
+		: FAILURE_CODES.PROVIDER_TRANSIENT;
 }
 
 function failureMessageFor(kind: AudioFeaturesFailureKind): string {
@@ -81,6 +87,19 @@ export async function runAudioFeatures(
 	const succeeded = succeededMap.size;
 	const failed = tracksToFetch.length - succeeded;
 
+	const succeededIds = Array.from(succeededMap.keys());
+	if (succeededIds.length > 0) {
+		await Promise.all(
+			succeededIds.map((songId) =>
+				resolveStageFailures({
+					accountId: ctx.accountId,
+					itemId: songId,
+					stage: STAGE,
+				}),
+			),
+		);
+	}
+
 	const jobId = ctx.jobId;
 	if (failed > 0 && jobId) {
 		const failedSongIds = tracksToFetch
@@ -92,12 +111,12 @@ export async function runAudioFeatures(
 				// Default unknown to transient so we keep retrying instead of giving up.
 				const kind: AudioFeaturesFailureKind =
 					failureMap.get(songId) ?? "transient";
-				return recordJobFailure({
+				return recordStageFailure({
 					jobId,
-					itemId: songId,
-					stage: "audio_features",
+					accountId: ctx.accountId,
+					songId,
+					stage: STAGE,
 					failureCode: failureCodeFor(kind),
-					isTerminal: false,
 					errorMessage: failureMessageFor(kind),
 				});
 			}),

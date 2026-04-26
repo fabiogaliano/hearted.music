@@ -589,7 +589,9 @@ export type Database = {
 					item_id: string;
 					item_type: Database["public"]["Enums"]["item_type"];
 					job_id: string;
+					resolved_at: string | null;
 					stage: string | null;
+					suppress_until: string | null;
 				};
 				Insert: {
 					created_at?: string;
@@ -600,7 +602,9 @@ export type Database = {
 					item_id: string;
 					item_type: Database["public"]["Enums"]["item_type"];
 					job_id: string;
+					resolved_at?: string | null;
 					stage?: string | null;
+					suppress_until?: string | null;
 				};
 				Update: {
 					created_at?: string;
@@ -611,7 +615,9 @@ export type Database = {
 					item_id?: string;
 					item_type?: Database["public"]["Enums"]["item_type"];
 					job_id?: string;
+					resolved_at?: string | null;
 					stage?: string | null;
+					suppress_until?: string | null;
 				};
 				Relationships: [
 					{
@@ -1834,6 +1840,15 @@ export type Database = {
 				Args: { p_account_id: string };
 				Returns: number;
 			};
+			count_unresolved_failures: {
+				Args: {
+					p_account_id: string;
+					p_failure_code: string;
+					p_item_id: string;
+					p_stage: string;
+				};
+				Returns: number;
+			};
 			deactivate_subscription: {
 				Args: { p_account_id: string };
 				Returns: undefined;
@@ -2014,6 +2029,10 @@ export type Database = {
 			};
 			reprioritize_pending_jobs_for_account: {
 				Args: { p_account_id: string };
+				Returns: number;
+			};
+			resolve_stage_failures: {
+				Args: { p_account_id: string; p_item_id: string; p_stage: string };
 				Returns: number;
 			};
 			reverse_pack_entitlement: {
