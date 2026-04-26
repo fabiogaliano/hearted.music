@@ -1,5 +1,5 @@
 /**
- * Terminal failure tracking for per-song enrichment failures.
+ * Per-item job failure tracking.
  *
  * Uses service role client to bypass RLS since we use custom auth.
  * Returns Result<T, DbError> for composable error handling.
@@ -13,12 +13,12 @@ import {
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
 
-const TERMINAL_ERROR_TYPES = ["validation", "unsupported", "auth", "permanent"];
-
-export function recordTerminalFailure(params: {
+export function recordJobFailure(params: {
 	jobId: string;
 	itemId: string;
-	errorType: string;
+	stage: string | null;
+	failureCode: string;
+	isTerminal: boolean;
 	errorMessage?: string;
 }): Promise<Result<void, DbError>> {
 	const supabase = createAdminSupabaseClient();
@@ -29,7 +29,9 @@ export function recordTerminalFailure(params: {
 				job_id: params.jobId,
 				item_type: "song",
 				item_id: params.itemId,
-				error_type: params.errorType,
+				stage: params.stage,
+				failure_code: params.failureCode,
+				is_terminal: params.isTerminal,
 				error_message: params.errorMessage ?? null,
 			})
 			.select()
@@ -46,7 +48,7 @@ export async function getTerminallyFailedSongIds(
 			.from("job_failure")
 			.select("item_id, job!inner(account_id)")
 			.eq("item_type", "song")
-			.in("error_type", TERMINAL_ERROR_TYPES)
+			.eq("is_terminal", true)
 			.eq("job.account_id", accountId),
 	);
 
@@ -68,7 +70,7 @@ export async function clearTerminalFailure(
 		.from("job_failure")
 		.delete()
 		.eq("item_id", itemId)
-		.in("error_type", TERMINAL_ERROR_TYPES);
+		.eq("is_terminal", true);
 
 	if (error) {
 		return Result.err(

@@ -583,29 +583,35 @@ export type Database = {
 				Row: {
 					created_at: string;
 					error_message: string | null;
-					error_type: string | null;
+					failure_code: string;
 					id: string;
+					is_terminal: boolean;
 					item_id: string;
 					item_type: Database["public"]["Enums"]["item_type"];
 					job_id: string;
+					stage: string | null;
 				};
 				Insert: {
 					created_at?: string;
 					error_message?: string | null;
-					error_type?: string | null;
+					failure_code: string;
 					id?: string;
+					is_terminal?: boolean;
 					item_id: string;
 					item_type: Database["public"]["Enums"]["item_type"];
 					job_id: string;
+					stage?: string | null;
 				};
 				Update: {
 					created_at?: string;
 					error_message?: string | null;
-					error_type?: string | null;
+					failure_code?: string;
 					id?: string;
+					is_terminal?: boolean;
 					item_id?: string;
 					item_type?: Database["public"]["Enums"]["item_type"];
 					job_id?: string;
+					stage?: string | null;
 				};
 				Relationships: [
 					{
