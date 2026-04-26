@@ -65,10 +65,10 @@ export async function runGenreTagging(
 		return { total: inputs.length, succeeded: 0, failed: inputs.length };
 	}
 
-	const { errors, notFound } = enrichResult.value;
+	const { errors, notFound, unavailable } = enrichResult.value;
 
 	const jobId = ctx.jobId;
-	if (jobId && (errors.size > 0 || notFound.size > 0)) {
+	if (jobId && (errors.size > 0 || notFound.size > 0 || unavailable.size > 0)) {
 		const failures: Promise<unknown>[] = [];
 
 		for (const [songId, errorMsg] of errors) {
@@ -93,6 +93,22 @@ export async function runGenreTagging(
 					failureCode: "source_not_found",
 					isTerminal: false,
 					errorMessage: "No genre data found for track",
+				}),
+			);
+		}
+
+		// Provider not configured (e.g. missing Last.fm API key) — must NOT
+		// be classified as a catalog miss; once the config is fixed retries
+		// should pick these up.
+		for (const songId of unavailable) {
+			failures.push(
+				recordJobFailure({
+					jobId,
+					itemId: songId,
+					stage: "genre_tagging",
+					failureCode: "provider_unavailable",
+					isTerminal: false,
+					errorMessage: "Genre provider not configured",
 				}),
 			);
 		}

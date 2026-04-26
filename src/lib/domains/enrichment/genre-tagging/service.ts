@@ -42,6 +42,7 @@ export interface GenreBatchProgress {
 	cached: number;
 	fetched: number;
 	notFound: number;
+	unavailable: number;
 	errors: number;
 }
 
@@ -50,13 +51,21 @@ export type GenreBatchProgressCallback = (progress: GenreBatchProgress) => void;
 /** Result of batch enrichment */
 export interface GenreBatchResult {
 	results: Map<string, GenreEnrichmentResult>;
+	/** Songs the provider explicitly returned no genre data for (true catalog miss). */
 	notFound: Set<string>;
+	/**
+	 * Songs we never asked the provider about because no provider was
+	 * configured (e.g. missing Last.fm API key). Distinct from notFound
+	 * so callers don't misclassify a config outage as a catalog miss.
+	 */
+	unavailable: Set<string>;
 	errors: Map<string, string>;
 	stats: {
 		total: number;
 		cached: number;
 		fetched: number;
 		notFound: number;
+		unavailable: number;
 		failed: number;
 	};
 }
@@ -151,6 +160,7 @@ export class GenreEnrichmentService {
 	): Promise<Result<GenreBatchResult, GenreError>> {
 		const results = new Map<string, GenreEnrichmentResult>();
 		const notFound = new Set<string>();
+		const unavailable = new Set<string>();
 		const errors = new Map<string, string>();
 		let cached = 0;
 		let fetched = 0;
@@ -161,6 +171,7 @@ export class GenreEnrichmentService {
 			cached: 0,
 			fetched: 0,
 			notFound: 0,
+			unavailable: 0,
 			errors: 0,
 		};
 
@@ -251,11 +262,12 @@ export class GenreEnrichmentService {
 					// Continue without failing the whole batch
 				}
 			}
-		} else {
-			// No Last.fm service - mark all unfetched as not found
+		} else if (needsFetch.length > 0) {
+			// No Last.fm service - provider unavailable, NOT a catalog miss.
+			// We never asked the provider, so we can't claim the data isn't there.
 			for (const input of needsFetch) {
-				notFound.add(input.songId);
-				progress.notFound++;
+				unavailable.add(input.songId);
+				progress.unavailable++;
 				progress.completed++;
 			}
 			onProgress?.(progress);
@@ -264,12 +276,14 @@ export class GenreEnrichmentService {
 		return Result.ok({
 			results,
 			notFound,
+			unavailable,
 			errors,
 			stats: {
 				total: inputs.length,
 				cached,
 				fetched,
 				notFound: notFound.size,
+				unavailable: unavailable.size,
 				failed: errors.size,
 			},
 		});
