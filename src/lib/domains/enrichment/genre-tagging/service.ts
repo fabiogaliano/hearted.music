@@ -66,6 +66,11 @@ export interface GenreBatchResult {
 		fetched: number;
 		notFound: number;
 		unavailable: number;
+		/**
+		 * Total unsuccessful outcomes: provider errors + true catalog misses
+		 * + songs we never asked the provider about (unavailable). I.e.
+		 * `total - cached - fetched`. Use this for stage-level reporting.
+		 */
 		failed: number;
 	};
 }
@@ -284,7 +289,7 @@ export class GenreEnrichmentService {
 				fetched,
 				notFound: notFound.size,
 				unavailable: unavailable.size,
-				failed: errors.size,
+				failed: errors.size + notFound.size + unavailable.size,
 			},
 		});
 	}
