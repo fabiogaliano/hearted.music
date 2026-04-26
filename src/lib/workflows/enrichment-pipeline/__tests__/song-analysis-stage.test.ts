@@ -12,10 +12,25 @@ const mockRecordJobFailure = vi.fn().mockResolvedValue(Result.ok(undefined));
 const mockSongAnalysisGet = vi.fn();
 const mockAnalyzeSongs = vi.fn();
 const mockCreateAnalysisPipeline = vi.fn();
+const mockGrantCompensation = vi
+	.fn()
+	.mockResolvedValue(Result.ok({ kind: "granted", credits: 1, newBalance: 1 }));
+const mockCreateAdminClient = vi.fn().mockReturnValue({});
 
 vi.mock("@/lib/data/job-failures", () => ({
 	recordJobFailure: (params: Record<string, unknown>) =>
 		mockRecordJobFailure(params),
+}));
+
+vi.mock("@/lib/data/client", () => ({
+	createAdminSupabaseClient: () => mockCreateAdminClient(),
+}));
+
+vi.mock("@/lib/domains/billing/compensation", () => ({
+	grantAnalysisFailureReplacementCredit: (
+		client: unknown,
+		params: { accountId: string; songId: string; failureCode: string },
+	) => mockGrantCompensation(client, params),
 }));
 
 vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
@@ -70,6 +85,10 @@ beforeEach(() => {
 	mockCreateAnalysisPipeline.mockReturnValue(
 		Result.ok({ analyzeSongs: mockAnalyzeSongs }),
 	);
+	mockGrantCompensation.mockResolvedValue(
+		Result.ok({ kind: "granted", credits: 1, newBalance: 1 }),
+	);
+	mockCreateAdminClient.mockReturnValue({});
 });
 
 interface RecordedFailure {
@@ -284,5 +303,134 @@ describe("runSongAnalysis: analysis-input gate (tri-state)", () => {
 		await runSongAnalysis(makeCtx(), makeBatch(["ok"]));
 
 		expect(mockRecordJobFailure).not.toHaveBeenCalled();
+	});
+});
+
+describe("runSongAnalysis: replacement-credit compensation", () => {
+	it("calls compensation helper for each confirmed-missing song", async () => {
+		mockAnalyzeSongs.mockResolvedValue(
+			Result.ok({
+				jobId: "job-1",
+				succeeded: 0,
+				failed: 2,
+				total: 2,
+				...emptySkipBuckets(),
+				skippedConfirmedInputsMissing: ["pack-song-a", "pack-song-b"],
+			}),
+		);
+
+		await runSongAnalysis(makeCtx(), makeBatch(["pack-song-a", "pack-song-b"]));
+
+		expect(mockGrantCompensation).toHaveBeenCalledTimes(2);
+		const calls = mockGrantCompensation.mock.calls.map(
+			(c) => c[1] as { accountId: string; songId: string; failureCode: string },
+		);
+		const byId = new Map(calls.map((c) => [c.songId, c]));
+		expect(byId.get("pack-song-a")).toEqual({
+			accountId: "account-1",
+			songId: "pack-song-a",
+			failureCode: "analysis_inputs_missing",
+		});
+		expect(byId.get("pack-song-b")).toEqual({
+			accountId: "account-1",
+			songId: "pack-song-b",
+			failureCode: "analysis_inputs_missing",
+		});
+	});
+
+	it("does not call compensation for unconfirmed skip categories", async () => {
+		mockAnalyzeSongs.mockResolvedValue(
+			Result.ok({
+				jobId: "job-1",
+				succeeded: 0,
+				failed: 3,
+				total: 3,
+				...emptySkipBuckets(),
+				skippedUnconfirmedLyrics: ["lyrics-only"],
+				skippedUnconfirmedAudio: ["audio-only"],
+				skippedUnconfirmedBoth: ["both-down"],
+			}),
+		);
+
+		await runSongAnalysis(
+			makeCtx(),
+			makeBatch(["lyrics-only", "audio-only", "both-down"]),
+		);
+
+		expect(mockGrantCompensation).not.toHaveBeenCalled();
+		expect(mockRecordJobFailure).toHaveBeenCalledTimes(3);
+	});
+
+	it("does not call compensation for LLM permanent failures", async () => {
+		mockAnalyzeSongs.mockResolvedValue(
+			Result.ok({
+				jobId: "job-1",
+				succeeded: 0,
+				failed: 1,
+				total: 1,
+				...emptySkipBuckets(),
+			}),
+		);
+		mockSongAnalysisGet.mockResolvedValue(Result.ok(new Map()));
+
+		await runSongAnalysis(makeCtx(), makeBatch(["llm-fail"]));
+
+		expect(mockGrantCompensation).not.toHaveBeenCalled();
+		const failures = recordedFailures();
+		expect(failures).toHaveLength(1);
+		expect(failures[0]).toMatchObject({
+			itemId: "llm-fail",
+			failureCode: "permanent",
+			isTerminal: true,
+		});
+	});
+
+	it("compensation failures do not break the stage", async () => {
+		const { DatabaseError } = await import("@/lib/shared/errors/database");
+		mockGrantCompensation.mockResolvedValue(
+			Result.err(
+				new DatabaseError({ code: "FAIL", message: "compensation rpc down" }),
+			),
+		);
+		mockAnalyzeSongs.mockResolvedValue(
+			Result.ok({
+				jobId: "job-1",
+				succeeded: 0,
+				failed: 1,
+				total: 1,
+				...emptySkipBuckets(),
+				skippedConfirmedInputsMissing: ["pack-song"],
+			}),
+		);
+
+		const result = await runSongAnalysis(makeCtx(), makeBatch(["pack-song"]));
+
+		expect(result).toEqual({ total: 1, succeeded: 0, failed: 1 });
+		expect(mockRecordJobFailure).toHaveBeenCalledTimes(1);
+		expect(mockGrantCompensation).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not call compensation when no jobId is set on the context", async () => {
+		mockAnalyzeSongs.mockResolvedValue(
+			Result.ok({
+				jobId: undefined,
+				succeeded: 0,
+				failed: 1,
+				total: 1,
+				...emptySkipBuckets(),
+				skippedConfirmedInputsMissing: ["pack-song"],
+			}),
+		);
+
+		const ctx: EnrichmentContext = {
+			accountId: "account-1",
+			embeddingService: {} as EnrichmentContext["embeddingService"],
+			profilingService: {} as EnrichmentContext["profilingService"],
+		};
+
+		await runSongAnalysis(ctx, makeBatch(["pack-song"]));
+
+		expect(mockRecordJobFailure).not.toHaveBeenCalled();
+		expect(mockGrantCompensation).not.toHaveBeenCalled();
 	});
 });

@@ -1,5 +1,7 @@
 import { Result } from "better-result";
+import { createAdminSupabaseClient } from "@/lib/data/client";
 import { recordJobFailure } from "@/lib/data/job-failures";
+import { grantAnalysisFailureReplacementCredit } from "@/lib/domains/billing/compensation";
 import { createAnalysisPipeline } from "@/lib/domains/enrichment/content-analysis/pipeline";
 import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
 import type { PipelineBatch } from "../batch";
@@ -108,6 +110,35 @@ export async function runSongAnalysis(
 						"Analysis skipped: neither lyrics nor audio features available",
 				}),
 			),
+		);
+
+		const compensationClient = createAdminSupabaseClient();
+		await Promise.all(
+			skippedConfirmedInputsMissing.map(async (songId) => {
+				try {
+					const outcome = await grantAnalysisFailureReplacementCredit(
+						compensationClient,
+						{
+							accountId: ctx.accountId,
+							songId,
+							failureCode: "analysis_inputs_missing",
+						},
+					);
+					if (Result.isError(outcome)) {
+						console.error(
+							"[song-analysis] compensation rpc failed",
+							{ accountId: ctx.accountId, songId },
+							outcome.error,
+						);
+					}
+				} catch (err) {
+					console.error(
+						"[song-analysis] compensation threw",
+						{ accountId: ctx.accountId, songId },
+						err,
+					);
+				}
+			}),
 		);
 	}
 

@@ -1453,6 +1453,48 @@ export type Database = {
 					},
 				];
 			};
+			song_failure_compensation: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					credit_amount: number;
+					failure_code: string;
+					id: string;
+					song_id: string;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					credit_amount?: number;
+					failure_code: string;
+					id?: string;
+					song_id: string;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					credit_amount?: number;
+					failure_code?: string;
+					id?: string;
+					song_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "song_failure_compensation_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "song_failure_compensation_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			subscription_credit_conversion: {
 				Row: {
 					account_id: string;
@@ -1847,6 +1889,14 @@ export type Database = {
 					pending: number;
 					total: number;
 				}[];
+			};
+			grant_analysis_failure_replacement_credit: {
+				Args: {
+					p_account_id: string;
+					p_failure_code: string;
+					p_song_id: string;
+				};
+				Returns: Json;
 			};
 			grant_credits: {
 				Args: {
