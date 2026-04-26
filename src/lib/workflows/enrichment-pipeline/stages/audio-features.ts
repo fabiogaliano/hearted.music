@@ -3,7 +3,7 @@ import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queri
 import { createAudioFeaturesService } from "@/lib/integrations/audio/service";
 import type { TrackInfo } from "@/lib/integrations/audio/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
-import { recordTerminalFailure } from "@/lib/data/job-failures";
+import { recordJobFailure } from "@/lib/data/job-failures";
 import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
@@ -67,10 +67,12 @@ export async function runAudioFeatures(
 
 		await Promise.all(
 			failedSongIds.map((songId) =>
-				recordTerminalFailure({
+				recordJobFailure({
 					jobId: ctx.jobId!,
 					itemId: songId,
-					errorType: "permanent",
+					stage: "audio_features",
+					failureCode: "permanent",
+					isTerminal: true,
 					errorMessage: "Audio features unavailable for track",
 				}),
 			),

@@ -1,7 +1,7 @@
 import { Result } from "better-result";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
-import { recordTerminalFailure } from "@/lib/data/job-failures";
+import { recordJobFailure } from "@/lib/data/job-failures";
 import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
@@ -77,12 +77,14 @@ export async function runSongEmbedding(
 			if (ctx.jobId) {
 				await Promise.all(
 					failed.map((item) =>
-						recordTerminalFailure({
+						recordJobFailure({
 							jobId: ctx.jobId!,
 							itemId: item.songId,
-							errorType: item.error.includes("Missing analysis")
+							stage: "song_embedding",
+							failureCode: item.error.includes("Missing analysis")
 								? "validation"
 								: "permanent",
+							isTerminal: true,
 							errorMessage: `Embedding failed: ${item.error}`,
 						}),
 					),

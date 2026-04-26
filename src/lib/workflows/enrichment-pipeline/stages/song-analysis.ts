@@ -1,7 +1,7 @@
 import { Result } from "better-result";
 import { createAnalysisPipeline } from "@/lib/domains/enrichment/content-analysis/pipeline";
 import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
-import { recordTerminalFailure } from "@/lib/data/job-failures";
+import { recordJobFailure } from "@/lib/data/job-failures";
 import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
@@ -91,10 +91,12 @@ export async function runSongAnalysis(
 
 			await Promise.all(
 				failedSongIds.map((songId) =>
-					recordTerminalFailure({
+					recordJobFailure({
 						jobId: ctx.jobId!,
 						itemId: songId,
-						errorType: "permanent",
+						stage: "song_analysis",
+						failureCode: "permanent",
+						isTerminal: true,
 						errorMessage: "Song analysis failed",
 					}),
 				),

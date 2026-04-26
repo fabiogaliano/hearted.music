@@ -1,7 +1,7 @@
 import { Result } from "better-result";
 import { createGenreEnrichmentService } from "@/lib/domains/enrichment/genre-tagging/service";
 import type { GenreEnrichmentInput } from "@/lib/domains/enrichment/genre-tagging/service";
-import { recordTerminalFailure } from "@/lib/data/job-failures";
+import { recordJobFailure } from "@/lib/data/job-failures";
 import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
@@ -53,10 +53,12 @@ export async function runGenreTagging(
 
 		for (const [songId, errorMsg] of errors) {
 			failures.push(
-				recordTerminalFailure({
+				recordJobFailure({
 					jobId: ctx.jobId,
 					itemId: songId,
-					errorType: "permanent",
+					stage: "genre_tagging",
+					failureCode: "permanent",
+					isTerminal: true,
 					errorMessage: `Genre tagging failed: ${errorMsg}`,
 				}),
 			);
@@ -64,10 +66,12 @@ export async function runGenreTagging(
 
 		for (const songId of notFound) {
 			failures.push(
-				recordTerminalFailure({
+				recordJobFailure({
 					jobId: ctx.jobId,
 					itemId: songId,
-					errorType: "unsupported",
+					stage: "genre_tagging",
+					failureCode: "unsupported",
+					isTerminal: true,
 					errorMessage: "No genre data found for track",
 				}),
 			);
