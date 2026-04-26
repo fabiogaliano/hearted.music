@@ -97,12 +97,19 @@ export interface ReccoBeatsSearchResponse {
 	}>;
 }
 
+/**
+ * Per-track failure classification.
+ * `not_found` is a true catalog miss (404 on either lookup step);
+ * `transient` is a rate limit, network, or unexpected API failure.
+ */
+export type ReccoBeatsFailureKind = "not_found" | "transient";
+
 /** Batch result with partial success tracking */
 export interface ReccoBeatsAudioFeaturesBatchResult {
 	/** Successfully fetched features keyed by Spotify track ID */
 	readonly features: Map<string, ReccoBeatsAudioFeatures>;
-	/** IDs that failed (not found or error) */
-	readonly failedIds: string[];
+	/** Per-track failure reasons keyed by Spotify track ID */
+	readonly failures: Map<string, ReccoBeatsFailureKind>;
 	/** Statistics */
 	readonly stats: {
 		readonly total: number;

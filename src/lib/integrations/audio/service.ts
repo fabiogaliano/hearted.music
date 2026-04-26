@@ -8,7 +8,10 @@
 import { Result } from "better-result";
 import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
 import type { ReccoBeatsService } from "@/lib/integrations/reccobeats/service";
-import type { ReccoBeatsAudioFeatures } from "@/lib/integrations/reccobeats/types";
+import type {
+	ReccoBeatsAudioFeatures,
+	ReccoBeatsFailureKind,
+} from "@/lib/integrations/reccobeats/types";
 import type { DbError } from "@/lib/shared/errors/database";
 import type { ReccoBeatsError } from "@/lib/shared/errors/external/reccobeats";
 
@@ -41,6 +44,15 @@ export interface BackfillResult {
 	};
 }
 
+/** Per-songId failure kind exposed to the pipeline layer. */
+export type AudioFeaturesFailureKind = ReccoBeatsFailureKind;
+
+/** Result of getOrFetchFeatures: features that succeeded + classified failures. */
+export interface GetOrFetchFeaturesResult {
+	readonly features: Map<string, audioFeatureData.AudioFeature>;
+	readonly failures: Map<string, AudioFeaturesFailureKind>;
+}
+
 /** Union of possible errors */
 export type AudioFeaturesError = DbError | ReccoBeatsError;
 
@@ -57,11 +69,9 @@ export class AudioFeaturesService {
 	 */
 	async getOrFetchFeatures(
 		tracks: TrackInfo[],
-	): Promise<
-		Result<Map<string, audioFeatureData.AudioFeature>, AudioFeaturesError>
-	> {
+	): Promise<Result<GetOrFetchFeaturesResult, AudioFeaturesError>> {
 		if (tracks.length === 0) {
-			return Result.ok(new Map());
+			return Result.ok({ features: new Map(), failures: new Map() });
 		}
 
 		const songIds = tracks.map((t) => t.songId);
@@ -79,16 +89,25 @@ export class AudioFeaturesService {
 
 		// If all have features or no ReccoBeats service, return existing
 		if (missingTracks.length === 0 || !this.reccoBeatsService) {
-			return Result.ok(existingFeatures);
+			return Result.ok({ features: existingFeatures, failures: new Map() });
 		}
 
 		// Fetch missing from ReccoBeats
 		const spotifyIds = missingTracks.map((t) => t.spotifyTrackId);
 		const fetchResult =
 			await this.reccoBeatsService.getAudioFeaturesBatch(spotifyIds);
+
+		const failuresBySongId = new Map<string, AudioFeaturesFailureKind>();
+
 		if (Result.isError(fetchResult)) {
-			// Return existing on error (graceful degradation)
-			return Result.ok(existingFeatures);
+			// Batch-wide error → cannot distinguish per-track; treat all as transient
+			for (const track of missingTracks) {
+				failuresBySongId.set(track.songId, "transient");
+			}
+			return Result.ok({
+				features: existingFeatures,
+				failures: failuresBySongId,
+			});
 		}
 
 		// Map Spotify IDs back to song IDs and persist
@@ -104,6 +123,13 @@ export class AudioFeaturesService {
 			}
 		}
 
+		for (const [spotifyId, kind] of fetchResult.value.failures) {
+			const songId = spotifyToSongId.get(spotifyId);
+			if (songId) {
+				failuresBySongId.set(songId, kind);
+			}
+		}
+
 		// Persist new features
 		if (newFeatures.length > 0) {
 			const upsertResult = await audioFeatureData.upsert(newFeatures);
@@ -115,7 +141,10 @@ export class AudioFeaturesService {
 			// On upsert error, continue with what we have
 		}
 
-		return Result.ok(existingFeatures);
+		return Result.ok({
+			features: existingFeatures,
+			failures: failuresBySongId,
+		});
 	}
 
 	/**

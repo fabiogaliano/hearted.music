@@ -31,7 +31,10 @@ export async function runGenreTagging(
 	}
 
 	const inputs: GenreEnrichmentInput[] = readiness.ready.map((id) => {
-		const song = batch.songs.find((s) => s.id === id)!;
+		const song = batch.songs.find((s) => s.id === id);
+		if (!song) {
+			throw new Error(`Song ${id} present in readiness but missing from batch`);
+		}
 		return {
 			songId: song.id,
 			artist: song.artists[0] ?? "Unknown",
@@ -43,22 +46,39 @@ export async function runGenreTagging(
 	const service = createGenreEnrichmentService();
 	const enrichResult = await service.enrichBatch(inputs);
 	if (Result.isError(enrichResult)) {
+		// Batch-wide DB error — record everything as transient so the pipeline retries.
+		const jobId = ctx.jobId;
+		if (jobId) {
+			await Promise.all(
+				inputs.map((i) =>
+					recordJobFailure({
+						jobId,
+						itemId: i.songId,
+						stage: "genre_tagging",
+						failureCode: "provider_transient",
+						isTerminal: false,
+						errorMessage: `Genre tagging batch failed: ${enrichResult.error.message}`,
+					}),
+				),
+			);
+		}
 		return { total: inputs.length, succeeded: 0, failed: inputs.length };
 	}
 
 	const { errors, notFound } = enrichResult.value;
 
-	if (ctx.jobId && (errors.size > 0 || notFound.size > 0)) {
+	const jobId = ctx.jobId;
+	if (jobId && (errors.size > 0 || notFound.size > 0)) {
 		const failures: Promise<unknown>[] = [];
 
 		for (const [songId, errorMsg] of errors) {
 			failures.push(
 				recordJobFailure({
-					jobId: ctx.jobId,
+					jobId,
 					itemId: songId,
 					stage: "genre_tagging",
-					failureCode: "permanent",
-					isTerminal: true,
+					failureCode: "provider_transient",
+					isTerminal: false,
 					errorMessage: `Genre tagging failed: ${errorMsg}`,
 				}),
 			);
@@ -67,11 +87,11 @@ export async function runGenreTagging(
 		for (const songId of notFound) {
 			failures.push(
 				recordJobFailure({
-					jobId: ctx.jobId,
+					jobId,
 					itemId: songId,
 					stage: "genre_tagging",
-					failureCode: "unsupported",
-					isTerminal: true,
+					failureCode: "source_not_found",
+					isTerminal: false,
 					errorMessage: "No genre data found for track",
 				}),
 			);

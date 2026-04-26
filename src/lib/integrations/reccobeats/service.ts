@@ -19,6 +19,7 @@ import {
 	type ReccoBeatsAudioFeatures,
 	type ReccoBeatsAudioFeaturesBatchResult,
 	ReccoBeatsAudioFeaturesResponseSchema,
+	type ReccoBeatsFailureKind,
 	ReccoBeatsSpotifyLookupResponseSchema,
 } from "./types";
 
@@ -55,7 +56,7 @@ export class ReccoBeatsService {
 
 	/**
 	 * Get audio features for multiple tracks.
-	 * Returns partial results - tracks not found are in failedIds.
+	 * Returns partial results — failed tracks (not_found vs transient) are in failures map.
 	 */
 	async getAudioFeaturesBatch(
 		spotifyTrackIds: string[],
@@ -63,13 +64,13 @@ export class ReccoBeatsService {
 		if (spotifyTrackIds.length === 0) {
 			return Result.ok({
 				features: new Map(),
-				failedIds: [],
+				failures: new Map(),
 				stats: { total: 0, succeeded: 0, failed: 0 },
 			});
 		}
 
 		const features = new Map<string, ReccoBeatsAudioFeatures>();
-		const failedIds: string[] = [];
+		const failures = new Map<string, ReccoBeatsFailureKind>();
 
 		// Process each track
 		const results = await Promise.all(
@@ -80,20 +81,26 @@ export class ReccoBeatsService {
 		);
 
 		for (const { spotifyId, result } of results) {
-			if (Result.isOk(result) && result.value !== null) {
-				features.set(spotifyId, result.value);
+			if (Result.isOk(result)) {
+				if (result.value !== null) {
+					features.set(spotifyId, result.value);
+				} else {
+					// Result.ok(null) is reserved for 404 from either lookup step
+					failures.set(spotifyId, "not_found");
+				}
 			} else {
-				failedIds.push(spotifyId);
+				// Rate limit, network failure, parse error → retryable
+				failures.set(spotifyId, "transient");
 			}
 		}
 
 		return Result.ok({
 			features,
-			failedIds,
+			failures,
 			stats: {
 				total: spotifyTrackIds.length,
 				succeeded: features.size,
-				failed: failedIds.length,
+				failed: failures.size,
 			},
 		});
 	}

@@ -123,7 +123,7 @@ async function main() {
 	}));
 	const audioResult = await audioService.getOrFetchFeatures(tracks);
 	const audioMap = Result.isOk(audioResult)
-		? audioResult.value
+		? audioResult.value.features
 		: new Map<string, AudioFeature>();
 	const audioFetched = audioMap.size;
 	console.log(`✓ Audio features: ${audioFetched}/${toAnalyze.length} songs\n`);
