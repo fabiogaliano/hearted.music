@@ -108,6 +108,10 @@ export async function hasMoreSongsNeedingProcessing(
 /**
  * Selects the next batch using the billing-aware selector RPC.
  * Returns a typed work plan with per-song stage flags and pre-partitioned sub-batches.
+ *
+ * All stage flags (audio_features, genre_tagging, analysis, embedding,
+ * content_activation) are entitlement-gated. Optional Phase A signals with a
+ * recorded source_not_found marker are masked off so they aren't retried.
  */
 export async function selectEnrichmentWorkPlan(
 	accountId: string,
