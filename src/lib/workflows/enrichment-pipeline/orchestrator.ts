@@ -184,7 +184,7 @@ async function enrichSongs(
 	progress: InitializedEnrichmentChunkProgress,
 	stageDelayMs?: number,
 ): Promise<void> {
-	// Phase A: audio_features + genre_tagging (parallel, unbounded)
+	// Phase A: audio_features + genre_tagging (parallel, entitled songs only)
 	progress.currentStage = "audio_features";
 	progress.stages.audio_features.status = "running";
 	progress.stages.genre_tagging.status = "running";
