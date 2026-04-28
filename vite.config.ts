@@ -104,7 +104,7 @@ const config = defineConfig({
 				// @ts-expect-error - preset exists at runtime but missing from types
 				preset: "node-ws",
 				router: {
-					routeFileIgnorePattern: "^dev-",
+					routeFileIgnorePattern: "^dev-|\\.test\\.(ts|tsx)$",
 				},
 			}),
 		viteReact(),
