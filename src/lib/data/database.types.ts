@@ -1620,6 +1620,67 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			walkthrough_match_preview: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					demo_song_id: string | null;
+					error: string | null;
+					fingerprint: string;
+					job_id: string | null;
+					matches: Json;
+					status: Database["public"]["Enums"]["walkthrough_preview_status"];
+					target_playlist_ids: string[];
+					updated_at: string;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					demo_song_id?: string | null;
+					error?: string | null;
+					fingerprint: string;
+					job_id?: string | null;
+					matches?: Json;
+					status?: Database["public"]["Enums"]["walkthrough_preview_status"];
+					target_playlist_ids?: string[];
+					updated_at?: string;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					demo_song_id?: string | null;
+					error?: string | null;
+					fingerprint?: string;
+					job_id?: string | null;
+					matches?: Json;
+					status?: Database["public"]["Enums"]["walkthrough_preview_status"];
+					target_playlist_ids?: string[];
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "walkthrough_match_preview_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: true;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "walkthrough_match_preview_demo_song_id_fkey";
+						columns: ["demo_song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "walkthrough_match_preview_job_id_fkey";
+						columns: ["job_id"];
+						isOneToOne: false;
+						referencedRelation: "job";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			user_preferences: {
 				Row: {
 					account_id: string;
@@ -1759,6 +1820,32 @@ export type Database = {
 				Returns: string;
 			};
 			claim_pending_library_processing_job: {
+				Args: never;
+				Returns: {
+					account_id: string;
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error: string | null;
+					heartbeat_at: string | null;
+					id: string;
+					max_attempts: number;
+					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
+					started_at: string | null;
+					status: Database["public"]["Enums"]["job_status"];
+					type: Database["public"]["Enums"]["job_type"];
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
+			claim_pending_walkthrough_preview_job: {
 				Args: never;
 				Returns: {
 					account_id: string;
@@ -1975,6 +2062,32 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
+			mark_dead_walkthrough_preview_jobs: {
+				Args: { stale_threshold: string };
+				Returns: {
+					account_id: string;
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error: string | null;
+					heartbeat_at: string | null;
+					id: string;
+					max_attempts: number;
+					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
+					started_at: string | null;
+					status: Database["public"]["Enums"]["job_status"];
+					type: Database["public"]["Enums"]["job_type"];
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 			mark_dead_rematch_jobs: {
 				Args: { stale_threshold: string };
 				Returns: {
@@ -2114,6 +2227,32 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
+			sweep_stale_walkthrough_preview_jobs: {
+				Args: { stale_threshold: string };
+				Returns: {
+					account_id: string;
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error: string | null;
+					heartbeat_at: string | null;
+					id: string;
+					max_attempts: number;
+					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
+					started_at: string | null;
+					status: Database["public"]["Enums"]["job_status"];
+					type: Database["public"]["Enums"]["job_type"];
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 			sweep_stale_rematch_jobs: {
 				Args: { stale_threshold: string };
 				Returns: {
@@ -2172,8 +2311,10 @@ export type Database = {
 				| "rematch"
 				| "playlist_lightweight_enrichment"
 				| "target_playlist_match_refresh"
-				| "match_snapshot_refresh";
+				| "match_snapshot_refresh"
+				| "walkthrough_match_preview";
 			theme: "blue" | "green" | "rose" | "lavender";
+			walkthrough_preview_status: "pending" | "ready" | "failed";
 		};
 		CompositeTypes: {
 			[_ in never]: never;
@@ -2325,8 +2466,10 @@ export const Constants = {
 				"playlist_lightweight_enrichment",
 				"target_playlist_match_refresh",
 				"match_snapshot_refresh",
+				"walkthrough_match_preview",
 			],
 			theme: ["blue", "green", "rose", "lavender"],
+			walkthrough_preview_status: ["pending", "ready", "failed"],
 		},
 	},
 } as const;

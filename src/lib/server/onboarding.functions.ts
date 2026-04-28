@@ -28,11 +28,13 @@ import {
 	getPlaylists,
 	setPlaylistTarget,
 } from "@/lib/domains/library/playlists/queries";
-import {
-	getLatestMatchSnapshot,
-	getMatchResultsForSong,
-} from "@/lib/domains/taste/song-matching/queries";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import {
+	computePreviewFingerprint,
+	getWalkthroughPreview,
+	type WalkthroughPreviewMatch,
+} from "@/lib/workflows/walkthrough-match-preview/queries";
+import { ensureWalkthroughPreview } from "@/lib/workflows/walkthrough-match-preview/service";
 
 import { getDemoMatchesForSong } from "@/lib/data/demo-matches";
 import type { LandingSongManifest } from "@/lib/data/landing-songs";
@@ -624,6 +626,27 @@ export const savePlaylistTargets = createServerFn({ method: "POST" })
 			OnboardingChanges.targetSelectionConfirmed(session.accountId),
 		);
 
+		// If the user has already chosen a demo song (e.g. they navigated back to
+		// edit targets), invalidate the existing preview by rotating its
+		// fingerprint and ensuring a new background job. The preview row's
+		// `target_playlist_ids` is what we score against, so it must mirror the
+		// user's latest selection.
+		const prefsForPreview = await getOrCreatePreferences(session.accountId);
+		if (
+			Result.isOk(prefsForPreview) &&
+			prefsForPreview.value.demo_song_id !== null
+		) {
+			ensureWalkthroughPreview({
+				accountId: session.accountId,
+				demoSongId: prefsForPreview.value.demo_song_id,
+			}).catch((err) => {
+				console.warn(
+					"[onboarding] ensure walkthrough preview failed:",
+					err instanceof Error ? err.message : String(err),
+				);
+			});
+		}
+
 		return { success: true };
 	});
 
@@ -720,6 +743,20 @@ export const commitDemoSongAndEnterWalkthrough = createServerFn({
 			console.warn("Failed to clear phase job IDs:", clearResult.error);
 		}
 
+		// Kick the walkthrough preview as soon as the demo song is locked in.
+		// The user spends time on /liked-songs before reaching /match, so this
+		// gives the worker a head start. Failure is non-fatal — the UI falls
+		// back to the static demo path on timeout.
+		ensureWalkthroughPreview({
+			accountId: session.accountId,
+			demoSongId: song.id,
+		}).catch((err) => {
+			console.warn(
+				"[onboarding] ensure walkthrough preview failed:",
+				err instanceof Error ? err.message : String(err),
+			);
+		});
+
 		return loadOnboardingSession(session.accountId);
 	});
 
@@ -791,28 +828,61 @@ export const getDemoSongMatches = createServerFn({ method: "GET" })
 			return { status: "ready", matches, isDemo: true };
 		}
 
-		// Real-playlists path: fetch live match results
-		const snapshotResult = await getLatestMatchSnapshot(session.accountId);
-		if (Result.isError(snapshotResult) || !snapshotResult.value) {
-			return { status: "pending" };
-		}
-
-		const snapshot = snapshotResult.value;
-		const matchResultsResult = await getMatchResultsForSong(
-			snapshot.id,
+		// Real-playlists path: read from the dedicated walkthrough preview row.
+		// Deliberately does NOT touch match_snapshot / match_result — production
+		// matching filters by minScoreThreshold and entitled-candidate
+		// membership, which would routinely drop the demo song.
+		const targetPlaylistIds = playlistsResult.value
+			.filter((p) => p.is_target)
+			.map((p) => p.id)
+			.toSorted();
+		const expectedFingerprint = computePreviewFingerprint(
 			demoSongId,
+			targetPlaylistIds,
 		);
 
-		if (Result.isError(matchResultsResult)) {
+		const previewResult = await getWalkthroughPreview(session.accountId);
+		if (Result.isError(previewResult)) {
 			return { status: "pending" };
 		}
 
-		const matchResults = matchResultsResult.value;
-		if (matchResults.length === 0) {
+		const preview = previewResult.value;
+
+		// `ready` is the only authoritative state. For anything else — missing
+		// row, stale fingerprint, or `pending`/`failed` with no live job — we
+		// fire ensure() and tell the UI to keep polling. ensure() is now
+		// job-aware, so it will not duplicate work when a live job is already
+		// running; it only creates fresh work when state is genuinely stranded.
+		const isReady =
+			preview !== null &&
+			preview.fingerprint === expectedFingerprint &&
+			preview.status === "ready";
+
+		if (!isReady) {
+			ensureWalkthroughPreview({
+				accountId: session.accountId,
+				demoSongId,
+			}).catch((err) => {
+				console.warn(
+					"[onboarding] ensure walkthrough preview failed:",
+					err instanceof Error ? err.message : String(err),
+				);
+			});
 			return { status: "pending" };
 		}
 
-		const playlistIds = matchResults.map((mr) => mr.playlist_id);
+		if (!preview) {
+			// Unreachable thanks to isReady, but the type guard helps TypeScript
+			// narrow `preview` for the rest of the handler.
+			return { status: "pending" };
+		}
+
+		const previewMatches = parsePreviewMatches(preview.matches);
+		if (previewMatches.length === 0) {
+			return { status: "pending" };
+		}
+
+		const playlistIds = previewMatches.map((m) => m.playlistId);
 		const supabase = createAdminSupabaseClient();
 		const { data: playlistRows, error: playlistError } = await supabase
 			.from("playlist")
@@ -825,16 +895,16 @@ export const getDemoSongMatches = createServerFn({ method: "GET" })
 
 		const playlistMap = new Map(playlistRows.map((p) => [p.id, p]));
 
-		const matches: DemoMatchPlaylist[] = matchResults
-			.map((mr) => {
-				const playlist = playlistMap.get(mr.playlist_id);
+		const matches: DemoMatchPlaylist[] = previewMatches
+			.map((m) => {
+				const playlist = playlistMap.get(m.playlistId);
 				if (!playlist) return null;
 				return {
 					id: playlist.id,
 					name: playlist.name,
 					description: playlist.description,
 					songCount: playlist.song_count,
-					score: mr.score,
+					score: m.score,
 				};
 			})
 			.filter((m): m is DemoMatchPlaylist => m !== null)
@@ -842,3 +912,40 @@ export const getDemoSongMatches = createServerFn({ method: "GET" })
 
 		return { status: "ready", matches, isDemo: false };
 	});
+
+/**
+ * Decode the JSON `matches` column on a preview row into typed entries.
+ * The DB column is JSONB so the runtime shape isn't enforced by the type
+ * system — defensive parsing keeps the contract self-contained here instead
+ * of leaking jsonb-typed shapes into the UI layer.
+ */
+function parsePreviewMatches(value: unknown): WalkthroughPreviewMatch[] {
+	if (!Array.isArray(value)) return [];
+	const out: WalkthroughPreviewMatch[] = [];
+	for (const entry of value) {
+		if (
+			entry !== null &&
+			typeof entry === "object" &&
+			"playlistId" in entry &&
+			"score" in entry &&
+			typeof (entry as { playlistId: unknown }).playlistId === "string" &&
+			typeof (entry as { score: unknown }).score === "number"
+		) {
+			const e = entry as {
+				playlistId: string;
+				score: number;
+				factors?: { embedding?: number; audio?: number; genre?: number };
+			};
+			out.push({
+				playlistId: e.playlistId,
+				score: e.score,
+				factors: {
+					embedding: e.factors?.embedding ?? 0,
+					audio: e.factors?.audio ?? 0,
+					genre: e.factors?.genre ?? 0,
+				},
+			});
+		}
+	}
+	return out;
+}
