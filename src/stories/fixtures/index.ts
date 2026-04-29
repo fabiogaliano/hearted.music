@@ -9,7 +9,7 @@ export const dashboardData: DashboardProps = data.dashboard as DashboardProps;
 export const matchingSongs: Array<{
 	song: SongForMatching;
 	playlists: Playlist[];
-}> = data.matchingSongs as Array<{
+}> = data.matchingSongs as unknown as Array<{
 	song: SongForMatching;
 	playlists: Playlist[];
 }>;

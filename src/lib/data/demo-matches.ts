@@ -16,6 +16,7 @@ export interface DemoSongMatch {
 
 export interface DemoMatchPlaylist {
 	id: string;
+	spotifyId: string;
 	name: string;
 	reason: string;
 	matchScore: number;
@@ -187,7 +188,14 @@ export function getDemoMatchesForSong(
 		[];
 	return matches.map(({ id, matchScore }) => {
 		const def = PLAYLIST_BY_ID.get(id);
-		if (!def) return { id, name: "Unknown", reason: "", matchScore };
-		return { id: def.id, name: def.name, reason: def.reason, matchScore };
+		if (!def)
+			return { id, spotifyId: "", name: "Unknown", reason: "", matchScore };
+		return {
+			id: def.id,
+			spotifyId: "",
+			name: def.name,
+			reason: def.reason,
+			matchScore,
+		};
 	});
 }

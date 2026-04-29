@@ -203,7 +203,6 @@ export function Landing({
 								onAdd={() => {}}
 								onDismiss={handlePreviewDiscard}
 								onNext={handlePreviewNext}
-								songKey={previewSongManifest.spotifyTrackId}
 							/>
 						</div>
 					</div>

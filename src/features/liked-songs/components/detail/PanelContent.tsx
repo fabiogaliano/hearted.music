@@ -145,9 +145,9 @@ interface PanelContentProps {
 	analysis?: AnalysisContent;
 	isAnalysisOpen: boolean;
 	toggleAnalysis: () => void;
-	expandedSections: Set<string>;
-	toggleSection: (section: string) => void;
 	suggestions: SongSuggestion[] | null;
+	addedTo: string[];
+	onAdd: (playlistId: string) => void;
 	isEnrichmentRunning: boolean;
 	/** Walkthrough mode: hide PlaylistsSection, show sticky CTA */
 	isWalkthrough?: boolean;
@@ -167,9 +167,9 @@ export function PanelContent({
 	analysis,
 	isAnalysisOpen,
 	toggleAnalysis,
-	expandedSections,
-	toggleSection,
 	suggestions,
+	addedTo,
+	onAdd,
 	isEnrichmentRunning,
 	isWalkthrough = false,
 	getStaggerRef,
@@ -351,8 +351,8 @@ export function PanelContent({
 							>
 								<PlaylistsSection
 									suggestions={suggestions}
-									isOtherExpanded={expandedSections.has("other-playlists")}
-									onToggleOther={() => toggleSection("other-playlists")}
+									addedTo={addedTo}
+									onAdd={onAdd}
 									colors={colorProps}
 								/>
 							</div>
