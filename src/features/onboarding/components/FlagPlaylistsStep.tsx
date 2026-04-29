@@ -9,7 +9,7 @@
 import { useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CDCase } from "@/components/ui/CDCase";
+import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
@@ -42,21 +42,25 @@ export function FlagPlaylistsStep({
 	);
 	const [isSaving, setIsSaving] = useState(false);
 
+	const fewPlaylists = initialPlaylists.length < 16;
+
 	const [rowCount, setRowCount] = useState(() =>
-		typeof window !== "undefined" &&
-		window.matchMedia("(max-height: 900px)").matches
+		fewPlaylists ||
+		(typeof window !== "undefined" &&
+			window.matchMedia("(max-height: 900px)").matches)
 			? 2
 			: 3,
 	);
 
 	useEffect(() => {
+		if (fewPlaylists) return;
 		const mediaQuery = window.matchMedia("(max-height: 900px)");
 		const handleChange = (e: MediaQueryListEvent) => {
 			setRowCount(e.matches ? 2 : 3);
 		};
 		mediaQuery.addEventListener("change", handleChange);
 		return () => mediaQuery.removeEventListener("change", handleChange);
-	}, []);
+	}, [fewPlaylists]);
 
 	const sectionRef = useRef<HTMLElement>(null);
 	const pinnedWrapperRef = useRef<HTMLDivElement>(null);
@@ -182,9 +186,10 @@ export function FlagPlaylistsStep({
 				<div ref={viewportRef} className="mt-8 flex-1 overflow-hidden">
 					<div ref={trackRef} className="flex h-full items-center">
 						<div
-							className="playlist-grid grid h-full auto-cols-[min(200px,40vw)] content-center gap-4 py-1 pl-[max(1.5rem,env(safe-area-inset-left))] md:pl-[max(3rem,env(safe-area-inset-left))]"
+							className="playlist-grid grid h-full auto-cols-[min(200px,40vw)] items-center gap-4 py-1 pl-[max(1.5rem,env(safe-area-inset-left))] md:pl-[max(3rem,env(safe-area-inset-left))]"
 							style={{
 								gridAutoFlow: "column",
+								gridTemplateRows: `repeat(${rowCount}, 1fr)`,
 							}}
 						>
 							{initialPlaylists.map((playlist, index) => {
@@ -216,41 +221,36 @@ export function FlagPlaylistsStep({
 											}),
 										}}
 									>
-										<div className="relative">
-											<div
-												className="transition-all duration-300"
+										<div
+											className="aspect-square w-full overflow-hidden transition-all duration-300"
+											style={{
+												filter: isSelected
+													? "grayscale(0%)"
+													: "grayscale(100%)",
+												opacity: isSelected ? 1 : 0.35,
+											}}
+										>
+											{playlist.imageUrl ? (
+												<img
+													src={playlist.imageUrl}
+													alt={playlist.name}
+													className="h-full w-full object-cover"
+												/>
+											) : (
+												<AlbumPlaceholder />
+											)}
+										</div>
+										<div className="mt-2 min-w-0 max-w-full">
+											<p
+												className="truncate text-sm font-medium"
 												style={{
-													filter: isSelected
-														? "grayscale(0%)"
-														: "grayscale(100%)",
-													opacity: isSelected ? 1 : 0.35,
+													fontFamily: fonts.body,
+													color: theme.text,
+													opacity: isSelected ? 1 : 0.6,
 												}}
 											>
-												<CDCase src={playlist.imageUrl} alt={playlist.name} />
-											</div>
-											{/* Spine text: 8% inset avoids CD case hinge ridges (top ends ~6.4%, bottom starts ~92.7%) */}
-											<div
-												className="absolute flex items-center justify-center overflow-hidden"
-												style={{
-													top: "8%",
-													bottom: "8%",
-													left: 0,
-													width: "12.67%",
-												}}
-											>
-												<p
-													className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-light uppercase tracking-wider"
-													style={{
-														fontFamily: fonts.body,
-														color: theme.text,
-														writingMode: "vertical-rl",
-														transform: "rotate(180deg)",
-														maxHeight: "100%",
-													}}
-												>
-													{playlist.name}
-												</p>
-											</div>
+												{playlist.name}
+											</p>
 										</div>
 									</button>
 								);

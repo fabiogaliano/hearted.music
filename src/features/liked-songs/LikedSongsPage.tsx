@@ -290,6 +290,8 @@ export function LikedSongsPage({
 
 	const prefetchAdjacentSuggestions = useCallback(
 		(songId: string) => {
+			queryClient.prefetchQuery(songSuggestionsQueryOptions(songId));
+
 			const songIndex = displayedSongs.findIndex((s) => s.track.id === songId);
 			if (songIndex < 0) return;
 

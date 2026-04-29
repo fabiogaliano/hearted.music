@@ -20,6 +20,7 @@ interface UsePanelAnimationOptions {
 	artistImageUrl?: string;
 	panelColors: PanelColors;
 	hasHeadline: boolean;
+	hasSuggestions?: boolean;
 	sonicTextureText?: string;
 	stackMetaBelowArt?: boolean;
 	heroHeight?: number;
@@ -52,6 +53,7 @@ export function usePanelAnimation(options: UsePanelAnimationOptions) {
 		artistImageUrl,
 		panelColors,
 		hasHeadline,
+		hasSuggestions = false,
 		sonicTextureText,
 		stackMetaBelowArt = false,
 		heroHeight: heroHeightOverride,
@@ -585,15 +587,28 @@ export function usePanelAnimation(options: UsePanelAnimationOptions) {
 	// Hero collapse is driven by headline toggle, not scroll events
 	const onScroll = () => {};
 
+	const staggerHasRunRef = useRef(false);
+
 	// Trigger stagger animation when panel expands
 	useEffect(() => {
 		if (isExpanded) {
 			closeAnalysis();
+			staggerHasRunRef.current = false;
 			const indices = hasHeadline ? [0, 1, 2] : undefined;
-			const id = setTimeout(() => animateStaggerIn(indices), 80);
+			const id = setTimeout(() => {
+				animateStaggerIn(indices);
+				staggerHasRunRef.current = true;
+			}, 80);
 			return () => clearTimeout(id);
 		}
 	}, [isExpanded]);
+
+	// Animate slot 2 when suggestions arrive after the initial stagger already ran
+	useEffect(() => {
+		if (!isExpanded || !hasSuggestions || !staggerHasRunRef.current) return;
+		const el = staggerRefs.current[2];
+		if (el) animateStaggerIn([2]);
+	}, [hasSuggestions, isExpanded]);
 
 	// Reset collapse state when displayed song changes
 	useEffect(() => {
