@@ -186,10 +186,10 @@ export function FlagPlaylistsStep({
 				<div ref={viewportRef} className="mt-8 flex-1 overflow-hidden">
 					<div ref={trackRef} className="flex h-full items-center">
 						<div
-							className="playlist-grid grid h-full auto-cols-[min(200px,40vw)] items-center gap-4 py-1 pl-[max(1.5rem,env(safe-area-inset-left))] md:pl-[max(3rem,env(safe-area-inset-left))]"
+							className="playlist-grid grid h-full auto-cols-[min(200px,40vw)] content-center gap-x-4 gap-y-6 py-1 pl-[max(1.5rem,env(safe-area-inset-left))] md:pl-[max(3rem,env(safe-area-inset-left))]"
 							style={{
 								gridAutoFlow: "column",
-								gridTemplateRows: `repeat(${rowCount}, 1fr)`,
+								gridTemplateRows: `repeat(${rowCount}, auto)`,
 							}}
 						>
 							{initialPlaylists.map((playlist, index) => {

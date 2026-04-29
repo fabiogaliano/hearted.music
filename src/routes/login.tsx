@@ -56,7 +56,7 @@ function LoginPage() {
 						type="button"
 						disabled={loading !== null}
 						onClick={handleGoogleLogin}
-						className="flex w-full items-center justify-center gap-3 rounded-md border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-800 transition-colors hover:bg-neutral-50 disabled:opacity-50"
+						className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-md border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-800 transition-colors hover:bg-neutral-50 disabled:opacity-50"
 					>
 						<GoogleIcon />
 						{loading === "google" ? "Redirecting..." : "Continue with Google"}
