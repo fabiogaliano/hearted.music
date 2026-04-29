@@ -71,6 +71,14 @@ function errorResponse(error: { message: string; _tag: string }) {
 	);
 }
 
+function shutdown() {
+	server.stop(true);
+	process.exit(0);
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
+
 console.log(`[Embedding Sidecar] Running on http://127.0.0.1:${server.port}`);
 console.log(`[Embedding Sidecar] Model: ${metadata.embeddingModel} (${metadata.embeddingDims}d)`);
 if (metadata.rerankerModel) {
