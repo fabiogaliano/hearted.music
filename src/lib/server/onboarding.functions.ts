@@ -34,7 +34,10 @@ import {
 	getWalkthroughPreview,
 	type WalkthroughPreviewMatch,
 } from "@/lib/workflows/walkthrough-match-preview/queries";
-import { ensureWalkthroughPreview } from "@/lib/workflows/walkthrough-match-preview/service";
+import {
+	ensureWalkthroughPreview,
+	type EnsurePreviewOutcome,
+} from "@/lib/workflows/walkthrough-match-preview/service";
 
 import { getDemoMatchesForSong } from "@/lib/data/demo-matches";
 import type { LandingSongManifest } from "@/lib/data/landing-songs";
@@ -115,6 +118,54 @@ const stepInputSchema = z.object({
 const playlistIdsInputSchema = z.object({
 	playlistIds: z.array(z.uuid()),
 });
+
+type PreviewEnsureSource =
+	| "save_playlist_targets"
+	| "commit_demo_song"
+	| "get_demo_song_matches";
+
+function logPreviewEnsureOutcome(args: {
+	accountId: string;
+	source: PreviewEnsureSource;
+	outcome: EnsurePreviewOutcome;
+}) {
+	console.info("[onboarding] walkthrough preview ensure outcome", {
+		accountId: args.accountId,
+		source: args.source,
+		outcome: args.outcome,
+	});
+}
+
+async function awaitWalkthroughPreviewEnsure(args: {
+	accountId: string;
+	demoSongId: string;
+	source: PreviewEnsureSource;
+}): Promise<void> {
+	try {
+		const outcome = await ensureWalkthroughPreview({
+			accountId: args.accountId,
+			demoSongId: args.demoSongId,
+		});
+		logPreviewEnsureOutcome({
+			accountId: args.accountId,
+			source: args.source,
+			outcome,
+		});
+	} catch (err) {
+		console.warn(
+			"[onboarding] ensure walkthrough preview failed:",
+			err instanceof Error ? err.message : String(err),
+		);
+	}
+}
+
+function fireAndForgetWalkthroughPreviewEnsure(args: {
+	accountId: string;
+	demoSongId: string;
+	source: PreviewEnsureSource;
+}) {
+	void awaitWalkthroughPreviewEnsure(args);
+}
 
 /**
  * Project a persisted `(onboarding_step, demo_song_id)` pair into the
@@ -636,14 +687,10 @@ export const savePlaylistTargets = createServerFn({ method: "POST" })
 			Result.isOk(prefsForPreview) &&
 			prefsForPreview.value.demo_song_id !== null
 		) {
-			ensureWalkthroughPreview({
+			await awaitWalkthroughPreviewEnsure({
 				accountId: session.accountId,
 				demoSongId: prefsForPreview.value.demo_song_id,
-			}).catch((err) => {
-				console.warn(
-					"[onboarding] ensure walkthrough preview failed:",
-					err instanceof Error ? err.message : String(err),
-				);
+				source: "save_playlist_targets",
 			});
 		}
 
@@ -743,18 +790,10 @@ export const commitDemoSongAndEnterWalkthrough = createServerFn({
 			console.warn("Failed to clear phase job IDs:", clearResult.error);
 		}
 
-		// Kick the walkthrough preview as soon as the demo song is locked in.
-		// The user spends time on /liked-songs before reaching /match, so this
-		// gives the worker a head start. Failure is non-fatal — the UI falls
-		// back to the static demo path on timeout.
-		ensureWalkthroughPreview({
+		await awaitWalkthroughPreviewEnsure({
 			accountId: session.accountId,
 			demoSongId: song.id,
-		}).catch((err) => {
-			console.warn(
-				"[onboarding] ensure walkthrough preview failed:",
-				err instanceof Error ? err.message : String(err),
-			);
+			source: "commit_demo_song",
 		});
 
 		return loadOnboardingSession(session.accountId);
@@ -859,14 +898,10 @@ export const getDemoSongMatches = createServerFn({ method: "GET" })
 			preview.status === "ready";
 
 		if (!isReady) {
-			ensureWalkthroughPreview({
+			fireAndForgetWalkthroughPreviewEnsure({
 				accountId: session.accountId,
 				demoSongId,
-			}).catch((err) => {
-				console.warn(
-					"[onboarding] ensure walkthrough preview failed:",
-					err instanceof Error ? err.message : String(err),
-				);
+				source: "get_demo_song_matches",
 			});
 			return { status: "pending" };
 		}

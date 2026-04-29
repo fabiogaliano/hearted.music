@@ -25,6 +25,11 @@ declare module "uipane" {
 		label?: string;
 	};
 
+	type SlotControl = {
+		type: "slot";
+		label?: string;
+	};
+
 	// PaneConfig is forward-referenced here via interface merging trick:
 	// eslint-disable-next-line @typescript-eslint/no-use-before-define
 	type FolderControl = {
@@ -33,28 +38,40 @@ declare module "uipane" {
 		children: PaneConfig;
 	};
 
+	type SelectOption = string | { value: string; label: string };
+
+	type SelectControl = {
+		type: "select";
+		value?: string;
+		options: SelectOption[];
+	};
+
 	type PaneControl =
 		| SliderControl
 		| ToggleControl
 		| ActionControl
+		| SlotControl
+		| SelectControl
 		| FolderControl;
 
 	type PaneConfig = Record<string, PaneControl>;
 
 	// ---- Return value type inference ----
-	// Uses structural matching (not generic FolderControl<infer Ch>) so TypeScript
-	// can infer the children config through the discriminant `type: "folder"`.
 
 	type PaneControlValue<T> = T extends { type: "slider" }
 		? number
 		: T extends { type: "toggle" }
 			? boolean
-			: T extends { type: "folder"; children: infer Ch }
-				? { [K in keyof Ch]: PaneControlValue<Ch[K]> }
-				: never;
+			: T extends { type: "select" }
+				? string
+				: T extends { type: "folder"; children: infer Ch }
+					? { [K in keyof Ch]: PaneControlValue<Ch[K]> }
+					: never;
 
 	type PaneValues<C extends PaneConfig> = {
-		[K in keyof C]: PaneControlValue<C[K]>;
+		[K in keyof C as C[K] extends ActionControl | SlotControl
+			? never
+			: K]: PaneControlValue<C[K]>;
 	};
 
 	// ---- PaneStore ----
@@ -66,7 +83,16 @@ declare module "uipane" {
 
 	interface PaneStoreApi {
 		getPanels(): Panel[];
-		updateValue(panelId: string, path: string, value: number): void;
+		getValues(panelId: string): Record<string, unknown>;
+		updateValue(
+			panelId: string,
+			path: string,
+			value: number | string | boolean,
+		): void;
+		subscribe(panelId: string, cb: () => void): () => void;
+		subscribeGlobal(cb: () => void): () => void;
+		getSlotNode(panelId: string, path: string): HTMLDivElement | null;
+		subscribeSlot(panelId: string, path: string, cb: () => void): () => void;
 	}
 
 	export const PaneStore: PaneStoreApi;
@@ -84,5 +110,10 @@ declare module "uipane" {
 	// ---- Components ----
 
 	export function PaneRoot(props: { children: ReactNode }): JSX.Element;
+	export function PaneSlot(props: {
+		panel: string;
+		path: string;
+		children?: ReactNode;
+	}): ReactNode;
 	export function initPane(): void;
 }

@@ -10,6 +10,9 @@ export function MatchingSession({
 	playlists,
 	addedTo,
 	state,
+	isDemo,
+	realAvailable,
+	onRefresh,
 	onAdd,
 	onDismiss,
 	onNext,
@@ -60,6 +63,9 @@ export function MatchingSession({
 						<MatchesSection
 							playlists={playlists}
 							addedTo={addedTo}
+							isDemo={isDemo}
+							realAvailable={realAvailable}
+							onRefresh={onRefresh}
 							onAdd={onAdd}
 							onDismiss={onDismiss}
 							onNext={onNext}

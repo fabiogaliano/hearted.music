@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { PaneStore } from "uipane";
 import { getDemoMatchesForSong } from "@/lib/data/demo-matches";
 import {
 	getDemoSongMatches,
@@ -16,9 +17,17 @@ import type { Playlist, SongForMatching } from "./types";
 const POLL_INTERVAL_MS = 2000;
 const TIMEOUT_MS = 12_000;
 
+type MatchSource = "real" | "fallback";
+
 type MatchState =
 	| { status: "loading" }
-	| { status: "ready"; matches: Playlist[] };
+	| {
+			status: "ready";
+			matches: Playlist[];
+			fallbackMatches: Playlist[];
+			source: MatchSource;
+			pendingRealMatches: Playlist[] | null;
+	  };
 
 function mapServerMatches(matches: DemoMatchPlaylist[]): Playlist[] {
 	return matches.slice(0, 5).map((m) => ({
@@ -67,6 +76,8 @@ export function WalkthroughMatchContent({
 		let cancelled = false;
 		let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
+		const fallback = mapDemoMatches(walkthroughSong.spotifyTrackId);
+
 		const timeoutTimer = setTimeout(() => {
 			if (cancelled) return;
 			timedOutRef.current = true;
@@ -74,7 +85,10 @@ export function WalkthroughMatchContent({
 				if (prev.status === "loading") {
 					return {
 						status: "ready",
-						matches: mapDemoMatches(walkthroughSong.spotifyTrackId),
+						matches: fallback,
+						fallbackMatches: fallback,
+						source: "fallback",
+						pendingRealMatches: null,
 					};
 				}
 				return prev;
@@ -82,15 +96,30 @@ export function WalkthroughMatchContent({
 		}, TIMEOUT_MS);
 
 		async function poll() {
-			if (cancelled || timedOutRef.current) return;
+			if (cancelled) return;
 			try {
 				const result = await getDemoSongMatches();
 				if (cancelled) return;
 
 				if (result.status === "ready") {
-					setMatchState({
-						status: "ready",
-						matches: mapServerMatches(result.matches),
+					const serverMatches = mapServerMatches(result.matches);
+					const source: MatchSource = result.isDemo ? "fallback" : "real";
+
+					setMatchState((prev) => {
+						if (
+							timedOutRef.current &&
+							prev.status === "ready" &&
+							source === "real"
+						) {
+							return { ...prev, pendingRealMatches: serverMatches };
+						}
+						return {
+							status: "ready",
+							matches: serverMatches,
+							fallbackMatches: fallback,
+							source,
+							pendingRealMatches: null,
+						};
 					});
 					return;
 				}
@@ -98,14 +127,17 @@ export function WalkthroughMatchContent({
 				if (result.status === "unavailable") {
 					setMatchState({
 						status: "ready",
-						matches: mapDemoMatches(walkthroughSong.spotifyTrackId),
+						matches: fallback,
+						fallbackMatches: fallback,
+						source: "fallback",
+						pendingRealMatches: null,
 					});
 					return;
 				}
 
 				pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
 			} catch {
-				if (!cancelled && !timedOutRef.current) {
+				if (!cancelled) {
 					pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
 				}
 			}
@@ -120,6 +152,7 @@ export function WalkthroughMatchContent({
 		};
 	}, [walkthroughSong.spotifyTrackId]);
 
+	const paneViewSource = usePaneMatchSource();
 	const currentSong = songToMatchingSong(walkthroughSong);
 	const isLoading = matchState.status === "loading";
 
@@ -127,6 +160,42 @@ export function WalkthroughMatchContent({
 		if (isPending) return;
 		await navigateTo("plan-selection");
 	};
+
+	const hasRealPending =
+		matchState.status === "ready" && matchState.pendingRealMatches !== null;
+	const paneRealAvailable = usePaneRealAvailable();
+	const realAvailable = hasRealPending || paneRealAvailable;
+
+	const handleRefresh = () => {
+		if (hasRealPending) {
+			setMatchState((prev) => {
+				if (prev.status !== "ready" || !prev.pendingRealMatches) return prev;
+				return {
+					...prev,
+					matches: prev.pendingRealMatches,
+					source: "real",
+					pendingRealMatches: null,
+				};
+			});
+		}
+		clearPaneRealAvailable();
+	};
+
+	useSyncPaneRealAvailable(hasRealPending);
+
+	const effectiveSource: MatchSource =
+		matchState.status === "ready"
+			? paneViewSource === "fallback"
+				? "fallback"
+				: matchState.source
+			: "fallback";
+
+	const displayedMatches =
+		matchState.status === "ready"
+			? effectiveSource === "fallback"
+				? matchState.fallbackMatches
+				: matchState.matches
+			: [];
 
 	if (isLoading) {
 		return (
@@ -156,15 +225,88 @@ export function WalkthroughMatchContent({
 			<MatchingHeader currentIndex={0} totalSongs={1} />
 			<MatchingSession
 				currentSong={currentSong}
-				playlists={matchState.matches}
+				playlists={displayedMatches}
 				addedTo={[]}
 				state={{ songMetaVisible: true }}
+				isDemo={effectiveSource === "fallback"}
+				realAvailable={realAvailable}
+				onRefresh={handleRefresh}
 				onAdd={handleWalkthroughAction}
 				onDismiss={handleWalkthroughAction}
 				onNext={handleWalkthroughAction}
 			/>
 		</div>
 	);
+}
+
+// --- Dev-only pane integration (inert in production) ---
+
+const DEV = import.meta.env.DEV;
+const ONBOARDING_PANE_NAME = "Onboarding";
+const MATCH_ENABLED_PATH = "matching.enabled";
+const MATCH_SOURCE_PATH = "matching.matchSource";
+const REAL_AVAILABLE_PATH = "realAvailable";
+const noop = () => {};
+
+function getPaneId(): string | undefined {
+	return PaneStore.getPanels().find((p) => p.name === ONBOARDING_PANE_NAME)?.id;
+}
+
+function isMatchingDebugEnabled(): boolean {
+	const id = getPaneId();
+	if (!id) return false;
+	return (PaneStore.getValues(id)[MATCH_ENABLED_PATH] as boolean) ?? false;
+}
+
+function usePaneMatchSource(): MatchSource {
+	const isReal = useSyncExternalStore(
+		(cb) => {
+			if (!DEV) return noop;
+			const id = getPaneId();
+			if (!id) return noop;
+			return PaneStore.subscribe(id, cb);
+		},
+		() => {
+			if (!DEV || !isMatchingDebugEnabled()) return true;
+			const id = getPaneId();
+			if (!id) return true;
+			return (PaneStore.getValues(id)[MATCH_SOURCE_PATH] as boolean) ?? true;
+		},
+		() => true,
+	);
+	return isReal ? "real" : "fallback";
+}
+
+function usePaneRealAvailable(): boolean {
+	return useSyncExternalStore(
+		(cb) => {
+			if (!DEV) return noop;
+			const id = getPaneId();
+			if (!id) return noop;
+			return PaneStore.subscribe(id, cb);
+		},
+		() => {
+			if (!DEV || !isMatchingDebugEnabled()) return false;
+			const id = getPaneId();
+			if (!id) return false;
+			return (PaneStore.getValues(id)[REAL_AVAILABLE_PATH] as boolean) ?? false;
+		},
+		() => false,
+	);
+}
+
+function clearPaneRealAvailable() {
+	if (!DEV) return;
+	const id = getPaneId();
+	if (id) PaneStore.updateValue(id, REAL_AVAILABLE_PATH, false);
+}
+
+function useSyncPaneRealAvailable(realAvailable: boolean) {
+	useEffect(() => {
+		if (!DEV) return;
+		const id = getPaneId();
+		if (id) PaneStore.updateValue(id, REAL_AVAILABLE_PATH, realAvailable);
+	}, [realAvailable]);
 }
 
 function MatchesSkeleton() {

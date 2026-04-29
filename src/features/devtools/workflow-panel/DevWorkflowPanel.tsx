@@ -1,12 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { PaneRoot, PaneStore, useActiveTab, usePane } from "uipane";
+import { PaneRoot, PaneSlot, PaneStore, useActiveTab, usePane } from "uipane";
 import {
 	useCallback,
 	useEffect,
 	useMemo,
-	useRef,
 	useState,
+	useSyncExternalStore,
 	type CSSProperties,
 } from "react";
 import { WORKFLOW_PRESETS } from "@/features/devtools/workflow-panel/presets";
@@ -310,43 +310,80 @@ export function DevWorkflowPanel() {
 	);
 
 	// ---- Tab 4: Onboarding ----
+	const { data: liveOnboarding } = useQuery<OnboardingAuthPayload>({
+		queryKey: ONBOARDING_SESSION_QUERY_KEY,
+		queryFn: () => getOnboardingSession(),
+	});
+	const currentOnboardingStep: OnboardingStep =
+		liveOnboarding?.session.status === "complete"
+			? "complete"
+			: (liveOnboarding?.session.status ?? "welcome");
+
+	const stepOptions = useMemo(
+		() =>
+			ONBOARDING_STEPS.map((s, i) => {
+				const num = String(i + 1).padStart(2, "0");
+				return {
+					value: s,
+					label:
+						s === currentOnboardingStep
+							? `${num}. ${s} (current)`
+							: `${num}. ${s}`,
+				};
+			}),
+		[currentOnboardingStep],
+	);
+
 	const onboardingParams = usePane(
 		"Onboarding",
 		{
-			stepIndex: {
-				type: "slider",
-				value: 0,
-				min: 0,
-				max: ONBOARDING_STEPS.length - 1,
-				step: 1,
+			matching: {
+				type: "folder",
+				open: false,
+				children: {
+					enabled: { type: "toggle", value: false },
+					status: { type: "slot" },
+					matchSource: { type: "toggle", value: true },
+					simulateRealReady: { type: "action", label: "Simulate Real Ready" },
+				},
 			},
-			goToStep: { type: "action", label: "Go to Step" },
-			prev: { type: "action", label: "← Prev" },
-			next: { type: "action", label: "Next →" },
+			navigation: {
+				type: "folder",
+				open: true,
+				children: {
+					step: {
+						type: "select",
+						value: currentOnboardingStep,
+						options: stepOptions,
+					},
+					prev: { type: "action", label: "← Prev" },
+					next: { type: "action", label: "Next →" },
+				},
+			},
 		},
 		{
 			onAction: (path) => {
 				switch (path) {
-					case "goToStep":
-						void handleOnboardingNav(
-							ONBOARDING_STEPS[onboardingStepRef.current]!,
-						);
-						break;
-					case "prev":
+					case "navigation.prev":
 						void handleOnboardingNav("prev");
 						break;
-					case "next":
+					case "navigation.next":
 						void handleOnboardingNav("next");
 						break;
+					case "matching.simulateRealReady": {
+						const id = PaneStore.getPanels().find(
+							(p) => p.name === ONBOARDING_PANE_NAME,
+						)?.id;
+						if (!id) break;
+						const vals = PaneStore.getValues(id);
+						if (!(vals["matching.enabled"] as boolean)) break;
+						PaneStore.updateValue(id, "realAvailable", true);
+						break;
+					}
 				}
 			},
 		},
 	);
-
-	const onboardingStepRef = useRef(onboardingParams.stepIndex);
-	useEffect(() => {
-		onboardingStepRef.current = onboardingParams.stepIndex;
-	}, [onboardingParams.stepIndex]);
 
 	// ---- Sync settings ----
 	useEffect(() => {
@@ -575,19 +612,6 @@ export function DevWorkflowPanel() {
 		[queryClient, router, isRunning],
 	);
 
-	// ---- Onboarding current step (reactive subscription) ----
-	// Subscribes to the same cache entry populated by `/_authenticated`'s
-	// `beforeLoad` — so the step label/highlight re-renders when a
-	// navigation or handler refetches the session.
-	const { data: liveOnboarding } = useQuery<OnboardingAuthPayload>({
-		queryKey: ONBOARDING_SESSION_QUERY_KEY,
-		queryFn: () => getOnboardingSession(),
-	});
-	const currentOnboardingStep: OnboardingStep =
-		liveOnboarding?.session.status === "complete"
-			? "complete"
-			: (liveOnboarding?.session.status ?? "welcome");
-
 	// ---- Progress hooks ----
 	const enrichProgress = useLibraryProcessingJobProgress(
 		wfState?.enrichment.activeJobId,
@@ -597,6 +621,8 @@ export function DevWorkflowPanel() {
 		wfState?.matchSnapshotRefresh.activeJobId,
 		settingsParams.polling.jobProgressPollMs,
 	);
+
+	const realAvailable = usePaneRealAvailable();
 
 	return (
 		<PaneRoot>
@@ -609,10 +635,37 @@ export function DevWorkflowPanel() {
 				matchProgress={matchProgress}
 				onStep={handleStep}
 				onRunUntilIdle={handleRunUntilIdle}
-				currentOnboardingStep={currentOnboardingStep}
-				onboardingSliderIndex={onboardingParams.stepIndex}
 			/>
+			<PaneSlot panel="Onboarding" path="matching.status">
+				<MatchStatusBadges
+					matchSource={onboardingParams.matching.matchSource}
+					realAvailable={realAvailable}
+				/>
+			</PaneSlot>
 		</PaneRoot>
+	);
+}
+
+const ONBOARDING_PANE_NAME = "Onboarding";
+
+function usePaneRealAvailable(): boolean {
+	return useSyncExternalStore(
+		(cb) => {
+			const id = PaneStore.getPanels().find(
+				(p) => p.name === ONBOARDING_PANE_NAME,
+			)?.id;
+			if (!id) return () => {};
+			return PaneStore.subscribe(id, cb);
+		},
+		() => {
+			const id = PaneStore.getPanels().find(
+				(p) => p.name === ONBOARDING_PANE_NAME,
+			)?.id;
+			if (!id) return false;
+			const vals = PaneStore.getValues(id);
+			return (vals["realAvailable"] as boolean) ?? false;
+		},
+		() => false,
 	);
 }
 
@@ -682,8 +735,6 @@ function PanelChildren({
 	matchProgress,
 	onStep,
 	onRunUntilIdle,
-	currentOnboardingStep,
-	onboardingSliderIndex,
 }: {
 	activeTab: string | null;
 	isRunning: boolean;
@@ -693,11 +744,7 @@ function PanelChildren({
 	matchProgress: LibraryProcessingJobProgress | null;
 	onStep: () => void;
 	onRunUntilIdle: () => void;
-	currentOnboardingStep: OnboardingStep;
-	onboardingSliderIndex: number;
 }) {
-	const currentIdx = ONBOARDING_STEPS.indexOf(currentOnboardingStep);
-
 	return (
 		<div style={S.root}>
 			{/* Action bar — only on Enrichment/Matching tabs */}
@@ -772,73 +819,38 @@ function PanelChildren({
 					</div>
 				)}
 
-			{/* Onboarding tab — step list */}
-			{activeTab === "Onboarding" && (
-				<div style={S.card}>
-					<div style={S.row}>
-						<span style={{ color: "#fff", fontWeight: 700 }}>Steps</span>
-						<Badge
-							label={`${currentIdx + 1}/${ONBOARDING_STEPS.length}`}
-							status={
-								currentOnboardingStep === "complete" ? "completed" : "active"
-							}
-						/>
-					</div>
-					<div style={{ display: "grid", gap: 2 }}>
-						{ONBOARDING_STEPS.map((step, i) => {
-							const isCurrent = i === currentIdx;
-							const isSliderTarget = i === onboardingSliderIndex;
-							return (
-								<div
-									key={step}
-									style={{
-										display: "flex",
-										alignItems: "center",
-										gap: 6,
-										padding: "2px 4px",
-										borderRadius: 4,
-										background:
-											isSliderTarget && !isCurrent
-												? "rgba(255,255,255,0.04)"
-												: "transparent",
-									}}
-								>
-									<span
-										style={{
-											width: 14,
-											textAlign: "right",
-											color: "#525252",
-											fontSize: 10,
-										}}
-									>
-										{i}
-									</span>
-									<span
-										style={{
-											color: isCurrent
-												? "#86efac"
-												: isSliderTarget
-													? "#fde68a"
-													: "#737373",
-											fontWeight: isCurrent ? 700 : 400,
-										}}
-									>
-										{isCurrent ? "→ " : "  "}
-										{step}
-									</span>
-								</div>
-							);
-						})}
-					</div>
-					<div style={{ ...S.label, marginTop: 2 }}>
-						Slider target: {ONBOARDING_STEPS[onboardingSliderIndex]}
-					</div>
-				</div>
-			)}
-
 			{/* Last action */}
 			{lastAction && <div style={S.lastAction}>{lastAction}</div>}
 		</div>
+	);
+}
+
+function MatchStatusBadges({
+	matchSource,
+	realAvailable,
+}: {
+	matchSource: boolean;
+	realAvailable: boolean;
+}) {
+	return (
+		<>
+			<div className="up-labeled-row">
+				<span className="up-labeled-row-label">Match view</span>
+				<span
+					style={{ fontSize: 11, color: matchSource ? "#86efac" : "#737373" }}
+				>
+					{matchSource ? "real" : "fallback"}
+				</span>
+			</div>
+			<div className="up-labeled-row">
+				<span className="up-labeled-row-label">Real matches</span>
+				<span
+					style={{ fontSize: 11, color: realAvailable ? "#86efac" : "#737373" }}
+				>
+					{realAvailable ? "ready" : "waiting"}
+				</span>
+			</div>
+		</>
 	);
 }
 

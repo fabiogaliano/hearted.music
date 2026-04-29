@@ -12,8 +12,8 @@
  *         and `failed` rows that no longer have a runner behind them).
  *   - fingerprint mismatch (or no row) → ensure fresh work.
  *
- * Never awaits the actual computation — onboarding navigation must not block
- * on matching.
+ * Only ensures DB state (job row + preview row) — the actual computation
+ * (embedding, scoring) runs in the worker.
  */
 
 import { Result } from "better-result";

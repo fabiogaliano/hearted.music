@@ -47,6 +47,9 @@ export interface MatchingSessionProps {
 	playlists: Playlist[];
 	addedTo: string[];
 	state: MatchingState;
+	isDemo?: boolean;
+	realAvailable?: boolean;
+	onRefresh?: () => void;
 	onAdd: (playlistId: string) => void;
 	onDismiss: () => void;
 	onNext: () => void;
