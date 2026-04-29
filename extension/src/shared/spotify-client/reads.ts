@@ -4,6 +4,35 @@ import {
 	mapPathfinderPlaylistTrack,
 	mapPathfinderTrack,
 } from "../mappers";
+
+const HTML_ENTITIES: Record<string, string> = {
+	amp: "&",
+	lt: "<",
+	gt: ">",
+	quot: '"',
+	apos: "'",
+	nbsp: " ",
+	mdash: "—",
+	ndash: "–",
+	lsquo: "‘",
+	rsquo: "’",
+	ldquo: "“",
+	rdquo: "”",
+};
+
+function decodeHtmlEntities(text: string): string {
+	const stripped = text.replace(/<[^>]+>/g, "");
+	return stripped.replace(
+		/&(#(?:x[0-9a-fA-F]+|\d+)|\w+);/g,
+		(match, entity: string) => {
+			if (entity.startsWith("#x"))
+				return String.fromCodePoint(parseInt(entity.slice(2), 16));
+			if (entity.startsWith("#"))
+				return String.fromCodePoint(parseInt(entity.slice(1), 10));
+			return HTML_ENTITIES[entity] ?? match;
+		},
+	);
+}
 import { queryPathfinder } from "../pathfinder";
 import type {
 	SpotifyPlaylistDTO,
@@ -13,11 +42,16 @@ import type {
 import type {
 	PathfinderFetchLibraryTracksResponse,
 	PathfinderFetchPlaylistContentsResponse,
+	PathfinderGetTrackResponse,
 	PathfinderLibraryV3Response,
 	PathfinderProfileAttributesResponse,
 	PathfinderQueryArtistOverviewResponse,
 } from "./responses.types";
-import type { ArtistOverviewResult, ProgressCallback } from "./types";
+import type {
+	ArtistOverviewResult,
+	ProgressCallback,
+	TrackResult,
+} from "./types";
 
 export async function getCurrentUserProfile(
 	token: string,
@@ -176,15 +210,20 @@ export async function fetchPlaylistTracks(
 export async function queryArtistOverview(
 	token: string,
 	artistUri: string,
-	locale: string = "en",
+	locale: string = "",
 ): Promise<ArtistOverviewResult> {
 	const data = await queryPathfinder<PathfinderQueryArtistOverviewResponse>(
 		token,
 		"queryArtistOverview",
-		{ uri: artistUri, locale },
+		{ uri: artistUri, locale, preReleaseV2: false },
 	);
 	const artist = data.data.artistUnion;
 	const sources = artist.visuals?.avatarImage?.sources ?? [];
+	const profileAny = artist.profile as unknown as {
+		biography?: { text: string };
+	};
+	const rawBio = profileAny.biography?.text ?? null;
+	const bio = rawBio ? decodeHtmlEntities(rawBio) : null;
 
 	return {
 		id: artist.id,
@@ -193,6 +232,37 @@ export async function queryArtistOverview(
 			url: s.url,
 			width: s.width,
 			height: s.height,
+		})),
+		bio,
+	};
+}
+
+export async function getTrack(
+	token: string,
+	trackUri: string,
+): Promise<TrackResult> {
+	const data = await queryPathfinder<PathfinderGetTrackResponse>(
+		token,
+		"getTrack",
+		{ uri: trackUri },
+	);
+	const t = data.data.trackUnion;
+	const allArtists = [
+		...(t.firstArtist?.items ?? []),
+		...(t.otherArtists?.items ?? []),
+	];
+
+	return {
+		id: t.id,
+		uri: t.uri,
+		name: t.name,
+		durationMs: t.duration.totalMilliseconds,
+		albumId: t.albumOfTrack.id,
+		albumName: t.albumOfTrack.name,
+		albumCoverArt: t.albumOfTrack.coverArt?.sources ?? [],
+		artists: allArtists.map((a) => ({
+			id: a.id,
+			name: a.profile.name,
 		})),
 	};
 }

@@ -1,5 +1,6 @@
 import type { FetchLibraryTracks } from "./contracts/pathfinder/fetchLibraryTracks.types";
 import type { FetchPlaylistContents } from "./contracts/pathfinder/fetchPlaylistContents.types";
+import type { GetTrack } from "./contracts/pathfinder/getTrack.types";
 import type { IsCurated } from "./contracts/pathfinder/isCurated.types";
 import type { LibraryV3 } from "./contracts/pathfinder/libraryV3.types";
 import type { ProfileAttributes } from "./contracts/pathfinder/profileAttributes.types";
@@ -15,6 +16,7 @@ export type PathfinderFetchLibraryTracksResponse = FetchLibraryTracks;
 export type PathfinderLibraryV3Response = LibraryV3;
 export type PathfinderFetchPlaylistContentsResponse = FetchPlaylistContents;
 export type PathfinderQueryArtistOverviewResponse = QueryArtistOverview;
+export type PathfinderGetTrackResponse = GetTrack;
 export type PathfinderIsCuratedResponse = IsCurated;
 
 export type PathfinderLibraryTrackItem =

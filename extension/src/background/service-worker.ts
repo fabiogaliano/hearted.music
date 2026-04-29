@@ -15,8 +15,8 @@ import type {
 	UserProfile,
 } from "../shared/types";
 import {
-	attachArtistImagesToTracks,
-	fetchArtistImageUrls,
+	attachArtistDataToTracks,
+	fetchArtistData,
 } from "./artist-image-hydration";
 import { handleSpotifyCommand } from "./command-handler";
 import {
@@ -284,7 +284,7 @@ async function performSync(): Promise<SyncResult> {
 			`[hearted.] Sync complete: ${likedSongs.length} liked songs, ${playlists.length} playlists, ${totalTracks} playlist tracks`,
 		);
 
-		const artistImageUrls = await fetchArtistImageUrls({
+		const artistResults = await fetchArtistData({
 			token,
 			tracks: [
 				...likedSongs,
@@ -292,13 +292,13 @@ async function performSync(): Promise<SyncResult> {
 			],
 			postToBackend,
 		});
-		const hydratedLikedSongs = attachArtistImagesToTracks(
+		const hydratedLikedSongs = attachArtistDataToTracks(
 			likedSongs,
-			artistImageUrls,
+			artistResults,
 		);
 		const hydratedPlaylistTracks = playlistTracks.map((entry) => ({
 			...entry,
-			tracks: attachArtistImagesToTracks(entry.tracks, artistImageUrls),
+			tracks: attachArtistDataToTracks(entry.tracks, artistResults),
 		}));
 		await setSyncState({ phase: "uploading" });
 

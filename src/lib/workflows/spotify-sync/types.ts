@@ -12,6 +12,7 @@ export interface SpotifyTrackArtistDTO {
 	id: string;
 	name: string;
 	imageUrl?: string | null;
+	bio?: string | null;
 }
 
 /** Track payload from extension sync (liked songs or playlist tracks) */

@@ -55,6 +55,7 @@ const SpotifyTrackDTOSchema = z.object({
 				id: z.string(),
 				name: z.string(),
 				imageUrl: z.string().nullable().optional(),
+				bio: z.string().nullable().optional(),
 			}),
 		),
 		album: z.object({

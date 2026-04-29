@@ -222,6 +222,7 @@ export type Database = {
 			};
 			artist: {
 				Row: {
+					bio: string | null;
 					created_at: string;
 					image_url: string | null;
 					name: string;
@@ -229,6 +230,7 @@ export type Database = {
 					updated_at: string;
 				};
 				Insert: {
+					bio?: string | null;
 					created_at?: string;
 					image_url?: string | null;
 					name: string;
@@ -236,6 +238,7 @@ export type Database = {
 					updated_at?: string;
 				};
 				Update: {
+					bio?: string | null;
 					created_at?: string;
 					image_url?: string | null;
 					name?: string;
@@ -1248,10 +1251,7 @@ export type Database = {
 					genres: string[];
 					id: string;
 					image_url: string | null;
-					isrc: string | null;
 					name: string;
-					popularity: number | null;
-					preview_url: string | null;
 					spotify_id: string;
 					updated_at: string;
 				};
@@ -1265,10 +1265,7 @@ export type Database = {
 					genres?: string[];
 					id?: string;
 					image_url?: string | null;
-					isrc?: string | null;
 					name: string;
-					popularity?: number | null;
-					preview_url?: string | null;
 					spotify_id: string;
 					updated_at?: string;
 				};
@@ -1282,10 +1279,7 @@ export type Database = {
 					genres?: string[];
 					id?: string;
 					image_url?: string | null;
-					isrc?: string | null;
 					name?: string;
-					popularity?: number | null;
-					preview_url?: string | null;
 					spotify_id?: string;
 					updated_at?: string;
 				};
@@ -1620,67 +1614,6 @@ export type Database = {
 				};
 				Relationships: [];
 			};
-			walkthrough_match_preview: {
-				Row: {
-					account_id: string;
-					created_at: string;
-					demo_song_id: string | null;
-					error: string | null;
-					fingerprint: string;
-					job_id: string | null;
-					matches: Json;
-					status: Database["public"]["Enums"]["walkthrough_preview_status"];
-					target_playlist_ids: string[];
-					updated_at: string;
-				};
-				Insert: {
-					account_id: string;
-					created_at?: string;
-					demo_song_id?: string | null;
-					error?: string | null;
-					fingerprint: string;
-					job_id?: string | null;
-					matches?: Json;
-					status?: Database["public"]["Enums"]["walkthrough_preview_status"];
-					target_playlist_ids?: string[];
-					updated_at?: string;
-				};
-				Update: {
-					account_id?: string;
-					created_at?: string;
-					demo_song_id?: string | null;
-					error?: string | null;
-					fingerprint?: string;
-					job_id?: string | null;
-					matches?: Json;
-					status?: Database["public"]["Enums"]["walkthrough_preview_status"];
-					target_playlist_ids?: string[];
-					updated_at?: string;
-				};
-				Relationships: [
-					{
-						foreignKeyName: "walkthrough_match_preview_account_id_fkey";
-						columns: ["account_id"];
-						isOneToOne: true;
-						referencedRelation: "account";
-						referencedColumns: ["id"];
-					},
-					{
-						foreignKeyName: "walkthrough_match_preview_demo_song_id_fkey";
-						columns: ["demo_song_id"];
-						isOneToOne: false;
-						referencedRelation: "song";
-						referencedColumns: ["id"];
-					},
-					{
-						foreignKeyName: "walkthrough_match_preview_job_id_fkey";
-						columns: ["job_id"];
-						isOneToOne: false;
-						referencedRelation: "job";
-						referencedColumns: ["id"];
-					},
-				];
-			};
 			user_preferences: {
 				Row: {
 					account_id: string;
@@ -1777,6 +1710,67 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			walkthrough_match_preview: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					demo_song_id: string | null;
+					error: string | null;
+					fingerprint: string;
+					job_id: string | null;
+					matches: Json;
+					status: Database["public"]["Enums"]["walkthrough_preview_status"];
+					target_playlist_ids: string[];
+					updated_at: string;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					demo_song_id?: string | null;
+					error?: string | null;
+					fingerprint: string;
+					job_id?: string | null;
+					matches?: Json;
+					status?: Database["public"]["Enums"]["walkthrough_preview_status"];
+					target_playlist_ids?: string[];
+					updated_at?: string;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					demo_song_id?: string | null;
+					error?: string | null;
+					fingerprint?: string;
+					job_id?: string | null;
+					matches?: Json;
+					status?: Database["public"]["Enums"]["walkthrough_preview_status"];
+					target_playlist_ids?: string[];
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "walkthrough_match_preview_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: true;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "walkthrough_match_preview_demo_song_id_fkey";
+						columns: ["demo_song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "walkthrough_match_preview_job_id_fkey";
+						columns: ["job_id"];
+						isOneToOne: false;
+						referencedRelation: "job";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 		};
 		Views: {
 			[_ in never]: never;
@@ -1845,32 +1839,6 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
-			claim_pending_walkthrough_preview_job: {
-				Args: never;
-				Returns: {
-					account_id: string;
-					attempts: number;
-					completed_at: string | null;
-					created_at: string;
-					error: string | null;
-					heartbeat_at: string | null;
-					id: string;
-					max_attempts: number;
-					progress: Json | null;
-					queue_priority: number | null;
-					satisfies_requested_at: string | null;
-					started_at: string | null;
-					status: Database["public"]["Enums"]["job_status"];
-					type: Database["public"]["Enums"]["job_type"];
-					updated_at: string;
-				}[];
-				SetofOptions: {
-					from: "*";
-					to: "job";
-					isOneToOne: false;
-					isSetofReturn: true;
-				};
-			};
 			claim_pending_lightweight_enrichment_job: {
 				Args: never;
 				Returns: {
@@ -1898,6 +1866,32 @@ export type Database = {
 				};
 			};
 			claim_pending_rematch_job: {
+				Args: never;
+				Returns: {
+					account_id: string;
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error: string | null;
+					heartbeat_at: string | null;
+					id: string;
+					max_attempts: number;
+					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
+					started_at: string | null;
+					status: Database["public"]["Enums"]["job_status"];
+					type: Database["public"]["Enums"]["job_type"];
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
+			claim_pending_walkthrough_preview_job: {
 				Args: never;
 				Returns: {
 					account_id: string;
@@ -2062,7 +2056,7 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
-			mark_dead_walkthrough_preview_jobs: {
+			mark_dead_rematch_jobs: {
 				Args: { stale_threshold: string };
 				Returns: {
 					account_id: string;
@@ -2088,7 +2082,7 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
-			mark_dead_rematch_jobs: {
+			mark_dead_walkthrough_preview_jobs: {
 				Args: { stale_threshold: string };
 				Returns: {
 					account_id: string;
@@ -2227,7 +2221,7 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
-			sweep_stale_walkthrough_preview_jobs: {
+			sweep_stale_rematch_jobs: {
 				Args: { stale_threshold: string };
 				Returns: {
 					account_id: string;
@@ -2253,7 +2247,7 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
-			sweep_stale_rematch_jobs: {
+			sweep_stale_walkthrough_preview_jobs: {
 				Args: { stale_threshold: string };
 				Returns: {
 					account_id: string;

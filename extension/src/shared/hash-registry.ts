@@ -13,7 +13,8 @@ export const DEFAULT_HASHES: Record<string, string> = {
 	removeFromPlaylist:
 		"47b2a1234b17748d332dd0431534f22450e9ecbb3d5ddcdacbd83368636a0990",
 	queryArtistOverview:
-		"dd14c6043d8127b56c5acbe534f6b3c58714f0c26bc6ad41776079ed52833a8f",
+		"7f86ff63e38c24973a2842b672abe44c910c1973978dc8a4a0cb648edef34527",
+	getTrack: "612585ae06ba435ad26369870deaae23b5c8800a256cd8a57e08eddc25a37294",
 } as const;
 
 const STORAGE_KEY = "hashRegistry";

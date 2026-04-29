@@ -26,12 +26,9 @@ export function mapSpotifyTrackToSongData(st: SpotifyTrackDTO) {
 		album_id: st.track.album.id,
 		album_name: st.track.album.name,
 		image_url: st.track.album.images[0]?.url ?? null,
-		isrc: null,
 		artists: st.track.artists.map((a) => a.name),
 		artist_ids: st.track.artists.map((a) => a.id),
 		duration_ms: st.track.duration_ms,
-		popularity: null,
-		preview_url: null,
 	};
 }
 
@@ -78,12 +75,16 @@ function collectArtistUpsertData(
 					spotify_id: a.id,
 					name: a.name,
 					image_url: a.imageUrl ?? null,
+					bio: a.bio ?? null,
 				});
 				continue;
 			}
 
 			if (existing.image_url == null && a.imageUrl != null) {
 				existing.image_url = a.imageUrl;
+			}
+			if (existing.bio == null && a.bio != null) {
+				existing.bio = a.bio;
 			}
 		}
 	}

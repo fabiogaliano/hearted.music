@@ -54,6 +54,7 @@ export type SpotifyTrackArtistDTO = {
 	id: string;
 	name: string;
 	imageUrl?: string | null;
+	bio?: string | null;
 };
 
 /** Mirrors backend SpotifyTrackDTO — extension cannot import from app source */

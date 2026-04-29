@@ -36,6 +36,18 @@ export type ArtistOverviewResult = {
 	id: PathfinderQueryArtistOverviewResponse["data"]["artistUnion"]["id"];
 	name: PathfinderQueryArtistOverviewResponse["data"]["artistUnion"]["profile"]["name"];
 	avatarImages: ArtistImageSource[];
+	bio: string | null;
+};
+
+export type TrackResult = {
+	id: string;
+	uri: string;
+	name: string;
+	durationMs: number;
+	albumId: string;
+	albumName: string;
+	albumCoverArt: Array<{ url: string; width: number; height: number }>;
+	artists: Array<{ id: string; name: string }>;
 };
 
 // --- Write Operation Results ---

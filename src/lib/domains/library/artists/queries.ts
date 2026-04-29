@@ -21,6 +21,7 @@ export interface ArtistUpsertData {
 	spotify_id: string;
 	name: string;
 	image_url: string | null;
+	bio?: string | null;
 }
 
 /**
@@ -91,6 +92,7 @@ export function upsert(
 					spotify_id: a.spotify_id,
 					name: a.name,
 					image_url: a.image_url,
+					...(a.bio != null ? { bio: a.bio } : {}),
 				})),
 				{ onConflict: "spotify_id" },
 			)
