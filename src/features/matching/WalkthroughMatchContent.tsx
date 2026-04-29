@@ -32,6 +32,7 @@ type MatchState =
 function mapServerMatches(matches: DemoMatchPlaylist[]): Playlist[] {
 	return matches.slice(0, 5).map((m) => ({
 		id: m.id,
+		spotifyId: "",
 		name: m.name,
 		reason: m.description ?? "",
 		matchScore: m.score,
@@ -42,6 +43,7 @@ function mapDemoMatches(spotifyTrackId: string): Playlist[] {
 	const demoMatches = getDemoMatchesForSong(spotifyTrackId);
 	return demoMatches.slice(0, 5).map((m) => ({
 		id: m.id,
+		spotifyId: m.spotifyId,
 		name: m.name,
 		reason: m.reason,
 		matchScore: m.matchScore,
@@ -51,6 +53,7 @@ function mapDemoMatches(spotifyTrackId: string): Playlist[] {
 function songToMatchingSong(song: WalkthroughSong): SongForMatching {
 	return {
 		id: song.id,
+		spotifyId: "",
 		name: song.name,
 		artist: song.artist,
 		album: song.album,

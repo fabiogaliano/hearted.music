@@ -11,6 +11,7 @@ export interface SongAnalysis {
 
 export interface SongForMatching {
 	id: string;
+	spotifyId: string;
 	name: string;
 	artist: string;
 	album: string | null;
@@ -26,6 +27,7 @@ export interface SongForMatching {
 
 export interface Playlist {
 	id: string;
+	spotifyId: string;
 	name: string;
 	reason: string;
 	matchScore: number;

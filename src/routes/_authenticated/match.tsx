@@ -22,6 +22,7 @@ import {
 	addSongToPlaylist,
 	dismissSong,
 } from "@/lib/server/matching.functions";
+import { addToPlaylist } from "@/lib/extension/spotify-client";
 
 export const Route = createFileRoute("/_authenticated/match")({
 	// No precondition guard needed. `/_authenticated` already resolved the
@@ -215,6 +216,7 @@ function MatchingPageContent({
 	const currentMatches: Playlist[] =
 		songData?.matches.map((m) => ({
 			id: m.playlist.id,
+			spotifyId: m.playlist.spotifyId,
 			name: m.playlist.name,
 			reason: m.playlist.description ?? "",
 			matchScore: m.score,
@@ -233,6 +235,12 @@ function MatchingPageContent({
 	const handleAdd = async (playlistId: string) => {
 		if (!currentSong) return;
 		addPresented(currentSong.id);
+		const playlist = currentMatches.find((p) => p.id === playlistId);
+		if (playlist?.spotifyId && currentSong.spotifyId) {
+			addToPlaylist(`spotify:playlist:${playlist.spotifyId}`, [
+				`spotify:track:${currentSong.spotifyId}`,
+			]);
+		}
 		await addSongToPlaylist({
 			data: {
 				songId: currentSong.id,

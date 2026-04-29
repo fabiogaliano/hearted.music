@@ -27,6 +27,7 @@ export interface MatchingSessionResult {
 
 export interface MatchingSong {
 	id: string;
+	spotifyId: string;
 	name: string;
 	artist: string;
 	album: string | null;
@@ -159,6 +160,7 @@ export const getMatchingSession = createServerFn({ method: "GET" })
 
 export interface SongSuggestion {
 	playlistId: string;
+	playlistSpotifyId: string;
 	playlistName: string;
 	score: number;
 }
@@ -215,20 +217,19 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 		const playlistIds = undecidedResults.map((mr) => mr.playlist_id);
 		const { data: playlistRows } = await supabase
 			.from("playlist")
-			.select("id, name")
+			.select("id, name, spotify_id")
 			.in("id", playlistIds);
 
-		const playlistMap = new Map(
-			(playlistRows ?? []).map((p) => [p.id, p.name]),
-		);
+		const playlistMap = new Map((playlistRows ?? []).map((p) => [p.id, p]));
 
 		const matches: SongSuggestion[] = undecidedResults
 			.map((mr) => {
-				const name = playlistMap.get(mr.playlist_id);
-				if (!name) return null;
+				const playlist = playlistMap.get(mr.playlist_id);
+				if (!playlist) return null;
 				return {
 					playlistId: mr.playlist_id,
-					playlistName: name,
+					playlistSpotifyId: playlist.spotify_id,
+					playlistName: playlist.name,
 					score: mr.score,
 				};
 			})
@@ -385,6 +386,7 @@ export const getSongMatches = createServerFn({ method: "GET" })
 		return {
 			song: {
 				id: song.id,
+				spotifyId: song.spotify_id,
 				name: song.name,
 				artist: song.artists[0] ?? "Unknown Artist",
 				album: song.album_name,

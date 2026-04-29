@@ -20,6 +20,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { useShortcut } from "@/lib/keyboard/useShortcut";
+import { addSongToPlaylist } from "@/lib/server/matching.functions";
+import { addToPlaylist } from "@/lib/extension/spotify-client";
 import { songSuggestionsQueryOptions } from "../queries";
 import { useThemeWithOverride } from "@/lib/theme/ThemeHueProvider";
 import type { ThemeConfig } from "@/lib/theme/types";
@@ -99,13 +101,13 @@ export function SongDetailPanel({
 		? { ...song, displayState: "analyzed" }
 		: song;
 
-	const [expandedSections, setExpandedSections] = useState<Set<string>>(
-		new Set(),
-	);
+	const [addedTo, setAddedTo] = useState<string[]>([]);
 
 	const { data: suggestions } = useQuery(
 		songSuggestionsQueryOptions(song.track.id),
 	);
+	const hasSuggestions =
+		!isWalkthrough && (suggestions?.matches?.length ?? 0) > 0;
 
 	const analysis = displaySong.analysis?.analysis as
 		| AnalysisContent
@@ -171,16 +173,17 @@ export function SongDetailPanel({
 		enabled: isExpanded && hasNext,
 	});
 
-	const toggleSection = (section: string) => {
-		setExpandedSections((prev) => {
-			const next = new Set(prev);
-			if (next.has(section)) {
-				next.delete(section);
-			} else {
-				next.add(section);
-			}
-			return next;
-		});
+	const handleAdd = async (playlistId: string) => {
+		const suggestion = suggestions?.matches.find(
+			(s) => s.playlistId === playlistId,
+		);
+		if (suggestion && song.track.spotify_track_id) {
+			addToPlaylist(`spotify:playlist:${suggestion.playlistSpotifyId}`, [
+				`spotify:track:${song.track.spotify_track_id}`,
+			]);
+		}
+		await addSongToPlaylist({ data: { songId: song.track.id, playlistId } });
+		setAddedTo((prev) => [...prev, playlistId]);
 	};
 
 	const {
@@ -214,6 +217,7 @@ export function SongDetailPanel({
 		artistImageUrl,
 		panelColors,
 		hasHeadline: !!analysis?.headline,
+		hasSuggestions,
 		sonicTextureText: analysis?.sonic_texture,
 		heroHeight,
 	});
@@ -291,9 +295,9 @@ export function SongDetailPanel({
 						analysis={analysis}
 						isAnalysisOpen={isAnalysisOpen}
 						toggleAnalysis={toggleAnalysis}
-						expandedSections={expandedSections}
-						toggleSection={toggleSection}
 						suggestions={suggestions?.matches ?? null}
+						addedTo={addedTo}
+						onAdd={handleAdd}
 						isEnrichmentRunning={isEnrichmentRunning}
 						isWalkthrough={isWalkthrough}
 						getStaggerRef={getStaggerRef}
