@@ -148,6 +148,7 @@ interface PanelContentProps {
 	suggestions: SongSuggestion[] | null;
 	addedTo: string[];
 	onAdd: (playlistId: string) => void;
+	reconnectNeeded?: boolean;
 	isEnrichmentRunning: boolean;
 	/** Walkthrough mode: hide PlaylistsSection, show sticky CTA */
 	isWalkthrough?: boolean;
@@ -170,6 +171,7 @@ export function PanelContent({
 	suggestions,
 	addedTo,
 	onAdd,
+	reconnectNeeded,
 	isEnrichmentRunning,
 	isWalkthrough = false,
 	getStaggerRef,
@@ -353,6 +355,7 @@ export function PanelContent({
 									suggestions={suggestions}
 									addedTo={addedTo}
 									onAdd={onAdd}
+									reconnectNeeded={reconnectNeeded}
 									colors={colorProps}
 								/>
 							</div>

@@ -22,6 +22,8 @@ import { useState } from "react";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { addSongToPlaylist } from "@/lib/server/matching.functions";
 import { addToPlaylist } from "@/lib/extension/spotify-client";
+import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
+import { useSpotifyReconnectState } from "@/lib/extension/useSpotifyReconnectState";
 import { songSuggestionsQueryOptions } from "../queries";
 import { useThemeWithOverride } from "@/lib/theme/ThemeHueProvider";
 import type { ThemeConfig } from "@/lib/theme/types";
@@ -102,6 +104,9 @@ export function SongDetailPanel({
 		: song;
 
 	const [addedTo, setAddedTo] = useState<string[]>([]);
+	const { reconnectNeeded, setReconnectNeeded } = useSpotifyReconnectState(
+		song.track.id,
+	);
 
 	const { data: suggestions } = useQuery(
 		songSuggestionsQueryOptions(song.track.id),
@@ -174,13 +179,21 @@ export function SongDetailPanel({
 	});
 
 	const handleAdd = async (playlistId: string) => {
+		setReconnectNeeded(false);
 		const suggestion = suggestions?.matches.find(
 			(s) => s.playlistId === playlistId,
 		);
 		if (suggestion && song.track.spotify_track_id) {
-			addToPlaylist(`spotify:playlist:${suggestion.playlistSpotifyId}`, [
-				`spotify:track:${song.track.spotify_track_id}`,
-			]);
+			const result = await addToPlaylist(
+				`spotify:playlist:${suggestion.playlistSpotifyId}`,
+				[`spotify:track:${song.track.spotify_track_id}`],
+			);
+			const outcome = outcomeFromCommandResponse(result);
+			if (outcome.status === "reconnect-required") {
+				setReconnectNeeded(true);
+				return;
+			}
+			if (outcome.status === "error") return;
 		}
 		await addSongToPlaylist({ data: { songId: song.track.id, playlistId } });
 		setAddedTo((prev) => [...prev, playlistId]);
@@ -298,6 +311,7 @@ export function SongDetailPanel({
 						suggestions={suggestions?.matches ?? null}
 						addedTo={addedTo}
 						onAdd={handleAdd}
+						reconnectNeeded={reconnectNeeded}
 						isEnrichmentRunning={isEnrichmentRunning}
 						isWalkthrough={isWalkthrough}
 						getStaggerRef={getStaggerRef}

@@ -7,6 +7,11 @@ export interface PlaylistMatchRowColors {
 	border: string;
 }
 
+export type PlaylistMatchRowAction =
+	| { type: "added" }
+	| { type: "add"; onAdd: (playlistId: string) => void }
+	| { type: "custom"; node: ReactNode };
+
 export interface PlaylistMatchRowProps {
 	playlistId: string;
 	name: string;
@@ -14,11 +19,10 @@ export interface PlaylistMatchRowProps {
 	scoreDisplay: ReactNode;
 	/** Optional subtitle below the name (e.g. playlist description) */
 	reason?: string;
-	isAdded: boolean;
-	onAdd: (playlistId: string) => void;
 	colors: PlaylistMatchRowColors;
 	/** "lg" for full-page match view, "sm" (default) for panel context */
 	size?: "sm" | "lg";
+	action: PlaylistMatchRowAction;
 }
 
 export function PlaylistMatchRow({
@@ -26,10 +30,9 @@ export function PlaylistMatchRow({
 	name,
 	scoreDisplay,
 	reason,
-	isAdded,
-	onAdd,
 	colors,
 	size = "sm",
+	action,
 }: PlaylistMatchRowProps) {
 	const nameFontSize = size === "lg" ? "1.125rem" : "0.875rem";
 	const paddingBottom = size === "lg" ? "1.25rem" : "0.75rem";
@@ -42,10 +45,10 @@ export function PlaylistMatchRow({
 				paddingBottom,
 			}}
 		>
-			<div className="flex items-start justify-between">
-				<div className="flex items-start gap-2">
+			<div className="flex items-start justify-between gap-4">
+				<div className="flex min-w-0 flex-1 items-start gap-2">
 					{scoreDisplay}
-					<div className="pt-0.5">
+					<div className="min-w-0 pt-0.5">
 						<span
 							className="font-light"
 							style={{
@@ -67,23 +70,27 @@ export function PlaylistMatchRow({
 					</div>
 				</div>
 
-				{isAdded ? (
-					<span
-						className="text-xs tracking-widest uppercase opacity-50"
-						style={{ fontFamily: fonts.body, color: colors.textMuted }}
-					>
-						Added
-					</span>
-				) : (
-					<button
-						type="button"
-						onClick={() => onAdd(playlistId)}
-						className="text-xs tracking-widest uppercase opacity-0 transition-opacity group-hover:opacity-100"
-						style={{ fontFamily: fonts.body, color: colors.text }}
-					>
-						Add
-					</button>
-				)}
+				<div className="shrink-0">
+					{action.type === "added" ? (
+						<span
+							className="text-xs tracking-widest uppercase opacity-50"
+							style={{ fontFamily: fonts.body, color: colors.textMuted }}
+						>
+							Added
+						</span>
+					) : action.type === "custom" ? (
+						action.node
+					) : (
+						<button
+							type="button"
+							onClick={() => action.onAdd(playlistId)}
+							className="text-xs tracking-widest uppercase opacity-0 transition-opacity group-hover:opacity-100"
+							style={{ fontFamily: fonts.body, color: colors.text }}
+						>
+							Add
+						</button>
+					)}
+				</div>
 			</div>
 		</div>
 	);

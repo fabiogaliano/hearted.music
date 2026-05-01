@@ -51,6 +51,7 @@ export interface MatchingSessionProps {
 	state: MatchingState;
 	isDemo?: boolean;
 	realAvailable?: boolean;
+	reconnectNeeded?: boolean;
 	onRefresh?: () => void;
 	onAdd: (playlistId: string) => void;
 	onDismiss: () => void;
@@ -77,6 +78,7 @@ export interface MatchingProps {
 	isComplete: boolean;
 	completionStats: CompletionStats;
 	recentSongs: Array<{ id: string; albumArtUrl?: string | null; name: string }>;
+	reconnectNeeded?: boolean;
 	onAdd: (playlistId: string) => void;
 	onDismiss: () => void;
 	onNext: () => void;

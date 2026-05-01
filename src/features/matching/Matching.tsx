@@ -14,6 +14,7 @@ export function Matching({
 	isComplete,
 	completionStats,
 	recentSongs,
+	reconnectNeeded,
 	onAdd,
 	onDismiss,
 	onNext,
@@ -42,6 +43,7 @@ export function Matching({
 				playlists={currentMatches}
 				addedTo={addedTo}
 				state={state}
+				reconnectNeeded={reconnectNeeded}
 				onAdd={onAdd}
 				onDismiss={onDismiss}
 				onNext={onNext}

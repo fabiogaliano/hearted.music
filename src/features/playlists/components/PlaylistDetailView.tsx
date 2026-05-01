@@ -1,33 +1,21 @@
-import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
-import { type MouseEvent, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
-import { useShortcut } from "@/lib/keyboard/useShortcut";
-import type { ThemeConfig } from "@/lib/theme/types";
-import { fonts } from "@/lib/theme/fonts";
+import { isExtensionInstalled } from "@/lib/extension/detect";
 import { updatePlaylistAcknowledged } from "@/lib/extension/playlist-write-acknowledgement";
-import { requiresSpotifyReconnect } from "@/lib/extension/spotify-reconnect";
-import {
-	expectLoginReturn,
-	isExtensionInstalled,
-} from "@/lib/extension/detect";
+import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
+import { outcomeFromAcknowledgedResult } from "@/lib/extension/spotify-action-outcome";
+import { useShortcut } from "@/lib/keyboard/useShortcut";
+import { fonts } from "@/lib/theme/fonts";
+import type { ThemeConfig } from "@/lib/theme/types";
 import type { ExtensionAvailability } from "../hooks/useExtensionStatus";
 import { playlistKeys } from "../queries";
 import { PlaylistDescription } from "./PlaylistDescription";
 import { PlaylistTrackList } from "./PlaylistTrackList";
 
-const SPOTIFY_LOGIN_URL = "https://open.spotify.com/";
 const EXTENSION_STORE_URL =
 	"https://chrome.google.com/webstore/detail/hearted-spotify-sync/EXTENSION_ID";
-
-function armExpectedReturnBestEffort(
-	event: MouseEvent<HTMLAnchorElement>,
-): void {
-	if (event.type === "mousedown" && event.button !== 0) return;
-	if (event.type === "auxclick" && event.button !== 1) return;
-	if (event.type === "click" && event.detail !== 0) return;
-	void expectLoginReturn().catch(() => {});
-}
 
 interface PlaylistDetailViewProps {
 	theme: ThemeConfig;
@@ -108,13 +96,14 @@ export function PlaylistDetailView({
 			return;
 		}
 
-		if (requiresSpotifyReconnect(result.commandResponse)) {
+		const outcome = outcomeFromAcknowledgedResult(result);
+
+		if (outcome.status === "reconnect-required") {
 			setEditState("reconnect-required");
 			return;
 		}
 
-		const cmd = result.commandResponse;
-		if (!cmd.ok && cmd.errorCode === "NETWORK_ERROR") {
+		if (outcome.status === "extension-unavailable") {
 			const installed = await isExtensionInstalled();
 			if (!installed) {
 				setEditState("extension-required");
@@ -159,6 +148,7 @@ export function PlaylistDetailView({
 			<div className="h-full overflow-y-auto px-6 py-8">
 				<div className="relative mb-8">
 					<button
+						type="button"
 						onClick={onClose}
 						className="absolute top-0 right-0 z-20 p-2"
 						style={{
@@ -242,26 +232,11 @@ export function PlaylistDetailView({
 									>
 										Reconnect to Spotify, then repeat this edit.
 									</p>
-									<a
-										href={SPOTIFY_LOGIN_URL}
-										target="_blank"
-										rel="noopener noreferrer"
-										onClick={armExpectedReturnBestEffort}
-										onAuxClick={armExpectedReturnBestEffort}
-										onMouseDown={armExpectedReturnBestEffort}
-										className="inline-flex items-center gap-1.5 rounded-[20px] px-3 py-1 text-xs tracking-widest uppercase transition-all hover:opacity-80 active:scale-[0.98]"
-										style={{
-											fontFamily: fonts.body,
-											background: theme.surface,
-											border: `1px solid ${theme.border}`,
-											color: theme.text,
-										}}
-									>
-										Reconnect
-										<span className="text-xs" style={{ opacity: 0.45 }}>
-											↗
-										</span>
-									</a>
+									<SpotifyReconnectLink
+										surface={theme.surface}
+										border={theme.border}
+										text={theme.text}
+									/>
 								</div>
 							)}
 
@@ -328,6 +303,7 @@ export function PlaylistDetailView({
 
 								<div className="ml-auto">
 									<button
+										type="button"
 										onClick={() => onToggleTarget(playlist.id, !isTarget)}
 										className="flex min-w-[120px] items-center justify-center gap-1.5 px-4 py-2 text-xs tracking-widest uppercase transition-all"
 										style={{

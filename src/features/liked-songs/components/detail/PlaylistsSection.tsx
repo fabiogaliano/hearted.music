@@ -1,12 +1,14 @@
+import { PlaylistMatchRow } from "@/components/ui/PlaylistMatchRow";
+import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import type { SongSuggestion } from "@/lib/server/matching.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { PlaylistMatchRow } from "@/components/ui/PlaylistMatchRow";
 import type { ColorProps } from "./types";
 
 interface PlaylistsSectionProps {
 	suggestions: SongSuggestion[];
 	addedTo: string[];
 	onAdd: (playlistId: string) => void;
+	reconnectNeeded?: boolean;
 	colors?: ColorProps;
 }
 
@@ -14,6 +16,7 @@ export function PlaylistsSection({
 	suggestions,
 	addedTo,
 	onAdd,
+	reconnectNeeded,
 	colors,
 }: PlaylistsSectionProps) {
 	const sorted = [...suggestions].sort((a, b) => b.score - a.score);
@@ -23,6 +26,15 @@ export function PlaylistsSection({
 		textMuted: colors?.textMuted ?? "",
 		border: colors?.border ?? "",
 	};
+
+	const reconnectAction = reconnectNeeded ? (
+		<SpotifyReconnectLink
+			label="Reconnect to Spotify"
+			surface={colors?.surface ?? ""}
+			border={colors?.border ?? ""}
+			text={colors?.text ?? ""}
+		/>
+	) : undefined;
 
 	return (
 		<section className="border-t pt-6" style={{ borderColor: colors?.border }}>
@@ -52,9 +64,14 @@ export function PlaylistsSection({
 								{Math.round(suggestion.score * 100)}%
 							</span>
 						}
-						isAdded={addedTo.includes(suggestion.playlistId)}
-						onAdd={onAdd}
 						colors={rowColors}
+						action={
+							addedTo.includes(suggestion.playlistId)
+								? { type: "added" }
+								: reconnectAction
+									? { type: "custom", node: reconnectAction }
+									: { type: "add", onAdd }
+						}
 					/>
 				))}
 			</div>

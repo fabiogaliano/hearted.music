@@ -23,6 +23,8 @@ import {
 	dismissSong,
 } from "@/lib/server/matching.functions";
 import { addToPlaylist } from "@/lib/extension/spotify-client";
+import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
+import { useSpotifyReconnectState } from "@/lib/extension/useSpotifyReconnectState";
 
 export const Route = createFileRoute("/_authenticated/match")({
 	// No precondition guard needed. `/_authenticated` already resolved the
@@ -193,6 +195,10 @@ function MatchingPageContent({
 		songMatchesQueryOptions(snapshotId, offset),
 	);
 
+	const { reconnectNeeded, setReconnectNeeded } = useSpotifyReconnectState(
+		songData?.song.id ?? "",
+	);
+
 	useEffect(() => {
 		if (!songData) return;
 		queryClient.prefetchQuery(songMatchesQueryOptions(snapshotId, offset + 1));
@@ -234,12 +240,20 @@ function MatchingPageContent({
 
 	const handleAdd = async (playlistId: string) => {
 		if (!currentSong) return;
+		setReconnectNeeded(false);
 		addPresented(currentSong.id);
 		const playlist = currentMatches.find((p) => p.id === playlistId);
 		if (playlist?.spotifyId && currentSong.spotifyId) {
-			addToPlaylist(`spotify:playlist:${playlist.spotifyId}`, [
-				`spotify:track:${currentSong.spotifyId}`,
-			]);
+			const result = await addToPlaylist(
+				`spotify:playlist:${playlist.spotifyId}`,
+				[`spotify:track:${currentSong.spotifyId}`],
+			);
+			const outcome = outcomeFromCommandResponse(result);
+			if (outcome.status === "reconnect-required") {
+				setReconnectNeeded(true);
+				return;
+			}
+			if (outcome.status === "error") return;
 		}
 		await addSongToPlaylist({
 			data: {
@@ -307,6 +321,7 @@ function MatchingPageContent({
 			isComplete={isComplete}
 			completionStats={completionStats}
 			recentSongs={recentSongs}
+			reconnectNeeded={reconnectNeeded}
 			onAdd={handleAdd}
 			onDismiss={handleDismiss}
 			onNext={handleNext}

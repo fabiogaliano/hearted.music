@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { ClientNumberFlow as NumberFlow } from "./ClientNumberFlow";
-import type { Playlist } from "../types";
+import { PlaylistMatchRow } from "@/components/ui/PlaylistMatchRow";
+import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import { PlaylistMatchRow } from "@/components/ui/PlaylistMatchRow";
+import type { Playlist } from "../types";
+import { ClientNumberFlow as NumberFlow } from "./ClientNumberFlow";
 
 const MIN_HEIGHT = "clamp(300px, 30vw, 560px)";
 
@@ -12,6 +13,7 @@ interface MatchesSectionProps {
 	addedTo: string[];
 	isDemo?: boolean;
 	realAvailable?: boolean;
+	reconnectNeeded?: boolean;
 	onRefresh?: () => void;
 	onAdd: (playlistId: string) => void;
 	onDismiss: () => void;
@@ -23,12 +25,22 @@ export function MatchesSection({
 	addedTo,
 	isDemo,
 	realAvailable,
+	reconnectNeeded,
 	onRefresh,
 	onAdd,
 	onDismiss,
 	onNext,
 }: MatchesSectionProps) {
 	const theme = useTheme();
+	const reconnectAction = reconnectNeeded ? (
+		<SpotifyReconnectLink
+			label="Reconnect to Spotify"
+			surface={theme.surface}
+			border={theme.border}
+			text={theme.text}
+		/>
+	) : undefined;
+
 	return (
 		<div
 			className="flex flex-col"
@@ -91,11 +103,11 @@ export function MatchesSection({
 					gap: "1.25rem",
 				}}
 			>
-				{playlists.map((playlist, slotIndex) => {
+				{playlists.map((playlist) => {
 					const isGoodMatch = playlist.matchScore >= 0.7;
 					return (
 						<PlaylistMatchRow
-							key={slotIndex}
+							key={playlist.id}
 							playlistId={playlist.id}
 							name={playlist.name}
 							scoreDisplay={
@@ -110,11 +122,18 @@ export function MatchesSection({
 									}}
 								/>
 							}
-							reason={playlist.reason || undefined}
-							isAdded={addedTo.includes(playlist.id)}
-							onAdd={onAdd}
+							reason={
+								reconnectNeeded ? undefined : playlist.reason || undefined
+							}
 							colors={theme}
 							size="lg"
+							action={
+								addedTo.includes(playlist.id)
+									? { type: "added" }
+									: reconnectAction
+										? { type: "custom", node: reconnectAction }
+										: { type: "add", onAdd }
+							}
 						/>
 					);
 				})}
@@ -127,6 +146,7 @@ export function MatchesSection({
 				}}
 			>
 				<button
+					type="button"
 					onClick={onDismiss}
 					className="text-sm tracking-widest uppercase"
 					style={{ fontFamily: fonts.body, color: theme.textMuted }}
@@ -135,6 +155,7 @@ export function MatchesSection({
 				</button>
 
 				<button
+					type="button"
 					onClick={onNext}
 					className="group inline-flex items-center gap-3"
 					style={{ fontFamily: fonts.body, color: theme.text }}

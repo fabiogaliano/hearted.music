@@ -12,6 +12,7 @@ export function MatchingSession({
 	state,
 	isDemo,
 	realAvailable,
+	reconnectNeeded,
 	onRefresh,
 	onAdd,
 	onDismiss,
@@ -65,6 +66,7 @@ export function MatchingSession({
 							addedTo={addedTo}
 							isDemo={isDemo}
 							realAvailable={realAvailable}
+							reconnectNeeded={reconnectNeeded}
 							onRefresh={onRefresh}
 							onAdd={onAdd}
 							onDismiss={onDismiss}
