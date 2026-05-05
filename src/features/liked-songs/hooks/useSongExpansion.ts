@@ -29,10 +29,17 @@ interface ViewTransitionDocument {
 
 function withViewTransition(callback: () => void): Promise<void> {
 	if (supportsViewTransitions) {
+		// Marker read by styles.css to strip the panel album's box-shadow
+		// before the OLD snapshot is captured — otherwise the shadow is baked
+		// into the bitmap and visible for the entire morph.
+		document.documentElement.dataset.songClosing = "";
 		const transition = (
 			document as unknown as ViewTransitionDocument
 		).startViewTransition(() => {
 			flushSync(callback);
+		});
+		transition.finished.finally(() => {
+			delete document.documentElement.dataset.songClosing;
 		});
 		return transition.finished;
 	}

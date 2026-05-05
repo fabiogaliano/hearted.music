@@ -250,6 +250,7 @@ export function PanelHero({
 					{albumArtUrl && isExpanded && (
 						<div
 							ref={albumArtRef}
+							data-panel-album-art=""
 							className={`absolute left-5 ${isDark ? "shadow-lg" : "shadow-md"}`}
 							style={{
 								left: `${LAYOUT.paddingX}px`,

@@ -231,6 +231,13 @@ code {
   object-fit: cover;
 }
 
+/* Strip the panel album's box-shadow during close so it isn't baked into
+   the OLD view-transition snapshot. data-song-closing is toggled by
+   useSongExpansion.withViewTransition before startViewTransition runs. */
+[data-song-closing] [data-panel-album-art] {
+  box-shadow: none !important;
+}
+
 ::view-transition-old(song-title),
 ::view-transition-old(song-artist) {
   /* Hide old snapshot immediately — panel and card have different font sizes
