@@ -89,20 +89,28 @@ export function useShortcuts(shortcuts: ShortcutRegistration[]): void {
 	const handlersRef = useRef<Map<string, () => void>>(new Map());
 
 	// Always update handlers ref (cheap, no re-render)
+	const handlerKeys = new Set<string>();
 	for (const s of shortcuts) {
-		handlersRef.current.set(s.key + s.scope, s.handler);
+		const handlerKey = s.key + s.scope;
+		handlerKeys.add(handlerKey);
+		handlersRef.current.set(handlerKey, s.handler);
 	}
 
-	// Compute current fingerprints for comparison
-	const currentFingerprints = useMemo(
-		() => new Set(shortcuts.map(getShortcutFingerprint)),
+	for (const key of handlersRef.current.keys()) {
+		if (!handlerKeys.has(key)) {
+			handlersRef.current.delete(key);
+		}
+	}
+
+	const fingerprintList = useMemo(
+		() => shortcuts.map(getShortcutFingerprint).toSorted(),
 		[shortcuts],
 	);
-
 	useEffect(() => {
 		const registered = registeredRef.current;
 		const toUnregister: string[] = [];
 		const toRegister: ShortcutRegistration[] = [];
+		const currentFingerprints = new Set(fingerprintList);
 
 		// Find shortcuts to remove (registered but no longer in current set)
 		for (const [fingerprint, id] of registered) {
@@ -143,13 +151,15 @@ export function useShortcuts(shortcuts: ShortcutRegistration[]): void {
 			});
 			registered.set(fingerprint, id);
 		}
+	}, [fingerprintList, register, shortcuts, unregister]);
 
+	useEffect(() => {
 		return () => {
-			// Cleanup all on unmount
-			for (const id of registered.values()) {
+			for (const id of registeredRef.current.values()) {
 				unregister(id);
 			}
-			registered.clear();
+			registeredRef.current.clear();
+			handlersRef.current.clear();
 		};
-	}, [register, unregister, currentFingerprints]);
+	}, [unregister]);
 }
