@@ -1,8 +1,9 @@
-import { Lock, Loader2, AlertTriangle, CheckCircle, X } from "lucide-react";
+import { AlertTriangle, CheckCircle, Loader2, Lock, X } from "lucide-react";
 import { useEffect } from "react";
 
 import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
 import type { BillingState } from "@/lib/domains/billing/state";
+import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
@@ -26,6 +27,29 @@ export function UnlockConfirmDialog({
 	onDismiss,
 }: UnlockConfirmDialogProps) {
 	const theme = useTheme();
+	const isConfirming = flowState.step === "confirming";
+	const isDismissable =
+		flowState.step === "confirming" ||
+		flowState.step === "insufficient_balance" ||
+		flowState.step === "error";
+
+	useShortcut({
+		key: "escape",
+		handler: isConfirming ? onCancel : onDismiss,
+		description: isConfirming ? "Cancel unlock" : "Close dialog",
+		scope: "modal",
+		category: "actions",
+		enabled: isDismissable,
+	});
+
+	useShortcut({
+		key: "enter",
+		handler: onConfirm,
+		description: "Unlock songs",
+		scope: "modal",
+		category: "actions",
+		enabled: isConfirming,
+	});
 
 	useEffect(() => {
 		if (flowState.step === "success") {

@@ -30,7 +30,10 @@ import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { scrollListElementIntoView } from "@/lib/keyboard/listScroll";
-import type { ListNavigationSource } from "@/lib/keyboard/types";
+import type {
+	ListNavigationSource,
+	ListScrollBlock,
+} from "@/lib/keyboard/types";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
@@ -55,6 +58,7 @@ import type { LikedSong } from "./types";
 
 const useIsomorphicLayoutEffect =
 	typeof window !== "undefined" ? useLayoutEffect : useEffect;
+const LIST_TOP_GAP_PX = 24;
 
 interface LikedSongsPageProps {
 	initialFilter?: FilterOption;
@@ -153,6 +157,17 @@ export function LikedSongsPage({
 	const [selectedSongIds, setSelectedSongIds] = useState<Set<string>>(
 		new Set(),
 	);
+	const selectionBarRef = useRef<HTMLDivElement | null>(null);
+	const [selectionBarHeight, setSelectionBarHeight] = useState<number>(0);
+	const focusedSongIdRef = useRef<string | null>(null);
+	const pendingSelectionFocusRef = useRef<{
+		songId: string;
+		mode: "keyboard" | "pointer";
+		scrollBlock: ListScrollBlock;
+	} | null>(null);
+	const pendingCursorScrollBlocksRef = useRef<
+		Map<number, ListScrollBlock | null>
+	>(new Map());
 
 	const toggleSongSelection = useCallback((songId: string) => {
 		setSelectedSongIds((prev) => {
@@ -166,7 +181,7 @@ export function LikedSongsPage({
 		});
 	}, []);
 
-	const exitSelectionMode = useCallback(() => {
+	const clearSelectionMode = useCallback(() => {
 		setSelectionMode(false);
 		setSelectedSongIds(new Set());
 	}, []);
@@ -187,9 +202,9 @@ export function LikedSongsPage({
 	const handleFlowDismiss = useCallback(() => {
 		dismissFlow();
 		if (flowState.step === "success") {
-			exitSelectionMode();
+			clearSelectionMode();
 		}
-	}, [dismissFlow, flowState.step, exitSelectionMode]);
+	}, [clearSelectionMode, dismissFlow, flowState.step]);
 
 	useShortcut({
 		key: "mod+d",
@@ -231,6 +246,38 @@ export function LikedSongsPage({
 				: displayedSongs,
 		[displayedSongs, selectionMode, showSelectionUI],
 	);
+
+	useIsomorphicLayoutEffect(() => {
+		if (!selectionMode || !showSelectionUI) {
+			setSelectionBarHeight(0);
+			return;
+		}
+
+		const bar = selectionBarRef.current;
+		if (!bar) return;
+
+		const syncHeight = () => {
+			setSelectionBarHeight(bar.getBoundingClientRect().height);
+		};
+
+		syncHeight();
+
+		if (typeof ResizeObserver === "undefined") return;
+
+		const observer = new ResizeObserver(() => {
+			syncHeight();
+		});
+		observer.observe(bar);
+
+		return () => {
+			observer.disconnect();
+		};
+	}, [selectionMode, showSelectionUI]);
+
+	const selectionModeScrollMarginTop =
+		selectionMode && showSelectionUI && selectionBarHeight > 0
+			? `${selectionBarHeight + LIST_TOP_GAP_PX}px`
+			: undefined;
 
 	const hasMore = isWalkthrough ? false : (hasNextPage ?? false);
 	const selectedSongFromLoadedPages = useMemo(
@@ -329,6 +376,7 @@ export function LikedSongsPage({
 
 	const {
 		focusedIndex,
+		interactionMode,
 		lastCursorChange,
 		syncFocusedIndex,
 		getFocusedElement,
@@ -339,7 +387,23 @@ export function LikedSongsPage({
 		items: navItems,
 		scope: "liked-list",
 		enabled: !isExpanded && navItems.length > 0,
+		onFocusChange: (_index, song) => {
+			focusedSongIdRef.current = song?.track.id ?? null;
+		},
 		onSelect: (song, _index, element) => {
+			if (song.displayState === "locked" && showSelectionUI) {
+				if (!selectionMode) {
+					pendingSelectionFocusRef.current = {
+						songId: song.track.id,
+						mode: interactionMode === "pointer" ? "pointer" : "keyboard",
+						scrollBlock: "start",
+					};
+					setSelectionMode(true);
+				}
+				toggleSongSelection(song.track.id);
+				return;
+			}
+
 			if (!element) return;
 			pendingRouteSelectionSourceRef.current = "keyboard";
 			handleExpand(song, element);
@@ -352,23 +416,67 @@ export function LikedSongsPage({
 		autoScroll: false,
 	});
 
+	const openFocusedSong = useCallback(() => {
+		if (focusedIndex < 0 || focusedIndex >= navItems.length) return;
+
+		const song = navItems[focusedIndex];
+		const element = getFocusedElement();
+		if (!element) return;
+
+		pendingRouteSelectionSourceRef.current = "keyboard";
+		handleExpand(song, element);
+		prefetchAdjacentSuggestions(song.track.id);
+	}, [
+		focusedIndex,
+		navItems,
+		getFocusedElement,
+		handleExpand,
+		prefetchAdjacentSuggestions,
+	]);
+
+	const queueCursorScrollBlock = useCallback(
+		(sequence: number, block: ListScrollBlock | null) => {
+			pendingCursorScrollBlocksRef.current.set(sequence, block);
+		},
+		[],
+	);
+
+	const exitSelectionMode = useCallback(() => {
+		const focusedSongId = focusedSongIdRef.current;
+		if (focusedSongId) {
+			pendingSelectionFocusRef.current = {
+				songId: focusedSongId,
+				mode: interactionMode === "pointer" ? "pointer" : "keyboard",
+				scrollBlock: "start",
+			};
+		}
+
+		clearSelectionMode();
+	}, [clearSelectionMode, interactionMode]);
+
 	useShortcut({
 		key: "enter",
 		handler: () => {
-			if (focusedIndex < 0 || focusedIndex >= navItems.length) return;
+			if (selectionMode && showSelectionUI) {
+				handleUnlockConfirm();
+				return;
+			}
 
-			const song = navItems[focusedIndex];
-			const element = getFocusedElement();
-			if (!element) return;
-
-			pendingRouteSelectionSourceRef.current = "keyboard";
-			handleExpand(song, element);
-			prefetchAdjacentSuggestions(song.track.id);
+			openFocusedSong();
 		},
-		description: "Open song details",
+		description: selectionMode ? "Unlock selected songs" : "Open song details",
 		scope: "liked-list",
 		category: "actions",
 		enabled: !isExpanded && focusedIndex >= 0,
+	});
+
+	useShortcut({
+		key: "escape",
+		handler: exitSelectionMode,
+		description: "Cancel song selection",
+		scope: "liked-list",
+		category: "actions",
+		enabled: !isExpanded && selectionMode && showSelectionUI,
 	});
 
 	useEffect(() => {
@@ -406,6 +514,17 @@ export function LikedSongsPage({
 		const element = getElementAtIndex(change.index);
 		if (!element) return;
 
+		const queuedBlock = pendingCursorScrollBlocksRef.current.get(
+			change.sequence,
+		);
+		if (queuedBlock !== undefined) {
+			pendingCursorScrollBlocksRef.current.delete(change.sequence);
+			if (queuedBlock === null) return;
+
+			scrollListElementIntoView(element, queuedBlock);
+			return;
+		}
+
 		scrollListElementIntoView(
 			element,
 			change.source === "pointer" ? "nearest" : "center",
@@ -417,9 +536,58 @@ export function LikedSongsPage({
 		const prev = prevSelectedSongIdRef.current;
 		prevSelectedSongIdRef.current = selectedSongId;
 		if (prev && !selectedSongId) {
-			focusFocusedItem({ mode: "keyboard" });
+			focusFocusedItem({
+				mode: "keyboard",
+				scrollBlock: "nearest",
+			});
 		}
 	}, [selectedSongId, focusFocusedItem]);
+
+	useIsomorphicLayoutEffect(() => {
+		const pendingSelectionFocus = pendingSelectionFocusRef.current;
+		if (!pendingSelectionFocus) return;
+		if (
+			pendingSelectionFocus.scrollBlock === "start" &&
+			selectionMode &&
+			showSelectionUI &&
+			selectionBarHeight === 0
+		) {
+			return;
+		}
+
+		const index = navItems.findIndex(
+			(song) => song.track.id === pendingSelectionFocus.songId,
+		);
+		if (index < 0) return;
+
+		pendingSelectionFocusRef.current = null;
+		const change = syncFocusedIndex(index, {
+			focus: pendingSelectionFocus.mode === "keyboard",
+			mode: pendingSelectionFocus.mode,
+			source: "programmatic",
+		});
+
+		if (change) {
+			queueCursorScrollBlock(
+				change.sequence,
+				pendingSelectionFocus.scrollBlock,
+			);
+			return;
+		}
+
+		const element = getElementAtIndex(index);
+		if (!element) return;
+
+		scrollListElementIntoView(element, pendingSelectionFocus.scrollBlock);
+	}, [
+		getElementAtIndex,
+		navItems,
+		queueCursorScrollBlock,
+		selectionBarHeight,
+		selectionMode,
+		showSelectionUI,
+		syncFocusedIndex,
+	]);
 
 	const handlePointerExpand = useCallback(
 		(song: LikedSong, element: HTMLElement) => {
@@ -573,6 +741,7 @@ export function LikedSongsPage({
 			{/* Selection bar for pack users — sticky below header */}
 			{selectionMode && showSelectionUI && billingState && (
 				<SongSelectionBar
+					containerRef={selectionBarRef}
 					selectedCount={selectedSongIds.size}
 					remainingBalance={billingState.creditBalance}
 					onConfirm={handleUnlockConfirm}
@@ -649,6 +818,7 @@ export function LikedSongsPage({
 									tabIndex={itemProps?.tabIndex ?? -1}
 									dataFocused={itemProps?.["data-focused"] ?? false}
 									navEngaged={itemProps?.["data-nav-engaged"] ?? false}
+									dataTabFocused={itemProps?.["data-tab-focused"] ?? false}
 									onPointerDown={itemProps?.onPointerDown}
 									onFocus={itemProps?.onFocus}
 									onBlur={itemProps?.onBlur}
@@ -659,6 +829,11 @@ export function LikedSongsPage({
 											showSelectionUI &&
 											!selectionMode
 										) {
+											pendingSelectionFocusRef.current = {
+												songId: song.track.id,
+												mode: "pointer",
+												scrollBlock: "start",
+											};
 											setSelectionMode(true);
 											toggleSongSelection(song.track.id);
 											return;
@@ -669,6 +844,7 @@ export function LikedSongsPage({
 									selectionMode={selectionMode && showSelectionUI}
 									isChecked={selectedSongIds.has(song.track.id)}
 									onToggleSelect={toggleSongSelection}
+									scrollMarginTop={selectionModeScrollMarginTop}
 									isEnabled={isSongEnabled}
 									isWalkthroughHighlight={!!isDemoSong && !isExpanded}
 									hideLockedBadge={isWalkthrough}

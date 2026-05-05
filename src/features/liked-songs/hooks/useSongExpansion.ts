@@ -200,6 +200,7 @@ export function useSongExpansion(
 					song: slug ?? undefined,
 				}),
 				replace: false,
+				resetScroll: false,
 			});
 		},
 		[navigate],

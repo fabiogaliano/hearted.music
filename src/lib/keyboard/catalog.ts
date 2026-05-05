@@ -17,7 +17,9 @@ export const SHORTCUT_CATALOG: CatalogEntry[] = [
 	{ scope: "liked-list", key: "down", description: "Next song" },
 	{ scope: "liked-list", key: "k", description: "Previous song" },
 	{ scope: "liked-list", key: "up", description: "Previous song" },
+	{ scope: "liked-list", key: "space", description: "Select locked song" },
 	{ scope: "liked-list", key: "enter", description: "Open song detail" },
+	{ scope: "liked-list", key: "escape", description: "Cancel song selection" },
 	{ scope: "liked-list", key: "mod+d", description: "Toggle dark mode" },
 
 	// ── Liked Songs detail ────────────────────────────────────────────────────
@@ -48,4 +50,8 @@ export const SHORTCUT_CATALOG: CatalogEntry[] = [
 
 	// ── Playlists detail ──────────────────────────────────────────────────────
 	{ scope: "playlists-detail", key: "escape", description: "Close detail" },
+
+	// ── Modal ────────────────────────────────────────────────────────────────
+	{ scope: "modal", key: "enter", description: "Confirm action" },
+	{ scope: "modal", key: "escape", description: "Close modal" },
 ];

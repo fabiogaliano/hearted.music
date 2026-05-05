@@ -22,6 +22,7 @@ interface SongCardProps {
 	tabIndex: number;
 	dataFocused: boolean;
 	navEngaged: boolean;
+	dataTabFocused?: boolean;
 	onPointerDown?: React.PointerEventHandler<HTMLElement>;
 	onFocus?: React.FocusEventHandler<HTMLElement>;
 	onBlur?: React.FocusEventHandler<HTMLElement>;
@@ -34,6 +35,7 @@ interface SongCardProps {
 	isChecked?: boolean;
 	/** Toggle selection in multi-select mode */
 	onToggleSelect?: (songId: string) => void;
+	scrollMarginTop?: string;
 	/** When false, card is visually dimmed and non-interactive */
 	isEnabled?: boolean;
 	/** When true, card gets a left border + pulse glow and shows the "See what's inside →" hint */
@@ -51,6 +53,7 @@ export function SongCard({
 	tabIndex,
 	dataFocused,
 	navEngaged,
+	dataTabFocused = false,
 	onPointerDown,
 	onFocus,
 	onBlur,
@@ -59,6 +62,7 @@ export function SongCard({
 	selectionMode,
 	isChecked,
 	onToggleSelect,
+	scrollMarginTop,
 	isEnabled = true,
 	isWalkthroughHighlight = false,
 	hideLockedBadge = false,
@@ -67,6 +71,7 @@ export function SongCard({
 	const isNew = isNewSong(song.liked_at);
 	const isLocked = song.displayState === "locked";
 	const isSelectable = selectionMode && isLocked;
+	const isSelectionChecked = isSelectable && isChecked;
 
 	const showWalkthroughUi = isWalkthroughHighlight && !isFocused && !isSelected;
 
@@ -107,6 +112,7 @@ export function SongCard({
 				tabIndex={tabIndex}
 				data-focused={dataFocused}
 				data-nav-engaged={navEngaged}
+				data-tab-focused={dataTabFocused}
 				onPointerDown={onPointerDown}
 				onFocus={onFocus}
 				onBlur={onBlur}
@@ -117,7 +123,11 @@ export function SongCard({
 							? `color-mix(in srgb, ${theme.text} 6%, transparent)`
 							: "transparent",
 						position: "relative",
-						background: isSelected ? theme.surface : undefined,
+						background: isSelectionChecked
+							? theme.surfaceDim
+							: isSelected
+								? theme.surface
+								: undefined,
 						borderLeft:
 							isFocused || isSelected
 								? `3px solid ${theme.primary}`
@@ -125,7 +135,17 @@ export function SongCard({
 									? `3px solid ${theme.primary}`
 									: "3px solid transparent",
 						marginLeft: "-3px",
-						opacity: !isEnabled ? 0.5 : isLocked ? 0.6 : 1,
+						boxShadow: dataTabFocused
+							? `inset 0 0 0 1px ${theme.primary}`
+							: undefined,
+						scrollMarginTop,
+						opacity: !isEnabled
+							? 0.5
+							: isSelectionChecked
+								? 1
+								: isLocked
+									? 0.6
+									: 1,
 						pointerEvents: !isEnabled ? "none" : undefined,
 						animation: isWalkthroughHighlight
 							? "walkthrough-pulse 2s ease-in-out infinite"
@@ -172,7 +192,11 @@ export function SongCard({
 						className="truncate text-base"
 						style={{
 							fontFamily: fonts.display,
-							color: isLocked ? theme.textMuted : theme.text,
+							color: isSelectionChecked
+								? theme.text
+								: isLocked
+									? theme.textMuted
+									: theme.text,
 							fontWeight: isSelected ? 400 : 300,
 							viewTransitionName: isAnimatingTo ? "song-title" : "none",
 						}}
@@ -183,7 +207,9 @@ export function SongCard({
 						className="mt-0.5 truncate text-sm"
 						style={{
 							fontFamily: fonts.body,
-							color: theme.textMuted,
+							color: isSelectionChecked
+								? `color-mix(in srgb, ${theme.text} 72%, ${theme.textMuted})`
+								: theme.textMuted,
 							viewTransitionName: isAnimatingTo ? "song-artist" : "none",
 						}}
 					>
@@ -215,40 +241,37 @@ export function SongCard({
 					</span>
 				)}
 
-				{!showWalkthroughUi && (
-					<>
-						{isSelectable ? (
+				{!showWalkthroughUi &&
+					(isSelectable ? (
+						<span
+							className="flex h-5 w-5 shrink-0 items-center justify-center rounded border"
+							style={{
+								borderColor: isChecked ? theme.primary : theme.border,
+								background: isChecked ? theme.primary : "transparent",
+							}}
+						>
+							{isChecked && (
+								<Check size={12} color={theme.bg} strokeWidth={3} />
+							)}
+						</span>
+					) : isLocked ? (
+						hideLockedBadge ? null : (
 							<span
-								className="flex h-5 w-5 shrink-0 items-center justify-center rounded border"
-								style={{
-									borderColor: isChecked ? theme.primary : theme.border,
-									background: isChecked ? theme.primary : "transparent",
-								}}
-							>
-								{isChecked && (
-									<Check size={12} color={theme.bg} strokeWidth={3} />
-								)}
-							</span>
-						) : isLocked ? (
-							hideLockedBadge ? null : (
-								<span
-									className="flex shrink-0 items-center gap-1 text-xs"
-									style={{ fontFamily: fonts.body, color: theme.textMuted }}
-								>
-									<Lock size={11} strokeWidth={2} />
-									<span className="hidden lg:inline">Unlock</span>
-								</span>
-							)
-						) : (
-							<span
-								className="hidden shrink-0 text-xs lg:block"
+								className="flex shrink-0 items-center gap-1 text-xs"
 								style={{ fontFamily: fonts.body, color: theme.textMuted }}
 							>
-								{formatRelativeTime(song.liked_at)}
+								<Lock size={11} strokeWidth={2} />
+								<span className="hidden lg:inline">Unlock</span>
 							</span>
-						)}
-					</>
-				)}
+						)
+					) : (
+						<span
+							className="hidden shrink-0 text-xs lg:block"
+							style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						>
+							{formatRelativeTime(song.liked_at)}
+						</span>
+					))}
 			</button>
 		</>
 	);

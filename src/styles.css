@@ -207,6 +207,10 @@ code {
     background: var(--hover-bg);
   }
 
+  .song-card:focus-visible {
+    outline: none;
+  }
+
   /* Song cards stay fully renderable so keyboard navigation updates paint immediately. */
 }
 

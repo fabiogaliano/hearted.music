@@ -1,4 +1,5 @@
 import { Lock, X } from "lucide-react";
+import type { Ref } from "react";
 
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
@@ -8,6 +9,7 @@ interface SongSelectionBarProps {
 	remainingBalance: number;
 	onConfirm: () => void;
 	onCancel: () => void;
+	containerRef?: Ref<HTMLDivElement>;
 }
 
 export function SongSelectionBar({
@@ -15,12 +17,14 @@ export function SongSelectionBar({
 	remainingBalance,
 	onConfirm,
 	onCancel,
+	containerRef,
 }: SongSelectionBarProps) {
 	const theme = useTheme();
 	const canAfford = selectedCount <= remainingBalance;
 
 	return (
 		<div
+			ref={containerRef}
 			className="sticky top-0 z-50 flex items-center justify-between px-6 py-4"
 			style={{
 				background: theme.bg,
