@@ -66,7 +66,7 @@ export interface ShortcutContextValue {
 }
 
 export type NavigationDirection = "horizontal" | "vertical" | "grid";
-export type ListScrollBlock = "nearest" | "center";
+export type ListScrollBlock = "start" | "nearest" | "center";
 export type ListNavigationSource =
 	| "keyboard"
 	| "pointer"
@@ -85,6 +85,7 @@ export interface ListItemNavigationProps {
 	ref: (el: HTMLElement | null) => void;
 	"data-focused": boolean;
 	"data-nav-engaged": boolean;
+	"data-tab-focused": boolean;
 	onPointerDown?: import("react").PointerEventHandler<HTMLElement>;
 	onFocus?: import("react").FocusEventHandler<HTMLElement>;
 	onBlur?: import("react").FocusEventHandler<HTMLElement>;
@@ -106,10 +107,12 @@ export interface ListCursorSyncOptions extends ListFocusOptions {
 
 export interface ListNavigationFocusOptions extends ListFocusOptions {
 	scroll?: boolean;
+	scrollBlock?: ListScrollBlock;
 }
 
 export interface ListNavigationSyncOptions extends ListCursorSyncOptions {
 	scroll?: boolean;
+	scrollBlock?: ListScrollBlock;
 }
 
 export interface ListCursorOptions<T> {

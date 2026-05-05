@@ -9,7 +9,7 @@ export function resolveListScrollBehavior(
 	block: ListScrollBlock,
 ): ScrollBehavior {
 	if (prefersReducedMotion()) return "auto";
-	if (block === "center") return "auto";
+	if (block === "center" || block === "start") return "auto";
 	return "smooth";
 }
 

@@ -221,7 +221,10 @@ export function useListNavigation<T>(
 				if (!change) return null;
 
 				if (syncOptions?.scroll ?? autoScroll) {
-					pendingScrollsRef.current.set(change.sequence, scrollBlock);
+					pendingScrollsRef.current.set(
+						change.sequence,
+						syncOptions?.scrollBlock ?? scrollBlock,
+					);
 				}
 
 				return change;
@@ -238,7 +241,10 @@ export function useListNavigation<T>(
 				const element = cursor.getFocusedElement();
 				if (!element) return;
 
-				scrollListElementIntoView(element, scrollBlock);
+				scrollListElementIntoView(
+					element,
+					focusOptions?.scrollBlock ?? scrollBlock,
+				);
 			},
 			[cursor, scrollBlock],
 		);

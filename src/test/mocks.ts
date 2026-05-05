@@ -38,6 +38,7 @@ export function setupListNavigationMock() {
 				tabIndex: index === 0 ? 0 : -1,
 				"data-focused": false,
 				"data-nav-engaged": false,
+				"data-tab-focused": false,
 				onPointerDown: () => {},
 				onFocus: () => {},
 				onBlur: () => {},

@@ -3,6 +3,7 @@ import {
 	useCallback,
 	useEffect,
 	useLayoutEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -39,28 +40,55 @@ export function useListCursor<T>(
 		onCursorChange,
 	} = options;
 
-	const [focusedIndex, setFocusedIndexState] = useState<number>(-1);
+	const [focusedItemId, setFocusedItemIdState] = useState<
+		string | number | null
+	>(null);
 	const [interactionMode, setInteractionMode] =
 		useState<ListInteractionMode>("idle");
 	const [hasFocusWithin, setHasFocusWithin] = useState<boolean>(false);
 	const [lastCursorChange, setLastCursorChange] =
 		useState<ListCursorChange | null>(null);
+
 	const itemRefs = useRef<Map<string | number, HTMLElement>>(new Map());
-	const focusedIndexRef = useRef<number>(-1);
 	const prevFocusedIndexRef = useRef<number>(-1);
+	const lastKnownIndexRef = useRef<number>(-1);
 	const cursorChangeSequenceRef = useRef<number>(0);
 	const isProgrammaticFocusRef = useRef<boolean>(false);
 	const pendingFocusSourceRef = useRef<ListNavigationSource | null>(null);
 
-	const setFocusedIndex = useCallback((index: number) => {
-		focusedIndexRef.current = index;
-		setFocusedIndexState(index);
-	}, []);
+	const itemsRef = useRef(items);
+	const getIdRef = useRef(getId);
+	itemsRef.current = items;
+	getIdRef.current = getId;
+
+	const focusedIndex = useMemo(() => {
+		if (focusedItemId === null) return -1;
+		return items.findIndex((item) => getId(item) === focusedItemId);
+	}, [focusedItemId, items, getId]);
+
+	const focusedIndexRef = useRef(focusedIndex);
+	focusedIndexRef.current = focusedIndex;
+
+	if (focusedIndex >= 0) {
+		lastKnownIndexRef.current = focusedIndex;
+	}
 
 	const focusedItem =
 		focusedIndex >= 0 && focusedIndex < items.length
 			? items[focusedIndex]
 			: null;
+
+	const setFocusedIndex = useCallback((index: number) => {
+		const currentItems = itemsRef.current;
+		const currentGetId = getIdRef.current;
+		if (index >= 0 && index < currentItems.length) {
+			focusedIndexRef.current = index;
+			setFocusedItemIdState(currentGetId(currentItems[index]));
+		} else {
+			focusedIndexRef.current = -1;
+			setFocusedItemIdState(null);
+		}
+	}, []);
 
 	const getElementAtIndex = useCallback(
 		(index: number): HTMLElement | null => {
@@ -120,6 +148,7 @@ export function useListCursor<T>(
 			const element = getElementAtIndex(index);
 			if (!element) return;
 
+			setHasFocusWithin(true);
 			isProgrammaticFocusRef.current = true;
 			element.focus({ preventScroll: true });
 			isProgrammaticFocusRef.current = false;
@@ -202,6 +231,20 @@ export function useListCursor<T>(
 		focusIndex(focusedIndex);
 	}, [enabled, focusIndex, focusedIndex, interactionMode]);
 
+	useIsomorphicLayoutEffect(() => {
+		if (focusedItemId === null) return;
+		if (focusedIndex >= 0) return;
+		if (items.length === 0) {
+			setFocusedIndex(-1);
+			return;
+		}
+		const fallback = Math.max(
+			0,
+			Math.min(lastKnownIndexRef.current, items.length - 1),
+		);
+		setFocusedIndex(fallback);
+	}, [focusedItemId, focusedIndex, items.length, setFocusedIndex]);
+
 	useEffect(() => {
 		onFocusChange?.(focusedIndex, focusedItem);
 	}, [focusedIndex, focusedItem, onFocusChange]);
@@ -215,19 +258,14 @@ export function useListCursor<T>(
 		onCursorChange?.(lastCursorChange, item);
 	}, [items, lastCursorChange, onCursorChange]);
 
-	useEffect(() => {
-		if (focusedIndex < items.length) return;
-
-		const nextIndex = items.length > 0 ? items.length - 1 : -1;
-		setFocusedIndex(nextIndex);
-	}, [focusedIndex, items.length, setFocusedIndex]);
-
 	const getItemProps = useCallback(
 		(item: T, index: number) => {
 			const id = getId(item);
 			const isFocused = focusedIndex === index;
 			const isVisuallyFocused =
 				interactionMode === "keyboard" && hasFocusWithin && isFocused;
+			const isTabFocused =
+				interactionMode === "idle" && hasFocusWithin && isFocused;
 
 			return {
 				ref: (el: HTMLElement | null) => {
@@ -239,6 +277,7 @@ export function useListCursor<T>(
 				},
 				"data-focused": isVisuallyFocused,
 				"data-nav-engaged": interactionMode === "keyboard",
+				"data-tab-focused": isTabFocused,
 				onPointerDown: () => {
 					pendingFocusSourceRef.current = "pointer";
 					syncFocusedIndex(index, {
