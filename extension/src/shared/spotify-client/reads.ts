@@ -33,6 +33,7 @@ function decodeHtmlEntities(text: string): string {
 		},
 	);
 }
+
 import { queryPathfinder } from "../pathfinder";
 import type {
 	SpotifyPlaylistDTO,

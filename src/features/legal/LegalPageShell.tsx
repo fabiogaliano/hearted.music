@@ -1,6 +1,6 @@
 import type React from "react";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { fonts } from "@/lib/theme/fonts";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 interface LegalPageShellProps {
 	children: React.ReactNode;

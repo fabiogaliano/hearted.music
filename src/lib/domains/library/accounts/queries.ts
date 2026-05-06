@@ -6,15 +6,15 @@
  */
 
 import { Result } from "better-result";
+import { env } from "@/env";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Tables, TablesInsert } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Tables, TablesInsert } from "@/lib/data/database.types";
-import { env } from "@/env";
 
 /** Account row type */
 export type Account = Tables<"account">;

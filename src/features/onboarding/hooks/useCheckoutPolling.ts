@@ -7,10 +7,10 @@
  */
 
 import { useEffect, useState } from "react";
-import type { BillingState } from "@/lib/domains/billing/state";
-import { getBillingState } from "@/lib/server/billing.functions";
 import { isCheckoutFulfilled } from "@/features/billing/checkout-fulfillment";
 import type { CheckoutIntent } from "@/features/onboarding/checkout-intent";
+import type { BillingState } from "@/lib/domains/billing/state";
+import { getBillingState } from "@/lib/server/billing.functions";
 
 const POLL_INTERVAL_MS = 2_000;
 const POLL_TIMEOUT_MS = 30_000;

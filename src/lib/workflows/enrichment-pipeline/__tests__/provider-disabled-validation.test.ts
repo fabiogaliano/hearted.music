@@ -14,11 +14,11 @@
  * and activation tests mock the supabase client directly.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Result } from "better-result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BillingState } from "@/lib/domains/billing/state";
-import type { EnrichmentWorkPlan } from "../types";
 import type { PipelineBatch } from "../batch";
+import type { EnrichmentWorkPlan } from "../types";
 
 // ---------------------------------------------------------------------------
 // Mocks: env
@@ -323,8 +323,8 @@ vi.mock("@/lib/workflows/library-processing/devtools/delay", () => ({
 // Imports (must come after mocks)
 // ---------------------------------------------------------------------------
 
-import { createAccountForBetterAuthUser } from "@/lib/domains/library/accounts/queries";
 import { readBillingState } from "@/lib/domains/billing/queries";
+import { createAccountForBetterAuthUser } from "@/lib/domains/library/accounts/queries";
 import { executeWorkerChunk } from "../orchestrator";
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { playlistTrackPreviewQueryOptions } from "../queries";
 
 interface PlaylistTrackListProps {

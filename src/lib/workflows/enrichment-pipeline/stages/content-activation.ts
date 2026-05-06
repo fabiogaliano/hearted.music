@@ -1,6 +1,6 @@
 import { Result } from "better-result";
-import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { AdminSupabaseClient } from "@/lib/data/client";
+import { createAdminSupabaseClient } from "@/lib/data/client";
 import { readBillingState } from "@/lib/domains/billing/queries";
 import { markItemsNew } from "@/lib/domains/library/liked-songs/status-queries";
 import type { EnrichmentContext } from "../types";

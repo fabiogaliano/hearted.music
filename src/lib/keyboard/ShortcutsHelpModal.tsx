@@ -5,11 +5,10 @@
  * Groups shortcuts by scope, active scopes shown first with badge.
  */
 import { useEffect } from "react";
-
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { fonts } from "@/lib/theme/fonts";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
-import { SHORTCUT_CATALOG, type CatalogEntry } from "./catalog";
+import { type CatalogEntry, SHORTCUT_CATALOG } from "./catalog";
 import { useShortcutContext } from "./KeyboardShortcutProvider";
 import type { ShortcutScope } from "./types";
 

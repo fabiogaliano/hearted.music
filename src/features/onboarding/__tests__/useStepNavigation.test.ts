@@ -1,5 +1,5 @@
+import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderHook, act } from "@testing-library/react";
 
 const mockFetchQuery = vi.fn();
 const mockNavigate = vi.fn();

@@ -1,11 +1,11 @@
-import { queryOptions } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
+import { queryOptions } from "@tanstack/react-query";
 import {
+	type DashboardPageData,
 	getDashboardPageData,
 	getDashboardStats,
-	getRecentActivity,
 	getMatchPreviews,
-	type DashboardPageData,
+	getRecentActivity,
 } from "@/lib/server/dashboard.functions";
 
 export const dashboardKeys = {

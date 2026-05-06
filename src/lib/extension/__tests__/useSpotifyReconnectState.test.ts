@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetSpotifyConnectionStatus } = vi.hoisted(() => {
 	const mockGetSpotifyConnectionStatus = vi.fn().mockResolvedValue(false);

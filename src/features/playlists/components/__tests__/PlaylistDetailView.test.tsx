@@ -1,10 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Playlist } from "@/lib/domains/library/playlists/queries";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { render } from "@/test/utils/render";
 import type { CommandResponse } from "../../../../../shared/spotify-command-protocol";
-import type { ThemeConfig } from "@/lib/theme/types";
-import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { PlaylistDetailView } from "../PlaylistDetailView";
 
 const mockUpdate = vi.fn();
@@ -108,9 +108,10 @@ describe("PlaylistDetailView — edit failure states", () => {
 			await screen.findByText(/reconnect to spotify, then repeat this edit/i),
 		).toBeTruthy();
 		const reconnectLink = screen.getByRole("link", { name: /reconnect/i });
-		expect(reconnectLink.getAttribute("href")).toBe(
-			"https://open.spotify.com/",
-		);
+		const href = reconnectLink.getAttribute("href") ?? "";
+		const url = new URL(href);
+		expect(url.origin + url.pathname).toBe("https://open.spotify.com/");
+		expect(url.hash).toBe("");
 		expect(reconnectLink.getAttribute("target")).toBe("_blank");
 		expect(reconnectLink.getAttribute("rel")).toBe("noopener noreferrer");
 	});

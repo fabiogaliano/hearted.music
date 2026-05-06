@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import { fonts } from "@/lib/theme/fonts";
-import { LegalPageShell } from "@/features/legal/LegalPageShell";
 import { ContentBlocks } from "@/features/legal/components";
+import { LegalPageShell } from "@/features/legal/LegalPageShell";
 import { termsData } from "@/lib/data/legal";
+import { fonts } from "@/lib/theme/fonts";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 export const Route = createFileRoute("/terms")({
 	component: TermsPage,

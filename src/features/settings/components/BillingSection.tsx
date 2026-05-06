@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
 import { CreditCard, ExternalLink } from "lucide-react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
 import type { BillingState } from "@/lib/domains/billing/state";

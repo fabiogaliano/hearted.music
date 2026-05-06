@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
-import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
+import type { ThemeConfig } from "@/lib/theme/types";
 
 type TrailRowProps = {
 	isDone: boolean;

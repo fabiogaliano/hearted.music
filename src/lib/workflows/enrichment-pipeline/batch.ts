@@ -1,7 +1,7 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import * as songData from "@/lib/domains/library/songs/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
+import * as songData from "@/lib/domains/library/songs/queries";
 import type { EnrichmentWorkPlan, SongStageFlags } from "./types";
 
 export interface PipelineBatch {

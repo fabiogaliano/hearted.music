@@ -5,8 +5,8 @@
  * Handles: sign-in, sign-out, callbacks, session management.
  */
 
-import { getAuth } from "@/lib/platform/auth/auth";
 import { createFileRoute } from "@tanstack/react-router";
+import { getAuth } from "@/lib/platform/auth/auth";
 
 export const Route = createFileRoute("/api/auth/$")({
 	server: {

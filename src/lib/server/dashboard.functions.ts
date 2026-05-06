@@ -13,20 +13,20 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
-import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
+import type { ActivityItem, MatchPreview } from "@/features/dashboard/types";
+import { createAdminSupabaseClient } from "@/lib/data/client";
 import { getLastCompletedSync } from "@/lib/data/jobs";
+import { getAnalyzedCountForAccount } from "@/lib/domains/enrichment/content-analysis/queries";
 import {
 	getCount as getLikedSongCount,
-	getRecentWithDetails,
 	getStats as getLikedSongStats,
+	getRecentWithDetails,
 } from "@/lib/domains/library/liked-songs/queries";
-import { getAnalyzedCountForAccount } from "@/lib/domains/enrichment/content-analysis/queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
-import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import { getPlaylistCount } from "@/lib/domains/library/playlists/queries";
+import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
+import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { getUndecidedSongs } from "@/lib/server/matching.functions";
-import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { ActivityItem, MatchPreview } from "@/features/dashboard/types";
 
 // ============================================================================
 // Types

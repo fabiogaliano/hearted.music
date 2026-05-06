@@ -1,10 +1,10 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Song } from "@/lib/domains/library/songs/queries";
 import type {
 	GenreBatchResult,
 	GenreEnrichmentService,
 } from "@/lib/domains/enrichment/genre-tagging/service";
+import type { Song } from "@/lib/domains/library/songs/queries";
 import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext } from "../types";
 

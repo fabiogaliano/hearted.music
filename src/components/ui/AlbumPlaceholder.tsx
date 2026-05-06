@@ -4,8 +4,9 @@
  * Theme-aware placeholder shown when no album art is available.
  * Displays a music note icon on a subtle background.
  */
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
+
 import { cn } from "@/lib/shared/utils/utils";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 interface AlbumPlaceholderProps {
 	/** Additional className for the SVG */

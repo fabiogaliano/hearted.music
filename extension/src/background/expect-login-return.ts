@@ -45,6 +45,7 @@ export type PendingLoginReturn =
 			originTabId: number;
 			originWindowId: number;
 			armedAtMs: number;
+			armToken: string;
 			expiresAtMs: number;
 	  }
 	| {
@@ -52,6 +53,7 @@ export type PendingLoginReturn =
 			originTabId: number;
 			originWindowId: number;
 			armedAtMs: number;
+			armToken: string;
 			candidateTabId: number;
 			candidateCreatedAtMs: number;
 			expiresAtMs: number;
@@ -60,6 +62,7 @@ export type PendingLoginReturn =
 			kind: "awaitingToken";
 			originTabId: number;
 			originWindowId: number;
+			armToken: string;
 			spotifyTabId: number;
 			expiresAtMs: number;
 	  };
@@ -72,6 +75,7 @@ function isPending(value: unknown): value is PendingLoginReturn {
 	if (typeof v.expiresAtMs !== "number") return false;
 	if (typeof v.originTabId !== "number") return false;
 	if (typeof v.originWindowId !== "number") return false;
+	if (typeof v.armToken !== "string" || v.armToken.length === 0) return false;
 	if (v.kind === "awaitingCreatedTab") {
 		return typeof v.armedAtMs === "number";
 	}
@@ -165,6 +169,7 @@ export function classifyNavigationUpdate(update: {
 export type ArmAwaitingCreatedTabInput = {
 	originTabId: number;
 	originWindowId: number;
+	armToken: string;
 	ttlMs?: number;
 	armedAtMs?: number;
 };
@@ -172,6 +177,7 @@ export type ArmAwaitingCreatedTabInput = {
 export async function setPendingLoginReturnAwaitingCreatedTab({
 	originTabId,
 	originWindowId,
+	armToken,
 	ttlMs = AWAITING_CREATED_TAB_TTL_MS,
 	armedAtMs = Date.now(),
 }: ArmAwaitingCreatedTabInput): Promise<void> {
@@ -180,6 +186,7 @@ export async function setPendingLoginReturnAwaitingCreatedTab({
 		originTabId,
 		originWindowId,
 		armedAtMs,
+		armToken,
 		expiresAtMs: armedAtMs + ttlMs,
 	};
 	await writeRaw(value);
@@ -285,12 +292,16 @@ export async function acceptCreatedCandidate(
 	const pending = await getPendingLoginReturn();
 	if (!pending) return null;
 	if (!shouldAcceptCreatedCandidate(candidate, pending)) return null;
+	// shouldAcceptCreatedCandidate already ruled this out, but the predicate
+	// returns a plain boolean so TS still sees the full union here.
+	if (pending.kind === "awaitingToken") return null;
 
 	const next: PendingLoginReturn = {
 		kind: "awaitingSpotifyNavigation",
 		originTabId: pending.originTabId,
 		originWindowId: pending.originWindowId,
 		armedAtMs: pending.armedAtMs,
+		armToken: pending.armToken,
 		candidateTabId: candidate.tabId,
 		candidateCreatedAtMs: candidate.createdAtMs,
 		expiresAtMs: Date.now() + AWAITING_SPOTIFY_NAVIGATION_TTL_MS,
@@ -362,6 +373,7 @@ export async function applyNavigationUpdate(
 		kind: "awaitingToken",
 		originTabId: pending.originTabId,
 		originWindowId: pending.originWindowId,
+		armToken: pending.armToken,
 		spotifyTabId: pending.candidateTabId,
 		expiresAtMs: Date.now() + AWAITING_TOKEN_TTL_MS,
 	};
@@ -371,16 +383,24 @@ export async function applyNavigationUpdate(
 
 // ── Final consume on token transition ────────────────────────────────────
 
-// Returns true only when pending state is `awaitingToken` AND the bound
-// `spotifyTabId` matches the tab whose token transition was observed.
-// Consumes (clears) the pending state on a successful match.
+// Returns true only when pending state is `awaitingToken`, the bound
+// `spotifyTabId` matches the tab whose token transition was observed, AND the
+// content script for that tab has reported the same `armToken` we issued at
+// arm time. Consumes (clears) the pending state on a successful match.
+//
+// The reported token must be supplied by the caller — the SW keeps a
+// short-lived in-memory tab→armToken map (race-safe across ARM_TOKEN_PRESENT /
+// SPOTIFY_TOKEN ordering) and looks it up at call time.
 export async function consumePendingLoginReturnForSpotifyTab(
 	spotifyTabId: number,
+	reportedArmToken: string | null,
 ): Promise<boolean> {
 	const pending = await getPendingLoginReturn();
 	if (!pending) return false;
 	if (pending.kind !== "awaitingToken") return false;
 	if (pending.spotifyTabId !== spotifyTabId) return false;
+	if (reportedArmToken === null) return false;
+	if (reportedArmToken !== pending.armToken) return false;
 
 	await clearPendingLoginReturn();
 	return true;

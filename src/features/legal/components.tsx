@@ -1,6 +1,6 @@
+import type { ContentBlock } from "@/lib/data/legal";
 import { fonts } from "@/lib/theme/fonts";
 import type { ThemeConfig } from "@/lib/theme/types";
-import type { ContentBlock } from "@/lib/data/legal";
 
 export const SUPPORT_EMAIL = "support@hearted.music";
 

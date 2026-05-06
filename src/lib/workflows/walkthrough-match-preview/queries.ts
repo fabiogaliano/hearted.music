@@ -6,7 +6,7 @@
  * without polluting the production matching pipeline.
  */
 
-import { Result } from "better-result";
+import type { Result } from "better-result";
 
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json, Tables } from "@/lib/data/database.types";

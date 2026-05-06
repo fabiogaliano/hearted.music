@@ -16,9 +16,9 @@
  */
 
 import { Result } from "better-result";
-import { readdirSync, readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { GeniusConfigError, type GeniusError, LyricsService } from "../service";
@@ -116,13 +116,13 @@ describe.skipIf(!RUN_VALIDATION || !HAS_TOKEN)(
 
 			// Report fetch results
 			let successCount = 0;
-			let failCount = 0;
+			let _failCount = 0;
 			for (const [key, res] of results) {
 				if (res.result) {
 					successCount++;
 					console.log(`   ✓ ${key}`);
 				} else {
-					failCount++;
+					_failCount++;
 					console.log(`   ✗ ${key}: ${res.error?.message}`);
 				}
 			}

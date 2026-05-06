@@ -10,11 +10,11 @@
  */
 
 import { betterAuth } from "better-auth";
-import { Result } from "better-result";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
-import postgres from "postgres";
+import { Result } from "better-result";
 import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { env } from "@/env";
 import * as authSchema from "@/lib/platform/auth/auth-schema";
 

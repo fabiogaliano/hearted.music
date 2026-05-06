@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
 import { Puzzle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { isExtensionInstalled } from "@/lib/extension/detect";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import { isExtensionInstalled } from "@/lib/extension/detect";
 
 type Status = "checking" | "connected" | "not-found";
 

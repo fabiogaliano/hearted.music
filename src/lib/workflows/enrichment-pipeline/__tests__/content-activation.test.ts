@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Result } from "better-result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BillingState } from "@/lib/domains/billing/state";
 
 // --- Mocks ---

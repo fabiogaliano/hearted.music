@@ -15,27 +15,27 @@
  * queryClient.invalidateQueries().
  */
 
-import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { Sidebar } from "./-components/Sidebar";
+import { lazy, Suspense } from "react";
 import { usePostPurchaseReturn } from "@/features/billing/hooks/usePostPurchaseReturn";
+import { billingKeys } from "@/features/billing/query-keys";
+import { matchingSessionQueryOptions } from "@/features/matching/queries";
 import {
 	isPathAllowed,
 	resolveSession,
 	sessionMode,
 } from "@/features/onboarding/step-resolver";
-import { billingKeys } from "@/features/billing/query-keys";
-import { matchingSessionQueryOptions } from "@/features/matching/queries";
-import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
 import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
 import type { BillingState } from "@/lib/domains/billing/state";
+import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
 import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getBillingState } from "@/lib/server/billing.functions";
 import { getOnboardingSession } from "@/lib/server/onboarding.functions";
 import { AuthenticatedThemeProvider } from "@/lib/theme/authenticated-theme";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { DEFAULT_THEME } from "@/lib/theme/types";
+import { Sidebar } from "./-components/Sidebar";
 
 const shouldLoadDevWorkflowPanel =
 	import.meta.env.DEV && import.meta.env.MODE !== "test";

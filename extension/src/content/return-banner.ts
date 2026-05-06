@@ -36,8 +36,22 @@ function isShowBannerMessage(message: BannerMessage): boolean {
 }
 
 function removeBanner(host: HTMLElement, wrap: HTMLElement): void {
+	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+		host.remove();
+		return;
+	}
+
+	let removed = false;
+	const cleanup = () => {
+		if (removed) return;
+		removed = true;
+		window.clearTimeout(fallbackId);
+		host.remove();
+	};
+	const fallbackId = window.setTimeout(cleanup, 300);
+
 	wrap.classList.add("leaving");
-	wrap.addEventListener("animationend", () => host.remove(), { once: true });
+	wrap.addEventListener("animationend", cleanup, { once: true });
 }
 
 function createBanner(): void {
@@ -176,7 +190,10 @@ function createBanner(): void {
 	title.className = "title";
 	// The brand's trademark trailing period — mirrors `<em>hearted.</em>` usage
 	// in InstallExtensionStep.tsx for visual consistency.
-	title.innerHTML = "<em>hearted.</em> is connected";
+	const brand = document.createElement("em");
+	brand.textContent = "hearted.";
+	title.appendChild(brand);
+	title.appendChild(document.createTextNode(" is connected"));
 
 	const sub = document.createElement("span");
 	sub.className = "sub";

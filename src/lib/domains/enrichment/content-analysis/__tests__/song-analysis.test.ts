@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { SongAnalysisService } from "../song-analysis";
 import type { AnalyzeSongInput } from "../song-analysis";
+import { SongAnalysisService } from "../song-analysis";
 
 const service = new SongAnalysisService({} as any);
 const detect = (input: Partial<AnalyzeSongInput>) =>

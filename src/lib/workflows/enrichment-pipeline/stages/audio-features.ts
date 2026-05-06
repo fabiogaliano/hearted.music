@@ -1,4 +1,5 @@
 import { Result } from "better-result";
+import { resolveStageFailures } from "@/lib/data/job-failures";
 import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
 import {
 	type AudioFeaturesFailureKind,
@@ -6,10 +7,9 @@ import {
 	type TrackInfo,
 } from "@/lib/integrations/audio/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
-import { resolveStageFailures } from "@/lib/data/job-failures";
+import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";
 import { recordStageFailure } from "../record-failure";
-import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
 const STAGE = "audio_features";

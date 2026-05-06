@@ -14,8 +14,8 @@ import type { PlanSelectionConfig } from "@/lib/server/billing.functions";
 import { setupShortcutMock } from "@/test/mocks";
 import { render, screen, waitFor } from "@/test/utils/render";
 import type { CheckoutIntent } from "../checkout-intent";
-import type { CheckoutPollingState } from "../hooks/useCheckoutPolling";
 import { PlanSelectionStep } from "../components/PlanSelectionStep";
+import type { CheckoutPollingState } from "../hooks/useCheckoutPolling";
 
 const INTENT_STORAGE_KEY = "hearted:checkout-intent:v2";
 

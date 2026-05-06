@@ -19,7 +19,7 @@ vi.mock("@tanstack/react-start", () => {
 		middleware: () => builder(),
 		inputValidator: (validator: Function) => {
 			const b = builder();
-			const originalHandler = b.handler as Function;
+			const _originalHandler = b.handler as Function;
 			return {
 				...b,
 				handler: (fn: Function) => (input?: { data?: unknown }) => {

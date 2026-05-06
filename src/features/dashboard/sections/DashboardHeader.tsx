@@ -1,7 +1,7 @@
 /** Welcome greeting with stats and sync button. */
 
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { fonts } from "@/lib/theme/fonts";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import type { DashboardStats } from "../types";
 
 interface DashboardHeaderProps {

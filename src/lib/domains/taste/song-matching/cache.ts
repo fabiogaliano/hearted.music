@@ -9,8 +9,8 @@ import { Result } from "better-result";
 import {
 	hashCandidateSet,
 	hashExclusionSet,
-	hashMatchSnapshot,
 	hashMatchingConfig,
+	hashMatchSnapshot,
 	hashPlaylistSet,
 	hashRerankerConfig,
 	stableStringify,

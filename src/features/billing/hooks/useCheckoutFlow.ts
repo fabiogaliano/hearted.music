@@ -9,15 +9,15 @@
 
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import {
+	type CheckoutIntent,
+	type CheckoutOffer,
+	clearCheckoutIntent,
+	saveCheckoutIntent,
+} from "@/features/onboarding/checkout-intent";
 import { SONG_PACK_500 } from "@/lib/domains/billing/offers";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { createCheckoutSession } from "@/lib/server/billing.functions";
-import {
-	clearCheckoutIntent,
-	saveCheckoutIntent,
-	type CheckoutIntent,
-	type CheckoutOffer,
-} from "@/features/onboarding/checkout-intent";
 
 type CheckoutFlowState =
 	| { status: "idle" }

@@ -7,15 +7,15 @@
  * transitions from a pending state to a confirmation once fulfilled.
  */
 
-import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { isCheckoutFulfilled } from "@/features/billing/checkout-fulfillment";
 import { billingKeys } from "@/features/billing/query-keys";
-import { loadCheckoutIntent } from "@/features/onboarding/checkout-intent";
 import type { CheckoutIntent } from "@/features/onboarding/checkout-intent";
-import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
+import { loadCheckoutIntent } from "@/features/onboarding/checkout-intent";
 import type { BillingState } from "@/lib/domains/billing/state";
+import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { getBillingState } from "@/lib/server/billing.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";

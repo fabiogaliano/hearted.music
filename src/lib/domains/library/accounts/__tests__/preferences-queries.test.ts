@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import { Result } from "better-result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockSingle = vi.fn();
 

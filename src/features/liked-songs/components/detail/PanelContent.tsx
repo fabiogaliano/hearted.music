@@ -1,10 +1,9 @@
-import { useState } from "react";
 import { Lock } from "lucide-react";
+import { useState } from "react";
 
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
-
-import { fonts } from "@/lib/theme/fonts";
 import type { SongSuggestion } from "@/lib/server/matching.functions";
+import { fonts } from "@/lib/theme/fonts";
 import type { AnalysisContent, LikedSong } from "../../types";
 import { HorizontalJourney } from "./HorizontalJourney";
 import { KeyLinesSection } from "./KeyLinesSection";

@@ -1,17 +1,22 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { PaneRoot, PaneSlot, PaneStore, useActiveTab, usePane } from "uipane";
 import {
+	type CSSProperties,
 	useCallback,
 	useEffect,
 	useMemo,
 	useState,
 	useSyncExternalStore,
-	type CSSProperties,
 } from "react";
+import { PaneRoot, PaneSlot, PaneStore, useActiveTab, usePane } from "uipane";
 import { WORKFLOW_PRESETS } from "@/features/devtools/workflow-panel/presets";
 import { useWorkflowDevSettings } from "@/features/devtools/workflow-panel/useWorkflowDevSettings";
+import { resolveSession } from "@/features/onboarding/step-resolver";
+import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
 import { useLibraryProcessingJobProgress } from "@/lib/hooks/useLibraryProcessingJobProgress";
+import type { StageStatus } from "@/lib/platform/jobs/progress/base";
+import { ENRICHMENT_STAGE_NAMES } from "@/lib/platform/jobs/progress/enrichment";
+import { MATCH_REFRESH_STAGE_NAMES } from "@/lib/platform/jobs/progress/match-snapshot-refresh";
 import {
 	type GuidedWorkflowState,
 	getGuidedWorkflowState,
@@ -23,22 +28,17 @@ import {
 	stepLibraryProcessing,
 } from "@/lib/server/dev-workflow.functions";
 import type { LibraryProcessingJobProgress } from "@/lib/server/jobs.functions";
-import { ENRICHMENT_STAGE_NAMES } from "@/lib/platform/jobs/progress/enrichment";
-import { MATCH_REFRESH_STAGE_NAMES } from "@/lib/platform/jobs/progress/match-snapshot-refresh";
-import type { StageStatus } from "@/lib/platform/jobs/progress/base";
+import type { OnboardingAuthPayload } from "@/lib/server/onboarding.functions";
+import {
+	getOnboardingSession,
+	saveOnboardingStep,
+} from "@/lib/server/onboarding.functions";
 import {
 	DEFAULT_WORKFLOW_DEV_CLIENT_SETTINGS,
 	DEFAULT_WORKFLOW_DEV_SERVER_SETTINGS,
 	type WorkflowDevClientSettings,
 	type WorkflowDevServerSettings,
 } from "@/lib/workflows/library-processing/devtools/settings";
-import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
-import type { OnboardingAuthPayload } from "@/lib/server/onboarding.functions";
-import {
-	getOnboardingSession,
-	saveOnboardingStep,
-} from "@/lib/server/onboarding.functions";
-import { resolveSession } from "@/features/onboarding/step-resolver";
 
 // ---------------------------------------------------------------------------
 // Helpers

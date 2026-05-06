@@ -951,17 +951,17 @@ function $(id) { return document.getElementById(id); }
 function esc(str) { var el = document.createElement('span'); el.textContent = str; return el.innerHTML; }
 function fmt(n) { return (n * 100).toFixed(1); }
 function fmt4(n) { return n.toFixed(4); }
-function log(msg) { $('logLine').textContent = 'LOG: ' + msg; }
+function log(msg) { $('logLine').textContent = `LOG: ${msg}`; }
 async function fetchJson(url, opts) { return (await fetch(url, opts)).json(); }
 function withAccount(url) {
   if (!state.accountId) return url;
-  return url + (url.indexOf('?') === -1 ? '?' : '&') + 'accountId=' + encodeURIComponent(state.accountId);
+  return `${url + (url.indexOf('?') === -1 ? '?' : '&')}accountId=${encodeURIComponent(state.accountId)}`;
 }
 function shortAccountId(accountId) {
   return accountId ? accountId.slice(0, 8) : 'NONE';
 }
 function formatAccountLabel(account) {
-  return shortAccountId(account.id) + ' · ' + account.playlistCount + ' playlists';
+  return `${shortAccountId(account.id)} · ${account.playlistCount} playlists`;
 }
 function renderMatchEmptyState() {
   $('matchResultsArea').innerHTML = '<div class="empty-state">SELECT SONGS &#9656; EXECUTE<div style="margin-top:8px;font-size:10px;color:var(--text-dim);opacity:0.6;">Choose songs from the left, then run matching against playlists in the selected account</div></div>';
@@ -988,7 +988,7 @@ function renderAccountPicker() {
 
   select.innerHTML = state.accounts.map((account) => {
     var selected = account.id === state.accountId ? ' selected' : '';
-    return '<option value="' + esc(account.id) + '"' + selected + '>' + esc(formatAccountLabel(account)) + '</option>';
+    return `<option value="${esc(account.id)}"${selected}>${esc(formatAccountLabel(account))}</option>`;
   }).join('');
   select.disabled = state.accounts.length === 1;
 }
@@ -1006,7 +1006,7 @@ async function handleAccountChange() {
   state.accountId = $('accountSelect').value || null;
   resetScopedState();
   await Promise.all([loadPlaylists(), loadSummary(), loadSongs($('songSearch').value)]);
-  log('ACCOUNT -> ' + shortAccountId(state.accountId));
+  log(`ACCOUNT -> ${shortAccountId(state.accountId)}`);
 }
 
 // ═══ TABS ═══════════════════════════════════════════════════════════════════
@@ -1016,7 +1016,7 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
     document.querySelectorAll('.tab-btn').forEach((b) => { b.classList.remove('active'); });
     document.querySelectorAll('.tab-panel').forEach((p) => { p.classList.remove('active'); });
     btn.classList.add('active');
-    $('tab' + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add('active');
+    $(`tab${btn.dataset.tab.charAt(0).toUpperCase()}${btn.dataset.tab.slice(1)}`).classList.add('active');
   });
 });
 
@@ -1038,18 +1038,18 @@ function renderPlaylists() {
     return;
   }
 
-  area.innerHTML = '<div class="pl-list">' + state.playlists.map((p) => {
+  area.innerHTML = `<div class="pl-list">${state.playlists.map((p) => {
     var isExpanded = state.expandedId === p.id;
     var src = p.profileSource === 'cold_start'
       ? '<span class="badge badge-cold">COLD START</span>'
       : '<span class="badge badge-learned">LEARNED</span>';
-    var stats = p.genreDistributionSize + ' genres, ' + p.audioCentroidKeys + ' audio, emb: ' + (p.hasEmbedding ? 'Y' : 'N');
+    var stats = `${p.genreDistributionSize} genres, ${p.audioCentroidKeys} audio, emb: ${p.hasEmbedding ? 'Y' : 'N'}`;
 
     return '<div class="pl-card' + (isExpanded ? ' expanded' : '') + '" data-id="' + p.id + '">' +
       '<div class="pl-card-header">' +
         '<div>' +
           '<div class="pl-card-name">' + esc(p.name) + '</div>' +
-          (p.description ? '<div class="pl-card-desc">' + esc(p.description) + '</div>' : '') +
+          (p.description ? `<div class="pl-card-desc">${esc(p.description)}</div>` : '') +
         '</div>' +
         '<span>' + src + '</span>' +
         '<span class="pl-card-stats">' + stats + '</span>' +
@@ -1059,7 +1059,7 @@ function renderPlaylists() {
         (isExpanded ? '' : '<div class="exp-loading loading">LOADING...</div>') +
       '</div>' +
     '</div>';
-  }).join('') + '</div>';
+  }).join('')}</div>`;
 
   // Click handlers
   area.querySelectorAll('.pl-card-header').forEach((hdr) => {
@@ -1087,15 +1087,15 @@ async function togglePlaylist(id) {
 }
 
 async function loadPlaylistDetail(id) {
-  var detail = $('detail-' + id);
+  var detail = $(`detail-${id}`);
   if (!detail) return;
 
   detail.innerHTML = '<div class="exp-loading loading">LOADING AI PROFILE &amp; SUGGESTIONS...</div>';
 
   // Load expansion + suggestions in parallel
   var [expResult, suggResult] = await Promise.all([
-    fetchJson(withAccount('/api/playlist/' + id + '/expansion')),
-    fetchJson(withAccount('/api/playlist/' + id + '/suggestions?limit=15')),
+    fetchJson(withAccount(`/api/playlist/${id}/expansion`)),
+    fetchJson(withAccount(`/api/playlist/${id}/suggestions?limit=15`)),
   ]);
 
   state.expansions[id] = expResult;
@@ -1111,19 +1111,19 @@ function renderPlaylistDetail(id, container) {
   var html = '';
 
   // Expansion panel
-  if (exp && exp.expansion) {
+  if (exp?.expansion) {
     var e = exp.expansion;
     html += '<div class="expansion-panel">';
 
     // Left: semantic profile
     html += '<div class="exp-left">';
-    html += '<div class="exp-section-title">AI COLD-START PROFILE' + (exp.cached ? ' (cached)' : '') + '</div>';
-    html += '<div class="exp-headline">' + esc(e.headline) + '</div>';
-    html += '<div class="exp-mood">' + esc(e.compound_mood) + '</div>';
-    html += '<div class="exp-text">' + esc(e.mood_description) + '</div>';
+    html += `<div class="exp-section-title">AI COLD-START PROFILE${exp.cached ? ' (cached)' : ''}</div>`;
+    html += `<div class="exp-headline">${esc(e.headline)}</div>`;
+    html += `<div class="exp-mood">${esc(e.compound_mood)}</div>`;
+    html += `<div class="exp-text">${esc(e.mood_description)}</div>`;
 
     html += '<div class="exp-section-title">INTERPRETATION</div>';
-    html += '<div class="exp-text">' + esc(e.interpretation) + '</div>';
+    html += `<div class="exp-text">${esc(e.interpretation)}</div>`;
 
     html += '<div class="exp-section-title">THEMES</div>';
     (e.themes || []).forEach((t) => {
@@ -1134,7 +1134,7 @@ function renderPlaylistDetail(id, container) {
     });
 
     html += '<div class="exp-section-title">SONIC TEXTURE</div>';
-    html += '<div class="exp-text">' + esc(e.sonic_texture) + '</div>';
+    html += `<div class="exp-text">${esc(e.sonic_texture)}</div>`;
     html += '</div>';
 
     // Right: genres + audio
@@ -1142,7 +1142,7 @@ function renderPlaylistDetail(id, container) {
     html += '<div class="exp-section-title">EXPECTED GENRES</div>';
     html += '<div class="genre-tags">';
     (e.expected_genres || []).forEach((g) => {
-      html += '<span class="genre-tag">' + esc(g) + '</span>';
+      html += `<span class="genre-tag">${esc(g)}</span>`;
     });
     html += '</div>';
 
@@ -1166,10 +1166,10 @@ function renderPlaylistDetail(id, container) {
       });
       // Tempo + loudness (different scales)
       if (ap.tempo != null) {
-        html += '<div class="audio-item"><div class="audio-label">TEMPO</div><div class="audio-val">' + ap.tempo + ' BPM</div></div>';
+        html += `<div class="audio-item"><div class="audio-label">TEMPO</div><div class="audio-val">${ap.tempo} BPM</div></div>`;
       }
       if (ap.loudness != null) {
-        html += '<div class="audio-item"><div class="audio-label">LOUDNESS</div><div class="audio-val">' + ap.loudness + ' dB</div></div>';
+        html += `<div class="audio-item"><div class="audio-label">LOUDNESS</div><div class="audio-val">${ap.loudness} dB</div></div>`;
       }
     }
     html += '</div>';
@@ -1179,7 +1179,7 @@ function renderPlaylistDetail(id, container) {
       html += '<div class="exp-section-title">STORED PROFILE GENRES (from DB)</div>';
       html += '<div class="genre-tags">';
       (playlist.topGenres || []).forEach((g) => {
-        html += '<span class="genre-tag">' + esc(g.genre) + ' (' + g.count + ')</span>';
+        html += `<span class="genre-tag">${esc(g.genre)} (${g.count})</span>`;
       });
       html += '</div>';
 
@@ -1192,7 +1192,7 @@ function renderPlaylistDetail(id, container) {
           html += '<div class="audio-item">' +
             '<div class="audio-label">' + key + '</div>' +
             '<div class="audio-val">' + (typeof val === 'number' ? val.toFixed(2) : val) + '</div>' +
-            (isNorm ? '<div class="audio-bar"><div class="audio-fill" style="width:' + (val * 100) + '%"></div></div>' : '') +
+            (isNorm ? `<div class="audio-bar"><div class="audio-fill" style="width:${val * 100}%"></div></div>` : '') +
           '</div>';
         }
         html += '</div>';
@@ -1200,7 +1200,7 @@ function renderPlaylistDetail(id, container) {
     }
 
     html += '</div></div>';
-  } else if (exp && exp.error) {
+  } else if (exp?.error) {
     html += '<div class="hint"><strong>Could not load AI profile:</strong> ' + esc(exp.error) + '. ' +
       'The profile may still work using stored DB data (genres, audio centroid, embedding).</div>';
   }
@@ -1212,7 +1212,7 @@ function renderPlaylistDetail(id, container) {
     'Scored by: embedding similarity (50%) + audio features (30%) + genre overlap (20%)' +
     '</span></div>';
 
-  if (sugg && sugg.suggestions && sugg.suggestions.length > 0) {
+  if (sugg?.suggestions && sugg.suggestions.length > 0) {
     html += '<table class="sugg-table"><thead><tr>' +
       '<th>#</th><th></th><th>SONG</th><th>ARTIST</th>' +
       '<th class="r" title="Final weighted score (0-100)">SCORE</th>' +
@@ -1223,7 +1223,7 @@ function renderPlaylistDetail(id, container) {
     '</tr></thead><tbody>';
 
     sugg.suggestions.forEach((s, i) => {
-      var art = s.imageUrl ? '<img class="sugg-art" src="' + s.imageUrl + '" loading="lazy" alt="' + esc(s.name + ' cover art') + '" />' : '';
+      var art = s.imageUrl ? `<img class="sugg-art" src="${s.imageUrl}" loading="lazy" alt="${esc(`${s.name} cover art`)}" />` : '';
       var ec = s.factors.embedding > 0 ? 'factor-on' : 'factor-dim';
       var ac = s.factors.audio > 0 ? 'factor-on' : 'factor-dim';
       var gc = s.factors.genre > 0 ? 'factor-on' : 'factor-dim';
@@ -1256,7 +1256,7 @@ function renderPlaylistDetail(id, container) {
       '(within top 15)' +
     '</div>';
   } else {
-    html += '<div class="empty-state">' + (sugg && sugg.reason ? esc(sugg.reason) : 'NO SUGGESTIONS') + '</div>';
+    html += `<div class="empty-state">${sugg?.reason ? esc(sugg.reason) : 'NO SUGGESTIONS'}</div>`;
   }
   html += '</div>';
 
@@ -1277,13 +1277,13 @@ async function loadDiagnostics() {
     state.accountId = d.accountId || state.accountId;
     renderAccountPicker();
     if (d.error) {
-      $('diagArea').innerHTML = '<div class="empty-state">' + esc(d.error) + '</div>';
+      $('diagArea').innerHTML = `<div class="empty-state">${esc(d.error)}</div>`;
       return;
     }
     renderDiagnostics(d);
-    log('DIAGNOSTICS: ' + d.songCount + ' songs, ' + d.playlistCount + ' playlists, spread ' + fmt(d.overall.normalized.spread) + 'pp');
+    log(`DIAGNOSTICS: ${d.songCount} songs, ${d.playlistCount} playlists, spread ${fmt(d.overall.normalized.spread)}pp`);
   } catch (e) {
-    $('diagArea').innerHTML = '<div class="empty-state">FAILED: ' + esc(String(e)) + '</div>';
+    $('diagArea').innerHTML = `<div class="empty-state">FAILED: ${esc(String(e))}</div>`;
   } finally {
     btn.disabled = false;
     btn.textContent = 'REFRESH DIAG';
@@ -1297,14 +1297,14 @@ function renderDiagnostics(d) {
 
   // Overall
   html += '<div class="diag-section">';
-  html += '<div class="diag-section-title">OVERALL SCORE DISTRIBUTION (' + ov.count + ' song-playlist pairs)</div>';
+  html += `<div class="diag-section-title">OVERALL SCORE DISTRIBUTION (${ov.count} song-playlist pairs)</div>`;
   html += '<div class="hint" style="border:none;padding:0 0 10px 0;background:none;">' +
     'These are <strong>normalized</strong> scores (baseline 0.5 mapped to 0). ' +
     'A spread of <strong>27pp+</strong> means the algorithm can meaningfully differentiate songs across playlists. ' +
     'Below 10pp = everything looks the same.' +
   '</div>';
   html += '<div class="diag-grid">' +
-    diagStat('SPREAD', fmt(ov.spread) + 'pp', ov.spread > 0.2 ? 'good' : ov.spread > 0.1 ? 'ok' : 'low') +
+    diagStat('SPREAD', `${fmt(ov.spread)}pp`, ov.spread > 0.2 ? 'good' : ov.spread > 0.1 ? 'ok' : 'low') +
     diagStat('MEAN', fmt(ov.mean), '') +
     diagStat('STDEV', fmt(ov.stdev), 'higher = more variation') +
     diagStat('MIN', fmt(ov.min), '') +
@@ -1333,7 +1333,7 @@ function renderDiagnostics(d) {
       : '<span class="badge badge-learned">LEARNED</span>';
     var barW = maxSpread > 0 ? (n.spread / maxSpread) * 100 : 0;
     html += '<tr>' +
-      '<td class="name" title="' + esc(p.name) + '">' + esc(p.name.length > 30 ? p.name.slice(0, 30) + '\u2026' : p.name) + '</td>' +
+      '<td class="name" title="' + esc(p.name) + '">' + esc(p.name.length > 30 ? `${p.name.slice(0, 30)}\u2026` : p.name) + '</td>' +
       '<td>' + src + '</td>' +
       '<td class="r">' + fmt(n.spread) + 'pp</td>' +
       '<td class="r">' + fmt(n.min) + '</td>' +
@@ -1354,10 +1354,10 @@ function renderDiagnostics(d) {
     'Under <strong>5pp</strong> = the song matches everything equally (indecisive).' +
   '</div>';
   html += '<div class="diag-grid">' +
-    diagStat('MEAN SPREAD', fmt(ss.mean) + 'pp', '') +
-    diagStat('P50', fmt(ss.p50) + 'pp', 'median song') +
-    diagStat('BEST', fmt(ss.max) + 'pp', 'most decisive') +
-    diagStat('WORST', fmt(ss.min) + 'pp', 'most ambiguous') +
+    diagStat('MEAN SPREAD', `${fmt(ss.mean)}pp`, '') +
+    diagStat('P50', `${fmt(ss.p50)}pp`, 'median song') +
+    diagStat('BEST', `${fmt(ss.max)}pp`, 'most decisive') +
+    diagStat('WORST', `${fmt(ss.min)}pp`, 'most ambiguous') +
   '</div>';
 
   // Top 5
@@ -1384,8 +1384,8 @@ function renderDiagnostics(d) {
   d.interPlaylist.forEach((ip) => {
     var color = ip.similarity > 0.9 ? 'color:var(--accent-gold)' : ip.similarity > 0.85 ? 'color:var(--text-value)' : 'color:var(--accent-green)';
     html += '<tr>' +
-      '<td class="name">' + esc(ip.a.length > 25 ? ip.a.slice(0, 25) + '\u2026' : ip.a) + '</td>' +
-      '<td class="name">' + esc(ip.b.length > 25 ? ip.b.slice(0, 25) + '\u2026' : ip.b) + '</td>' +
+      '<td class="name">' + esc(ip.a.length > 25 ? `${ip.a.slice(0, 25)}\u2026` : ip.a) + '</td>' +
+      '<td class="name">' + esc(ip.b.length > 25 ? `${ip.b.slice(0, 25)}\u2026` : ip.b) + '</td>' +
       '<td class="r" style="' + color + '">' + fmt4(ip.similarity) + '</td>' +
       '<td style="font-size:9px;' + color + '">' + (ip.similarity > 0.95 ? 'IDENTICAL' : ip.similarity > 0.9 ? 'TOO CLOSE' : ip.similarity > 0.85 ? 'similar' : ip.similarity > 0.75 ? 'ok' : 'distinct') + '</td>' +
     '</tr>';
@@ -1401,7 +1401,7 @@ function renderSpreadTable(items) {
   '</tr></thead><tbody>';
   items.forEach((s) => {
     html += '<tr>' +
-      '<td class="name">' + esc(s.name.length > 28 ? s.name.slice(0, 28) + '\u2026' : s.name) + '</td>' +
+      '<td class="name">' + esc(s.name.length > 28 ? `${s.name.slice(0, 28)}\u2026` : s.name) + '</td>' +
       '<td class="r">' + fmt(s.spread) + 'pp</td>' +
       '<td class="name">' + esc((s.best.playlist || '').slice(0, 22)) + '</td>' +
       '<td class="r">' + fmt(s.best.score) + '</td>' +
@@ -1409,14 +1409,14 @@ function renderSpreadTable(items) {
       '<td class="r">' + fmt(s.worst.score) + '</td>' +
     '</tr>';
   });
-  return html + '</tbody></table>';
+  return `${html}</tbody></table>`;
 }
 
 function diagStat(label, value, sub) {
   return '<div class="diag-stat">' +
     '<div class="diag-stat-label">' + label + '</div>' +
     '<div class="diag-stat-value">' + value + '</div>' +
-    (sub ? '<div class="diag-stat-sub">' + sub + '</div>' : '') +
+    (sub ? `<div class="diag-stat-sub">${sub}</div>` : '') +
   '</div>';
 }
 
@@ -1446,8 +1446,8 @@ async function togglePin(songId, evt) {
 }
 
 async function loadSongs(q) {
-  var qs = q ? '?q=' + encodeURIComponent(q) : '';
-  var payload = await fetchJson(withAccount('/api/songs' + qs));
+  var qs = q ? `?q=${encodeURIComponent(q)}` : '';
+  var payload = await fetchJson(withAccount(`/api/songs${qs}`));
   state.accountId = payload.accountId || state.accountId;
   renderAccountPicker();
   state.songs = payload.songs || [];
@@ -1466,7 +1466,7 @@ function renderSongList() {
     var sel = state.selectedIds.has(s.id);
     var pinned = state.pinnedIds.has(s.id);
     var flags = (s.hasEmbedding ? 'E' : '\u00b7') + (s.hasAudioFeatures ? 'A' : '\u00b7') + (s.genres && s.genres.length > 0 ? 'G' : '\u00b7');
-    var art = s.imageUrl ? '<img class="song-art" src="' + s.imageUrl + '" loading="lazy" alt="' + esc(s.name + ' cover art') + '" />' : '<span class="song-art"></span>';
+    var art = s.imageUrl ? `<img class="song-art" src="${s.imageUrl}" loading="lazy" alt="${esc(`${s.name} cover art`)}" />` : '<span class="song-art"></span>';
     var rowCls = [sel ? 'selected' : '', pinned ? 'is-pinned' : ''].filter(Boolean).join(' ');
     return '<div class="song-row ' + rowCls + '" data-id="' + s.id + '">' +
       '<button type="button" class="pin-btn ' + (pinned ? 'pinned' : '') + '" data-pin="' + s.id + '" aria-label="' + esc((pinned ? 'Unpin ' : 'Pin ') + s.name) + '">' + (pinned ? '\u25c6' : '\u25c7') + '</button>' +
@@ -1492,7 +1492,7 @@ function renderSongList() {
 
 function updateMatchBtn() {
   var n = state.selectedIds.size;
-  $('selectedCount').textContent = n + ' SEL';
+  $('selectedCount').textContent = `${n} SEL`;
   $('matchRunBtn').disabled = n === 0;
 }
 
@@ -1504,12 +1504,12 @@ function renderMatchProfiles() {
   }
 
   var rows = state.playlists.map((p) => {
-    var name = p.name.length > 22 ? p.name.slice(0, 22) + '\u2026' : p.name;
+    var name = p.name.length > 22 ? `${p.name.slice(0, 22)}\u2026` : p.name;
     var src = p.profileSource === 'cold_start' ? '<span class="badge badge-cold">COLD</span>' : '<span class="badge badge-learned">LEARNED</span>';
-    return '<tr><td class="pname">' + esc(name) + '</td><td>' + src + '</td><td class="r">' + p.songCount + '</td><td class="r">' + p.genreDistributionSize + '</td><td class="r">' + (p.hasEmbedding ? 'Y' : '\u2014') + '</td></tr>';
+    return `<tr><td class="pname">${esc(name)}</td><td>${src}</td><td class="r">${p.songCount}</td><td class="r">${p.genreDistributionSize}</td><td class="r">${p.hasEmbedding ? 'Y' : '\u2014'}</td></tr>`;
   }).join('');
-  $('profilesArea').innerHTML = '<table class="profiles-table"><thead><tr><th>NAME</th><th>SRC</th><th class="r">SONGS</th><th class="r">GEN</th><th class="r">EMB</th></tr></thead><tbody>' + rows + '</tbody></table>';
-  $('profileMeta').textContent = state.playlists.length + ' LOADED';
+  $('profilesArea').innerHTML = `<table class="profiles-table"><thead><tr><th>NAME</th><th>SRC</th><th class="r">SONGS</th><th class="r">GEN</th><th class="r">EMB</th></tr></thead><tbody>${rows}</tbody></table>`;
+  $('profileMeta').textContent = `${state.playlists.length} LOADED`;
 }
 
 async function runMatchExecution() {
@@ -1518,12 +1518,12 @@ async function runMatchExecution() {
   btn.disabled = true;
   btn.textContent = 'RUNNING...';
   btn.classList.add('loading');
-  log('MATCHING ' + state.selectedIds.size + ' SONGS...');
+  log(`MATCHING ${state.selectedIds.size} SONGS...`);
 
   var body = {
     songIds: Array.from(state.selectedIds),
     accountId: state.accountId,
-    threshold: parseInt($('threshold').value) / 100,
+    threshold: parseInt($('threshold').value, 10) / 100,
   };
 
   var response = await fetchJson('/api/match', {
@@ -1531,7 +1531,7 @@ async function runMatchExecution() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  state.accountId = response.summary && response.summary.accountId ? response.summary.accountId : state.accountId;
+  state.accountId = response.summary?.accountId ? response.summary.accountId : state.accountId;
   renderAccountPicker();
   state.matchResults = response.results;
   state.matchSummary = response.summary || null;
@@ -1539,21 +1539,21 @@ async function runMatchExecution() {
   btn.disabled = false;
   btn.textContent = 'EXECUTE';
   btn.classList.remove('loading');
-  log('MATCH COMPLETE \u2014 ' + state.matchResults.length + ' SONGS SCORED FOR ' + shortAccountId(state.accountId));
+  log(`MATCH COMPLETE \u2014 ${state.matchResults.length} SONGS SCORED FOR ${shortAccountId(state.accountId)}`);
   renderMatchResults();
 }
 
 function renderMatchResults() {
   var results = state.matchResults;
   if (!results || results.length === 0) {
-    var emptyReason = state.matchSummary && state.matchSummary.reason ? state.matchSummary.reason : 'NO RESULTS';
-    $('matchResultsArea').innerHTML = '<div class="empty-state">' + esc(emptyReason) + '</div>';
+    var emptyReason = state.matchSummary?.reason ? state.matchSummary.reason : 'NO RESULTS';
+    $('matchResultsArea').innerHTML = `<div class="empty-state">${esc(emptyReason)}</div>`;
     $('matchResultsMeta').textContent = '';
     return;
   }
 
   var totalPairs = results.reduce((s, r) => s + r.matches.length, 0);
-  var meta = [results.length + ' SONGS', totalPairs + ' MATCHES'];
+  var meta = [`${results.length} SONGS`, `${totalPairs} MATCHES`];
   if (state.matchSummary) {
     meta.push(state.matchSummary.reranked ? 'RERANKED' : 'BASE ONLY');
     if (state.matchSummary.usedExclusions) meta.push('EXCLUSIONS');
@@ -1561,23 +1561,23 @@ function renderMatchResults() {
   $('matchResultsMeta').textContent = meta.join(' \u00b7 ');
 
   $('matchResultsArea').innerHTML = results.map((r) => {
-    var thresh = parseInt($('threshold').value) / 100;
+    var thresh = parseInt($('threshold').value, 10) / 100;
     var visible = r.matches.filter((m) => m.score >= thresh);
     var scores = visible.map((m) => m.score);
     var min = scores.length ? Math.min.apply(null, scores) : 0;
     var max = scores.length ? Math.max.apply(null, scores) : 0;
     var mean = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
-    var flags = '[' + (r.hasEmbedding ? 'E' : '\u00b7') + (r.hasAudioFeatures ? 'A' : '\u00b7') + (r.genres && r.genres.length > 0 ? 'G' : '\u00b7') + ']';
-    var art = r.imageUrl ? '<img class="r-art" src="' + r.imageUrl + '" style="width:32px;height:32px;object-fit:cover;" alt="' + esc(r.songName + ' cover art') + '" />' : '';
+    var flags = `[${r.hasEmbedding ? 'E' : '\u00b7'}${r.hasAudioFeatures ? 'A' : '\u00b7'}${r.genres && r.genres.length > 0 ? 'G' : '\u00b7'}]`;
+    var art = r.imageUrl ? `<img class="r-art" src="${r.imageUrl}" style="width:32px;height:32px;object-fit:cover;" alt="${esc(`${r.songName} cover art`)}" />` : '';
 
     var rows = visible.map((m, i) => {
       var ec = m.factors.embedding > 0 ? 'on' : '';
       var ac = m.factors.audio > 0 ? 'on' : '';
       var gc = m.factors.genre > 0 ? 'on' : '';
-      var wStr = (m.weights.embedding * 100).toFixed(0) + '/' + (m.weights.audio * 100).toFixed(0) + '/' + (m.weights.genre * 100).toFixed(0);
+      var wStr = `${(m.weights.embedding * 100).toFixed(0)}/${(m.weights.audio * 100).toFixed(0)}/${(m.weights.genre * 100).toFixed(0)}`;
       var pct = m.score * 100;
-      var plName = m.playlistName.length > 28 ? m.playlistName.slice(0, 28) + '\u2026' : m.playlistName;
+      var plName = m.playlistName.length > 28 ? `${m.playlistName.slice(0, 28)}\u2026` : m.playlistName;
       var rawCos = m.rawCosine != null ? (m.rawCosine * 100).toFixed(1) : '\u2014';
       return '<tr>' +
         '<td class="rank">' + String(i + 1).padStart(2, '0') + '</td>' +
@@ -1611,7 +1611,7 @@ function renderMatchResults() {
 
 // Slider sync
 function syncSliders() {
-  $('threshVal').textContent = (parseInt($('threshold').value) / 100).toFixed(2);
+  $('threshVal').textContent = (parseInt($('threshold').value, 10) / 100).toFixed(2);
 }
 
 ['threshold'].forEach((id) => {
@@ -1639,16 +1639,16 @@ $('reprofileBtn').addEventListener('click', async () => {
   try {
     var result = await fetchJson(withAccount('/api/reprofile'), { method: 'POST' });
     if (result.error) {
-      log('REPROFILE FAILED: ' + result.error);
+      log(`REPROFILE FAILED: ${result.error}`);
     } else {
       var ok = result.playlists ? result.playlists.filter((p) => p.status === 'ok').length : 0;
-      log('REPROFILE DONE \u2014 ' + ok + '/' + (result.playlists || []).length + ' playlists updated');
+      log(`REPROFILE DONE \u2014 ${ok}/${(result.playlists || []).length} playlists updated`);
       state.expansions = {};
       state.suggestions = {};
       await loadPlaylists();
     }
   } catch (e) {
-    log('REPROFILE ERROR: ' + String(e));
+    log(`REPROFILE ERROR: ${String(e)}`);
   } finally {
     btn.disabled = false;
     btn.textContent = 'REPROFILE ALL';
@@ -1667,12 +1667,12 @@ async function loadSummary() {
   state.accountId = d.accountId || state.accountId;
   renderAccountPicker();
   $('sysStats').innerHTML = [
-    '<span>ACC <span class="stat-val">' + esc(shortAccountId(state.accountId)) + '</span></span>',
-    '<span>PL <span class="stat-val">' + d.playlistProfiles + '</span></span>',
-    '<span>SONGS <span class="stat-val">' + d.totalSongs + '</span></span>',
-    '<span>EMB <span class="stat-val">' + d.withEmbeddings + '</span></span>',
-    '<span>AUD <span class="stat-val">' + d.withAudioFeatures + '</span></span>',
-    '<span>GEN <span class="stat-val">' + d.withGenres + '</span></span>',
+    `<span>ACC <span class="stat-val">${esc(shortAccountId(state.accountId))}</span></span>`,
+    `<span>PL <span class="stat-val">${d.playlistProfiles}</span></span>`,
+    `<span>SONGS <span class="stat-val">${d.totalSongs}</span></span>`,
+    `<span>EMB <span class="stat-val">${d.withEmbeddings}</span></span>`,
+    `<span>AUD <span class="stat-val">${d.withAudioFeatures}</span></span>`,
+    `<span>GEN <span class="stat-val">${d.withGenres}</span></span>`,
   ].join('');
 }
 
@@ -1681,7 +1681,7 @@ async function loadSummary() {
   await loadAccounts();
   await Promise.all([loadPins(), loadPlaylists(), loadSummary()]);
   await loadSongs();
-  log('READY \u2014 ' + state.playlists.length + ' PLAYLISTS, ' + state.songs.length + ' SONGS, ACCOUNT ' + shortAccountId(state.accountId));
+  log(`READY \u2014 ${state.playlists.length} PLAYLISTS, ${state.songs.length} SONGS, ACCOUNT ${shortAccountId(state.accountId)}`);
 })();
 </script>
 

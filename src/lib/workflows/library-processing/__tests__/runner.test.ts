@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Result } from "better-result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/data/jobs", () => ({
 	markJobCompleted: vi.fn(),
@@ -19,13 +19,13 @@ vi.mock("../service", () => ({
 	applyLibraryProcessingChange: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { runClaimedJob } from "../runner";
+import type { Job } from "@/lib/data/jobs";
 import { markJobCompleted, markJobFailed } from "@/lib/data/jobs";
 import {
 	executeEnrichmentJob,
 	executeMatchSnapshotRefreshJob,
 } from "@/worker/execute";
-import type { Job } from "@/lib/data/jobs";
+import { runClaimedJob } from "../runner";
 
 function makeJob(overrides: Partial<Job> = {}): Job {
 	return {

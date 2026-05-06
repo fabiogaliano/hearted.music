@@ -10,7 +10,7 @@ import type { Song } from "@/lib/domains/library/songs/queries";
 import * as songs from "@/lib/domains/library/songs/queries";
 import { completeJob, failJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import type { DbError } from "@/lib/shared/errors/database";
-import { SyncFailedError } from "@/lib/shared/errors/domain/sync";
+import type { SyncFailedError } from "@/lib/shared/errors/domain/sync";
 import type { LikedSongsSyncResult, SpotifyTrackDTO } from "./types";
 
 type SyncOperationError = DbError | SyncFailedError;

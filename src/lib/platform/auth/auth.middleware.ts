@@ -11,13 +11,13 @@
  *   - `optionalAuthMiddleware` — resolves auth if present, null if not
  */
 
-import { createMiddleware } from "@tanstack/react-start";
 import { redirect } from "@tanstack/react-router";
-import {
-	getAuthSession,
-	type AppSession,
-} from "@/lib/platform/auth/auth.server";
+import { createMiddleware } from "@tanstack/react-start";
 import type { Account } from "@/lib/domains/library/accounts/queries";
+import {
+	type AppSession,
+	getAuthSession,
+} from "@/lib/platform/auth/auth.server";
 
 export interface AuthContext {
 	session: AppSession;

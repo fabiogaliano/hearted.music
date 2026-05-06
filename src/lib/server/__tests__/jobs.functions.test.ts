@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Result } from "better-result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Job } from "@/lib/data/jobs";
 
 const mockAuthContext = {

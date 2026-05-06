@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Result } from "better-result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MatchDecision } from "./match-decision-queries";
 
 let upsertResponse: { data: unknown; error: unknown };
@@ -70,10 +70,10 @@ vi.mock("@/lib/data/client", () => ({
 }));
 
 import {
-	insertMatchDecision,
-	insertMatchDecisions,
 	getMatchDecisions,
 	getMatchDecisionsForSongs,
+	insertMatchDecision,
+	insertMatchDecisions,
 } from "./match-decision-queries";
 
 const ACCOUNT_ID = "acct-test-123";

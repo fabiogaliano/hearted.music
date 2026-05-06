@@ -1,12 +1,12 @@
-import React, { useRef, useState, useEffect, useCallback } from "react";
-import { fonts } from "@/lib/theme/fonts";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { themes } from "@/lib/theme/colors";
+import { fonts } from "@/lib/theme/fonts";
 import { extractHue } from "@/lib/utils/color";
-import type { DesignConfig, ColorProps, PlaygroundSong } from "./types";
-import { HEADLINE_SIZES } from "./types";
 import { GenreDisplay } from "./GenreDisplay";
-import { KeyLinesSection } from "./KeyLinesSection";
 import { HorizontalJourney } from "./HorizontalJourney";
+import { KeyLinesSection } from "./KeyLinesSection";
+import type { ColorProps, DesignConfig, PlaygroundSong } from "./types";
+import { HEADLINE_SIZES } from "./types";
 
 interface PanelPrototypeProps {
 	song: PlaygroundSong;
@@ -1298,7 +1298,7 @@ function SonicSection({
 	// Whisper extract: first phrase before comma or period, capped at 48 chars
 	const whisperPhrase = (() => {
 		const phrase = sonicTexture.split(/[.,]/)[0]?.trim() ?? sonicTexture;
-		return phrase.length > 48 ? phrase.slice(0, 48) + "…" : phrase;
+		return phrase.length > 48 ? `${phrase.slice(0, 48)}…` : phrase;
 	})();
 
 	const toggle = () => {

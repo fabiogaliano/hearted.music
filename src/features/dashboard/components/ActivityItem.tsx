@@ -4,11 +4,11 @@
  */
 
 import type { CSSProperties, ReactNode } from "react";
-import type { ActivityItem as ActivityItemType } from "../types";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
 import { formatRelativeTime } from "@/lib/shared/utils/format-time";
+import { fonts } from "@/lib/theme/fonts";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
+import type { ThemeConfig } from "@/lib/theme/types";
+import type { ActivityItem as ActivityItemType } from "../types";
 
 interface ActivityItemProps {
 	item: ActivityItemType;

@@ -4,17 +4,22 @@
  * Keyboard: Enter = allow sync (when ready), S = skip.
  */
 
-import { type MouseEvent, useCallback, useEffect, useState } from "react";
+import {
+	type MouseEvent,
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 import { toast } from "sonner";
 import { Kbd } from "@/components/ui/kbd";
 import {
 	connectExtension,
-	expectLoginReturn,
 	getSpotifyConnectionStatus,
 	isExtensionInstalled,
 	triggerExtensionSync,
 } from "@/lib/extension/detect";
-import { shouldArmOnEvent } from "@/lib/extension/reconnect-link";
+import { armReconnectOnActivation } from "@/lib/extension/reconnect-link";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { resetSyncJobs } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
@@ -37,6 +42,7 @@ function ActionContent({
 	isSpotifyConnected,
 	onAccept,
 	onSpotifyLoginClick,
+	spotifyLoginHref,
 	isAdvancing,
 }: {
 	theme: ThemeConfig;
@@ -44,6 +50,7 @@ function ActionContent({
 	isSpotifyConnected: boolean;
 	onAccept: () => void;
 	onSpotifyLoginClick: (event: MouseEvent<HTMLAnchorElement>) => void;
+	spotifyLoginHref: string;
 	isAdvancing: boolean;
 }) {
 	const isReadyToSync = isExtensionDetected && isSpotifyConnected;
@@ -176,7 +183,7 @@ function ActionContent({
 				</p>
 			</div>
 			<a
-				href={SPOTIFY_LOGIN_URL}
+				href={spotifyLoginHref}
 				target="_blank"
 				rel="noopener noreferrer"
 				onClick={onSpotifyLoginClick}
@@ -207,13 +214,9 @@ export function InstallExtensionStep() {
 	const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
 	const [isAdvancing, setIsAdvancing] = useState(false);
 
-	const handleSpotifyLoginClick = useCallback(
-		(event: MouseEvent<HTMLAnchorElement>) => {
-			if (!shouldArmOnEvent(event)) return;
-			void expectLoginReturn().catch(() => {
-				// Best-effort: arming failure must not block the navigation to Spotify.
-			});
-		},
+	const spotifyLoginHref = SPOTIFY_LOGIN_URL;
+	const handleSpotifyLoginClick = useMemo(
+		() => armReconnectOnActivation(SPOTIFY_LOGIN_URL),
 		[],
 	);
 
@@ -348,6 +351,7 @@ export function InstallExtensionStep() {
 							isSpotifyConnected={isSpotifyConnected}
 							onAccept={handleAccept}
 							onSpotifyLoginClick={handleSpotifyLoginClick}
+							spotifyLoginHref={spotifyLoginHref}
 							isAdvancing={isAdvancing}
 						/>
 					</div>

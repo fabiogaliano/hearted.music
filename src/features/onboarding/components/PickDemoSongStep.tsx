@@ -10,9 +10,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CDCase } from "@/components/ui/CDCase";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import type { LandingSongManifest } from "@/lib/data/landing-songs";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
-import type { LandingSongManifest } from "@/lib/data/landing-songs";
 import {
 	commitDemoSongAndEnterWalkthrough,
 	type OnboardingAuthPayload,

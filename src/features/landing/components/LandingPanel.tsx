@@ -3,14 +3,14 @@
  * Reuses production PanelHero + PanelContent without fixed positioning.
  */
 import { useEffect, useRef, useState } from "react";
-import type { AnalysisContent, LikedSong } from "@/features/liked-songs/types";
-import { LandingPanelContent } from "./LandingPanelContent";
 import { PanelHero } from "@/features/liked-songs/components/detail/PanelHero";
-import type { PanelColors } from "@/features/liked-songs/components/detail/types";
 import { LAYOUT } from "@/features/liked-songs/components/detail/panel-constants";
+import type { PanelColors } from "@/features/liked-songs/components/detail/types";
 import { usePanelAnimation } from "@/features/liked-songs/components/detail/usePanelAnimation";
+import type { AnalysisContent, LikedSong } from "@/features/liked-songs/types";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { withAlpha } from "@/lib/utils/color";
+import { LandingPanelContent } from "./LandingPanelContent";
 
 const SWIPE_MIN_DISTANCE_PX = 44;
 const STACK_META_BREAKPOINT_PX = 760;

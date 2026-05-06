@@ -7,16 +7,16 @@
  * up in the authenticated layout.
  */
 
-import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { dashboardKeys } from "@/features/dashboard/queries";
 import { likedSongsKeys } from "@/features/liked-songs/queries";
-import type { BillingState } from "@/lib/domains/billing/state";
-import { getBillingState } from "@/lib/server/billing.functions";
 import {
 	clearCheckoutIntent,
 	loadCheckoutIntent,
 } from "@/features/onboarding/checkout-intent";
+import type { BillingState } from "@/lib/domains/billing/state";
+import { getBillingState } from "@/lib/server/billing.functions";
 import { isCheckoutFulfilled } from "../checkout-fulfillment";
 import { billingKeys } from "../query-keys";
 

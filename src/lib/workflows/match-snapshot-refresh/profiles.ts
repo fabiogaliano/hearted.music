@@ -4,21 +4,21 @@
  */
 
 import { Result } from "better-result";
-import * as playlistData from "@/lib/domains/library/playlists/queries";
+import {
+	createGenreEnrichmentService,
+	type GenreEnrichmentInput,
+} from "@/lib/domains/enrichment/genre-tagging/service";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
+import * as playlistData from "@/lib/domains/library/playlists/queries";
 import * as songData from "@/lib/domains/library/songs/queries";
+import { toAudioCentroidRecord } from "@/lib/domains/taste/playlist-profiling/calculations";
+import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
+import type { MatchingPlaylistProfile } from "@/lib/domains/taste/song-matching/types";
 import {
 	createAudioFeaturesService,
 	type TrackInfo,
 } from "@/lib/integrations/audio/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
-import {
-	createGenreEnrichmentService,
-	type GenreEnrichmentInput,
-} from "@/lib/domains/enrichment/genre-tagging/service";
-import { toAudioCentroidRecord } from "@/lib/domains/taste/playlist-profiling/calculations";
-import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
-import type { MatchingPlaylistProfile } from "@/lib/domains/taste/song-matching/types";
 
 /**
  * Loads current target playlists and computes/caches their profiles.

@@ -11,17 +11,17 @@ import { maybeDevDelay } from "@/lib/workflows/library-processing/devtools/delay
 import {
 	hasMoreSongsNeedingEnrichmentWork,
 	loadBatchSongs,
-	selectEnrichmentWorkPlan,
 	type PipelineBatch,
+	selectEnrichmentWorkPlan,
 } from "./batch";
 import {
-	makeInitialProgress,
 	type InitializedEnrichmentChunkProgress,
+	makeInitialProgress,
 } from "./progress";
 import { runAudioFeatures } from "./stages/audio-features";
+import { runContentActivation } from "./stages/content-activation";
 import { runGenreTagging } from "./stages/genre-tagging";
 import { runSongAnalysis } from "./stages/song-analysis";
-import { runContentActivation } from "./stages/content-activation";
 import { runSongEmbedding } from "./stages/song-embedding";
 import {
 	type EnrichmentContext,

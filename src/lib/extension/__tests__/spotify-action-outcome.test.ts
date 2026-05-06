@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { CommandResponse } from "../../../../shared/spotify-command-protocol";
 import type { AcknowledgedResult } from "../playlist-write-acknowledgement";
 import {
-	outcomeFromCommandResponse,
 	outcomeFromAcknowledgedResult,
+	outcomeFromCommandResponse,
 } from "../spotify-action-outcome";
 
 describe("outcomeFromCommandResponse", () => {

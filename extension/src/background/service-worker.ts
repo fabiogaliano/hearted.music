@@ -131,9 +131,14 @@ async function resolveHeartedTabId(): Promise<number | null> {
 async function sendShowReturnBannerToTab(spotifyTabId: number): Promise<void> {
 	try {
 		await chrome.tabs.sendMessage(spotifyTabId, { type: "SHOW_RETURN_BANNER" });
-	} catch {
-		// Content script may not have loaded yet (e.g. very early in page life).
-		// Banner only matters for logged-in, settled pages, so skip silently.
+	} catch (err) {
+		// With document_start injection this should usually succeed. Failures here
+		// are more likely extension reload / tab close / tab race conditions, so
+		// log them for visibility during preprod hardening.
+		console.warn(
+			`[hearted.] SHOW_RETURN_BANNER failed for tab ${spotifyTabId}:`,
+			err,
+		);
 	}
 }
 
@@ -144,6 +149,34 @@ async function sendShowReturnBannerToTab(spotifyTabId: number): Promise<void> {
 const RECENT_TAB_CREATIONS_MAX = 16;
 const RECENT_TAB_CREATIONS_MAX_AGE_MS = 10_000;
 const recentTabCreations: CreatedTabCandidate[] = [];
+
+// In-memory tab→armToken map populated by ARM_TOKEN_PRESENT messages from
+// open.spotify.com content scripts. Consulted (not consumed) when deciding
+// whether a SPOTIFY_TOKEN event from a given tab should claim pending state.
+// Keyed by sender tab id. TTL matches the long awaitingToken window so slow
+// token capture still works; stale entries are also pruned on tab close and
+// via lazy expiry on read.
+const REPORTED_ARM_TOKEN_TTL_MS = 10 * 60_000;
+type ReportedArmToken = { token: string; reportedAtMs: number };
+const reportedArmTokensByTabId = new Map<number, ReportedArmToken>();
+
+function rememberReportedArmToken(tabId: number, token: string): void {
+	reportedArmTokensByTabId.set(tabId, { token, reportedAtMs: Date.now() });
+}
+
+function getReportedArmToken(tabId: number): string | null {
+	const entry = reportedArmTokensByTabId.get(tabId);
+	if (!entry) return null;
+	if (Date.now() - entry.reportedAtMs > REPORTED_ARM_TOKEN_TTL_MS) {
+		reportedArmTokensByTabId.delete(tabId);
+		return null;
+	}
+	return entry.token;
+}
+
+function forgetReportedArmToken(tabId: number): void {
+	reportedArmTokensByTabId.delete(tabId);
+}
 
 function recordRecentTabCreation(creation: CreatedTabCandidate): void {
 	const now = Date.now();
@@ -621,6 +654,8 @@ chrome.runtime.onMessageExternal.addListener(
 			(async () => {
 				const originTabId = _sender.tab?.id;
 				const originWindowId = _sender.tab?.windowId;
+				const armToken =
+					typeof message.armToken === "string" ? message.armToken : "";
 				if (
 					typeof originTabId !== "number" ||
 					typeof originWindowId !== "number"
@@ -630,10 +665,18 @@ chrome.runtime.onMessageExternal.addListener(
 					sendResponse({ ok: false, error: "no sender tab/window" });
 					return;
 				}
+				if (armToken.length === 0) {
+					// Without an arm token we can't dual-match the eventual fragment
+					// reported by the Spotify tab. Refuse rather than arm a flow that
+					// could not be safely consumed.
+					sendResponse({ ok: false, error: "missing armToken" });
+					return;
+				}
 				const armedAtMs = Date.now();
 				await setPendingLoginReturnAwaitingCreatedTab({
 					originTabId,
 					originWindowId,
+					armToken,
 					armedAtMs,
 				});
 
@@ -775,18 +818,27 @@ chrome.runtime.onMessage.addListener(
 							// advances awaitingSpotifyNavigation → awaitingToken, and only
 							// then attempt to consume.
 							await reconcileCandidateTabNavigation(spotifyTabId);
-							const matched =
-								await consumePendingLoginReturnForSpotifyTab(spotifyTabId);
+							// Dual-match consume: pending awaitingToken state must match BOTH
+							// the bound tab AND the arm token reported by that tab's content
+							// script. If ARM_TOKEN_PRESENT hasn't arrived yet, this returns
+							// false; the eventual ARM_TOKEN_PRESENT handler retries the consume.
+							const reportedArmToken = getReportedArmToken(spotifyTabId);
+							const matched = await consumePendingLoginReturnForSpotifyTab(
+								spotifyTabId,
+								reportedArmToken,
+							);
 							if (matched) {
 								console.log(
-									"[hearted.] Spotify login transition — matched bound tab, sending banner",
+									"[hearted.] Spotify login transition — matched bound tab + arm token, sending banner",
 								);
+								forgetReportedArmToken(spotifyTabId);
 								await sendShowReturnBannerToTab(spotifyTabId);
 							} else {
-								// Token came from an unrelated/unbound Spotify tab; pending state
-								// (if any) is left intact for the legitimate matched tab.
+								// Either the tab is unrelated, the arm token hasn't been
+								// reported yet, or it doesn't match. Pending state (if any) is
+								// left intact for the legitimate matched tab.
 								console.log(
-									"[hearted.] Spotify login transition — no matching bound tab, skipping banner",
+									"[hearted.] Spotify login transition — no dual-match, skipping banner",
 								);
 							}
 						}
@@ -802,6 +854,40 @@ chrome.runtime.onMessage.addListener(
 				updateHash(operationName, sha256Hash);
 				sendResponse({ ok: true });
 				break;
+			}
+
+			case "ARM_TOKEN_PRESENT": {
+				(async () => {
+					const senderTabId = _sender.tab?.id;
+					const token = message.token;
+					if (
+						typeof senderTabId !== "number" ||
+						typeof token !== "string" ||
+						token.length === 0
+					) {
+						sendResponse({ ok: false });
+						return;
+					}
+					rememberReportedArmToken(senderTabId, token);
+
+					// Retry consume in case SPOTIFY_TOKEN already arrived for this tab
+					// (which would have left pending state in awaitingToken with no
+					// reported arm token to dual-match against). This makes the flow
+					// robust to either ordering of ARM_TOKEN_PRESENT vs SPOTIFY_TOKEN.
+					const matched = await consumePendingLoginReturnForSpotifyTab(
+						senderTabId,
+						token,
+					);
+					if (matched) {
+						console.log(
+							"[hearted.] Arm token reported after token capture — dual-match satisfied, sending banner",
+						);
+						forgetReportedArmToken(senderTabId);
+						await sendShowReturnBannerToTab(senderTabId);
+					}
+					sendResponse({ ok: true });
+				})();
+				return true;
 			}
 
 			case "GET_TOKEN": {
@@ -939,6 +1025,7 @@ chrome.tabs.onUpdated.addListener((tabId, _changeInfo, tab) => {
 // If the candidate or bound Spotify tab is closed before the flow completes,
 // drop pending state so a future token from another tab can't claim it.
 chrome.tabs.onRemoved.addListener((closedTabId) => {
+	forgetReportedArmToken(closedTabId);
 	clearPendingLoginReturnIfTabClosed(closedTabId).catch((err) => {
 		console.warn("[hearted.] tabs.onRemoved cleanup failed:", err);
 	});

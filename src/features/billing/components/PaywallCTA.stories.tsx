@@ -1,6 +1,6 @@
 import type { Story } from "@ladle/react";
-import { PaywallCTA } from "./PaywallCTA";
 import type { BillingState } from "@/lib/domains/billing/state";
+import { PaywallCTA } from "./PaywallCTA";
 
 function makeFreeBillingState(creditBalance = 0): BillingState {
 	return {

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
 	isPathAllowed,
+	type OnboardingSession,
 	resolveSession,
 	sessionMode,
-	type OnboardingSession,
 	type WalkthroughSong,
 } from "../step-resolver";
 

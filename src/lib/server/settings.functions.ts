@@ -7,10 +7,10 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
+import { z } from "zod";
 import { updateTheme } from "@/lib/domains/library/accounts/preferences-queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { themeSchema } from "@/lib/theme/types";
-import { z } from "zod";
 
 const updateThemeInput = z.object({
 	theme: themeSchema,

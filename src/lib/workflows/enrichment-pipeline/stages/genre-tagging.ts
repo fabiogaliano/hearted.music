@@ -1,10 +1,10 @@
 import { Result } from "better-result";
-import { createGenreEnrichmentService } from "@/lib/domains/enrichment/genre-tagging/service";
-import type { GenreEnrichmentInput } from "@/lib/domains/enrichment/genre-tagging/service";
 import { resolveStageFailures } from "@/lib/data/job-failures";
+import type { GenreEnrichmentInput } from "@/lib/domains/enrichment/genre-tagging/service";
+import { createGenreEnrichmentService } from "@/lib/domains/enrichment/genre-tagging/service";
+import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";
 import { recordStageFailure } from "../record-failure";
-import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
 const STAGE = "genre_tagging";

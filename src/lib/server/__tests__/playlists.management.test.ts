@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Result } from "better-result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";

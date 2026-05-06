@@ -6,13 +6,13 @@
  */
 
 import { Result } from "better-result";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Database, Tables, TablesInsert } from "@/lib/data/database.types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Database, Tables, TablesInsert } from "@/lib/data/database.types";
 import { generateSongSlug } from "@/lib/utils/slug";
 
 /** Liked song row type */

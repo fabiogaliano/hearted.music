@@ -4,7 +4,7 @@
  * The active theme is already knowable during render, so both the context value
  * and the `--theme-hue` CSS variable are emitted during render too.
  */
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 
 import { getThemeHue, themes } from "./colors";
 import { DEFAULT_THEME, type ThemeConfig } from "./types";

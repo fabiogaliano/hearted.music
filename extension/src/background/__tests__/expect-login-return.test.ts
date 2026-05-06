@@ -137,11 +137,12 @@ describe("expect-login-return — 3-stage flow", () => {
 	// ── Stage 1: arm awaitingCreatedTab ────────────────────────────────────
 
 	describe("setPendingLoginReturnAwaitingCreatedTab", () => {
-		it("stores origin tab/window, armedAtMs, and short TTL", async () => {
+		it("stores origin tab/window, armedAtMs, armToken, and short TTL", async () => {
 			const t0 = 1_700_000_000_000;
 			await setPendingLoginReturnAwaitingCreatedTab({
 				originTabId: 10,
 				originWindowId: 1,
+				armToken: "tok",
 				armedAtMs: t0,
 			});
 			const stored = await session.get(PENDING_LOGIN_RETURN_KEY);
@@ -151,6 +152,7 @@ describe("expect-login-return — 3-stage flow", () => {
 			expect(value.originTabId).toBe(10);
 			expect(value.originWindowId).toBe(1);
 			expect(value.armedAtMs).toBe(t0);
+			expect(value.armToken).toBe("tok");
 			expect(value.expiresAtMs).toBe(t0 + AWAITING_CREATED_TAB_TTL_MS);
 		});
 
@@ -166,6 +168,7 @@ describe("expect-login-return — 3-stage flow", () => {
 			await setPendingLoginReturnAwaitingCreatedTab({
 				originTabId: 10,
 				originWindowId: 1,
+				armToken: "tok",
 				ttlMs: 1,
 			});
 			await new Promise((r) => setTimeout(r, 5));
@@ -184,6 +187,7 @@ describe("expect-login-return — 3-stage flow", () => {
 			originTabId: 10,
 			originWindowId: 1,
 			armedAtMs: t0,
+			armToken: "tok",
 			expiresAtMs: t0 + AWAITING_CREATED_TAB_TTL_MS,
 		};
 
@@ -307,6 +311,7 @@ describe("expect-login-return — 3-stage flow", () => {
 				originTabId: 10,
 				originWindowId: 1,
 				armedAtMs: t0,
+				armToken: "tok",
 				candidateTabId: 200,
 				candidateCreatedAtMs: t0 + 100,
 				expiresAtMs: t0 + 1_000_000,
@@ -334,6 +339,7 @@ describe("expect-login-return — 3-stage flow", () => {
 			originTabId: 10,
 			originWindowId: 1,
 			armedAtMs: t0,
+			armToken: "tok",
 			expiresAtMs: t0 + 30_000,
 		};
 
@@ -387,6 +393,7 @@ describe("expect-login-return — 3-stage flow", () => {
 			await setPendingLoginReturnAwaitingCreatedTab({
 				originTabId: 10,
 				originWindowId: 1,
+				armToken: "tok",
 			});
 		});
 
@@ -474,6 +481,7 @@ describe("expect-login-return — 3-stage flow", () => {
 			await setPendingLoginReturnAwaitingCreatedTab({
 				originTabId: 10,
 				originWindowId: 1,
+				armToken: "tok",
 			});
 			await acceptCreatedCandidate(
 				makeCandidate({ tabId: 200, pendingUrl: "https://open.spotify.com/" }),
@@ -571,6 +579,7 @@ describe("expect-login-return — 3-stage flow", () => {
 			await setPendingLoginReturnAwaitingCreatedTab({
 				originTabId: 10,
 				originWindowId: 1,
+				armToken: "tok",
 			});
 			expect(
 				await applyNavigationUpdate({
@@ -587,6 +596,7 @@ describe("expect-login-return — 3-stage flow", () => {
 				originTabId: 10,
 				originWindowId: 1,
 				armedAtMs: Date.now(),
+				armToken: "tok",
 				candidateTabId: 200,
 				candidateCreatedAtMs: 1,
 				expiresAtMs: Date.now() + 60_000,
@@ -606,11 +616,17 @@ describe("expect-login-return — 3-stage flow", () => {
 
 	// ── Stage 3: token consume ─────────────────────────────────────────────
 
-	describe("consumePendingLoginReturnForSpotifyTab", () => {
-		async function armAndConfirm(spotifyTabId: number): Promise<void> {
+	describe("consumePendingLoginReturnForSpotifyTab (dual tab + arm-token match)", () => {
+		const ARM_TOKEN = "arm-token-correct";
+
+		async function armAndConfirm(
+			spotifyTabId: number,
+			armToken: string = ARM_TOKEN,
+		): Promise<void> {
 			await setPendingLoginReturnAwaitingCreatedTab({
 				originTabId: 10,
 				originWindowId: 1,
+				armToken,
 			});
 			await acceptCreatedCandidate(
 				makeCandidate({
@@ -625,26 +641,81 @@ describe("expect-login-return — 3-stage flow", () => {
 			});
 		}
 
-		it("test 10: only the confirmed Spotify tab consumes pending state", async () => {
+		it("matching tab id + matching reported arm token → consumes", async () => {
 			await armAndConfirm(200);
-			expect(await consumePendingLoginReturnForSpotifyTab(999)).toBe(false);
-			expect((await getPendingLoginReturn())?.kind).toBe("awaitingToken");
-			expect(await consumePendingLoginReturnForSpotifyTab(200)).toBe(true);
+			expect(await consumePendingLoginReturnForSpotifyTab(200, ARM_TOKEN)).toBe(
+				true,
+			);
 			expect(await getPendingLoginReturn()).toBeNull();
+		});
+
+		it("matching tab id but no reported arm token (null) → does NOT consume; pending remains", async () => {
+			await armAndConfirm(200);
+			expect(await consumePendingLoginReturnForSpotifyTab(200, null)).toBe(
+				false,
+			);
+			expect((await getPendingLoginReturn())?.kind).toBe("awaitingToken");
+		});
+
+		it("matching tab id but wrong reported arm token → does NOT consume; pending remains", async () => {
+			await armAndConfirm(200);
+			expect(
+				await consumePendingLoginReturnForSpotifyTab(200, "wrong-token"),
+			).toBe(false);
+			expect((await getPendingLoginReturn())?.kind).toBe("awaitingToken");
+		});
+
+		it("unrelated tab reporting the correct token → does NOT consume", async () => {
+			await armAndConfirm(200);
+			expect(await consumePendingLoginReturnForSpotifyTab(999, ARM_TOKEN)).toBe(
+				false,
+			);
+			expect((await getPendingLoginReturn())?.kind).toBe("awaitingToken");
+			// Subsequent legitimate dual-match still succeeds.
+			expect(await consumePendingLoginReturnForSpotifyTab(200, ARM_TOKEN)).toBe(
+				true,
+			);
 		});
 
 		it("returns false when state is awaitingSpotifyNavigation (not yet confirmed)", async () => {
 			await setPendingLoginReturnAwaitingCreatedTab({
 				originTabId: 10,
 				originWindowId: 1,
+				armToken: ARM_TOKEN,
 			});
 			await acceptCreatedCandidate(
 				makeCandidate({ tabId: 200, pendingUrl: "https://open.spotify.com/" }),
 			);
-			expect(await consumePendingLoginReturnForSpotifyTab(200)).toBe(false);
+			expect(await consumePendingLoginReturnForSpotifyTab(200, ARM_TOKEN)).toBe(
+				false,
+			);
 			expect((await getPendingLoginReturn())?.kind).toBe(
 				"awaitingSpotifyNavigation",
 			);
+		});
+
+		it("ordering race: SPOTIFY_TOKEN before ARM_TOKEN_PRESENT does not consume early; later dual-match still works", async () => {
+			await armAndConfirm(200);
+			// Token arrives first; SW has no reported arm token yet — pass null.
+			expect(await consumePendingLoginReturnForSpotifyTab(200, null)).toBe(
+				false,
+			);
+			expect((await getPendingLoginReturn())?.kind).toBe("awaitingToken");
+			// ARM_TOKEN_PRESENT arrives later; consume retried with reported token.
+			expect(await consumePendingLoginReturnForSpotifyTab(200, ARM_TOKEN)).toBe(
+				true,
+			);
+			expect(await getPendingLoginReturn()).toBeNull();
+		});
+
+		it("ordering race: ARM_TOKEN_PRESENT before SPOTIFY_TOKEN — eventual token capture consumes via stored reported token", async () => {
+			await armAndConfirm(200);
+			// In the SW the reported token would be persisted in the in-memory map
+			// before SPOTIFY_TOKEN arrives; here we just simulate the resulting call.
+			expect(await consumePendingLoginReturnForSpotifyTab(200, ARM_TOKEN)).toBe(
+				true,
+			);
+			expect(await getPendingLoginReturn()).toBeNull();
 		});
 
 		it("test 11: long login delay still works after Spotify tab is confirmed", async () => {
@@ -654,6 +725,7 @@ describe("expect-login-return — 3-stage flow", () => {
 				await setPendingLoginReturnAwaitingCreatedTab({
 					originTabId: 10,
 					originWindowId: 1,
+					armToken: ARM_TOKEN,
 				});
 				await acceptCreatedCandidate(
 					makeCandidate({
@@ -674,7 +746,9 @@ describe("expect-login-return — 3-stage flow", () => {
 					pendingUrl: undefined,
 				});
 				vi.advanceTimersByTime(30_000); // tiny gap before token capture
-				expect(await consumePendingLoginReturnForSpotifyTab(200)).toBe(true);
+				expect(
+					await consumePendingLoginReturnForSpotifyTab(200, ARM_TOKEN),
+				).toBe(true);
 			} finally {
 				vi.useRealTimers();
 			}
@@ -688,6 +762,7 @@ describe("expect-login-return — 3-stage flow", () => {
 			await setPendingLoginReturnAwaitingCreatedTab({
 				originTabId: 10,
 				originWindowId: 1,
+				armToken: "tok",
 			});
 			await acceptCreatedCandidate(
 				makeCandidate({ tabId: 200, pendingUrl: "https://open.spotify.com/" }),
@@ -700,6 +775,7 @@ describe("expect-login-return — 3-stage flow", () => {
 			await setPendingLoginReturnAwaitingCreatedTab({
 				originTabId: 10,
 				originWindowId: 1,
+				armToken: "tok",
 			});
 			await acceptCreatedCandidate(
 				makeCandidate({ tabId: 200, pendingUrl: "https://open.spotify.com/" }),
@@ -717,6 +793,7 @@ describe("expect-login-return — 3-stage flow", () => {
 			await setPendingLoginReturnAwaitingCreatedTab({
 				originTabId: 10,
 				originWindowId: 1,
+				armToken: "tok",
 			});
 			await acceptCreatedCandidate(
 				makeCandidate({ tabId: 200, pendingUrl: "https://open.spotify.com/" }),
@@ -731,6 +808,7 @@ describe("expect-login-return — 3-stage flow", () => {
 			await setPendingLoginReturnAwaitingCreatedTab({
 				originTabId: 10,
 				originWindowId: 1,
+				armToken: "tok",
 			});
 			await clearPendingLoginReturnIfTabClosed(123);
 			expect((await getPendingLoginReturn())?.kind).toBe("awaitingCreatedTab");

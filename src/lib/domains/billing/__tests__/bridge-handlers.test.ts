@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminSupabaseClient } from "@/lib/data/client";
 
 vi.mock("@/lib/workflows/library-processing/service", () => ({
@@ -8,10 +8,10 @@ vi.mock("@/lib/workflows/library-processing/service", () => ({
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 import {
 	handlePackFulfilled,
-	handleUnlimitedActivated,
 	handlePackReversed,
-	handleUnlimitedPeriodReversed,
 	handleSubscriptionDeactivated,
+	handleUnlimitedActivated,
+	handleUnlimitedPeriodReversed,
 } from "../bridge-handlers";
 
 const mockedApplyChange = vi.mocked(applyLibraryProcessingChange);

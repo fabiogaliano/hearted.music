@@ -18,9 +18,9 @@
  * the suite-wide jsdom setup intact.
  */
 
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { Result } from "better-result";
 import { createClient } from "@supabase/supabase-js";
+import { Result } from "better-result";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Database } from "@/lib/data/database.types";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";

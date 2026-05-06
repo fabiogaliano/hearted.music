@@ -5,12 +5,12 @@
 
 import { useLocation } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import type { LandingSongManifest } from "@/lib/data/landing-songs";
 import {
 	ONBOARDING_STEPS,
 	type OnboardingStep,
 } from "@/lib/domains/library/accounts/preferences-queries";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
-import type { LandingSongManifest } from "@/lib/data/landing-songs";
 import type {
 	OnboardingData,
 	ReadyCopyVariant,
@@ -23,8 +23,8 @@ import { FlagPlaylistsStep } from "./components/FlagPlaylistsStep";
 import { InstallExtensionStep } from "./components/InstallExtensionStep";
 import { PickColorStep } from "./components/PickColorStep";
 import { PickDemoSongStep } from "./components/PickDemoSongStep";
-import { StepContainer } from "./components/StepContainer";
 import { PlanSelectionStep } from "./components/PlanSelectionStep";
+import { StepContainer } from "./components/StepContainer";
 
 import { SyncingStep } from "./components/SyncingStep";
 import { WelcomeStep } from "./components/WelcomeStep";

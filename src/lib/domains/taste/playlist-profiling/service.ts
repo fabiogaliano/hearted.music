@@ -7,12 +7,13 @@
 
 import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
-import { hashPlaylistProfile } from "@/lib/domains/enrichment/embeddings/hashing";
-import type { Song } from "@/lib/domains/library/songs/queries";
 import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
+import { hashPlaylistProfile } from "@/lib/domains/enrichment/embeddings/hashing";
 import * as vectorsData from "@/lib/domains/enrichment/embeddings/queries";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { getModelBundleHash } from "@/lib/domains/enrichment/embeddings/versioning";
+import type { Song } from "@/lib/domains/library/songs/queries";
+import type { LlmService } from "@/lib/integrations/llm/service";
 import {
 	blendEmbeddings,
 	calculateAudioCentroid,
@@ -21,10 +22,9 @@ import {
 	computeIntentWeight,
 	toAudioCentroidRecord,
 } from "./calculations";
-import type { LlmService } from "@/lib/integrations/llm/service";
 import {
-	expandPlaylistIntent,
 	buildColdStartEmbeddingText,
+	expandPlaylistIntent,
 } from "./intent-expansion";
 import type {
 	AudioCentroid,

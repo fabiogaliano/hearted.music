@@ -1,6 +1,6 @@
-import { useEffect } from "react";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import { useEffect } from "react";
 import TanStackQueryDevtools from "@/integrations/tanstack-query/devtools";
 
 export default function DevToolsShell() {

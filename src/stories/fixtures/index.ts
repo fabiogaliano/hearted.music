@@ -1,7 +1,7 @@
-import data from "./fixtures.json";
+import type { ActivityItem, DashboardProps } from "@/features/dashboard/types";
 import type { LikedSong } from "@/features/liked-songs/types";
-import type { DashboardProps, ActivityItem } from "@/features/dashboard/types";
-import type { SongForMatching, Playlist } from "@/features/matching/types";
+import type { Playlist, SongForMatching } from "@/features/matching/types";
+import data from "./fixtures.json";
 
 export const allLikedSongs: LikedSong[] = data.likedSongs as LikedSong[];
 export const dashboardData: DashboardProps = data.dashboard as DashboardProps;

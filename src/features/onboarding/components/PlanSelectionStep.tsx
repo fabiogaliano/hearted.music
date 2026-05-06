@@ -6,9 +6,9 @@
  * Billing-disabled: renders success immediately (free-tier copy).
  */
 
-import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Kbd } from "@/components/ui/kbd";
 import { billingKeys } from "@/features/billing/query-keys";
@@ -34,11 +34,11 @@ import {
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import {
+	type CheckoutIntent,
+	type CheckoutOffer,
 	clearCheckoutIntent,
 	loadCheckoutIntent,
 	saveCheckoutIntent,
-	type CheckoutIntent,
-	type CheckoutOffer,
 } from "../checkout-intent";
 import { useCheckoutPolling } from "../hooks/useCheckoutPolling";
 

@@ -1,5 +1,5 @@
-import { lazy, Suspense } from "react";
 import type { CSSProperties } from "react";
+import { lazy, Suspense } from "react";
 
 // Guard: @number-flow/react extends HTMLElement at module scope, which doesn't exist during SSR.
 // import.meta.env.SSR is replaced at transform time, so the false branch is dead code on the server.

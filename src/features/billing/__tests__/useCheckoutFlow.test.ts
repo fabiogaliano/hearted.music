@@ -1,8 +1,8 @@
-import { renderHook, act } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { loadCheckoutIntent } from "@/features/onboarding/checkout-intent";
 import { SONG_PACK_500 } from "@/lib/domains/billing/offers";
 import type { BillingState } from "@/lib/domains/billing/state";
-import { loadCheckoutIntent } from "@/features/onboarding/checkout-intent";
 
 const mockCreateCheckoutSession = vi.fn();
 

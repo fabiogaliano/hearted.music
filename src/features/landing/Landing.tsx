@@ -15,13 +15,12 @@
 import { useEffect, useRef, useState } from "react";
 import { MatchesSection } from "@/features/matching/components/MatchesSection";
 import { SongSection } from "@/features/matching/components/SongSection";
+import { getDemoMatchesForSong } from "@/lib/data/demo-matches";
 import {
-	loadLandingSongDetail,
 	type LandingSongDetail,
 	type LandingSongManifest,
+	loadLandingSongDetail,
 } from "@/lib/data/landing-songs";
-
-import { getDemoMatchesForSong } from "@/lib/data/demo-matches";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { LandingHero } from "./components/LandingHero";

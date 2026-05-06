@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Result } from "better-result";
-import type { EnrichmentWorkPlan } from "../types";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PipelineBatch } from "../batch";
+import type { EnrichmentWorkPlan } from "../types";
 
 // --- Mocks ---
 

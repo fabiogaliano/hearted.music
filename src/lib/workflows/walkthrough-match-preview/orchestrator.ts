@@ -20,8 +20,8 @@ import type {
 	MatchingSong,
 } from "@/lib/domains/taste/song-matching/types";
 import { createLlmService } from "@/lib/integrations/llm/service";
-import { runLightweightEnrichment } from "@/lib/workflows/playlist-sync/lightweight-enrichment";
 import { loadTargetPlaylistProfiles } from "@/lib/workflows/match-snapshot-refresh/profiles";
+import { runLightweightEnrichment } from "@/lib/workflows/playlist-sync/lightweight-enrichment";
 
 import {
 	computePreviewFingerprint,

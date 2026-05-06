@@ -17,11 +17,11 @@ vi.stubGlobal("crypto", { randomUUID: mockRandomUUID });
 
 import {
 	addToPlaylist,
-	removeFromPlaylist,
 	createPlaylist,
-	updatePlaylist,
 	deletePlaylist,
 	queryArtistOverview,
+	removeFromPlaylist,
+	updatePlaylist,
 } from "../spotify-client";
 
 beforeEach(() => {

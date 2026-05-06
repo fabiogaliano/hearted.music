@@ -6,8 +6,6 @@
  */
 
 import { Result } from "better-result";
-import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
-import { fromSupabaseMaybe } from "@/lib/shared/utils/result-wrappers/supabase";
 import type { AdminSupabaseClient } from "@/lib/data/client";
 import type {
 	BillingPlan,
@@ -16,6 +14,8 @@ import type {
 	UnlimitedAccess,
 } from "@/lib/domains/billing/state";
 import { STRIPE_STATUS_TO_NORMALIZED } from "@/lib/domains/billing/state";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import { fromSupabaseMaybe } from "@/lib/shared/utils/result-wrappers/supabase";
 
 const FREE_DEFAULT: BillingState = {
 	plan: "free",

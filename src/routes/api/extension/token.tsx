@@ -9,11 +9,11 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
-import { requireAuthSession } from "@/lib/platform/auth/auth.server";
 import {
 	generateApiToken,
 	revokeAllTokensForAccount,
 } from "@/lib/data/api-tokens";
+import { requireAuthSession } from "@/lib/platform/auth/auth.server";
 
 export const Route = createFileRoute("/api/extension/token")({
 	server: {

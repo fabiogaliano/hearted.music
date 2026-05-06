@@ -6,13 +6,13 @@
  */
 
 import { Result } from "better-result";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Tables } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Tables } from "@/lib/data/database.types";
 
 export type MatchDecision = Tables<"match_decision">;
 export type DecisionType = "added" | "dismissed";

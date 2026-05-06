@@ -11,9 +11,9 @@
  * jsdom env defines `window`, so the wrapper would refuse the read here.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Result } from "better-result";
 import { createClient } from "@supabase/supabase-js";
+import { Result } from "better-result";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Database } from "@/lib/data/database.types";
 import { grantAnalysisFailureReplacementCredit } from "../compensation";
 

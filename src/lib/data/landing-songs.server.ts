@@ -5,7 +5,7 @@
  * server bundle. No runtime fetch or filesystem access needed,
  * which means this works on Cloudflare Workers, Node, or any runtime.
  */
-import type { LandingSongManifest, LandingSongDetail } from "./landing-songs";
+import type { LandingSongDetail, LandingSongManifest } from "./landing-songs";
 
 const allModules = import.meta.glob<
 	LandingSongDetail | { songs: LandingSongManifest[] }

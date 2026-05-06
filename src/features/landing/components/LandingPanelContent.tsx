@@ -3,15 +3,14 @@
  * Same as production PanelContent but without the PlaylistsSection.
  */
 import { useState } from "react";
-
-import { fonts } from "@/lib/theme/fonts";
-import type { AnalysisContent, LikedSong } from "@/features/liked-songs/types";
 import { HorizontalJourney } from "@/features/liked-songs/components/detail/HorizontalJourney";
 import { KeyLinesSection } from "@/features/liked-songs/components/detail/KeyLinesSection";
 import type {
 	ColorProps,
 	PanelColors,
 } from "@/features/liked-songs/components/detail/types";
+import type { AnalysisContent, LikedSong } from "@/features/liked-songs/types";
+import { fonts } from "@/lib/theme/fonts";
 
 function AnalysisToggle({
 	headline,

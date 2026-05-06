@@ -6,10 +6,10 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { ExtensionSetupTrail } from "@/features/onboarding/components/ExtensionSetupTrail";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import type { ThemeColor, ThemeConfig } from "@/lib/theme/types";
-import { ExtensionSetupTrail } from "@/features/onboarding/components/ExtensionSetupTrail";
 
 const SPOTIFY_LOGIN_URL =
 	"https://accounts.spotify.com/en-GB/login?continue=https%3A%2F%2Fopen.spotify.com%2F";

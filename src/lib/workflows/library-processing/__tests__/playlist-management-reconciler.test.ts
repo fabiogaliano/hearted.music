@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { reconcileLibraryProcessing } from "../reconciler";
-import type { LibraryProcessingState, LibraryProcessingChange } from "../types";
+import type { LibraryProcessingChange, LibraryProcessingState } from "../types";
 
 function makeState(
 	overrides: Partial<LibraryProcessingState> = {},

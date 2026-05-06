@@ -5,8 +5,8 @@
  * generous whitespace. Instrument Serif for display, Geist for UI.
  */
 
-import { useCallback, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import type { BillingState } from "@/lib/domains/billing/state";

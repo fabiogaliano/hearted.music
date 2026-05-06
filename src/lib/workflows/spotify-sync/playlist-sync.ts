@@ -12,11 +12,11 @@ import type {
 } from "@/lib/domains/library/playlists/queries";
 import * as playlists from "@/lib/domains/library/playlists/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
-import { dedupeTracksBySpotifyId } from "./dedupe";
 import type { DbError } from "@/lib/shared/errors/database";
-import { SyncFailedError } from "@/lib/shared/errors/domain/sync";
-import type { SpotifyPlaylistDTO, SpotifyTrackDTO } from "./types";
+import type { SyncFailedError } from "@/lib/shared/errors/domain/sync";
+import { dedupeTracksBySpotifyId } from "./dedupe";
 import { importSpotifyTracks } from "./sync-helpers";
+import type { SpotifyPlaylistDTO, SpotifyTrackDTO } from "./types";
 
 /** Playlist change entry */
 export const PlaylistChangeEntrySchema = z.object({

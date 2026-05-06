@@ -22,10 +22,6 @@ import { createJob } from "@/lib/data/jobs";
 import { updatePhaseJobIds } from "@/lib/domains/library/accounts/preferences-queries";
 import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
 import * as playlistData from "@/lib/domains/library/playlists/queries";
-import type {
-	SpotifyPlaylistDTO,
-	SpotifyTrackDTO,
-} from "@/lib/workflows/spotify-sync/types";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import { completeJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
@@ -44,6 +40,10 @@ import {
 	initialSync,
 	runPhase,
 } from "@/lib/workflows/spotify-sync/sync-helpers";
+import type {
+	SpotifyPlaylistDTO,
+	SpotifyTrackDTO,
+} from "@/lib/workflows/spotify-sync/types";
 
 const SpotifyTrackDTOSchema = z.object({
 	added_at: z.string(),

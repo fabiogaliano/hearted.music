@@ -6,13 +6,13 @@
  */
 
 import type { Result } from "better-result";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Json, Tables, TablesInsert } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Json, Tables, TablesInsert } from "@/lib/data/database.types";
 
 /** Playlist analysis row type */
 export type PlaylistAnalysis = Tables<"playlist_analysis">;

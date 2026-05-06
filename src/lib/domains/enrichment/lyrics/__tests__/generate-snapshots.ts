@@ -14,9 +14,9 @@ import { Result } from "better-result";
  *
  * Run with: bun src/lib/services/lyrics/__tests__/generate-snapshots.ts
  */
-import { existsSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { existsSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { LyricsService } from "../service";
 import type { TransformedLyricsBySection } from "../utils/lyrics-transformer";
 

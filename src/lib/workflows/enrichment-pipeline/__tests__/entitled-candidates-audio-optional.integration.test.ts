@@ -16,8 +16,8 @@
  * jsdom env defines `window`, so the wrapper would refuse the read here.
  */
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createClient } from "@supabase/supabase-js";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Database } from "@/lib/data/database.types";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";

@@ -5,8 +5,8 @@
  * Provides Google sign-in via Better Auth social providers.
  */
 
-import { useState } from "react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { useState } from "react";
 import { signIn } from "@/lib/platform/auth/auth-client";
 import { getAuthSession } from "@/lib/server/auth.functions";
 import { fonts } from "@/lib/theme/fonts";

@@ -1,7 +1,7 @@
 import type { Story } from "@ladle/react";
 import { useState } from "react";
-import { Matching } from "./Matching";
 import { matchingSongs } from "@/stories/fixtures";
+import { Matching } from "./Matching";
 import type { CompletionStats } from "./types";
 
 const defaultCompletionStats: CompletionStats = {

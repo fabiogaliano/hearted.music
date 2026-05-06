@@ -3,9 +3,9 @@
  */
 
 import { describe, expect, it } from "vitest";
-import type { Song } from "@/lib/domains/library/songs/queries";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import { hashPlaylistProfile } from "@/lib/domains/enrichment/embeddings/hashing";
+import type { Song } from "@/lib/domains/library/songs/queries";
 import {
 	blendEmbeddings,
 	calculateAudioCentroid,

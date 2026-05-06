@@ -1,12 +1,11 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
-
+import type { LikedSongFilter } from "@/lib/domains/library/liked-songs/queries";
 import {
 	getLikedSongBySlug,
 	getLikedSongsPage,
 	getLikedSongsStats,
 } from "@/lib/server/liked-songs.functions";
 import { getSongSuggestions } from "@/lib/server/matching.functions";
-import type { LikedSongFilter } from "@/lib/domains/library/liked-songs/queries";
 
 export type FilterOption = LikedSongFilter;
 

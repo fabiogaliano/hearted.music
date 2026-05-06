@@ -7,11 +7,11 @@
  */
 
 import { Result } from "better-result";
-import type { DbError } from "@/lib/shared/errors/database";
-import { DatabaseError } from "@/lib/shared/errors/database";
 import type { AdminSupabaseClient } from "@/lib/data/client";
 import { readBillingState } from "@/lib/domains/billing/queries";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
+import type { DbError } from "@/lib/shared/errors/database";
+import { DatabaseError } from "@/lib/shared/errors/database";
 import { BillingChanges } from "@/lib/workflows/library-processing/changes/billing";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 

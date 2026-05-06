@@ -269,7 +269,7 @@ async function backfillLyricsEmbeddings(
 	let embeddingService: EmbeddingService;
 	try {
 		embeddingService = new EmbeddingService();
-	} catch (err) {
+	} catch (_err) {
 		console.warn("Embedding service unavailable, skipping lyrics embeddings");
 		return { stored: 0, skipped: candidateSongs.length, failed: 0 };
 	}

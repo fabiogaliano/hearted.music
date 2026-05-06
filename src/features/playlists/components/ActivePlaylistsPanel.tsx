@@ -1,6 +1,6 @@
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
-import type { ThemeConfig } from "@/lib/theme/types";
 import { fonts } from "@/lib/theme/fonts";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { PlaylistCard } from "./PlaylistCard";
 
 interface ActivePlaylistsPanelProps {

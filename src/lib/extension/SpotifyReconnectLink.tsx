@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { fonts } from "@/lib/theme/fonts";
 import { armReconnectOnActivation } from "./reconnect-link";
 
@@ -16,13 +17,18 @@ export function SpotifyReconnectLink({
 	border,
 	text,
 }: SpotifyReconnectLinkProps) {
+	const onActivate = useMemo(
+		() => armReconnectOnActivation(SPOTIFY_LOGIN_URL),
+		[],
+	);
+
 	return (
 		<a
 			href={SPOTIFY_LOGIN_URL}
 			target="_blank"
 			rel="noopener noreferrer"
-			onClick={armReconnectOnActivation}
-			onAuxClick={armReconnectOnActivation}
+			onClick={onActivate}
+			onAuxClick={onActivate}
 			className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[20px] px-3 py-1.5 text-xs tracking-widest uppercase transition-all hover:opacity-80 active:scale-[0.98]"
 			style={{
 				fontFamily: fonts.body,

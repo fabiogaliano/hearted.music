@@ -27,8 +27,8 @@
 
 import { Result } from "better-result";
 import { beforeAll, describe, expect, test } from "vitest";
-import type { Song } from "@/lib/domains/library/songs/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import type { Song } from "@/lib/domains/library/songs/queries";
 import { PlaylistProfilingService } from "../service";
 import type { ComputedPlaylistProfile } from "../types";
 

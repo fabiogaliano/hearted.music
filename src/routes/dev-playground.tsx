@@ -1,11 +1,11 @@
-import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { fonts } from "@/lib/theme/fonts";
-import { PanelPrototype } from "@/features/liked-songs/components/playground/PanelPrototype";
+import { useState } from "react";
 import { DesignSwitcher } from "@/features/liked-songs/components/playground/DesignSwitcher";
 import { MOCK_SONGS } from "@/features/liked-songs/components/playground/mock-data";
-import { DEFAULT_CONFIG } from "@/features/liked-songs/components/playground/types";
+import { PanelPrototype } from "@/features/liked-songs/components/playground/PanelPrototype";
 import type { DesignConfig } from "@/features/liked-songs/components/playground/types";
+import { DEFAULT_CONFIG } from "@/features/liked-songs/components/playground/types";
+import { fonts } from "@/lib/theme/fonts";
 
 export const Route = createFileRoute("/dev-playground")({
 	component: DevPlayground,

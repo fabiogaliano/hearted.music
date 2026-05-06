@@ -6,8 +6,8 @@
  * then navigates to the dashboard.
  */
 
-import { useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { clearCheckoutIntent } from "@/features/onboarding/checkout-intent";
 
 export const Route = createFileRoute("/_authenticated/checkout/cancel")({

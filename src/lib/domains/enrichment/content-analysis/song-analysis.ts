@@ -1,12 +1,12 @@
 import { Result } from "better-result";
 import { z } from "zod";
+import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import type { SongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
 import * as songAnalysis from "@/lib/domains/enrichment/content-analysis/queries";
-import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
+import type { LlmService } from "@/lib/integrations/llm/service";
 import type { DbError } from "@/lib/shared/errors/database";
 import type { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
 import type { LlmError } from "@/lib/shared/errors/external/llm";
-import type { LlmService } from "@/lib/integrations/llm/service";
 import { getLyricsFormatLegend } from "../lyrics/utils/lyrics-formatter";
 
 const ThemeSchema = z.object({ name: z.string(), description: z.string() });

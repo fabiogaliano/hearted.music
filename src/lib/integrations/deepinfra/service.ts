@@ -375,7 +375,7 @@ async function handleErrorResponse<T>(
 	if (response.status === 429) {
 		const retryAfter = response.headers.get("Retry-After");
 		const retryAfterMs = retryAfter
-			? Number.parseInt(retryAfter) * 1000
+			? Number.parseInt(retryAfter, 10) * 1000
 			: undefined;
 		return Result.err(new DeepInfraRateLimitError(retryAfterMs));
 	}

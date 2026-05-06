@@ -4,9 +4,9 @@ import { resolveStageFailures } from "@/lib/data/job-failures";
 import { grantAnalysisFailureReplacementCredit } from "@/lib/domains/billing/compensation";
 import { createAnalysisPipeline } from "@/lib/domains/enrichment/content-analysis/pipeline";
 import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
+import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";
 import { recordStageFailure } from "../record-failure";
-import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
 const STAGE = "song_analysis";

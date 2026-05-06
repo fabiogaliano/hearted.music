@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { PaneStore } from "uipane";
+import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
+import type { WalkthroughSong } from "@/features/onboarding/step-resolver";
 import { getDemoMatchesForSong } from "@/lib/data/demo-matches";
 import {
-	getDemoSongMatches,
 	type DemoMatchPlaylist,
+	getDemoSongMatches,
 } from "@/lib/server/onboarding.functions";
-import type { WalkthroughSong } from "@/features/onboarding/step-resolver";
-import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
+import { SongSection } from "./components/SongSection";
 import { MatchingHeader } from "./sections/MatchingHeader";
 import { MatchingSession } from "./sections/MatchingSession";
-import { SongSection } from "./components/SongSection";
 import type { Playlist, SongForMatching } from "./types";
 
 const POLL_INTERVAL_MS = 2000;

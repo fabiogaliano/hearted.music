@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { fonts } from "@/lib/theme/fonts";
-import { THEME_COLORS } from "@/lib/theme/types";
 import type { ThemeColor } from "@/lib/theme/types";
-import type { DesignConfig } from "./types";
+import { THEME_COLORS } from "@/lib/theme/types";
+import type { DesignConfig, PlaygroundSong } from "./types";
 import { PRESETS } from "./types";
-import type { PlaygroundSong } from "./types";
 
 interface DesignSwitcherProps {
 	config: DesignConfig;

@@ -105,9 +105,10 @@ export async function getExtensionStatus(): Promise<ExtensionStatusResponse | nu
 	return sendExtensionCommand<ExtensionStatusResponse>({ type: "GET_STATUS" });
 }
 
-export async function expectLoginReturn(): Promise<boolean> {
+export async function expectLoginReturn(armToken: string): Promise<boolean> {
 	const response = await sendExtensionCommand<{ ok?: boolean }>({
 		type: "EXPECT_LOGIN_RETURN",
+		armToken,
 	});
 	return response?.ok === true;
 }

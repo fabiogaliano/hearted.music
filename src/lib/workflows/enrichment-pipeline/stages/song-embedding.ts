@@ -1,10 +1,10 @@
 import { Result } from "better-result";
-import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
-import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
 import { resolveStageFailures } from "@/lib/data/job-failures";
+import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
+import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";
 import { recordStageFailure } from "../record-failure";
-import type { PipelineBatch } from "../batch";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
 const STAGE = "song_embedding";

@@ -1,7 +1,7 @@
 import type { Story } from "@ladle/react";
-import { useState, useEffect } from "react";
-import { Dashboard } from "./Dashboard";
+import { useEffect, useState } from "react";
 import { allLikedSongs, simulateDashboard } from "@/stories/fixtures";
+import { Dashboard } from "./Dashboard";
 
 export const FullyEnriched: Story = () => (
 	<Dashboard

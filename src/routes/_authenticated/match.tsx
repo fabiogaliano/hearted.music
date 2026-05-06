@@ -1,11 +1,9 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-import { Matching } from "@/features/matching/Matching";
-import { WalkthroughMatchContent } from "@/features/matching/WalkthroughMatchContent";
 import { MatchingEmptyState } from "@/features/matching/components/MatchingEmptyState";
 import { useMatchingSession } from "@/features/matching/hooks/useMatchingSession";
+import { Matching } from "@/features/matching/Matching";
 import {
 	matchingSessionQueryOptions,
 	songMatchesQueryOptions,
@@ -15,16 +13,17 @@ import type {
 	Playlist,
 	SongForMatching,
 } from "@/features/matching/types";
+import { WalkthroughMatchContent } from "@/features/matching/WalkthroughMatchContent";
 import { sessionMode } from "@/features/onboarding/step-resolver";
-import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
+import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
+import { addToPlaylist } from "@/lib/extension/spotify-client";
+import { useSpotifyReconnectState } from "@/lib/extension/useSpotifyReconnectState";
 import {
 	addSongToPlaylist,
 	dismissSong,
 } from "@/lib/server/matching.functions";
-import { addToPlaylist } from "@/lib/extension/spotify-client";
-import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
-import { useSpotifyReconnectState } from "@/lib/extension/useSpotifyReconnectState";
+import { fonts } from "@/lib/theme/fonts";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 export const Route = createFileRoute("/_authenticated/match")({
 	// No precondition guard needed. `/_authenticated` already resolved the

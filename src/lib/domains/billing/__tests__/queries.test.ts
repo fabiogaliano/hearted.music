@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
 import { Result } from "better-result";
+import { describe, expect, it, vi } from "vitest";
 import type { AdminSupabaseClient } from "@/lib/data/client";
 import { readBillingState } from "../queries";
 

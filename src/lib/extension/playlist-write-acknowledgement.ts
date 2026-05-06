@@ -6,17 +6,17 @@
  * then the server persists the confirmed outcome into app DB.
  */
 
+import {
+	acknowledgePlaylistCreate,
+	acknowledgePlaylistDelete,
+	acknowledgePlaylistUpdate,
+} from "@/lib/server/playlists.functions";
 import type { CommandResponse } from "../../../shared/spotify-command-protocol";
 import {
 	createPlaylist,
-	updatePlaylist,
 	deletePlaylist,
+	updatePlaylist,
 } from "./spotify-client";
-import {
-	acknowledgePlaylistCreate,
-	acknowledgePlaylistUpdate,
-	acknowledgePlaylistDelete,
-} from "@/lib/server/playlists.functions";
 
 type CreatePlaylistResult = { uri: string; revision: string };
 type UpdatePlaylistResult = { revision: string };

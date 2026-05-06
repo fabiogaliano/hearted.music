@@ -1,9 +1,9 @@
 /** Only rendered when reviewCount > 0. */
 import { Link } from "@tanstack/react-router";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { fonts } from "@/lib/theme/fonts";
-import type { MatchPreview } from "../types";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { FanSpreadAlbumArt } from "../components/FanSpreadAlbumArt";
+import type { MatchPreview } from "../types";
 
 interface MatchReviewCTAProps {
 	reviewCount: number;

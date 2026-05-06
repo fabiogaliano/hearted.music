@@ -1,9 +1,9 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ThemeConfig } from "@/lib/theme/types";
 import { render } from "@/test/utils/render";
 import { PlaylistsScreen } from "../PlaylistsScreen";
-import type { ThemeConfig } from "@/lib/theme/types";
 
 const mockPlaylistData = vi.fn();
 const mockIsExtensionInstalled = vi.fn();

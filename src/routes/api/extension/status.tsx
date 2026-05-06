@@ -11,16 +11,16 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { getRequest } from "@tanstack/react-start/server";
+import { Result } from "better-result";
+import { validateApiToken } from "@/lib/data/api-tokens";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
+import * as playlistData from "@/lib/domains/library/playlists/queries";
+import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import {
 	extensionCorsPreflightResponse,
 	getExtensionCorsHeaders,
 } from "@/lib/server/extension-cors";
-import { Result } from "better-result";
-import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
-import * as playlistData from "@/lib/domains/library/playlists/queries";
-import { getAuthSession } from "@/lib/platform/auth/auth.server";
-import { validateApiToken } from "@/lib/data/api-tokens";
-import { createAdminSupabaseClient } from "@/lib/data/client";
 
 export const Route = createFileRoute("/api/extension/status")({
 	server: {

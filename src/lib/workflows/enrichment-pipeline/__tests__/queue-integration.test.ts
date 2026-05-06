@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Result } from "better-result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Job } from "@/lib/data/jobs";
 
 let activeJobResponse: { data: unknown; error: unknown };
@@ -46,9 +46,9 @@ vi.mock("@/lib/data/client", () => ({
 }));
 
 import {
-	getOrCreateEnrichmentJob,
-	getActiveEnrichmentJob,
 	createEnrichmentJob,
+	getActiveEnrichmentJob,
+	getOrCreateEnrichmentJob,
 } from "@/lib/data/jobs";
 import { makeInitialProgress } from "../progress";
 

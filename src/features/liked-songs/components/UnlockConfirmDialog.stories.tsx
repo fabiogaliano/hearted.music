@@ -1,8 +1,8 @@
 import type { Story } from "@ladle/react";
 import { useCallback, useState } from "react";
-import { UnlockConfirmDialog } from "./UnlockConfirmDialog";
 import type { BillingState } from "@/lib/domains/billing/state";
 import type { UnlockFlowState } from "../hooks/useSongUnlock";
+import { UnlockConfirmDialog } from "./UnlockConfirmDialog";
 
 const freeBillingState: BillingState = {
 	plan: "free",

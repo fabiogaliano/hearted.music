@@ -1,5 +1,6 @@
 import type { Story } from "@ladle/react";
 import { BillingSection } from "./BillingSection";
+
 function Wrapper({ children }: { children: React.ReactNode }) {
 	return (
 		<div style={{ maxWidth: 560, margin: "40px auto", padding: "0 24px" }}>

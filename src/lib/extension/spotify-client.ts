@@ -1,12 +1,12 @@
-import { sendExtensionCommand } from "./detect";
 import {
-	SPOTIFY_PROTOCOL_VERSION,
-	createSpotifyCommand,
 	type CommandResponse,
+	createSpotifyCommand,
+	SPOTIFY_PROTOCOL_VERSION,
 	type SpotifyCommandMap,
 	type SpotifyCommandName,
 	type SpotifyErrorCode,
 } from "../../../shared/spotify-command-protocol";
+import { sendExtensionCommand } from "./detect";
 
 type AddToPlaylistResult = { typename: string };
 type RemoveFromPlaylistResult = { typename: string };

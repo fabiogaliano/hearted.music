@@ -2,12 +2,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
+import { resolveSession } from "@/features/onboarding/step-resolver";
 import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
 import {
 	getOnboardingSession,
 	saveOnboardingStep,
 } from "@/lib/server/onboarding.functions";
-import { resolveSession } from "@/features/onboarding/step-resolver";
 
 const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
 

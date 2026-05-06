@@ -6,14 +6,14 @@
  */
 
 import { Result } from "better-result";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Tables, TablesInsert } from "@/lib/data/database.types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Tables, TablesInsert } from "@/lib/data/database.types";
 
 // ============================================================================
 // Type Exports

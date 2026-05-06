@@ -18,16 +18,15 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-
+import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
+import { addToPlaylist } from "@/lib/extension/spotify-client";
+import { useSpotifyReconnectState } from "@/lib/extension/useSpotifyReconnectState";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { addSongToPlaylist } from "@/lib/server/matching.functions";
-import { addToPlaylist } from "@/lib/extension/spotify-client";
-import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
-import { useSpotifyReconnectState } from "@/lib/extension/useSpotifyReconnectState";
-import { songSuggestionsQueryOptions } from "../queries";
 import { useThemeWithOverride } from "@/lib/theme/ThemeHueProvider";
 import type { ThemeConfig } from "@/lib/theme/types";
 import { extractHue } from "@/lib/utils/color";
+import { songSuggestionsQueryOptions } from "../queries";
 import type { AnalysisContent, LikedSong } from "../types";
 import { PanelContent } from "./detail/PanelContent";
 import { PanelHero } from "./detail/PanelHero";

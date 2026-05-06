@@ -7,6 +7,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { OnboardingData } from "@/lib/server/onboarding.functions";
+import { AuthenticatedThemeProvider } from "@/lib/theme/authenticated-theme";
 import {
 	ONBOARDING_PLAYLISTS,
 	PLAYLISTS,
@@ -19,7 +20,6 @@ import {
 	setupOnboardingNavigationMock,
 	setupShortcutMock,
 } from "@/test/mocks";
-import { AuthenticatedThemeProvider } from "@/lib/theme/authenticated-theme";
 import { render, screen, within } from "@/test/utils/render";
 import { Onboarding } from "../Onboarding";
 

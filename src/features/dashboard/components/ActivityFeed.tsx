@@ -1,6 +1,7 @@
 /** Timeline feed showing recent activity, sorted by timestamp descending. */
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
+
 import { fonts } from "@/lib/theme/fonts";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import type { ActivityItem as ActivityItemType } from "../types";
 import { ActivityItem } from "./ActivityItem";
 

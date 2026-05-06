@@ -5,7 +5,7 @@
  * Must stay in sync with supabase/migrations/20260303154135_add_better_auth_tables.sql
  */
 
-import { pgTable, text, boolean, timestamp } from "drizzle-orm/pg-core";
+import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
 	id: text("id").primaryKey(),

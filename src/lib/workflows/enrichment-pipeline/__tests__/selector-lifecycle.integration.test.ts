@@ -13,8 +13,8 @@
  * SUPABASE_URL is not the local URL so CI without a local stack is unaffected.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createClient } from "@supabase/supabase-js";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Database } from "@/lib/data/database.types";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";

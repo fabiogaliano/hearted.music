@@ -8,7 +8,18 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
-
+import type { AnalysisContent } from "@/features/liked-songs/types";
+import type {
+	OnboardingSession,
+	WalkthroughSong,
+} from "@/features/onboarding/step-resolver";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import { getDemoMatchesForSong } from "@/lib/data/demo-matches";
+import type { LandingSongManifest } from "@/lib/data/landing-songs";
+import { getLandingSongsManifest } from "@/lib/data/landing-songs.server";
+import { readBillingState } from "@/lib/domains/billing/queries";
+import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
+import { grantFreeAllocation } from "@/lib/domains/billing/unlocks";
 import {
 	clearPhaseJobIds,
 	completeOnboarding,
@@ -19,29 +30,12 @@ import {
 	updateOnboardingStep,
 	updateTheme,
 } from "@/lib/domains/library/accounts/preferences-queries";
-import { readBillingState } from "@/lib/domains/billing/queries";
-import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
-import { grantFreeAllocation } from "@/lib/domains/billing/unlocks";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
 import {
 	getPlaylistCount,
 	getPlaylists,
 	setPlaylistTarget,
 } from "@/lib/domains/library/playlists/queries";
-import { createAdminSupabaseClient } from "@/lib/data/client";
-import {
-	computePreviewFingerprint,
-	getWalkthroughPreview,
-	type WalkthroughPreviewMatch,
-} from "@/lib/workflows/walkthrough-match-preview/queries";
-import {
-	ensureWalkthroughPreview,
-	type EnsurePreviewOutcome,
-} from "@/lib/workflows/walkthrough-match-preview/service";
-
-import { getDemoMatchesForSong } from "@/lib/data/demo-matches";
-import type { LandingSongManifest } from "@/lib/data/landing-songs";
-import { getLandingSongsManifest } from "@/lib/data/landing-songs.server";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import {
 	type PhaseJobIds,
@@ -52,11 +46,15 @@ import { type ThemeColor, themeSchema } from "@/lib/theme/types";
 import { generateSongSlug } from "@/lib/utils/slug";
 import { OnboardingChanges } from "@/lib/workflows/library-processing/changes/onboarding";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
-import type {
-	OnboardingSession,
-	WalkthroughSong,
-} from "@/features/onboarding/step-resolver";
-import type { AnalysisContent } from "@/features/liked-songs/types";
+import {
+	computePreviewFingerprint,
+	getWalkthroughPreview,
+	type WalkthroughPreviewMatch,
+} from "@/lib/workflows/walkthrough-match-preview/queries";
+import {
+	type EnsurePreviewOutcome,
+	ensureWalkthroughPreview,
+} from "@/lib/workflows/walkthrough-match-preview/service";
 
 /** Playlist view model for onboarding UI (camelCase frontend format) */
 export interface OnboardingPlaylist {

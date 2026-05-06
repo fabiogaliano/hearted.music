@@ -1,7 +1,7 @@
 import type { Story } from "@ladle/react";
-import { useState, useEffect } from "react";
-import { Sidebar } from "./Sidebar";
+import { useEffect, useState } from "react";
 import { sidebarData } from "@/stories/fixtures";
+import { Sidebar } from "./Sidebar";
 
 export const Default: Story = () => (
 	<Sidebar

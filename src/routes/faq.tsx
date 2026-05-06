@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import { fonts } from "@/lib/theme/fonts";
 import { LegalPageShell } from "@/features/legal/LegalPageShell";
 import { faqData } from "@/lib/data/legal";
+import { fonts } from "@/lib/theme/fonts";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 export const Route = createFileRoute("/faq")({
 	component: FaqPage,

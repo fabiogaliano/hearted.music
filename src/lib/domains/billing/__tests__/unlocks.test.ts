@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import { Result } from "better-result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminSupabaseClient } from "@/lib/data/client";
 
 vi.mock("@/lib/domains/billing/queries", () => ({
@@ -11,9 +11,9 @@ vi.mock("@/lib/workflows/library-processing/service", () => ({
 }));
 
 import { readBillingState } from "@/lib/domains/billing/queries";
-import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
-import { requestSongUnlock, grantFreeAllocation } from "../unlocks";
 import type { BillingState } from "@/lib/domains/billing/state";
+import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
+import { grantFreeAllocation, requestSongUnlock } from "../unlocks";
 
 const mockedReadBillingState = vi.mocked(readBillingState);
 const mockedApplyChange = vi.mocked(applyLibraryProcessingChange);

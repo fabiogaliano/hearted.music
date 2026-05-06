@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { isCheckoutFulfilled } from "../checkout-fulfillment";
-import type { BillingState } from "@/lib/domains/billing/state";
 import type { CheckoutIntent } from "@/features/onboarding/checkout-intent";
 import { SONG_PACK_500, UNLIMITED_YEARLY } from "@/lib/domains/billing/offers";
+import type { BillingState } from "@/lib/domains/billing/state";
+import { isCheckoutFulfilled } from "../checkout-fulfillment";
 
 function billing(overrides: Partial<BillingState> = {}): BillingState {
 	return {
