@@ -20,8 +20,13 @@ import {
 } from "./artist-image-hydration";
 import { handleSpotifyCommand } from "./command-handler";
 import {
-	consumeExpectLoginReturnIfValid,
-	setExpectLoginReturn,
+	acceptCreatedCandidate,
+	applyNavigationUpdate,
+	type CreatedTabCandidate,
+	clearPendingLoginReturnIfTabClosed,
+	consumePendingLoginReturnForSpotifyTab,
+	getPendingLoginReturn,
+	setPendingLoginReturnAwaitingCreatedTab,
 } from "./expect-login-return";
 
 let cachedToken: SpotifyTokenPayload | null = null;
@@ -123,20 +128,117 @@ async function resolveHeartedTabId(): Promise<number | null> {
 	}
 }
 
-async function broadcastShowReturnBanner(): Promise<void> {
+async function sendShowReturnBannerToTab(spotifyTabId: number): Promise<void> {
+	try {
+		await chrome.tabs.sendMessage(spotifyTabId, { type: "SHOW_RETURN_BANNER" });
+	} catch {
+		// Content script may not have loaded yet (e.g. very early in page life).
+		// Banner only matters for logged-in, settled pages, so skip silently.
+	}
+}
+
+// In-memory ring buffer of recent tab creations. Used at arm time to back-scan
+// for tabs that opened *just before* the EXPECT_LOGIN_RETURN message arrived
+// (the fire-and-forget arming race). Not persisted: chrome.tabs.onCreated
+// itself keeps the SW alive long enough for typical click→message latency.
+const RECENT_TAB_CREATIONS_MAX = 16;
+const RECENT_TAB_CREATIONS_MAX_AGE_MS = 10_000;
+const recentTabCreations: CreatedTabCandidate[] = [];
+
+function recordRecentTabCreation(creation: CreatedTabCandidate): void {
+	const now = Date.now();
+	while (
+		recentTabCreations.length > 0 &&
+		now - recentTabCreations[0].createdAtMs > RECENT_TAB_CREATIONS_MAX_AGE_MS
+	) {
+		recentTabCreations.shift();
+	}
+	while (recentTabCreations.length >= RECENT_TAB_CREATIONS_MAX) {
+		recentTabCreations.shift();
+	}
+	recentTabCreations.push(creation);
+}
+
+function tabToCandidate(
+	tab: chrome.tabs.Tab,
+	createdAtMs: number,
+): CreatedTabCandidate | null {
+	if (typeof tab.id !== "number") return null;
+	return {
+		tabId: tab.id,
+		windowId: tab.windowId,
+		openerTabId: tab.openerTabId,
+		url: tab.url,
+		pendingUrl: tab.pendingUrl,
+		createdAtMs,
+	};
+}
+
+function findMostRecentCreationByTabId(
+	tabId: number,
+): CreatedTabCandidate | null {
+	for (let i = recentTabCreations.length - 1; i >= 0; i -= 1) {
+		const candidate = recentTabCreations[i];
+		if (candidate.tabId === tabId) return candidate;
+	}
+	return null;
+}
+
+function logNavigationUpdateResult(
+	tabId: number,
+	result: Awaited<ReturnType<typeof applyNavigationUpdate>>,
+): void {
+	if (result === "cleared") {
+		console.log(
+			`[hearted.] Candidate tab ${tabId} navigated away from Spotify; cleared pending state`,
+		);
+		return;
+	}
+	if (result && result.kind === "awaitingToken") {
+		console.log(
+			`[hearted.] Candidate tab ${tabId} confirmed on Spotify; awaiting token`,
+		);
+	}
+}
+
+async function reconcileCandidateTabNavigation(tabId: number): Promise<void> {
+	try {
+		const tab = await chrome.tabs.get(tabId);
+		const existingCandidate = findMostRecentCreationByTabId(tabId);
+		if (existingCandidate) {
+			existingCandidate.url = tab.url;
+			existingCandidate.pendingUrl = tab.pendingUrl;
+			existingCandidate.openerTabId = tab.openerTabId;
+
+			const adopted = await acceptCreatedCandidate(existingCandidate);
+			if (adopted?.kind === "awaitingSpotifyNavigation") {
+				console.log(
+					`[hearted.] Candidate tab ${tabId} adopted during reconciliation`,
+				);
+			}
+		}
+
+		const result = await applyNavigationUpdate({
+			tabId,
+			url: tab.url,
+			pendingUrl: tab.pendingUrl,
+		});
+		logNavigationUpdateResult(tabId, result);
+	} catch {
+		await clearPendingLoginReturnIfTabClosed(tabId);
+	}
+}
+
+// Debug-only: blast every open Spotify tab with the banner. Used by
+// `dbg.showReturnBanner` for visual tweaking; never on the production path.
+async function debugBroadcastShowReturnBanner(): Promise<void> {
 	try {
 		const tabs = await chrome.tabs.query({ url: SPOTIFY_TAB_URL_MATCH });
 		for (const tab of tabs) {
-			if (typeof tab.id !== "number") continue;
-			try {
-				await chrome.tabs.sendMessage(tab.id, { type: "SHOW_RETURN_BANNER" });
-			} catch {
-				// Content script may not have loaded yet (e.g. very early in page life).
-				// Banner only matters for logged-in, settled pages, so skip silently.
-			}
+			if (typeof tab.id === "number") await sendShowReturnBannerToTab(tab.id);
 		}
 	} catch (err) {
-		console.warn("[hearted.] broadcastShowReturnBanner failed:", err);
+		console.warn("[hearted.] debugBroadcastShowReturnBanner failed:", err);
 	}
 }
 
@@ -418,7 +520,7 @@ dbg.resetSpotify = async () => {
 // Force-show the return banner on every open.spotify.com tab. Useful for
 // tweaking visuals without re-running the full login flow.
 dbg.showReturnBanner = async () => {
-	await broadcastShowReturnBanner();
+	await debugBroadcastShowReturnBanner();
 	return { ok: true };
 };
 
@@ -517,7 +619,45 @@ chrome.runtime.onMessageExternal.addListener(
 
 		if (message.type === "EXPECT_LOGIN_RETURN") {
 			(async () => {
-				await setExpectLoginReturn();
+				const originTabId = _sender.tab?.id;
+				const originWindowId = _sender.tab?.windowId;
+				if (
+					typeof originTabId !== "number" ||
+					typeof originWindowId !== "number"
+				) {
+					// External arming must come from a hearted tab — without tab+window
+					// ids we cannot scope binding to that window, so refuse to arm.
+					sendResponse({ ok: false, error: "no sender tab/window" });
+					return;
+				}
+				const armedAtMs = Date.now();
+				await setPendingLoginReturnAwaitingCreatedTab({
+					originTabId,
+					originWindowId,
+					armedAtMs,
+				});
+
+				// Race fix: the new tab may have been created before this fire-and-
+				// forget message reached the SW. Back-scan the recent-creations buffer
+				// and adopt the most recent qualifying candidate. This only advances
+				// to awaitingSpotifyNavigation — final binding still requires
+				// chrome.tabs.onUpdated to confirm the candidate reaches Spotify.
+				const pending = await getPendingLoginReturn();
+				if (pending && pending.kind === "awaitingCreatedTab") {
+					for (let i = recentTabCreations.length - 1; i >= 0; i -= 1) {
+						const candidate = recentTabCreations[i];
+						if (candidate.windowId !== originWindowId) continue;
+						if (
+							candidate.openerTabId !== undefined &&
+							candidate.openerTabId !== originTabId
+						) {
+							continue;
+						}
+						await reconcileCandidateTabNavigation(candidate.tabId);
+						const after = await getPendingLoginReturn();
+						if (after?.kind !== "awaitingCreatedTab") break;
+					}
+				}
 				sendResponse({ ok: true });
 			})();
 			return true;
@@ -627,16 +767,28 @@ chrome.runtime.onMessage.addListener(
 					console.log(`[hearted.] Token received (expires in ${expiresIn}s)`);
 
 					if (!prevUsable && nextUsable) {
-						const expected = await consumeExpectLoginReturnIfValid();
-						if (expected) {
-							console.log(
-								"[hearted.] Spotify login transition — expected return, broadcasting banner",
-							);
-							await broadcastShowReturnBanner();
-						} else {
-							console.log(
-								"[hearted.] Spotify login transition — return not expected, skipping banner",
-							);
+						const spotifyTabId = _sender.tab?.id;
+						if (typeof spotifyTabId === "number") {
+							// Race fix: token can arrive before chrome.tabs.onUpdated has had
+							// a chance to confirm this same tab reached open.spotify.com. Run
+							// the candidate-navigation reconciliation here so pending state
+							// advances awaitingSpotifyNavigation → awaitingToken, and only
+							// then attempt to consume.
+							await reconcileCandidateTabNavigation(spotifyTabId);
+							const matched =
+								await consumePendingLoginReturnForSpotifyTab(spotifyTabId);
+							if (matched) {
+								console.log(
+									"[hearted.] Spotify login transition — matched bound tab, sending banner",
+								);
+								await sendShowReturnBannerToTab(spotifyTabId);
+							} else {
+								// Token came from an unrelated/unbound Spotify tab; pending state
+								// (if any) is left intact for the legitimate matched tab.
+								console.log(
+									"[hearted.] Spotify login transition — no matching bound tab, skipping banner",
+								);
+							}
 						}
 					}
 
@@ -722,6 +874,75 @@ chrome.runtime.onMessage.addListener(
 		return true;
 	},
 );
+
+// Tab-creation: record into the back-scan buffer (so a slightly-later
+// EXPECT_LOGIN_RETURN can still find this tab) and, if pending state is
+// awaitingCreatedTab, try to *adopt* the candidate. Adoption only advances
+// to awaitingSpotifyNavigation — final binding requires onUpdated below.
+chrome.tabs.onCreated.addListener((tab) => {
+	const candidate = tabToCandidate(tab, Date.now());
+	if (!candidate) return;
+	recordRecentTabCreation(candidate);
+
+	(async () => {
+		await reconcileCandidateTabNavigation(candidate.tabId);
+	})().catch((err) => {
+		console.warn("[hearted.] tabs.onCreated adopt failed:", err);
+	});
+});
+
+// Tab-update: drives the navigation-confirmation step. Only relevant while
+// pending state is awaitingSpotifyNavigation, and only for the candidate
+// tab id. Spotify destination → awaitingToken; clearly-non-Spotify → drop
+// pending; about:blank / accounts.spotify.com → keep waiting.
+chrome.tabs.onUpdated.addListener((tabId, _changeInfo, tab) => {
+	(async () => {
+		const update = {
+			tabId,
+			url: tab.url,
+			pendingUrl: tab.pendingUrl,
+		};
+		const result = await applyNavigationUpdate(update);
+		logNavigationUpdateResult(tabId, result);
+
+		if (result !== null) return;
+
+		const pending = await getPendingLoginReturn();
+		if (
+			pending?.kind !== "awaitingCreatedTab" &&
+			pending?.kind !== "awaitingSpotifyNavigation"
+		) {
+			return;
+		}
+
+		const existing = findMostRecentCreationByTabId(tabId);
+		if (existing === null) return;
+
+		const candidate: CreatedTabCandidate = existing;
+		candidate.url = tab.url;
+		candidate.pendingUrl = tab.pendingUrl;
+		candidate.openerTabId = tab.openerTabId;
+
+		const adopted = await acceptCreatedCandidate(candidate);
+		if (adopted?.kind !== "awaitingSpotifyNavigation") return;
+
+		console.log(
+			`[hearted.] tabs.onUpdated adopted candidate tab ${candidate.tabId}`,
+		);
+		const postAdoptionResult = await applyNavigationUpdate(update);
+		logNavigationUpdateResult(tabId, postAdoptionResult);
+	})().catch((err) => {
+		console.warn("[hearted.] tabs.onUpdated nav handling failed:", err);
+	});
+});
+
+// If the candidate or bound Spotify tab is closed before the flow completes,
+// drop pending state so a future token from another tab can't claim it.
+chrome.tabs.onRemoved.addListener((closedTabId) => {
+	clearPendingLoginReturnIfTabClosed(closedTabId).catch((err) => {
+		console.warn("[hearted.] tabs.onRemoved cleanup failed:", err);
+	});
+});
 
 // Real-time logout detection via sp_dc cookie; polling still reconciles within 3s.
 chrome.cookies.onChanged.addListener((changeInfo) => {

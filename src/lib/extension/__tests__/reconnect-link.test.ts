@@ -10,7 +10,7 @@ vi.mock("../detect", () => ({
 }));
 
 import type { MouseEvent } from "react";
-import { armReconnectOnActivation } from "../reconnect-link";
+import { armReconnectOnActivation, shouldArmOnEvent } from "../reconnect-link";
 
 function fakeEvent(
 	type: string,
@@ -20,43 +20,79 @@ function fakeEvent(
 	return { type, button, detail } as MouseEvent<HTMLElement>;
 }
 
-describe("armReconnectOnActivation", () => {
+describe("shouldArmOnEvent (pure)", () => {
+	it("arms on left click (button=0, detail>0 mouse activation)", () => {
+		expect(shouldArmOnEvent({ type: "click", button: 0, detail: 1 })).toBe(
+			true,
+		);
+	});
+
+	it("arms on keyboard-activated click (button=0, detail=0)", () => {
+		expect(shouldArmOnEvent({ type: "click", button: 0, detail: 0 })).toBe(
+			true,
+		);
+	});
+
+	it("does NOT arm on mousedown — canceled clicks must not arm", () => {
+		expect(shouldArmOnEvent({ type: "mousedown", button: 0, detail: 1 })).toBe(
+			false,
+		);
+	});
+
+	it("arms on middle auxclick (button=1)", () => {
+		expect(shouldArmOnEvent({ type: "auxclick", button: 1, detail: 1 })).toBe(
+			true,
+		);
+	});
+
+	it("does NOT arm on right auxclick (button=2)", () => {
+		expect(shouldArmOnEvent({ type: "auxclick", button: 2, detail: 1 })).toBe(
+			false,
+		);
+	});
+
+	it("does NOT arm on contextmenu / pointerdown / other types", () => {
+		expect(
+			shouldArmOnEvent({ type: "contextmenu", button: 2, detail: 0 }),
+		).toBe(false);
+		expect(
+			shouldArmOnEvent({ type: "pointerdown", button: 0, detail: 1 }),
+		).toBe(false);
+	});
+});
+
+describe("armReconnectOnActivation (side effects)", () => {
 	beforeEach(() => {
 		mockExpectLoginReturn.mockClear();
 	});
 
-	it("arms on left mousedown (button=0)", () => {
-		armReconnectOnActivation(fakeEvent("mousedown", 0, 0));
+	it("normal left click arms, but mousedown alone does not arm", () => {
+		armReconnectOnActivation(fakeEvent("mousedown", 0, 1));
+		expect(mockExpectLoginReturn).not.toHaveBeenCalled();
+
+		armReconnectOnActivation(fakeEvent("click", 0, 1));
 		expect(mockExpectLoginReturn).toHaveBeenCalledOnce();
 	});
 
-	it("does not arm on right mousedown (button=2)", () => {
-		armReconnectOnActivation(fakeEvent("mousedown", 2, 0));
-		expect(mockExpectLoginReturn).not.toHaveBeenCalled();
-	});
-
-	it("does not arm on middle mousedown (button=1)", () => {
-		armReconnectOnActivation(fakeEvent("mousedown", 1, 0));
-		expect(mockExpectLoginReturn).not.toHaveBeenCalled();
-	});
-
-	it("arms on middle auxclick (button=1)", () => {
-		armReconnectOnActivation(fakeEvent("auxclick", 1, 0));
+	it("middle auxclick arms", () => {
+		armReconnectOnActivation(fakeEvent("auxclick", 1, 1));
 		expect(mockExpectLoginReturn).toHaveBeenCalledOnce();
 	});
 
-	it("does not arm on right auxclick (button=2)", () => {
-		armReconnectOnActivation(fakeEvent("auxclick", 2, 0));
+	it("canceled mousedown path does not arm (mousedown then no click)", () => {
+		armReconnectOnActivation(fakeEvent("mousedown", 0, 1));
+		// User dragged out / pressed Esc — no click event ever fires.
 		expect(mockExpectLoginReturn).not.toHaveBeenCalled();
 	});
 
-	it("arms on keyboard-activated click (detail=0)", () => {
+	it("does not arm on right click", () => {
+		armReconnectOnActivation(fakeEvent("click", 2, 1));
+		armReconnectOnActivation(fakeEvent("auxclick", 2, 1));
+		expect(mockExpectLoginReturn).not.toHaveBeenCalled();
+	});
+
+	it("keyboard activation (Enter on focused link) arms", () => {
 		armReconnectOnActivation(fakeEvent("click", 0, 0));
 		expect(mockExpectLoginReturn).toHaveBeenCalledOnce();
-	});
-
-	it("does not arm on mouse-driven click (detail>0) — covered by mousedown", () => {
-		armReconnectOnActivation(fakeEvent("click", 0, 1));
-		expect(mockExpectLoginReturn).not.toHaveBeenCalled();
 	});
 });

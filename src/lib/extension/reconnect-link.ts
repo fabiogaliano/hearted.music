@@ -2,16 +2,31 @@ import type { MouseEvent } from "react";
 import { expectLoginReturn } from "./detect";
 
 /**
- * Arms the extension's expected-login-return signal on intentional navigation
- * to Spotify. Guards against right-click and duplicate fires:
+ * Pure activation predicate. Arming happens only on activation events that
+ * actually open the new tab — never on `mousedown`, which fires for canceled
+ * clicks (drag-aborts, context menus, button-up outside element). Right-click
+ * (button=2) is excluded because Chrome dispatches `contextmenu`, not `click`.
  *
- * - mousedown: only left button (button=0) — fires first, covers normal click
- * - auxclick: only middle button (button=1) — open-in-new-tab
- * - click: only keyboard activation (detail=0) — mouse clicks already handled by mousedown
+ *   - `click`     → left-click activation (button=0) and keyboard activation
+ *                   (detail=0). Both arm.
+ *   - `auxclick`  → middle-click open-in-new-tab (button=1). Arms.
+ *   - everything else → no arm.
  */
+export function shouldArmOnEvent(event: {
+	type: string;
+	button: number;
+	detail: number;
+}): boolean {
+	if (event.type === "click") {
+		return event.button === 0;
+	}
+	if (event.type === "auxclick") {
+		return event.button === 1;
+	}
+	return false;
+}
+
 export function armReconnectOnActivation(event: MouseEvent<HTMLElement>): void {
-	if (event.type === "mousedown" && event.button !== 0) return;
-	if (event.type === "auxclick" && event.button !== 1) return;
-	if (event.type === "click" && event.detail !== 0) return;
+	if (!shouldArmOnEvent(event)) return;
 	void expectLoginReturn().catch(() => {});
 }

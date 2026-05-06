@@ -23,7 +23,6 @@ export function SpotifyReconnectLink({
 			rel="noopener noreferrer"
 			onClick={armReconnectOnActivation}
 			onAuxClick={armReconnectOnActivation}
-			onMouseDown={armReconnectOnActivation}
 			className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[20px] px-3 py-1.5 text-xs tracking-widest uppercase transition-all hover:opacity-80 active:scale-[0.98]"
 			style={{
 				fontFamily: fonts.body,

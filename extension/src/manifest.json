@@ -30,7 +30,7 @@
 		{
 			"matches": ["https://open.spotify.com/*"],
 			"js": ["content/return-banner.js"],
-			"run_at": "document_idle"
+			"run_at": "document_start"
 		}
 	],
 	"action": {

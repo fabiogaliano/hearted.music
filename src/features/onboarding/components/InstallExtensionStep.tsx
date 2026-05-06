@@ -5,6 +5,8 @@
  */
 
 import { type MouseEvent, useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Kbd } from "@/components/ui/kbd";
 import {
 	connectExtension,
 	expectLoginReturn,
@@ -12,16 +14,15 @@ import {
 	isExtensionInstalled,
 	triggerExtensionSync,
 } from "@/lib/extension/detect";
-import { resetSyncJobs } from "@/lib/server/onboarding.functions";
-import { toast } from "sonner";
-import { Kbd } from "@/components/ui/kbd";
+import { shouldArmOnEvent } from "@/lib/extension/reconnect-link";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
+import { resetSyncJobs } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
+import type { ThemeConfig } from "@/lib/theme/types";
+import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import { ExtensionSetupTrail } from "./ExtensionSetupTrail";
 import { StaggeredContent } from "./StaggeredContent";
-import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 
 const EXTENSION_STORE_URL =
 	"https://chrome.google.com/webstore/detail/hearted-spotify-sync/EXTENSION_ID";
@@ -180,7 +181,6 @@ function ActionContent({
 				rel="noopener noreferrer"
 				onClick={onSpotifyLoginClick}
 				onAuxClick={onSpotifyLoginClick}
-				onMouseDown={onSpotifyLoginClick}
 				className="self-start inline-flex items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-all duration-200 hover:opacity-80 active:scale-[0.98]"
 				style={{
 					fontFamily: fonts.body,
@@ -209,9 +209,7 @@ export function InstallExtensionStep() {
 
 	const handleSpotifyLoginClick = useCallback(
 		(event: MouseEvent<HTMLAnchorElement>) => {
-			if (event.type === "mousedown" && event.button !== 0) return;
-			if (event.type === "auxclick" && event.button !== 1) return;
-			if (event.type === "click" && event.detail !== 0) return;
+			if (!shouldArmOnEvent(event)) return;
 			void expectLoginReturn().catch(() => {
 				// Best-effort: arming failure must not block the navigation to Spotify.
 			});

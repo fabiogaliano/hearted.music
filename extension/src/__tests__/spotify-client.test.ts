@@ -161,6 +161,7 @@ describe("reads — queryArtistOverview", () => {
 				{ url: "https://img.spotify.com/640.jpg", width: 640, height: 640 },
 				{ url: "https://img.spotify.com/320.jpg", width: 320, height: 320 },
 			],
+			bio: null,
 		});
 	});
 
@@ -199,10 +200,11 @@ describe("reads — queryArtistOverview", () => {
 		expect(queryPathfinder).toHaveBeenCalledWith("tok", "queryArtistOverview", {
 			uri: "spotify:artist:x",
 			locale: "sv",
+			preReleaseV2: false,
 		});
 	});
 
-	it("defaults locale to 'en'", async () => {
+	it("defaults locale to '' (empty string)", async () => {
 		queryPathfinder.mockResolvedValueOnce({
 			data: {
 				artistUnion: {
@@ -217,7 +219,8 @@ describe("reads — queryArtistOverview", () => {
 
 		expect(queryPathfinder).toHaveBeenCalledWith("tok", "queryArtistOverview", {
 			uri: "spotify:artist:x",
-			locale: "en",
+			locale: "",
+			preReleaseV2: false,
 		});
 	});
 });
