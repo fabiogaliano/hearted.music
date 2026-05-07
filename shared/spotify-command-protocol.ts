@@ -61,6 +61,10 @@ export type QueryArtistOverviewPayload = {
 	locale?: string;
 };
 
+export type FetchPlaylistMetadataPayload = {
+	playlistUri: string;
+};
+
 export type SpotifyCommandMap = {
 	addToPlaylist: AddToPlaylistPayload;
 	removeFromPlaylist: RemoveFromPlaylistPayload;
@@ -68,6 +72,7 @@ export type SpotifyCommandMap = {
 	updatePlaylist: UpdatePlaylistPayload;
 	deletePlaylist: DeletePlaylistPayload;
 	queryArtistOverview: QueryArtistOverviewPayload;
+	fetchPlaylistMetadata: FetchPlaylistMetadataPayload;
 };
 
 export type SpotifyCommandName = keyof SpotifyCommandMap;
@@ -93,6 +98,7 @@ const COMMAND_NAMES: SpotifyCommandName[] = [
 	"updatePlaylist",
 	"deletePlaylist",
 	"queryArtistOverview",
+	"fetchPlaylistMetadata",
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -162,6 +168,10 @@ const payloadValidators: {
 		return (
 			typeof payload.artistUri === "string" && isOptionalString(payload.locale)
 		);
+	},
+	fetchPlaylistMetadata: (payload): payload is FetchPlaylistMetadataPayload => {
+		if (!isRecord(payload)) return false;
+		return typeof payload.playlistUri === "string";
 	},
 };
 

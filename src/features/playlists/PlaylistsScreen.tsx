@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
+import { scrollListElementIntoView } from "@/lib/keyboard/listScroll";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
@@ -9,6 +10,10 @@ import { ActivePlaylistsPanel } from "./components/ActivePlaylistsPanel";
 import { PlaylistDetailView } from "./components/PlaylistDetailView";
 import { PlaylistLibrary } from "./components/PlaylistLibrary";
 import { useExtensionStatus } from "./hooks/useExtensionStatus";
+import {
+	buildPlaylistRouteRef,
+	resolvePlaylistIdFromRouteRef,
+} from "./playlistRouteRef";
 import { usePlaylistExpansion } from "./hooks/usePlaylistExpansion";
 import { usePlaylistSession } from "./hooks/usePlaylistSession";
 import { playlistManagementQueryOptions } from "./queries";
@@ -19,13 +24,33 @@ const useIsomorphicLayoutEffect =
 interface PlaylistsScreenProps {
 	theme: ThemeConfig;
 	accountId: string;
+	selectedPlaylistRef?: string;
 }
 
-export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
+export function PlaylistsScreen({
+	theme,
+	accountId,
+	selectedPlaylistRef,
+}: PlaylistsScreenProps) {
 	const { data } = useQuery(playlistManagementQueryOptions(accountId));
 	const { extensionStatus } = useExtensionStatus();
 	const { optimisticTargets, toggleTarget, markMetadataChanged } =
 		usePlaylistSession(accountId);
+	const playlists = data?.playlists ?? [];
+	const playlistRouteRefsById = useMemo(
+		() =>
+			new Map(
+				playlists.map((playlist) => [
+					playlist.id,
+					buildPlaylistRouteRef(playlist),
+				]),
+			),
+		[playlists],
+	);
+	const routePlaylistId = useMemo(
+		() => resolvePlaylistIdFromRouteRef(playlists, selectedPlaylistRef),
+		[playlists, selectedPlaylistRef],
+	);
 
 	const {
 		selectedPlaylistId,
@@ -36,7 +61,11 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 		handleExpand,
 		handleClose,
 		closingToPlaylistId,
-	} = usePlaylistExpansion();
+	} = usePlaylistExpansion({
+		selectedPlaylistId: routePlaylistId,
+		getRouteRefForPlaylistId: (playlistId) =>
+			playlistRouteRefsById.get(playlistId) ?? null,
+	});
 
 	const targetIds = useMemo(() => {
 		if (!data) return new Set<string>();
@@ -58,8 +87,10 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 
 	const {
 		focusedIndex,
+		lastCursorChange,
 		syncFocusedIndex,
 		getFocusedElement,
+		getElementAtIndex,
 		focusFocusedItem,
 		getItemProps,
 	} = useListNavigation<Playlist>({
@@ -73,7 +104,19 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 		},
 		getId: (playlist) => playlist.id,
 		scrollBlock: "center",
+		autoScroll: false,
 	});
+
+	// Source-aware scroll: keyboard → center, pointer → nearest
+	useIsomorphicLayoutEffect(() => {
+		if (!lastCursorChange) return;
+
+		const element = getElementAtIndex(lastCursorChange.index);
+		if (!element) return;
+
+		const block = lastCursorChange.source === "pointer" ? "nearest" : "center";
+		scrollListElementIntoView(element, block);
+	}, [lastCursorChange, getElementAtIndex]);
 
 	useShortcut({
 		key: "enter",
@@ -92,6 +135,7 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 		enabled: !isExpanded && focusedIndex >= 0,
 	});
 
+	// Sync cursor with route-backed selected playlist
 	useIsomorphicLayoutEffect(() => {
 		if (selectedPlaylistId) {
 			const index = availablePlaylists.findIndex(
@@ -101,12 +145,14 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 				syncFocusedIndex(index, {
 					focus: false,
 					scroll: true,
-					source: "programmatic",
+					scrollBlock: "center",
+					source: "url",
 				});
 			}
 		}
 	}, [selectedPlaylistId, availablePlaylists, syncFocusedIndex]);
 
+	// Restore focus to Available list when detail panel closes
 	const prevSelectedIdRef = useRef<string | null>(null);
 	useEffect(() => {
 		const prev = prevSelectedIdRef.current;
@@ -178,6 +224,7 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 					columnRef={expansionColumnRef}
 					isExpanded={isExpanded}
 					closingToPlaylistId={closingToPlaylistId}
+					selectedPlaylistId={selectedPlaylistId}
 				/>
 
 				<PlaylistLibrary
@@ -187,6 +234,7 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 					onAddPlaylist={(id) => handleToggleTarget(id, true)}
 					closingToPlaylistId={closingToPlaylistId}
 					getItemProps={getItemProps}
+					selectedPlaylistId={selectedPlaylistId}
 				/>
 
 				{expandedPlaylist && (

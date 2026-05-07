@@ -9,6 +9,7 @@ export type {
 	CommandResponseOk,
 	CreatePlaylistPayload,
 	DeletePlaylistPayload,
+	FetchPlaylistMetadataPayload,
 	QueryArtistOverviewPayload,
 	RemoveFromPlaylistPayload,
 	SpotifyCommand,

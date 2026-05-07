@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 const supportsViewTransitions =
@@ -26,21 +27,31 @@ interface ExpandedRect {
 	height: number;
 }
 
-export function usePlaylistExpansion() {
-	const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(
-		null,
+interface UsePlaylistExpansionOptions {
+	selectedPlaylistId?: string | null;
+	getRouteRefForPlaylistId: (playlistId: string) => string | null;
+}
+
+export function usePlaylistExpansion({
+	selectedPlaylistId: routePlaylistId,
+	getRouteRefForPlaylistId,
+}: UsePlaylistExpansionOptions) {
+	const navigate = useNavigate();
+
+	const [localSelectedId, setLocalSelectedId] = useState<string | null>(
+		routePlaylistId ?? null,
 	);
-	const [isExpanded, setIsExpanded] = useState(false);
-	const [startRect, setStartRect] = useState<{
-		top: number;
-		left: number;
-		width: number;
-		height: number;
-	} | null>(null);
+	const [isExpanded, setIsExpanded] = useState(routePlaylistId != null);
+	const [startRect, setStartRect] = useState<ExpandedRect | null>(null);
 	const [closingToPlaylistId, setClosingToPlaylistId] = useState<string | null>(
 		null,
 	);
 	const expansionColumnRef = useRef<HTMLDivElement>(null);
+	const isClosingRef = useRef(false);
+	type PendingRouteSelection =
+		| { type: "playlist"; id: string }
+		| { type: "closed" };
+	const pendingRouteSelectionRef = useRef<PendingRouteSelection | null>(null);
 
 	const getExpandedRect = useCallback((): ExpandedRect => {
 		if (!expansionColumnRef.current)
@@ -55,25 +66,61 @@ export function usePlaylistExpansion() {
 		};
 	}, []);
 
-	const handleExpand = useCallback((id: string, element: HTMLElement) => {
-		const itemRect = element.getBoundingClientRect();
-		setStartRect({
-			top: itemRect.top,
-			left: itemRect.left,
-			width: itemRect.width,
-			height: itemRect.height,
-		});
+	const updateUrl = useCallback(
+		(id: string | null) => {
+			if (id === null) {
+				void navigate({
+					to: "/playlists",
+					replace: false,
+					resetScroll: false,
+				});
+				return;
+			}
 
-		setSelectedPlaylistId(id);
-		requestAnimationFrame(() => {
-			requestAnimationFrame(() => {
-				setIsExpanded(true);
+			const playlistRef = getRouteRefForPlaylistId(id);
+			if (playlistRef === null) {
+				return;
+			}
+
+			void navigate({
+				to: "/playlists/$playlistRef",
+				params: { playlistRef },
+				replace: false,
+				resetScroll: false,
 			});
-		});
-	}, []);
+		},
+		[getRouteRefForPlaylistId, navigate],
+	);
+
+	const handleExpand = useCallback(
+		(id: string, element: HTMLElement) => {
+			const itemRect = element.getBoundingClientRect();
+			setStartRect({
+				top: itemRect.top,
+				left: itemRect.left,
+				width: itemRect.width,
+				height: itemRect.height,
+			});
+
+			setLocalSelectedId(id);
+			pendingRouteSelectionRef.current = { type: "playlist", id };
+			updateUrl(id);
+
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					setIsExpanded(true);
+				});
+			});
+		},
+		[updateUrl],
+	);
 
 	const handleClose = useCallback(async () => {
-		const targetId = selectedPlaylistId;
+		const targetId = localSelectedId;
+
+		isClosingRef.current = true;
+		pendingRouteSelectionRef.current = { type: "closed" };
+		updateUrl(null);
 
 		if (supportsViewTransitions) {
 			await withViewTransition(() => {
@@ -86,10 +133,56 @@ export function usePlaylistExpansion() {
 			await new Promise((resolve) => setTimeout(resolve, 220));
 		}
 
-		setSelectedPlaylistId(null);
+		setLocalSelectedId(null);
 		setStartRect(null);
 		setClosingToPlaylistId(null);
-	}, [selectedPlaylistId]);
+		isClosingRef.current = false;
+	}, [localSelectedId, updateUrl]);
+
+	// Sync local state from route changes (back/forward, deep links)
+	useEffect(() => {
+		const routeId = routePlaylistId ?? null;
+		const pendingRouteSelection = pendingRouteSelectionRef.current;
+
+		if (pendingRouteSelection !== null) {
+			const matchesPendingSelection =
+				pendingRouteSelection.type === "closed"
+					? routeId === null
+					: routeId === pendingRouteSelection.id;
+
+			if (!matchesPendingSelection) {
+				return;
+			}
+
+			pendingRouteSelectionRef.current = null;
+		}
+
+		if (routeId === null) {
+			if (isClosingRef.current || localSelectedId === null) {
+				return;
+			}
+
+			setIsExpanded(false);
+			setLocalSelectedId(null);
+			setStartRect(null);
+			setClosingToPlaylistId(null);
+			return;
+		}
+
+		if (routeId === localSelectedId) {
+			if (!isExpanded) {
+				setIsExpanded(true);
+			}
+			return;
+		}
+
+		setStartRect(null);
+		setClosingToPlaylistId(null);
+		setLocalSelectedId(routeId);
+		setIsExpanded(true);
+	}, [isExpanded, localSelectedId, routePlaylistId]);
+
+	const selectedPlaylistId = localSelectedId;
 
 	return {
 		selectedPlaylistId,

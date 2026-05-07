@@ -4,6 +4,8 @@ export const DEFAULT_HASHES: Record<string, string> = {
 	libraryV3: "9f4da031f81274d572cfedaf6fc57a737c84b43d572952200b2c36aaa8fec1c6",
 	fetchPlaylistContents:
 		"9c53fb83f35c6a177be88bf1b67cb080b853e86b576ed174216faa8f9164fc8f",
+	fetchPlaylist:
+		"a65e12194ed5fc443a1cdebed5fabe33ca5b07b987185d63c72483867ad13cb4",
 	profileAttributes:
 		"53bcb064f6cd18c23f752bc324a791194d20df612d8e1239c735144ab0399ced",
 	// Shared hash: Spotify bundles add/remove into one persisted query, routing by operationName.

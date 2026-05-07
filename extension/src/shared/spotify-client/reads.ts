@@ -20,6 +20,19 @@ const HTML_ENTITIES: Record<string, string> = {
 	rdquo: "”",
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function getNestedRecord(
+	value: unknown,
+	key: string,
+): Record<string, unknown> | null {
+	if (!isRecord(value)) return null;
+	const nested = value[key];
+	return isRecord(nested) ? nested : null;
+}
+
 function decodeHtmlEntities(text: string): string {
 	const stripped = text.replace(/<[^>]+>/g, "");
 	return stripped.replace(
@@ -236,6 +249,71 @@ export async function queryArtistOverview(
 		})),
 		bio,
 	};
+}
+
+export type PlaylistMetadataResult = {
+	name: string;
+	description: string | null;
+	trackCount: number;
+	imageUrl: string | null;
+};
+
+function extractImageUrlFromSources(
+	playlist: Record<string, unknown>,
+): string | null {
+	const images = getNestedRecord(playlist, "images");
+	if (!images || !Array.isArray(images.items) || images.items.length === 0)
+		return null;
+	const firstImageItem = images.items[0];
+	if (!isRecord(firstImageItem)) return null;
+	const sources = (firstImageItem as Record<string, unknown>).sources;
+	if (!Array.isArray(sources) || sources.length === 0) return null;
+	let best: { url: string; width: number } | null = null;
+	for (const src of sources) {
+		if (!isRecord(src) || typeof src.url !== "string") continue;
+		const width = typeof src.width === "number" ? src.width : 0;
+		if (!best || width > best.width) {
+			best = { url: src.url, width };
+		}
+	}
+	return best?.url ?? null;
+}
+
+export async function fetchPlaylistMetadata(
+	token: string,
+	playlistUri: string,
+): Promise<PlaylistMetadataResult> {
+	const data = await queryPathfinder<unknown>(token, "fetchPlaylist", {
+		uri: playlistUri,
+		offset: 0,
+		limit: 1,
+		enableWatchFeedEntrypoint: true,
+		includeEpisodeContentRatingsV2: false,
+	});
+
+	const envelope = getNestedRecord(data, "data");
+	const playlist = getNestedRecord(envelope, "playlistV2");
+
+	if (!playlist || typeof playlist.name !== "string") {
+		throw new Error(
+			`Unexpected fetchPlaylistMetadata shape for ${playlistUri}`,
+		);
+	}
+
+	const name = playlist.name;
+	const rawDescription = playlist.description;
+	const description =
+		typeof rawDescription === "string" && rawDescription.length > 0
+			? rawDescription
+			: null;
+
+	const content = getNestedRecord(playlist, "content");
+	const rawTotalCount = content?.totalCount;
+	const trackCount = typeof rawTotalCount === "number" ? rawTotalCount : 0;
+
+	const imageUrl = extractImageUrlFromSources(playlist);
+
+	return { name, description, trackCount, imageUrl };
 }
 
 export async function getTrack(

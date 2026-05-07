@@ -1,16 +1,22 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { isExtensionInstalled } from "@/lib/extension/detect";
-import { updatePlaylistAcknowledged } from "@/lib/extension/playlist-write-acknowledgement";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
-import { outcomeFromAcknowledgedResult } from "@/lib/extension/spotify-action-outcome";
+import {
+	commitPlaylistDescriptionSave,
+	outcomeFromCommittedPlaylistDescriptionSave,
+	preparePlaylistDescriptionSave,
+	syncPreparedPlaylistMetadata,
+	type PreparedPlaylistDescriptionSave,
+} from "@/lib/extension/playlist-description-save";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
 import type { ThemeConfig } from "@/lib/theme/types";
 import type { ExtensionAvailability } from "../hooks/useExtensionStatus";
 import { playlistKeys } from "../queries";
+import { DescriptionConflictDialog } from "./DescriptionConflictDialog";
 import { PlaylistDescription } from "./PlaylistDescription";
 import { PlaylistTrackList } from "./PlaylistTrackList";
 
@@ -41,6 +47,18 @@ interface PlaylistDetailViewProps {
 	onMetadataChanged: () => void;
 }
 
+type DescriptionEditState =
+	| { kind: "idle" }
+	| { kind: "saving" }
+	| {
+			kind: "confirm-overwrite";
+			commit: PreparedPlaylistDescriptionSave;
+			latestDescription: string | null;
+	  }
+	| { kind: "failed" }
+	| { kind: "reconnect-required" }
+	| { kind: "extension-required" };
+
 export function PlaylistDetailView({
 	theme,
 	playlist,
@@ -57,9 +75,9 @@ export function PlaylistDetailView({
 	const queryClient = useQueryClient();
 	const [isEditingDescription, setIsEditingDescription] = useState(false);
 	const [draftDescription, setDraftDescription] = useState("");
-	const [editState, setEditState] = useState<
-		"idle" | "saving" | "failed" | "reconnect-required" | "extension-required"
-	>("idle");
+	const [editState, setEditState] = useState<DescriptionEditState>({
+		kind: "idle",
+	});
 
 	useShortcut({
 		key: "escape",
@@ -70,57 +88,117 @@ export function PlaylistDetailView({
 		enabled: isExpanded,
 	});
 
-	if (!startRect) return null;
+	const invalidatePlaylists = useCallback(() => {
+		void queryClient.invalidateQueries({
+			queryKey: playlistKeys.management(accountId),
+		});
+	}, [accountId, queryClient]);
+
+	const commitDescriptionSave = useCallback(
+		async (commit: PreparedPlaylistDescriptionSave) => {
+			setEditState({ kind: "saving" });
+
+			const result = await commitPlaylistDescriptionSave(commit);
+			if (result.ok) {
+				setIsEditingDescription(false);
+				setEditState({ kind: "idle" });
+				onMetadataChanged();
+				invalidatePlaylists();
+				return;
+			}
+
+			const outcome = outcomeFromCommittedPlaylistDescriptionSave(result);
+
+			if (outcome.status === "reconnect-required") {
+				setEditState({ kind: "reconnect-required" });
+				return;
+			}
+
+			if (outcome.status === "extension-unavailable") {
+				const installed = await isExtensionInstalled();
+				if (!installed) {
+					setEditState({ kind: "extension-required" });
+					return;
+				}
+			}
+
+			setEditState({ kind: "failed" });
+		},
+		[invalidatePlaylists, onMetadataChanged],
+	);
 
 	const handleEditDescription = () => {
 		setDraftDescription(playlist.description || "");
 		setIsEditingDescription(true);
-		setEditState("idle");
+		setEditState({ kind: "idle" });
 	};
 
 	const handleSaveDescription = async () => {
 		if (extensionStatus !== "available") return;
+		if (draftDescription === (playlist.description ?? "")) {
+			setIsEditingDescription(false);
+			setEditState({ kind: "idle" });
+			return;
+		}
 
-		setEditState("saving");
-		const result = await updatePlaylistAcknowledged(playlist.spotify_id, {
-			description: draftDescription,
+		setEditState({ kind: "saving" });
+		const preparation = await preparePlaylistDescriptionSave({
+			spotifyId: playlist.spotify_id,
+			baselineDescription: playlist.description,
+			nextDescription: draftDescription,
 		});
 
-		if (result.ok) {
-			setIsEditingDescription(false);
-			setEditState("idle");
+		if (preparation.status === "ready") {
+			await commitDescriptionSave(preparation.commit);
+			return;
+		}
+
+		if (preparation.status === "conflict") {
+			const syncResult = await syncPreparedPlaylistMetadata(preparation.commit);
+			if (!syncResult.ok) {
+				setEditState({ kind: "failed" });
+				return;
+			}
+
 			onMetadataChanged();
-			queryClient.invalidateQueries({
-				queryKey: playlistKeys.management(accountId),
+			invalidatePlaylists();
+			setEditState({
+				kind: "confirm-overwrite",
+				commit: preparation.commit,
+				latestDescription: preparation.latestDescription,
 			});
 			return;
 		}
 
-		const outcome = outcomeFromAcknowledgedResult(result);
-
-		if (outcome.status === "reconnect-required") {
-			setEditState("reconnect-required");
+		if (preparation.status === "reconnect-required") {
+			setEditState({ kind: "reconnect-required" });
 			return;
 		}
 
-		if (outcome.status === "extension-unavailable") {
-			const installed = await isExtensionInstalled();
-			if (!installed) {
-				setEditState("extension-required");
-				return;
-			}
+		if (preparation.status === "extension-required") {
+			setEditState({ kind: "extension-required" });
+			return;
 		}
 
-		setEditState("failed");
+		setEditState({ kind: "failed" });
 	};
 
 	const handleCancelDescription = () => {
 		setIsEditingDescription(false);
 		setDraftDescription(playlist.description || "");
-		setEditState("idle");
+		setEditState({ kind: "idle" });
 	};
 
-	const offsetY = Math.round((startRect.top - expandedRect.top) * 0.25);
+	const handleDraftDescriptionChange = (value: string) => {
+		setDraftDescription(value);
+		if (editState.kind === "confirm-overwrite") {
+			setEditState({ kind: "idle" });
+		}
+	};
+
+	const offsetY = startRect
+		? Math.round((startRect.top - expandedRect.top) * 0.25)
+		: 0;
 
 	return (
 		<div
@@ -206,10 +284,22 @@ export function PlaylistDetailView({
 								onEdit={handleEditDescription}
 								onSave={handleSaveDescription}
 								onCancel={handleCancelDescription}
-								onDraftChange={setDraftDescription}
+								onDraftChange={handleDraftDescriptionChange}
 							/>
 
-							{editState === "failed" && isExpanded && (
+							{editState.kind === "confirm-overwrite" && isExpanded && (
+								<DescriptionConflictDialog
+									theme={theme}
+									latestDescription={editState.latestDescription}
+									draftDescription={draftDescription || null}
+									onKeepMine={() => {
+										void commitDescriptionSave(editState.commit);
+									}}
+									onUseSpotifys={() => setEditState({ kind: "idle" })}
+								/>
+							)}
+
+							{editState.kind === "failed" && isExpanded && (
 								<div
 									role="alert"
 									className="mb-4 flex max-w-lg items-center gap-2"
@@ -231,7 +321,7 @@ export function PlaylistDetailView({
 								</div>
 							)}
 
-							{editState === "reconnect-required" && isExpanded && (
+							{editState.kind === "reconnect-required" && isExpanded && (
 								<div className="mb-4 flex items-center gap-3">
 									<p
 										className="text-xs"
@@ -250,7 +340,7 @@ export function PlaylistDetailView({
 								</div>
 							)}
 
-							{editState === "extension-required" && isExpanded && (
+							{editState.kind === "extension-required" && isExpanded && (
 								<div className="mb-4 flex items-center gap-3">
 									<p
 										className="text-xs"

@@ -11,6 +11,7 @@ interface PlaylistLibraryProps {
 	onAddPlaylist: (id: string) => void;
 	closingToPlaylistId?: string | null;
 	getItemProps: ListNavigationResult<Playlist>["getItemProps"];
+	selectedPlaylistId?: string | null;
 }
 
 export function PlaylistLibrary({
@@ -20,6 +21,7 @@ export function PlaylistLibrary({
 	onAddPlaylist,
 	closingToPlaylistId,
 	getItemProps,
+	selectedPlaylistId,
 }: PlaylistLibraryProps) {
 	return (
 		<div className="relative">
@@ -56,12 +58,14 @@ export function PlaylistLibrary({
 								playlist={playlist}
 								theme={theme}
 								status="available"
+								isSelected={selectedPlaylistId === playlist.id}
 								onSelect={onSelectPlaylist}
 								onAction={onAddPlaylist}
 								isAnimatingTo={closingToPlaylistId === playlist.id}
 								itemRef={itemProps.ref}
 								tabIndex={itemProps.tabIndex}
 								dataFocused={itemProps["data-focused"]}
+								dataTabFocused={itemProps["data-tab-focused"]}
 								navEngaged={itemProps["data-nav-engaged"]}
 								onPointerDown={itemProps.onPointerDown}
 								onFocus={itemProps.onFocus}

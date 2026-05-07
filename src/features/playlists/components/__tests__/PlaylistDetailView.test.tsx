@@ -2,16 +2,26 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
+import type { PreparedPlaylistDescriptionSave } from "@/lib/extension/playlist-description-save";
 import type { ThemeConfig } from "@/lib/theme/types";
 import { render } from "@/test/utils/render";
-import type { CommandResponse } from "../../../../../shared/spotify-command-protocol";
 import { PlaylistDetailView } from "../PlaylistDetailView";
 
-const mockUpdate = vi.fn();
+const mockPrepareSave = vi.fn();
+const mockCommitSave = vi.fn();
+const mockOutcomeFromCommit = vi.fn();
+const mockSyncPreparedPlaylistMetadata = vi.fn();
 const mockIsExtensionInstalled = vi.fn();
 
-vi.mock("@/lib/extension/playlist-write-acknowledgement", () => ({
-	updatePlaylistAcknowledged: (...args: unknown[]) => mockUpdate(...args),
+vi.mock("@/lib/extension/playlist-description-save", () => ({
+	preparePlaylistDescriptionSave: (...args: unknown[]) =>
+		mockPrepareSave(...args),
+	commitPlaylistDescriptionSave: (...args: unknown[]) =>
+		mockCommitSave(...args),
+	syncPreparedPlaylistMetadata: (...args: unknown[]) =>
+		mockSyncPreparedPlaylistMetadata(...args),
+	outcomeFromCommittedPlaylistDescriptionSave: (...args: unknown[]) =>
+		mockOutcomeFromCommit(...args),
 }));
 
 vi.mock("@/lib/extension/detect", () => ({
@@ -53,7 +63,24 @@ const playlist: Playlist = {
 
 const rect = { top: 0, left: 0, width: 800, height: 600 };
 
-function renderView() {
+function buildCommit(overrides: Partial<PreparedPlaylistDescriptionSave> = {}) {
+	return {
+		spotifyId: "sp1",
+		nextDescription: "new description",
+		latestMetadata: {
+			name: "My Playlist",
+			description: "old description",
+			trackCount: 5,
+			imageUrl: null,
+		},
+		...overrides,
+	};
+}
+
+function renderView(overrides?: {
+	extensionStatus?: "available" | "checking" | "unavailable";
+	onMetadataChanged?: () => void;
+}) {
 	const queryClient = new QueryClient({
 		defaultOptions: { queries: { retry: false, gcTime: 0 } },
 	});
@@ -66,101 +93,180 @@ function renderView() {
 				isExpanded={true}
 				startRect={rect}
 				expandedRect={rect}
-				extensionStatus="available"
+				extensionStatus={overrides?.extensionStatus ?? "available"}
 				accountId="acct-1"
 				onClose={() => {}}
 				onToggleTarget={() => {}}
-				onMetadataChanged={() => {}}
+				onMetadataChanged={overrides?.onMetadataChanged ?? (() => {})}
 			/>
 		</QueryClientProvider>,
 	);
 }
 
-async function triggerFailedSave(user: ReturnType<typeof renderView>["user"]) {
-	await user.click(screen.getByRole("button", { name: /old description/i }));
-	await user.click(screen.getByRole("button", { name: /^save$/i }));
-}
-
-describe("PlaylistDetailView — edit failure states", () => {
+describe("PlaylistDetailView", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockIsExtensionInstalled.mockResolvedValue(true);
+		mockOutcomeFromCommit.mockReturnValue({ status: "success" });
+		mockSyncPreparedPlaylistMetadata.mockResolvedValue({ ok: true });
 	});
 
 	afterEach(() => {
 		cleanup();
 	});
 
-	it("renders reconnect CTA when command returns AUTH_REQUIRED", async () => {
-		const cmd: CommandResponse<{ revision: string }> = {
-			ok: false,
-			errorCode: "AUTH_REQUIRED",
-			message: "expired",
-			retryable: false,
-			commandId: "c1",
-		};
-		mockUpdate.mockResolvedValue({ ok: false, commandResponse: cmd });
-
-		const { user } = renderView();
-		await triggerFailedSave(user);
-
-		expect(
-			await screen.findByText(/reconnect to spotify, then repeat this edit/i),
-		).toBeTruthy();
-		const reconnectLink = screen.getByRole("link", { name: /reconnect/i });
-		const href = reconnectLink.getAttribute("href") ?? "";
-		const url = new URL(href);
-		expect(url.origin + url.pathname).toBe("https://open.spotify.com/");
-		expect(url.hash).toBe("");
-		expect(reconnectLink.getAttribute("target")).toBe("_blank");
-		expect(reconnectLink.getAttribute("rel")).toBe("noopener noreferrer");
+	it("does not fetch metadata when the detail opens", async () => {
+		renderView();
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(mockPrepareSave).not.toHaveBeenCalled();
+		expect(mockCommitSave).not.toHaveBeenCalled();
 	});
 
-	it("renders install CTA when command returns NETWORK_ERROR and extension is not installed", async () => {
-		const cmd: CommandResponse<{ revision: string }> = {
-			ok: false,
-			errorCode: "NETWORK_ERROR",
-			message: "offline",
-			retryable: true,
-			commandId: "c1",
-		};
-		mockUpdate.mockResolvedValue({ ok: false, commandResponse: cmd });
-		mockIsExtensionInstalled.mockResolvedValue(false);
-
+	it("closes edit mode without calling Spotify when nothing changed", async () => {
 		const { user } = renderView();
-		await triggerFailedSave(user);
 
-		expect(
-			await screen.findByText(/the extension is required to edit playlists/i),
-		).toBeTruthy();
-		const installLink = screen.getByRole("link", {
-			name: /install extension/i,
+		await user.click(screen.getByRole("button", { name: /old description/i }));
+		await user.click(screen.getByRole("button", { name: /^save$/i }));
+
+		expect(mockPrepareSave).not.toHaveBeenCalled();
+		expect(screen.queryByRole("textbox")).toBeNull();
+	});
+
+	it("prepares then commits when save has no conflict", async () => {
+		const onMetadataChanged = vi.fn();
+		const commit = buildCommit();
+		mockPrepareSave.mockResolvedValue({ status: "ready", commit });
+		mockCommitSave.mockResolvedValue({
+			ok: true,
+			data: { revision: "r1" },
+			acknowledged: true,
 		});
-		expect(installLink.getAttribute("href")).toContain(
-			"chrome.google.com/webstore/detail/hearted-spotify-sync",
-		);
-		expect(installLink.getAttribute("target")).toBe("_blank");
+
+		const { user } = renderView({ onMetadataChanged });
+
+		await user.click(screen.getByRole("button", { name: /old description/i }));
+		await user.clear(screen.getByRole("textbox"));
+		await user.type(screen.getByRole("textbox"), "new description");
+		await user.click(screen.getByRole("button", { name: /^save$/i }));
+
+		expect(mockPrepareSave).toHaveBeenCalledWith({
+			spotifyId: "sp1",
+			baselineDescription: "old description",
+			nextDescription: "new description",
+		});
+		expect(mockCommitSave).toHaveBeenCalledWith(commit);
+		await vi.waitFor(() => {
+			expect(onMetadataChanged).toHaveBeenCalledTimes(1);
+		});
 	});
 
-	it("renders generic failed message for other errors", async () => {
-		const cmd: CommandResponse<{ revision: string }> = {
+	it("shows overwrite confirmation when remote description changed", async () => {
+		const onMetadataChanged = vi.fn();
+		const commit = buildCommit({
+			latestMetadata: {
+				name: "My Playlist",
+				description: "remote description",
+				trackCount: 5,
+				imageUrl: null,
+			},
+		});
+		mockPrepareSave.mockResolvedValue({
+			status: "conflict",
+			latestDescription: "remote description",
+			commit,
+		});
+		mockCommitSave.mockResolvedValue({
+			ok: true,
+			data: { revision: "r2" },
+			acknowledged: true,
+		});
+
+		const { user } = renderView({ onMetadataChanged });
+
+		await user.click(screen.getByRole("button", { name: /old description/i }));
+		await user.clear(screen.getByRole("textbox"));
+		await user.type(screen.getByRole("textbox"), "new description");
+		await user.click(screen.getByRole("button", { name: /^save$/i }));
+
+		expect(mockSyncPreparedPlaylistMetadata).toHaveBeenCalledWith(commit);
+		await vi.waitFor(() => {
+			expect(onMetadataChanged).toHaveBeenCalledTimes(1);
+		});
+
+		expect(await screen.findByText(/this description/i)).toBeTruthy();
+		expect(screen.getByText(/on spotify now/i)).toBeTruthy();
+		expect(screen.getByText(/yours/i)).toBeTruthy();
+		expect(mockCommitSave).not.toHaveBeenCalled();
+
+		await user.click(screen.getByRole("button", { name: /keep mine/i }));
+		expect(mockCommitSave).toHaveBeenCalledWith(commit);
+	});
+
+	it("shows a failure state when conflict sync cannot update the db", async () => {
+		const commit = buildCommit({
+			latestMetadata: {
+				name: "My Playlist",
+				description: "remote description",
+				trackCount: 5,
+				imageUrl: null,
+			},
+		});
+		mockPrepareSave.mockResolvedValue({
+			status: "conflict",
+			latestDescription: "remote description",
+			commit,
+		});
+		mockSyncPreparedPlaylistMetadata.mockResolvedValue({
 			ok: false,
-			errorCode: "UPSTREAM_ERROR",
-			message: "spotify 500",
-			retryable: true,
-			commandId: "c1",
-		};
-		mockUpdate.mockResolvedValue({ ok: false, commandResponse: cmd });
+			error: new Error("db sync failed"),
+		});
 
 		const { user } = renderView();
-		await triggerFailedSave(user);
+
+		await user.click(screen.getByRole("button", { name: /old description/i }));
+		await user.clear(screen.getByRole("textbox"));
+		await user.type(screen.getByRole("textbox"), "new description");
+		await user.click(screen.getByRole("button", { name: /^save$/i }));
 
 		expect(
 			await screen.findByText(/something went sideways saving that/i),
 		).toBeTruthy();
-		expect(screen.queryByRole("link", { name: /reconnect/i })).toBeNull();
+		expect(screen.queryByText(/this description/i)).toBeNull();
+	});
+
+	it("renders reconnect CTA when preparation requires auth", async () => {
+		mockPrepareSave.mockResolvedValue({ status: "reconnect-required" });
+
+		const { user } = renderView();
+		await user.click(screen.getByRole("button", { name: /old description/i }));
+		await user.clear(screen.getByRole("textbox"));
+		await user.type(screen.getByRole("textbox"), "new description");
+		await user.click(screen.getByRole("button", { name: /^save$/i }));
+
 		expect(
-			screen.queryByRole("link", { name: /install extension/i }),
-		).toBeNull();
+			await screen.findByText(/reconnect to spotify, then repeat this edit/i),
+		).toBeTruthy();
+		expect(screen.getByRole("link", { name: /reconnect/i })).toBeTruthy();
+	});
+
+	it("renders install CTA when commit fails because extension is gone", async () => {
+		const commit = buildCommit();
+		mockPrepareSave.mockResolvedValue({ status: "ready", commit });
+		mockCommitSave.mockResolvedValue({ ok: false, commandResponse: {} });
+		mockOutcomeFromCommit.mockReturnValue({ status: "extension-unavailable" });
+		mockIsExtensionInstalled.mockResolvedValue(false);
+
+		const { user } = renderView();
+		await user.click(screen.getByRole("button", { name: /old description/i }));
+		await user.clear(screen.getByRole("textbox"));
+		await user.type(screen.getByRole("textbox"), "new description");
+		await user.click(screen.getByRole("button", { name: /^save$/i }));
+
+		expect(
+			await screen.findByText(/the extension is required to edit playlists/i),
+		).toBeTruthy();
+		expect(
+			screen.getByRole("link", { name: /install extension/i }),
+		).toBeTruthy();
 	});
 });

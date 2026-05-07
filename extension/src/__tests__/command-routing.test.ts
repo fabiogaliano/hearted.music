@@ -9,6 +9,12 @@ vi.mock("../shared/spotify-client/reads", () => ({
 		name: "Test Artist",
 		avatarImages: [],
 	}),
+	fetchPlaylistMetadata: vi.fn().mockResolvedValue({
+		name: "Summer Vibes",
+		description: "chill tunes",
+		trackCount: 42,
+		imageUrl: "https://i.scdn.co/image/abc123",
+	}),
 }));
 
 vi.mock("../shared/spotify-client/mutations", () => ({
@@ -295,6 +301,35 @@ describe("handleSpotifyCommand", () => {
 				"test-token-abc",
 				"spotify:artist:xyz",
 				"sv",
+			);
+		});
+
+		it("routes fetchPlaylistMetadata to reads.fetchPlaylistMetadata", async () => {
+			const { fetchPlaylistMetadata } = await import(
+				"../shared/spotify-client/reads"
+			);
+
+			const cmd: SpotifyCommand = {
+				type: "SPOTIFY_COMMAND",
+				command: "fetchPlaylistMetadata",
+				payload: { playlistUri: "spotify:playlist:abc123" },
+				commandId: "cmd-meta",
+			};
+
+			const result = await handleSpotifyCommand(cmd, makeTokenProvider(true));
+
+			expect(result.ok).toBe(true);
+			if (result.ok) {
+				expect(result.data).toEqual({
+					name: "Summer Vibes",
+					description: "chill tunes",
+					trackCount: 42,
+					imageUrl: "https://i.scdn.co/image/abc123",
+				});
+			}
+			expect(fetchPlaylistMetadata).toHaveBeenCalledWith(
+				"test-token-abc",
+				"spotify:playlist:abc123",
 			);
 		});
 	});

@@ -7,6 +7,7 @@ interface PlaylistCardProps {
 	playlist: Playlist;
 	theme: ThemeConfig;
 	status: "active" | "available";
+	isSelected?: boolean;
 	onSelect?: (id: string, element: HTMLElement) => void;
 	onRemove?: (id: string) => void;
 	onAction?: (id: string) => void;
@@ -14,6 +15,7 @@ interface PlaylistCardProps {
 	itemRef?: (el: HTMLElement | null) => void;
 	tabIndex?: number;
 	dataFocused?: boolean;
+	dataTabFocused?: boolean;
 	navEngaged?: boolean;
 	onPointerDown?: React.PointerEventHandler<HTMLElement>;
 	onFocus?: React.FocusEventHandler<HTMLElement>;
@@ -24,6 +26,7 @@ export function PlaylistCard({
 	playlist,
 	theme,
 	status,
+	isSelected,
 	onSelect,
 	onRemove,
 	onAction,
@@ -31,6 +34,7 @@ export function PlaylistCard({
 	itemRef,
 	tabIndex,
 	dataFocused,
+	dataTabFocused,
 	navEngaged,
 	onPointerDown,
 	onFocus,
@@ -40,7 +44,13 @@ export function PlaylistCard({
 		return (
 			<div
 				className="group flex cursor-pointer items-center gap-5 py-5 transition-transform duration-100 ease-out active:scale-[0.995]"
-				style={{ borderBottom: `1px solid ${theme.border}` }}
+				style={{
+					borderBottom: `1px solid ${theme.border}`,
+					background: isSelected ? theme.surface : "transparent",
+					borderLeft: isSelected
+						? `3px solid ${theme.primary}`
+						: "3px solid transparent",
+				}}
 				onClick={(event) => onSelect?.(playlist.id, event.currentTarget)}
 			>
 				<div
@@ -66,6 +76,7 @@ export function PlaylistCard({
 						style={{
 							fontFamily: fonts.display,
 							color: theme.text,
+							fontWeight: isSelected ? 400 : undefined,
 							viewTransitionName: isAnimatingTo ? "playlist-title" : "none",
 						}}
 					>
@@ -108,28 +119,34 @@ export function PlaylistCard({
 	}
 
 	const isFocused = dataFocused === true;
+	const isTabFocused = dataTabFocused === true;
+	const hasHighlight = isFocused || isSelected;
 
 	return (
 		<div
 			ref={itemRef}
 			tabIndex={tabIndex}
 			data-focused={dataFocused}
+			data-tab-focused={dataTabFocused}
 			data-nav-engaged={navEngaged}
 			onPointerDown={onPointerDown}
 			onFocus={onFocus}
 			onBlur={onBlur}
 			className="group -mx-3 flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors duration-150 ease-out"
 			style={{
-				background: isFocused ? theme.surface : "transparent",
-				borderLeft: isFocused
+				background: hasHighlight ? theme.surface : "transparent",
+				borderLeft: hasHighlight
 					? `2px solid ${theme.primary}`
 					: "2px solid transparent",
+				boxShadow: isTabFocused
+					? `inset 0 0 0 1px ${theme.primary}`
+					: undefined,
 			}}
 			onMouseEnter={(e) => {
-				if (!isFocused) e.currentTarget.style.background = theme.surface;
+				if (!hasHighlight) e.currentTarget.style.background = theme.surface;
 			}}
 			onMouseLeave={(e) => {
-				if (!isFocused) e.currentTarget.style.background = "transparent";
+				if (!hasHighlight) e.currentTarget.style.background = "transparent";
 			}}
 			onClick={(event) => onSelect?.(playlist.id, event.currentTarget)}
 		>
@@ -156,6 +173,7 @@ export function PlaylistCard({
 					style={{
 						fontFamily: fonts.body,
 						color: theme.text,
+						fontWeight: isSelected ? 400 : 300,
 						viewTransitionName: isAnimatingTo ? "playlist-title" : "none",
 					}}
 				>

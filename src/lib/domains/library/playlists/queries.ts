@@ -201,18 +201,27 @@ export function setPlaylistTarget(
 }
 
 /**
- * Updates only name/description for a playlist identified by (account_id, spotify_id).
- * Preserves all other fields (is_target, song_count, image_url, etc.).
+ * Updates acknowledged playlist metadata for a playlist identified by
+ * (account_id, spotify_id).
+ * Only the provided fields change; all other fields are preserved.
  */
 export function updatePlaylistMetadata(
 	accountId: string,
 	spotifyId: string,
-	metadata: { name?: string; description?: string },
+	metadata: {
+		name?: string;
+		description?: string | null;
+		song_count?: number;
+		image_url?: string | null;
+	},
 ): Promise<Result<Playlist, DbError>> {
-	const fields: Record<string, string> = {};
+	const fields: Record<string, string | number | null> = {};
 	if (metadata.name !== undefined) fields.name = metadata.name;
 	if (metadata.description !== undefined)
 		fields.description = metadata.description;
+	if (metadata.song_count !== undefined)
+		fields.song_count = metadata.song_count;
+	if (metadata.image_url !== undefined) fields.image_url = metadata.image_url;
 
 	if (Object.keys(fields).length === 0) {
 		return Promise.resolve(

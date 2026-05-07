@@ -190,7 +190,9 @@ export const acknowledgePlaylistCreate = createServerFn({ method: "POST" })
 const AcknowledgeUpdateSchema = z.object({
 	spotifyId: z.string().min(1),
 	name: z.string().min(1).optional(),
-	description: z.string().optional(),
+	description: z.string().nullable().optional(),
+	songCount: z.number().int().nonnegative().optional(),
+	imageUrl: z.string().nullable().optional(),
 });
 
 export const acknowledgePlaylistUpdate = createServerFn({ method: "POST" })
@@ -198,9 +200,16 @@ export const acknowledgePlaylistUpdate = createServerFn({ method: "POST" })
 	.inputValidator((data) => AcknowledgeUpdateSchema.parse(data))
 	.handler(async ({ data, context }) => {
 		const { session } = context;
-		const metadata: { name?: string; description?: string } = {};
+		const metadata: {
+			name?: string;
+			description?: string | null;
+			song_count?: number;
+			image_url?: string | null;
+		} = {};
 		if (data.name !== undefined) metadata.name = data.name;
 		if (data.description !== undefined) metadata.description = data.description;
+		if (data.songCount !== undefined) metadata.song_count = data.songCount;
+		if (data.imageUrl !== undefined) metadata.image_url = data.imageUrl;
 
 		const result = await updatePlaylistMetadata(
 			session.accountId,

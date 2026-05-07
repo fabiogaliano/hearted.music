@@ -28,6 +28,7 @@ routes/
 │   ├── match.tsx                 ← /match (match review session)
 │   ├── onboarding.tsx            ← /onboarding
 │   ├── playlists.tsx             ← /playlists
+│   ├── playlists.$playlistRef.tsx← /playlists/:playlistRef
 │   ├── settings.tsx              ← /settings
 │   └── -components/              ← Private co-located components (prefix `-` = not a route)
 │       ├── NavItem.tsx

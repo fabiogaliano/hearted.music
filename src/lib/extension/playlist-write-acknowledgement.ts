@@ -52,9 +52,17 @@ export async function createPlaylistAcknowledged(
 
 export async function updatePlaylistAcknowledged(
 	playlistId: string,
-	attrs: { name?: string; description?: string },
+	attrs: {
+		name?: string;
+		description?: string;
+		songCount?: number;
+		imageUrl?: string | null;
+	},
 ): Promise<AcknowledgedResult<UpdatePlaylistResult>> {
-	const response = await updatePlaylist(playlistId, attrs);
+	const response = await updatePlaylist(playlistId, {
+		name: attrs.name,
+		description: attrs.description,
+	});
 
 	if (!response.ok) {
 		return { ok: false, commandResponse: response };

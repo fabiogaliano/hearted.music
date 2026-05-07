@@ -59,6 +59,7 @@ async function playlistV2Fetch<T>(
 			headers: {
 				Authorization: `Bearer ${token}`,
 				"Content-Type": "application/json",
+				Accept: "application/json",
 			},
 			body: JSON.stringify(body),
 		});
@@ -82,7 +83,12 @@ async function playlistV2Fetch<T>(
 	}
 
 	if (!res.ok) {
-		throw new Error(`Playlist v2 API error: ${res.status} ${path}`);
+		const bodyText = await res.text().catch(() => "");
+		const truncated =
+			bodyText.length > 500 ? `${bodyText.slice(0, 500)}…` : bodyText;
+		throw new Error(
+			`Playlist v2 API error: ${res.status} ${path}${truncated ? ` — ${truncated}` : ""}`,
+		);
 	}
 
 	return res.json() as T;

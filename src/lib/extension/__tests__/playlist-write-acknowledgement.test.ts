@@ -101,6 +101,8 @@ describe("updatePlaylistAcknowledged", () => {
 
 		const result = await updatePlaylistAcknowledged("pl-id", {
 			name: "Renamed",
+			songCount: 12,
+			imageUrl: "https://img.test/cover.jpg",
 		});
 
 		expect(result).toEqual({
@@ -110,9 +112,15 @@ describe("updatePlaylistAcknowledged", () => {
 		});
 		expect(mockUpdatePlaylist).toHaveBeenCalledWith("pl-id", {
 			name: "Renamed",
+			description: undefined,
 		});
 		expect(mockAcknowledgeUpdate).toHaveBeenCalledWith({
-			data: { spotifyId: "pl-id", name: "Renamed" },
+			data: {
+				spotifyId: "pl-id",
+				name: "Renamed",
+				songCount: 12,
+				imageUrl: "https://img.test/cover.jpg",
+			},
 		});
 	});
 

@@ -27,6 +27,7 @@ import { Route as ApiExtensionTokenRouteImport } from './routes/api/extension/to
 import { Route as ApiExtensionSyncRouteImport } from './routes/api/extension/sync'
 import { Route as ApiExtensionStatusRouteImport } from './routes/api/extension/status'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthenticatedPlaylistsPlaylistRefRouteImport } from './routes/_authenticated/playlists_.$playlistRef'
 import { Route as AuthenticatedCheckoutSuccessRouteImport } from './routes/_authenticated/checkout/success'
 import { Route as AuthenticatedCheckoutCancelRouteImport } from './routes/_authenticated/checkout/cancel'
 import { Route as ApiExtensionArtistsCheckRouteImport } from './routes/api/extension/artists/check'
@@ -120,6 +121,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedPlaylistsPlaylistRefRoute =
+  AuthenticatedPlaylistsPlaylistRefRouteImport.update({
+    id: '/playlists_/$playlistRef',
+    path: '/playlists/$playlistRef',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCheckoutSuccessRoute =
   AuthenticatedCheckoutSuccessRouteImport.update({
     id: '/checkout/success',
@@ -155,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/auth/logout': typeof AuthLogoutRoute
   '/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
   '/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
+  '/playlists/$playlistRef': typeof AuthenticatedPlaylistsPlaylistRefRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
@@ -177,6 +185,7 @@ export interface FileRoutesByTo {
   '/auth/logout': typeof AuthLogoutRoute
   '/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
   '/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
+  '/playlists/$playlistRef': typeof AuthenticatedPlaylistsPlaylistRefRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
@@ -201,6 +210,7 @@ export interface FileRoutesById {
   '/auth/logout': typeof AuthLogoutRoute
   '/_authenticated/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
   '/_authenticated/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
+  '/_authenticated/playlists_/$playlistRef': typeof AuthenticatedPlaylistsPlaylistRefRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/auth/logout'
     | '/checkout/cancel'
     | '/checkout/success'
+    | '/playlists/$playlistRef'
     | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/auth/logout'
     | '/checkout/cancel'
     | '/checkout/success'
+    | '/playlists/$playlistRef'
     | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
@@ -270,6 +282,7 @@ export interface FileRouteTypes {
     | '/auth/logout'
     | '/_authenticated/checkout/cancel'
     | '/_authenticated/checkout/success'
+    | '/_authenticated/playlists_/$playlistRef'
     | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
@@ -421,6 +434,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/playlists_/$playlistRef': {
+      id: '/_authenticated/playlists_/$playlistRef'
+      path: '/playlists/$playlistRef'
+      fullPath: '/playlists/$playlistRef'
+      preLoaderRoute: typeof AuthenticatedPlaylistsPlaylistRefRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/checkout/success': {
       id: '/_authenticated/checkout/success'
       path: '/checkout/success'
@@ -454,6 +474,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedCheckoutCancelRoute: typeof AuthenticatedCheckoutCancelRoute
   AuthenticatedCheckoutSuccessRoute: typeof AuthenticatedCheckoutSuccessRoute
+  AuthenticatedPlaylistsPlaylistRefRoute: typeof AuthenticatedPlaylistsPlaylistRefRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -465,6 +486,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedCheckoutCancelRoute: AuthenticatedCheckoutCancelRoute,
   AuthenticatedCheckoutSuccessRoute: AuthenticatedCheckoutSuccessRoute,
+  AuthenticatedPlaylistsPlaylistRefRoute:
+    AuthenticatedPlaylistsPlaylistRefRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

@@ -19,6 +19,7 @@ import {
 	addToPlaylist,
 	createPlaylist,
 	deletePlaylist,
+	fetchPlaylistMetadata,
 	queryArtistOverview,
 	removeFromPlaylist,
 	updatePlaylist,
@@ -189,6 +190,29 @@ describe("command serialization", () => {
 			}),
 		);
 	});
+
+	it("fetchPlaylistMetadata sends correct message shape", async () => {
+		mockSendExtensionCommand.mockResolvedValue({
+			ok: true,
+			data: {
+				name: "Summer Vibes",
+				description: "chill tunes",
+				trackCount: 42,
+				imageUrl: null,
+			},
+			commandId: MOCK_UUID,
+		});
+
+		await fetchPlaylistMetadata("spotify:playlist:abc123");
+
+		expect(mockSendExtensionCommand).toHaveBeenCalledWith({
+			type: "SPOTIFY_COMMAND",
+			command: "fetchPlaylistMetadata",
+			payload: { playlistUri: "spotify:playlist:abc123" },
+			commandId: MOCK_UUID,
+			protocolVersion: 1,
+		});
+	});
 });
 
 describe("response handling", () => {
@@ -255,6 +279,7 @@ describe("extension unavailable", () => {
 			updatePlaylist("id", { name: "n" }),
 			deletePlaylist("uri", "user"),
 			queryArtistOverview("uri"),
+			fetchPlaylistMetadata("uri"),
 		]);
 
 		for (const result of results) {

@@ -7,7 +7,10 @@ import {
 	deletePlaylist,
 	updatePlaylist,
 } from "../shared/spotify-client/playlist-v2";
-import { queryArtistOverview } from "../shared/spotify-client/reads";
+import {
+	fetchPlaylistMetadata,
+	queryArtistOverview,
+} from "../shared/spotify-client/reads";
 import type {
 	CommandResponse,
 	SpotifyCommand,
@@ -31,6 +34,7 @@ type CommandResultMap = {
 	updatePlaylist: Awaited<ReturnType<typeof updatePlaylist>>;
 	deletePlaylist: Awaited<ReturnType<typeof deletePlaylist>>;
 	queryArtistOverview: Awaited<ReturnType<typeof queryArtistOverview>>;
+	fetchPlaylistMetadata: Awaited<ReturnType<typeof fetchPlaylistMetadata>>;
 };
 
 type CommandExecutorMap = {
@@ -61,6 +65,8 @@ const commandExecutors: CommandExecutorMap = {
 		deletePlaylist(token, payload.playlistUri, payload.userId),
 	queryArtistOverview: async (token, payload) =>
 		queryArtistOverview(token, payload.artistUri, payload.locale),
+	fetchPlaylistMetadata: async (token, payload) =>
+		fetchPlaylistMetadata(token, payload.playlistUri),
 };
 
 async function runCommandExecutor<K extends SpotifyCommandName>(

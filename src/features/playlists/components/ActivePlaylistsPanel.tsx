@@ -11,6 +11,7 @@ interface ActivePlaylistsPanelProps {
 	columnRef: React.RefObject<HTMLDivElement | null>;
 	isExpanded: boolean;
 	closingToPlaylistId?: string | null;
+	selectedPlaylistId?: string | null;
 }
 
 export function ActivePlaylistsPanel({
@@ -21,6 +22,7 @@ export function ActivePlaylistsPanel({
 	columnRef,
 	isExpanded,
 	closingToPlaylistId,
+	selectedPlaylistId,
 }: ActivePlaylistsPanelProps) {
 	return (
 		<div ref={columnRef} className="relative">
@@ -80,6 +82,7 @@ export function ActivePlaylistsPanel({
 								playlist={playlist}
 								theme={theme}
 								status="active"
+								isSelected={selectedPlaylistId === playlist.id}
 								onSelect={onSelectPlaylist}
 								onRemove={onRemove}
 								isAnimatingTo={closingToPlaylistId === playlist.id}

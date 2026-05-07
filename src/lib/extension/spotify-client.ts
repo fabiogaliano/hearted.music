@@ -21,6 +21,13 @@ type ArtistOverviewResult = {
 	avatarImages: ArtistImageSource[];
 };
 
+type PlaylistMetadataResult = {
+	name: string;
+	description: string | null;
+	trackCount: number;
+	imageUrl: string | null;
+};
+
 type SpotifyCommandResultMap = {
 	addToPlaylist: AddToPlaylistResult;
 	removeFromPlaylist: RemoveFromPlaylistResult;
@@ -28,6 +35,7 @@ type SpotifyCommandResultMap = {
 	updatePlaylist: UpdatePlaylistResult;
 	deletePlaylist: DeletePlaylistResult;
 	queryArtistOverview: ArtistOverviewResult;
+	fetchPlaylistMetadata: PlaylistMetadataResult;
 };
 
 function generateCommandId(): string {
@@ -124,5 +132,13 @@ export async function queryArtistOverview(
 	return sendSpotifyCommand("queryArtistOverview", {
 		artistUri,
 		locale,
+	});
+}
+
+export async function fetchPlaylistMetadata(
+	playlistUri: string,
+): Promise<CommandResponse<PlaylistMetadataResult>> {
+	return sendSpotifyCommand("fetchPlaylistMetadata", {
+		playlistUri,
 	});
 }
