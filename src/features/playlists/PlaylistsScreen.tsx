@@ -32,7 +32,7 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 		isExpanded,
 		startRect,
 		expandedRect,
-		rightColumnRef,
+		expansionColumnRef,
 		handleExpand,
 		handleClose,
 		closingToPlaylistId,
@@ -169,11 +169,14 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 
 	return (
 		<div className="relative min-h-[600px]">
-			<div className="grid max-w-6xl grid-cols-[280px_1fr] gap-10">
+			<div className="grid max-w-6xl grid-cols-[1fr_280px] gap-10">
 				<ActivePlaylistsPanel
 					theme={theme}
 					playlists={targetPlaylists}
+					onSelectPlaylist={handleExpand}
 					onRemove={(id) => handleToggleTarget(id, false)}
+					columnRef={expansionColumnRef}
+					isExpanded={isExpanded}
 					closingToPlaylistId={closingToPlaylistId}
 				/>
 
@@ -182,8 +185,6 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 					playlists={availablePlaylists}
 					onSelectPlaylist={handleExpand}
 					onAddPlaylist={(id) => handleToggleTarget(id, true)}
-					columnRef={rightColumnRef}
-					isExpanded={isExpanded}
 					closingToPlaylistId={closingToPlaylistId}
 					getItemProps={getItemProps}
 				/>

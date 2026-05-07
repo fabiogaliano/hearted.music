@@ -104,7 +104,7 @@ describe("PlaylistsScreen", () => {
 		expect(await screen.findByText("Matching Playlists")).toBeTruthy();
 		expect(screen.getByText("Target Playlist")).toBeTruthy();
 		expect(screen.getByText("Library Playlist")).toBeTruthy();
-		expect(screen.getByText("Available Library · 1")).toBeTruthy();
+		expect(screen.getByText("Available")).toBeTruthy();
 	});
 
 	it("shows target-rail empty state when no targets", async () => {
@@ -130,6 +130,6 @@ describe("PlaylistsScreen", () => {
 
 		renderWithClient(<PlaylistsScreen theme={theme} accountId="acct-1" />);
 
-		expect(await screen.findByText("No active playlists yet.")).toBeTruthy();
+		expect(await screen.findByText("No matching playlists yet.")).toBeTruthy();
 	});
 });

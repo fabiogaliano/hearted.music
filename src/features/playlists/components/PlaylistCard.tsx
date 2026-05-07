@@ -39,15 +39,12 @@ export function PlaylistCard({
 	if (status === "active") {
 		return (
 			<div
-				className="group -mx-3 flex items-center gap-3 px-3 py-3 transition-colors duration-150 ease-out"
-				style={{ background: theme.surface }}
-				onMouseEnter={(e) =>
-					(e.currentTarget.style.background = theme.surfaceDim)
-				}
-				onMouseLeave={(e) => (e.currentTarget.style.background = theme.surface)}
+				className="group flex cursor-pointer items-center gap-5 py-5 transition-transform duration-100 ease-out active:scale-[0.995]"
+				style={{ borderBottom: `1px solid ${theme.border}` }}
+				onClick={(event) => onSelect?.(playlist.id, event.currentTarget)}
 			>
 				<div
-					className="h-10 w-10 flex-shrink-0"
+					className="h-16 w-16 flex-shrink-0 overflow-hidden"
 					style={{
 						viewTransitionName: isAnimatingTo ? "playlist-cover" : "none",
 					}}
@@ -55,44 +52,52 @@ export function PlaylistCard({
 					{playlist.image_url ? (
 						<img
 							src={playlist.image_url}
-							alt=""
-							className="h-full w-full object-cover"
+							alt={playlist.name}
+							className="h-full w-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
 						/>
 					) : (
 						<AlbumPlaceholder />
 					)}
 				</div>
+
 				<div className="min-w-0 flex-1">
-					<p
-						className="truncate text-sm"
+					<h3
+						className="truncate text-2xl font-extralight"
 						style={{
-							fontFamily: fonts.body,
+							fontFamily: fonts.display,
 							color: theme.text,
 							viewTransitionName: isAnimatingTo ? "playlist-title" : "none",
 						}}
 					>
 						{playlist.name}
-					</p>
+					</h3>
 					{playlist.description && (
 						<p
-							className="truncate text-xs"
+							className="mt-1 truncate text-sm"
 							style={{
 								fontFamily: fonts.body,
 								color: theme.textMuted,
+								viewTransitionName: isAnimatingTo
+									? "playlist-description"
+									: "none",
 							}}
 						>
 							{playlist.description}
 						</p>
 					)}
 				</div>
+
 				<button
 					type="button"
-					onClick={() => onRemove?.(playlist.id)}
-					className="p-1.5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100"
+					onClick={(e) => {
+						e.stopPropagation();
+						onRemove?.(playlist.id);
+					}}
+					className="p-2 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100"
 					aria-label={`Remove ${playlist.name} from matching`}
 				>
 					<span
-						className="text-lg leading-none"
+						className="text-xl leading-none"
 						style={{ color: theme.textMuted }}
 					>
 						×
@@ -113,17 +118,23 @@ export function PlaylistCard({
 			onPointerDown={onPointerDown}
 			onFocus={onFocus}
 			onBlur={onBlur}
-			className="group flex cursor-pointer items-center gap-5 py-5 transition-transform duration-100 ease-out active:scale-[0.995]"
+			className="group -mx-3 flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors duration-150 ease-out"
 			style={{
-				borderBottom: `1px solid ${theme.border}`,
+				background: isFocused ? theme.surface : "transparent",
 				borderLeft: isFocused
-					? `3px solid ${theme.primary}`
-					: "3px solid transparent",
+					? `2px solid ${theme.primary}`
+					: "2px solid transparent",
+			}}
+			onMouseEnter={(e) => {
+				if (!isFocused) e.currentTarget.style.background = theme.surface;
+			}}
+			onMouseLeave={(e) => {
+				if (!isFocused) e.currentTarget.style.background = "transparent";
 			}}
 			onClick={(event) => onSelect?.(playlist.id, event.currentTarget)}
 		>
 			<div
-				className="h-16 w-16 flex-shrink-0 overflow-hidden"
+				className="h-10 w-10 flex-shrink-0 overflow-hidden"
 				style={{
 					viewTransitionName: isAnimatingTo ? "playlist-cover" : "none",
 				}}
@@ -132,7 +143,7 @@ export function PlaylistCard({
 					<img
 						src={playlist.image_url}
 						alt={playlist.name}
-						className="h-full w-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
+						className="h-full w-full object-cover"
 					/>
 				) : (
 					<AlbumPlaceholder />
@@ -140,25 +151,22 @@ export function PlaylistCard({
 			</div>
 
 			<div className="min-w-0 flex-1">
-				<h3
-					className="truncate text-xl font-extralight"
+				<p
+					className="truncate text-sm"
 					style={{
-						fontFamily: fonts.display,
+						fontFamily: fonts.body,
 						color: theme.text,
 						viewTransitionName: isAnimatingTo ? "playlist-title" : "none",
 					}}
 				>
 					{playlist.name}
-				</h3>
+				</p>
 				{playlist.description && (
 					<p
-						className="mt-1 truncate text-sm"
+						className="truncate text-xs"
 						style={{
 							fontFamily: fonts.body,
 							color: theme.textMuted,
-							viewTransitionName: isAnimatingTo
-								? "playlist-description"
-								: "none",
 						}}
 					>
 						{playlist.description}
@@ -172,23 +180,15 @@ export function PlaylistCard({
 					e.stopPropagation();
 					onAction?.(playlist.id);
 				}}
-				className="px-4 py-2 text-xs tracking-widest uppercase opacity-0 transition-all duration-150 ease-out group-hover:opacity-100"
-				style={{
-					fontFamily: fonts.body,
-					background: theme.surface,
-					color: theme.text,
-				}}
-				onMouseEnter={(e) => {
-					e.currentTarget.style.background = theme.primary;
-					e.currentTarget.style.color = theme.textOnPrimary;
-				}}
-				onMouseLeave={(e) => {
-					e.currentTarget.style.background = theme.surface;
-					e.currentTarget.style.color = theme.text;
-				}}
+				className="p-1.5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100"
 				aria-label={`Add ${playlist.name} to matching`}
 			>
-				Add
+				<span
+					className="text-base leading-none"
+					style={{ color: theme.textMuted }}
+				>
+					+
+				</span>
 			</button>
 		</div>
 	);

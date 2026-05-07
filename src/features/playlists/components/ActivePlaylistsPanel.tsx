@@ -6,19 +6,28 @@ import { PlaylistCard } from "./PlaylistCard";
 interface ActivePlaylistsPanelProps {
 	theme: ThemeConfig;
 	playlists: Playlist[];
+	onSelectPlaylist: (id: string, element: HTMLElement) => void;
 	onRemove: (id: string) => void;
+	columnRef: React.RefObject<HTMLDivElement | null>;
+	isExpanded: boolean;
 	closingToPlaylistId?: string | null;
 }
 
 export function ActivePlaylistsPanel({
 	theme,
 	playlists,
+	onSelectPlaylist,
 	onRemove,
+	columnRef,
+	isExpanded,
 	closingToPlaylistId,
 }: ActivePlaylistsPanelProps) {
 	return (
-		<div className="relative">
-			<div className="sticky top-8">
+		<div ref={columnRef} className="relative">
+			<div
+				data-playlist-panel
+				className={`sticky top-8 transition-opacity duration-200 ease-out ${isExpanded ? "pointer-events-none opacity-0" : "opacity-100"}`}
+			>
 				<div className="mb-6 flex items-center gap-3">
 					<h3
 						className="text-xs tracking-widest uppercase"
@@ -41,7 +50,7 @@ export function ActivePlaylistsPanel({
 
 				{playlists.length === 0 ? (
 					<div
-						className="border-2 border-dashed p-6 text-center"
+						className="border border-dashed p-12 text-center"
 						style={{ borderColor: theme.border }}
 					>
 						<p
@@ -51,7 +60,7 @@ export function ActivePlaylistsPanel({
 								color: theme.textMuted,
 							}}
 						>
-							No active playlists yet.
+							No matching playlists yet.
 						</p>
 						<p
 							className="mt-2 text-xs"
@@ -60,17 +69,18 @@ export function ActivePlaylistsPanel({
 								color: theme.textMuted,
 							}}
 						>
-							Add playlists from the library to use for matching.
+							Add playlists from the library to start matching.
 						</p>
 					</div>
 				) : (
-					<div className="space-y-2">
+					<div className="space-y-0">
 						{playlists.map((playlist) => (
 							<PlaylistCard
 								key={playlist.id}
 								playlist={playlist}
 								theme={theme}
 								status="active"
+								onSelect={onSelectPlaylist}
 								onRemove={onRemove}
 								isAnimatingTo={closingToPlaylistId === playlist.id}
 							/>

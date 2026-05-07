@@ -210,15 +210,25 @@ export function PlaylistDetailView({
 							/>
 
 							{editState === "failed" && isExpanded && (
-								<p
-									className="mb-4 text-xs"
-									style={{
-										fontFamily: fonts.body,
-										color: theme.primary,
-									}}
+								<div
+									role="alert"
+									className="mb-4 flex max-w-lg items-center gap-2"
 								>
-									Description update failed. Please try again.
-								</p>
+									<span
+										aria-hidden="true"
+										className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full"
+										style={{ background: theme.primary }}
+									/>
+									<p
+										className="text-xs leading-relaxed"
+										style={{
+											fontFamily: fonts.body,
+											color: theme.textMuted,
+										}}
+									>
+										Something went sideways saving that. Try again?
+									</p>
+								</div>
 							)}
 
 							{editState === "reconnect-required" && isExpanded && (

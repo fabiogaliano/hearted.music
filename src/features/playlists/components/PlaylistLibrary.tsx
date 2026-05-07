@@ -9,8 +9,6 @@ interface PlaylistLibraryProps {
 	playlists: Playlist[];
 	onSelectPlaylist: (id: string, element: HTMLElement) => void;
 	onAddPlaylist: (id: string) => void;
-	columnRef: React.RefObject<HTMLDivElement | null>;
-	isExpanded: boolean;
 	closingToPlaylistId?: string | null;
 	getItemProps: ListNavigationResult<Playlist>["getItemProps"];
 }
@@ -20,29 +18,34 @@ export function PlaylistLibrary({
 	playlists,
 	onSelectPlaylist,
 	onAddPlaylist,
-	columnRef,
-	isExpanded,
 	closingToPlaylistId,
 	getItemProps,
 }: PlaylistLibraryProps) {
 	return (
-		<div
-			ref={columnRef}
-			className="relative grid grid-cols-1 grid-rows-1 overflow-hidden"
-		>
-			<div
-				data-playlist-panel
-				className={`col-start-1 row-start-1 transition-opacity duration-200 ease-out ${isExpanded ? "pointer-events-none opacity-0" : "opacity-100"}`}
-			>
-				<h3
-					className="mb-6 text-xs tracking-widest uppercase"
-					style={{
-						fontFamily: fonts.body,
-						color: theme.textMuted,
-					}}
-				>
-					Available Library · {playlists.length}
-				</h3>
+		<div className="relative">
+			<div className="sticky top-8">
+				<div className="mb-6 flex items-center gap-3">
+					<h3
+						className="text-xs tracking-widest uppercase"
+						style={{
+							fontFamily: fonts.body,
+							color: theme.textMuted,
+						}}
+					>
+						Available
+					</h3>
+					{playlists.length > 0 && (
+						<span
+							className="ml-auto text-xs tabular-nums"
+							style={{
+								fontFamily: fonts.body,
+								color: theme.textMuted,
+							}}
+						>
+							{playlists.length}
+						</span>
+					)}
+				</div>
 
 				<div className="space-y-0">
 					{playlists.map((playlist, index) => {

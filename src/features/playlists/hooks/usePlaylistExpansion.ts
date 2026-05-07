@@ -40,12 +40,12 @@ export function usePlaylistExpansion() {
 	const [closingToPlaylistId, setClosingToPlaylistId] = useState<string | null>(
 		null,
 	);
-	const rightColumnRef = useRef<HTMLDivElement>(null);
+	const expansionColumnRef = useRef<HTMLDivElement>(null);
 
 	const getExpandedRect = useCallback((): ExpandedRect => {
-		if (!rightColumnRef.current)
+		if (!expansionColumnRef.current)
 			return { top: 0, left: 0, width: 0, height: 0 };
-		const colRect = rightColumnRef.current.getBoundingClientRect();
+		const colRect = expansionColumnRef.current.getBoundingClientRect();
 		const top = Math.max(0, colRect.top);
 		return {
 			top,
@@ -96,7 +96,7 @@ export function usePlaylistExpansion() {
 		isExpanded,
 		startRect,
 		expandedRect: getExpandedRect(),
-		rightColumnRef,
+		expansionColumnRef,
 		handleExpand,
 		handleClose,
 		closingToPlaylistId,

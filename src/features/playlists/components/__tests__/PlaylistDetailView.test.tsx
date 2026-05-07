@@ -156,9 +156,7 @@ describe("PlaylistDetailView — edit failure states", () => {
 		await triggerFailedSave(user);
 
 		expect(
-			await screen.findByText(
-				/description update failed\. please try again\./i,
-			),
+			await screen.findByText(/something went sideways saving that/i),
 		).toBeTruthy();
 		expect(screen.queryByRole("link", { name: /reconnect/i })).toBeNull();
 		expect(
