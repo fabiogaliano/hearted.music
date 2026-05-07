@@ -1,6 +1,5 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Job } from "@/lib/data/jobs";
 
 const mockAuthContext = {
 	session: { accountId: "acct-1" },
@@ -73,30 +72,7 @@ vi.mock("@/lib/data/client", () => ({
 	}),
 }));
 
-const { getActiveJobs, getLibraryProcessingJobProgress } = await import(
-	"../jobs.functions"
-);
-
-function makeJob(overrides: Partial<Job> = {}): Job {
-	return {
-		id: "job-1",
-		account_id: "acct-1",
-		type: "enrichment",
-		status: "running",
-		progress: {},
-		error: null,
-		attempts: 1,
-		max_attempts: 3,
-		created_at: "2026-03-26T00:00:00Z",
-		updated_at: "2026-03-26T00:00:00Z",
-		started_at: "2026-03-26T00:00:00Z",
-		completed_at: null,
-		heartbeat_at: "2026-03-26T00:00:00Z",
-		queue_priority: 0,
-		satisfies_requested_at: null,
-		...overrides,
-	};
-}
+const { getActiveJobs } = await import("../jobs.functions");
 
 describe("jobs.functions", () => {
 	beforeEach(() => {
@@ -132,45 +108,5 @@ describe("jobs.functions", () => {
 		const result = await getActiveJobs();
 
 		expect(result.firstMatchReady).toBe(true);
-	});
-
-	it("returns typed enrichment progress for the authenticated account", async () => {
-		mockGetJobById.mockResolvedValue(
-			Result.ok(
-				makeJob({
-					progress: {
-						total: 20,
-						done: 10,
-						succeeded: 8,
-						failed: 2,
-						currentStage: "song_analysis",
-						batchSize: 5,
-						batchSequence: 1,
-					},
-				}),
-			),
-		);
-
-		const result = await getLibraryProcessingJobProgress({
-			data: { jobId: "job-1" },
-		});
-
-		expect(result?.type).toBe("enrichment");
-		if (result?.type === "enrichment") {
-			expect(result.progress.currentStage).toBe("song_analysis");
-			expect(result.progress.batchSequence).toBe(1);
-		}
-	});
-
-	it("returns null for library-processing jobs owned by another account", async () => {
-		mockGetJobById.mockResolvedValue(
-			Result.ok(makeJob({ account_id: "acct-2" })),
-		);
-
-		const result = await getLibraryProcessingJobProgress({
-			data: { jobId: "job-1" },
-		});
-
-		expect(result).toBeNull();
 	});
 });

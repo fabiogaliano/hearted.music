@@ -7,7 +7,6 @@ import {
 } from "@/lib/platform/jobs/progress/enrichment";
 import type { ChunkResult } from "@/lib/workflows/enrichment-pipeline/orchestrator";
 import { executeWorkerChunk } from "@/lib/workflows/enrichment-pipeline/orchestrator";
-import type { WorkflowDevServerSettings } from "@/lib/workflows/library-processing/devtools/settings";
 import { executeMatchSnapshotRefresh } from "@/lib/workflows/match-snapshot-refresh/orchestrator";
 import {
 	type MatchSnapshotRefreshPlan,
@@ -48,7 +47,6 @@ export function startHeartbeat(jobId: string): { stop: () => void } {
 
 export async function executeEnrichmentJob(
 	job: Job,
-	settings?: WorkflowDevServerSettings,
 ): Promise<EnrichmentExecuteResult> {
 	const accountId = job.account_id;
 	const progressResult = EnrichmentChunkProgressSchema.partial().safeParse(
@@ -70,7 +68,6 @@ export async function executeEnrichmentJob(
 		job.id,
 		progress.batchSize ?? 1,
 		progress.batchSequence ?? 0,
-		settings?.enrichmentStageDelayMs,
 	);
 
 	return {
@@ -88,7 +85,6 @@ export async function executeEnrichmentJob(
 
 export async function executeMatchSnapshotRefreshJob(
 	job: Job,
-	settings?: WorkflowDevServerSettings,
 ): Promise<MatchSnapshotRefreshExecuteResult> {
 	const accountId = job.account_id;
 	const initialProgress =
@@ -108,7 +104,6 @@ export async function executeMatchSnapshotRefreshJob(
 		accountId,
 		plan,
 		job.id,
-		settings?.refreshStageDelayMs,
 	);
 
 	log.info("match-snapshot-refresh-complete", {

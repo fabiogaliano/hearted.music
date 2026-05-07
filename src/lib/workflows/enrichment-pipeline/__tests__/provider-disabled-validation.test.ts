@@ -315,10 +315,6 @@ vi.mock("@/lib/domains/taste/playlist-profiling/service", () => ({
 	createPlaylistProfilingService: vi.fn().mockReturnValue({}),
 }));
 
-vi.mock("@/lib/workflows/library-processing/devtools/delay", () => ({
-	maybeDevDelay: vi.fn().mockResolvedValue(undefined),
-}));
-
 // ---------------------------------------------------------------------------
 // Imports (must come after mocks)
 // ---------------------------------------------------------------------------

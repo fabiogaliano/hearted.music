@@ -3,8 +3,6 @@ import type { Json } from "@/lib/data/database.types";
 import { recordExecutionMeasurement } from "@/lib/data/job-measurements";
 import type { Job } from "@/lib/data/jobs";
 import { markJobCompleted, markJobFailed } from "@/lib/data/jobs";
-import { maybeDevDelay } from "@/lib/workflows/library-processing/devtools/delay";
-import type { WorkflowDevServerSettings } from "@/lib/workflows/library-processing/devtools/settings";
 import {
 	type EnrichmentExecuteResult,
 	executeEnrichmentJob,
@@ -14,10 +12,6 @@ import {
 import { EnrichmentChanges } from "./changes/enrichment";
 import { MatchSnapshotChanges } from "./changes/match-snapshot";
 import { applyLibraryProcessingChange } from "./service";
-
-export interface RunClaimedJobOptions {
-	settings?: WorkflowDevServerSettings;
-}
 
 export type RunJobOutcome =
 	| {
@@ -36,25 +30,18 @@ export type RunJobOutcome =
 			error: string;
 	  };
 
-export async function runClaimedJob(
-	job: Job,
-	options: RunClaimedJobOptions = {},
-): Promise<RunJobOutcome> {
+export async function runClaimedJob(job: Job): Promise<RunJobOutcome> {
 	if (job.type === "match_snapshot_refresh") {
-		return runMatchSnapshotRefreshJob(job, options);
+		return runMatchSnapshotRefreshJob(job);
 	}
 
-	return runEnrichmentJob(job, options);
+	return runEnrichmentJob(job);
 }
 
-async function runEnrichmentJob(
-	job: Job,
-	options: RunClaimedJobOptions,
-): Promise<RunJobOutcome> {
+async function runEnrichmentJob(job: Job): Promise<RunJobOutcome> {
 	const startedAt = job.started_at ?? new Date().toISOString();
 	try {
-		const result = await executeEnrichmentJob(job, options.settings);
-		await maybeDevDelay(options.settings?.preSettlementDelayMs);
+		const result = await executeEnrichmentJob(job);
 
 		const completedResult = await markJobCompleted(job.id);
 		if (Result.isError(completedResult)) {
@@ -95,7 +82,6 @@ async function runEnrichmentJob(
 		return { status: "completed", workflow: "enrichment", result };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		await maybeDevDelay(options.settings?.preSettlementDelayMs);
 		await markJobFailedSafe(job, message);
 		await writeMeasurement(job, "enrichment", startedAt, "error");
 
@@ -115,14 +101,10 @@ async function runEnrichmentJob(
 	}
 }
 
-async function runMatchSnapshotRefreshJob(
-	job: Job,
-	options: RunClaimedJobOptions,
-): Promise<RunJobOutcome> {
+async function runMatchSnapshotRefreshJob(job: Job): Promise<RunJobOutcome> {
 	const startedAt = job.started_at ?? new Date().toISOString();
 	try {
-		const result = await executeMatchSnapshotRefreshJob(job, options.settings);
-		await maybeDevDelay(options.settings?.preSettlementDelayMs);
+		const result = await executeMatchSnapshotRefreshJob(job);
 
 		const completedResult = await markJobCompleted(job.id);
 		if (Result.isError(completedResult)) {
@@ -161,7 +143,6 @@ async function runMatchSnapshotRefreshJob(
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		await maybeDevDelay(options.settings?.preSettlementDelayMs);
 		await markJobFailedSafe(job, message);
 		await writeMeasurement(job, "match_snapshot_refresh", startedAt, "error");
 

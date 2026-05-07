@@ -7,7 +7,6 @@ import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-pro
 import type { LlmService } from "@/lib/integrations/llm/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
-import { maybeDevDelay } from "@/lib/workflows/library-processing/devtools/delay";
 import {
 	hasMoreSongsNeedingEnrichmentWork,
 	loadBatchSongs,
@@ -176,7 +175,6 @@ async function enrichSongs(
 	batch: PipelineBatch,
 	jobId: string,
 	progress: InitializedEnrichmentChunkProgress,
-	stageDelayMs?: number,
 ): Promise<void> {
 	// Phase A: audio_features + genre_tagging (parallel, entitled songs only)
 	progress.currentStage = "audio_features";
@@ -210,7 +208,6 @@ async function enrichSongs(
 	);
 
 	// Phase B: song_analysis (entitled only)
-	await maybeDevDelay(stageDelayMs);
 	progress.currentStage = "song_analysis";
 	progress.stages.song_analysis.status = "running";
 	await persistProgress(jobId, progress);
@@ -233,7 +230,6 @@ async function enrichSongs(
 	);
 
 	// Phase C: song_embedding (entitled only)
-	await maybeDevDelay(stageDelayMs);
 	progress.currentStage = "song_embedding";
 	progress.stages.song_embedding.status = "running";
 	await persistProgress(jobId, progress);
@@ -275,7 +271,6 @@ export async function executeWorkerChunk(
 	jobId: string,
 	batchSize: number,
 	batchSequence: number,
-	stageDelayMs?: number,
 ): Promise<ChunkResult> {
 	const embeddingResult = initEmbeddingService();
 	if (Result.isError(embeddingResult)) {
@@ -301,7 +296,7 @@ export async function executeWorkerChunk(
 	);
 
 	// Candidate-side enrichment only (phases A-C)
-	await enrichSongs(ctx, workPlan, batch, jobId, progress, stageDelayMs);
+	await enrichSongs(ctx, workPlan, batch, jobId, progress);
 
 	progress.currentStage = undefined;
 	await persistProgress(jobId, progress);

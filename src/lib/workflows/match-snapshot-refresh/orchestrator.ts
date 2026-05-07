@@ -22,7 +22,6 @@ import {
 import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
 import { rerankMatches } from "@/lib/workflows/enrichment-pipeline/reranking";
 import { loadExclusionSet } from "@/lib/workflows/enrichment-pipeline/stages/matching";
-import { maybeDevDelay } from "@/lib/workflows/library-processing/devtools/delay";
 import { runLightweightEnrichment } from "@/lib/workflows/playlist-sync/lightweight-enrichment";
 import { loadTargetPlaylistProfiles } from "./profiles";
 import type {
@@ -111,10 +110,8 @@ function skipStage(
 async function publishSnapshot(opts: {
 	jobId?: string;
 	progress: MatchSnapshotRefreshProgress;
-	stageDelayMs?: number;
 	writer: () => Promise<MatchSnapshotRefreshResult>;
 }): Promise<MatchSnapshotRefreshResult> {
-	await maybeDevDelay(opts.stageDelayMs);
 	startStage(opts.progress, "publishing");
 	await persistRefreshProgress(opts.jobId, opts.progress);
 
@@ -133,7 +130,6 @@ export async function executeMatchSnapshotRefresh(
 	accountId: string,
 	plan: MatchSnapshotRefreshPlan,
 	jobId?: string,
-	stageDelayMs?: number,
 ): Promise<MatchSnapshotRefreshResult> {
 	const progress = createInitialMatchSnapshotRefreshProgress(plan);
 	let embeddingService: EmbeddingService;
@@ -183,7 +179,6 @@ export async function executeMatchSnapshotRefresh(
 		await persistRefreshProgress(jobId, progress);
 	}
 
-	await maybeDevDelay(stageDelayMs);
 	startStage(progress, "playlist_profiling");
 	await persistRefreshProgress(jobId, progress);
 
@@ -202,7 +197,6 @@ export async function executeMatchSnapshotRefresh(
 		return publishSnapshot({
 			jobId,
 			progress,
-			stageDelayMs,
 			writer: () => writeEmptySnapshot(accountId),
 		});
 	}
@@ -213,7 +207,6 @@ export async function executeMatchSnapshotRefresh(
 		);
 	}
 
-	await maybeDevDelay(stageDelayMs);
 	startStage(progress, "candidate_loading");
 	await persistRefreshProgress(jobId, progress);
 
@@ -227,7 +220,6 @@ export async function executeMatchSnapshotRefresh(
 		return publishSnapshot({
 			jobId,
 			progress,
-			stageDelayMs,
 			writer: () =>
 				writeMatchSnapshot({
 					accountId,
@@ -301,7 +293,6 @@ export async function executeMatchSnapshotRefresh(
 		}
 	}
 
-	await maybeDevDelay(stageDelayMs);
 	startStage(progress, "matching");
 	await persistRefreshProgress(jobId, progress);
 
@@ -363,7 +354,6 @@ export async function executeMatchSnapshotRefresh(
 	return publishSnapshot({
 		jobId,
 		progress,
-		stageDelayMs,
 		writer: () =>
 			writeMatchSnapshot({
 				accountId,

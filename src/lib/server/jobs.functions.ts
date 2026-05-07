@@ -1,11 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
-import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { getJobById, type Job } from "@/lib/data/jobs";
+import { getJobById } from "@/lib/data/jobs";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
-import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
-import type { MatchSnapshotRefreshProgress } from "@/lib/platform/jobs/progress/match-snapshot-refresh";
 import {
 	type ParsedJobProgress,
 	parseJobProgress,
@@ -108,66 +105,6 @@ async function deriveFirstMatchReady(accountId: string): Promise<boolean> {
 
 	return latestMatchResult !== null;
 }
-
-export type LibraryProcessingJobProgress =
-	| {
-			jobId: string;
-			type: "enrichment";
-			status: Job["status"];
-			error: string | null;
-			progress: EnrichmentChunkProgress;
-	  }
-	| {
-			jobId: string;
-			type: "match_snapshot_refresh";
-			status: Job["status"];
-			error: string | null;
-			progress: MatchSnapshotRefreshProgress;
-	  };
-
-const LibraryProcessingJobProgressInputSchema = z.object({
-	jobId: z.string().uuid(),
-});
-
-export const getLibraryProcessingJobProgress = createServerFn({
-	method: "GET",
-})
-	.middleware([authMiddleware])
-	.inputValidator((data) => LibraryProcessingJobProgressInputSchema.parse(data))
-	.handler(
-		async ({ data, context }): Promise<LibraryProcessingJobProgress | null> => {
-			const { session } = context;
-
-			const jobResult = await getJobById(data.jobId);
-			if (Result.isError(jobResult) || !jobResult.value) return null;
-
-			const job = jobResult.value;
-			if (job.account_id !== session.accountId) return null;
-
-			const parsed = parseJobProgress(job.type, job.progress);
-			if (parsed.type === "unknown") {
-				return null;
-			}
-
-			if (parsed.type === "enrichment") {
-				return {
-					jobId: job.id,
-					type: "enrichment",
-					status: job.status,
-					error: job.error ?? null,
-					progress: parsed.progress,
-				};
-			}
-
-			return {
-				jobId: job.id,
-				type: "match_snapshot_refresh",
-				status: job.status,
-				error: job.error ?? null,
-				progress: parsed.progress,
-			};
-		},
-	);
 
 function extractProgressCounts(parsed: ParsedJobProgress): ProgressCounts {
 	if (parsed.type === "unknown") {
