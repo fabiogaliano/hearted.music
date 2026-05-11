@@ -374,6 +374,11 @@ export function LikedSongsPage({
 		[displayedSongs, visibleSongs, isWalkthrough, walkthroughSong],
 	);
 
+	const navIndexBySongId = useMemo(
+		() => new Map(navItems.map((song, index) => [song.track.id, index])),
+		[navItems],
+	);
+
 	const {
 		focusedIndex,
 		interactionMode,
@@ -803,7 +808,7 @@ export function LikedSongsPage({
 								song.track.id === walkthroughSong.id;
 							const isSongEnabled = !isWalkthrough || !!isDemoSong;
 							const navIndex = isSongEnabled
-								? navItems.findIndex((s) => s.track.id === song.track.id)
+								? (navIndexBySongId.get(song.track.id) ?? -1)
 								: -1;
 							const itemProps =
 								navIndex >= 0 ? getItemProps(song, navIndex) : null;
