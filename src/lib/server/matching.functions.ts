@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json } from "@/lib/data/database.types";
 import {
-	getMatchDecisions,
+	getMatchDecisionsForSongs,
 	insertMatchDecision,
 	insertMatchDecisions,
 } from "@/lib/data/match-decision-queries";
@@ -72,28 +72,39 @@ export interface SongMatchesResult {
 // Internal helpers
 // ============================================================================
 
-/** Returns song IDs that have at least one undecided match result, with ordering info. */
-export async function getUndecidedSongs(
+type MatchResult = { song_id: string; playlist_id: string; score: number };
+type MatchDecision = { song_id: string; playlist_id: string };
+
+async function getMatchSnapshotData(
 	snapshotId: string,
 	accountId: string,
-): Promise<Array<{ songId: string; maxScore: number }>> {
-	const [matchResultsResult, decisionsResult] = await Promise.all([
-		getMatchResults(snapshotId),
-		getMatchDecisions(accountId),
-	]);
-
-	if (Result.isError(matchResultsResult) || Result.isError(decisionsResult)) {
-		return [];
-	}
+): Promise<{ matchResults: MatchResult[]; decisions: MatchDecision[] } | null> {
+	const matchResultsResult = await getMatchResults(snapshotId);
+	if (Result.isError(matchResultsResult)) return null;
 
 	const matchResults = matchResultsResult.value;
-	const decisions = decisionsResult.value;
+	const matchedSongIds = [...new Set(matchResults.map((mr) => mr.song_id))];
+	const decisionsResult = await getMatchDecisionsForSongs(
+		accountId,
+		matchedSongIds,
+	);
+	if (Result.isError(decisionsResult)) return null;
 
+	return {
+		matchResults,
+		decisions: decisionsResult.value,
+	};
+}
+
+/** Pure derivation: song IDs with at least one undecided match, plus ordering info. */
+function deriveUndecidedSongs(
+	matchResults: MatchResult[],
+	decisions: MatchDecision[],
+): Array<{ songId: string; maxScore: number }> {
 	const decidedPairs = new Set(
 		decisions.map((d) => `${d.song_id}:${d.playlist_id}`),
 	);
 
-	// Group by song, tracking max score
 	const songMap = new Map<
 		string,
 		{ maxScore: number; hasUndecided: boolean }
@@ -113,6 +124,20 @@ export async function getUndecidedSongs(
 	return Array.from(songMap.entries())
 		.filter(([, v]) => v.hasUndecided)
 		.map(([songId, v]) => ({ songId, maxScore: v.maxScore }));
+}
+
+/** Fetches match results + decisions, then derives undecided songs. */
+export async function getUndecidedSongs(
+	snapshotId: string,
+	accountId: string,
+): Promise<Array<{ songId: string; maxScore: number }>> {
+	const snapshotData = await getMatchSnapshotData(snapshotId, accountId);
+	if (!snapshotData) return [];
+
+	return deriveUndecidedSongs(
+		snapshotData.matchResults,
+		snapshotData.decisions,
+	);
 }
 
 // ============================================================================
@@ -196,7 +221,7 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 
 		const [matchResultsResult, decisionsResult] = await Promise.all([
 			getMatchResultsForSong(matchSnapshot.id, data.songId),
-			getMatchDecisions(session.accountId),
+			getMatchDecisionsForSongs(session.accountId, [data.songId]),
 		]);
 
 		if (Result.isError(matchResultsResult) || Result.isError(decisionsResult))
@@ -260,15 +285,31 @@ export const getSongMatches = createServerFn({ method: "GET" })
 		const { session } = context;
 		const supabase = createAdminSupabaseClient();
 
-		const [undecided, newSongIds, entitledResult] = await Promise.all([
-			getUndecidedSongs(data.snapshotId, session.accountId),
-			getNewItemIds(session.accountId, "song"),
-			supabase.rpc("select_entitled_data_enriched_liked_song_ids", {
+		const snapshotDataPromise = getMatchSnapshotData(
+			data.snapshotId,
+			session.accountId,
+		);
+		const newSongIdsPromise = getNewItemIds(session.accountId, "song");
+		const entitledSongsPromise = supabase.rpc(
+			"select_entitled_data_enriched_liked_song_ids",
+			{
 				p_account_id: session.accountId,
-			}),
+			},
+		);
+
+		const snapshotData = await snapshotDataPromise;
+		if (!snapshotData) return null;
+
+		const { matchResults, decisions } = snapshotData;
+
+		const [newSongIds, entitledResult] = await Promise.all([
+			newSongIdsPromise,
+			entitledSongsPromise,
 		]);
 
 		if (Result.isError(newSongIds)) return null;
+
+		const undecided = deriveUndecidedSongs(matchResults, decisions);
 
 		const entitledSet = new Set(
 			(!entitledResult.error && entitledResult.data
@@ -292,14 +333,7 @@ export const getSongMatches = createServerFn({ method: "GET" })
 
 		const targetSongId = sorted[data.offset].songId;
 
-		// Fetch all details in parallel
-		const [
-			songRow,
-			analysisRow,
-			audioRow,
-			matchResultsResult,
-			decisionsResult,
-		] = await Promise.all([
+		const [songRow, analysisRow, audioRow] = await Promise.all([
 			supabase.from("song").select("*").eq("id", targetSongId).single(),
 			supabase
 				.from("song_analysis")
@@ -313,13 +347,9 @@ export const getSongMatches = createServerFn({ method: "GET" })
 				.select("tempo, energy, valence")
 				.eq("song_id", targetSongId)
 				.maybeSingle(),
-			getMatchResults(data.snapshotId),
-			getMatchDecisions(session.accountId),
 		]);
 
 		if (songRow.error || !songRow.data) return null;
-		if (Result.isError(matchResultsResult) || Result.isError(decisionsResult))
-			return null;
 
 		const song = songRow.data;
 		const analysis = analysisRow.data?.analysis as
@@ -342,17 +372,15 @@ export const getSongMatches = createServerFn({ method: "GET" })
 		const audio = audioRow.data;
 
 		const decidedPairs = new Set(
-			decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
+			decisions.map((d) => `${d.song_id}:${d.playlist_id}`),
 		);
 
-		// Get undecided match results for this song
-		const songMatchResults = matchResultsResult.value.filter(
+		const songMatchResults = matchResults.filter(
 			(mr) =>
 				mr.song_id === targetSongId &&
 				!decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`),
 		);
 
-		// Fetch playlist metadata
 		const playlistIds = songMatchResults.map((mr) => mr.playlist_id);
 		const { data: playlistRows, error: playlistError } = await supabase
 			.from("playlist")

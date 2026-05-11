@@ -64,13 +64,25 @@ export const Route = createFileRoute("/_authenticated")({
 		// Guard-critical onboarding payload — small object, always fresh. Child
 		// routes read `onboardingSession` and `theme` from context; they do
 		// NOT need the full page payload (playlists, landing songs, etc.),
-		// which lives in `/onboarding`'s own loader.
+		// which lives in `/onboarding`'s own loader. We start billing in
+		// parallel, but onboarding still resolves first so redirects are not
+		// blocked by billing latency or failures.
+		const onboardingSessionPromise = queryClient.ensureQueryData({
+			queryKey: onboardingSessionQueryKey,
+			queryFn: () => getOnboardingSession(),
+			staleTime: 0,
+		});
+		const billingStatePromise = queryClient
+			.ensureQueryData({
+				queryKey: billingKeys.state,
+				queryFn: () => getBillingState(),
+				staleTime: 5 * 60 * 1000,
+			})
+			.then((value) => ({ ok: true as const, value }))
+			.catch((error: unknown) => ({ ok: false as const, error }));
+
 		const { session: onboardingSession, theme } =
-			await queryClient.ensureQueryData({
-				queryKey: onboardingSessionQueryKey,
-				queryFn: () => getOnboardingSession(),
-				staleTime: 0,
-			});
+			await onboardingSessionPromise;
 
 		if (onboardingSession.status !== "complete") {
 			const resolved = resolveSession(onboardingSession);
@@ -85,11 +97,12 @@ export const Route = createFileRoute("/_authenticated")({
 			}
 		}
 
-		const billingState = await queryClient.ensureQueryData({
-			queryKey: billingKeys.state,
-			queryFn: () => getBillingState(),
-			staleTime: 5 * 60 * 1000,
-		});
+		const billingStateResult = await billingStatePromise;
+		if (!billingStateResult.ok) {
+			throw billingStateResult.error;
+		}
+
+		const billingState = billingStateResult.value;
 
 		return {
 			session,

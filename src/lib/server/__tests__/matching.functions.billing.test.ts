@@ -9,7 +9,7 @@ const mockAuthContext = {
 const mockGetLatestMatchSnapshot = vi.fn();
 const mockGetMatchResults = vi.fn();
 const mockGetMatchResultsForSong = vi.fn();
-const mockGetMatchDecisions = vi.fn();
+const mockGetMatchDecisionsForSongs = vi.fn();
 const mockGetNewItemIds = vi.fn();
 
 const mockRpc = vi.fn();
@@ -55,7 +55,8 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 }));
 
 vi.mock("@/lib/data/match-decision-queries", () => ({
-	getMatchDecisions: (...args: unknown[]) => mockGetMatchDecisions(...args),
+	getMatchDecisionsForSongs: (...args: unknown[]) =>
+		mockGetMatchDecisionsForSongs(...args),
 	insertMatchDecision: vi.fn(),
 	insertMatchDecisions: vi.fn(),
 }));
@@ -82,7 +83,7 @@ describe("getMatchingSession (billing-aware)", () => {
 				{ song_id: "song-3", playlist_id: "pl-1", score: 70 },
 			]),
 		);
-		mockGetMatchDecisions.mockResolvedValue(Result.ok([]));
+		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
 
 		mockRpc.mockResolvedValue({
 			data: [{ song_id: "song-1" }, { song_id: "song-3" }],
@@ -106,7 +107,7 @@ describe("getMatchingSession (billing-aware)", () => {
 				{ song_id: "song-2", playlist_id: "pl-1", score: 80 },
 			]),
 		);
-		mockGetMatchDecisions.mockResolvedValue(Result.ok([]));
+		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
 
 		// No songs entitled
 		mockRpc.mockResolvedValue({ data: [], error: null });
@@ -121,7 +122,7 @@ describe("getMatchingSession (billing-aware)", () => {
 		mockGetMatchResults.mockResolvedValue(
 			Result.ok([{ song_id: "song-1", playlist_id: "pl-1", score: 90 }]),
 		);
-		mockGetMatchDecisions.mockResolvedValue(Result.ok([]));
+		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
 
 		mockRpc.mockResolvedValue({
 			data: null,
@@ -139,6 +140,29 @@ describe("getMatchingSession (billing-aware)", () => {
 		const result = await getMatchingSession();
 
 		expect(result).toBeNull();
+	});
+
+	it("scopes decision lookup to songs in the snapshot", async () => {
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
+		mockGetMatchResults.mockResolvedValue(
+			Result.ok([
+				{ song_id: "song-1", playlist_id: "pl-1", score: 90 },
+				{ song_id: "song-2", playlist_id: "pl-2", score: 80 },
+				{ song_id: "song-1", playlist_id: "pl-3", score: 70 },
+			]),
+		);
+		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
+		mockRpc.mockResolvedValue({
+			data: [{ song_id: "song-1" }, { song_id: "song-2" }],
+			error: null,
+		});
+
+		await getMatchingSession();
+
+		expect(mockGetMatchDecisionsForSongs).toHaveBeenCalledWith("acct-1", [
+			"song-1",
+			"song-2",
+		]);
 	});
 });
 
@@ -159,7 +183,7 @@ describe("getSongSuggestions (billing-aware)", () => {
 				{ song_id: "song-1", playlist_id: "pl-2", score: 75 },
 			]),
 		);
-		mockGetMatchDecisions.mockResolvedValue(Result.ok([]));
+		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
 
 		mockSelect.mockReturnValue({
 			in: vi.fn().mockResolvedValue({
@@ -226,7 +250,7 @@ describe("getSongMatches (billing-aware)", () => {
 				{ song_id: "song-3", playlist_id: "pl-1", score: 70 },
 			]),
 		);
-		mockGetMatchDecisions.mockResolvedValue(Result.ok([]));
+		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
 		mockGetNewItemIds.mockResolvedValue(Result.ok([]));
 
 		// Entitlement RPC (called via select_entitled_data_enriched_liked_song_ids)
@@ -347,7 +371,7 @@ describe("getSongMatches (billing-aware)", () => {
 		mockGetMatchResults.mockResolvedValue(
 			Result.ok([{ song_id: "song-1", playlist_id: "pl-1", score: 90 }]),
 		);
-		mockGetMatchDecisions.mockResolvedValue(Result.ok([]));
+		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
 		mockGetNewItemIds.mockResolvedValue(Result.ok([]));
 
 		mockRpc.mockResolvedValue({
@@ -384,5 +408,17 @@ describe("getSongMatches (billing-aware)", () => {
 
 		expect(result).not.toBeNull();
 		expect(result?.song.analysis).toEqual({ headline: "Great song" });
+	});
+
+	it("fetches match results and decisions exactly once", async () => {
+		setupEntitledSongMatches(["song-1"]);
+		setupSongDetailMocks("song-1");
+
+		await getSongMatches({
+			data: { snapshotId: "snap-1", offset: 0 },
+		});
+
+		expect(mockGetMatchResults).toHaveBeenCalledTimes(1);
+		expect(mockGetMatchDecisionsForSongs).toHaveBeenCalledTimes(1);
 	});
 });
