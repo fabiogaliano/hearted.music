@@ -1,9 +1,9 @@
 export const DEFAULT_HASHES: Record<string, string> = {
 	fetchLibraryTracks:
 		"087278b20b743578a6262c2b0b4bcd20d879c503cc359a2285baf083ef944240",
-	libraryV3: "9f4da031f81274d572cfedaf6fc57a737c84b43d572952200b2c36aaa8fec1c6",
+	libraryV3: "973e511ca44261fda7eebac8b653155e7caee3675abb4fb110cc1b8c78b091c3",
 	fetchPlaylistContents:
-		"9c53fb83f35c6a177be88bf1b67cb080b853e86b576ed174216faa8f9164fc8f",
+		"a65e12194ed5fc443a1cdebed5fabe33ca5b07b987185d63c72483867ad13cb4",
 	fetchPlaylist:
 		"a65e12194ed5fc443a1cdebed5fabe33ca5b07b987185d63c72483867ad13cb4",
 	profileAttributes:

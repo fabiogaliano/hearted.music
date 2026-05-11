@@ -21,3 +21,6 @@ scripts/prompt-lab/report.html
 v1_hearted_brand
 .overseer/
 .pi/conductor-sessions/
+.playwright/*
+!.playwright/cli.config.json
+.playwright-cli/*

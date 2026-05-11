@@ -1,0 +1,8 @@
+{
+	"browser": "chrome",
+	"persistent": true,
+	"launchOptions": {
+		"args": ["--disable-infobars"],
+		"ignoreDefaultArgs": ["--disable-blink-features=AutomationControlled"]
+	}
+}
