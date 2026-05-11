@@ -21,19 +21,25 @@ import {
 
 import type {
 	Shortcut,
-	ShortcutContextValue,
+	ShortcutActionsValue,
+	ShortcutHelpStateValue,
 	ShortcutRegistration,
+	ShortcutRegistryStateValue,
 	ShortcutScope,
 } from "@/lib/keyboard/types";
 import { ShortcutsHelpModal } from "./ShortcutsHelpModal";
 
-const ShortcutContext = createContext<ShortcutContextValue | undefined>(
+const ShortcutActionsContext = createContext<ShortcutActionsValue | undefined>(
 	undefined,
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Key Matching Utilities
-// ─────────────────────────────────────────────────────────────────────────────
+const ShortcutRegistryStateContext = createContext<
+	ShortcutRegistryStateValue | undefined
+>(undefined);
+
+const ShortcutHelpStateContext = createContext<
+	ShortcutHelpStateValue | undefined
+>(undefined);
 
 /** Normalizes key string for consistent comparison */
 function normalizeKeyString(key: string): string {
@@ -62,7 +68,6 @@ function eventMatchesShortcut(
 	const key = normalizeKeyString(shortcutKey);
 	const eventKey = event.key.toLowerCase();
 
-	// Handle modifier combinations (e.g., "mod+s", "shift+?")
 	if (key.includes("+")) {
 		const parts = key.split("+");
 		const mainKey = parts[parts.length - 1];
@@ -84,7 +89,6 @@ function eventMatchesShortcut(
 		return true;
 	}
 
-	// Handle aliased keys (escape, enter, space, arrows)
 	const alias = KEY_ALIASES[key];
 	if (alias) {
 		return typeof alias === "function" ? alias(event) : eventKey === alias;
@@ -93,9 +97,7 @@ function eventMatchesShortcut(
 	return eventKey === key;
 }
 
-/**
- * Scope priority - higher number = higher priority
- */
+/** Scope priority - higher number = higher priority */
 const SCOPE_PRIORITY: Record<ShortcutScope, number> = {
 	global: 0,
 	"liked-list": 1,
@@ -229,40 +231,58 @@ export function KeyboardShortcutProvider({
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, []);
 
-	const contextValue = useMemo<ShortcutContextValue>(
-		() => ({
-			register,
-			unregister,
-			activeScopes,
-			shortcuts,
-			isHelpOpen,
-			openHelp,
-			closeHelp,
-		}),
-		[
-			register,
-			unregister,
-			activeScopes,
-			shortcuts,
-			isHelpOpen,
-			openHelp,
-			closeHelp,
-		],
+	const actionsValue = useMemo<ShortcutActionsValue>(
+		() => ({ register, unregister }),
+		[register, unregister],
+	);
+
+	const registryStateValue = useMemo<ShortcutRegistryStateValue>(
+		() => ({ activeScopes, shortcuts }),
+		[activeScopes, shortcuts],
+	);
+
+	const helpStateValue = useMemo<ShortcutHelpStateValue>(
+		() => ({ isHelpOpen, openHelp, closeHelp }),
+		[isHelpOpen, openHelp, closeHelp],
 	);
 
 	return (
-		<ShortcutContext.Provider value={contextValue}>
-			{children}
-			<ShortcutsHelpModal />
-		</ShortcutContext.Provider>
+		<ShortcutActionsContext.Provider value={actionsValue}>
+			<ShortcutRegistryStateContext.Provider value={registryStateValue}>
+				<ShortcutHelpStateContext.Provider value={helpStateValue}>
+					{children}
+					<ShortcutsHelpModal />
+				</ShortcutHelpStateContext.Provider>
+			</ShortcutRegistryStateContext.Provider>
+		</ShortcutActionsContext.Provider>
 	);
 }
 
-export function useShortcutContext(): ShortcutContextValue {
-	const context = useContext(ShortcutContext);
+export function useShortcutActions(): ShortcutActionsValue {
+	const context = useContext(ShortcutActionsContext);
 	if (!context) {
 		throw new Error(
-			"useShortcutContext must be used within a KeyboardShortcutProvider",
+			"useShortcutActions must be used within a KeyboardShortcutProvider",
+		);
+	}
+	return context;
+}
+
+export function useShortcutRegistryState(): ShortcutRegistryStateValue {
+	const context = useContext(ShortcutRegistryStateContext);
+	if (!context) {
+		throw new Error(
+			"useShortcutRegistryState must be used within a KeyboardShortcutProvider",
+		);
+	}
+	return context;
+}
+
+export function useShortcutHelpState(): ShortcutHelpStateValue {
+	const context = useContext(ShortcutHelpStateContext);
+	if (!context) {
+		throw new Error(
+			"useShortcutHelpState must be used within a KeyboardShortcutProvider",
 		);
 	}
 	return context;

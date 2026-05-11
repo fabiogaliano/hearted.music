@@ -54,12 +54,17 @@ export interface Shortcut {
 
 export type ShortcutRegistration = Omit<Shortcut, "id"> & { id?: string };
 
-export interface ShortcutContextValue {
+export interface ShortcutActionsValue {
 	register: (shortcut: ShortcutRegistration) => string;
 	unregister: (id: string) => void;
+}
+
+export interface ShortcutRegistryStateValue {
 	activeScopes: ShortcutScope[];
 	shortcuts: Shortcut[];
-	/** Help modal state (press ? to toggle) */
+}
+
+export interface ShortcutHelpStateValue {
 	isHelpOpen: boolean;
 	openHelp: () => void;
 	closeHelp: () => void;

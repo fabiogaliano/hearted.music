@@ -9,7 +9,10 @@ import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 import { type CatalogEntry, SHORTCUT_CATALOG } from "./catalog";
-import { useShortcutContext } from "./KeyboardShortcutProvider";
+import {
+	useShortcutHelpState,
+	useShortcutRegistryState,
+} from "./KeyboardShortcutProvider";
 import type { ShortcutScope } from "./types";
 
 const SCOPE_LABELS: Record<ShortcutScope, string> = {
@@ -116,7 +119,8 @@ const SCOPE_ORDER: ShortcutScope[] = [
 ];
 
 export function ShortcutsHelpModal() {
-	const { isHelpOpen, closeHelp, activeScopes } = useShortcutContext();
+	const { isHelpOpen, closeHelp } = useShortcutHelpState();
+	const { activeScopes } = useShortcutRegistryState();
 	const theme = useTheme();
 
 	useEffect(() => {

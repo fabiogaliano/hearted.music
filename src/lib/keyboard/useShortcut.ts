@@ -14,11 +14,11 @@
  */
 import { useEffect, useMemo, useRef } from "react";
 
-import { useShortcutContext } from "@/lib/keyboard/KeyboardShortcutProvider";
+import { useShortcutActions } from "@/lib/keyboard/KeyboardShortcutProvider";
 import type { ShortcutRegistration } from "@/lib/keyboard/types";
 
 export function useShortcut(options: ShortcutRegistration): void {
-	const { register, unregister } = useShortcutContext();
+	const { register, unregister } = useShortcutActions();
 	const idRef = useRef<string | null>(null);
 
 	// Ref prevents re-registration when only handler changes
@@ -84,7 +84,7 @@ function getShortcutFingerprint(s: ShortcutRegistration): string {
  * to avoid re-registration when only closures update.
  */
 export function useShortcuts(shortcuts: ShortcutRegistration[]): void {
-	const { register, unregister } = useShortcutContext();
+	const { register, unregister } = useShortcutActions();
 	const registeredRef = useRef<Map<string, string>>(new Map()); // fingerprint → id
 	const handlersRef = useRef<Map<string, () => void>>(new Map());
 
