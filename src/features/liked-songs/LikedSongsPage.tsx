@@ -603,6 +603,40 @@ export function LikedSongsPage({
 		[handleExpand, prefetchAdjacentSuggestions],
 	);
 
+	const songById = useMemo(() => {
+		const map = new Map<string, LikedSong>();
+		for (const song of displayedSongs) {
+			map.set(song.track.id, song);
+		}
+		return map;
+	}, [displayedSongs]);
+
+	const handleCardClick = useCallback(
+		(songId: string, element: HTMLElement) => {
+			const song = songById.get(songId);
+			if (!song) return;
+
+			if (song.displayState === "locked" && showSelectionUI && !selectionMode) {
+				pendingSelectionFocusRef.current = {
+					songId: song.track.id,
+					mode: "pointer",
+					scrollBlock: "start",
+				};
+				setSelectionMode(true);
+				toggleSongSelection(song.track.id);
+				return;
+			}
+			handlePointerExpand(song, element);
+		},
+		[
+			handlePointerExpand,
+			selectionMode,
+			showSelectionUI,
+			songById,
+			toggleSongSelection,
+		],
+	);
+
 	const handleNextSong = useCallback(() => {
 		const selectedIndex = displayedSongs.findIndex(
 			(song) => song.track.id === selectedSongId,
@@ -827,24 +861,7 @@ export function LikedSongsPage({
 									onPointerDown={itemProps?.onPointerDown}
 									onFocus={itemProps?.onFocus}
 									onBlur={itemProps?.onBlur}
-									onClick={(e) => {
-										if (!isSongEnabled) return;
-										if (
-											song.displayState === "locked" &&
-											showSelectionUI &&
-											!selectionMode
-										) {
-											pendingSelectionFocusRef.current = {
-												songId: song.track.id,
-												mode: "pointer",
-												scrollBlock: "start",
-											};
-											setSelectionMode(true);
-											toggleSongSelection(song.track.id);
-											return;
-										}
-										handlePointerExpand(song, e.currentTarget);
-									}}
+									onClickSong={handleCardClick}
 									isAnimatingTo={closingToSongId === song.track.id}
 									selectionMode={selectionMode && showSelectionUI}
 									isChecked={selectedSongIds.has(song.track.id)}

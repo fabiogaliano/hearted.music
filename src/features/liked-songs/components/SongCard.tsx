@@ -4,7 +4,9 @@
  * Clickable song row in the list. When clicked, triggers FLIP expansion
  * to the SongDetailView overlay.
  */
+
 import { Check, Lock } from "lucide-react";
+import { memo, useCallback } from "react";
 
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { fonts } from "@/lib/theme/fonts";
@@ -26,7 +28,7 @@ interface SongCardProps {
 	onPointerDown?: React.PointerEventHandler<HTMLElement>;
 	onFocus?: React.FocusEventHandler<HTMLElement>;
 	onBlur?: React.FocusEventHandler<HTMLElement>;
-	onClick: (e: React.MouseEvent<HTMLElement>) => void;
+	onClickSong: (songId: string, element: HTMLElement) => void;
 	/** True when this card is the target of a close animation (view transitions) */
 	isAnimatingTo?: boolean;
 	/** When true, locked songs show a checkbox for multi-select */
@@ -44,11 +46,23 @@ interface SongCardProps {
 	hideLockedBadge?: boolean;
 }
 
+interface SongCardContentProps {
+	song: LikedSong;
+	albumArtUrl?: string;
+	isSelected: boolean;
+	isAnimatingTo: boolean;
+	isSelectable: boolean;
+	isChecked: boolean;
+	isWalkthroughHighlight: boolean;
+	showWalkthroughUi: boolean;
+	hideLockedBadge: boolean;
+}
+
 export function SongCard({
 	song,
 	albumArtUrl,
 	isSelected,
-	isFocused,
+	isFocused = false,
 	itemRef,
 	tabIndex,
 	dataFocused,
@@ -57,10 +71,10 @@ export function SongCard({
 	onPointerDown,
 	onFocus,
 	onBlur,
-	onClick,
-	isAnimatingTo,
-	selectionMode,
-	isChecked,
+	onClickSong,
+	isAnimatingTo = false,
+	selectionMode = false,
+	isChecked = false,
 	onToggleSelect,
 	scrollMarginTop,
 	isEnabled = true,
@@ -68,12 +82,106 @@ export function SongCard({
 	hideLockedBadge = false,
 }: SongCardProps) {
 	const theme = useTheme();
-	const isNew = isNewSong(song.liked_at);
+	const songId = song.track.id;
 	const isLocked = song.displayState === "locked";
 	const isSelectable = selectionMode && isLocked;
 	const isSelectionChecked = isSelectable && isChecked;
-
 	const showWalkthroughUi = isWalkthroughHighlight && !isFocused && !isSelected;
+
+	const handleSongClick = useCallback(
+		(event: React.MouseEvent<HTMLElement>) => {
+			onClickSong(songId, event.currentTarget);
+		},
+		[onClickSong, songId],
+	);
+
+	const handleSelectClick = useCallback(
+		(event: React.MouseEvent<HTMLElement>) => {
+			event.stopPropagation();
+			onToggleSelect?.(songId);
+		},
+		[onToggleSelect, songId],
+	);
+
+	return (
+		<button
+			type="button"
+			onClick={isSelectable ? handleSelectClick : handleSongClick}
+			ref={itemRef}
+			tabIndex={tabIndex}
+			data-focused={dataFocused}
+			data-nav-engaged={navEngaged}
+			data-tab-focused={dataTabFocused}
+			onPointerDown={onPointerDown}
+			onFocus={onFocus}
+			onBlur={onBlur}
+			className={`song-card -mx-3 flex w-full cursor-pointer items-center gap-4 border-0 bg-transparent px-3 py-4 text-left${isWalkthroughHighlight ? " walkthrough-highlight" : ""}`}
+			style={
+				{
+					"--hover-bg": isEnabled
+						? `color-mix(in srgb, ${theme.text} 6%, transparent)`
+						: "transparent",
+					position: "relative",
+					background: isSelectionChecked
+						? theme.surfaceDim
+						: isSelected
+							? theme.surface
+							: undefined,
+					borderLeft:
+						isFocused || isSelected
+							? `3px solid ${theme.primary}`
+							: showWalkthroughUi
+								? `3px solid ${theme.primary}`
+								: "3px solid transparent",
+					marginLeft: "-3px",
+					boxShadow: dataTabFocused
+						? `inset 0 0 0 1px ${theme.primary}`
+						: undefined,
+					scrollMarginTop,
+					opacity: !isEnabled
+						? 0.5
+						: isSelectionChecked
+							? 1
+							: isLocked
+								? 0.6
+								: 1,
+					pointerEvents: !isEnabled ? "none" : undefined,
+					animation: isWalkthroughHighlight
+						? "walkthrough-pulse 2s ease-in-out infinite"
+						: undefined,
+				} as React.CSSProperties
+			}
+		>
+			<SongCardContent
+				song={song}
+				albumArtUrl={albumArtUrl}
+				isSelected={isSelected}
+				isAnimatingTo={isAnimatingTo}
+				isSelectable={isSelectable}
+				isChecked={isChecked}
+				isWalkthroughHighlight={isWalkthroughHighlight}
+				showWalkthroughUi={showWalkthroughUi}
+				hideLockedBadge={hideLockedBadge}
+			/>
+		</button>
+	);
+}
+
+const SongCardContent = memo(function SongCardContent({
+	song,
+	albumArtUrl,
+	isSelected,
+	isAnimatingTo,
+	isSelectable,
+	isChecked,
+	isWalkthroughHighlight,
+	showWalkthroughUi,
+	hideLockedBadge,
+}: SongCardContentProps) {
+	const theme = useTheme();
+	const isNew = isNewSong(song.liked_at);
+	const isLocked = song.displayState === "locked";
+	const isSelectionChecked = isSelectable && isChecked;
 
 	return (
 		<>
@@ -98,181 +206,121 @@ export function SongCard({
 					}
 				`}</style>
 			)}
-			<button
-				type="button"
-				onClick={
-					isSelectable
-						? (e) => {
-								e.stopPropagation();
-								onToggleSelect?.(song.track.id);
-							}
-						: onClick
-				}
-				ref={itemRef}
-				tabIndex={tabIndex}
-				data-focused={dataFocused}
-				data-nav-engaged={navEngaged}
-				data-tab-focused={dataTabFocused}
-				onPointerDown={onPointerDown}
-				onFocus={onFocus}
-				onBlur={onBlur}
-				className={`song-card -mx-3 flex w-full cursor-pointer items-center gap-4 border-0 bg-transparent px-3 py-4 text-left${isWalkthroughHighlight ? " walkthrough-highlight" : ""}`}
-				style={
-					{
-						"--hover-bg": isEnabled
-							? `color-mix(in srgb, ${theme.text} 6%, transparent)`
-							: "transparent",
-						position: "relative",
-						background: isSelectionChecked
-							? theme.surfaceDim
-							: isSelected
-								? theme.surface
-								: undefined,
-						borderLeft:
-							isFocused || isSelected
-								? `3px solid ${theme.primary}`
-								: showWalkthroughUi
-									? `3px solid ${theme.primary}`
-									: "3px solid transparent",
-						marginLeft: "-3px",
-						boxShadow: dataTabFocused
-							? `inset 0 0 0 1px ${theme.primary}`
-							: undefined,
-						scrollMarginTop,
-						opacity: !isEnabled
-							? 0.5
-							: isSelectionChecked
-								? 1
-								: isLocked
-									? 0.6
-									: 1,
-						pointerEvents: !isEnabled ? "none" : undefined,
-						animation: isWalkthroughHighlight
-							? "walkthrough-pulse 2s ease-in-out infinite"
-							: undefined,
-					} as React.CSSProperties
-				}
+			<div
+				className="relative h-12 w-12 shrink-0 overflow-hidden"
+				style={{
+					viewTransitionName: isAnimatingTo ? "song-album" : "none",
+				}}
 			>
-				{/* Album art */}
-				<div
-					className="relative h-12 w-12 shrink-0 overflow-hidden"
+				{albumArtUrl ? (
+					<img
+						src={albumArtUrl}
+						alt={`${song.track.album || song.track.name} album art`}
+						className="h-full w-full object-cover"
+						style={isLocked ? { filter: "grayscale(0.5)" } : undefined}
+					/>
+				) : (
+					<AlbumPlaceholder />
+				)}
+				{isLocked && (
+					<div
+						className="absolute inset-0 flex items-center justify-center"
+						style={{ background: "rgba(0,0,0,0.35)" }}
+					>
+						<Lock size={16} color="white" strokeWidth={2} />
+					</div>
+				)}
+				{!isLocked && isNew && (
+					<div
+						className="absolute top-1 right-1 h-2 w-2 rounded-full"
+						style={{ background: theme.primary }}
+					/>
+				)}
+			</div>
+
+			<div className="min-w-0 flex-1">
+				<h3
+					className="truncate text-base"
 					style={{
-						viewTransitionName: isAnimatingTo ? "song-album" : "none",
+						fontFamily: fonts.display,
+						color: isSelectionChecked
+							? theme.text
+							: isLocked
+								? theme.textMuted
+								: theme.text,
+						fontWeight: isSelected ? 400 : 300,
+						viewTransitionName: isAnimatingTo ? "song-title" : "none",
 					}}
 				>
-					{albumArtUrl ? (
-						<img
-							src={albumArtUrl}
-							alt={`${song.track.album || song.track.name} album art`}
-							className="h-full w-full object-cover"
-							style={isLocked ? { filter: "grayscale(0.5)" } : undefined}
-						/>
-					) : (
-						<AlbumPlaceholder />
-					)}
-					{isLocked && (
-						<div
-							className="absolute inset-0 flex items-center justify-center"
-							style={{ background: "rgba(0,0,0,0.35)" }}
-						>
-							<Lock size={16} color="white" strokeWidth={2} />
-						</div>
-					)}
-					{!isLocked && isNew && (
-						<div
-							className="absolute top-1 right-1 h-2 w-2 rounded-full"
-							style={{ background: theme.primary }}
-						/>
-					)}
-				</div>
+					{song.track.name}
+				</h3>
+				<p
+					className="mt-0.5 truncate text-sm"
+					style={{
+						fontFamily: fonts.body,
+						color: isSelectionChecked
+							? `color-mix(in srgb, ${theme.text} 72%, ${theme.textMuted})`
+							: theme.textMuted,
+						viewTransitionName: isAnimatingTo ? "song-artist" : "none",
+					}}
+				>
+					{song.track.artist}
+				</p>
+			</div>
 
-				{/* Track info */}
-				<div className="min-w-0 flex-1">
-					<h3
-						className="truncate text-base"
-						style={{
-							fontFamily: fonts.display,
-							color: isSelectionChecked
-								? theme.text
-								: isLocked
-									? theme.textMuted
-									: theme.text,
-							fontWeight: isSelected ? 400 : 300,
-							viewTransitionName: isAnimatingTo ? "song-title" : "none",
-						}}
-					>
-						{song.track.name}
-					</h3>
-					<p
-						className="mt-0.5 truncate text-sm"
-						style={{
-							fontFamily: fonts.body,
-							color: isSelectionChecked
-								? `color-mix(in srgb, ${theme.text} 72%, ${theme.textMuted})`
-								: theme.textMuted,
-							viewTransitionName: isAnimatingTo ? "song-artist" : "none",
-						}}
-					>
-						{song.track.artist}
-					</p>
-				</div>
-
-				{showWalkthroughUi && (
+			{showWalkthroughUi && (
+				<span
+					className="walkthrough-hint shrink-0 flex items-center gap-1.5"
+					style={{
+						fontFamily: fonts.body,
+						fontSize: 12,
+						color: theme.primary,
+						letterSpacing: "0.01em",
+						animation: "walkthrough-hint-in 0.4s ease-out 0.6s both",
+					}}
+				>
+					See what's inside
 					<span
-						className="walkthrough-hint shrink-0 flex items-center gap-1.5"
+						className="walkthrough-arrow-nudge inline-block"
 						style={{
-							fontFamily: fonts.body,
-							fontSize: 12,
-							color: theme.primary,
-							letterSpacing: "0.01em",
-							animation: "walkthrough-hint-in 0.4s ease-out 0.6s both",
+							animation: "walkthrough-arrow-nudge 2s ease-in-out infinite",
+							willChange: "transform",
 						}}
 					>
-						See what's inside
-						<span
-							className="walkthrough-arrow-nudge inline-block"
-							style={{
-								animation: "walkthrough-arrow-nudge 2s ease-in-out infinite",
-								willChange: "transform",
-							}}
-						>
-							→
-						</span>
+						→
 					</span>
-				)}
+				</span>
+			)}
 
-				{!showWalkthroughUi &&
-					(isSelectable ? (
+			{!showWalkthroughUi &&
+				(isSelectable ? (
+					<span
+						className="flex h-5 w-5 shrink-0 items-center justify-center rounded border"
+						style={{
+							borderColor: isChecked ? theme.primary : theme.border,
+							background: isChecked ? theme.primary : "transparent",
+						}}
+					>
+						{isChecked && <Check size={12} color={theme.bg} strokeWidth={3} />}
+					</span>
+				) : isLocked ? (
+					hideLockedBadge ? null : (
 						<span
-							className="flex h-5 w-5 shrink-0 items-center justify-center rounded border"
-							style={{
-								borderColor: isChecked ? theme.primary : theme.border,
-								background: isChecked ? theme.primary : "transparent",
-							}}
-						>
-							{isChecked && (
-								<Check size={12} color={theme.bg} strokeWidth={3} />
-							)}
-						</span>
-					) : isLocked ? (
-						hideLockedBadge ? null : (
-							<span
-								className="flex shrink-0 items-center gap-1 text-xs"
-								style={{ fontFamily: fonts.body, color: theme.textMuted }}
-							>
-								<Lock size={11} strokeWidth={2} />
-								<span className="hidden lg:inline">Unlock</span>
-							</span>
-						)
-					) : (
-						<span
-							className="hidden shrink-0 text-xs lg:block"
+							className="flex shrink-0 items-center gap-1 text-xs"
 							style={{ fontFamily: fonts.body, color: theme.textMuted }}
 						>
-							{formatRelativeTime(song.liked_at)}
+							<Lock size={11} strokeWidth={2} />
+							<span className="hidden lg:inline">Unlock</span>
 						</span>
-					))}
-			</button>
+					)
+				) : (
+					<span
+						className="hidden shrink-0 text-xs lg:block"
+						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					>
+						{formatRelativeTime(song.liked_at)}
+					</span>
+				))}
 		</>
 	);
-}
+});

@@ -4,6 +4,9 @@ import { allLikedSongs, simulateEnrichment } from "@/stories/fixtures";
 import { SongCard } from "./components/SongCard";
 import type { LikedSong } from "./types";
 
+const noopClick = () => {};
+const noopRef = () => {};
+
 function SongList({ songs }: { songs: LikedSong[] }) {
 	return (
 		<div style={{ maxWidth: 600, margin: "0 auto" }}>
@@ -13,11 +16,11 @@ function SongList({ songs }: { songs: LikedSong[] }) {
 					song={song}
 					albumArtUrl={song.track.image_url ?? undefined}
 					isSelected={false}
-					itemRef={() => {}}
+					itemRef={noopRef}
 					tabIndex={0}
 					dataFocused={false}
 					navEngaged={false}
-					onClick={() => {}}
+					onClickSong={noopClick}
 				/>
 			))}
 		</div>
@@ -60,7 +63,7 @@ export const ProgressiveEnrichment: Story = () => {
 				return c + 1;
 			});
 		}, 600);
-	}, [total, stop]);
+	}, [stop]);
 
 	useEffect(() => () => stop(), [stop]);
 
@@ -97,15 +100,24 @@ export const ProgressiveEnrichment: Story = () => {
 					style={{ flex: 1 }}
 				/>
 				{autoPlay ? (
-					<button onClick={stop} style={{ fontSize: 12, padding: "4px 10px" }}>
+					<button
+						type="button"
+						onClick={stop}
+						style={{ fontSize: 12, padding: "4px 10px" }}
+					>
 						Pause
 					</button>
 				) : (
-					<button onClick={start} style={{ fontSize: 12, padding: "4px 10px" }}>
+					<button
+						type="button"
+						onClick={start}
+						style={{ fontSize: 12, padding: "4px 10px" }}
+					>
 						Play
 					</button>
 				)}
 				<button
+					type="button"
 					onClick={() => {
 						stop();
 						setCount(0);
