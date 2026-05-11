@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { PlaylistMatchRow } from "@/components/ui/PlaylistMatchRow";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
@@ -20,7 +21,7 @@ interface MatchesSectionProps {
 	onNext: () => void;
 }
 
-export function MatchesSection({
+export const MatchesSection = memo(function MatchesSection({
 	playlists,
 	addedTo,
 	isDemo,
@@ -171,4 +172,4 @@ export function MatchesSection({
 			</div>
 		</div>
 	);
-}
+});

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { fonts } from "@/lib/theme/fonts";
@@ -11,17 +12,13 @@ interface SongSectionProps {
 		album: string;
 		artist: string;
 	};
-	metaVisible: boolean;
 	albumArtUrl?: string;
-	isLoading: boolean;
 	songKey?: string;
 }
 
-export function SongSection({
+export const SongSection = memo(function SongSection({
 	song,
-	metaVisible,
 	albumArtUrl,
-	isLoading,
 	songKey,
 }: SongSectionProps) {
 	const theme = useTheme();
@@ -56,12 +53,7 @@ export function SongSection({
 								}
 					}
 				>
-					{isLoading ? (
-						<div
-							className="aspect-square w-full animate-pulse"
-							style={{ background: theme.surface }}
-						/>
-					) : albumArtUrl ? (
+					{albumArtUrl ? (
 						<img
 							src={albumArtUrl}
 							alt={song.album}
@@ -80,12 +72,11 @@ export function SongSection({
 					key={songKey}
 					className="mt-6"
 					style={{
-						opacity: metaVisible ? 1 : 0,
 						willChange: "opacity, transform",
 					}}
 					initial={prefersReducedMotion ? false : { opacity: 0, x: 20 }}
 					animate={{
-						opacity: metaVisible ? 1 : 0,
+						opacity: 1,
 						x: 0,
 						transition: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
 					}}
@@ -124,4 +115,4 @@ export function SongSection({
 			</AnimatePresence>
 		</div>
 	);
-}
+});

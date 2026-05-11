@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { MatchesSection } from "../components/MatchesSection";
@@ -9,7 +9,6 @@ export function MatchingSession({
 	currentSong,
 	playlists,
 	addedTo,
-	state,
 	isDemo,
 	realAvailable,
 	reconnectNeeded,
@@ -19,6 +18,16 @@ export function MatchingSession({
 	onNext,
 }: MatchingSessionProps) {
 	const theme = useTheme();
+
+	const song = useMemo(
+		() => ({
+			name: currentSong.name,
+			album: currentSong.album ?? "",
+			artist: currentSong.artist,
+		}),
+		[currentSong.name, currentSong.album, currentSong.artist],
+	);
+
 	const topGridRef = useRef<HTMLDivElement>(null);
 	const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -52,14 +61,8 @@ export function MatchingSession({
 					<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
 						<SongSection
 							songKey={currentSong.id}
-							song={{
-								name: currentSong.name,
-								album: currentSong.album ?? "",
-								artist: currentSong.artist,
-							}}
-							metaVisible={state.songMetaVisible}
+							song={song}
 							albumArtUrl={currentSong.albumArtUrl ?? undefined}
-							isLoading={false}
 						/>
 						<MatchesSection
 							playlists={playlists}

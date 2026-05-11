@@ -33,10 +33,6 @@ export interface Playlist {
 	matchScore: number;
 }
 
-export interface MatchingState {
-	songMetaVisible: boolean;
-}
-
 export interface CompletionStats {
 	totalSongs: number;
 	songsMatched: number;
@@ -48,7 +44,6 @@ export interface MatchingSessionProps {
 	currentSong: SongForMatching;
 	playlists: Playlist[];
 	addedTo: string[];
-	state: MatchingState;
 	isDemo?: boolean;
 	realAvailable?: boolean;
 	reconnectNeeded?: boolean;

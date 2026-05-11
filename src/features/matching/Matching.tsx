@@ -1,5 +1,3 @@
-import { useMatchingState } from "./hooks/useMatchingState";
-
 import { CompletionScreen } from "./sections/CompletionScreen";
 import { MatchingHeader } from "./sections/MatchingHeader";
 import { MatchingSession } from "./sections/MatchingSession";
@@ -20,8 +18,6 @@ export function Matching({
 	onNext,
 	onExit,
 }: MatchingProps) {
-	const { state } = useMatchingState();
-
 	if (isComplete) {
 		return (
 			<CompletionScreen
@@ -42,7 +38,6 @@ export function Matching({
 				currentSong={currentSong}
 				playlists={currentMatches}
 				addedTo={addedTo}
-				state={state}
 				reconnectNeeded={reconnectNeeded}
 				onAdd={onAdd}
 				onDismiss={onDismiss}

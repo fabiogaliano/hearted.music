@@ -93,6 +93,8 @@ function NormalMatchPage() {
 		latestSnapshotId !== displayedSession.snapshotId &&
 		latestTotalSongs > 0;
 
+	const handleExit = useCallback(() => navigate({ to: "/" }), [navigate]);
+
 	const handleRefresh = useCallback(() => {
 		if (!latestSnapshotId || latestTotalSongs === 0) return;
 		setDisplayedSession({
@@ -151,7 +153,7 @@ function NormalMatchPage() {
 				snapshotId={displayedSession.snapshotId}
 				totalSongs={displayedSession.totalSongs}
 				accountId={session.accountId}
-				onExit={() => navigate({ to: "/" })}
+				onExit={handleExit}
 				queryClient={queryClient}
 			/>
 		</div>
@@ -218,59 +220,68 @@ function MatchingPageContent({
 	}, [songData, pastSongs]);
 
 	const currentSong: SongForMatching | null = songData?.song ?? null;
-	const currentMatches: Playlist[] =
-		songData?.matches.map((m) => ({
-			id: m.playlist.id,
-			spotifyId: m.playlist.spotifyId,
-			name: m.playlist.name,
-			reason: m.playlist.description ?? "",
-			matchScore: m.score,
-		})) ?? [];
+	const currentMatches: Playlist[] = useMemo(
+		() =>
+			songData?.matches.map((m) => ({
+				id: m.playlist.id,
+				spotifyId: m.playlist.spotifyId,
+				name: m.playlist.name,
+				reason: m.playlist.description ?? "",
+				matchScore: m.score,
+			})) ?? [],
+		[songData?.matches],
+	);
 
-	const completionStats: CompletionStats = {
-		totalSongs,
-		songsMatched: sessionStats.songsWithAdditions.size,
-		totalAdditions: sessionStats.addedCount,
-		skippedCount:
-			offset -
-			sessionStats.songsWithAdditions.size -
-			sessionStats.dismissedCount,
-	};
+	const completionStats: CompletionStats = useMemo(
+		() => ({
+			totalSongs,
+			songsMatched: sessionStats.songsWithAdditions.size,
+			totalAdditions: sessionStats.addedCount,
+			skippedCount:
+				offset -
+				sessionStats.songsWithAdditions.size -
+				sessionStats.dismissedCount,
+		}),
+		[totalSongs, sessionStats, offset],
+	);
 
-	const handleAdd = async (playlistId: string) => {
-		if (!currentSong) return;
-		setReconnectNeeded(false);
-		addPresented(currentSong.id);
-		const playlist = currentMatches.find((p) => p.id === playlistId);
-		if (playlist?.spotifyId && currentSong.spotifyId) {
-			const result = await addToPlaylist(
-				`spotify:playlist:${playlist.spotifyId}`,
-				[`spotify:track:${currentSong.spotifyId}`],
-			);
-			const outcome = outcomeFromCommandResponse(result);
-			if (outcome.status === "reconnect-required") {
-				setReconnectNeeded(true);
-				return;
+	const handleAdd = useCallback(
+		async (playlistId: string) => {
+			if (!currentSong) return;
+			setReconnectNeeded(false);
+			addPresented(currentSong.id);
+			const playlist = currentMatches.find((p) => p.id === playlistId);
+			if (playlist?.spotifyId && currentSong.spotifyId) {
+				const result = await addToPlaylist(
+					`spotify:playlist:${playlist.spotifyId}`,
+					[`spotify:track:${currentSong.spotifyId}`],
+				);
+				const outcome = outcomeFromCommandResponse(result);
+				if (outcome.status === "reconnect-required") {
+					setReconnectNeeded(true);
+					return;
+				}
+				if (outcome.status === "error") return;
 			}
-			if (outcome.status === "error") return;
-		}
-		await addSongToPlaylist({
-			data: {
-				songId: currentSong.id,
-				playlistId,
-			},
-		});
-		setAddedTo((prev) => [...prev, playlistId]);
-		setSessionStats((prev) => {
-			const next = new Set(prev.songsWithAdditions);
-			next.add(currentSong.id);
-			return {
-				...prev,
-				addedCount: prev.addedCount + 1,
-				songsWithAdditions: next,
-			};
-		});
-	};
+			await addSongToPlaylist({
+				data: {
+					songId: currentSong.id,
+					playlistId,
+				},
+			});
+			setAddedTo((prev) => [...prev, playlistId]);
+			setSessionStats((prev) => {
+				const next = new Set(prev.songsWithAdditions);
+				next.add(currentSong.id);
+				return {
+					...prev,
+					addedCount: prev.addedCount + 1,
+					songsWithAdditions: next,
+				};
+			});
+		},
+		[currentSong, currentMatches, addPresented, setReconnectNeeded],
+	);
 
 	const recordCurrentSong = useCallback(() => {
 		if (!currentSong) return;
@@ -287,7 +298,7 @@ function MatchingPageContent({
 		});
 	}, [currentSong]);
 
-	const handleDismiss = async () => {
+	const handleDismiss = useCallback(async () => {
 		if (!currentSong) return;
 		addPresented(currentSong.id);
 		recordCurrentSong();
@@ -301,14 +312,14 @@ function MatchingPageContent({
 		}));
 		setAddedTo([]);
 		setOffset((prev) => prev + 1);
-	};
+	}, [currentSong, currentMatches, addPresented, recordCurrentSong]);
 
-	const handleNext = () => {
+	const handleNext = useCallback(() => {
 		if (currentSong) addPresented(currentSong.id);
 		recordCurrentSong();
 		setAddedTo([]);
 		setOffset((prev) => prev + 1);
-	};
+	}, [currentSong, addPresented, recordCurrentSong]);
 
 	return (
 		<Matching

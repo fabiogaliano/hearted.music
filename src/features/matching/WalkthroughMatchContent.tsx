@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import { PaneStore } from "uipane";
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
 import type { WalkthroughSong } from "@/features/onboarding/step-resolver";
@@ -156,20 +163,34 @@ export function WalkthroughMatchContent({
 	}, [walkthroughSong.spotifyTrackId]);
 
 	const paneViewSource = usePaneMatchSource();
-	const currentSong = songToMatchingSong(walkthroughSong);
+
+	const currentSong = useMemo(
+		() => songToMatchingSong(walkthroughSong),
+		[walkthroughSong],
+	);
+
+	const songDisplay = useMemo(
+		() => ({
+			name: currentSong.name,
+			album: currentSong.album ?? "",
+			artist: currentSong.artist,
+		}),
+		[currentSong.name, currentSong.album, currentSong.artist],
+	);
+
 	const isLoading = matchState.status === "loading";
 
-	const handleWalkthroughAction = async () => {
+	const handleWalkthroughAction = useCallback(async () => {
 		if (isPending) return;
 		await navigateTo("plan-selection");
-	};
+	}, [isPending, navigateTo]);
 
 	const hasRealPending =
 		matchState.status === "ready" && matchState.pendingRealMatches !== null;
 	const paneRealAvailable = usePaneRealAvailable();
 	const realAvailable = hasRealPending || paneRealAvailable;
 
-	const handleRefresh = () => {
+	const handleRefresh = useCallback(() => {
 		if (hasRealPending) {
 			setMatchState((prev) => {
 				if (prev.status !== "ready" || !prev.pendingRealMatches) return prev;
@@ -182,7 +203,7 @@ export function WalkthroughMatchContent({
 			});
 		}
 		clearPaneRealAvailable();
-	};
+	}, [hasRealPending]);
 
 	useSyncPaneRealAvailable(hasRealPending);
 
@@ -208,14 +229,8 @@ export function WalkthroughMatchContent({
 				<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
 					<SongSection
 						songKey={currentSong.id}
-						song={{
-							name: currentSong.name,
-							album: currentSong.album ?? "",
-							artist: currentSong.artist,
-						}}
-						metaVisible={true}
+						song={songDisplay}
 						albumArtUrl={currentSong.albumArtUrl ?? undefined}
-						isLoading={false}
 					/>
 					<MatchesSkeleton />
 				</div>
@@ -230,7 +245,6 @@ export function WalkthroughMatchContent({
 				currentSong={currentSong}
 				playlists={displayedMatches}
 				addedTo={[]}
-				state={{ songMetaVisible: true }}
 				isDemo={effectiveSource === "fallback"}
 				realAvailable={realAvailable}
 				onRefresh={handleRefresh}

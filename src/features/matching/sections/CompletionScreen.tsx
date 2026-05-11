@@ -1,8 +1,9 @@
+import { memo } from "react";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import type { CompletionScreenProps } from "../types";
 
-export function CompletionScreen({
+export const CompletionScreen = memo(function CompletionScreen({
 	stats,
 	songs,
 	onExit,
@@ -131,4 +132,4 @@ export function CompletionScreen({
 			</button>
 		</div>
 	);
-}
+});

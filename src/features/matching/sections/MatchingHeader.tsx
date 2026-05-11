@@ -1,13 +1,12 @@
+import { memo } from "react";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
+import type { MatchingHeaderProps } from "../types";
 
-export function MatchingHeader({
+export const MatchingHeader = memo(function MatchingHeader({
 	currentIndex,
 	totalSongs,
-}: {
-	currentIndex: number;
-	totalSongs: number;
-}) {
+}: MatchingHeaderProps) {
 	const theme = useTheme();
 	const progress = ((currentIndex + 1) / totalSongs) * 100;
 
@@ -42,4 +41,4 @@ export function MatchingHeader({
 			</div>
 		</div>
 	);
-}
+});
