@@ -26,7 +26,7 @@ export function ExtensionStatusRow() {
 			<div>
 				<div>
 					<p
-						className="text-[20px] font-light"
+						className="text-xl font-light"
 						style={{ fontFamily: fonts.display, color: theme.text }}
 					>
 						Chrome extension

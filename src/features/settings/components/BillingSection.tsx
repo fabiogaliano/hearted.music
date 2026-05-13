@@ -91,7 +91,7 @@ export function BillingSection({ billingState }: BillingSectionProps) {
 	return (
 		<section>
 			<p
-				className="text-[20px] font-light"
+				className="text-xl font-light"
 				style={{ fontFamily: fonts.display, color: theme.text }}
 			>
 				Billing

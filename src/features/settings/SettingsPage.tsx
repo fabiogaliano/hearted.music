@@ -96,7 +96,7 @@ export function SettingsPage({
 						<UserAvatar name={displayName} imageUrl={imageUrl} size="md" />
 						<div className="min-w-0">
 							<p
-								className="truncate text-[20px] font-light"
+								className="truncate text-xl font-light"
 								style={{ fontFamily: fonts.display, color: theme.text }}
 							>
 								{displayName ?? "—"}
@@ -114,7 +114,7 @@ export function SettingsPage({
 				<section>
 					<div>
 						<p
-							className="mb-6 text-[20px] font-light"
+							className="mb-6 text-xl font-light"
 							style={{ fontFamily: fonts.display, color: theme.text }}
 						>
 							Theme color
