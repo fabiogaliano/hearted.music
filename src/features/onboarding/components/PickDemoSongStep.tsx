@@ -197,7 +197,7 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 										}}
 									>
 										<div
-											className="transition-all duration-300"
+											className="transition-[filter,opacity] duration-200"
 											style={{
 												filter: isSelected
 													? "grayscale(0%)"

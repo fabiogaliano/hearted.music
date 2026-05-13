@@ -355,7 +355,7 @@ export function PlaylistDetailView({
 										href={EXTENSION_STORE_URL}
 										target="_blank"
 										rel="noopener noreferrer"
-										className="inline-flex items-center gap-1.5 rounded-[20px] px-3 py-1 text-xs tracking-widest uppercase transition-all hover:opacity-80 active:scale-[0.98]"
+										className="inline-flex items-center gap-1.5 rounded-[20px] px-3 py-1 text-xs tracking-widest uppercase transition-[transform,opacity] duration-150 hover:opacity-80 active:scale-[0.98]"
 										style={{
 											fontFamily: fonts.body,
 											background: theme.surface,
@@ -405,7 +405,7 @@ export function PlaylistDetailView({
 									<button
 										type="button"
 										onClick={() => onToggleTarget(playlist.id, !isTarget)}
-										className="flex min-w-[120px] items-center justify-center gap-1.5 px-4 py-2 text-xs tracking-widest uppercase transition-all"
+										className="flex min-w-[120px] items-center justify-center gap-1.5 px-4 py-2 text-xs tracking-widest uppercase transition-colors duration-150"
 										style={{
 											fontFamily: fonts.body,
 											color: isTarget ? theme.textOnPrimary : theme.text,

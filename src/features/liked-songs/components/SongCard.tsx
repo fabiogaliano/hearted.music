@@ -115,7 +115,7 @@ export function SongCard({
 			onPointerDown={onPointerDown}
 			onFocus={onFocus}
 			onBlur={onBlur}
-			className={`song-card -mx-3 flex w-full cursor-pointer items-center gap-4 border-0 bg-transparent px-3 py-4 text-left${isWalkthroughHighlight ? " walkthrough-highlight" : ""}`}
+			className={`song-card -mx-3 flex w-full cursor-pointer items-center gap-4 border-0 bg-transparent px-3 py-4 text-left transition-transform duration-100 active:scale-[0.98]${isWalkthroughHighlight ? " walkthrough-highlight" : ""}`}
 			style={
 				{
 					"--hover-bg": isEnabled

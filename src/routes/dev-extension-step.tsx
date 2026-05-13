@@ -217,7 +217,7 @@ function ActionContent({
 				<button
 					type="button"
 					onClick={onAccept}
-					className="self-start inline-flex items-center gap-2 rounded-[24px] px-6 py-2.5 text-sm font-medium uppercase tracking-widest transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+					className="self-start inline-flex items-center gap-2 rounded-[24px] px-6 py-2.5 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
 					style={{
 						fontFamily: fonts.body,
 						background: theme.primary,
@@ -256,7 +256,7 @@ function ActionContent({
 					href={EXTENSION_STORE_URL}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="self-start inline-flex items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-all duration-200 hover:opacity-80 active:scale-[0.98]"
+					className="self-start inline-flex items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-80 active:scale-[0.98]"
 					style={{
 						fontFamily: fonts.body,
 						background: theme.surface,
@@ -309,7 +309,7 @@ function ActionContent({
 				href={SPOTIFY_LOGIN_URL}
 				target="_blank"
 				rel="noopener noreferrer"
-				className="self-start inline-flex items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-all duration-200 hover:opacity-80 active:scale-[0.98]"
+				className="self-start inline-flex items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-80 active:scale-[0.98]"
 				style={{
 					fontFamily: fonts.body,
 					background: theme.surface,
@@ -499,7 +499,7 @@ function DevExtensionStep() {
 								key={key}
 								type="button"
 								onClick={() => setThemeKey(key)}
-								className="rounded-[24px] px-3 py-1 text-xs uppercase tracking-widest transition-all duration-200 active:scale-[0.97]"
+								className="rounded-[24px] px-3 py-1 text-xs uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.97]"
 								style={{
 									fontFamily: fonts.body,
 									background: themeKey === key ? theme.primary : "transparent",
@@ -532,7 +532,7 @@ function DevExtensionStep() {
 								key={s}
 								type="button"
 								onClick={() => setStep(s)}
-								className="rounded-[24px] px-4 py-1.5 text-xs font-medium uppercase tracking-widest transition-all duration-200 active:scale-[0.97]"
+								className="rounded-[24px] px-4 py-1.5 text-xs font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.97]"
 								style={{
 									fontFamily: fonts.body,
 									background: step === s ? `${theme.primary}18` : "transparent",
@@ -565,7 +565,7 @@ function DevExtensionStep() {
 									key={v}
 									type="button"
 									onClick={() => setAnimVariant(v)}
-									className="rounded-[24px] px-3 py-1.5 text-xs uppercase tracking-widest transition-all duration-200 active:scale-[0.97]"
+									className="rounded-[24px] px-3 py-1.5 text-xs uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.97]"
 									style={{
 										fontFamily: fonts.body,
 										background:

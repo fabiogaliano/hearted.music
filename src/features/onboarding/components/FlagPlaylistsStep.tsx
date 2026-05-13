@@ -222,7 +222,7 @@ export function FlagPlaylistsStep({
 										}}
 									>
 										<div
-											className="aspect-square w-full overflow-hidden transition-all duration-300"
+											className="aspect-square w-full overflow-hidden transition-[filter,opacity] duration-200"
 											style={{
 												filter: isSelected
 													? "grayscale(0%)"

@@ -103,7 +103,7 @@ function ActionContent({
 					type="button"
 					onClick={onAccept}
 					disabled={isAdvancing}
-					className="self-start inline-flex items-center gap-2 rounded-[24px] px-6 py-2.5 text-sm font-medium uppercase tracking-widest transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+					className="self-start inline-flex items-center gap-2 rounded-[24px] px-6 py-2.5 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
 					style={{
 						fontFamily: fonts.body,
 						background: theme.primary,
@@ -144,7 +144,7 @@ function ActionContent({
 					href={EXTENSION_STORE_URL}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="self-start inline-flex items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-all duration-200 hover:opacity-80 active:scale-[0.98]"
+					className="self-start inline-flex items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-80 active:scale-[0.98]"
 					style={{
 						fontFamily: fonts.body,
 						background: theme.surface,
@@ -188,7 +188,7 @@ function ActionContent({
 				rel="noopener noreferrer"
 				onClick={onSpotifyLoginClick}
 				onAuxClick={onSpotifyLoginClick}
-				className="self-start inline-flex items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-all duration-200 hover:opacity-80 active:scale-[0.98]"
+				className="self-start inline-flex items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-80 active:scale-[0.98]"
 				style={{
 					fontFamily: fonts.body,
 					background: theme.surface,

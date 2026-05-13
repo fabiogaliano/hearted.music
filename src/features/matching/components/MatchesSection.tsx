@@ -149,7 +149,7 @@ export const MatchesSection = memo(function MatchesSection({
 				<button
 					type="button"
 					onClick={onDismiss}
-					className="text-sm tracking-widest uppercase"
+					className="text-sm tracking-widest uppercase transition-[transform,opacity] duration-100 hover:opacity-70 active:scale-[0.98]"
 					style={{ fontFamily: fonts.body, color: theme.textMuted }}
 				>
 					Dismiss
@@ -158,7 +158,7 @@ export const MatchesSection = memo(function MatchesSection({
 				<button
 					type="button"
 					onClick={onNext}
-					className="group inline-flex items-center gap-3"
+					className="group inline-flex items-center gap-3 transition-transform duration-100 active:scale-[0.98]"
 					style={{ fontFamily: fonts.body, color: theme.text }}
 				>
 					<span className="text-lg font-medium tracking-wide">Next Song</span>

@@ -35,7 +35,7 @@ export function SongSelectionBar({
 				<button
 					type="button"
 					onClick={onCancel}
-					className="flex cursor-pointer items-center gap-1 rounded-full border-0 bg-transparent px-3 py-1.5 text-xs transition-opacity hover:opacity-80"
+					className="flex cursor-pointer items-center gap-1 rounded-full border-0 bg-transparent px-3 py-1.5 text-xs transition-[transform,opacity] duration-150 hover:opacity-80 active:scale-[0.98]"
 					style={{ fontFamily: fonts.body, color: theme.textMuted }}
 				>
 					<X size={14} />
@@ -59,7 +59,7 @@ export function SongSelectionBar({
 				type="button"
 				onClick={onConfirm}
 				disabled={selectedCount === 0 || !canAfford}
-				className="flex cursor-pointer items-center gap-2 rounded-full border-0 px-5 py-2 text-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+				className="flex cursor-pointer items-center gap-2 rounded-full border-0 px-5 py-2 text-sm transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
 				style={{
 					fontFamily: fonts.body,
 					background: theme.primary,

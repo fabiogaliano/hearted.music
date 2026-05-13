@@ -29,7 +29,7 @@ export function Nav({
 			<button
 				onClick={onPrevious}
 				disabled={!hasPrevious}
-				className="p-1.5 transition-opacity hover:opacity-100 disabled:opacity-30"
+				className="p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9] disabled:opacity-30"
 				style={{ color }}
 			>
 				<svg
@@ -46,7 +46,7 @@ export function Nav({
 			<button
 				onClick={onNext}
 				disabled={!hasNext}
-				className="p-1.5 transition-opacity hover:opacity-100 disabled:opacity-30"
+				className="p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9] disabled:opacity-30"
 				style={{ color }}
 			>
 				<svg
@@ -62,7 +62,7 @@ export function Nav({
 			</button>
 			<button
 				onClick={onClose}
-				className="ml-1 p-1.5 transition-opacity hover:opacity-100"
+				className="ml-1 p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9]"
 				style={{ color }}
 			>
 				<svg

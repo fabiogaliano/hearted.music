@@ -17,7 +17,7 @@ export function ReleaseToggle({ isReleased, onToggle }: ReleaseToggleProps) {
 	const theme = useTheme();
 	return (
 		<div
-			className="fixed right-6 bottom-6 z-50 flex items-center gap-3 rounded-full px-4 py-2 shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-105"
+			className="fixed right-6 bottom-6 z-50 flex items-center gap-3 rounded-full px-4 py-2 shadow-lg backdrop-blur-sm transition-transform duration-200 hover:scale-105 active:scale-[0.97]"
 			style={{
 				background: `${theme.surface}f0`,
 				border: `1px solid ${theme.border}`,
@@ -32,14 +32,14 @@ export function ReleaseToggle({ isReleased, onToggle }: ReleaseToggleProps) {
 			</span>
 			<button
 				onClick={onToggle}
-				className="relative h-6 w-11 rounded-full transition-colors duration-300"
+				className="relative h-6 w-11 rounded-full transition-colors duration-200"
 				style={{
 					background: isReleased ? theme.primary : theme.border,
 				}}
 				aria-label={`Switch to ${isReleased ? "pre-release" : "released"} mode`}
 			>
 				<span
-					className="absolute top-0.5 h-5 w-5 rounded-full transition-all duration-300"
+					className="absolute top-0.5 h-5 w-5 rounded-full transition-[left] duration-200"
 					style={{
 						background: theme.textOnPrimary,
 						left: isReleased ? "22px" : "2px",

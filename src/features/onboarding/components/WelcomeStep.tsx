@@ -52,7 +52,7 @@ export function WelcomeStep() {
 				onClick={handleContinue}
 				disabled={isNavigating}
 				type="button"
-				className="group mt-16 inline-flex min-h-11 items-center gap-3 border border-transparent px-4 py-2 transition-all duration-200"
+				className="group mt-16 inline-flex min-h-11 items-center gap-3 border border-transparent px-4 py-2 transition-opacity duration-150 active:scale-[0.98]"
 				style={{
 					fontFamily: fonts.body,
 					color: theme.text,

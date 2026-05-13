@@ -134,7 +134,7 @@ export function SettingsPage({
 										aria-pressed={isSelected}
 									>
 										<div
-											className="h-12 w-12 rounded-full transition-all duration-200 group-hover:scale-[1.05] group-active:scale-[0.98]"
+											className="h-12 w-12 rounded-full transition-transform duration-150 group-hover:scale-[1.05] group-active:scale-[0.98]"
 											style={{
 												background: optionTheme.surfaceDim,
 												border: isSelected
@@ -143,7 +143,7 @@ export function SettingsPage({
 											}}
 										/>
 										<span
-											className="text-xs tracking-widest uppercase transition-all duration-200"
+											className="text-xs tracking-widest uppercase transition-colors duration-150"
 											style={{
 												fontFamily: fonts.body,
 												color: isSelected ? theme.text : theme.textMuted,
@@ -171,7 +171,7 @@ export function SettingsPage({
 							type="button"
 							onClick={handleSignOut}
 							disabled={isSigningOut}
-							className="cursor-pointer text-xs font-normal tracking-widest uppercase transition-all duration-200 hover:opacity-70 disabled:cursor-wait disabled:opacity-50"
+							className="cursor-pointer text-xs font-normal tracking-widest uppercase transition-opacity duration-150 hover:opacity-70 disabled:cursor-wait disabled:opacity-50"
 							style={{ fontFamily: fonts.body, color: theme.textMuted }}
 						>
 							{isSigningOut ? "Signing out…" : "Sign out"}

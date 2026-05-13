@@ -43,14 +43,14 @@ export function DescriptionConflictDialog({
 
 	return createPortal(
 		<div
-			className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
+			className="dialog-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
 			style={{ background: "rgba(0,0,0,0.45)" }}
 			onClick={onUseSpotifys}
 		>
 			<div
 				role="alertdialog"
 				aria-labelledby="conflict-title"
-				className="w-full max-w-[360px] p-8"
+				className="dialog-content w-full max-w-[360px] p-8"
 				style={{
 					background: theme.surface,
 					border: `1px solid ${theme.border}`,
@@ -106,7 +106,7 @@ export function DescriptionConflictDialog({
 					<button
 						type="button"
 						onClick={onUseSpotifys}
-						className="cursor-pointer border px-4 py-1.5 text-xs font-normal uppercase tracking-widest transition-all duration-200 hover:brightness-95 active:scale-[0.98]"
+						className="cursor-pointer border px-4 py-1.5 text-xs font-normal uppercase tracking-widest transition-[transform,filter] duration-150 hover:brightness-95 active:scale-[0.98]"
 						style={{
 							fontFamily: fonts.body,
 							background: "transparent",
@@ -119,7 +119,7 @@ export function DescriptionConflictDialog({
 					<button
 						type="button"
 						onClick={onKeepMine}
-						className="cursor-pointer border border-transparent px-6 py-2 text-sm font-medium uppercase tracking-widest transition-all duration-200 hover:brightness-95 active:scale-[0.98]"
+						className="cursor-pointer border border-transparent px-6 py-2 text-sm font-medium uppercase tracking-widest transition-[transform,filter] duration-150 hover:brightness-95 active:scale-[0.98]"
 						style={{
 							fontFamily: fonts.body,
 							background: theme.primary,

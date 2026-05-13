@@ -52,7 +52,7 @@ export function FanSpreadAlbumArt({ images }: FanSpreadAlbumArtProps) {
 				return (
 					<div
 						key={item.id}
-						className="absolute cursor-pointer shadow-2xl transition-all duration-300 hover:z-10! hover:-translate-y-3! hover:scale-110! hover:opacity-100!"
+						className="absolute cursor-pointer shadow-2xl transition-[transform,opacity] duration-200 hover:z-10! hover:-translate-y-3! hover:scale-110! hover:opacity-100!"
 						style={{
 							width: `${comp.size}px`,
 							height: `${comp.size}px`,

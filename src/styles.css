@@ -314,6 +314,28 @@ code {
   }
 }
 
+/* ── Dialog enter animations ──────────────────────────────────────────── */
+.dialog-backdrop {
+  animation: dialog-backdrop-in 150ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.dialog-content {
+  animation: dialog-content-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes dialog-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dialog-content-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dialog-backdrop,
+  .dialog-content {
+    animation: none;
+  }
+}
+
 /* Fallback for browsers without View Transitions API (Firefox, Safari) */
 @supports not (view-transition-name: none) {
   /* Provide basic crossfade on panel open/close */

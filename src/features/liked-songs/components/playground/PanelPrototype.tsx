@@ -272,7 +272,7 @@ function JourneyTimeline({
 											borderRadius: "50%",
 											background: isExpanded ? colors.accent : colors.border,
 											border: `1px solid ${isExpanded ? colors.accent : colors.border}`,
-											transition: "all 200ms ease",
+											transition: "opacity 200ms ease-out",
 										}}
 									/>
 								</div>
@@ -405,7 +405,7 @@ function ThemesList({
 								</span>
 							</div>
 							<div
-								className="overflow-hidden transition-all duration-200"
+								className="overflow-hidden transition-[height] duration-200"
 								style={{
 									maxHeight: isOpen ? 100 : 0,
 									opacity: isOpen ? 1 : 0,

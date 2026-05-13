@@ -32,7 +32,7 @@ export const MatchingHeader = memo(function MatchingHeader({
 				style={{ background: theme.border }}
 			>
 				<div
-					className="h-full transition-all duration-300"
+					className="h-full transition-[width] duration-200"
 					style={{
 						background: theme.text,
 						width: `${progress}%`,

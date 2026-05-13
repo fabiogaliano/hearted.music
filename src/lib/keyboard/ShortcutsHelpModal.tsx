@@ -148,11 +148,11 @@ export function ShortcutsHelpModal() {
 	return (
 		<>
 			<div
-				className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
+				className="dialog-backdrop fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
 				onClick={closeHelp}
 			/>
 			<div
-				className="fixed top-1/2 left-1/2 z-[101] max-h-[80vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto"
+				className="dialog-content fixed top-1/2 left-1/2 z-[101] max-h-[80vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto"
 				style={{
 					background: theme.bg,
 					border: `1px solid ${theme.border}`,

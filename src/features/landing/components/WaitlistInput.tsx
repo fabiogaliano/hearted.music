@@ -68,7 +68,7 @@ export function WaitlistInput({
 					onChange={(e) => setEmail(e.target.value)}
 					placeholder="Your email"
 					disabled={status === "submitting"}
-					className="w-full flex-1 px-4 py-3 text-sm transition-all duration-300 focus:outline-none disabled:opacity-60"
+					className="w-full flex-1 px-4 py-3 text-sm transition-[box-shadow,border-color] duration-200 focus:outline-none disabled:opacity-60"
 					style={{
 						background: isDark ? "rgba(255,255,255,0.15)" : theme.surface,
 						border: `1px solid ${isDark ? "rgba(255,255,255,0.3)" : theme.border}`,
@@ -80,7 +80,7 @@ export function WaitlistInput({
 				<button
 					type="submit"
 					disabled={status === "submitting"}
-					className="w-full px-6 py-3 text-sm tracking-widest uppercase transition-all duration-300 hover:scale-105 disabled:opacity-60 disabled:hover:scale-100 sm:w-auto"
+					className="w-full px-6 py-3 text-sm tracking-widest uppercase transition-transform duration-150 hover:scale-105 active:scale-[0.97] disabled:opacity-60 disabled:hover:scale-100 sm:w-auto"
 					style={{
 						background: theme.textOnPrimary,
 						color: theme.primary,

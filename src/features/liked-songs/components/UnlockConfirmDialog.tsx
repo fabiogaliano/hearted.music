@@ -62,11 +62,11 @@ export function UnlockConfirmDialog({
 
 	return (
 		<div
-			className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+			className="dialog-backdrop fixed inset-0 z-[60] flex items-center justify-center p-4"
 			style={{ background: "rgba(0,0,0,0.5)" }}
 		>
 			<div
-				className="relative w-full max-w-md rounded-xl p-6"
+				className="dialog-content relative w-full max-w-md rounded-xl p-6"
 				style={{
 					background: theme.surface,
 					border: `1px solid ${theme.border}`,
@@ -139,7 +139,7 @@ export function UnlockConfirmDialog({
 						<button
 							type="button"
 							onClick={onDismiss}
-							className="mt-2 cursor-pointer rounded-full border-0 px-5 py-2 text-sm transition-opacity hover:opacity-90"
+							className="mt-2 cursor-pointer rounded-full border-0 px-5 py-2 text-sm transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
 							style={{
 								fontFamily: fonts.body,
 								background: "transparent",
@@ -163,7 +163,7 @@ export function UnlockConfirmDialog({
 						<button
 							type="button"
 							onClick={onDismiss}
-							className="mt-2 cursor-pointer rounded-full border-0 px-5 py-2 text-sm transition-opacity hover:opacity-90"
+							className="mt-2 cursor-pointer rounded-full border-0 px-5 py-2 text-sm transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
 							style={{
 								fontFamily: fonts.body,
 								background: theme.primary,
@@ -227,7 +227,7 @@ function ConfirmContent({
 					<button
 						type="button"
 						onClick={onCancel}
-						className="cursor-pointer rounded-full border px-4 py-2 text-sm transition-opacity hover:opacity-80"
+						className="cursor-pointer rounded-full border px-4 py-2 text-sm transition-[transform,opacity] duration-150 hover:opacity-80 active:scale-[0.98]"
 						style={{
 							fontFamily: fonts.body,
 							background: "transparent",
@@ -240,7 +240,7 @@ function ConfirmContent({
 					<button
 						type="button"
 						onClick={onConfirm}
-						className="cursor-pointer rounded-full border-0 px-5 py-2 text-sm transition-opacity hover:opacity-90"
+						className="cursor-pointer rounded-full border-0 px-5 py-2 text-sm transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
 						style={{
 							fontFamily: fonts.body,
 							background: theme.primary,
