@@ -37,7 +37,11 @@ vi.mock("@/lib/server/onboarding.functions", () => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-	useLocation: () => ({ state: { syncStats: { songs: 100, playlists: 5 } } }),
+	useLocation: () => ({
+		state: {
+			syncStats: { songs: 100, playlists: 5, playlistSongs: 20, artists: 50 },
+		},
+	}),
 }));
 
 const testPlaylists = [
@@ -121,7 +125,7 @@ describe("FlagPlaylistsStep", () => {
 
 		await waitFor(() => {
 			expect(mockGoToStep).toHaveBeenCalledWith("pick-demo-song", {
-				syncStats: { songs: 100, playlists: 5 },
+				syncStats: { songs: 100, playlists: 5, playlistSongs: 20, artists: 50 },
 			});
 		});
 	});
@@ -171,7 +175,7 @@ describe("FlagPlaylistsStep", () => {
 
 		await waitFor(() => {
 			expect(mockGoToStep).toHaveBeenCalledWith("pick-demo-song", {
-				syncStats: { songs: 100, playlists: 5 },
+				syncStats: { songs: 100, playlists: 5, playlistSongs: 20, artists: 50 },
 			});
 		});
 	});

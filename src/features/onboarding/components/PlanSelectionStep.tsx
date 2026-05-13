@@ -8,6 +8,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Kbd } from "@/components/ui/kbd";
@@ -17,7 +18,10 @@ import {
 	UNLIMITED_QUARTERLY,
 	UNLIMITED_YEARLY,
 } from "@/lib/domains/billing/offers";
-import type { BillingState } from "@/lib/domains/billing/state";
+import {
+	type BillingState,
+	hasUnlimitedAccess,
+} from "@/lib/domains/billing/state";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import {
 	createCheckoutSession,
@@ -48,12 +52,6 @@ type ConfigState =
 	| { status: "error" };
 
 type PlanState = "initial" | "polling" | "retry" | "success";
-
-const READY_COPY: Record<ReadyCopyVariant, string> = {
-	free: "Exploring your 10 songs. An email's on its way when it's ready.",
-	pack: "Exploring your selected songs. An email's on its way when it's ready.",
-	unlimited: "Going through every song. An email's on its way when it's ready.",
-};
 
 const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
 
@@ -131,6 +129,15 @@ export function PlanSelectionStep({
 			setPlanState("retry");
 		}
 	}, [pollingState]);
+
+	// On reload after a completed purchase, billing state is the durable signal
+	// that the user already paid — skip the plan cards and show success.
+	useEffect(() => {
+		if (planState !== "initial" || !billingState) return;
+		if (hasUnlimitedAccess(billingState) || billingState.creditBalance > 0) {
+			setPlanState("success");
+		}
+	}, [billingState, planState]);
 
 	const handleFree = () => {
 		if (activeCheckout || pendingIntent) return;
@@ -397,7 +404,6 @@ export function PlanSelectionStep({
 
 function SuccessView({
 	syncStats,
-	readyCopyVariant,
 }: {
 	syncStats: SyncStats;
 	readyCopyVariant: ReadyCopyVariant;
@@ -435,31 +441,30 @@ function SuccessView({
 		enabled: !isCompleting,
 	});
 
-	return (
-		<div className="text-center">
-			<p
-				className="text-xs tracking-widest uppercase"
-				style={{ fontFamily: fonts.body, color: theme.textMuted }}
-			>
-				Complete
-			</p>
-			<h2
-				className="mt-4 text-6xl leading-tight font-extralight"
-				style={{ fontFamily: fonts.display, color: theme.text }}
-			>
-				You're
-				<br />
-				<em className="font-normal">in.</em>
-			</h2>
-			<p
-				className="mt-6 text-lg font-light"
-				style={{ fontFamily: fonts.body, color: theme.textMuted }}
-			>
-				{READY_COPY[readyCopyVariant]}
-			</p>
+	const kbdVars = {
+		"--kbd-text-color": theme.textMuted,
+		"--kbd-bg-color": `${theme.text}10`,
+		"--kbd-border-color": `${theme.textMuted}30`,
+		"--kbd-shadow-color": `${theme.textMuted}20`,
+	} as React.CSSProperties;
 
-			<div className="mt-16 flex justify-center gap-16">
-				<div className="text-center">
+	return (
+		<>
+			<div className="text-center">
+				<p
+					className="text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				>
+					Complete
+				</p>
+				<h2
+					className="mt-4 text-6xl leading-tight font-extralight"
+					style={{ fontFamily: fonts.display, color: theme.text }}
+				>
+					You're <em className="font-normal">in.</em>
+				</h2>
+
+				<div className="mt-16">
 					<p
 						className="text-5xl font-extralight"
 						style={{ fontFamily: fonts.display, color: theme.text }}
@@ -470,65 +475,88 @@ function SuccessView({
 						className="mt-2 text-xs tracking-widest uppercase"
 						style={{ fontFamily: fonts.body, color: theme.textMuted }}
 					>
-						Songs
+						Liked Songs
 					</p>
-				</div>
-				<div className="text-center">
-					<p
-						className="text-5xl font-extralight"
-						style={{ fontFamily: fonts.display, color: theme.text }}
-					>
-						{syncStats.playlists}
-					</p>
-					<p
-						className="mt-2 text-xs tracking-widest uppercase"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
-					>
-						Playlists
-					</p>
-				</div>
-			</div>
 
-			<button
-				type="button"
-				onClick={handleStart}
-				disabled={isCompleting}
-				className="group mt-20 inline-flex min-h-11 items-center gap-3"
-				style={{
-					fontFamily: fonts.body,
-					color: theme.text,
-					opacity: isCompleting ? 0.5 : 1,
-				}}
-			>
-				<span className="text-xl font-medium tracking-wide">
-					Start Exploring
-				</span>
-				<span
-					className="inline-block transition-transform group-hover:translate-x-1"
-					style={{ color: theme.textMuted }}
-				>
-					→
-				</span>
-			</button>
-			<div className="mt-4 flex items-center justify-center gap-1.5">
-				<span
-					className="text-xs"
-					style={{ color: theme.textMuted, opacity: 0.6 }}
-				>
-					or press
-				</span>
-				<Kbd
+					<div className="mt-10 flex justify-center gap-12">
+						<div className="text-center">
+							<p
+								className="text-3xl font-extralight"
+								style={{ fontFamily: fonts.display, color: theme.text }}
+							>
+								{syncStats.playlists}
+							</p>
+							<p
+								className="mt-1 text-xs tracking-widest uppercase"
+								style={{ fontFamily: fonts.body, color: theme.textMuted }}
+							>
+								Playlists
+							</p>
+						</div>
+						<div className="text-center">
+							<p
+								className="text-3xl font-extralight"
+								style={{ fontFamily: fonts.display, color: theme.text }}
+							>
+								{syncStats.playlistSongs}
+							</p>
+							<p
+								className="mt-1 text-xs tracking-widest uppercase"
+								style={{ fontFamily: fonts.body, color: theme.textMuted }}
+							>
+								Songs
+							</p>
+						</div>
+						<div className="text-center">
+							<p
+								className="text-3xl font-extralight"
+								style={{ fontFamily: fonts.display, color: theme.text }}
+							>
+								{syncStats.artists}
+							</p>
+							<p
+								className="mt-1 text-xs tracking-widest uppercase"
+								style={{ fontFamily: fonts.body, color: theme.textMuted }}
+							>
+								Artists
+							</p>
+						</div>
+					</div>
+				</div>
+
+				<button
+					type="button"
+					onClick={handleStart}
+					disabled={isCompleting}
+					className="group mt-20 inline-flex min-h-11 items-center gap-3"
 					style={{
-						color: theme.textMuted,
-						backgroundColor: `${theme.text}10`,
-						border: `1px solid ${theme.textMuted}30`,
-						boxShadow: `0 1px 0 ${theme.textMuted}20`,
+						fontFamily: fonts.body,
+						color: theme.text,
+						opacity: isCompleting ? 0.5 : 1,
 					}}
 				>
-					⏎
-				</Kbd>
+					<span className="text-xl font-medium tracking-wide">
+						Start Exploring
+					</span>
+					<span
+						className="inline-block transition-transform group-hover:translate-x-1"
+						style={{ color: theme.textMuted }}
+					>
+						→
+					</span>
+				</button>
 			</div>
-		</div>
+
+			<div
+				className="fixed bottom-6 left-0 right-0 flex items-center justify-center gap-6"
+				style={{ color: theme.textMuted, opacity: 0.6, ...kbdVars }}
+			>
+				<div className="flex items-center gap-1.5">
+					<Kbd>⏎</Kbd>
+					<span className="text-xs">to start</span>
+				</div>
+			</div>
+		</>
 	);
 }
 

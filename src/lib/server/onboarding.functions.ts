@@ -30,9 +30,11 @@ import {
 	updateOnboardingStep,
 	updateTheme,
 } from "@/lib/domains/library/accounts/preferences-queries";
+import { getLibraryArtistCount } from "@/lib/domains/library/artists/queries";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
 import {
 	getPlaylistCount,
+	getPlaylistSongCount,
 	getPlaylists,
 	setPlaylistTarget,
 } from "@/lib/domains/library/playlists/queries";
@@ -70,6 +72,8 @@ export interface OnboardingPlaylist {
 export interface SyncStats {
 	songs: number;
 	playlists: number;
+	playlistSongs: number;
+	artists: number;
 }
 
 /** Copy variant for the plan selection success state, derived from billing state */
@@ -392,6 +396,8 @@ async function loadOnboardingData(accountId: string): Promise<OnboardingData> {
 		playlistsResult,
 		songsCountResult,
 		playlistsCountResult,
+		playlistSongsCountResult,
+		artistsCountResult,
 		billingResult,
 	] = await Promise.all([
 		authPayloadPromise,
@@ -399,6 +405,8 @@ async function loadOnboardingData(accountId: string): Promise<OnboardingData> {
 		getPlaylists(accountId),
 		getLikedSongCount(accountId),
 		getPlaylistCount(accountId),
+		getPlaylistSongCount(accountId),
+		getLibraryArtistCount(accountId),
 		readBillingState(supabase, accountId),
 	]);
 
@@ -416,6 +424,15 @@ async function loadOnboardingData(accountId: string): Promise<OnboardingData> {
 			"load_playlists_count",
 			playlistsCountResult.error,
 		);
+	}
+	if (Result.isError(playlistSongsCountResult)) {
+		throw new OnboardingError(
+			"load_playlist_songs_count",
+			playlistSongsCountResult.error,
+		);
+	}
+	if (Result.isError(artistsCountResult)) {
+		throw new OnboardingError("load_artists_count", artistsCountResult.error);
 	}
 
 	const playlists = playlistsResult.value.map((p) => ({
@@ -448,6 +465,8 @@ async function loadOnboardingData(accountId: string): Promise<OnboardingData> {
 		syncStats: {
 			songs: songsCountResult.value,
 			playlists: playlistsCountResult.value,
+			playlistSongs: playlistSongsCountResult.value,
+			artists: artistsCountResult.value,
 		},
 		readyCopyVariant,
 		landingSongs: getLandingSongsManifest(),
@@ -505,31 +524,40 @@ export const saveThemePreference = createServerFn({ method: "POST" })
  */
 export const getLibrarySummary = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.handler(
-		async ({ context }): Promise<{ songs: number; playlists: number }> => {
-			const { session } = context;
+	.handler(async ({ context }): Promise<SyncStats> => {
+		const { session } = context;
 
-			const [songsResult, playlistsResult] = await Promise.all([
+		const [songsResult, playlistsResult, playlistSongsResult, artistsResult] =
+			await Promise.all([
 				getLikedSongCount(session.accountId),
 				getPlaylistCount(session.accountId),
+				getPlaylistSongCount(session.accountId),
+				getLibraryArtistCount(session.accountId),
 			]);
 
-			if (Result.isError(songsResult)) {
-				throw new OnboardingError("load_songs_count", songsResult.error);
-			}
-			if (Result.isError(playlistsResult)) {
-				throw new OnboardingError(
-					"load_playlists_count",
-					playlistsResult.error,
-				);
-			}
+		if (Result.isError(songsResult)) {
+			throw new OnboardingError("load_songs_count", songsResult.error);
+		}
+		if (Result.isError(playlistsResult)) {
+			throw new OnboardingError("load_playlists_count", playlistsResult.error);
+		}
+		if (Result.isError(playlistSongsResult)) {
+			throw new OnboardingError(
+				"load_playlist_songs_count",
+				playlistSongsResult.error,
+			);
+		}
+		if (Result.isError(artistsResult)) {
+			throw new OnboardingError("load_artists_count", artistsResult.error);
+		}
 
-			return {
-				songs: songsResult.value,
-				playlists: playlistsResult.value,
-			};
-		},
-	);
+		return {
+			songs: songsResult.value,
+			playlists: playlistsResult.value,
+			playlistSongs: playlistSongsResult.value,
+			artists: artistsResult.value,
+		};
+	});
 
 /**
  * No-op sync executor - sync is now handled externally by the Chrome extension.

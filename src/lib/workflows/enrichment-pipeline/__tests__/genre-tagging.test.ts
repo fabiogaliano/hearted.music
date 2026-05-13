@@ -45,9 +45,6 @@ function makeSong(id: string): Song {
 		updated_at: "2026-01-01T00:00:00Z",
 		duration_ms: null,
 		image_url: null,
-		isrc: null,
-		popularity: null,
-		preview_url: null,
 		spotify_id: `spotify-${id}`,
 	};
 }

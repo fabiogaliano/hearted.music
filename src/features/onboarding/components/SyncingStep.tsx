@@ -233,6 +233,8 @@ export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
 			syncStats: {
 				songs: phaseCounts.songs.count,
 				playlists: phaseCounts.playlists.count,
+				playlistSongs: phaseCounts.playlistTracks.count,
+				artists: phaseCounts.artistImages.count,
 			},
 		});
 	});

@@ -66,8 +66,13 @@ describe("PlanSelectionStep — billing disabled with persisted intent", () => {
 		sessionStorage.clear();
 		controlledPollingState = null;
 		mockGetBillingState.mockResolvedValue({
+			plan: "free",
 			creditBalance: 0,
-			hasUnlimited: false,
+			subscriptionStatus: "none",
+			cancelAtPeriodEnd: false,
+			subscriptionPeriodEnd: null,
+			unlimitedAccess: { kind: "none" },
+			queueBand: "low",
 		});
 	});
 
@@ -90,7 +95,12 @@ describe("PlanSelectionStep — billing disabled with persisted intent", () => {
 
 		renderWithClient(
 			<PlanSelectionStep
-				syncStats={{ songs: 250, playlists: 8 }}
+				syncStats={{
+					songs: 250,
+					playlists: 8,
+					playlistSongs: 46,
+					artists: 120,
+				}}
 				readyCopyVariant="free"
 			/>,
 		);
@@ -139,7 +149,12 @@ describe("PlanSelectionStep — billing disabled with persisted intent", () => {
 
 		renderWithClient(
 			<PlanSelectionStep
-				syncStats={{ songs: 250, playlists: 8 }}
+				syncStats={{
+					songs: 250,
+					playlists: 8,
+					playlistSongs: 46,
+					artists: 120,
+				}}
 				readyCopyVariant="free"
 			/>,
 		);

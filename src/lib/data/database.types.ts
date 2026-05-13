@@ -1944,6 +1944,10 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			get_library_artist_count: {
+				Args: { p_account_id: string };
+				Returns: number;
+			};
 			get_liked_songs_page: {
 				Args: {
 					p_account_id: string;
@@ -2108,13 +2112,6 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
-			quote_subscription_upgrade_conversion: {
-				Args: { p_account_id: string };
-				Returns: {
-					converted_credits: number;
-					discount_cents: number;
-				}[];
-			};
 			prepare_subscription_upgrade_conversion: {
 				Args: { p_account_id: string; p_target_plan: string };
 				Returns: {
@@ -2136,6 +2133,13 @@ export type Database = {
 					p_song_count: number;
 				};
 				Returns: string;
+			};
+			quote_subscription_upgrade_conversion: {
+				Args: { p_account_id: string };
+				Returns: {
+					converted_credits: number;
+					discount_cents: number;
+				}[];
 			};
 			release_subscription_upgrade_conversion: {
 				Args: { p_conversion_id: string };

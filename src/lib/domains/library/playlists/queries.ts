@@ -119,6 +119,24 @@ export async function getPlaylistCount(
 	return Result.ok(count ?? 0);
 }
 
+export async function getPlaylistSongCount(
+	accountId: string,
+): Promise<Result<number, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { count, error } = await supabase
+		.from("playlist_song")
+		.select("*, playlist!inner(account_id)", { count: "exact", head: true })
+		.eq("playlist.account_id", accountId);
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok(count ?? 0);
+}
+
 /**
  * Gets all target playlists for an account.
  * Target playlists are the ones liked songs get auto-sorted into.

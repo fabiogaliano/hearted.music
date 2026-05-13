@@ -25,6 +25,8 @@ export interface OnboardingPlaylist {
 export interface SyncStats {
 	songs: number;
 	playlists: number;
+	playlistSongs: number;
+	artists: number;
 }
 
 export type ReadyCopyVariant = "free" | "pack" | "unlimited";

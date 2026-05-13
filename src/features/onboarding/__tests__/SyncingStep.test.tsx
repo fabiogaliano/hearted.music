@@ -111,7 +111,12 @@ describe("SyncingStep", () => {
 		await waitFor(
 			() => {
 				expect(mockGoToStep).toHaveBeenCalledWith("flag-playlists", {
-					syncStats: { songs: 500, playlists: 10 },
+					syncStats: {
+						songs: 500,
+						playlists: 10,
+						playlistSongs: 1000,
+						artists: 240,
+					},
 				});
 			},
 			{ timeout: 3_000 },

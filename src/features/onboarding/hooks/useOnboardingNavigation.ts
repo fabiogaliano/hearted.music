@@ -41,6 +41,7 @@ import { useCallback } from "react";
 import { toast } from "sonner";
 import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
+import type { SyncStats } from "@/features/onboarding/types";
 import {
 	getOnboardingSession,
 	saveOnboardingStep,
@@ -58,7 +59,7 @@ export function useOnboardingNavigation() {
 			step: OnboardingStep,
 			options?: {
 				phaseJobIds?: PhaseJobIds | null;
-				syncStats?: { songs: number; playlists: number };
+				syncStats?: SyncStats;
 			},
 		) => {
 			try {

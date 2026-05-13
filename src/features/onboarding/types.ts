@@ -6,6 +6,8 @@ import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 export interface SyncStats {
 	songs: number;
 	playlists: number;
+	playlistSongs: number;
+	artists: number;
 }
 
 /**

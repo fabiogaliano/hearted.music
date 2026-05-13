@@ -65,7 +65,7 @@ const createMockOnboardingData = (
 	playlists: testPlaylists,
 	session: { status: "welcome" },
 	phaseJobIds: null,
-	syncStats: { songs: 0, playlists: 0 },
+	syncStats: { songs: 0, playlists: 0, playlistSongs: 0, artists: 0 },
 	readyCopyVariant: "free",
 	landingSongs: [],
 	...overrides,

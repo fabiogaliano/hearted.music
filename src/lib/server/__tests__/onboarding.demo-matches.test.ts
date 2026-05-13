@@ -41,7 +41,12 @@ const mockGetPlaylists = vi.fn();
 vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	getPlaylists: (id: string) => mockGetPlaylists(id),
 	getPlaylistCount: vi.fn(),
+	getPlaylistSongCount: vi.fn(),
 	setPlaylistTarget: vi.fn(),
+}));
+
+vi.mock("@/lib/domains/library/artists/queries", () => ({
+	getLibraryArtistCount: vi.fn(),
 }));
 
 const mockReadBillingState = vi.fn();

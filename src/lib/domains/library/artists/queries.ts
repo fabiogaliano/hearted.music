@@ -8,7 +8,7 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Tables } from "@/lib/data/database.types";
-import type { DbError } from "@/lib/shared/errors/database";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
 
 export type Artist = Tables<"artist">;
@@ -22,6 +22,23 @@ export interface ArtistUpsertData {
 	name: string;
 	image_url: string | null;
 	bio?: string | null;
+}
+
+export async function getLibraryArtistCount(
+	accountId: string,
+): Promise<Result<number, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase
+		.rpc("get_library_artist_count", { p_account_id: accountId })
+		.single();
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok(Number(data) || 0);
 }
 
 /**

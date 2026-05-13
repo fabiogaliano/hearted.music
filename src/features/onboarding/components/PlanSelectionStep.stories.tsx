@@ -9,7 +9,7 @@ import { PlanSelectionStep } from "./PlanSelectionStep";
  */
 export const Default: Story = () => (
 	<PlanSelectionStep
-		syncStats={{ songs: 250, playlists: 8 }}
+		syncStats={{ songs: 250, playlists: 8, playlistSongs: 46, artists: 120 }}
 		readyCopyVariant="free"
 	/>
 );

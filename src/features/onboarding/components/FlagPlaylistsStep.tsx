@@ -28,7 +28,12 @@ interface FlagPlaylistsStepProps {
 }
 
 /** Fallback for syncStats when navigation state is lost (e.g., page refresh) */
-const EMPTY_SYNC_STATS = { songs: 0, playlists: 0 } as const;
+const EMPTY_SYNC_STATS = {
+	songs: 0,
+	playlists: 0,
+	playlistSongs: 0,
+	artists: 0,
+} as const;
 
 export function FlagPlaylistsStep({
 	playlists: initialPlaylists,
