@@ -30,21 +30,28 @@ export const Route = createFileRoute("/_authenticated/match")({
 	// session via `resolveSession`; if the user is here and the session is
 	// in `match-walkthrough`, the DU guarantees `session.song` is populated.
 	loader: async ({ context }) => {
-		// Walkthrough renders `WalkthroughMatchContent` from
-		// `onboardingSession.song` (DU-guaranteed present) — it never touches
-		// the real matching session, so skip prefetching it here.
 		if (sessionMode(context.onboardingSession) === "walkthrough") return;
 		const { session, queryClient } = context;
-		await queryClient.ensureQueryData(
+		const matchingSession = await queryClient.ensureQueryData(
 			matchingSessionQueryOptions(session.accountId),
 		);
+		if (matchingSession && matchingSession.totalSongs > 0) {
+			await queryClient.ensureQueryData(
+				songMatchesQueryOptions(matchingSession.snapshotId, 0),
+			);
+		}
 	},
+	pendingComponent: MatchPending,
 	component: MatchPage,
 });
 
 interface DisplayedSession {
 	snapshotId: string;
 	totalSongs: number;
+}
+
+function MatchPending() {
+	return <div className="mx-auto w-full max-w-[min(1600px,100%)]" />;
 }
 
 function MatchPage() {
