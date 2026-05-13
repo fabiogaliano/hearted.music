@@ -56,7 +56,7 @@ export function MatchingSession({
 			>
 				<div
 					ref={topGridRef}
-					className="origin-top transition-transform duration-500 ease-in-out"
+					className="origin-top transition-transform duration-300 ease-in-out"
 				>
 					<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
 						<SongSection

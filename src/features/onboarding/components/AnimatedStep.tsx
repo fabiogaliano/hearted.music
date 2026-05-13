@@ -24,7 +24,7 @@ const stepVariants = {
 	initial: { opacity: 0 },
 	animate: {
 		opacity: 1,
-		transition: { duration: 0.35, ease: EASE_OUT },
+		transition: { duration: 0.25, ease: EASE_OUT },
 	},
 	exit: {
 		opacity: 0,

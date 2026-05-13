@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { PlaylistMatchRow } from "@/components/ui/PlaylistMatchRow";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
@@ -33,6 +33,7 @@ export const MatchesSection = memo(function MatchesSection({
 	onNext,
 }: MatchesSectionProps) {
 	const theme = useTheme();
+	const prefersReducedMotion = useReducedMotion();
 	const reconnectAction = reconnectNeeded ? (
 		<SpotifyReconnectLink
 			label="Reconnect to Spotify"
@@ -75,9 +76,20 @@ export const MatchesSection = memo(function MatchesSection({
 					<motion.button
 						type="button"
 						onClick={onRefresh}
-						initial={{ opacity: 0, height: 0 }}
+						initial={prefersReducedMotion ? false : { opacity: 0, height: 0 }}
 						animate={{ opacity: 1, height: "auto" }}
-						exit={{ opacity: 0, height: 0 }}
+						exit={
+							prefersReducedMotion
+								? {}
+								: {
+										opacity: 0,
+										height: 0,
+										transition: {
+											duration: 0.15,
+											ease: [0.645, 0.045, 0.355, 1],
+										},
+									}
+						}
 						transition={{ duration: 0.25, ease: [0.165, 0.84, 0.44, 1] }}
 						className="mt-3 flex w-full items-center justify-between overflow-hidden rounded-lg px-4 py-2.5"
 						style={{

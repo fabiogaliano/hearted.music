@@ -62,7 +62,7 @@ export function PlaylistTrackList({
 						className="group flex items-center gap-4 py-3 transition-colors duration-150 ease-out"
 						style={{
 							borderBottom: `1px solid ${theme.border}`,
-							animation: `playlist-track-enter 200ms cubic-bezier(0.23, 1, 0.32, 1) ${index * 20}ms both`,
+							animation: `playlist-track-enter 200ms cubic-bezier(0.23, 1, 0.32, 1) ${index * 40}ms both`,
 						}}
 						onMouseEnter={(e) =>
 							(e.currentTarget.style.background = theme.surface)

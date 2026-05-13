@@ -286,6 +286,12 @@ code {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  [data-playlist-panel] [style*="animation"] {
+    animation: none !important;
+  }
+}
+
 /* Accessibility: disable View Transition animations for reduced motion */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),

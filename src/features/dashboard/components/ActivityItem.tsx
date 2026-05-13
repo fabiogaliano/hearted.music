@@ -44,6 +44,11 @@ export function ActivityItem({ item, showBorder }: ActivityItemProps) {
 
 	return (
 		<div
+			role="button"
+			tabIndex={0}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") e.currentTarget.click();
+			}}
 			className="group -mx-4 flex cursor-pointer items-start gap-4 px-4 py-4 transition-colors hover:bg-(--surface)"
 			style={
 				{

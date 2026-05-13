@@ -17,6 +17,7 @@
  * - High contrast: Clear text readability
  */
 import { useQuery } from "@tanstack/react-query";
+import { useReducedMotion } from "framer-motion";
 import { useState } from "react";
 import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
 import { addToPlaylist } from "@/lib/extension/spotify-client";
@@ -81,6 +82,7 @@ export function SongDetailPanel({
 	isWalkthrough = false,
 }: SongDetailPanelProps) {
 	const baseTheme = useThemeWithOverride(themeOverride);
+	const prefersReducedMotion = useReducedMotion();
 	const darkPalette = isDark ? getThemedDarkColors(baseTheme) : null;
 	const hue = extractHue(baseTheme.primary);
 
@@ -249,8 +251,9 @@ export function SongDetailPanel({
 			style={{
 				position: "fixed",
 				borderLeft: isDark ? "none" : `1px solid ${baseTheme.border}`,
-				transition:
-					"transform 300ms cubic-bezier(0.165, 0.84, 0.44, 1), opacity 300ms cubic-bezier(0.165, 0.84, 0.44, 1)",
+				transition: prefersReducedMotion
+					? "none"
+					: "transform 300ms cubic-bezier(0.165, 0.84, 0.44, 1), opacity 300ms cubic-bezier(0.165, 0.84, 0.44, 1)",
 				top: 0,
 				right: 0,
 				width: "clamp(380px, 45vw, calc(100vw - 280px))",

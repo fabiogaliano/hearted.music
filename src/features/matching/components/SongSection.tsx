@@ -29,11 +29,6 @@ export const SongSection = memo(function SongSection({
 			<AnimatePresence mode="wait">
 				<motion.div
 					key={songKey}
-					className="relative shrink-0 origin-top"
-					style={{
-						maxWidth: ALBUM_SIZE,
-						width: ALBUM_SIZE,
-					}}
 					initial={prefersReducedMotion ? false : { opacity: 0, x: 20 }}
 					animate={{
 						opacity: 1,
@@ -52,65 +47,48 @@ export const SongSection = memo(function SongSection({
 									},
 								}
 					}
+					style={{ willChange: "opacity, transform" }}
 				>
-					{albumArtUrl ? (
-						<img
-							src={albumArtUrl}
-							alt={song.album}
-							className="aspect-square w-full object-cover"
-						/>
-					) : (
-						<div className="aspect-square w-full">
-							<AlbumPlaceholder />
-						</div>
-					)}
-				</motion.div>
-			</AnimatePresence>
+					<div
+						className="relative shrink-0 origin-top"
+						style={{
+							maxWidth: ALBUM_SIZE,
+							width: ALBUM_SIZE,
+						}}
+					>
+						{albumArtUrl ? (
+							<img
+								src={albumArtUrl}
+								alt={song.album}
+								className="aspect-square w-full object-cover"
+							/>
+						) : (
+							<div className="aspect-square w-full">
+								<AlbumPlaceholder />
+							</div>
+						)}
+					</div>
 
-			<AnimatePresence mode="wait">
-				<motion.div
-					key={songKey}
-					className="mt-6"
-					style={{
-						willChange: "opacity, transform",
-					}}
-					initial={prefersReducedMotion ? false : { opacity: 0, x: 20 }}
-					animate={{
-						opacity: 1,
-						x: 0,
-						transition: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
-					}}
-					exit={
-						prefersReducedMotion
-							? {}
-							: {
-									opacity: 0,
-									x: -20,
-									transition: {
-										duration: 0.18,
-										ease: [0.645, 0.045, 0.355, 1],
-									},
-								}
-					}
-				>
-					<p
-						className="text-xs tracking-widest uppercase"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
-					>
-						{song.album}
-					</p>
-					<h2
-						className="mt-2 text-4xl leading-tight font-extralight"
-						style={{ fontFamily: fonts.display, color: theme.text }}
-					>
-						{song.name}
-					</h2>
-					<p
-						className="mt-2 text-lg"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
-					>
-						{song.artist}
-					</p>
+					<div className="mt-6">
+						<p
+							className="text-xs tracking-widest uppercase"
+							style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						>
+							{song.album}
+						</p>
+						<h2
+							className="mt-2 text-4xl leading-tight font-extralight"
+							style={{ fontFamily: fonts.display, color: theme.text }}
+						>
+							{song.name}
+						</h2>
+						<p
+							className="mt-2 text-lg"
+							style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						>
+							{song.artist}
+						</p>
+					</div>
 				</motion.div>
 			</AnimatePresence>
 		</div>

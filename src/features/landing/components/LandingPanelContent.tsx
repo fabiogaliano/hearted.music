@@ -35,7 +35,12 @@ function AnalysisToggle({
 
 	return (
 		<div
+			role="button"
+			tabIndex={0}
 			onClick={toggle}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") toggle();
+			}}
 			onMouseEnter={() => setHovered(true)}
 			onMouseLeave={() => setHovered(false)}
 			className="cursor-pointer select-none"
