@@ -76,15 +76,8 @@ export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
 	return (
 		<>
 			<StaggeredContent>
-				<p
-					className="text-xs tracking-widest uppercase"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
-				>
-					Step 01
-				</p>
-
 				<h2
-					className="mt-4 text-6xl leading-tight font-extralight"
+					className="text-6xl leading-tight font-extralight"
 					style={{ fontFamily: fonts.display, color: theme.text }}
 				>
 					Pick your
@@ -180,7 +173,7 @@ export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
 					type="button"
 					onClick={handleContinue}
 					disabled={isSaving}
-					className="group mt-16 inline-flex min-h-11 items-center gap-3 sm:mt-20"
+					className="group mt-16 inline-flex min-h-11 cursor-pointer items-center gap-3 sm:mt-20"
 					style={{
 						fontFamily: fonts.body,
 						color: theme.text,

@@ -59,7 +59,7 @@ function ActionContent({
 		return (
 			<>
 				<p
-					className="text-[11px] uppercase tracking-[0.12em]"
+					className="text-xs uppercase tracking-[0.12em]"
 					style={{
 						fontFamily: fonts.body,
 						color: theme.textMuted,
@@ -103,7 +103,7 @@ function ActionContent({
 					type="button"
 					onClick={onAccept}
 					disabled={isAdvancing}
-					className="self-start inline-flex items-center gap-2 rounded-[24px] px-6 py-2.5 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
+					className="self-start inline-flex cursor-pointer items-center gap-2 rounded-[24px] px-6 py-2.5 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
 					style={{
 						fontFamily: fonts.body,
 						background: theme.primary,
@@ -144,7 +144,7 @@ function ActionContent({
 					href={EXTENSION_STORE_URL}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="self-start inline-flex items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-80 active:scale-[0.98]"
+					className="self-start inline-flex cursor-pointer items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-80 active:scale-[0.98]"
 					style={{
 						fontFamily: fonts.body,
 						background: theme.surface,
@@ -188,7 +188,7 @@ function ActionContent({
 				rel="noopener noreferrer"
 				onClick={onSpotifyLoginClick}
 				onAuxClick={onSpotifyLoginClick}
-				className="self-start inline-flex items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-80 active:scale-[0.98]"
+				className="self-start inline-flex cursor-pointer items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-80 active:scale-[0.98]"
 				style={{
 					fontFamily: fonts.body,
 					background: theme.surface,
@@ -297,15 +297,8 @@ export function InstallExtensionStep() {
 	return (
 		<>
 			<StaggeredContent>
-				<p
-					className="text-xs tracking-widest uppercase"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
-				>
-					Step 02
-				</p>
-
 				<h2
-					className="mt-4 text-6xl leading-tight font-extralight"
+					className="text-6xl leading-tight font-extralight"
 					style={{ fontFamily: fonts.display, color: theme.text }}
 				>
 					everything you

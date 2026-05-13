@@ -277,7 +277,7 @@ export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
 					onClick={() => {
 						window.location.href = "/onboarding?step=welcome";
 					}}
-					className="group mt-16 inline-flex items-center gap-3"
+					className="group mt-16 inline-flex cursor-pointer items-center gap-3"
 					style={{ fontFamily: fonts.body, color: theme.text }}
 				>
 					<span className="text-lg font-medium tracking-wide">Start Over</span>

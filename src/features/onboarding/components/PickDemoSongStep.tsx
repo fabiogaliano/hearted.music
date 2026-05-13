@@ -131,15 +131,8 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 		<section ref={sectionRef} aria-label="Song selection">
 			<div ref={pinnedWrapperRef} className="flex h-dvh flex-col">
 				<header className="shrink-0 px-6 pt-12 pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] md:px-12 md:pl-[max(3rem,env(safe-area-inset-left))] md:pr-[max(3rem,env(safe-area-inset-right))]">
-					<p
-						className="text-xs uppercase tracking-widest"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
-					>
-						Step 04
-					</p>
-
 					<h2
-						className="mt-2 text-4xl font-extralight leading-tight md:text-6xl"
+						className="text-4xl font-extralight leading-tight md:text-6xl"
 						style={{ fontFamily: fonts.display, color: theme.text }}
 					>
 						Pick a <em className="font-normal">song</em>
@@ -188,7 +181,7 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 										aria-pressed={isSelected}
 										aria-label={`${isSelected ? "Deselect" : "Select"} ${song.name} by ${song.artist}`}
 										title={`${song.name} — ${song.artist}`}
-										className="group relative h-fit min-h-11 min-w-11"
+										className="group relative h-fit min-h-11 min-w-11 cursor-pointer"
 										style={{
 											...(isFocused && {
 												outline: `2px dashed ${theme.textMuted}`,
@@ -245,7 +238,7 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 						type="button"
 						onClick={handleContinue}
 						disabled={isSaving || selectedTrackId === null}
-						className="group inline-flex min-h-11 items-center gap-3"
+						className="group inline-flex min-h-11 cursor-pointer items-center gap-3"
 						style={{
 							fontFamily: fonts.body,
 							color: theme.text,

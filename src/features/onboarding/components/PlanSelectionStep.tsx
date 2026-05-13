@@ -272,7 +272,7 @@ export function PlanSelectionStep({
 					<button
 						type="button"
 						onClick={handleRetryConfirmation}
-						className="text-sm font-medium tracking-wide"
+						className="cursor-pointer text-sm font-medium tracking-wide"
 						style={{ fontFamily: fonts.body, color: theme.primary }}
 					>
 						Retry confirmation
@@ -280,7 +280,7 @@ export function PlanSelectionStep({
 					<button
 						type="button"
 						onClick={handleRetryPolling}
-						className="text-sm font-medium tracking-wide"
+						className="cursor-pointer text-sm font-medium tracking-wide"
 						style={{ fontFamily: fonts.body, color: theme.textMuted }}
 					>
 						Choose a different plan
@@ -528,7 +528,7 @@ function SuccessView({
 					type="button"
 					onClick={handleStart}
 					disabled={isCompleting}
-					className="group mt-20 inline-flex min-h-11 items-center gap-3"
+					className="group mt-20 inline-flex min-h-11 cursor-pointer items-center gap-3"
 					style={{
 						fontFamily: fonts.body,
 						color: theme.text,
@@ -584,7 +584,7 @@ function PlanCard({
 			type="button"
 			onClick={onClick}
 			disabled={disabled}
-			className="group flex w-full items-center justify-between rounded-lg px-6 py-5 text-left transition-opacity"
+			className="group flex w-full cursor-pointer items-center justify-between rounded-lg px-6 py-5 text-left transition-opacity"
 			style={{
 				fontFamily: fonts.body,
 				border: `1px solid ${highlighted ? theme.primary : theme.border}`,

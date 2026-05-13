@@ -131,7 +131,9 @@ export function Onboarding({ step, data }: OnboardingProps) {
 				<AnimatedStep stepKey={step}>{config.render(stepContext)}</AnimatedStep>
 			</AnimatePresence>
 
-			{!config.hideIndicator && <StepIndicator currentStep={step} />}
+			{!config.hideIndicator && !config.fullBleed && (
+				<StepIndicator currentStep={step} />
+			)}
 		</StepContainer>
 	);
 }
@@ -149,11 +151,11 @@ function StepIndicator({ currentStep }: { currentStep: OnboardingStep }) {
 	const shouldReduceMotion = useReducedMotion();
 
 	return (
-		<div className="mt-20 flex justify-center gap-3">
+		<div className="pointer-events-none fixed bottom-24 left-0 right-0 z-10 flex justify-center gap-3">
 			{INDICATOR_STEPS.map((s, i) => (
 				<motion.div
 					key={s}
-					layout={!shouldReduceMotion}
+					layout={shouldReduceMotion ? undefined : true}
 					transition={shouldReduceMotion ? undefined : indicatorTransition}
 					className="h-1.5 rounded-full"
 					style={{
