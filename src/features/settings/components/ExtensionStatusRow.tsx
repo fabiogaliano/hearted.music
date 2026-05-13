@@ -1,4 +1,3 @@
-import { Puzzle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { isExtensionInstalled } from "@/lib/extension/detect";
 import { fonts } from "@/lib/theme/fonts";
@@ -24,13 +23,7 @@ export function ExtensionStatusRow() {
 
 	return (
 		<div className="flex items-center justify-between py-3">
-			<div className="flex items-center gap-4">
-				<div
-					className="flex h-10 w-10 items-center justify-center rounded-full"
-					style={{ background: theme.surfaceDim }}
-				>
-					<Puzzle size={20} strokeWidth={1.5} style={{ color: theme.text }} />
-				</div>
+			<div>
 				<div>
 					<p
 						className="text-[20px] font-light"
@@ -49,11 +42,11 @@ export function ExtensionStatusRow() {
 				</div>
 			</div>
 			<span
-				className="flex items-center gap-2 text-xs tracking-widest uppercase transition-all duration-200"
+				className="flex items-center gap-2 text-xs tracking-widest uppercase transition-colors duration-150"
 				style={{ fontFamily: fonts.body, color: theme.textMuted }}
 			>
 				<span
-					className="h-2 w-2 rounded-full transition-all duration-200"
+					className="h-2 w-2 rounded-full transition-colors duration-150"
 					style={{
 						background: status === "connected" ? "#1DB954" : theme.border,
 					}}

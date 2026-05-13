@@ -71,6 +71,8 @@ export interface BillingState {
 	/** Normalized subscription lifecycle status (Stripe statuses collapsed). */
 	subscriptionStatus: NormalizedSubscriptionStatus;
 	cancelAtPeriodEnd: boolean;
+	/** ISO timestamp of the current subscription period end, if any. */
+	subscriptionPeriodEnd: string | null;
 	unlimitedAccess: UnlimitedAccess;
 	/** Resolved queue band for this account's pending jobs. */
 	queueBand: "low" | "standard" | "priority";

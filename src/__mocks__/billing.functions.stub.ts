@@ -36,7 +36,13 @@ export type CreatePortalSessionResponse =
 	| { success: false; error: "billing_service_error"; message: string };
 
 export interface PlanSelectionConfig {
+	billingEnabled: boolean;
 	quarterlyPlanEnabled: boolean;
+}
+
+export interface SubscriptionUpgradeQuote {
+	convertedCredits: number;
+	discountCents: number;
 }
 
 // ── Stub callables ─────────────────────────────────────────────────────
@@ -55,3 +61,6 @@ export const createPortalSession =
 	reject as unknown as () => Promise<CreatePortalSessionResponse>;
 export const getPlanSelectionConfig =
 	reject as unknown as () => Promise<PlanSelectionConfig>;
+export function getSubscriptionUpgradeQuote(): Promise<SubscriptionUpgradeQuote> {
+	return reject();
+}

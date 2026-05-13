@@ -1,4 +1,5 @@
 import type { Story } from "@ladle/react";
+import type { BillingState } from "@/lib/domains/billing/state";
 import { BillingSection } from "./BillingSection";
 
 function Wrapper({ children }: { children: React.ReactNode }) {
@@ -9,104 +10,184 @@ function Wrapper({ children }: { children: React.ReactNode }) {
 	);
 }
 
-export const FreePlan: Story = () => (
-	<Wrapper>
-		<BillingSection
-			billingState={{
-				plan: "free",
-				creditBalance: 15,
-				subscriptionStatus: "none",
-				cancelAtPeriodEnd: false,
-				unlimitedAccess: { kind: "none" },
-				queueBand: "low",
-			}}
-		/>
-	</Wrapper>
-);
-FreePlan.meta = { description: "Free plan with 15 song credits remaining." };
+function billing(overrides: Partial<BillingState> = {}): BillingState {
+	return {
+		plan: "free",
+		creditBalance: 0,
+		subscriptionStatus: "none",
+		cancelAtPeriodEnd: false,
+		subscriptionPeriodEnd: null,
+		unlimitedAccess: { kind: "none" },
+		queueBand: "low",
+		...overrides,
+	};
+}
 
-export const SongPack: Story = () => (
-	<Wrapper>
-		<BillingSection
-			billingState={{
-				plan: "free",
-				creditBalance: 450,
-				subscriptionStatus: "none",
-				cancelAtPeriodEnd: false,
-				unlimitedAccess: { kind: "none" },
-				queueBand: "standard",
-			}}
-		/>
-	</Wrapper>
-);
-SongPack.meta = { description: "Song pack purchased — 450 credits remaining." };
+// ── Free ────────────────────────────────────────────────────────────
 
-export const ActiveYearly: Story = () => (
+export const Free: Story = () => (
 	<Wrapper>
-		<BillingSection
-			billingState={{
-				plan: "yearly",
-				creditBalance: 0,
-				subscriptionStatus: "active",
-				cancelAtPeriodEnd: false,
-				unlimitedAccess: { kind: "subscription" },
-				queueBand: "priority",
-			}}
-		/>
+		<BillingSection billingState={billing()} />
 	</Wrapper>
 );
-ActiveYearly.meta = {
-	description: "Active yearly subscription. Shows 'Manage subscription' link.",
+Free.meta = {
+	description: "New free user. Shows pack + unlimited CTAs, no discount.",
 };
 
-export const EndingSubscription: Story = () => (
+// ── Song Pack ───────────────────────────────────────────────────────
+
+export const PackWithBalance: Story = () => (
 	<Wrapper>
 		<BillingSection
-			billingState={{
-				plan: "yearly",
-				creditBalance: 0,
-				subscriptionStatus: "ending",
-				cancelAtPeriodEnd: true,
-				unlimitedAccess: { kind: "subscription" },
-				queueBand: "priority",
-			}}
+			billingState={billing({ creditBalance: 496, queueBand: "standard" })}
 		/>
 	</Wrapper>
 );
-EndingSubscription.meta = {
-	description: "Subscription will cancel at period end (orange dot).",
+PackWithBalance.meta = {
+	description:
+		"Pack user, 496 remaining. Discount on unlimited, confirmation dialog on Song Pack click.",
 };
 
-export const PastDue: Story = () => (
+// ── Subscription (active / ending / past due) ───────────────────────
+
+export const SubscriptionActive: Story = () => (
+	<Wrapper>
+		<div style={{ display: "flex", flexDirection: "column", gap: 48 }}>
+			<div>
+				<p
+					style={{
+						fontSize: 11,
+						textTransform: "uppercase",
+						letterSpacing: "0.1em",
+						opacity: 0.4,
+						marginBottom: 12,
+					}}
+				>
+					Backstage Pass
+				</p>
+				<BillingSection
+					billingState={billing({
+						plan: "yearly",
+						subscriptionStatus: "active",
+						unlimitedAccess: { kind: "subscription" },
+						queueBand: "priority",
+					})}
+				/>
+			</div>
+			<div>
+				<p
+					style={{
+						fontSize: 11,
+						textTransform: "uppercase",
+						letterSpacing: "0.1em",
+						opacity: 0.4,
+						marginBottom: 12,
+					}}
+				>
+					3-Month Unlimited
+				</p>
+				<BillingSection
+					billingState={billing({
+						plan: "quarterly",
+						subscriptionStatus: "active",
+						unlimitedAccess: { kind: "subscription" },
+						queueBand: "standard",
+					})}
+				/>
+			</div>
+		</div>
+	</Wrapper>
+);
+SubscriptionActive.meta = {
+	description:
+		"Active subscriptions — yearly and quarterly side by side. Green dot, portal link.",
+};
+
+export const SubscriptionEnding: Story = () => (
+	<Wrapper>
+		<div style={{ display: "flex", flexDirection: "column", gap: 48 }}>
+			<div>
+				<p
+					style={{
+						fontSize: 11,
+						textTransform: "uppercase",
+						letterSpacing: "0.1em",
+						opacity: 0.4,
+						marginBottom: 12,
+					}}
+				>
+					Backstage Pass
+				</p>
+				<BillingSection
+					billingState={billing({
+						plan: "yearly",
+						subscriptionStatus: "ending",
+						cancelAtPeriodEnd: true,
+						subscriptionPeriodEnd: "2027-02-14T00:00:00Z",
+						unlimitedAccess: { kind: "subscription" },
+						queueBand: "priority",
+					})}
+				/>
+			</div>
+			<div>
+				<p
+					style={{
+						fontSize: 11,
+						textTransform: "uppercase",
+						letterSpacing: "0.1em",
+						opacity: 0.4,
+						marginBottom: 12,
+					}}
+				>
+					3-Month Unlimited
+				</p>
+				<BillingSection
+					billingState={billing({
+						plan: "quarterly",
+						subscriptionStatus: "ending",
+						cancelAtPeriodEnd: true,
+						subscriptionPeriodEnd: "2026-08-11T00:00:00Z",
+						unlimitedAccess: { kind: "subscription" },
+						queueBand: "standard",
+					})}
+				/>
+			</div>
+		</div>
+	</Wrapper>
+);
+SubscriptionEnding.meta = {
+	description:
+		"Canceling subscriptions — both plans. Orange dot, 'Cancels at end of period'.",
+};
+
+export const SubscriptionPastDue: Story = () => (
 	<Wrapper>
 		<BillingSection
-			billingState={{
+			billingState={billing({
 				plan: "yearly",
-				creditBalance: 0,
 				subscriptionStatus: "past_due",
-				cancelAtPeriodEnd: false,
 				unlimitedAccess: { kind: "subscription" },
 				queueBand: "priority",
-			}}
+			})}
 		/>
 	</Wrapper>
 );
-PastDue.meta = { description: "Subscription is past due (red dot)." };
+SubscriptionPastDue.meta = {
+	description: "Payment failed. Red dot, 'Payment failed', portal link.",
+};
+
+// ── Self-hosted ─────────────────────────────────────────────────────
 
 export const SelfHosted: Story = () => (
 	<Wrapper>
 		<BillingSection
-			billingState={{
-				plan: "free",
-				creditBalance: 0,
-				subscriptionStatus: "none",
-				cancelAtPeriodEnd: false,
+			billingState={billing({
 				unlimitedAccess: { kind: "self_hosted" },
 				queueBand: "priority",
-			}}
+			})}
 		/>
 	</Wrapper>
 );
 SelfHosted.meta = {
-	description: "Self-hosted unlimited — no portal link, no pack entry.",
+	description: "Self-hosted unlimited — no actions, no portal.",
 };

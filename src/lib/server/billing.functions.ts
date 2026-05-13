@@ -31,6 +31,31 @@ export const getBillingState = createServerFn({ method: "GET" })
 		return result.value;
 	});
 
+export interface SubscriptionUpgradeQuote {
+	convertedCredits: number;
+	discountCents: number;
+}
+
+export const getSubscriptionUpgradeQuote = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.handler(async ({ context }): Promise<SubscriptionUpgradeQuote> => {
+		const supabase = createAdminSupabaseClient();
+		const { data, error } = await supabase
+			.rpc("quote_subscription_upgrade_conversion", {
+				p_account_id: context.session.accountId,
+			})
+			.single();
+
+		if (error) {
+			throw new Error("Failed to load subscription upgrade quote");
+		}
+
+		return {
+			convertedCredits: data.converted_credits,
+			discountCents: data.discount_cents,
+		};
+	});
+
 const RequestSongUnlockSchema = z.object({
 	songIds: z.array(z.string().uuid()).min(1).max(500),
 });

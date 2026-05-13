@@ -24,6 +24,7 @@ function makeBillingState(overrides: Partial<BillingState> = {}): BillingState {
 		creditBalance: 10,
 		subscriptionStatus: "none",
 		cancelAtPeriodEnd: false,
+		subscriptionPeriodEnd: null,
 		unlimitedAccess: { kind: "none" },
 		queueBand: "standard",
 		...overrides,

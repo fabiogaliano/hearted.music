@@ -1,6 +1,7 @@
-import { CreditCard, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
 import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
@@ -33,6 +34,16 @@ function getStatusColor(
 		case "none":
 			return theme.border;
 	}
+}
+
+function formatPeriodEnd(iso: string | null): string {
+	if (!iso) return "end of period";
+	const date = new Date(iso);
+	return date.toLocaleDateString("en-US", {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+	});
 }
 
 export function BillingSection({ billingState }: BillingSectionProps) {
@@ -79,85 +90,84 @@ export function BillingSection({ billingState }: BillingSectionProps) {
 
 	return (
 		<section>
-			<div className="flex items-center justify-between py-3">
-				<div className="flex items-center gap-4">
-					<div
-						className="flex h-10 w-10 items-center justify-center rounded-full"
-						style={{ background: theme.surfaceDim }}
-					>
-						<CreditCard
-							size={20}
-							strokeWidth={1.5}
-							style={{ color: theme.text }}
-						/>
-					</div>
-					<div>
-						<p
-							className="text-[20px] font-light"
-							style={{ fontFamily: fonts.display, color: theme.text }}
-						>
+			<p
+				className="text-[20px] font-light"
+				style={{ fontFamily: fonts.display, color: theme.text }}
+			>
+				Billing
+			</p>
+
+			<div className="mt-3">
+				<p
+					className="text-xs tracking-widest uppercase"
+					style={{
+						fontFamily: fonts.body,
+						color: theme.textMuted,
+						opacity: 0.6,
+					}}
+				>
+					Current plan
+				</p>
+				<p
+					className="mt-1 text-sm"
+					style={{ fontFamily: fonts.body, color: theme.text }}
+				>
+					{isSelfHosted && "Unlimited (Self-hosted)"}
+					{!isSelfHosted && hasSubscription && (
+						<>
 							{planLabel}
-						</p>
-						<p
-							className="mt-1 text-sm"
-							style={{ fontFamily: fonts.body, color: theme.textMuted }}
-						>
-							{isSelfHosted && "Unlimited (Self-hosted)"}
-							{!isSelfHosted && hasSubscription && (
-								<>
-									Subscription{" "}
-									<span className="inline-flex items-center gap-1.5">
-										<span
-											className="inline-block h-2 w-2 rounded-full"
-											style={{
-												background: getStatusColor(
-													billingState.subscriptionStatus,
-													theme,
-												),
-											}}
-										/>
-										{STATUS_LABELS[billingState.subscriptionStatus]}
-									</span>
-								</>
-							)}
-							{!isSelfHosted && !hasSubscription && balance !== null && (
-								<>{balance} songs to explore</>
-							)}
-							{!isSelfHosted &&
-								!hasSubscription &&
-								balance === null &&
-								"No active subscription"}
-						</p>
-					</div>
-				</div>
+							<span
+								className="ml-3 inline-flex items-center gap-2"
+								style={{ color: theme.textMuted }}
+							>
+								<span
+									className="inline-block h-2 w-2 rounded-full"
+									style={{
+										background: getStatusColor(
+											billingState.subscriptionStatus,
+											theme,
+										),
+									}}
+								/>
+								{billingState.subscriptionStatus === "ending"
+									? `Active until ${formatPeriodEnd(billingState.subscriptionPeriodEnd)}`
+									: billingState.subscriptionStatus === "past_due"
+										? "Payment failed"
+										: STATUS_LABELS[billingState.subscriptionStatus]}
+							</span>
+						</>
+					)}
+					{!isSelfHosted && !hasSubscription && balance !== null && (
+						<>
+							{planLabel}
+							<span style={{ color: theme.textMuted }}>
+								{" · "}
+								{balance} songs remaining
+							</span>
+						</>
+					)}
+					{!isSelfHosted && !hasSubscription && balance === null && "Free"}
+				</p>
 			</div>
 
-			{(showPortalButton || showPackEntry) && (
-				<div
-					className="mt-4 flex gap-4"
-					style={{ paddingLeft: "calc(2.5rem + 1rem)" }}
-				>
-					{showPortalButton && (
-						<button
-							type="button"
-							onClick={handlePortalLaunch}
-							disabled={isLoadingPortal}
-							className="inline-flex cursor-pointer items-center gap-2 text-xs font-normal tracking-widest uppercase transition-all duration-200 hover:opacity-70 disabled:cursor-wait disabled:opacity-50"
-							style={{ fontFamily: fonts.body, color: theme.textMuted }}
-						>
-							{isLoadingPortal ? "Opening…" : "Manage subscription"}
-							{!isLoadingPortal && <ExternalLink size={12} strokeWidth={1.5} />}
-						</button>
-					)}
-					{showPackEntry && (
-						<button
-							type="button"
-							className="inline-flex cursor-pointer items-center gap-2 text-xs font-normal tracking-widest uppercase transition-all duration-200 hover:opacity-70"
-							style={{ fontFamily: fonts.body, color: theme.textMuted }}
-						>
-							Buy song packs
-						</button>
-					)}
+			{showPortalButton && (
+				<div className="mt-4">
+					<button
+						type="button"
+						onClick={handlePortalLaunch}
+						disabled={isLoadingPortal}
+						className="inline-flex cursor-pointer items-center gap-2 text-xs font-normal tracking-widest uppercase transition-opacity duration-150 hover:opacity-70 disabled:cursor-wait disabled:opacity-50"
+						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					>
+						{isLoadingPortal ? "Opening…" : "Manage subscription"}
+						{!isLoadingPortal && <ExternalLink size={12} strokeWidth={1.5} />}
+					</button>
+				</div>
+			)}
+
+			{showPackEntry && (
+				<div className="mt-4">
+					<PaywallCTA billingState={billingState} compact />
 				</div>
 			)}
 		</section>

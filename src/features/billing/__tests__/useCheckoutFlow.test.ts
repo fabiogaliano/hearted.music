@@ -17,6 +17,7 @@ const billingState: BillingState = {
 	creditBalance: 30,
 	subscriptionStatus: "none",
 	cancelAtPeriodEnd: false,
+	subscriptionPeriodEnd: null,
 	unlimitedAccess: { kind: "none" },
 	queueBand: "low",
 };

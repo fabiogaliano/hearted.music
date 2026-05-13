@@ -22,6 +22,7 @@ const FREE_DEFAULT: BillingState = {
 	creditBalance: 0,
 	subscriptionStatus: "none",
 	cancelAtPeriodEnd: false,
+	subscriptionPeriodEnd: null,
 	unlimitedAccess: { kind: "none" },
 	queueBand: "low",
 };
@@ -153,6 +154,7 @@ export async function readBillingState(
 		creditBalance,
 		subscriptionStatus,
 		cancelAtPeriodEnd,
+		subscriptionPeriodEnd: row.subscription_period_end,
 		unlimitedAccess,
 		queueBand,
 	});

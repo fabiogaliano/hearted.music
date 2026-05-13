@@ -8,6 +8,7 @@ function makeFreeBillingState(creditBalance = 0): BillingState {
 		creditBalance,
 		subscriptionStatus: "none",
 		cancelAtPeriodEnd: false,
+		subscriptionPeriodEnd: null,
 		unlimitedAccess: { kind: "none" },
 		queueBand: "low",
 	};
