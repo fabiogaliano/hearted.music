@@ -30,7 +30,7 @@ export function SpotifyLoginButton({
 	return (
 		<a
 			href="/login"
-			className="relative inline-block px-6 py-3 text-sm tracking-widest uppercase transition-transform duration-150 hover:scale-105 active:scale-[0.97]"
+			className="relative inline-block px-6 py-3 text-sm tracking-widest uppercase transition-transform duration-150 hover:scale-105 active:scale-[0.98]"
 			style={{
 				background: isDark ? theme.textOnPrimary : theme.primary,
 				color: isDark ? theme.primary : theme.textOnPrimary,

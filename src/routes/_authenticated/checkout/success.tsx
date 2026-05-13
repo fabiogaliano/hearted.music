@@ -121,7 +121,7 @@ function CheckoutSuccessPage() {
 
 				<Link
 					to="/dashboard"
-					className="group mt-8 inline-flex items-center gap-2 transition-opacity duration-200 hover:opacity-80"
+					className="group mt-8 inline-flex items-center gap-2 transition-opacity duration-200 hover:opacity-70"
 					style={{ fontFamily: fonts.body, color: theme.text }}
 				>
 					<span className="text-sm font-medium tracking-widest uppercase">
@@ -163,7 +163,7 @@ function CheckoutSuccessPage() {
 
 			<Link
 				to="/dashboard"
-				className="group mt-8 inline-flex items-center gap-2 transition-opacity duration-200 hover:opacity-80"
+				className="group mt-8 inline-flex items-center gap-2 transition-opacity duration-200 hover:opacity-70"
 				style={{ fontFamily: fonts.body, color: theme.text }}
 			>
 				<span className="text-sm font-medium tracking-widest uppercase">

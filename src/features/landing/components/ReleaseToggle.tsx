@@ -17,7 +17,7 @@ export function ReleaseToggle({ isReleased, onToggle }: ReleaseToggleProps) {
 	const theme = useTheme();
 	return (
 		<div
-			className="fixed right-6 bottom-6 z-50 flex items-center gap-3 rounded-full px-4 py-2 shadow-lg backdrop-blur-sm transition-transform duration-200 hover:scale-105 active:scale-[0.97]"
+			className="fixed right-6 bottom-6 z-50 flex items-center gap-3 rounded-full px-4 py-2 shadow-lg backdrop-blur-sm transition-transform duration-200 hover:scale-105 active:scale-[0.98]"
 			style={{
 				background: `${theme.surface}f0`,
 				border: `1px solid ${theme.border}`,

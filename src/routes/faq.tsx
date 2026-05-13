@@ -35,7 +35,7 @@ function FaqPage() {
 					<div className="pt-10 pb-8 px-8 space-y-1">
 						<p
 							style={{ color: theme.textMuted }}
-							className="text-[10px] uppercase tracking-widest mb-4"
+							className="text-xs uppercase tracking-widest mb-4"
 						>
 							sections
 						</p>

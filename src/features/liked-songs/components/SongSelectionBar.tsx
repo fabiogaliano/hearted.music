@@ -25,7 +25,7 @@ export function SongSelectionBar({
 	return (
 		<div
 			ref={containerRef}
-			className="sticky top-0 z-50 flex items-center justify-between px-6 py-4"
+			className="sticky top-0 z-50 -mx-3 flex items-center justify-between px-9 py-4"
 			style={{
 				background: theme.bg,
 				borderTop: `1px solid ${theme.border}`,
@@ -35,7 +35,7 @@ export function SongSelectionBar({
 				<button
 					type="button"
 					onClick={onCancel}
-					className="flex cursor-pointer items-center gap-1 rounded-full border-0 bg-transparent px-3 py-1.5 text-xs transition-[transform,opacity] duration-150 hover:opacity-80 active:scale-[0.98]"
+					className="flex cursor-pointer items-center gap-1 border-0 bg-transparent px-3 py-1.5 text-xs transition-[transform,opacity] duration-150 hover:opacity-70 active:scale-[0.98]"
 					style={{ fontFamily: fonts.body, color: theme.textMuted }}
 				>
 					<X size={14} />

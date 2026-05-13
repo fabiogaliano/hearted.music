@@ -1,5 +1,5 @@
-import { memo } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { memo } from "react";
 import { PlaylistMatchRow } from "@/components/ui/PlaylistMatchRow";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
@@ -35,12 +35,7 @@ export const MatchesSection = memo(function MatchesSection({
 	const theme = useTheme();
 	const prefersReducedMotion = useReducedMotion();
 	const reconnectAction = reconnectNeeded ? (
-		<SpotifyReconnectLink
-			label="Reconnect to Spotify"
-			surface={theme.surface}
-			border={theme.border}
-			text={theme.text}
-		/>
+		<SpotifyReconnectLink label="Reconnect to Spotify" />
 	) : undefined;
 
 	return (
@@ -52,19 +47,15 @@ export const MatchesSection = memo(function MatchesSection({
 		>
 			<div className="flex items-center gap-2">
 				<p
-					className="text-xs tracking-widest uppercase"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body }}
 				>
 					Best Matches
 				</p>
 				{isDemo && (
 					<span
-						className="rounded-full px-2 py-0.5 text-[10px] tracking-widest uppercase"
-						style={{
-							fontFamily: fonts.body,
-							color: theme.textMuted,
-							background: theme.surface,
-						}}
+						className="theme-surface-bg theme-text-muted rounded-full px-2 py-0.5 text-xs tracking-widest uppercase"
+						style={{ fontFamily: fonts.body }}
 					>
 						Demo
 					</span>
@@ -91,18 +82,11 @@ export const MatchesSection = memo(function MatchesSection({
 									}
 						}
 						transition={{ duration: 0.25, ease: [0.165, 0.84, 0.44, 1] }}
-						className="mt-3 flex w-full items-center justify-between overflow-hidden rounded-lg px-4 py-2.5"
-						style={{
-							fontFamily: fonts.body,
-							background: theme.surface,
-							color: theme.text,
-						}}
+						className="theme-surface-bg theme-text mt-3 flex w-full items-center justify-between overflow-hidden rounded-lg px-4 py-2.5"
+						style={{ fontFamily: fonts.body }}
 					>
 						<span className="text-xs">Real matches are ready</span>
-						<span
-							className="text-xs font-medium tracking-wider uppercase"
-							style={{ color: theme.primary }}
-						>
+						<span className="theme-primary text-xs font-medium tracking-wider uppercase">
 							Show
 						</span>
 					</motion.button>
@@ -127,10 +111,9 @@ export const MatchesSection = memo(function MatchesSection({
 								<NumberFlow
 									value={Math.round(playlist.matchScore * 100)}
 									suffix="%"
-									className="font-extralight tabular-nums"
+									className={`${isGoodMatch ? "theme-text" : "theme-text-muted"} font-extralight tabular-nums`}
 									style={{
 										fontFamily: fonts.display,
-										color: isGoodMatch ? theme.text : theme.textMuted,
 										fontSize: "2rem",
 									}}
 								/>
@@ -161,8 +144,8 @@ export const MatchesSection = memo(function MatchesSection({
 				<button
 					type="button"
 					onClick={onDismiss}
-					className="text-xs tracking-widest uppercase transition-[transform,opacity] duration-100 hover:opacity-70 active:scale-[0.98]"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-xs tracking-widest uppercase transition-[transform,opacity] duration-100 hover:opacity-70 active:scale-[0.98]"
+					style={{ fontFamily: fonts.body }}
 				>
 					Dismiss
 				</button>
@@ -170,14 +153,11 @@ export const MatchesSection = memo(function MatchesSection({
 				<button
 					type="button"
 					onClick={onNext}
-					className="group inline-flex items-center gap-3 transition-transform duration-100 active:scale-[0.98]"
-					style={{ fontFamily: fonts.body, color: theme.text }}
+					className="theme-text group inline-flex items-center gap-3 transition-transform duration-100 active:scale-[0.98]"
+					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-base font-medium tracking-wide">Next Song</span>
-					<span
-						className="inline-block transition-transform group-hover:translate-x-1"
-						style={{ color: theme.textMuted }}
-					>
+					<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 						&rarr;
 					</span>
 				</button>

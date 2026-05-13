@@ -66,7 +66,7 @@ function LoginPage() {
 				<div className="text-center">
 					<Link
 						to="/"
-						className="text-sm text-neutral-500 transition-[color,transform] duration-150 hover:text-neutral-700 active:scale-[0.97]"
+						className="text-sm text-neutral-500 transition-[color,transform] duration-150 hover:text-neutral-700 active:scale-[0.98]"
 					>
 						Back
 					</Link>

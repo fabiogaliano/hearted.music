@@ -17,7 +17,7 @@ export function NavItem({ to, label, badge, isActive }: NavItemProps) {
 			className="flex w-full items-center justify-between py-2 text-left"
 		>
 			<span
-				className="text-[13px] tracking-widest uppercase"
+				className="text-xs tracking-widest uppercase"
 				style={{
 					fontFamily: fonts.body,
 					color: isActive ? theme.text : theme.textMuted,
@@ -28,7 +28,7 @@ export function NavItem({ to, label, badge, isActive }: NavItemProps) {
 			</span>
 			{badge !== undefined && badge > 0 && (
 				<span
-					className="text-[11px] tabular-nums"
+					className="text-xs tabular-nums"
 					style={{
 						fontFamily: fonts.body,
 						color: theme.textMuted,

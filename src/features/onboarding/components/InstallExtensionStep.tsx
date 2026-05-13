@@ -24,7 +24,6 @@ import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { resetSyncJobs } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import type { ThemeConfig } from "@/lib/theme/types";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import { ExtensionSetupTrail } from "./ExtensionSetupTrail";
 import { StaggeredContent } from "./StaggeredContent";
@@ -37,7 +36,6 @@ const SPOTIFY_LOGIN_URL =
 // ── Action content — right column ─────────────────────────────────────────
 
 function ActionContent({
-	theme,
 	isExtensionDetected,
 	isSpotifyConnected,
 	onAccept,
@@ -45,7 +43,6 @@ function ActionContent({
 	spotifyLoginHref,
 	isAdvancing,
 }: {
-	theme: ThemeConfig;
 	isExtensionDetected: boolean;
 	isSpotifyConnected: boolean;
 	onAccept: () => void;
@@ -59,12 +56,8 @@ function ActionContent({
 		return (
 			<>
 				<p
-					className="text-xs uppercase tracking-[0.12em]"
-					style={{
-						fontFamily: fonts.body,
-						color: theme.textMuted,
-						opacity: 0.45,
-					}}
+					className="theme-text-muted text-xs uppercase tracking-[0.12em]"
+					style={{ fontFamily: fonts.body, opacity: 0.45 }}
 				>
 					here's what hearted can see.
 				</p>
@@ -76,22 +69,18 @@ function ActionContent({
 						(item) => (
 							<li key={item} className="flex items-center gap-2.5">
 								<span
+									className="theme-text-muted-bg"
 									style={{
 										width: 4,
 										height: 4,
 										borderRadius: "100%",
 										flexShrink: 0,
-										background: theme.textMuted,
 										opacity: 0.35,
 									}}
 								/>
 								<span
-									className="text-[13px]"
-									style={{
-										fontFamily: fonts.body,
-										color: theme.textMuted,
-										opacity: 0.65,
-									}}
+									className="theme-text-muted text-[13px]"
+									style={{ fontFamily: fonts.body, opacity: 0.65 }}
 								>
 									{item}
 								</span>
@@ -103,12 +92,9 @@ function ActionContent({
 					type="button"
 					onClick={onAccept}
 					disabled={isAdvancing}
-					className="self-start inline-flex cursor-pointer items-center gap-2 rounded-[24px] px-6 py-2.5 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
+					className="theme-primary-action self-start inline-flex cursor-pointer items-center gap-2 rounded-full px-6 py-2.5 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
 					style={{
 						fontFamily: fonts.body,
-						background: theme.primary,
-						color: theme.textOnPrimary,
-						border: "1px solid transparent",
 						opacity: isAdvancing ? 0.4 : 1,
 						cursor: isAdvancing ? "default" : "pointer",
 					}}
@@ -124,18 +110,14 @@ function ActionContent({
 			<>
 				<div>
 					<p
-						className="text-[15px] font-light"
-						style={{ fontFamily: fonts.body, color: theme.text, opacity: 0.7 }}
+						className="theme-text text-[15px] font-light"
+						style={{ fontFamily: fonts.body, opacity: 0.7 }}
 					>
 						the sync starts here.
 					</p>
 					<p
-						className="mt-1 text-[13px] leading-relaxed"
-						style={{
-							fontFamily: fonts.body,
-							color: theme.textMuted,
-							opacity: 0.5,
-						}}
+						className="theme-text-muted mt-1 text-[13px] leading-relaxed"
+						style={{ fontFamily: fonts.body, opacity: 0.5 }}
 					>
 						reads your liked songs. never your login.
 					</p>
@@ -144,13 +126,8 @@ function ActionContent({
 					href={EXTENSION_STORE_URL}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="self-start inline-flex cursor-pointer items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-80 active:scale-[0.98]"
-					style={{
-						fontFamily: fonts.body,
-						background: theme.surface,
-						border: `1px solid ${theme.border}`,
-						color: theme.text,
-					}}
+					className="hover-border-brighten self-start inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2 text-sm font-medium uppercase tracking-widest active:scale-[0.98]"
+					style={{ fontFamily: fonts.body }}
 				>
 					add to Chrome
 					<span className="text-xs" style={{ opacity: 0.45 }}>
@@ -166,18 +143,14 @@ function ActionContent({
 		<>
 			<div>
 				<p
-					className="text-[15px] font-light"
-					style={{ fontFamily: fonts.body, color: theme.text, opacity: 0.7 }}
+					className="theme-text text-[15px] font-light"
+					style={{ fontFamily: fonts.body, opacity: 0.7 }}
 				>
 					one more thing.
 				</p>
 				<p
-					className="mt-1 text-[13px] leading-relaxed"
-					style={{
-						fontFamily: fonts.body,
-						color: theme.textMuted,
-						opacity: 0.5,
-					}}
+					className="theme-text-muted mt-1 text-[13px] leading-relaxed"
+					style={{ fontFamily: fonts.body, opacity: 0.5 }}
 				>
 					the sync only works when you're logged into Spotify.
 				</p>
@@ -188,13 +161,8 @@ function ActionContent({
 				rel="noopener noreferrer"
 				onClick={onSpotifyLoginClick}
 				onAuxClick={onSpotifyLoginClick}
-				className="self-start inline-flex cursor-pointer items-center gap-2 rounded-[24px] px-5 py-2 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-80 active:scale-[0.98]"
-				style={{
-					fontFamily: fonts.body,
-					background: theme.surface,
-					border: `1px solid ${theme.border}`,
-					color: theme.text,
-				}}
+				className="hover-border-brighten self-start inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2 text-sm font-medium uppercase tracking-widest active:scale-[0.98]"
+				style={{ fontFamily: fonts.body }}
 			>
 				log in to Spotify
 				<span className="text-xs" style={{ opacity: 0.45 }}>
@@ -298,8 +266,8 @@ export function InstallExtensionStep() {
 		<>
 			<StaggeredContent>
 				<h2
-					className="text-6xl leading-tight font-extralight"
-					style={{ fontFamily: fonts.display, color: theme.text }}
+					className="theme-text text-6xl leading-tight font-extralight"
+					style={{ fontFamily: fonts.display }}
 				>
 					everything you
 					<br />
@@ -310,10 +278,9 @@ export function InstallExtensionStep() {
 					{/* Left column: supporting text + trail */}
 					<div className="shrink-0 md:w-[220px]">
 						<p
-							className="text-[14px] leading-relaxed"
+							className="theme-text-muted text-[14px] leading-relaxed"
 							style={{
 								fontFamily: fonts.body,
-								color: theme.textMuted,
 								opacity: 0.55,
 								maxWidth: "26ch",
 							}}
@@ -331,15 +298,11 @@ export function InstallExtensionStep() {
 					</div>
 
 					{/* Vertical divider — desktop only */}
-					<div
-						className="hidden md:block w-px self-stretch"
-						style={{ background: theme.border }}
-					/>
+					<div className="theme-border-bg hidden w-px self-stretch md:block" />
 
 					{/* Right column: state-driven action content */}
 					<div className="flex flex-1 flex-col justify-center gap-5">
 						<ActionContent
-							theme={theme}
 							isExtensionDetected={isExtensionDetected}
 							isSpotifyConnected={isSpotifyConnected}
 							onAccept={handleAccept}
@@ -352,10 +315,9 @@ export function InstallExtensionStep() {
 			</StaggeredContent>
 
 			<div
-				className="fixed bottom-6 left-0 right-0 flex items-center justify-center gap-6"
+				className="theme-text-muted fixed right-0 bottom-6 left-0 flex items-center justify-center gap-6"
 				style={
 					{
-						color: theme.textMuted,
 						opacity: 0.6,
 						"--kbd-text-color": theme.textMuted,
 						"--kbd-bg-color": `${theme.text}10`,

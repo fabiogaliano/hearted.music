@@ -238,7 +238,7 @@ export function LandingHero({
 								</h1>
 								<button
 									ref={navBtnRef}
-									className="hero-nav-btn pointer-events-auto px-5 py-2 text-sm tracking-widest uppercase transition-transform duration-150 hover:scale-105 active:scale-[0.97] xl:hidden"
+									className="hero-nav-btn pointer-events-auto px-5 py-2 text-sm tracking-widest uppercase transition-transform duration-150 hover:scale-105 active:scale-[0.98] xl:hidden"
 									style={{
 										background: "rgba(255,255,255,0.2)",
 										color: "#ffffff",

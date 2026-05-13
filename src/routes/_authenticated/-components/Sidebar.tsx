@@ -102,7 +102,7 @@ export function Sidebar({
 					</p>
 					{userBalance != null && (
 						<p
-							className="text-[11px]"
+							className="text-xs"
 							style={{ fontFamily: fonts.body, color: theme.textMuted }}
 						>
 							{userBalance} {userBalance === 1 ? "song" : "songs"} to explore

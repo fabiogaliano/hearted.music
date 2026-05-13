@@ -378,7 +378,7 @@ export function LikedSongsPage({
 					title="Toggle dark mode (⌘D)"
 				>
 					<span
-						className="text-[10px] tracking-widest uppercase"
+						className="text-xs tracking-widest uppercase"
 						style={{ fontFamily: fonts.body, color: theme.textMuted }}
 					>
 						{isDarkMode ? "Dark" : "Light"}

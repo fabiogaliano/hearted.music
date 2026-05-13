@@ -183,11 +183,10 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 						type="button"
 						onClick={handlePackClick}
 						disabled={isBusy}
-						className="w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+						className="w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
 						style={{
 							fontFamily: fonts.body,
 							borderColor: theme.border,
-							background: "transparent",
 						}}
 					>
 						<div className="flex items-baseline justify-between">
@@ -225,11 +224,10 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 							type="button"
 							onClick={() => startCheckout(UNLIMITED_YEARLY)}
 							disabled={isBusy}
-							className="w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+							className="w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
 							style={{
 								fontFamily: fonts.body,
 								borderColor: theme.border,
-								background: "transparent",
 							}}
 						>
 							<div className="flex items-baseline justify-between">
@@ -278,7 +276,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 								</ul>
 								{discountNote && (
 									<p
-										className="shrink-0 self-start text-[11px]"
+										className="shrink-0 self-start text-xs"
 										style={{ color: theme.textMuted, opacity: 0.7 }}
 									>
 										{discountNote}
@@ -292,11 +290,10 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 								type="button"
 								onClick={() => startCheckout(UNLIMITED_QUARTERLY)}
 								disabled={isBusy}
-								className="w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+								className="w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
 								style={{
 									fontFamily: fonts.body,
 									borderColor: theme.border,
-									background: "transparent",
 								}}
 							>
 								<div className="flex items-baseline justify-between">
@@ -344,7 +341,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 										</span>
 										{discountNote && (
 											<p
-												className="mt-0.5 text-[11px]"
+												className="mt-0.5 text-xs"
 												style={{ color: theme.textMuted, opacity: 0.7 }}
 											>
 												{discountNote}
