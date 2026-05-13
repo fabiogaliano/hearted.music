@@ -67,8 +67,8 @@ export function DashboardHeader({
 					{lastSyncText}
 				</span>
 				<button
-					className="tracking-widest uppercase transition-opacity hover:opacity-70 cursor-pointer"
-					style={{ color: theme.text }}
+					className="text-xs font-medium tracking-widest uppercase transition-opacity hover:opacity-70 cursor-pointer"
+					style={{ fontFamily: fonts.body, color: theme.text }}
 					aria-label="Sync library"
 				>
 					Sync

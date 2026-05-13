@@ -270,12 +270,10 @@ const SongCardContent = memo(function SongCardContent({
 
 			{showWalkthroughUi && (
 				<span
-					className="walkthrough-hint shrink-0 flex items-center gap-1.5"
+					className="walkthrough-hint shrink-0 flex items-center gap-1.5 text-sm font-medium tracking-wide"
 					style={{
 						fontFamily: fonts.body,
-						fontSize: 12,
 						color: theme.primary,
-						letterSpacing: "0.01em",
 						animation: "walkthrough-hint-in 0.4s ease-out 0.6s both",
 					}}
 				>

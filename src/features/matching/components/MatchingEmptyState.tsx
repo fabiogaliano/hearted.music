@@ -53,10 +53,16 @@ export function MatchingEmptyState({ reason }: Props) {
 			<div className="mt-12">
 				<Link
 					to="/"
-					className="text-sm font-medium uppercase tracking-widest transition-opacity duration-200 hover:opacity-60"
-					style={{ color: theme.primary }}
+					className="group inline-flex items-center gap-3 transition-transform duration-100 active:scale-[0.98]"
+					style={{ fontFamily: fonts.body, color: theme.text }}
 				>
-					Back home
+					<span className="text-base font-medium tracking-wide">Back home</span>
+					<span
+						className="inline-block transition-transform group-hover:translate-x-1"
+						style={{ color: theme.textMuted }}
+					>
+						&rarr;
+					</span>
 				</Link>
 			</div>
 		</div>

@@ -122,7 +122,9 @@ export const CompletionScreen = memo(function CompletionScreen({
 				className="group inline-flex items-center gap-3 transition-transform duration-100 active:scale-[0.98]"
 				style={{ fontFamily: fonts.body, color: theme.text }}
 			>
-				<span className="text-lg font-medium tracking-wide">Back to Home</span>
+				<span className="text-base font-medium tracking-wide">
+					Back to Home
+				</span>
 				<span
 					className="inline-block transition-transform group-hover:translate-x-1"
 					style={{ color: theme.textMuted }}

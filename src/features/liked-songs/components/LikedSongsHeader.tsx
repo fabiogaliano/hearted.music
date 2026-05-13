@@ -92,7 +92,7 @@ export function LikedSongsHeader({
 						<button
 							type="button"
 							onClick={onEnterSelectionMode}
-							className="cursor-pointer rounded-full border px-3 py-1 text-xs tracking-wide uppercase transition-opacity hover:opacity-80"
+							className="cursor-pointer rounded-full border px-3 py-1 text-xs tracking-widest uppercase transition-opacity hover:opacity-80"
 							style={{
 								fontFamily: fonts.body,
 								borderColor: theme.border,
