@@ -5,7 +5,8 @@
  * Attach the returned sentinelRef to an element at the bottom of your list.
  * When that element enters the viewport, onLoadMore is called.
  */
-import { useCallback, useEffect, useRef } from "react";
+import type { RefCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseInfiniteScrollOptions {
 	/** Called when sentinel element becomes visible */
@@ -18,7 +19,7 @@ interface UseInfiniteScrollOptions {
 
 interface UseInfiniteScrollResult {
 	/** Ref to attach to your sentinel element */
-	sentinelRef: React.RefObject<HTMLDivElement | null>;
+	sentinelRef: RefCallback<HTMLDivElement>;
 }
 
 export function useInfiniteScroll({
@@ -26,7 +27,10 @@ export function useInfiniteScroll({
 	hasMore,
 	threshold = 100,
 }: UseInfiniteScrollOptions): UseInfiniteScrollResult {
-	const sentinelRef = useRef<HTMLDivElement>(null);
+	const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null);
+	const sentinelRef = useCallback<RefCallback<HTMLDivElement>>((node) => {
+		setSentinel(node);
+	}, []);
 
 	// Stabilize onLoadMore to prevent effect re-runs
 	const onLoadMoreRef = useRef(onLoadMore);
@@ -42,19 +46,16 @@ export function useInfiniteScroll({
 	);
 
 	useEffect(() => {
-		if (!hasMore) return;
+		if (!hasMore || sentinel === null) return;
 
 		const observer = new IntersectionObserver(handleIntersect, {
 			rootMargin: `${threshold}px`,
 		});
 
-		const sentinel = sentinelRef.current;
-		if (sentinel) {
-			observer.observe(sentinel);
-		}
+		observer.observe(sentinel);
 
 		return () => observer.disconnect();
-	}, [hasMore, threshold, handleIntersect]);
+	}, [hasMore, threshold, handleIntersect, sentinel]);
 
 	return { sentinelRef };
 }

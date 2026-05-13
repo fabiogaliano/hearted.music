@@ -164,6 +164,8 @@ export function LikedSongsPage({
 		isSelectedSlugResolved,
 	});
 
+	const lockedSongCount = stats?.success ? stats.locked : 0;
+
 	const {
 		visibleSongs,
 		hasMore,
@@ -277,6 +279,7 @@ export function LikedSongsPage({
 		<div ref={containerRef} className="relative min-h-150 max-w-5xl">
 			<LikedSongsHeader
 				stats={stats}
+				lockedSongCount={lockedSongCount}
 				showSelectionUI={showSelectionUI}
 				selectionMode={selectionMode}
 				onEnterSelectionMode={enterSelectionMode}

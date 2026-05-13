@@ -4,6 +4,7 @@ import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 interface LikedSongsHeaderProps {
 	stats: LikedSongsStatsResult | undefined;
+	lockedSongCount: number;
 	showSelectionUI: boolean;
 	selectionMode: boolean;
 	onEnterSelectionMode: () => void;
@@ -11,6 +12,7 @@ interface LikedSongsHeaderProps {
 
 export function LikedSongsHeader({
 	stats,
+	lockedSongCount,
 	showSelectionUI,
 	selectionMode,
 	onEnterSelectionMode,
@@ -69,7 +71,7 @@ export function LikedSongsHeader({
 				>
 					{stats?.success ? stats.pending : "—"} pending
 				</span>
-				{stats?.success && stats.locked > 0 && (
+				{lockedSongCount > 0 && (
 					<>
 						<span
 							className="text-sm"
@@ -81,28 +83,25 @@ export function LikedSongsHeader({
 							className="text-sm tabular-nums"
 							style={{ fontFamily: fonts.body, color: theme.textMuted }}
 						>
-							{stats.locked} locked
+							{lockedSongCount} locked
 						</span>
 					</>
 				)}
-				{showSelectionUI &&
-					stats?.success &&
-					stats.locked > 0 &&
-					!selectionMode && (
-						<button
-							type="button"
-							onClick={onEnterSelectionMode}
-							className="cursor-pointer rounded-full border px-3 py-1 text-xs tracking-widest uppercase transition-opacity hover:opacity-80"
-							style={{
-								fontFamily: fonts.body,
-								borderColor: theme.border,
-								color: theme.text,
-								background: "transparent",
-							}}
-						>
-							Unlock Songs
-						</button>
-					)}
+				{showSelectionUI && lockedSongCount > 0 && !selectionMode && (
+					<button
+						type="button"
+						onClick={onEnterSelectionMode}
+						className="cursor-pointer rounded-full border px-3 py-1 text-xs tracking-widest uppercase transition-opacity hover:opacity-80"
+						style={{
+							fontFamily: fonts.body,
+							borderColor: theme.border,
+							color: theme.text,
+							background: "transparent",
+						}}
+					>
+						Unlock Songs
+					</button>
+				)}
 			</div>
 		</div>
 	);

@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { LikedSong } from "../types";
 import { useInfiniteScroll } from "./useInfiniteScroll";
 import { useSongSuggestionPrefetch } from "./useSongSuggestionPrefetch";
@@ -40,6 +40,25 @@ export function useLikedSongsListModel({
 			void fetchNextPage();
 		}
 	}, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+	useEffect(() => {
+		if (
+			selectionMode &&
+			showSelectionUI &&
+			visibleSongs.length === 0 &&
+			hasMore &&
+			!isFetchingNextPage
+		) {
+			handleLoadMore();
+		}
+	}, [
+		selectionMode,
+		showSelectionUI,
+		visibleSongs.length,
+		hasMore,
+		isFetchingNextPage,
+		handleLoadMore,
+	]);
 
 	const { sentinelRef } = useInfiniteScroll({
 		onLoadMore: handleLoadMore,

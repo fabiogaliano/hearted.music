@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import type { RefCallback } from "react";
 import { useCallback } from "react";
 import type { ListItemNavigationProps } from "@/lib/keyboard/types";
 import { fonts } from "@/lib/theme/fonts";
@@ -29,7 +29,7 @@ interface LikedSongsListNavigation {
 	navIndexBySongId: ReadonlyMap<string, number>;
 	getItemProps: (song: LikedSong, index: number) => ListItemNavigationProps;
 	onCardClick: (songId: string, element: HTMLElement) => void;
-	sentinelRef: RefObject<HTMLDivElement | null>;
+	sentinelRef: RefCallback<HTMLDivElement>;
 }
 
 interface LikedSongsListWalkthrough {
@@ -94,7 +94,9 @@ export function LikedSongsList({
 							className="text-sm"
 							style={{ fontFamily: fonts.body, color: theme.textMuted }}
 						>
-							No locked songs available to unlock.
+							{data.hasMore
+								? "Finding locked songs..."
+								: "No locked songs available to unlock."}
 						</p>
 					</div>
 				)}
@@ -137,7 +139,7 @@ export function LikedSongsList({
 					);
 				})}
 
-				{data.hasMore && (
+				{data.hasMore && data.visibleSongs.length > 0 && (
 					<div
 						ref={navigation.sentinelRef}
 						className="flex items-center justify-center py-8"
