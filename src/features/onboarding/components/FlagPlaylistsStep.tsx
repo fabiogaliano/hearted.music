@@ -214,7 +214,7 @@ export function FlagPlaylistsStep({
 										className="group relative h-fit min-h-11 min-w-11 cursor-pointer"
 										style={{
 											...(isFocused && {
-												outline: `2px dashed ${theme.textMuted}`,
+												outline: `1px dashed ${theme.textMuted}`,
 												outlineOffset: "2px",
 											}),
 										}}

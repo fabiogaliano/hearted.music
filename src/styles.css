@@ -4,6 +4,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--foreground) 35%, transparent) transparent;
+}
+
 body {
   @apply m-0;
   font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -20,6 +25,15 @@ code {
   /* Theme hue - override this to change focus ring color globally */
   /* Default: 340 (rose) - matches DEFAULT_THEME */
   --theme-hue: 340;
+  --t-bg: hsl(340, 32%, 85%);
+  --t-surface: hsl(340, 32%, 91%);
+  --t-surface-dim: hsl(340, 32%, 78%);
+  --t-border: hsl(340, 20%, 75%);
+  --t-text: hsl(340, 28%, 22%);
+  --t-text-muted: hsl(340, 20%, 45%);
+  --t-text-on-primary: hsl(340, 32%, 92%);
+  --t-primary: hsl(340, 28%, 28%);
+  --t-primary-hover: hsl(340, 30%, 20%);
 
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
@@ -176,8 +190,8 @@ code {
 
   /* Global keyboard focus indicator - ring style */
   :is(button, input, textarea, select, a, [role="button"], [role="option"], [tabindex]):focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
+    outline: 1px solid var(--ring);
+    outline-offset: 4px;
   }
 
   /* Hide browser focus ring when custom navigation indicator is active */
@@ -194,8 +208,8 @@ code {
 @layer utilities {
   /* Solid outline focus - for buttons and interactive elements */
   .focus-outline-solid {
-    outline: 2px solid transparent;
-    outline-offset: 2px;
+    outline: 1px solid transparent;
+    outline-offset: 4px;
   }
   .focus-outline-solid:focus-visible {
     outline-color: var(--focus-color, currentColor);
@@ -203,8 +217,8 @@ code {
 
   /* Dashed outline focus - for selectable items in lists/grids */
   .focus-outline-dashed {
-    outline: 2px dashed transparent;
-    outline-offset: 2px;
+    outline: 1px dashed transparent;
+    outline-offset: 4px;
   }
   .focus-outline-dashed:focus-visible {
     outline-color: var(--focus-color, currentColor);
@@ -220,6 +234,114 @@ code {
   }
 
   /* Song cards stay fully renderable so keyboard navigation updates paint immediately. */
+
+  .theme-text {
+    color: var(--t-text);
+  }
+
+  .theme-text-muted {
+    color: var(--t-text-muted);
+  }
+
+  .theme-primary {
+    color: var(--t-primary);
+  }
+
+  .theme-bg {
+    background: var(--t-bg);
+  }
+
+  .theme-surface-bg {
+    background: var(--t-surface);
+  }
+
+  .theme-surface-dim-bg {
+    background: var(--t-surface-dim);
+  }
+
+  .theme-primary-bg {
+    background: var(--t-primary);
+  }
+
+  .theme-text-muted-bg {
+    background: var(--t-text-muted);
+  }
+
+  .theme-border-bg {
+    background: var(--t-border);
+  }
+
+  .theme-border-color {
+    border-color: var(--t-border);
+  }
+
+  .theme-primary-action {
+    border: 1px solid transparent;
+    background: var(--t-primary);
+    color: var(--t-text-on-primary);
+  }
+
+  .theme-kbd {
+    border: 1px solid var(--t-border);
+    background: var(--t-surface);
+    color: var(--t-text);
+  }
+
+  .theme-target-toggle {
+    background: var(--t-surface);
+    color: var(--t-text);
+  }
+
+  .theme-target-toggle:hover,
+  .theme-target-toggle[data-selected="true"] {
+    background: var(--t-primary);
+    color: var(--t-text-on-primary);
+  }
+
+  .theme-hover-surface:hover {
+    background: var(--t-surface);
+  }
+
+  .theme-active-row {
+    border-bottom: 1px solid var(--t-border);
+    border-left: 2px solid transparent;
+  }
+
+  .theme-active-row[data-selected="true"] {
+    background: var(--t-surface);
+    border-left-color: var(--t-primary);
+  }
+
+  .theme-selectable-row {
+    border-left: 2px solid transparent;
+  }
+
+  .theme-selectable-row:hover,
+  .theme-selectable-row[data-highlighted="true"] {
+    background: var(--t-surface);
+  }
+
+  .theme-selectable-row[data-highlighted="true"] {
+    border-left-color: var(--t-primary);
+  }
+
+  .theme-selectable-row[data-tab-focused="true"] {
+    box-shadow: inset 0 0 0 1px var(--t-primary);
+  }
+
+  .theme-border-brighten:hover {
+    border-color: var(--t-text-muted);
+  }
+
+  .hover-border-brighten {
+    transition: border-color 150ms, transform 150ms;
+    border: 1px solid var(--t-border);
+    background: var(--t-surface);
+    color: var(--t-text);
+  }
+  .hover-border-brighten:hover {
+    border-color: var(--t-text-muted);
+  }
 }
 
 /* View Transitions - Song Detail Panel shared element morphing */

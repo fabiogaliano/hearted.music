@@ -129,14 +129,12 @@ export function SongCard({
 							: undefined,
 					borderLeft:
 						isFocused || isSelected
-							? `3px solid ${theme.primary}`
+							? `2px solid ${theme.primary}`
 							: showWalkthroughUi
-								? `3px solid ${theme.primary}`
-								: "3px solid transparent",
-					marginLeft: "-3px",
-					boxShadow: dataTabFocused
-						? `inset 0 0 0 1px ${theme.primary}`
-						: undefined,
+								? `2px solid ${theme.primary}`
+								: "2px solid transparent",
+					marginLeft: "-2px",
+					boxShadow: dataTabFocused ? `0 0 0 1px ${theme.primary}` : undefined,
 					scrollMarginTop,
 					opacity: !isEnabled
 						? 0.5
@@ -293,7 +291,7 @@ const SongCardContent = memo(function SongCardContent({
 			{!showWalkthroughUi &&
 				(isSelectable ? (
 					<span
-						className="flex h-5 w-5 shrink-0 items-center justify-center rounded border"
+						className="flex h-5 w-5 shrink-0 items-center justify-center border"
 						style={{
 							borderColor: isChecked ? theme.primary : theme.border,
 							background: isChecked ? theme.primary : "transparent",

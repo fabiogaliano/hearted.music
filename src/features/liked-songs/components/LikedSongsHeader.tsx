@@ -1,6 +1,5 @@
 import type { LikedSongsStatsResult } from "@/lib/server/liked-songs.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 interface LikedSongsHeaderProps {
 	stats: LikedSongsStatsResult | undefined;
@@ -17,71 +16,69 @@ export function LikedSongsHeader({
 	selectionMode,
 	onEnterSelectionMode,
 }: LikedSongsHeaderProps) {
-	const theme = useTheme();
-
 	return (
 		<div className="mb-8">
 			<p
-				className="text-xs tracking-widest uppercase"
-				style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				className="theme-text-muted text-xs tracking-widest uppercase"
+				style={{ fontFamily: fonts.body }}
 			>
 				Your Music
 			</p>
 			<h1
-				className="mt-3 text-page-title font-extralight tracking-tight"
-				style={{ fontFamily: fonts.display, color: theme.text }}
+				className="theme-text mt-3 text-page-title font-extralight tracking-tight"
+				style={{ fontFamily: fonts.display }}
 			>
 				Liked Songs
 			</h1>
 
 			<div className="mt-6 flex items-baseline gap-6">
 				<span
-					className="text-3xl font-extralight tabular-nums"
-					style={{ fontFamily: fonts.display, color: theme.text }}
+					className="theme-text text-3xl font-extralight tabular-nums"
+					style={{ fontFamily: fonts.display }}
 				>
 					{stats?.success ? stats.total : "—"}
 				</span>
 				<span
-					className="text-xs tracking-widest uppercase"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body }}
 				>
 					songs
 				</span>
 				<span
-					className="text-sm"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-sm"
+					style={{ fontFamily: fonts.body }}
 				>
 					·
 				</span>
 				<span
-					className="text-sm tabular-nums"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-sm tabular-nums"
+					style={{ fontFamily: fonts.body }}
 				>
 					{stats?.success ? stats.analyzed : "—"} analyzed
 				</span>
 				<span
-					className="text-sm"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-sm"
+					style={{ fontFamily: fonts.body }}
 				>
 					·
 				</span>
 				<span
-					className="text-sm tabular-nums"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-sm tabular-nums"
+					style={{ fontFamily: fonts.body }}
 				>
 					{stats?.success ? stats.pending : "—"} pending
 				</span>
 				{lockedSongCount > 0 && (
 					<>
 						<span
-							className="text-sm"
-							style={{ fontFamily: fonts.body, color: theme.textMuted }}
+							className="theme-text-muted text-sm"
+							style={{ fontFamily: fonts.body }}
 						>
 							·
 						</span>
 						<span
-							className="text-sm tabular-nums"
-							style={{ fontFamily: fonts.body, color: theme.textMuted }}
+							className="theme-text-muted text-sm tabular-nums"
+							style={{ fontFamily: fonts.body }}
 						>
 							{lockedSongCount} locked
 						</span>
@@ -91,13 +88,8 @@ export function LikedSongsHeader({
 					<button
 						type="button"
 						onClick={onEnterSelectionMode}
-						className="cursor-pointer rounded-full border px-3 py-1 text-xs tracking-widest uppercase transition-opacity hover:opacity-80"
-						style={{
-							fontFamily: fonts.body,
-							borderColor: theme.border,
-							color: theme.text,
-							background: "transparent",
-						}}
+						className="hover-border-brighten ml-auto cursor-pointer rounded-full px-3 py-1 text-xs tracking-widest uppercase active:scale-[0.98]"
+						style={{ fontFamily: fonts.body }}
 					>
 						Unlock Songs
 					</button>
