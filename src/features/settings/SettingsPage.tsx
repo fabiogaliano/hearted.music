@@ -83,7 +83,7 @@ export function SettingsPage({
 					Settings
 				</p>
 				<h2
-					className="mt-4 text-[48px] leading-none font-extralight tracking-tight md:text-[56px]"
+					className="mt-3 text-page-title font-extralight tracking-tight"
 					style={{ fontFamily: fonts.display, color: theme.text }}
 				>
 					<em>Preferences</em>

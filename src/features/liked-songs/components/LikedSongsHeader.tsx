@@ -26,7 +26,7 @@ export function LikedSongsHeader({
 				Your Music
 			</p>
 			<h1
-				className="mt-3 text-5xl font-extralight"
+				className="mt-3 text-page-title font-extralight tracking-tight"
 				style={{ fontFamily: fonts.display, color: theme.text }}
 			>
 				Liked Songs

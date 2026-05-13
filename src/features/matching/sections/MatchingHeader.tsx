@@ -20,7 +20,7 @@ export const MatchingHeader = memo(function MatchingHeader({
 					Matching
 				</p>
 				<h2
-					className="mt-2 text-4xl font-extralight"
+					className="mt-3 text-page-title font-extralight tracking-tight"
 					style={{ fontFamily: fonts.display, color: theme.text }}
 				>
 					{currentIndex + 1} of {totalSongs}
