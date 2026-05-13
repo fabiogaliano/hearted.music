@@ -10,12 +10,12 @@ import { ActivePlaylistsPanel } from "./components/ActivePlaylistsPanel";
 import { PlaylistDetailView } from "./components/PlaylistDetailView";
 import { PlaylistLibrary } from "./components/PlaylistLibrary";
 import { useExtensionStatus } from "./hooks/useExtensionStatus";
+import { usePlaylistExpansion } from "./hooks/usePlaylistExpansion";
+import { usePlaylistSession } from "./hooks/usePlaylistSession";
 import {
 	buildPlaylistRouteRef,
 	resolvePlaylistIdFromRouteRef,
 } from "./playlistRouteRef";
-import { usePlaylistExpansion } from "./hooks/usePlaylistExpansion";
-import { usePlaylistSession } from "./hooks/usePlaylistSession";
 import { playlistManagementQueryOptions } from "./queries";
 
 const useIsomorphicLayoutEffect =
@@ -171,8 +171,8 @@ export function PlaylistsScreen({
 		return (
 			<div className="flex min-h-[60vh] items-center justify-center">
 				<p
-					className="text-sm"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-sm"
+					style={{ fontFamily: fonts.body }}
 				>
 					Loading playlists…
 				</p>
@@ -185,20 +185,14 @@ export function PlaylistsScreen({
 			<div className="flex min-h-[60vh] items-center justify-center">
 				<div className="text-center">
 					<h2
-						className="mb-3 text-2xl font-extralight"
-						style={{
-							fontFamily: fonts.display,
-							color: theme.text,
-						}}
+						className="theme-text mb-3 text-2xl font-extralight"
+						style={{ fontFamily: fonts.display }}
 					>
 						No playlists synced yet
 					</h2>
 					<p
-						className="max-w-sm text-sm"
-						style={{
-							fontFamily: fonts.body,
-							color: theme.textMuted,
-						}}
+						className="theme-text-muted max-w-sm text-sm"
+						style={{ fontFamily: fonts.body }}
 					>
 						{extensionStatus === "unavailable"
 							? "Install the hearted. extension and sync your library to see your playlists here."
@@ -217,7 +211,6 @@ export function PlaylistsScreen({
 		<div className="relative min-h-[600px]">
 			<div className="grid max-w-6xl grid-cols-[1fr_280px] gap-10">
 				<ActivePlaylistsPanel
-					theme={theme}
 					playlists={targetPlaylists}
 					onSelectPlaylist={handleExpand}
 					onRemove={(id) => handleToggleTarget(id, false)}
@@ -228,7 +221,6 @@ export function PlaylistsScreen({
 				/>
 
 				<PlaylistLibrary
-					theme={theme}
 					playlists={availablePlaylists}
 					onSelectPlaylist={handleExpand}
 					onAddPlaylist={(id) => handleToggleTarget(id, true)}

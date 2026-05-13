@@ -26,7 +26,18 @@ export function ThemeHueProvider({
 
 	return (
 		<ThemeStateContext.Provider value={activeTheme}>
-			<style>{`:root { --theme-hue: ${hue}; }`}</style>
+			<style>{`:root {
+	--theme-hue: ${hue};
+	--t-bg: ${activeTheme.bg};
+	--t-surface: ${activeTheme.surface};
+	--t-surface-dim: ${activeTheme.surfaceDim};
+	--t-border: ${activeTheme.border};
+	--t-text: ${activeTheme.text};
+	--t-text-muted: ${activeTheme.textMuted};
+	--t-text-on-primary: ${activeTheme.textOnPrimary};
+	--t-primary: ${activeTheme.primary};
+	--t-primary-hover: ${activeTheme.primaryHover};
+}`}</style>
 			{children}
 		</ThemeStateContext.Provider>
 	);

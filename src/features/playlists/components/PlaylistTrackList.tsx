@@ -1,16 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
 import { playlistTrackPreviewQueryOptions } from "../queries";
 
 interface PlaylistTrackListProps {
-	theme: ThemeConfig;
 	playlistId: string | null;
 	isExpanded: boolean;
 }
 
 export function PlaylistTrackList({
-	theme,
 	playlistId,
 	isExpanded,
 }: PlaylistTrackListProps) {
@@ -29,27 +26,18 @@ export function PlaylistTrackList({
 					: "opacity 150ms cubic-bezier(0.23, 1, 0.32, 1)",
 			}}
 		>
-			<div
-				className="mb-4 flex items-center justify-between pb-3"
-				style={{ borderBottom: `1px solid ${theme.border}` }}
-			>
+			<div className="theme-border-color mb-4 flex items-center justify-between border-b pb-3">
 				<h3
-					className="text-xs tracking-widest uppercase"
-					style={{
-						fontFamily: fonts.body,
-						color: theme.textMuted,
-					}}
+					className="theme-text-muted text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body }}
 				>
 					Tracks
 				</h3>
 			</div>
 			{!tracks || tracks.length === 0 ? (
 				<p
-					className="py-4 text-sm"
-					style={{
-						fontFamily: fonts.body,
-						color: theme.textMuted,
-					}}
+					className="theme-text-muted py-4 text-sm"
+					style={{ fontFamily: fonts.body }}
 				>
 					{playlistId
 						? "No track data available for this playlist yet."
@@ -59,43 +47,27 @@ export function PlaylistTrackList({
 				tracks.slice(0, 12).map((track, index) => (
 					<div
 						key={track.songId}
-						className="group flex items-center gap-4 py-3 transition-colors duration-150 ease-out"
+						className="theme-border-color theme-hover-surface group flex items-center gap-4 border-b py-3 transition-colors duration-150 ease-out"
 						style={{
-							borderBottom: `1px solid ${theme.border}`,
 							animation: `playlist-track-enter 200ms cubic-bezier(0.23, 1, 0.32, 1) ${index * 40}ms both`,
 						}}
-						onMouseEnter={(e) =>
-							(e.currentTarget.style.background = theme.surface)
-						}
-						onMouseLeave={(e) =>
-							(e.currentTarget.style.background = "transparent")
-						}
 					>
 						<span
-							className="w-6 text-right text-xs tabular-nums"
-							style={{
-								fontFamily: fonts.body,
-								color: theme.textMuted,
-							}}
+							className="theme-text-muted w-6 text-right text-xs tabular-nums"
+							style={{ fontFamily: fonts.body }}
 						>
 							{track.position + 1}
 						</span>
 						<div className="min-w-0 flex-1">
 							<p
-								className="truncate text-sm"
-								style={{
-									fontFamily: fonts.body,
-									color: theme.text,
-								}}
+								className="theme-text truncate text-sm"
+								style={{ fontFamily: fonts.body }}
 							>
 								{track.name}
 							</p>
 							<p
-								className="truncate text-xs"
-								style={{
-									fontFamily: fonts.body,
-									color: theme.textMuted,
-								}}
+								className="theme-text-muted truncate text-xs"
+								style={{ fontFamily: fonts.body }}
 							>
 								{track.artists[0] ?? "Unknown Artist"}
 								{track.albumName ? ` · ${track.albumName}` : ""}

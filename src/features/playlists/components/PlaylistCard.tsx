@@ -1,11 +1,9 @@
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
 
 interface PlaylistCardProps {
 	playlist: Playlist;
-	theme: ThemeConfig;
 	status: "active" | "available";
 	isSelected?: boolean;
 	onSelect?: (id: string, element: HTMLElement) => void;
@@ -24,7 +22,6 @@ interface PlaylistCardProps {
 
 export function PlaylistCard({
 	playlist,
-	theme,
 	status,
 	isSelected,
 	onSelect,
@@ -40,18 +37,24 @@ export function PlaylistCard({
 	onFocus,
 	onBlur,
 }: PlaylistCardProps) {
+	const handleSelectKeyDown: React.KeyboardEventHandler<HTMLElement> = (
+		event,
+	) => {
+		if (event.key !== "Enter" && event.key !== " ") return;
+		event.preventDefault();
+		onSelect?.(playlist.id, event.currentTarget);
+	};
+
 	if (status === "active") {
 		return (
+			// biome-ignore lint/a11y/useSemanticElements: The row contains a nested remove button, so a button wrapper would create invalid nested interactive controls.
 			<div
-				className="group flex cursor-pointer items-center gap-5 py-5 transition-transform duration-100 ease-out active:scale-[0.995]"
-				style={{
-					borderBottom: `1px solid ${theme.border}`,
-					background: isSelected ? theme.surface : "transparent",
-					borderLeft: isSelected
-						? `3px solid ${theme.primary}`
-						: "3px solid transparent",
-				}}
+				role="button"
+				tabIndex={0}
+				className="theme-active-row group flex cursor-pointer items-center gap-5 py-5 transition-transform duration-100 ease-out active:scale-[0.995]"
+				data-selected={isSelected === true}
 				onClick={(event) => onSelect?.(playlist.id, event.currentTarget)}
+				onKeyDown={handleSelectKeyDown}
 			>
 				<div
 					className="h-16 w-16 flex-shrink-0 overflow-hidden"
@@ -72,10 +75,9 @@ export function PlaylistCard({
 
 				<div className="min-w-0 flex-1">
 					<h3
-						className="truncate text-2xl font-extralight"
+						className="theme-text truncate text-2xl font-extralight"
 						style={{
 							fontFamily: fonts.display,
-							color: theme.text,
 							fontWeight: isSelected ? 400 : undefined,
 							viewTransitionName: isAnimatingTo ? "playlist-title" : "none",
 						}}
@@ -84,10 +86,9 @@ export function PlaylistCard({
 					</h3>
 					{playlist.description && (
 						<p
-							className="mt-1 truncate text-sm"
+							className="theme-text-muted mt-1 truncate text-sm"
 							style={{
 								fontFamily: fonts.body,
-								color: theme.textMuted,
 								viewTransitionName: isAnimatingTo
 									? "playlist-description"
 									: "none",
@@ -107,22 +108,17 @@ export function PlaylistCard({
 					className="p-2 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100"
 					aria-label={`Remove ${playlist.name} from matching`}
 				>
-					<span
-						className="text-xl leading-none"
-						style={{ color: theme.textMuted }}
-					>
-						×
-					</span>
+					<span className="theme-text-muted text-xl leading-none">×</span>
 				</button>
 			</div>
 		);
 	}
 
 	const isFocused = dataFocused === true;
-	const isTabFocused = dataTabFocused === true;
 	const hasHighlight = isFocused || isSelected;
 
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: The row contains a nested add button, so a button wrapper would create invalid nested interactive controls.
 		<div
 			ref={itemRef}
 			tabIndex={tabIndex}
@@ -132,23 +128,11 @@ export function PlaylistCard({
 			onPointerDown={onPointerDown}
 			onFocus={onFocus}
 			onBlur={onBlur}
-			className="group -mx-3 flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors duration-150 ease-out"
-			style={{
-				background: hasHighlight ? theme.surface : "transparent",
-				borderLeft: hasHighlight
-					? `2px solid ${theme.primary}`
-					: "2px solid transparent",
-				boxShadow: isTabFocused
-					? `inset 0 0 0 1px ${theme.primary}`
-					: undefined,
-			}}
-			onMouseEnter={(e) => {
-				if (!hasHighlight) e.currentTarget.style.background = theme.surface;
-			}}
-			onMouseLeave={(e) => {
-				if (!hasHighlight) e.currentTarget.style.background = "transparent";
-			}}
+			role="button"
+			className="theme-selectable-row group -mx-3 flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors duration-150 ease-out"
+			data-highlighted={hasHighlight}
 			onClick={(event) => onSelect?.(playlist.id, event.currentTarget)}
+			onKeyDown={handleSelectKeyDown}
 		>
 			<div
 				className="h-10 w-10 flex-shrink-0 overflow-hidden"
@@ -169,10 +153,9 @@ export function PlaylistCard({
 
 			<div className="min-w-0 flex-1">
 				<p
-					className="truncate text-sm"
+					className="theme-text truncate text-sm"
 					style={{
 						fontFamily: fonts.body,
-						color: theme.text,
 						fontWeight: isSelected ? 400 : 300,
 						viewTransitionName: isAnimatingTo ? "playlist-title" : "none",
 					}}
@@ -181,11 +164,8 @@ export function PlaylistCard({
 				</p>
 				{playlist.description && (
 					<p
-						className="truncate text-xs"
-						style={{
-							fontFamily: fonts.body,
-							color: theme.textMuted,
-						}}
+						className="theme-text-muted truncate text-xs"
+						style={{ fontFamily: fonts.body }}
 					>
 						{playlist.description}
 					</p>
@@ -201,12 +181,7 @@ export function PlaylistCard({
 				className="p-1.5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100"
 				aria-label={`Add ${playlist.name} to matching`}
 			>
-				<span
-					className="text-base leading-none"
-					style={{ color: theme.textMuted }}
-				>
-					+
-				</span>
+				<span className="theme-text-muted text-base leading-none">+</span>
 			</button>
 		</div>
 	);

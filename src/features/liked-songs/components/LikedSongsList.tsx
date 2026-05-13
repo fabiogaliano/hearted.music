@@ -55,7 +55,10 @@ export function LikedSongsList({
 
 	if (data.isLoading) {
 		return (
-			<div className="border-t pt-6" style={{ borderColor: theme.border }}>
+			<div
+				className="-mx-3 border-t px-3 pt-6"
+				style={{ borderColor: theme.border }}
+			>
 				<div className="py-12 text-center">
 					<p
 						className="text-sm"
@@ -70,7 +73,10 @@ export function LikedSongsList({
 
 	if (data.displayedSongs.length === 0) {
 		return (
-			<div className="border-t pt-6" style={{ borderColor: theme.border }}>
+			<div
+				className="-mx-3 border-t px-3 pt-6"
+				style={{ borderColor: theme.border }}
+			>
 				<div className="py-12 text-center">
 					<p
 						className="text-sm"
@@ -86,7 +92,10 @@ export function LikedSongsList({
 	}
 
 	return (
-		<div className="border-t pt-6" style={{ borderColor: theme.border }}>
+		<div
+			className="-mx-3 border-t px-3 pt-6"
+			style={{ borderColor: theme.border }}
+		>
 			<div className="space-y-1">
 				{data.visibleSongs.length === 0 && selection.isActive && (
 					<div className="py-12 text-center">

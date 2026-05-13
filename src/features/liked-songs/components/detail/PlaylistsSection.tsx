@@ -28,19 +28,14 @@ export function PlaylistsSection({
 	};
 
 	const reconnectAction = reconnectNeeded ? (
-		<SpotifyReconnectLink
-			label="Reconnect to Spotify"
-			surface={colors?.surface ?? ""}
-			border={colors?.border ?? ""}
-			text={colors?.text ?? ""}
-		/>
+		<SpotifyReconnectLink label="Reconnect to Spotify" />
 	) : undefined;
 
 	return (
-		<section className="border-t pt-6" style={{ borderColor: colors?.border }}>
+		<section className="theme-border-color border-t pt-6">
 			<p
-				className="mb-5 text-xs tracking-widest uppercase"
-				style={{ fontFamily: fonts.body, color: colors?.textMuted }}
+				className="theme-text-muted mb-5 text-xs tracking-widest uppercase"
+				style={{ fontFamily: fonts.body }}
 			>
 				Playlist Suggestions
 			</p>
@@ -53,11 +48,9 @@ export function PlaylistsSection({
 						name={suggestion.playlistName}
 						scoreDisplay={
 							<span
-								className="font-extralight tabular-nums"
+								className={`${suggestion.score >= 0.7 ? "theme-text" : "theme-text-muted"} font-extralight tabular-nums`}
 								style={{
 									fontFamily: fonts.display,
-									color:
-										suggestion.score >= 0.7 ? colors?.text : colors?.textMuted,
 									fontSize: "1.125rem",
 								}}
 							>

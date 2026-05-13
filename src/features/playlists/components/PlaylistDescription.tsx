@@ -1,9 +1,8 @@
+import { useEffect, useRef } from "react";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
 import type { ExtensionAvailability } from "../hooks/useExtensionStatus";
 
 interface PlaylistDescriptionProps {
-	theme: ThemeConfig;
 	description: string | null;
 	trackCount: number;
 	isExpanded: boolean;
@@ -18,7 +17,6 @@ interface PlaylistDescriptionProps {
 }
 
 export function PlaylistDescription({
-	theme,
 	description,
 	trackCount,
 	isExpanded,
@@ -31,45 +29,43 @@ export function PlaylistDescription({
 	onDraftChange,
 	enableViewTransition = true,
 }: PlaylistDescriptionProps) {
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+	useEffect(() => {
+		if (!isEditing || !isExpanded) return;
+		const textarea = textareaRef.current;
+		if (!textarea) return;
+		textarea.focus();
+		const length = textarea.value.length;
+		textarea.setSelectionRange(length, length);
+	}, [isEditing, isExpanded]);
+
 	if (isEditing && isExpanded) {
 		return (
 			<div className="mb-6 max-w-lg">
 				<textarea
+					ref={textareaRef}
 					value={draftDescription}
 					onChange={(e) => onDraftChange(e.target.value)}
 					placeholder="Add a description for this playlist..."
-					className="w-full resize-none border-b-2 bg-transparent pb-2 text-sm leading-relaxed outline-none"
-					style={{
-						fontFamily: fonts.body,
-						color: theme.text,
-						borderColor: theme.primary,
-					}}
+					className="theme-primary theme-border-color w-full resize-none border-b-2 bg-transparent pb-2 text-sm leading-relaxed outline-none"
+					style={{ fontFamily: fonts.body }}
 					rows={3}
-					autoFocus
-					onFocus={(e) => {
-						const len = e.currentTarget.value.length;
-						e.currentTarget.setSelectionRange(len, len);
-					}}
 				/>
 				<div className="mt-3 flex items-center gap-3">
 					<button
+						type="button"
 						onClick={onSave}
-						className="px-3 py-1.5 text-xs tracking-widest uppercase"
-						style={{
-							fontFamily: fonts.body,
-							background: theme.primary,
-							color: theme.textOnPrimary,
-						}}
+						className="theme-primary-action px-3 py-1.5 text-xs tracking-widest uppercase"
+						style={{ fontFamily: fonts.body }}
 					>
 						Save
 					</button>
 					<button
+						type="button"
 						onClick={onCancel}
-						className="text-xs tracking-widest uppercase"
-						style={{
-							fontFamily: fonts.body,
-							color: theme.textMuted,
-						}}
+						className="theme-text-muted text-xs tracking-widest uppercase"
+						style={{ fontFamily: fonts.body }}
 					>
 						Cancel
 					</button>
@@ -83,25 +79,16 @@ export function PlaylistDescription({
 			{isExpanded ? (
 				extensionStatus === "available" ? (
 					<button
+						type="button"
 						onClick={onEdit}
 						className="group/edit relative w-full max-w-lg text-left"
 					>
 						{description ? (
-							<div
-								className="-mx-3 flex items-start gap-4 rounded px-3 py-2 transition-colors"
-								style={{ background: "transparent" }}
-								onMouseEnter={(e) =>
-									(e.currentTarget.style.background = theme.surface)
-								}
-								onMouseLeave={(e) =>
-									(e.currentTarget.style.background = "transparent")
-								}
-							>
+							<div className="theme-hover-surface -mx-3 flex items-start gap-4 rounded px-3 py-2 transition-colors">
 								<p
-									className="flex-1 text-sm leading-relaxed"
+									className="theme-text-muted flex-1 text-sm leading-relaxed"
 									style={{
 										fontFamily: fonts.body,
-										color: theme.textMuted,
 										viewTransitionName:
 											enableViewTransition && isExpanded
 												? "playlist-description"
@@ -111,32 +98,17 @@ export function PlaylistDescription({
 									{description}
 								</p>
 								<span
-									className="flex-shrink-0 text-xs tracking-widest uppercase opacity-50 transition-opacity group-hover/edit:opacity-100"
-									style={{
-										fontFamily: fonts.body,
-										color: theme.text,
-									}}
+									className="theme-text flex-shrink-0 text-xs tracking-widest uppercase opacity-50 transition-opacity group-hover/edit:opacity-100"
+									style={{ fontFamily: fonts.body }}
 								>
 									Edit
 								</span>
 							</div>
 						) : (
-							<div
-								className="border-2 border-dashed px-4 py-3 transition-colors"
-								style={{ borderColor: theme.border }}
-								onMouseEnter={(e) =>
-									(e.currentTarget.style.borderColor = theme.textMuted)
-								}
-								onMouseLeave={(e) =>
-									(e.currentTarget.style.borderColor = theme.border)
-								}
-							>
+							<div className="theme-border-brighten theme-border-color border-2 border-dashed px-4 py-3 transition-colors">
 								<p
-									className="text-sm"
-									style={{
-										fontFamily: fonts.body,
-										color: theme.textMuted,
-									}}
+									className="theme-text-muted text-sm"
+									style={{ fontFamily: fonts.body }}
 								>
 									+ Add description
 								</p>
@@ -145,22 +117,16 @@ export function PlaylistDescription({
 					</button>
 				) : (
 					<p
-						className="text-sm leading-relaxed"
-						style={{
-							fontFamily: fonts.body,
-							color: theme.textMuted,
-						}}
+						className="theme-text-muted text-sm leading-relaxed"
+						style={{ fontFamily: fonts.body }}
 					>
 						{description || `${trackCount} tracks`}
 					</p>
 				)
 			) : (
 				<p
-					className="line-clamp-1 max-w-sm text-sm"
-					style={{
-						fontFamily: fonts.body,
-						color: theme.textMuted,
-					}}
+					className="theme-text-muted line-clamp-1 max-w-sm text-sm"
+					style={{ fontFamily: fonts.body }}
 				>
 					{description || `${trackCount} tracks`}
 				</p>

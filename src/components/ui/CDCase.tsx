@@ -1,5 +1,4 @@
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 interface CDCaseProps {
 	/** Album art image URL (optional - shows placeholder if not provided) */
@@ -26,9 +25,8 @@ const ART_WIDTH_PERCENT = (ART_SIZE / CASE_WIDTH) * 100;
 const ART_HEIGHT_PERCENT = (ART_SIZE / CASE_HEIGHT) * 100;
 
 function CaseSVG() {
-	const theme = useTheme();
 	const frameColor = "#1A1A1A";
-	const accentColor = theme.text;
+	const accentColor = "var(--t-text)";
 
 	return (
 		<svg

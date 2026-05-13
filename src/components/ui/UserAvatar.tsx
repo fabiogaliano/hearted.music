@@ -1,11 +1,10 @@
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 function getInitials(name: string | null): string {
 	if (!name) return "?";
 	const parts = name.trim().split(/\s+/);
 	if (parts.length >= 2) {
-		return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase();
+		return `${parts[0]?.[0] ?? ""}${parts[parts.length - 1]?.[0] ?? ""}`.toUpperCase();
 	}
 	return name[0]?.toUpperCase() ?? "?";
 }
@@ -24,8 +23,6 @@ export function UserAvatar({
 	imageUrl?: string | null;
 	size?: keyof typeof SIZES;
 }) {
-	const theme = useTheme();
-
 	if (imageUrl) {
 		return (
 			<img
@@ -38,12 +35,8 @@ export function UserAvatar({
 
 	return (
 		<div
-			className={`flex ${SIZES[size]} shrink-0 items-center justify-center rounded-full font-medium`}
-			style={{
-				background: theme.surfaceDim,
-				color: theme.text,
-				fontFamily: fonts.body,
-			}}
+			className={`theme-surface-dim-bg theme-text flex ${SIZES[size]} shrink-0 items-center justify-center rounded-full font-medium`}
+			style={{ fontFamily: fonts.body }}
 		>
 			{getInitials(name)}
 		</div>

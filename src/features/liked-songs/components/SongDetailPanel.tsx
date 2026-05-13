@@ -18,7 +18,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { useReducedMotion } from "framer-motion";
-import { useState } from "react";
+import { type CSSProperties, useState } from "react";
 import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
 import { addToPlaylist } from "@/lib/extension/spotify-client";
 import { useSpotifyReconnectState } from "@/lib/extension/useSpotifyReconnectState";
@@ -35,6 +35,18 @@ import { LAYOUT } from "./detail/panel-constants";
 import { getThemedDarkColors } from "./detail/themed-dark-colors";
 import type { ColorProps, PanelColors } from "./detail/types";
 import { usePanelAnimation } from "./detail/usePanelAnimation";
+
+type ThemeCssVariables = {
+	"--t-bg": string;
+	"--t-surface": string;
+	"--t-surface-dim": string;
+	"--t-border": string;
+	"--t-text": string;
+	"--t-text-muted": string;
+	"--t-text-on-primary": string;
+	"--t-primary": string;
+	"--t-primary-hover": string;
+};
 
 // Types
 
@@ -86,19 +98,33 @@ export function SongDetailPanel({
 	const darkPalette = isDark ? getThemedDarkColors(baseTheme) : null;
 	const hue = extractHue(baseTheme.primary);
 
-	const panelColors: PanelColors = {
-		bg: isDark ? darkPalette!.bg : baseTheme.bg,
-		bgLight: isDark ? darkPalette!.bgLight : baseTheme.surface,
-		surface: isDark ? darkPalette!.surface : baseTheme.surface,
-		surfaceHover: isDark ? darkPalette!.surfaceHover : baseTheme.surfaceDim,
-		text: isDark ? darkPalette!.text : baseTheme.text,
-		textMuted: isDark ? darkPalette!.textMuted : baseTheme.textMuted,
-		textDim: isDark ? darkPalette!.textDim : baseTheme.textMuted,
-		separator: isDark ? darkPalette!.textDim : baseTheme.border,
-		border: isDark ? darkPalette!.border : baseTheme.border,
-		accent: isDark ? darkPalette!.accent : baseTheme.primary,
-		accentMuted: isDark ? darkPalette!.accentMuted : baseTheme.primaryHover,
-	};
+	const panelColors: PanelColors = darkPalette
+		? {
+				bg: darkPalette.bg,
+				bgLight: darkPalette.bgLight,
+				surface: darkPalette.surface,
+				surfaceHover: darkPalette.surfaceHover,
+				text: darkPalette.text,
+				textMuted: darkPalette.textMuted,
+				textDim: darkPalette.textDim,
+				separator: darkPalette.textDim,
+				border: darkPalette.border,
+				accent: darkPalette.accent,
+				accentMuted: darkPalette.accentMuted,
+			}
+		: {
+				bg: baseTheme.bg,
+				bgLight: baseTheme.surface,
+				surface: baseTheme.surface,
+				surfaceHover: baseTheme.surfaceDim,
+				text: baseTheme.text,
+				textMuted: baseTheme.textMuted,
+				textDim: baseTheme.textMuted,
+				separator: baseTheme.border,
+				border: baseTheme.border,
+				accent: baseTheme.primary,
+				accentMuted: baseTheme.primaryHover,
+			};
 
 	const displaySong: LikedSong = isWalkthrough
 		? { ...song, displayState: "analyzed" }
@@ -132,6 +158,21 @@ export function SongDetailPanel({
 		surface: panelColors.surface,
 		surfaceHover: panelColors.surfaceHover,
 		bg: panelColors.bg,
+	};
+
+	const panelThemeStyle: CSSProperties & ThemeCssVariables = {
+		background: panelColors.bg,
+		"--t-bg": panelColors.bg,
+		"--t-surface": panelColors.surface,
+		"--t-surface-dim": panelColors.surfaceHover,
+		"--t-border": panelColors.border,
+		"--t-text": panelColors.text,
+		"--t-text-muted": panelColors.textMuted,
+		"--t-text-on-primary": darkPalette
+			? panelColors.bg
+			: baseTheme.textOnPrimary,
+		"--t-primary": panelColors.accent,
+		"--t-primary-hover": panelColors.accentMuted,
 	};
 
 	useShortcut({
@@ -236,9 +277,9 @@ export function SongDetailPanel({
 		heroHeight,
 	});
 
-	const vignetteGradient = isDark
-		? `radial-gradient(ellipse at center, transparent 20%, ${darkPalette!.bgVignette} 100%),
-		   linear-gradient(to bottom, transparent 40%, ${darkPalette!.bgFade} 100%)`
+	const vignetteGradient = darkPalette
+		? `radial-gradient(ellipse at center, transparent 20%, ${darkPalette.bgVignette} 100%),
+		   linear-gradient(to bottom, transparent 40%, ${darkPalette.bgFade} 100%)`
 		: `linear-gradient(to bottom,
 			hsla(${hue}, 25%, 88%, 0) 0%,
 			hsla(${hue}, 25%, 88%, 0.1) 57%,
@@ -263,7 +304,7 @@ export function SongDetailPanel({
 				pointerEvents: isExpanded ? "auto" : "none",
 			}}
 		>
-			<div className="h-full" style={{ background: panelColors.bg }}>
+			<div className="h-full" style={panelThemeStyle}>
 				<div
 					ref={scrollRef}
 					onScroll={onScroll}

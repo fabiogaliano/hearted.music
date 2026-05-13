@@ -1,11 +1,9 @@
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import type { ListNavigationResult } from "@/lib/keyboard/types";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
 import { PlaylistCard } from "./PlaylistCard";
 
 interface PlaylistLibraryProps {
-	theme: ThemeConfig;
 	playlists: Playlist[];
 	onSelectPlaylist: (id: string, element: HTMLElement) => void;
 	onAddPlaylist: (id: string) => void;
@@ -15,7 +13,6 @@ interface PlaylistLibraryProps {
 }
 
 export function PlaylistLibrary({
-	theme,
 	playlists,
 	onSelectPlaylist,
 	onAddPlaylist,
@@ -28,21 +25,15 @@ export function PlaylistLibrary({
 			<div className="sticky top-8">
 				<div className="mb-6 flex items-center gap-3">
 					<h3
-						className="text-xs tracking-widest uppercase"
-						style={{
-							fontFamily: fonts.body,
-							color: theme.textMuted,
-						}}
+						className="theme-text-muted text-xs tracking-widest uppercase"
+						style={{ fontFamily: fonts.body }}
 					>
 						Available
 					</h3>
 					{playlists.length > 0 && (
 						<span
-							className="ml-auto text-xs tabular-nums"
-							style={{
-								fontFamily: fonts.body,
-								color: theme.textMuted,
-							}}
+							className="theme-text-muted ml-auto text-xs tabular-nums"
+							style={{ fontFamily: fonts.body }}
 						>
 							{playlists.length}
 						</span>
@@ -56,7 +47,6 @@ export function PlaylistLibrary({
 							<PlaylistCard
 								key={playlist.id}
 								playlist={playlist}
-								theme={theme}
 								status="available"
 								isSelected={selectedPlaylistId === playlist.id}
 								onSelect={onSelectPlaylist}

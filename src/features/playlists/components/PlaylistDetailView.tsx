@@ -1,16 +1,16 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { type CSSProperties, useCallback, useState } from "react";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { isExtensionInstalled } from "@/lib/extension/detect";
-import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import {
 	commitPlaylistDescriptionSave,
 	outcomeFromCommittedPlaylistDescriptionSave,
+	type PreparedPlaylistDescriptionSave,
 	preparePlaylistDescriptionSave,
 	syncPreparedPlaylistMetadata,
-	type PreparedPlaylistDescriptionSave,
 } from "@/lib/extension/playlist-description-save";
+import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
 import type { ThemeConfig } from "@/lib/theme/types";
@@ -22,6 +22,18 @@ import { PlaylistTrackList } from "./PlaylistTrackList";
 
 const EXTENSION_STORE_URL =
 	"https://chrome.google.com/webstore/detail/hearted-spotify-sync/EXTENSION_ID";
+
+type ThemeCssVariables = {
+	"--t-bg": string;
+	"--t-surface": string;
+	"--t-surface-dim": string;
+	"--t-border": string;
+	"--t-text": string;
+	"--t-text-muted": string;
+	"--t-text-on-primary": string;
+	"--t-primary": string;
+	"--t-primary-hover": string;
+};
 
 interface PlaylistDetailViewProps {
 	theme: ThemeConfig;
@@ -200,37 +212,47 @@ export function PlaylistDetailView({
 		? Math.round((startRect.top - expandedRect.top) * 0.25)
 		: 0;
 
+	const panelStyle: CSSProperties & ThemeCssVariables = {
+		position: "fixed",
+		background: theme.bg,
+		top: expandedRect.top,
+		left: expandedRect.left,
+		width: expandedRect.width,
+		height: expandedRect.height,
+		transformOrigin: "top center",
+		transform: isExpanded
+			? "translateY(0) scale(1)"
+			: `translateY(${offsetY}px) scale(0.98)`,
+		opacity: isExpanded ? 1 : 0,
+		transition: isExpanded
+			? "transform 280ms cubic-bezier(0.23, 1, 0.32, 1), opacity 220ms cubic-bezier(0.23, 1, 0.32, 1)"
+			: "transform 220ms cubic-bezier(0.23, 1, 0.32, 1), opacity 160ms cubic-bezier(0.23, 1, 0.32, 1)",
+		willChange: "transform, opacity",
+		pointerEvents: isExpanded ? "auto" : "none",
+		"--t-bg": theme.bg,
+		"--t-surface": theme.surface,
+		"--t-surface-dim": theme.surfaceDim,
+		"--t-border": theme.border,
+		"--t-text": theme.text,
+		"--t-text-muted": theme.textMuted,
+		"--t-text-on-primary": theme.textOnPrimary,
+		"--t-primary": theme.primary,
+		"--t-primary-hover": theme.primaryHover,
+	};
+
 	return (
 		<div
 			data-playlist-panel
 			className="z-50 overflow-hidden"
-			style={{
-				position: "fixed",
-				background: theme.bg,
-				top: expandedRect.top,
-				left: expandedRect.left,
-				width: expandedRect.width,
-				height: expandedRect.height,
-				transformOrigin: "top center",
-				transform: isExpanded
-					? "translateY(0) scale(1)"
-					: `translateY(${offsetY}px) scale(0.98)`,
-				opacity: isExpanded ? 1 : 0,
-				transition: isExpanded
-					? "transform 280ms cubic-bezier(0.23, 1, 0.32, 1), opacity 220ms cubic-bezier(0.23, 1, 0.32, 1)"
-					: "transform 220ms cubic-bezier(0.23, 1, 0.32, 1), opacity 160ms cubic-bezier(0.23, 1, 0.32, 1)",
-				willChange: "transform, opacity",
-				pointerEvents: isExpanded ? "auto" : "none",
-			}}
+			style={panelStyle}
 		>
 			<div className="h-full overflow-y-auto px-6 py-8">
 				<div className="relative mb-8">
 					<button
 						type="button"
 						onClick={onClose}
-						className="absolute top-0 right-0 z-20 p-2"
+						className="theme-text-muted absolute top-0 right-0 z-20 p-2"
 						style={{
-							color: theme.textMuted,
 							opacity: isExpanded ? 1 : 0,
 							transition: "opacity 200ms cubic-bezier(0.23, 1, 0.32, 1) 80ms",
 						}}
@@ -262,10 +284,9 @@ export function PlaylistDetailView({
 						<div className="min-w-0 flex-1 pt-24 pb-2">
 							{isExpanded && (
 								<h2
-									className="mb-3 text-4xl leading-tight font-extralight"
+									className="theme-text mb-3 text-4xl leading-tight font-extralight"
 									style={{
 										fontFamily: fonts.display,
-										color: theme.text,
 										viewTransitionName: "playlist-title",
 									}}
 								>
@@ -274,7 +295,6 @@ export function PlaylistDetailView({
 							)}
 
 							<PlaylistDescription
-								theme={theme}
 								description={playlist.description}
 								trackCount={playlist.song_count ?? 0}
 								isExpanded={isExpanded}
@@ -289,7 +309,6 @@ export function PlaylistDetailView({
 
 							{editState.kind === "confirm-overwrite" && isExpanded && (
 								<DescriptionConflictDialog
-									theme={theme}
 									latestDescription={editState.latestDescription}
 									draftDescription={draftDescription || null}
 									onKeepMine={() => {
@@ -306,15 +325,11 @@ export function PlaylistDetailView({
 								>
 									<span
 										aria-hidden="true"
-										className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full"
-										style={{ background: theme.primary }}
+										className="theme-primary-bg inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full"
 									/>
 									<p
-										className="text-xs leading-relaxed"
-										style={{
-											fontFamily: fonts.body,
-											color: theme.textMuted,
-										}}
+										className="theme-text-muted text-xs leading-relaxed"
+										style={{ fontFamily: fonts.body }}
 									>
 										Something went sideways saving that. Try again?
 									</p>
@@ -324,30 +339,20 @@ export function PlaylistDetailView({
 							{editState.kind === "reconnect-required" && isExpanded && (
 								<div className="mb-4 flex items-center gap-3">
 									<p
-										className="text-xs"
-										style={{
-											fontFamily: fonts.body,
-											color: theme.primary,
-										}}
+										className="theme-primary text-xs"
+										style={{ fontFamily: fonts.body }}
 									>
 										Reconnect to Spotify, then repeat this edit.
 									</p>
-									<SpotifyReconnectLink
-										surface={theme.surface}
-										border={theme.border}
-										text={theme.text}
-									/>
+									<SpotifyReconnectLink />
 								</div>
 							)}
 
 							{editState.kind === "extension-required" && isExpanded && (
 								<div className="mb-4 flex items-center gap-3">
 									<p
-										className="text-xs"
-										style={{
-											fontFamily: fonts.body,
-											color: theme.primary,
-										}}
+										className="theme-primary text-xs"
+										style={{ fontFamily: fonts.body }}
 									>
 										The extension is required to edit playlists.
 									</p>
@@ -355,13 +360,8 @@ export function PlaylistDetailView({
 										href={EXTENSION_STORE_URL}
 										target="_blank"
 										rel="noopener noreferrer"
-										className="inline-flex items-center gap-1.5 rounded-[20px] px-3 py-1 text-xs tracking-widest uppercase transition-[transform,opacity] duration-150 hover:opacity-80 active:scale-[0.98]"
-										style={{
-											fontFamily: fonts.body,
-											background: theme.surface,
-											border: `1px solid ${theme.border}`,
-											color: theme.text,
-										}}
+										className="hover-border-brighten inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs tracking-widest uppercase active:scale-[0.98]"
+										style={{ fontFamily: fonts.body }}
 									>
 										Install extension
 										<span className="text-xs" style={{ opacity: 0.45 }}>
@@ -380,22 +380,16 @@ export function PlaylistDetailView({
 								}}
 							>
 								<span
-									className="text-xs tracking-widest uppercase"
-									style={{
-										fontFamily: fonts.body,
-										color: theme.textMuted,
-									}}
+									className="theme-text-muted text-xs tracking-widest uppercase"
+									style={{ fontFamily: fonts.body }}
 								>
 									{playlist.song_count ?? 0} Tracks
 								</span>
 
 								{extensionStatus === "unavailable" && isExpanded && (
 									<span
-										className="text-xs"
-										style={{
-											fontFamily: fonts.body,
-											color: theme.textMuted,
-										}}
+										className="theme-text-muted text-xs"
+										style={{ fontFamily: fonts.body }}
 									>
 										Extension required for edits
 									</span>
@@ -405,24 +399,9 @@ export function PlaylistDetailView({
 									<button
 										type="button"
 										onClick={() => onToggleTarget(playlist.id, !isTarget)}
-										className="flex min-w-[120px] items-center justify-center gap-1.5 px-4 py-2 text-xs tracking-widest uppercase transition-colors duration-150"
-										style={{
-											fontFamily: fonts.body,
-											color: isTarget ? theme.textOnPrimary : theme.text,
-											background: isTarget ? theme.primary : theme.surface,
-										}}
-										onMouseEnter={(e) => {
-											e.currentTarget.style.background = theme.primary;
-											e.currentTarget.style.color = theme.textOnPrimary;
-										}}
-										onMouseLeave={(e) => {
-											e.currentTarget.style.background = isTarget
-												? theme.primary
-												: theme.surface;
-											e.currentTarget.style.color = isTarget
-												? theme.textOnPrimary
-												: theme.text;
-										}}
+										className="theme-target-toggle flex min-w-[120px] items-center justify-center gap-1.5 px-4 py-2 text-xs tracking-widest uppercase transition-colors duration-150"
+										data-selected={isTarget}
+										style={{ fontFamily: fonts.body }}
 									>
 										<span className="text-sm font-light">
 											{isTarget ? "−" : "+"}
@@ -436,7 +415,6 @@ export function PlaylistDetailView({
 				</div>
 
 				<PlaylistTrackList
-					theme={theme}
 					playlistId={isExpanded ? playlist.id : null}
 					isExpanded={isExpanded}
 				/>

@@ -1,10 +1,8 @@
 import { createPortal } from "react-dom";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
 
 interface DescriptionConflictDialogProps {
-	theme: ThemeConfig;
 	latestDescription: string | null;
 	draftDescription: string | null;
 	onKeepMine: () => void;
@@ -17,7 +15,6 @@ function previewText(description: string | null): string {
 }
 
 export function DescriptionConflictDialog({
-	theme,
 	latestDescription,
 	draftDescription,
 	onKeepMine,
@@ -42,62 +39,48 @@ export function DescriptionConflictDialog({
 	});
 
 	return createPortal(
-		<div
-			className="dialog-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
-			style={{ background: "rgba(0,0,0,0.45)" }}
-			onClick={onUseSpotifys}
-		>
+		<div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+			<button
+				type="button"
+				aria-label="Use Spotify description"
+				className="dialog-backdrop absolute inset-0 cursor-default appearance-none border-0 bg-black/45 p-0 backdrop-blur-sm"
+				onClick={onUseSpotifys}
+			/>
 			<div
 				role="alertdialog"
 				aria-labelledby="conflict-title"
-				className="dialog-content w-full max-w-[360px] p-8"
-				style={{
-					background: theme.surface,
-					border: `1px solid ${theme.border}`,
-				}}
-				onClick={(e) => e.stopPropagation()}
+				className="theme-surface-bg theme-border-color dialog-content relative w-full max-w-[360px] border p-8"
 			>
 				<h3
 					id="conflict-title"
-					className="mb-6 text-2xl italic font-light leading-snug tracking-tight"
-					style={{
-						fontFamily: fonts.display,
-						color: theme.text,
-					}}
+					className="theme-text mb-6 text-2xl font-light leading-snug tracking-tight italic"
+					style={{ fontFamily: fonts.display }}
 				>
 					This description <em>changed</em> on Spotify
 				</h3>
 
 				<p
-					className="mb-2 text-xs uppercase tracking-widest"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted mb-2 text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body }}
 				>
 					On Spotify now
 				</p>
 				<p
-					className="mb-6 border-t pt-2 text-sm leading-relaxed"
-					style={{
-						fontFamily: fonts.body,
-						color: theme.text,
-						borderColor: theme.border,
-					}}
+					className="theme-border-color theme-text mb-6 border-t pt-2 text-sm leading-relaxed"
+					style={{ fontFamily: fonts.body }}
 				>
 					{previewText(latestDescription)}
 				</p>
 
 				<p
-					className="mb-2 text-xs uppercase tracking-widest"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted mb-2 text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body }}
 				>
 					Yours
 				</p>
 				<p
-					className="mb-8 border-t pt-2 text-sm leading-relaxed"
-					style={{
-						fontFamily: fonts.body,
-						color: theme.text,
-						borderColor: theme.border,
-					}}
+					className="theme-border-color theme-text mb-8 border-t pt-2 text-sm leading-relaxed"
+					style={{ fontFamily: fonts.body }}
 				>
 					{previewText(draftDescription)}
 				</p>
@@ -106,25 +89,16 @@ export function DescriptionConflictDialog({
 					<button
 						type="button"
 						onClick={onUseSpotifys}
-						className="cursor-pointer border px-4 py-1.5 text-xs font-normal uppercase tracking-widest transition-[transform,filter] duration-150 hover:brightness-95 active:scale-[0.98]"
-						style={{
-							fontFamily: fonts.body,
-							background: "transparent",
-							borderColor: theme.border,
-							color: theme.text,
-						}}
+						className="theme-border-color theme-text cursor-pointer border px-4 py-1.5 text-xs font-normal tracking-widest uppercase transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98]"
+						style={{ fontFamily: fonts.body }}
 					>
 						Use Spotify's
 					</button>
 					<button
 						type="button"
 						onClick={onKeepMine}
-						className="cursor-pointer border border-transparent px-6 py-2 text-sm font-medium uppercase tracking-widest transition-[transform,filter] duration-150 hover:brightness-95 active:scale-[0.98]"
-						style={{
-							fontFamily: fonts.body,
-							background: theme.primary,
-							color: theme.bg,
-						}}
+						className="theme-primary-action cursor-pointer px-6 py-2 text-sm font-medium tracking-widest uppercase transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
+						style={{ fontFamily: fonts.body }}
 					>
 						Keep mine
 					</button>

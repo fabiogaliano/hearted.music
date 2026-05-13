@@ -6,7 +6,6 @@
  */
 
 import { cn } from "@/lib/shared/utils/utils";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 interface AlbumPlaceholderProps {
 	/** Additional className for the SVG */
@@ -14,23 +13,24 @@ interface AlbumPlaceholderProps {
 }
 
 export function AlbumPlaceholder({ className }: AlbumPlaceholderProps) {
-	const theme = useTheme();
-	const bgColor = theme.surfaceDim;
-	const iconColor = theme.textMuted;
-
 	return (
 		<svg
 			viewBox="0 0 100 100"
 			className={cn("h-full w-full", className)}
 			aria-hidden="true"
 		>
-			<rect width="100" height="100" fill={bgColor} fillOpacity="0.6" />
+			<rect
+				width="100"
+				height="100"
+				fill="var(--t-surface-dim)"
+				fillOpacity="0.6"
+			/>
 			<text
 				x="50"
 				y="58"
 				textAnchor="middle"
 				dominantBaseline="middle"
-				fill={iconColor}
+				fill="var(--t-text-muted)"
 				fillOpacity="0.5"
 				fontSize="32"
 				className="select-none"
