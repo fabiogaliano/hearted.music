@@ -175,6 +175,7 @@ export function updateOnboardingStep(
 				{
 					account_id: accountId,
 					onboarding_step: step,
+					onboarding_completed_at: null,
 				},
 				{ onConflict: "account_id" },
 			)

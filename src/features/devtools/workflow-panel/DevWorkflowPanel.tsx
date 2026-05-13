@@ -1,6 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import { PaneRoot, PaneSlot, PaneStore, usePane } from "uipane";
 import { resolveSession } from "@/features/onboarding/step-resolver";
 import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
@@ -30,7 +37,7 @@ export function DevWorkflowPanel() {
 	const queryClient = useQueryClient();
 	const router = useRouter();
 	const [lastAction, setLastAction] = useState("");
-	const [isRunning, setIsRunning] = useState(false);
+	const isRunningRef = useRef(false);
 
 	const { data: liveOnboarding } = useQuery<OnboardingAuthPayload>({
 		queryKey: ONBOARDING_SESSION_QUERY_KEY,
@@ -58,8 +65,8 @@ export function DevWorkflowPanel() {
 
 	const handleOnboardingNav = useCallback(
 		async (target: OnboardingStep | "prev" | "next") => {
-			if (isRunning) return;
-			setIsRunning(true);
+			if (isRunningRef.current) return;
+			isRunningRef.current = true;
 
 			const cached = queryClient.getQueryData<OnboardingAuthPayload>(
 				ONBOARDING_SESSION_QUERY_KEY,
@@ -74,14 +81,14 @@ export function DevWorkflowPanel() {
 			if (target === "prev") {
 				if (currentIdx <= 0) {
 					setLastAction(`Already at first step (${currentStep})`);
-					setIsRunning(false);
+					isRunningRef.current = false;
 					return;
 				}
 				nextStep = ONBOARDING_STEPS[currentIdx - 1]!;
 			} else if (target === "next") {
 				if (currentIdx >= ONBOARDING_STEPS.length - 1) {
 					setLastAction(`Already at last step (${currentStep})`);
-					setIsRunning(false);
+					isRunningRef.current = false;
 					return;
 				}
 				nextStep = ONBOARDING_STEPS[currentIdx + 1]!;
@@ -117,10 +124,10 @@ export function DevWorkflowPanel() {
 					`Step error: ${e instanceof Error ? e.message : String(e)}`,
 				);
 			} finally {
-				setIsRunning(false);
+				isRunningRef.current = false;
 			}
 		},
-		[queryClient, router, isRunning],
+		[queryClient, router],
 	);
 
 	const onboardingParams = usePane(
@@ -173,6 +180,15 @@ export function DevWorkflowPanel() {
 			},
 		},
 	);
+
+	const selectedStep = onboardingParams.navigation.step as OnboardingStep;
+	const prevSelectedStep = useRef(selectedStep);
+	useEffect(() => {
+		if (selectedStep !== prevSelectedStep.current) {
+			prevSelectedStep.current = selectedStep;
+			void handleOnboardingNav(selectedStep);
+		}
+	}, [selectedStep, handleOnboardingNav]);
 
 	const realAvailable = usePaneRealAvailable();
 
