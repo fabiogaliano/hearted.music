@@ -53,14 +53,14 @@ export function Sidebar({
 			style={{ borderColor: theme.border }}
 		>
 			<h1
-				className="text-3xl font-extralight"
+				className="text-4xl font-extralight"
 				style={{ fontFamily: fonts.display, color: theme.text }}
 			>
 				hearted.
 			</h1>
 
-			<nav className="mt-12 flex-1">
-				<div className="space-y-6">
+			<nav className="mt-10 flex-1">
+				<div className="space-y-2">
 					{NAV_ITEMS.map((item) => (
 						<NavItem
 							key={item.to}
@@ -102,7 +102,7 @@ export function Sidebar({
 					</p>
 					{userBalance != null && (
 						<p
-							className="text-xs"
+							className="text-[11px]"
 							style={{ fontFamily: fonts.body, color: theme.textMuted }}
 						>
 							{userBalance} {userBalance === 1 ? "song" : "songs"} to explore

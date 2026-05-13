@@ -14,10 +14,10 @@ export function NavItem({ to, label, badge, isActive }: NavItemProps) {
 	return (
 		<Link
 			to={to}
-			className="flex w-full items-center justify-between text-left"
+			className="flex w-full items-center justify-between py-2 text-left"
 		>
 			<span
-				className="text-lg"
+				className="text-[13px] tracking-widest uppercase"
 				style={{
 					fontFamily: fonts.body,
 					color: isActive ? theme.text : theme.textMuted,
@@ -28,10 +28,10 @@ export function NavItem({ to, label, badge, isActive }: NavItemProps) {
 			</span>
 			{badge !== undefined && badge > 0 && (
 				<span
-					className="text-sm tabular-nums"
+					className="text-[11px] tabular-nums"
 					style={{
 						fontFamily: fonts.body,
-						color: theme.text,
+						color: theme.textMuted,
 					}}
 				>
 					{badge}
