@@ -21,20 +21,22 @@ code {
     source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
-:root {
-  /* Theme hue - override this to change focus ring color globally */
-  /* Default: 340 (rose) - matches DEFAULT_THEME */
-  --theme-hue: 340;
-  --t-bg: hsl(340, 32%, 85%);
-  --t-surface: hsl(340, 32%, 91%);
-  --t-surface-dim: hsl(340, 32%, 78%);
-  --t-border: hsl(340, 20%, 75%);
-  --t-text: hsl(340, 28%, 22%);
-  --t-text-muted: hsl(340, 20%, 45%);
-  --t-text-on-primary: hsl(340, 32%, 92%);
-  --t-primary: hsl(340, 28%, 28%);
-  --t-primary-hover: hsl(340, 30%, 20%);
+@layer base {
+  :root {
+    --theme-hue: 340;
+    --t-bg: hsl(340, 32%, 85%);
+    --t-surface: hsl(340, 32%, 91%);
+    --t-surface-dim: hsl(340, 32%, 78%);
+    --t-border: hsl(340, 20%, 75%);
+    --t-text: hsl(340, 28%, 22%);
+    --t-text-muted: hsl(340, 20%, 45%);
+    --t-text-on-primary: hsl(340, 32%, 92%);
+    --t-primary: hsl(340, 28%, 28%);
+    --t-primary-hover: hsl(340, 30%, 20%);
+  }
+}
 
+:root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);

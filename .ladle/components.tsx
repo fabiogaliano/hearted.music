@@ -47,7 +47,7 @@ function StoryRouter({ children }: { children: React.ReactNode }) {
 }
 
 export const Provider: GlobalProvider = ({ children, globalState }) => {
-	const raw = globalState?.control?.["theme"];
+	const raw = globalState?.control?.["theme"]?.value;
 	const themeColor: ThemeColor =
 		typeof raw === "string" && THEME_COLORS.includes(raw as ThemeColor)
 			? (raw as ThemeColor)
