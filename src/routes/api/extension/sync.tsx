@@ -22,9 +22,9 @@ import { createJob } from "@/lib/data/jobs";
 import { updatePhaseJobIds } from "@/lib/domains/library/accounts/preferences-queries";
 import { getAll } from "@/lib/domains/library/liked-songs/queries";
 import {
-	Playlist,
 	getPlaylists,
 	getTargetPlaylists,
+	type Playlist,
 } from "@/lib/domains/library/playlists/queries";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import { completeJob, startJob } from "@/lib/platform/jobs/lifecycle";
@@ -33,6 +33,7 @@ import {
 	extensionCorsPreflightResponse,
 	getExtensionCorsHeaders,
 } from "@/lib/server/extension-cors";
+import { mapWithConcurrency } from "@/lib/shared/utils/concurrency";
 import { SyncChanges } from "@/lib/workflows/library-processing/changes/sync";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 import {
@@ -343,27 +344,42 @@ export const Route = createFileRoute("/api/extension/sync")({
 						? new Map(dbPlaylistsResult.value.map((p) => [p.spotify_id, p]))
 						: new Map<string, Playlist>();
 
-					let tracksProcessed = 0;
-
-					for (const entry of incomingPlaylistTracks) {
-						const dbPlaylist = dbPlaylistMap.get(entry.playlistSpotifyId);
-						if (!dbPlaylist) continue;
-
-						const trackResult = await syncPlaylistTracksFromData(
-							dbPlaylist,
-							entry.tracks,
-						);
-
-						if (Result.isOk(trackResult)) {
-							tracksProcessed += entry.tracks.length;
-							if (
-								trackResult.value.added > 0 ||
-								trackResult.value.removed > 0
-							) {
-								changedPlaylistIds.push(dbPlaylist.id);
+					const trackSyncResults = await mapWithConcurrency(
+						incomingPlaylistTracks,
+						4,
+						async (entry) => {
+							const dbPlaylist = dbPlaylistMap.get(entry.playlistSpotifyId);
+							if (!dbPlaylist) {
+								return { tracksProcessed: 0, changedPlaylistId: null };
 							}
-						}
-					}
+
+							const trackResult = await syncPlaylistTracksFromData(
+								dbPlaylist,
+								entry.tracks,
+							);
+
+							if (Result.isError(trackResult)) {
+								return { tracksProcessed: 0, changedPlaylistId: null };
+							}
+
+							const changed =
+								trackResult.value.added > 0 || trackResult.value.removed > 0;
+							return {
+								tracksProcessed: entry.tracks.length,
+								changedPlaylistId: changed ? dbPlaylist.id : null,
+							};
+						},
+					);
+
+					const tracksProcessed = trackSyncResults.reduce(
+						(total, result) => total + result.tracksProcessed,
+						0,
+					);
+					changedPlaylistIds.push(
+						...trackSyncResults.flatMap((result) =>
+							result.changedPlaylistId ? [result.changedPlaylistId] : [],
+						),
+					);
 
 					await completeJob(phaseJobIds.playlist_tracks);
 

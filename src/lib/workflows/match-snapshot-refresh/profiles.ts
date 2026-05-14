@@ -22,6 +22,7 @@ import {
 	type TrackInfo,
 } from "@/lib/integrations/audio/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
+import { mapWithConcurrency } from "@/lib/shared/utils/concurrency";
 
 /**
  * Loads current target playlists and computes/caches their profiles.
@@ -50,68 +51,73 @@ export async function loadTargetPlaylistProfiles(
 	);
 	const genreService = createGenreEnrichmentService();
 
-	const profiles: MatchingPlaylistProfile[] = [];
+	const PROFILE_CONCURRENCY = 2;
+	const profiles = await mapWithConcurrency(
+		playlists,
+		PROFILE_CONCURRENCY,
+		async (playlist): Promise<MatchingPlaylistProfile> => {
+			const playlistSongsResult = await getPlaylistSongs(playlist.id);
+			if (Result.isError(playlistSongsResult)) {
+				throw new Error(
+					`[target-refresh] Failed to load songs for playlist ${playlist.id}: ${playlistSongsResult.error.message}`,
+				);
+			}
 
-	for (const playlist of playlists) {
-		const playlistSongsResult = await getPlaylistSongs(playlist.id);
-		if (Result.isError(playlistSongsResult)) {
-			throw new Error(
-				`[target-refresh] Failed to load songs for playlist ${playlist.id}: ${playlistSongsResult.error.message}`,
+			const songIds = playlistSongsResult.value.map((ps) => ps.song_id);
+			const songsResult = await getByIds(songIds);
+			if (Result.isError(songsResult)) {
+				throw new Error(
+					`[target-refresh] Failed to load song data for playlist ${playlist.id}: ${songsResult.error.message}`,
+				);
+			}
+
+			// Backfill audio features and genres for profile computation
+			const trackInfos: TrackInfo[] = songsResult.value.map((s) => ({
+				songId: s.id,
+				spotifyTrackId: s.spotify_id,
+			}));
+			await audioFeaturesService.backfillMissingFeatures(trackInfos);
+
+			const genreInputs: GenreEnrichmentInput[] = songsResult.value.map(
+				(s) => ({
+					songId: s.id,
+					artist: s.artists[0] ?? "Unknown",
+					trackName: s.name,
+					album: s.album_name ?? undefined,
+				}),
 			);
-		}
+			await genreService.enrichBatch(genreInputs);
 
-		const songIds = playlistSongsResult.value.map((ps) => ps.song_id);
-		const songsResult = await getByIds(songIds);
-		if (Result.isError(songsResult)) {
-			throw new Error(
-				`[target-refresh] Failed to load song data for playlist ${playlist.id}: ${songsResult.error.message}`,
+			// Re-read songs after enrichment for fresh genre data
+			const freshSongsResult = await getByIds(songIds);
+			const songs = Result.isOk(freshSongsResult)
+				? freshSongsResult.value
+				: songsResult.value;
+
+			const profileResult = await profilingService.computeProfile(
+				playlist.id,
+				songs,
+				{
+					name: playlist.name,
+					description: playlist.description ?? undefined,
+				},
 			);
-		}
 
-		// Backfill audio features and genres for profile computation
-		const trackInfos: TrackInfo[] = songsResult.value.map((s) => ({
-			songId: s.id,
-			spotifyTrackId: s.spotify_id,
-		}));
-		await audioFeaturesService.backfillMissingFeatures(trackInfos);
+			if (Result.isError(profileResult) || !profileResult.value) {
+				throw new Error(
+					`[target-refresh] Failed to compute profile for playlist ${playlist.id}`,
+				);
+			}
 
-		const genreInputs: GenreEnrichmentInput[] = songsResult.value.map((s) => ({
-			songId: s.id,
-			artist: s.artists[0] ?? "Unknown",
-			trackName: s.name,
-			album: s.album_name ?? undefined,
-		}));
-		await genreService.enrichBatch(genreInputs);
-
-		// Re-read songs after enrichment for fresh genre data
-		const freshSongsResult = await getByIds(songIds);
-		const songs = Result.isOk(freshSongsResult)
-			? freshSongsResult.value
-			: songsResult.value;
-
-		const profileResult = await profilingService.computeProfile(
-			playlist.id,
-			songs,
-			{
-				name: playlist.name,
-				description: playlist.description ?? undefined,
-			},
-		);
-
-		if (Result.isError(profileResult) || !profileResult.value) {
-			throw new Error(
-				`[target-refresh] Failed to compute profile for playlist ${playlist.id}`,
-			);
-		}
-
-		const p = profileResult.value;
-		profiles.push({
-			playlistId: p.playlistId,
-			embedding: p.embedding,
-			audioCentroid: toAudioCentroidRecord(p.audioCentroid),
-			genreDistribution: p.genreDistribution,
-		});
-	}
+			const p = profileResult.value;
+			return {
+				playlistId: p.playlistId,
+				embedding: p.embedding,
+				audioCentroid: toAudioCentroidRecord(p.audioCentroid),
+				genreDistribution: p.genreDistribution,
+			};
+		},
+	);
 
 	return { playlists, profiles };
 }

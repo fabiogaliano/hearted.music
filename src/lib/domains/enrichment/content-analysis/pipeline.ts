@@ -32,10 +32,7 @@ import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queri
 import { getBatch as getAudioFeaturesBatch } from "@/lib/domains/enrichment/audio-features/queries";
 import { get as getSongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
 import { getAll as getLikedSongsAll } from "@/lib/domains/library/liked-songs/queries";
-import {
-	getById as getSongById,
-	getByIds as getSongsByIds,
-} from "@/lib/domains/library/songs/queries";
+import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
 import { getApiKeyForProvider } from "@/lib/integrations/llm/config";
 import { LlmService } from "@/lib/integrations/llm/service";
 import { finalizeJob, startJob } from "@/lib/platform/jobs/lifecycle";
@@ -51,6 +48,7 @@ import {
 	GeniusNotFoundError,
 	GeniusParseError,
 } from "@/lib/shared/errors/external/genius";
+import { chunkArray } from "@/lib/shared/utils/concurrency";
 import { LyricsService } from "../lyrics/service";
 import {
 	type AnalyzePlaylistInput,
@@ -352,7 +350,7 @@ export class AnalysisPipeline {
 		}
 
 		// 6. Process eligible songs with concurrency control
-		const chunks = this.chunkArray(analyzableSongs, this.config.concurrency);
+		const chunks = chunkArray(analyzableSongs, this.config.concurrency);
 
 		for (const chunk of chunks) {
 			const promises = chunk.map(async (song) => {
@@ -517,22 +515,34 @@ export class AnalysisPipeline {
 
 		// 3. Filter to songs without analysis
 		// Note: This returns songs that need analysis, but lyrics need to be fetched separately
-		const needsAnalysis: SongToAnalyze[] = [];
-		for (const likedSong of likedSongsList) {
-			if (!existingAnalyses.has(likedSong.song_id)) {
-				// Get song details
-				const songResult = await getSongById(likedSong.song_id);
-				if (Result.isOk(songResult) && songResult.value) {
-					const track = songResult.value;
-					needsAnalysis.push({
+		const missingAnalysisIds = likedSongsList
+			.filter((likedSong) => !existingAnalyses.has(likedSong.song_id))
+			.map((likedSong) => likedSong.song_id);
+
+		if (missingAnalysisIds.length === 0) {
+			return Result.ok([]);
+		}
+
+		const songsResult = await getSongsByIds(missingAnalysisIds);
+		if (Result.isError(songsResult)) {
+			return Result.err(songsResult.error);
+		}
+
+		const songsById = new Map(songsResult.value.map((song) => [song.id, song]));
+		const needsAnalysis = missingAnalysisIds.flatMap(
+			(songId): SongToAnalyze[] => {
+				const track = songsById.get(songId);
+				if (!track) return [];
+				return [
+					{
 						songId: track.id,
 						artist: track.artists[0] ?? "Unknown Artist",
 						title: track.name,
 						lyrics: "", // Lyrics need to be fetched separately (via lyrics service)
-					});
-				}
-			}
-		}
+					},
+				];
+			},
+		);
 
 		return Result.ok(needsAnalysis);
 	}
@@ -620,17 +630,6 @@ export class AnalysisPipeline {
 		if (onProgress) {
 			await onProgress(progress);
 		}
-	}
-
-	/**
-	 * Splits array into chunks for concurrency control.
-	 */
-	private chunkArray<T>(array: T[], size: number): T[][] {
-		const chunks: T[][] = [];
-		for (let i = 0; i < array.length; i += size) {
-			chunks.push(array.slice(i, i + size));
-		}
-		return chunks;
 	}
 
 	/**

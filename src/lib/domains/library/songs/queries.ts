@@ -9,6 +9,7 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Tables, TablesInsert } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
+import { chunkArray, mapWithConcurrency } from "@/lib/shared/utils/concurrency";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
@@ -98,15 +99,18 @@ export async function getByIds(
 
 	const supabase = createAdminSupabaseClient();
 	const BATCH_SIZE = 100; // Safe limit for URL length
+	const BATCH_CONCURRENCY = 4;
+	const batches = chunkArray(ids, BATCH_SIZE);
+
+	const batchResults = await mapWithConcurrency(
+		batches,
+		BATCH_CONCURRENCY,
+		(batch) =>
+			fromSupabaseMany(supabase.from("song").select("*").in("id", batch)),
+	);
+
 	const allSongs: Song[] = [];
-
-	// Process in batches to avoid URI length limits
-	for (let i = 0; i < ids.length; i += BATCH_SIZE) {
-		const batch = ids.slice(i, i + BATCH_SIZE);
-		const result = await fromSupabaseMany(
-			supabase.from("song").select("*").in("id", batch),
-		);
-
+	for (const result of batchResults) {
 		if (Result.isError(result)) {
 			return result;
 		}
@@ -216,10 +220,11 @@ export async function updateGenresBatch(
 
 	const supabase = createAdminSupabaseClient();
 
-	// Supabase doesn't support batch updates with different values per row,
-	// so we use Promise.all with individual updates (still more efficient than N+1 pattern)
-	const results = await Promise.all(
-		updates.map(({ songId, genres }) =>
+	const UPDATE_CONCURRENCY = 5;
+	const results = await mapWithConcurrency(
+		updates,
+		UPDATE_CONCURRENCY,
+		({ songId, genres }) =>
 			fromSupabaseMaybe(
 				supabase
 					.from("song")
@@ -228,7 +233,6 @@ export async function updateGenresBatch(
 					.select("id")
 					.single(),
 			),
-		),
 	);
 
 	// Check for any errors

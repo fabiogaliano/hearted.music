@@ -9,6 +9,7 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Database, Tables, TablesInsert } from "@/lib/data/database.types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import { chunkArray, mapWithConcurrency } from "@/lib/shared/utils/concurrency";
 import {
 	fromSupabaseMany,
 	fromSupabaseSingle,
@@ -269,25 +270,31 @@ export async function getPending(
 	// Get song IDs that have item_status records (chunked to avoid URI-too-long)
 	const songIds = likedSongs.map((ls: LikedSong) => ls.song_id);
 	const CHUNK_SIZE = 50;
+	const CHUNK_CONCURRENCY = 4;
+	const chunks = chunkArray(songIds, CHUNK_SIZE);
+
+	const statusResults = await mapWithConcurrency(
+		chunks,
+		CHUNK_CONCURRENCY,
+		(chunk) =>
+			fromSupabaseMany<{ item_id: string }>(
+				supabase
+					.from("item_status")
+					.select("item_id")
+					.eq("account_id", accountId)
+					.eq("item_type", "song")
+					.in("item_id", chunk),
+			),
+	);
+
 	const processedIds = new Set<string>();
-
-	for (let i = 0; i < songIds.length; i += CHUNK_SIZE) {
-		const chunk = songIds.slice(i, i + CHUNK_SIZE);
-		const statusResult = await fromSupabaseMany(
-			supabase
-				.from("item_status")
-				.select("item_id")
-				.eq("account_id", accountId)
-				.eq("item_type", "song")
-				.in("item_id", chunk),
-		);
-
+	for (const statusResult of statusResults) {
 		if (Result.isError(statusResult)) {
 			return Result.err(statusResult.error);
 		}
 
-		for (const s of statusResult.value) {
-			processedIds.add((s as { item_id: string }).item_id);
+		for (const status of statusResult.value) {
+			processedIds.add(status.item_id);
 		}
 	}
 	const pending = likedSongs.filter(

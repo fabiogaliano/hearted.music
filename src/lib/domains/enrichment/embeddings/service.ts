@@ -223,19 +223,31 @@ export class EmbeddingService {
 		const analysisMap = analysesResult.value;
 
 		// Separate songs with/without analysis
+		const embeddingInputs = await Promise.all(
+			needsEmbedding.map(async (songId) => {
+				const songAnalysis = analysisMap.get(songId);
+				if (!songAnalysis) {
+					return { kind: "failed" as const, songId, error: "Missing analysis" };
+				}
+
+				const text = this.buildEmbeddingText(songAnalysis);
+				const hash = await this.hashContent(text);
+				return { kind: "embed" as const, songId, text, hash };
+			}),
+		);
+
 		const toEmbed: Array<{ songId: string; text: string; hash: string }> = [];
 		const failed: Array<{ songId: string; error: string }> = [];
-
-		for (const songId of needsEmbedding) {
-			const songAnalysis = analysisMap.get(songId);
-			if (!songAnalysis) {
-				failed.push({ songId, error: "Missing analysis" });
-				continue;
+		for (const input of embeddingInputs) {
+			if (input.kind === "failed") {
+				failed.push({ songId: input.songId, error: input.error });
+			} else {
+				toEmbed.push({
+					songId: input.songId,
+					text: input.text,
+					hash: input.hash,
+				});
 			}
-
-			const text = this.buildEmbeddingText(songAnalysis);
-			const hash = await this.hashContent(text);
-			toEmbed.push({ songId, text, hash });
 		}
 
 		if (toEmbed.length === 0) {

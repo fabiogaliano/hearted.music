@@ -18,9 +18,9 @@ import {
 } from "@/lib/domains/enrichment/genre-tagging/service";
 import { createLyricsService } from "@/lib/domains/enrichment/lyrics/service";
 import {
-	Playlist,
 	getPlaylistSongs,
 	getTargetPlaylists,
+	type Playlist,
 } from "@/lib/domains/library/playlists/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import { getByIds } from "@/lib/domains/library/songs/queries";
@@ -30,6 +30,8 @@ import {
 } from "@/lib/integrations/audio/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import type { DbError } from "@/lib/shared/errors/database";
+import { chunkArray, mapWithConcurrency } from "@/lib/shared/utils/concurrency";
+import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -75,8 +77,9 @@ async function selectCandidates(
 	if (opts.playlistIds && opts.playlistIds.length > 0) {
 		const targetResult = await getTargetPlaylists(opts.accountId);
 		if (Result.isError(targetResult)) return targetResult;
+		const requestedPlaylistIds = new Set(opts.playlistIds);
 		targetPlaylists = targetResult.value.filter((p) =>
-			opts.playlistIds!.includes(p.id),
+			requestedPlaylistIds.has(p.id),
 		);
 	} else {
 		const targetResult = await getTargetPlaylists(opts.accountId);
@@ -89,15 +92,24 @@ async function selectCandidates(
 	}
 
 	// Gather all song IDs from target playlists
+	const PLAYLIST_SONGS_CONCURRENCY = 4;
+	const playlistSongResults = await mapWithConcurrency(
+		targetPlaylists,
+		PLAYLIST_SONGS_CONCURRENCY,
+		async (playlist) => ({
+			playlistId: playlist.id,
+			result: await getPlaylistSongs(playlist.id),
+		}),
+	);
+
 	const allSongIds = new Set<string>();
 	const affectedPlaylistIds: string[] = [];
 
-	for (const pl of targetPlaylists) {
-		const psResult = await getPlaylistSongs(pl.id);
-		if (Result.isError(psResult)) continue;
-		if (psResult.value.length > 0) {
-			affectedPlaylistIds.push(pl.id);
-			for (const ps of psResult.value) {
+	for (const { playlistId, result } of playlistSongResults) {
+		if (Result.isError(result)) continue;
+		if (result.value.length > 0) {
+			affectedPlaylistIds.push(playlistId);
+			for (const ps of result.value) {
 				allSongIds.add(ps.song_id);
 			}
 		}
@@ -114,14 +126,31 @@ async function selectCandidates(
 	// Exclude liked songs — they go through the full enrichment pipeline
 	const { createAdminSupabaseClient } = await import("@/lib/data/client");
 	const supabase = createAdminSupabaseClient();
-	const { data: likedRows } = await supabase
-		.from("liked_song")
-		.select("song_id")
-		.eq("account_id", opts.accountId)
-		.is("unliked_at", null)
-		.in("song_id", [...allSongIds]);
+	const SONG_ID_BATCH_SIZE = 100;
+	const SONG_ID_BATCH_CONCURRENCY = 4;
+	const likedResults = await mapWithConcurrency(
+		chunkArray([...allSongIds], SONG_ID_BATCH_SIZE),
+		SONG_ID_BATCH_CONCURRENCY,
+		(songIdBatch) =>
+			fromSupabaseMany<{ song_id: string }>(
+				supabase
+					.from("liked_song")
+					.select("song_id")
+					.eq("account_id", opts.accountId)
+					.is("unliked_at", null)
+					.in("song_id", songIdBatch),
+			),
+	);
 
-	const likedSongIds = new Set((likedRows ?? []).map((r) => r.song_id));
+	const likedSongIds = new Set<string>();
+	for (const likedResult of likedResults) {
+		if (Result.isError(likedResult)) {
+			return Result.err(likedResult.error);
+		}
+		for (const row of likedResult.value) {
+			likedSongIds.add(row.song_id);
+		}
+	}
 	const playlistOnlySongs = songsResult.value.filter(
 		(s) => !likedSongIds.has(s.id),
 	);
@@ -285,40 +314,37 @@ async function backfillLyricsEmbeddings(
 		? new Set(existingResult.value.keys())
 		: new Set<string>();
 
-	let stored = 0;
-	let skipped = 0;
-	let failed = 0;
+	const outcomes = await mapWithConcurrency(
+		candidateSongs,
+		3,
+		async (song): Promise<"stored" | "skipped" | "failed"> => {
+			if (existingIds.has(song.id)) {
+				return "skipped";
+			}
 
-	for (const song of candidateSongs) {
-		if (existingIds.has(song.id)) {
-			skipped++;
-			continue;
-		}
+			const artist = song.artists[0] ?? "";
+			if (!artist) {
+				return "skipped";
+			}
 
-		const artist = song.artists[0] ?? "";
-		if (!artist) {
-			skipped++;
-			continue;
-		}
+			const textResult = await lyricsService.getLyricsText(artist, song.name);
+			if (Result.isError(textResult)) {
+				return "failed";
+			}
 
-		const textResult = await lyricsService.getLyricsText(artist, song.name);
-		if (Result.isError(textResult)) {
-			failed++;
-			continue;
-		}
+			const storeResult = await embeddingService.embedAndStoreText(
+				song.id,
+				textResult.value,
+				{ prefix: "passage:" },
+			);
 
-		const storeResult = await embeddingService.embedAndStoreText(
-			song.id,
-			textResult.value,
-			{ prefix: "passage:" },
-		);
+			return Result.isOk(storeResult) ? "stored" : "failed";
+		},
+	);
 
-		if (Result.isOk(storeResult)) {
-			stored++;
-		} else {
-			failed++;
-		}
-	}
-
-	return { stored, skipped, failed };
+	return {
+		stored: outcomes.filter((outcome) => outcome === "stored").length,
+		skipped: outcomes.filter((outcome) => outcome === "skipped").length,
+		failed: outcomes.filter((outcome) => outcome === "failed").length,
+	};
 }

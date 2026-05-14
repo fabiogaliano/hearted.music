@@ -9,6 +9,7 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Tables } from "@/lib/data/database.types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import { chunkArray, mapWithConcurrency } from "@/lib/shared/utils/concurrency";
 import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
 
 export type Artist = Tables<"artist">;
@@ -55,20 +56,24 @@ export async function getWithImagesBySpotifyIds(
 	const uniqueSpotifyIds = [...new Set(spotifyIds)];
 	const supabase = createAdminSupabaseClient();
 	const BATCH_SIZE = 100;
+	const BATCH_CONCURRENCY = 4;
+	const batches = chunkArray(uniqueSpotifyIds, BATCH_SIZE);
+
+	const batchResults = await mapWithConcurrency(
+		batches,
+		BATCH_CONCURRENCY,
+		(batch) =>
+			fromSupabaseMany<Pick<Artist, "spotify_id" | "image_url">>(
+				supabase
+					.from("artist")
+					.select("spotify_id, image_url")
+					.in("spotify_id", batch)
+					.not("image_url", "is", null),
+			),
+	);
+
 	const artistsWithImages: ArtistWithImage[] = [];
-
-	for (let i = 0; i < uniqueSpotifyIds.length; i += BATCH_SIZE) {
-		const batch = uniqueSpotifyIds.slice(i, i + BATCH_SIZE);
-		const result = await fromSupabaseMany<
-			Pick<Artist, "spotify_id" | "image_url">
-		>(
-			supabase
-				.from("artist")
-				.select("spotify_id, image_url")
-				.in("spotify_id", batch)
-				.not("image_url", "is", null),
-		);
-
+	for (const result of batchResults) {
 		if (Result.isError(result)) {
 			return Result.err(result.error);
 		}

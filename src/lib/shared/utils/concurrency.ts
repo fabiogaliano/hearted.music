@@ -8,6 +8,27 @@
  *     limiter.run(() => fetchData(item))
  *   ))
  */
+export function chunkArray<T>(items: readonly T[], size: number): T[][] {
+	if (size < 1) {
+		throw new Error("chunkArray size must be at least 1");
+	}
+
+	return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
+		items.slice(index * size, (index + 1) * size),
+	);
+}
+
+export async function mapWithConcurrency<T, R>(
+	items: readonly T[],
+	limit: number,
+	mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+	const limiter = new ConcurrencyLimiter(limit);
+	return Promise.all(
+		items.map((item, index) => limiter.run(() => mapper(item, index))),
+	);
+}
+
 export class ConcurrencyLimiter {
 	private running = 0;
 	private lastStartTime = 0;
