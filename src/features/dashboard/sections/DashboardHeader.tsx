@@ -59,7 +59,7 @@ export function DashboardHeader({
 				</span>
 				<span className="mx-1 opacity-40">|</span>
 				<span className="flex items-center gap-2">
-					<span className="theme-text-muted-bg h-1.5 w-1.5 rounded-full" />
+					<span className="theme-text-muted-bg size-1.5 rounded-full" />
 					{lastSyncText}
 				</span>
 				<Button

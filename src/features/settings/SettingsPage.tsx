@@ -133,7 +133,7 @@ export function SettingsPage({
 										aria-pressed={isSelected}
 									>
 										<div
-											className="h-12 w-12 rounded-full transition-transform duration-150 group-hover:scale-[1.05] group-active:scale-[0.98]"
+											className="size-12 rounded-full transition-transform duration-150 group-hover:scale-[1.05] group-active:scale-[0.98]"
 											style={{
 												background: optionTheme.surfaceDim,
 												border: isSelected

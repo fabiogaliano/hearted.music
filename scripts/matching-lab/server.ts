@@ -612,7 +612,7 @@ function computeStats(values: number[]) {
 	if (values.length === 0) {
 		return { min: 0, max: 0, mean: 0, stdev: 0, p25: 0, p50: 0, p75: 0, count: 0, spread: 0 };
 	}
-	const sorted = [...values].sort((a, b) => a - b);
+	const sorted = values.toSorted((a, b) => a - b);
 	const mean = values.reduce((s, v) => s + v, 0) / values.length;
 	const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length;
 	const p = (pct: number) => {

@@ -232,7 +232,7 @@ export function PlanSelectionStep({
 					className="theme-text mt-4 text-4xl leading-tight font-extralight"
 					style={{ fontFamily: fonts.display }}
 				>
-					Confirming your purchase...
+					Confirming your purchase…
 				</h2>
 				<p
 					className="theme-text-muted mt-6 text-base font-light animate-pulse"
@@ -300,7 +300,7 @@ export function PlanSelectionStep({
 					className="theme-text-muted text-lg font-light animate-pulse"
 					style={{ fontFamily: fonts.body }}
 				>
-					Loading plans...
+					Loading plans…
 				</p>
 			</div>
 		);

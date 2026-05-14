@@ -30,7 +30,7 @@ export const CompletionScreen = memo(function CompletionScreen({
 					style={{ fontFamily: fonts.body }}
 				>
 					<span className="flex items-center gap-2">
-						<span className="theme-text-muted-bg h-1.5 w-1.5 rounded-full" />
+						<span className="theme-text-muted-bg size-1.5 rounded-full" />
 						Just now
 					</span>
 				</div>
@@ -94,7 +94,7 @@ export const CompletionScreen = memo(function CompletionScreen({
 					{songs.slice(0, 5).map((song) => (
 						<div
 							key={song.id}
-							className="relative h-20 w-20 transition-transform hover:-translate-y-1"
+							className="relative size-20 transition-transform hover:-translate-y-1"
 						>
 							<img
 								src={song.albumArtUrl ?? undefined}

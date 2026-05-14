@@ -70,7 +70,7 @@ export function DesignSwitcher({
 			<button
 				type="button"
 				onClick={() => setIsExpanded(true)}
-				className="fixed bottom-4 right-4 z-50 w-10 h-10 rounded-full shadow-lg flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
+				className="fixed bottom-4 right-4 z-50 size-10 rounded-full shadow-lg flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
 				style={{
 					background: "hsl(0, 0%, 15%)",
 					color: "hsl(0, 0%, 85%)",
@@ -122,7 +122,7 @@ export function DesignSwitcher({
 				<button
 					type="button"
 					onClick={() => setIsExpanded(false)}
-					className="w-6 h-6 flex items-center justify-center rounded cursor-pointer hover:bg-white/10"
+					className="size-6 flex items-center justify-center rounded cursor-pointer hover:bg-white/10"
 					style={{ color: "hsl(0, 0%, 55%)" }}
 				>
 					✕

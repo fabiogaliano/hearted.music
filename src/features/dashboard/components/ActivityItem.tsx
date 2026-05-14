@@ -37,16 +37,16 @@ export function ActivityItem({ item, showBorder }: ActivityItemProps) {
 
 	return (
 		<div
-			className={`${showBorder ? "theme-border-color border-t" : ""} theme-hover-surface group -mx-4 flex items-start gap-4 px-4 py-4 transition-colors`}
+			className={`${showBorder ? "theme-border-color border-t" : ""} theme-hover-surface group -mx-4 flex items-start gap-4 p-4 transition-colors`}
 		>
 			{imageUrl ? (
 				<img
 					src={imageUrl}
 					alt={songName}
-					className="h-14 w-14 shrink-0 object-cover"
+					className="size-14 shrink-0 object-cover"
 				/>
 			) : (
-				<div className="theme-surface-bg flex h-14 w-14 shrink-0 items-center justify-center">
+				<div className="theme-surface-bg flex size-14 shrink-0 items-center justify-center">
 					<span className="theme-text-muted text-2xl">♪</span>
 				</div>
 			)}

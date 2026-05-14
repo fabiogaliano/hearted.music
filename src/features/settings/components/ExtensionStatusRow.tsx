@@ -44,7 +44,7 @@ export function ExtensionStatusRow() {
 				style={{ fontFamily: fonts.body }}
 			>
 				<span
-					className="h-2 w-2 rounded-full transition-colors duration-150"
+					className="size-2 rounded-full transition-colors duration-150"
 					style={{
 						background: status === "connected" ? "#1DB954" : "var(--t-border)",
 					}}

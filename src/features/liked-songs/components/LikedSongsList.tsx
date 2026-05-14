@@ -59,7 +59,7 @@ export function LikedSongsList({
 						className="theme-text-muted text-sm"
 						style={{ fontFamily: fonts.body }}
 					>
-						Loading your liked songs...
+						Loading your liked songs…
 					</p>
 				</div>
 			</div>
@@ -146,7 +146,7 @@ export function LikedSongsList({
 							className="theme-text-muted text-xs tracking-widest uppercase"
 							style={{ fontFamily: fonts.body }}
 						>
-							Loading more...
+							Loading more…
 						</span>
 					</div>
 				)}

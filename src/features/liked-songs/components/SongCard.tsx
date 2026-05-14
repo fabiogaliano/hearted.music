@@ -185,7 +185,7 @@ const SongCardContent = memo(function SongCardContent({
 				`}</style>
 			)}
 			<div
-				className="relative h-12 w-12 shrink-0 overflow-hidden"
+				className="relative size-12 shrink-0 overflow-hidden"
 				style={{
 					viewTransitionName: isAnimatingTo ? "song-album" : "none",
 				}}
@@ -206,7 +206,7 @@ const SongCardContent = memo(function SongCardContent({
 					</div>
 				)}
 				{!isLocked && isNew && (
-					<div className="theme-primary-bg absolute top-1 right-1 h-2 w-2 rounded-full" />
+					<div className="theme-primary-bg absolute top-1 right-1 size-2 rounded-full" />
 				)}
 			</div>
 
@@ -259,7 +259,7 @@ const SongCardContent = memo(function SongCardContent({
 			{!showWalkthroughUi &&
 				(isSelectable ? (
 					<span
-						className={`${isChecked ? "theme-primary-bg" : "bg-transparent"} ${isChecked ? "border-(--t-primary)" : "theme-border-color"} flex h-5 w-5 shrink-0 items-center justify-center border`}
+						className={`${isChecked ? "theme-primary-bg" : "bg-transparent"} ${isChecked ? "border-(--t-primary)" : "theme-border-color"} flex size-5 shrink-0 items-center justify-center border`}
 					>
 						{isChecked && (
 							<Check size={12} color="var(--t-text-on-primary)" weight="bold" />

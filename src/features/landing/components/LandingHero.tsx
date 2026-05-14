@@ -345,7 +345,7 @@ export function LandingHero({
 							</span>
 							<svg
 								aria-hidden="true"
-								className="scroll-arrow h-6 w-6 opacity-60"
+								className="scroll-arrow size-6 opacity-60"
 								fill="none"
 								viewBox="0 0 24 24"
 								stroke="currentColor"

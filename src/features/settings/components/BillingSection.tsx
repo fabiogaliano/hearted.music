@@ -110,7 +110,7 @@ export function BillingSection({ billingState }: BillingSectionProps) {
 							{planLabel}
 							<span className="theme-text-muted ml-3 inline-flex items-center gap-2">
 								<span
-									className="inline-block h-2 w-2 rounded-full"
+									className="inline-block size-2 rounded-full"
 									style={{
 										background: getStatusColor(billingState.subscriptionStatus),
 									}}

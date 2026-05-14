@@ -94,10 +94,7 @@ export function HorizontalJourney({ journey, colors }: HorizontalJourneyProps) {
 			</div>
 
 			{/* Content card */}
-			<div
-				className="rounded-lg px-4 py-4"
-				style={{ background: colors.surface }}
-			>
+			<div className="rounded-lg p-4" style={{ background: colors.surface }}>
 				<div
 					key={animKey}
 					style={{ animation: `${animName} 200ms ease forwards` }}

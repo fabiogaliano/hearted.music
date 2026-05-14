@@ -302,7 +302,7 @@ export function LandingPanelContent({
 								color: colors.textMuted,
 							}}
 						>
-							Analysis in progress...
+							Analysis in progress…
 						</p>
 					</div>
 				)}

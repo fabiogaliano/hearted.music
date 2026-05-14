@@ -197,7 +197,7 @@ export function PanelContent({
 					<div ref={getStaggerRef(0)} style={{ opacity: 0 }}>
 						<div className="flex flex-col items-center gap-4 py-8 text-center">
 							<div
-								className="flex h-12 w-12 items-center justify-center rounded-full"
+								className="flex size-12 items-center justify-center rounded-full"
 								style={{
 									background: `color-mix(in srgb, ${colors.accent} 15%, transparent)`,
 								}}

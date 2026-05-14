@@ -976,7 +976,7 @@ export const NotMigrated: Story = () => {
 							aria-label={`Select ${color} theme`}
 						>
 							<div
-								className="h-12 w-12 rounded-full transition-transform duration-150 group-hover:scale-[1.05] group-active:scale-[0.98]"
+								className="size-12 rounded-full transition-transform duration-150 group-hover:scale-[1.05] group-active:scale-[0.98]"
 								style={{
 									background:
 										color === "rose"
@@ -1008,7 +1008,7 @@ export const NotMigrated: Story = () => {
 						style={{ background: theme.border }}
 					>
 						<span
-							className="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform"
+							className="absolute top-0.5 left-0.5 size-5 rounded-full bg-white transition-transform"
 							style={{ transform: "translateX(0px)" }}
 						/>
 					</button>
@@ -1024,7 +1024,7 @@ export const NotMigrated: Story = () => {
 						style={{ background: theme.primary }}
 					>
 						<span
-							className="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform"
+							className="absolute top-0.5 left-0.5 size-5 rounded-full bg-white transition-transform"
 							style={{ transform: "translateX(20px)" }}
 						/>
 					</button>
@@ -1120,7 +1120,7 @@ export const NotMigrated: Story = () => {
 					}}
 				>
 					<div
-						className="h-12 w-12 shrink-0"
+						className="size-12 shrink-0"
 						style={{ background: theme.surface }}
 					/>
 					<div className="min-w-0 flex-1">

@@ -82,7 +82,7 @@ export const Components: Story = () => {
 			<Section title="Panel Locked State — LockSimple (light)">
 				<div className="flex items-center gap-4">
 					<div
-						className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
+						className="flex size-12 shrink-0 items-center justify-center rounded-full"
 						style={{
 							background: `color-mix(in srgb, ${theme.primary} 15%, transparent)`,
 						}}
@@ -107,14 +107,14 @@ export const Components: Story = () => {
 			<Section title="Song Card Icons — LockSimple, Check (bold)">
 				<div style={{ display: "flex", gap: 16, alignItems: "center" }}>
 					<div
-						className="relative flex h-16 w-16 items-center justify-center rounded-sm"
+						className="relative flex size-16 items-center justify-center rounded-sm"
 						style={{ background: "rgba(0,0,0,0.5)" }}
 					>
 						<LockSimple size={16} color="white" weight="regular" />
 					</div>
-					<span className="theme-border-color flex h-5 w-5 shrink-0 items-center justify-center border" />
+					<span className="theme-border-color flex size-5 shrink-0 items-center justify-center border" />
 					<span
-						className="theme-primary-bg flex h-5 w-5 shrink-0 items-center justify-center border"
+						className="theme-primary-bg flex size-5 shrink-0 items-center justify-center border"
 						style={{ borderColor: theme.primary }}
 					>
 						<Check size={12} color="var(--t-text-on-primary)" weight="bold" />

@@ -210,11 +210,11 @@ export const AllElements: Story = () => {
 			{/* Checkboxes — sharp */}
 			<Section title="Checkboxes → sharp">
 				<span
-					className="flex h-5 w-5 shrink-0 items-center justify-center border"
+					className="flex size-5 shrink-0 items-center justify-center border"
 					style={{ borderColor: theme.border, background: "transparent" }}
 				/>
 				<span
-					className="flex h-5 w-5 shrink-0 items-center justify-center border"
+					className="flex size-5 shrink-0 items-center justify-center border"
 					style={{ borderColor: theme.primary, background: theme.primary }}
 				>
 					<Check size={12} color={theme.bg} weight="bold" />

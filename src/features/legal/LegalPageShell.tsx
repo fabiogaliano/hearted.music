@@ -38,7 +38,7 @@ export function LegalPageShell({ children, activePage }: LegalPageShellProps) {
 
 			<main className="theme-bg theme-text">{children}</main>
 
-			<footer className="theme-border-color theme-text-muted border-t px-8 py-8 text-center text-sm">
+			<footer className="theme-border-color theme-text-muted border-t p-8 text-center text-sm">
 				<p className="flex items-center justify-center gap-4">
 					{navLinks.map(({ href, label, page }, i) => (
 						<span key={page} className="flex items-center gap-4">

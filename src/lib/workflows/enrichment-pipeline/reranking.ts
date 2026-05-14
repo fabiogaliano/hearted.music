@@ -53,7 +53,7 @@ export async function rerankMatches(
 	for (const [playlistId, entries] of byPlaylist) {
 		const playlist = playlistMap.get(playlistId);
 		if (!playlist) continue;
-		const rankedEntries = [...entries].sort(
+		const rankedEntries = entries.toSorted(
 			(a, b) => b.result.score - a.result.score,
 		);
 

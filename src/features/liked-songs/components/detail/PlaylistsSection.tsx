@@ -16,7 +16,7 @@ export function PlaylistsSection({
 	onAdd,
 	reconnectNeeded,
 }: PlaylistsSectionProps) {
-	const sorted = [...suggestions].sort((a, b) => b.score - a.score);
+	const sorted = suggestions.toSorted((a, b) => b.score - a.score);
 
 	const reconnectAction = reconnectNeeded ? (
 		<SpotifyReconnectLink label="Reconnect to Spotify" />

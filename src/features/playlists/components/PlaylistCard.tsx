@@ -58,7 +58,7 @@ export function PlaylistCard({
 				onKeyDown={handleSelectKeyDown}
 			>
 				<div
-					className="h-16 w-16 flex-shrink-0 overflow-hidden"
+					className="size-16 flex-shrink-0 overflow-hidden"
 					style={{
 						viewTransitionName: isAnimatingTo ? "playlist-cover" : "none",
 					}}
@@ -136,7 +136,7 @@ export function PlaylistCard({
 			onKeyDown={handleSelectKeyDown}
 		>
 			<div
-				className="h-10 w-10 flex-shrink-0 overflow-hidden"
+				className="size-10 flex-shrink-0 overflow-hidden"
 				style={{
 					viewTransitionName: isAnimatingTo ? "playlist-cover" : "none",
 				}}

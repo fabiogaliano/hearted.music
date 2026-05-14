@@ -280,7 +280,7 @@ function StatusDot({ color, label }: { color: string; label: string }) {
 			className="flex items-center gap-2 text-xs tracking-widest uppercase"
 			style={{ fontFamily: fonts.body, color: theme.textMuted }}
 		>
-			<span className="h-2 w-2 rounded-full" style={{ background: color }} />
+			<span className="size-2 rounded-full" style={{ background: color }} />
 			{label}
 		</span>
 	);
@@ -324,7 +324,7 @@ function StatusRow({
 					style={{ color: theme.textMuted }}
 				>
 					<span
-						className="h-2 w-2 rounded-full"
+						className="size-2 rounded-full"
 						style={{ background: colors.connected }}
 					/>
 					Connected
@@ -343,7 +343,7 @@ function StatusRow({
 						style={{ color: theme.textMuted }}
 					>
 						<span
-							className="h-2 w-2 rounded-full"
+							className="size-2 rounded-full"
 							style={{ background: colors.active }}
 						/>
 						Active
@@ -361,7 +361,7 @@ function StatusRow({
 						style={{ color: theme.textMuted }}
 					>
 						<span
-							className="h-2 w-2 rounded-full"
+							className="size-2 rounded-full"
 							style={{ background: colors.canceling }}
 						/>
 						Canceling
@@ -376,7 +376,7 @@ function StatusRow({
 						style={{ color: theme.textMuted }}
 					>
 						<span
-							className="h-2 w-2 rounded-full"
+							className="size-2 rounded-full"
 							style={{ background: colors.pastDue }}
 						/>
 						Past due

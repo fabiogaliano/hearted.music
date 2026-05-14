@@ -982,7 +982,7 @@ export function PanelPrototype({ song, config }: PanelPrototypeProps) {
 					<img
 						src={song.albumArtUrl}
 						alt={song.album}
-						className="w-20 h-20 shadow-lg shrink-0"
+						className="size-20 shadow-lg shrink-0"
 					/>
 					<div className="min-w-0 pb-0.5">
 						<h1

@@ -265,7 +265,7 @@ export function PlaylistDetailView({
 					<div className="flex items-start gap-8 pt-12">
 						{isExpanded && (
 							<div
-								className="h-56 w-56 flex-shrink-0 overflow-hidden shadow-xl"
+								className="size-56 flex-shrink-0 overflow-hidden shadow-xl"
 								style={{
 									viewTransitionName: "playlist-cover",
 								}}
@@ -326,7 +326,7 @@ export function PlaylistDetailView({
 								>
 									<span
 										aria-hidden="true"
-										className="theme-primary-bg inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full"
+										className="theme-primary-bg inline-block size-1.5 flex-shrink-0 rounded-full"
 									/>
 									<p
 										className="theme-text-muted text-xs leading-relaxed"
