@@ -1,11 +1,16 @@
-import { AlertTriangle, CheckCircle, Loader2, Lock, X } from "lucide-react";
+import {
+	CheckCircle,
+	CircleNotch,
+	LockSimple,
+	Warning,
+	X,
+} from "@phosphor-icons/react";
 import { useEffect } from "react";
 
 import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 import type { UnlockFlowState } from "../hooks/useSongUnlock";
 
@@ -26,7 +31,6 @@ export function UnlockConfirmDialog({
 	onCancel,
 	onDismiss,
 }: UnlockConfirmDialogProps) {
-	const theme = useTheme();
 	const isConfirming = flowState.step === "confirming";
 	const isDismissable =
 		flowState.step === "confirming" ||
@@ -61,22 +65,12 @@ export function UnlockConfirmDialog({
 	if (flowState.step === "idle") return null;
 
 	return (
-		<div
-			className="dialog-backdrop fixed inset-0 z-[60] flex items-center justify-center p-4"
-			style={{ background: "rgba(0,0,0,0.5)" }}
-		>
-			<div
-				className="dialog-content relative w-full max-w-md p-6"
-				style={{
-					background: theme.surface,
-					border: `1px solid ${theme.border}`,
-				}}
-			>
+		<div className="dialog-backdrop fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+			<div className="theme-surface-bg theme-border-color dialog-content relative w-full max-w-md border p-6">
 				{flowState.step === "confirming" && (
 					<ConfirmContent
 						songCount={flowState.songIds.length}
 						remainingBalance={remainingBalance}
-						theme={theme}
 						onConfirm={onConfirm}
 						onCancel={onCancel}
 					/>
@@ -84,10 +78,14 @@ export function UnlockConfirmDialog({
 
 				{flowState.step === "unlocking" && (
 					<div className="flex flex-col items-center gap-4 py-4">
-						<Loader2 size={24} className="animate-spin" color={theme.primary} />
+						<CircleNotch
+							size={24}
+							className="theme-primary animate-spin"
+							weight="regular"
+						/>
 						<p
-							className="text-sm"
-							style={{ fontFamily: fonts.body, color: theme.text }}
+							className="theme-text text-sm"
+							style={{ fontFamily: fonts.body }}
 						>
 							Unlocking {flowState.songIds.length}{" "}
 							{flowState.songIds.length === 1 ? "song" : "songs"}…
@@ -97,19 +95,19 @@ export function UnlockConfirmDialog({
 
 				{flowState.step === "success" && (
 					<div className="flex flex-col items-center gap-4 py-4">
-						<CheckCircle size={24} color={theme.primary} />
+						<CheckCircle size={24} className="theme-primary" />
 						<div className="text-center">
 							<p
-								className="text-sm"
-								style={{ fontFamily: fonts.body, color: theme.text }}
+								className="theme-text text-sm"
+								style={{ fontFamily: fonts.body }}
 							>
 								{flowState.newlyUnlockedIds.length}{" "}
 								{flowState.newlyUnlockedIds.length === 1 ? "song" : "songs"}{" "}
 								unlocked
 							</p>
 							<p
-								className="mt-1 text-xs"
-								style={{ fontFamily: fonts.body, color: theme.textMuted }}
+								className="theme-text-muted mt-1 text-xs"
+								style={{ fontFamily: fonts.body }}
 							>
 								{flowState.remainingBalance} songs to explore remaining
 							</p>
@@ -119,17 +117,17 @@ export function UnlockConfirmDialog({
 
 				{flowState.step === "insufficient_balance" && (
 					<div className="flex flex-col items-center gap-4 py-4">
-						<AlertTriangle size={24} color={theme.primary} />
+						<Warning size={24} className="theme-primary" weight="regular" />
 						<div className="text-center">
 							<p
-								className="text-sm"
-								style={{ fontFamily: fonts.body, color: theme.text }}
+								className="theme-text text-sm"
+								style={{ fontFamily: fonts.body }}
 							>
 								Not enough songs to explore
 							</p>
 							<p
-								className="mt-1 text-xs"
-								style={{ fontFamily: fonts.body, color: theme.textMuted }}
+								className="theme-text-muted mt-1 text-xs"
+								style={{ fontFamily: fonts.body }}
 							>
 								You selected {flowState.required} songs but have{" "}
 								{flowState.available} remaining.
@@ -139,12 +137,8 @@ export function UnlockConfirmDialog({
 						<button
 							type="button"
 							onClick={onDismiss}
-							className="mt-2 cursor-pointer border-0 px-5 py-2 text-sm transition-[transform,opacity] duration-150 hover:opacity-70 active:scale-[0.98]"
-							style={{
-								fontFamily: fonts.body,
-								background: "transparent",
-								color: theme.textMuted,
-							}}
+							className="theme-text-muted mt-2 cursor-pointer border-0 bg-transparent px-5 py-2 text-sm transition-[transform,opacity] duration-150 hover:opacity-70 active:scale-[0.98]"
+							style={{ fontFamily: fonts.body }}
 						>
 							Close
 						</button>
@@ -153,22 +147,18 @@ export function UnlockConfirmDialog({
 
 				{flowState.step === "error" && (
 					<div className="flex flex-col items-center gap-4 py-4">
-						<AlertTriangle size={24} color={theme.primary} />
+						<Warning size={24} className="theme-primary" weight="regular" />
 						<p
-							className="text-center text-sm"
-							style={{ fontFamily: fonts.body, color: theme.text }}
+							className="theme-text text-center text-sm"
+							style={{ fontFamily: fonts.body }}
 						>
 							{flowState.message}
 						</p>
 						<button
 							type="button"
 							onClick={onDismiss}
-							className="mt-2 cursor-pointer border-0 px-5 py-2 text-sm transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
-							style={{
-								fontFamily: fonts.body,
-								background: theme.primary,
-								color: theme.bg,
-							}}
+							className="theme-primary-action mt-2 cursor-pointer px-5 py-2 text-sm transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
+							style={{ fontFamily: fonts.body }}
 						>
 							Close
 						</button>
@@ -182,13 +172,11 @@ export function UnlockConfirmDialog({
 function ConfirmContent({
 	songCount,
 	remainingBalance,
-	theme,
 	onConfirm,
 	onCancel,
 }: {
 	songCount: number;
 	remainingBalance: number;
-	theme: ReturnType<typeof useTheme>;
 	onConfirm: () => void;
 	onCancel: () => void;
 }) {
@@ -199,25 +187,24 @@ function ConfirmContent({
 			<button
 				type="button"
 				onClick={onCancel}
-				className="absolute top-4 right-4 cursor-pointer border-0 bg-transparent"
-				style={{ color: theme.textMuted }}
+				className="theme-text-muted absolute top-4 right-4 cursor-pointer border-0 bg-transparent"
 				aria-label="Cancel"
 			>
 				<X size={16} />
 			</button>
 
 			<div className="flex flex-col items-center gap-4">
-				<Lock size={24} color={theme.primary} />
+				<LockSimple size={24} className="theme-primary" weight="regular" />
 				<div className="text-center">
 					<p
-						className="text-base"
-						style={{ fontFamily: fonts.display, color: theme.text }}
+						className="theme-text text-base"
+						style={{ fontFamily: fonts.display }}
 					>
 						Explore {songCount} {songCount === 1 ? "song" : "songs"}?
 					</p>
 					<p
-						className="mt-2 text-xs"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted mt-2 text-xs"
+						style={{ fontFamily: fonts.body }}
 					>
 						{balanceAfter} songs to explore remaining after unlock
 					</p>
@@ -227,24 +214,16 @@ function ConfirmContent({
 					<button
 						type="button"
 						onClick={onCancel}
-						className="cursor-pointer border px-4 py-2 text-sm transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98]"
-						style={{
-							fontFamily: fonts.body,
-							borderColor: theme.border,
-							color: theme.text,
-						}}
+						className="theme-border-color theme-text cursor-pointer border px-4 py-2 text-sm transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98]"
+						style={{ fontFamily: fonts.body }}
 					>
 						Cancel
 					</button>
 					<button
 						type="button"
 						onClick={onConfirm}
-						className="cursor-pointer rounded-full border-0 px-5 py-2 text-sm transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
-						style={{
-							fontFamily: fonts.body,
-							background: theme.primary,
-							color: theme.bg,
-						}}
+						className="theme-primary-action cursor-pointer rounded-full px-5 py-2 text-sm transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
+						style={{ fontFamily: fonts.body }}
 					>
 						Unlock
 					</button>

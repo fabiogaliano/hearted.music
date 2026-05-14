@@ -1,21 +1,18 @@
-import { Check } from "lucide-react";
+import { Check } from "@phosphor-icons/react";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
 
 type TrailRowProps = {
 	isDone: boolean;
 	doneLabel: string;
 	waitingLabel: string;
-	theme: ThemeConfig;
 };
 
-function TrailRow({ isDone, doneLabel, waitingLabel, theme }: TrailRowProps) {
+function TrailRow({ isDone, doneLabel, waitingLabel }: TrailRowProps) {
 	return (
 		<div className="flex items-center gap-2.5">
 			<div
 				style={{ position: "relative", width: 12, height: 12, flexShrink: 0 }}
 			>
-				{/* pulsing dot — waiting state */}
 				<span
 					className={isDone ? "" : "motion-safe:animate-pulse"}
 					style={{
@@ -26,22 +23,21 @@ function TrailRow({ isDone, doneLabel, waitingLabel, theme }: TrailRowProps) {
 						width: 6,
 						height: 6,
 						borderRadius: "100%",
-						background: theme.textMuted,
+						background: "var(--t-text-muted)",
 						opacity: isDone ? 0 : 0.3,
 						transform: isDone ? "scale(0.7)" : "scale(1)",
 						transition: "opacity 150ms ease-out, transform 150ms ease-out",
 					}}
 				/>
-				{/* checkmark — done state */}
 				<Check
 					size={12}
-					strokeWidth={3}
+					weight="bold"
 					style={{
 						position: "absolute",
 						inset: 0,
 						margin: "auto",
 						display: "block",
-						color: theme.primary,
+						color: "var(--t-primary)",
 						opacity: isDone ? 1 : 0,
 						transform: isDone ? "scale(1)" : "scale(0.7)",
 						transition: "opacity 150ms ease-out, transform 150ms ease-out",
@@ -52,7 +48,7 @@ function TrailRow({ isDone, doneLabel, waitingLabel, theme }: TrailRowProps) {
 				className="text-[12px]"
 				style={{
 					fontFamily: fonts.body,
-					color: isDone ? theme.text : theme.textMuted,
+					color: isDone ? "var(--t-text)" : "var(--t-text-muted)",
 					opacity: isDone ? 0.7 : 0.4,
 					transition: "opacity 150ms ease-out, color 150ms ease-out",
 				}}
@@ -63,14 +59,9 @@ function TrailRow({ isDone, doneLabel, waitingLabel, theme }: TrailRowProps) {
 	);
 }
 
-type ConnectorLineProps = {
-	theme: ThemeConfig;
-};
-
-function ConnectorLine({ theme }: ConnectorLineProps) {
+function ConnectorLine() {
 	return (
 		<>
-			{/* keyframe lives inline — scoped to this mount, no global stylesheet needed */}
 			<style>{`
         @keyframes trailScaleIn {
           from { transform: scaleY(0); opacity: 0; }
@@ -82,11 +73,10 @@ function ConnectorLine({ theme }: ConnectorLineProps) {
       `}</style>
 			<div style={{ paddingLeft: 5 }}>
 				<div
-					className="trail-connector"
+					className="trail-connector theme-border-bg"
 					style={{
 						width: 1,
 						height: 20,
-						background: theme.border,
 						opacity: 0.6,
 						transformOrigin: "top",
 						animation:
@@ -99,13 +89,11 @@ function ConnectorLine({ theme }: ConnectorLineProps) {
 }
 
 type ExtensionSetupTrailProps = {
-	theme: ThemeConfig;
 	isExtensionInstalled: boolean;
 	isSpotifyConnected: boolean;
 };
 
 export function ExtensionSetupTrail({
-	theme,
 	isExtensionInstalled,
 	isSpotifyConnected,
 }: ExtensionSetupTrailProps) {
@@ -115,11 +103,10 @@ export function ExtensionSetupTrail({
 				isDone={isExtensionInstalled}
 				doneLabel="extension found"
 				waitingLabel="looking for the extension…"
-				theme={theme}
 			/>
 			{isExtensionInstalled && (
 				<>
-					<ConnectorLine theme={theme} />
+					<ConnectorLine />
 					<div
 						className="trail-row-enter"
 						style={{
@@ -142,7 +129,6 @@ export function ExtensionSetupTrail({
 							isDone={isSpotifyConnected}
 							doneLabel="Spotify connected"
 							waitingLabel="open Spotify in your browser"
-							theme={theme}
 						/>
 					</div>
 				</>

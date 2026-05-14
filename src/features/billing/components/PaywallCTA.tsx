@@ -1,11 +1,4 @@
-/**
- * Paywall CTA displayed when purchased balance hits zero.
- *
- * Shows pack purchase and unlimited upgrade entry points. Pack CTA is
- * hidden when unlimited is active. Quarterly option gated by server flag.
- */
-
-import { Sparkles } from "lucide-react";
+import { Sparkle } from "@phosphor-icons/react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -22,12 +15,10 @@ import {
 	type SubscriptionUpgradeQuote,
 } from "@/lib/server/billing.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useCheckoutFlow } from "../hooks/useCheckoutFlow";
 
 interface PaywallCTAProps {
 	billingState: BillingState;
-	/** Compact mode for embedding inside dialogs */
 	compact?: boolean;
 }
 
@@ -51,7 +42,6 @@ type QuoteState =
 	| { status: "error" };
 
 export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
-	const theme = useTheme();
 	const { startCheckout, isBusy } = useCheckoutFlow(billingState);
 	const [configState, setConfigState] = useState<ConfigState>({
 		status: "loading",
@@ -163,11 +153,11 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 		>
 			{!compact && (
 				<>
-					<Sparkles size={24} color={theme.primary} />
+					<Sparkle size={24} className="theme-primary" weight="regular" />
 					<div className="text-center">
 						<p
-							className="text-sm"
-							style={{ fontFamily: fonts.body, color: theme.text }}
+							className="theme-text text-sm"
+							style={{ fontFamily: fonts.body }}
 						>
 							Out of explorations. Explore more songs.
 						</p>
@@ -183,36 +173,19 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 						type="button"
 						onClick={handlePackClick}
 						disabled={isBusy}
-						className="w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-						style={{
-							fontFamily: fonts.body,
-							borderColor: theme.border,
-						}}
+						className="theme-border-color w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+						style={{ fontFamily: fonts.body }}
 					>
 						<div className="flex items-baseline justify-between">
-							<span
-								className="text-sm font-medium"
-								style={{ color: theme.text }}
-							>
+							<span className="theme-text text-sm font-medium">
 								Song Pack
-								<span
-									className="ml-1 font-normal"
-									style={{ color: theme.textMuted }}
-								>
+								<span className="theme-text-muted ml-1 font-normal">
 									· 500 songs
 								</span>
 							</span>
-							<span
-								className="shrink-0 text-xs"
-								style={{ color: theme.textMuted }}
-							>
-								$5.99
-							</span>
+							<span className="theme-text-muted shrink-0 text-xs">$5.99</span>
 						</div>
-						<ul
-							className="mt-1.5 flex flex-col gap-0.5"
-							style={{ color: theme.textMuted }}
-						>
+						<ul className="theme-text-muted mt-1.5 flex flex-col gap-0.5">
 							<li className="text-xs">You choose which ones to explore</li>
 						</ul>
 					</button>
@@ -224,48 +197,36 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 							type="button"
 							onClick={() => startCheckout(UNLIMITED_YEARLY)}
 							disabled={isBusy}
-							className="w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-							style={{
-								fontFamily: fonts.body,
-								borderColor: theme.border,
-							}}
+							className="theme-border-color w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+							style={{ fontFamily: fonts.body }}
 						>
 							<div className="flex items-baseline justify-between">
-								<span
-									className="text-sm font-medium"
-									style={{ color: theme.text }}
-								>
+								<span className="theme-text text-sm font-medium">
 									Backstage Pass
 								</span>
 								<span className="shrink-0 text-xs">
 									{hasUpgradeDiscount ? (
 										<>
 											<span
-												style={{
-													color: theme.textMuted,
-													textDecoration: "line-through",
-													opacity: 0.6,
-												}}
+												className="theme-text-muted"
+												style={{ textDecoration: "line-through", opacity: 0.6 }}
 											>
 												$39.99
 											</span>{" "}
-											<span style={{ color: theme.primary, fontWeight: 500 }}>
+											<span className="theme-primary font-medium">
 												{formatPrice(
 													Math.max(0, YEARLY_PRICE_CENTS - discountCents),
 												)}
 											</span>
-											<span style={{ color: theme.textMuted }}>/yr</span>
+											<span className="theme-text-muted">/yr</span>
 										</>
 									) : (
-										<span style={{ color: theme.textMuted }}>$39.99/yr</span>
+										<span className="theme-text-muted">$39.99/yr</span>
 									)}
 								</span>
 							</div>
 							<div className="mt-1.5 flex justify-between">
-								<ul
-									className="flex flex-col gap-0.5"
-									style={{ color: theme.textMuted }}
-								>
+								<ul className="theme-text-muted flex flex-col gap-0.5">
 									<li className="text-xs">Every song explored automatically</li>
 									<li className="text-xs">
 										Your feature requests and bug reports get priority
@@ -275,10 +236,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 									</li>
 								</ul>
 								{discountNote && (
-									<p
-										className="shrink-0 self-start text-xs"
-										style={{ color: theme.textMuted, opacity: 0.7 }}
-									>
+									<p className="theme-text-muted shrink-0 self-start text-xs opacity-70">
 										{discountNote}
 									</p>
 								)}
@@ -290,17 +248,11 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 								type="button"
 								onClick={() => startCheckout(UNLIMITED_QUARTERLY)}
 								disabled={isBusy}
-								className="w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-								style={{
-									fontFamily: fonts.body,
-									borderColor: theme.border,
-								}}
+								className="theme-border-color w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+								style={{ fontFamily: fonts.body }}
 							>
 								<div className="flex items-baseline justify-between">
-									<span
-										className="text-sm font-medium"
-										style={{ color: theme.text }}
-									>
+									<span className="theme-text text-sm font-medium">
 										3-Month Unlimited
 									</span>
 									<div className="shrink-0 text-right">
@@ -308,20 +260,15 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 											{hasUpgradeDiscount ? (
 												<>
 													<span
+														className="theme-text-muted"
 														style={{
-															color: theme.textMuted,
 															textDecoration: "line-through",
 															opacity: 0.6,
 														}}
 													>
 														$14.99
 													</span>{" "}
-													<span
-														style={{
-															color: theme.primary,
-															fontWeight: 500,
-														}}
-													>
+													<span className="theme-primary font-medium">
 														{formatPrice(
 															Math.max(
 																0,
@@ -329,30 +276,20 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 															),
 														)}
 													</span>
-													<span style={{ color: theme.textMuted }}>
-														/quarter
-													</span>
+													<span className="theme-text-muted">/quarter</span>
 												</>
 											) : (
-												<span style={{ color: theme.textMuted }}>
-													$14.99/quarter
-												</span>
+												<span className="theme-text-muted">$14.99/quarter</span>
 											)}
 										</span>
 										{discountNote && (
-											<p
-												className="mt-0.5 text-xs"
-												style={{ color: theme.textMuted, opacity: 0.7 }}
-											>
+											<p className="theme-text-muted mt-0.5 text-xs opacity-70">
 												{discountNote}
 											</p>
 										)}
 									</div>
 								</div>
-								<ul
-									className="mt-1.5 flex flex-col gap-0.5"
-									style={{ color: theme.textMuted }}
-								>
+								<ul className="theme-text-muted mt-1.5 flex flex-col gap-0.5">
 									<li className="text-xs">Every song explored automatically</li>
 									<li className="text-xs">Standard queue</li>
 								</ul>
@@ -371,8 +308,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 						<button
 							type="button"
 							aria-label="Close pack confirmation"
-							className="dialog-backdrop absolute inset-0 cursor-default border-0 p-0"
-							style={{ background: "rgba(0,0,0,0.45)" }}
+							className="dialog-backdrop absolute inset-0 cursor-default border-0 bg-black/45 p-0"
 							onClick={() => setShowPackConfirm(false)}
 						/>
 						<div
@@ -382,23 +318,19 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 							aria-labelledby={packConfirmTitleId}
 							aria-describedby={packConfirmDescriptionId}
 							tabIndex={-1}
-							className="dialog-content relative w-full max-w-[340px] p-6 outline-none"
-							style={{
-								background: theme.surface,
-								border: `1px solid ${theme.border}`,
-							}}
+							className="theme-surface-bg theme-border-color dialog-content relative w-full max-w-[340px] border p-6 outline-none"
 						>
 							<p
 								id={packConfirmTitleId}
-								className="text-lg font-light"
-								style={{ fontFamily: fonts.display, color: theme.text }}
+								className="theme-text text-lg font-light"
+								style={{ fontFamily: fonts.display }}
 							>
 								You still have {billingState.creditBalance} songs.
 							</p>
 							<p
 								id={packConfirmDescriptionId}
-								className="mt-1 text-xs tracking-wide"
-								style={{ fontFamily: fonts.body, color: theme.textMuted }}
+								className="theme-text-muted mt-1 text-xs tracking-wide"
+								style={{ fontFamily: fonts.body }}
 							>
 								Another pack brings that to{" "}
 								{billingState.creditBalance + PACK_CREDITS}.
@@ -407,13 +339,8 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 								<button
 									type="button"
 									onClick={() => setShowPackConfirm(false)}
-									className="cursor-pointer px-4 py-1.5 text-xs tracking-widest uppercase transition-opacity duration-150 hover:opacity-70"
-									style={{
-										fontFamily: fonts.body,
-										color: theme.textMuted,
-										background: "transparent",
-										border: "none",
-									}}
+									className="theme-text-muted cursor-pointer border-0 bg-transparent px-4 py-1.5 text-xs tracking-widest uppercase transition-opacity duration-150 hover:opacity-70"
+									style={{ fontFamily: fonts.body }}
 								>
 									Not now
 								</button>
@@ -423,14 +350,8 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 										setShowPackConfirm(false);
 										startCheckout(SONG_PACK_500);
 									}}
-									className="cursor-pointer px-5 py-1.5 text-xs tracking-widest uppercase transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
-									style={{
-										fontFamily: fonts.body,
-										background: theme.primary,
-										color: theme.textOnPrimary,
-										border: "none",
-										borderRadius: "2px",
-									}}
+									className="theme-primary-action cursor-pointer px-5 py-1.5 text-xs tracking-widest uppercase transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
+									style={{ fontFamily: fonts.body, borderRadius: "2px" }}
 								>
 									Add 500 more
 								</button>

@@ -1,16 +1,8 @@
-/**
- * Component: SongCard
- *
- * Clickable song row in the list. When clicked, triggers FLIP expansion
- * to the SongDetailView overlay.
- */
-
-import { Check, Lock } from "lucide-react";
+import { Check, LockSimple } from "@phosphor-icons/react";
 import { memo, useCallback } from "react";
 
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import type { LikedSong } from "../types";
 import { formatRelativeTime, isNewSong } from "../types";
 
@@ -18,7 +10,6 @@ interface SongCardProps {
 	song: LikedSong;
 	albumArtUrl?: string;
 	isSelected: boolean;
-	/** Keyboard focus state (separate from selected/expanded) */
 	isFocused?: boolean;
 	itemRef: (el: HTMLElement | null) => void;
 	tabIndex: number;
@@ -29,20 +20,13 @@ interface SongCardProps {
 	onFocus?: React.FocusEventHandler<HTMLElement>;
 	onBlur?: React.FocusEventHandler<HTMLElement>;
 	onClickSong: (songId: string, element: HTMLElement) => void;
-	/** True when this card is the target of a close animation (view transitions) */
 	isAnimatingTo?: boolean;
-	/** When true, locked songs show a checkbox for multi-select */
 	selectionMode?: boolean;
-	/** Whether this song is checked in selection mode */
 	isChecked?: boolean;
-	/** Toggle selection in multi-select mode */
 	onToggleSelect?: (songId: string) => void;
 	scrollMarginTop?: string;
-	/** When false, card is visually dimmed and non-interactive */
 	isEnabled?: boolean;
-	/** When true, card gets a left border + pulse glow and shows the "See what's inside →" hint */
 	isWalkthroughHighlight?: boolean;
-	/** Hide the "Unlock" badge on locked rows (used during onboarding where unlocking isn't available) */
 	hideLockedBadge?: boolean;
 }
 
@@ -81,7 +65,6 @@ export function SongCard({
 	isWalkthroughHighlight = false,
 	hideLockedBadge = false,
 }: SongCardProps) {
-	const theme = useTheme();
 	const songId = song.track.id;
 	const isLocked = song.displayState === "locked";
 	const isSelectable = selectionMode && isLocked;
@@ -119,22 +102,20 @@ export function SongCard({
 			style={
 				{
 					"--hover-bg": isEnabled
-						? `color-mix(in srgb, ${theme.text} 6%, transparent)`
+						? "color-mix(in srgb, var(--t-text) 6%, transparent)"
 						: "transparent",
 					position: "relative",
 					background: isSelectionChecked
-						? theme.surfaceDim
+						? "var(--t-surface-dim)"
 						: isSelected
-							? theme.surface
+							? "var(--t-surface)"
 							: undefined,
 					borderLeft:
-						isFocused || isSelected
-							? `2px solid ${theme.primary}`
-							: showWalkthroughUi
-								? `2px solid ${theme.primary}`
-								: "2px solid transparent",
+						isFocused || isSelected || showWalkthroughUi
+							? "2px solid var(--t-primary)"
+							: "2px solid transparent",
 					marginLeft: "-2px",
-					boxShadow: dataTabFocused ? `0 0 0 1px ${theme.primary}` : undefined,
+					boxShadow: dataTabFocused ? "0 0 0 1px var(--t-primary)" : undefined,
 					scrollMarginTop,
 					opacity: !isEnabled
 						? 0.5
@@ -176,7 +157,6 @@ const SongCardContent = memo(function SongCardContent({
 	showWalkthroughUi,
 	hideLockedBadge,
 }: SongCardContentProps) {
-	const theme = useTheme();
 	const isNew = isNewSong(song.liked_at);
 	const isLocked = song.displayState === "locked";
 	const isSelectionChecked = isSelectable && isChecked;
@@ -187,7 +167,7 @@ const SongCardContent = memo(function SongCardContent({
 				<style>{`
 					@keyframes walkthrough-pulse {
 						0%, 100% { background: transparent; }
-						50% { background: color-mix(in srgb, ${theme.primary} 8%, transparent); }
+						50% { background: color-mix(in srgb, var(--t-primary) 8%, transparent); }
 					}
 					@keyframes walkthrough-arrow-nudge {
 						0%, 100% { transform: translateX(0); }
@@ -221,31 +201,20 @@ const SongCardContent = memo(function SongCardContent({
 					<AlbumPlaceholder />
 				)}
 				{isLocked && (
-					<div
-						className="absolute inset-0 flex items-center justify-center"
-						style={{ background: "rgba(0,0,0,0.35)" }}
-					>
-						<Lock size={16} color="white" strokeWidth={2} />
+					<div className="absolute inset-0 flex items-center justify-center bg-black/35">
+						<LockSimple size={16} color="white" weight="regular" />
 					</div>
 				)}
 				{!isLocked && isNew && (
-					<div
-						className="absolute top-1 right-1 h-2 w-2 rounded-full"
-						style={{ background: theme.primary }}
-					/>
+					<div className="theme-primary-bg absolute top-1 right-1 h-2 w-2 rounded-full" />
 				)}
 			</div>
 
 			<div className="min-w-0 flex-1">
 				<h3
-					className="truncate text-base"
+					className={`${isSelectionChecked || !isLocked ? "theme-text" : "theme-text-muted"} truncate text-base`}
 					style={{
 						fontFamily: fonts.display,
-						color: isSelectionChecked
-							? theme.text
-							: isLocked
-								? theme.textMuted
-								: theme.text,
 						fontWeight: isSelected ? 400 : 300,
 						viewTransitionName: isAnimatingTo ? "song-title" : "none",
 					}}
@@ -257,8 +226,8 @@ const SongCardContent = memo(function SongCardContent({
 					style={{
 						fontFamily: fonts.body,
 						color: isSelectionChecked
-							? `color-mix(in srgb, ${theme.text} 72%, ${theme.textMuted})`
-							: theme.textMuted,
+							? "color-mix(in srgb, var(--t-text) 72%, var(--t-text-muted))"
+							: "var(--t-text-muted)",
 						viewTransitionName: isAnimatingTo ? "song-artist" : "none",
 					}}
 				>
@@ -268,10 +237,9 @@ const SongCardContent = memo(function SongCardContent({
 
 			{showWalkthroughUi && (
 				<span
-					className="walkthrough-hint shrink-0 flex items-center gap-1.5 text-sm font-medium tracking-wide"
+					className="theme-primary walkthrough-hint flex shrink-0 items-center gap-1.5 text-sm font-medium tracking-wide"
 					style={{
 						fontFamily: fonts.body,
-						color: theme.primary,
 						animation: "walkthrough-hint-in 0.4s ease-out 0.6s both",
 					}}
 				>
@@ -291,28 +259,26 @@ const SongCardContent = memo(function SongCardContent({
 			{!showWalkthroughUi &&
 				(isSelectable ? (
 					<span
-						className="flex h-5 w-5 shrink-0 items-center justify-center border"
-						style={{
-							borderColor: isChecked ? theme.primary : theme.border,
-							background: isChecked ? theme.primary : "transparent",
-						}}
+						className={`${isChecked ? "theme-primary-bg" : "bg-transparent"} ${isChecked ? "border-(--t-primary)" : "theme-border-color"} flex h-5 w-5 shrink-0 items-center justify-center border`}
 					>
-						{isChecked && <Check size={12} color={theme.bg} strokeWidth={3} />}
+						{isChecked && (
+							<Check size={12} color="var(--t-text-on-primary)" weight="bold" />
+						)}
 					</span>
 				) : isLocked ? (
 					hideLockedBadge ? null : (
 						<span
-							className="flex shrink-0 items-center gap-1 text-xs"
-							style={{ fontFamily: fonts.body, color: theme.textMuted }}
+							className="theme-text-muted flex shrink-0 items-center gap-1 text-xs"
+							style={{ fontFamily: fonts.body }}
 						>
-							<Lock size={11} strokeWidth={2} />
+							<LockSimple size={11} weight="regular" />
 							<span className="hidden lg:inline">Unlock</span>
 						</span>
 					)
 				) : (
 					<span
-						className="hidden shrink-0 text-xs lg:block"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted hidden shrink-0 text-xs lg:block"
+						style={{ fontFamily: fonts.body }}
 					>
 						{formatRelativeTime(song.liked_at)}
 					</span>

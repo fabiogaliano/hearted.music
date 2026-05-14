@@ -1,5 +1,5 @@
 import type { Story } from "@ladle/react";
-import { Check, Lock, X } from "lucide-react";
+import { Check, LockSimple, X } from "@phosphor-icons/react";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
@@ -217,7 +217,7 @@ export const AllElements: Story = () => {
 					className="flex h-5 w-5 shrink-0 items-center justify-center border"
 					style={{ borderColor: theme.primary, background: theme.primary }}
 				>
-					<Check size={12} color={theme.bg} strokeWidth={3} />
+					<Check size={12} color={theme.bg} weight="bold" />
 				</span>
 			</Section>
 
@@ -264,7 +264,7 @@ export const AllElements: Story = () => {
 							}}
 						>
 							<span className="flex items-center gap-2">
-								<Lock size={13} />
+								<LockSimple size={13} weight="regular" />
 								Unlock
 							</span>
 						</button>

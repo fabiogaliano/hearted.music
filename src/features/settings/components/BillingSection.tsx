@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { ArrowSquareOut } from "@phosphor-icons/react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
@@ -7,7 +7,6 @@ import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { createPortalSession } from "@/lib/server/billing.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 interface BillingSectionProps {
 	billingState: BillingState;
@@ -20,10 +19,7 @@ const STATUS_LABELS: Record<string, string> = {
 	none: "None",
 };
 
-function getStatusColor(
-	status: BillingState["subscriptionStatus"],
-	theme: ReturnType<typeof useTheme>,
-): string {
+function getStatusColor(status: BillingState["subscriptionStatus"]): string {
 	switch (status) {
 		case "active":
 			return "#1DB954";
@@ -32,7 +28,7 @@ function getStatusColor(
 		case "past_due":
 			return "#E53E3E";
 		case "none":
-			return theme.border;
+			return "var(--t-border)";
 	}
 }
 
@@ -47,7 +43,6 @@ function formatPeriodEnd(iso: string | null): string {
 }
 
 export function BillingSection({ billingState }: BillingSectionProps) {
-	const theme = useTheme();
 	const [isLoadingPortal, setIsLoadingPortal] = useState(false);
 
 	const isSelfHosted = billingState.unlimitedAccess.kind === "self_hosted";
@@ -91,42 +86,32 @@ export function BillingSection({ billingState }: BillingSectionProps) {
 	return (
 		<section>
 			<p
-				className="text-xl font-light"
-				style={{ fontFamily: fonts.display, color: theme.text }}
+				className="theme-text text-xl font-light"
+				style={{ fontFamily: fonts.display }}
 			>
 				Billing
 			</p>
 
 			<div className="mt-3">
 				<p
-					className="text-xs tracking-widest uppercase"
-					style={{
-						fontFamily: fonts.body,
-						color: theme.textMuted,
-						opacity: 0.6,
-					}}
+					className="theme-text-muted text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body, opacity: 0.6 }}
 				>
 					Current plan
 				</p>
 				<p
-					className="mt-1 text-sm"
-					style={{ fontFamily: fonts.body, color: theme.text }}
+					className="theme-text mt-1 text-sm"
+					style={{ fontFamily: fonts.body }}
 				>
 					{isSelfHosted && "Unlimited (Self-hosted)"}
 					{!isSelfHosted && hasSubscription && (
 						<>
 							{planLabel}
-							<span
-								className="ml-3 inline-flex items-center gap-2"
-								style={{ color: theme.textMuted }}
-							>
+							<span className="theme-text-muted ml-3 inline-flex items-center gap-2">
 								<span
 									className="inline-block h-2 w-2 rounded-full"
 									style={{
-										background: getStatusColor(
-											billingState.subscriptionStatus,
-											theme,
-										),
+										background: getStatusColor(billingState.subscriptionStatus),
 									}}
 								/>
 								{billingState.subscriptionStatus === "ending"
@@ -140,7 +125,7 @@ export function BillingSection({ billingState }: BillingSectionProps) {
 					{!isSelfHosted && !hasSubscription && balance !== null && (
 						<>
 							{planLabel}
-							<span style={{ color: theme.textMuted }}>
+							<span className="theme-text-muted">
 								{" · "}
 								{balance} songs remaining
 							</span>
@@ -156,11 +141,11 @@ export function BillingSection({ billingState }: BillingSectionProps) {
 						type="button"
 						onClick={handlePortalLaunch}
 						disabled={isLoadingPortal}
-						className="inline-flex cursor-pointer items-center gap-2 text-xs font-normal tracking-widest uppercase transition-opacity duration-150 hover:opacity-70 disabled:cursor-wait disabled:opacity-50"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted inline-flex cursor-pointer items-center gap-2 text-xs font-normal tracking-widest uppercase transition-opacity duration-150 hover:opacity-70 disabled:cursor-wait disabled:opacity-50"
+						style={{ fontFamily: fonts.body }}
 					>
 						{isLoadingPortal ? "Opening…" : "Manage subscription"}
-						{!isLoadingPortal && <ExternalLink size={12} strokeWidth={1.5} />}
+						{!isLoadingPortal && <ArrowSquareOut size={12} weight="light" />}
 					</button>
 				</div>
 			)}
