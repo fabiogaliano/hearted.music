@@ -1,3 +1,4 @@
+import { ArrowRight } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/kbd";
@@ -51,9 +52,10 @@ export function WelcomeStep() {
 					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-lg font-medium tracking-wide">Let's go</span>
-					<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
-						→
-					</span>
+					<ArrowRight
+						size={16}
+						className="theme-text-muted inline-block transition-transform group-hover:translate-x-1"
+					/>
 				</Button>
 			</div>
 

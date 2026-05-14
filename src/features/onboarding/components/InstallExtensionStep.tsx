@@ -4,6 +4,7 @@
  * Keyboard: Enter = allow sync (when ready), S = skip.
  */
 
+import { ArrowRight } from "@phosphor-icons/react";
 import {
 	type MouseEvent,
 	useCallback,
@@ -94,7 +95,7 @@ function ActionContent({
 					className="self-start rounded-full"
 					style={{ fontFamily: fonts.body }}
 				>
-					allow sync →
+					allow sync <ArrowRight size={14} className="inline" />
 				</Button>
 			</>
 		);

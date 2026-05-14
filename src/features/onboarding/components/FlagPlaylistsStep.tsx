@@ -6,6 +6,7 @@
  * Playlists stack in max 3 rows, extending horizontally in columns.
  */
 
+import { ArrowRight } from "@phosphor-icons/react";
 import { useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
@@ -262,9 +263,10 @@ export function FlagPlaylistsStep({
 								? "Saving..."
 								: `Continue with ${selectedIds.size} playlists`}
 						</span>
-						<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
-							→
-						</span>
+						<ArrowRight
+							size={16}
+							className="theme-text-muted inline-block transition-transform group-hover:translate-x-1"
+						/>
 					</Button>
 
 					<Button

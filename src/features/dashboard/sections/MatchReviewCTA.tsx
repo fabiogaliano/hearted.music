@@ -1,4 +1,5 @@
 /** Only rendered when reviewCount > 0. */
+import { ArrowRight } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
 import { fonts } from "@/lib/theme/fonts";
 import { FanSpreadAlbumArt } from "../components/FanSpreadAlbumArt";
@@ -39,7 +40,7 @@ export function MatchReviewCTA({
 						className="theme-text-muted text-sm transition-transform group-hover:translate-x-1"
 						style={{ fontFamily: fonts.body }}
 					>
-						Start →
+						Start <ArrowRight size={14} />
 					</span>
 				</div>
 			</div>

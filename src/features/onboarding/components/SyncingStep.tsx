@@ -3,6 +3,7 @@
  * Auto-advances to flag-playlists when the extension reports a completed sync.
  */
 
+import { ArrowRight } from "@phosphor-icons/react";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import {
@@ -280,9 +281,10 @@ export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
 					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-lg font-medium tracking-wide">Start Over</span>
-					<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
-						→
-					</span>
+					<ArrowRight
+						size={16}
+						className="theme-text-muted inline-block transition-transform group-hover:translate-x-1"
+					/>
 				</Button>
 			</div>
 		);

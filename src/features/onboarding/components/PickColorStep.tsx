@@ -3,6 +3,7 @@
  * Saves theme preference to DB.
  */
 
+import { ArrowRight } from "@phosphor-icons/react";
 import { useReducedMotion } from "framer-motion";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -169,9 +170,10 @@ export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
 					<span className="text-lg font-medium tracking-wide">
 						{isSaving ? "Saving..." : "Continue"}
 					</span>
-					<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
-						→
-					</span>
+					<ArrowRight
+						size={16}
+						className="theme-text-muted inline-block transition-transform group-hover:translate-x-1"
+					/>
 				</Button>
 			</StaggeredContent>
 

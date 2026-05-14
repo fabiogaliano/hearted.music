@@ -1,4 +1,4 @@
-import { Check, LockSimple } from "@phosphor-icons/react";
+import { ArrowRight, Check, LockSimple } from "@phosphor-icons/react";
 import { memo, useCallback } from "react";
 
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
@@ -251,7 +251,7 @@ const SongCardContent = memo(function SongCardContent({
 							willChange: "transform",
 						}}
 					>
-						→
+						<ArrowRight size={14} />
 					</span>
 				</span>
 			)}

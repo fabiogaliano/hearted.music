@@ -1,4 +1,3 @@
-import { Sparkle } from "@phosphor-icons/react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { createPortal } from "react-dom";
@@ -153,17 +152,11 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 			className={`flex flex-col items-center gap-4 ${compact ? "py-2" : "py-6"}`}
 		>
 			{!compact && (
-				<>
-					<Sparkle size={24} className="theme-primary" weight="regular" />
-					<div className="text-center">
-						<p
-							className="theme-text text-sm"
-							style={{ fontFamily: fonts.body }}
-						>
-							Out of explorations. Explore more songs.
-						</p>
-					</div>
-				</>
+				<div className="text-center">
+					<p className="theme-text text-sm" style={{ fontFamily: fonts.body }}>
+						Out of explorations. Explore more songs.
+					</p>
+				</div>
 			)}
 
 			<div

@@ -4,6 +4,7 @@
  * mirroring FlagPlaylistsStep's visual treatment.
  */
 
+import { ArrowRight } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -234,9 +235,10 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 						<span className="text-lg font-medium tracking-wide">
 							{isSaving ? "Saving..." : "Continue"}
 						</span>
-						<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
-							→
-						</span>
+						<ArrowRight
+							size={16}
+							className="theme-text-muted inline-block transition-transform group-hover:translate-x-1"
+						/>
 					</Button>
 
 					<div className="theme-kbd-scope ml-auto flex items-center gap-6 opacity-60">
