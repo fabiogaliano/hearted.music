@@ -18,9 +18,6 @@ import { generateSongSlug } from "@/lib/utils/slug";
 /** Liked song row type */
 export type LikedSong = Tables<"liked_song">;
 
-/** Item status row type (for tracking pending/processed state) */
-export type ItemStatus = Tables<"item_status">;
-
 /** Insert type for upserting liked songs */
 export type UpsertData = Pick<
 	TablesInsert<"liked_song">,

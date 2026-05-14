@@ -6,12 +6,7 @@ import { TaggedError } from "better-result";
 import { z } from "zod";
 
 /** Database operation types for RLS errors */
-export const DbOperationSchema = z.enum([
-	"select",
-	"insert",
-	"update",
-	"delete",
-]);
+const DbOperationSchema = z.enum(["select", "insert", "update", "delete"]);
 export type DbOperation = z.infer<typeof DbOperationSchema>;
 
 /** Record not found in database */

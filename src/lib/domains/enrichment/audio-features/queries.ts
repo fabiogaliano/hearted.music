@@ -9,10 +9,7 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Tables, TablesInsert } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
-import {
-	fromSupabaseMany,
-	fromSupabaseMaybe,
-} from "@/lib/shared/utils/result-wrappers/supabase";
+import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
 
 // ============================================================================
 // Type Exports
@@ -42,23 +39,6 @@ export type UpsertData = Pick<
 // ============================================================================
 // Query Operations
 // ============================================================================
-
-/**
- * Gets audio features for a song.
- * Returns null if not found.
- */
-export function get(
-	songId: string,
-): Promise<Result<AudioFeature | null, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMaybe(
-		supabase
-			.from("song_audio_feature")
-			.select("*")
-			.eq("song_id", songId)
-			.single(),
-	);
-}
 
 /**
  * Gets audio features for multiple songs.

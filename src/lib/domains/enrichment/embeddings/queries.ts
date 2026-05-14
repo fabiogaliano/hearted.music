@@ -88,22 +88,6 @@ export function getSongEmbedding(
 }
 
 /**
- * Gets all embeddings for a song (across different models).
- */
-export function getSongEmbeddings(
-	songId: string,
-): Promise<Result<SongEmbedding[], DbError>> {
-	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("song_embedding")
-			.select("*")
-			.eq("song_id", songId)
-			.order("created_at", { ascending: false }),
-	);
-}
-
-/**
  * Gets embeddings for multiple songs by model name and kind.
  * Returns a map of songId -> embedding.
  *
@@ -226,39 +210,6 @@ export function getPlaylistProfile(
 			.limit(1)
 			.maybeSingle(),
 	);
-}
-
-/**
- * Gets profiles for multiple playlists.
- * Returns a map of playlistId -> profile.
- */
-export async function getPlaylistProfilesBatch(
-	playlistIds: string[],
-): Promise<Result<Map<string, PlaylistProfile>, DbError>> {
-	if (playlistIds.length === 0) {
-		return Result.ok(new Map<string, PlaylistProfile>());
-	}
-
-	const supabase = createAdminSupabaseClient();
-	const result = await fromSupabaseMany(
-		supabase
-			.from("playlist_profile")
-			.select("*")
-			.in("playlist_id", playlistIds)
-			.order("updated_at", { ascending: false }),
-	);
-
-	if (Result.isError(result)) {
-		return Result.err(result.error);
-	}
-
-	const profileMap = new Map<string, PlaylistProfile>();
-	for (const profile of result.value) {
-		if (profileMap.has(profile.playlist_id)) continue;
-		profileMap.set(profile.playlist_id, profile);
-	}
-
-	return Result.ok(profileMap);
 }
 
 /**

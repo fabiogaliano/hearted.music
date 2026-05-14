@@ -6,7 +6,7 @@ import { TaggedError } from "better-result";
 import { z } from "zod";
 
 /** Sync operation types */
-export const SyncTypeSchema = z.enum([
+const SyncTypeSchema = z.enum([
 	"liked_songs",
 	"playlists",
 	"playlist_tracks",

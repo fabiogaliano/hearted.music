@@ -204,25 +204,6 @@ export async function updateGenres(
 }
 
 /**
- * Gets songs that don't have genres set yet.
- * Used for backfill operations.
- */
-export function getSongsWithoutGenres(
-	accountId: string,
-	limit = 100,
-): Promise<Result<Song[], DbError>> {
-	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("song")
-			.select("*, account_song!inner(account_id)")
-			.eq("account_song.account_id", accountId)
-			.or("genres.is.null,genres.eq.{}")
-			.limit(limit),
-	);
-}
-
-/**
  * Batch update genres for multiple songs.
  * More efficient than individual updates.
  */

@@ -1,6 +1,6 @@
 import { Result } from "better-result";
 import { resolveStageFailures } from "@/lib/data/job-failures";
-import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
+import { get } from "@/lib/domains/enrichment/content-analysis/queries";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";
@@ -14,7 +14,7 @@ async function getReadyForSongEmbedding(
 	embeddingService: EmbeddingService,
 ): Promise<ReadyResult> {
 	const [analysisResult, embeddingsResult] = await Promise.all([
-		songAnalysisData.get(batchSongIds),
+		get(batchSongIds),
 		embeddingService.getEmbeddings(batchSongIds),
 	]);
 

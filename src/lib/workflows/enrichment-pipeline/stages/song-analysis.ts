@@ -3,7 +3,7 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import { resolveStageFailures } from "@/lib/data/job-failures";
 import { grantAnalysisFailureReplacementCredit } from "@/lib/domains/billing/compensation";
 import { createAnalysisPipeline } from "@/lib/domains/enrichment/content-analysis/pipeline";
-import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
+import { get } from "@/lib/domains/enrichment/content-analysis/queries";
 import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";
 import { recordStageFailure } from "../record-failure";
@@ -14,7 +14,7 @@ const STAGE = "song_analysis";
 async function getReadyForSongAnalysis(
 	batchSongIds: string[],
 ): Promise<ReadyResult> {
-	const existingResult = await songAnalysisData.get(batchSongIds);
+	const existingResult = await get(batchSongIds);
 	if (Result.isError(existingResult)) {
 		throw new Error(
 			`Failed to check existing analyses: ${existingResult.error.message}`,
@@ -106,7 +106,7 @@ export async function runSongAnalysis(
 	// state. If the lookup fails we don't know which songs succeeded vs failed,
 	// so we must NOT classify any unaccounted-for song as permanently failed —
 	// otherwise a transient DB blip becomes a permanent block.
-	const postRunCheck = await songAnalysisData.get(readiness.ready);
+	const postRunCheck = await get(readiness.ready);
 
 	if (Result.isError(postRunCheck)) {
 		// Songs whose state we genuinely don't know: ready candidates that were

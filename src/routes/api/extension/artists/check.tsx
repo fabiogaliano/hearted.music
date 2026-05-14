@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
 import { z } from "zod";
 import { validateApiToken } from "@/lib/data/api-tokens";
-import * as artistData from "@/lib/domains/library/artists/queries";
+import { getWithImagesBySpotifyIds } from "@/lib/domains/library/artists/queries";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import {
 	extensionCorsPreflightResponse,
@@ -61,7 +61,7 @@ export const Route = createFileRoute("/api/extension/artists/check")({
 					);
 				}
 
-				const artistsResult = await artistData.getWithImagesBySpotifyIds(
+				const artistsResult = await getWithImagesBySpotifyIds(
 					payload.artistIds,
 				);
 				if (Result.isError(artistsResult)) {

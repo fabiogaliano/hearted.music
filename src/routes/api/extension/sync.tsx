@@ -20,8 +20,12 @@ import { validateApiToken } from "@/lib/data/api-tokens";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { createJob } from "@/lib/data/jobs";
 import { updatePhaseJobIds } from "@/lib/domains/library/accounts/preferences-queries";
-import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
-import * as playlistData from "@/lib/domains/library/playlists/queries";
+import { getAll } from "@/lib/domains/library/liked-songs/queries";
+import {
+	Playlist,
+	getPlaylists,
+	getTargetPlaylists,
+} from "@/lib/domains/library/playlists/queries";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import { completeJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
@@ -252,7 +256,7 @@ export const Route = createFileRoute("/api/extension/sync")({
 					const songsResult = await runPhase(
 						phaseJobIds.liked_songs,
 						async () => {
-							const existingResult = await likedSongData.getAll(accountId);
+							const existingResult = await getAll(accountId);
 							if (Result.isError(existingResult)) {
 								return existingResult;
 							}
@@ -334,10 +338,10 @@ export const Route = createFileRoute("/api/extension/sync")({
 					await startJob(phaseJobIds.playlist_tracks);
 
 					// Resolve DB playlists by spotify_id
-					const dbPlaylistsResult = await playlistData.getPlaylists(accountId);
+					const dbPlaylistsResult = await getPlaylists(accountId);
 					const dbPlaylistMap = Result.isOk(dbPlaylistsResult)
 						? new Map(dbPlaylistsResult.value.map((p) => [p.spotify_id, p]))
-						: new Map<string, playlistData.Playlist>();
+						: new Map<string, Playlist>();
 
 					let tracksProcessed = 0;
 
@@ -388,7 +392,7 @@ export const Route = createFileRoute("/api/extension/sync")({
 					| undefined;
 
 				// Compute target-side change facts before the data is stale
-				const targetResult = await playlistData.getTargetPlaylists(accountId);
+				const targetResult = await getTargetPlaylists(accountId);
 				const currentTargetIds = Result.isOk(targetResult)
 					? new Set(targetResult.value.map((p) => p.id))
 					: new Set<string>();

@@ -14,8 +14,8 @@ import { getRequest } from "@tanstack/react-start/server";
 import { Result } from "better-result";
 import { validateApiToken } from "@/lib/data/api-tokens";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
-import * as playlistData from "@/lib/domains/library/playlists/queries";
+import { getCount } from "@/lib/domains/library/liked-songs/queries";
+import { getPlaylistCount } from "@/lib/domains/library/playlists/queries";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import {
 	extensionCorsPreflightResponse,
@@ -75,8 +75,8 @@ export const Route = createFileRoute("/api/extension/status")({
 				}
 
 				const [likedCountResult, playlistCountResult] = await Promise.all([
-					likedSongData.getCount(accountId),
-					playlistData.getPlaylistCount(accountId),
+					getCount(accountId),
+					getPlaylistCount(accountId),
 				]);
 
 				return Response.json(

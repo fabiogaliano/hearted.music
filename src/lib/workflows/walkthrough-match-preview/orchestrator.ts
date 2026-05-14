@@ -10,9 +10,9 @@
 
 import { Result } from "better-result";
 
-import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
+import { getBatch } from "@/lib/domains/enrichment/audio-features/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
-import * as songData from "@/lib/domains/library/songs/queries";
+import { getById } from "@/lib/domains/library/songs/queries";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import { createMatchingService } from "@/lib/domains/taste/song-matching/service";
 import type {
@@ -148,7 +148,7 @@ export async function executeWalkthroughPreview(
 		};
 	}
 
-	const songResult = await songData.getById(preview.demo_song_id);
+	const songResult = await getById(preview.demo_song_id);
 	if (Result.isError(songResult) || !songResult.value) {
 		await markPreviewFailed({
 			accountId,
@@ -164,7 +164,7 @@ export async function executeWalkthroughPreview(
 	}
 
 	const song = songResult.value;
-	const audioFeaturesResult = await audioFeatureData.getBatch([song.id]);
+	const audioFeaturesResult = await getBatch([song.id]);
 	const audioFeaturesMap = Result.isOk(audioFeaturesResult)
 		? audioFeaturesResult.value
 		: new Map();

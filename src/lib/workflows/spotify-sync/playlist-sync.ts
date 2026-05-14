@@ -10,7 +10,15 @@ import type {
 	Playlist,
 	PlaylistSong,
 } from "@/lib/domains/library/playlists/queries";
-import * as playlists from "@/lib/domains/library/playlists/queries";
+import {
+	deletePlaylist,
+	getPlaylistSongs,
+	getPlaylists,
+	removePlaylistSongs,
+	updatePlaylistSongCount,
+	upsertPlaylistSongs,
+	upsertPlaylists,
+} from "@/lib/domains/library/playlists/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import type { DbError } from "@/lib/shared/errors/database";
 import type { SyncFailedError } from "@/lib/shared/errors/domain/sync";
@@ -116,7 +124,7 @@ export async function syncPlaylists(
 	onTotalDiscovered?.(cachedPlaylists.length);
 	onProgress?.(cachedPlaylists.length);
 
-	const existingResult = await playlists.getPlaylists(accountId);
+	const existingResult = await getPlaylists(accountId);
 	if (Result.isError(existingResult)) {
 		return Result.err(existingResult.error);
 	}
@@ -161,7 +169,7 @@ export async function syncPlaylists(
 			image_url: sp.image_url,
 		}));
 
-		const upsertResult = await playlists.upsertPlaylists(accountId, upsertData);
+		const upsertResult = await upsertPlaylists(accountId, upsertData);
 		if (Result.isError(upsertResult)) {
 			return Result.err(upsertResult.error);
 		}
@@ -186,7 +194,7 @@ export async function syncPlaylists(
 		.map((playlist) => playlist.id);
 
 	for (const playlist of toRemove) {
-		const deleteResult = await playlists.deletePlaylist(playlist.id);
+		const deleteResult = await deletePlaylist(playlist.id);
 		if (Result.isError(deleteResult)) {
 			return Result.err(deleteResult.error);
 		}
@@ -226,7 +234,7 @@ export async function syncPlaylistTracksFromData(
 	const spotifyTracks = dedupeTracksBySpotifyId(rawTracks);
 
 	const [existingResult, songMapResult] = await Promise.all([
-		playlists.getPlaylistSongs(playlist.id),
+		getPlaylistSongs(playlist.id),
 		importSpotifyTracks(spotifyTracks),
 	]);
 	if (Result.isError(existingResult)) {
@@ -298,17 +306,14 @@ export async function syncPlaylistTracksFromData(
 	];
 
 	if (upsertData.length > 0) {
-		const upsertResult = await playlists.upsertPlaylistSongs(
-			playlist.id,
-			upsertData,
-		);
+		const upsertResult = await upsertPlaylistSongs(playlist.id, upsertData);
 		if (Result.isError(upsertResult)) {
 			return Result.err(upsertResult.error);
 		}
 	}
 
 	if (toRemove.length > 0) {
-		const removeResult = await playlists.removePlaylistSongs(
+		const removeResult = await removePlaylistSongs(
 			playlist.id,
 			toRemove.map((ps: PlaylistSong) => ps.song_id),
 		);
@@ -317,7 +322,7 @@ export async function syncPlaylistTracksFromData(
 		}
 	}
 
-	const countResult = await playlists.updatePlaylistSongCount(
+	const countResult = await updatePlaylistSongCount(
 		playlist.id,
 		spotifyTracks.length,
 	);

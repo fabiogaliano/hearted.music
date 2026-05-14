@@ -9,8 +9,11 @@ import {
 	type GenreEnrichmentInput,
 } from "@/lib/domains/enrichment/genre-tagging/service";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
-import * as playlistData from "@/lib/domains/library/playlists/queries";
-import * as songData from "@/lib/domains/library/songs/queries";
+import {
+	getPlaylistSongs,
+	getTargetPlaylists,
+} from "@/lib/domains/library/playlists/queries";
+import { getByIds } from "@/lib/domains/library/songs/queries";
 import { toAudioCentroidRecord } from "@/lib/domains/taste/playlist-profiling/calculations";
 import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { MatchingPlaylistProfile } from "@/lib/domains/taste/song-matching/types";
@@ -31,7 +34,7 @@ export async function loadTargetPlaylistProfiles(
 	playlists: Playlist[];
 	profiles: MatchingPlaylistProfile[];
 }> {
-	const playlistsResult = await playlistData.getTargetPlaylists(accountId);
+	const playlistsResult = await getTargetPlaylists(accountId);
 	if (Result.isError(playlistsResult)) {
 		throw new Error(
 			`[target-refresh] Failed to load target playlists: ${playlistsResult.error.message}`,
@@ -50,9 +53,7 @@ export async function loadTargetPlaylistProfiles(
 	const profiles: MatchingPlaylistProfile[] = [];
 
 	for (const playlist of playlists) {
-		const playlistSongsResult = await playlistData.getPlaylistSongs(
-			playlist.id,
-		);
+		const playlistSongsResult = await getPlaylistSongs(playlist.id);
 		if (Result.isError(playlistSongsResult)) {
 			throw new Error(
 				`[target-refresh] Failed to load songs for playlist ${playlist.id}: ${playlistSongsResult.error.message}`,
@@ -60,7 +61,7 @@ export async function loadTargetPlaylistProfiles(
 		}
 
 		const songIds = playlistSongsResult.value.map((ps) => ps.song_id);
-		const songsResult = await songData.getByIds(songIds);
+		const songsResult = await getByIds(songIds);
 		if (Result.isError(songsResult)) {
 			throw new Error(
 				`[target-refresh] Failed to load song data for playlist ${playlist.id}: ${songsResult.error.message}`,
@@ -83,7 +84,7 @@ export async function loadTargetPlaylistProfiles(
 		await genreService.enrichBatch(genreInputs);
 
 		// Re-read songs after enrichment for fresh genre data
-		const freshSongsResult = await songData.getByIds(songIds);
+		const freshSongsResult = await getByIds(songIds);
 		const songs = Result.isOk(freshSongsResult)
 			? freshSongsResult.value
 			: songsResult.value;

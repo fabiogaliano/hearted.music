@@ -18,7 +18,7 @@ declare const chrome: {
 
 const EXTENSION_ID = env.VITE_CHROME_EXTENSION_ID ?? "";
 
-export type ExtensionSyncCounter = {
+type ExtensionSyncCounter = {
 	fetched: number;
 	total: number;
 };

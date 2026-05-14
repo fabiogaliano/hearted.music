@@ -6,7 +6,7 @@ import { TaggedError } from "better-result";
 import { z } from "zod";
 
 /** Reasons for network failures */
-export const NetworkErrorReasonSchema = z.enum([
+const NetworkErrorReasonSchema = z.enum([
 	"timeout",
 	"dns",
 	"connection",

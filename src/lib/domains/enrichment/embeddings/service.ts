@@ -15,9 +15,17 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import type { SongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
-import * as songAnalysis from "@/lib/domains/enrichment/content-analysis/queries";
-import type { SongEmbedding } from "@/lib/domains/enrichment/embeddings/queries";
-import * as vectors from "@/lib/domains/enrichment/embeddings/queries";
+import { get as getSongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
+import type {
+	SongEmbedding,
+	UpsertSongEmbedding,
+} from "@/lib/domains/enrichment/embeddings/queries";
+import {
+	getSongEmbedding,
+	getSongEmbeddingsBatch,
+	upsertSongEmbedding,
+	upsertSongEmbeddings,
+} from "@/lib/domains/enrichment/embeddings/queries";
 import { getMlProvider } from "@/lib/integrations/providers/factory";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
@@ -80,11 +88,7 @@ export class EmbeddingService {
 		songId: string,
 	): Promise<Result<EmbedSongResult, EmbeddingServiceError>> {
 		// 1. Check for cached embedding
-		const cachedResult = await vectors.getSongEmbedding(
-			songId,
-			this.model,
-			"full",
-		);
+		const cachedResult = await getSongEmbedding(songId, this.model, "full");
 		if (Result.isError(cachedResult)) {
 			return Result.err(cachedResult.error);
 		}
@@ -97,7 +101,7 @@ export class EmbeddingService {
 		}
 
 		// 2. Get song analysis
-		const analysisResult = await songAnalysis.get(songId);
+		const analysisResult = await getSongAnalysis(songId);
 		if (Result.isError(analysisResult)) {
 			return Result.err(analysisResult.error);
 		}
@@ -147,7 +151,7 @@ export class EmbeddingService {
 			return Result.err(modelBundleHashResult.error);
 		}
 
-		const storeResult = await vectors.upsertSongEmbedding({
+		const storeResult = await upsertSongEmbedding({
 			song_id: songId,
 			kind: "full",
 			model: this.model,
@@ -183,7 +187,7 @@ export class EmbeddingService {
 		}
 
 		// 1. Check for existing embeddings
-		const existingResult = await vectors.getSongEmbeddingsBatch(
+		const existingResult = await getSongEmbeddingsBatch(
 			songIds,
 			this.model,
 			"full",
@@ -211,8 +215,8 @@ export class EmbeddingService {
 		}
 
 		// 2. Get analyses for songs needing embedding
-		// Note: songAnalysis.get(string[]) returns Map<string, SongAnalysis>
-		const analysesResult = await songAnalysis.get(needsEmbedding);
+		// Note: getSongAnalysis(string[]) returns Map<string, SongAnalysis>
+		const analysesResult = await getSongAnalysis(needsEmbedding);
 		if (Result.isError(analysesResult)) {
 			return Result.err(analysesResult.error);
 		}
@@ -283,7 +287,7 @@ export class EmbeddingService {
 			return Result.ok({ succeeded: cached, failed });
 		}
 
-		const embeddings: vectors.UpsertSongEmbedding[] = [];
+		const embeddings: UpsertSongEmbedding[] = [];
 		const newEmbeddings: EmbedSongResult[] = [];
 
 		for (let i = 0; i < toEmbed.length; i++) {
@@ -310,7 +314,7 @@ export class EmbeddingService {
 		}
 
 		if (embeddings.length > 0) {
-			const storeResult = await vectors.upsertSongEmbeddings(embeddings);
+			const storeResult = await upsertSongEmbeddings(embeddings);
 			if (Result.isError(storeResult)) {
 				// Store failed, but we still have cached results
 				for (const emb of embeddings) {
@@ -420,7 +424,7 @@ export class EmbeddingService {
 			return Result.err(modelBundleHashResult.error);
 		}
 
-		const storeResult = await vectors.upsertSongEmbedding({
+		const storeResult = await upsertSongEmbedding({
 			song_id: songId,
 			kind: "full",
 			model: this.model,
@@ -443,7 +447,7 @@ export class EmbeddingService {
 	async getEmbedding(
 		songId: string,
 	): Promise<Result<SongEmbedding | null, DbError>> {
-		return vectors.getSongEmbedding(songId, this.model, "full");
+		return getSongEmbedding(songId, this.model, "full");
 	}
 
 	/**
@@ -452,7 +456,7 @@ export class EmbeddingService {
 	async getEmbeddings(
 		songIds: string[],
 	): Promise<Result<Map<string, SongEmbedding>, DbError>> {
-		return vectors.getSongEmbeddingsBatch(songIds, this.model, "full");
+		return getSongEmbeddingsBatch(songIds, this.model, "full");
 	}
 
 	/**
@@ -530,7 +534,7 @@ export class EmbeddingService {
 		songId: string,
 		contentHash: string,
 	): Promise<Result<SongEmbedding | null, DbError>> {
-		const result = await vectors.getSongEmbedding(songId, this.model, "full");
+		const result = await getSongEmbedding(songId, this.model, "full");
 		if (Result.isError(result)) {
 			return result;
 		}

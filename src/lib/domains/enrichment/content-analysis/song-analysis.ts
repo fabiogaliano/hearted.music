@@ -1,8 +1,12 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
-import type { SongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
-import * as songAnalysis from "@/lib/domains/enrichment/content-analysis/queries";
+import {
+	type SongAnalysis,
+	type InsertData as SongAnalysisInsertData,
+	get as getSongAnalysis,
+	insert as insertSongAnalysis,
+} from "@/lib/domains/enrichment/content-analysis/queries";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import type { DbError } from "@/lib/shared/errors/database";
 import type { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
@@ -35,17 +39,9 @@ export const SongAnalysisInstrumentalSchema = z.object({
 	mood_description: z.string(),
 	sonic_texture: z.string(),
 });
-export type SongAnalysisInstrumental = z.infer<
-	typeof SongAnalysisInstrumentalSchema
->;
+type SongAnalysisInstrumental = z.infer<typeof SongAnalysisInstrumentalSchema>;
 
 export type SongAnalysisResult = SongAnalysisLyrical | SongAnalysisInstrumental;
-
-export function isLyricalAnalysis(
-	result: SongAnalysisResult,
-): result is SongAnalysisLyrical {
-	return "interpretation" in result;
-}
 
 export interface AnalyzeSongInput {
 	songId: string;
@@ -227,7 +223,7 @@ export class SongAnalysisService {
 	): Promise<Result<AnalyzeSongResult, SongAnalysisServiceError>> {
 		const { songId } = input;
 
-		const existingResult = await songAnalysis.get(songId);
+		const existingResult = await getSongAnalysis(songId);
 		if (Result.isError(existingResult)) {
 			return Result.err(existingResult.error);
 		}
@@ -259,9 +255,9 @@ export class SongAnalysisService {
 			input.audioFeatures,
 		);
 
-		const storeResult = await songAnalysis.insert({
+		const storeResult = await insertSongAnalysis({
 			song_id: songId,
-			analysis: analysisData as songAnalysis.InsertData["analysis"],
+			analysis: analysisData as SongAnalysisInsertData["analysis"],
 			model: llmResult.value.model,
 			prompt_version: "2",
 			tokens_used: llmResult.value.tokens?.total ?? null,

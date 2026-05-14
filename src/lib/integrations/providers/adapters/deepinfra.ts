@@ -10,7 +10,14 @@
  */
 
 import { Result } from "better-result";
-import * as deepinfra from "@/lib/integrations/deepinfra/service";
+import {
+	getEmbeddingModel,
+	getEmbeddingDims,
+	embedText,
+	embedBatch,
+	rerank,
+	isAvailable,
+} from "@/lib/integrations/deepinfra/service";
 import {
 	MLApiError,
 	MLConfigError,
@@ -41,8 +48,8 @@ class DeepInfraProvider implements MLProvider {
 	constructor() {
 		this.metadata = {
 			name: "deepinfra",
-			embeddingModel: deepinfra.getEmbeddingModel(),
-			embeddingDims: deepinfra.getEmbeddingDims(),
+			embeddingModel: getEmbeddingModel(),
+			embeddingDims: getEmbeddingDims(),
 			rerankerModel: "Qwen/Qwen3-Reranker-0.6B",
 		};
 	}
@@ -51,7 +58,7 @@ class DeepInfraProvider implements MLProvider {
 		text: string,
 		options?: EmbedOptions,
 	): Promise<Result<EmbeddingResult, MLProviderError>> {
-		const result = await deepinfra.embedText(text, options);
+		const result = await embedText(text, options);
 
 		if (Result.isError(result)) {
 			return Result.err(this.mapError(result.error, "embed"));
@@ -64,7 +71,7 @@ class DeepInfraProvider implements MLProvider {
 		texts: string[],
 		options?: EmbedOptions,
 	): Promise<Result<EmbeddingResult[], MLProviderError>> {
-		const result = await deepinfra.embedBatch(texts, options);
+		const result = await embedBatch(texts, options);
 
 		if (Result.isError(result)) {
 			return Result.err(this.mapError(result.error, "embedBatch"));
@@ -78,7 +85,7 @@ class DeepInfraProvider implements MLProvider {
 		documents: string[],
 		options?: RerankOptions,
 	): Promise<Result<RerankResult, MLProviderError>> {
-		const result = await deepinfra.rerank(query, documents, options);
+		const result = await rerank(query, documents, options);
 
 		if (Result.isError(result)) {
 			return Result.err(this.mapError(result.error, "rerank"));
@@ -88,7 +95,7 @@ class DeepInfraProvider implements MLProvider {
 	}
 
 	async isAvailable(): Promise<boolean> {
-		return deepinfra.isAvailable();
+		return isAvailable();
 	}
 
 	getMetadata(): ProviderMetadata {

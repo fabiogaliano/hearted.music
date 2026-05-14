@@ -1,6 +1,9 @@
 import { Result } from "better-result";
 import { resolveStageFailures } from "@/lib/data/job-failures";
-import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
+import {
+	type AudioFeature,
+	getBatch as getAudioFeaturesBatch,
+} from "@/lib/domains/enrichment/audio-features/queries";
 import {
 	type AudioFeaturesFailureKind,
 	createAudioFeaturesService,
@@ -29,7 +32,7 @@ function failureMessageFor(kind: AudioFeaturesFailureKind): string {
 async function getReadyForAudioFeatures(
 	batchSongIds: string[],
 ): Promise<ReadyResult> {
-	const existingResult = await audioFeatureData.getBatch(batchSongIds);
+	const existingResult = await getAudioFeaturesBatch(batchSongIds);
 	if (Result.isError(existingResult)) {
 		throw new Error(
 			`Failed to check existing audio features: ${existingResult.error.message}`,
@@ -80,7 +83,7 @@ export async function runAudioFeatures(
 	const fetchResult = await service.getOrFetchFeatures(tracksToFetch);
 	const succeededMap = Result.isOk(fetchResult)
 		? fetchResult.value.features
-		: new Map<string, audioFeatureData.AudioFeature>();
+		: new Map<string, AudioFeature>();
 	const failureMap = Result.isOk(fetchResult)
 		? fetchResult.value.failures
 		: new Map<string, AudioFeaturesFailureKind>();

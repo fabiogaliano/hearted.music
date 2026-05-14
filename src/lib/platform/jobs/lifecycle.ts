@@ -10,8 +10,13 @@
  */
 
 import { Result } from "better-result";
-import type { Job, JobProgress } from "@/lib/data/jobs";
-import * as jobs from "@/lib/data/jobs";
+import {
+	type Job,
+	type JobProgress,
+	markJobRunning,
+	markJobCompleted,
+	markJobFailed,
+} from "@/lib/data/jobs";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { withRetry } from "@/lib/shared/utils/result-wrappers/generic";
 
@@ -30,7 +35,7 @@ const RETRY_OPTIONS = {
  */
 export async function startJob(jobId: string): Promise<Result<Job, DbError>> {
 	const runningResult = await withRetry(
-		() => jobs.markJobRunning(jobId),
+		() => markJobRunning(jobId),
 		RETRY_OPTIONS,
 	);
 
@@ -87,7 +92,7 @@ export async function finalizeJob(
 export async function completeJob(
 	jobId: string,
 ): Promise<Result<Job, DbError>> {
-	return withRetry(() => jobs.markJobCompleted(jobId), RETRY_OPTIONS);
+	return withRetry(() => markJobCompleted(jobId), RETRY_OPTIONS);
 }
 
 /**
@@ -97,8 +102,5 @@ export async function failJob(
 	jobId: string,
 	errorMessage?: string,
 ): Promise<Result<Job, DbError>> {
-	return withRetry(
-		() => jobs.markJobFailed(jobId, errorMessage),
-		RETRY_OPTIONS,
-	);
+	return withRetry(() => markJobFailed(jobId, errorMessage), RETRY_OPTIONS);
 }

@@ -198,7 +198,7 @@ export const ALL_ONBOARDING_PLAYLISTS = Object.values(ONBOARDING_PLAYLISTS);
 
 type SongFixture = (typeof SONGS)[keyof typeof SONGS];
 
-export interface SpotifyApiSavedTrack {
+interface SpotifyApiSavedTrack {
 	added_at: string;
 	track: {
 		id: string;

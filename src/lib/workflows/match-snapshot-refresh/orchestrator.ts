@@ -1,9 +1,9 @@
 import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
 import { updateJobProgress } from "@/lib/data/jobs";
-import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
+import { getBatch } from "@/lib/domains/enrichment/audio-features/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
-import * as songData from "@/lib/domains/library/songs/queries";
+import { getByIds } from "@/lib/domains/library/songs/queries";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import { createMatchingService } from "@/lib/domains/taste/song-matching/service";
 import type {
@@ -231,14 +231,14 @@ export async function executeMatchSnapshotRefresh(
 		});
 	}
 
-	const songsResult = await songData.getByIds(songIds);
+	const songsResult = await getByIds(songIds);
 	if (Result.isError(songsResult)) {
 		throw new Error(
 			`[target-refresh] Failed to load songs: ${songsResult.error.message}`,
 		);
 	}
 
-	const audioFeaturesResult = await audioFeatureData.getBatch(songIds);
+	const audioFeaturesResult = await getBatch(songIds);
 	const audioFeaturesMap = Result.isOk(audioFeaturesResult)
 		? audioFeaturesResult.value
 		: new Map();

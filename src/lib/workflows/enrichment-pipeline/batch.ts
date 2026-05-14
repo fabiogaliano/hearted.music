@@ -1,41 +1,15 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Song } from "@/lib/domains/library/songs/queries";
-import * as songData from "@/lib/domains/library/songs/queries";
+import {
+	type Song,
+	getByIds as getSongsByIds,
+} from "@/lib/domains/library/songs/queries";
 import type { EnrichmentWorkPlan, SongStageFlags } from "./types";
 
 export interface PipelineBatch {
 	readonly songIds: string[];
 	readonly songs: Song[];
 	readonly spotifyIdBySongId: Map<string, string>;
-}
-
-/**
- * Selects the next batch of liked songs needing full pipeline processing
- * via the DB-side selector RPC. Replaces the old app-side exclusion-list approach.
- */
-export async function selectPipelineBatch(
-	accountId: string,
-	maxSongs: number,
-): Promise<PipelineBatch> {
-	const supabase = createAdminSupabaseClient();
-
-	const { data, error } = await supabase.rpc(
-		"select_liked_song_ids_needing_pipeline_processing",
-		{ p_account_id: accountId, p_limit: maxSongs },
-	);
-
-	if (error) {
-		throw new Error(`Failed to select pipeline batch: ${error.message}`);
-	}
-
-	const songIds = (data ?? []).map((row: { song_id: string }) => row.song_id);
-
-	if (songIds.length === 0) {
-		return { songIds: [], songs: [], spotifyIdBySongId: new Map() };
-	}
-
-	return loadBatchSongs(songIds);
 }
 
 /**
@@ -141,7 +115,7 @@ export async function hasMoreSongsNeedingEnrichmentWork(
 export async function loadBatchSongs(
 	songIds: string[],
 ): Promise<PipelineBatch> {
-	const songsResult = await songData.getByIds(songIds);
+	const songsResult = await getSongsByIds(songIds);
 	if (Result.isError(songsResult)) {
 		throw new Error(`Failed to load batch songs: ${songsResult.error.message}`);
 	}

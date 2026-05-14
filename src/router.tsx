@@ -1,7 +1,7 @@
 import { createRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 import { createIsomorphicFn } from "@tanstack/react-start";
-import * as TanstackQuery from "./integrations/tanstack-query/root-provider";
+import { getContext } from "./integrations/tanstack-query/root-provider";
 
 import { routeTree } from "./routeTree.gen";
 
@@ -15,7 +15,7 @@ const getSSROptions = createIsomorphicFn().server(() => {
 });
 
 export const getRouter = () => {
-	const rqContext = TanstackQuery.getContext();
+	const rqContext = getContext();
 
 	const router = createRouter({
 		routeTree,

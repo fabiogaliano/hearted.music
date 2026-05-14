@@ -14,11 +14,12 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
-import type {
-	InsertData as InsertPlaylistAnalysis,
-	PlaylistAnalysis,
+import {
+	type InsertData as InsertPlaylistAnalysis,
+	type PlaylistAnalysis,
+	get as getPlaylistAnalysis,
+	insert as insertPlaylistAnalysis,
 } from "@/lib/domains/enrichment/content-analysis/playlist-queries";
-import * as playlistAnalysis from "@/lib/domains/enrichment/content-analysis/playlist-queries";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import type { DbError } from "@/lib/shared/errors/database";
 import { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
@@ -220,7 +221,7 @@ export class PlaylistAnalysisService {
 	): Promise<Result<AnalyzePlaylistResult, PlaylistAnalysisServiceError>> {
 		const { playlistId, name, description, tracks } = input;
 
-		const existingResult = await playlistAnalysis.get(playlistId);
+		const existingResult = await getPlaylistAnalysis(playlistId);
 		if (Result.isError(existingResult)) {
 			return Result.err(existingResult.error);
 		}
@@ -257,7 +258,7 @@ export class PlaylistAnalysisService {
 			);
 		}
 
-		const storeResult = await playlistAnalysis.insert({
+		const storeResult = await insertPlaylistAnalysis({
 			playlist_id: playlistId,
 			analysis: output as unknown as InsertPlaylistAnalysis["analysis"],
 			model: llmResult.value.model,

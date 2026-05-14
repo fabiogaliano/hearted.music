@@ -20,7 +20,7 @@ import {
 export type Account = Tables<"account">;
 
 /** Insert type - only the fields we use for upsert */
-export type UpsertAccountData = Pick<
+type UpsertAccountData = Pick<
 	TablesInsert<"account">,
 	"spotify_id" | "email" | "display_name"
 >;

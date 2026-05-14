@@ -14,7 +14,6 @@ import {
 } from "@/lib/platform/jobs/progress/types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
-	fromSupabaseMany,
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
@@ -26,12 +25,6 @@ export type Job = Tables<"job">;
 
 /** Job type enum from database */
 export type JobType = Enums<"job_type">;
-
-/**
- * Job status enum from database.
- * Note: Should match JobStatusSchema in job-progress/types.ts
- */
-export type JobStatus = Enums<"job_status">;
 
 // Re-export JobProgress from job types (single source of truth)
 export type JobProgress = JobProgressType;
@@ -100,50 +93,6 @@ export function getActiveJob(
 			.limit(1)
 			.single(),
 	);
-}
-
-/**
- * Gets the latest job for an account and type (regardless of status).
- * Used for checkpoint retrieval when resuming sync operations.
- * Returns null if no job found.
- */
-export function getLatestJob(
-	accountId: string,
-	type: JobType,
-): Promise<Result<Job | null, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMaybe(
-		supabase
-			.from("job")
-			.select("*")
-			.eq("account_id", accountId)
-			.eq("type", type)
-			.order("created_at", { ascending: false })
-			.limit(1)
-			.single(),
-	);
-}
-
-/**
- * Gets all jobs for an account, optionally filtered by type.
- * Returns empty array if none found.
- */
-export function getJobs(
-	accountId: string,
-	type?: JobType,
-): Promise<Result<Job[], DbError>> {
-	const supabase = createAdminSupabaseClient();
-	let query = supabase
-		.from("job")
-		.select("*")
-		.eq("account_id", accountId)
-		.order("created_at", { ascending: false });
-
-	if (type) {
-		query = query.eq("type", type);
-	}
-
-	return fromSupabaseMany(query);
 }
 
 /**
@@ -488,11 +437,6 @@ export async function ensureMatchSnapshotRefreshJob(opts: {
 	);
 }
 
-const LIBRARY_PROCESSING_JOB_TYPES: JobType[] = [
-	"enrichment",
-	"match_snapshot_refresh",
-];
-
 /**
  * Claims the next pending walkthrough_match_preview job via dedicated RPC.
  * Intentionally separate from the library-processing claim path so the
@@ -601,66 +545,6 @@ export async function claimLibraryProcessingJob(): Promise<
 
 	const job = Array.isArray(data) ? data[0] : data;
 	return Result.ok(job as Job);
-}
-
-/**
- * Claims the next pending library-processing job for a specific account.
- * Preserves mixed-workflow ordering while avoiding double-claims by only
- * transitioning rows that are still pending.
- */
-export async function claimNextLibraryProcessingJobForAccount(
-	accountId: string,
-): Promise<Result<Job | null, DbError>> {
-	const supabase = createAdminSupabaseClient();
-
-	for (let attempt = 0; attempt < 5; attempt++) {
-		const candidateResult = await fromSupabaseMaybe(
-			supabase
-				.from("job")
-				.select("*")
-				.eq("account_id", accountId)
-				.in("type", LIBRARY_PROCESSING_JOB_TYPES)
-				.eq("status", "pending")
-				.order("queue_priority", { ascending: false, nullsFirst: false })
-				.order("created_at", { ascending: true })
-				.limit(1)
-				.maybeSingle(),
-		);
-		if (Result.isError(candidateResult)) {
-			return candidateResult;
-		}
-
-		const candidate = candidateResult.value;
-		if (candidate === null) {
-			return Result.ok(null);
-		}
-
-		const claimedAt = new Date().toISOString();
-		const claimedResult = await fromSupabaseMaybe(
-			supabase
-				.from("job")
-				.update({
-					status: "running",
-					attempts: candidate.attempts + 1,
-					started_at: claimedAt,
-					heartbeat_at: claimedAt,
-					updated_at: claimedAt,
-				})
-				.eq("id", candidate.id)
-				.eq("status", "pending")
-				.select("*")
-				.maybeSingle(),
-		);
-		if (Result.isError(claimedResult)) {
-			return claimedResult;
-		}
-
-		if (claimedResult.value !== null) {
-			return Result.ok(claimedResult.value);
-		}
-	}
-
-	return Result.ok(null);
 }
 
 /**

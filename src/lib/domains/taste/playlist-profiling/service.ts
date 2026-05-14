@@ -7,9 +7,12 @@
 
 import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
-import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
+import { getBatch as getAudioFeaturesBatch } from "@/lib/domains/enrichment/audio-features/queries";
 import { hashPlaylistProfile } from "@/lib/domains/enrichment/embeddings/hashing";
-import * as vectorsData from "@/lib/domains/enrichment/embeddings/queries";
+import {
+	getPlaylistProfile,
+	upsertPlaylistProfile,
+} from "@/lib/domains/enrichment/embeddings/queries";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { getModelBundleHash } from "@/lib/domains/enrichment/embeddings/versioning";
 import type { Song } from "@/lib/domains/library/songs/queries";
@@ -51,7 +54,7 @@ export class PlaylistProfilingService {
 	async getProfile(
 		playlistId: string,
 	): Promise<Result<ComputedPlaylistProfile | null, ProfilingError>> {
-		const result = await vectorsData.getPlaylistProfile(playlistId);
+		const result = await getPlaylistProfile(playlistId);
 		if (Result.isError(result)) {
 			return Result.err<ComputedPlaylistProfile | null, ProfilingError>(
 				result.error,
@@ -117,7 +120,7 @@ export class PlaylistProfilingService {
 		const songCentroid = calculateCentroid(vectors);
 
 		// Get audio features
-		const audioResult = await audioFeatureData.getBatch(songIds);
+		const audioResult = await getAudioFeaturesBatch(songIds);
 		if (Result.isError(audioResult)) {
 			return Result.err(audioResult.error);
 		}
@@ -195,7 +198,7 @@ export class PlaylistProfilingService {
 				};
 
 				if (!options.skipPersist) {
-					const upsertResult = await vectorsData.upsertPlaylistProfile({
+					const upsertResult = await upsertPlaylistProfile({
 						playlist_id: playlistId,
 						kind: PROFILE_KIND,
 						model_bundle_hash: modelBundleHash,
@@ -252,7 +255,7 @@ export class PlaylistProfilingService {
 
 		// Persist if not skipped
 		if (!options.skipPersist) {
-			const upsertResult = await vectorsData.upsertPlaylistProfile({
+			const upsertResult = await upsertPlaylistProfile({
 				playlist_id: playlistId,
 				kind: PROFILE_KIND,
 				model_bundle_hash: modelBundleHash,

@@ -16,7 +16,12 @@ import { Result } from "better-result";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { env } from "@/env";
-import * as authSchema from "@/lib/platform/auth/auth-schema";
+import {
+	user,
+	session,
+	oauthAccount,
+	verification,
+} from "@/lib/platform/auth/auth-schema";
 
 export function getAuth() {
 	const sql = postgres(env.DATABASE_URL, {
@@ -33,9 +38,12 @@ export function getAuth() {
 		database: drizzleAdapter(db, {
 			provider: "pg",
 			schema: {
-				...authSchema,
-				account: authSchema.oauthAccount,
-				oauth_account: authSchema.oauthAccount,
+				user,
+				session,
+				oauthAccount,
+				verification,
+				account: oauthAccount,
+				oauth_account: oauthAccount,
 			},
 		}),
 		socialProviders: {

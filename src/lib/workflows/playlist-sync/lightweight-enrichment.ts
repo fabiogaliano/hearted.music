@@ -17,9 +17,13 @@ import {
 	type GenreEnrichmentInput,
 } from "@/lib/domains/enrichment/genre-tagging/service";
 import { createLyricsService } from "@/lib/domains/enrichment/lyrics/service";
-import * as playlists from "@/lib/domains/library/playlists/queries";
+import {
+	Playlist,
+	getPlaylistSongs,
+	getTargetPlaylists,
+} from "@/lib/domains/library/playlists/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
-import * as songs from "@/lib/domains/library/songs/queries";
+import { getByIds } from "@/lib/domains/library/songs/queries";
 import {
 	createAudioFeaturesService,
 	type TrackInfo,
@@ -60,22 +64,22 @@ async function selectCandidates(
 	opts: LightweightEnrichmentOptions,
 ): Promise<Result<{ songs: Song[]; playlistIds: string[] }, DbError>> {
 	if (opts.songIds && opts.songIds.length > 0) {
-		const songsResult = await songs.getByIds(opts.songIds);
+		const songsResult = await getByIds(opts.songIds);
 		if (Result.isError(songsResult)) return songsResult;
 		// When explicit songIds are provided, we don't know which playlists — return empty
 		return Result.ok({ songs: songsResult.value, playlistIds: [] });
 	}
 
 	// Determine target playlists
-	let targetPlaylists: playlists.Playlist[];
+	let targetPlaylists: Playlist[];
 	if (opts.playlistIds && opts.playlistIds.length > 0) {
-		const targetResult = await playlists.getTargetPlaylists(opts.accountId);
+		const targetResult = await getTargetPlaylists(opts.accountId);
 		if (Result.isError(targetResult)) return targetResult;
 		targetPlaylists = targetResult.value.filter((p) =>
 			opts.playlistIds!.includes(p.id),
 		);
 	} else {
-		const targetResult = await playlists.getTargetPlaylists(opts.accountId);
+		const targetResult = await getTargetPlaylists(opts.accountId);
 		if (Result.isError(targetResult)) return targetResult;
 		targetPlaylists = targetResult.value;
 	}
@@ -89,7 +93,7 @@ async function selectCandidates(
 	const affectedPlaylistIds: string[] = [];
 
 	for (const pl of targetPlaylists) {
-		const psResult = await playlists.getPlaylistSongs(pl.id);
+		const psResult = await getPlaylistSongs(pl.id);
 		if (Result.isError(psResult)) continue;
 		if (psResult.value.length > 0) {
 			affectedPlaylistIds.push(pl.id);
@@ -104,7 +108,7 @@ async function selectCandidates(
 	}
 
 	// Fetch the actual song rows
-	const songsResult = await songs.getByIds([...allSongIds]);
+	const songsResult = await getByIds([...allSongIds]);
 	if (Result.isError(songsResult)) return songsResult;
 
 	// Exclude liked songs — they go through the full enrichment pipeline

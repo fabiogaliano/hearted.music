@@ -13,7 +13,13 @@
  */
 
 import { Result } from "better-result";
-import * as huggingface from "@/lib/integrations/huggingface/service";
+import {
+	getEmbeddingModel,
+	getEmbeddingDims,
+	embedText,
+	embedBatch,
+	isAvailable,
+} from "@/lib/integrations/huggingface/service";
 import {
 	MLApiError,
 	type MLProviderError,
@@ -44,8 +50,8 @@ class HuggingFaceProvider implements MLProvider {
 	constructor() {
 		this.metadata = {
 			name: "huggingface",
-			embeddingModel: huggingface.getEmbeddingModel(),
-			embeddingDims: huggingface.getEmbeddingDims(),
+			embeddingModel: getEmbeddingModel(),
+			embeddingDims: getEmbeddingDims(),
 			rerankerModel: undefined, // No reranking support
 		};
 	}
@@ -54,7 +60,7 @@ class HuggingFaceProvider implements MLProvider {
 		text: string,
 		options?: EmbedOptions,
 	): Promise<Result<EmbeddingResult, MLProviderError>> {
-		const result = await huggingface.embedText(text, options);
+		const result = await embedText(text, options);
 
 		if (Result.isError(result)) {
 			return Result.err(this.mapError(result.error, "embed"));
@@ -72,7 +78,7 @@ class HuggingFaceProvider implements MLProvider {
 		texts: string[],
 		options?: EmbedOptions,
 	): Promise<Result<EmbeddingResult[], MLProviderError>> {
-		const result = await huggingface.embedBatch(texts, options);
+		const result = await embedBatch(texts, options);
 
 		if (Result.isError(result)) {
 			return Result.err(this.mapError(result.error, "embedBatch"));
@@ -100,7 +106,7 @@ class HuggingFaceProvider implements MLProvider {
 
 	async isAvailable(): Promise<boolean> {
 		// HuggingFace is always available (no API key required for free tier)
-		return huggingface.isAvailable();
+		return isAvailable();
 	}
 
 	getMetadata(): ProviderMetadata {

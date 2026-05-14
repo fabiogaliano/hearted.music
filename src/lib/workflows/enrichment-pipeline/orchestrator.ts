@@ -1,8 +1,8 @@
 import { Result } from "better-result";
 import { updateJobProgress } from "@/lib/data/jobs";
-import * as songAnalysisData from "@/lib/domains/enrichment/content-analysis/queries";
+import { get as getSongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
-import * as songData from "@/lib/domains/library/songs/queries";
+import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
@@ -139,7 +139,7 @@ async function loadDataEnrichedSongIds(
 	// Mirrors select_entitled_data_enriched_liked_song_ids: audio_features is
 	// optional, so readiness is genres + analysis + embedding.
 	const [analysisResult, embeddingsResult] = await Promise.all([
-		songAnalysisData.get(batch.songIds),
+		getSongAnalysis(batch.songIds),
 		embeddingService.getEmbeddings(batch.songIds),
 	]);
 
@@ -301,7 +301,7 @@ export async function executeWorkerChunk(
 	progress.currentStage = undefined;
 	await persistProgress(jobId, progress);
 
-	const songsResult = await songData.getByIds(batch.songIds);
+	const songsResult = await getSongsByIds(batch.songIds);
 	let newCandidatesAvailable = batch.songIds.length > 0;
 	if (Result.isOk(songsResult)) {
 		try {

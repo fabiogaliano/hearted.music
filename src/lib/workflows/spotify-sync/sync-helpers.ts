@@ -3,11 +3,17 @@
  */
 
 import { Result } from "better-result";
-import * as artists from "@/lib/domains/library/artists/queries";
+import {
+	type ArtistUpsertData,
+	upsert as upsertArtists,
+} from "@/lib/domains/library/artists/queries";
 import type { LikedSong } from "@/lib/domains/library/liked-songs/queries";
-import * as likedSongsData from "@/lib/domains/library/liked-songs/queries";
+import {
+	softDeleteBatch as softDeleteLikedSongs,
+	upsert as upsertLikedSongs,
+} from "@/lib/domains/library/liked-songs/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
-import * as songs from "@/lib/domains/library/songs/queries";
+import { getByIds, upsertCatalog } from "@/lib/domains/library/songs/queries";
 import { completeJob, failJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import type { DbError } from "@/lib/shared/errors/database";
 import type { SyncFailedError } from "@/lib/shared/errors/domain/sync";
@@ -41,14 +47,14 @@ export async function importSpotifyTracks(
 ): Promise<Result<Map<string, Song>, SyncOperationError>> {
 	const songData = tracks.map(mapSpotifyTrackToSongData);
 
-	const upsertedResult = await songs.upsertCatalog(songData);
+	const upsertedResult = await upsertCatalog(songData);
 	if (Result.isError(upsertedResult)) {
 		return Result.err(upsertedResult.error);
 	}
 
 	const artistData = collectArtistUpsertData(tracks);
 	if (artistData.length > 0) {
-		const artistResult = await artists.upsert(artistData);
+		const artistResult = await upsertArtists(artistData);
 		if (Result.isError(artistResult)) {
 			console.warn("Artist upsert failed:", artistResult.error.message);
 		}
@@ -64,8 +70,8 @@ export async function importSpotifyTracks(
  */
 function collectArtistUpsertData(
 	tracks: SpotifyTrackDTO[],
-): artists.ArtistUpsertData[] {
-	const uniqueArtists = new Map<string, artists.ArtistUpsertData>();
+): ArtistUpsertData[] {
+	const uniqueArtists = new Map<string, ArtistUpsertData>();
 
 	for (const st of tracks) {
 		for (const a of st.track.artists) {
@@ -112,7 +118,7 @@ async function importLikedTracks(
 		return song ? [{ song_id: song.id, liked_at: st.added_at }] : [];
 	});
 
-	const likedResult = await likedSongsData.upsert(accountId, likedSongData);
+	const likedResult = await upsertLikedSongs(accountId, likedSongData);
 	if (Result.isError(likedResult)) {
 		return Result.err(likedResult.error);
 	}
@@ -155,7 +161,7 @@ export async function incrementalSync(
 ): Promise<Result<LikedSongsSyncResult, SyncOperationError>> {
 	const { likedSongs, existingLikedSongs, likedSongsIds } = data;
 	const existingSongIds = existingLikedSongs.map((ls: LikedSong) => ls.song_id);
-	const songsResult = await songs.getByIds(
+	const songsResult = await getByIds(
 		existingSongIds.filter((id: string) => id.length > 0),
 	);
 	if (Result.isError(songsResult)) {
@@ -181,7 +187,7 @@ export async function incrementalSync(
 	}
 
 	if (toRemove.length > 0) {
-		const deleteResult = await likedSongsData.softDeleteBatch(
+		const deleteResult = await softDeleteLikedSongs(
 			accountId,
 			toRemove.map((track) => track.id),
 		);
