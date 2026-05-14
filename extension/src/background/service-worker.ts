@@ -267,9 +267,10 @@ async function reconcileCandidateTabNavigation(tabId: number): Promise<void> {
 async function debugBroadcastShowReturnBanner(): Promise<void> {
 	try {
 		const tabs = await chrome.tabs.query({ url: SPOTIFY_TAB_URL_MATCH });
-		for (const tab of tabs) {
-			if (typeof tab.id === "number") await sendShowReturnBannerToTab(tab.id);
-		}
+		const tabIds = tabs.flatMap((tab) =>
+			typeof tab.id === "number" ? [tab.id] : [],
+		);
+		await Promise.all(tabIds.map(sendShowReturnBannerToTab));
 	} catch (err) {
 		console.warn("[hearted.] debugBroadcastShowReturnBanner failed:", err);
 	}
@@ -573,23 +574,27 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 	// interception resumes without requiring a manual page refresh.
 	try {
 		const tabs = await chrome.tabs.query({ url: "https://open.spotify.com/*" });
-		for (const tab of tabs) {
-			if (!tab.id) continue;
-			await chrome.scripting.executeScript({
-				target: { tabId: tab.id },
-				files: ["content/intercept-token.js"],
-				world: "MAIN",
-			});
-			await chrome.scripting.executeScript({
-				target: { tabId: tab.id },
-				files: ["content/spotify-token.js"],
-			});
-			await chrome.scripting.executeScript({
-				target: { tabId: tab.id },
-				files: ["content/return-banner.js"],
-			});
-			console.log("[hearted.] Re-injected content scripts into tab", tab.id);
-		}
+		const tabIds = tabs.flatMap((tab) =>
+			typeof tab.id === "number" ? [tab.id] : [],
+		);
+		await Promise.all(
+			tabIds.map(async (tabId) => {
+				await chrome.scripting.executeScript({
+					target: { tabId },
+					files: ["content/intercept-token.js"],
+					world: "MAIN",
+				});
+				await chrome.scripting.executeScript({
+					target: { tabId },
+					files: ["content/spotify-token.js"],
+				});
+				await chrome.scripting.executeScript({
+					target: { tabId },
+					files: ["content/return-banner.js"],
+				});
+				console.log("[hearted.] Re-injected content scripts into tab", tabId);
+			}),
+		);
 	} catch (err) {
 		console.warn("[hearted.] Failed to re-inject content scripts:", err);
 	}

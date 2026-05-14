@@ -51,29 +51,21 @@ class MatchingService {
 	 * Match a single song to multiple playlists.
 	 * Returns ranked results sorted by score descending.
 	 */
-	async matchSong(
+	matchSong(
 		song: MatchingSong,
 		profiles: MatchingPlaylistProfile[],
 		songEmbedding?: number[] | null,
-	): Promise<Result<MatchResult[], MatchingError>> {
+	): Result<MatchResult[], MatchingError> {
 		if (profiles.length === 0) {
 			return Result.ok([]);
 		}
 
-		const results: MatchResult[] = [];
-
-		for (const profile of profiles) {
-			const scoreResult = await this.scoreSongToPlaylist(
-				song,
-				profile,
-				songEmbedding ?? null,
-			);
-
-			if (Result.isOk(scoreResult)) {
-				results.push(scoreResult.value);
-			}
-			// Skip failed matches (graceful degradation)
-		}
+		const scoreResults = profiles.map((profile) =>
+			this.scoreSongToPlaylist(song, profile, songEmbedding ?? null),
+		);
+		const results = scoreResults.flatMap((scoreResult) =>
+			Result.isOk(scoreResult) ? [scoreResult.value] : [],
+		);
 
 		// Assign ranks and filter by threshold
 		const ranked = results
@@ -148,7 +140,7 @@ class MatchingService {
 			}
 
 			const embedding = songEmbeddings?.get(song.id) ?? null;
-			const result = await this.matchSong(song, eligibleProfiles, embedding);
+			const result = this.matchSong(song, eligibleProfiles, embedding);
 
 			if (Result.isOk(result) && result.value.length > 0) {
 				matches.set(song.id, result.value);
@@ -182,11 +174,11 @@ class MatchingService {
 	/**
 	 * Score a song against a playlist profile.
 	 */
-	private async scoreSongToPlaylist(
+	private scoreSongToPlaylist(
 		song: MatchingSong,
 		profile: MatchingPlaylistProfile,
 		songEmbedding: number[] | null,
-	): Promise<Result<MatchResult, MatchingError>> {
+	): Result<MatchResult, MatchingError> {
 		const availability: DataAvailability = {
 			hasEmbedding: !!songEmbedding && !!profile.embedding,
 			hasGenres: !!song.genres && song.genres.length > 0,
@@ -200,13 +192,14 @@ class MatchingService {
 			songEmbedding,
 			profile.embedding,
 		);
-		const audioScore = availability.hasAudioFeatures
-			? computeAudioFeatureScore(
-					song.audioFeatures!,
-					profile.audioCentroid,
-					this.config.audioWeights,
-				)
-			: 0;
+		const audioScore =
+			availability.hasAudioFeatures && song.audioFeatures
+				? computeAudioFeatureScore(
+						song.audioFeatures,
+						profile.audioCentroid,
+						this.config.audioWeights,
+					)
+				: 0;
 		const genreScore = this.computeGenreScore(
 			song.genres,
 			profile.genreDistribution,
