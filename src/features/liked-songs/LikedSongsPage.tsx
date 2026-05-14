@@ -36,7 +36,6 @@ const LIST_TOP_GAP_PX = 24;
 interface LikedSongsPageProps {
 	initialFilter?: FilterOption;
 	selectedSlug?: string | null;
-	isDarkMode?: boolean;
 	accountId: string;
 	billingState?: BillingState;
 	onboardingSession?: OnboardingSession;
@@ -45,13 +44,12 @@ interface LikedSongsPageProps {
 export function LikedSongsPage({
 	initialFilter = "all",
 	selectedSlug,
-	isDarkMode: initialDarkMode = true,
 	accountId,
 	billingState,
 	onboardingSession,
 }: LikedSongsPageProps) {
 	const { isEnrichmentRunning } = useActiveJobs(accountId);
-	const [isDarkMode, setIsDarkMode] = useState(initialDarkMode);
+	const [isDarkMode, setIsDarkMode] = useState(true);
 	const walkthroughSong: WalkthroughSong | null =
 		onboardingSession?.status === "song-walkthrough"
 			? onboardingSession.song

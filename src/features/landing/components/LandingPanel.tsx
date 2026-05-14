@@ -169,7 +169,7 @@ export function LandingPanel({
 
 				.landing-panel-hero-enter {
 					animation: landing-panel-hero-enter
-						240ms cubic-bezier(0.215, 0.61, 0.355, 1) both;
+						240ms var(--ease-out-expo) both;
 					will-change: transform, opacity;
 				}
 

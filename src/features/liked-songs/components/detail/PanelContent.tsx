@@ -33,16 +33,12 @@ function AnalysisToggle({
 	};
 
 	return (
-		<div
-			role="button"
-			tabIndex={0}
+		<button
+			type="button"
 			onClick={toggle}
-			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") toggle();
-			}}
 			onMouseEnter={() => setHovered(true)}
 			onMouseLeave={() => setHovered(false)}
-			className="cursor-pointer select-none"
+			className="cursor-pointer select-none text-left"
 			style={{ position: "relative" }}
 		>
 			<div
@@ -95,7 +91,7 @@ function AnalysisToggle({
 			>
 				{isOpen ? "\u2190 back" : "read deeper \u2192"}
 			</span>
-		</div>
+		</button>
 	);
 }
 
@@ -360,7 +356,6 @@ export function PanelContent({
 									addedTo={addedTo}
 									onAdd={onAdd}
 									reconnectNeeded={reconnectNeeded}
-									colors={colorProps}
 								/>
 							</div>
 						)}

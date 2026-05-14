@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/Button";
 import { PlaylistMatchRow } from "@/components/ui/PlaylistMatchRow";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import type { Playlist } from "../types";
 import { ClientNumberFlow as NumberFlow } from "./ClientNumberFlow";
 
@@ -35,7 +34,6 @@ export const MatchesSection = memo(function MatchesSection({
 	onDismiss,
 	onNext,
 }: MatchesSectionProps) {
-	const theme = useTheme();
 	const prefersReducedMotion = useReducedMotion();
 	const reconnectAction = reconnectNeeded ? (
 		<SpotifyReconnectLink label="Reconnect to Spotify" />
@@ -146,7 +144,6 @@ export const MatchesSection = memo(function MatchesSection({
 									reason={
 										reconnectNeeded ? undefined : playlist.reason || undefined
 									}
-									colors={theme}
 									size="lg"
 									action={
 										addedTo.includes(playlist.id)

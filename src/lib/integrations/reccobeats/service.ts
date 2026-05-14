@@ -12,6 +12,7 @@ import { Result } from "better-result";
 import {
 	ReccoBeatsApiError,
 	type ReccoBeatsError,
+	ReccoBeatsNotFoundError,
 	ReccoBeatsRateLimitError,
 } from "@/lib/shared/errors/external/reccobeats";
 import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
@@ -82,12 +83,9 @@ export class ReccoBeatsService {
 
 		for (const { spotifyId, result } of results) {
 			if (Result.isOk(result)) {
-				if (result.value !== null) {
-					features.set(spotifyId, result.value);
-				} else {
-					// Result.ok(null) is reserved for 404 from either lookup step
-					failures.set(spotifyId, "not_found");
-				}
+				features.set(spotifyId, result.value);
+			} else if (result.error instanceof ReccoBeatsNotFoundError) {
+				failures.set(spotifyId, "not_found");
 			} else {
 				// Rate limit, network failure, parse error → retryable
 				failures.set(spotifyId, "transient");
@@ -115,18 +113,15 @@ export class ReccoBeatsService {
 	 */
 	private async fetchAudioFeaturesForTrack(
 		spotifyTrackId: string,
-	): Promise<Result<ReccoBeatsAudioFeatures | null, ReccoBeatsError>> {
+	): Promise<Result<ReccoBeatsAudioFeatures, ReccoBeatsError>> {
 		// Step 1: Get ReccoBeats ID from Spotify ID
 		const reccoIdResult = await this.getReccoBeatsId(spotifyTrackId);
 		if (Result.isError(reccoIdResult)) {
 			return Result.err(reccoIdResult.error);
 		}
-		if (reccoIdResult.value === null) {
-			return Result.ok(null); // Track not found, not an error
-		}
 
 		// Step 2: Get audio features using ReccoBeats ID
-		return this.fetchAudioFeatures(reccoIdResult.value);
+		return this.fetchAudioFeatures(spotifyTrackId, reccoIdResult.value);
 	}
 
 	/**
@@ -135,7 +130,7 @@ export class ReccoBeatsService {
 	 */
 	private async getReccoBeatsId(
 		spotifyTrackId: string,
-	): Promise<Result<string | null, ReccoBeatsError>> {
+	): Promise<Result<string, ReccoBeatsError>> {
 		return this.limiter.run(async () => {
 			const url = `${BASE_URL}/track?ids=${spotifyTrackId}`;
 
@@ -150,7 +145,7 @@ export class ReccoBeatsService {
 			});
 
 			if (Result.isError(fetchResult)) {
-				return Result.err<string | null, ReccoBeatsError>(fetchResult.error);
+				return Result.err<string, ReccoBeatsError>(fetchResult.error);
 			}
 
 			const response = fetchResult.value;
@@ -161,18 +156,19 @@ export class ReccoBeatsService {
 				const retryMs = retryAfter
 					? Number.parseInt(retryAfter, 10) * 1000
 					: undefined;
-				return Result.err<string | null, ReccoBeatsError>(
+				return Result.err<string, ReccoBeatsError>(
 					new ReccoBeatsRateLimitError(retryMs),
 				);
 			}
 
-			// Not found is expected for some tracks
 			if (response.status === 404) {
-				return Result.ok<string | null, ReccoBeatsError>(null);
+				return Result.err<string, ReccoBeatsError>(
+					new ReccoBeatsNotFoundError(spotifyTrackId),
+				);
 			}
 
 			if (!response.ok) {
-				return Result.err<string | null, ReccoBeatsError>(
+				return Result.err<string, ReccoBeatsError>(
 					new ReccoBeatsApiError(response.status, response.statusText),
 				);
 			}
@@ -183,14 +179,14 @@ export class ReccoBeatsService {
 			});
 
 			if (Result.isError(jsonResult)) {
-				return Result.err<string | null, ReccoBeatsError>(jsonResult.error);
+				return Result.err<string, ReccoBeatsError>(jsonResult.error);
 			}
 
 			const parseResult = ReccoBeatsSpotifyLookupResponseSchema.safeParse(
 				jsonResult.value,
 			);
 			if (!parseResult.success) {
-				return Result.err<string | null, ReccoBeatsError>(
+				return Result.err<string, ReccoBeatsError>(
 					new ReccoBeatsApiError(
 						0,
 						`Invalid API response: ${parseResult.error.message}`,
@@ -201,10 +197,12 @@ export class ReccoBeatsService {
 			// Extract first track's ID from content array
 			const firstTrack = parseResult.data.content[0];
 			if (!firstTrack) {
-				return Result.ok<string | null, ReccoBeatsError>(null);
+				return Result.err<string, ReccoBeatsError>(
+					new ReccoBeatsNotFoundError(spotifyTrackId),
+				);
 			}
 
-			return Result.ok<string | null, ReccoBeatsError>(firstTrack.id);
+			return Result.ok<string, ReccoBeatsError>(firstTrack.id);
 		});
 	}
 
@@ -212,8 +210,9 @@ export class ReccoBeatsService {
 	 * Fetch audio features using ReccoBeats internal ID.
 	 */
 	private async fetchAudioFeatures(
+		spotifyTrackId: string,
 		reccoBeatsId: string,
-	): Promise<Result<ReccoBeatsAudioFeatures | null, ReccoBeatsError>> {
+	): Promise<Result<ReccoBeatsAudioFeatures, ReccoBeatsError>> {
 		return this.limiter.run(async () => {
 			const url = `${BASE_URL}/track/${reccoBeatsId}/audio-features`;
 
@@ -228,7 +227,7 @@ export class ReccoBeatsService {
 			});
 
 			if (Result.isError(fetchResult)) {
-				return Result.err<ReccoBeatsAudioFeatures | null, ReccoBeatsError>(
+				return Result.err<ReccoBeatsAudioFeatures, ReccoBeatsError>(
 					fetchResult.error,
 				);
 			}
@@ -240,17 +239,19 @@ export class ReccoBeatsService {
 				const retryMs = retryAfter
 					? Number.parseInt(retryAfter, 10) * 1000
 					: undefined;
-				return Result.err<ReccoBeatsAudioFeatures | null, ReccoBeatsError>(
+				return Result.err<ReccoBeatsAudioFeatures, ReccoBeatsError>(
 					new ReccoBeatsRateLimitError(retryMs),
 				);
 			}
 
 			if (response.status === 404) {
-				return Result.ok<ReccoBeatsAudioFeatures | null, ReccoBeatsError>(null);
+				return Result.err<ReccoBeatsAudioFeatures, ReccoBeatsError>(
+					new ReccoBeatsNotFoundError(spotifyTrackId),
+				);
 			}
 
 			if (!response.ok) {
-				return Result.err<ReccoBeatsAudioFeatures | null, ReccoBeatsError>(
+				return Result.err<ReccoBeatsAudioFeatures, ReccoBeatsError>(
 					new ReccoBeatsApiError(response.status, response.statusText),
 				);
 			}
@@ -261,7 +262,7 @@ export class ReccoBeatsService {
 			});
 
 			if (Result.isError(jsonResult)) {
-				return Result.err<ReccoBeatsAudioFeatures | null, ReccoBeatsError>(
+				return Result.err<ReccoBeatsAudioFeatures, ReccoBeatsError>(
 					jsonResult.error,
 				);
 			}
@@ -270,7 +271,7 @@ export class ReccoBeatsService {
 				jsonResult.value,
 			);
 			if (!parseResult.success) {
-				return Result.err<ReccoBeatsAudioFeatures | null, ReccoBeatsError>(
+				return Result.err<ReccoBeatsAudioFeatures, ReccoBeatsError>(
 					new ReccoBeatsApiError(
 						0,
 						`Invalid API response: ${parseResult.error.message}`,
@@ -278,7 +279,7 @@ export class ReccoBeatsService {
 				);
 			}
 
-			return Result.ok<ReccoBeatsAudioFeatures | null, ReccoBeatsError>(
+			return Result.ok<ReccoBeatsAudioFeatures, ReccoBeatsError>(
 				parseResult.data,
 			);
 		});

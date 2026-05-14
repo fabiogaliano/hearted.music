@@ -20,7 +20,7 @@ export function AnimatedHeart({
 	const [isHovered, setIsHovered] = useState(false);
 	const [isAnimating, setIsAnimating] = useState(false);
 	const containerRef = useRef<HTMLSpanElement>(null);
-	const heartRef = useRef<HTMLSpanElement>(null);
+	const heartRef = useRef<HTMLButtonElement>(null);
 	const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
 		null,
 	);
@@ -78,7 +78,7 @@ export function AnimatedHeart({
 				],
 				{
 					duration: 900 + Math.random() * 400,
-					easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+					easing: "cubic-bezier(0.23, 1, 0.32, 1)",
 					delay: i * 50,
 					fill: "both",
 				},
@@ -111,7 +111,7 @@ export function AnimatedHeart({
 			],
 			{
 				duration: 400,
-				easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+				easing: "cubic-bezier(0.23, 1, 0.32, 1)",
 				fill: "forwards",
 			},
 		).onfinish = () => ring.remove();
@@ -123,7 +123,9 @@ export function AnimatedHeart({
 		const heart = heartRef.current;
 		if (heart) {
 			// Cancel any existing animation and start fresh (handles rapid clicks)
-			heart.getAnimations().forEach((anim) => anim.cancel());
+			for (const anim of heart.getAnimations()) {
+				anim.cancel();
+			}
 
 			// Use Web Animations API - doesn't conflict with React's reconciliation
 			heart.animate(
@@ -154,16 +156,11 @@ export function AnimatedHeart({
 	useEffect(() => {
 		if (!shouldAutoPlay) return;
 
-		const timeouts: NodeJS.Timeout[] = [];
-		const trigger = (delay: number) => {
-			const t = setTimeout(() => triggerAnimation(), delay);
-			timeouts.push(t);
+		const autoPlayTimeout = setTimeout(triggerAnimation, autoPlayDelayMs);
+
+		return () => {
+			clearTimeout(autoPlayTimeout);
 		};
-
-		// Single click (delayed to wait for text fade-in)
-		trigger(autoPlayDelayMs);
-
-		return () => timeouts.forEach(clearTimeout);
 	}, [shouldAutoPlay, triggerAnimation, autoPlayDelayMs]);
 
 	useEffect(() => {
@@ -173,15 +170,6 @@ export function AnimatedHeart({
 			}
 		};
 	}, []);
-
-	const handlePointerDown = useCallback(
-		(e: React.PointerEvent) => {
-			// Prevent text selection from double-click
-			e.preventDefault();
-			triggerAnimation();
-		},
-		[triggerAnimation],
-	);
 
 	const isFilled = isHovered || isAnimating;
 
@@ -200,11 +188,10 @@ export function AnimatedHeart({
 					-webkit-tap-highlight-color: transparent;
 				}
 			`}</style>
-			<span
+			<button
 				ref={heartRef}
-				role="button"
-				tabIndex={0}
-				onPointerDown={handlePointerDown}
+				type="button"
+				onClick={triggerAnimation}
 				onMouseEnter={() => setIsHovered(true)}
 				onMouseLeave={() => setIsHovered(false)}
 				className="heart-clickable relative inline-block cursor-pointer transition-colors"
@@ -217,7 +204,7 @@ export function AnimatedHeart({
 				aria-label="Heart animation"
 			>
 				{isFilled ? "♥\uFE0E" : "♡\uFE0E"}
-			</span>
+			</button>
 		</span>
 	);
 }

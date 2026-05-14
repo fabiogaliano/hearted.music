@@ -2,23 +2,42 @@ import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import {
+	acknowledgePlaylistCreate,
+	acknowledgePlaylistDelete,
+	acknowledgePlaylistUpdate,
+} from "../playlists.functions";
 
-const mockAuthContext = {
-	session: { accountId: "acct-1" },
-	account: null,
-};
-
-const mockUpsertPlaylists = vi.fn();
-const mockGetPlaylistBySpotifyId = vi.fn();
-const mockDeletePlaylist = vi.fn();
-const mockUpdatePlaylistMetadata = vi.fn();
+const {
+	mockAuthContext,
+	mockUpsertPlaylists,
+	mockGetPlaylistBySpotifyId,
+	mockDeletePlaylist,
+	mockUpdatePlaylistMetadata,
+} = vi.hoisted(() => ({
+	mockAuthContext: {
+		session: { accountId: "acct-1" },
+		account: null,
+	},
+	mockUpsertPlaylists: vi.fn(),
+	mockGetPlaylistBySpotifyId: vi.fn(),
+	mockDeletePlaylist: vi.fn(),
+	mockUpdatePlaylistMetadata: vi.fn(),
+}));
 
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
 		inputValidator: () => builder(),
-		handler: (fn: Function) => (input?: { data?: unknown }) =>
-			fn({ context: mockAuthContext, data: input?.data }),
+		handler:
+			(
+				fn: (args: {
+					context: typeof mockAuthContext;
+					data: unknown;
+				}) => unknown,
+			) =>
+			(input?: { data?: unknown }) =>
+				fn({ context: mockAuthContext, data: input?.data }),
 	});
 	return {
 		createServerFn: builder,
@@ -49,12 +68,6 @@ vi.mock("@/lib/domains/library/songs/queries", () => ({
 vi.mock("@/lib/workflows/library-processing/service", () => ({
 	applyLibraryProcessingChange: vi.fn(),
 }));
-
-const {
-	acknowledgePlaylistCreate,
-	acknowledgePlaylistUpdate,
-	acknowledgePlaylistDelete,
-} = await import("../playlists.functions");
 
 function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
 	return {

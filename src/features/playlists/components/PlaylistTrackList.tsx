@@ -22,8 +22,8 @@ export function PlaylistTrackList({
 			style={{
 				opacity: isExpanded ? 1 : 0,
 				transition: isExpanded
-					? "opacity 250ms cubic-bezier(0.23, 1, 0.32, 1) 150ms"
-					: "opacity 150ms cubic-bezier(0.23, 1, 0.32, 1)",
+					? "opacity 250ms var(--ease-out-expo) 150ms"
+					: "opacity 150ms var(--ease-out-expo)",
 			}}
 		>
 			<div className="theme-border-color mb-4 flex items-center justify-between border-b pb-3">
@@ -49,7 +49,7 @@ export function PlaylistTrackList({
 						key={track.songId}
 						className="theme-border-color theme-hover-surface group flex items-center gap-4 border-b py-3 transition-colors duration-150 ease-out"
 						style={{
-							animation: `playlist-track-enter 200ms cubic-bezier(0.23, 1, 0.32, 1) ${index * 40}ms both`,
+							animation: `playlist-track-enter 200ms var(--ease-out-expo) ${index * 40}ms both`,
 						}}
 					>
 						<span

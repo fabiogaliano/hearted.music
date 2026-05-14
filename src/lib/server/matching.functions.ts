@@ -16,6 +16,8 @@ import {
 } from "@/lib/domains/taste/song-matching/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 
+const NoInputSchema = z.undefined();
+
 // ============================================================================
 // Shared types
 // ============================================================================
@@ -146,6 +148,7 @@ export async function getUndecidedSongs(
 
 export const getMatchingSession = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
+	.inputValidator((data: undefined) => NoInputSchema.parse(data))
 	.handler(async ({ context }): Promise<MatchingSessionResult | null> => {
 		const { session } = context;
 		const supabase = createAdminSupabaseClient();

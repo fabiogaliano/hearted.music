@@ -79,8 +79,7 @@ function ConnectorLine() {
 						height: 20,
 						opacity: 0.6,
 						transformOrigin: "top",
-						animation:
-							"trailScaleIn 200ms cubic-bezier(0.165, 0.84, 0.44, 1) 50ms both",
+						animation: "trailScaleIn 200ms var(--ease-out-quart) 50ms both",
 					}}
 				/>
 			</div>
@@ -112,8 +111,7 @@ export function ExtensionSetupTrail({
 						style={{
 							opacity: 0,
 							transform: "translateY(4px)",
-							animation:
-								"trailRowEnter 200ms cubic-bezier(0.165, 0.84, 0.44, 1) 50ms both",
+							animation: "trailRowEnter 200ms var(--ease-out-quart) 50ms both",
 						}}
 					>
 						<style>{`

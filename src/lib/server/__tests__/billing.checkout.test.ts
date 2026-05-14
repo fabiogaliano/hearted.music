@@ -1,35 +1,60 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	type CreateCheckoutSessionResponse,
+	type CreatePortalSessionResponse,
+	createCheckoutSession,
+	createPortalSession,
+} from "../billing.functions";
 
-const mockAuthContext = {
-	session: { accountId: "acct-checkout-1" },
-	account: null,
-};
-
-// Track calls to signBridgeRequest
-const mockSignBridgeRequest = vi.fn().mockResolvedValue({
-	timestamp: "1700000000",
-	signature: "abc123",
-});
-
-// Track global fetch
-const mockFetch = vi.fn();
+const { mockAuthContext, mockSignBridgeRequest, mockFetch, mockEnv } =
+	vi.hoisted(() => ({
+		mockAuthContext: {
+			session: { accountId: "acct-checkout-1" },
+			account: null,
+		},
+		mockSignBridgeRequest: vi.fn().mockResolvedValue({
+			timestamp: "1700000000",
+			signature: "abc123",
+		}),
+		mockFetch: vi.fn(),
+		mockEnv: {
+			value: {
+				BILLING_ENABLED: false as boolean,
+				BILLING_SERVICE_URL: undefined as string | undefined,
+				BILLING_SHARED_SECRET: undefined as string | undefined,
+			},
+		},
+	}));
 
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
-		inputValidator: (validator: Function) => {
+		inputValidator: (validator: (data: unknown) => unknown) => {
 			const b = builder();
-			const _originalHandler = b.handler as Function;
 			return {
 				...b,
-				handler: (fn: Function) => (input?: { data?: unknown }) => {
-					const validated = validator(input?.data);
-					return fn({ context: mockAuthContext, data: validated });
-				},
+				handler:
+					(
+						fn: (args: {
+							context: typeof mockAuthContext;
+							data: unknown;
+						}) => unknown,
+					) =>
+					(input?: { data?: unknown }) => {
+						const validated = validator(input?.data);
+						return fn({ context: mockAuthContext, data: validated });
+					},
 			};
 		},
-		handler: (fn: Function) => (input?: { data?: unknown }) =>
-			fn({ context: mockAuthContext, data: input?.data }),
+		handler:
+			(
+				fn: (args: {
+					context: typeof mockAuthContext;
+					data: unknown;
+				}) => unknown,
+			) =>
+			(input?: { data?: unknown }) =>
+				fn({ context: mockAuthContext, data: input?.data }),
 	});
 	return {
 		createServerFn: builder,
@@ -48,16 +73,9 @@ vi.mock("@/lib/platform/auth/auth.middleware", () => ({
 	authMiddleware: {},
 }));
 
-// Default: billing disabled
-let mockEnv = {
-	BILLING_ENABLED: false as boolean,
-	BILLING_SERVICE_URL: undefined as string | undefined,
-	BILLING_SHARED_SECRET: undefined as string | undefined,
-};
-
 vi.mock("@/env", () => ({
 	get env() {
-		return mockEnv;
+		return mockEnv.value;
 	},
 }));
 
@@ -77,7 +95,7 @@ const originalFetch = globalThis.fetch;
 
 beforeEach(() => {
 	vi.clearAllMocks();
-	mockEnv = {
+	mockEnv.value = {
 		BILLING_ENABLED: false,
 		BILLING_SERVICE_URL: undefined,
 		BILLING_SHARED_SECRET: undefined,
@@ -89,27 +107,16 @@ afterAll(() => {
 	globalThis.fetch = originalFetch;
 });
 
-import { afterAll } from "vitest";
-import type {
-	CreateCheckoutSessionResponse,
-	CreatePortalSessionResponse,
-} from "../billing.functions";
-
-async function importFunctions() {
-	const mod = await import("../billing.functions");
-	return {
-		createCheckoutSession: mod.createCheckoutSession as unknown as (input: {
-			data: { offer: string; checkoutAttemptId: string };
-		}) => Promise<CreateCheckoutSessionResponse>,
-		createPortalSession:
-			mod.createPortalSession as unknown as () => Promise<CreatePortalSessionResponse>,
-	};
-}
+const createCheckoutSessionForTest =
+	createCheckoutSession as unknown as (input: {
+		data: { offer: string; checkoutAttemptId: string };
+	}) => Promise<CreateCheckoutSessionResponse>;
+const createPortalSessionForTest =
+	createPortalSession as unknown as () => Promise<CreatePortalSessionResponse>;
 
 describe("createCheckoutSession", () => {
 	it("returns billing_disabled when BILLING_ENABLED=false", async () => {
-		const { createCheckoutSession } = await importFunctions();
-		const result = await createCheckoutSession({
+		const result = await createCheckoutSessionForTest({
 			data: {
 				offer: "song_pack_500",
 				checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440000",
@@ -121,14 +128,13 @@ describe("createCheckoutSession", () => {
 	});
 
 	it("returns billing_service_error when env vars are missing", async () => {
-		mockEnv = {
+		mockEnv.value = {
 			BILLING_ENABLED: true,
 			BILLING_SERVICE_URL: undefined,
 			BILLING_SHARED_SECRET: undefined,
 		};
 
-		const { createCheckoutSession } = await importFunctions();
-		const result = await createCheckoutSession({
+		const result = await createCheckoutSessionForTest({
 			data: {
 				offer: "song_pack_500",
 				checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440000",
@@ -144,7 +150,7 @@ describe("createCheckoutSession", () => {
 	});
 
 	it("sends HMAC-signed request to /checkout/pack for song_pack_500", async () => {
-		mockEnv = {
+		mockEnv.value = {
 			BILLING_ENABLED: true,
 			BILLING_SERVICE_URL: "https://billing.example.com",
 			BILLING_SHARED_SECRET: "test-secret",
@@ -159,8 +165,7 @@ describe("createCheckoutSession", () => {
 			),
 		);
 
-		const { createCheckoutSession } = await importFunctions();
-		const result = await createCheckoutSession({
+		const result = await createCheckoutSessionForTest({
 			data: {
 				offer: "song_pack_500",
 				checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440000",
@@ -198,7 +203,7 @@ describe("createCheckoutSession", () => {
 	});
 
 	it("sends request to /checkout/unlimited for unlimited_yearly", async () => {
-		mockEnv = {
+		mockEnv.value = {
 			BILLING_ENABLED: true,
 			BILLING_SERVICE_URL: "https://billing.example.com",
 			BILLING_SHARED_SECRET: "test-secret",
@@ -213,8 +218,7 @@ describe("createCheckoutSession", () => {
 			),
 		);
 
-		const { createCheckoutSession } = await importFunctions();
-		const result = await createCheckoutSession({
+		const result = await createCheckoutSessionForTest({
 			data: {
 				offer: "unlimited_yearly",
 				checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440000",
@@ -233,7 +237,7 @@ describe("createCheckoutSession", () => {
 	});
 
 	it("returns billing_service_error on non-ok response", async () => {
-		mockEnv = {
+		mockEnv.value = {
 			BILLING_ENABLED: true,
 			BILLING_SERVICE_URL: "https://billing.example.com",
 			BILLING_SHARED_SECRET: "test-secret",
@@ -243,8 +247,7 @@ describe("createCheckoutSession", () => {
 			new Response("Internal Server Error", { status: 500 }),
 		);
 
-		const { createCheckoutSession } = await importFunctions();
-		const result = await createCheckoutSession({
+		const result = await createCheckoutSessionForTest({
 			data: {
 				offer: "song_pack_500",
 				checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440000",
@@ -259,7 +262,7 @@ describe("createCheckoutSession", () => {
 	});
 
 	it("returns billing_service_error on network failure", async () => {
-		mockEnv = {
+		mockEnv.value = {
 			BILLING_ENABLED: true,
 			BILLING_SERVICE_URL: "https://billing.example.com",
 			BILLING_SHARED_SECRET: "test-secret",
@@ -267,8 +270,7 @@ describe("createCheckoutSession", () => {
 
 		mockFetch.mockRejectedValue(new Error("Connection refused"));
 
-		const { createCheckoutSession } = await importFunctions();
-		const result = await createCheckoutSession({
+		const result = await createCheckoutSessionForTest({
 			data: {
 				offer: "song_pack_500",
 				checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440000",
@@ -283,17 +285,15 @@ describe("createCheckoutSession", () => {
 	});
 
 	it("rejects invalid offer IDs via schema validation", async () => {
-		mockEnv = {
+		mockEnv.value = {
 			BILLING_ENABLED: true,
 			BILLING_SERVICE_URL: "https://billing.example.com",
 			BILLING_SHARED_SECRET: "test-secret",
 		};
 
-		const { createCheckoutSession } = await importFunctions();
-
 		let threw = false;
 		try {
-			await createCheckoutSession({
+			await createCheckoutSessionForTest({
 				data: {
 					offer: "invalid_offer",
 					checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440000",
@@ -310,15 +310,14 @@ describe("createCheckoutSession", () => {
 
 describe("createPortalSession", () => {
 	it("returns billing_disabled when BILLING_ENABLED=false", async () => {
-		const { createPortalSession } = await importFunctions();
-		const result = await createPortalSession();
+		const result = await createPortalSessionForTest();
 
 		expect(result).toEqual({ success: false, error: "billing_disabled" });
 		expect(mockFetch).not.toHaveBeenCalled();
 	});
 
 	it("sends HMAC-signed request to /portal/session", async () => {
-		mockEnv = {
+		mockEnv.value = {
 			BILLING_ENABLED: true,
 			BILLING_SERVICE_URL: "https://billing.example.com",
 			BILLING_SHARED_SECRET: "test-secret",
@@ -331,8 +330,7 @@ describe("createPortalSession", () => {
 			),
 		);
 
-		const { createPortalSession } = await importFunctions();
-		const result = await createPortalSession();
+		const result = await createPortalSessionForTest();
 
 		expect(result).toEqual({
 			success: true,
@@ -362,7 +360,7 @@ describe("createPortalSession", () => {
 	});
 
 	it("returns billing_service_error on non-ok response", async () => {
-		mockEnv = {
+		mockEnv.value = {
 			BILLING_ENABLED: true,
 			BILLING_SERVICE_URL: "https://billing.example.com",
 			BILLING_SHARED_SECRET: "test-secret",
@@ -370,8 +368,7 @@ describe("createPortalSession", () => {
 
 		mockFetch.mockResolvedValue(new Response("Forbidden", { status: 403 }));
 
-		const { createPortalSession } = await importFunctions();
-		const result = await createPortalSession();
+		const result = await createPortalSessionForTest();
 
 		expect(result).toEqual({
 			success: false,

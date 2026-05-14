@@ -3,26 +3,49 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import {
+	flushPlaylistManagementSession,
+	getPlaylistManagementData,
+	getPlaylistTrackPreview,
+	setPlaylistTargetMutation,
+} from "../playlists.functions";
 
-const mockAuthContext = {
-	session: { accountId: "acct-1" },
-	account: null,
-};
-
-const mockGetPlaylists = vi.fn();
-const mockGetTargetPlaylists = vi.fn();
-const mockGetPlaylistById = vi.fn();
-const mockGetPlaylistSongs = vi.fn();
-const mockGetSongsByIds = vi.fn();
-const mockSetPlaylistTarget = vi.fn();
-const mockApplyLibraryProcessingChange = vi.fn();
+const {
+	mockAuthContext,
+	mockGetPlaylists,
+	mockGetTargetPlaylists,
+	mockGetPlaylistById,
+	mockGetPlaylistSongs,
+	mockGetSongsByIds,
+	mockSetPlaylistTarget,
+	mockApplyLibraryProcessingChange,
+} = vi.hoisted(() => ({
+	mockAuthContext: {
+		session: { accountId: "acct-1" },
+		account: null,
+	},
+	mockGetPlaylists: vi.fn(),
+	mockGetTargetPlaylists: vi.fn(),
+	mockGetPlaylistById: vi.fn(),
+	mockGetPlaylistSongs: vi.fn(),
+	mockGetSongsByIds: vi.fn(),
+	mockSetPlaylistTarget: vi.fn(),
+	mockApplyLibraryProcessingChange: vi.fn(),
+}));
 
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
 		inputValidator: () => builder(),
-		handler: (fn: Function) => (input?: { data?: unknown }) =>
-			fn({ context: mockAuthContext, data: input?.data }),
+		handler:
+			(
+				fn: (args: {
+					context: typeof mockAuthContext;
+					data: unknown;
+				}) => unknown,
+			) =>
+			(input?: { data?: unknown }) =>
+				fn({ context: mockAuthContext, data: input?.data }),
 	});
 	return {
 		createServerFn: builder,
@@ -53,13 +76,6 @@ vi.mock("@/lib/workflows/library-processing/service", () => ({
 	applyLibraryProcessingChange: (...args: unknown[]) =>
 		mockApplyLibraryProcessingChange(...args),
 }));
-
-const {
-	getPlaylistManagementData,
-	getPlaylistTrackPreview,
-	setPlaylistTargetMutation,
-	flushPlaylistManagementSession,
-} = await import("../playlists.functions");
 
 function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
 	return {

@@ -294,7 +294,7 @@ export function SongDetailPanel({
 				borderLeft: isDark ? "none" : `1px solid ${baseTheme.border}`,
 				transition: prefersReducedMotion
 					? "none"
-					: "transform 300ms cubic-bezier(0.165, 0.84, 0.44, 1), opacity 300ms cubic-bezier(0.165, 0.84, 0.44, 1)",
+					: "transform 300ms var(--ease-out-quart), opacity 300ms var(--ease-out-quart)",
 				top: 0,
 				right: 0,
 				width: "clamp(380px, 45vw, calc(100vw - 280px))",

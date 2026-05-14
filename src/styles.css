@@ -39,6 +39,8 @@ code {
 :root {
   --ring: hsl(var(--theme-hue), 25%, 30%);
   --radius: 0.625rem;
+  --ease-out-expo: var(--ease-out-expo);
+  --ease-out-quart: var(--ease-out-quart);
 
   --kbd-text-color: var(--t-text-muted);
   --kbd-bg-color: color-mix(in oklch, var(--t-text) 10%, transparent);
@@ -268,7 +270,7 @@ code {
 ::view-transition-group(song-title),
 ::view-transition-group(song-artist) {
   animation-duration: 300ms;
-  animation-timing-function: cubic-bezier(0.165, 0.84, 0.44, 1); /* ease-out-quart */
+  animation-timing-function: var(--ease-out-quart);
 }
 
 ::view-transition-old(song-album),
@@ -307,7 +309,7 @@ code {
 ::view-transition-group(playlist-title),
 ::view-transition-group(playlist-description) {
   animation-duration: 250ms;
-  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  animation-timing-function: var(--ease-out-expo);
 }
 
 ::view-transition-old(playlist-cover),
@@ -371,10 +373,10 @@ code {
 
 /* ── Dialog enter animations ──────────────────────────────────────────── */
 .dialog-backdrop {
-  animation: dialog-backdrop-in 150ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation: dialog-backdrop-in 150ms var(--ease-out-expo) both;
 }
 .dialog-content {
-  animation: dialog-content-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation: dialog-content-in 200ms var(--ease-out-expo) both;
 }
 @keyframes dialog-backdrop-in {
   from { opacity: 0; }
@@ -395,6 +397,6 @@ code {
 @supports not (view-transition-name: none) {
   /* Provide basic crossfade on panel open/close */
   [data-panel-animating="true"] {
-    transition: opacity 300ms cubic-bezier(0.165, 0.84, 0.44, 1);
+    transition: opacity 300ms var(--ease-out-quart);
   }
 }

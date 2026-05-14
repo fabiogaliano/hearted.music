@@ -23,20 +23,34 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
-import type { JobProgress } from "@/lib/data/jobs";
-import * as jobs from "@/lib/data/jobs";
+import {
+	createJob,
+	type JobProgress,
+	updateJobProgress,
+} from "@/lib/data/jobs";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
-import * as audioFeatures from "@/lib/domains/enrichment/audio-features/queries";
-import * as songAnalysis from "@/lib/domains/enrichment/content-analysis/queries";
-import * as likedSongs from "@/lib/domains/library/liked-songs/queries";
-import * as songs from "@/lib/domains/library/songs/queries";
+import { getBatch as getAudioFeaturesBatch } from "@/lib/domains/enrichment/audio-features/queries";
+import { get as getSongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
+import { getAll as getLikedSongsAll } from "@/lib/domains/library/liked-songs/queries";
+import {
+	getById as getSongById,
+	getByIds as getSongsByIds,
+} from "@/lib/domains/library/songs/queries";
 import { getApiKeyForProvider } from "@/lib/integrations/llm/config";
 import { LlmService } from "@/lib/integrations/llm/service";
 import { finalizeJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import type { DbError } from "@/lib/shared/errors/database";
-import { PipelineConfigError } from "@/lib/shared/errors/domain/analysis";
-import { GeniusNotFoundError } from "@/lib/shared/errors/external/genius";
-import type { GeniusError } from "@/lib/shared/errors/external/genius";
+import {
+	NoLyricsAvailableError,
+	PipelineConfigError,
+} from "@/lib/shared/errors/domain/analysis";
+import {
+	GeniusConfigError,
+	type GeniusError,
+	GeniusFetchError,
+	GeniusNotFoundError,
+	GeniusParseError,
+} from "@/lib/shared/errors/external/genius";
 import { LyricsService } from "../lyrics/service";
 import {
 	type AnalyzePlaylistInput,
@@ -127,12 +141,41 @@ type PipelineError = DbError | GeniusError;
  * Per-batch cache for prefetched lyrics.
  * Stores lyrics text or null for not-found songs.
  */
+type LyricsPrefetchError =
+	| GeniusError
+	| NoLyricsAvailableError
+	| PipelineConfigError;
+
 interface LyricsCacheEntry {
 	lyrics: string | null;
-	error?: GeniusError;
+	error?: LyricsPrefetchError;
 }
 
 type LyricsCache = Map<string, LyricsCacheEntry>;
+
+function isGeniusError(error: unknown): error is GeniusError {
+	return (
+		error instanceof GeniusNotFoundError ||
+		error instanceof GeniusParseError ||
+		error instanceof GeniusFetchError ||
+		error instanceof GeniusConfigError
+	);
+}
+
+function toLyricsPrefetchError(
+	error: GeniusError,
+	song: SongToAnalyze,
+): LyricsPrefetchError {
+	if (error instanceof GeniusNotFoundError) {
+		return new NoLyricsAvailableError(
+			song.songId,
+			song.artist,
+			song.title,
+			error,
+		);
+	}
+	return error;
+}
 
 type InputEvidence = "present" | "missing_confirmed" | "missing_unconfirmed";
 
@@ -149,10 +192,10 @@ function classifyLyricsEvidence(
 
 	if (entry.lyrics !== null && entry.lyrics.trim().length > 0) return "present";
 
-	// GeniusNotFoundError is the only authoritative "this song has no lyrics
-	// in our catalog" signal. Empty success is treated the same way — Genius
-	// returned, just with nothing to extract.
-	if (entry.error instanceof GeniusNotFoundError) return "missing_confirmed";
+	// NoLyricsAvailableError is the pipeline-level "no lyrics exist" signal.
+	// Empty success is treated the same way: the provider returned, just with
+	// nothing to extract.
+	if (entry.error instanceof NoLyricsAvailableError) return "missing_confirmed";
 	if (entry.error === undefined) return "missing_confirmed";
 
 	// Fetch / parse / config errors and unknown thrown values: we couldn't
@@ -210,7 +253,7 @@ export class AnalysisPipeline {
 		onProgress?: ProgressCallback,
 	): Promise<Result<PipelineResult, PipelineError>> {
 		// 1. Create job (pending status)
-		const jobResult = await jobs.createJob(accountId, "song_analysis");
+		const jobResult = await createJob(accountId, "song_analysis");
 		if (Result.isError(jobResult)) {
 			return Result.err(jobResult.error);
 		}
@@ -237,8 +280,8 @@ export class AnalysisPipeline {
 
 		const [lyricsCache, audioFeaturesResult, songsResult] = await Promise.all([
 			this.prefetchLyrics(songsToAnalyze),
-			audioFeatures.getBatch(songIds),
-			songs.getByIds(songIds),
+			getAudioFeaturesBatch(songIds),
+			getSongsByIds(songIds),
 		]);
 
 		const audioFeaturesAvailable = Result.isOk(audioFeaturesResult);
@@ -379,7 +422,7 @@ export class AnalysisPipeline {
 		onProgress?: ProgressCallback,
 	): Promise<Result<PipelineResult, PipelineError>> {
 		// 1. Create job (pending status)
-		const jobResult = await jobs.createJob(accountId, "playlist_analysis");
+		const jobResult = await createJob(accountId, "playlist_analysis");
 		if (Result.isError(jobResult)) {
 			return Result.err(jobResult.error);
 		}
@@ -452,7 +495,7 @@ export class AnalysisPipeline {
 		limit = 100,
 	): Promise<Result<SongToAnalyze[], PipelineError>> {
 		// 1. Get liked songs for account
-		const likedSongsResult = await likedSongs.getAll(accountId);
+		const likedSongsResult = await getLikedSongsAll(accountId);
 		if (Result.isError(likedSongsResult)) {
 			return Result.err(likedSongsResult.error);
 		}
@@ -465,7 +508,7 @@ export class AnalysisPipeline {
 
 		// 2. Get existing analyses
 		const songIds = likedSongsList.map((ls) => ls.song_id);
-		const analysesResult = await songAnalysis.get(songIds);
+		const analysesResult = await getSongAnalysis(songIds);
 		if (Result.isError(analysesResult)) {
 			return Result.err(analysesResult.error);
 		}
@@ -478,7 +521,7 @@ export class AnalysisPipeline {
 		for (const likedSong of likedSongsList) {
 			if (!existingAnalyses.has(likedSong.song_id)) {
 				// Get song details
-				const songResult = await songs.getById(likedSong.song_id);
+				const songResult = await getSongById(likedSong.song_id);
 				if (Result.isOk(songResult) && songResult.value) {
 					const track = songResult.value;
 					needsAnalysis.push({
@@ -539,14 +582,18 @@ export class AnalysisPipeline {
 				} else {
 					cache.set(song.songId, {
 						lyrics: null,
-						error: lyricsResult.error,
+						error: toLyricsPrefetchError(lyricsResult.error, song),
 					});
 				}
 			} catch (error) {
-				// Store null for not-found songs (don't retry)
+				const prefetchError = isGeniusError(error)
+					? toLyricsPrefetchError(error, song)
+					: new PipelineConfigError(
+							`Unexpected lyrics prefetch failure for ${song.artist} - ${song.title}`,
+						);
 				cache.set(song.songId, {
 					lyrics: null,
-					error: error as GeniusError,
+					error: prefetchError,
 				});
 			}
 		});
@@ -564,7 +611,7 @@ export class AnalysisPipeline {
 		progress: JobProgress,
 		onProgress?: ProgressCallback,
 	): Promise<void> {
-		const updateResult = await jobs.updateJobProgress(jobId, progress);
+		const updateResult = await updateJobProgress(jobId, progress);
 		if (Result.isError(updateResult)) {
 			console.error(
 				`[Pipeline] Failed to update job progress for ${jobId}: ${updateResult.error.message}`,

@@ -7,8 +7,12 @@ import type {
 	MatchingStatus,
 } from "@/features/liked-songs/types";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
-import type { LikedSongPageRow } from "@/lib/domains/library/liked-songs/queries";
-import * as likedSong from "@/lib/domains/library/liked-songs/queries";
+import {
+	type LikedSongPageRow,
+	getPageWithDetails,
+	getPageRowBySlug,
+	getStats,
+} from "@/lib/domains/library/liked-songs/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 
 const MatchingStatusSchema = z.enum([
@@ -96,7 +100,7 @@ export const getLikedSongsPage = createServerFn({ method: "GET" })
 
 		const limit = data.limit ?? 15;
 
-		const result = await likedSong.getPageWithDetails(session.accountId, {
+		const result = await getPageWithDetails(session.accountId, {
 			cursor: data.cursor,
 			limit,
 			filter: data.filter,
@@ -117,10 +121,7 @@ export const getLikedSongBySlug = createServerFn({ method: "GET" })
 	.handler(async ({ data, context }): Promise<LikedSong | null> => {
 		const { session } = context;
 
-		const result = await likedSong.getPageRowBySlug(
-			session.accountId,
-			data.slug,
-		);
+		const result = await getPageRowBySlug(session.accountId, data.slug);
 
 		if (Result.isError(result) || result.value === null) {
 			return null;
@@ -147,7 +148,7 @@ export const getLikedSongsStats = createServerFn({ method: "GET" })
 	.handler(async ({ context }): Promise<LikedSongsStatsResult> => {
 		const { session } = context;
 
-		const result = await likedSong.getStats(session.accountId);
+		const result = await getStats(session.accountId);
 
 		if (Result.isError(result)) {
 			return { success: false, error: "Failed to fetch stats" };

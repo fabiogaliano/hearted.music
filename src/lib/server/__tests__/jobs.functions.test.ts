@@ -1,22 +1,37 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getActiveJobs } from "../jobs.functions";
 
-const mockAuthContext = {
-	session: { accountId: "acct-1" },
-	account: null,
-};
-
-const mockLoadLibraryProcessingState = vi.fn();
-const mockGetJobById = vi.fn();
-const mockMatchSnapshotMaybeSingle = vi.fn();
-const mockMatchResultMaybeSingle = vi.fn();
+const {
+	mockAuthContext,
+	mockLoadLibraryProcessingState,
+	mockGetJobById,
+	mockMatchSnapshotMaybeSingle,
+	mockMatchResultMaybeSingle,
+} = vi.hoisted(() => ({
+	mockAuthContext: {
+		session: { accountId: "acct-1" },
+		account: null,
+	},
+	mockLoadLibraryProcessingState: vi.fn(),
+	mockGetJobById: vi.fn(),
+	mockMatchSnapshotMaybeSingle: vi.fn(),
+	mockMatchResultMaybeSingle: vi.fn(),
+}));
 
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
 		inputValidator: () => builder(),
-		handler: (fn: Function) => (input?: { data?: unknown }) =>
-			fn({ context: mockAuthContext, data: input?.data }),
+		handler:
+			(
+				fn: (args: {
+					context: typeof mockAuthContext;
+					data: unknown;
+				}) => unknown,
+			) =>
+			(input?: { data?: unknown }) =>
+				fn({ context: mockAuthContext, data: input?.data }),
 	});
 	return {
 		createServerFn: builder,
@@ -71,8 +86,6 @@ vi.mock("@/lib/data/client", () => ({
 		},
 	}),
 }));
-
-const { getActiveJobs } = await import("../jobs.functions");
 
 describe("jobs.functions", () => {
 	beforeEach(() => {

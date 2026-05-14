@@ -1,10 +1,30 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { computePreviewFingerprint } from "@/lib/workflows/walkthrough-match-preview/queries";
+import { getDemoSongMatches } from "../onboarding.functions";
 
-const mockAuthContext = {
-	session: { accountId: "acct-1" },
-	account: null,
-};
+const {
+	mockAuthContext,
+	mockGetOrCreatePreferences,
+	mockGetPlaylists,
+	mockReadBillingState,
+	mockCreateAdminSupabaseClient,
+	mockGetDemoMatches,
+	mockEnsurePreview,
+	mockGetWalkthroughPreview,
+} = vi.hoisted(() => ({
+	mockAuthContext: {
+		session: { accountId: "acct-1" },
+		account: null,
+	},
+	mockGetOrCreatePreferences: vi.fn(),
+	mockGetPlaylists: vi.fn(),
+	mockReadBillingState: vi.fn(),
+	mockCreateAdminSupabaseClient: vi.fn(),
+	mockGetDemoMatches: vi.fn(),
+	mockEnsurePreview: vi.fn().mockResolvedValue({ status: "ensured" }),
+	mockGetWalkthroughPreview: vi.fn(),
+}));
 
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
@@ -26,7 +46,6 @@ vi.mock("@/lib/platform/auth/auth.middleware", () => ({
 	authMiddleware: {},
 }));
 
-const mockGetOrCreatePreferences = vi.fn();
 vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
 	getOrCreatePreferences: (id: string) => mockGetOrCreatePreferences(id),
 	completeOnboarding: vi.fn(),
@@ -37,7 +56,6 @@ vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
 	clearPhaseJobIds: vi.fn(),
 }));
 
-const mockGetPlaylists = vi.fn();
 vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	getPlaylists: (id: string) => mockGetPlaylists(id),
 	getPlaylistCount: vi.fn(),
@@ -49,7 +67,6 @@ vi.mock("@/lib/domains/library/artists/queries", () => ({
 	getLibraryArtistCount: vi.fn(),
 }));
 
-const mockReadBillingState = vi.fn();
 vi.mock("@/lib/domains/billing/queries", () => ({
 	readBillingState: (...args: unknown[]) =>
 		mockReadBillingState(args[0], args[1]),
@@ -64,12 +81,10 @@ vi.mock("@/lib/domains/library/liked-songs/queries", () => ({
 	getCount: vi.fn(),
 }));
 
-const mockCreateAdminSupabaseClient = vi.fn();
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: () => mockCreateAdminSupabaseClient(),
 }));
 
-const mockGetDemoMatches = vi.fn();
 vi.mock("@/lib/data/demo-matches", () => ({
 	getDemoMatchesForSong: (id: string) => mockGetDemoMatches(id),
 }));
@@ -86,12 +101,10 @@ vi.mock("@/lib/workflows/library-processing/changes/onboarding", () => ({
 }));
 vi.mock("@/lib/utils/slug", () => ({ generateSongSlug: () => "slug" }));
 
-const mockEnsurePreview = vi.fn().mockResolvedValue({ status: "ensured" });
 vi.mock("@/lib/workflows/walkthrough-match-preview/service", () => ({
 	ensureWalkthroughPreview: (args: unknown) => mockEnsurePreview(args),
 }));
 
-const mockGetWalkthroughPreview = vi.fn();
 vi.mock("@/lib/workflows/walkthrough-match-preview/queries", async () => {
 	const actual = await vi.importActual<
 		typeof import("@/lib/workflows/walkthrough-match-preview/queries")
@@ -101,11 +114,6 @@ vi.mock("@/lib/workflows/walkthrough-match-preview/queries", async () => {
 		getWalkthroughPreview: (id: string) => mockGetWalkthroughPreview(id),
 	};
 });
-
-const { getDemoSongMatches } = await import("../onboarding.functions");
-const { computePreviewFingerprint } = await import(
-	"@/lib/workflows/walkthrough-match-preview/queries"
-);
 
 beforeEach(() => {
 	vi.clearAllMocks();

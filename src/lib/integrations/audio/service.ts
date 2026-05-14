@@ -6,7 +6,12 @@
  */
 
 import { Result } from "better-result";
-import * as audioFeatureData from "@/lib/domains/enrichment/audio-features/queries";
+import {
+	type AudioFeature,
+	type UpsertData as AudioFeatureUpsertData,
+	getBatch as getAudioFeaturesBatch,
+	upsert as upsertAudioFeatures,
+} from "@/lib/domains/enrichment/audio-features/queries";
 import type { ReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import type {
 	ReccoBeatsAudioFeatures,
@@ -30,7 +35,7 @@ export interface TrackInfo {
 /** Result of backfill operation */
 interface BackfillResult {
 	/** Successfully fetched and persisted features */
-	readonly filled: Map<string, audioFeatureData.AudioFeature>;
+	readonly filled: Map<string, AudioFeature>;
 	/** Already had features (skipped) */
 	readonly skipped: string[];
 	/** Failed to fetch from API */
@@ -49,7 +54,7 @@ export type AudioFeaturesFailureKind = ReccoBeatsFailureKind;
 
 /** Result of getOrFetchFeatures: features that succeeded + classified failures. */
 interface GetOrFetchFeaturesResult {
-	readonly features: Map<string, audioFeatureData.AudioFeature>;
+	readonly features: Map<string, AudioFeature>;
 	readonly failures: Map<string, AudioFeaturesFailureKind>;
 }
 
@@ -77,7 +82,7 @@ export class AudioFeaturesService {
 		const songIds = tracks.map((t) => t.songId);
 
 		// Get existing features from database
-		const existingResult = await audioFeatureData.getBatch(songIds);
+		const existingResult = await getAudioFeaturesBatch(songIds);
 		if (Result.isError(existingResult)) {
 			return Result.err(existingResult.error);
 		}
@@ -111,7 +116,7 @@ export class AudioFeaturesService {
 		}
 
 		// Map Spotify IDs back to song IDs and persist
-		const newFeatures: audioFeatureData.UpsertData[] = [];
+		const newFeatures: AudioFeatureUpsertData[] = [];
 		const spotifyToSongId = new Map(
 			missingTracks.map((t) => [t.spotifyTrackId, t.songId]),
 		);
@@ -132,7 +137,7 @@ export class AudioFeaturesService {
 
 		// Persist new features
 		if (newFeatures.length > 0) {
-			const upsertResult = await audioFeatureData.upsert(newFeatures);
+			const upsertResult = await upsertAudioFeatures(newFeatures);
 			if (Result.isOk(upsertResult)) {
 				for (const feature of upsertResult.value) {
 					existingFeatures.set(feature.song_id, feature);
@@ -166,7 +171,7 @@ export class AudioFeaturesService {
 		const songIds = tracks.map((t) => t.songId);
 
 		// Check which already have features
-		const existingResult = await audioFeatureData.getBatch(songIds);
+		const existingResult = await getAudioFeaturesBatch(songIds);
 		if (Result.isError(existingResult)) {
 			return Result.err(existingResult.error);
 		}
@@ -202,8 +207,8 @@ export class AudioFeaturesService {
 		}
 
 		// Map and persist
-		const newFeatures: audioFeatureData.UpsertData[] = [];
-		const filled = new Map<string, audioFeatureData.AudioFeature>();
+		const newFeatures: AudioFeatureUpsertData[] = [];
+		const filled = new Map<string, AudioFeature>();
 		const failed: string[] = [];
 
 		for (const track of missingTracks) {
@@ -221,7 +226,7 @@ export class AudioFeaturesService {
 
 		// Persist
 		if (newFeatures.length > 0) {
-			const upsertResult = await audioFeatureData.upsert(newFeatures);
+			const upsertResult = await upsertAudioFeatures(newFeatures);
 			if (Result.isOk(upsertResult)) {
 				for (const feature of upsertResult.value) {
 					filled.set(feature.song_id, feature);
@@ -252,7 +257,7 @@ export class AudioFeaturesService {
 	private mapReccoBeatsToUpsert(
 		songId: string,
 		features: ReccoBeatsAudioFeatures,
-	): audioFeatureData.UpsertData {
+	): AudioFeatureUpsertData {
 		return {
 			song_id: songId,
 			acousticness: features.acousticness,

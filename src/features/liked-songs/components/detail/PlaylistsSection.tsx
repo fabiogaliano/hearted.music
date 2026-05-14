@@ -2,14 +2,12 @@ import { PlaylistMatchRow } from "@/components/ui/PlaylistMatchRow";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import type { SongSuggestion } from "@/lib/server/matching.functions";
 import { fonts } from "@/lib/theme/fonts";
-import type { ColorProps } from "./types";
 
 interface PlaylistsSectionProps {
 	suggestions: SongSuggestion[];
 	addedTo: string[];
 	onAdd: (playlistId: string) => void;
 	reconnectNeeded?: boolean;
-	colors?: ColorProps;
 }
 
 export function PlaylistsSection({
@@ -17,15 +15,8 @@ export function PlaylistsSection({
 	addedTo,
 	onAdd,
 	reconnectNeeded,
-	colors,
 }: PlaylistsSectionProps) {
 	const sorted = [...suggestions].sort((a, b) => b.score - a.score);
-
-	const rowColors = {
-		text: colors?.text ?? "",
-		textMuted: colors?.textMuted ?? "",
-		border: colors?.border ?? "",
-	};
 
 	const reconnectAction = reconnectNeeded ? (
 		<SpotifyReconnectLink label="Reconnect to Spotify" />
@@ -57,7 +48,6 @@ export function PlaylistsSection({
 								{Math.round(suggestion.score * 100)}%
 							</span>
 						}
-						colors={rowColors}
 						action={
 							addedTo.includes(suggestion.playlistId)
 								? { type: "added" }

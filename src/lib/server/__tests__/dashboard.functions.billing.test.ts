@@ -1,39 +1,59 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getDashboardStats, getMatchPreviews } from "../dashboard.functions";
 
-const mockAuthContext = {
-	session: { accountId: "acct-1" },
-	account: null,
-};
-
-// Mocks for fetchDashboardStats dependencies
-const mockGetLikedSongCount = vi.fn();
-const mockGetAnalyzedCountForAccount = vi.fn();
-const mockGetLastCompletedSync = vi.fn();
-const mockGetLikedSongStats = vi.fn();
-const mockGetPlaylistCount = vi.fn();
-
-// Mocks for fetchMatchPreviews dependencies
-const mockGetLatestMatchSnapshot = vi.fn();
-const mockGetUndecidedSongs = vi.fn();
-const mockGetNewItemIds = vi.fn();
-
-// Supabase mock
-const mockRpc = vi.fn();
-const mockSelect = vi.fn();
-const mockIn = vi.fn();
-const mockFrom = vi.fn(() => ({
-	select: mockSelect.mockReturnValue({
-		in: mockIn,
-	}),
-}));
+const {
+	mockAuthContext,
+	mockGetLikedSongCount,
+	mockGetAnalyzedCountForAccount,
+	mockGetLastCompletedSync,
+	mockGetLikedSongStats,
+	mockGetPlaylistCount,
+	mockGetLatestMatchSnapshot,
+	mockGetUndecidedSongs,
+	mockGetNewItemIds,
+	mockRpc,
+	mockIn,
+	mockFrom,
+} = vi.hoisted(() => {
+	const mockSelect = vi.fn();
+	const mockIn = vi.fn();
+	return {
+		mockAuthContext: {
+			session: { accountId: "acct-1" },
+			account: null,
+		},
+		mockGetLikedSongCount: vi.fn(),
+		mockGetAnalyzedCountForAccount: vi.fn(),
+		mockGetLastCompletedSync: vi.fn(),
+		mockGetLikedSongStats: vi.fn(),
+		mockGetPlaylistCount: vi.fn(),
+		mockGetLatestMatchSnapshot: vi.fn(),
+		mockGetUndecidedSongs: vi.fn(),
+		mockGetNewItemIds: vi.fn(),
+		mockRpc: vi.fn(),
+		mockIn,
+		mockFrom: vi.fn(() => ({
+			select: mockSelect.mockReturnValue({
+				in: mockIn,
+			}),
+		})),
+	};
+});
 
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
 		inputValidator: () => builder(),
-		handler: (fn: Function) => (input?: { data?: unknown }) =>
-			fn({ context: mockAuthContext, data: input?.data }),
+		handler:
+			(
+				fn: (args: {
+					context: typeof mockAuthContext;
+					data: unknown;
+				}) => unknown,
+			) =>
+			(input?: { data?: unknown }) =>
+				fn({ context: mockAuthContext, data: input?.data }),
 	});
 	return {
 		createServerFn: builder,
@@ -62,7 +82,7 @@ vi.mock("@/lib/data/jobs", () => ({
 
 vi.mock("@/lib/domains/library/liked-songs/queries", () => ({
 	getCount: (...args: unknown[]) => mockGetLikedSongCount(...args),
-	getRecentWithDetails: vi.fn().mockResolvedValue(Result.ok([])),
+	getRecentWithDetails: vi.fn(),
 	getStats: (...args: unknown[]) => mockGetLikedSongStats(...args),
 }));
 
@@ -87,10 +107,6 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 vi.mock("@/lib/server/matching.functions", () => ({
 	getUndecidedSongs: (...args: unknown[]) => mockGetUndecidedSongs(...args),
 }));
-
-const { getDashboardStats, getMatchPreviews } = await import(
-	"../dashboard.functions"
-);
 
 describe("getDashboardStats (billing-aware)", () => {
 	beforeEach(() => {

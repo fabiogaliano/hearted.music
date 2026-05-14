@@ -6,14 +6,22 @@
  */
 
 import { Result } from "better-result";
-import * as songData from "@/lib/domains/library/songs/queries";
+import {
+	getById as getSongById,
+	getByIds as getSongsByIds,
+	updateGenres,
+	updateGenresBatch,
+} from "@/lib/domains/library/songs/queries";
 import {
 	createLastFmService,
 	type LastFmService,
 } from "@/lib/integrations/lastfm/service";
 import type { GenreSourceLevel } from "@/lib/integrations/lastfm/types";
 import type { DbError } from "@/lib/shared/errors/database";
-import type { LastFmError } from "@/lib/shared/errors/external/lastfm";
+import {
+	type LastFmError,
+	LastFmNotFoundError,
+} from "@/lib/shared/errors/external/lastfm";
 
 // ============================================================================
 // Types
@@ -101,7 +109,7 @@ export class GenreEnrichmentService {
 
 		// Check cache (existing genres on song)
 		if (!options.skipCache) {
-			const songResult = await songData.getById(songId);
+			const songResult = await getSongById(songId);
 			if (Result.isError(songResult)) {
 				return Result.err(songResult.error);
 			}
@@ -130,6 +138,9 @@ export class GenreEnrichmentService {
 		);
 
 		if (Result.isError(lookupResult)) {
+			if (lookupResult.error instanceof LastFmNotFoundError) {
+				return Result.ok(null);
+			}
 			return Result.err(lookupResult.error);
 		}
 
@@ -140,7 +151,7 @@ export class GenreEnrichmentService {
 
 		// Persist to song.genres
 		if (!options.skipPersist) {
-			const updateResult = await songData.updateGenres(songId, lookup.tags);
+			const updateResult = await updateGenres(songId, lookup.tags);
 			if (Result.isError(updateResult)) {
 				return Result.err(updateResult.error);
 			}
@@ -182,7 +193,7 @@ export class GenreEnrichmentService {
 
 		// First pass: check cache for all songs
 		const songIds = inputs.map((i) => i.songId);
-		const songsResult = await songData.getByIds(songIds);
+		const songsResult = await getSongsByIds(songIds);
 
 		if (Result.isError(songsResult)) {
 			return Result.err(songsResult.error);
@@ -237,8 +248,13 @@ export class GenreEnrichmentService {
 
 				for (const { input, result } of batchResults) {
 					if (Result.isError(result)) {
-						errors.set(input.songId, result.error.message);
-						progress.errors++;
+						if (result.error instanceof LastFmNotFoundError) {
+							notFound.add(input.songId);
+							progress.notFound++;
+						} else {
+							errors.set(input.songId, result.error.message);
+							progress.errors++;
+						}
 					} else if (result.value) {
 						results.set(input.songId, {
 							songId: input.songId,
@@ -261,7 +277,7 @@ export class GenreEnrichmentService {
 
 			// Batch persist
 			if (!options.skipPersist && updates.length > 0) {
-				const updateResult = await songData.updateGenresBatch(updates);
+				const updateResult = await updateGenresBatch(updates);
 				if (Result.isError(updateResult)) {
 					// Genres were fetched successfully, just persistence failed
 					// Continue without failing the whole batch

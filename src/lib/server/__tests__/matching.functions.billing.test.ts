@@ -1,30 +1,55 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	getMatchingSession,
+	getSongMatches,
+	getSongSuggestions,
+} from "../matching.functions";
 
-const mockAuthContext = {
-	session: { accountId: "acct-1" },
-	account: null,
-};
-
-const mockGetLatestMatchSnapshot = vi.fn();
-const mockGetMatchResults = vi.fn();
-const mockGetMatchResultsForSong = vi.fn();
-const mockGetMatchDecisionsForSongs = vi.fn();
-const mockGetNewItemIds = vi.fn();
-
-const mockRpc = vi.fn();
-const mockSelect = vi.fn();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockFrom: ReturnType<typeof vi.fn> = vi.fn(() => ({
-	select: mockSelect,
-}));
+const {
+	mockAuthContext,
+	mockGetLatestMatchSnapshot,
+	mockGetMatchResults,
+	mockGetMatchResultsForSong,
+	mockGetMatchDecisionsForSongs,
+	mockGetNewItemIds,
+	mockRpc,
+	mockSelect,
+	mockFrom,
+} = vi.hoisted(() => {
+	const mockSelect = vi.fn();
+	const mockFrom: ReturnType<typeof vi.fn> = vi.fn(() => ({
+		select: mockSelect,
+	}));
+	return {
+		mockAuthContext: {
+			session: { accountId: "acct-1" },
+			account: null,
+		},
+		mockGetLatestMatchSnapshot: vi.fn(),
+		mockGetMatchResults: vi.fn(),
+		mockGetMatchResultsForSong: vi.fn(),
+		mockGetMatchDecisionsForSongs: vi.fn(),
+		mockGetNewItemIds: vi.fn(),
+		mockRpc: vi.fn(),
+		mockSelect,
+		mockFrom,
+	};
+});
 
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
 		inputValidator: () => builder(),
-		handler: (fn: Function) => (input?: { data?: unknown }) =>
-			fn({ context: mockAuthContext, data: input?.data }),
+		handler:
+			(
+				fn: (args: {
+					context: typeof mockAuthContext;
+					data: unknown;
+				}) => unknown,
+			) =>
+			(input?: { data?: unknown }) =>
+				fn({ context: mockAuthContext, data: input?.data }),
 	});
 	return {
 		createServerFn: builder,
@@ -64,10 +89,6 @@ vi.mock("@/lib/data/match-decision-queries", () => ({
 vi.mock("@/lib/domains/library/liked-songs/status-queries", () => ({
 	getNewItemIds: (...args: unknown[]) => mockGetNewItemIds(...args),
 }));
-
-const { getMatchingSession, getSongSuggestions, getSongMatches } = await import(
-	"../matching.functions"
-);
 
 describe("getMatchingSession (billing-aware)", () => {
 	beforeEach(() => {

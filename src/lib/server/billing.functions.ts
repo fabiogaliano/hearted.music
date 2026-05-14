@@ -18,6 +18,8 @@ import type { BillingState } from "@/lib/domains/billing/state";
 import { requestSongUnlock as orchestrateUnlock } from "@/lib/domains/billing/unlocks";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 
+const NoInputSchema = z.undefined();
+
 export const getBillingState = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.handler(async ({ context }): Promise<BillingState> => {
@@ -38,6 +40,7 @@ export interface SubscriptionUpgradeQuote {
 
 export const getSubscriptionUpgradeQuote = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
+	.inputValidator((data: undefined) => NoInputSchema.parse(data))
 	.handler(async ({ context }): Promise<SubscriptionUpgradeQuote> => {
 		const supabase = createAdminSupabaseClient();
 		const { data, error } = await supabase

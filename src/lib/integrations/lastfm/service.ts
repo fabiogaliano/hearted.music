@@ -11,6 +11,7 @@ import {
 	LastFmApiError,
 	type LastFmConfigError,
 	type LastFmError,
+	LastFmNotFoundError,
 	LastFmRateLimitError,
 } from "@/lib/shared/errors/external/lastfm";
 import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
@@ -89,8 +90,9 @@ export class LastFmService {
 					);
 				}
 				if (data.error === 6) {
-					// Album not found - not an error, return null to trigger fallback
-					return Result.ok<GenreLookupResult | null, LastFmError>(null);
+					return Result.err<GenreLookupResult | null, LastFmError>(
+						new LastFmNotFoundError(artist, undefined, album),
+					);
 				}
 				return Result.err<GenreLookupResult | null, LastFmError>(
 					new LastFmApiError(data.error, data.message),
@@ -164,7 +166,9 @@ export class LastFmService {
 					);
 				}
 				if (data.error === 6) {
-					return Result.ok<GenreLookupResult | null, LastFmError>(null);
+					return Result.err<GenreLookupResult | null, LastFmError>(
+						new LastFmNotFoundError(artist),
+					);
 				}
 				return Result.err<GenreLookupResult | null, LastFmError>(
 					new LastFmApiError(data.error, data.message),
@@ -209,8 +213,13 @@ export class LastFmService {
 				normalizedAlbum,
 			);
 
-			if (Result.isError(albumResult)) return albumResult;
-			if (albumResult.value !== null) return Result.ok(albumResult.value);
+			if (Result.isError(albumResult)) {
+				if (!(albumResult.error instanceof LastFmNotFoundError)) {
+					return albumResult;
+				}
+			} else if (albumResult.value !== null) {
+				return Result.ok(albumResult.value);
+			}
 		}
 
 		// Fallback to artist

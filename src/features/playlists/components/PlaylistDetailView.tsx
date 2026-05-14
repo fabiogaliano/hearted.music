@@ -226,8 +226,8 @@ export function PlaylistDetailView({
 			: `translateY(${offsetY}px) scale(0.98)`,
 		opacity: isExpanded ? 1 : 0,
 		transition: isExpanded
-			? "transform 280ms cubic-bezier(0.23, 1, 0.32, 1), opacity 220ms cubic-bezier(0.23, 1, 0.32, 1)"
-			: "transform 220ms cubic-bezier(0.23, 1, 0.32, 1), opacity 160ms cubic-bezier(0.23, 1, 0.32, 1)",
+			? "transform 280ms var(--ease-out-expo), opacity 220ms var(--ease-out-expo)"
+			: "transform 220ms var(--ease-out-expo), opacity 160ms var(--ease-out-expo)",
 		willChange: "transform, opacity",
 		pointerEvents: isExpanded ? "auto" : "none",
 		"--t-bg": theme.bg,
@@ -255,7 +255,7 @@ export function PlaylistDetailView({
 						className="absolute top-0 right-0 z-20"
 						style={{
 							opacity: isExpanded ? 1 : 0,
-							transition: "opacity 200ms cubic-bezier(0.23, 1, 0.32, 1) 80ms",
+							transition: "opacity 200ms var(--ease-out-expo) 80ms",
 						}}
 						aria-label="Close detail view"
 					>
@@ -376,8 +376,7 @@ export function PlaylistDetailView({
 								className="flex items-center gap-4"
 								style={{
 									opacity: isExpanded ? 1 : 0,
-									transition:
-										"opacity 200ms cubic-bezier(0.23, 1, 0.32, 1) 120ms",
+									transition: "opacity 200ms var(--ease-out-expo) 120ms",
 								}}
 							>
 								<span

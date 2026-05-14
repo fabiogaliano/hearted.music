@@ -2,8 +2,8 @@ import {
 	useCallback,
 	useEffect,
 	useMemo,
+	useReducer,
 	useRef,
-	useState,
 	useSyncExternalStore,
 } from "react";
 import { PaneStore } from "uipane";
@@ -34,6 +34,68 @@ type MatchState =
 			source: MatchSource;
 			pendingRealMatches: Playlist[] | null;
 	  };
+
+type MatchAction =
+	| { type: "started" }
+	| { type: "timedOut"; fallbackMatches: Playlist[] }
+	| {
+			type: "serverReady";
+			matches: Playlist[];
+			fallbackMatches: Playlist[];
+			source: MatchSource;
+			hasTimedOut: boolean;
+	  }
+	| { type: "unavailable"; fallbackMatches: Playlist[] }
+	| { type: "acceptPendingRealMatches" };
+
+const initialMatchState: MatchState = { status: "loading" };
+
+function matchReducer(state: MatchState, action: MatchAction): MatchState {
+	switch (action.type) {
+		case "started":
+			return initialMatchState;
+		case "timedOut":
+			if (state.status !== "loading") return state;
+			return {
+				status: "ready",
+				matches: action.fallbackMatches,
+				fallbackMatches: action.fallbackMatches,
+				source: "fallback",
+				pendingRealMatches: null,
+			};
+		case "serverReady":
+			if (
+				action.hasTimedOut &&
+				state.status === "ready" &&
+				action.source === "real"
+			) {
+				return { ...state, pendingRealMatches: action.matches };
+			}
+			return {
+				status: "ready",
+				matches: action.matches,
+				fallbackMatches: action.fallbackMatches,
+				source: action.source,
+				pendingRealMatches: null,
+			};
+		case "unavailable":
+			return {
+				status: "ready",
+				matches: action.fallbackMatches,
+				fallbackMatches: action.fallbackMatches,
+				source: "fallback",
+				pendingRealMatches: null,
+			};
+		case "acceptPendingRealMatches":
+			if (state.status !== "ready" || !state.pendingRealMatches) return state;
+			return {
+				...state,
+				matches: state.pendingRealMatches,
+				source: "real",
+				pendingRealMatches: null,
+			};
+	}
+}
 
 function mapServerMatches(matches: DemoMatchPlaylist[]): Playlist[] {
 	return matches.slice(0, 5).map((m) => ({
@@ -75,32 +137,25 @@ export function WalkthroughMatchContent({
 	walkthroughSong: WalkthroughSong;
 }) {
 	const { navigateTo, isPending } = useStepNavigation();
-	const [matchState, setMatchState] = useState<MatchState>({
-		status: "loading",
-	});
+	const [matchState, dispatchMatch] = useReducer(
+		matchReducer,
+		initialMatchState,
+	);
 	const timedOutRef = useRef(false);
 
 	useEffect(() => {
 		let cancelled = false;
 		let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
+		timedOutRef.current = false;
+		dispatchMatch({ type: "started" });
+
 		const fallback = mapDemoMatches(walkthroughSong.spotifyTrackId);
 
 		const timeoutTimer = setTimeout(() => {
 			if (cancelled) return;
 			timedOutRef.current = true;
-			setMatchState((prev) => {
-				if (prev.status === "loading") {
-					return {
-						status: "ready",
-						matches: fallback,
-						fallbackMatches: fallback,
-						source: "fallback",
-						pendingRealMatches: null,
-					};
-				}
-				return prev;
-			});
+			dispatchMatch({ type: "timedOut", fallbackMatches: fallback });
 		}, TIMEOUT_MS);
 
 		async function poll() {
@@ -113,33 +168,18 @@ export function WalkthroughMatchContent({
 					const serverMatches = mapServerMatches(result.matches);
 					const source: MatchSource = result.isDemo ? "fallback" : "real";
 
-					setMatchState((prev) => {
-						if (
-							timedOutRef.current &&
-							prev.status === "ready" &&
-							source === "real"
-						) {
-							return { ...prev, pendingRealMatches: serverMatches };
-						}
-						return {
-							status: "ready",
-							matches: serverMatches,
-							fallbackMatches: fallback,
-							source,
-							pendingRealMatches: null,
-						};
+					dispatchMatch({
+						type: "serverReady",
+						matches: serverMatches,
+						fallbackMatches: fallback,
+						source,
+						hasTimedOut: timedOutRef.current,
 					});
 					return;
 				}
 
 				if (result.status === "unavailable") {
-					setMatchState({
-						status: "ready",
-						matches: fallback,
-						fallbackMatches: fallback,
-						source: "fallback",
-						pendingRealMatches: null,
-					});
+					dispatchMatch({ type: "unavailable", fallbackMatches: fallback });
 					return;
 				}
 
@@ -190,15 +230,7 @@ export function WalkthroughMatchContent({
 
 	const handleRefresh = useCallback(() => {
 		if (hasRealPending) {
-			setMatchState((prev) => {
-				if (prev.status !== "ready" || !prev.pendingRealMatches) return prev;
-				return {
-					...prev,
-					matches: prev.pendingRealMatches,
-					source: "real",
-					pendingRealMatches: null,
-				};
-			});
+			dispatchMatch({ type: "acceptPendingRealMatches" });
 		}
 		clearPaneRealAvailable();
 	}, [hasRealPending]);

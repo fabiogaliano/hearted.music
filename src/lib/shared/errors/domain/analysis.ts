@@ -32,13 +32,15 @@ export class NoLyricsAvailableError extends TaggedError(
 	artist: string;
 	title: string;
 	message: string;
+	cause?: unknown;
 }>() {
-	constructor(songId: string, artist: string, title: string) {
+	constructor(songId: string, artist: string, title: string, cause?: unknown) {
 		super({
 			songId,
 			artist,
 			title,
 			message: `No lyrics found for "${artist} - ${title}"`,
+			cause,
 		});
 	}
 }

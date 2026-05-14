@@ -1,12 +1,6 @@
 import type { ReactNode } from "react";
 import { fonts } from "@/lib/theme/fonts";
 
-interface PlaylistMatchRowColors {
-	text: string;
-	textMuted: string;
-	border: string;
-}
-
 type PlaylistMatchRowAction =
 	| { type: "added" }
 	| { type: "add"; onAdd: (playlistId: string) => void }
@@ -19,7 +13,6 @@ interface PlaylistMatchRowProps {
 	scoreDisplay: ReactNode;
 	/** Optional subtitle below the name (e.g. playlist description) */
 	reason?: string;
-	colors: PlaylistMatchRowColors;
 	/** "lg" for full-page match view, "sm" (default) for panel context */
 	size?: "sm" | "lg";
 	action: PlaylistMatchRowAction;
@@ -30,7 +23,6 @@ export function PlaylistMatchRow({
 	name,
 	scoreDisplay,
 	reason,
-	colors,
 	size = "sm",
 	action,
 }: PlaylistMatchRowProps) {
@@ -39,21 +31,17 @@ export function PlaylistMatchRow({
 
 	return (
 		<div
-			className="group"
-			style={{
-				borderBottom: `1px solid ${colors.border}`,
-				paddingBottom,
-			}}
+			className="theme-border-color group border-b"
+			style={{ paddingBottom }}
 		>
 			<div className="flex items-start justify-between gap-4">
 				<div className="flex min-w-0 flex-1 items-start gap-2">
 					{scoreDisplay}
 					<div className="min-w-0 pt-0.5">
 						<span
-							className="font-light"
+							className="theme-text font-light"
 							style={{
 								fontFamily: fonts.display,
-								color: colors.text,
 								fontSize: nameFontSize,
 							}}
 						>
@@ -61,8 +49,8 @@ export function PlaylistMatchRow({
 						</span>
 						{reason && (
 							<p
-								className="mt-0.5 text-xs"
-								style={{ fontFamily: fonts.body, color: colors.textMuted }}
+								className="theme-text-muted mt-0.5 text-xs"
+								style={{ fontFamily: fonts.body }}
 							>
 								{reason}
 							</p>
@@ -73,8 +61,8 @@ export function PlaylistMatchRow({
 				<div className="shrink-0">
 					{action.type === "added" ? (
 						<span
-							className="text-xs tracking-widest uppercase opacity-50"
-							style={{ fontFamily: fonts.body, color: colors.textMuted }}
+							className="theme-text-muted text-xs tracking-widest uppercase opacity-50"
+							style={{ fontFamily: fonts.body }}
 						>
 							Added
 						</span>
@@ -84,8 +72,8 @@ export function PlaylistMatchRow({
 						<button
 							type="button"
 							onClick={() => action.onAdd(playlistId)}
-							className="text-xs tracking-widest uppercase opacity-0 transition-opacity group-hover:opacity-100"
-							style={{ fontFamily: fonts.body, color: colors.text }}
+							className="theme-text text-xs tracking-widest uppercase opacity-0 transition-opacity group-hover:opacity-100"
+							style={{ fontFamily: fonts.body }}
 						>
 							Add
 						</button>
