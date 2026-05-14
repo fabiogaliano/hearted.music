@@ -46,7 +46,7 @@ export function WaitlistInput({
 			<p
 				className="text-lg font-light"
 				style={{
-					color: isDark ? "#ffffff" : "var(--t-text)",
+					color: isDark ? "var(--t-text-on-primary)" : "var(--t-text)",
 					fontFamily: fonts.body,
 				}}
 			>
@@ -68,9 +68,11 @@ export function WaitlistInput({
 					disabled={status === "submitting"}
 					className="w-full flex-1 px-4 py-3 text-sm transition-[box-shadow,border-color] duration-200 focus:outline-none disabled:opacity-60"
 					style={{
-						background: isDark ? "rgba(255,255,255,0.15)" : "var(--t-surface)",
-						border: `1px solid ${isDark ? "rgba(255,255,255,0.3)" : "var(--t-border)"}`,
-						color: isDark ? "#ffffff" : "var(--t-text)",
+						background: isDark
+							? "color-mix(in srgb, var(--t-text-on-primary) 15%, transparent)"
+							: "var(--t-surface)",
+						border: `1px solid ${isDark ? "color-mix(in srgb, var(--t-text-on-primary) 30%, transparent)" : "var(--t-border)"}`,
+						color: isDark ? "var(--t-text-on-primary)" : "var(--t-text)",
 						fontFamily: fonts.body,
 						backdropFilter: isDark ? "blur(10px)" : undefined,
 					}}

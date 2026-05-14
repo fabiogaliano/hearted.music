@@ -25,7 +25,7 @@ const ART_WIDTH_PERCENT = (ART_SIZE / CASE_WIDTH) * 100;
 const ART_HEIGHT_PERCENT = (ART_SIZE / CASE_HEIGHT) * 100;
 
 function CaseSVG() {
-	const frameColor = "#1A1A1A";
+	const frameColor = "var(--t-text)";
 	const accentColor = "var(--t-text)";
 
 	return (

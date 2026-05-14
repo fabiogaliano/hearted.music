@@ -215,7 +215,7 @@ export function LandingHero({
 									className="hero-logo flex items-center text-2xl font-extralight tracking-tight"
 									style={{
 										fontFamily: fonts.display,
-										color: "#ffffff",
+										color: "var(--t-text-on-primary)",
 										willChange: "transform",
 									}}
 								>
@@ -241,8 +241,9 @@ export function LandingHero({
 									ref={navBtnRef}
 									className="hero-nav-btn pointer-events-auto px-5 py-2 text-sm tracking-widest uppercase transition-transform duration-150 hover:scale-105 active:scale-[0.98] xl:hidden"
 									style={{
-										background: "rgba(255,255,255,0.2)",
-										color: "#ffffff",
+										background:
+											"color-mix(in srgb, var(--t-text-on-primary) 20%, transparent)",
+										color: "var(--t-text-on-primary)",
 										fontFamily: fonts.body,
 										backdropFilter: "blur(10px)",
 										opacity: 0,
