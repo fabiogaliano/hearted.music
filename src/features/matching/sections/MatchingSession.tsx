@@ -1,6 +1,5 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { MatchesSection } from "../components/MatchesSection";
 import { SongSection } from "../components/SongSection";
 import type { MatchingSessionProps } from "../types";
@@ -17,8 +16,6 @@ export function MatchingSession({
 	onDismiss,
 	onNext,
 }: MatchingSessionProps) {
-	const theme = useTheme();
-
 	const song = useMemo(
 		() => ({
 			name: currentSong.name,
@@ -48,7 +45,7 @@ export function MatchingSession({
 
 	return (
 		<>
-			<div className="mb-10 h-px" style={{ background: theme.border }} />
+			<div className="theme-border-bg mb-10 h-px" />
 
 			<div
 				ref={wrapperRef}
@@ -65,6 +62,7 @@ export function MatchingSession({
 							albumArtUrl={currentSong.albumArtUrl ?? undefined}
 						/>
 						<MatchesSection
+							songKey={currentSong.id}
 							playlists={playlists}
 							addedTo={addedTo}
 							isDemo={isDemo}

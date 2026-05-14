@@ -22,7 +22,6 @@ import {
 	loadLandingSongDetail,
 } from "@/lib/data/landing-songs";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { LandingHero } from "./components/LandingHero";
 import { SpotifyLoginButton } from "./components/SpotifyLoginButton";
 import { WaitlistInput } from "./components/WaitlistInput";
@@ -61,7 +60,6 @@ export function Landing({
 	initialDetail,
 	isReleased = true,
 }: LandingProps) {
-	const theme = useTheme();
 	const [songManifest] = useState(initialManifest);
 	const [songDetailsByTrackId, setSongDetailsByTrackId] = useState<
 		Record<string, LandingSongDetail>
@@ -73,6 +71,10 @@ export function Landing({
 	const fetchedTrackIdsRef = useRef<Set<string>>(
 		new Set([initialDetail.spotifyTrackId]),
 	);
+	const fallbackSongManifest: LandingSongManifest = initialManifest[0] ?? {
+		...initialDetail,
+		detailPath: "",
+	};
 
 	useEffect(() => {
 		if (songManifest.length === 0) return;
@@ -109,9 +111,9 @@ export function Landing({
 	}, [songManifest, selectedSongIndex, previewSongIndex]);
 
 	const featuredSongManifest =
-		songManifest[selectedSongIndex] ?? songManifest[0]!;
+		songManifest[selectedSongIndex] ?? fallbackSongManifest;
 	const previewSongManifest =
-		songManifest[previewSongIndex] ?? songManifest[0]!;
+		songManifest[previewSongIndex] ?? fallbackSongManifest;
 	const featuredSong =
 		songDetailsByTrackId[featuredSongManifest.spotifyTrackId] ??
 		featuredSongManifest;
@@ -148,8 +150,8 @@ export function Landing({
 	return (
 		<div
 			data-landing-scroll-root
-			className="min-h-screen overflow-x-hidden xl:h-screen xl:snap-y xl:snap-proximity xl:overflow-y-auto xl:overscroll-none"
-			style={{ fontFamily: fonts.body, background: theme.bg }}
+			className="theme-bg min-h-screen overflow-x-hidden xl:h-screen xl:snap-y xl:snap-proximity xl:overflow-y-auto xl:overscroll-none"
+			style={{ fontFamily: fonts.body }}
 		>
 			<LandingHero
 				featuredSong={featuredSong}
@@ -160,18 +162,15 @@ export function Landing({
 				isReleased={isReleased}
 			/>
 
-			<section
-				className="flex min-h-screen snap-start snap-always items-center px-8 lg:px-16"
-				style={{ background: theme.surface }}
-			>
+			<section className="theme-surface-bg flex min-h-screen snap-start snap-always items-center px-8 lg:px-16">
 				<div className="mx-auto w-full max-w-7xl py-16 lg:py-24">
 					<div className="mb-12 max-w-2xl">
-						<p className="mb-4 text-lg" style={{ color: theme.textMuted }}>
+						<p className="theme-text-muted mb-4 text-lg">
 							It found you. You kept it.
 						</p>
 						<h3
-							className="text-3xl leading-tight font-extralight md:text-4xl lg:text-5xl"
-							style={{ fontFamily: fonts.display, color: theme.text }}
+							className="theme-text text-3xl leading-tight font-extralight md:text-4xl lg:text-5xl"
+							style={{ fontFamily: fonts.display }}
 						>
 							See where it <span className="italic">could land.</span>
 						</h3>
@@ -179,22 +178,20 @@ export function Landing({
 
 					{/* UI Preview Container */}
 					<div
-						className="rounded-sm p-6 lg:p-8"
+						className="theme-bg theme-border-color rounded-sm border p-6 lg:p-8"
 						style={{
-							background: theme.bg,
-							border: `1px solid ${theme.border}`,
-							boxShadow: `0 1px 3px ${theme.text}08, 0 4px 12px ${theme.text}04`,
+							boxShadow:
+								"0 1px 3px color-mix(in srgb, var(--t-text) 8%, transparent), 0 4px 12px color-mix(in srgb, var(--t-text) 4%, transparent)",
 						}}
 					>
 						<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
 							<SongSection
 								song={previewSong}
-								metaVisible={true}
 								albumArtUrl={previewSongManifest.albumArtUrl}
-								isLoading={false}
 								songKey={previewSongManifest.spotifyTrackId}
 							/>
 							<MatchesSection
+								songKey={previewSongManifest.spotifyTrackId}
 								playlists={getDemoMatchesForSong(
 									previewSongManifest.spotifyTrackId,
 								)}
@@ -212,12 +209,12 @@ export function Landing({
 				id="waitlist-cta"
 				className="flex flex-col items-center justify-center px-8 py-24 lg:px-16 lg:py-32"
 			>
-				<p className="mb-4 text-lg" style={{ color: theme.textMuted }}>
+				<p className="theme-text-muted mb-4 text-lg">
 					Your songs have been trying to tell you something.
 				</p>
 				<h3
-					className="text-3xl font-extralight md:text-4xl lg:text-5xl"
-					style={{ fontFamily: fonts.display, color: theme.text }}
+					className="theme-text text-3xl font-extralight md:text-4xl lg:text-5xl"
+					style={{ fontFamily: fonts.display }}
 				>
 					What do they <span className="italic">say about you?</span>
 				</h3>
@@ -226,13 +223,7 @@ export function Landing({
 				</div>
 			</section>
 
-			<footer
-				className="px-8 py-8 text-center text-sm lg:px-16"
-				style={{
-					borderTop: `1px solid ${theme.border}`,
-					color: theme.textMuted,
-				}}
-			>
+			<footer className="theme-border-color theme-text-muted border-t px-8 py-8 text-center text-sm lg:px-16">
 				<p>
 					<a href="/faq" className="underline-offset-2 hover:underline">
 						FAQ

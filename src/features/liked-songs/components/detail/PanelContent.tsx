@@ -1,4 +1,4 @@
-import { Lock } from "lucide-react";
+import { LockSimple } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
@@ -8,6 +8,7 @@ import type { AnalysisContent, LikedSong } from "../../types";
 import { HorizontalJourney } from "./HorizontalJourney";
 import { KeyLinesSection } from "./KeyLinesSection";
 import { PlaylistsSection } from "./PlaylistsSection";
+import { LAYOUT } from "./panel-constants";
 import type { ColorProps, PanelColors } from "./types";
 
 function AnalysisToggle({
@@ -50,9 +51,9 @@ function AnalysisToggle({
 			>
 				{isOpen ? (
 					<p
+						className="text-base"
 						style={{
 							fontFamily: fonts.body,
-							fontSize: 16,
 							lineHeight: 1.55,
 							color: colorProps.textMuted,
 							borderLeft: `2px solid ${colorProps.accent}`,
@@ -64,9 +65,9 @@ function AnalysisToggle({
 					</p>
 				) : (
 					<p
+						className="text-2xl"
 						style={{
 							fontFamily: fonts.display,
-							fontSize: 26,
 							fontWeight: 400,
 							lineHeight: 1.35,
 							color: hovered ? colorProps.accent : colorProps.text,
@@ -78,9 +79,9 @@ function AnalysisToggle({
 				)}
 			</div>
 			<span
+				className="text-xs"
 				style={{
 					fontFamily: fonts.body,
-					fontSize: 10,
 					letterSpacing: "0.04em",
 					color: colorProps.textDim,
 					opacity: hovered ? 1 : 0,
@@ -110,9 +111,9 @@ function GenrePills({
 	return (
 		<div style={{ display: "flex", flexWrap: "wrap", gap: "4px 6px" }}>
 			<span
+				className="text-xxs"
 				style={{
 					fontFamily: fonts.body,
-					fontSize: 8,
 					letterSpacing: "0.07em",
 					padding: "2px 8px",
 					border: `0.5px solid ${colorProps.accent}`,
@@ -125,9 +126,9 @@ function GenrePills({
 			{altGenres.map((g) => (
 				<span
 					key={g}
+					className="text-xxs"
 					style={{
 						fontFamily: fonts.body,
-						fontSize: 8,
 						letterSpacing: "0.06em",
 						padding: "2px 8px",
 						border: `0.5px solid ${colorProps.border}`,
@@ -190,8 +191,8 @@ export function PanelContent({
 			ref={contentRef}
 			className="pb-4"
 			style={{
-				paddingLeft: "20px",
-				paddingRight: "20px",
+				paddingLeft: LAYOUT.paddingX,
+				paddingRight: LAYOUT.paddingX,
 			}}
 		>
 			<div ref={spacerRef} style={{ height: 0 }} />
@@ -205,13 +206,13 @@ export function PanelContent({
 									background: `color-mix(in srgb, ${colors.accent} 15%, transparent)`,
 								}}
 							>
-								<Lock size={20} color={colors.accent} strokeWidth={1.5} />
+								<LockSimple size={20} color={colors.accent} weight="light" />
 							</div>
 							<div>
 								<p
+									className="text-lg"
 									style={{
 										fontFamily: fonts.display,
-										fontSize: 18,
 										fontWeight: 400,
 										color: colors.text,
 										margin: 0,
@@ -220,10 +221,9 @@ export function PanelContent({
 									This song is locked
 								</p>
 								<p
-									className="mt-2"
+									className="mt-2 text-sm"
 									style={{
 										fontFamily: fonts.body,
-										fontSize: 13,
 										lineHeight: 1.5,
 										color: colors.textMuted,
 										margin: 0,
@@ -256,9 +256,9 @@ export function PanelContent({
 								{analysis.themes && analysis.themes.length > 0 && (
 									<div style={{ marginTop: 10 }}>
 										<p
+											className="text-xs"
 											style={{
 												fontFamily: fonts.body,
-												fontSize: 9,
 												letterSpacing: "0.05em",
 												color: colorProps.textDim,
 												opacity: 0.7,
@@ -319,9 +319,9 @@ export function PanelContent({
 								>
 									{analysis.compound_mood && (
 										<span
+											className="text-xs"
 											style={{
 												fontFamily: fonts.body,
-												fontSize: 10,
 												fontWeight: 500,
 												letterSpacing: "0.1em",
 												textTransform: "uppercase",
@@ -334,10 +334,10 @@ export function PanelContent({
 									)}
 									{analysis.mood_description && (
 										<p
+											className="text-sm"
 											style={{
 												fontFamily: fonts.body,
 												fontStyle: "italic",
-												fontSize: 13,
 												lineHeight: 1.6,
 												color: colors.textMuted,
 											}}
@@ -416,11 +416,11 @@ function WalkthroughCta({ colors }: { colors: PanelColors }) {
 				onClick={handleClick}
 				disabled={disabled}
 				aria-label="See where this song belongs"
+				className="text-sm"
 				style={{
 					width: "100%",
 					padding: "14px 20px",
 					fontFamily: fonts.body,
-					fontSize: 14,
 					fontWeight: 500,
 					letterSpacing: "0.05em",
 					textTransform: "uppercase" as const,

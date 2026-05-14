@@ -32,7 +32,7 @@ export const LAYOUT = {
 	albumArtExpanded: 112,
 	albumArtCollapsed: 56,
 	imagePositionY: 30,
-	paddingX: 20,
+	paddingX: 24,
 } as const;
 
 export const ANIMATION_TIMING = {

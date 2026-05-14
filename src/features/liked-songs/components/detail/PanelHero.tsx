@@ -79,9 +79,9 @@ function SonicNumbers({
 					}}
 				>
 					<span
+						className="text-xl"
 						style={{
 							fontFamily: fonts.display,
-							fontSize: 22,
 							fontWeight: 400,
 							lineHeight: 1,
 							color: colorProps.text,
@@ -90,9 +90,9 @@ function SonicNumbers({
 						{value}
 					</span>
 					<span
+						className="text-xxs"
 						style={{
 							fontFamily: fonts.body,
-							fontSize: 7,
 							letterSpacing: "0.12em",
 							textTransform: "uppercase",
 							color: colorProps.textDim,
@@ -299,10 +299,9 @@ export function PanelHero({
 							>
 								<div
 									ref={titleRef}
-									className="leading-tight font-light"
+									className="text-2xl leading-tight font-light"
 									style={{
 										fontFamily: fonts.display,
-										fontSize: "24px",
 										color: colors.text,
 										viewTransitionName: isExpanded ? "song-title" : "none",
 										...(isAnalysisOpen && analysis?.sonic_texture
@@ -321,10 +320,9 @@ export function PanelHero({
 								</div>
 								<div
 									ref={metaRef}
-									className="leading-tight"
+									className="text-sm leading-tight"
 									style={{
 										fontFamily: fonts.body,
-										fontSize: "14px",
 										color: colors.textMuted,
 										viewTransitionName: isExpanded ? "song-artist" : "none",
 										...(isAnalysisOpen && analysis?.sonic_texture
@@ -345,9 +343,9 @@ export function PanelHero({
 								</div>
 								{!isAnalysisOpen && song.track.album && (
 									<div
+										className="text-xs"
 										style={{
 											fontFamily: fonts.body,
-											fontSize: 12,
 											lineHeight: 1.25,
 											letterSpacing: "0.03em",
 											color: colors.textDim,
@@ -361,9 +359,9 @@ export function PanelHero({
 							{isAnalysisOpen && analysis?.sonic_texture && (
 								<p
 									ref={sonicTextureRef}
+									className="text-xs"
 									style={{
 										fontFamily: fonts.body,
-										fontSize: 10,
 										fontStyle: "italic",
 										lineHeight: 1.4,
 										color: colorProps.textMuted,
