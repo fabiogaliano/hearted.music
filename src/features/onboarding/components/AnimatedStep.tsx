@@ -48,7 +48,6 @@ export function AnimatedStep({ children, stepKey }: AnimatedStepProps) {
 			initial="initial"
 			animate="animate"
 			exit="exit"
-			style={{ willChange: "opacity" }}
 		>
 			{children}
 		</motion.div>

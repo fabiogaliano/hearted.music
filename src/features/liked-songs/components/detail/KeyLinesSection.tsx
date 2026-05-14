@@ -77,8 +77,16 @@ export function KeyLinesSection({ keyLines, colors }: KeyLinesSectionProps) {
 										: "none",
 								cursor: "pointer",
 							}}
+							role="button"
+							tabIndex={0}
 							onMouseEnter={() => handleHover(i)}
 							onClick={() => handleClick(i)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" || e.key === " ") {
+									e.preventDefault();
+									handleClick(i);
+								}
+							}}
 						>
 							<div
 								style={{

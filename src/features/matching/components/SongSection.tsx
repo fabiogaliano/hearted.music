@@ -45,7 +45,6 @@ export const SongSection = memo(function SongSection({
 									},
 								}
 					}
-					style={{ willChange: "opacity, transform" }}
 				>
 					<div
 						className="relative shrink-0 origin-top"

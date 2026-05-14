@@ -248,7 +248,6 @@ const SongCardContent = memo(function SongCardContent({
 						className="walkthrough-arrow-nudge inline-block"
 						style={{
 							animation: "walkthrough-arrow-nudge 2s ease-in-out infinite",
-							willChange: "transform",
 						}}
 					>
 						<ArrowRight size={14} />
