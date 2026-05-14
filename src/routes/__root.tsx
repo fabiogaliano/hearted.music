@@ -7,7 +7,7 @@ import {
 	Outlet,
 	Scripts,
 } from "@tanstack/react-router";
-import { lazy, useEffect, useRef, useState } from "react";
+import { type CSSProperties, lazy, useEffect, useRef, useState } from "react";
 import { Toaster } from "sonner";
 import {
 	HeartRippleBackground,
@@ -28,6 +28,32 @@ const DevToolsShell = import.meta.env.DEV
 interface MyRouterContext {
 	queryClient: QueryClient;
 }
+
+type ThemeTokenStyle = CSSProperties &
+	Record<
+		| "--t-bg"
+		| "--t-surface"
+		| "--t-surface-dim"
+		| "--t-border"
+		| "--t-text"
+		| "--t-text-muted"
+		| "--t-text-on-primary"
+		| "--t-primary"
+		| "--t-primary-hover",
+		string
+	>;
+
+const roseThemeStyle: ThemeTokenStyle = {
+	"--t-bg": themes.rose.bg,
+	"--t-surface": themes.rose.surface,
+	"--t-surface-dim": themes.rose.surfaceDim,
+	"--t-border": themes.rose.border,
+	"--t-text": themes.rose.text,
+	"--t-text-muted": themes.rose.textMuted,
+	"--t-text-on-primary": themes.rose.textOnPrimary,
+	"--t-primary": themes.rose.primary,
+	"--t-primary-hover": themes.rose.primaryHover,
+};
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
 	headers: ({ ssr }) => {
@@ -117,30 +143,25 @@ function RootComponent() {
 }
 
 function RootErrorComponent({ error }: ErrorComponentProps) {
-	const theme = themes.rose;
-
 	useEffect(() => {
 		console.error("[RootError]", error);
 	}, [error]);
 
 	return (
 		<div
-			className="flex min-h-screen flex-col items-center justify-center px-8"
-			style={{ background: theme.bg }}
+			className="theme-bg flex min-h-screen flex-col items-center justify-center px-8"
+			style={roseThemeStyle}
 		>
 			<p
-				className="text-xs tracking-widest uppercase"
-				style={{
-					fontFamily: fonts.body,
-					color: theme.textMuted,
-				}}
+				className="theme-text-muted text-xs tracking-widest uppercase"
+				style={{ fontFamily: fonts.body }}
 			>
 				Something broke
 			</p>
 
 			<h1
-				className="mt-4 text-4xl leading-tight font-extralight md:text-5xl"
-				style={{ fontFamily: fonts.display, color: theme.primary }}
+				className="theme-primary mt-4 text-4xl leading-tight font-extralight md:text-5xl"
+				style={{ fontFamily: fonts.display }}
 			>
 				a wrong <span className="italic">note</span>
 			</h1>
@@ -149,8 +170,8 @@ function RootErrorComponent({ error }: ErrorComponentProps) {
 				<button
 					type="button"
 					onClick={() => window.location.reload()}
-					className="group inline-flex cursor-pointer items-center gap-2"
-					style={{ fontFamily: fonts.body, color: theme.text }}
+					className="theme-text group inline-flex cursor-pointer items-center gap-2"
+					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-lg font-medium tracking-wide">Try again</span>
 					<span
@@ -163,11 +184,8 @@ function RootErrorComponent({ error }: ErrorComponentProps) {
 
 				<Link
 					to="/"
-					className="text-sm underline"
-					style={{
-						fontFamily: fonts.body,
-						color: theme.textMuted,
-					}}
+					className="theme-text-muted text-sm underline"
+					style={{ fontFamily: fonts.body }}
 				>
 					Back to hearted.
 				</Link>
@@ -225,8 +243,8 @@ function NotFoundPage() {
 	return (
 		<div
 			ref={containerRef}
-			className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden"
-			style={{ background: theme.bg }}
+			className="theme-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden"
+			style={roseThemeStyle}
 		>
 			{/* Static background (always visible initially) */}
 			<div className="absolute inset-0 z-0">
@@ -267,13 +285,7 @@ function NotFoundPage() {
 					this song got <span className="italic">lost</span>
 				</h1>
 
-				<p
-					className="mt-6 text-lg leading-relaxed lg:text-xl"
-					style={{
-						color: theme.textOnPrimary,
-						opacity: 0.9,
-					}}
-				>
+				<p className="theme-text-on-primary mt-6 text-lg leading-relaxed opacity-90 lg:text-xl">
 					The page you're looking for doesn't exist.
 					<br />
 					Maybe it was never meant to be found.
@@ -281,8 +293,8 @@ function NotFoundPage() {
 
 				<Link
 					to="/"
-					className="group mt-10 inline-flex items-center gap-3"
-					style={{ fontFamily: fonts.body, color: theme.textOnPrimary }}
+					className="theme-text-on-primary group mt-10 inline-flex items-center gap-3"
+					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-lg font-medium tracking-wide">
 						Back to hearted.

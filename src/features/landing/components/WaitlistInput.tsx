@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { joinWaitlist } from "@/lib/server/waitlist.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 export interface WaitlistInputProps {
 	buttonText?: string;
@@ -15,7 +14,6 @@ export function WaitlistInput({
 	buttonText = "TELL ME",
 	variant = "light",
 }: WaitlistInputProps) {
-	const theme = useTheme();
 	const isDark = variant === "dark";
 
 	const [email, setEmail] = useState("");
@@ -48,7 +46,7 @@ export function WaitlistInput({
 			<p
 				className="text-lg font-light"
 				style={{
-					color: isDark ? "#ffffff" : theme.text,
+					color: isDark ? "#ffffff" : "var(--t-text)",
 					fontFamily: fonts.body,
 				}}
 			>
@@ -70,9 +68,9 @@ export function WaitlistInput({
 					disabled={status === "submitting"}
 					className="w-full flex-1 px-4 py-3 text-sm transition-[box-shadow,border-color] duration-200 focus:outline-none disabled:opacity-60"
 					style={{
-						background: isDark ? "rgba(255,255,255,0.15)" : theme.surface,
-						border: `1px solid ${isDark ? "rgba(255,255,255,0.3)" : theme.border}`,
-						color: isDark ? "#ffffff" : theme.text,
+						background: isDark ? "rgba(255,255,255,0.15)" : "var(--t-surface)",
+						border: `1px solid ${isDark ? "rgba(255,255,255,0.3)" : "var(--t-border)"}`,
+						color: isDark ? "#ffffff" : "var(--t-text)",
 						fontFamily: fonts.body,
 						backdropFilter: isDark ? "blur(10px)" : undefined,
 					}}
@@ -82,8 +80,8 @@ export function WaitlistInput({
 					disabled={status === "submitting"}
 					className="w-full px-6 py-3 text-sm tracking-widest uppercase transition-transform duration-150 hover:scale-105 active:scale-[0.98] disabled:opacity-60 disabled:hover:scale-100 sm:w-auto"
 					style={{
-						background: theme.textOnPrimary,
-						color: theme.primary,
+						background: "var(--t-text-on-primary)",
+						color: "var(--t-primary)",
 						fontFamily: fonts.body,
 					}}
 				>

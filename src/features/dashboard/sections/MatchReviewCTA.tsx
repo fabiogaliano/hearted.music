@@ -1,7 +1,6 @@
 /** Only rendered when reviewCount > 0. */
 import { Link } from "@tanstack/react-router";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { FanSpreadAlbumArt } from "../components/FanSpreadAlbumArt";
 import type { MatchPreview } from "../types";
 
@@ -14,33 +13,31 @@ export function MatchReviewCTA({
 	reviewCount,
 	matchPreviews,
 }: MatchReviewCTAProps) {
-	const theme = useTheme();
 	if (reviewCount === 0) return null;
 
 	return (
 		<Link
 			to="/match"
-			className="group -mx-4 mb-10 block px-4 py-6 transition-colors"
-			style={{ background: theme.surface }}
+			className="theme-surface-bg group -mx-4 mb-10 block px-4 py-6 transition-colors"
 		>
 			<p
-				className="mb-2 text-xs tracking-widest uppercase"
-				style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				className="theme-text-muted mb-2 text-xs tracking-widest uppercase"
+				style={{ fontFamily: fonts.body }}
 			>
 				Ready to match
 			</p>
 			<div className="flex items-center justify-between">
 				<h3
-					className="text-3xl font-extralight"
-					style={{ fontFamily: fonts.display, color: theme.text }}
+					className="theme-text text-3xl font-extralight"
+					style={{ fontFamily: fonts.display }}
 				>
 					{reviewCount} new {reviewCount === 1 ? "song" : "songs"}
 				</h3>
 				<div className="flex items-center gap-8">
 					<FanSpreadAlbumArt images={matchPreviews} />
 					<span
-						className="text-sm transition-transform group-hover:translate-x-1"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted text-sm transition-transform group-hover:translate-x-1"
+						style={{ fontFamily: fonts.body }}
 					>
 						Start →
 					</span>

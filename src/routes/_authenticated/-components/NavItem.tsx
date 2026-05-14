@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 interface NavItemProps {
 	to: string;
@@ -10,29 +9,21 @@ interface NavItemProps {
 }
 
 export function NavItem({ to, label, badge, isActive }: NavItemProps) {
-	const theme = useTheme();
 	return (
 		<Link
 			to={to}
 			className="flex w-full items-center justify-between py-2 text-left"
 		>
 			<span
-				className="text-xs tracking-widest uppercase"
-				style={{
-					fontFamily: fonts.body,
-					color: isActive ? theme.text : theme.textMuted,
-					fontWeight: isActive ? 500 : 400,
-				}}
+				className={`${isActive ? "theme-text font-medium" : "theme-text-muted font-normal"} text-xs tracking-widest uppercase`}
+				style={{ fontFamily: fonts.body }}
 			>
 				{label}
 			</span>
 			{badge !== undefined && badge > 0 && (
 				<span
-					className="text-xs tabular-nums"
-					style={{
-						fontFamily: fonts.body,
-						color: theme.textMuted,
-					}}
+					className="theme-text-muted text-xs tabular-nums"
+					style={{ fontFamily: fonts.body }}
 				>
 					{badge}
 				</span>

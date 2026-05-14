@@ -18,7 +18,6 @@ import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { getBillingState } from "@/lib/server/billing.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 export const Route = createFileRoute("/_authenticated/checkout/success")({
 	component: CheckoutSuccessPage,
@@ -50,7 +49,6 @@ function getDetail(intent: CheckoutIntent | null, state: BillingState): string {
 }
 
 function CheckoutSuccessPage() {
-	const theme = useTheme();
 	const contextBilling = Route.useRouteContext().billingState;
 
 	const [intent] = useState(() => loadCheckoutIntent());
@@ -75,20 +73,18 @@ function CheckoutSuccessPage() {
 	if (pending) {
 		return (
 			<div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
-				<p className="animate-pulse text-2xl" style={{ color: theme.primary }}>
-					♡
-				</p>
+				<p className="theme-primary animate-pulse text-2xl">♡</p>
 
 				<h1
-					className="mt-6 text-4xl leading-tight font-extralight md:text-5xl"
-					style={{ fontFamily: fonts.display, color: theme.text }}
+					className="theme-text mt-6 text-4xl leading-tight font-extralight md:text-5xl"
+					style={{ fontFamily: fonts.display }}
 				>
 					one <span className="italic">moment</span>...
 				</h1>
 
 				<p
-					className="mt-4 text-sm"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted mt-4 text-sm"
+					style={{ fontFamily: fonts.body }}
 				>
 					Confirming your purchase
 				</p>
@@ -99,20 +95,18 @@ function CheckoutSuccessPage() {
 	if (timedOut && !confirmed) {
 		return (
 			<div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
-				<p className="text-2xl" style={{ color: theme.primary }}>
-					♡
-				</p>
+				<p className="theme-primary text-2xl">♡</p>
 
 				<h1
-					className="mt-6 text-4xl leading-tight font-extralight md:text-5xl"
-					style={{ fontFamily: fonts.display, color: theme.text }}
+					className="theme-text mt-6 text-4xl leading-tight font-extralight md:text-5xl"
+					style={{ fontFamily: fonts.display }}
 				>
 					almost <span className="italic">there</span>
 				</h1>
 
 				<p
-					className="mt-4 text-center text-sm leading-relaxed"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted mt-4 text-center text-sm leading-relaxed"
+					style={{ fontFamily: fonts.body }}
 				>
 					Taking a bit longer than usual.
 					<br />
@@ -121,8 +115,8 @@ function CheckoutSuccessPage() {
 
 				<Link
 					to="/dashboard"
-					className="group mt-8 inline-flex items-center gap-2 transition-opacity duration-200 hover:opacity-70"
-					style={{ fontFamily: fonts.body, color: theme.text }}
+					className="theme-text group mt-8 inline-flex items-center gap-2 transition-opacity duration-200 hover:opacity-70"
+					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-sm font-medium tracking-widest uppercase">
 						Back to dashboard
@@ -143,28 +137,26 @@ function CheckoutSuccessPage() {
 
 	return (
 		<div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
-			<p className="text-2xl" style={{ color: theme.primary }}>
-				♡
-			</p>
+			<p className="theme-primary text-2xl">♡</p>
 
 			<h1
-				className="mt-6 text-4xl leading-tight font-extralight md:text-5xl"
-				style={{ fontFamily: fonts.display, color: theme.text }}
+				className="theme-text mt-6 text-4xl leading-tight font-extralight md:text-5xl"
+				style={{ fontFamily: fonts.display }}
 			>
 				{headline.text} <span className="italic">{headline.accent}</span>
 			</h1>
 
 			<p
-				className="mt-4 text-sm"
-				style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				className="theme-text-muted mt-4 text-sm"
+				style={{ fontFamily: fonts.body }}
 			>
 				{detail}
 			</p>
 
 			<Link
 				to="/dashboard"
-				className="group mt-8 inline-flex items-center gap-2 transition-opacity duration-200 hover:opacity-70"
-				style={{ fontFamily: fonts.body, color: theme.text }}
+				className="theme-text group mt-8 inline-flex items-center gap-2 transition-opacity duration-200 hover:opacity-70"
+				style={{ fontFamily: fonts.body }}
 			>
 				<span className="text-sm font-medium tracking-widest uppercase">
 					Start exploring

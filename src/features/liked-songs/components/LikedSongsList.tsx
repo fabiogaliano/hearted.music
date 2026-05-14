@@ -2,7 +2,6 @@ import type { RefCallback } from "react";
 import { useCallback } from "react";
 import type { ListItemNavigationProps } from "@/lib/keyboard/types";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import type { FilterOption } from "../queries";
 import type { LikedSong } from "../types";
 import { SongCard } from "./SongCard";
@@ -50,19 +49,15 @@ export function LikedSongsList({
 	navigation,
 	walkthrough,
 }: LikedSongsListProps) {
-	const theme = useTheme();
 	const noopItemRef = useCallback(() => {}, []);
 
 	if (data.isLoading) {
 		return (
-			<div
-				className="-mx-3 border-t px-3 pt-6"
-				style={{ borderColor: theme.border }}
-			>
+			<div className="theme-border-color -mx-3 border-t px-3 pt-6">
 				<div className="py-12 text-center">
 					<p
-						className="text-sm"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted text-sm"
+						style={{ fontFamily: fonts.body }}
 					>
 						Loading your liked songs...
 					</p>
@@ -73,14 +68,11 @@ export function LikedSongsList({
 
 	if (data.displayedSongs.length === 0) {
 		return (
-			<div
-				className="-mx-3 border-t px-3 pt-6"
-				style={{ borderColor: theme.border }}
-			>
+			<div className="theme-border-color -mx-3 border-t px-3 pt-6">
 				<div className="py-12 text-center">
 					<p
-						className="text-sm"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted text-sm"
+						style={{ fontFamily: fonts.body }}
 					>
 						{data.filter === "all"
 							? "No liked songs yet. Like songs on Spotify to see them here."
@@ -92,16 +84,13 @@ export function LikedSongsList({
 	}
 
 	return (
-		<div
-			className="-mx-3 border-t px-3 pt-6"
-			style={{ borderColor: theme.border }}
-		>
+		<div className="theme-border-color -mx-3 border-t px-3 pt-6">
 			<div className="space-y-1">
 				{data.visibleSongs.length === 0 && selection.isActive && (
 					<div className="py-12 text-center">
 						<p
-							className="text-sm"
-							style={{ fontFamily: fonts.body, color: theme.textMuted }}
+							className="theme-text-muted text-sm"
+							style={{ fontFamily: fonts.body }}
 						>
 							{data.hasMore
 								? "Finding locked songs..."
@@ -154,8 +143,8 @@ export function LikedSongsList({
 						className="flex items-center justify-center py-8"
 					>
 						<span
-							className="text-xs tracking-widest uppercase"
-							style={{ fontFamily: fonts.body, color: theme.textMuted }}
+							className="theme-text-muted text-xs tracking-widest uppercase"
+							style={{ fontFamily: fonts.body }}
 						>
 							Loading more...
 						</span>

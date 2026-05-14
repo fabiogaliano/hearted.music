@@ -18,7 +18,6 @@ import {
 	type OnboardingAuthPayload,
 } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useFlagPlaylistsScroll } from "../hooks/useFlagPlaylistsScroll";
 
 interface PickDemoSongStepProps {
@@ -28,7 +27,6 @@ interface PickDemoSongStepProps {
 const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
 
 export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
-	const theme = useTheme();
 	const queryClient = useQueryClient();
 	const router = useRouter();
 	const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
@@ -121,26 +119,20 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 		enabled: !isSaving && selectedTrackId !== null,
 	});
 
-	const kbdVars = {
-		"--kbd-text-color": theme.textMuted,
-		"--kbd-bg-color": `${theme.text}10`,
-		"--kbd-border-color": `${theme.textMuted}30`,
-	} as React.CSSProperties;
-
 	return (
 		<section ref={sectionRef} aria-label="Song selection">
 			<div ref={pinnedWrapperRef} className="flex h-dvh flex-col">
 				<header className="shrink-0 px-6 pt-12 pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] md:px-12 md:pl-[max(3rem,env(safe-area-inset-left))] md:pr-[max(3rem,env(safe-area-inset-right))]">
 					<h2
-						className="text-4xl font-extralight leading-tight md:text-6xl"
-						style={{ fontFamily: fonts.display, color: theme.text }}
+						className="theme-text text-4xl font-extralight leading-tight md:text-6xl"
+						style={{ fontFamily: fonts.display }}
 					>
 						Pick a <em className="font-normal">song</em>
 					</h2>
 
 					<p
-						className="mt-4 text-lg font-light md:text-xl"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted mt-4 text-lg font-light md:text-xl"
+						style={{ fontFamily: fonts.body }}
 					>
 						It'll be used to show you how hearted. listens.
 					</p>
@@ -184,7 +176,7 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 										className="group relative h-fit min-h-11 min-w-11 cursor-pointer"
 										style={{
 											...(isFocused && {
-												outline: `1px dashed ${theme.textMuted}`,
+												outline: "1px dashed var(--t-text-muted)",
 												outlineOffset: "2px",
 											}),
 										}}
@@ -205,20 +197,18 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 										</div>
 										<div className="mt-2 min-w-0 max-w-full">
 											<p
-												className="truncate text-sm font-medium"
+												className="theme-text truncate text-sm font-medium"
 												style={{
 													fontFamily: fonts.body,
-													color: theme.text,
 													opacity: isSelected ? 1 : 0.6,
 												}}
 											>
 												{song.name}
 											</p>
 											<p
-												className="truncate text-xs"
+												className="theme-text-muted truncate text-xs"
 												style={{
 													fontFamily: fonts.body,
-													color: theme.textMuted,
 													opacity: isSelected ? 1 : 0.5,
 												}}
 											>
@@ -238,32 +228,21 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 						type="button"
 						onClick={handleContinue}
 						disabled={isSaving || selectedTrackId === null}
-						className="group inline-flex min-h-11 cursor-pointer items-center gap-3"
+						className="theme-text group inline-flex min-h-11 cursor-pointer items-center gap-3"
 						style={{
 							fontFamily: fonts.body,
-							color: theme.text,
 							opacity: isSaving || selectedTrackId === null ? 0.5 : 1,
 						}}
 					>
 						<span className="text-lg font-medium tracking-wide">
 							{isSaving ? "Saving..." : "Continue"}
 						</span>
-						<span
-							className="inline-block transition-transform group-hover:translate-x-1"
-							style={{ color: theme.textMuted }}
-						>
+						<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 							→
 						</span>
 					</button>
 
-					<div
-						className="ml-auto flex items-center gap-6"
-						style={{
-							color: theme.textMuted,
-							opacity: 0.6,
-							...kbdVars,
-						}}
-					>
+					<div className="theme-kbd-scope ml-auto flex items-center gap-6 opacity-60">
 						<div className="flex items-center gap-1.5">
 							<KbdGroup>
 								<Kbd>↑</Kbd>

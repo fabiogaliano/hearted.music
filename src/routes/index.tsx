@@ -10,8 +10,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { Landing } from "@/features/landing/Landing";
 import { getShuffledLandingData } from "@/lib/data/landing-songs.server";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
-import { themes } from "@/lib/theme/colors";
-import { DEFAULT_THEME } from "@/lib/theme/types";
 
 const checkAuth = createServerFn({ method: "GET" }).handler(async () => {
 	const session = await getAuthSession();
@@ -35,11 +33,10 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingPage() {
-	const theme = themes[DEFAULT_THEME];
 	const { manifest, initialDetail } = Route.useLoaderData();
 
 	return (
-		<div className="relative min-h-screen" style={{ background: theme.bg }}>
+		<div className="theme-bg relative min-h-screen">
 			<Landing
 				initialManifest={manifest}
 				initialDetail={initialDetail}

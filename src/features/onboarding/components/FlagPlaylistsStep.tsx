@@ -18,7 +18,6 @@ import {
 	savePlaylistTargets,
 } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useFlagPlaylistsScroll } from "../hooks/useFlagPlaylistsScroll";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import "../types"; // Ensure HistoryState augmentation is loaded
@@ -38,7 +37,6 @@ const EMPTY_SYNC_STATS = {
 export function FlagPlaylistsStep({
 	playlists: initialPlaylists,
 }: FlagPlaylistsStepProps) {
-	const theme = useTheme();
 	const { goToStep } = useOnboardingNavigation();
 	const location = useLocation();
 	const syncStats = location.state?.syncStats ?? EMPTY_SYNC_STATS;
@@ -143,12 +141,6 @@ export function FlagPlaylistsStep({
 		}
 	};
 
-	const kbdVars = {
-		"--kbd-text-color": theme.textMuted,
-		"--kbd-bg-color": `${theme.text}10`,
-		"--kbd-border-color": `${theme.textMuted}30`,
-	} as React.CSSProperties;
-
 	useShortcut({
 		key: "enter",
 		handler: handleContinue,
@@ -162,15 +154,15 @@ export function FlagPlaylistsStep({
 			<div ref={pinnedWrapperRef} className="flex h-dvh flex-col">
 				<header className="shrink-0 px-6 pt-12 pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] md:px-12 md:pl-[max(3rem,env(safe-area-inset-left))] md:pr-[max(3rem,env(safe-area-inset-right))]">
 					<h2
-						className="text-4xl font-extralight leading-tight md:text-6xl"
-						style={{ fontFamily: fonts.display, color: theme.text }}
+						className="theme-text text-4xl font-extralight leading-tight md:text-6xl"
+						style={{ fontFamily: fonts.display }}
 					>
 						Pick their <em className="font-normal">homes</em>
 					</h2>
 
 					<p
-						className="mt-4 text-lg font-light md:text-xl"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted mt-4 text-lg font-light md:text-xl"
+						style={{ fontFamily: fonts.body }}
 					>
 						Your liked songs will find their way to these playlists.
 					</p>
@@ -214,7 +206,7 @@ export function FlagPlaylistsStep({
 										className="group relative h-fit min-h-11 min-w-11 cursor-pointer"
 										style={{
 											...(isFocused && {
-												outline: `1px dashed ${theme.textMuted}`,
+												outline: "1px dashed var(--t-text-muted)",
 												outlineOffset: "2px",
 											}),
 										}}
@@ -240,10 +232,9 @@ export function FlagPlaylistsStep({
 										</div>
 										<div className="mt-2 min-w-0 max-w-full">
 											<p
-												className="truncate text-sm font-medium"
+												className="theme-text truncate text-sm font-medium"
 												style={{
 													fontFamily: fonts.body,
-													color: theme.text,
 													opacity: isSelected ? 1 : 0.6,
 												}}
 											>
@@ -263,10 +254,9 @@ export function FlagPlaylistsStep({
 						type="button"
 						onClick={handleContinue}
 						disabled={isSaving || selectedIds.size === 0}
-						className="group inline-flex min-h-11 cursor-pointer items-center gap-3"
+						className="theme-text group inline-flex min-h-11 cursor-pointer items-center gap-3"
 						style={{
 							fontFamily: fonts.body,
-							color: theme.text,
 							opacity: isSaving || selectedIds.size === 0 ? 0.5 : 1,
 						}}
 					>
@@ -275,10 +265,7 @@ export function FlagPlaylistsStep({
 								? "Saving..."
 								: `Continue with ${selectedIds.size} playlists`}
 						</span>
-						<span
-							className="inline-block transition-transform group-hover:translate-x-1"
-							style={{ color: theme.textMuted }}
-						>
+						<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 							→
 						</span>
 					</button>
@@ -289,10 +276,9 @@ export function FlagPlaylistsStep({
 							setSelectedIds(new Set(initialPlaylists.map((p) => p.id)))
 						}
 						disabled={isSaving || selectedIds.size === initialPlaylists.length}
-						className="min-h-11 cursor-pointer text-sm underline"
+						className="theme-text-muted min-h-11 cursor-pointer text-sm underline"
 						style={{
 							fontFamily: fonts.body,
-							color: theme.textMuted,
 							opacity:
 								isSaving || selectedIds.size === initialPlaylists.length
 									? 0.5
@@ -306,20 +292,16 @@ export function FlagPlaylistsStep({
 						type="button"
 						onClick={handleSkip}
 						disabled={isSaving}
-						className="min-h-11 cursor-pointer text-sm underline"
+						className="theme-text-muted min-h-11 cursor-pointer text-sm underline"
 						style={{
 							fontFamily: fonts.body,
-							color: theme.textMuted,
 							opacity: isSaving ? 0.5 : 1,
 						}}
 					>
 						Skip for now
 					</button>
 
-					<div
-						className="ml-auto flex items-center gap-6"
-						style={{ color: theme.textMuted, opacity: 0.6, ...kbdVars }}
-					>
+					<div className="theme-kbd-scope ml-auto flex items-center gap-6 opacity-60">
 						<div className="flex items-center gap-1.5">
 							<KbdGroup>
 								<Kbd>↑</Kbd>

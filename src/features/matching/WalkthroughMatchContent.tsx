@@ -15,7 +15,6 @@ import {
 	getDemoSongMatches,
 } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { SongSection } from "./components/SongSection";
 import { MatchingHeader } from "./sections/MatchingHeader";
 import { MatchingSession } from "./sections/MatchingSession";
@@ -75,7 +74,6 @@ export function WalkthroughMatchContent({
 }: {
 	walkthroughSong: WalkthroughSong;
 }) {
-	const theme = useTheme();
 	const { navigateTo, isPending } = useStepNavigation();
 	const [matchState, setMatchState] = useState<MatchState>({
 		status: "loading",
@@ -225,7 +223,7 @@ export function WalkthroughMatchContent({
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
 				<MatchingHeader currentIndex={0} totalSongs={1} />
-				<div className="mb-10 h-px" style={{ background: theme.border }} />
+				<div className="theme-border-bg mb-10 h-px" />
 				<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
 					<SongSection
 						songKey={currentSong.id}
@@ -327,37 +325,36 @@ function useSyncPaneRealAvailable(realAvailable: boolean) {
 }
 
 function MatchesSkeleton() {
-	const theme = useTheme();
 	return (
 		<div
 			className="flex flex-col"
 			style={{ minHeight: "clamp(300px, 30vw, 560px)" }}
 		>
 			<p
-				className="text-xs tracking-widest uppercase"
-				style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				className="theme-text-muted text-xs tracking-widest uppercase"
+				style={{ fontFamily: fonts.body }}
 			>
 				Best Matches
 			</p>
 			<div className="mt-6 space-y-5">
-				{[0.7, 0.55, 0.4].map((width, i) => (
+				{[
+					{ id: "wide", width: 0.7 },
+					{ id: "medium", width: 0.55 },
+					{ id: "narrow", width: 0.4 },
+				].map(({ id, width }) => (
 					<div
-						key={i}
-						className="flex items-start gap-3 pb-5"
-						style={{ borderBottom: `1px solid ${theme.border}` }}
+						key={id}
+						className="theme-border-color flex items-start gap-3 border-b pb-5"
 					>
-						<div
-							className="h-8 w-12 animate-pulse rounded"
-							style={{ background: theme.surface }}
-						/>
+						<div className="theme-surface-bg h-8 w-12 animate-pulse rounded" />
 						<div className="flex-1 space-y-2">
 							<div
-								className="h-4 animate-pulse rounded"
-								style={{ background: theme.surface, width: `${width * 100}%` }}
+								className="theme-surface-bg h-4 animate-pulse rounded"
+								style={{ width: `${width * 100}%` }}
 							/>
 							<div
-								className="h-3 animate-pulse rounded"
-								style={{ background: theme.surface, width: `${width * 70}%` }}
+								className="theme-surface-bg h-3 animate-pulse rounded"
+								style={{ width: `${width * 70}%` }}
 							/>
 						</div>
 					</div>

@@ -6,7 +6,6 @@
  */
 
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 export interface ReleaseToggleProps {
 	isReleased: boolean;
@@ -14,34 +13,30 @@ export interface ReleaseToggleProps {
 }
 
 export function ReleaseToggle({ isReleased, onToggle }: ReleaseToggleProps) {
-	const theme = useTheme();
 	return (
 		<div
-			className="fixed right-6 bottom-6 z-50 flex items-center gap-3 rounded-full px-4 py-2 shadow-lg backdrop-blur-sm transition-transform duration-200 hover:scale-105 active:scale-[0.98]"
+			className="theme-border-color fixed right-6 bottom-6 z-50 flex items-center gap-3 rounded-full border px-4 py-2 shadow-lg backdrop-blur-sm transition-transform duration-200 hover:scale-105 active:scale-[0.98]"
 			style={{
-				background: `${theme.surface}f0`,
-				border: `1px solid ${theme.border}`,
+				background: "color-mix(in srgb, var(--t-surface) 94%, transparent)",
 				fontFamily: fonts.body,
 			}}
 		>
-			<span
-				className="text-xs tracking-wider uppercase"
-				style={{ color: theme.textMuted }}
-			>
+			<span className="theme-text-muted text-xs tracking-wider uppercase">
 				{isReleased ? "Released" : "Pre-release"}
 			</span>
 			<button
+				type="button"
 				onClick={onToggle}
 				className="relative h-6 w-11 rounded-full transition-colors duration-200"
 				style={{
-					background: isReleased ? theme.primary : theme.border,
+					background: isReleased ? "var(--t-primary)" : "var(--t-border)",
 				}}
 				aria-label={`Switch to ${isReleased ? "pre-release" : "released"} mode`}
 			>
 				<span
 					className="absolute top-0.5 h-5 w-5 rounded-full transition-[left] duration-200"
 					style={{
-						background: theme.textOnPrimary,
+						background: "var(--t-text-on-primary)",
 						left: isReleased ? "22px" : "2px",
 						boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
 					}}

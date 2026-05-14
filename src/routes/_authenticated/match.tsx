@@ -23,7 +23,6 @@ import {
 	dismissSong,
 } from "@/lib/server/matching.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 export const Route = createFileRoute("/_authenticated/match")({
 	// No precondition guard needed. `/_authenticated` already resolved the
@@ -75,7 +74,6 @@ function NormalMatchPage() {
 	const { session } = Route.useRouteContext();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
-	const theme = useTheme();
 
 	const { data: latestSession } = useSuspenseQuery(
 		matchingSessionQueryOptions(session.accountId),
@@ -133,23 +131,18 @@ function NormalMatchPage() {
 	return (
 		<div className="mx-auto w-full max-w-[min(1600px,100%)]">
 			{hasNewSnapshot && (
-				<div
-					className="mb-4 flex items-center justify-between rounded-lg px-5 py-3"
-					style={{
-						background: theme.surface,
-						border: `1px solid ${theme.border}`,
-					}}
-				>
+				<div className="theme-surface-bg theme-border-color mb-4 flex items-center justify-between rounded-lg border px-5 py-3">
 					<p
-						className="text-sm"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted text-sm"
+						style={{ fontFamily: fonts.body }}
 					>
 						New match suggestions are available.
 					</p>
 					<button
+						type="button"
 						onClick={handleRefresh}
-						className="cursor-pointer text-xs font-medium uppercase tracking-widest transition-opacity hover:opacity-70"
-						style={{ fontFamily: fonts.body, color: theme.primary }}
+						className="theme-primary cursor-pointer text-xs font-medium tracking-widest uppercase transition-opacity hover:opacity-70"
+						style={{ fontFamily: fonts.body }}
 					>
 						Refresh
 					</button>

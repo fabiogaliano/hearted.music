@@ -8,7 +8,6 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Kbd } from "@/components/ui/kbd";
@@ -36,7 +35,6 @@ import {
 	type SyncStats,
 } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import {
 	type CheckoutIntent,
 	type CheckoutOffer,
@@ -67,8 +65,6 @@ export function PlanSelectionStep({
 	syncStats,
 	readyCopyVariant,
 }: PlanSelectionStepProps) {
-	const theme = useTheme();
-
 	const [planState, setPlanState] = useState<PlanState>(() => {
 		// If returning from Stripe, start in polling
 		if (loadCheckoutIntent()) return "polling";
@@ -225,20 +221,20 @@ export function PlanSelectionStep({
 		return (
 			<div className="text-center">
 				<p
-					className="text-xs tracking-widest uppercase"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body }}
 				>
 					Confirming
 				</p>
 				<h2
-					className="mt-4 text-4xl leading-tight font-extralight"
-					style={{ fontFamily: fonts.display, color: theme.text }}
+					className="theme-text mt-4 text-4xl leading-tight font-extralight"
+					style={{ fontFamily: fonts.display }}
 				>
 					Confirming your purchase...
 				</h2>
 				<p
-					className="mt-6 text-base font-light animate-pulse"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted mt-6 text-base font-light animate-pulse"
+					style={{ fontFamily: fonts.body }}
 				>
 					Waiting for {offerLabel} to activate.
 				</p>
@@ -251,20 +247,20 @@ export function PlanSelectionStep({
 		return (
 			<div className="text-center">
 				<p
-					className="text-xs tracking-widest uppercase"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body }}
 				>
 					Processing
 				</p>
 				<h2
-					className="mt-4 text-4xl leading-tight font-extralight"
-					style={{ fontFamily: fonts.display, color: theme.text }}
+					className="theme-text mt-4 text-4xl leading-tight font-extralight"
+					style={{ fontFamily: fonts.display }}
 				>
 					Almost there.
 				</h2>
 				<p
-					className="mt-6 text-base font-light"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted mt-6 text-base font-light"
+					style={{ fontFamily: fonts.body }}
 				>
 					{FALLBACK_MESSAGE}
 				</p>
@@ -272,16 +268,16 @@ export function PlanSelectionStep({
 					<button
 						type="button"
 						onClick={handleRetryConfirmation}
-						className="cursor-pointer text-sm font-medium tracking-wide"
-						style={{ fontFamily: fonts.body, color: theme.primary }}
+						className="theme-primary cursor-pointer text-sm font-medium tracking-wide"
+						style={{ fontFamily: fonts.body }}
 					>
 						Retry confirmation
 					</button>
 					<button
 						type="button"
 						onClick={handleRetryPolling}
-						className="cursor-pointer text-sm font-medium tracking-wide"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted cursor-pointer text-sm font-medium tracking-wide"
+						style={{ fontFamily: fonts.body }}
 					>
 						Choose a different plan
 					</button>
@@ -297,8 +293,8 @@ export function PlanSelectionStep({
 		return (
 			<div className="text-center">
 				<p
-					className="text-lg font-light animate-pulse"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-lg font-light animate-pulse"
+					style={{ fontFamily: fonts.body }}
 				>
 					Loading plans...
 				</p>
@@ -310,8 +306,8 @@ export function PlanSelectionStep({
 		return (
 			<div className="text-center">
 				<p
-					className="text-lg font-light"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-lg font-light"
+					style={{ fontFamily: fonts.body }}
 				>
 					Failed to load plans. Please refresh the page.
 				</p>
@@ -324,29 +320,28 @@ export function PlanSelectionStep({
 	return (
 		<div className="text-center">
 			<p
-				className="text-xs tracking-widest uppercase"
-				style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				className="theme-text-muted text-xs tracking-widest uppercase"
+				style={{ fontFamily: fonts.body }}
 			>
 				Choose Your Plan
 			</p>
 
 			<h2
-				className="mt-4 text-4xl leading-tight font-extralight"
-				style={{ fontFamily: fonts.display, color: theme.text }}
+				className="theme-text mt-4 text-4xl leading-tight font-extralight"
+				style={{ fontFamily: fonts.display }}
 			>
 				Unlock your library.
 			</h2>
 
 			<p
-				className="mt-4 text-base font-light"
-				style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				className="theme-text-muted mt-4 text-base font-light"
+				style={{ fontFamily: fonts.body }}
 			>
 				Every plan gives you deep analysis of every song you've liked.
 			</p>
 
 			<div className="mx-auto mt-12 flex max-w-lg flex-col gap-4">
 				<PlanCard
-					theme={theme}
 					title="Free"
 					price="$0"
 					description="10 songs — yours to keep"
@@ -356,7 +351,6 @@ export function PlanSelectionStep({
 				/>
 
 				<PlanCard
-					theme={theme}
 					title="Song Pack"
 					price="$5.99"
 					description="500 songs + 25 Instant Unlocks"
@@ -369,7 +363,6 @@ export function PlanSelectionStep({
 				/>
 
 				<PlanCard
-					theme={theme}
 					title="Backstage Pass"
 					price="$39.99/yr"
 					description="Every song, priority queue"
@@ -384,7 +377,6 @@ export function PlanSelectionStep({
 
 				{quarterlyPlanEnabled && (
 					<PlanCard
-						theme={theme}
 						title="Unlimited Quarterly"
 						price="$14.99/quarter"
 						description="Every song, standard queue"
@@ -408,7 +400,6 @@ function SuccessView({
 	syncStats: SyncStats;
 	readyCopyVariant: ReadyCopyVariant;
 }) {
-	const theme = useTheme();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const [isCompleting, setIsCompleting] = useState(false);
@@ -441,39 +432,32 @@ function SuccessView({
 		enabled: !isCompleting,
 	});
 
-	const kbdVars = {
-		"--kbd-text-color": theme.textMuted,
-		"--kbd-bg-color": `${theme.text}10`,
-		"--kbd-border-color": `${theme.textMuted}30`,
-		"--kbd-shadow-color": `${theme.textMuted}20`,
-	} as React.CSSProperties;
-
 	return (
 		<>
 			<div className="text-center">
 				<p
-					className="text-xs tracking-widest uppercase"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body }}
 				>
 					Complete
 				</p>
 				<h2
-					className="mt-4 text-6xl leading-tight font-extralight"
-					style={{ fontFamily: fonts.display, color: theme.text }}
+					className="theme-text mt-4 text-6xl leading-tight font-extralight"
+					style={{ fontFamily: fonts.display }}
 				>
 					You're <em className="font-normal">in.</em>
 				</h2>
 
 				<div className="mt-16">
 					<p
-						className="text-5xl font-extralight"
-						style={{ fontFamily: fonts.display, color: theme.text }}
+						className="theme-text text-5xl font-extralight"
+						style={{ fontFamily: fonts.display }}
 					>
 						{syncStats.songs}
 					</p>
 					<p
-						className="mt-2 text-xs tracking-widest uppercase"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted mt-2 text-xs tracking-widest uppercase"
+						style={{ fontFamily: fonts.body }}
 					>
 						Liked Songs
 					</p>
@@ -481,42 +465,42 @@ function SuccessView({
 					<div className="mt-10 flex justify-center gap-12">
 						<div className="text-center">
 							<p
-								className="text-3xl font-extralight"
-								style={{ fontFamily: fonts.display, color: theme.text }}
+								className="theme-text text-3xl font-extralight"
+								style={{ fontFamily: fonts.display }}
 							>
 								{syncStats.playlists}
 							</p>
 							<p
-								className="mt-1 text-xs tracking-widest uppercase"
-								style={{ fontFamily: fonts.body, color: theme.textMuted }}
+								className="theme-text-muted mt-1 text-xs tracking-widest uppercase"
+								style={{ fontFamily: fonts.body }}
 							>
 								Playlists
 							</p>
 						</div>
 						<div className="text-center">
 							<p
-								className="text-3xl font-extralight"
-								style={{ fontFamily: fonts.display, color: theme.text }}
+								className="theme-text text-3xl font-extralight"
+								style={{ fontFamily: fonts.display }}
 							>
 								{syncStats.playlistSongs}
 							</p>
 							<p
-								className="mt-1 text-xs tracking-widest uppercase"
-								style={{ fontFamily: fonts.body, color: theme.textMuted }}
+								className="theme-text-muted mt-1 text-xs tracking-widest uppercase"
+								style={{ fontFamily: fonts.body }}
 							>
 								Songs
 							</p>
 						</div>
 						<div className="text-center">
 							<p
-								className="text-3xl font-extralight"
-								style={{ fontFamily: fonts.display, color: theme.text }}
+								className="theme-text text-3xl font-extralight"
+								style={{ fontFamily: fonts.display }}
 							>
 								{syncStats.artists}
 							</p>
 							<p
-								className="mt-1 text-xs tracking-widest uppercase"
-								style={{ fontFamily: fonts.body, color: theme.textMuted }}
+								className="theme-text-muted mt-1 text-xs tracking-widest uppercase"
+								style={{ fontFamily: fonts.body }}
 							>
 								Artists
 							</p>
@@ -528,29 +512,22 @@ function SuccessView({
 					type="button"
 					onClick={handleStart}
 					disabled={isCompleting}
-					className="group mt-20 inline-flex min-h-11 cursor-pointer items-center gap-3"
+					className="theme-text group mt-20 inline-flex min-h-11 cursor-pointer items-center gap-3"
 					style={{
 						fontFamily: fonts.body,
-						color: theme.text,
 						opacity: isCompleting ? 0.5 : 1,
 					}}
 				>
 					<span className="text-xl font-medium tracking-wide">
 						Start Exploring
 					</span>
-					<span
-						className="inline-block transition-transform group-hover:translate-x-1"
-						style={{ color: theme.textMuted }}
-					>
+					<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 						→
 					</span>
 				</button>
 			</div>
 
-			<div
-				className="fixed bottom-6 left-0 right-0 flex items-center justify-center gap-6"
-				style={{ color: theme.textMuted, opacity: 0.6, ...kbdVars }}
-			>
+			<div className="theme-kbd-scope fixed right-0 bottom-6 left-0 flex items-center justify-center gap-6 opacity-60">
 				<div className="flex items-center gap-1.5">
 					<Kbd>⏎</Kbd>
 					<span className="text-xs">to start</span>
@@ -561,7 +538,6 @@ function SuccessView({
 }
 
 function PlanCard({
-	theme,
 	title,
 	price,
 	description,
@@ -570,7 +546,6 @@ function PlanCard({
 	highlighted,
 	onClick,
 }: {
-	theme: ReturnType<typeof useTheme>;
 	title: string;
 	price: string;
 	description: string;
@@ -584,35 +559,25 @@ function PlanCard({
 			type="button"
 			onClick={onClick}
 			disabled={disabled}
-			className="group flex w-full cursor-pointer items-center justify-between rounded-lg px-6 py-5 text-left transition-opacity"
+			className="group flex w-full cursor-pointer items-center justify-between rounded-lg border px-6 py-5 text-left transition-opacity"
 			style={{
 				fontFamily: fonts.body,
-				border: `1px solid ${highlighted ? theme.primary : theme.border}`,
+				borderColor: highlighted ? "var(--t-primary)" : "var(--t-border)",
 				opacity: disabled ? 0.5 : 1,
 			}}
 		>
 			<div>
-				<p
-					className="text-sm font-medium tracking-wide"
-					style={{ color: theme.text }}
-				>
-					{title}
-				</p>
-				<p className="mt-1 text-xs" style={{ color: theme.textMuted }}>
-					{description}
-				</p>
+				<p className="theme-text text-sm font-medium tracking-wide">{title}</p>
+				<p className="theme-text-muted mt-1 text-xs">{description}</p>
 			</div>
 			<div className="flex items-center gap-3">
 				<span
-					className="text-lg font-light"
-					style={{ fontFamily: fonts.display, color: theme.text }}
+					className="theme-text text-lg font-light"
+					style={{ fontFamily: fonts.display }}
 				>
 					{price}
 				</span>
-				<span
-					className="text-sm font-medium tracking-wide"
-					style={{ color: theme.primary }}
-				>
+				<span className="theme-primary text-sm font-medium tracking-wide">
 					{buttonLabel}
 				</span>
 			</div>

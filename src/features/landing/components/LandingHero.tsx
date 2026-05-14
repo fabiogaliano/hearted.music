@@ -237,6 +237,7 @@ export function LandingHero({
 									hearted.
 								</h1>
 								<button
+									type="button"
 									ref={navBtnRef}
 									className="hero-nav-btn pointer-events-auto px-5 py-2 text-sm tracking-widest uppercase transition-transform duration-150 hover:scale-105 active:scale-[0.98] xl:hidden"
 									style={{
@@ -275,9 +276,8 @@ export function LandingHero({
 								{/* Subtext - fades in late in scroll */}
 								<p
 									ref={subtextRef}
-									className="hero-subtext mt-3 text-lg leading-relaxed xl:text-xl"
+									className="theme-text-on-primary hero-subtext mt-3 text-lg leading-relaxed xl:text-xl"
 									style={{
-										color: theme.textOnPrimary,
 										opacity: 0,
 										transform: "translateY(10px)",
 									}}
@@ -309,8 +309,7 @@ export function LandingHero({
 							{/* Curtain wipe overlay (slides right to reveal) */}
 							<div
 								ref={panelCurtainRef}
-								className="hero-panel-curtain pointer-events-none absolute inset-0 z-20"
-								style={{ background: theme.bg }}
+								className="theme-bg hero-panel-curtain pointer-events-none absolute inset-0 z-20"
 							/>
 
 							<LandingPanel
@@ -339,14 +338,12 @@ export function LandingHero({
 						ref={scrollIndicatorRef}
 						className={`pointer-events-none absolute bottom-8 left-1/2 z-20 -translate-x-1/2 transition-opacity duration-1000 ${isHeroVisualReady ? "opacity-100" : "opacity-0"}`}
 					>
-						<div
-							className="scroll-indicator flex flex-col items-center gap-2"
-							style={{ color: theme.textOnPrimary }}
-						>
+						<div className="theme-text-on-primary scroll-indicator flex flex-col items-center gap-2">
 							<span className="text-sm tracking-widest uppercase opacity-80">
 								scroll to explore
 							</span>
 							<svg
+								aria-hidden="true"
 								className="scroll-arrow h-6 w-6 opacity-60"
 								fill="none"
 								viewBox="0 0 24 24"

@@ -12,7 +12,6 @@ import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { saveThemePreference } from "@/lib/server/onboarding.functions";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { COLOR_LABELS, THEME_COLORS, type ThemeColor } from "@/lib/theme/types";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import { StaggeredContent } from "./StaggeredContent";
@@ -24,7 +23,6 @@ interface PickColorStepProps {
 }
 
 export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
-	const theme = useTheme();
 	const { goToStep } = useOnboardingNavigation();
 	const [isSaving, setIsSaving] = useState(false);
 	const shouldReduceMotion = useReducedMotion();
@@ -66,19 +64,12 @@ export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
 		enabled: !isSaving,
 	});
 
-	const kbdVars = {
-		"--kbd-text-color": theme.textMuted,
-		"--kbd-bg-color": `${theme.text}10`,
-		"--kbd-border-color": `${theme.textMuted}30`,
-		"--kbd-shadow-color": `${theme.textMuted}20`,
-	} as React.CSSProperties;
-
 	return (
 		<>
 			<StaggeredContent>
 				<h2
-					className="text-6xl leading-tight font-extralight"
-					style={{ fontFamily: fonts.display, color: theme.text }}
+					className="theme-text text-6xl leading-tight font-extralight"
+					style={{ fontFamily: fonts.display }}
 				>
 					Pick your
 					<br />
@@ -130,7 +121,7 @@ export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
 										<div
 											className="absolute -inset-1 rounded-full"
 											style={{
-												border: `2px dashed ${theme.textMuted}`,
+												border: "2px dashed var(--t-text-muted)",
 												opacity: 0.7,
 											}}
 										/>
@@ -145,19 +136,17 @@ export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
 								</div>
 								<div>
 									<p
-										className="text-xl font-extralight sm:text-2xl"
-										style={{
-											fontFamily: fonts.display,
-											color: isSelected ? theme.text : theme.textMuted,
-										}}
+										className={`text-xl font-extralight sm:text-2xl ${
+											isSelected ? "theme-text" : "theme-text-muted"
+										}`}
+										style={{ fontFamily: fonts.display }}
 									>
 										{COLOR_LABELS[colorId]}
 									</p>
 									<p
-										className="mt-0.5 text-xs tracking-widest uppercase"
+										className="theme-text-muted mt-0.5 text-xs tracking-widest uppercase"
 										style={{
 											fontFamily: fonts.body,
-											color: theme.textMuted,
 											opacity: isSelected ? 1 : 0,
 										}}
 									>
@@ -173,29 +162,22 @@ export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
 					type="button"
 					onClick={handleContinue}
 					disabled={isSaving}
-					className="group mt-16 inline-flex min-h-11 cursor-pointer items-center gap-3 sm:mt-20"
+					className="theme-text group mt-16 inline-flex min-h-11 cursor-pointer items-center gap-3 sm:mt-20"
 					style={{
 						fontFamily: fonts.body,
-						color: theme.text,
 						opacity: isSaving ? 0.5 : 1,
 					}}
 				>
 					<span className="text-lg font-medium tracking-wide">
 						{isSaving ? "Saving..." : "Continue"}
 					</span>
-					<span
-						className="inline-block transition-transform group-hover:translate-x-1"
-						style={{ color: theme.textMuted }}
-					>
+					<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 						→
 					</span>
 				</button>
 			</StaggeredContent>
 
-			<div
-				className="fixed bottom-6 left-0 right-0 flex items-center justify-center gap-6"
-				style={{ color: theme.textMuted, opacity: 0.6, ...kbdVars }}
-			>
+			<div className="theme-kbd-scope fixed right-0 bottom-6 left-0 flex items-center justify-center gap-6 opacity-60">
 				<div className="flex items-center gap-1.5">
 					<KbdGroup>
 						<Kbd>↑</Kbd>

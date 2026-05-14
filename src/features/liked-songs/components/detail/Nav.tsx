@@ -2,8 +2,6 @@
  * Navigation controls for song detail view
  * Supports both light and dark modes via isDark prop
  */
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
-
 interface NavProps {
 	onClose: () => void;
 	onNext: () => void;
@@ -21,18 +19,19 @@ export function Nav({
 	hasPrevious,
 	isDark = false,
 }: NavProps) {
-	const theme = useTheme();
-	const color = isDark ? "rgba(255,255,255,0.7)" : theme.textMuted;
+	const colorClass = isDark ? "text-white/70" : "theme-text-muted";
 
 	return (
 		<div className="flex items-center gap-0.5">
 			<button
+				type="button"
 				onClick={onPrevious}
 				disabled={!hasPrevious}
-				className="p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9] disabled:opacity-30"
-				style={{ color }}
+				className={`${colorClass} p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9] disabled:opacity-30`}
+				aria-label="Previous song"
 			>
 				<svg
+					aria-hidden="true"
 					width="14"
 					height="14"
 					viewBox="0 0 24 24"
@@ -44,12 +43,14 @@ export function Nav({
 				</svg>
 			</button>
 			<button
+				type="button"
 				onClick={onNext}
 				disabled={!hasNext}
-				className="p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9] disabled:opacity-30"
-				style={{ color }}
+				className={`${colorClass} p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9] disabled:opacity-30`}
+				aria-label="Next song"
 			>
 				<svg
+					aria-hidden="true"
 					width="14"
 					height="14"
 					viewBox="0 0 24 24"
@@ -61,11 +62,13 @@ export function Nav({
 				</svg>
 			</button>
 			<button
+				type="button"
 				onClick={onClose}
-				className="ml-1 p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9]"
-				style={{ color }}
+				className={`${colorClass} ml-1 p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9]`}
+				aria-label="Close song detail"
 			>
 				<svg
+					aria-hidden="true"
 					width="14"
 					height="14"
 					viewBox="0 0 24 24"

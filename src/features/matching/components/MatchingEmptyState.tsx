@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 interface Props {
 	reason: "no-context" | "all-decided";
@@ -21,7 +20,6 @@ const copy = {
 } as const;
 
 export function MatchingEmptyState({ reason }: Props) {
-	const theme = useTheme();
 	const { overline, headline, body } = copy[reason];
 
 	return (
@@ -29,38 +27,29 @@ export function MatchingEmptyState({ reason }: Props) {
 			className="flex min-h-[calc(100dvh-160px)] flex-col items-center justify-center px-8 text-center md:px-16"
 			style={{ fontFamily: fonts.body }}
 		>
-			<p
-				className="mb-6 text-xs uppercase tracking-widest"
-				style={{ color: theme.textMuted }}
-			>
+			<p className="theme-text-muted mb-6 text-xs tracking-widest uppercase">
 				{overline}
 			</p>
 
 			<h1
-				className="max-w-[520px] text-[44px] font-extralight leading-[1.1] tracking-tight md:text-[54px]"
-				style={{ fontFamily: fonts.display, color: theme.text }}
+				className="theme-text max-w-[520px] text-[44px] leading-[1.1] font-extralight tracking-tight md:text-[54px]"
+				style={{ fontFamily: fonts.display }}
 			>
 				{headline[0]} <em>{headline[1]}</em>
 			</h1>
 
-			<p
-				className="mt-8 max-w-[360px] text-base leading-relaxed"
-				style={{ color: theme.textMuted }}
-			>
+			<p className="theme-text-muted mt-8 max-w-[360px] text-base leading-relaxed">
 				{body}
 			</p>
 
 			<div className="mt-12">
 				<Link
 					to="/"
-					className="group inline-flex items-center gap-3 transition-transform duration-100 active:scale-[0.98]"
-					style={{ fontFamily: fonts.body, color: theme.text }}
+					className="theme-text group inline-flex items-center gap-3 transition-transform duration-100 active:scale-[0.98]"
+					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-base font-medium tracking-wide">Back home</span>
-					<span
-						className="inline-block transition-transform group-hover:translate-x-1"
-						style={{ color: theme.textMuted }}
-					>
+					<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 						&rarr;
 					</span>
 				</Link>

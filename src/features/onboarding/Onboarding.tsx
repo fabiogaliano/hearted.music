@@ -16,7 +16,6 @@ import type {
 	ReadyCopyVariant,
 } from "@/lib/server/onboarding.functions";
 import { useAuthenticatedTheme } from "@/lib/theme/authenticated-theme";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import type { ThemeColor } from "@/lib/theme/types";
 import { AnimatedStep } from "./components/AnimatedStep";
 import { FlagPlaylistsStep } from "./components/FlagPlaylistsStep";
@@ -146,12 +145,11 @@ const indicatorTransition = {
 };
 
 function StepIndicator({ currentStep }: { currentStep: OnboardingStep }) {
-	const theme = useTheme();
 	const stepIndex = INDICATOR_STEPS.indexOf(currentStep);
 	const shouldReduceMotion = useReducedMotion();
 
 	return (
-		<div className="pointer-events-none fixed bottom-24 left-0 right-0 z-10 flex justify-center gap-3">
+		<div className="pointer-events-none fixed right-0 bottom-24 left-0 z-10 flex justify-center gap-3">
 			{INDICATOR_STEPS.map((s, i) => (
 				<motion.div
 					key={s}
@@ -160,7 +158,7 @@ function StepIndicator({ currentStep }: { currentStep: OnboardingStep }) {
 					className="h-1.5 rounded-full"
 					style={{
 						width: currentStep === s ? "2rem" : "0.375rem",
-						background: stepIndex >= i ? theme.text : theme.border,
+						background: stepIndex >= i ? "var(--t-text)" : "var(--t-border)",
 					}}
 				/>
 			))}

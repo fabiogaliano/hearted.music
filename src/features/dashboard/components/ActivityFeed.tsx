@@ -1,7 +1,6 @@
 /** Timeline feed showing recent activity, sorted by timestamp descending. */
 
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import type { ActivityItem as ActivityItemType } from "../types";
 import { ActivityItem } from "./ActivityItem";
 
@@ -10,15 +9,13 @@ interface ActivityFeedProps {
 }
 
 export function ActivityFeed({ activities = [] }: ActivityFeedProps) {
-	const theme = useTheme();
-
 	if (activities.length === 0) return null;
 
 	return (
 		<div className="space-y-1">
 			<p
-				className="mb-4 text-xs tracking-widest uppercase"
-				style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				className="theme-text-muted mb-4 text-xs tracking-widest uppercase"
+				style={{ fontFamily: fonts.body }}
 			>
 				Recent Activity
 			</p>
@@ -26,14 +23,6 @@ export function ActivityFeed({ activities = [] }: ActivityFeedProps) {
 			{activities.map((item, idx) => (
 				<ActivityItem key={item.id} item={item} showBorder={idx > 0} />
 			))}
-
-			{/* <Link
-				to="/liked-songs"
-				className="block py-3 text-xs tracking-widest uppercase transition-opacity hover:opacity-70"
-				style={{ fontFamily: fonts.body, color: theme.textMuted }}
-			>
-				View all activity →
-			</Link> */}
 		</div>
 	);
 }

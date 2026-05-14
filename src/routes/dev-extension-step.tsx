@@ -5,6 +5,7 @@
  */
 
 import { createFileRoute } from "@tanstack/react-router";
+import type { CSSProperties } from "react";
 import { useState } from "react";
 import { ExtensionSetupTrail } from "@/features/onboarding/components/ExtensionSetupTrail";
 import { themes } from "@/lib/theme/colors";
@@ -19,6 +20,19 @@ const EXTENSION_STORE_URL =
 // ── Waveform animation variants ──────────────────────────────────────────
 
 type AnimVariant = "A" | "B" | "C";
+type ThemeTokenStyle = CSSProperties &
+	Record<
+		| "--t-bg"
+		| "--t-surface"
+		| "--t-surface-dim"
+		| "--t-border"
+		| "--t-text"
+		| "--t-text-muted"
+		| "--t-text-on-primary"
+		| "--t-primary"
+		| "--t-primary-hover",
+		string
+	>;
 
 const ANIM_LABELS: Record<AnimVariant, string> = {
 	A: "symmetric",
@@ -27,7 +41,9 @@ const ANIM_LABELS: Record<AnimVariant, string> = {
 };
 
 function WaveformSymmetric({ theme }: { theme: ThemeConfig }) {
-	const heights = [4, 7, 11, 15, 18, 20, 18, 15, 11, 7, 4];
+	const bars = [4, 7, 11, 15, 18, 20, 18, 15, 11, 7, 4].map(
+		(height, position) => ({ id: `sym-${position}`, height, position }),
+	);
 
 	return (
 		<>
@@ -44,16 +60,16 @@ function WaveformSymmetric({ theme }: { theme: ThemeConfig }) {
 				className="mx-auto flex items-center justify-center"
 				style={{ gap: 2, height: 20, opacity: 0.4 }}
 			>
-				{heights.map((h, i) => (
+				{bars.map((bar) => (
 					<div
-						key={i}
+						key={bar.id}
 						className="wf-sym"
 						style={{
 							width: 1.5,
-							height: h,
+							height: bar.height,
 							background: theme.textMuted,
 							transformOrigin: "center",
-							animation: `wfSymmetric 2.2s cubic-bezier(0.4, 0, 0.2, 1) ${i * 100}ms infinite`,
+							animation: `wfSymmetric 2.2s cubic-bezier(0.4, 0, 0.2, 1) ${bar.position * 100}ms infinite`,
 						}}
 					/>
 				))}
@@ -63,7 +79,9 @@ function WaveformSymmetric({ theme }: { theme: ThemeConfig }) {
 }
 
 function WaveformIrregular({ theme }: { theme: ThemeConfig }) {
-	const heights = [3, 9, 5, 16, 8, 20, 6, 18, 11, 4, 14, 7, 19, 10, 5, 12, 3];
+	const bars = [3, 9, 5, 16, 8, 20, 6, 18, 11, 4, 14, 7, 19, 10, 5, 12, 3].map(
+		(height, position) => ({ id: `irr-${position}`, height, position }),
+	);
 
 	return (
 		<>
@@ -80,16 +98,16 @@ function WaveformIrregular({ theme }: { theme: ThemeConfig }) {
 				className="mx-auto flex items-center justify-center"
 				style={{ gap: 1.5, height: 20, opacity: 0.4 }}
 			>
-				{heights.map((h, i) => (
+				{bars.map((bar) => (
 					<div
-						key={i}
+						key={bar.id}
 						className="wf-irr"
 						style={{
 							width: 1.5,
-							height: h,
+							height: bar.height,
 							background: theme.textMuted,
 							transformOrigin: "center",
-							animation: `wfIrregular 2.4s cubic-bezier(0.4, 0, 0.2, 1) ${i * 80}ms infinite`,
+							animation: `wfIrregular 2.4s cubic-bezier(0.4, 0, 0.2, 1) ${bar.position * 80}ms infinite`,
 						}}
 					/>
 				))}
@@ -100,19 +118,19 @@ function WaveformIrregular({ theme }: { theme: ThemeConfig }) {
 
 function WaveformLive({ theme }: { theme: ThemeConfig }) {
 	const bars = [
-		{ h: 10, dur: 1.3, delay: 0 },
-		{ h: 18, dur: 1.7, delay: 200 },
-		{ h: 7, dur: 2.1, delay: 80 },
-		{ h: 22, dur: 1.4, delay: 340 },
-		{ h: 12, dur: 1.9, delay: 130 },
-		{ h: 20, dur: 1.3, delay: 50 },
-		{ h: 8, dur: 2.3, delay: 270 },
-		{ h: 24, dur: 1.5, delay: 400 },
-		{ h: 14, dur: 1.8, delay: 110 },
-		{ h: 6, dur: 2.0, delay: 310 },
-		{ h: 20, dur: 1.4, delay: 170 },
-		{ h: 10, dur: 2.2, delay: 240 },
-		{ h: 16, dur: 1.6, delay: 60 },
+		{ id: "live-01", h: 10, dur: 1.3, delay: 0 },
+		{ id: "live-02", h: 18, dur: 1.7, delay: 200 },
+		{ id: "live-03", h: 7, dur: 2.1, delay: 80 },
+		{ id: "live-04", h: 22, dur: 1.4, delay: 340 },
+		{ id: "live-05", h: 12, dur: 1.9, delay: 130 },
+		{ id: "live-06", h: 20, dur: 1.3, delay: 50 },
+		{ id: "live-07", h: 8, dur: 2.3, delay: 270 },
+		{ id: "live-08", h: 24, dur: 1.5, delay: 400 },
+		{ id: "live-09", h: 14, dur: 1.8, delay: 110 },
+		{ id: "live-10", h: 6, dur: 2.0, delay: 310 },
+		{ id: "live-11", h: 20, dur: 1.4, delay: 170 },
+		{ id: "live-12", h: 10, dur: 2.2, delay: 240 },
+		{ id: "live-13", h: 16, dur: 1.6, delay: 60 },
 	];
 
 	return (
@@ -131,9 +149,9 @@ function WaveformLive({ theme }: { theme: ThemeConfig }) {
 				className="mx-auto flex items-center justify-center"
 				style={{ gap: 2, height: 24, opacity: 0.45 }}
 			>
-				{bars.map((bar, i) => (
+				{bars.map((bar) => (
 					<div
-						key={i}
+						key={bar.id}
 						className="wf-live"
 						style={{
 							width: 1.5,
@@ -357,7 +375,6 @@ function V3({
 }: V3Props) {
 	const trail = (
 		<ExtensionSetupTrail
-			theme={theme}
 			isExtensionInstalled={isExtensionInstalled}
 			isSpotifyConnected={isSpotifyConnected}
 		/>
@@ -467,6 +484,17 @@ function DevExtensionStep() {
 	const [themeKey, setThemeKey] = useState<ThemeColor>("rose");
 	const [animVariant, setAnimVariant] = useState<AnimVariant>("A");
 	const theme = themes[themeKey];
+	const themeTokenStyle: ThemeTokenStyle = {
+		"--t-bg": theme.bg,
+		"--t-surface": theme.surface,
+		"--t-surface-dim": theme.surfaceDim,
+		"--t-border": theme.border,
+		"--t-text": theme.text,
+		"--t-text-muted": theme.textMuted,
+		"--t-text-on-primary": theme.textOnPrimary,
+		"--t-primary": theme.primary,
+		"--t-primary-hover": theme.primaryHover,
+	};
 
 	const { isExtensionInstalled, isSpotifyConnected } = stepToState(step);
 
@@ -474,8 +502,9 @@ function DevExtensionStep() {
 
 	return (
 		<div
+			className="theme-bg"
 			style={{
-				background: theme.bg,
+				...themeTokenStyle,
 				minHeight: "100dvh",
 				padding: "48px 32px",
 			}}
@@ -484,10 +513,9 @@ function DevExtensionStep() {
 			<div className="mb-12 flex flex-wrap items-end gap-6">
 				<div className="flex flex-col gap-2">
 					<span
-						className="text-[10px] uppercase tracking-widest"
+						className="theme-text-muted text-[10px] uppercase tracking-widest"
 						style={{
 							fontFamily: fonts.body,
-							color: theme.textMuted,
 							opacity: 0.38,
 						}}
 					>
@@ -517,10 +545,9 @@ function DevExtensionStep() {
 
 				<div className="flex flex-col gap-2">
 					<span
-						className="text-[10px] uppercase tracking-widest"
+						className="theme-text-muted text-[10px] uppercase tracking-widest"
 						style={{
 							fontFamily: fonts.body,
-							color: theme.textMuted,
 							opacity: 0.38,
 						}}
 					>
@@ -550,10 +577,9 @@ function DevExtensionStep() {
 				{step === 4 && (
 					<div className="flex flex-col gap-2">
 						<span
-							className="text-[10px] uppercase tracking-widest"
+							className="theme-text-muted text-[10px] uppercase tracking-widest"
 							style={{
 								fontFamily: fonts.body,
-								color: theme.textMuted,
 								opacity: 0.38,
 							}}
 						>
@@ -583,10 +609,9 @@ function DevExtensionStep() {
 				)}
 
 				<span
-					className="ml-auto text-[11px] uppercase tracking-[0.14em]"
+					className="theme-text-muted ml-auto text-[11px] uppercase tracking-[0.14em]"
 					style={{
 						fontFamily: fonts.body,
-						color: theme.textMuted,
 						opacity: 0.28,
 					}}
 				>
@@ -594,10 +619,7 @@ function DevExtensionStep() {
 				</span>
 			</div>
 
-			<div
-				className="rounded-[8px] p-12"
-				style={{ border: `1px solid ${theme.border}` }}
-			>
+			<div className="theme-border-color rounded-[8px] border p-12">
 				{step === 4 ? (
 					<div className="flex min-h-[320px] items-center justify-center">
 						<SelectedAnimation theme={theme} />

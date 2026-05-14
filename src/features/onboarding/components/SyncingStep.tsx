@@ -12,7 +12,6 @@ import {
 import { useSmoothProgress } from "@/lib/hooks/useSmoothProgress";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 
 const EXTENSION_STATUS_POLL_MS = 1_000;
@@ -198,7 +197,6 @@ interface SyncingStepProps {
 }
 
 export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
-	const theme = useTheme();
 	const { goToStep } = useOnboardingNavigation();
 	const syncState = useExtensionSyncStatus();
 
@@ -250,15 +248,15 @@ export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
 		return (
 			<div className="text-center">
 				<p
-					className="text-xs tracking-widest uppercase"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body }}
 				>
 					Error
 				</p>
 
 				<h2
-					className="mt-4 text-5xl leading-tight font-extralight"
-					style={{ fontFamily: fonts.display, color: theme.text }}
+					className="theme-text mt-4 text-5xl leading-tight font-extralight"
+					style={{ fontFamily: fonts.display }}
 				>
 					Something went
 					<br />
@@ -266,8 +264,8 @@ export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
 				</h2>
 
 				<p
-					className="mt-6 text-lg font-light"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted mt-6 text-lg font-light"
+					style={{ fontFamily: fonts.body }}
 				>
 					{error || "We encountered an error while syncing your library."}
 				</p>
@@ -277,14 +275,11 @@ export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
 					onClick={() => {
 						window.location.href = "/onboarding?step=welcome";
 					}}
-					className="group mt-16 inline-flex cursor-pointer items-center gap-3"
-					style={{ fontFamily: fonts.body, color: theme.text }}
+					className="theme-text group mt-16 inline-flex cursor-pointer items-center gap-3"
+					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-lg font-medium tracking-wide">Start Over</span>
-					<span
-						className="inline-block transition-transform group-hover:translate-x-1"
-						style={{ color: theme.textMuted }}
-					>
+					<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 						→
 					</span>
 				</button>
@@ -302,15 +297,15 @@ export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
 	return (
 		<div className="text-center">
 			<p
-				className="text-xs tracking-widest uppercase"
-				style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				className="theme-text-muted text-xs tracking-widest uppercase"
+				style={{ fontFamily: fonts.body }}
 			>
 				Syncing
 			</p>
 
 			<h2
-				className="mt-4 text-5xl leading-tight font-extralight"
-				style={{ fontFamily: fonts.display, color: theme.text }}
+				className="theme-text mt-4 text-5xl leading-tight font-extralight"
+				style={{ fontFamily: fonts.display }}
 			>
 				Listening to your
 				<br />
@@ -319,27 +314,25 @@ export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
 
 			<div className="mt-12 flex items-baseline justify-center">
 				<span
-					className="text-8xl font-light tabular-nums"
-					style={{ fontFamily: fonts.display, color: theme.text }}
+					className="theme-text text-8xl font-light tabular-nums"
+					style={{ fontFamily: fonts.display }}
 				>
 					{Math.floor(syncProgress)}
 				</span>
-				<span className="text-4xl" style={{ color: theme.textMuted }}>
-					%
-				</span>
+				<span className="theme-text-muted text-4xl">%</span>
 			</div>
 
 			{isDiscovering ? (
 				<div
-					className="mt-8 space-y-1 text-sm animate-pulse"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted mt-8 space-y-1 text-sm animate-pulse"
+					style={{ fontFamily: fonts.body }}
 				>
 					<p>{label}</p>
 				</div>
 			) : (
 				<div
-					className="mt-8 space-y-1 text-sm"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted mt-8 space-y-1 text-sm"
+					style={{ fontFamily: fonts.body }}
 				>
 					{counterLines.map((line) => (
 						<p key={line}>{line}</p>

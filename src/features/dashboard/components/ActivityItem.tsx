@@ -3,11 +3,9 @@
  * Switch on `item.type` for exhaustive handling; TypeScript enforces coverage.
  */
 
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { formatRelativeTime } from "@/lib/shared/utils/format-time";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import type { ThemeConfig } from "@/lib/theme/types";
 import type { ActivityItem as ActivityItemType } from "../types";
 
 interface ActivityItemProps {
@@ -15,18 +13,14 @@ interface ActivityItemProps {
 	showBorder: boolean;
 }
 
-function renderDescription(
-	item: ActivityItemType,
-	theme: ThemeConfig,
-): ReactNode {
+function renderDescription(item: ActivityItemType): ReactNode {
 	switch (item.type) {
 		case "liked":
 			return <>liked at {formatRelativeTime(item.timestamp)}</>;
 		case "matched":
 			return (
 				<>
-					matched to{" "}
-					<span style={{ color: theme.text }}>{item.playlistName}</span> ·{" "}
+					matched to <span className="theme-text">{item.playlistName}</span> ·{" "}
 					{formatRelativeTime(item.timestamp)}
 				</>
 			);
@@ -38,24 +32,12 @@ function renderDescription(
 }
 
 export function ActivityItem({ item, showBorder }: ActivityItemProps) {
-	const theme = useTheme();
 	const imageUrl = item.imageUrl ?? "";
 	const songName = item.songName;
 
 	return (
 		<div
-			role="button"
-			tabIndex={0}
-			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") e.currentTarget.click();
-			}}
-			className="group -mx-4 flex cursor-pointer items-start gap-4 px-4 py-4 transition-colors hover:bg-(--surface)"
-			style={
-				{
-					"--surface": theme.surface,
-					borderTop: showBorder ? `1px solid ${theme.border}` : "none",
-				} as CSSProperties
-			}
+			className={`${showBorder ? "theme-border-color border-t" : ""} theme-hover-surface group -mx-4 flex items-start gap-4 px-4 py-4 transition-colors`}
 		>
 			{imageUrl ? (
 				<img
@@ -64,31 +46,28 @@ export function ActivityItem({ item, showBorder }: ActivityItemProps) {
 					className="h-14 w-14 shrink-0 object-cover"
 				/>
 			) : (
-				<div
-					className="flex h-14 w-14 shrink-0 items-center justify-center"
-					style={{ background: theme.surface }}
-				>
-					<span style={{ color: theme.textMuted, fontSize: "1.5rem" }}>♪</span>
+				<div className="theme-surface-bg flex h-14 w-14 shrink-0 items-center justify-center">
+					<span className="theme-text-muted text-2xl">♪</span>
 				</div>
 			)}
 			<div className="min-w-0 flex-1 pt-1">
 				<p
-					className="truncate text-lg font-light"
-					style={{ fontFamily: fonts.display, color: theme.text }}
+					className="theme-text truncate text-lg font-light"
+					style={{ fontFamily: fonts.display }}
 				>
 					{songName}
 				</p>
 				<p
-					className="mt-0.5 text-sm"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted mt-0.5 text-sm"
+					style={{ fontFamily: fonts.body }}
 				>
 					{item.artistName}
 				</p>
 				<p
-					className="mt-2 text-xs"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted mt-2 text-xs"
+					style={{ fontFamily: fonts.body }}
 				>
-					{renderDescription(item, theme)}
+					{renderDescription(item)}
 				</p>
 			</div>
 		</div>

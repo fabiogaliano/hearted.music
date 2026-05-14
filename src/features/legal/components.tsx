@@ -1,15 +1,13 @@
 import type { ContentBlock } from "@/lib/data/legal";
 import { fonts } from "@/lib/theme/fonts";
-import type { ThemeConfig } from "@/lib/theme/types";
 
 export const SUPPORT_EMAIL = "support@hearted.music";
 
-export function EmailLink({ theme }: { theme: ThemeConfig }) {
+export function EmailLink() {
 	return (
 		<a
 			href={`mailto:${SUPPORT_EMAIL}`}
-			style={{ color: theme.text }}
-			className="underline underline-offset-4 hover:opacity-70 transition-opacity duration-200"
+			className="theme-text underline underline-offset-4 transition-opacity duration-200 hover:opacity-70"
 		>
 			{SUPPORT_EMAIL}
 		</a>
@@ -19,23 +17,18 @@ export function EmailLink({ theme }: { theme: ThemeConfig }) {
 export function SectionHeader({
 	number,
 	title,
-	theme,
 }: {
 	number: number;
 	title: string;
-	theme: ThemeConfig;
 }) {
 	return (
 		<div className="mb-4">
-			<p
-				style={{ color: theme.textMuted }}
-				className="text-xs uppercase tracking-widest mb-1"
-			>
+			<p className="theme-text-muted mb-1 text-xs tracking-widest uppercase">
 				{number.toString().padStart(2, "0")}
 			</p>
 			<h2
-				style={{ fontFamily: fonts.display, color: theme.text }}
-				className="italic text-[24px] font-light"
+				style={{ fontFamily: fonts.display }}
+				className="theme-text text-[24px] font-light italic"
 			>
 				{title}
 			</h2>
@@ -43,7 +36,7 @@ export function SectionHeader({
 	);
 }
 
-function renderTextWithEmail(text: string, theme: ThemeConfig) {
+function renderTextWithEmail(text: string) {
 	if (!text.includes("__EMAIL__")) {
 		return <>{text}</>;
 	}
@@ -51,34 +44,28 @@ function renderTextWithEmail(text: string, theme: ThemeConfig) {
 	return (
 		<>
 			{parts[0]}
-			<EmailLink theme={theme} />
+			<EmailLink />
 			{parts[1]}
 		</>
 	);
 }
 
-export function ContentBlocks({
-	blocks,
-	theme,
-}: {
-	blocks: ContentBlock[];
-	theme: ThemeConfig;
-}) {
+export function ContentBlocks({ blocks }: { blocks: ContentBlock[] }) {
 	return (
-		<div
-			style={{ color: theme.textMuted }}
-			className="text-base leading-relaxed space-y-3"
-		>
-			{blocks.map((block, i) => {
+		<div className="theme-text-muted space-y-3 text-base leading-relaxed">
+			{blocks.map((block) => {
 				if (block.type === "paragraph") {
-					return <p key={i}>{renderTextWithEmail(block.text, theme)}</p>;
+					return (
+						<p key={`paragraph-${block.text}`}>
+							{renderTextWithEmail(block.text)}
+						</p>
+					);
 				}
 				if (block.type === "sub-heading") {
 					return (
 						<p
-							key={i}
-							style={{ color: theme.text }}
-							className="font-medium mt-4 first:mt-0"
+							key={`sub-heading-${block.text}`}
+							className="theme-text mt-4 font-medium first:mt-0"
 						>
 							{block.text}
 						</p>
@@ -86,24 +73,25 @@ export function ContentBlocks({
 				}
 				if (block.type === "list") {
 					return (
-						<ul key={i} className="space-y-1 list-disc list-inside">
-							{block.items.map((item, j) => (
-								<li key={j}>{item}</li>
+						<ul
+							key={`list-${block.items.join("|")}`}
+							className="list-inside list-disc space-y-1"
+						>
+							{block.items.map((item) => (
+								<li key={item}>{item}</li>
 							))}
 						</ul>
 					);
 				}
 				if (block.type === "definition-list") {
 					return (
-						<dl key={i} className="space-y-2">
-							{block.items.map((item, j) => (
-								<div key={j}>
-									<dt
-										style={{ color: theme.text }}
-										className="font-medium inline"
-									>
-										{item.term}
-									</dt>
+						<dl
+							key={`definition-list-${block.items.map((item) => item.term).join("|")}`}
+							className="space-y-2"
+						>
+							{block.items.map((item) => (
+								<div key={item.term}>
+									<dt className="theme-text inline font-medium">{item.term}</dt>
 									<dd className="inline">: {item.description}</dd>
 								</div>
 							))}

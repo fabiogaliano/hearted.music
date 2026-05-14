@@ -3,53 +3,37 @@ import { ContentBlocks } from "@/features/legal/components";
 import { LegalPageShell } from "@/features/legal/LegalPageShell";
 import { privacyData } from "@/lib/data/legal";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 export const Route = createFileRoute("/privacy")({
 	component: PrivacyPage,
 });
 
 function PrivacyPage() {
-	const theme = useTheme();
-
 	return (
 		<LegalPageShell activePage="privacy">
-			<div
-				style={{ borderBottom: `1px solid ${theme.border}` }}
-				className="pt-16 pb-12 px-8 md:px-16"
-			>
+			<div className="theme-border-color border-b px-8 pt-16 pb-12 md:px-16">
 				<h1
-					style={{ fontFamily: fonts.display, color: theme.text }}
-					className="italic text-[56px] md:text-[80px] font-extralight tracking-tight leading-none"
+					style={{ fontFamily: fonts.display }}
+					className="theme-text text-[56px] leading-none font-extralight tracking-tight italic md:text-[80px]"
 				>
 					privacy policy
 				</h1>
-				<p
-					style={{ color: theme.textMuted }}
-					className="text-sm mt-4 uppercase tracking-widest"
-				>
+				<p className="theme-text-muted mt-4 text-sm tracking-widest uppercase">
 					Last updated {privacyData.lastUpdated}
 				</p>
 			</div>
 
 			<div className="flex flex-col md:flex-row md:items-start">
-				<aside
-					style={{ borderRight: `1px solid ${theme.border}` }}
-					className="hidden md:block w-52 shrink-0 sticky top-0 self-start"
-				>
-					<div className="pt-10 pb-8 px-8 space-y-1">
-						<p
-							style={{ color: theme.textMuted }}
-							className="text-xs uppercase tracking-widest mb-4"
-						>
+				<aside className="theme-border-color sticky top-0 hidden w-52 shrink-0 self-start border-r md:block">
+					<div className="space-y-1 px-8 pt-10 pb-8">
+						<p className="theme-text-muted mb-4 text-xs tracking-widest uppercase">
 							sections
 						</p>
 						{privacyData.sections.map((section) => (
 							<a
 								key={section.number}
 								href={`#section-${section.number}`}
-								style={{ color: theme.textMuted }}
-								className="block text-sm py-1.5 opacity-60 hover:opacity-100 transition-opacity duration-200"
+								className="theme-text-muted block py-1.5 text-sm opacity-60 transition-opacity duration-200 hover:opacity-100"
 							>
 								{section.title}
 							</a>
@@ -57,45 +41,30 @@ function PrivacyPage() {
 					</div>
 				</aside>
 
-				<div className="flex-1 px-8 md:px-12 pt-10 pb-32 space-y-12 max-w-3xl">
-					<div
-						style={{
-							border: `1px solid ${theme.border}`,
-							backgroundColor: theme.surface,
-						}}
-						className="rounded-[8px] p-6"
-					>
-						<p
-							style={{ color: theme.textMuted }}
-							className="text-xs uppercase tracking-widest font-medium mb-3"
-						>
+				<div className="max-w-3xl flex-1 space-y-12 px-8 pt-10 pb-32 md:px-12">
+					<div className="theme-surface-bg theme-border-color rounded-[8px] border p-6">
+						<p className="theme-text-muted mb-3 text-xs font-medium tracking-widest uppercase">
 							The short version
 						</p>
-						<p
-							style={{ color: theme.text }}
-							className="text-base leading-relaxed whitespace-pre-line"
-						>
+						<p className="theme-text text-base leading-relaxed whitespace-pre-line">
 							{privacyData.summary}
 						</p>
 					</div>
 
 					{privacyData.sections.map((section) => (
 						<section key={section.number} id={`section-${section.number}`}>
-							<div className="flex items-baseline gap-4 mb-6">
-								<span
-									style={{ color: theme.textMuted }}
-									className="text-xs uppercase tracking-widest shrink-0"
-								>
+							<div className="mb-6 flex items-baseline gap-4">
+								<span className="theme-text-muted shrink-0 text-xs tracking-widest uppercase">
 									{String(section.number).padStart(2, "0")}
 								</span>
 								<h2
-									style={{ fontFamily: fonts.display, color: theme.text }}
-									className="italic text-[28px] font-light leading-tight"
+									style={{ fontFamily: fonts.display }}
+									className="theme-text text-[28px] leading-tight font-light italic"
 								>
 									{section.title}
 								</h2>
 							</div>
-							<ContentBlocks blocks={section.content} theme={theme} />
+							<ContentBlocks blocks={section.content} />
 						</section>
 					))}
 				</div>

@@ -23,7 +23,6 @@ import { armReconnectOnActivation } from "@/lib/extension/reconnect-link";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { resetSyncJobs } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import { ExtensionSetupTrail } from "./ExtensionSetupTrail";
 import { StaggeredContent } from "./StaggeredContent";
@@ -176,7 +175,6 @@ function ActionContent({
 // ── InstallExtensionStep ──────────────────────────────────────────────────
 
 export function InstallExtensionStep() {
-	const theme = useTheme();
 	const { goToStep } = useOnboardingNavigation();
 	const [isExtensionDetected, setIsExtensionDetected] = useState(false);
 	const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
@@ -260,8 +258,6 @@ export function InstallExtensionStep() {
 		enabled: isExtensionDetected && isSpotifyConnected && !isAdvancing,
 	});
 
-	if (!theme) return null;
-
 	return (
 		<>
 			<StaggeredContent>
@@ -290,7 +286,6 @@ export function InstallExtensionStep() {
 
 						<div className="mt-6">
 							<ExtensionSetupTrail
-								theme={theme}
 								isExtensionInstalled={isExtensionDetected}
 								isSpotifyConnected={isSpotifyConnected}
 							/>
@@ -314,18 +309,7 @@ export function InstallExtensionStep() {
 				</div>
 			</StaggeredContent>
 
-			<div
-				className="theme-text-muted fixed right-0 bottom-6 left-0 flex items-center justify-center gap-6"
-				style={
-					{
-						opacity: 0.6,
-						"--kbd-text-color": theme.textMuted,
-						"--kbd-bg-color": `${theme.text}10`,
-						"--kbd-border-color": `${theme.textMuted}30`,
-						"--kbd-shadow-color": `${theme.textMuted}20`,
-					} as React.CSSProperties
-				}
-			>
+			<div className="theme-kbd-scope fixed right-0 bottom-6 left-0 flex items-center justify-center gap-6 opacity-60">
 				{isExtensionDetected && isSpotifyConnected && (
 					<div className="flex items-center gap-1.5">
 						<Kbd>⏎</Kbd>

@@ -2,24 +2,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LegalPageShell } from "@/features/legal/LegalPageShell";
 import { faqData } from "@/lib/data/legal";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 export const Route = createFileRoute("/faq")({
 	component: FaqPage,
 });
 
 function FaqPage() {
-	const theme = useTheme();
-
 	return (
 		<LegalPageShell activePage="faq">
-			<div
-				style={{ borderBottom: `1px solid ${theme.border}` }}
-				className="pt-16 pb-12 px-8 md:px-16"
-			>
+			<div className="theme-border-color border-b px-8 pt-16 pb-12 md:px-16">
 				<h1
-					style={{ fontFamily: fonts.display, color: theme.text }}
-					className="italic text-[56px] md:text-[80px] font-extralight tracking-tight leading-none"
+					style={{ fontFamily: fonts.display }}
+					className="theme-text text-[56px] leading-none font-extralight tracking-tight italic md:text-[80px]"
 				>
 					questions &amp;
 					<br />
@@ -28,23 +22,16 @@ function FaqPage() {
 			</div>
 
 			<div className="flex flex-col md:flex-row md:items-start">
-				<aside
-					style={{ borderRight: `1px solid ${theme.border}` }}
-					className="hidden md:block w-52 shrink-0 sticky top-0 self-start"
-				>
-					<div className="pt-10 pb-8 px-8 space-y-1">
-						<p
-							style={{ color: theme.textMuted }}
-							className="text-xs uppercase tracking-widest mb-4"
-						>
+				<aside className="theme-border-color sticky top-0 hidden w-52 shrink-0 self-start border-r md:block">
+					<div className="space-y-1 px-8 pt-10 pb-8">
+						<p className="theme-text-muted mb-4 text-xs tracking-widest uppercase">
 							sections
 						</p>
 						{faqData.sections.map((section, i) => (
 							<a
 								key={section.title}
 								href={`#section-${i}`}
-								style={{ color: theme.textMuted }}
-								className="block text-sm py-1.5 opacity-60 hover:opacity-100 transition-opacity duration-200"
+								className="theme-text-muted block py-1.5 text-sm opacity-60 transition-opacity duration-200 hover:opacity-100"
 							>
 								{section.title}
 							</a>
@@ -52,47 +39,34 @@ function FaqPage() {
 					</div>
 				</aside>
 
-				<div className="flex-1 px-8 md:px-12 pt-10 pb-32 space-y-20 max-w-3xl">
+				<div className="max-w-3xl flex-1 space-y-20 px-8 pt-10 pb-32 md:px-12">
 					{faqData.sections.map((section, i) => (
 						<div key={section.title} id={`section-${i}`}>
-							<div className="flex items-baseline gap-4 mb-8">
-								<span
-									style={{ color: theme.textMuted }}
-									className="text-xs uppercase tracking-widest shrink-0"
-								>
+							<div className="mb-8 flex items-baseline gap-4">
+								<span className="theme-text-muted shrink-0 text-xs tracking-widest uppercase">
 									{String(i + 1).padStart(2, "0")}
 								</span>
 								<h2
-									style={{ fontFamily: fonts.display, color: theme.text }}
-									className="italic text-[32px] font-light leading-tight"
+									style={{ fontFamily: fonts.display }}
+									className="theme-text text-[32px] leading-tight font-light italic"
 								>
 									{section.title}
 								</h2>
 							</div>
-							<div style={{ borderTop: `1px solid ${theme.border}` }}>
+							<div className="theme-border-color border-t">
 								{section.items.map((item) => (
 									<details
 										key={item.q}
-										style={{ borderBottom: `1px solid ${theme.border}` }}
-										className="group"
+										className="theme-border-color group border-b"
 									>
-										<summary
-											style={{ color: theme.text }}
-											className="py-4 cursor-pointer list-none flex justify-between items-start gap-6 text-sm font-medium select-none hover:opacity-70 transition-opacity duration-200"
-										>
+										<summary className="theme-text flex cursor-pointer list-none items-start justify-between gap-6 py-4 text-sm font-medium select-none transition-opacity duration-200 hover:opacity-70">
 											<span>{item.q}</span>
-											<span
-												style={{ color: theme.textMuted }}
-												className="text-lg font-light shrink-0 mt-0.5"
-											>
+											<span className="theme-text-muted mt-0.5 shrink-0 text-lg font-light">
 												<span className="group-open:hidden">+</span>
 												<span className="hidden group-open:inline">−</span>
 											</span>
 										</summary>
-										<div
-											style={{ color: theme.textMuted }}
-											className="pb-5 text-sm leading-relaxed"
-										>
+										<div className="theme-text-muted pb-5 text-sm leading-relaxed">
 											{item.a}
 										</div>
 									</details>

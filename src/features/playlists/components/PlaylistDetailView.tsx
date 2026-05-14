@@ -214,7 +214,7 @@ export function PlaylistDetailView({
 
 	const panelStyle: CSSProperties & ThemeCssVariables = {
 		position: "fixed",
-		background: theme.bg,
+		background: "var(--t-bg)",
 		top: expandedRect.top,
 		left: expandedRect.left,
 		width: expandedRect.width,

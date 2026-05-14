@@ -1,8 +1,7 @@
-import { memo } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { memo } from "react";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 const ALBUM_SIZE = "min(100%, clamp(280px, 30vw, 560px))";
 
@@ -21,7 +20,6 @@ export const SongSection = memo(function SongSection({
 	albumArtUrl,
 	songKey,
 }: SongSectionProps) {
-	const theme = useTheme();
 	const prefersReducedMotion = useReducedMotion();
 
 	return (
@@ -71,20 +69,20 @@ export const SongSection = memo(function SongSection({
 
 					<div className="mt-6">
 						<p
-							className="text-xs tracking-widest uppercase"
-							style={{ fontFamily: fonts.body, color: theme.textMuted }}
+							className="theme-text-muted text-xs tracking-widest uppercase"
+							style={{ fontFamily: fonts.body }}
 						>
 							{song.album}
 						</p>
 						<h2
-							className="mt-2 text-4xl leading-tight font-extralight"
-							style={{ fontFamily: fonts.display, color: theme.text }}
+							className="theme-text mt-2 text-4xl leading-tight font-extralight"
+							style={{ fontFamily: fonts.display }}
 						>
 							{song.name}
 						</h2>
 						<p
-							className="mt-2 text-lg"
-							style={{ fontFamily: fonts.body, color: theme.textMuted }}
+							className="theme-text-muted mt-2 text-lg"
+							style={{ fontFamily: fonts.body }}
 						>
 							{song.artist}
 						</p>

@@ -1,6 +1,5 @@
 import { memo } from "react";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import type { CompletionScreenProps } from "../types";
 
 export const CompletionScreen = memo(function CompletionScreen({
@@ -8,80 +7,75 @@ export const CompletionScreen = memo(function CompletionScreen({
 	songs,
 	onExit,
 }: CompletionScreenProps) {
-	const theme = useTheme();
-
 	return (
 		<div className="max-w-4xl">
 			<div className="mb-8 flex items-start justify-between">
 				<div>
 					<p
-						className="text-xs tracking-widest uppercase"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted text-xs tracking-widest uppercase"
+						style={{ fontFamily: fonts.body }}
 					>
 						Session Complete
 					</p>
 					<h2
-						className="mt-3 text-page-title font-extralight tracking-tight"
-						style={{ fontFamily: fonts.display, color: theme.text }}
+						className="theme-text mt-3 text-page-title font-extralight tracking-tight"
+						style={{ fontFamily: fonts.display }}
 					>
 						All matched
 					</h2>
 				</div>
 				<div
-					className="flex items-center gap-2 text-xs"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted flex items-center gap-2 text-xs"
+					style={{ fontFamily: fonts.body }}
 				>
 					<span className="flex items-center gap-2">
-						<span
-							className="h-1.5 w-1.5 rounded-full"
-							style={{ background: theme.text }}
-						/>
+						<span className="theme-text-muted-bg h-1.5 w-1.5 rounded-full" />
 						Just now
 					</span>
 				</div>
 			</div>
 
-			<div className="mb-10 h-px" style={{ background: theme.border }} />
+			<div className="theme-border-bg mb-10 h-px" />
 
 			<div className="mb-10 grid grid-cols-3 gap-8">
 				<div>
 					<p
-						className="text-4xl font-extralight tabular-nums"
-						style={{ fontFamily: fonts.display, color: theme.text }}
+						className="theme-text text-4xl font-extralight tabular-nums"
+						style={{ fontFamily: fonts.display }}
 					>
 						{stats.totalSongs}
 					</p>
 					<p
-						className="mt-1 text-xs tracking-widest uppercase"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted mt-1 text-xs tracking-widest uppercase"
+						style={{ fontFamily: fonts.body }}
 					>
 						Songs reviewed
 					</p>
 				</div>
 				<div>
 					<p
-						className="text-4xl font-extralight tabular-nums"
-						style={{ fontFamily: fonts.display, color: theme.text }}
+						className="theme-text text-4xl font-extralight tabular-nums"
+						style={{ fontFamily: fonts.display }}
 					>
 						{stats.totalAdditions}
 					</p>
 					<p
-						className="mt-1 text-xs tracking-widest uppercase"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted mt-1 text-xs tracking-widest uppercase"
+						style={{ fontFamily: fonts.body }}
 					>
 						Playlist additions
 					</p>
 				</div>
 				<div>
 					<p
-						className="text-4xl font-extralight tabular-nums"
-						style={{ fontFamily: fonts.display, color: theme.text }}
+						className="theme-text text-4xl font-extralight tabular-nums"
+						style={{ fontFamily: fonts.display }}
 					>
 						{stats.skippedCount}
 					</p>
 					<p
-						className="mt-1 text-xs tracking-widest uppercase"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted mt-1 text-xs tracking-widest uppercase"
+						style={{ fontFamily: fonts.body }}
 					>
 						Skipped
 					</p>
@@ -90,8 +84,8 @@ export const CompletionScreen = memo(function CompletionScreen({
 
 			<div className="mb-10">
 				<p
-					className="mb-4 text-xs tracking-widest uppercase"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted mb-4 text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body }}
 				>
 					Songs matched this session
 				</p>
@@ -110,25 +104,23 @@ export const CompletionScreen = memo(function CompletionScreen({
 					))}
 				</div>
 				<p
-					className="mt-4 text-sm"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted mt-4 text-sm"
+					style={{ fontFamily: fonts.body }}
 				>
 					Your playlists have been updated
 				</p>
 			</div>
 
 			<button
+				type="button"
 				onClick={onExit}
-				className="group inline-flex items-center gap-3 transition-transform duration-100 active:scale-[0.98]"
-				style={{ fontFamily: fonts.body, color: theme.text }}
+				className="theme-text group inline-flex items-center gap-3 transition-transform duration-100 active:scale-[0.98]"
+				style={{ fontFamily: fonts.body }}
 			>
 				<span className="text-base font-medium tracking-wide">
 					Back to Home
 				</span>
-				<span
-					className="inline-block transition-transform group-hover:translate-x-1"
-					style={{ color: theme.textMuted }}
-				>
+				<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 					&rarr;
 				</span>
 			</button>

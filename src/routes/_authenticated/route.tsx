@@ -33,7 +33,6 @@ import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getBillingState } from "@/lib/server/billing.functions";
 import { getOnboardingSession } from "@/lib/server/onboarding.functions";
 import { AuthenticatedThemeProvider } from "@/lib/theme/authenticated-theme";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { DEFAULT_THEME } from "@/lib/theme/types";
 import { Sidebar } from "./-components/Sidebar";
 
@@ -175,16 +174,8 @@ function AuthenticatedShell({
 	devPanel: React.ReactNode;
 	showSidebar: boolean;
 }) {
-	const theme = useTheme();
-
 	return (
-		<div
-			className="flex min-h-screen"
-			style={{
-				background: theme.bg,
-				color: theme.text,
-			}}
-		>
+		<div className="theme-bg theme-text flex min-h-screen">
 			{showSidebar && (
 				<Sidebar
 					unsortedCount={pendingSuggestions}

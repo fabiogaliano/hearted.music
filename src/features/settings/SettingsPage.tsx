@@ -14,7 +14,6 @@ import { signOut } from "@/lib/platform/auth/auth-client";
 import { updateThemePreference } from "@/lib/server/settings.functions";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { COLOR_LABELS, THEME_COLORS, type ThemeColor } from "@/lib/theme/types";
 import { BillingSection } from "./components/BillingSection";
 import { ExtensionStatusRow } from "./components/ExtensionStatusRow";
@@ -36,7 +35,6 @@ export function SettingsPage({
 	onThemeChange,
 	billingState,
 }: SettingsPageProps) {
-	const theme = useTheme();
 	const navigate = useNavigate();
 	const [isSavingTheme, setIsSavingTheme] = useState(false);
 	const [isSigningOut, setIsSigningOut] = useState(false);
@@ -77,14 +75,14 @@ export function SettingsPage({
 		<div className="max-w-3xl">
 			<div className="mb-16">
 				<p
-					className="text-xs tracking-widest uppercase"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body }}
 				>
 					Settings
 				</p>
 				<h2
-					className="mt-3 text-page-title font-extralight tracking-tight"
-					style={{ fontFamily: fonts.display, color: theme.text }}
+					className="theme-text mt-3 text-page-title font-extralight tracking-tight"
+					style={{ fontFamily: fonts.display }}
 				>
 					<em>Preferences</em>
 				</h2>
@@ -96,14 +94,14 @@ export function SettingsPage({
 						<UserAvatar name={displayName} imageUrl={imageUrl} size="md" />
 						<div className="min-w-0">
 							<p
-								className="truncate text-xl font-light"
-								style={{ fontFamily: fonts.display, color: theme.text }}
+								className="theme-text truncate text-xl font-light"
+								style={{ fontFamily: fonts.display }}
 							>
 								{displayName ?? "—"}
 							</p>
 							<p
-								className="mt-1 truncate text-sm"
-								style={{ fontFamily: fonts.body, color: theme.textMuted }}
+								className="theme-text-muted mt-1 truncate text-sm"
+								style={{ fontFamily: fonts.body }}
 							>
 								{email ?? "—"}
 							</p>
@@ -114,8 +112,8 @@ export function SettingsPage({
 				<section>
 					<div>
 						<p
-							className="mb-6 text-xl font-light"
-							style={{ fontFamily: fonts.display, color: theme.text }}
+							className="theme-text mb-6 text-xl font-light"
+							style={{ fontFamily: fonts.display }}
 						>
 							Theme color
 						</p>
@@ -143,12 +141,8 @@ export function SettingsPage({
 											}}
 										/>
 										<span
-											className="text-xs tracking-widest uppercase transition-colors duration-150"
-											style={{
-												fontFamily: fonts.body,
-												color: isSelected ? theme.text : theme.textMuted,
-												fontWeight: isSelected ? 500 : 400,
-											}}
+											className={`${isSelected ? "theme-text font-medium" : "theme-text-muted font-normal"} text-xs tracking-widest uppercase transition-colors duration-150`}
+											style={{ fontFamily: fonts.body }}
 										>
 											{COLOR_LABELS[colorId]}
 										</span>
@@ -166,13 +160,13 @@ export function SettingsPage({
 				</section>
 
 				<section>
-					<div className="border-t pt-8" style={{ borderColor: theme.border }}>
+					<div className="theme-border-color border-t pt-8">
 						<button
 							type="button"
 							onClick={handleSignOut}
 							disabled={isSigningOut}
-							className="cursor-pointer text-xs font-normal tracking-widest uppercase transition-opacity duration-150 hover:opacity-70 disabled:cursor-wait disabled:opacity-50"
-							style={{ fontFamily: fonts.body, color: theme.textMuted }}
+							className="theme-text-muted cursor-pointer text-xs font-normal tracking-widest uppercase transition-opacity duration-150 hover:opacity-70 disabled:cursor-wait disabled:opacity-50"
+							style={{ fontFamily: fonts.body }}
 						>
 							{isSigningOut ? "Signing out…" : "Sign out"}
 						</button>

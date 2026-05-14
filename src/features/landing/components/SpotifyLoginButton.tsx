@@ -7,12 +7,11 @@
  * - Hover: scale(1.05)
  *
  * Variants:
- * - light: For light backgrounds (uses theme.primary bg)
+ * - light: For light backgrounds (uses primary token bg)
  * - dark: For dark/gradient backgrounds (uses light bg for contrast)
  */
 
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 export interface SpotifyLoginButtonProps {
 	buttonText?: string;
@@ -24,7 +23,6 @@ export function SpotifyLoginButton({
 	buttonText = "SIGN In",
 	variant = "light",
 }: SpotifyLoginButtonProps) {
-	const theme = useTheme();
 	const isDark = variant === "dark";
 
 	return (
@@ -32,8 +30,8 @@ export function SpotifyLoginButton({
 			href="/login"
 			className="relative inline-block px-6 py-3 text-sm tracking-widest uppercase transition-transform duration-150 hover:scale-105 active:scale-[0.98]"
 			style={{
-				background: isDark ? theme.textOnPrimary : theme.primary,
-				color: isDark ? theme.primary : theme.textOnPrimary,
+				background: isDark ? "var(--t-text-on-primary)" : "var(--t-primary)",
+				color: isDark ? "var(--t-primary)" : "var(--t-text-on-primary)",
 				fontFamily: fonts.body,
 				fontWeight: 500,
 				borderRadius: "2px",

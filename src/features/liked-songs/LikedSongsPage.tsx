@@ -16,7 +16,6 @@ import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 import { LikedSongsHeader } from "./components/LikedSongsHeader";
 import { LikedSongsList } from "./components/LikedSongsList";
@@ -51,7 +50,6 @@ export function LikedSongsPage({
 	billingState,
 	onboardingSession,
 }: LikedSongsPageProps) {
-	const theme = useTheme();
 	const { isEnrichmentRunning } = useActiveJobs(accountId);
 	const [isDarkMode, setIsDarkMode] = useState(initialDarkMode);
 	const walkthroughSong: WalkthroughSong | null =
@@ -296,13 +294,7 @@ export function LikedSongsPage({
 			)}
 
 			{showPaywall && billingState && (
-				<div
-					className="mb-6 rounded-xl px-6 py-4"
-					style={{
-						background: theme.surfaceDim,
-						border: `1px solid ${theme.border}`,
-					}}
-				>
+				<div className="theme-surface-dim-bg theme-border-color mb-6 rounded-xl border px-6 py-4">
 					<PaywallCTA billingState={billingState} />
 				</div>
 			)}
@@ -368,18 +360,17 @@ export function LikedSongsPage({
 			{!isExpanded && !selectionMode && (
 				<button
 					type="button"
-					className="fixed right-6 bottom-6 z-40 cursor-pointer rounded-full px-3 py-2 backdrop-blur-md transition-transform hover:scale-105"
+					className="theme-border-color fixed right-6 bottom-6 z-40 cursor-pointer rounded-full border px-3 py-2 backdrop-blur-md transition-transform hover:scale-105"
 					style={{
-						background: `${theme.surface}ee`,
-						border: `1px solid ${theme.border}`,
+						background: "color-mix(in srgb, var(--t-surface) 93%, transparent)",
 					}}
 					onClick={() => setIsDarkMode((prev) => !prev)}
 					aria-label="Toggle dark mode"
 					title="Toggle dark mode (⌘D)"
 				>
 					<span
-						className="text-xs tracking-widest uppercase"
-						style={{ fontFamily: fonts.body, color: theme.textMuted }}
+						className="theme-text-muted text-xs tracking-widest uppercase"
+						style={{ fontFamily: fonts.body }}
 					>
 						{isDarkMode ? "Dark" : "Light"}
 					</span>

@@ -1,7 +1,6 @@
 /** Welcome greeting with stats and sync button. */
 
 import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import type { DashboardStats } from "../types";
 
 interface DashboardHeaderProps {
@@ -19,28 +18,27 @@ export function DashboardHeader({
 	displayName,
 	lastSyncText,
 }: DashboardHeaderProps) {
-	const theme = useTheme();
 	return (
 		<div className="mb-8 flex items-start justify-between">
 			<div>
 				<p
-					className="text-xs tracking-widest uppercase"
-					style={{ fontFamily: fonts.body, color: theme.textMuted }}
+					className="theme-text-muted text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body }}
 				>
 					Welcome back
 				</p>
 				{displayName && (
 					<h2
-						className="mt-3 text-page-title font-extralight tracking-tight"
-						style={{ fontFamily: fonts.display, color: theme.text }}
+						className="theme-text mt-3 text-page-title font-extralight tracking-tight"
+						style={{ fontFamily: fonts.display }}
 					>
 						{displayName}
 					</h2>
 				)}
 			</div>
 			<div
-				className="flex items-center gap-2 text-xs"
-				style={{ fontFamily: fonts.body, color: theme.textMuted }}
+				className="theme-text-muted flex items-center gap-2 text-xs"
+				style={{ fontFamily: fonts.body }}
 			>
 				<span className="tabular-nums">
 					{stats.totalSongs}{" "}
@@ -60,15 +58,13 @@ export function DashboardHeader({
 				</span>
 				<span className="mx-1 opacity-40">|</span>
 				<span className="flex items-center gap-2">
-					<span
-						className="h-1.5 w-1.5 rounded-full"
-						style={{ background: theme.text }}
-					/>
+					<span className="theme-text-muted-bg h-1.5 w-1.5 rounded-full" />
 					{lastSyncText}
 				</span>
 				<button
-					className="text-xs font-medium tracking-widest uppercase transition-opacity hover:opacity-70 cursor-pointer"
-					style={{ fontFamily: fonts.body, color: theme.text }}
+					type="button"
+					className="theme-text cursor-pointer text-xs font-medium tracking-widest uppercase transition-opacity hover:opacity-70"
+					style={{ fontFamily: fonts.body }}
 					aria-label="Sync library"
 				>
 					Sync
