@@ -148,13 +148,13 @@ function getSyncLabel(syncState: ExtensionSyncState | null): string {
 
 	switch (syncState.phase) {
 		case "likedSongs":
-			return "Reading liked songs...";
+			return "Reading your liked songs...";
 		case "playlists":
-			return "Scanning playlists...";
+			return "Looking through your playlists...";
 		case "playlistTracks":
-			return "Loading playlist tracks...";
+			return "Listening to what's inside...";
 		case "artistImages":
-			return "Fetching artists...";
+			return "Getting to know the artists...";
 		case "uploading":
 			return "Sending everything to hearted...";
 		default:

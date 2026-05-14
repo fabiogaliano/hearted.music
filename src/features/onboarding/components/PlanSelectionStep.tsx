@@ -55,8 +55,7 @@ type PlanState = "initial" | "polling" | "retry" | "success";
 
 const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
 
-const FALLBACK_MESSAGE =
-	"Your purchase is being processed. Your songs to explore will appear shortly.";
+const FALLBACK_MESSAGE = "Just a moment. Setting things up for you.";
 
 interface PlanSelectionStepProps {
 	syncStats: SyncStats;
@@ -313,7 +312,7 @@ export function PlanSelectionStep({
 					className="theme-text-muted text-lg font-light"
 					style={{ fontFamily: fonts.body }}
 				>
-					Failed to load plans. Please refresh the page.
+					Couldn't load plans right now. Try refreshing.
 				</p>
 			</div>
 		);
@@ -341,7 +340,7 @@ export function PlanSelectionStep({
 				className="theme-text-muted mt-4 text-base font-light"
 				style={{ fontFamily: fonts.body }}
 			>
-				Every plan gives you deep analysis of every song you've liked.
+				Every plan lets you see what's inside your liked songs.
 			</p>
 
 			<div className="mx-auto mt-12 flex max-w-lg flex-col gap-4">

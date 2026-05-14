@@ -152,7 +152,7 @@ export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
 											opacity: isSelected ? 1 : 0,
 										}}
 									>
-										Selected
+										Yours
 									</p>
 								</div>
 							</button>
