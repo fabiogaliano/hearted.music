@@ -1,5 +1,3 @@
-import { forwardRef } from "react";
-
 type ButtonVariant =
 	| "primary"
 	| "secondary"
@@ -11,6 +9,7 @@ type ButtonVariant =
 type ButtonSize = "sm" | "md";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+	ref?: React.Ref<HTMLButtonElement>;
 	variant?: ButtonVariant;
 	size?: ButtonSize;
 }
@@ -48,18 +47,21 @@ const variantClasses: Record<ButtonVariant, Record<ButtonSize, string>> = {
 	},
 };
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-	({ variant = "primary", size = "md", className, ...props }, ref) => {
-		const variantClass = variantClasses[variant][size];
-		// icon variant has its own scale
-		const baseClass =
-			variant === "icon" || variant === "link"
-				? "cursor-pointer disabled:cursor-not-allowed"
-				: base;
-		const classes = className
-			? `${baseClass} ${variantClass} ${className}`
-			: `${baseClass} ${variantClass}`;
+export function Button({
+	variant = "primary",
+	size = "md",
+	className,
+	ref,
+	...props
+}: ButtonProps) {
+	const variantClass = variantClasses[variant][size];
+	const baseClass =
+		variant === "icon" || variant === "link"
+			? "cursor-pointer disabled:cursor-not-allowed"
+			: base;
+	const classes = className
+		? `${baseClass} ${variantClass} ${className}`
+		: `${baseClass} ${variantClass}`;
 
-		return <button ref={ref} type="button" className={classes} {...props} />;
-	},
-);
+	return <button ref={ref} type="button" className={classes} {...props} />;
+}

@@ -1,15 +1,10 @@
-import {
-	forwardRef,
-	useEffect,
-	useImperativeHandle,
-	useMemo,
-	useRef,
-} from "react";
+import { useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { getThemeHue } from "@/lib/theme/colors";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { type ColorPalette, generatePalette } from "@/lib/utils/palette";
 
 interface HeartRippleBackgroundProps {
+	ref?: React.Ref<HeartRippleHandle>;
 	className?: string;
 	style?: React.CSSProperties;
 	onReady?: () => void;
@@ -214,10 +209,12 @@ function createProgram(
 	return program;
 }
 
-export const HeartRippleBackground = forwardRef<
-	HeartRippleHandle,
-	HeartRippleBackgroundProps
->(function HeartRippleBackground({ className, style, onReady }, ref) {
+export function HeartRippleBackground({
+	className,
+	style,
+	onReady,
+	ref,
+}: HeartRippleBackgroundProps) {
 	const theme = useTheme();
 	const containerRef = useRef<HTMLDivElement>(null);
 	const timeRef = useRef(0);
@@ -596,4 +593,4 @@ export const HeartRippleBackground = forwardRef<
 			}}
 		/>
 	);
-});
+}
