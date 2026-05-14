@@ -14,7 +14,7 @@ import { z } from "zod";
 // ============================================================================
 
 /** Audio features from ReccoBeats API with range validation */
-export const ReccoBeatsAudioFeaturesSchema = z.object({
+const ReccoBeatsAudioFeaturesSchema = z.object({
 	id: z.string(),
 	/** Confidence that track is acoustic (0.0 to 1.0) */
 	acousticness: z.number().min(0).max(1),
@@ -61,41 +61,6 @@ export const ReccoBeatsSpotifyLookupResponseSchema = z.object({
 /** API response for audio features lookup (returns features directly, not wrapped) */
 export const ReccoBeatsAudioFeaturesResponseSchema =
 	ReccoBeatsAudioFeaturesSchema;
-export type ReccoBeatsAudioFeaturesResponse = z.infer<
-	typeof ReccoBeatsAudioFeaturesResponseSchema
->;
-
-// ============================================================================
-// Domain Types (not used for parsing external responses)
-// ============================================================================
-
-/** ReccoBeats track metadata */
-export interface ReccoBeatsTrack {
-	readonly id: string;
-	readonly trackTitle: string;
-	readonly artists: ReadonlyArray<{
-		readonly id: string;
-		readonly name: string;
-		readonly href: string;
-	}>;
-	readonly durationMs: number;
-	readonly isrc?: string;
-	readonly href: string;
-	readonly popularity: number;
-}
-
-/** API response for track search */
-export interface ReccoBeatsSearchResponse {
-	readonly tracks: ReadonlyArray<{
-		readonly id: string;
-		readonly trackTitle: string;
-		readonly artists: ReadonlyArray<{
-			readonly id: string;
-			readonly name: string;
-			readonly href: string;
-		}>;
-	}>;
-}
 
 /**
  * Per-track failure classification.

@@ -6,11 +6,7 @@
  */
 
 import type { ModelBundle } from "./model-bundle";
-import {
-	EXTRACTOR_VERSION,
-	MATCHING_ALGO_VERSION,
-	PLAYLIST_PROFILE_VERSION,
-} from "./versioning";
+import { MATCHING_ALGO_VERSION, PLAYLIST_PROFILE_VERSION } from "./versioning";
 
 // ============================================================================
 // Core Primitives
@@ -48,7 +44,7 @@ export function stableStringify(obj: unknown): string {
  * Compute SHA-256 hash using Web Crypto API.
  * Returns full 64-character hex string.
  */
-export async function stableHash(content: string): Promise<string> {
+async function stableHash(content: string): Promise<string> {
 	const encoder = new TextEncoder();
 	const data = encoder.encode(content);
 	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -60,7 +56,7 @@ export async function stableHash(content: string): Promise<string> {
  * Compute short hash (first 16 characters).
  * Sufficient for cache keys with low collision risk.
  */
-export async function shortHash(content: string): Promise<string> {
+async function shortHash(content: string): Promise<string> {
 	const full = await stableHash(content);
 	return full.slice(0, 16);
 }
@@ -68,15 +64,6 @@ export async function shortHash(content: string): Promise<string> {
 // ============================================================================
 // Domain Hash Functions
 // ============================================================================
-
-/**
- * Hash track content for embedding cache.
- * Prefix: te_v{version}_
- */
-export async function hashTrackContent(text: string): Promise<string> {
-	const hash = await shortHash(text);
-	return `te_v${EXTRACTOR_VERSION}_${hash}`;
-}
 
 /**
  * Hash playlist profile parameters.
@@ -212,22 +199,6 @@ export async function hashMatchSnapshot(params: {
 }
 
 /**
- * Hash genre lookup parameters.
- * Prefix: tg_
- */
-export async function hashTrackGenre(params: {
-	artist: string;
-	album?: string;
-}): Promise<string> {
-	const content = stableStringify({
-		artist: params.artist.toLowerCase().trim(),
-		album: params.album?.toLowerCase().trim() ?? "",
-	});
-	const hash = await shortHash(content);
-	return `tg_${hash}`;
-}
-
-/**
  * Hash model bundle configuration for cache invalidation.
  * Includes embedding model, algorithms, and enrichment config.
  * Prefix: mb_
@@ -256,64 +227,4 @@ export async function hashModelBundle(bundle: ModelBundle): Promise<string> {
 
 	const hash = await shortHash(content);
 	return `mb_${hash}`;
-}
-
-// ============================================================================
-// Hash Parsing
-// ============================================================================
-
-/** Parsed hash components */
-export interface ParsedHash {
-	type: string;
-	version?: string;
-	hash: string;
-}
-
-/**
- * Parse hash prefix to extract type and version.
- */
-export function parseHashPrefix(hash: string): ParsedHash | null {
-	const patterns = [
-		/^(te)_v(\d+)_(.+)$/, // Track embedding
-		/^(pp)_v(\d+)_(.+)$/, // Playlist profile
-		/^(mc)_([^_]+)_(.+)$/, // Matching config
-		/^(cs)_(.+)$/, // Candidate set (no version)
-		/^(ps)_(.+)$/, // Playlist set (no version)
-		/^(ctx)_(.+)$/, // Match context (no version)
-		/^(tg)_(.+)$/, // Track genre (no version)
-		/^(mb)_(.+)$/, // Model bundle (no version - hash IS the version)
-		/^(xs)_(.+)$/, // Exclusion set (no version)
-		/^(rc)_(.+)$/, // Reranker config (no version)
-	];
-
-	for (const pattern of patterns) {
-		const match = hash.match(pattern);
-		if (match) {
-			if (match.length === 4) {
-				return { type: match[1], version: match[2], hash: match[3] };
-			}
-			return { type: match[1], hash: match[2] };
-		}
-	}
-
-	return null;
-}
-
-/**
- * Check if hash uses current version for its type.
- */
-export function isCurrentVersion(hash: string): boolean {
-	const parsed = parseHashPrefix(hash);
-	if (!parsed) return false;
-
-	switch (parsed.type) {
-		case "te":
-			return parsed.version === String(EXTRACTOR_VERSION);
-		case "pp":
-			return parsed.version === String(PLAYLIST_PROFILE_VERSION);
-		case "mc":
-			return parsed.version === MATCHING_ALGO_VERSION;
-		default:
-			return true; // Unversioned hashes are always "current"
-	}
 }

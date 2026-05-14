@@ -1,7 +1,7 @@
 import type { ResponseReferents } from "../types/genius.types";
 import type { AnnotationInfo, LyricsSection } from "../types/lyrics.types";
 
-export interface TransformedLine {
+interface TransformedLine {
 	id: number;
 	text: string;
 	range?: {

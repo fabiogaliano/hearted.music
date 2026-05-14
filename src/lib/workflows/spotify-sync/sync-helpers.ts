@@ -19,7 +19,7 @@ type SyncOperationError = DbError | SyncFailedError;
  * Transforms a SpotifyTrackDTO to catalog metadata for song upsert.
  * Does not include enrichment-owned fields (genres).
  */
-export function mapSpotifyTrackToSongData(st: SpotifyTrackDTO) {
+function mapSpotifyTrackToSongData(st: SpotifyTrackDTO) {
 	return {
 		spotify_id: st.track.id,
 		name: st.track.name,
@@ -97,7 +97,7 @@ function collectArtistUpsertData(
  * Uses the shared import path for catalog upsert + artist metadata persistence,
  * then links songs to the user's liked_songs.
  */
-export async function importLikedTracks(
+async function importLikedTracks(
 	accountId: string,
 	tracks: SpotifyTrackDTO[],
 ): Promise<Result<Song[], SyncOperationError>> {

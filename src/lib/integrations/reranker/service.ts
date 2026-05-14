@@ -24,7 +24,7 @@ import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
 // ============================================================================
 
 /** Configuration for reranking operations */
-export const RerankerConfigSchema = z.object({
+const RerankerConfigSchema = z.object({
 	/** Number of top candidates to rerank (default: 50) */
 	topN: z.number().min(1).max(100).default(50),
 	/** Weight for blending reranker score with original score (0-1, default: 0.3) */
@@ -32,7 +32,7 @@ export const RerankerConfigSchema = z.object({
 	/** Minimum original score to consider for reranking (default: 0.2) */
 	minScoreThreshold: z.number().min(0).max(1).default(0.2),
 });
-export type RerankerConfig = z.infer<typeof RerankerConfigSchema>;
+type RerankerConfig = z.infer<typeof RerankerConfigSchema>;
 
 /** Default reranker configuration */
 export const DEFAULT_RERANKER_CONFIG: RerankerConfig = {
@@ -42,7 +42,7 @@ export const DEFAULT_RERANKER_CONFIG: RerankerConfig = {
 };
 
 /** A match candidate with score */
-export const MatchCandidateSchema = z.object({
+const MatchCandidateSchema = z.object({
 	id: z.string(),
 	score: z.number(),
 	document: z.string(),
@@ -51,15 +51,14 @@ export const MatchCandidateSchema = z.object({
 export type MatchCandidate = z.infer<typeof MatchCandidateSchema>;
 
 /** Statistics about the reranking operation */
-export const RerankStatsSchema = z.object({
+const RerankStatsSchema = z.object({
 	originalTopScore: z.number(),
 	rerankTopScore: z.number(),
 	scoreShift: z.number(),
 });
-export type RerankStats = z.infer<typeof RerankStatsSchema>;
 
 /** Result of a reranking operation */
-export const RerankResultSchema = z.object({
+const RerankResultSchema = z.object({
 	/** Reranked candidates with blended scores */
 	candidates: z.array(MatchCandidateSchema),
 	/** Whether reranking was actually performed */
@@ -69,7 +68,7 @@ export const RerankResultSchema = z.object({
 	/** Statistics about the reranking operation */
 	stats: RerankStatsSchema,
 });
-export type RerankResult = z.infer<typeof RerankResultSchema>;
+type RerankResult = z.infer<typeof RerankResultSchema>;
 
 type RerankerServiceError = MLProviderError;
 

@@ -36,15 +36,13 @@ import { finalizeJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import type { DbError } from "@/lib/shared/errors/database";
 import { PipelineConfigError } from "@/lib/shared/errors/domain/analysis";
 import { GeniusNotFoundError } from "@/lib/shared/errors/external/genius";
-import { type GeniusError, LyricsService } from "../lyrics/service";
+import type { GeniusError } from "@/lib/shared/errors/external/genius";
+import { LyricsService } from "../lyrics/service";
 import {
 	type AnalyzePlaylistInput,
 	PlaylistAnalysisService,
 } from "./playlist-analysis";
 import { type AnalyzeSongInput, SongAnalysisService } from "./song-analysis";
-
-// Re-export error for consumers
-export { PipelineConfigError };
 
 // ============================================================================
 // Zod Schemas (single source of truth)

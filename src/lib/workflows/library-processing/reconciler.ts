@@ -5,7 +5,7 @@ import type {
 	LibraryProcessingWorkflowState,
 } from "./types";
 
-export interface ReconcileInput {
+interface ReconcileInput {
 	state: LibraryProcessingState;
 	change: LibraryProcessingChange;
 	requestMarker: string;
@@ -13,7 +13,7 @@ export interface ReconcileInput {
 	satisfiedMarker: string | null;
 }
 
-export interface ReconcileResult {
+interface ReconcileResult {
 	state: LibraryProcessingState;
 	effects: LibraryProcessingEffect[];
 }

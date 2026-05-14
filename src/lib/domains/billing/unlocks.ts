@@ -15,19 +15,19 @@ import { DatabaseError } from "@/lib/shared/errors/database";
 import { BillingChanges } from "@/lib/workflows/library-processing/changes/billing";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 
-export type UnlockError =
+type UnlockError =
 	| { kind: "insufficient_balance"; required: number; available: number }
 	| { kind: "invalid_songs"; songIds: string[] }
 	| { kind: "unlimited_access_active" }
 	| { kind: "db_error"; cause: DbError };
 
-export type RequestSongUnlockResult = {
+type RequestSongUnlockResult = {
 	newlyUnlockedIds: string[];
 	alreadyUnlockedIds: string[];
 	remainingBalance: number;
 };
 
-export type GrantFreeAllocationResult = {
+type GrantFreeAllocationResult = {
 	unlockedIds: string[];
 };
 

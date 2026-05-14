@@ -15,20 +15,18 @@ import {
 
 const STORAGE_KEY = "hearted:checkout-intent:v2";
 
-export type PackOffer = typeof SONG_PACK_500;
-export type UnlimitedOffer =
-	| typeof UNLIMITED_QUARTERLY
-	| typeof UNLIMITED_YEARLY;
+type PackOffer = typeof SONG_PACK_500;
+type UnlimitedOffer = typeof UNLIMITED_QUARTERLY | typeof UNLIMITED_YEARLY;
 export type CheckoutOffer = PackOffer | UnlimitedOffer;
 
-export interface PackCheckoutIntent {
+interface PackCheckoutIntent {
 	kind: "pack";
 	offer: PackOffer;
 	checkoutAttemptId: string;
 	baselineCreditBalance: number;
 }
 
-export interface UnlimitedCheckoutIntent {
+interface UnlimitedCheckoutIntent {
 	kind: "unlimited";
 	offer: UnlimitedOffer;
 	checkoutAttemptId: string;

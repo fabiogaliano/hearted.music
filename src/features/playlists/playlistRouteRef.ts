@@ -72,5 +72,3 @@ export function resolvePlaylistIdFromRouteRef(
 
 	return slugMatches.length === 1 ? slugMatches[0].id : null;
 }
-
-export { PLAYLIST_ROUTE_ID_PREFIX_LENGTH };

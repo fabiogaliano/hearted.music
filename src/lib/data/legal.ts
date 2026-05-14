@@ -2,17 +2,17 @@ import faqJson from "../../../public/legal/faq.json";
 import privacyJson from "../../../public/legal/privacy.json";
 import termsJson from "../../../public/legal/terms.json";
 
-export interface FaqItem {
+interface FaqItem {
 	q: string;
 	a: string;
 }
 
-export interface FaqSection {
+interface FaqSection {
 	title: string;
 	items: FaqItem[];
 }
 
-export interface FaqData {
+interface FaqData {
 	sections: FaqSection[];
 }
 
@@ -25,13 +25,13 @@ export type ContentBlock =
 	  }
 	| { type: "sub-heading"; text: string };
 
-export interface LegalSection {
+interface LegalSection {
 	number: number;
 	title: string;
 	content: ContentBlock[];
 }
 
-export interface LegalDocData {
+interface LegalDocData {
 	lastUpdated: string;
 	summary: string;
 	sections: LegalSection[];

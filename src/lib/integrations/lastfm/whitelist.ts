@@ -5,7 +5,7 @@
  * only recognized music genres are stored (not moods, years, etc).
  */
 
-export const GENRE_WHITELIST: ReadonlySet<string> = new Set([
+const GENRE_WHITELIST: ReadonlySet<string> = new Set([
 	// === ROCK & SUBGENRES ===
 	"rock",
 	"alternative rock",

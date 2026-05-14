@@ -18,7 +18,7 @@ function hasActiveJob(data: ActiveJobs | undefined): boolean {
 	return !!(data?.enrichment || data?.matchSnapshotRefresh);
 }
 
-export function activeJobsQueryOptions(accountId: string, enabled = true) {
+function activeJobsQueryOptions(accountId: string, enabled = true) {
 	return queryOptions({
 		queryKey: activeJobsKeys.byAccount(accountId),
 		queryFn: () => getActiveJobs(),

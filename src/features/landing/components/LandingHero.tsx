@@ -16,7 +16,7 @@ import { SpotifyLoginButton } from "./SpotifyLoginButton";
 import { useHeroAnimation } from "./useHeroAnimation";
 import { WaitlistInput } from "./WaitlistInput";
 
-export interface LandingHeroProps {
+interface LandingHeroProps {
 	featuredSong: LandingSongForUI;
 	albumArtUrl?: string;
 	artistImageUrl: string | undefined;

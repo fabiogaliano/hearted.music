@@ -15,7 +15,7 @@ import {
 } from "@/lib/shared/utils/result-wrappers/supabase";
 
 export type MatchDecision = Tables<"match_decision">;
-export type DecisionType = "added" | "dismissed";
+type DecisionType = "added" | "dismissed";
 
 /**
  * Upserts a single match decision.

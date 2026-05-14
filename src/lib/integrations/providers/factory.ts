@@ -126,10 +126,3 @@ export function getMlProvider(): Result<
 	providerInstance = result.value;
 	return Result.ok(providerInstance);
 }
-
-/**
- * Resets the provider singleton (for testing).
- */
-export function resetProvider(): void {
-	providerInstance = null;
-}

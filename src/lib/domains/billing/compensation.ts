@@ -21,7 +21,7 @@ import { z } from "zod";
 import type { AdminSupabaseClient } from "@/lib/data/client";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 
-export type CompensationOutcome =
+type CompensationOutcome =
 	| { kind: "granted"; credits: number; newBalance: number }
 	| { kind: "already_compensated" }
 	| { kind: "not_eligible" };

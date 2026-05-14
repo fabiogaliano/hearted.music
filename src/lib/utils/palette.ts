@@ -1,6 +1,6 @@
 // Palette utils - ThemeConfig not needed here
 
-export type Vec3 = [number, number, number];
+type Vec3 = [number, number, number];
 
 export interface ColorPalette {
 	primary: Vec3;

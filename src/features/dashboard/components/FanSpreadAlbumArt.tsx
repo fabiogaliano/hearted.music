@@ -74,5 +74,3 @@ export function FanSpreadAlbumArt({ images }: FanSpreadAlbumArtProps) {
 		</div>
 	);
 }
-
-export default FanSpreadAlbumArt;

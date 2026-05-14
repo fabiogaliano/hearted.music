@@ -11,7 +11,7 @@ import { z } from "zod";
 // ============================================================================
 
 /** A tag (genre/descriptor) from Last.fm */
-export const LastFmTagSchema = z.object({
+const LastFmTagSchema = z.object({
 	name: z.string(),
 	/** Relevance score 0-100 (higher = more relevant) */
 	count: z.number().int().min(0).max(100),
@@ -24,7 +24,6 @@ export const LastFmErrorResponseSchema = z.object({
 	error: z.number(),
 	message: z.string(),
 });
-export type LastFmErrorResponse = z.infer<typeof LastFmErrorResponseSchema>;
 
 /** Response from album.getTopTags API endpoint */
 export const LastFmAlbumTopTagsResponseSchema = z.object({
@@ -33,9 +32,6 @@ export const LastFmAlbumTopTagsResponseSchema = z.object({
 		"@attr": z.object({ artist: z.string(), album: z.string() }),
 	}),
 });
-export type LastFmAlbumTopTagsResponse = z.infer<
-	typeof LastFmAlbumTopTagsResponseSchema
->;
 
 /** Response from artist.getTopTags API endpoint */
 export const LastFmArtistTopTagsResponseSchema = z.object({
@@ -44,18 +40,6 @@ export const LastFmArtistTopTagsResponseSchema = z.object({
 		"@attr": z.object({ artist: z.string() }),
 	}),
 });
-export type LastFmArtistTopTagsResponse = z.infer<
-	typeof LastFmArtistTopTagsResponseSchema
->;
-
-/** Response from track.getTopTags API endpoint */
-export const LastFmTopTagsResponseSchema = z.object({
-	toptags: z.object({
-		tag: z.array(LastFmTagSchema),
-		"@attr": z.object({ artist: z.string(), track: z.string() }),
-	}),
-});
-export type LastFmTopTagsResponse = z.infer<typeof LastFmTopTagsResponseSchema>;
 
 // ============================================================================
 // Domain Types (not used for parsing external responses)

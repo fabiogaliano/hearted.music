@@ -31,35 +31,35 @@ import { getApiKeyForProvider } from "./config";
 // ============================================================================
 
 /** Supported LLM provider names */
-export const LlmProviderNameSchema = z.enum(["google", "anthropic", "openai"]);
+const LlmProviderNameSchema = z.enum(["google", "anthropic", "openai"]);
 export type LlmProviderName = z.infer<typeof LlmProviderNameSchema>;
 
 /** Configuration for LLM service */
-export const LlmConfigSchema = z.object({
+const LlmConfigSchema = z.object({
 	provider: LlmProviderNameSchema,
 	apiKey: z.string().min(1),
 	model: z.string().optional(),
 });
-export type LlmConfig = z.infer<typeof LlmConfigSchema>;
+type LlmConfig = z.infer<typeof LlmConfigSchema>;
 
 /** Token usage information */
-export const TokenUsageSchema = z.object({
+const TokenUsageSchema = z.object({
 	prompt: z.number(),
 	completion: z.number(),
 	total: z.number(),
 });
-export type TokenUsage = z.infer<typeof TokenUsageSchema>;
+type TokenUsage = z.infer<typeof TokenUsageSchema>;
 
 /** Result of a text generation */
-export const TextGenerationResultSchema = z.object({
+const TextGenerationResultSchema = z.object({
 	text: z.string(),
 	model: z.string(),
 	tokens: TokenUsageSchema.optional(),
 });
-export type TextGenerationResult = z.infer<typeof TextGenerationResultSchema>;
+type TextGenerationResult = z.infer<typeof TextGenerationResultSchema>;
 
 /** Result of an object generation (generic, schema defined at call site) */
-export interface ObjectGenerationResult<T> {
+interface ObjectGenerationResult<T> {
 	output: T;
 	model: string;
 	tokens?: TokenUsage;

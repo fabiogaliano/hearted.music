@@ -39,27 +39,6 @@ export async function selectPipelineBatch(
 }
 
 /**
- * Returns liked song IDs that have all 4 shared data artifacts.
- * Used by match snapshot refresh for candidate loading.
- */
-export async function getDataEnrichedSongIds(
-	accountId: string,
-): Promise<string[]> {
-	const supabase = createAdminSupabaseClient();
-
-	const { data, error } = await supabase.rpc(
-		"select_data_enriched_liked_song_ids",
-		{ p_account_id: accountId },
-	);
-
-	if (error) {
-		throw new Error(`Failed to select data-enriched songs: ${error.message}`);
-	}
-
-	return (data ?? []).map((row: { song_id: string }) => row.song_id);
-}
-
-/**
  * Returns liked song IDs that are entitled and ready for matching candidacy.
  * Readiness requires genres, song_analysis, and song_embedding;
  * song_audio_feature is optional (the matching engine adapts when it is missing).
@@ -83,28 +62,6 @@ export async function getEntitledDataEnrichedSongIds(
 	}
 
 	return (data ?? []).map((row: { song_id: string }) => row.song_id);
-}
-
-/**
- * Probes whether more songs still need pipeline processing.
- * Used to determine requestSatisfied after a chunk completes.
- */
-export async function hasMoreSongsNeedingProcessing(
-	accountId: string,
-): Promise<boolean> {
-	const supabase = createAdminSupabaseClient();
-
-	const { data, error } = await supabase.rpc(
-		"select_liked_song_ids_needing_pipeline_processing",
-		{ p_account_id: accountId, p_limit: 1 },
-	);
-
-	if (error) {
-		throw new Error(
-			`Failed to probe songs needing processing: ${error.message}`,
-		);
-	}
-	return (data ?? []).length > 0;
 }
 
 /**

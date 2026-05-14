@@ -93,27 +93,6 @@ export async function validateApiToken(
 }
 
 /**
- * Revokes a specific API token by setting revoked_at.
- */
-export async function revokeApiToken(
-	tokenId: string,
-): Promise<Result<void, DbError>> {
-	const supabase = createAdminSupabaseClient();
-
-	const result = await fromSupabaseSingle(
-		supabase
-			.from("api_token")
-			.update({ revoked_at: new Date().toISOString() })
-			.eq("id", tokenId)
-			.select()
-			.single(),
-	);
-
-	if (Result.isError(result)) return result;
-	return Result.ok(undefined);
-}
-
-/**
  * Revokes all API tokens for an account.
  */
 export async function revokeAllTokensForAccount(

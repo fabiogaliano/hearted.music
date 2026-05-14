@@ -26,7 +26,7 @@ function timingSafeEqual(a: string, b: string): boolean {
 	return result === 0;
 }
 
-export type HmacVerificationResult =
+type HmacVerificationResult =
 	| { valid: true; body: string }
 	| { valid: false; error: string };
 

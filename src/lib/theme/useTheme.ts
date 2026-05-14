@@ -6,27 +6,7 @@
  */
 
 import { themes } from "./colors";
-import { fonts } from "./fonts";
 import type { ThemeColor, ThemeConfig } from "./types";
-
-export interface UseThemeReturn {
-	theme: ThemeConfig;
-	themeColor: ThemeColor;
-	fonts: typeof fonts;
-}
-
-/**
- * Get theme configuration for a given color
- */
-export function useTheme(themeColor: ThemeColor): UseThemeReturn {
-	const theme = themes[themeColor];
-
-	return {
-		theme,
-		themeColor,
-		fonts,
-	};
-}
 
 /**
  * Get theme by color name (non-hook version for use outside components)

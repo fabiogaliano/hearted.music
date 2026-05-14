@@ -1,7 +1,5 @@
 import type { LikedSong } from "@/features/liked-songs/types";
 
-const MANIFEST_PATH = "/landing-songs/index.json";
-
 export interface LandingSongManifest {
 	id: number;
 	spotifyTrackId: string;
@@ -15,13 +13,13 @@ export interface LandingSongManifest {
 	detailPath: string;
 }
 
-export interface LandingSongAudioFeatures {
+interface LandingSongAudioFeatures {
 	tempo: number | null;
 	energy: number | null;
 	valence: number | null;
 }
 
-export interface LandingSongAnalysis {
+interface LandingSongAnalysis {
 	headline: string;
 	compound_mood: string;
 	mood_description: string;
@@ -40,11 +38,6 @@ export interface LandingSongDetail
 }
 
 export type LandingSongForUI = LandingSongManifest | LandingSongDetail;
-
-interface LandingSongsManifestFile {
-	generatedAt?: string;
-	songs: LandingSongManifest[];
-}
 
 function isLandingSongDetail(
 	song: LandingSongForUI,
@@ -115,15 +108,6 @@ async function fetchJson<T>(path: string): Promise<T> {
 		throw new Error(`Failed to fetch ${path}: ${response.status}`);
 	}
 	return (await response.json()) as T;
-}
-
-export async function loadLandingSongsManifest(): Promise<
-	LandingSongManifest[]
-> {
-	const data = await fetchJson<
-		LandingSongManifest[] | LandingSongsManifestFile
-	>(MANIFEST_PATH);
-	return Array.isArray(data) ? data : data.songs;
 }
 
 export async function loadLandingSongDetail(

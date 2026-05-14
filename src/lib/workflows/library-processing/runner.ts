@@ -13,7 +13,7 @@ import { EnrichmentChanges } from "./changes/enrichment";
 import { MatchSnapshotChanges } from "./changes/match-snapshot";
 import { applyLibraryProcessingChange } from "./service";
 
-export type RunJobOutcome =
+type RunJobOutcome =
 	| {
 			status: "completed";
 			workflow: "enrichment";

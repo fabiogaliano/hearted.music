@@ -10,20 +10,17 @@ export const JobProgressBaseSchema = z.object({
 	succeeded: z.number().int().min(0),
 	failed: z.number().int().min(0),
 });
-export type JobProgressBase = z.infer<typeof JobProgressBaseSchema>;
 
-export const StageStatusSchema = z.enum([
+const StageStatusSchema = z.enum([
 	"pending",
 	"running",
 	"completed",
 	"failed",
 	"skipped",
 ]);
-export type StageStatus = z.infer<typeof StageStatusSchema>;
 
 export const StageProgressSchema = z.object({
 	status: StageStatusSchema,
 	succeeded: z.number().int().min(0).default(0),
 	failed: z.number().int().min(0).default(0),
 });
-export type StageProgress = z.infer<typeof StageProgressSchema>;

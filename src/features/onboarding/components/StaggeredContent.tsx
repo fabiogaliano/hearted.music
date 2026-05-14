@@ -91,5 +91,3 @@ export function StaggeredContent({
 		</motion.div>
 	);
 }
-
-export type { StaggeredContentProps };

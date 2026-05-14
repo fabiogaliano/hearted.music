@@ -12,7 +12,7 @@ export type InitializedEnrichmentChunkProgress = Omit<
 	stages: Required<EnrichmentStageProgressMap>;
 };
 
-export const ALL_STAGE_NAMES: EnrichmentStageName[] = [
+const ALL_STAGE_NAMES: EnrichmentStageName[] = [
 	"audio_features",
 	"genre_tagging",
 	"song_analysis",
@@ -25,7 +25,7 @@ export function batchSizeForSequence(sequence: number): number {
 	return BATCH_SIZES[Math.min(sequence, BATCH_SIZES.length - 1)];
 }
 
-export function countPlannedWork(flags: readonly SongStageFlags[]): number {
+function countPlannedWork(flags: readonly SongStageFlags[]): number {
 	let total = 0;
 	for (const f of flags) {
 		if (f.needsAudioFeatures) total++;

@@ -26,7 +26,7 @@ interface UsePanelAnimationOptions {
 	heroHeight?: number;
 }
 
-export interface PanelAnimationRefs {
+interface PanelAnimationRefs {
 	scrollRef: React.RefObject<HTMLDivElement | null>;
 	headerRef: React.RefObject<HTMLDivElement | null>;
 	heroRef: React.RefObject<HTMLDivElement | null>;

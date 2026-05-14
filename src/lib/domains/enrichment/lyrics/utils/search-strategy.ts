@@ -18,7 +18,7 @@ import { calculateSimilarity } from "./string-similarity";
 /**
  * Information about collaborating artists extracted from a song title
  */
-export interface CollaboratorInfo {
+interface CollaboratorInfo {
 	artists: string[];
 	type: "with" | "feat";
 }
@@ -61,7 +61,7 @@ export function extractCollaborators(title: string): CollaboratorInfo | null {
 	return null;
 }
 
-export interface SearchCandidate {
+interface SearchCandidate {
 	id: number;
 	url: string;
 	title: string;
@@ -72,7 +72,7 @@ export interface SearchCandidate {
 	collaboratorBonus: number;
 }
 
-export interface SearchMatch {
+interface SearchMatch {
 	result: ResponseHitsResult;
 	score: number;
 	titleScore: number;

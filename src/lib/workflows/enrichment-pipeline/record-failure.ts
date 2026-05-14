@@ -18,7 +18,7 @@ import {
 import type { DbError } from "@/lib/shared/errors/database";
 import { applyFailurePolicy, BACKOFF_CODES } from "./failure-policy";
 
-export interface RecordStageFailureParams {
+interface RecordStageFailureParams {
 	jobId: string;
 	accountId: string;
 	songId: string;

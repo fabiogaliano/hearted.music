@@ -1,17 +1,16 @@
 import { z } from "zod";
 import { JobProgressBaseSchema, StageProgressSchema } from "./base";
 
-export const ENRICHMENT_STAGE_NAMES = [
+const ENRICHMENT_STAGE_NAMES = [
 	"audio_features",
 	"genre_tagging",
 	"song_analysis",
 	"song_embedding",
 ] as const;
 
-export const EnrichmentStageNameSchema = z.enum(ENRICHMENT_STAGE_NAMES);
-export type EnrichmentStageName = z.infer<typeof EnrichmentStageNameSchema>;
+const EnrichmentStageNameSchema = z.enum(ENRICHMENT_STAGE_NAMES);
 
-export const EnrichmentStageProgressMapSchema = z
+const EnrichmentStageProgressMapSchema = z
 	.object({
 		audio_features: StageProgressSchema,
 		genre_tagging: StageProgressSchema,

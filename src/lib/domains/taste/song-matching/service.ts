@@ -26,14 +26,14 @@ import type {
 	ScoreFactors,
 } from "./types";
 
-export interface BatchMatchOptions {
+interface BatchMatchOptions {
 	/** Progress callback (optional) */
 	onProgress?: (progress: JobProgress) => void;
 	/** Song:playlist pairs to skip (format: "songId:playlistId") */
 	exclusionSet?: Set<string>;
 }
 
-export class MatchingService {
+class MatchingService {
 	private readonly config: MatchingConfig;
 
 	constructor(

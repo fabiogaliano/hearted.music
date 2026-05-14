@@ -50,31 +50,5 @@ export interface ProfilingOptions {
 	readonly description?: string;
 }
 
-/** Progress for batch operations */
-export interface ProfileBatchProgress {
-	readonly total: number;
-	readonly completed: number;
-	readonly cached: number;
-	readonly computed: number;
-	readonly errors: number;
-}
-
-/** Progress callback type */
-export type ProfileBatchProgressCallback = (
-	progress: ProfileBatchProgress,
-) => void;
-
-/** Result of batch profiling */
-export interface BatchProfilingResult {
-	readonly results: Map<string, ComputedPlaylistProfile>;
-	readonly errors: Map<string, string>;
-	readonly stats: {
-		readonly total: number;
-		readonly cached: number;
-		readonly computed: number;
-		readonly failed: number;
-	};
-}
-
 /** All profiling-related errors */
 export type ProfilingError = DbError | MLProviderError;

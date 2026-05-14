@@ -3,18 +3,18 @@
  * These are hand-curated matches — no DB rows involved.
  */
 
-export interface DemoPlaylist {
+interface DemoPlaylist {
 	id: string;
 	name: string;
 	reason: string;
 }
 
-export interface DemoSongMatch {
+interface DemoSongMatch {
 	id: string;
 	matchScore: number;
 }
 
-export interface DemoMatchPlaylist {
+interface DemoMatchPlaylist {
 	id: string;
 	spotifyId: string;
 	name: string;
@@ -22,7 +22,7 @@ export interface DemoMatchPlaylist {
 	matchScore: number;
 }
 
-export const DEMO_PLAYLISTS: readonly DemoPlaylist[] = [
+const DEMO_PLAYLISTS: readonly DemoPlaylist[] = [
 	{
 		id: "1",
 		name: "crying in the car",
@@ -52,7 +52,7 @@ export const DEMO_PLAYLISTS: readonly DemoPlaylist[] = [
 	},
 ] as const;
 
-export const DEMO_SONG_MATCHES: Record<string, DemoSongMatch[]> = {
+const DEMO_SONG_MATCHES: Record<string, DemoSongMatch[]> = {
 	// Ribs — Lorde
 	"2MvvoeRt8NcOXWESkxWn3g": [
 		{ id: "5", matchScore: 0.94 },

@@ -38,7 +38,7 @@ import type {
 /**
  * HuggingFace provider adapter.
  */
-export class HuggingFaceProvider implements MLProvider {
+class HuggingFaceProvider implements MLProvider {
 	private readonly metadata: ProviderMetadata;
 
 	constructor() {

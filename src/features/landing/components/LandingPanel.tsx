@@ -15,7 +15,7 @@ import { LandingPanelContent } from "./LandingPanelContent";
 const SWIPE_MIN_DISTANCE_PX = 44;
 const STACK_META_BREAKPOINT_PX = 760;
 
-export interface LandingPanelProps {
+interface LandingPanelProps {
 	song: LikedSong;
 	albumArtUrl?: string;
 	artistImageUrl?: string;

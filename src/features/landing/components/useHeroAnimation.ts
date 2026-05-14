@@ -44,7 +44,7 @@ const AUTO_COMPLETE_MIN_PROGRESS = 0.08;
 const AUTO_COMPLETE_RESET_POINT = 0.04;
 const AUTO_COMPLETE_DURATION_S = 1.2;
 
-export interface HeroAnimationRefs {
+interface HeroAnimationRefs {
 	/** The hero section container (trigger element) */
 	sectionRef: RefObject<HTMLElement | null>;
 	/** The content that gets pinned during scroll */
@@ -75,7 +75,7 @@ export interface HeroAnimationRefs {
 	headlineMarkerRef: RefObject<HTMLDivElement | null>;
 }
 
-export interface HeroAnimationOptions {
+interface HeroAnimationOptions {
 	/** Whether the background is ready (retained for API compatibility) */
 	isBackgroundReady?: boolean;
 	/** Callback when the initial visual state has been applied */
@@ -86,7 +86,7 @@ export interface HeroAnimationOptions {
 	onRevealReverse?: () => void;
 }
 
-export interface HeroAnimationReturn {
+interface HeroAnimationReturn {
 	/** Current scroll progress (0-1), updated during scroll */
 	progress: number;
 }

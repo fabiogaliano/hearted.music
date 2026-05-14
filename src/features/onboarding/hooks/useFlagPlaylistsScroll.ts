@@ -18,7 +18,7 @@
 import gsap from "gsap";
 import { type RefObject, useEffect, useRef } from "react";
 
-export interface FlagPlaylistsScrollRefs {
+interface FlagPlaylistsScrollRefs {
 	/** The outer section that captures wheel events */
 	sectionRef: RefObject<HTMLElement | null>;
 	/** The pinned wrapper (header + viewport + footer) - kept for layout */
@@ -29,7 +29,7 @@ export interface FlagPlaylistsScrollRefs {
 	trackRef: RefObject<HTMLDivElement | null>;
 }
 
-export interface FlagPlaylistsScrollOptions {
+interface FlagPlaylistsScrollOptions {
 	/** Whether the component is ready (playlists loaded) */
 	isReady?: boolean;
 }

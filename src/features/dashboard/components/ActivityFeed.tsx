@@ -26,5 +26,3 @@ export function ActivityFeed({ activities = [] }: ActivityFeedProps) {
 		</div>
 	);
 }
-
-export default ActivityFeed;

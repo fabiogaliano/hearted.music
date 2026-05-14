@@ -1,4 +1,4 @@
-export type QueueBand = "low" | "standard" | "priority";
+type QueueBand = "low" | "standard" | "priority";
 
 const BAND_VALUES: Record<QueueBand, number> = {
 	low: 0,

@@ -14,7 +14,7 @@ import type { LlmError } from "@/lib/shared/errors/external/llm";
 
 const ThemeSchema = z.object({ name: z.string(), description: z.string() });
 
-export const ColdStartProfileSchema = z.object({
+const ColdStartProfileSchema = z.object({
 	headline: z.string(),
 	compound_mood: z.string(),
 	mood_description: z.string(),

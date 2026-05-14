@@ -17,9 +17,6 @@ export const PLAYLIST_PROFILE_VERSION = 3;
 /** Version of matching algorithm — bump when scoring/ranking logic changes */
 export const MATCHING_ALGO_VERSION = "matching_v3";
 
-/** Combined model bundle version for full invalidation */
-export const MODEL_BUNDLE_VERSION = `e${EXTRACTOR_VERSION}_s${EMBEDDING_SCHEMA_VERSION}_p${PLAYLIST_PROFILE_VERSION}_${MATCHING_ALGO_VERSION}`;
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Model Bundle Hash (Dynamic)
 // ─────────────────────────────────────────────────────────────────────────────

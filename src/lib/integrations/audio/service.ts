@@ -28,7 +28,7 @@ export interface TrackInfo {
 }
 
 /** Result of backfill operation */
-export interface BackfillResult {
+interface BackfillResult {
 	/** Successfully fetched and persisted features */
 	readonly filled: Map<string, audioFeatureData.AudioFeature>;
 	/** Already had features (skipped) */
@@ -48,13 +48,13 @@ export interface BackfillResult {
 export type AudioFeaturesFailureKind = ReccoBeatsFailureKind;
 
 /** Result of getOrFetchFeatures: features that succeeded + classified failures. */
-export interface GetOrFetchFeaturesResult {
+interface GetOrFetchFeaturesResult {
 	readonly features: Map<string, audioFeatureData.AudioFeature>;
 	readonly failures: Map<string, AudioFeaturesFailureKind>;
 }
 
 /** Union of possible errors */
-export type AudioFeaturesError = DbError | ReccoBeatsError;
+type AudioFeaturesError = DbError | ReccoBeatsError;
 
 // ============================================================================
 // Service

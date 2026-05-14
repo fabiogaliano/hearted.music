@@ -9,7 +9,7 @@ import { getSongSuggestions } from "@/lib/server/matching.functions";
 
 export type FilterOption = LikedSongFilter;
 
-export const PAGE_SIZE = 15;
+const PAGE_SIZE = 15;
 
 export const likedSongsKeys = {
 	all: ["liked-songs"] as const,

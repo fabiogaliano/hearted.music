@@ -597,5 +597,3 @@ export const HeartRippleBackground = forwardRef<
 		/>
 	);
 });
-
-export default HeartRippleBackground;

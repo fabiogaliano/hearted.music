@@ -2,7 +2,7 @@ import { useState } from "react";
 import { joinWaitlist } from "@/lib/server/waitlist.functions";
 import { fonts } from "@/lib/theme/fonts";
 
-export interface WaitlistInputProps {
+interface WaitlistInputProps {
 	buttonText?: string;
 	/** 'light' for light backgrounds, 'dark' for dark/gradient backgrounds */
 	variant?: "light" | "dark";

@@ -74,5 +74,3 @@ export function getAuth() {
 		},
 	});
 }
-
-export type Auth = ReturnType<typeof getAuth>;

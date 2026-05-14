@@ -1,13 +1,3 @@
-export interface UserPlaylist {
-	id: number;
-	name: string;
-	trackCount: number;
-	image: string;
-	description: string;
-	lastUpdated: string;
-	flagged: boolean;
-}
-
 /**
  * Activity Feed - Discriminated Union Pattern
  *
@@ -22,7 +12,7 @@ interface ActivityBase {
 	timestamp: string;
 }
 
-export interface LikedActivity extends ActivityBase {
+interface LikedActivity extends ActivityBase {
 	type: "liked";
 	songId: string;
 	songName: string;
@@ -30,7 +20,7 @@ export interface LikedActivity extends ActivityBase {
 	imageUrl: string | null;
 }
 
-export interface MatchedActivity extends ActivityBase {
+interface MatchedActivity extends ActivityBase {
 	type: "matched";
 	songId: string;
 	songName: string;

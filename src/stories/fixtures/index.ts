@@ -4,7 +4,7 @@ import type { Playlist, SongForMatching } from "@/features/matching/types";
 import data from "./fixtures.json";
 
 export const allLikedSongs: LikedSong[] = data.likedSongs as LikedSong[];
-export const dashboardData: DashboardProps = data.dashboard as DashboardProps;
+const dashboardData: DashboardProps = data.dashboard as DashboardProps;
 
 export const matchingSongs: Array<{
 	song: SongForMatching;

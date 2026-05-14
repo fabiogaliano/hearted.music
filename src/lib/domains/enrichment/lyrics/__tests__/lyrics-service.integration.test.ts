@@ -21,7 +21,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, test } from "vitest";
 
-import { GeniusConfigError, type GeniusError, LyricsService } from "../service";
+import {
+	GeniusConfigError,
+	type GeniusError,
+} from "@/lib/shared/errors/external/genius";
+import { LyricsService } from "../service";
 import type { TransformedLyricsBySection } from "../utils/lyrics-transformer";
 import type { Snapshot } from "./generate-snapshots";
 

@@ -59,29 +59,6 @@ export const themes: Record<ThemeColor, ThemeConfig> = {
 };
 
 /**
- * Generate dark theme variant from a base theme
- * Keeps the same hue but inverts the lightness values for dark mode
- */
-export function getDarkTheme(baseTheme: ThemeConfig): ThemeConfig {
-	const hueMatch = baseTheme.primary.match(/hsl\((\d+)/);
-	// Fallback 218 = blue theme hue (safest neutral if regex fails on malformed HSL)
-	const hue = hueMatch ? Number.parseInt(hueMatch[1], 10) : 218;
-
-	return {
-		name: `${baseTheme.name} Dark`,
-		bg: `hsl(${hue}, 18%, 8%)`,
-		surface: `hsl(${hue}, 16%, 12%)`,
-		surfaceDim: `hsl(${hue}, 14%, 16%)`,
-		border: `hsl(${hue}, 12%, 22%)`,
-		text: `hsl(${hue}, 12%, 92%)`,
-		textMuted: `hsl(${hue}, 10%, 60%)`,
-		textOnPrimary: `hsl(${hue}, 18%, 8%)`,
-		primary: `hsl(${hue}, 45%, 65%)`,
-		primaryHover: `hsl(${hue}, 50%, 72%)`,
-	};
-}
-
-/**
  * Utility to extract hue from a theme for generating complementary colors
  */
 export function getThemeHue(theme: ThemeConfig): number {

@@ -1,4 +1,4 @@
-export interface SongAnalysis {
+interface SongAnalysis {
 	headline: string;
 	compound_mood: string;
 	mood_description: string;

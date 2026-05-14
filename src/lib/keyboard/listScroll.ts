@@ -5,9 +5,7 @@ function prefersReducedMotion(): boolean {
 	return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-export function resolveListScrollBehavior(
-	block: ListScrollBlock,
-): ScrollBehavior {
+function resolveListScrollBehavior(block: ListScrollBlock): ScrollBehavior {
 	if (prefersReducedMotion()) return "auto";
 	if (block === "center" || block === "start") return "auto";
 	return "smooth";

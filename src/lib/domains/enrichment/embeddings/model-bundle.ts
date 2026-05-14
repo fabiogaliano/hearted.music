@@ -23,7 +23,7 @@ import {
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface EmbeddingModelConfig {
+interface EmbeddingModelConfig {
 	/** Model identifier (e.g., "intfloat/multilingual-e5-large-instruct") */
 	model: string;
 	/** Embedding dimensions */
@@ -34,7 +34,7 @@ export interface EmbeddingModelConfig {
 	isInstructionTuned: boolean;
 }
 
-export interface RerankerModelConfig {
+interface RerankerModelConfig {
 	/** Model identifier */
 	model: string;
 	/** Provider name */
@@ -43,7 +43,7 @@ export interface RerankerModelConfig {
 	maxLength: number;
 }
 
-export interface AlgorithmVersions {
+interface AlgorithmVersions {
 	/** Feature extractor version */
 	extractor: number;
 	/** Embedding schema version */
@@ -54,7 +54,7 @@ export interface AlgorithmVersions {
 	matching: string;
 }
 
-export interface PlaylistProfilingConfig {
+interface PlaylistProfilingConfig {
 	/** Profiling strategy identifier — bump or rename when logic changes */
 	strategy: string;
 	/** Whether intent query embedding is used for blending */
@@ -63,7 +63,7 @@ export interface PlaylistProfilingConfig {
 	usesHydeColdStart: boolean;
 }
 
-export interface EnrichmentConfig {
+interface EnrichmentConfig {
 	/** Primary genre source */
 	genreSource: "lastfm" | "spotify" | "combined";
 	/** Whether emotion analysis is enabled */

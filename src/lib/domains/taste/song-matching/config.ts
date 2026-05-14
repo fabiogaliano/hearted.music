@@ -16,7 +16,7 @@ import type {
  * Default weights for score factors.
  * Sum should equal 1.0 for interpretable scores.
  */
-export const DEFAULT_MATCHING_WEIGHTS: MatchingWeights = {
+const DEFAULT_MATCHING_WEIGHTS: MatchingWeights = {
 	embedding: 0.5,
 	audio: 0.3,
 	genre: 0.2,
@@ -26,7 +26,7 @@ export const DEFAULT_MATCHING_WEIGHTS: MatchingWeights = {
  * Weights for individual audio features.
  * Higher weights = more influence on audio score.
  */
-export const DEFAULT_AUDIO_FEATURE_WEIGHTS: AudioFeatureWeights = {
+const DEFAULT_AUDIO_FEATURE_WEIGHTS: AudioFeatureWeights = {
 	energy: 1.0,
 	valence: 1.0,
 	danceability: 0.8,
@@ -92,11 +92,3 @@ export function computeAdaptiveWeights(
 
 	return base;
 }
-
-/** Score tier boundaries */
-export const SCORE_TIERS = {
-	excellent: 0.8,
-	good: 0.6,
-	fair: 0.4,
-	poor: 0.2,
-} as const;

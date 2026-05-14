@@ -13,7 +13,7 @@
 
 import { fonts } from "@/lib/theme/fonts";
 
-export interface SpotifyLoginButtonProps {
+interface SpotifyLoginButtonProps {
 	buttonText?: string;
 	/** 'light' for light backgrounds, 'dark' for dark/gradient backgrounds */
 	variant?: "light" | "dark";

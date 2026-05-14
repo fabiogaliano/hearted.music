@@ -31,14 +31,12 @@ export const BACKOFF_CODES: ReadonlySet<string> = new Set<string>([
 	FAILURE_CODES.ANALYSIS_POSTRUN_LOOKUP_UNAVAILABLE,
 ]);
 
-export type FailureCode = (typeof FAILURE_CODES)[keyof typeof FAILURE_CODES];
-
-export interface FailurePolicyOutcome {
+interface FailurePolicyOutcome {
 	isTerminal: boolean;
 	suppressUntil: Date | null;
 }
 
-export interface FailurePolicyInput {
+interface FailurePolicyInput {
 	failureCode: string;
 	priorUnresolvedCount?: number;
 	now?: Date;

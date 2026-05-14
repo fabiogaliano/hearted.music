@@ -1,9 +1,8 @@
 import type { ContentBlock } from "@/lib/data/legal";
-import { fonts } from "@/lib/theme/fonts";
 
-export const SUPPORT_EMAIL = "support@hearted.music";
+const SUPPORT_EMAIL = "support@hearted.music";
 
-export function EmailLink() {
+function EmailLink() {
 	return (
 		<a
 			href={`mailto:${SUPPORT_EMAIL}`}
@@ -11,28 +10,6 @@ export function EmailLink() {
 		>
 			{SUPPORT_EMAIL}
 		</a>
-	);
-}
-
-export function SectionHeader({
-	number,
-	title,
-}: {
-	number: number;
-	title: string;
-}) {
-	return (
-		<div className="mb-4">
-			<p className="theme-text-muted mb-1 text-xs tracking-widest uppercase">
-				{number.toString().padStart(2, "0")}
-			</p>
-			<h2
-				style={{ fontFamily: fonts.display }}
-				className="theme-text text-[24px] font-light italic"
-			>
-				{title}
-			</h2>
-		</div>
 	);
 }
 

@@ -17,7 +17,7 @@
 import type { AnnotationInfo } from "../types/lyrics.types";
 import type { TransformedLyricsBySection } from "./lyrics-transformer";
 
-export interface FormatOptions {
+interface FormatOptions {
 	/** Minimum votes for community annotations (default: 5) */
 	minVotes?: number;
 	/** Maximum annotation text length before truncation (default: 200) */

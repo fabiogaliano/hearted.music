@@ -1,6 +1,6 @@
 import type { AnalysisContent } from "@/features/liked-songs/types";
 
-export type WalkthroughSongAnalysis = {
+type WalkthroughSongAnalysis = {
 	id: string;
 	content: AnalysisContent;
 	model: string;
@@ -22,7 +22,7 @@ export type WalkthroughSong = {
 	analysis: WalkthroughSongAnalysis | null;
 };
 
-export type AllowedPath = "/onboarding" | "/liked-songs" | "/match";
+type AllowedPath = "/onboarding" | "/liked-songs" | "/match";
 
 /**
  * Discriminated union over the onboarding lifecycle.
@@ -45,10 +45,8 @@ export type OnboardingSession =
 	| { status: "plan-selection" }
 	| { status: "complete" };
 
-export type OnboardingStatus = OnboardingSession["status"];
-
 /** Broad categorization used by layout shells and UI branches. */
-export type OnboardingMode = "steps" | "walkthrough" | "complete";
+type OnboardingMode = "steps" | "walkthrough" | "complete";
 
 export function sessionMode(session: OnboardingSession): OnboardingMode {
 	switch (session.status) {

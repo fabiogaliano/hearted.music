@@ -28,26 +28,25 @@ import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
 import { getModelBundleHash } from "./versioning";
 
 /** Result of embedding a song */
-export const EmbedSongResultSchema = z.object({
+const EmbedSongResultSchema = z.object({
 	songId: z.uuid(),
 	embedding: z.custom<SongEmbedding>(),
 	cached: z.boolean(),
 });
-export type EmbedSongResult = z.infer<typeof EmbedSongResultSchema>;
+type EmbedSongResult = z.infer<typeof EmbedSongResultSchema>;
 
 /** Failed embedding item */
-export const EmbedFailedItemSchema = z.object({
+const EmbedFailedItemSchema = z.object({
 	songId: z.uuid(),
 	error: z.string(),
 });
-export type EmbedFailedItem = z.infer<typeof EmbedFailedItemSchema>;
 
 /** Result of batch embedding */
-export const BatchEmbedResultSchema = z.object({
+const BatchEmbedResultSchema = z.object({
 	succeeded: z.array(EmbedSongResultSchema),
 	failed: z.array(EmbedFailedItemSchema),
 });
-export type BatchEmbedResult = z.infer<typeof BatchEmbedResultSchema>;
+type BatchEmbedResult = z.infer<typeof BatchEmbedResultSchema>;
 
 type EmbeddingServiceError =
 	| DbError

@@ -3,7 +3,7 @@ import type { Json } from "@/lib/data/database.types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { createAdminSupabaseClient } from "./client";
 
-export interface MeasurementInput {
+interface MeasurementInput {
 	jobId: string;
 	accountId: string;
 	workflow: "enrichment" | "match_snapshot_refresh";

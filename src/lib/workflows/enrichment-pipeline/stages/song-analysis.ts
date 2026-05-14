@@ -11,7 +11,7 @@ import type { EnrichmentContext, ReadyResult } from "../types";
 
 const STAGE = "song_analysis";
 
-export async function getReadyForSongAnalysis(
+async function getReadyForSongAnalysis(
 	batchSongIds: string[],
 ): Promise<ReadyResult> {
 	const existingResult = await songAnalysisData.get(batchSongIds);

@@ -13,21 +13,7 @@
 
 import { redirect } from "@tanstack/react-router";
 import { createMiddleware } from "@tanstack/react-start";
-import type { Account } from "@/lib/domains/library/accounts/queries";
-import {
-	type AppSession,
-	getAuthSession,
-} from "@/lib/platform/auth/auth.server";
-
-export interface AuthContext {
-	session: AppSession;
-	account: Account | null;
-}
-
-export interface OptionalAuthContext {
-	session: AppSession | null;
-	account: Account | null;
-}
+import { getAuthSession } from "@/lib/platform/auth/auth.server";
 
 /**
  * Requires authentication. Redirects to "/" if not authenticated.
@@ -49,20 +35,3 @@ export const authMiddleware = createMiddleware({ type: "function" }).server(
 		});
 	},
 );
-
-/**
- * Resolves auth if present, passes null if not.
- * Use on server functions where auth is optional (e.g. landing page data).
- */
-export const optionalAuthMiddleware = createMiddleware({
-	type: "function",
-}).server(async ({ next }) => {
-	const authContext = await getAuthSession();
-
-	return next({
-		context: {
-			session: authContext?.session ?? null,
-			account: authContext?.account ?? null,
-		},
-	});
-});

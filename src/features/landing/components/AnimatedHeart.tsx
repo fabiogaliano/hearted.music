@@ -6,7 +6,7 @@ import { extractHue, getPastelColor } from "@/lib/utils/color";
 // Mix of musical notes and tiny hearts - music + feelings
 const PARTICLE_SYMBOLS = ["♪", "♥\uFE0E", "♫", "♥\uFE0E", "♩", "♥\uFE0E"];
 
-export interface AnimatedHeartProps {
+interface AnimatedHeartProps {
 	shouldAutoPlay?: boolean;
 	/** Delay in ms before auto-play triggers (default 1500) */
 	autoPlayDelayMs?: number;

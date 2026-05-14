@@ -12,7 +12,7 @@
  * })
  * ```
  */
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import { useShortcutActions } from "@/lib/keyboard/KeyboardShortcutProvider";
 import type { ShortcutRegistration } from "@/lib/keyboard/types";
@@ -66,100 +66,4 @@ export function useShortcut(options: ShortcutRegistration): void {
 		category,
 		preventDefault,
 	]);
-}
-
-/**
- * Creates a stable fingerprint for a shortcut's configuration (excluding handler).
- * Used for diffing to avoid unnecessary re-registrations.
- */
-function getShortcutFingerprint(s: ShortcutRegistration): string {
-	return `${s.key}|${s.scope}|${s.enabled ?? true}|${s.category ?? ""}|${s.preventDefault ?? true}`;
-}
-
-/**
- * useShortcuts - Batch registration with stable key comparison.
- *
- * Only re-registers shortcuts when their configuration actually changes,
- * not when the array reference changes. Handlers are stored in a ref
- * to avoid re-registration when only closures update.
- */
-export function useShortcuts(shortcuts: ShortcutRegistration[]): void {
-	const { register, unregister } = useShortcutActions();
-	const registeredRef = useRef<Map<string, string>>(new Map()); // fingerprint → id
-	const handlersRef = useRef<Map<string, () => void>>(new Map());
-
-	// Always update handlers ref (cheap, no re-render)
-	const handlerKeys = new Set<string>();
-	for (const s of shortcuts) {
-		const handlerKey = s.key + s.scope;
-		handlerKeys.add(handlerKey);
-		handlersRef.current.set(handlerKey, s.handler);
-	}
-
-	for (const key of handlersRef.current.keys()) {
-		if (!handlerKeys.has(key)) {
-			handlersRef.current.delete(key);
-		}
-	}
-
-	const fingerprintList = useMemo(
-		() => shortcuts.map(getShortcutFingerprint).toSorted(),
-		[shortcuts],
-	);
-	useEffect(() => {
-		const registered = registeredRef.current;
-		const toUnregister: string[] = [];
-		const toRegister: ShortcutRegistration[] = [];
-		const currentFingerprints = new Set(fingerprintList);
-
-		// Find shortcuts to remove (registered but no longer in current set)
-		for (const [fingerprint, id] of registered) {
-			if (!currentFingerprints.has(fingerprint)) {
-				toUnregister.push(id);
-				registered.delete(fingerprint);
-			}
-		}
-
-		// Find shortcuts to add (in current set but not registered)
-		for (const shortcut of shortcuts) {
-			const fingerprint = getShortcutFingerprint(shortcut);
-			if (!registered.has(fingerprint) && shortcut.enabled !== false) {
-				toRegister.push(shortcut);
-			}
-		}
-
-		// Apply changes
-		for (const id of toUnregister) {
-			unregister(id);
-		}
-
-		for (const shortcut of toRegister) {
-			const fingerprint = getShortcutFingerprint(shortcut);
-			const id = register({
-				key: shortcut.key,
-				scope: shortcut.scope,
-				enabled: shortcut.enabled,
-				description: shortcut.description,
-				category: shortcut.category,
-				preventDefault: shortcut.preventDefault,
-				handler: () => {
-					const handler = handlersRef.current.get(
-						shortcut.key + shortcut.scope,
-					);
-					handler?.();
-				},
-			});
-			registered.set(fingerprint, id);
-		}
-	}, [fingerprintList, register, shortcuts, unregister]);
-
-	useEffect(() => {
-		return () => {
-			for (const id of registeredRef.current.values()) {
-				unregister(id);
-			}
-			registeredRef.current.clear();
-			handlersRef.current.clear();
-		};
-	}, [unregister]);
 }

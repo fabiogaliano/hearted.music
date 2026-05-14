@@ -26,7 +26,7 @@ export type ShortcutScope =
 /**
  * Category for grouping shortcuts in help modal
  */
-export type ShortcutCategory =
+type ShortcutCategory =
 	| "navigation" // j/k, arrows, page navigation
 	| "actions" // Enter, ESC, quick actions
 	| "global"; // Go-to shortcuts, help
@@ -70,7 +70,7 @@ export interface ShortcutHelpStateValue {
 	closeHelp: () => void;
 }
 
-export type NavigationDirection = "horizontal" | "vertical" | "grid";
+type NavigationDirection = "horizontal" | "vertical" | "grid";
 export type ListScrollBlock = "start" | "nearest" | "center";
 export type ListNavigationSource =
 	| "keyboard"
@@ -97,7 +97,7 @@ export interface ListItemNavigationProps {
 	tabIndex: number;
 }
 
-export interface ListFocusOptions {
+interface ListFocusOptions {
 	mode?: ListInteractionMode;
 }
 
@@ -110,12 +110,12 @@ export interface ListCursorSyncOptions extends ListFocusOptions {
 	source?: ListNavigationSource;
 }
 
-export interface ListNavigationFocusOptions extends ListFocusOptions {
+interface ListNavigationFocusOptions extends ListFocusOptions {
 	scroll?: boolean;
 	scrollBlock?: ListScrollBlock;
 }
 
-export interface ListNavigationSyncOptions extends ListCursorSyncOptions {
+interface ListNavigationSyncOptions extends ListCursorSyncOptions {
 	scroll?: boolean;
 	scrollBlock?: ListScrollBlock;
 }

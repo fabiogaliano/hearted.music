@@ -28,7 +28,7 @@ export interface GenreEnrichmentInput {
 }
 
 /** Result of genre enrichment for a single track */
-export interface GenreEnrichmentResult {
+interface GenreEnrichmentResult {
 	songId: string;
 	genres: string[];
 	sourceLevel: GenreSourceLevel;
@@ -36,7 +36,7 @@ export interface GenreEnrichmentResult {
 }
 
 /** Progress callback for batch operations */
-export interface GenreBatchProgress {
+interface GenreBatchProgress {
 	total: number;
 	completed: number;
 	cached: number;
@@ -46,7 +46,7 @@ export interface GenreBatchProgress {
 	errors: number;
 }
 
-export type GenreBatchProgressCallback = (progress: GenreBatchProgress) => void;
+type GenreBatchProgressCallback = (progress: GenreBatchProgress) => void;
 
 /** Result of batch enrichment */
 export interface GenreBatchResult {
@@ -76,7 +76,7 @@ export interface GenreBatchResult {
 }
 
 /** All genre service errors */
-export type GenreError = LastFmError | DbError;
+type GenreError = LastFmError | DbError;
 
 // ============================================================================
 // Service

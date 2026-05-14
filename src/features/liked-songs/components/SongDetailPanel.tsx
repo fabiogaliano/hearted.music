@@ -50,7 +50,7 @@ type ThemeCssVariables = {
 
 // Types
 
-export interface SongDetailPanelProps {
+interface SongDetailPanelProps {
 	/** Optional theme override - for dark mode or special cases */
 	theme?: ThemeConfig;
 	song: LikedSong;

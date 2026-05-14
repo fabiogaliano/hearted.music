@@ -6,7 +6,7 @@ import {
 } from "@/lib/server/playlists.functions";
 import { playlistKeys } from "../queries";
 
-export interface PlaylistSessionState {
+interface PlaylistSessionState {
 	targetMembershipChanged: boolean;
 	targetMetadataChanged: boolean;
 }

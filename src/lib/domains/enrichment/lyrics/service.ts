@@ -35,20 +35,9 @@ import {
 	generateQueryVariants,
 } from "./utils/search-strategy";
 
-export interface LyricsServiceConfig {
+interface LyricsServiceConfig {
 	accessToken: string;
 }
-
-export type { TransformedLyricsBySection } from "./utils/lyrics-transformer";
-
-// Re-export errors for consumers
-export {
-	GeniusNotFoundError,
-	GeniusParseError,
-	GeniusFetchError,
-	GeniusConfigError,
-	type GeniusError,
-};
 
 // Shared across all instances so concurrent worker jobs respect a single rate limit
 const sharedLimiter = new ConcurrencyLimiter(5, 50, 200);

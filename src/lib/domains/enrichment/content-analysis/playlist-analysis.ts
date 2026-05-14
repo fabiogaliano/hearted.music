@@ -156,17 +156,16 @@ const PlaylistMatchingProfileSchema = z.object({
 });
 
 /** Complete LLM playlist analysis output */
-export const PlaylistAnalysisLlmSchema = z.object({
+const PlaylistAnalysisLlmSchema = z.object({
 	meaning: PlaylistMeaningSchema,
 	emotional: PlaylistEmotionalSchema,
 	context: PlaylistContextSchema,
 	curation: CurationSchema,
 	matching_profile: PlaylistMatchingProfileSchema,
 });
-export type PlaylistAnalysisLlm = z.infer<typeof PlaylistAnalysisLlmSchema>;
 
 /** Track info for playlist analysis */
-export interface PlaylistTrackInfo {
+interface PlaylistTrackInfo {
 	name: string;
 	artist: string;
 }
@@ -180,7 +179,7 @@ export interface AnalyzePlaylistInput {
 }
 
 /** Result of a playlist analysis */
-export interface AnalyzePlaylistResult {
+interface AnalyzePlaylistResult {
 	playlistId: string;
 	analysis: PlaylistAnalysis;
 	tokensUsed?: number;

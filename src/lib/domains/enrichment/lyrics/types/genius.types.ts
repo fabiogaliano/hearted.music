@@ -1,18 +1,18 @@
 // Referents Response
-export interface Meta {
+interface Meta {
 	status: number;
 }
 
-export interface ResponseReferentsRange {
+interface ResponseReferentsRange {
 	content: string;
 }
 
-export interface ResponseReferentsAnnotatableClientTimestamps {
+interface ResponseReferentsAnnotatableClientTimestamps {
 	updated_by_human_at: number;
 	lyrics_updated_at: number;
 }
 
-export interface ResponseReferentsAnnotatable {
+interface ResponseReferentsAnnotatable {
 	api_path: string;
 	client_timestamps: ResponseReferentsAnnotatableClientTimestamps;
 	context: string;
@@ -24,61 +24,51 @@ export interface ResponseReferentsAnnotatable {
 	url: string;
 }
 
-export interface ResponseReferentsAnnotationsBodyDomChildren {
-	tag: string;
-	children: string[];
-}
-
-export interface ResponseReferentsAnnotationsBodyDom {
-	tag: string;
-	children: ResponseReferentsAnnotationsBodyDomChildren[];
-}
-
-export interface ResponseReferentsAnnotationsBody {
+interface ResponseReferentsAnnotationsBody {
 	plain: string;
 }
 
-export interface ResponseReferentsAnnotationsCurrentUserMetadataInteractions {
+interface ResponseReferentsAnnotationsCurrentUserMetadataInteractions {
 	cosign: boolean;
 	pyong: boolean;
 	vote?: unknown;
 }
 
-export interface ResponseReferentsAnnotationsCurrentUserMetadata {
+interface ResponseReferentsAnnotationsCurrentUserMetadata {
 	permissions?: unknown[];
 	excluded_permissions: string[];
 	interactions: ResponseReferentsAnnotationsCurrentUserMetadataInteractions;
 	iq_by_action: object;
 }
 
-export interface ResponseReferentsAnnotationsAuthorsUserAvatarTinyBoundingBox {
+interface ResponseReferentsAnnotationsAuthorsUserAvatarTinyBoundingBox {
 	width: number;
 	height: number;
 }
 
-export interface ResponseReferentsAnnotationsAuthorsUserAvatarTiny {
+interface ResponseReferentsAnnotationsAuthorsUserAvatarTiny {
 	url: string;
 	bounding_box: ResponseReferentsAnnotationsAuthorsUserAvatarTinyBoundingBox;
 }
 
-export interface ResponseReferentsAnnotationsAuthorsUserAvatar {
+interface ResponseReferentsAnnotationsAuthorsUserAvatar {
 	tiny: ResponseReferentsAnnotationsAuthorsUserAvatarTiny;
 	thumb: ResponseReferentsAnnotationsAuthorsUserAvatarTiny;
 	small: ResponseReferentsAnnotationsAuthorsUserAvatarTiny;
 	medium: ResponseReferentsAnnotationsAuthorsUserAvatarTiny;
 }
 
-export interface ResponseReferentsAnnotationsAuthorsUserCurrentUserMetadataInteractions {
+interface ResponseReferentsAnnotationsAuthorsUserCurrentUserMetadataInteractions {
 	following: boolean;
 }
 
-export interface ResponseReferentsAnnotationsAuthorsUserCurrentUserMetadata {
+interface ResponseReferentsAnnotationsAuthorsUserCurrentUserMetadata {
 	permissions?: unknown[];
 	excluded_permissions: string[];
 	interactions: ResponseReferentsAnnotationsAuthorsUserCurrentUserMetadataInteractions;
 }
 
-export interface ResponseReferentsAnnotationsAuthorsUser {
+interface ResponseReferentsAnnotationsAuthorsUser {
 	api_path: string;
 	avatar: ResponseReferentsAnnotationsAuthorsUserAvatar;
 	header_image_url: string;
@@ -92,13 +82,13 @@ export interface ResponseReferentsAnnotationsAuthorsUser {
 	current_user_metadata: ResponseReferentsAnnotationsAuthorsUserCurrentUserMetadata;
 }
 
-export interface ResponseReferentsAnnotationsAuthors {
+interface ResponseReferentsAnnotationsAuthors {
 	attribution: number;
 	pinned_role: string;
 	user: ResponseReferentsAnnotationsAuthorsUser;
 }
 
-export interface ResponseReferentsAnnotations {
+interface ResponseReferentsAnnotations {
 	api_path: string;
 	body: ResponseReferentsAnnotationsBody;
 	comment_count: number;
@@ -138,7 +128,7 @@ export interface ResponseReferents {
 	annotations: ResponseReferentsAnnotations[];
 }
 
-export interface Response {
+interface Response {
 	referents: ResponseReferents[];
 }
 
@@ -148,23 +138,23 @@ export interface ResponseReferents {
 }
 
 // Search Response
-export interface Meta {
+interface Meta {
 	status: number;
 }
 
-export interface ResponseHitsResultReleaseDateComponents {
+interface ResponseHitsResultReleaseDateComponents {
 	year: number;
 	month: number;
 	day: number;
 }
 
-export interface ResponseHitsResultStats {
+interface ResponseHitsResultStats {
 	unreviewed_annotations: number;
 	hot: boolean;
 	pageviews: number;
 }
 
-export interface ResponseHitsResultFeaturedArtists {
+interface ResponseHitsResultFeaturedArtists {
 	api_path: string;
 	header_image_url: string;
 	id: number;
@@ -175,7 +165,7 @@ export interface ResponseHitsResultFeaturedArtists {
 	url: string;
 }
 
-export interface ResponseHitsResultPrimaryArtist {
+interface ResponseHitsResultPrimaryArtist {
 	api_path: string;
 	header_image_url: string;
 	id: number;
@@ -215,14 +205,14 @@ export interface ResponseHitsResult {
 	primary_artists: ResponseHitsResultPrimaryArtist[];
 }
 
-export interface ResponseHits {
+interface ResponseHits {
 	highlights?: unknown[];
 	index: string;
 	type: string;
 	result: ResponseHitsResult;
 }
 
-export interface Response {
+interface Response {
 	hits: ResponseHits[];
 }
 

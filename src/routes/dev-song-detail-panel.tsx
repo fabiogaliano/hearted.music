@@ -7,7 +7,7 @@ import type { DesignConfig } from "@/features/liked-songs/components/playground/
 import { DEFAULT_CONFIG } from "@/features/liked-songs/components/playground/types";
 import { fonts } from "@/lib/theme/fonts";
 
-export const Route = createFileRoute("/dev-playground")({
+export const Route = createFileRoute("/dev-song-detail-panel")({
 	component: DevPlayground,
 });
 

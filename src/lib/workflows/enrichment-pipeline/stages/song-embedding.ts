@@ -9,7 +9,7 @@ import type { EnrichmentContext, ReadyResult } from "../types";
 
 const STAGE = "song_embedding";
 
-export async function getReadyForSongEmbedding(
+async function getReadyForSongEmbedding(
 	batchSongIds: string[],
 	embeddingService: EmbeddingService,
 ): Promise<ReadyResult> {

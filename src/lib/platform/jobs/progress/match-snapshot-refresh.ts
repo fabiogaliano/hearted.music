@@ -11,10 +11,10 @@ export const MATCH_REFRESH_STAGE_NAMES = [
 	"publishing",
 ] as const;
 
-export const MatchRefreshStageNameSchema = z.enum(MATCH_REFRESH_STAGE_NAMES);
+const MatchRefreshStageNameSchema = z.enum(MATCH_REFRESH_STAGE_NAMES);
 export type MatchRefreshStageName = z.infer<typeof MatchRefreshStageNameSchema>;
 
-export const MatchSnapshotRefreshStageProgressMapSchema = z
+const MatchSnapshotRefreshStageProgressMapSchema = z
 	.object({
 		target_song_enrichment: StageProgressSchema,
 		playlist_profiling: StageProgressSchema,
@@ -23,7 +23,7 @@ export const MatchSnapshotRefreshStageProgressMapSchema = z
 		publishing: StageProgressSchema,
 	})
 	.partial();
-export type MatchSnapshotRefreshStageProgressMap = z.infer<
+type MatchSnapshotRefreshStageProgressMap = z.infer<
 	typeof MatchSnapshotRefreshStageProgressMapSchema
 >;
 

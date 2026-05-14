@@ -9,7 +9,7 @@ import type { EnrichmentContext, ReadyResult } from "../types";
 
 const STAGE = "genre_tagging";
 
-export function getReadyForGenreTagging(
+function getReadyForGenreTagging(
 	batchSongs: PipelineBatch["songs"],
 ): ReadyResult {
 	const ready: string[] = [];

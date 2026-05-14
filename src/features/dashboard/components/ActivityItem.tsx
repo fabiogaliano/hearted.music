@@ -73,5 +73,3 @@ export function ActivityItem({ item, showBorder }: ActivityItemProps) {
 		</div>
 	);
 }
-
-export default ActivityItem;

@@ -8,7 +8,7 @@
 import type { Song } from "@/lib/domains/library/songs/queries";
 
 /** Artist within a Spotify track payload */
-export interface SpotifyTrackArtistDTO {
+interface SpotifyTrackArtistDTO {
 	id: string;
 	name: string;
 	imageUrl?: string | null;

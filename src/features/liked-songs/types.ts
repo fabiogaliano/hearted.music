@@ -5,7 +5,6 @@
  */
 
 import type { SongDisplayState } from "@/lib/domains/billing/state";
-import type { ThemeConfig } from "@/lib/theme/types";
 
 // Re-export the API types for convenience
 export type MatchingStatus =
@@ -37,7 +36,7 @@ export interface LikedSong {
 }
 
 // Full analysis structure from the database
-export interface SongAnalysis {
+interface SongAnalysis {
 	id: string;
 	track_id: string;
 	analysis: AnalysisContent;
@@ -77,19 +76,6 @@ export interface AnalysisContent {
 		danceability?: number;
 		instrumentalness?: number;
 	};
-}
-
-// Component props
-export interface LikedSongsPageProps {
-	songs?: LikedSong[];
-	isLoading?: boolean;
-}
-
-export interface SongListProps {
-	theme: ThemeConfig;
-	songs: LikedSong[];
-	selectedSongId: string | null;
-	onSelectSong: (song: LikedSong) => void;
 }
 
 // Helper to check if a song is "new" (liked in last 7 days)

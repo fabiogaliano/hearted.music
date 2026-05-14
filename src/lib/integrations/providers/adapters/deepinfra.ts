@@ -35,7 +35,7 @@ import type {
 /**
  * DeepInfra provider adapter.
  */
-export class DeepInfraProvider implements MLProvider {
+class DeepInfraProvider implements MLProvider {
 	private readonly metadata: ProviderMetadata;
 
 	constructor() {

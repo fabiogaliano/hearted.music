@@ -14,13 +14,13 @@ import { z } from "zod";
 /**
  * Identifies which ML provider is being used.
  */
-export const ProviderNameSchema = z.enum(["deepinfra", "huggingface", "local"]);
+const ProviderNameSchema = z.enum(["deepinfra", "huggingface", "local"]);
 export type ProviderName = z.infer<typeof ProviderNameSchema>;
 
 /**
  * Provider metadata for cache keys and debugging.
  */
-export const ProviderMetadataSchema = z.object({
+const ProviderMetadataSchema = z.object({
 	/** Provider name */
 	name: ProviderNameSchema,
 	/** Embedding model identifier */
@@ -39,13 +39,12 @@ export type ProviderMetadata = z.infer<typeof ProviderMetadataSchema>;
 /**
  * Prefix for instruction-tuned embedding models.
  */
-export const EmbedPrefixSchema = z.enum(["query:", "passage:"]);
-export type EmbedPrefix = z.infer<typeof EmbedPrefixSchema>;
+const EmbedPrefixSchema = z.enum(["query:", "passage:"]);
 
 /**
  * Options for embedding operations.
  */
-export const EmbedOptionsSchema = z.object({
+const EmbedOptionsSchema = z.object({
 	/** Prefix for optimal results: "query:" for search, "passage:" for documents */
 	prefix: EmbedPrefixSchema.optional(),
 	/** Timeout in milliseconds */
@@ -56,7 +55,7 @@ export type EmbedOptions = z.infer<typeof EmbedOptionsSchema>;
 /**
  * Result of an embedding operation.
  */
-export const EmbeddingResultSchema = z.object({
+const EmbeddingResultSchema = z.object({
 	/** Embedding vector */
 	embedding: z.array(z.number()),
 	/** Model that generated the embedding */
@@ -73,7 +72,7 @@ export type EmbeddingResult = z.infer<typeof EmbeddingResultSchema>;
 /**
  * Options for reranking operations.
  */
-export const RerankOptionsSchema = z.object({
+const RerankOptionsSchema = z.object({
 	/** Maximum number of documents to return (0 = all) */
 	topK: z.number().nonnegative().optional(),
 	/** Timeout in milliseconds */
@@ -84,18 +83,17 @@ export type RerankOptions = z.infer<typeof RerankOptionsSchema>;
 /**
  * Reranking score for a single document.
  */
-export const RerankScoreSchema = z.object({
+const RerankScoreSchema = z.object({
 	/** Index of the document in the input array */
 	index: z.number(),
 	/** Relevance score (higher = more relevant) */
 	score: z.number(),
 });
-export type RerankScore = z.infer<typeof RerankScoreSchema>;
 
 /**
  * Result of a reranking operation.
  */
-export const RerankResultSchema = z.object({
+const RerankResultSchema = z.object({
 	/** Reranked scores sorted by relevance */
 	scores: z.array(RerankScoreSchema),
 	/** Model that generated the scores */

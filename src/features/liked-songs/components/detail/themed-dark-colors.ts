@@ -1,7 +1,7 @@
 import type { ThemeConfig } from "@/lib/theme/types";
 import { extractHue } from "@/lib/utils/color";
 
-export interface ThemedDarkColors {
+interface ThemedDarkColors {
 	bg: string;
 	bgLight: string;
 	bgLighter: string;

@@ -31,7 +31,7 @@ import type { DbError } from "@/lib/shared/errors/database";
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface LightweightEnrichmentOptions {
+interface LightweightEnrichmentOptions {
 	accountId: string;
 	/** Restrict to specific playlists (default: all target playlists) */
 	playlistIds?: string[];
@@ -39,7 +39,7 @@ export interface LightweightEnrichmentOptions {
 	songIds?: string[];
 }
 
-export interface LightweightEnrichmentStats {
+interface LightweightEnrichmentStats {
 	songsScanned: number;
 	audio: { filled: number; skipped: number; failed: number };
 	genres: { filled: number; skipped: number; failed: number };

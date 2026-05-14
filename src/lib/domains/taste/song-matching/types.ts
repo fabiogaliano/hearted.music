@@ -91,7 +91,7 @@ export interface MatchingConfig {
 }
 
 /** Missing required data for matching */
-export class MatchingDataError extends TaggedError("MatchingDataError")<{
+class MatchingDataError extends TaggedError("MatchingDataError")<{
 	message: string;
 	songId?: string;
 	playlistId?: string;
@@ -102,7 +102,7 @@ export class MatchingDataError extends TaggedError("MatchingDataError")<{
 }
 
 /** Computation error during matching */
-export class MatchingComputeError extends TaggedError("MatchingComputeError")<{
+class MatchingComputeError extends TaggedError("MatchingComputeError")<{
 	message: string;
 	cause?: unknown;
 }>() {

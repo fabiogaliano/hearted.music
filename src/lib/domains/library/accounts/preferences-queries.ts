@@ -18,15 +18,6 @@ import {
 
 export type UserPreferences = Tables<"user_preferences">;
 
-/**
- * User's persisted theme preference.
- * null = user hasn't chosen a theme yet (only during onboarding)
- * Non-null = user's explicit choice
- */
-export type UserThemePreference = Enums<"theme"> | null;
-
-export const ACCOUNT_ID_SCHEMA = z.uuid();
-
 export const ONBOARDING_STEPS = z.enum([
 	"welcome",
 	"pick-color",
@@ -46,7 +37,7 @@ export type OnboardingStep = z.infer<typeof ONBOARDING_STEPS>;
  * Gets preferences for an account.
  * Returns null if no preferences record exists (use getOrCreatePreferences for auto-creation).
  */
-export function getPreferences(
+function getPreferences(
 	accountId: string,
 ): Promise<Result<UserPreferences | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
@@ -94,31 +85,6 @@ export async function getOrCreatePreferences(
 			})
 			.select()
 			.single(),
-	);
-}
-
-/**
- * Gets the current onboarding step for an account.
- * Returns 'welcome' if no preferences exist.
- * Validates the step using Zod instead of type assertion.
- */
-export async function getOnboardingStep(
-	accountId: string,
-): Promise<Result<OnboardingStep, DbError>> {
-	const result = await getPreferences(accountId);
-
-	if (Result.isError(result)) {
-		return Result.err(result.error);
-	}
-
-	const stepValidation = ONBOARDING_STEPS.safeParse(
-		result.value?.onboarding_step,
-	);
-
-	return Result.ok(
-		stepValidation.success
-			? stepValidation.data
-			: ONBOARDING_STEPS.enum.welcome,
 	);
 }
 
@@ -197,26 +163,6 @@ export function completeOnboarding(
 				{
 					account_id: accountId,
 					onboarding_completed_at: now,
-				},
-				{ onConflict: "account_id" },
-			)
-			.select()
-			.single(),
-	);
-}
-
-export function resetOnboarding(
-	accountId: string,
-): Promise<Result<UserPreferences, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	return fromSupabaseSingle(
-		supabase
-			.from("user_preferences")
-			.upsert(
-				{
-					account_id: accountId,
-					onboarding_step: ONBOARDING_STEPS.enum.welcome,
-					onboarding_completed_at: null,
 				},
 				{ onConflict: "account_id" },
 			)

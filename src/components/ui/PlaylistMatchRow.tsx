@@ -1,18 +1,18 @@
 import type { ReactNode } from "react";
 import { fonts } from "@/lib/theme/fonts";
 
-export interface PlaylistMatchRowColors {
+interface PlaylistMatchRowColors {
 	text: string;
 	textMuted: string;
 	border: string;
 }
 
-export type PlaylistMatchRowAction =
+type PlaylistMatchRowAction =
 	| { type: "added" }
 	| { type: "add"; onAdd: (playlistId: string) => void }
 	| { type: "custom"; node: ReactNode };
 
-export interface PlaylistMatchRowProps {
+interface PlaylistMatchRowProps {
 	playlistId: string;
 	name: string;
 	/** Pre-rendered score node — caller decides plain span vs NumberFlow */

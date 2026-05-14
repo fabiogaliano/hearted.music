@@ -26,7 +26,7 @@ function failureMessageFor(kind: AudioFeaturesFailureKind): string {
 		: "Audio features provider transient failure";
 }
 
-export async function getReadyForAudioFeatures(
+async function getReadyForAudioFeatures(
 	batchSongIds: string[],
 ): Promise<ReadyResult> {
 	const existingResult = await audioFeatureData.getBatch(batchSongIds);

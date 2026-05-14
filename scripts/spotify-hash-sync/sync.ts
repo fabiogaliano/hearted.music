@@ -41,7 +41,7 @@ const isHeaded = args.has("--headed");
 function cli(command: string, opts?: { timeout?: number }): string {
 	const timeout = opts?.timeout ?? 30_000;
 	try {
-		return execSync(`bunx playwright-cli -s=${SESSION} ${command}`, {
+		return execSync(`playwright-cli -s=${SESSION} ${command}`, {
 			encoding: "utf-8",
 			timeout,
 			stdio: ["pipe", "pipe", "pipe"],
