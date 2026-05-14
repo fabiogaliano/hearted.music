@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import type { LikedSongsStatsResult } from "@/lib/server/liked-songs.functions";
 import { fonts } from "@/lib/theme/fonts";
 
@@ -85,14 +86,14 @@ export function LikedSongsHeader({
 					</>
 				)}
 				{showSelectionUI && lockedSongCount > 0 && !selectionMode && (
-					<button
-						type="button"
+					<Button
+						variant="surface"
 						onClick={onEnterSelectionMode}
-						className="hover-border-brighten ml-auto cursor-pointer rounded-full px-3 py-1 text-xs tracking-widest uppercase active:scale-[0.98]"
+						className="ml-auto"
 						style={{ fontFamily: fonts.body }}
 					>
 						Unlock Songs
-					</button>
+					</Button>
 				)}
 			</div>
 		</div>

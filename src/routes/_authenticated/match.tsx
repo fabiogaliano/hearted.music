@@ -1,5 +1,6 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Button } from "@/components/ui/Button";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MatchingEmptyState } from "@/features/matching/components/MatchingEmptyState";
 import { useMatchingSession } from "@/features/matching/hooks/useMatchingSession";
@@ -138,14 +139,15 @@ function NormalMatchPage() {
 					>
 						New match suggestions are available.
 					</p>
-					<button
-						type="button"
+					<Button
+						variant="link"
+						size="sm"
 						onClick={handleRefresh}
-						className="theme-primary cursor-pointer text-xs font-medium tracking-widest uppercase transition-opacity hover:opacity-70"
+						className="theme-primary"
 						style={{ fontFamily: fonts.body }}
 					>
 						Refresh
-					</button>
+					</Button>
 				</div>
 			)}
 			<MatchingPageContent

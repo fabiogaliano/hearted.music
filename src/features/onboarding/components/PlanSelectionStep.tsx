@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/kbd";
 import { billingKeys } from "@/features/billing/query-keys";
 import {
@@ -265,22 +266,24 @@ export function PlanSelectionStep({
 					{FALLBACK_MESSAGE}
 				</p>
 				<div className="mt-8 flex flex-col items-center gap-3">
-					<button
-						type="button"
+					<Button
+						variant="link"
+						size="sm"
 						onClick={handleRetryConfirmation}
-						className="theme-primary cursor-pointer text-sm font-medium tracking-wide"
+						className="theme-primary text-sm tracking-wide"
 						style={{ fontFamily: fonts.body }}
 					>
 						Retry confirmation
-					</button>
-					<button
-						type="button"
+					</Button>
+					<Button
+						variant="link"
+						size="sm"
 						onClick={handleRetryPolling}
-						className="theme-text-muted cursor-pointer text-sm font-medium tracking-wide"
+						className="theme-text-muted text-sm tracking-wide"
 						style={{ fontFamily: fonts.body }}
 					>
 						Choose a different plan
-					</button>
+					</Button>
 				</div>
 			</div>
 		);
@@ -508,15 +511,12 @@ function SuccessView({
 					</div>
 				</div>
 
-				<button
-					type="button"
+				<Button
+					variant="link"
 					onClick={handleStart}
 					disabled={isCompleting}
-					className="theme-text group mt-20 inline-flex min-h-11 cursor-pointer items-center gap-3"
-					style={{
-						fontFamily: fonts.body,
-						opacity: isCompleting ? 0.5 : 1,
-					}}
+					className="mt-20"
+					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-xl font-medium tracking-wide">
 						Start Exploring
@@ -524,7 +524,7 @@ function SuccessView({
 					<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 						→
 					</span>
-				</button>
+				</Button>
 			</div>
 
 			<div className="theme-kbd-scope fixed right-0 bottom-6 left-0 flex items-center justify-center gap-6 opacity-60">
@@ -555,15 +555,13 @@ function PlanCard({
 	onClick: () => void;
 }) {
 	return (
-		<button
-			type="button"
+		<Button
+			variant="card"
 			onClick={onClick}
 			disabled={disabled}
-			className="group flex w-full cursor-pointer items-center justify-between rounded-lg border px-6 py-5 text-left transition-opacity"
 			style={{
 				fontFamily: fonts.body,
-				borderColor: highlighted ? "var(--t-primary)" : "var(--t-border)",
-				opacity: disabled ? 0.5 : 1,
+				borderColor: highlighted ? "var(--t-primary)" : undefined,
 			}}
 		>
 			<div>
@@ -581,6 +579,6 @@ function PlanCard({
 					{buttonLabel}
 				</span>
 			</div>
-		</button>
+		</Button>
 	);
 }

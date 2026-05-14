@@ -1,4 +1,5 @@
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
+import { Button } from "@/components/ui/Button";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { fonts } from "@/lib/theme/fonts";
 
@@ -99,17 +100,17 @@ export function PlaylistCard({
 					)}
 				</div>
 
-				<button
-					type="button"
+				<Button
+					variant="icon"
 					onClick={(e) => {
 						e.stopPropagation();
 						onRemove?.(playlist.id);
 					}}
-					className="p-2 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100"
+					className="opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100"
 					aria-label={`Remove ${playlist.name} from matching`}
 				>
 					<span className="theme-text-muted text-xl leading-none">×</span>
-				</button>
+				</Button>
 			</div>
 		);
 	}
@@ -172,17 +173,17 @@ export function PlaylistCard({
 				)}
 			</div>
 
-			<button
-				type="button"
+			<Button
+				variant="icon"
 				onClick={(e) => {
 					e.stopPropagation();
 					onAction?.(playlist.id);
 				}}
-				className="p-1.5 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100"
+				className="opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100"
 				aria-label={`Add ${playlist.name} to matching`}
 			>
 				<span className="theme-text-muted text-base leading-none">+</span>
-			</button>
+			</Button>
 		</div>
 	);
 }

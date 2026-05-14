@@ -5,6 +5,7 @@
  * Groups shortcuts by scope, active scopes shown first with badge.
  */
 import { Fragment, useEffect } from "react";
+import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
 
 import { type CatalogEntry, SHORTCUT_CATALOG } from "./catalog";
@@ -161,13 +162,9 @@ export function ShortcutsHelpModal() {
 					>
 						Keyboard Shortcuts
 					</h2>
-					<button
-						type="button"
-						onClick={closeHelp}
-						className="theme-text-muted cursor-pointer p-1 transition-opacity hover:opacity-70"
-					>
+					<Button variant="icon" onClick={closeHelp}>
 						<span className="text-xl leading-none">×</span>
-					</button>
+					</Button>
 				</div>
 
 				<div className="space-y-6 px-6 py-4">

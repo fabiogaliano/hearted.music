@@ -1,5 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { memo } from "react";
+import { Button } from "@/components/ui/Button";
 import { PlaylistMatchRow } from "@/components/ui/PlaylistMatchRow";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
@@ -160,19 +161,18 @@ export const MatchesSection = memo(function MatchesSection({
 					</div>
 
 					<div className="mt-8 flex items-center justify-between">
-						<button
-							type="button"
+						<Button
+							variant="ghost"
+							size="sm"
 							onClick={onDismiss}
-							className="theme-text-muted text-xs tracking-widest uppercase transition-[transform,opacity] duration-100 hover:opacity-70 active:scale-[0.98]"
 							style={{ fontFamily: fonts.body }}
 						>
 							Dismiss
-						</button>
+						</Button>
 
-						<button
-							type="button"
+						<Button
+							variant="link"
 							onClick={onNext}
-							className="theme-text group inline-flex items-center gap-3 transition-transform duration-100 active:scale-[0.98]"
 							style={{ fontFamily: fonts.body }}
 						>
 							<span className="text-base font-medium tracking-wide">
@@ -181,7 +181,7 @@ export const MatchesSection = memo(function MatchesSection({
 							<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 								&rarr;
 							</span>
-						</button>
+						</Button>
 					</div>
 				</motion.div>
 			</AnimatePresence>

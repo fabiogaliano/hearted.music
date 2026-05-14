@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { type CSSProperties, useCallback, useState } from "react";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
+import { Button } from "@/components/ui/Button";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { isExtensionInstalled } from "@/lib/extension/detect";
 import {
@@ -248,10 +249,10 @@ export function PlaylistDetailView({
 		>
 			<div className="h-full overflow-y-auto px-6 py-8">
 				<div className="relative mb-8">
-					<button
-						type="button"
+					<Button
+						variant="icon"
 						onClick={onClose}
-						className="theme-text-muted absolute top-0 right-0 z-20 p-2"
+						className="absolute top-0 right-0 z-20"
 						style={{
 							opacity: isExpanded ? 1 : 0,
 							transition: "opacity 200ms cubic-bezier(0.23, 1, 0.32, 1) 80ms",
@@ -259,7 +260,7 @@ export function PlaylistDetailView({
 						aria-label="Close detail view"
 					>
 						<span className="text-2xl leading-none">×</span>
-					</button>
+					</Button>
 
 					<div className="flex items-start gap-8 pt-12">
 						{isExpanded && (

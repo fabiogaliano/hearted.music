@@ -1,5 +1,6 @@
 /** Welcome greeting with stats and sync button. */
 
+import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
 import type { DashboardStats } from "../types";
 
@@ -61,14 +62,14 @@ export function DashboardHeader({
 					<span className="theme-text-muted-bg h-1.5 w-1.5 rounded-full" />
 					{lastSyncText}
 				</span>
-				<button
-					type="button"
-					className="theme-text cursor-pointer text-xs font-medium tracking-widest uppercase transition-opacity hover:opacity-70"
+				<Button
+					variant="link"
+					size="sm"
 					style={{ fontFamily: fonts.body }}
 					aria-label="Sync library"
 				>
 					Sync
-				</button>
+				</Button>
 			</div>
 		</div>
 	);

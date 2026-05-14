@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
@@ -42,18 +43,18 @@ export function WelcomeStep() {
 					Your songs have been waiting.
 				</p>
 
-				<button
+				<Button
+					variant="link"
 					onClick={handleContinue}
 					disabled={isNavigating}
-					type="button"
-					className="theme-text group mt-16 inline-flex min-h-11 cursor-pointer items-center gap-3 border border-transparent px-4 py-2 transition-opacity duration-150 active:scale-[0.98] disabled:opacity-50"
+					className="mt-16"
 					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-lg font-medium tracking-wide">Let's go</span>
 					<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 						→
 					</span>
-				</button>
+				</Button>
 			</div>
 
 			<div className="theme-kbd-scope fixed right-0 bottom-6 left-0 flex items-center justify-center gap-6 opacity-60">

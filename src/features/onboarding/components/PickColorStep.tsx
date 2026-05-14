@@ -6,6 +6,7 @@
 import { useReducedMotion } from "framer-motion";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/Button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
@@ -158,15 +159,12 @@ export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
 					})}
 				</StaggeredContent>
 
-				<button
-					type="button"
+				<Button
+					variant="link"
 					onClick={handleContinue}
 					disabled={isSaving}
-					className="theme-text group mt-16 inline-flex min-h-11 cursor-pointer items-center gap-3 sm:mt-20"
-					style={{
-						fontFamily: fonts.body,
-						opacity: isSaving ? 0.5 : 1,
-					}}
+					className="mt-16 sm:mt-20"
+					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-lg font-medium tracking-wide">
 						{isSaving ? "Saving..." : "Continue"}
@@ -174,7 +172,7 @@ export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
 					<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 						→
 					</span>
-				</button>
+				</Button>
 			</StaggeredContent>
 
 			<div className="theme-kbd-scope fixed right-0 bottom-6 left-0 flex items-center justify-center gap-6 opacity-60">

@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/Button";
 import {
 	type ExtensionSyncState,
 	getExtensionStatus,
@@ -270,19 +271,19 @@ export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
 					{error || "We encountered an error while syncing your library."}
 				</p>
 
-				<button
-					type="button"
+				<Button
+					variant="link"
 					onClick={() => {
 						window.location.href = "/onboarding?step=welcome";
 					}}
-					className="theme-text group mt-16 inline-flex cursor-pointer items-center gap-3"
+					className="mt-16"
 					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-lg font-medium tracking-wide">Start Over</span>
 					<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 						→
 					</span>
-				</button>
+				</Button>
 			</div>
 		);
 	}

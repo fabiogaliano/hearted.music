@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/Button";
 import { CDCase } from "@/components/ui/CDCase";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import type { LandingSongManifest } from "@/lib/data/landing-songs";
@@ -224,15 +225,11 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 				</div>
 
 				<footer className="flex shrink-0 flex-wrap gap-4 px-6 pb-[max(3rem,env(safe-area-inset-bottom))] pt-6 pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] md:px-12 md:pl-[max(3rem,env(safe-area-inset-left))] md:pr-[max(3rem,env(safe-area-inset-right))]">
-					<button
-						type="button"
+					<Button
+						variant="link"
 						onClick={handleContinue}
 						disabled={isSaving || selectedTrackId === null}
-						className="theme-text group inline-flex min-h-11 cursor-pointer items-center gap-3"
-						style={{
-							fontFamily: fonts.body,
-							opacity: isSaving || selectedTrackId === null ? 0.5 : 1,
-						}}
+						style={{ fontFamily: fonts.body }}
 					>
 						<span className="text-lg font-medium tracking-wide">
 							{isSaving ? "Saving..." : "Continue"}
@@ -240,7 +237,7 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 						<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 							→
 						</span>
-					</button>
+					</Button>
 
 					<div className="theme-kbd-scope ml-auto flex items-center gap-6 opacity-60">
 						<div className="flex items-center gap-1.5">

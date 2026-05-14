@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { Button } from "@/components/ui/Button";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
 
@@ -86,22 +87,17 @@ export function DescriptionConflictDialog({
 				</p>
 
 				<div className="flex items-center justify-end gap-3">
-					<button
-						type="button"
+					<Button
+						variant="secondary"
+						size="sm"
 						onClick={onUseSpotifys}
-						className="theme-border-color theme-text cursor-pointer border px-4 py-1.5 text-xs font-normal tracking-widest uppercase transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98]"
 						style={{ fontFamily: fonts.body }}
 					>
 						Use Spotify's
-					</button>
-					<button
-						type="button"
-						onClick={onKeepMine}
-						className="theme-primary-action cursor-pointer px-6 py-2 text-sm font-medium tracking-widest uppercase transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
-						style={{ fontFamily: fonts.body }}
-					>
+					</Button>
+					<Button onClick={onKeepMine} style={{ fontFamily: fonts.body }}>
 						Keep mine
-					</button>
+					</Button>
 				</div>
 			</div>
 		</div>,

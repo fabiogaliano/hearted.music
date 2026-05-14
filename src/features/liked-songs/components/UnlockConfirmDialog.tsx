@@ -7,6 +7,7 @@ import {
 } from "@phosphor-icons/react";
 import { useEffect } from "react";
 
+import { Button } from "@/components/ui/Button";
 import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
@@ -134,14 +135,14 @@ export function UnlockConfirmDialog({
 							</p>
 						</div>
 						<PaywallCTA billingState={billingState} compact />
-						<button
-							type="button"
+						<Button
+							variant="ghost"
 							onClick={onDismiss}
-							className="theme-text-muted mt-2 cursor-pointer border-0 bg-transparent px-5 py-2 text-sm transition-[transform,opacity] duration-150 hover:opacity-70 active:scale-[0.98]"
+							className="mt-2"
 							style={{ fontFamily: fonts.body }}
 						>
 							Close
-						</button>
+						</Button>
 					</div>
 				)}
 
@@ -154,14 +155,13 @@ export function UnlockConfirmDialog({
 						>
 							{flowState.message}
 						</p>
-						<button
-							type="button"
+						<Button
 							onClick={onDismiss}
-							className="theme-primary-action mt-2 cursor-pointer px-5 py-2 text-sm transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
+							className="mt-2"
 							style={{ fontFamily: fonts.body }}
 						>
 							Close
-						</button>
+						</Button>
 					</div>
 				)}
 			</div>
@@ -184,14 +184,14 @@ function ConfirmContent({
 
 	return (
 		<>
-			<button
-				type="button"
+			<Button
+				variant="icon"
 				onClick={onCancel}
-				className="theme-text-muted absolute top-4 right-4 cursor-pointer border-0 bg-transparent"
+				className="absolute top-4 right-4"
 				aria-label="Cancel"
 			>
 				<X size={16} />
-			</button>
+			</Button>
 
 			<div className="flex flex-col items-center gap-4">
 				<LockSimple size={24} className="theme-primary" weight="regular" />
@@ -211,22 +211,20 @@ function ConfirmContent({
 				</div>
 
 				<div className="mt-2 flex gap-3">
-					<button
-						type="button"
+					<Button
+						variant="secondary"
 						onClick={onCancel}
-						className="theme-border-color theme-text cursor-pointer border px-4 py-2 text-sm transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98]"
 						style={{ fontFamily: fonts.body }}
 					>
 						Cancel
-					</button>
-					<button
-						type="button"
+					</Button>
+					<Button
 						onClick={onConfirm}
-						className="theme-primary-action cursor-pointer rounded-full px-5 py-2 text-sm transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
+						className="rounded-full"
 						style={{ fontFamily: fonts.body }}
 					>
 						Unlock
-					</button>
+					</Button>
 				</div>
 			</div>
 		</>

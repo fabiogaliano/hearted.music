@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { type CSSProperties, lazy, useEffect, useRef, useState } from "react";
 import { Toaster } from "sonner";
+import { Button } from "@/components/ui/Button";
 import {
 	HeartRippleBackground,
 	type HeartRippleHandle,
@@ -167,10 +168,9 @@ function RootErrorComponent({ error }: ErrorComponentProps) {
 			</h1>
 
 			<div className="mt-10 flex flex-col items-center gap-4">
-				<button
-					type="button"
+				<Button
+					variant="link"
 					onClick={() => window.location.reload()}
-					className="theme-text group inline-flex cursor-pointer items-center gap-2"
 					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-lg font-medium tracking-wide">Try again</span>
@@ -180,7 +180,7 @@ function RootErrorComponent({ error }: ErrorComponentProps) {
 					>
 						↻
 					</span>
-				</button>
+				</Button>
 
 				<Link
 					to="/"

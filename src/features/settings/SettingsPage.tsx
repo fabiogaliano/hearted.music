@@ -8,6 +8,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/Button";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { signOut } from "@/lib/platform/auth/auth-client";
@@ -161,15 +162,15 @@ export function SettingsPage({
 
 				<section>
 					<div className="theme-border-color border-t pt-8">
-						<button
-							type="button"
+						<Button
+							variant="ghost"
+							size="sm"
 							onClick={handleSignOut}
 							disabled={isSigningOut}
-							className="theme-text-muted cursor-pointer text-xs font-normal tracking-widest uppercase transition-opacity duration-150 hover:opacity-70 disabled:cursor-wait disabled:opacity-50"
 							style={{ fontFamily: fonts.body }}
 						>
 							{isSigningOut ? "Signing out…" : "Sign out"}
-						</button>
+						</Button>
 					</div>
 				</section>
 			</div>

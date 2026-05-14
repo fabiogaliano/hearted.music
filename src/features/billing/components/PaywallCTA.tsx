@@ -1,5 +1,6 @@
 import { Sparkle } from "@phosphor-icons/react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { Button } from "@/components/ui/Button";
 import { createPortal } from "react-dom";
 import {
 	SONG_PACK_500,
@@ -169,11 +170,10 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 				className={`flex w-full flex-col gap-3 ${compact ? "mt-1" : "mt-2"}`}
 			>
 				{showPackCTA && (
-					<button
-						type="button"
+					<Button
+						variant="card"
 						onClick={handlePackClick}
 						disabled={isBusy}
-						className="theme-border-color w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
 						style={{ fontFamily: fonts.body }}
 					>
 						<div className="flex items-baseline justify-between">
@@ -188,16 +188,15 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 						<ul className="theme-text-muted mt-1.5 flex flex-col gap-0.5">
 							<li className="text-xs">You choose which ones to explore</li>
 						</ul>
-					</button>
+					</Button>
 				)}
 
 				{showUnlimitedCTA && (
 					<>
-						<button
-							type="button"
+						<Button
+							variant="card"
 							onClick={() => startCheckout(UNLIMITED_YEARLY)}
 							disabled={isBusy}
-							className="theme-border-color w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
 							style={{ fontFamily: fonts.body }}
 						>
 							<div className="flex items-baseline justify-between">
@@ -241,14 +240,13 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 									</p>
 								)}
 							</div>
-						</button>
+						</Button>
 
 						{quarterlyEnabled && (
-							<button
-								type="button"
+							<Button
+								variant="card"
 								onClick={() => startCheckout(UNLIMITED_QUARTERLY)}
 								disabled={isBusy}
-								className="theme-border-color w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-[transform,background-color] duration-150 hover:bg-white/15 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
 								style={{ fontFamily: fonts.body }}
 							>
 								<div className="flex items-baseline justify-between">
@@ -293,7 +291,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 									<li className="text-xs">Every song explored automatically</li>
 									<li className="text-xs">Standard queue</li>
 								</ul>
-							</button>
+							</Button>
 						)}
 					</>
 				)}
@@ -336,25 +334,24 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 								{billingState.creditBalance + PACK_CREDITS}.
 							</p>
 							<div className="mt-5 flex justify-end gap-3">
-								<button
-									type="button"
+								<Button
+									variant="ghost"
+									size="sm"
 									onClick={() => setShowPackConfirm(false)}
-									className="theme-text-muted cursor-pointer border-0 bg-transparent px-4 py-1.5 text-xs tracking-widest uppercase transition-opacity duration-150 hover:opacity-70"
 									style={{ fontFamily: fonts.body }}
 								>
 									Not now
-								</button>
-								<button
-									type="button"
+								</Button>
+								<Button
+									size="sm"
 									onClick={() => {
 										setShowPackConfirm(false);
 										startCheckout(SONG_PACK_500);
 									}}
-									className="theme-primary-action cursor-pointer px-5 py-1.5 text-xs tracking-widest uppercase transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
-									style={{ fontFamily: fonts.body, borderRadius: "2px" }}
+									style={{ fontFamily: fonts.body }}
 								>
 									Add 500 more
-								</button>
+								</Button>
 							</div>
 						</div>
 					</div>,

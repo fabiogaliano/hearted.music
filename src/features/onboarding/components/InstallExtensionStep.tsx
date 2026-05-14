@@ -12,6 +12,7 @@ import {
 	useState,
 } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/kbd";
 import {
 	connectExtension,
@@ -87,19 +88,14 @@ function ActionContent({
 						),
 					)}
 				</ul>
-				<button
-					type="button"
+				<Button
 					onClick={onAccept}
 					disabled={isAdvancing}
-					className="theme-primary-action self-start inline-flex cursor-pointer items-center gap-2 rounded-full px-6 py-2.5 text-sm font-medium uppercase tracking-widest transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98]"
-					style={{
-						fontFamily: fonts.body,
-						opacity: isAdvancing ? 0.4 : 1,
-						cursor: isAdvancing ? "default" : "pointer",
-					}}
+					className="self-start rounded-full"
+					style={{ fontFamily: fonts.body }}
 				>
 					allow sync →
-				</button>
+				</Button>
 			</>
 		);
 	}

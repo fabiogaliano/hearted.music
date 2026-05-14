@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
 import type { CompletionScreenProps } from "../types";
 
@@ -111,10 +112,9 @@ export const CompletionScreen = memo(function CompletionScreen({
 				</p>
 			</div>
 
-			<button
-				type="button"
+			<Button
+				variant="link"
 				onClick={onExit}
-				className="theme-text group inline-flex items-center gap-3 transition-transform duration-100 active:scale-[0.98]"
 				style={{ fontFamily: fonts.body }}
 			>
 				<span className="text-base font-medium tracking-wide">
@@ -123,7 +123,7 @@ export const CompletionScreen = memo(function CompletionScreen({
 				<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 					&rarr;
 				</span>
-			</button>
+			</Button>
 		</div>
 	);
 });

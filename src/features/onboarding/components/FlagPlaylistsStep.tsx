@@ -8,6 +8,7 @@
 
 import { useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/Button";
 import { toast } from "sonner";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
@@ -250,15 +251,11 @@ export function FlagPlaylistsStep({
 				</div>
 
 				<footer className="flex shrink-0 flex-wrap gap-4 px-6 pb-[max(3rem,env(safe-area-inset-bottom))] pt-6 pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] md:px-12 md:pl-[max(3rem,env(safe-area-inset-left))] md:pr-[max(3rem,env(safe-area-inset-right))]">
-					<button
-						type="button"
+					<Button
+						variant="link"
 						onClick={handleContinue}
 						disabled={isSaving || selectedIds.size === 0}
-						className="theme-text group inline-flex min-h-11 cursor-pointer items-center gap-3"
-						style={{
-							fontFamily: fonts.body,
-							opacity: isSaving || selectedIds.size === 0 ? 0.5 : 1,
-						}}
+						style={{ fontFamily: fonts.body }}
 					>
 						<span className="text-lg font-medium tracking-wide">
 							{isSaving
@@ -268,38 +265,31 @@ export function FlagPlaylistsStep({
 						<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
 							→
 						</span>
-					</button>
+					</Button>
 
-					<button
-						type="button"
+					<Button
+						variant="link"
+						size="sm"
 						onClick={() =>
 							setSelectedIds(new Set(initialPlaylists.map((p) => p.id)))
 						}
 						disabled={isSaving || selectedIds.size === initialPlaylists.length}
-						className="theme-text-muted min-h-11 cursor-pointer text-sm underline"
-						style={{
-							fontFamily: fonts.body,
-							opacity:
-								isSaving || selectedIds.size === initialPlaylists.length
-									? 0.5
-									: 1,
-						}}
+						className="theme-text-muted min-h-11 text-sm underline"
+						style={{ fontFamily: fonts.body }}
 					>
 						Select all
-					</button>
+					</Button>
 
-					<button
-						type="button"
+					<Button
+						variant="link"
+						size="sm"
 						onClick={handleSkip}
 						disabled={isSaving}
-						className="theme-text-muted min-h-11 cursor-pointer text-sm underline"
-						style={{
-							fontFamily: fonts.body,
-							opacity: isSaving ? 0.5 : 1,
-						}}
+						className="theme-text-muted min-h-11 text-sm underline"
+						style={{ fontFamily: fonts.body }}
 					>
 						Skip for now
-					</button>
+					</Button>
 
 					<div className="theme-kbd-scope ml-auto flex items-center gap-6 opacity-60">
 						<div className="flex items-center gap-1.5">

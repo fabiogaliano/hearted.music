@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
 import type { ExtensionAvailability } from "../hooks/useExtensionStatus";
 
@@ -53,22 +54,17 @@ export function PlaylistDescription({
 					rows={3}
 				/>
 				<div className="mt-3 flex items-center gap-3">
-					<button
-						type="button"
-						onClick={onSave}
-						className="theme-primary-action px-3 py-1.5 text-xs tracking-widest uppercase"
-						style={{ fontFamily: fonts.body }}
-					>
+					<Button size="sm" onClick={onSave} style={{ fontFamily: fonts.body }}>
 						Save
-					</button>
-					<button
-						type="button"
+					</Button>
+					<Button
+						variant="ghost"
+						size="sm"
 						onClick={onCancel}
-						className="theme-text-muted text-xs tracking-widest uppercase"
 						style={{ fontFamily: fonts.body }}
 					>
 						Cancel
-					</button>
+					</Button>
 				</div>
 			</div>
 		);

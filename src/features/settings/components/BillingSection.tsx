@@ -1,6 +1,7 @@
 import { ArrowSquareOut } from "@phosphor-icons/react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/Button";
 import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
 import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
 import type { BillingState } from "@/lib/domains/billing/state";
@@ -137,16 +138,17 @@ export function BillingSection({ billingState }: BillingSectionProps) {
 
 			{showPortalButton && (
 				<div className="mt-4">
-					<button
-						type="button"
+					<Button
+						variant="ghost"
+						size="sm"
 						onClick={handlePortalLaunch}
 						disabled={isLoadingPortal}
-						className="theme-text-muted inline-flex cursor-pointer items-center gap-2 text-xs font-normal tracking-widest uppercase transition-opacity duration-150 hover:opacity-70 disabled:cursor-wait disabled:opacity-50"
+						className="inline-flex items-center gap-2"
 						style={{ fontFamily: fonts.body }}
 					>
 						{isLoadingPortal ? "Opening…" : "Manage subscription"}
 						{!isLoadingPortal && <ArrowSquareOut size={12} weight="light" />}
-					</button>
+					</Button>
 				</div>
 			)}
 

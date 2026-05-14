@@ -1,7 +1,5 @@
-/**
- * Navigation controls for song detail view
- * Supports both light and dark modes via isDark prop
- */
+import { Button } from "@/components/ui/Button";
+
 interface NavProps {
 	onClose: () => void;
 	onNext: () => void;
@@ -23,11 +21,11 @@ export function Nav({
 
 	return (
 		<div className="flex items-center gap-0.5">
-			<button
-				type="button"
+			<Button
+				variant="icon"
 				onClick={onPrevious}
 				disabled={!hasPrevious}
-				className={`${colorClass} p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9] disabled:opacity-30`}
+				className={colorClass}
 				aria-label="Previous song"
 			>
 				<svg
@@ -41,12 +39,12 @@ export function Nav({
 				>
 					<path d="M15 18l-6-6 6-6" />
 				</svg>
-			</button>
-			<button
-				type="button"
+			</Button>
+			<Button
+				variant="icon"
 				onClick={onNext}
 				disabled={!hasNext}
-				className={`${colorClass} p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9] disabled:opacity-30`}
+				className={colorClass}
 				aria-label="Next song"
 			>
 				<svg
@@ -60,11 +58,11 @@ export function Nav({
 				>
 					<path d="M9 18l6-6-6-6" />
 				</svg>
-			</button>
-			<button
-				type="button"
+			</Button>
+			<Button
+				variant="icon"
 				onClick={onClose}
-				className={`${colorClass} ml-1 p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9]`}
+				className={`${colorClass} ml-1`}
 				aria-label="Close song detail"
 			>
 				<svg
@@ -78,7 +76,7 @@ export function Nav({
 				>
 					<path d="M18 6L6 18M6 6l12 12" />
 				</svg>
-			</button>
+			</Button>
 		</div>
 	);
 }
