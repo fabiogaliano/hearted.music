@@ -57,29 +57,6 @@ const roseThemeStyle: ThemeTokenStyle = {
 };
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
-	headers: ({ ssr }) => {
-		if (!ssr?.nonce || import.meta.env.DEV) return;
-		const nonce = ssr.nonce;
-		return {
-			"Content-Security-Policy": [
-				"default-src 'self'",
-				"base-uri 'self'",
-				"form-action 'self'",
-				"frame-ancestors 'none'",
-				`script-src 'strict-dynamic' 'nonce-${nonce}'`,
-				`style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
-				"font-src 'self' https://fonts.gstatic.com",
-				`img-src 'self' data: https://i.scdn.co https://*.googleusercontent.com`,
-				"connect-src 'self'",
-				"object-src 'none'",
-				"upgrade-insecure-requests",
-			].join("; "),
-			"X-Frame-Options": "DENY",
-			"X-Content-Type-Options": "nosniff",
-			"Referrer-Policy": "strict-origin-when-cross-origin",
-			"X-XSS-Protection": "0",
-		};
-	},
 	head: () => ({
 		meta: [
 			{
@@ -126,6 +103,29 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			},
 		],
 	}),
+	headers: ({ ssr }) => {
+		if (!ssr?.nonce || import.meta.env.DEV) return;
+		const nonce = ssr.nonce;
+		return {
+			"Content-Security-Policy": [
+				"default-src 'self'",
+				"base-uri 'self'",
+				"form-action 'self'",
+				"frame-ancestors 'none'",
+				`script-src 'strict-dynamic' 'nonce-${nonce}'`,
+				`style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
+				"font-src 'self' https://fonts.gstatic.com",
+				`img-src 'self' data: https://i.scdn.co https://*.googleusercontent.com`,
+				"connect-src 'self'",
+				"object-src 'none'",
+				"upgrade-insecure-requests",
+			].join("; "),
+			"X-Frame-Options": "DENY",
+			"X-Content-Type-Options": "nosniff",
+			"Referrer-Policy": "strict-origin-when-cross-origin",
+			"X-XSS-Protection": "0",
+		};
+	},
 
 	component: RootComponent,
 	errorComponent: RootErrorComponent,

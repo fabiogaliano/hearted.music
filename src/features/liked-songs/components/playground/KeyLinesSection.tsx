@@ -8,8 +8,6 @@ interface KeyLinesSectionProps {
 }
 
 export function KeyLinesSection({ keyLines, colors }: KeyLinesSectionProps) {
-	if (!keyLines.length) return null;
-
 	const [openIndex, setOpenIndex] = useState<number>(-1);
 	const [pinnedIndex, setPinnedIndex] = useState<number>(-1);
 	const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -47,6 +45,8 @@ export function KeyLinesSection({ keyLines, colors }: KeyLinesSectionProps) {
 			}, 150);
 		}
 	}, [pinnedIndex]);
+
+	if (!keyLines.length) return null;
 
 	return (
 		<div className="space-y-4">
