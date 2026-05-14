@@ -44,7 +44,7 @@ export function DescriptionConflictDialog({
 			<button
 				type="button"
 				aria-label="Use Spotify description"
-				className="dialog-backdrop absolute inset-0 cursor-default appearance-none border-0 bg-black/45 p-0 backdrop-blur-sm"
+				className="dialog-backdrop absolute inset-0 cursor-default appearance-none border-0 bg-black/50 p-0 backdrop-blur-sm"
 				onClick={onUseSpotifys}
 			/>
 			<div

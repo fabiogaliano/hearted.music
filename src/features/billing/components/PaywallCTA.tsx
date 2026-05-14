@@ -299,7 +299,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 						<button
 							type="button"
 							aria-label="Close pack confirmation"
-							className="dialog-backdrop absolute inset-0 cursor-default border-0 bg-black/45 p-0"
+							className="dialog-backdrop absolute inset-0 cursor-default border-0 bg-black/50 p-0"
 							onClick={() => setShowPackConfirm(false)}
 						/>
 						<div
