@@ -2,6 +2,11 @@ import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Job } from "@/lib/data/jobs";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import type {
+	LibraryProcessingApplyOutcome,
+	LibraryProcessingState,
+} from "@/lib/workflows/library-processing/types";
+import type { DeadLetterRecoveryResult } from "@/lib/workflows/library-processing/terminal-recovery";
 import { type SweepDeps, runSweepTick } from "../sweep";
 
 vi.mock("../logger", () => ({
@@ -39,9 +44,36 @@ function makeDeps(overrides: Partial<SweepDeps> = {}): SweepDeps {
 		staleThreshold: "5 minutes",
 		sweepStaleLibraryProcessingJobs: vi.fn().mockResolvedValue(Result.ok([])),
 		markDeadLibraryProcessingJobs: vi.fn().mockResolvedValue(Result.ok([])),
+		recoverDeadLetteredLibraryProcessingJobs: vi.fn().mockResolvedValue([]),
 		sweepStaleWalkthroughPreviewJobs: vi.fn().mockResolvedValue(Result.ok([])),
 		markDeadWalkthroughPreviewJobs: vi.fn().mockResolvedValue(Result.ok([])),
 		...overrides,
+	};
+}
+
+function makeState(): LibraryProcessingState {
+	return {
+		accountId: "acct-1",
+		enrichment: { requestedAt: null, settledAt: null, activeJobId: null },
+		matchSnapshotRefresh: {
+			requestedAt: null,
+			settledAt: null,
+			activeJobId: null,
+		},
+		createdAt: "2026-01-01T00:00:00Z",
+		updatedAt: "2026-01-01T00:00:00Z",
+	};
+}
+
+function makeApplyOutcome(
+	changeKind: LibraryProcessingApplyOutcome["changeKind"],
+): LibraryProcessingApplyOutcome {
+	return {
+		accountId: "acct-1",
+		changeKind,
+		state: makeState(),
+		effects: [],
+		effectResults: [],
 	};
 }
 
@@ -243,5 +275,122 @@ describe("runSweepTick", () => {
 		expect(deps.sweepStaleWalkthroughPreviewJobs).toHaveBeenCalled();
 		expect(deps.markDeadWalkthroughPreviewJobs).toHaveBeenCalled();
 		expect(logMod.log.error).toHaveBeenCalledTimes(4);
+	});
+
+	it("calls recovery for dead-lettered library-processing jobs", async () => {
+		const deadJobs = [
+			makeJob({ id: "d-1", type: "enrichment" }),
+			makeJob({ id: "d-2", type: "match_snapshot_refresh" as Job["type"] }),
+		];
+		const recoveryResults: DeadLetterRecoveryResult[] = [
+			{
+				jobId: "d-1",
+				accountId: "acct-1",
+				jobType: "enrichment",
+				outcome: Result.ok(makeApplyOutcome("enrichment_stopped")),
+			},
+			{
+				jobId: "d-2",
+				accountId: "acct-1",
+				jobType: "match_snapshot_refresh",
+				outcome: Result.ok(makeApplyOutcome("match_snapshot_failed")),
+			},
+		];
+		const deps = makeDeps({
+			markDeadLibraryProcessingJobs: vi
+				.fn()
+				.mockResolvedValue(Result.ok(deadJobs)),
+			recoverDeadLetteredLibraryProcessingJobs: vi
+				.fn()
+				.mockResolvedValue(recoveryResults),
+		});
+
+		await runSweepTick(deps);
+
+		expect(deps.recoverDeadLetteredLibraryProcessingJobs).toHaveBeenCalledWith(
+			deadJobs,
+		);
+		expect(logMod.log.info).toHaveBeenCalledWith("dead-letter-recovered", {
+			jobId: "d-1",
+			accountId: "acct-1",
+			jobType: "enrichment",
+		});
+		expect(logMod.log.info).toHaveBeenCalledWith("dead-letter-recovered", {
+			jobId: "d-2",
+			accountId: "acct-1",
+			jobType: "match_snapshot_refresh",
+		});
+	});
+
+	it("logs structured recovery failures without stopping later recoveries", async () => {
+		const applyError = {
+			kind: "load_state" as const,
+			cause: new DatabaseError({ code: "500", message: "db down" }),
+		};
+		const recoveryResults: DeadLetterRecoveryResult[] = [
+			{
+				jobId: "d-1",
+				accountId: "acct-1",
+				jobType: "enrichment",
+				outcome: Result.err(applyError),
+			},
+			{
+				jobId: "d-2",
+				accountId: "acct-1",
+				jobType: "match_snapshot_refresh",
+				outcome: Result.ok(makeApplyOutcome("match_snapshot_failed")),
+			},
+		];
+		const deps = makeDeps({
+			markDeadLibraryProcessingJobs: vi
+				.fn()
+				.mockResolvedValue(
+					Result.ok([makeJob({ id: "d-1" }), makeJob({ id: "d-2" })]),
+				),
+			recoverDeadLetteredLibraryProcessingJobs: vi
+				.fn()
+				.mockResolvedValue(recoveryResults),
+		});
+
+		await runSweepTick(deps);
+
+		expect(logMod.log.error).toHaveBeenCalledWith(
+			"dead-letter-recovery-failed",
+			{
+				jobId: "d-1",
+				accountId: "acct-1",
+				jobType: "enrichment",
+				error: applyError,
+			},
+		);
+		expect(logMod.log.info).toHaveBeenCalledWith("dead-letter-recovered", {
+			jobId: "d-2",
+			accountId: "acct-1",
+			jobType: "match_snapshot_refresh",
+		});
+	});
+
+	it("does not call recovery when no jobs are dead-lettered", async () => {
+		const deps = makeDeps();
+		await runSweepTick(deps);
+
+		expect(
+			deps.recoverDeadLetteredLibraryProcessingJobs,
+		).not.toHaveBeenCalled();
+	});
+
+	it("does not call recovery when dead-letter RPC errors", async () => {
+		const dbErr = new DatabaseError({ code: "500", message: "fail" });
+		const deps = makeDeps({
+			markDeadLibraryProcessingJobs: vi
+				.fn()
+				.mockResolvedValue(Result.err(dbErr)),
+		});
+
+		await runSweepTick(deps);
+
+		expect(
+			deps.recoverDeadLetteredLibraryProcessingJobs,
+		).not.toHaveBeenCalled();
 	});
 });

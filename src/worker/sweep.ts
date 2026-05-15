@@ -7,6 +7,10 @@ import {
 	type Job,
 } from "@/lib/data/jobs";
 import type { DbError } from "@/lib/shared/errors/database";
+import {
+	recoverDeadLetteredLibraryProcessingJobs,
+	type DeadLetterRecoveryResult,
+} from "@/lib/workflows/library-processing/terminal-recovery";
 import { workerConfig } from "./config";
 import { log } from "./logger";
 
@@ -14,10 +18,15 @@ export type SweepRpc = (
 	staleThreshold: string,
 ) => Promise<Result<Job[], DbError>>;
 
+export type RecoverDeadLetteredFn = (
+	jobs: Job[],
+) => Promise<DeadLetterRecoveryResult[]>;
+
 export type SweepDeps = {
 	staleThreshold: string;
 	sweepStaleLibraryProcessingJobs: SweepRpc;
 	markDeadLibraryProcessingJobs: SweepRpc;
+	recoverDeadLetteredLibraryProcessingJobs: RecoverDeadLetteredFn;
 	sweepStaleWalkthroughPreviewJobs: SweepRpc;
 	markDeadWalkthroughPreviewJobs: SweepRpc;
 };
@@ -27,6 +36,7 @@ export function createDefaultSweepDeps(): SweepDeps {
 		staleThreshold: workerConfig.staleThreshold,
 		sweepStaleLibraryProcessingJobs,
 		markDeadLibraryProcessingJobs,
+		recoverDeadLetteredLibraryProcessingJobs,
 		sweepStaleWalkthroughPreviewJobs,
 		markDeadWalkthroughPreviewJobs,
 	};
@@ -51,6 +61,27 @@ export async function runSweepTick(deps: SweepDeps): Promise<void> {
 			count: dead.value.length,
 			jobIds: dead.value.map((j) => j.id),
 		});
+
+		const recoveryResults = await deps.recoverDeadLetteredLibraryProcessingJobs(
+			dead.value,
+		);
+
+		for (const r of recoveryResults) {
+			if (Result.isError(r.outcome)) {
+				log.error("dead-letter-recovery-failed", {
+					jobId: r.jobId,
+					accountId: r.accountId,
+					jobType: r.jobType,
+					error: r.outcome.error,
+				});
+			} else {
+				log.info("dead-letter-recovered", {
+					jobId: r.jobId,
+					accountId: r.accountId,
+					jobType: r.jobType,
+				});
+			}
+		}
 	}
 
 	const sweptPreview = await deps.sweepStaleWalkthroughPreviewJobs(

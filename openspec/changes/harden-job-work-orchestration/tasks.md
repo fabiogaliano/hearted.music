@@ -36,11 +36,11 @@
 
 ## 6. Add Dead-Letter Recovery
 
-- [ ] 6.1 Create `src/lib/workflows/library-processing/terminal-recovery.ts`.
-- [ ] 6.2 Implement `recoverDeadLetteredLibraryProcessingJob(job)` mapping `enrichment` to `EnrichmentChanges.stopped({ reason: "error" })` and `match_snapshot_refresh` to `MatchSnapshotChanges.failed(...)`.
-- [ ] 6.3 Call the recovery helper for every job returned by `markDeadLibraryProcessingJobs(...)` in `src/worker/sweep.ts`.
-- [ ] 6.4 Add tests proving dead-letter recovery clears the matching active-job ref and does not immediately ensure another job in the same apply cycle.
-- [ ] 6.5 Log structured recovery failures without stopping recovery for later dead-lettered jobs in the same sweep tick.
+- [x] 6.1 Create `src/lib/workflows/library-processing/terminal-recovery.ts`.
+- [x] 6.2 Implement `recoverDeadLetteredLibraryProcessingJob(job)` mapping `enrichment` to `EnrichmentChanges.stopped({ reason: "error" })` and `match_snapshot_refresh` to `MatchSnapshotChanges.failed(...)`.
+- [x] 6.3 Call the recovery helper for every job returned by `markDeadLibraryProcessingJobs(...)` in `src/worker/sweep.ts`.
+- [x] 6.4 Add tests proving dead-letter recovery clears the matching active-job ref and does not immediately ensure another job in the same apply cycle.
+- [x] 6.5 Log structured recovery failures without stopping recovery for later dead-lettered jobs in the same sweep tick.
 
 ## 7. Add Terminal Active-Ref Recovery
 
