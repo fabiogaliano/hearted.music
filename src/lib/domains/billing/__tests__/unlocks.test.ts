@@ -13,6 +13,7 @@ vi.mock("@/lib/workflows/library-processing/service", () => ({
 import { readBillingState } from "@/lib/domains/billing/queries";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
+import type { LibraryProcessingApplyOutcome } from "@/lib/workflows/library-processing/types";
 import { grantFreeAllocation, requestSongUnlock } from "../unlocks";
 
 const mockedReadBillingState = vi.mocked(readBillingState);
@@ -28,6 +29,26 @@ function makeBillingState(overrides: Partial<BillingState> = {}): BillingState {
 		unlimitedAccess: { kind: "none" },
 		queueBand: "standard",
 		...overrides,
+	};
+}
+
+function makeApplyOutcome(): LibraryProcessingApplyOutcome {
+	return {
+		accountId: "acct-1",
+		changeKind: "songs_unlocked",
+		state: {
+			accountId: "acct-1",
+			enrichment: { requestedAt: null, settledAt: null, activeJobId: null },
+			matchSnapshotRefresh: {
+				requestedAt: null,
+				settledAt: null,
+				activeJobId: null,
+			},
+			createdAt: "2026-01-01T00:00:00.000Z",
+			updatedAt: "2026-01-01T00:00:00.000Z",
+		},
+		effects: [],
+		effectResults: [],
 	};
 }
 
@@ -70,7 +91,7 @@ function mockFrom(
 describe("requestSongUnlock", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockedApplyChange.mockResolvedValue(undefined);
+		mockedApplyChange.mockResolvedValue(Result.ok(makeApplyOutcome()));
 	});
 
 	it("returns structured result on successful unlock", async () => {
@@ -268,7 +289,7 @@ describe("requestSongUnlock", () => {
 describe("grantFreeAllocation", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockedApplyChange.mockResolvedValue(undefined);
+		mockedApplyChange.mockResolvedValue(Result.ok(makeApplyOutcome()));
 	});
 
 	it("unlocks up to 10 most-recent liked songs with source free_auto", async () => {

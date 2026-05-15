@@ -12,6 +12,7 @@ import {
 import { EnrichmentChanges } from "./changes/enrichment";
 import { MatchSnapshotChanges } from "./changes/match-snapshot";
 import { applyLibraryProcessingChange } from "./service";
+import type { LibraryProcessingChange } from "./types";
 
 type RunJobOutcome =
 	| {
@@ -63,21 +64,18 @@ async function runEnrichmentJob(job: Job): Promise<RunJobOutcome> {
 			failedCount: result.failedCount,
 		});
 
-		try {
-			await applyLibraryProcessingChange(
-				EnrichmentChanges.completed({
-					accountId: result.accountId,
-					jobId: result.jobId,
-					requestSatisfied,
-					newCandidatesAvailable: result.newCandidatesAvailable,
-				}),
-			);
-		} catch (settleError) {
-			console.error(
-				`[runner] enrichment-settle-error job=${job.id}:`,
-				settleError,
-			);
-		}
+		const change = EnrichmentChanges.completed({
+			accountId: result.accountId,
+			jobId: result.jobId,
+			requestSatisfied,
+			newCandidatesAvailable: result.newCandidatesAvailable,
+		});
+		await settleLibraryProcessing(change, {
+			jobId: job.id,
+			accountId: result.accountId,
+			workflow: "enrichment",
+			changeKind: change.kind,
+		});
 
 		return { status: "completed", workflow: "enrichment", result };
 	} catch (error) {
@@ -85,17 +83,17 @@ async function runEnrichmentJob(job: Job): Promise<RunJobOutcome> {
 		await markJobFailedSafe(job, message);
 		await writeMeasurement(job, "enrichment", startedAt, "error");
 
-		try {
-			await applyLibraryProcessingChange(
-				EnrichmentChanges.stopped({
-					accountId: job.account_id,
-					jobId: job.id,
-					reason: "error",
-				}),
-			);
-		} catch {
-			// The failure path is already recorded on the job row.
-		}
+		const change = EnrichmentChanges.stopped({
+			accountId: job.account_id,
+			jobId: job.id,
+			reason: "error",
+		});
+		await settleLibraryProcessing(change, {
+			jobId: job.id,
+			accountId: job.account_id,
+			workflow: "enrichment",
+			changeKind: change.kind,
+		});
 
 		return { status: "failed", workflow: "enrichment", error: message };
 	}
@@ -122,19 +120,16 @@ async function runMatchSnapshotRefreshJob(job: Job): Promise<RunJobOutcome> {
 			{ published: result.published, isEmpty: result.isEmpty },
 		);
 
-		try {
-			await applyLibraryProcessingChange(
-				MatchSnapshotChanges.published({
-					accountId: result.accountId,
-					jobId: result.jobId,
-				}),
-			);
-		} catch (settleError) {
-			console.error(
-				`[runner] refresh-settle-error job=${job.id}:`,
-				settleError,
-			);
-		}
+		const change = MatchSnapshotChanges.published({
+			accountId: result.accountId,
+			jobId: result.jobId,
+		});
+		await settleLibraryProcessing(change, {
+			jobId: job.id,
+			accountId: result.accountId,
+			workflow: "match_snapshot_refresh",
+			changeKind: change.kind,
+		});
 
 		return {
 			status: "completed",
@@ -146,22 +141,49 @@ async function runMatchSnapshotRefreshJob(job: Job): Promise<RunJobOutcome> {
 		await markJobFailedSafe(job, message);
 		await writeMeasurement(job, "match_snapshot_refresh", startedAt, "error");
 
-		try {
-			await applyLibraryProcessingChange(
-				MatchSnapshotChanges.failed({
-					accountId: job.account_id,
-					jobId: job.id,
-				}),
-			);
-		} catch {
-			// The failure path is already recorded on the job row.
-		}
+		const change = MatchSnapshotChanges.failed({
+			accountId: job.account_id,
+			jobId: job.id,
+		});
+		await settleLibraryProcessing(change, {
+			jobId: job.id,
+			accountId: job.account_id,
+			workflow: "match_snapshot_refresh",
+			changeKind: change.kind,
+		});
 
 		return {
 			status: "failed",
 			workflow: "match_snapshot_refresh",
 			error: message,
 		};
+	}
+}
+
+interface SettlementLogContext {
+	jobId: string;
+	accountId: string;
+	workflow: "enrichment" | "match_snapshot_refresh";
+	changeKind: LibraryProcessingChange["kind"];
+}
+
+async function settleLibraryProcessing(
+	change: LibraryProcessingChange,
+	context: SettlementLogContext,
+): Promise<void> {
+	try {
+		const settleResult = await applyLibraryProcessingChange(change);
+		if (Result.isError(settleResult)) {
+			console.error("[runner] library-processing-settlement-failed", {
+				...context,
+				error: settleResult.error,
+			});
+		}
+	} catch (error) {
+		console.error("[runner] library-processing-settlement-threw", {
+			...context,
+			error: error instanceof Error ? error.message : String(error),
+		});
 	}
 }
 

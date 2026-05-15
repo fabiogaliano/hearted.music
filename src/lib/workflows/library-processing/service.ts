@@ -24,6 +24,10 @@ import {
 import { bandToNumeric, resolveQueuePriority } from "./queue-priority";
 import { reconcileLibraryProcessing } from "./reconciler";
 import type {
+	LibraryProcessingApplyCause,
+	LibraryProcessingApplyError,
+	LibraryProcessingApplyOutcome,
+	LibraryProcessingEffectResult,
 	LibraryProcessingChange,
 	LibraryProcessingEffect,
 	LibraryProcessingState,
@@ -150,12 +154,45 @@ async function deriveNeedsTargetSongEnrichment(
 	return false;
 }
 
+function toUnexpectedApplyCause(
+	error: unknown,
+): Extract<LibraryProcessingApplyCause, { kind: "unexpected" }> {
+	return {
+		kind: "unexpected",
+		message: error instanceof Error ? error.message : String(error),
+	};
+}
+
+async function persistActiveRefs(
+	state: LibraryProcessingState,
+	baselineState: LibraryProcessingState,
+): Promise<Result<LibraryProcessingState, LibraryProcessingApplyError>> {
+	if (state === baselineState) {
+		return Result.ok(state);
+	}
+
+	const persistResult = await persistLibraryProcessingState(state);
+	if (Result.isError(persistResult)) {
+		return Result.err({
+			kind: "persist_active_refs",
+			cause: persistResult.error,
+		});
+	}
+
+	return Result.ok(persistResult.value);
+}
+
 async function executeEffect(
 	effect: LibraryProcessingEffect,
 	state: LibraryProcessingState,
 	change: LibraryProcessingChange,
 	jobOutcomeMetadata: JobOutcomeMetadata,
-): Promise<LibraryProcessingState> {
+): Promise<
+	Result<
+		{ state: LibraryProcessingState; jobId: string },
+		LibraryProcessingApplyCause
+	>
+> {
 	const supabase = createAdminSupabaseClient();
 	const billingResult = await readBillingState(supabase, effect.accountId);
 	const billingBand = resolveQueuePriority(
@@ -186,49 +223,45 @@ async function executeEffect(
 			queuePriority,
 			progress,
 		});
-		if (Result.isOk(result)) {
-			return {
+		if (Result.isError(result)) {
+			return Result.err(result.error);
+		}
+		return Result.ok({
+			state: {
 				...state,
 				enrichment: {
 					...state.enrichment,
 					activeJobId: result.value.id,
 				},
-			};
-		}
-		console.error(
-			`[library-processing] Failed to ensure enrichment job:`,
-			result.error.message,
-		);
-	}
-
-	if (effect.kind === "ensure_match_snapshot_refresh_job") {
-		const needsTargetSongEnrichment = await deriveNeedsTargetSongEnrichment(
-			effect.accountId,
-			change,
-		);
-
-		const result = await ensureMatchSnapshotRefreshJob({
-			accountId: effect.accountId,
-			satisfiesRequestedAt: effect.satisfiesRequestedAt,
-			queuePriority,
-			needsTargetSongEnrichment,
+			},
+			jobId: result.value.id,
 		});
-		if (Result.isOk(result)) {
-			return {
-				...state,
-				matchSnapshotRefresh: {
-					...state.matchSnapshotRefresh,
-					activeJobId: result.value.id,
-				},
-			};
-		}
-		console.error(
-			`[library-processing] Failed to ensure match snapshot refresh job:`,
-			result.error.message,
-		);
 	}
 
-	return state;
+	const needsTargetSongEnrichment = await deriveNeedsTargetSongEnrichment(
+		effect.accountId,
+		change,
+	);
+
+	const result = await ensureMatchSnapshotRefreshJob({
+		accountId: effect.accountId,
+		satisfiesRequestedAt: effect.satisfiesRequestedAt,
+		queuePriority,
+		needsTargetSongEnrichment,
+	});
+	if (Result.isError(result)) {
+		return Result.err(result.error);
+	}
+	return Result.ok({
+		state: {
+			...state,
+			matchSnapshotRefresh: {
+				...state.matchSnapshotRefresh,
+				activeJobId: result.value.id,
+			},
+		},
+		jobId: result.value.id,
+	});
 }
 
 /**
@@ -242,14 +275,13 @@ async function executeEffect(
  */
 export async function applyLibraryProcessingChange(
 	change: LibraryProcessingChange,
-): Promise<void> {
+): Promise<Result<LibraryProcessingApplyOutcome, LibraryProcessingApplyError>> {
 	const stateResult = await getOrCreateLibraryProcessingState(change.accountId);
 	if (Result.isError(stateResult)) {
-		console.error(
-			"[library-processing] Failed to load state:",
-			stateResult.error.message,
-		);
-		return;
+		return Result.err({
+			kind: "load_state",
+			cause: stateResult.error,
+		});
 	}
 
 	const requestMarker = new Date().toISOString();
@@ -269,11 +301,10 @@ export async function applyLibraryProcessingChange(
 
 	const persistResult = await persistLibraryProcessingState(newState);
 	if (Result.isError(persistResult)) {
-		console.error(
-			"[library-processing] Failed to persist state:",
-			persistResult.error.message,
-		);
-		return;
+		return Result.err({
+			kind: "persist_state",
+			cause: persistResult.error,
+		});
 	}
 
 	console.log(
@@ -281,31 +312,69 @@ export async function applyLibraryProcessingChange(
 	);
 
 	let currentState = persistResult.value;
+	const effectResults: LibraryProcessingEffectResult[] = [];
 
 	for (const effect of effects) {
 		try {
-			currentState = await executeEffect(
+			const effectResult = await executeEffect(
 				effect,
 				currentState,
 				change,
 				jobOutcomeMetadata,
 			);
-			console.log(`[library-processing] Effect ${effect.kind} executed`);
+			if (Result.isError(effectResult)) {
+				const persistActiveRefsResult = await persistActiveRefs(
+					currentState,
+					persistResult.value,
+				);
+				if (Result.isError(persistActiveRefsResult)) {
+					return persistActiveRefsResult;
+				}
+
+				return Result.err({
+					kind: "effect_ensure_failed",
+					effectKind: effect.kind,
+					cause: effectResult.error,
+				});
+			}
+			currentState = effectResult.value.state;
+			effectResults.push({
+				kind: effect.kind,
+				status: "ensured",
+				jobId: effectResult.value.jobId,
+			});
 		} catch (err) {
-			console.error(`[library-processing] Effect ${effect.kind} failed:`, err);
+			const persistActiveRefsResult = await persistActiveRefs(
+				currentState,
+				persistResult.value,
+			);
+			if (Result.isError(persistActiveRefsResult)) {
+				return persistActiveRefsResult;
+			}
+
+			return Result.err({
+				kind: "effect_ensure_failed",
+				effectKind: effect.kind,
+				cause: toUnexpectedApplyCause(err),
+			});
 		}
 	}
 
-	// Persist activeJobId refs from effect execution
-	if (currentState !== persistResult.value) {
-		const finalPersist = await persistLibraryProcessingState(currentState);
-		if (Result.isError(finalPersist)) {
-			console.error(
-				"[library-processing] Failed to persist activeJobId refs:",
-				finalPersist.error.message,
-			);
-		}
+	const finalPersist = await persistActiveRefs(
+		currentState,
+		persistResult.value,
+	);
+	if (Result.isError(finalPersist)) {
+		return finalPersist;
 	}
+
+	return Result.ok({
+		accountId: change.accountId,
+		changeKind: change.kind,
+		state: finalPersist.value,
+		effects,
+		effectResults,
+	});
 }
 
 async function resolveHasTargetPlaylists(accountId: string): Promise<boolean> {

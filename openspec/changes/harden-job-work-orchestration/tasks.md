@@ -14,12 +14,12 @@
 
 ## 3. Make Apply Outcomes Explicit
 
-- [ ] 3.1 Change `applyLibraryProcessingChange(...)` to return `Result<LibraryProcessingApplyOutcome, LibraryProcessingApplyError>`.
-- [ ] 3.2 Define `LibraryProcessingApplyError` in `src/lib/workflows/library-processing/types.ts` or a sibling errors module; include load-state, persist-state, effect, and final-persist variants.
-- [ ] 3.3 Return effect results for successful `ensure_enrichment_job` and `ensure_match_snapshot_refresh_job` effects, including ensured job IDs.
-- [ ] 3.4 Update `/api/extension/sync` to return a 500 when sync persistence succeeded but library-processing apply failed, including `phaseJobIds` in the response body.
-- [ ] 3.5 Update onboarding, playlist management, billing, billing bridge, and runner call sites to handle `Result.isError(...)` explicitly instead of relying on thrown exceptions or logs.
-- [ ] 3.6 Update tests and mocks that currently expect `applyLibraryProcessingChange` to resolve `void`.
+- [x] 3.1 Change `applyLibraryProcessingChange(...)` to return `Result<LibraryProcessingApplyOutcome, LibraryProcessingApplyError>`.
+- [x] 3.2 Define `LibraryProcessingApplyError` in `src/lib/workflows/library-processing/types.ts` or a sibling errors module; include load-state, persist-state, effect, and final-persist variants.
+- [x] 3.3 Return effect results for successful `ensure_enrichment_job` and `ensure_match_snapshot_refresh_job` effects, including ensured job IDs.
+- [x] 3.4 Update `/api/extension/sync` to return a 500 when sync persistence succeeded but library-processing apply failed, including `phaseJobIds` in the response body.
+- [x] 3.5 Update onboarding, playlist management, billing, billing bridge, and runner call sites to handle `Result.isError(...)` explicitly instead of relying on thrown exceptions or logs.
+- [x] 3.6 Update tests and mocks that currently expect `applyLibraryProcessingChange` to resolve `void`.
 
 ## 4. Deepen Library-Processing Scheduler
 

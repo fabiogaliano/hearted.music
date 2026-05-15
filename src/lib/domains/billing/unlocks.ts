@@ -137,14 +137,13 @@ export async function requestSongUnlock(
 	const remainingBalance = billingState.creditBalance - newlyUnlockedIds.length;
 
 	if (newlyUnlockedIds.length > 0) {
-		try {
-			await applyLibraryProcessingChange(
-				BillingChanges.songsUnlocked(accountId, newlyUnlockedIds),
-			);
-		} catch (err) {
+		const applyResult = await applyLibraryProcessingChange(
+			BillingChanges.songsUnlocked(accountId, newlyUnlockedIds),
+		);
+		if (Result.isError(applyResult)) {
 			console.error(
 				"[unlocks] Failed to apply library processing change:",
-				err,
+				applyResult.error,
 			);
 		}
 	}
@@ -204,14 +203,13 @@ export async function grantFreeAllocation(
 	const unlockedIds = (unlockRows ?? []).map((row) => row.song_id);
 
 	if (unlockedIds.length > 0) {
-		try {
-			await applyLibraryProcessingChange(
-				BillingChanges.songsUnlocked(accountId, unlockedIds),
-			);
-		} catch (err) {
+		const applyResult = await applyLibraryProcessingChange(
+			BillingChanges.songsUnlocked(accountId, unlockedIds),
+		);
+		if (Result.isError(applyResult)) {
 			console.error(
 				"[unlocks] Failed to apply library processing change for free allocation:",
-				err,
+				applyResult.error,
 			);
 		}
 	}

@@ -1,3 +1,4 @@
+import { Result } from "better-result";
 import type { AdminSupabaseClient } from "@/lib/data/client";
 import { BillingChanges } from "@/lib/workflows/library-processing/changes/billing";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
@@ -41,7 +42,13 @@ export async function handlePackFulfilled(
 		params.accountId,
 		params.bonusUnlockedSongIds,
 	);
-	await applyLibraryProcessingChange(change);
+	const applyResult = await applyLibraryProcessingChange(change);
+	if (Result.isError(applyResult)) {
+		console.error(
+			"[bridge-handlers] library-processing apply failed:",
+			applyResult.error,
+		);
+	}
 }
 
 export async function handleUnlimitedActivated(
@@ -67,7 +74,13 @@ export async function handleUnlimitedActivated(
 	}
 
 	const change = BillingChanges.unlimitedActivated(params.accountId);
-	await applyLibraryProcessingChange(change);
+	const applyResult = await applyLibraryProcessingChange(change);
+	if (Result.isError(applyResult)) {
+		console.error(
+			"[bridge-handlers] library-processing apply failed:",
+			applyResult.error,
+		);
+	}
 }
 
 export async function handlePackReversed(
@@ -95,7 +108,13 @@ export async function handlePackReversed(
 
 	if (revokedCount > 0) {
 		const change = BillingChanges.candidateAccessRevoked(params.accountId);
-		await applyLibraryProcessingChange(change);
+		const applyResult = await applyLibraryProcessingChange(change);
+		if (Result.isError(applyResult)) {
+			console.error(
+				"[bridge-handlers] library-processing apply failed:",
+				applyResult.error,
+			);
+		}
 	}
 }
 
@@ -122,7 +141,13 @@ export async function handleUnlimitedPeriodReversed(
 	const revokedSongs = data as Array<{ song_id: string }> | null;
 	if (revokedSongs && revokedSongs.length > 0) {
 		const change = BillingChanges.candidateAccessRevoked(params.accountId);
-		await applyLibraryProcessingChange(change);
+		const applyResult = await applyLibraryProcessingChange(change);
+		if (Result.isError(applyResult)) {
+			console.error(
+				"[bridge-handlers] library-processing apply failed:",
+				applyResult.error,
+			);
+		}
 	}
 }
 
@@ -132,5 +157,11 @@ export async function handleSubscriptionDeactivated(
 	// Subscription deactivation means unlimited access is no longer available,
 	// which changes the candidate access profile for match snapshots.
 	const change = BillingChanges.candidateAccessRevoked(accountId);
-	await applyLibraryProcessingChange(change);
+	const applyResult = await applyLibraryProcessingChange(change);
+	if (Result.isError(applyResult)) {
+		console.error(
+			"[bridge-handlers] library-processing apply failed:",
+			applyResult.error,
+		);
+	}
 }

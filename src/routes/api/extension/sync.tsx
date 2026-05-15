@@ -430,7 +430,7 @@ export const Route = createFileRoute("/api/extension/sync")({
 				const likedSongsRemoved = (likedSongsResult?.removed ?? 0) > 0;
 				const targetPlaylistsRemoved = removedTargets.length > 0;
 
-				await applyLibraryProcessingChange(
+				const applyResult = await applyLibraryProcessingChange(
 					SyncChanges.librarySynced(accountId, {
 						likedSongs: {
 							added: likedSongsAdded,
@@ -443,6 +443,17 @@ export const Route = createFileRoute("/api/extension/sync")({
 						},
 					}),
 				);
+
+				if (Result.isError(applyResult)) {
+					return Response.json(
+						{
+							ok: false,
+							error: "library_processing_apply_failed",
+							phaseJobIds,
+						},
+						{ status: 500, headers: corsHeaders },
+					);
+				}
 
 				return Response.json(
 					{

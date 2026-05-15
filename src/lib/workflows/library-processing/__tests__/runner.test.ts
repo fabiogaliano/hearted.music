@@ -16,7 +16,25 @@ vi.mock("@/worker/execute", () => ({
 }));
 
 vi.mock("../service", () => ({
-	applyLibraryProcessingChange: vi.fn().mockResolvedValue(undefined),
+	applyLibraryProcessingChange: vi.fn().mockResolvedValue(
+		Result.ok({
+			accountId: "acct-1",
+			changeKind: "enrichment_completed",
+			state: {
+				accountId: "acct-1",
+				enrichment: { requestedAt: null, settledAt: null, activeJobId: null },
+				matchSnapshotRefresh: {
+					requestedAt: null,
+					settledAt: null,
+					activeJobId: null,
+				},
+				createdAt: "2026-01-01T00:00:00.000Z",
+				updatedAt: "2026-01-01T00:00:00.000Z",
+			},
+			effects: [],
+			effectResults: [],
+		}),
+	),
 }));
 
 import type { Job } from "@/lib/data/jobs";

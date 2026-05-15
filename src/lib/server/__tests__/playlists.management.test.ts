@@ -4,6 +4,7 @@ import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
+import type { LibraryProcessingApplyOutcome } from "@/lib/workflows/library-processing/types";
 import {
 	flushPlaylistManagementSession,
 	getPlaylistManagementData,
@@ -93,6 +94,26 @@ function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
 		created_at: "2026-03-28T00:00:00Z",
 		updated_at: "2026-03-28T00:00:00Z",
 		...overrides,
+	};
+}
+
+function makeApplyOutcome(): LibraryProcessingApplyOutcome {
+	return {
+		accountId: "acct-1",
+		changeKind: "playlist_management_session_flushed",
+		state: {
+			accountId: "acct-1",
+			enrichment: { requestedAt: null, settledAt: null, activeJobId: null },
+			matchSnapshotRefresh: {
+				requestedAt: null,
+				settledAt: null,
+				activeJobId: null,
+			},
+			createdAt: "2026-01-01T00:00:00.000Z",
+			updatedAt: "2026-01-01T00:00:00.000Z",
+		},
+		effects: [],
+		effectResults: [],
 	};
 }
 
@@ -257,7 +278,9 @@ describe("setPlaylistTargetMutation", () => {
 describe("flushPlaylistManagementSession", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockApplyLibraryProcessingChange.mockResolvedValue(undefined);
+		mockApplyLibraryProcessingChange.mockResolvedValue(
+			Result.ok(makeApplyOutcome()),
+		);
 	});
 
 	it("calls applyLibraryProcessingChange when targets changed", async () => {

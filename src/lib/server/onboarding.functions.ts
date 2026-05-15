@@ -699,9 +699,15 @@ export const savePlaylistTargets = createServerFn({ method: "POST" })
 			throw new OnboardingError("update_playlist_targets", firstError.error);
 		}
 
-		await applyLibraryProcessingChange(
+		const applyResult = await applyLibraryProcessingChange(
 			OnboardingChanges.targetSelectionConfirmed(session.accountId),
 		);
+		if (Result.isError(applyResult)) {
+			console.error(
+				"[onboarding] library-processing apply failed:",
+				applyResult.error,
+			);
+		}
 
 		// If the user has already chosen a demo song (e.g. they navigated back to
 		// edit targets), invalidate the existing preview by rotating its

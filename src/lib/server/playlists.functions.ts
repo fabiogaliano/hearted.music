@@ -285,13 +285,19 @@ export const flushPlaylistManagementSession = createServerFn({
 			return { flushed: false };
 		}
 
-		await applyLibraryProcessingChange(
+		const applyResult = await applyLibraryProcessingChange(
 			PlaylistManagementChanges.sessionFlushed({
 				accountId: session.accountId,
 				targetMembershipChanged: data.targetMembershipChanged,
 				targetMetadataChanged: data.targetMetadataChanged,
 			}),
 		);
+		if (Result.isError(applyResult)) {
+			console.error(
+				"[playlists] library-processing apply failed:",
+				applyResult.error,
+			);
+		}
 
 		return { flushed: true };
 	});

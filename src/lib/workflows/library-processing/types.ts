@@ -1,3 +1,5 @@
+import type { DbError } from "@/lib/shared/errors/database";
+
 export interface LibraryProcessingWorkflowState {
 	requestedAt: string | null;
 	settledAt: string | null;
@@ -76,3 +78,36 @@ export type LibraryProcessingEffect =
 			accountId: string;
 			satisfiesRequestedAt: string;
 	  };
+
+export interface LibraryProcessingEffectResult {
+	kind: LibraryProcessingEffect["kind"];
+	status: "ensured";
+	jobId: string;
+}
+
+export interface LibraryProcessingApplyOutcome {
+	accountId: string;
+	changeKind: LibraryProcessingChange["kind"];
+	state: LibraryProcessingState;
+	effects: LibraryProcessingEffect[];
+	effectResults: LibraryProcessingEffectResult[];
+}
+
+export type LibraryProcessingApplyUnexpectedCause = {
+	kind: "unexpected";
+	message: string;
+};
+
+export type LibraryProcessingApplyCause =
+	| DbError
+	| LibraryProcessingApplyUnexpectedCause;
+
+export type LibraryProcessingApplyError =
+	| { kind: "load_state"; cause: DbError }
+	| { kind: "persist_state"; cause: DbError }
+	| {
+			kind: "effect_ensure_failed";
+			effectKind: LibraryProcessingEffect["kind"];
+			cause: LibraryProcessingApplyCause;
+	  }
+	| { kind: "persist_active_refs"; cause: DbError };

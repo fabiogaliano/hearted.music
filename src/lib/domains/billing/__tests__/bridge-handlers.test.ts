@@ -1,8 +1,27 @@
+import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminSupabaseClient } from "@/lib/data/client";
 
 vi.mock("@/lib/workflows/library-processing/service", () => ({
-	applyLibraryProcessingChange: vi.fn(),
+	applyLibraryProcessingChange: vi.fn().mockResolvedValue(
+		Result.ok({
+			accountId: "acct-1",
+			changeKind: "songs_unlocked",
+			state: {
+				accountId: "acct-1",
+				enrichment: { requestedAt: null, settledAt: null, activeJobId: null },
+				matchSnapshotRefresh: {
+					requestedAt: null,
+					settledAt: null,
+					activeJobId: null,
+				},
+				createdAt: "2026-01-01T00:00:00.000Z",
+				updatedAt: "2026-01-01T00:00:00.000Z",
+			},
+			effects: [],
+			effectResults: [],
+		}),
+	),
 }));
 
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
