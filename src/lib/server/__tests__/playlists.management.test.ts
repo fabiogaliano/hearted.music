@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
 import {
 	flushPlaylistManagementSession,
 	getPlaylistManagementData,
@@ -265,12 +266,28 @@ describe("flushPlaylistManagementSession", () => {
 		});
 
 		expect(result.flushed).toBe(true);
-		expect(mockApplyLibraryProcessingChange).toHaveBeenCalledWith({
-			kind: "playlist_management_session_flushed",
+		expect(mockApplyLibraryProcessingChange).toHaveBeenCalledWith(
+			PlaylistManagementChanges.sessionFlushed({
+				accountId: "acct-1",
+				targetMembershipChanged: true,
+				targetMetadataChanged: false,
+			}),
+		);
+	});
+
+	it("emits the same shape as the PlaylistManagementChanges factory", async () => {
+		await flushPlaylistManagementSession({
+			data: { targetMembershipChanged: true, targetMetadataChanged: true },
+		});
+
+		const emitted = mockApplyLibraryProcessingChange.mock.calls[0][0];
+		const fromFactory = PlaylistManagementChanges.sessionFlushed({
 			accountId: "acct-1",
 			targetMembershipChanged: true,
-			targetMetadataChanged: false,
+			targetMetadataChanged: true,
 		});
+
+		expect(emitted).toEqual(fromFactory);
 	});
 
 	it("skips processing when nothing changed", async () => {

@@ -11,7 +11,7 @@ export const SyncChanges = {
 				removed: boolean;
 			};
 		},
-	): LibraryProcessingChange & { kind: "library_synced" } {
+	): Extract<LibraryProcessingChange, { kind: "library_synced" }> {
 		return { kind: "library_synced", accountId, changes };
 	},
 };

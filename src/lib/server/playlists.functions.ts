@@ -14,6 +14,7 @@ import {
 } from "@/lib/domains/library/playlists/queries";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
+import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 
 const SPOTIFY_PLAYLIST_URI_RE = /^spotify:playlist:([a-zA-Z0-9]+)$/;
@@ -284,12 +285,13 @@ export const flushPlaylistManagementSession = createServerFn({
 			return { flushed: false };
 		}
 
-		await applyLibraryProcessingChange({
-			kind: "playlist_management_session_flushed",
-			accountId: session.accountId,
-			targetMembershipChanged: data.targetMembershipChanged,
-			targetMetadataChanged: data.targetMetadataChanged,
-		});
+		await applyLibraryProcessingChange(
+			PlaylistManagementChanges.sessionFlushed({
+				accountId: session.accountId,
+				targetMembershipChanged: data.targetMembershipChanged,
+				targetMetadataChanged: data.targetMetadataChanged,
+			}),
+		);
 
 		return { flushed: true };
 	});

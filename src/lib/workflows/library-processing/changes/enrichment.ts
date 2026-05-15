@@ -6,7 +6,7 @@ export const EnrichmentChanges = {
 		jobId: string;
 		requestSatisfied: boolean;
 		newCandidatesAvailable: boolean;
-	}): LibraryProcessingChange & { kind: "enrichment_completed" } {
+	}): Extract<LibraryProcessingChange, { kind: "enrichment_completed" }> {
 		return { kind: "enrichment_completed", ...opts };
 	},
 
@@ -14,7 +14,7 @@ export const EnrichmentChanges = {
 		accountId: string;
 		jobId: string;
 		reason: "local_limit" | "error";
-	}): LibraryProcessingChange & { kind: "enrichment_stopped" } {
+	}): Extract<LibraryProcessingChange, { kind: "enrichment_stopped" }> {
 		return { kind: "enrichment_stopped", ...opts };
 	},
 };

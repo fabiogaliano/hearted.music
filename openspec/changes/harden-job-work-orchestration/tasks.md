@@ -1,9 +1,9 @@
 ## 1. Tighten Semantic Change Constructors
 
-- [ ] 1.1 Add `src/lib/workflows/library-processing/changes/playlist-management.ts` for `playlist_management_session_flushed`.
-- [ ] 1.2 Update production callers under `src/lib/server`, `src/routes`, `src/lib/domains/billing`, and `src/lib/workflows/library-processing/runner.ts` to construct library-processing changes through `src/lib/workflows/library-processing/changes/*` modules.
-- [ ] 1.3 Update existing change factories to return exact `Extract<LibraryProcessingChange, { kind: ... }>` union members rather than broad intersections.
-- [ ] 1.4 Keep pure reconciler tests free to use object literals, but add one boundary test proving the playlist-management source emits the factory-shaped change.
+- [x] 1.1 Add `src/lib/workflows/library-processing/changes/playlist-management.ts` for `playlist_management_session_flushed`.
+- [x] 1.2 Audit production callers under `src/lib/server`, `src/routes`, `src/lib/domains/billing`, and `src/lib/workflows/library-processing/runner.ts`; migrate any inline library-processing change construction to `src/lib/workflows/library-processing/changes/*` modules.
+- [x] 1.3 Update existing change factories to return exact `Extract<LibraryProcessingChange, { kind: ... }>` union members rather than broad intersections.
+- [x] 1.4 Keep pure reconciler tests free to use object literals, but add one boundary test proving the playlist-management source emits the factory-shaped change.
 
 ## 2. Characterization Tests
 
