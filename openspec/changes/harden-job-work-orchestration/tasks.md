@@ -44,17 +44,17 @@
 
 ## 7. Add Terminal Active-Ref Recovery
 
-- [ ] 7.1 Add a query helper that finds `library_processing_state` rows whose active job refs point at terminal `job` rows.
-- [ ] 7.2 Add `getLatestExecutionMeasurementForJob(jobId)` to `src/lib/data/job-measurements.ts` or the new measurement repository module.
-- [ ] 7.3 Implement `recoverTerminalLibraryProcessingRefs()`:
+- [x] 7.1 Add a query helper that finds `library_processing_state` rows whose active job refs point at terminal `job` rows.
+- [x] 7.2 Add `getLatestExecutionMeasurementForJob(jobId)` to `src/lib/data/job-measurements.ts` or the new measurement repository module.
+- [x] 7.3 Implement `recoverTerminalLibraryProcessingRefs()`:
   - failed enrichment -> `EnrichmentChanges.stopped({ reason: "error" })`;
   - failed refresh -> `MatchSnapshotChanges.failed(...)`;
   - completed enrichment with valid measurement details -> `EnrichmentChanges.completed(...)`;
   - completed refresh with valid measurement details -> `MatchSnapshotChanges.published(...)`;
   - completed job without reconstructable details -> conservative failure recovery that clears the ref and leaves the workflow stale.
-- [ ] 7.4 Validate measurement details before reconstructing completed changes; missing or invalid details must not produce success-shaped settlement.
-- [ ] 7.5 Run terminal-ref recovery after the startup sweep and after every dead-letter pass.
-- [ ] 7.6 Add tests for failed refs, completed refs with measurement details, completed refs with missing details, and apply failure logging.
+- [x] 7.4 Validate measurement details before reconstructing completed changes; missing or invalid details must not produce success-shaped settlement.
+- [x] 7.5 Run terminal-ref recovery after the startup sweep and after every dead-letter pass.
+- [x] 7.6 Add tests for failed refs, completed refs with measurement details, completed refs with missing details, and apply failure logging.
 
 ## 8. Harden Runner Settlement
 

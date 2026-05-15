@@ -6,7 +6,10 @@ import type {
 	LibraryProcessingApplyOutcome,
 	LibraryProcessingState,
 } from "@/lib/workflows/library-processing/types";
-import type { DeadLetterRecoveryResult } from "@/lib/workflows/library-processing/terminal-recovery";
+import type {
+	DeadLetterRecoveryResult,
+	TerminalRefRecoveryResult,
+} from "@/lib/workflows/library-processing/terminal-recovery";
 import { type SweepDeps, runSweepTick } from "../sweep";
 
 vi.mock("../logger", () => ({
@@ -45,6 +48,7 @@ function makeDeps(overrides: Partial<SweepDeps> = {}): SweepDeps {
 		sweepStaleLibraryProcessingJobs: vi.fn().mockResolvedValue(Result.ok([])),
 		markDeadLibraryProcessingJobs: vi.fn().mockResolvedValue(Result.ok([])),
 		recoverDeadLetteredLibraryProcessingJobs: vi.fn().mockResolvedValue([]),
+		recoverTerminalLibraryProcessingRefs: vi.fn().mockResolvedValue([]),
 		sweepStaleWalkthroughPreviewJobs: vi.fn().mockResolvedValue(Result.ok([])),
 		markDeadWalkthroughPreviewJobs: vi.fn().mockResolvedValue(Result.ok([])),
 		...overrides,
@@ -392,5 +396,76 @@ describe("runSweepTick", () => {
 		expect(
 			deps.recoverDeadLetteredLibraryProcessingJobs,
 		).not.toHaveBeenCalled();
+	});
+
+	it("calls terminal-ref recovery on every sweep tick", async () => {
+		const deps = makeDeps();
+		await runSweepTick(deps);
+
+		expect(deps.recoverTerminalLibraryProcessingRefs).toHaveBeenCalledTimes(1);
+	});
+
+	it("logs successful terminal-ref recoveries", async () => {
+		const terminalResults: TerminalRefRecoveryResult[] = [
+			{
+				jobId: "j-terminal",
+				accountId: "acct-1",
+				workflow: "enrichment",
+				jobStatus: "completed",
+				recoveryStrategy: "completed_from_measurement",
+				outcome: Result.ok(makeApplyOutcome("enrichment_completed")),
+			},
+		];
+		const deps = makeDeps({
+			recoverTerminalLibraryProcessingRefs: vi
+				.fn()
+				.mockResolvedValue(terminalResults),
+		});
+
+		await runSweepTick(deps);
+
+		expect(logMod.log.info).toHaveBeenCalledWith("terminal-ref-recovered", {
+			jobId: "j-terminal",
+			accountId: "acct-1",
+			workflow: "enrichment",
+			jobStatus: "completed",
+			recoveryStrategy: "completed_from_measurement",
+		});
+	});
+
+	it("logs failed terminal-ref recoveries", async () => {
+		const applyError = {
+			kind: "load_state" as const,
+			cause: new DatabaseError({ code: "500", message: "db down" }),
+		};
+		const terminalResults: TerminalRefRecoveryResult[] = [
+			{
+				jobId: "j-stuck",
+				accountId: "acct-1",
+				workflow: "match_snapshot_refresh",
+				jobStatus: "failed",
+				recoveryStrategy: "conservative_failure",
+				outcome: Result.err(applyError),
+			},
+		];
+		const deps = makeDeps({
+			recoverTerminalLibraryProcessingRefs: vi
+				.fn()
+				.mockResolvedValue(terminalResults),
+		});
+
+		await runSweepTick(deps);
+
+		expect(logMod.log.error).toHaveBeenCalledWith(
+			"terminal-ref-recovery-failed",
+			{
+				jobId: "j-stuck",
+				accountId: "acct-1",
+				workflow: "match_snapshot_refresh",
+				jobStatus: "failed",
+				recoveryStrategy: "conservative_failure",
+				error: applyError,
+			},
+		);
 	});
 });

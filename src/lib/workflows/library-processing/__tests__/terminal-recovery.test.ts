@@ -1,5 +1,6 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { JobExecutionMeasurement } from "@/lib/data/job-measurements";
 import type { Job } from "@/lib/data/jobs";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { reconcileLibraryProcessing } from "../reconciler";
@@ -12,13 +13,35 @@ vi.mock("../service", () => ({
 	applyLibraryProcessingChange: vi.fn(),
 }));
 
+vi.mock("../queries", async (importOriginal) => {
+	const original = await importOriginal<typeof import("../queries")>();
+	return {
+		...original,
+		findTerminalActiveRefs: vi.fn(),
+	};
+});
+
+vi.mock("@/lib/data/job-measurements", async (importOriginal) => {
+	const original =
+		await importOriginal<typeof import("@/lib/data/job-measurements")>();
+	return {
+		...original,
+		getLatestExecutionMeasurementForJob: vi.fn(),
+	};
+});
+
+import { getLatestExecutionMeasurementForJob } from "@/lib/data/job-measurements";
 import { applyLibraryProcessingChange } from "../service";
+import { findTerminalActiveRefs } from "../queries";
 import {
 	recoverDeadLetteredLibraryProcessingJob,
 	recoverDeadLetteredLibraryProcessingJobs,
+	recoverTerminalLibraryProcessingRefs,
 } from "../terminal-recovery";
 
 const applyMock = vi.mocked(applyLibraryProcessingChange);
+const findTerminalActiveRefsMock = vi.mocked(findTerminalActiveRefs);
+const getMeasurementMock = vi.mocked(getLatestExecutionMeasurementForJob);
 
 function makeJob(overrides: Partial<Job> = {}): Job {
 	return {
@@ -305,5 +328,374 @@ describe("reconciler: dead-letter recovery changes", () => {
 		});
 
 		expect(effects).toHaveLength(0);
+	});
+});
+
+function makeMeasurement(
+	overrides: Partial<JobExecutionMeasurement> = {},
+): JobExecutionMeasurement {
+	return {
+		id: "meas-1",
+		job_id: "job-1",
+		account_id: "acct-1",
+		workflow: "enrichment",
+		queue_priority: null,
+		attempt_number: 1,
+		queued_at: null,
+		started_at: null,
+		finished_at: "2026-01-01T01:00:00Z",
+		outcome: "completed",
+		details: null,
+		created_at: "2026-01-01T01:00:00Z",
+		...overrides,
+	};
+}
+
+describe("recoverTerminalLibraryProcessingRefs", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("returns empty when no terminal refs found", async () => {
+		findTerminalActiveRefsMock.mockResolvedValue(Result.ok([]));
+
+		const results = await recoverTerminalLibraryProcessingRefs();
+		expect(results).toHaveLength(0);
+	});
+
+	it("applies enrichment_stopped for failed enrichment refs", async () => {
+		const job = makeJob({ id: "j-fail", status: "failed", type: "enrichment" });
+		findTerminalActiveRefsMock.mockResolvedValue(
+			Result.ok([{ state: makeState(), workflow: "enrichment", job }]),
+		);
+		applyMock.mockResolvedValue(Result.ok(makeApplyOutcome()));
+
+		const results = await recoverTerminalLibraryProcessingRefs();
+
+		expect(results).toHaveLength(1);
+		expect(results[0].recoveryStrategy).toBe("conservative_failure");
+		expect(results[0].jobStatus).toBe("failed");
+		expect(applyMock).toHaveBeenCalledWith({
+			kind: "enrichment_stopped",
+			accountId: "acct-1",
+			jobId: "j-fail",
+			reason: "error",
+		});
+	});
+
+	it("applies match_snapshot_failed for failed match_snapshot_refresh refs", async () => {
+		const job = makeJob({
+			id: "j-fail-ms",
+			status: "failed",
+			type: "match_snapshot_refresh" as Job["type"],
+		});
+		findTerminalActiveRefsMock.mockResolvedValue(
+			Result.ok([
+				{ state: makeState(), workflow: "match_snapshot_refresh", job },
+			]),
+		);
+		applyMock.mockResolvedValue(
+			Result.ok(makeApplyOutcome({ changeKind: "match_snapshot_failed" })),
+		);
+
+		const results = await recoverTerminalLibraryProcessingRefs();
+
+		expect(results).toHaveLength(1);
+		expect(results[0].recoveryStrategy).toBe("conservative_failure");
+		expect(applyMock).toHaveBeenCalledWith({
+			kind: "match_snapshot_failed",
+			accountId: "acct-1",
+			jobId: "j-fail-ms",
+		});
+	});
+
+	it("reconstructs enrichment_completed from valid measurement details", async () => {
+		const job = makeJob({
+			id: "j-comp",
+			status: "completed",
+			type: "enrichment",
+		});
+		findTerminalActiveRefsMock.mockResolvedValue(
+			Result.ok([{ state: makeState(), workflow: "enrichment", job }]),
+		);
+		getMeasurementMock.mockResolvedValue(
+			Result.ok(
+				makeMeasurement({
+					job_id: "j-comp",
+					outcome: "completed",
+					details: {
+						requestSatisfied: true,
+						newCandidatesAvailable: false,
+					},
+				}),
+			),
+		);
+		applyMock.mockResolvedValue(
+			Result.ok(makeApplyOutcome({ changeKind: "enrichment_completed" })),
+		);
+
+		const results = await recoverTerminalLibraryProcessingRefs();
+
+		expect(results).toHaveLength(1);
+		expect(results[0].recoveryStrategy).toBe("completed_from_measurement");
+		expect(applyMock).toHaveBeenCalledWith({
+			kind: "enrichment_completed",
+			accountId: "acct-1",
+			jobId: "j-comp",
+			requestSatisfied: true,
+			newCandidatesAvailable: false,
+		});
+	});
+
+	it("reconstructs match_snapshot_published from valid measurement", async () => {
+		const job = makeJob({
+			id: "j-comp-ms",
+			status: "completed",
+			type: "match_snapshot_refresh" as Job["type"],
+		});
+		findTerminalActiveRefsMock.mockResolvedValue(
+			Result.ok([
+				{ state: makeState(), workflow: "match_snapshot_refresh", job },
+			]),
+		);
+		getMeasurementMock.mockResolvedValue(
+			Result.ok(
+				makeMeasurement({
+					job_id: "j-comp-ms",
+					workflow: "match_snapshot_refresh",
+					outcome: "completed",
+					details: { published: true, isEmpty: false },
+				}),
+			),
+		);
+		applyMock.mockResolvedValue(
+			Result.ok(makeApplyOutcome({ changeKind: "match_snapshot_published" })),
+		);
+
+		const results = await recoverTerminalLibraryProcessingRefs();
+
+		expect(results).toHaveLength(1);
+		expect(results[0].recoveryStrategy).toBe("completed_from_measurement");
+		expect(applyMock).toHaveBeenCalledWith({
+			kind: "match_snapshot_published",
+			accountId: "acct-1",
+			jobId: "j-comp-ms",
+		});
+	});
+
+	it("falls back to conservative failure when measurement is missing", async () => {
+		const job = makeJob({
+			id: "j-no-meas",
+			status: "completed",
+			type: "enrichment",
+		});
+		findTerminalActiveRefsMock.mockResolvedValue(
+			Result.ok([{ state: makeState(), workflow: "enrichment", job }]),
+		);
+		getMeasurementMock.mockResolvedValue(Result.ok(null));
+		applyMock.mockResolvedValue(Result.ok(makeApplyOutcome()));
+
+		const results = await recoverTerminalLibraryProcessingRefs();
+
+		expect(results).toHaveLength(1);
+		expect(results[0].recoveryStrategy).toBe("conservative_failure");
+		expect(applyMock).toHaveBeenCalledWith({
+			kind: "enrichment_stopped",
+			accountId: "acct-1",
+			jobId: "j-no-meas",
+			reason: "error",
+		});
+	});
+
+	it("falls back to conservative failure when measurement details are invalid", async () => {
+		const job = makeJob({
+			id: "j-bad-details",
+			status: "completed",
+			type: "enrichment",
+		});
+		findTerminalActiveRefsMock.mockResolvedValue(
+			Result.ok([{ state: makeState(), workflow: "enrichment", job }]),
+		);
+		getMeasurementMock.mockResolvedValue(
+			Result.ok(
+				makeMeasurement({
+					job_id: "j-bad-details",
+					outcome: "completed",
+					details: { irrelevantField: "bad" },
+				}),
+			),
+		);
+		applyMock.mockResolvedValue(Result.ok(makeApplyOutcome()));
+
+		const results = await recoverTerminalLibraryProcessingRefs();
+
+		expect(results).toHaveLength(1);
+		expect(results[0].recoveryStrategy).toBe("conservative_failure");
+		expect(applyMock).toHaveBeenCalledWith({
+			kind: "enrichment_stopped",
+			accountId: "acct-1",
+			jobId: "j-bad-details",
+			reason: "error",
+		});
+	});
+
+	it("falls back to conservative failure when match snapshot measurement details are missing", async () => {
+		const job = makeJob({
+			id: "j-ms-no-details",
+			status: "completed",
+			type: "match_snapshot_refresh" as Job["type"],
+		});
+		findTerminalActiveRefsMock.mockResolvedValue(
+			Result.ok([
+				{ state: makeState(), workflow: "match_snapshot_refresh", job },
+			]),
+		);
+		getMeasurementMock.mockResolvedValue(
+			Result.ok(
+				makeMeasurement({
+					job_id: "j-ms-no-details",
+					workflow: "match_snapshot_refresh",
+					outcome: "completed",
+					details: null,
+				}),
+			),
+		);
+		applyMock.mockResolvedValue(
+			Result.ok(makeApplyOutcome({ changeKind: "match_snapshot_failed" })),
+		);
+
+		const results = await recoverTerminalLibraryProcessingRefs();
+
+		expect(results).toHaveLength(1);
+		expect(results[0].recoveryStrategy).toBe("conservative_failure");
+		expect(applyMock).toHaveBeenCalledWith({
+			kind: "match_snapshot_failed",
+			accountId: "acct-1",
+			jobId: "j-ms-no-details",
+		});
+	});
+
+	it("falls back to conservative failure when measurement outcome is not completed", async () => {
+		const job = makeJob({
+			id: "j-err-meas",
+			status: "completed",
+			type: "match_snapshot_refresh" as Job["type"],
+		});
+		findTerminalActiveRefsMock.mockResolvedValue(
+			Result.ok([
+				{ state: makeState(), workflow: "match_snapshot_refresh", job },
+			]),
+		);
+		getMeasurementMock.mockResolvedValue(
+			Result.ok(
+				makeMeasurement({
+					job_id: "j-err-meas",
+					workflow: "match_snapshot_refresh",
+					outcome: "error",
+				}),
+			),
+		);
+		applyMock.mockResolvedValue(
+			Result.ok(makeApplyOutcome({ changeKind: "match_snapshot_failed" })),
+		);
+
+		const results = await recoverTerminalLibraryProcessingRefs();
+
+		expect(results).toHaveLength(1);
+		expect(results[0].recoveryStrategy).toBe("conservative_failure");
+		expect(applyMock).toHaveBeenCalledWith({
+			kind: "match_snapshot_failed",
+			accountId: "acct-1",
+			jobId: "j-err-meas",
+		});
+	});
+
+	it("propagates apply errors without stopping subsequent recoveries", async () => {
+		const failedJob = makeJob({
+			id: "j-1",
+			account_id: "acct-1",
+			status: "failed",
+			type: "enrichment",
+		});
+		const completedJob = makeJob({
+			id: "j-2",
+			account_id: "acct-2",
+			status: "completed",
+			type: "match_snapshot_refresh" as Job["type"],
+		});
+		findTerminalActiveRefsMock.mockResolvedValue(
+			Result.ok([
+				{ state: makeState(), workflow: "enrichment", job: failedJob },
+				{
+					state: makeState({ accountId: "acct-2" }),
+					workflow: "match_snapshot_refresh",
+					job: completedJob,
+				},
+			]),
+		);
+		getMeasurementMock.mockResolvedValue(
+			Result.ok(
+				makeMeasurement({
+					job_id: "j-2",
+					workflow: "match_snapshot_refresh",
+					outcome: "completed",
+					details: { published: true, isEmpty: false },
+				}),
+			),
+		);
+
+		const applyError = {
+			kind: "load_state" as const,
+			cause: new DatabaseError({ code: "500", message: "db down" }),
+		};
+		applyMock
+			.mockResolvedValueOnce(Result.err(applyError))
+			.mockResolvedValueOnce(
+				Result.ok(makeApplyOutcome({ changeKind: "match_snapshot_published" })),
+			);
+
+		const results = await recoverTerminalLibraryProcessingRefs();
+
+		expect(results).toHaveLength(2);
+		expect(Result.isError(results[0].outcome)).toBe(true);
+		expect(Result.isOk(results[1].outcome)).toBe(true);
+	});
+
+	it("returns empty when findTerminalActiveRefs query fails", async () => {
+		const dbErr = new DatabaseError({ code: "500", message: "query failed" });
+		findTerminalActiveRefsMock.mockResolvedValue(Result.err(dbErr));
+
+		const results = await recoverTerminalLibraryProcessingRefs();
+
+		expect(results).toHaveLength(0);
+		expect(applyMock).not.toHaveBeenCalled();
+	});
+
+	it("falls back to conservative failure when measurement query errors", async () => {
+		const job = makeJob({
+			id: "j-db-err",
+			status: "completed",
+			type: "enrichment",
+		});
+		findTerminalActiveRefsMock.mockResolvedValue(
+			Result.ok([{ state: makeState(), workflow: "enrichment", job }]),
+		);
+		getMeasurementMock.mockResolvedValue(
+			Result.err(
+				new DatabaseError({ code: "500", message: "measurement query failed" }),
+			),
+		);
+		applyMock.mockResolvedValue(Result.ok(makeApplyOutcome()));
+
+		const results = await recoverTerminalLibraryProcessingRefs();
+
+		expect(results).toHaveLength(1);
+		expect(results[0].recoveryStrategy).toBe("conservative_failure");
+		expect(applyMock).toHaveBeenCalledWith({
+			kind: "enrichment_stopped",
+			accountId: "acct-1",
+			jobId: "j-db-err",
+			reason: "error",
+		});
 	});
 });

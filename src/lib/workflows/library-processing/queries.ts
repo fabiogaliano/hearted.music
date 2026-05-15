@@ -1,6 +1,7 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { DbError } from "@/lib/shared/errors/database";
+import type { Job } from "@/lib/data/jobs";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
@@ -68,6 +69,74 @@ export async function getOrCreateLibraryProcessingState(
 		return created;
 	}
 	return Result.ok(toState(created.value));
+}
+
+export type TerminalActiveRef = {
+	state: LibraryProcessingState;
+	workflow: "enrichment" | "match_snapshot_refresh";
+	job: Job;
+};
+
+export async function findTerminalActiveRefs(): Promise<
+	Result<TerminalActiveRef[], DbError>
+> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data: rows, error } = await supabase
+		.from("library_processing_state")
+		.select("*")
+		.or(
+			"enrichment_active_job_id.not.is.null,match_snapshot_refresh_active_job_id.not.is.null",
+		);
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	if (!rows || rows.length === 0) {
+		return Result.ok([]);
+	}
+
+	const jobIds = new Set<string>();
+	for (const row of rows) {
+		if (row.enrichment_active_job_id) jobIds.add(row.enrichment_active_job_id);
+		if (row.match_snapshot_refresh_active_job_id)
+			jobIds.add(row.match_snapshot_refresh_active_job_id);
+	}
+
+	const { data: jobs, error: jobError } = await supabase
+		.from("job")
+		.select("*")
+		.in("id", [...jobIds])
+		.in("status", ["completed", "failed"]);
+
+	if (jobError) {
+		return Result.err(
+			new DatabaseError({ code: jobError.code, message: jobError.message }),
+		);
+	}
+
+	const terminalJobMap = new Map<string, Job>();
+	for (const job of jobs ?? []) {
+		terminalJobMap.set(job.id, job as Job);
+	}
+
+	const refs: TerminalActiveRef[] = [];
+	for (const row of rows) {
+		const state = toState(row);
+		if (row.enrichment_active_job_id) {
+			const job = terminalJobMap.get(row.enrichment_active_job_id);
+			if (job) refs.push({ state, workflow: "enrichment", job });
+		}
+		if (row.match_snapshot_refresh_active_job_id) {
+			const job = terminalJobMap.get(row.match_snapshot_refresh_active_job_id);
+			if (job) refs.push({ state, workflow: "match_snapshot_refresh", job });
+		}
+	}
+
+	return Result.ok(refs);
 }
 
 export async function persistLibraryProcessingState(

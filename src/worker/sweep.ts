@@ -9,7 +9,9 @@ import {
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	recoverDeadLetteredLibraryProcessingJobs,
+	recoverTerminalLibraryProcessingRefs,
 	type DeadLetterRecoveryResult,
+	type TerminalRefRecoveryResult,
 } from "@/lib/workflows/library-processing/terminal-recovery";
 import { workerConfig } from "./config";
 import { log } from "./logger";
@@ -22,11 +24,14 @@ export type RecoverDeadLetteredFn = (
 	jobs: Job[],
 ) => Promise<DeadLetterRecoveryResult[]>;
 
+export type RecoverTerminalRefsFn = () => Promise<TerminalRefRecoveryResult[]>;
+
 export type SweepDeps = {
 	staleThreshold: string;
 	sweepStaleLibraryProcessingJobs: SweepRpc;
 	markDeadLibraryProcessingJobs: SweepRpc;
 	recoverDeadLetteredLibraryProcessingJobs: RecoverDeadLetteredFn;
+	recoverTerminalLibraryProcessingRefs: RecoverTerminalRefsFn;
 	sweepStaleWalkthroughPreviewJobs: SweepRpc;
 	markDeadWalkthroughPreviewJobs: SweepRpc;
 };
@@ -37,6 +42,7 @@ export function createDefaultSweepDeps(): SweepDeps {
 		sweepStaleLibraryProcessingJobs,
 		markDeadLibraryProcessingJobs,
 		recoverDeadLetteredLibraryProcessingJobs,
+		recoverTerminalLibraryProcessingRefs,
 		sweepStaleWalkthroughPreviewJobs,
 		markDeadWalkthroughPreviewJobs,
 	};
@@ -81,6 +87,28 @@ export async function runSweepTick(deps: SweepDeps): Promise<void> {
 					jobType: r.jobType,
 				});
 			}
+		}
+	}
+
+	const terminalRefResults = await deps.recoverTerminalLibraryProcessingRefs();
+	for (const r of terminalRefResults) {
+		if (Result.isError(r.outcome)) {
+			log.error("terminal-ref-recovery-failed", {
+				jobId: r.jobId,
+				accountId: r.accountId,
+				workflow: r.workflow,
+				jobStatus: r.jobStatus,
+				recoveryStrategy: r.recoveryStrategy,
+				error: r.outcome.error,
+			});
+		} else {
+			log.info("terminal-ref-recovered", {
+				jobId: r.jobId,
+				accountId: r.accountId,
+				workflow: r.workflow,
+				jobStatus: r.jobStatus,
+				recoveryStrategy: r.recoveryStrategy,
+			});
 		}
 	}
 

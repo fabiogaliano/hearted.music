@@ -1,7 +1,10 @@
 import { Result } from "better-result";
-import type { Json } from "@/lib/data/database.types";
+import type { Json, Tables } from "@/lib/data/database.types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import { fromSupabaseMaybe } from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "./client";
+
+export type JobExecutionMeasurement = Tables<"job_execution_measurement">;
 
 interface MeasurementInput {
 	jobId: string;
@@ -41,4 +44,19 @@ export async function recordExecutionMeasurement(
 	}
 
 	return Result.ok(undefined);
+}
+
+export function getLatestExecutionMeasurementForJob(
+	jobId: string,
+): Promise<Result<JobExecutionMeasurement | null, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMaybe(
+		supabase
+			.from("job_execution_measurement")
+			.select("*")
+			.eq("job_id", jobId)
+			.order("created_at", { ascending: false })
+			.limit(1)
+			.single(),
+	);
 }
