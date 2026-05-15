@@ -7,7 +7,7 @@
 
 ## 2. Characterization Tests
 
-- [ ] 2.1 Add `src/worker/__tests__/sweep.test.ts` covering current sweep/dead-letter RPC calls after extracting the module seam.
+- [x] 2.1 Add `src/worker/__tests__/sweep.test.ts` covering current sweep/dead-letter RPC calls after extracting the module seam.
 - [ ] 2.2 Extend `src/lib/workflows/library-processing/__tests__/runner.test.ts` to assert runner writes measurements before applying library-processing outcome changes.
 - [ ] 2.3 Add a regression test for a failed/dead-lettered active job ref: after recovery, `library_processing_state.enrichment.activeJobId` or `matchSnapshotRefresh.activeJobId` is cleared and `settledAt` remains stale.
 - [ ] 2.4 Add a regression test for completed active ref recovery using a measurement row to reconstruct `enrichment_completed` metadata.
@@ -30,9 +30,9 @@
 
 ## 5. Extract Worker Sweep Seam
 
-- [ ] 5.1 Create `src/worker/sweep.ts` and move the existing `runSweepTick()` implementation out of `src/worker/index.ts` without changing runtime behavior.
-- [ ] 5.2 Keep `src/worker/index.ts` responsible only for startup, timer wiring, health, polling, and shutdown.
-- [ ] 5.3 Add dependency-injected or mockable exports so tests can verify sweep, dead-letter, and recovery calls without starting the worker.
+- [x] 5.1 Create `src/worker/sweep.ts` and move the existing `runSweepTick()` implementation out of `src/worker/index.ts` without changing runtime behavior.
+- [x] 5.2 Keep `src/worker/index.ts` responsible only for startup, timer wiring, health, polling, and shutdown.
+- [x] 5.3 Add dependency-injected or mockable exports so tests can verify sweep, dead-letter, and recovery calls without starting the worker.
 
 ## 6. Add Dead-Letter Recovery
 

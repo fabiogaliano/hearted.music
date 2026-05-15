@@ -1,10 +1,3 @@
-import { Result } from "better-result";
-import {
-	markDeadLibraryProcessingJobs,
-	markDeadWalkthroughPreviewJobs,
-	sweepStaleLibraryProcessingJobs,
-	sweepStaleWalkthroughPreviewJobs,
-} from "@/lib/data/jobs";
 import { workerConfig } from "./config";
 import { setShuttingDown, setUnhealthy, startHealthServer } from "./health";
 import { startKeepAlive } from "./keep-alive";
@@ -15,64 +8,7 @@ import {
 	startWalkthroughPreviewPolling,
 	stopWalkthroughPreviewPolling,
 } from "./poll-walkthrough-preview";
-
-async function runSweepTick(): Promise<void> {
-	const swept = await sweepStaleLibraryProcessingJobs(
-		workerConfig.staleThreshold,
-	);
-	if (Result.isError(swept)) {
-		log.error("sweep-error", { error: swept.error.message });
-	} else if (swept.value.length > 0) {
-		log.info("swept-stale-jobs", {
-			count: swept.value.length,
-			jobIds: swept.value.map((j) => j.id),
-		});
-	}
-
-	const dead = await markDeadLibraryProcessingJobs(workerConfig.staleThreshold);
-	if (Result.isError(dead)) {
-		log.error("dead-letter-error", { error: dead.error.message });
-	} else if (dead.value.length > 0) {
-		log.warn("dead-lettered-jobs", {
-			count: dead.value.length,
-			jobIds: dead.value.map((j) => j.id),
-		});
-	}
-
-	// Sibling pass for walkthrough preview jobs. Without this, a stuck preview
-	// `running` row holds the unique active-preview index and blocks all
-	// subsequent onboarding sessions for that account from re-ensuring.
-	const sweptPreview = await sweepStaleWalkthroughPreviewJobs(
-		workerConfig.staleThreshold,
-	);
-	if (Result.isError(sweptPreview)) {
-		log.error("preview-sweep-error", { error: sweptPreview.error.message });
-	} else if (sweptPreview.value.length > 0) {
-		log.info("swept-stale-preview-jobs", {
-			count: sweptPreview.value.length,
-			jobIds: sweptPreview.value.map((j) => j.id),
-		});
-	}
-
-	const deadPreview = await markDeadWalkthroughPreviewJobs(
-		workerConfig.staleThreshold,
-	);
-	if (Result.isError(deadPreview)) {
-		log.error("preview-dead-letter-error", {
-			error: deadPreview.error.message,
-		});
-	} else if (deadPreview.value.length > 0) {
-		log.warn("dead-lettered-preview-jobs", {
-			count: deadPreview.value.length,
-			jobIds: deadPreview.value.map((j) => j.id),
-		});
-	}
-}
-
-function startSweep(): { stop: () => void } {
-	const interval = setInterval(runSweepTick, workerConfig.sweepIntervalMs);
-	return { stop: () => clearInterval(interval) };
-}
+import { runDefaultSweepTick, startDefaultSweep } from "./sweep";
 
 let draining = false;
 
@@ -89,9 +25,9 @@ async function main() {
 	// active-preview index — `ensureWalkthroughPreview` would then observe
 	// the dead job and skip creating fresh work. Doing this before any poll
 	// loop or claim path opens means the next ensure() sees a clean slate.
-	await runSweepTick();
+	await runDefaultSweepTick();
 
-	const sweep = startSweep();
+	const sweep = startDefaultSweep();
 
 	const shutdown = async (signal: string) => {
 		if (draining) return;
