@@ -3,6 +3,11 @@ import type { Json } from "@/lib/data/database.types";
 import { recordExecutionMeasurement } from "@/lib/data/job-measurements";
 import type { Job } from "@/lib/data/jobs";
 import { markJobCompleted, markJobFailed } from "@/lib/data/jobs";
+import { DatabaseError } from "@/lib/shared/errors/database";
+import {
+	type RetryOptions,
+	withRetry,
+} from "@/lib/shared/utils/result-wrappers/generic";
 import {
 	type EnrichmentExecuteResult,
 	executeEnrichmentJob,
@@ -12,23 +17,31 @@ import {
 import { EnrichmentChanges } from "./changes/enrichment";
 import { MatchSnapshotChanges } from "./changes/match-snapshot";
 import { applyLibraryProcessingChange } from "./service";
-import type { LibraryProcessingChange } from "./types";
+import type {
+	LibraryProcessingApplyError,
+	LibraryProcessingChange,
+} from "./types";
 
-type RunJobOutcome =
+type SettlementStatus = "settled" | "settlement_failed";
+
+export type RunJobOutcome =
 	| {
 			status: "completed";
 			workflow: "enrichment";
 			result: EnrichmentExecuteResult;
+			settlement: SettlementStatus;
 	  }
 	| {
 			status: "completed";
 			workflow: "match_snapshot_refresh";
 			result: MatchSnapshotRefreshExecuteResult;
+			settlement: SettlementStatus;
 	  }
 	| {
 			status: "failed";
 			workflow: "enrichment" | "match_snapshot_refresh";
 			error: string;
+			settlement: SettlementStatus;
 	  };
 
 export async function runClaimedJob(job: Job): Promise<RunJobOutcome> {
@@ -70,14 +83,14 @@ async function runEnrichmentJob(job: Job): Promise<RunJobOutcome> {
 			requestSatisfied,
 			newCandidatesAvailable: result.newCandidatesAvailable,
 		});
-		await settleLibraryProcessing(change, {
+		const settlement = await settleLibraryProcessing(change, {
 			jobId: job.id,
 			accountId: result.accountId,
 			workflow: "enrichment",
 			changeKind: change.kind,
 		});
 
-		return { status: "completed", workflow: "enrichment", result };
+		return { status: "completed", workflow: "enrichment", result, settlement };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		await markJobFailedSafe(job, message);
@@ -88,14 +101,19 @@ async function runEnrichmentJob(job: Job): Promise<RunJobOutcome> {
 			jobId: job.id,
 			reason: "error",
 		});
-		await settleLibraryProcessing(change, {
+		const settlement = await settleLibraryProcessing(change, {
 			jobId: job.id,
 			accountId: job.account_id,
 			workflow: "enrichment",
 			changeKind: change.kind,
 		});
 
-		return { status: "failed", workflow: "enrichment", error: message };
+		return {
+			status: "failed",
+			workflow: "enrichment",
+			error: message,
+			settlement,
+		};
 	}
 }
 
@@ -124,7 +142,7 @@ async function runMatchSnapshotRefreshJob(job: Job): Promise<RunJobOutcome> {
 			accountId: result.accountId,
 			jobId: result.jobId,
 		});
-		await settleLibraryProcessing(change, {
+		const settlement = await settleLibraryProcessing(change, {
 			jobId: job.id,
 			accountId: result.accountId,
 			workflow: "match_snapshot_refresh",
@@ -135,6 +153,7 @@ async function runMatchSnapshotRefreshJob(job: Job): Promise<RunJobOutcome> {
 			status: "completed",
 			workflow: "match_snapshot_refresh",
 			result,
+			settlement,
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
@@ -145,7 +164,7 @@ async function runMatchSnapshotRefreshJob(job: Job): Promise<RunJobOutcome> {
 			accountId: job.account_id,
 			jobId: job.id,
 		});
-		await settleLibraryProcessing(change, {
+		const settlement = await settleLibraryProcessing(change, {
 			jobId: job.id,
 			accountId: job.account_id,
 			workflow: "match_snapshot_refresh",
@@ -156,6 +175,7 @@ async function runMatchSnapshotRefreshJob(job: Job): Promise<RunJobOutcome> {
 			status: "failed",
 			workflow: "match_snapshot_refresh",
 			error: message,
+			settlement,
 		};
 	}
 }
@@ -167,23 +187,42 @@ interface SettlementLogContext {
 	changeKind: LibraryProcessingChange["kind"];
 }
 
+const SETTLEMENT_RETRY_OPTIONS: RetryOptions<LibraryProcessingApplyError> = {
+	isRetryable: (error) => {
+		switch (error.kind) {
+			case "load_state":
+			case "persist_state":
+			case "persist_active_refs":
+				return error.cause instanceof DatabaseError;
+			case "effect_ensure_failed":
+				return error.cause instanceof DatabaseError;
+		}
+	},
+};
+
 async function settleLibraryProcessing(
 	change: LibraryProcessingChange,
 	context: SettlementLogContext,
-): Promise<void> {
+): Promise<SettlementStatus> {
 	try {
-		const settleResult = await applyLibraryProcessingChange(change);
+		const settleResult = await withRetry(
+			() => applyLibraryProcessingChange(change),
+			SETTLEMENT_RETRY_OPTIONS,
+		);
 		if (Result.isError(settleResult)) {
 			console.error("[runner] library-processing-settlement-failed", {
 				...context,
 				error: settleResult.error,
 			});
+			return "settlement_failed";
 		}
+		return "settled";
 	} catch (error) {
 		console.error("[runner] library-processing-settlement-threw", {
 			...context,
 			error: error instanceof Error ? error.message : String(error),
 		});
+		return "settlement_failed";
 	}
 }
 

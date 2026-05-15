@@ -58,10 +58,10 @@
 
 ## 8. Harden Runner Settlement
 
-- [ ] 8.1 Update `src/lib/workflows/library-processing/runner.ts` so library-processing settlement is retried locally with the existing DB retry policy.
-- [ ] 8.2 Extend `RunJobOutcome` with settlement status (`settled` / `settlement_failed`) without changing successful workflow result payloads.
-- [ ] 8.3 Ensure failed settlement logs include `jobId`, `accountId`, `workflow`, `changeKind`, and the structured apply error.
-- [ ] 8.4 Add runner tests for settlement success, settlement retry success, settlement retry exhaustion, and failure-path settlement errors.
+- [x] 8.1 Update `src/lib/workflows/library-processing/runner.ts` so library-processing settlement is retried locally with the existing DB retry policy.
+- [x] 8.2 Extend `RunJobOutcome` with settlement status (`settled` / `settlement_failed`) without changing successful workflow result payloads.
+- [x] 8.3 Ensure failed settlement logs include `jobId`, `accountId`, `workflow`, `changeKind`, and the structured apply error.
+- [x] 8.4 Add runner tests for settlement success, settlement retry success, settlement retry exhaustion, and failure-path settlement errors.
 
 ## 9. Split Job Modules by Role
 
