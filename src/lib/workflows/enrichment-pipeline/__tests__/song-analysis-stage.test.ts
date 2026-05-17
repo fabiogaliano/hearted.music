@@ -1,57 +1,25 @@
-/**
- * Stage-level tests for runSongAnalysis. Verifies that songs skipped by the
- * analysis-input gate are recorded with the correct lifecycle code and
- * terminal flag, that LLM-failed songs use 'permanent' (terminal), and that
- * compensation only fires for terminal `analysis_inputs_missing`.
- *
- * The stage now goes through `recordStageFailure`, which composes the
- * failure-policy module + DB layer; we mock that wrapper so unit tests stay
- * pure.
- */
-
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockRecordStageFailure = vi.fn().mockResolvedValue(Result.ok(undefined));
-const mockResolveStageFailures = vi.fn().mockResolvedValue(Result.ok(0));
 const mockSongAnalysisGet = vi.fn();
-const mockAnalyzeSongs = vi.fn();
-const mockCreateAnalysisPipeline = vi.fn();
-const mockGrantCompensation = vi
-	.fn()
-	.mockResolvedValue(Result.ok({ kind: "granted", credits: 1, newBalance: 1 }));
-const mockCreateAdminClient = vi.fn().mockReturnValue({});
-
-vi.mock("../record-failure", () => ({
-	recordStageFailure: (params: Record<string, unknown>) =>
-		mockRecordStageFailure(params),
-}));
-
-vi.mock("@/lib/data/job-failures", () => ({
-	resolveStageFailures: (params: Record<string, unknown>) =>
-		mockResolveStageFailures(params),
-}));
-
-vi.mock("@/lib/data/client", () => ({
-	createAdminSupabaseClient: () => mockCreateAdminClient(),
-}));
-
-vi.mock("@/lib/domains/billing/compensation", () => ({
-	grantAnalysisFailureReplacementCredit: (
-		client: unknown,
-		params: { accountId: string; songId: string; failureCode: string },
-	) => mockGrantCompensation(client, params),
-}));
+const mockAnalyzeSongBatch = vi.fn();
+const mockCreateSongBatchAnalyzerDeps = vi.fn();
 
 vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
 	get: (ids: string[]) => mockSongAnalysisGet(ids),
 }));
 
-vi.mock("@/lib/domains/enrichment/content-analysis/pipeline", () => ({
-	createAnalysisPipeline: () => mockCreateAnalysisPipeline(),
-}));
+vi.mock(
+	"@/lib/domains/enrichment/content-analysis/song-batch-analysis",
+	() => ({
+		analyzeSongBatch: (...args: unknown[]) => mockAnalyzeSongBatch(...args),
+		createSongBatchAnalyzerDeps: (...args: unknown[]) =>
+			mockCreateSongBatchAnalyzerDeps(...args),
+	}),
+);
 
 import type { PipelineBatch } from "../batch";
+import type { StageOutcome } from "../stage-outcomes";
 import { runSongAnalysis } from "../stages/song-analysis";
 import type { EnrichmentContext } from "../types";
 
@@ -89,41 +57,10 @@ function makeCtx(): EnrichmentContext {
 	};
 }
 
-function makeCtxWithoutJobId(): EnrichmentContext {
+function emptyBatchOutcome() {
 	return {
-		accountId: "account-1",
-		embeddingService: {} as EnrichmentContext["embeddingService"],
-		profilingService: {} as EnrichmentContext["profilingService"],
-	};
-}
-
-beforeEach(() => {
-	vi.clearAllMocks();
-	mockSongAnalysisGet.mockResolvedValue(Result.ok(new Map()));
-	mockCreateAnalysisPipeline.mockReturnValue(
-		Result.ok({ analyzeSongs: mockAnalyzeSongs }),
-	);
-	mockGrantCompensation.mockResolvedValue(
-		Result.ok({ kind: "granted", credits: 1, newBalance: 1 }),
-	);
-	mockCreateAdminClient.mockReturnValue({});
-	mockResolveStageFailures.mockResolvedValue(Result.ok(0));
-});
-
-interface RecordedFailure {
-	itemId?: string;
-	songId?: string;
-	failureCode: string;
-}
-
-function recordedFailures(): RecordedFailure[] {
-	return mockRecordStageFailure.mock.calls.map(
-		(call) => call[0] as RecordedFailure,
-	);
-}
-
-function emptySkipBuckets() {
-	return {
+		analyzedSongIds: [],
+		failedSongIds: [],
 		skippedConfirmedInputsMissing: [],
 		skippedUnconfirmedLyrics: [],
 		skippedUnconfirmedAudio: [],
@@ -131,483 +68,379 @@ function emptySkipBuckets() {
 	};
 }
 
-describe("runSongAnalysis: analysis-input gate (tri-state)", () => {
-	it("records terminal analysis_inputs_missing for confirmed-missing songs", async () => {
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: "job-1",
-				succeeded: 0,
-				failed: 1,
-				total: 1,
-				...emptySkipBuckets(),
-				skippedConfirmedInputsMissing: ["skip-me"],
-			}),
+function expectAttempted(
+	outcome: StageOutcome,
+): Extract<StageOutcome, { kind: "attempted" }> {
+	if (outcome.kind !== "attempted") {
+		throw new Error(`Expected attempted outcome, got ${outcome.kind}`);
+	}
+	return outcome;
+}
+
+beforeEach(() => {
+	vi.clearAllMocks();
+	mockSongAnalysisGet.mockResolvedValue(Result.ok(new Map()));
+	mockCreateSongBatchAnalyzerDeps.mockReturnValue(
+		Result.ok({
+			lyricsService: null,
+			songAnalysisService: {},
+			concurrency: 5,
+		}),
+	);
+	mockAnalyzeSongBatch.mockResolvedValue(emptyBatchOutcome());
+});
+
+describe("runSongAnalysis: returns StageOutcome", () => {
+	it("returns skipped when all candidates already have analyses", async () => {
+		mockSongAnalysisGet.mockResolvedValue(
+			Result.ok(new Map([["s1", { id: "a1" }]])),
 		);
 
-		const result = await runSongAnalysis(makeCtx(), makeBatch(["skip-me"]));
+		const outcome = await runSongAnalysis(makeCtx(), makeBatch(["s1"]));
 
-		const failures = recordedFailures();
-		expect(failures).toHaveLength(1);
-		expect(failures[0]).toMatchObject({
+		expect(outcome.kind).toBe("skipped");
+		expect(outcome.candidateSongIds).toEqual(["s1"]);
+	});
+
+	it("returns attempted outcome with correct stage name", async () => {
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			analyzedSongIds: ["s1"],
+		});
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(Result.ok(new Map([["s1", { id: "a1" }]])));
+
+		const outcome = await runSongAnalysis(makeCtx(), makeBatch(["s1"]));
+
+		expect(outcome.kind).toBe("attempted");
+		expect(outcome.stage).toBe("song_analysis");
+	});
+});
+
+describe("runSongAnalysis: analysis-input gate (tri-state)", () => {
+	it("maps confirmed-missing to analysis_inputs_missing failures", async () => {
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			skippedConfirmedInputsMissing: ["skip-me"],
+			failedSongIds: [],
+		});
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(Result.ok(new Map()));
+
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["skip-me"])),
+		);
+
+		expect(outcome.failures).toHaveLength(1);
+		expect(outcome.failures[0]).toMatchObject({
 			songId: "skip-me",
 			failureCode: "analysis_inputs_missing",
 		});
-		expect(result).toEqual({ total: 1, succeeded: 0, failed: 1 });
+		expect(outcome.succeededSongIds).toEqual([]);
 	});
 
-	it("records analysis_blocked_lyrics_unavailable for skippedUnconfirmedLyrics", async () => {
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: "job-1",
-				succeeded: 0,
-				failed: 1,
-				total: 1,
-				...emptySkipBuckets(),
-				skippedUnconfirmedLyrics: ["lyrics-down"],
-			}),
+	it("maps skippedUnconfirmedLyrics to analysis_blocked_lyrics_unavailable", async () => {
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			skippedUnconfirmedLyrics: ["lyrics-down"],
+		});
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(Result.ok(new Map()));
+
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["lyrics-down"])),
 		);
 
-		await runSongAnalysis(makeCtx(), makeBatch(["lyrics-down"]));
-
-		const failures = recordedFailures();
-		expect(failures).toHaveLength(1);
-		expect(failures[0]).toMatchObject({
+		expect(outcome.failures).toHaveLength(1);
+		expect(outcome.failures[0]).toMatchObject({
 			songId: "lyrics-down",
 			failureCode: "analysis_blocked_lyrics_unavailable",
 		});
 	});
 
-	it("records analysis_blocked_audio_unavailable for skippedUnconfirmedAudio", async () => {
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: "job-1",
-				succeeded: 0,
-				failed: 1,
-				total: 1,
-				...emptySkipBuckets(),
-				skippedUnconfirmedAudio: ["audio-down"],
-			}),
+	it("maps skippedUnconfirmedAudio to analysis_blocked_audio_unavailable", async () => {
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			skippedUnconfirmedAudio: ["audio-down"],
+		});
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(Result.ok(new Map()));
+
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["audio-down"])),
 		);
 
-		await runSongAnalysis(makeCtx(), makeBatch(["audio-down"]));
-
-		const failures = recordedFailures();
-		expect(failures).toHaveLength(1);
-		expect(failures[0]).toMatchObject({
+		expect(outcome.failures).toHaveLength(1);
+		expect(outcome.failures[0]).toMatchObject({
 			songId: "audio-down",
 			failureCode: "analysis_blocked_audio_unavailable",
 		});
 	});
 
-	it("records analysis_blocked_both_unavailable for skippedUnconfirmedBoth", async () => {
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: "job-1",
-				succeeded: 0,
-				failed: 1,
-				total: 1,
-				...emptySkipBuckets(),
-				skippedUnconfirmedBoth: ["everything-down"],
-			}),
+	it("maps skippedUnconfirmedBoth to analysis_blocked_both_unavailable", async () => {
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			skippedUnconfirmedBoth: ["everything-down"],
+		});
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(Result.ok(new Map()));
+
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["everything-down"])),
 		);
 
-		await runSongAnalysis(makeCtx(), makeBatch(["everything-down"]));
-
-		const failures = recordedFailures();
-		expect(failures).toHaveLength(1);
-		expect(failures[0]).toMatchObject({
+		expect(outcome.failures).toHaveLength(1);
+		expect(outcome.failures[0]).toMatchObject({
 			songId: "everything-down",
 			failureCode: "analysis_blocked_both_unavailable",
 		});
 	});
 
-	it("does not double-record skipped songs as 'permanent'", async () => {
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: "job-1",
-				succeeded: 0,
-				failed: 4,
-				total: 4,
-				...emptySkipBuckets(),
-				skippedConfirmedInputsMissing: ["confirmed"],
-				skippedUnconfirmedLyrics: ["unconfirmed-lyrics"],
-				skippedUnconfirmedAudio: ["unconfirmed-audio"],
-				skippedUnconfirmedBoth: ["unconfirmed-both"],
-			}),
-		);
-		mockSongAnalysisGet.mockResolvedValue(Result.ok(new Map()));
+	it("does not double-classify skipped songs as permanent", async () => {
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			skippedConfirmedInputsMissing: ["confirmed"],
+			skippedUnconfirmedLyrics: ["lyrics"],
+			skippedUnconfirmedAudio: ["audio"],
+			skippedUnconfirmedBoth: ["both"],
+			failedSongIds: [],
+		});
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(Result.ok(new Map()));
 
-		await runSongAnalysis(
-			makeCtx(),
-			makeBatch([
-				"confirmed",
-				"unconfirmed-lyrics",
-				"unconfirmed-audio",
-				"unconfirmed-both",
-			]),
+		const outcome = expectAttempted(
+			await runSongAnalysis(
+				makeCtx(),
+				makeBatch(["confirmed", "lyrics", "audio", "both"]),
+			),
 		);
 
-		const failures = recordedFailures();
-		expect(failures).toHaveLength(4);
-		const byItem = new Map(failures.map((f) => [f.songId, f]));
-		expect(byItem.get("confirmed")).toMatchObject({
-			failureCode: "analysis_inputs_missing",
-		});
-		expect(byItem.get("unconfirmed-lyrics")).toMatchObject({
-			failureCode: "analysis_blocked_lyrics_unavailable",
-		});
-		expect(byItem.get("unconfirmed-audio")).toMatchObject({
-			failureCode: "analysis_blocked_audio_unavailable",
-		});
-		expect(byItem.get("unconfirmed-both")).toMatchObject({
-			failureCode: "analysis_blocked_both_unavailable",
-		});
+		expect(outcome.failures).toHaveLength(4);
+		const codes = outcome.failures.map((f) => f.failureCode);
+		expect(codes).not.toContain("permanent");
 	});
 
-	it("records permanent for LLM-failed songs alongside skip categories in one batch", async () => {
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: "job-1",
-				succeeded: 0,
-				failed: 3,
-				total: 3,
-				...emptySkipBuckets(),
-				skippedConfirmedInputsMissing: ["confirmed"],
-				skippedUnconfirmedLyrics: ["unconfirmed-lyrics"],
-			}),
-		);
-		mockSongAnalysisGet.mockResolvedValue(Result.ok(new Map()));
-
-		await runSongAnalysis(
-			makeCtx(),
-			makeBatch(["confirmed", "unconfirmed-lyrics", "llm-fail"]),
-		);
-
-		const failures = recordedFailures();
-		expect(failures).toHaveLength(3);
-		const byItem = new Map(failures.map((f) => [f.songId, f]));
-		expect(byItem.get("confirmed")).toMatchObject({
-			failureCode: "analysis_inputs_missing",
+	it("does not report a skipped song as failed when shared analysis appears by post-run lookup", async () => {
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			skippedConfirmedInputsMissing: ["shared-success"],
 		});
-		expect(byItem.get("unconfirmed-lyrics")).toMatchObject({
-			failureCode: "analysis_blocked_lyrics_unavailable",
-		});
-		expect(byItem.get("llm-fail")).toMatchObject({
-			failureCode: "permanent",
-		});
-	});
-
-	it("records nothing when all songs analyze successfully", async () => {
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: "job-1",
-				succeeded: 1,
-				failed: 0,
-				total: 1,
-				...emptySkipBuckets(),
-			}),
-		);
-
-		await runSongAnalysis(makeCtx(), makeBatch(["ok"]));
-
-		expect(mockRecordStageFailure).not.toHaveBeenCalled();
-	});
-});
-
-describe("runSongAnalysis: stage-success resolution", () => {
-	it("resolves prior non-terminal failures for songs that produced an analysis", async () => {
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: "job-1",
-				succeeded: 1,
-				failed: 0,
-				total: 1,
-				...emptySkipBuckets(),
-			}),
-		);
-		// Pre-run check: not yet analyzed (so song is "ready").
-		// Post-run check: analysis is present (this run produced it).
 		mockSongAnalysisGet
 			.mockResolvedValueOnce(Result.ok(new Map()))
 			.mockResolvedValueOnce(
-				Result.ok(new Map([["recovered-song", { id: "a-1" }]])),
+				Result.ok(new Map([["shared-success", { id: "analysis-1" }]])),
 			);
 
-		await runSongAnalysis(makeCtx(), makeBatch(["recovered-song"]));
-
-		expect(mockResolveStageFailures).toHaveBeenCalledTimes(1);
-		expect(mockResolveStageFailures).toHaveBeenCalledWith({
-			accountId: "account-1",
-			itemId: "recovered-song",
-			stage: "song_analysis",
-		});
-	});
-
-	it("does not call resolve when no song produced an analysis", async () => {
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: "job-1",
-				succeeded: 0,
-				failed: 1,
-				total: 1,
-				...emptySkipBuckets(),
-				skippedUnconfirmedBoth: ["still-down"],
-			}),
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["shared-success"])),
 		);
-		mockSongAnalysisGet.mockResolvedValue(Result.ok(new Map()));
 
-		await runSongAnalysis(makeCtx(), makeBatch(["still-down"]));
-
-		expect(mockResolveStageFailures).not.toHaveBeenCalled();
+		expect(outcome.succeededSongIds).toEqual(["shared-success"]);
+		expect(outcome.failures).toEqual([]);
 	});
 });
 
-describe("runSongAnalysis: replacement-credit compensation", () => {
-	it("calls compensation helper for each confirmed-missing song", async () => {
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: "job-1",
-				succeeded: 0,
-				failed: 2,
-				total: 2,
-				...emptySkipBuckets(),
-				skippedConfirmedInputsMissing: ["pack-song-a", "pack-song-b"],
-			}),
-		);
-
-		await runSongAnalysis(makeCtx(), makeBatch(["pack-song-a", "pack-song-b"]));
-
-		expect(mockGrantCompensation).toHaveBeenCalledTimes(2);
-		const calls = mockGrantCompensation.mock.calls.map(
-			(c) => c[1] as { accountId: string; songId: string; failureCode: string },
-		);
-		const byId = new Map(calls.map((c) => [c.songId, c]));
-		expect(byId.get("pack-song-a")).toEqual({
-			accountId: "account-1",
-			songId: "pack-song-a",
-			failureCode: "analysis_inputs_missing",
+describe("runSongAnalysis: genuine analysis failures", () => {
+	it("maps genuinely failed songs to permanent when post-run confirms no analysis", async () => {
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			failedSongIds: ["llm-fail"],
 		});
-		expect(byId.get("pack-song-b")).toEqual({
-			accountId: "account-1",
-			songId: "pack-song-b",
-			failureCode: "analysis_inputs_missing",
-		});
-	});
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(Result.ok(new Map()));
 
-	it("does not call compensation for unconfirmed skip categories", async () => {
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: "job-1",
-				succeeded: 0,
-				failed: 3,
-				total: 3,
-				...emptySkipBuckets(),
-				skippedUnconfirmedLyrics: ["lyrics-only"],
-				skippedUnconfirmedAudio: ["audio-only"],
-				skippedUnconfirmedBoth: ["both-down"],
-			}),
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["llm-fail"])),
 		);
 
-		await runSongAnalysis(
-			makeCtx(),
-			makeBatch(["lyrics-only", "audio-only", "both-down"]),
-		);
-
-		expect(mockGrantCompensation).not.toHaveBeenCalled();
-		expect(mockRecordStageFailure).toHaveBeenCalledTimes(3);
-	});
-
-	it("does not call compensation for LLM permanent failures", async () => {
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: "job-1",
-				succeeded: 0,
-				failed: 1,
-				total: 1,
-				...emptySkipBuckets(),
-			}),
-		);
-		mockSongAnalysisGet.mockResolvedValue(Result.ok(new Map()));
-
-		await runSongAnalysis(makeCtx(), makeBatch(["llm-fail"]));
-
-		expect(mockGrantCompensation).not.toHaveBeenCalled();
-		const failures = recordedFailures();
-		expect(failures).toHaveLength(1);
-		expect(failures[0]).toMatchObject({
+		expect(outcome.failures).toHaveLength(1);
+		expect(outcome.failures[0]).toMatchObject({
 			songId: "llm-fail",
 			failureCode: "permanent",
 		});
+		expect(outcome.succeededSongIds).toEqual([]);
 	});
 
-	it("compensation failures do not break the stage", async () => {
-		const { DatabaseError } = await import("@/lib/shared/errors/database");
-		mockGrantCompensation.mockResolvedValue(
-			Result.err(
-				new DatabaseError({ code: "FAIL", message: "compensation rpc down" }),
-			),
-		);
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: "job-1",
-				succeeded: 0,
-				failed: 1,
-				total: 1,
-				...emptySkipBuckets(),
-				skippedConfirmedInputsMissing: ["pack-song"],
-			}),
+	it("does not classify as permanent if post-run check shows analysis exists", async () => {
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			analyzedSongIds: ["s1"],
+			failedSongIds: ["s1"],
+		});
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(Result.ok(new Map([["s1", { id: "a1" }]])));
+
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["s1"])),
 		);
 
-		const result = await runSongAnalysis(makeCtx(), makeBatch(["pack-song"]));
-
-		expect(result).toEqual({ total: 1, succeeded: 0, failed: 1 });
-		expect(mockRecordStageFailure).toHaveBeenCalledTimes(1);
-		expect(mockGrantCompensation).toHaveBeenCalledTimes(1);
-	});
-
-	it("does not call compensation when no jobId is set on the context", async () => {
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: undefined,
-				succeeded: 0,
-				failed: 1,
-				total: 1,
-				...emptySkipBuckets(),
-				skippedConfirmedInputsMissing: ["pack-song"],
-			}),
+		const permanentFailures = outcome.failures.filter(
+			(f) => f.failureCode === "permanent",
 		);
-
-		const ctx = makeCtxWithoutJobId();
-
-		await runSongAnalysis(ctx, makeBatch(["pack-song"]));
-
-		expect(mockRecordStageFailure).not.toHaveBeenCalled();
-		expect(mockGrantCompensation).not.toHaveBeenCalled();
+		expect(permanentFailures).toHaveLength(0);
+		expect(outcome.succeededSongIds).toContain("s1");
 	});
 });
 
 describe("runSongAnalysis: post-run lookup failure", () => {
-	it("records analysis_postrun_lookup_unavailable for uncertain songs (not permanent)", async () => {
+	it("maps uncertain songs to analysis_postrun_lookup_unavailable", async () => {
 		const { DatabaseError } = await import("@/lib/shared/errors/database");
 
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: "job-1",
-				succeeded: 0,
-				failed: 1,
-				total: 1,
-				...emptySkipBuckets(),
-			}),
-		);
-
-		// Pre-run check: empty (song is "ready").
-		// Post-run check: errors out — we don't know what succeeded.
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			failedSongIds: ["uncertain"],
+		});
 		mockSongAnalysisGet
 			.mockResolvedValueOnce(Result.ok(new Map()))
 			.mockResolvedValueOnce(
 				Result.err(
-					new DatabaseError({
-						code: "FAIL",
-						message: "post-run lookup down",
-					}),
+					new DatabaseError({ code: "FAIL", message: "post-run down" }),
 				),
 			);
 
-		await runSongAnalysis(makeCtx(), makeBatch(["uncertain"]));
-
-		// One recordStageFailure call: the new postrun-lookup-unavailable code.
-		// No resolves — state unknown. No `permanent` rows.
-		expect(mockResolveStageFailures).not.toHaveBeenCalled();
-		const failures = mockRecordStageFailure.mock.calls.map(
-			(call) => call[0] as { songId: string; failureCode: string },
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["uncertain"])),
 		);
-		expect(failures).toHaveLength(1);
-		expect(failures[0]).toMatchObject({
+
+		expect(outcome.failures).toHaveLength(1);
+		expect(outcome.failures[0]).toMatchObject({
 			songId: "uncertain",
 			failureCode: "analysis_postrun_lookup_unavailable",
 		});
-		expect(failures.some((f) => f.failureCode === "permanent")).toBe(false);
+		expect(outcome.succeededSongIds).toEqual([]);
 	});
 
-	it("does not record postrun-unavailable when no jobId is set", async () => {
+	it("excludes skip-bucket songs from uncertain set during lookup failure", async () => {
 		const { DatabaseError } = await import("@/lib/shared/errors/database");
 
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: undefined,
-				succeeded: 0,
-				failed: 1,
-				total: 1,
-				...emptySkipBuckets(),
-			}),
-		);
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			skippedUnconfirmedBoth: ["both-down"],
+			skippedConfirmedInputsMissing: ["confirmed-missing"],
+			failedSongIds: ["uncertain-llm"],
+		});
 		mockSongAnalysisGet
 			.mockResolvedValueOnce(Result.ok(new Map()))
 			.mockResolvedValueOnce(
 				Result.err(
-					new DatabaseError({
-						code: "FAIL",
-						message: "post-run lookup down",
-					}),
+					new DatabaseError({ code: "FAIL", message: "post-run down" }),
 				),
 			);
 
-		await runSongAnalysis(makeCtxWithoutJobId(), makeBatch(["uncertain"]));
-
-		expect(mockRecordStageFailure).not.toHaveBeenCalled();
-		expect(mockResolveStageFailures).not.toHaveBeenCalled();
-	});
-
-	it("still records skip-bucket failures and excludes them from uncertain set", async () => {
-		const { DatabaseError } = await import("@/lib/shared/errors/database");
-
-		mockAnalyzeSongs.mockResolvedValue(
-			Result.ok({
-				jobId: "job-1",
-				succeeded: 0,
-				failed: 3,
-				total: 3,
-				...emptySkipBuckets(),
-				skippedUnconfirmedBoth: ["both-down"],
-				skippedConfirmedInputsMissing: ["confirmed-missing"],
-			}),
+		const outcome = expectAttempted(
+			await runSongAnalysis(
+				makeCtx(),
+				makeBatch(["both-down", "confirmed-missing", "uncertain-llm"]),
+			),
 		);
 
-		mockSongAnalysisGet
-			.mockResolvedValueOnce(Result.ok(new Map()))
-			.mockResolvedValueOnce(
-				Result.err(
-					new DatabaseError({
-						code: "FAIL",
-						message: "post-run lookup down",
-					}),
-				),
-			);
-
-		await runSongAnalysis(
-			makeCtx(),
-			makeBatch(["both-down", "confirmed-missing", "uncertain-llm"]),
-		);
-
-		const failures = mockRecordStageFailure.mock.calls.map(
-			(call) => call[0] as { songId: string; failureCode: string },
-		);
-		expect(failures).toHaveLength(3);
-		const byId = new Map(failures.map((f) => [f.songId, f]));
-		// Skip-bucket rows still written with their dedicated codes.
+		const byId = new Map(outcome.failures.map((f) => [f.songId, f]));
 		expect(byId.get("both-down")?.failureCode).toBe(
 			"analysis_blocked_both_unavailable",
 		);
 		expect(byId.get("confirmed-missing")?.failureCode).toBe(
 			"analysis_inputs_missing",
 		);
-		// Only the non-skipped ready candidate gets the postrun-unavailable row.
 		expect(byId.get("uncertain-llm")?.failureCode).toBe(
 			"analysis_postrun_lookup_unavailable",
 		);
-		// Compensation still fires for the terminal confirmed-missing case.
-		expect(mockGrantCompensation).toHaveBeenCalledTimes(1);
-		// No resolves — post-run lookup failed so success state is unknown.
-		expect(mockResolveStageFailures).not.toHaveBeenCalled();
+		expect(outcome.failures.some((f) => f.failureCode === "permanent")).toBe(
+			false,
+		);
+	});
+});
+
+describe("runSongAnalysis: success classification", () => {
+	it("classifies songs present in post-run lookup as succeeded", async () => {
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			analyzedSongIds: ["s1", "s2"],
+		});
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(
+				Result.ok(
+					new Map([
+						["s1", { id: "a1" }],
+						["s2", { id: "a2" }],
+					]),
+				),
+			);
+
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["s1", "s2"])),
+		);
+
+		expect(outcome.succeededSongIds).toEqual(["s1", "s2"]);
+		expect(outcome.failures).toEqual([]);
+	});
+
+	it("mixed batch: success + skip + permanent", async () => {
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			analyzedSongIds: ["ok"],
+			failedSongIds: ["llm-fail"],
+			skippedConfirmedInputsMissing: ["confirmed"],
+		});
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(Result.ok(new Map([["ok", { id: "a1" }]])));
+
+		const outcome = expectAttempted(
+			await runSongAnalysis(
+				makeCtx(),
+				makeBatch(["ok", "llm-fail", "confirmed"]),
+			),
+		);
+
+		expect(outcome.succeededSongIds).toEqual(["ok"]);
+		expect(outcome.attemptedSongIds).toEqual(["ok", "llm-fail", "confirmed"]);
+		const byId = new Map(outcome.failures.map((f) => [f.songId, f]));
+		expect(byId.get("llm-fail")?.failureCode).toBe("permanent");
+		expect(byId.get("confirmed")?.failureCode).toBe("analysis_inputs_missing");
+	});
+});
+
+describe("runSongAnalysis: pipeline config failure", () => {
+	it("returns transient failures for all ready songs when deps creation fails", async () => {
+		const { PipelineConfigError } = await import(
+			"@/lib/shared/errors/domain/analysis"
+		);
+		mockCreateSongBatchAnalyzerDeps.mockReturnValue(
+			Result.err(new PipelineConfigError("Missing API key", "google")),
+		);
+
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["s1", "s2"])),
+		);
+
+		expect(outcome.failures).toHaveLength(2);
+		for (const f of outcome.failures) {
+			expect(f.failureCode).toBe("provider_transient");
+		}
+		expect(outcome.succeededSongIds).toEqual([]);
+	});
+});
+
+describe("runSongAnalysis: does not import failure recording", () => {
+	it("the module source does not import recordStageFailure or resolveStageFailures", async () => {
+		const fs = await import("node:fs");
+		const path = await import("node:path");
+		const source = fs.readFileSync(
+			path.resolve(__dirname, "../stages/song-analysis.ts"),
+			"utf-8",
+		);
+		expect(source).not.toContain("recordStageFailure");
+		expect(source).not.toContain("resolveStageFailures");
+		expect(source).not.toContain("grantAnalysisFailureReplacementCredit");
+		expect(source).not.toContain("createAdminSupabaseClient");
 	});
 });

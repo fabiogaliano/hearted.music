@@ -110,18 +110,6 @@ async function persistProgress(
 	}
 }
 
-async function runStage(
-	stageName: EnrichmentStageName,
-	fn: () => Promise<StageResult>,
-): Promise<StageResult> {
-	try {
-		return await fn();
-	} catch (error) {
-		console.error(`[worker-chunk] Stage ${stageName} threw:`, error);
-		return { total: 1, succeeded: 0, failed: 1 };
-	}
-}
-
 function stageStatus(result: StageResult): "completed" | "failed" {
 	return result.failed > 0 && result.succeeded === 0 ? "failed" : "completed";
 }
@@ -304,12 +292,47 @@ async function enrichSongs(
 	await persistProgress(jobId, progress);
 
 	const analysisSubBatch = filterBatch(batch, workPlan.needAnalysis);
-	const analysisResult =
+	const analysisAccountingResult =
 		analysisSubBatch.songIds.length > 0
-			? await runStage("song_analysis", () =>
-					runSongAnalysis(ctx, analysisSubBatch),
-				)
-			: { total: 0, succeeded: 0, failed: 0 };
+			? await runStageWithAccounting({
+					stage: "song_analysis",
+					candidateSongIds: analysisSubBatch.songIds,
+					jobId,
+					accountId: ctx.accountId,
+					fallbackCode: FAILURE_CODES.PROVIDER_TRANSIENT,
+					compensate: async (songId: string) => {
+						const { createAdminSupabaseClient } = await import(
+							"@/lib/data/client"
+						);
+						const { grantAnalysisFailureReplacementCredit } = await import(
+							"@/lib/domains/billing/compensation"
+						);
+						const client = createAdminSupabaseClient();
+						const result = await grantAnalysisFailureReplacementCredit(client, {
+							accountId: ctx.accountId,
+							songId,
+							failureCode: FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
+						});
+						if (Result.isError(result)) {
+							return Result.err(result.error);
+						}
+						return Result.ok(undefined);
+					},
+					run: () => runSongAnalysis(ctx, analysisSubBatch),
+				})
+			: await emptyAccounting;
+
+	if (Result.isError(analysisAccountingResult)) {
+		console.error("[worker-chunk] Stage accounting failed", {
+			stage: "song_analysis",
+			jobId,
+			accountId: ctx.accountId,
+			error: analysisAccountingResult.error,
+		});
+		throw analysisAccountingResult.error;
+	}
+
+	const analysisResult: StageResult = analysisAccountingResult.value;
 
 	applyStageResult(
 		progress,

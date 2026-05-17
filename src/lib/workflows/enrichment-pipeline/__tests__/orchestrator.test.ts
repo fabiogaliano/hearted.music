@@ -24,6 +24,13 @@ const mockRunGenreTagging = vi.fn();
 const mockRunSongAnalysis = vi.fn();
 const mockRunSongEmbedding = vi.fn();
 const mockRunContentActivation = vi.fn();
+const {
+	mockCreateAdminSupabaseClient,
+	mockGrantAnalysisFailureReplacementCredit,
+} = vi.hoisted(() => ({
+	mockCreateAdminSupabaseClient: vi.fn(() => ({})),
+	mockGrantAnalysisFailureReplacementCredit: vi.fn(),
+}));
 
 vi.mock("../stages/audio-features", () => ({
 	runAudioFeatures: (...args: unknown[]) => mockRunAudioFeatures(...args),
@@ -55,6 +62,15 @@ vi.mock("@/lib/domains/enrichment/embeddings/service", () => ({
 
 vi.mock("@/lib/data/jobs", () => ({
 	updateJobProgress: vi.fn().mockResolvedValue(Result.ok(undefined)),
+}));
+
+vi.mock("@/lib/data/client", () => ({
+	createAdminSupabaseClient: () => mockCreateAdminSupabaseClient(),
+}));
+
+vi.mock("@/lib/domains/billing/compensation", () => ({
+	grantAnalysisFailureReplacementCredit: (...args: unknown[]) =>
+		mockGrantAnalysisFailureReplacementCredit(...args),
 }));
 
 vi.mock("@/lib/data/job-failures", () => ({
@@ -96,7 +112,16 @@ import type { StageOutcome } from "../stage-outcomes";
 
 // --- Helpers ---
 
-const stageSuccess = { total: 1, succeeded: 1, failed: 0 };
+function analysisOutcomeSuccess(songIds: string[]): StageOutcome {
+	return {
+		kind: "attempted",
+		stage: "song_analysis",
+		candidateSongIds: songIds,
+		attemptedSongIds: songIds,
+		succeededSongIds: songIds,
+		failures: [],
+	};
+}
 
 function audioOutcomeSuccess(songIds: string[]): StageOutcome {
 	return {
@@ -185,6 +210,9 @@ function makeWorkPlan(
 beforeEach(() => {
 	vi.clearAllMocks();
 	vi.mocked(recordStageFailure).mockResolvedValue(Result.ok(undefined));
+	mockGrantAnalysisFailureReplacementCredit.mockResolvedValue(
+		Result.ok({ kind: "granted", credits: 1, newBalance: 1 }),
+	);
 	mockRunAudioFeatures.mockImplementation(
 		(_ctx: unknown, batch: PipelineBatch) =>
 			Promise.resolve(audioOutcomeSuccess(batch.songIds)),
@@ -193,7 +221,10 @@ beforeEach(() => {
 		(_ctx: unknown, batch: PipelineBatch) =>
 			Promise.resolve(genreOutcomeSuccess(batch.songIds)),
 	);
-	mockRunSongAnalysis.mockResolvedValue(stageSuccess);
+	mockRunSongAnalysis.mockImplementation(
+		(_ctx: unknown, batch: PipelineBatch) =>
+			Promise.resolve(analysisOutcomeSuccess(batch.songIds)),
+	);
 	mockRunSongEmbedding.mockImplementation(
 		(_ctx: unknown, batch: PipelineBatch) =>
 			Promise.resolve(embeddingOutcomeSuccess(batch.songIds)),
@@ -326,6 +357,70 @@ describe("executeWorkerChunk sub-batching", () => {
 		).rejects.toThrow("Failed to record failure rows for stage audio_features");
 
 		expect(mockRunContentActivation).not.toHaveBeenCalled();
+		consoleSpy.mockRestore();
+	});
+
+	it("triggers analysis-input compensation through finalized song-analysis accounting", async () => {
+		const workPlan = makeWorkPlan({
+			allSongIds: ["pack-song"],
+			needAnalysis: ["pack-song"],
+		});
+		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
+		mockLoadBatchSongs.mockResolvedValue(makeBatch(["pack-song"]));
+		mockRunSongAnalysis.mockResolvedValue({
+			kind: "attempted",
+			stage: "song_analysis",
+			candidateSongIds: ["pack-song"],
+			attemptedSongIds: ["pack-song"],
+			succeededSongIds: [],
+			failures: [
+				{
+					songId: "pack-song",
+					failureCode: FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
+					message: "missing inputs",
+				},
+			],
+		});
+
+		await executeWorkerChunk("account-1", "job-1", 10, 0);
+
+		expect(mockGrantAnalysisFailureReplacementCredit).toHaveBeenCalledOnce();
+		expect(mockGrantAnalysisFailureReplacementCredit).toHaveBeenCalledWith(
+			expect.anything(),
+			{
+				accountId: "account-1",
+				songId: "pack-song",
+				failureCode: FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
+			},
+		);
+	});
+
+	it("expands a thrown song_analysis stage to one failure row per candidate", async () => {
+		const workPlan = makeWorkPlan({
+			allSongIds: ["s1", "s2"],
+			needAnalysis: ["s1", "s2"],
+		});
+		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
+		mockLoadBatchSongs.mockResolvedValue(makeBatch(["s1", "s2"]));
+		mockRunSongAnalysis.mockRejectedValue(new Error("llm provider down"));
+		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		const result = await executeWorkerChunk("account-1", "job-1", 10, 0);
+
+		expect(result.failedCount).toBe(2);
+		expect(recordStageFailure).toHaveBeenCalledTimes(2);
+		const failureRows = vi
+			.mocked(recordStageFailure)
+			.mock.calls.map(([params]) => params);
+		expect(failureRows.map((row) => row.songId).sort()).toEqual(["s1", "s2"]);
+		for (const row of failureRows) {
+			expect(row).toMatchObject({
+				stage: "song_analysis",
+				failureCode: FAILURE_CODES.PROVIDER_TRANSIENT,
+				errorMessage: "llm provider down",
+			});
+		}
+
 		consoleSpy.mockRestore();
 	});
 });

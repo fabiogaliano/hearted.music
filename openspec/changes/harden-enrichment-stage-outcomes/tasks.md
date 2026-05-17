@@ -20,7 +20,7 @@
 - [x] 3.2 Move failure-row recording through the existing `recordStageFailure(...)` wrapper.
 - [x] 3.3 Return `Result<StageSummary, StageAccountingError>` when resolving or recording fails.
 - [x] 3.4 Move analysis compensation trigger into the accounting module for `stage = "song_analysis"` and `failureCode = analysis_inputs_missing`.
-- [ ] 3.5 Remove direct calls to `resolveStageFailures` and `recordStageFailure` from migrated stage modules.
+- [x] 3.5 Remove direct calls to `resolveStageFailures` and `recordStageFailure` from migrated stage modules.
 - [x] 3.6 Add tests proving failure-row persistence, prior-failure resolution, and compensation persistence errors return `StageAccountingError` instead of success-shaped summaries.
 
 ## 4. Update Progress Model
@@ -28,14 +28,14 @@
 - [x] 4.1 Add `content_activation` to `EnrichmentStageName`.
 - [x] 4.2 Update `src/lib/platform/jobs/progress/enrichment.ts` and `src/lib/workflows/enrichment-pipeline/progress.ts` so initial progress includes `content_activation`.
 - [x] 4.3 Update progress parser tests in `src/lib/platform/jobs/progress/__tests__/parse.test.ts`.
-- [ ] 4.4 Update orchestrator progress application to consume `StageSummary` from finalized outcomes.
+- [x] 4.4 Update orchestrator progress application to consume `StageSummary` from finalized outcomes.
 
 ## 5. Replace Generic Stage Runner
 
-- [ ] 5.1 Replace `runStage(stageName, fn)` in `orchestrator.ts` with a wrapper that accepts `candidateSongIds` and finalizes `StageOutcome`.
-- [ ] 5.2 On thrown stage errors, create per-candidate failures with a non-terminal fallback code and preserve the original error message in `error_message`.
-- [ ] 5.3 If finalizing the generated failure outcome fails, return a parent attempt failure to the runner rather than applying partial progress.
-- [ ] 5.4 Add tests for thrown `audio_features`, `genre_tagging`, `song_analysis`, and `song_embedding` handlers using candidate counts greater than one.
+- [x] 5.1 Replace `runStage(stageName, fn)` in `orchestrator.ts` with a wrapper that accepts `candidateSongIds` and finalizes `StageOutcome`.
+- [x] 5.2 On thrown stage errors, create per-candidate failures with a non-terminal fallback code and preserve the original error message in `error_message`.
+- [x] 5.3 If finalizing the generated failure outcome fails, return a parent attempt failure to the runner rather than applying partial progress.
+- [x] 5.4 Add tests for thrown `audio_features`, `genre_tagging`, `song_analysis`, and `song_embedding` handlers using candidate counts greater than one.
 
 ## 6. Migrate Audio Features Stage
 
@@ -55,19 +55,19 @@
 
 - [x] 8.1 Create `src/lib/domains/enrichment/content-analysis/song-batch-analysis.ts` for lyrics/audio input evidence classification and batch analysis without job creation.
 - [x] 8.2 Keep prompt/schema and single-song LLM logic in `song-analysis.ts`; reuse it from the batch analyzer.
-- [ ] 8.3 Leave `AnalysisPipeline.analyzeSongs(...)` intact only for standalone/manual flows, but stop using it from `stages/song-analysis.ts`.
-- [ ] 8.4 Ensure the worker path no longer creates child `song_analysis` job rows.
-- [ ] 8.5 Preserve parent enrichment measurement details needed by library-processing terminal-ref recovery.
+- [x] 8.3 Leave `AnalysisPipeline.analyzeSongs(...)` intact only for standalone/manual flows, but stop using it from `stages/song-analysis.ts`.
+- [x] 8.4 Ensure the worker path no longer creates child `song_analysis` job rows.
+- [x] 8.5 Preserve parent enrichment measurement details needed by library-processing terminal-ref recovery.
 - [x] 8.6 Add tests proving the jobless analyzer returns skipped confirmed-input, skipped unconfirmed, analyzed, and failed buckets without touching `src/lib/platform/jobs/lifecycle.ts`.
 
 ## 9. Migrate Song Analysis Stage
 
-- [ ] 9.1 Update `src/lib/workflows/enrichment-pipeline/stages/song-analysis.ts` to call the jobless batch analyzer and return `StageOutcome`.
-- [ ] 9.2 Map skipped confirmed inputs to `analysis_inputs_missing`.
-- [ ] 9.3 Map unconfirmed lyrics/audio/both buckets to their existing non-terminal failure codes.
-- [ ] 9.4 Map post-run lookup failure to `analysis_postrun_lookup_unavailable` for each uncertain song.
-- [ ] 9.5 Map genuine analysis failures to `permanent` only when post-run state confirms no analysis was written.
-- [ ] 9.6 Add tests for each failure bucket and compensation trigger.
+- [x] 9.1 Update `src/lib/workflows/enrichment-pipeline/stages/song-analysis.ts` to call the jobless batch analyzer and return `StageOutcome`.
+- [x] 9.2 Map skipped confirmed inputs to `analysis_inputs_missing`.
+- [x] 9.3 Map unconfirmed lyrics/audio/both buckets to their existing non-terminal failure codes.
+- [x] 9.4 Map post-run lookup failure to `analysis_postrun_lookup_unavailable` for each uncertain song.
+- [x] 9.5 Map genuine analysis failures to `permanent` only when post-run state confirms no analysis was written.
+- [x] 9.6 Add tests for each failure bucket and compensation trigger.
 
 ## 10. Migrate Song Embedding Stage
 
