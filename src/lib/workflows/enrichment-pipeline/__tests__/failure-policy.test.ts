@@ -115,6 +115,17 @@ describe("applyFailurePolicy", () => {
 		expect(out.suppressUntil).toBeNull();
 	});
 
+	it("content_activation_failed suppresses for 6 hours non-terminally", () => {
+		const out = applyFailurePolicy({
+			failureCode: FAILURE_CODES.CONTENT_ACTIVATION_FAILED,
+			now: FIXED_NOW,
+		});
+		expect(out.isTerminal).toBe(false);
+		expect(out.suppressUntil).not.toBeNull();
+		const delta = (out.suppressUntil as Date).getTime() - FIXED_NOW.getTime();
+		expect(minutesFromNow(delta)).toBe(6 * 60);
+	});
+
 	it("unknown codes default to non-terminal 6h suppression", () => {
 		const out = applyFailurePolicy({
 			failureCode: "totally_unknown_code",

@@ -1,27 +1,27 @@
 ## 1. Characterization Tests
 
-- [ ] 1.1 Add tests for `src/lib/workflows/enrichment-pipeline/failure-policy.ts` covering all existing failure codes and the new `content_activation_failed` code.
-- [ ] 1.2 Add a regression test showing a thrown stage handler records one failure per candidate song and returns failed count equal to candidate count.
+- [x] 1.1 Add tests for `src/lib/workflows/enrichment-pipeline/failure-policy.ts` covering all existing failure codes and the new `content_activation_failed` code.
+- [x] 1.2 Add a regression test showing a thrown stage handler records one failure per candidate song and returns failed count equal to candidate count.
 - [ ] 1.3 Add a regression test for readiness-check failure: candidate songs receive durable non-terminal failures rather than count-only failures.
-- [ ] 1.4 Add a test proving `analysis_inputs_missing` compensation is triggered only for terminal analysis-input failures and only after durable failure recording succeeds.
+- [x] 1.4 Add a test proving `analysis_inputs_missing` compensation is triggered only for terminal analysis-input failures and only after durable failure recording succeeds.
 - [ ] 1.5 Add a test proving content activation DB/RPC failure leaves songs unactivated and records retryable failures.
 
 ## 2. Add Stage Outcome Model
 
-- [ ] 2.1 Create `src/lib/workflows/enrichment-pipeline/stage-outcomes.ts` (or a small sibling folder if the file becomes large).
+- [x] 2.1 Create `src/lib/workflows/enrichment-pipeline/stage-outcomes.ts` (or a small sibling folder if the file becomes large).
 - [ ] 2.2 Move or re-export the canonical `EnrichmentStageName` from `types.ts` only if doing so does not create a barrel export; otherwise update imports directly.
-- [ ] 2.3 Define `StageFailure`, `StageOutcome`, `StageSummary`, and `StageAccountingError` with discriminated unions.
-- [ ] 2.4 Add validation helpers that reject overlaps between `succeededSongIds` and `failures[].songId` in tests and dev mode.
-- [ ] 2.5 Add unit tests for summary derivation and illegal outcome detection.
+- [x] 2.3 Define `StageFailure`, `StageOutcome`, `StageSummary`, and `StageAccountingError` with discriminated unions.
+- [x] 2.4 Add validation helpers that reject overlaps between `succeededSongIds` and `failures[].songId` in tests and dev mode.
+- [x] 2.5 Add unit tests for summary derivation and illegal outcome detection.
 
 ## 3. Centralize Outcome Finalization
 
-- [ ] 3.1 Implement `finalizeStageOutcome(...)` to resolve prior non-terminal failures for successes.
-- [ ] 3.2 Move failure-row recording through the existing `recordStageFailure(...)` wrapper.
-- [ ] 3.3 Return `Result<StageSummary, StageAccountingError>` when resolving or recording fails.
-- [ ] 3.4 Move analysis compensation trigger into the accounting module for `stage = "song_analysis"` and `failureCode = analysis_inputs_missing`.
+- [x] 3.1 Implement `finalizeStageOutcome(...)` to resolve prior non-terminal failures for successes.
+- [x] 3.2 Move failure-row recording through the existing `recordStageFailure(...)` wrapper.
+- [x] 3.3 Return `Result<StageSummary, StageAccountingError>` when resolving or recording fails.
+- [x] 3.4 Move analysis compensation trigger into the accounting module for `stage = "song_analysis"` and `failureCode = analysis_inputs_missing`.
 - [ ] 3.5 Remove direct calls to `resolveStageFailures` and `recordStageFailure` from migrated stage modules.
-- [ ] 3.6 Add tests proving failure-row persistence, prior-failure resolution, and compensation persistence errors return `StageAccountingError` instead of success-shaped summaries.
+- [x] 3.6 Add tests proving failure-row persistence, prior-failure resolution, and compensation persistence errors return `StageAccountingError` instead of success-shaped summaries.
 
 ## 4. Update Progress Model
 

@@ -21,6 +21,7 @@ export const FAILURE_CODES = {
 	ANALYSIS_POSTRUN_LOOKUP_UNAVAILABLE: "analysis_postrun_lookup_unavailable",
 	PERMANENT: "permanent",
 	VALIDATION: "validation",
+	CONTENT_ACTIVATION_FAILED: "content_activation_failed",
 } as const;
 
 // Codes that escalate suppression by prior unresolved-row count. Centralised
@@ -94,6 +95,14 @@ export function applyFailurePolicy(
 			return {
 				isTerminal: false,
 				suppressUntil: new Date(now.getTime() + ANALYSIS_BLOCKED_SUPPRESS_MS),
+			};
+
+		case FAILURE_CODES.CONTENT_ACTIVATION_FAILED:
+			return {
+				isTerminal: false,
+				suppressUntil: new Date(
+					now.getTime() + PROVIDER_UNAVAILABLE_SUPPRESS_MS,
+				),
 			};
 
 		case FAILURE_CODES.ANALYSIS_INPUTS_MISSING:
