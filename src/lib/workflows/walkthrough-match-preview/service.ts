@@ -18,7 +18,8 @@
 
 import { Result } from "better-result";
 
-import { ensureWalkthroughPreviewJob, getActiveJob } from "@/lib/data/jobs";
+import { getActiveJob } from "@/lib/platform/jobs/repository";
+import { ensureWalkthroughPreviewJob } from "@/lib/platform/jobs/walkthrough-preview-queue";
 import { getTargetPlaylists } from "@/lib/domains/library/playlists/queries";
 
 import {

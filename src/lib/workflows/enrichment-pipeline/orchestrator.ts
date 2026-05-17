@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { updateJobProgress } from "@/lib/data/jobs";
+import { updateJobProgress } from "@/lib/platform/jobs/repository";
 import { get as getSongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";

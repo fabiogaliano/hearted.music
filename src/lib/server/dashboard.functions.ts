@@ -15,7 +15,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import type { ActivityItem, MatchPreview } from "@/features/dashboard/types";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { getLastCompletedSync } from "@/lib/data/jobs";
+import { getLastCompletedSync } from "@/lib/platform/jobs/sync-phase-jobs";
 import { getAnalyzedCountForAccount } from "@/lib/domains/enrichment/content-analysis/queries";
 import {
 	getCount as getLikedSongCount,

@@ -1,8 +1,11 @@
 import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
 import { recordExecutionMeasurement } from "@/lib/data/job-measurements";
-import type { Job } from "@/lib/data/jobs";
-import { markJobCompleted, markJobFailed } from "@/lib/data/jobs";
+import {
+	type Job,
+	markJobCompleted,
+	markJobFailed,
+} from "@/lib/platform/jobs/repository";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import {
 	type RetryOptions,

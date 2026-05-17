@@ -7,7 +7,7 @@ vi.mock("@/lib/data/client", () => ({
 }));
 
 const { sweepStaleWalkthroughPreviewJobs, markDeadWalkthroughPreviewJobs } =
-	await import("@/lib/data/jobs");
+	await import("@/lib/platform/jobs/walkthrough-preview-queue");
 
 beforeEach(() => {
 	vi.clearAllMocks();

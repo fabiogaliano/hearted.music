@@ -3,8 +3,8 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import {
 	ensureEnrichmentJob,
 	ensureMatchSnapshotRefreshJob,
-	getJobById,
-} from "@/lib/data/jobs";
+} from "@/lib/platform/jobs/library-processing-queue";
+import { getJobById } from "@/lib/platform/jobs/repository";
 import { readBillingState } from "@/lib/domains/billing/queries";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";

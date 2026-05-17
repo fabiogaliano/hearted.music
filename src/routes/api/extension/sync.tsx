@@ -18,7 +18,7 @@ import { Result } from "better-result";
 import { z } from "zod";
 import { validateApiToken } from "@/lib/data/api-tokens";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { createJob } from "@/lib/data/jobs";
+import { createJob } from "@/lib/platform/jobs/repository";
 import { updatePhaseJobIds } from "@/lib/domains/library/accounts/preferences-queries";
 import { getAll } from "@/lib/domains/library/liked-songs/queries";
 import {

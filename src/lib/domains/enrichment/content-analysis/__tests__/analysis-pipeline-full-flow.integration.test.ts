@@ -24,7 +24,7 @@
 
 import { Result } from "better-result";
 import { beforeAll, describe, expect, test } from "vitest";
-import * as jobsData from "@/lib/data/jobs";
+import * as jobsData from "@/lib/platform/jobs/repository";
 import type { JobProgress } from "@/lib/platform/jobs/progress/types";
 import type { PipelineResult } from "../pipeline";
 import { createAnalysisPipeline, type SongToAnalyze } from "../pipeline";

@@ -2,7 +2,7 @@ import { Result } from "better-result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseError } from "@/lib/shared/errors/database";
 
-vi.mock("@/lib/data/jobs", () => ({
+vi.mock("@/lib/platform/jobs/repository", () => ({
 	markJobCompleted: vi.fn(),
 	markJobFailed: vi.fn(),
 }));
@@ -28,8 +28,11 @@ vi.mock("../service", () => ({
 		applyLibraryProcessingChangeMock(...args),
 }));
 
-import type { Job } from "@/lib/data/jobs";
-import { markJobCompleted, markJobFailed } from "@/lib/data/jobs";
+import type { Job } from "@/lib/platform/jobs/repository";
+import {
+	markJobCompleted,
+	markJobFailed,
+} from "@/lib/platform/jobs/repository";
 import type { LibraryProcessingApplyError } from "../types";
 import {
 	executeEnrichmentJob,

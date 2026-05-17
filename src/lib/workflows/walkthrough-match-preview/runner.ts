@@ -8,8 +8,11 @@
 
 import { Result } from "better-result";
 
-import type { Job } from "@/lib/data/jobs";
-import { markJobCompleted, markJobFailed } from "@/lib/data/jobs";
+import {
+	type Job,
+	markJobCompleted,
+	markJobFailed,
+} from "@/lib/platform/jobs/repository";
 
 import {
 	executeWalkthroughPreview,

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockMarkCompleted = vi.fn();
 const mockMarkFailed = vi.fn();
-vi.mock("@/lib/data/jobs", () => ({
+vi.mock("@/lib/platform/jobs/repository", () => ({
 	markJobCompleted: (...args: unknown[]) => mockMarkCompleted(...args),
 	markJobFailed: (...args: unknown[]) => mockMarkFailed(...args),
 }));
@@ -15,7 +15,7 @@ vi.mock("../orchestrator", () => ({
 
 const { runWalkthroughPreviewJob } = await import("../runner");
 
-import type { Job } from "@/lib/data/jobs";
+import type { Job } from "@/lib/platform/jobs/repository";
 
 function makeJob(overrides: Partial<Job> = {}): Job {
 	return {

@@ -60,7 +60,7 @@ vi.mock("@/lib/domains/enrichment/embeddings/service", () => ({
 	})),
 }));
 
-vi.mock("@/lib/data/jobs", () => ({
+vi.mock("@/lib/platform/jobs/repository", () => ({
 	updateJobProgress: vi.fn().mockResolvedValue(Result.ok(undefined)),
 }));
 

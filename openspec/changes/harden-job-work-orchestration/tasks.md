@@ -65,19 +65,19 @@
 
 ## 9. Split Job Modules by Role (Deferred Cleanup)
 
-- [ ] 9.1 Create `src/lib/platform/jobs/repository.ts` with raw job row operations from `src/lib/data/jobs.ts`: `getJobById`, `getActiveJob`, `getLatestJob`, `getJobs`, `createJob`, `updateJobProgress`, `markJobRunning`, `markJobCompleted`, `markJobFailed`, `updateHeartbeat`.
-- [ ] 9.2 Move sync-specific helpers (`getLastCompletedSync`, sync phase creation if retained) into `src/lib/platform/jobs/sync-phase-jobs.ts` or the existing `src/lib/workflows/spotify-sync/*` modules.
-- [ ] 9.3 Create `src/lib/platform/jobs/library-processing-queue.ts` for `claimLibraryProcessingJob`, `claimNextLibraryProcessingJobForAccount`, `sweepStaleLibraryProcessingJobs`, and `markDeadLibraryProcessingJobs`.
-- [ ] 9.4 Create `src/lib/platform/jobs/walkthrough-preview-queue.ts` for walkthrough preview ensure/claim/sweep/dead-letter helpers.
-- [ ] 9.5 Update imports across `src/lib`, `src/routes`, `src/worker`, and tests. Do not add barrel exports.
-- [ ] 9.6 Delete `src/lib/data/jobs.ts` once all consumers are migrated, or leave it out of the final branch if any wrapper would only re-export moved functions.
+- [x] 9.1 Create `src/lib/platform/jobs/repository.ts` with raw job row operations from `src/lib/data/jobs.ts`: `getJobById`, `getActiveJob`, `getLatestJob`, `getJobs`, `createJob`, `updateJobProgress`, `markJobRunning`, `markJobCompleted`, `markJobFailed`, `updateHeartbeat`.
+- [x] 9.2 Move sync-specific helpers (`getLastCompletedSync`, sync phase creation if retained) into `src/lib/platform/jobs/sync-phase-jobs.ts` or the existing `src/lib/workflows/spotify-sync/*` modules.
+- [x] 9.3 Create `src/lib/platform/jobs/library-processing-queue.ts` for existing library-processing queue helpers: `ensureEnrichmentJob`, `ensureMatchSnapshotRefreshJob`, `claimLibraryProcessingJob`, `sweepStaleLibraryProcessingJobs`, and `markDeadLibraryProcessingJobs`.
+- [x] 9.4 Create `src/lib/platform/jobs/walkthrough-preview-queue.ts` for walkthrough preview ensure/claim/sweep/dead-letter helpers.
+- [x] 9.5 Update imports across `src/lib`, `src/routes`, `src/worker`, and tests. Do not add barrel exports.
+- [x] 9.6 Delete `src/lib/data/jobs.ts` once all consumers are migrated, or leave it out of the final branch if any wrapper would only re-export moved functions.
 
 ## 10. Verification
 
 - [x] 10.1 Run focused tests: `bun run test src/lib/workflows/library-processing src/worker`.
 - [x] 10.2 Run `bun run typecheck`.
 - [ ] 10.3 Run full `bun run test`.
-- [ ] 10.4 Grep for remaining imports from `@/lib/data/jobs`; ensure none remain unless the final branch intentionally keeps a non-wrapper module.
+- [x] 10.4 Grep for remaining imports from `@/lib/data/jobs`; ensure none remain unless the final branch intentionally keeps a non-wrapper module.
 - [ ] 10.5 Grep production code for inline `LibraryProcessingChange` object literals; ensure source boundaries use `src/lib/workflows/library-processing/changes/*`.
 - [x] 10.6 Run `openspec validate harden-job-work-orchestration --strict --no-interactive` and `openspec validate harden-enrichment-stage-outcomes --strict --no-interactive`.
 - [ ] 10.7 Manually inspect worker startup logs in dev with one pending job and one artificially failed active ref.

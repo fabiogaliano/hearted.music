@@ -1,6 +1,6 @@
 import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
-import { updateJobProgress } from "@/lib/data/jobs";
+import { updateJobProgress } from "@/lib/platform/jobs/repository";
 import { getBatch } from "@/lib/domains/enrichment/audio-features/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { getByIds } from "@/lib/domains/library/songs/queries";

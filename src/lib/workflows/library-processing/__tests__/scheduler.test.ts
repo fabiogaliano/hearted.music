@@ -6,10 +6,13 @@ const ensureEnrichmentJobMock = vi.fn();
 const ensureMatchSnapshotRefreshJobMock = vi.fn();
 const getJobByIdMock = vi.fn();
 
-vi.mock("@/lib/data/jobs", () => ({
+vi.mock("@/lib/platform/jobs/library-processing-queue", () => ({
 	ensureEnrichmentJob: (...args: unknown[]) => ensureEnrichmentJobMock(...args),
 	ensureMatchSnapshotRefreshJob: (...args: unknown[]) =>
 		ensureMatchSnapshotRefreshJobMock(...args),
+}));
+
+vi.mock("@/lib/platform/jobs/repository", () => ({
 	getJobById: (...args: unknown[]) => getJobByIdMock(...args),
 }));
 

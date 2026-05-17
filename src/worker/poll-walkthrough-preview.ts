@@ -9,7 +9,7 @@
 
 import { Result } from "better-result";
 
-import { claimWalkthroughPreviewJob } from "@/lib/data/jobs";
+import { claimWalkthroughPreviewJob } from "@/lib/platform/jobs/walkthrough-preview-queue";
 import { runWalkthroughPreviewJob } from "@/lib/workflows/walkthrough-match-preview/runner";
 
 import { workerConfig } from "./config";

@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { claimLibraryProcessingJob } from "@/lib/data/jobs";
+import { claimLibraryProcessingJob } from "@/lib/platform/jobs/library-processing-queue";
 import { runClaimedJob } from "@/lib/workflows/library-processing/runner";
 import { workerConfig } from "./config";
 import { startHeartbeat } from "./execute";

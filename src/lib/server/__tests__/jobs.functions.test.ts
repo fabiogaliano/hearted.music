@@ -47,9 +47,10 @@ vi.mock("@/lib/workflows/library-processing/queries", () => ({
 		mockLoadLibraryProcessingState(...args),
 }));
 
-vi.mock("@/lib/data/jobs", async () => {
-	const actual =
-		await vi.importActual<typeof import("@/lib/data/jobs")>("@/lib/data/jobs");
+vi.mock("@/lib/platform/jobs/repository", async () => {
+	const actual = await vi.importActual<
+		typeof import("@/lib/platform/jobs/repository")
+	>("@/lib/platform/jobs/repository");
 
 	return {
 		...actual,

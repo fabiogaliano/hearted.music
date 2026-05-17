@@ -1,11 +1,13 @@
 import { Result } from "better-result";
 import {
 	markDeadLibraryProcessingJobs,
-	markDeadWalkthroughPreviewJobs,
 	sweepStaleLibraryProcessingJobs,
+} from "@/lib/platform/jobs/library-processing-queue";
+import type { Job } from "@/lib/platform/jobs/repository";
+import {
+	markDeadWalkthroughPreviewJobs,
 	sweepStaleWalkthroughPreviewJobs,
-	type Job,
-} from "@/lib/data/jobs";
+} from "@/lib/platform/jobs/walkthrough-preview-queue";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	recoverDeadLetteredLibraryProcessingJobs,

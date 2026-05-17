@@ -1,6 +1,5 @@
 import { Result } from "better-result";
-import type { Job } from "@/lib/data/jobs";
-import { updateHeartbeat } from "@/lib/data/jobs";
+import { type Job, updateHeartbeat } from "@/lib/platform/jobs/repository";
 import {
 	type EnrichmentChunkProgress,
 	EnrichmentChunkProgressSchema,

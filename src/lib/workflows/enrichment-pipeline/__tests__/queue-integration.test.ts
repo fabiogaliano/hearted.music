@@ -1,6 +1,6 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Job } from "@/lib/data/jobs";
+import type { Job } from "@/lib/platform/jobs/repository";
 
 let activeJobResponse: { data: unknown; error: unknown };
 let insertJobResponse: { data: unknown; error: unknown };
@@ -49,7 +49,7 @@ import {
 	createEnrichmentJob,
 	getActiveEnrichmentJob,
 	getOrCreateEnrichmentJob,
-} from "@/lib/data/jobs";
+} from "@/lib/platform/jobs/library-processing-queue";
 import { makeInitialProgress } from "../progress";
 
 const ACCOUNT_ID = "acct-test-123";

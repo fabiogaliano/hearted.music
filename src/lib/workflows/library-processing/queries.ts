@@ -1,6 +1,6 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Job } from "@/lib/data/jobs";
+import type { Job } from "@/lib/platform/jobs/repository";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,

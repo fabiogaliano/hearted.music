@@ -26,7 +26,7 @@ vi.mock("@/lib/domains/enrichment/lyrics/service", async (importOriginal) => {
 });
 
 // Mock data modules to avoid DB calls
-vi.mock("@/lib/data/jobs", () => ({
+vi.mock("@/lib/platform/jobs/repository", () => ({
 	createJob: vi
 		.fn()
 		.mockResolvedValue(Result.ok({ id: "test-job-123", status: "pending" })),

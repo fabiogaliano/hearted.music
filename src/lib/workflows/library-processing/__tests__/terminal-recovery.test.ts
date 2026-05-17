@@ -1,7 +1,7 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { JobExecutionMeasurement } from "@/lib/data/job-measurements";
-import type { Job } from "@/lib/data/jobs";
+import type { Job } from "@/lib/platform/jobs/repository";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { reconcileLibraryProcessing } from "../reconciler";
 import type {

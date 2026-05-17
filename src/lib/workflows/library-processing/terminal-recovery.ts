@@ -3,7 +3,7 @@ import {
 	getLatestExecutionMeasurementForJob,
 	type JobExecutionMeasurement,
 } from "@/lib/data/job-measurements";
-import type { Job } from "@/lib/data/jobs";
+import type { Job } from "@/lib/platform/jobs/repository";
 import { EnrichmentChanges } from "./changes/enrichment";
 import { MatchSnapshotChanges } from "./changes/match-snapshot";
 import { findTerminalActiveRefs, type TerminalActiveRef } from "./queries";

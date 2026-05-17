@@ -75,7 +75,7 @@ vi.mock("@/lib/platform/auth/auth.middleware", () => ({
 	authMiddleware: {},
 }));
 
-vi.mock("@/lib/data/jobs", () => ({
+vi.mock("@/lib/platform/jobs/sync-phase-jobs", () => ({
 	getLastCompletedSync: (...args: unknown[]) =>
 		mockGetLastCompletedSync(...args),
 }));

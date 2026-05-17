@@ -16,7 +16,7 @@ import {
 	markJobRunning,
 	markJobCompleted,
 	markJobFailed,
-} from "@/lib/data/jobs";
+} from "@/lib/platform/jobs/repository";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { withRetry } from "@/lib/shared/utils/result-wrappers/generic";
 

@@ -8,8 +8,11 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 
 const mockEnsureJob = vi.fn();
 const mockGetActiveJob = vi.fn();
-vi.mock("@/lib/data/jobs", () => ({
+vi.mock("@/lib/platform/jobs/walkthrough-preview-queue", () => ({
 	ensureWalkthroughPreviewJob: (...args: unknown[]) => mockEnsureJob(...args),
+}));
+
+vi.mock("@/lib/platform/jobs/repository", () => ({
 	getActiveJob: (...args: unknown[]) => mockGetActiveJob(...args),
 }));
 

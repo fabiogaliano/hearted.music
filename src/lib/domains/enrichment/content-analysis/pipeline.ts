@@ -27,7 +27,7 @@ import {
 	createJob,
 	type JobProgress,
 	updateJobProgress,
-} from "@/lib/data/jobs";
+} from "@/lib/platform/jobs/repository";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import { getBatch as getAudioFeaturesBatch } from "@/lib/domains/enrichment/audio-features/queries";
 import { get as getSongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
