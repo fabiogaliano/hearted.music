@@ -67,9 +67,16 @@ export function StaggeredContent({
 
 	if (shouldReduceMotion) {
 		return (
-			<div className={className} role={role} aria-label={ariaLabel}>
-				{children}
-			</div>
+			<>
+				{/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label only applied when role is explicitly set by caller */}
+				<div
+					className={className}
+					role={role}
+					aria-label={role ? ariaLabel : undefined}
+				>
+					{children}
+				</div>
+			</>
 		);
 	}
 

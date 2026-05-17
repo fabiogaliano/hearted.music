@@ -334,7 +334,9 @@ function RibbonBody({
 				)}
 				{mode === "themes" && (
 					<>
+						{/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only visual effect, keyboard users interact with children directly */}
 						<div
+							role="presentation"
 							style={{ display: "flex", flexDirection: "column", gap: 8 }}
 							onMouseLeave={() => setHoverTheme(null)}
 						>

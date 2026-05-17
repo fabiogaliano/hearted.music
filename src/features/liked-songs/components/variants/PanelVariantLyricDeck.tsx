@@ -323,40 +323,44 @@ function LyricDeckBody({
 						</p>
 					)}
 					{rail === "theme" && (
-						<div
-							style={{ display: "flex", flexDirection: "column", gap: 10 }}
-							onMouseLeave={() => setHoverTheme(null)}
-						>
-							{themes.map((item, index) => (
-								<button
-									key={`${item.name}-${index}`}
-									type="button"
-									onMouseEnter={() => setHoverTheme(index)}
-									onClick={() =>
-										setHoverTheme(hoverTheme === index ? null : index)
-									}
-									style={{
-										textAlign: "left",
-										background:
-											activeTheme?.name === item.name
-												? theme.surface
-												: "transparent",
-										border: `1px solid ${activeTheme?.name === item.name ? theme.primary : theme.border}`,
-										borderRadius: 2,
-										color:
-											activeTheme?.name === item.name
-												? theme.text
-												: theme.textMuted,
-										cursor: "pointer",
-										fontFamily: fonts.display,
-										fontSize: 17,
-										padding: "8px 10px",
-									}}
-								>
-									{item.name}
-								</button>
-							))}
-						</div>
+						<>
+							{/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only visual effect, keyboard users interact with children directly */}
+							<div
+								role="presentation"
+								style={{ display: "flex", flexDirection: "column", gap: 10 }}
+								onMouseLeave={() => setHoverTheme(null)}
+							>
+								{themes.map((item, index) => (
+									<button
+										key={`${item.name}-${index}`}
+										type="button"
+										onMouseEnter={() => setHoverTheme(index)}
+										onClick={() =>
+											setHoverTheme(hoverTheme === index ? null : index)
+										}
+										style={{
+											textAlign: "left",
+											background:
+												activeTheme?.name === item.name
+													? theme.surface
+													: "transparent",
+											border: `1px solid ${activeTheme?.name === item.name ? theme.primary : theme.border}`,
+											borderRadius: 2,
+											color:
+												activeTheme?.name === item.name
+													? theme.text
+													: theme.textMuted,
+											cursor: "pointer",
+											fontFamily: fonts.display,
+											fontSize: 17,
+											padding: "8px 10px",
+										}}
+									>
+										{item.name}
+									</button>
+								))}
+							</div>
+						</>
 					)}
 					{rail === "journey" && activeJourney && (
 						<div>

@@ -189,7 +189,9 @@ function QuietLoudBody({
 							{moodDescription}
 						</p>
 					)}
+					{/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only visual effect, keyboard users interact with children directly */}
 					<div
+						role="presentation"
 						style={{
 							display: "grid",
 							gridTemplateColumns: "repeat(4, 1fr)",

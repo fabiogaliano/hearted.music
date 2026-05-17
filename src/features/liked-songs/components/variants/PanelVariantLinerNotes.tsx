@@ -270,15 +270,19 @@ function LinerBody({
 							gap: 18,
 						}}
 					>
+						{/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only visual effect, keyboard users read content directly */}
 						<div
+							role="presentation"
 							style={{ display: "flex", flexDirection: "column", gap: 14 }}
 							onMouseLeave={() => setHoveredLine(null)}
 						>
 							{keyLines.map((item, index) => {
 								const active = hoveredLine === index;
 								return (
+									// biome-ignore lint/a11y/noStaticElementInteractions: hover highlight only
 									<div
 										key={`${item.line}-${index}`}
+										role="presentation"
 										onMouseEnter={() => setHoveredLine(index)}
 										style={{
 											paddingBottom: 14,

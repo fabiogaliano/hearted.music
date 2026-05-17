@@ -186,7 +186,9 @@ function ConstellationBody({
 					background: theme.surface,
 				}}
 			>
+				{/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only visual effect, keyboard users interact with children */}
 				<div
+					role="presentation"
 					style={{
 						position: "relative",
 						height: 310,
