@@ -44,8 +44,8 @@ const SPOTIFY_TAB_URL_MATCH = "https://open.spotify.com/*";
 // Kept in sync with manifest.externally_connectable.matches so we can fall
 // back to querying by URL when the cached tab id is stale.
 const HEARTED_TAB_URL_MATCHES = [
-	"https://hearted.app/*",
-	"https://*.hearted.app/*",
+	"https://hearted.music/*",
+	"https://*.hearted.music/*",
 	"http://localhost/*",
 	"http://127.0.0.1/*",
 ];

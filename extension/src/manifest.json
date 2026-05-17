@@ -3,13 +3,13 @@
 	"name": "everything you ever hearted.",
 	"version": "0.1.0",
 	"description": "reads your library from Spotify. sends them to hearted. nothing else.",
-	"permissions": ["storage", "cookies", "alarms", "scripting"],
+	"permissions": ["storage", "cookies", "scripting"],
 	"host_permissions": [
 		"https://*.spotify.com/*",
 		"http://localhost/*",
 		"http://127.0.0.1/*",
-		"https://hearted.app/*",
-		"https://*.hearted.app/*"
+		"https://hearted.music/*",
+		"https://*.hearted.music/*"
 	],
 	"background": {
 		"service_worker": "background/service-worker.js",
@@ -50,8 +50,8 @@
 		"matches": [
 			"http://localhost/*",
 			"http://127.0.0.1/*",
-			"https://hearted.app/*",
-			"https://*.hearted.app/*"
+			"https://hearted.music/*",
+			"https://*.hearted.music/*"
 		]
 	}
 }
