@@ -56,7 +56,7 @@ describe("cosineSimilarity", () => {
 		// [1,1] and [1,0] form 45-degree angle
 		// cos(45°) = √2/2 ≈ 0.707
 		const sim = cosineSimilarity([1, 1], [1, 0]);
-		expect(sim).toBeCloseTo(0.707, 2);
+		expect(sim).toBeCloseTo(Math.SQRT1_2, 2);
 	});
 
 	it("returns ~0.866 for 30-degree angle", () => {

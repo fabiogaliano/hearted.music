@@ -592,6 +592,7 @@ export function usePanelAnimation(options: UsePanelAnimationOptions) {
 	const staggerHasRunRef = useRef(false);
 
 	// Trigger stagger animation when panel expands
+	// biome-ignore lint/correctness/useExhaustiveDependencies: animation helpers are DOM-ref utilities recreated each render; adding them causes effects to fire every render
 	useEffect(() => {
 		if (isExpanded) {
 			closeAnalysis();
@@ -606,6 +607,7 @@ export function usePanelAnimation(options: UsePanelAnimationOptions) {
 	}, [isExpanded]);
 
 	// Animate slot 2 when suggestions arrive after the initial stagger already ran
+	// biome-ignore lint/correctness/useExhaustiveDependencies: animateStaggerIn is a DOM-ref utility; adding it would fire this effect every render
 	useEffect(() => {
 		if (!isExpanded || !hasSuggestions || !staggerHasRunRef.current) return;
 		const el = staggerRefs.current[2];
@@ -613,6 +615,7 @@ export function usePanelAnimation(options: UsePanelAnimationOptions) {
 	}, [hasSuggestions, isExpanded]);
 
 	// Reset collapse state when displayed song changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: animation helpers are DOM-ref utilities; isAnalysisOpen/isExpanded are intentionally read as snapshots at song-change time
 	useEffect(() => {
 		if (songId !== currentSongIdRef.current) {
 			const hadPrevious = currentSongIdRef.current !== null;

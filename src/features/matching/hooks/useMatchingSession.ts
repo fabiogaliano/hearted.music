@@ -8,6 +8,7 @@ export function useMatchingSession(accountId: string) {
 		presentedIdsRef.current.add(songId);
 	}, []);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: accountId not read inside the effect body, but its presence in deps intentionally triggers cleanup (flush) and re-setup when the account switches
 	useEffect(() => {
 		const ids = presentedIdsRef.current;
 

@@ -24,10 +24,10 @@ import type {
 	SearchResponse,
 } from "./types/genius.types";
 import { formatLyricsCompact } from "./utils/lyrics-formatter";
-import { LyricsParser } from "./utils/lyrics-parser";
+import { parseLyrics } from "./utils/lyrics-parser";
 import {
-	LyricsTransformer,
 	type TransformedLyricsBySection,
+	transformLyrics,
 } from "./utils/lyrics-transformer";
 import {
 	debugCandidates,
@@ -83,7 +83,7 @@ export class LyricsService {
 		}
 
 		return Result.ok(
-			LyricsTransformer.transform(lyricsResult.value, referentsResult.value),
+			transformLyrics(lyricsResult.value, referentsResult.value),
 		);
 	}
 
@@ -242,7 +242,7 @@ export class LyricsService {
 		}
 
 		try {
-			return Result.ok(LyricsParser.parse(response));
+			return Result.ok(parseLyrics(response));
 		} catch (error) {
 			if (error instanceof GeniusParseError) {
 				return Result.err(error);

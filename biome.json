@@ -50,6 +50,29 @@
 					}
 				}
 			}
+		},
+		{
+			"includes": [
+				"**/stories/**",
+				"**/src/lib/integrations/providers/adapters/local.ts"
+			],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noExplicitAny": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"**/src/**/playground/**",
+				"**/src/**/_ProdPrimitives.tsx",
+				"**/src/stories/**"
+			],
+			"linter": {
+				"enabled": false
+			}
 		}
 	]
 }

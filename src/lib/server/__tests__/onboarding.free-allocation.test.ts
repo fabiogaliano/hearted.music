@@ -10,8 +10,9 @@ vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
 		inputValidator: () => builder(),
-		handler: (fn: Function) => (input?: { data?: unknown }) =>
-			fn({ context: mockAuthContext, data: input?.data }),
+		handler:
+			(fn: (...args: unknown[]) => unknown) => (input?: { data?: unknown }) =>
+				fn({ context: mockAuthContext, data: input?.data }),
 	});
 	return {
 		createServerFn: builder,
@@ -110,7 +111,7 @@ describe("markOnboardingComplete — free allocation", () => {
 			Result.ok({ unlockedIds: ["s1", "s2", "s3"] }),
 		);
 
-		const result = await (markOnboardingComplete as Function)();
+		const result = await (markOnboardingComplete as () => Promise<unknown>)();
 
 		expect(result).toEqual({ success: true });
 		expect(mockGrantFreeAllocation).toHaveBeenCalledWith(
@@ -124,7 +125,7 @@ describe("markOnboardingComplete — free allocation", () => {
 			Result.ok(makeBillingState({ creditBalance: 500 })),
 		);
 
-		const result = await (markOnboardingComplete as Function)();
+		const result = await (markOnboardingComplete as () => Promise<unknown>)();
 
 		expect(result).toEqual({ success: true });
 		expect(mockGrantFreeAllocation).not.toHaveBeenCalled();
@@ -137,7 +138,7 @@ describe("markOnboardingComplete — free allocation", () => {
 			),
 		);
 
-		const result = await (markOnboardingComplete as Function)();
+		const result = await (markOnboardingComplete as () => Promise<unknown>)();
 
 		expect(result).toEqual({ success: true });
 		expect(mockGrantFreeAllocation).not.toHaveBeenCalled();
@@ -154,7 +155,7 @@ describe("markOnboardingComplete — free allocation", () => {
 			),
 		);
 
-		const result = await (markOnboardingComplete as Function)();
+		const result = await (markOnboardingComplete as () => Promise<unknown>)();
 
 		expect(result).toEqual({ success: true });
 		expect(mockGrantFreeAllocation).not.toHaveBeenCalled();
@@ -171,7 +172,7 @@ describe("markOnboardingComplete — free allocation", () => {
 
 		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-		const result = await (markOnboardingComplete as Function)();
+		const result = await (markOnboardingComplete as () => Promise<unknown>)();
 
 		expect(result).toEqual({ success: true });
 		expect(consoleSpy).toHaveBeenCalledWith(
@@ -190,7 +191,7 @@ describe("markOnboardingComplete — free allocation", () => {
 
 		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-		const result = await (markOnboardingComplete as Function)();
+		const result = await (markOnboardingComplete as () => Promise<unknown>)();
 
 		expect(result).toEqual({ success: true });
 		expect(mockGrantFreeAllocation).not.toHaveBeenCalled();
