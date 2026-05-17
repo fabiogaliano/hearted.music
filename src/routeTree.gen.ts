@@ -18,6 +18,7 @@ import { Route as DevSongDetailPanelRouteImport } from './routes/dev-song-detail
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
+import { Route as ApiSentryTunnelRouteImport } from './routes/api/sentry-tunnel'
 import { Route as ApiBillingBridgeRouteImport } from './routes/api/billing-bridge'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedPlaylistsRouteImport } from './routes/_authenticated/playlists'
@@ -76,6 +77,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthLogoutRoute = AuthLogoutRouteImport.update({
   id: '/auth/logout',
   path: '/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSentryTunnelRoute = ApiSentryTunnelRouteImport.update({
+  id: '/api/sentry-tunnel',
+  path: '/api/sentry-tunnel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiBillingBridgeRoute = ApiBillingBridgeRouteImport.update({
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/playlists': typeof AuthenticatedPlaylistsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/api/billing-bridge': typeof ApiBillingBridgeRoute
+  '/api/sentry-tunnel': typeof ApiSentryTunnelRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
   '/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
@@ -198,6 +205,7 @@ export interface FileRoutesByTo {
   '/playlists': typeof AuthenticatedPlaylistsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/api/billing-bridge': typeof ApiBillingBridgeRoute
+  '/api/sentry-tunnel': typeof ApiSentryTunnelRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
   '/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
@@ -225,6 +233,7 @@ export interface FileRoutesById {
   '/_authenticated/playlists': typeof AuthenticatedPlaylistsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/api/billing-bridge': typeof ApiBillingBridgeRoute
+  '/api/sentry-tunnel': typeof ApiSentryTunnelRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/_authenticated/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
   '/_authenticated/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
@@ -252,6 +261,7 @@ export interface FileRouteTypes {
     | '/playlists'
     | '/settings'
     | '/api/billing-bridge'
+    | '/api/sentry-tunnel'
     | '/auth/logout'
     | '/checkout/cancel'
     | '/checkout/success'
@@ -277,6 +287,7 @@ export interface FileRouteTypes {
     | '/playlists'
     | '/settings'
     | '/api/billing-bridge'
+    | '/api/sentry-tunnel'
     | '/auth/logout'
     | '/checkout/cancel'
     | '/checkout/success'
@@ -303,6 +314,7 @@ export interface FileRouteTypes {
     | '/_authenticated/playlists'
     | '/_authenticated/settings'
     | '/api/billing-bridge'
+    | '/api/sentry-tunnel'
     | '/auth/logout'
     | '/_authenticated/checkout/cancel'
     | '/_authenticated/checkout/success'
@@ -324,6 +336,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
   ApiBillingBridgeRoute: typeof ApiBillingBridgeRoute
+  ApiSentryTunnelRoute: typeof ApiSentryTunnelRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiExtensionStatusRoute: typeof ApiExtensionStatusRoute
@@ -395,6 +408,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/logout'
       fullPath: '/auth/logout'
       preLoaderRoute: typeof AuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sentry-tunnel': {
+      id: '/api/sentry-tunnel'
+      path: '/api/sentry-tunnel'
+      fullPath: '/api/sentry-tunnel'
+      preLoaderRoute: typeof ApiSentryTunnelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/billing-bridge': {
@@ -543,6 +563,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
   ApiBillingBridgeRoute: ApiBillingBridgeRoute,
+  ApiSentryTunnelRoute: ApiSentryTunnelRoute,
   AuthLogoutRoute: AuthLogoutRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiExtensionStatusRoute: ApiExtensionStatusRoute,

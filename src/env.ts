@@ -46,6 +46,10 @@ export const env = createEnv({
 	client: {
 		VITE_APP_TITLE: z.string().min(1).optional(),
 		VITE_CHROME_EXTENSION_ID: z.string().min(1).optional(),
+		// Sentry DSN is bundled at build time. Server-side DSN comes from the
+		// Worker env binding (wrangler secret), not process.env.
+		VITE_SENTRY_DSN: z.url().optional(),
+		VITE_SENTRY_ENVIRONMENT: z.string().min(1).optional(),
 	},
 
 	/**
@@ -80,6 +84,8 @@ export const env = createEnv({
 		QUARTERLY_PLAN_ENABLED: serverEnv.QUARTERLY_PLAN_ENABLED,
 		VITE_APP_TITLE: import.meta.env.VITE_APP_TITLE,
 		VITE_CHROME_EXTENSION_ID: import.meta.env.VITE_CHROME_EXTENSION_ID,
+		VITE_SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN,
+		VITE_SENTRY_ENVIRONMENT: import.meta.env.VITE_SENTRY_ENVIRONMENT,
 	},
 
 	emptyStringAsUndefined: true,

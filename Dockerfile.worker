@@ -21,4 +21,4 @@ EXPOSE 3002
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD bun -e "const port = process.env.WORKER_HEALTH_PORT ?? '3002'; fetch(\`http://localhost:${port}/health\`).then(r => { if (!r.ok) process.exit(1); }).catch(() => process.exit(1))"
 
-CMD ["bun", "run", "src/worker/index.ts"]
+CMD ["bun", "--preload", "./src/worker/instrument.ts", "run", "src/worker/index.ts"]

@@ -382,6 +382,23 @@ Typography-driven, editorial aesthetic:
 
 ---
 
+## Sentry
+
+Errors flow into a single Sentry project, tagged by `runtime` (`web` / `web-server`).
+Three vars across two surfaces:
+
+| Var                    | Surface              | Where to set                                                |
+| ---------------------- | -------------------- | ----------------------------------------------------------- |
+| `VITE_SENTRY_DSN`      | Client bundle        | `.env` / `.env.local` (read at `bun run build` time)        |
+| `SENTRY_DSN`           | Worker runtime       | `.env.cloud` → `bun run deploy:secrets`                     |
+| `SENTRY_ENVIRONMENT`   | Both                 | `.env.cloud` (server) and `.env` (client, optional)         |
+| `SENTRY_AUTH_TOKEN`    | Build only           | CI env. Enables source map upload + tunnel route. Never commit. |
+
+Local dev with `bun run dev` exercises the client init only (the Cloudflare adapter
+isn't in the dev path). Leave `VITE_SENTRY_DSN` unset locally and Sentry stays silent.
+
+---
+
 ## Documentation
 
 | Path                       | Contents                                                                  |

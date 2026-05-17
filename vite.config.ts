@@ -1,6 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { fileURLToPath, URL } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { sentryTanstackStart } from "@sentry/tanstackstart-react/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -9,6 +10,7 @@ import { defineConfig, loadEnv, type Plugin } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 
 const isTest = process.env.VITEST === "true";
+const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
 
 // Load env files for tests (Vitest doesn't auto-load non-VITE_ prefixed vars)
 if (isTest) {
@@ -111,6 +113,17 @@ const config = defineConfig({
 				},
 			}),
 		viteReact(),
+		// Sentry must come last so it sees the final bundle for source map upload.
+		// Only runs when SENTRY_AUTH_TOKEN is present (CI/release builds).
+		// Tunneling is handled by our own `/api/sentry-tunnel` file route, not
+		// the plugin — same mechanism dev and prod, no auth-token gating.
+		!isTest &&
+			!!sentryAuthToken &&
+			sentryTanstackStart({
+				org: "f-inc",
+				project: "hearted-music",
+				authToken: sentryAuthToken,
+			}),
 	].filter(Boolean),
 });
 

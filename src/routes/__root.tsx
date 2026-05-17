@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/HeartRippleBackground";
 import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
 import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
+import { captureRouteError } from "@/lib/observability/sentry";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
@@ -147,6 +148,7 @@ function RootComponent() {
 function RootErrorComponent({ error }: ErrorComponentProps) {
 	useEffect(() => {
 		console.error("[RootError]", error);
+		captureRouteError(error, { route: "__root" });
 	}, [error]);
 
 	return (

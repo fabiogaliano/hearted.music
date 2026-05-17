@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/bun";
 import { workerConfig } from "./config";
 import { setShuttingDown, setUnhealthy, startHealthServer } from "./health";
 import { startKeepAlive } from "./keep-alive";
@@ -74,6 +75,9 @@ async function main() {
 	const walkthroughPreviewLoop = startWalkthroughPreviewPolling().catch(
 		(err) => {
 			log.error("walkthrough-preview-poll-loop-error", { error: String(err) });
+			Sentry.captureException(err, {
+				tags: { loop: "walkthrough-preview" },
+			});
 		},
 	);
 
@@ -82,6 +86,7 @@ async function main() {
 
 	if (!draining) {
 		log.error("poll-loop-exited-unexpectedly");
+		Sentry.captureMessage("poll-loop-exited-unexpectedly", "error");
 		setUnhealthy();
 		process.exit(1);
 	}
@@ -89,6 +94,8 @@ async function main() {
 
 main().catch((err) => {
 	log.error("worker-fatal", { error: String(err) });
+	Sentry.captureException(err, { tags: { phase: "main" } });
 	setUnhealthy();
-	process.exit(1);
+	// Flush before exit so the event makes it out of the process.
+	Sentry.flush(2000).finally(() => process.exit(1));
 });
