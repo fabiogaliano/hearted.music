@@ -53,12 +53,12 @@
 
 ## 8. Extract Jobless Song Batch Analysis
 
-- [ ] 8.1 Create `src/lib/domains/enrichment/content-analysis/song-batch-analysis.ts` for lyrics/audio input evidence classification and batch analysis without job creation.
-- [ ] 8.2 Keep prompt/schema and single-song LLM logic in `song-analysis.ts`; reuse it from the batch analyzer.
+- [x] 8.1 Create `src/lib/domains/enrichment/content-analysis/song-batch-analysis.ts` for lyrics/audio input evidence classification and batch analysis without job creation.
+- [x] 8.2 Keep prompt/schema and single-song LLM logic in `song-analysis.ts`; reuse it from the batch analyzer.
 - [ ] 8.3 Leave `AnalysisPipeline.analyzeSongs(...)` intact only for standalone/manual flows, but stop using it from `stages/song-analysis.ts`.
 - [ ] 8.4 Ensure the worker path no longer creates child `song_analysis` job rows.
 - [ ] 8.5 Preserve parent enrichment measurement details needed by library-processing terminal-ref recovery.
-- [ ] 8.6 Add tests proving the jobless analyzer returns skipped confirmed-input, skipped unconfirmed, analyzed, and failed buckets without touching `src/lib/platform/jobs/lifecycle.ts`.
+- [x] 8.6 Add tests proving the jobless analyzer returns skipped confirmed-input, skipped unconfirmed, analyzed, and failed buckets without touching `src/lib/platform/jobs/lifecycle.ts`.
 
 ## 9. Migrate Song Analysis Stage
 
