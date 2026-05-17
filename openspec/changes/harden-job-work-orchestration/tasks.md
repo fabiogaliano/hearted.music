@@ -23,10 +23,10 @@
 
 ## 4. Deepen Library-Processing Scheduler (Deferred Cleanup)
 
-- [ ] 4.1 Create `src/lib/workflows/library-processing/scheduler.ts` and move effect execution from `src/lib/workflows/library-processing/service.ts`.
-- [ ] 4.2 Keep pure reconciliation in `reconciler.ts`; scheduler owns billing reads, queue-priority mapping, batch progress initialization, and `needsTargetSongEnrichment` derivation.
-- [ ] 4.3 Make scheduler effect failures return typed apply errors without mutating success-shaped active-job refs.
-- [ ] 4.4 Add scheduler tests for enrichment ensure, match snapshot refresh ensure, billing priority fallback, target-song enrichment hints, and ensure failure propagation.
+- [x] 4.1 Create `src/lib/workflows/library-processing/scheduler.ts` and move effect execution from `src/lib/workflows/library-processing/service.ts`.
+- [x] 4.2 Keep pure reconciliation in `reconciler.ts`; scheduler owns billing reads, queue-priority mapping, batch progress initialization, and `needsTargetSongEnrichment` derivation.
+- [x] 4.3 Make scheduler effect failures return typed apply errors without mutating success-shaped active-job refs.
+- [x] 4.4 Add scheduler tests for enrichment ensure, match snapshot refresh ensure, billing priority fallback, target-song enrichment hints, and ensure failure propagation.
 
 ## 5. Extract Worker Sweep Seam
 
