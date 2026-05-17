@@ -8,9 +8,9 @@
 ## 2. Characterization Tests
 
 - [x] 2.1 Add `src/worker/__tests__/sweep.test.ts` covering current sweep/dead-letter RPC calls after extracting the module seam.
-- [ ] 2.2 Extend `src/lib/workflows/library-processing/__tests__/runner.test.ts` to assert runner writes measurements before applying library-processing outcome changes.
-- [ ] 2.3 Add a regression test for a failed/dead-lettered active job ref: after recovery, `library_processing_state.enrichment.activeJobId` or `matchSnapshotRefresh.activeJobId` is cleared and `settledAt` remains stale.
-- [ ] 2.4 Add a regression test for completed active ref recovery using a measurement row to reconstruct `enrichment_completed` metadata.
+- [x] 2.2 Extend `src/lib/workflows/library-processing/__tests__/runner.test.ts` to assert runner writes measurements before applying library-processing outcome changes.
+- [x] 2.3 Add a regression test for a failed/dead-lettered active job ref: after recovery, `library_processing_state.enrichment.activeJobId` or `matchSnapshotRefresh.activeJobId` is cleared and `settledAt` remains stale.
+- [x] 2.4 Add a regression test for completed active ref recovery using a measurement row to reconstruct `enrichment_completed` metadata.
 
 ## 3. Make Apply Outcomes Explicit
 
@@ -21,7 +21,7 @@
 - [x] 3.5 Update onboarding, playlist management, billing, billing bridge, and runner call sites to handle `Result.isError(...)` explicitly instead of relying on thrown exceptions or logs.
 - [x] 3.6 Update tests and mocks that currently expect `applyLibraryProcessingChange` to resolve `void`.
 
-## 4. Deepen Library-Processing Scheduler
+## 4. Deepen Library-Processing Scheduler (Deferred Cleanup)
 
 - [ ] 4.1 Create `src/lib/workflows/library-processing/scheduler.ts` and move effect execution from `src/lib/workflows/library-processing/service.ts`.
 - [ ] 4.2 Keep pure reconciliation in `reconciler.ts`; scheduler owns billing reads, queue-priority mapping, batch progress initialization, and `needsTargetSongEnrichment` derivation.
@@ -63,7 +63,7 @@
 - [x] 8.3 Ensure failed settlement logs include `jobId`, `accountId`, `workflow`, `changeKind`, and the structured apply error.
 - [x] 8.4 Add runner tests for settlement success, settlement retry success, settlement retry exhaustion, and failure-path settlement errors.
 
-## 9. Split Job Modules by Role
+## 9. Split Job Modules by Role (Deferred Cleanup)
 
 - [ ] 9.1 Create `src/lib/platform/jobs/repository.ts` with raw job row operations from `src/lib/data/jobs.ts`: `getJobById`, `getActiveJob`, `getLatestJob`, `getJobs`, `createJob`, `updateJobProgress`, `markJobRunning`, `markJobCompleted`, `markJobFailed`, `updateHeartbeat`.
 - [ ] 9.2 Move sync-specific helpers (`getLastCompletedSync`, sync phase creation if retained) into `src/lib/platform/jobs/sync-phase-jobs.ts` or the existing `src/lib/workflows/spotify-sync/*` modules.
@@ -74,10 +74,10 @@
 
 ## 10. Verification
 
-- [ ] 10.1 Run focused tests: `bun run test src/lib/workflows/library-processing src/worker`.
-- [ ] 10.2 Run `bun run typecheck`.
+- [x] 10.1 Run focused tests: `bun run test src/lib/workflows/library-processing src/worker`.
+- [x] 10.2 Run `bun run typecheck`.
 - [ ] 10.3 Run full `bun run test`.
 - [ ] 10.4 Grep for remaining imports from `@/lib/data/jobs`; ensure none remain unless the final branch intentionally keeps a non-wrapper module.
 - [ ] 10.5 Grep production code for inline `LibraryProcessingChange` object literals; ensure source boundaries use `src/lib/workflows/library-processing/changes/*`.
-- [ ] 10.6 Run `openspec validate harden-job-work-orchestration --strict --no-interactive` and `openspec validate harden-enrichment-stage-outcomes --strict --no-interactive`.
+- [x] 10.6 Run `openspec validate harden-job-work-orchestration --strict --no-interactive` and `openspec validate harden-enrichment-stage-outcomes --strict --no-interactive`.
 - [ ] 10.7 Manually inspect worker startup logs in dev with one pending job and one artificially failed active ref.

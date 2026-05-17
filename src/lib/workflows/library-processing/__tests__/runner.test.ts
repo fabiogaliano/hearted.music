@@ -7,8 +7,13 @@ vi.mock("@/lib/data/jobs", () => ({
 	markJobFailed: vi.fn(),
 }));
 
+const recordExecutionMeasurementMock = vi
+	.fn()
+	.mockResolvedValue(Result.ok(undefined));
+
 vi.mock("@/lib/data/job-measurements", () => ({
-	recordExecutionMeasurement: vi.fn().mockResolvedValue(Result.ok(undefined)),
+	recordExecutionMeasurement: (...args: unknown[]) =>
+		recordExecutionMeasurementMock(...args),
 }));
 
 vi.mock("@/worker/execute", () => ({
@@ -94,6 +99,7 @@ describe("runClaimedJob", () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 		vi.clearAllMocks();
+		recordExecutionMeasurementMock.mockResolvedValue(Result.ok(undefined));
 		applyLibraryProcessingChangeMock.mockResolvedValue(APPLY_OK_RESULT);
 	});
 
@@ -166,6 +172,80 @@ describe("runClaimedJob", () => {
 		if (outcome.status === "completed" && outcome.workflow === "enrichment") {
 			expect(outcome.result).toEqual(ENRICHMENT_EXEC_RESULT);
 		}
+	});
+
+	describe("measurement-before-apply ordering", () => {
+		it("writes measurement before applying library-processing change on success", async () => {
+			const callOrder: string[] = [];
+			recordExecutionMeasurementMock.mockImplementation(async () => {
+				callOrder.push("measurement");
+				return Result.ok(undefined);
+			});
+			applyLibraryProcessingChangeMock.mockImplementation(async () => {
+				callOrder.push("apply");
+				return APPLY_OK_RESULT;
+			});
+
+			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
+			vi.mocked(markJobCompleted).mockResolvedValue(
+				Result.ok(makeJob({ status: "completed" })),
+			);
+
+			await runClaimedJob(makeJob());
+
+			expect(callOrder).toEqual(["measurement", "apply"]);
+		});
+
+		it("writes measurement before applying library-processing change on failure", async () => {
+			const callOrder: string[] = [];
+			recordExecutionMeasurementMock.mockImplementation(async () => {
+				callOrder.push("measurement");
+				return Result.ok(undefined);
+			});
+			applyLibraryProcessingChangeMock.mockImplementation(async () => {
+				callOrder.push("apply");
+				return APPLY_OK_RESULT;
+			});
+
+			vi.mocked(executeEnrichmentJob).mockRejectedValue(
+				new Error("provider down"),
+			);
+			vi.mocked(markJobFailed).mockResolvedValue(
+				Result.ok(makeJob({ status: "failed" })),
+			);
+
+			await runClaimedJob(makeJob());
+
+			expect(callOrder).toEqual(["measurement", "apply"]);
+		});
+
+		it("writes measurement before applying change for match_snapshot_refresh", async () => {
+			const callOrder: string[] = [];
+			recordExecutionMeasurementMock.mockImplementation(async () => {
+				callOrder.push("measurement");
+				return Result.ok(undefined);
+			});
+			applyLibraryProcessingChangeMock.mockImplementation(async () => {
+				callOrder.push("apply");
+				return APPLY_OK_RESULT;
+			});
+
+			vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue({
+				accountId: "acct-1",
+				jobId: "job-2",
+				published: true,
+				isEmpty: false,
+			});
+			vi.mocked(markJobCompleted).mockResolvedValue(
+				Result.ok(makeJob({ status: "completed" })),
+			);
+
+			await runClaimedJob(
+				makeJob({ id: "job-2", type: "match_snapshot_refresh" }),
+			);
+
+			expect(callOrder).toEqual(["measurement", "apply"]);
+		});
 	});
 
 	describe("settlement", () => {

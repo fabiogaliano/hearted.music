@@ -9,7 +9,7 @@
 ## 2. Add Stage Outcome Model
 
 - [x] 2.1 Create `src/lib/workflows/enrichment-pipeline/stage-outcomes.ts` (or a small sibling folder if the file becomes large).
-- [ ] 2.2 Move or re-export the canonical `EnrichmentStageName` from `types.ts` only if doing so does not create a barrel export; otherwise update imports directly.
+- [x] 2.2 Keep the canonical `EnrichmentStageName` in `types.ts` and import it directly from the outcome module without adding a barrel export.
 - [x] 2.3 Define `StageFailure`, `StageOutcome`, `StageSummary`, and `StageAccountingError` with discriminated unions.
 - [x] 2.4 Add validation helpers that reject overlaps between `succeededSongIds` and `failures[].songId` in tests and dev mode.
 - [x] 2.5 Add unit tests for summary derivation and illegal outcome detection.
