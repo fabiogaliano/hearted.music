@@ -109,6 +109,17 @@ function audioOutcomeSuccess(songIds: string[]): StageOutcome {
 	};
 }
 
+function genreOutcomeSuccess(songIds: string[]): StageOutcome {
+	return {
+		kind: "attempted",
+		stage: "genre_tagging",
+		candidateSongIds: songIds,
+		attemptedSongIds: songIds,
+		succeededSongIds: songIds,
+		failures: [],
+	};
+}
+
 function makeBatch(songIds: string[]): PipelineBatch {
 	const now = new Date().toISOString();
 	return {
@@ -167,7 +178,10 @@ beforeEach(() => {
 		(_ctx: unknown, batch: PipelineBatch) =>
 			Promise.resolve(audioOutcomeSuccess(batch.songIds)),
 	);
-	mockRunGenreTagging.mockResolvedValue(stageSuccess);
+	mockRunGenreTagging.mockImplementation(
+		(_ctx: unknown, batch: PipelineBatch) =>
+			Promise.resolve(genreOutcomeSuccess(batch.songIds)),
+	);
 	mockRunSongAnalysis.mockResolvedValue(stageSuccess);
 	mockRunSongEmbedding.mockResolvedValue(stageSuccess);
 	mockRunContentActivation.mockResolvedValue(undefined);

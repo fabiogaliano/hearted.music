@@ -46,10 +46,10 @@
 
 ## 7. Migrate Genre Tagging Stage
 
-- [ ] 7.1 Update `src/lib/workflows/enrichment-pipeline/stages/genre-tagging.ts` to return `StageOutcome`.
-- [ ] 7.2 Convert provider errors, not-found, and unavailable buckets to `StageFailure` descriptors.
-- [ ] 7.3 Remove direct failure-row writes from the stage.
-- [ ] 7.4 Add tests for fetched/cached genres, provider unavailable, source not found, and batch-wide DB failure.
+- [x] 7.1 Update `src/lib/workflows/enrichment-pipeline/stages/genre-tagging.ts` to return `StageOutcome`.
+- [x] 7.2 Convert provider errors, not-found, and unavailable buckets to `StageFailure` descriptors.
+- [x] 7.3 Remove direct failure-row writes from the stage.
+- [x] 7.4 Add tests for fetched/cached genres, provider unavailable, source not found, and batch-wide DB failure.
 
 ## 8. Extract Jobless Song Batch Analysis
 
