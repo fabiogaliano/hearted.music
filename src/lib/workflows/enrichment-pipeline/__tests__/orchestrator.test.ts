@@ -156,6 +156,17 @@ function embeddingOutcomeSuccess(songIds: string[]): StageOutcome {
 	};
 }
 
+function activationOutcomeSuccess(songIds: string[]): StageOutcome {
+	return {
+		kind: "attempted",
+		stage: "content_activation",
+		candidateSongIds: songIds,
+		attemptedSongIds: songIds,
+		succeededSongIds: songIds,
+		failures: [],
+	};
+}
+
 function makeBatch(songIds: string[]): PipelineBatch {
 	const now = new Date().toISOString();
 	return {
@@ -229,7 +240,10 @@ beforeEach(() => {
 		(_ctx: unknown, batch: PipelineBatch) =>
 			Promise.resolve(embeddingOutcomeSuccess(batch.songIds)),
 	);
-	mockRunContentActivation.mockResolvedValue(undefined);
+	mockRunContentActivation.mockImplementation(
+		(_ctx: unknown, songIds: string[]) =>
+			Promise.resolve(activationOutcomeSuccess(songIds)),
+	);
 	mockHasMoreSongsNeedingEnrichmentWork.mockResolvedValue(false);
 	mockGetEmbeddings.mockResolvedValue(Result.ok(new Map()));
 	mockGetAnalysis.mockResolvedValue(Result.ok(new Map()));
@@ -457,12 +471,7 @@ describe("content activation", () => {
 
 		await executeWorkerChunk("account-1", "job-1", 10, 0);
 
-		expect(mockRunContentActivation).toHaveBeenCalledOnce();
-		const [, songIds] = mockRunContentActivation.mock.calls[0] as [
-			unknown,
-			string[],
-		];
-		expect(songIds).toEqual([]);
+		expect(mockRunContentActivation).not.toHaveBeenCalled();
 	});
 
 	it("songs that only completed Phase A do not get content activation", async () => {
@@ -479,11 +488,7 @@ describe("content activation", () => {
 
 		await executeWorkerChunk("account-1", "job-1", 10, 0);
 
-		const [, songIds] = mockRunContentActivation.mock.calls[0] as [
-			unknown,
-			string[],
-		];
-		expect(songIds).toEqual([]);
+		expect(mockRunContentActivation).not.toHaveBeenCalled();
 	});
 });
 

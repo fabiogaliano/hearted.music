@@ -24,6 +24,7 @@ vi.mock("@/lib/domains/library/liked-songs/status-queries", () => ({
 	markItemsNew: (...args: unknown[]) => mockMarkItemsNew(...args),
 }));
 
+import { FAILURE_CODES } from "../failure-policy";
 import { runContentActivation } from "../stages/content-activation";
 import type { EnrichmentContext } from "../types";
 
@@ -78,22 +79,30 @@ beforeEach(() => {
 });
 
 describe("runContentActivation", () => {
-	it("does nothing when songIds is empty", async () => {
-		await runContentActivation(makeCtx(), []);
+	it("returns skipped outcome when songIds is empty", async () => {
+		const outcome = await runContentActivation(makeCtx(), []);
 
+		expect(outcome.kind).toBe("skipped");
 		expect(mockReadBillingState).not.toHaveBeenCalled();
 		expect(mockMarkItemsNew).not.toHaveBeenCalled();
-		expect(mockRpc).not.toHaveBeenCalled();
 	});
 
 	describe("free/pack users (unlimitedAccess: none)", () => {
-		it("writes item_status via markItemsNew for entitled + analyzed songs", async () => {
+		it("succeeds all songs via markItemsNew", async () => {
 			mockReadBillingState.mockResolvedValue(
 				Result.ok(makeBillingState({ unlimitedAccess: { kind: "none" } })),
 			);
 
-			await runContentActivation(makeCtx(), ["song-1", "song-2"]);
+			const outcome = await runContentActivation(makeCtx(), [
+				"song-1",
+				"song-2",
+			]);
 
+			expect(outcome.kind).toBe("attempted");
+			if (outcome.kind !== "attempted") return;
+
+			expect(outcome.succeededSongIds).toEqual(["song-1", "song-2"]);
+			expect(outcome.failures).toEqual([]);
 			expect(mockMarkItemsNew).toHaveBeenCalledWith("account-1", "song", [
 				"song-1",
 				"song-2",
@@ -101,19 +110,31 @@ describe("runContentActivation", () => {
 			expect(mockRpc).not.toHaveBeenCalled();
 		});
 
-		it("does not create unlock rows", async () => {
+		it("returns failures when markItemsNew fails", async () => {
 			mockReadBillingState.mockResolvedValue(
 				Result.ok(makeBillingState({ unlimitedAccess: { kind: "none" } })),
 			);
+			mockMarkItemsNew.mockResolvedValue(Result.err({ message: "db timeout" }));
 
-			await runContentActivation(makeCtx(), ["song-1"]);
+			const outcome = await runContentActivation(makeCtx(), [
+				"song-1",
+				"song-2",
+			]);
 
-			expect(mockRpc).not.toHaveBeenCalled();
+			expect(outcome.kind).toBe("attempted");
+			if (outcome.kind !== "attempted") return;
+
+			expect(outcome.succeededSongIds).toEqual([]);
+			expect(outcome.failures).toHaveLength(2);
+			expect(outcome.failures[0].failureCode).toBe(
+				FAILURE_CODES.CONTENT_ACTIVATION_FAILED,
+			);
+			expect(outcome.failures[0].message).toContain("item_status write failed");
 		});
 	});
 
 	describe("unlimited subscription users", () => {
-		it("calls activate_unlimited_songs with subscription provenance", async () => {
+		it("succeeds all songs via activate_unlimited_songs RPC", async () => {
 			mockReadBillingState.mockResolvedValue(
 				Result.ok(
 					makeBillingState({
@@ -128,8 +149,16 @@ describe("runContentActivation", () => {
 				subscription_period_end: "2026-07-01T00:00:00Z",
 			});
 
-			await runContentActivation(makeCtx(), ["song-1", "song-2"]);
+			const outcome = await runContentActivation(makeCtx(), [
+				"song-1",
+				"song-2",
+			]);
 
+			expect(outcome.kind).toBe("attempted");
+			if (outcome.kind !== "attempted") return;
+
+			expect(outcome.succeededSongIds).toEqual(["song-1", "song-2"]);
+			expect(outcome.failures).toEqual([]);
 			expect(mockRpc).toHaveBeenCalledWith("activate_unlimited_songs", {
 				p_account_id: "account-1",
 				p_granted_stripe_subscription_id: "sub_123",
@@ -138,7 +167,7 @@ describe("runContentActivation", () => {
 			expect(mockMarkItemsNew).not.toHaveBeenCalled();
 		});
 
-		it("falls back to markItemsNew when subscription provenance is missing", async () => {
+		it("returns retryable failures when subscription provenance is missing", async () => {
 			mockReadBillingState.mockResolvedValue(
 				Result.ok(
 					makeBillingState({
@@ -152,20 +181,66 @@ describe("runContentActivation", () => {
 				subscription_period_end: null,
 			});
 
-			await runContentActivation(makeCtx(), ["song-1"]);
+			const outcome = await runContentActivation(makeCtx(), ["song-1"]);
 
-			expect(mockMarkItemsNew).toHaveBeenCalledWith("account-1", "song", [
-				"song-1",
-			]);
+			expect(outcome.kind).toBe("attempted");
+			if (outcome.kind !== "attempted") return;
+
+			expect(outcome.succeededSongIds).toEqual([]);
+			expect(outcome.failures).toHaveLength(1);
+			expect(outcome.failures[0].failureCode).toBe(
+				FAILURE_CODES.CONTENT_ACTIVATION_FAILED,
+			);
+			expect(outcome.failures[0].message).toContain(
+				"Missing subscription provenance",
+			);
+			expect(mockMarkItemsNew).not.toHaveBeenCalled();
 			expect(mockRpc).not.toHaveBeenCalledWith(
 				"activate_unlimited_songs",
 				expect.anything(),
 			);
 		});
+
+		it("returns failures when RPC errors", async () => {
+			mockReadBillingState.mockResolvedValue(
+				Result.ok(
+					makeBillingState({
+						unlimitedAccess: { kind: "subscription" },
+					}),
+				),
+			);
+
+			mockAccountBillingSelect({
+				stripe_subscription_id: "sub_123",
+				subscription_period_end: "2026-07-01T00:00:00Z",
+			});
+
+			mockRpc.mockResolvedValue({
+				data: null,
+				error: { message: "rpc timeout" },
+			});
+
+			const outcome = await runContentActivation(makeCtx(), [
+				"song-1",
+				"song-2",
+			]);
+
+			expect(outcome.kind).toBe("attempted");
+			if (outcome.kind !== "attempted") return;
+
+			expect(outcome.succeededSongIds).toEqual([]);
+			expect(outcome.failures).toHaveLength(2);
+			expect(outcome.failures[0].failureCode).toBe(
+				FAILURE_CODES.CONTENT_ACTIVATION_FAILED,
+			);
+			expect(outcome.failures[0].message).toContain(
+				"activate_unlimited_songs RPC failed",
+			);
+		});
 	});
 
 	describe("self-hosted users", () => {
-		it("writes item_status and creates self_hosted unlock rows", async () => {
+		it("succeeds when both item_status and unlock-row persist", async () => {
 			mockReadBillingState.mockResolvedValue(
 				Result.ok(
 					makeBillingState({
@@ -174,8 +249,16 @@ describe("runContentActivation", () => {
 				),
 			);
 
-			await runContentActivation(makeCtx(), ["song-1", "song-2"]);
+			const outcome = await runContentActivation(makeCtx(), [
+				"song-1",
+				"song-2",
+			]);
 
+			expect(outcome.kind).toBe("attempted");
+			if (outcome.kind !== "attempted") return;
+
+			expect(outcome.succeededSongIds).toEqual(["song-1", "song-2"]);
+			expect(outcome.failures).toEqual([]);
 			expect(mockMarkItemsNew).toHaveBeenCalledWith("account-1", "song", [
 				"song-1",
 				"song-2",
@@ -189,26 +272,86 @@ describe("runContentActivation", () => {
 				},
 			);
 		});
+
+		it("returns failures when unlock rows persist but markItemsNew fails", async () => {
+			mockReadBillingState.mockResolvedValue(
+				Result.ok(
+					makeBillingState({
+						unlimitedAccess: { kind: "self_hosted" },
+					}),
+				),
+			);
+			mockMarkItemsNew.mockResolvedValue(
+				Result.err({ message: "connection reset" }),
+			);
+
+			const outcome = await runContentActivation(makeCtx(), ["song-1"]);
+
+			expect(outcome.kind).toBe("attempted");
+			if (outcome.kind !== "attempted") return;
+
+			expect(mockRpc).toHaveBeenCalledWith(
+				"insert_song_unlocks_without_charge",
+				{
+					p_account_id: "account-1",
+					p_song_ids: ["song-1"],
+					p_source: "self_hosted",
+				},
+			);
+			expect(outcome.succeededSongIds).toEqual([]);
+			expect(outcome.failures[0].failureCode).toBe(
+				FAILURE_CODES.CONTENT_ACTIVATION_FAILED,
+			);
+			expect(outcome.failures[0].message).toContain("item_status write failed");
+		});
+
+		it("returns failures and does not mark items new when unlock RPC fails", async () => {
+			mockReadBillingState.mockResolvedValue(
+				Result.ok(
+					makeBillingState({
+						unlimitedAccess: { kind: "self_hosted" },
+					}),
+				),
+			);
+			mockRpc.mockResolvedValue({
+				data: null,
+				error: { message: "rpc constraint violation" },
+			});
+
+			const outcome = await runContentActivation(makeCtx(), ["song-1"]);
+
+			expect(outcome.kind).toBe("attempted");
+			if (outcome.kind !== "attempted") return;
+
+			expect(outcome.succeededSongIds).toEqual([]);
+			expect(outcome.failures[0].failureCode).toBe(
+				FAILURE_CODES.CONTENT_ACTIVATION_FAILED,
+			);
+			expect(outcome.failures[0].message).toContain(
+				"self_hosted unlock RPC failed",
+			);
+			expect(mockMarkItemsNew).not.toHaveBeenCalled();
+		});
 	});
 
-	it("handles billing state read failure gracefully", async () => {
-		const consoleError = vi
-			.spyOn(console, "error")
-			.mockImplementation(() => {});
-
+	it("returns failures for all songs when billing state read fails", async () => {
 		mockReadBillingState.mockResolvedValue(
 			Result.err({ message: "db connection failed" }),
 		);
 
-		await runContentActivation(makeCtx(), ["song-1"]);
+		const outcome = await runContentActivation(makeCtx(), ["song-1", "song-2"]);
 
-		expect(mockMarkItemsNew).not.toHaveBeenCalled();
-		expect(mockRpc).not.toHaveBeenCalled();
-		expect(consoleError).toHaveBeenCalledWith(
-			expect.stringContaining("[content-activation]"),
-			// message not checked — just verifying error is logged
+		expect(outcome.kind).toBe("attempted");
+		if (outcome.kind !== "attempted") return;
+
+		expect(outcome.succeededSongIds).toEqual([]);
+		expect(outcome.failures).toHaveLength(2);
+		expect(outcome.failures[0].failureCode).toBe(
+			FAILURE_CODES.CONTENT_ACTIVATION_FAILED,
 		);
-
-		consoleError.mockRestore();
+		expect(outcome.failures[0].message).toContain(
+			"Failed to read billing state",
+		);
+		expect(mockMarkItemsNew).not.toHaveBeenCalled();
 	});
 });

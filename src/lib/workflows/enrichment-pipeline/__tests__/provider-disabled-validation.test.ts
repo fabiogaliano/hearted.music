@@ -324,6 +324,24 @@ function analysisOutcomeSuccess(songIds: string[]): {
 	};
 }
 
+function activationOutcomeSuccess(songIds: string[]): {
+	kind: "attempted";
+	stage: "content_activation";
+	candidateSongIds: string[];
+	attemptedSongIds: string[];
+	succeededSongIds: string[];
+	failures: never[];
+} {
+	return {
+		kind: "attempted",
+		stage: "content_activation",
+		candidateSongIds: songIds,
+		attemptedSongIds: songIds,
+		succeededSongIds: songIds,
+		failures: [],
+	};
+}
+
 const mockRunAudioFeatures = vi
 	.fn()
 	.mockImplementation((_ctx: unknown, batch: PipelineBatch) =>
@@ -344,7 +362,11 @@ const mockRunSongEmbedding = vi
 	.mockImplementation((_ctx: unknown, batch: PipelineBatch) =>
 		Promise.resolve(embeddingOutcomeSuccess(batch.songIds)),
 	);
-const mockRunContentActivation = vi.fn().mockResolvedValue(undefined);
+const mockRunContentActivation = vi
+	.fn()
+	.mockImplementation((_ctx: unknown, songIds: string[]) =>
+		Promise.resolve(activationOutcomeSuccess(songIds)),
+	);
 const mockMarkItemsNew = vi.fn().mockResolvedValue(Result.ok([]));
 
 vi.mock("../stages/audio-features", () => ({
@@ -449,7 +471,10 @@ beforeEach(() => {
 		(_ctx: unknown, batch: PipelineBatch) =>
 			Promise.resolve(embeddingOutcomeSuccess(batch.songIds)),
 	);
-	mockRunContentActivation.mockResolvedValue(undefined);
+	mockRunContentActivation.mockImplementation(
+		(_ctx: unknown, songIds: string[]) =>
+			Promise.resolve(activationOutcomeSuccess(songIds)),
+	);
 	mockMarkItemsNew.mockResolvedValue(Result.ok([]));
 	mockSelectEnrichmentWorkPlan.mockResolvedValue(makeFullWorkPlan());
 	mockLoadBatchSongs.mockResolvedValue(

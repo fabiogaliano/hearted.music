@@ -382,8 +382,43 @@ async function enrichSongs(
 			: "skipped",
 	);
 
-	// Content activation: write item_status + persist unlock rows for entitled + analyzed songs
-	await runContentActivation(ctx, workPlan.needContentActivation);
+	// Phase D: content_activation (entitled + data-enriched songs)
+	progress.currentStage = "content_activation";
+	progress.stages.content_activation.status = "running";
+	await persistProgress(jobId, progress);
+
+	const activationAccountingResult =
+		workPlan.needContentActivation.length > 0
+			? await runStageWithAccounting({
+					stage: "content_activation",
+					candidateSongIds: workPlan.needContentActivation,
+					jobId,
+					accountId: ctx.accountId,
+					fallbackCode: FAILURE_CODES.CONTENT_ACTIVATION_FAILED,
+					run: () => runContentActivation(ctx, workPlan.needContentActivation),
+				})
+			: await emptyAccounting;
+
+	if (Result.isError(activationAccountingResult)) {
+		console.error("[worker-chunk] Stage accounting failed", {
+			stage: "content_activation",
+			jobId,
+			accountId: ctx.accountId,
+			error: activationAccountingResult.error,
+		});
+		throw activationAccountingResult.error;
+	}
+
+	const activationResult: StageResult = activationAccountingResult.value;
+
+	applyStageResult(
+		progress,
+		"content_activation",
+		activationResult,
+		workPlan.needContentActivation.length > 0
+			? stageStatus(activationResult)
+			: "skipped",
+	);
 }
 
 // --- Worker-owned chunk orchestration ---

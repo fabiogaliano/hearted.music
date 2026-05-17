@@ -4,7 +4,7 @@
 - [x] 1.2 Add a regression test showing a thrown stage handler records one failure per candidate song and returns failed count equal to candidate count.
 - [ ] 1.3 Add a regression test for readiness-check failure: candidate songs receive durable non-terminal failures rather than count-only failures.
 - [x] 1.4 Add a test proving `analysis_inputs_missing` compensation is triggered only for terminal analysis-input failures and only after durable failure recording succeeds.
-- [ ] 1.5 Add a test proving content activation DB/RPC failure leaves songs unactivated and records retryable failures.
+- [x] 1.5 Add a test proving content activation DB/RPC failure leaves songs unactivated and records retryable failures.
 
 ## 2. Add Stage Outcome Model
 
@@ -78,11 +78,11 @@
 
 ## 11. Account for Content Activation
 
-- [ ] 11.1 Update `src/lib/workflows/enrichment-pipeline/stages/content-activation.ts` to return `StageOutcome` instead of `Promise<void>`.
-- [ ] 11.2 Check `Result` values from `markItemsNew(...)` and convert DB failures to `content_activation_failed` descriptors.
-- [ ] 11.3 Treat missing unlimited subscription provenance as retryable `content_activation_failed` rather than silently falling back to item_status only.
-- [ ] 11.4 For self-hosted activation, require both item_status and unlock-row persistence to succeed before marking IDs succeeded.
-- [ ] 11.5 Add tests for free/pack, subscription, self-hosted, missing provenance, and RPC failure paths.
+- [x] 11.1 Update `src/lib/workflows/enrichment-pipeline/stages/content-activation.ts` to return `StageOutcome` instead of `Promise<void>`.
+- [x] 11.2 Check `Result` values from `markItemsNew(...)` and convert DB failures to `content_activation_failed` descriptors.
+- [x] 11.3 Treat missing unlimited subscription provenance as retryable `content_activation_failed` rather than silently falling back to item_status only.
+- [x] 11.4 For self-hosted activation, require both item_status and unlock-row persistence to succeed before marking IDs succeeded.
+- [x] 11.5 Add tests for free/pack, subscription, self-hosted, missing provenance, and RPC failure paths.
 
 ## 12. Clean Up and Verify
 
