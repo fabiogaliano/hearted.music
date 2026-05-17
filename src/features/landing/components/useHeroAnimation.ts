@@ -181,11 +181,19 @@ export function useHeroAnimation(
 				headlineMarkerRef,
 			} = refs;
 
+			const sectionEl = sectionRef.current;
+			const logoEl = logoRef.current;
+			const headlineEl = headlineRef.current;
+			const logoMarkerEl = logoMarkerRef.current;
+			const headlineMarkerEl = headlineMarkerRef.current;
+
 			if (
-				!sectionRef.current ||
+				!sectionEl ||
 				!pinnedContentRef.current ||
-				!logoRef.current ||
-				!headlineRef.current
+				!logoEl ||
+				!headlineEl ||
+				!logoMarkerEl ||
+				!headlineMarkerEl
 			) {
 				return;
 			}
@@ -296,7 +304,7 @@ export function useHeroAnimation(
 					ScrollTrigger.config({ ignoreMobileResize: true });
 
 					const scrollerEl =
-						(sectionRef.current!.closest(
+						(sectionEl.closest(
 							"[data-landing-scroll-root]",
 						) as HTMLElement | null) ??
 						(document.querySelector(
@@ -363,14 +371,14 @@ export function useHeroAnimation(
 					});
 
 					// Force reflow so measurement reflects the new layout
-					void logoRef.current!.offsetHeight;
+					void logoEl.offsetHeight;
 
 					// ─── Marker-based measurement ─────────────────────────
 					let deltas = computeMorphDeltas(
-						logoRef.current!,
-						headlineRef.current!,
-						logoMarkerRef.current!,
-						headlineMarkerRef.current!,
+						logoEl,
+						headlineEl,
+						logoMarkerEl,
+						headlineMarkerEl,
 					);
 
 					if (backgroundRef.current) {

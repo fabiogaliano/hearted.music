@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { allLikedSongs, simulateDashboard } from "@/stories/fixtures";
 import { Dashboard } from "./Dashboard";
 
+const TOTAL_LIKED_SONGS = allLikedSongs.length;
+
 export const FullyEnriched: Story = () => (
 	<Dashboard
 		{...simulateDashboard(allLikedSongs, allLikedSongs.length, false)}
@@ -19,13 +21,13 @@ export const MidEnrichment: Story = () => (
 
 export const ProgressiveEnrichment: Story = () => {
 	const [count, setCount] = useState(0);
-	const total = allLikedSongs.length;
+	const total = TOTAL_LIKED_SONGS;
 
 	useEffect(() => {
 		if (count >= total) return;
 		const id = setTimeout(() => setCount((c) => Math.min(c + 1, total)), 800);
 		return () => clearTimeout(id);
-	}, [count, total]);
+	}, [count]);
 
 	return (
 		<div>

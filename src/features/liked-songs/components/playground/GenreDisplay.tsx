@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { fonts } from "@/lib/theme/fonts";
 import type { ColorProps } from "./types";
 
@@ -8,18 +7,12 @@ interface GenreDisplayProps {
 }
 
 export function GenreDisplay({ genres, colors }: GenreDisplayProps) {
-	const [isHovered, setIsHovered] = useState(false);
-
 	if (!genres.length) return null;
 
 	const [primary, ...rest] = genres;
 
 	return (
-		<div
-			className="flex items-center gap-1.5 flex-wrap"
-			onMouseEnter={() => setIsHovered(true)}
-			onMouseLeave={() => setIsHovered(false)}
-		>
+		<div className="group flex flex-wrap items-center gap-1.5">
 			<span
 				style={{
 					fontFamily: fonts.body,
@@ -33,13 +26,12 @@ export function GenreDisplay({ genres, colors }: GenreDisplayProps) {
 			{rest.map((genre) => (
 				<span
 					key={genre}
+					className="opacity-30 transition-opacity duration-200 group-hover:opacity-70"
 					style={{
 						fontFamily: fonts.body,
 						fontSize: 11,
 						color: colors.textMuted,
 						letterSpacing: "0.02em",
-						opacity: isHovered ? 0.7 : 0.3,
-						transition: "opacity 200ms ease",
 					}}
 				>
 					· {genre}

@@ -406,7 +406,9 @@ export function usePanelAnimation(options: UsePanelAnimationOptions) {
 			: (staggerRefs.current.filter(Boolean) as HTMLDivElement[]);
 
 		if (reduceMotion) {
-			elements.forEach((el) => (el.style.opacity = "1"));
+			elements.forEach((el) => {
+				el.style.opacity = "1";
+			});
 			return;
 		}
 

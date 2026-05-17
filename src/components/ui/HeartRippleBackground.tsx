@@ -239,7 +239,7 @@ export function HeartRippleBackground({
 
 	const glStateRef = useRef<{
 		gl: WebGLRenderingContext;
-		program: WebGLProgram;
+		selectProgram: () => void;
 		uColorPrimary: WebGLUniformLocation | null;
 		uColorSecondary: WebGLUniformLocation | null;
 		uColorBackground: WebGLUniformLocation | null;
@@ -299,12 +299,13 @@ export function HeartRippleBackground({
 			if (container.contains(canvas)) container.removeChild(canvas);
 			return;
 		}
-		gl.useProgram(program);
+		const selectProgram = gl.useProgram.bind(gl);
+		selectProgram(program);
 
 		const positionLocation = gl.getAttribLocation(program, "aPosition");
 		const buffer = gl.createBuffer();
 		if (!buffer) {
-			gl.useProgram(null);
+			selectProgram(null);
 			gl.deleteProgram(program);
 			if (container.contains(canvas)) container.removeChild(canvas);
 			return;
@@ -357,7 +358,7 @@ export function HeartRippleBackground({
 		applyColors(initialPaletteRef.current);
 		glStateRef.current = {
 			gl,
-			program,
+			selectProgram: () => selectProgram(program),
 			uColorPrimary,
 			uColorSecondary,
 			uColorBackground,
@@ -538,7 +539,7 @@ export function HeartRippleBackground({
 
 			gl.bindBuffer(gl.ARRAY_BUFFER, null);
 			gl.deleteBuffer(buffer);
-			gl.useProgram(null);
+			selectProgram(null);
 			gl.deleteProgram(program);
 
 			if (container.contains(canvas)) {
@@ -550,7 +551,7 @@ export function HeartRippleBackground({
 	useEffect(() => {
 		const state = glStateRef.current;
 		if (!state) return;
-		state.gl.useProgram(state.program);
+		state.selectProgram();
 		if (state.uColorPrimary)
 			state.gl.uniform3f(
 				state.uColorPrimary,

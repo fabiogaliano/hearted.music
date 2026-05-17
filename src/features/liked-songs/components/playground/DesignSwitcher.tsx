@@ -69,6 +69,7 @@ export function DesignSwitcher({
 		return (
 			<button
 				type="button"
+				aria-label="Open design controls"
 				onClick={() => setIsExpanded(true)}
 				className="fixed bottom-4 right-4 z-50 size-10 rounded-full shadow-lg flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
 				style={{
@@ -77,6 +78,7 @@ export function DesignSwitcher({
 				}}
 			>
 				<svg
+					aria-hidden="true"
 					width="18"
 					height="18"
 					viewBox="0 0 24 24"

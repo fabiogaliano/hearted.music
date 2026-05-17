@@ -32,8 +32,9 @@ export function PanelVariantCompactStack({
 	const [showAllLines, setShowAllLines] = useState(false);
 	const [showJourney, setShowJourney] = useState(false);
 
-	const firstLine = analysis?.key_lines?.slice(0, 1);
-	const restLines = analysis?.key_lines?.slice(1) ?? [];
+	const allKeyLines = analysis?.key_lines ?? [];
+	const firstLine = allKeyLines.slice(0, 1);
+	const restLines = allKeyLines.slice(1);
 
 	return (
 		<VariantShell
@@ -90,7 +91,7 @@ export function PanelVariantCompactStack({
 						{firstLine && firstLine.length > 0 && (
 							<div>
 								<KeyLinesDisplay
-									keyLines={showAllLines ? analysis.key_lines! : firstLine}
+									keyLines={showAllLines ? allKeyLines : firstLine}
 									theme={theme}
 								/>
 								{restLines.length > 0 && (

@@ -149,10 +149,7 @@ function FieldGuideBody({
 			<div
 				style={{ display: "grid", gridTemplateColumns: "1fr 1.25fr", gap: 18 }}
 			>
-				<div
-					style={{ display: "flex", flexDirection: "column", gap: 8 }}
-					onMouseLeave={() => setHovered(null)}
-				>
+				<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
 					{QUESTIONS.map((question) => {
 						const selected = active === question.key;
 						const peeking = preview === question.key;
@@ -162,6 +159,7 @@ function FieldGuideBody({
 								type="button"
 								onClick={() => setActive(question.key)}
 								onMouseEnter={() => setHovered(question.key)}
+								onMouseLeave={() => setHovered(null)}
 								style={{
 									textAlign: "left",
 									minHeight: 64,

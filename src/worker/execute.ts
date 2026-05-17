@@ -1,9 +1,9 @@
 import { Result } from "better-result";
-import { type Job, updateHeartbeat } from "@/lib/platform/jobs/repository";
 import {
 	type EnrichmentChunkProgress,
 	EnrichmentChunkProgressSchema,
 } from "@/lib/platform/jobs/progress/enrichment";
+import { type Job, updateHeartbeat } from "@/lib/platform/jobs/repository";
 import type { ChunkResult } from "@/lib/workflows/enrichment-pipeline/orchestrator";
 import { executeWorkerChunk } from "@/lib/workflows/enrichment-pipeline/orchestrator";
 import { executeMatchSnapshotRefresh } from "@/lib/workflows/match-snapshot-refresh/orchestrator";

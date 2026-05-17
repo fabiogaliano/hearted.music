@@ -52,7 +52,7 @@ export function HorizontalJourney({ journey, colors }: HorizontalJourneyProps) {
 					{segment.section}
 				</span>
 				<div className="flex items-end gap-1.5">
-					{journey.map((_, i) => {
+					{journey.map((step, i) => {
 						const dist = Math.abs(i - index);
 						const isActive = dist === 0;
 						const scale = isActive
@@ -65,7 +65,7 @@ export function HorizontalJourney({ journey, colors }: HorizontalJourneyProps) {
 						const opacity = isActive ? 1 : dist === 1 ? 0.5 : 0.22;
 						return (
 							<button
-								key={i}
+								key={`${step.section}-${step.mood}-${step.description}`}
 								type="button"
 								aria-label={`Step ${i + 1}`}
 								onClick={() => jumpTo(i)}

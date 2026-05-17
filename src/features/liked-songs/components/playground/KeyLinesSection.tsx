@@ -38,7 +38,7 @@ export function KeyLinesSection({ keyLines, colors }: KeyLinesSectionProps) {
 		[pinnedIndex],
 	);
 
-	const handleListLeave = useCallback(() => {
+	const handleLeave = useCallback(() => {
 		if (pinnedIndex === -1) {
 			closeTimeoutRef.current = setTimeout(() => {
 				setOpenIndex(-1);
@@ -62,29 +62,38 @@ export function KeyLinesSection({ keyLines, colors }: KeyLinesSectionProps) {
 			>
 				Key Lines
 			</h3>
-			<div className="space-y-3" onMouseLeave={handleListLeave}>
+			<div className="space-y-3">
 				{keyLines.map((kl, i) => {
 					const isOpen = openIndex === i;
 					return (
-						<div
-							key={i}
+						<button
+							key={`${kl.line}-${kl.insight}`}
+							type="button"
 							style={{
+								width: "100%",
+								padding: 0,
+								border: "none",
 								borderLeft: `2px solid ${isOpen ? colors.accent : colors.accentMuted}`,
 								paddingLeft: 12,
+								background: "transparent",
 								cursor: "pointer",
+								textAlign: "left",
 								transition: "border-color 200ms ease",
+								display: "block",
 							}}
 							onMouseEnter={() => handleHover(i)}
+							onMouseLeave={handleLeave}
 							onClick={() => handleClick(i)}
+							aria-expanded={isOpen}
 						>
-							<div
+							<span
 								style={{
 									display: "flex",
 									alignItems: "baseline",
 									justifyContent: "space-between",
 								}}
 							>
-								<p
+								<span
 									style={{
 										fontFamily: fonts.body,
 										fontStyle: "italic",
@@ -92,10 +101,11 @@ export function KeyLinesSection({ keyLines, colors }: KeyLinesSectionProps) {
 										lineHeight: 1.5,
 										color: isOpen ? colors.text : colors.textMuted,
 										transition: "color 200ms ease",
+										display: "block",
 									}}
 								>
 									"{kl.line}"
-								</p>
+								</span>
 								<span
 									style={{
 										fontFamily: fonts.body,
@@ -109,8 +119,8 @@ export function KeyLinesSection({ keyLines, colors }: KeyLinesSectionProps) {
 								>
 									↓
 								</span>
-							</div>
-							<div
+							</span>
+							<span
 								style={{
 									maxHeight: isOpen ? 120 : 0,
 									opacity: isOpen ? 1 : 0,
@@ -118,20 +128,22 @@ export function KeyLinesSection({ keyLines, colors }: KeyLinesSectionProps) {
 									marginTop: isOpen ? 4 : 0,
 									transition:
 										"max-height 220ms ease, opacity 180ms ease, margin-top 220ms ease",
+									display: "block",
 								}}
 							>
-								<p
+								<span
 									style={{
 										fontFamily: fonts.body,
 										fontSize: 12,
 										lineHeight: 1.5,
 										color: colors.textMuted,
+										display: "block",
 									}}
 								>
 									{kl.insight}
-								</p>
-							</div>
-						</div>
+								</span>
+							</span>
+						</button>
 					);
 				})}
 			</div>

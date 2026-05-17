@@ -3,14 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Job } from "@/lib/platform/jobs/repository";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import type {
-	LibraryProcessingApplyOutcome,
-	LibraryProcessingState,
-} from "@/lib/workflows/library-processing/types";
-import type {
 	DeadLetterRecoveryResult,
 	TerminalRefRecoveryResult,
 } from "@/lib/workflows/library-processing/terminal-recovery";
-import { type SweepDeps, runSweepTick } from "../sweep";
+import type {
+	LibraryProcessingApplyOutcome,
+	LibraryProcessingState,
+} from "@/lib/workflows/library-processing/types";
+import { runSweepTick, type SweepDeps } from "../sweep";
 
 vi.mock("../logger", () => ({
 	log: {

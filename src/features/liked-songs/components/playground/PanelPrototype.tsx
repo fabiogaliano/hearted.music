@@ -372,15 +372,24 @@ function ThemesList({
 	return (
 		<div className="space-y-3">
 			<SectionHeader label="What It's About" colors={colors} />
-			<section onMouseLeave={handleLeave}>
+			<section>
 				{analysisThemes.map((theme, i) => {
 					const isOpen = openIndex === i;
 					return (
 						<div
-							key={i}
+							key={`${theme.name}-${theme.description}`}
 							className="cursor-pointer py-1.5"
 							onMouseEnter={() => handleHover(i)}
+							onMouseLeave={handleLeave}
 							onClick={() => handleClick(i)}
+							role="button"
+							tabIndex={0}
+							onKeyDown={(event) => {
+								if (event.key === "Enter" || event.key === " ") {
+									event.preventDefault();
+									handleClick(i);
+								}
+							}}
 						>
 							<div className="flex items-center gap-2">
 								<span
@@ -546,12 +555,12 @@ function StackedKeyLines({
 	return (
 		<div className="space-y-3">
 			<SectionHeader label="Key Lines" colors={colors} />
-			<div className="space-y-4" onMouseLeave={handleListLeave}>
+			<div className="space-y-4">
 				{keyLines.map((kl, i) => {
 					const isOpen = openIndex === i;
 					return (
 						<div
-							key={i}
+							key={`${kl.line}-${kl.insight}`}
 							style={{
 								paddingBottom: i < keyLines.length - 1 ? 16 : 0,
 								borderBottom:
@@ -561,7 +570,16 @@ function StackedKeyLines({
 								cursor: "pointer",
 							}}
 							onMouseEnter={() => handleHover(i)}
+							onMouseLeave={handleListLeave}
 							onClick={() => handleClick(i)}
+							role="button"
+							tabIndex={0}
+							onKeyDown={(event) => {
+								if (event.key === "Enter" || event.key === " ") {
+									event.preventDefault();
+									handleClick(i);
+								}
+							}}
 						>
 							<div
 								style={{
@@ -834,6 +852,14 @@ function HeadlineReveal({
 				onMouseEnter={() => setHovered(true)}
 				onMouseLeave={() => setHovered(false)}
 				className="cursor-pointer select-none"
+				role="button"
+				tabIndex={0}
+				onKeyDown={(event) => {
+					if (event.key === "Enter" || event.key === " ") {
+						event.preventDefault();
+						toggle();
+					}
+				}}
 			>
 				<div
 					key={animKey}
@@ -873,6 +899,14 @@ function HeadlineReveal({
 			onMouseLeave={() => setHovered(false)}
 			className="cursor-pointer select-none"
 			style={{ overflow: "hidden" }}
+			role="button"
+			tabIndex={0}
+			onKeyDown={(event) => {
+				if (event.key === "Enter" || event.key === " ") {
+					event.preventDefault();
+					toggle();
+				}
+			}}
 		>
 			<div key={animKey} style={{ animation: `${anim} 280ms ease forwards` }}>
 				{active ? (
@@ -1378,6 +1412,14 @@ function SonicSection({
 				onClick={toggle}
 				onMouseEnter={() => setHovered(true)}
 				onMouseLeave={() => setHovered(false)}
+				role="button"
+				tabIndex={0}
+				onKeyDown={(event) => {
+					if (event.key === "Enter" || event.key === " ") {
+						event.preventDefault();
+						toggle();
+					}
+				}}
 			>
 				{active ? (
 					<div
@@ -1458,6 +1500,14 @@ function SonicSection({
 					onClick={toggle}
 					onMouseEnter={() => setHovered(true)}
 					onMouseLeave={() => setHovered(false)}
+					role="button"
+					tabIndex={0}
+					onKeyDown={(event) => {
+						if (event.key === "Enter" || event.key === " ") {
+							event.preventDefault();
+							toggle();
+						}
+					}}
 				>
 					<div className="flex items-center justify-between gap-2">
 						<span
