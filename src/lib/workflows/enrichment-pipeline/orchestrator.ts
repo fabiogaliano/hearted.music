@@ -326,12 +326,29 @@ async function enrichSongs(
 	await persistProgress(jobId, progress);
 
 	const embeddingSubBatch = filterBatch(batch, workPlan.needEmbedding);
-	const embeddingResult =
+	const embeddingAccountingResult =
 		embeddingSubBatch.songIds.length > 0
-			? await runStage("song_embedding", () =>
-					runSongEmbedding(ctx, embeddingSubBatch),
-				)
-			: { total: 0, succeeded: 0, failed: 0 };
+			? await runStageWithAccounting({
+					stage: "song_embedding",
+					candidateSongIds: embeddingSubBatch.songIds,
+					jobId,
+					accountId: ctx.accountId,
+					fallbackCode: FAILURE_CODES.PROVIDER_TRANSIENT,
+					run: () => runSongEmbedding(ctx, embeddingSubBatch),
+				})
+			: await emptyAccounting;
+
+	if (Result.isError(embeddingAccountingResult)) {
+		console.error("[worker-chunk] Stage accounting failed", {
+			stage: "song_embedding",
+			jobId,
+			accountId: ctx.accountId,
+			error: embeddingAccountingResult.error,
+		});
+		throw embeddingAccountingResult.error;
+	}
+
+	const embeddingResult: StageResult = embeddingAccountingResult.value;
 
 	applyStageResult(
 		progress,

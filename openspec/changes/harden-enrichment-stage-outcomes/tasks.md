@@ -71,10 +71,10 @@
 
 ## 10. Migrate Song Embedding Stage
 
-- [ ] 10.1 Update `src/lib/workflows/enrichment-pipeline/stages/song-embedding.ts` to return `StageOutcome`.
-- [ ] 10.2 Map missing analysis failures to `validation` and other embedding failures to `permanent` unless a provider-specific transient error is introduced.
-- [ ] 10.3 Remove direct failure-row writes from the stage.
-- [ ] 10.4 Add tests for existing embedding skip, ready embedding success, missing-analysis failure, and provider failure.
+- [x] 10.1 Update `src/lib/workflows/enrichment-pipeline/stages/song-embedding.ts` to return `StageOutcome`.
+- [x] 10.2 Map missing analysis failures to `validation` and other embedding failures to `permanent` unless a provider-specific transient error is introduced.
+- [x] 10.3 Remove direct failure-row writes from the stage.
+- [x] 10.4 Add tests for existing embedding skip, ready embedding success, missing-analysis failure, and provider failure.
 
 ## 11. Account for Content Activation
 

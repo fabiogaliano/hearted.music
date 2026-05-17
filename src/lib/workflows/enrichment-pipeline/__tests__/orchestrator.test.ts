@@ -120,6 +120,17 @@ function genreOutcomeSuccess(songIds: string[]): StageOutcome {
 	};
 }
 
+function embeddingOutcomeSuccess(songIds: string[]): StageOutcome {
+	return {
+		kind: "attempted",
+		stage: "song_embedding",
+		candidateSongIds: songIds,
+		attemptedSongIds: songIds,
+		succeededSongIds: songIds,
+		failures: [],
+	};
+}
+
 function makeBatch(songIds: string[]): PipelineBatch {
 	const now = new Date().toISOString();
 	return {
@@ -183,7 +194,10 @@ beforeEach(() => {
 			Promise.resolve(genreOutcomeSuccess(batch.songIds)),
 	);
 	mockRunSongAnalysis.mockResolvedValue(stageSuccess);
-	mockRunSongEmbedding.mockResolvedValue(stageSuccess);
+	mockRunSongEmbedding.mockImplementation(
+		(_ctx: unknown, batch: PipelineBatch) =>
+			Promise.resolve(embeddingOutcomeSuccess(batch.songIds)),
+	);
 	mockRunContentActivation.mockResolvedValue(undefined);
 	mockHasMoreSongsNeedingEnrichmentWork.mockResolvedValue(false);
 	mockGetEmbeddings.mockResolvedValue(Result.ok(new Map()));

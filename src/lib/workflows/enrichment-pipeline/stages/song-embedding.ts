@@ -1,15 +1,14 @@
 import { Result } from "better-result";
-import { resolveStageFailures } from "@/lib/data/job-failures";
 import { get } from "@/lib/domains/enrichment/content-analysis/queries";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";
-import { recordStageFailure } from "../record-failure";
+import type { StageFailure, StageOutcome } from "../stage-outcomes";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
-const STAGE = "song_embedding";
+const STAGE = "song_embedding" as const;
 
-async function getReadyForSongEmbedding(
+export async function getReadyForSongEmbedding(
 	batchSongIds: string[],
 	embeddingService: EmbeddingService,
 ): Promise<ReadyResult> {
@@ -52,69 +51,61 @@ async function getReadyForSongEmbedding(
 export async function runSongEmbedding(
 	ctx: EnrichmentContext,
 	batch: PipelineBatch,
-): Promise<{ total: number; succeeded: number; failed: number }> {
-	let readiness: ReadyResult;
-	try {
-		readiness = await getReadyForSongEmbedding(
-			batch.songIds,
-			ctx.embeddingService,
-		);
-	} catch {
-		return {
-			total: batch.songIds.length,
-			succeeded: 0,
-			failed: batch.songIds.length,
-		};
-	}
+): Promise<StageOutcome> {
+	const readiness = await getReadyForSongEmbedding(
+		batch.songIds,
+		ctx.embeddingService,
+	);
 
 	if (readiness.ready.length === 0) {
-		return { total: 0, succeeded: 0, failed: 0 };
+		return {
+			kind: "skipped",
+			stage: STAGE,
+			candidateSongIds: batch.songIds,
+		};
 	}
 
 	const songIds = readiness.ready;
 	const embedResult = await ctx.embeddingService.embedBatch(songIds);
+
 	if (Result.isOk(embedResult)) {
 		const { failed, succeeded } = embedResult.value;
 
-		if (succeeded.length > 0) {
-			await Promise.all(
-				succeeded.map((item) =>
-					resolveStageFailures({
-						accountId: ctx.accountId,
-						itemId: item.songId,
-						stage: STAGE,
-					}),
-				),
-			);
-		}
+		const succeededSongIds = succeeded.map((item) => item.songId);
 
-		if (failed.length > 0) {
-			console.error("[pipeline] embedBatch failed items:", failed);
+		const failures: StageFailure[] = failed.map((item) => ({
+			songId: item.songId,
+			failureCode: item.error.includes("Missing analysis")
+				? FAILURE_CODES.VALIDATION
+				: FAILURE_CODES.PERMANENT,
+			message: `Embedding failed: ${item.error}`,
+		}));
 
-			const jobId = ctx.jobId;
-			if (jobId) {
-				await Promise.all(
-					failed.map((item) =>
-						recordStageFailure({
-							jobId,
-							accountId: ctx.accountId,
-							songId: item.songId,
-							stage: STAGE,
-							failureCode: item.error.includes("Missing analysis")
-								? FAILURE_CODES.VALIDATION
-								: FAILURE_CODES.PERMANENT,
-							errorMessage: `Embedding failed: ${item.error}`,
-						}),
-					),
-				);
-			}
-		}
 		return {
-			total: songIds.length,
-			succeeded: succeeded.length,
-			failed: failed.length,
+			kind: "attempted",
+			stage: STAGE,
+			candidateSongIds: batch.songIds,
+			attemptedSongIds: songIds,
+			succeededSongIds,
+			failures,
 		};
 	}
-	console.error("[pipeline] embedBatch error:", embedResult.error);
-	return { total: songIds.length, succeeded: 0, failed: songIds.length };
+
+	const errorMessage =
+		embedResult.error instanceof Error
+			? embedResult.error.message
+			: String(embedResult.error);
+
+	return {
+		kind: "attempted",
+		stage: STAGE,
+		candidateSongIds: batch.songIds,
+		attemptedSongIds: songIds,
+		succeededSongIds: [],
+		failures: songIds.map((songId) => ({
+			songId,
+			failureCode: FAILURE_CODES.PERMANENT,
+			message: `Embedding failed: ${errorMessage}`,
+		})),
+	};
 }
