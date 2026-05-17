@@ -1,5 +1,7 @@
 # S3-05 · Match Refresh Candidate Filtering
 
+> **Historical snapshot.** Written against the pre-rename schema. Tables `item_status`, `job_failure`, `api_token` and RPCs `resolve_stage_failures`, `count_unresolved_failures` referenced below were renamed to `account_item_newness`, `job_item_failure`, `extension_api_token`, `resolve_job_item_stage_failures`, `count_unresolved_job_item_failures` in the `normalize-database-vocabulary` change. Original references are preserved here for historical context.
+
 ## Goal
 
 Update match snapshot refresh to use `select_entitled_data_enriched_liked_song_ids` so only entitled + fully-enriched songs are matching candidates.

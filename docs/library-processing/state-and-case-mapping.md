@@ -364,7 +364,7 @@ These assumptions are currently guiding the mapping and should be revisited if p
 9. Target-side correctness depends on exact target track-membership changes rather than summary fields.
 10. The current enrichment chunk progression is an execution strategy, not an architecture contract.
 11. Enrichment candidate selection should move to DB-side selectors that directly find songs still needing work rather than building app-side giant exclusion lists.
-12. The data-enrichment selector for match snapshot refresh should preserve current semantics by omitting the account-scoped `item_status` requirement.
+12. The data-enrichment selector for match snapshot refresh should preserve current semantics by omitting the account-scoped `account_item_newness` requirement.
 
 ---
 

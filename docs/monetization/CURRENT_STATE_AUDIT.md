@@ -33,7 +33,7 @@
 | **Account provisioning** | `src/lib/domains/library/accounts/queries.ts` | `createAccountForBetterAuthUser()` — creates account row only. No billing row creation. |
 | **Auth server** | `src/lib/platform/auth/auth.server.ts` | Session → account lookup. No billing state in session context. |
 | **Liked songs types** | `src/features/liked-songs/types.ts` | `UIAnalysisStatus = "not_analyzed" \| "analyzing" \| "analyzed" \| "failed"`. No `"locked"` state. `MatchingStatus = "pending" \| "has_suggestions" \| "acted" \| "no_suggestions"`. No `"locked"` state. |
-| **Devtools reset** | `src/lib/workflows/library-processing/devtools/reset.ts` | `warmReplayReset()` clears `item_status`, match snapshots, library processing state. No billing table awareness. |
+| **Devtools reset** | `src/lib/workflows/library-processing/devtools/reset.ts` | `warmReplayReset()` clears `account_item_newness`, match snapshots, library processing state. No billing table awareness. |
 | **Devtools reseed** | `src/lib/workflows/library-processing/devtools/reseed.ts` | Seeds work from current liked songs / target playlists. No billing state seeding. |
 | **Reset onboarding script** | `scripts/reset-onboarding.ts` | Exists for dev use. No billing state reset. |
 | **Match snapshot refresh** | `src/lib/workflows/match-snapshot-refresh/` | Uses `select_data_enriched_liked_song_ids` RPC. No entitlement filtering. |
@@ -60,14 +60,14 @@ Every liked song gets all enrichment stages unconditionally:
 2. `genre_tagging` (Last.fm)
 3. `song_analysis` (LLM)
 4. `song_embedding` (embedding model)
-5. `markPipelineProcessed()` (writes `item_status`)
+5. `markPipelineProcessed()` (writes `account_item_newness`)
 
-The selector RPC `select_liked_song_ids_needing_pipeline_processing` returns songs missing **any** of the 4 shared artifacts OR missing `item_status`. There is no entitlement check.
+The selector RPC `select_liked_song_ids_needing_pipeline_processing` returns songs missing **any** of the 4 shared artifacts OR missing `account_item_newness`. There is no entitlement check.
 
 ### Read models expose all analysis data without entitlement checks
 
 - **Liked songs page** (`get_liked_songs_page` SQL RPC): returns analysis content for any song that has a `song_analysis` row. No unlock/entitlement join.
-- **Liked songs stats** (`get_liked_songs_stats` SQL RPC): `analyzed` count = songs with `song_analysis` row. `pending` = songs without `item_status` row. No locked/entitled distinction.
+- **Liked songs stats** (`get_liked_songs_stats` SQL RPC): `analyzed` count = songs with `song_analysis` row. `pending` = songs without `account_item_newness` row. No locked/entitled distinction.
 - **Dashboard stats** (`fetchDashboardStats`): `analyzedPercent` = `analyzedCount / totalSongs`. Uses `getAnalyzedCountForAccount` which counts `song_analysis` rows. No entitlement filter.
 - **Match previews** (`fetchMatchPreviews`): reads `match_result` rows directly. No entitlement filtering on which songs can appear.
 - **Song suggestions** (`getSongSuggestions`): reads `match_result` + `match_decision`. No entitlement check. Analysis content is served directly.
@@ -182,13 +182,13 @@ Only: theme selection, extension status, sign out.
 
 ## 4. Current Semantics That Matter
 
-### Missing `item_status` means "pending" (not "locked")
+### Missing `account_item_newness` means "pending" (not "locked")
 
 The current `get_liked_songs_stats` SQL RPC defines:
 ```sql
--- pending: no item_status row
+-- pending: no account_item_newness row
 COUNT(*) FILTER (WHERE NOT EXISTS (
-  SELECT 1 FROM item_status ist
+  SELECT 1 FROM account_item_newness ist
   WHERE ist.item_id = ls.song_id
     AND ist.account_id = ls.account_id
     AND ist.item_type = 'song'
@@ -196,16 +196,16 @@ COUNT(*) FILTER (WHERE NOT EXISTS (
 ```
 
 The `get_liked_songs_page` RPC derives `matching_status`:
-- No `item_status` row → `'pending'` (rendered as pipeline hasn't processed yet)
-- Has `item_status` + match results with undecided → `'has_suggestions'`
-- Has `item_status` + all decided → `'acted'`
-- Has `item_status` + no match results → `'no_suggestions'`
+- No `account_item_newness` row → `'pending'` (rendered as pipeline hasn't processed yet)
+- Has `account_item_newness` + match results with undecided → `'has_suggestions'`
+- Has `account_item_newness` + all decided → `'acted'`
+- Has `account_item_newness` + no match results → `'no_suggestions'`
 
-**Impact:** Under billing, "no `item_status`" could mean **locked** (not entitled) or **pending** (entitled but not processed). These are distinct states that the current SQL cannot distinguish.
+**Impact:** Under billing, "no `account_item_newness`" could mean **locked** (not entitled) or **pending** (entitled but not processed). These are distinct states that the current SQL cannot distinguish.
 
-### `item_status` is written by pipeline completion, not by entitlement
+### `account_item_newness` is written by pipeline completion, not by entitlement
 
-`markPipelineProcessed()` writes `item_status` after all enrichment stages finish. This is the only write path. Under billing, `item_status` should mean "account-visible content has been activated" and should only be written by the account-activation step for entitled songs.
+`markPipelineProcessed()` writes `account_item_newness` after all enrichment stages finish. This is the only write path. Under billing, `account_item_newness` should mean "account-visible content has been activated" and should only be written by the account-activation step for entitled songs.
 
 ### Queue priority defaults to `low` for all accounts
 
@@ -360,7 +360,7 @@ The Better Auth hook that calls this function (likely in `auth.ts` or `auth.serv
 
 1. **Read models leak paid value.** Every server function (`getLikedSongsPage`, `getSongMatches`, `getSongSuggestions`, `getDashboardStats`, `fetchMatchPreviews`) serves `song_analysis` content and match data without entitlement checks. This is the #1 architectural concern for monetization: billing enforcement at read time is a first-class requirement, not a polish pass.
 
-2. **`item_status` absence = pending, not locked.** The entire liked-songs read model and stats SQL conflate "not yet processed" with "not entitled." Splitting these into distinct states touches SQL RPCs, server functions, TypeScript types, and UI components simultaneously.
+2. **`account_item_newness` absence = pending, not locked.** The entire liked-songs read model and stats SQL conflate "not yet processed" with "not entitled." Splitting these into distinct states touches SQL RPCs, server functions, TypeScript types, and UI components simultaneously.
 
 3. **Pipeline has no Phase A/B split.** The orchestrator runs all 4 stages unconditionally. The selector returns a flat list. Introducing per-song stage flags and conditional execution is the deepest pipeline change.
 

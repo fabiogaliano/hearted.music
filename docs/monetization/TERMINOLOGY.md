@@ -22,7 +22,7 @@
 ### What naming patterns to avoid
 
 - Avoid overloading a verb across unrelated domains (see §Disambiguation below)
-- Avoid names that conflate billing facts with display state (`status` alone is too vague — prefix with the domain: `subscription_status`, `item_status`)
+- Avoid names that conflate billing facts with display state (`status` alone is too vague — prefix with the domain: `subscription_status`, `account_item_newness`)
 - Avoid boolean flags when a discriminated value set is more precise (`is_unlimited` → `unlimited_access_source`)
 - Avoid names that embed pricing or quantities (`five_dollar_pack` → `song_pack_500`)
 - Avoid acronyms and abbreviations in schema (`sub` → `subscription`, `txn` → `transaction` in table names; `txn` is acceptable in index prefixes like `idx_credit_txn_*`)

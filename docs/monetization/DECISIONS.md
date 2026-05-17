@@ -164,14 +164,14 @@ All billing-service → app triggers use one bridge pattern:
 | `analyzed` | Entitled, content visible |
 | `failed` | Entitled, terminal processing failure |
 
-- Missing `item_status` for a non-entitled song means `locked`, not `pending`
-- `item_status` is written only by the content-activation step, never by generic pipeline-completion
+- Missing `account_item_newness` for a non-entitled song means `locked`, not `pending`
+- `account_item_newness` is written only by the content-activation step, never by generic pipeline-completion
 - Matching status (`has_suggestions | acted | no_suggestions`) is a sub-dimension of `analyzed` songs only
 
 ### Shared artifacts do not imply entitlement
 
 - `song_analysis` rows are global (not account-scoped); existence does not mean the account may see that analysis
-- Read models must filter by effective entitlement, not by `song_analysis` or `item_status` existence
+- Read models must filter by effective entitlement, not by `song_analysis` or `account_item_newness` existence
 - Dashboard stats (`analyzedPercent`, etc.) must be billing-aware
 - `match_result` is account-scoped via `match_snapshot.account_id` but still requires entitlement filtering (stale results can reference revoked songs)
 
@@ -198,7 +198,7 @@ All billing-service → app triggers use one bridge pattern:
 | A | audio_features, genre_tagging | Unbounded — runs for all liked songs, no billing gate |
 | B | song_analysis (LLM) | Gated by effective entitlement |
 | C | song_embedding | Gated by effective entitlement |
-| Activation | content_activation | Account-scoped; writes `item_status` + unlimited unlock rows |
+| Activation | content_activation | Account-scoped; writes `account_item_newness` + unlimited unlock rows |
 
 - The value boundary is Phase B (LLM analysis)
 - For pack users, purchased balance is deducted at successful unlock request time, not when the worker starts Phase B
@@ -207,7 +207,7 @@ All billing-service → app triggers use one bridge pattern:
 ### Content activation
 
 - Runs after shared stages, driven by current DB truth (not "which songs ran B/C in this chunk")
-- Writes `item_status` only for entitled songs with `song_analysis`
+- Writes `account_item_newness` only for entitled songs with `song_analysis`
 - Persists unlimited unlock rows (`source='unlimited'` or `source='self_hosted'`) for songs that became account-visible but lack durable unlock rows
 - Does not wait for embedding; analysis is the user-visible value
 

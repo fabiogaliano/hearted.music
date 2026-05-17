@@ -193,7 +193,7 @@ Rules:
 - locked songs must not expose shared analysis text or match output
 - dashboard/stats counts such as "analyzed" must be billing-aware
 - existing user-facing read contracts must be rewritten accordingly, including liked songs page/stats loaders, analyzed-count/dashboard stats loaders, song suggestion loaders, and match/session detail loaders
-- missing `item_status` is not enough to call a song `pending`; locked and pending are distinct states
+- missing `account_item_newness` is not enough to call a song `pending`; locked and pending are distinct states
 
 This is the main architectural guardrail against cache accidentally leaking paid value.
 
@@ -737,7 +737,7 @@ Notes:
 ```sql
 -- Content-activation RPC for unlimited users.
 -- Atomically:
---   1. upsert item_status for songs that are now account-visible
+--   1. upsert account_item_newness for songs that are now account-visible
 --   2. insert missing unlimited unlock rows with subscription provenance
 -- Used by: enrichment orchestrator content-activation step for
 --          subscription-backed unlimited users
@@ -1117,7 +1117,7 @@ This keeps the repo boundary clean, uses one ingress model for all billing-drive
 - after shared stages run, the orchestrator performs an explicit content activation step for the selected songs
 - this step is driven by current DB truth, not by "which songs ran B/C in this chunk"
 - activation responsibilities:
-  - create/update `item_status` only for songs that are now account-visible for this account
+  - create/update `account_item_newness` only for songs that are now account-visible for this account
   - persist `account_song_unlock` rows for unlimited users whose songs have become account-visible but are not yet durably unlocked (`source='unlimited'` for subscription-backed access, `source='self_hosted'` for provider-disabled/self-hosted access)
 - account-visible threshold = `is_account_song_entitled(...) = true` **and** `song_analysis` exists
 - this intentionally does **not** wait for embedding; analysis is the paid, user-visible value and should survive later cancellation once shown
@@ -1143,22 +1143,22 @@ Use **one enrichment workflow** with an explicit **per-song work plan** and a fi
 
 This avoids introducing a second workflow slice, second active-job pointer, or second freshness cycle.
 
-### `item_status` semantics under billing
+### `account_item_newness` semantics under billing
 
-The existing code writes `item_status` after full enrichment finishes, and the current liked-songs read models treat `item_status` absence as `pending` (current repo behavior).
+The existing code writes `account_item_newness` after full enrichment finishes, and the current liked-songs read models treat `account_item_newness` absence as `pending` (current repo behavior).
 
 Under the planned billing model:
 
-- `item_status` should mean **account-visible content has been activated for this account**
+- `account_item_newness` should mean **account-visible content has been activated for this account**
 - row existence supports newness/account-scoped activation, not entitlement or display-state derivation by itself
-- songs that only completed Phase A should **not** get `item_status`
+- songs that only completed Phase A should **not** get `account_item_newness`
 - locked songs are **not** the same thing as pending songs
-- missing `item_status` is only a scheduling reason through the activation stage for entitled songs; it is not a standalone top-level requeue reason
-- existing generic pipeline-completion writes to `item_status` must be replaced; in this design, `item_status` is written only by the content-activation step
+- missing `account_item_newness` is only a scheduling reason through the activation stage for entitled songs; it is not a standalone top-level requeue reason
+- existing generic pipeline-completion writes to `account_item_newness` must be replaced; in this design, `account_item_newness` is written only by the content-activation step
 
 Implication:
 
-- liked-song read models (`get_liked_songs_page`, stats, filters) must become billing-aware and expose a distinct locked/explorable state instead of treating every missing `item_status` row as pending work
+- liked-song read models (`get_liked_songs_page`, stats, filters) must become billing-aware and expose a distinct locked/explorable state instead of treating every missing `account_item_newness` row as pending work
 
 ### Selector contract
 
@@ -1188,7 +1188,7 @@ Rules:
 - `needs_embedding = true` when the song is entitled and shared embedding is missing
 - `needs_content_activation = true` when the song is entitled, analysis exists, and the account-scoped ready/new row is still missing
 - a song is returned when **any** stage flag is true
-- missing `item_status` is **not** a standalone selector reason for non-entitled songs
+- missing `account_item_newness` is **not** a standalone selector reason for non-entitled songs
 - terminal failures stay excluded as they are in the current selector path
 - ordering stays most-recent-liked first for v1
 
@@ -1210,7 +1210,7 @@ Rules:
 
 - require all 4 shared artifacts
 - require effective entitlement (`unlock row OR active unlimited access`)
-- do not require account-scoped `item_status`
+- do not require account-scoped `account_item_newness`
 
 In other words, the current selectors are not just renamed — their meaning changes.
 
@@ -1226,7 +1226,7 @@ Use one orchestrator pass with explicit sub-batches per stage:
 6. run `song_embedding` on songs with `needs_embedding`
 7. run `content_activation` by re-querying the selected song IDs and reconciling:
    - which songs are now account-visible
-   - which of those still need `item_status`
+   - which of those still need `account_item_newness`
    - which unlimited songs still need durable unlock rows
 8. snapshot candidate eligibility again and compute `newCandidatesAvailable` from the delta
 
@@ -1451,7 +1451,7 @@ Implementation boundary:
 - paywall: "Out of explorations. Explore more songs." with pricing — shown in provider-enabled deployments at the onboarding upgrade step and in-app when purchased balance hits 0
 - settings/billing: plan info + manage subscription + buy packs (buy-pack actions hidden while unlimited is active); in self-hosted mode this can collapse to a simple unlimited/self-hosted status view with no purchase actions
 - onboarding: song-showcase + match-showcase + plan-selection flow (auto-skip `plan-selection` when `BILLING_ENABLED=false`)
-- liked songs page: explicit locked / exploring / analyzed states instead of collapsing everything without `item_status` into pending
+- liked songs page: explicit locked / exploring / analyzed states instead of collapsing everything without `account_item_newness` into pending
 - unlimited upgrade UI should explain any applied first-invoice discount from unused purchased pack value before redirecting to Stripe Checkout
 - when `BILLING_ENABLED=false`, hide or deactivate upgrade contact points (checkout, portal launch, paywall CTA, onboarding `plan-selection`) while leaving the normal unlimited app experience intact
 
@@ -1866,7 +1866,7 @@ Mitigation:
 - revisit only if it becomes a material support burden
 
 ### 23. Locked songs would be misclassified as pending in existing read models
-Existing SQL read models treat missing `item_status` as pending processing.
+Existing SQL read models treat missing `account_item_newness` as pending processing.
 
 Mitigation:
 - add billing-aware liked-song read-model state

@@ -79,7 +79,7 @@ Audit the repo and create:
 3. **Missing billing foundation**
    - schema, RPCs, env flags, services, UI, etc. that do not yet exist
 4. **Current semantics that matter**
-   - e.g. missing `item_status` means pending
+   - e.g. missing `account_item_newness` means pending
    - queue priority defaults
    - current onboarding steps
    - current matching visibility behavior

@@ -625,13 +625,13 @@ Recommended selectors:
    - has non-empty `song.genres`
    - has `song_analysis`
    - has `song_embedding`
-   - has account-scoped `item_status` for:
+   - has account-scoped `account_item_newness` for:
      - `account_id`
      - `item_type = 'song'`
      - `item_id = song_id`
 
 2. **Data-enrichment selector** for match-snapshot candidate loading  
-   Returns liked songs that satisfy the same shared-artifact requirements, but **without** the account-scoped `item_status` requirement.
+   Returns liked songs that satisfy the same shared-artifact requirements, but **without** the account-scoped `account_item_newness` requirement.
 
    This preserves the current behavior where songs can already be refresh-eligible from shared/global cache before account-scoped enrichment completion is written.
 

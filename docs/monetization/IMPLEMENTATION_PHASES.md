@@ -183,7 +183,7 @@ Make the app billing-safe: Phase B/C only runs for entitled songs, and paid valu
 This addresses the repo's highest-risk current-state problems:
 - all enrichment stages run for all songs today
 - `song_analysis` and match data are exposed without entitlement checks
-- missing `item_status` is incorrectly treated as `pending` instead of sometimes `locked`
+- missing `account_item_newness` is incorrectly treated as `pending` instead of sometimes `locked`
 
 This phase should complete before hosted checkout/paywall work is considered shippable.
 
@@ -194,7 +194,7 @@ This phase should complete before hosted checkout/paywall work is considered shi
 ### Outputs
 - Enrichment pipeline updated to use per-song stage flags
 - Content activation stage added as the account-scoped activation boundary
-- `item_status` semantics changed from generic pipeline completion to account-visible activation
+- `account_item_newness` semantics changed from generic pipeline completion to account-visible activation
 - Match snapshot refresh candidate selection filters by entitlement
 - Billing-aware read models for:
   - liked songs page
@@ -237,7 +237,7 @@ A smaller third track can handle queue-priority/test coverage.
 ### Exit criteria
 - A locked song does not expose shared analysis text or match output anywhere in the app
 - Phase B/C work requires effective entitlement
-- `item_status` is written by content activation, not generic pipeline completion
+- `account_item_newness` is written by content activation, not generic pipeline completion
 - Match refresh only uses entitled candidates
 - Provider-disabled accounts still behave as unlimited through the same entitlement path
 

@@ -1,5 +1,7 @@
 # S3-07 · Liked Songs Page — Locked/Pending Split
 
+> **Historical snapshot.** Written against the pre-rename schema. Tables `item_status`, `job_failure`, `api_token` and RPCs `resolve_stage_failures`, `count_unresolved_failures` referenced below were renamed to `account_item_newness`, `job_item_failure`, `extension_api_token`, `resolve_job_item_stage_failures`, `count_unresolved_job_item_failures` in the `normalize-database-vocabulary` change. Original references are preserved here for historical context.
+
 ## Goal
 
 Update the liked songs page SQL RPC and server function to distinguish `locked` from `pending` and suppress `song_analysis` text for locked songs.
