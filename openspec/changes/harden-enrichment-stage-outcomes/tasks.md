@@ -39,10 +39,10 @@
 
 ## 6. Migrate Audio Features Stage
 
-- [ ] 6.1 Update `src/lib/workflows/enrichment-pipeline/stages/audio-features.ts` so `getReadyForAudioFeatures` returns readiness facts and `runAudioFeatures` returns `StageOutcome`.
-- [ ] 6.2 Convert ReccoBeats `not_found` and transient failures to `StageFailure` descriptors.
-- [ ] 6.3 Remove direct `resolveStageFailures` / `recordStageFailure` calls from the audio stage.
-- [ ] 6.4 Add tests for cached features, fetched features, not-found failures, and provider transient failures.
+- [x] 6.1 Update `src/lib/workflows/enrichment-pipeline/stages/audio-features.ts` so `getReadyForAudioFeatures` returns readiness facts and `runAudioFeatures` returns `StageOutcome`.
+- [x] 6.2 Convert ReccoBeats `not_found` and transient failures to `StageFailure` descriptors.
+- [x] 6.3 Remove direct `resolveStageFailures` / `recordStageFailure` calls from the audio stage.
+- [x] 6.4 Add tests for cached features, fetched features, not-found failures, and provider transient failures.
 
 ## 7. Migrate Genre Tagging Stage
 

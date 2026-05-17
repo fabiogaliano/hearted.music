@@ -1,5 +1,4 @@
 import { Result } from "better-result";
-import { resolveStageFailures } from "@/lib/data/job-failures";
 import {
 	type AudioFeature,
 	getBatch as getAudioFeaturesBatch,
@@ -12,12 +11,12 @@ import {
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";
-import { recordStageFailure } from "../record-failure";
+import type { StageFailure, StageOutcome } from "../stage-outcomes";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
-const STAGE = "audio_features";
+const STAGE = "audio_features" as const;
 
-function failureCodeFor(kind: AudioFeaturesFailureKind): string {
+function failureCodeFor(kind: AudioFeaturesFailureKind) {
 	return kind === "not_found"
 		? FAILURE_CODES.SOURCE_NOT_FOUND
 		: FAILURE_CODES.PROVIDER_TRANSIENT;
@@ -29,7 +28,7 @@ function failureMessageFor(kind: AudioFeaturesFailureKind): string {
 		: "Audio features provider transient failure";
 }
 
-async function getReadyForAudioFeatures(
+export async function getReadyForAudioFeatures(
 	batchSongIds: string[],
 ): Promise<ReadyResult> {
 	const existingResult = await getAudioFeaturesBatch(batchSongIds);
@@ -53,22 +52,17 @@ async function getReadyForAudioFeatures(
 }
 
 export async function runAudioFeatures(
-	ctx: EnrichmentContext,
+	_ctx: EnrichmentContext,
 	batch: PipelineBatch,
-): Promise<{ total: number; succeeded: number; failed: number }> {
-	let readiness: ReadyResult;
-	try {
-		readiness = await getReadyForAudioFeatures(batch.songIds);
-	} catch {
-		return {
-			total: batch.songIds.length,
-			succeeded: 0,
-			failed: batch.songIds.length,
-		};
-	}
+): Promise<StageOutcome> {
+	const readiness = await getReadyForAudioFeatures(batch.songIds);
 
 	if (readiness.ready.length === 0) {
-		return { total: 0, succeeded: 0, failed: 0 };
+		return {
+			kind: "skipped",
+			stage: STAGE,
+			candidateSongIds: batch.songIds,
+		};
 	}
 
 	const tracksToFetch: TrackInfo[] = readiness.ready.map((id) => {
@@ -87,44 +81,27 @@ export async function runAudioFeatures(
 	const failureMap = Result.isOk(fetchResult)
 		? fetchResult.value.failures
 		: new Map<string, AudioFeaturesFailureKind>();
-	const succeeded = succeededMap.size;
-	const failed = tracksToFetch.length - succeeded;
 
-	const succeededIds = Array.from(succeededMap.keys());
-	if (succeededIds.length > 0) {
-		await Promise.all(
-			succeededIds.map((songId) =>
-				resolveStageFailures({
-					accountId: ctx.accountId,
-					itemId: songId,
-					stage: STAGE,
-				}),
-			),
-		);
-	}
+	const succeededSongIds = Array.from(succeededMap.keys());
 
-	const jobId = ctx.jobId;
-	if (failed > 0 && jobId) {
-		const failedSongIds = tracksToFetch
-			.filter((t) => !succeededMap.has(t.songId))
-			.map((t) => t.songId);
+	const failures: StageFailure[] = tracksToFetch
+		.filter((t) => !succeededMap.has(t.songId))
+		.map((t) => {
+			const kind: AudioFeaturesFailureKind =
+				failureMap.get(t.songId) ?? "transient";
+			return {
+				songId: t.songId,
+				failureCode: failureCodeFor(kind),
+				message: failureMessageFor(kind),
+			};
+		});
 
-		await Promise.all(
-			failedSongIds.map((songId) => {
-				// Default unknown to transient so we keep retrying instead of giving up.
-				const kind: AudioFeaturesFailureKind =
-					failureMap.get(songId) ?? "transient";
-				return recordStageFailure({
-					jobId,
-					accountId: ctx.accountId,
-					songId,
-					stage: STAGE,
-					failureCode: failureCodeFor(kind),
-					errorMessage: failureMessageFor(kind),
-				});
-			}),
-		);
-	}
-
-	return { total: tracksToFetch.length, succeeded, failed };
+	return {
+		kind: "attempted",
+		stage: STAGE,
+		candidateSongIds: batch.songIds,
+		attemptedSongIds: readiness.ready,
+		succeededSongIds,
+		failures,
+	};
 }

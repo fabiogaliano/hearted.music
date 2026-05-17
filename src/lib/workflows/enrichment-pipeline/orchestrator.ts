@@ -233,14 +233,38 @@ async function enrichSongs(
 	const audioSubBatch = filterBatch(batch, workPlan.needAudioFeatures);
 	const genreSubBatch = filterBatch(batch, workPlan.needGenreTagging);
 
-	const [audioResult, genreResult] = await Promise.all([
+	const [audioAccountingResult, genreResult] = await Promise.all([
 		audioSubBatch.songIds.length > 0
-			? runStage("audio_features", () => runAudioFeatures(ctx, audioSubBatch))
-			: Promise.resolve({ total: 0, succeeded: 0, failed: 0 }),
+			? runStageWithAccounting({
+					stage: "audio_features",
+					candidateSongIds: audioSubBatch.songIds,
+					jobId,
+					accountId: ctx.accountId,
+					run: () => runAudioFeatures(ctx, audioSubBatch),
+				})
+			: Promise.resolve(
+					Result.ok<StageSummary, StageAccountingError>({
+						total: 0,
+						succeeded: 0,
+						failed: 0,
+					}),
+				),
 		genreSubBatch.songIds.length > 0
 			? runStage("genre_tagging", () => runGenreTagging(ctx, genreSubBatch))
 			: Promise.resolve({ total: 0, succeeded: 0, failed: 0 }),
 	]);
+
+	if (Result.isError(audioAccountingResult)) {
+		console.error("[worker-chunk] Stage accounting failed", {
+			stage: "audio_features",
+			jobId,
+			accountId: ctx.accountId,
+			error: audioAccountingResult.error,
+		});
+		throw audioAccountingResult.error;
+	}
+
+	const audioResult: StageResult = audioAccountingResult.value;
 
 	applyStageResult(
 		progress,

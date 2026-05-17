@@ -1,6 +1,8 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DatabaseError } from "@/lib/shared/errors/database";
 import type { PipelineBatch } from "../batch";
+import { FAILURE_CODES } from "../failure-policy";
 import type { EnrichmentWorkPlan } from "../types";
 
 // --- Mocks ---
@@ -55,6 +57,14 @@ vi.mock("@/lib/data/jobs", () => ({
 	updateJobProgress: vi.fn().mockResolvedValue(Result.ok(undefined)),
 }));
 
+vi.mock("@/lib/data/job-failures", () => ({
+	resolveStageFailures: vi.fn().mockResolvedValue(Result.ok(0)),
+}));
+
+vi.mock("../record-failure", () => ({
+	recordStageFailure: vi.fn().mockResolvedValue(Result.ok(undefined)),
+}));
+
 vi.mock("@/lib/domains/enrichment/audio-features/queries", () => ({
 	getBatch: vi.fn().mockResolvedValue(Result.ok(new Map())),
 }));
@@ -81,10 +91,23 @@ vi.mock("@/lib/domains/taste/playlist-profiling/service", () => ({
 }));
 
 import { executeWorkerChunk } from "../orchestrator";
+import { recordStageFailure } from "../record-failure";
+import type { StageOutcome } from "../stage-outcomes";
 
 // --- Helpers ---
 
 const stageSuccess = { total: 1, succeeded: 1, failed: 0 };
+
+function audioOutcomeSuccess(songIds: string[]): StageOutcome {
+	return {
+		kind: "attempted",
+		stage: "audio_features",
+		candidateSongIds: songIds,
+		attemptedSongIds: songIds,
+		succeededSongIds: songIds,
+		failures: [],
+	};
+}
 
 function makeBatch(songIds: string[]): PipelineBatch {
 	const now = new Date().toISOString();
@@ -139,7 +162,11 @@ function makeWorkPlan(
 
 beforeEach(() => {
 	vi.clearAllMocks();
-	mockRunAudioFeatures.mockResolvedValue(stageSuccess);
+	vi.mocked(recordStageFailure).mockResolvedValue(Result.ok(undefined));
+	mockRunAudioFeatures.mockImplementation(
+		(_ctx: unknown, batch: PipelineBatch) =>
+			Promise.resolve(audioOutcomeSuccess(batch.songIds)),
+	);
 	mockRunGenreTagging.mockResolvedValue(stageSuccess);
 	mockRunSongAnalysis.mockResolvedValue(stageSuccess);
 	mockRunSongEmbedding.mockResolvedValue(stageSuccess);
@@ -233,6 +260,45 @@ describe("executeWorkerChunk sub-batching", () => {
 		const embeddingBatch = mockRunSongEmbedding.mock
 			.calls[0][1] as PipelineBatch;
 		expect(embeddingBatch.songIds).toEqual(["b"]);
+	});
+
+	it("fails the parent attempt when audio feature accounting cannot persist", async () => {
+		const workPlan = makeWorkPlan({
+			allSongIds: ["song-1"],
+			needAudioFeatures: ["song-1"],
+		});
+		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
+		mockLoadBatchSongs.mockResolvedValue(makeBatch(["song-1"]));
+		mockRunAudioFeatures.mockResolvedValue({
+			kind: "attempted",
+			stage: "audio_features",
+			candidateSongIds: ["song-1"],
+			attemptedSongIds: ["song-1"],
+			succeededSongIds: [],
+			failures: [
+				{
+					songId: "song-1",
+					failureCode: FAILURE_CODES.PROVIDER_TRANSIENT,
+					message: "provider timeout",
+				},
+			],
+		});
+		vi.mocked(recordStageFailure).mockResolvedValue(
+			Result.err(
+				new DatabaseError({
+					code: "PGRST",
+					message: "failed to insert failure row",
+				}),
+			),
+		);
+		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		await expect(
+			executeWorkerChunk("account-1", "job-1", 10, 0),
+		).rejects.toThrow("Failed to record failure rows for stage audio_features");
+
+		expect(mockRunContentActivation).not.toHaveBeenCalled();
+		consoleSpy.mockRestore();
 	});
 });
 

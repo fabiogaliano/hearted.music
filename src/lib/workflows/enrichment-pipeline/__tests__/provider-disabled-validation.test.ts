@@ -254,7 +254,29 @@ vi.mock("../batch", () => ({
 
 const stageSuccess = { total: 1, succeeded: 1, failed: 0 };
 
-const mockRunAudioFeatures = vi.fn().mockResolvedValue(stageSuccess);
+function audioOutcomeSuccess(songIds: string[]): {
+	kind: "attempted";
+	stage: "audio_features";
+	candidateSongIds: string[];
+	attemptedSongIds: string[];
+	succeededSongIds: string[];
+	failures: never[];
+} {
+	return {
+		kind: "attempted",
+		stage: "audio_features",
+		candidateSongIds: songIds,
+		attemptedSongIds: songIds,
+		succeededSongIds: songIds,
+		failures: [],
+	};
+}
+
+const mockRunAudioFeatures = vi
+	.fn()
+	.mockImplementation((_ctx: unknown, batch: PipelineBatch) =>
+		Promise.resolve(audioOutcomeSuccess(batch.songIds)),
+	);
 const mockRunGenreTagging = vi.fn().mockResolvedValue(stageSuccess);
 const mockRunSongAnalysis = vi.fn().mockResolvedValue(stageSuccess);
 const mockRunSongEmbedding = vi.fn().mockResolvedValue(stageSuccess);
@@ -294,6 +316,14 @@ vi.mock("@/lib/domains/enrichment/embeddings/service", () => ({
 
 vi.mock("@/lib/data/jobs", () => ({
 	updateJobProgress: vi.fn().mockResolvedValue(Result.ok(undefined)),
+}));
+
+vi.mock("@/lib/data/job-failures", () => ({
+	resolveStageFailures: vi.fn().mockResolvedValue(Result.ok(0)),
+}));
+
+vi.mock("../record-failure", () => ({
+	recordStageFailure: vi.fn().mockResolvedValue(Result.ok(undefined)),
 }));
 
 vi.mock("@/lib/domains/enrichment/audio-features/queries", () => ({
@@ -339,7 +369,10 @@ beforeEach(() => {
 	supabaseInteractions.inserts = [];
 	supabaseInteractions.rpcs = [];
 	mockEnv.BILLING_ENABLED = false;
-	mockRunAudioFeatures.mockResolvedValue(stageSuccess);
+	mockRunAudioFeatures.mockImplementation(
+		(_ctx: unknown, batch: PipelineBatch) =>
+			Promise.resolve(audioOutcomeSuccess(batch.songIds)),
+	);
 	mockRunGenreTagging.mockResolvedValue(stageSuccess);
 	mockRunSongAnalysis.mockResolvedValue(stageSuccess);
 	mockRunSongEmbedding.mockResolvedValue(stageSuccess);
