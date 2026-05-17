@@ -16,7 +16,7 @@ async function main() {
 	log.info("worker-starting", { config: workerConfig });
 
 	const healthServer = startHealthServer();
-	log.info("health-server-started", { port: workerConfig.healthPort });
+	log.info("health-server-started", { port: healthServer.port });
 
 	const keepAlive = startKeepAlive();
 

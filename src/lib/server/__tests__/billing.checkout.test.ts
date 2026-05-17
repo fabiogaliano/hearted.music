@@ -16,7 +16,12 @@ const { mockAuthContext, mockSignBridgeRequest, mockFetch, mockEnv } =
 			timestamp: "1700000000",
 			signature: "abc123",
 		}),
-		mockFetch: vi.fn(),
+		mockFetch: Object.assign(
+			vi.fn<
+				(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
+			>(),
+			{ preconnect: vi.fn<typeof fetch.preconnect>() },
+		),
 		mockEnv: {
 			value: {
 				BILLING_ENABLED: false as boolean,
@@ -194,7 +199,11 @@ describe("createCheckoutSession", () => {
 		);
 
 		// Verify the body contains expected fields
-		const callBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+		const requestInit = mockFetch.mock.calls.at(0)?.[1];
+		if (typeof requestInit?.body !== "string") {
+			throw new Error("Expected checkout request body to be a string");
+		}
+		const callBody = JSON.parse(requestInit.body);
 		expect(callBody).toEqual({
 			account_id: "acct-checkout-1",
 			offer_id: "song_pack_500",
@@ -353,7 +362,11 @@ describe("createPortalSession", () => {
 			}),
 		);
 
-		const callBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+		const requestInit = mockFetch.mock.calls.at(0)?.[1];
+		if (typeof requestInit?.body !== "string") {
+			throw new Error("Expected portal request body to be a string");
+		}
+		const callBody = JSON.parse(requestInit.body);
 		expect(callBody).toEqual({
 			account_id: "acct-checkout-1",
 		});

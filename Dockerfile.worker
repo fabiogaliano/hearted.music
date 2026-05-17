@@ -7,6 +7,7 @@ RUN bun install --frozen-lockfile --production
 
 FROM base
 ENV NODE_ENV=production
+ENV WORKER_HEALTH_PORT=3002
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json tsconfig.json ./
@@ -15,9 +16,9 @@ COPY src/ ./src/
 RUN addgroup --system worker && adduser --system --ingroup worker worker
 USER worker
 
-EXPOSE 3001
+EXPOSE 3002
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD bun -e "fetch('http://localhost:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+  CMD bun -e "const port = process.env.WORKER_HEALTH_PORT ?? '3002'; fetch(\`http://localhost:${port}/health\`).then(r => { if (!r.ok) process.exit(1); }).catch(() => process.exit(1))"
 
 CMD ["bun", "run", "src/worker/index.ts"]

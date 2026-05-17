@@ -13,6 +13,8 @@
 			"**/vite.config.ts",
 			"**/package.json",
 			"**/biome.json",
+			"!v1_hearted_brand",
+			"!scripts/matching-lab",
 			"!**/src/routeTree.gen.ts",
 			"!**/src/styles.css"
 		]

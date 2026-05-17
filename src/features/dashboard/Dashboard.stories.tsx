@@ -52,6 +52,7 @@ export const ProgressiveEnrichment: Story = () => {
 					style={{ flex: 1 }}
 				/>
 				<button
+					type="button"
 					onClick={() => setCount(0)}
 					style={{ fontSize: 12, padding: "4px 8px" }}
 				>

@@ -52,8 +52,7 @@ export function App() {
 				}}
 			/>
 
-			<div
-				role="status"
+			<output
 				aria-live="polite"
 				style={{
 					display: "flex",
@@ -76,7 +75,7 @@ export function App() {
 							? "Spotify connected"
 							: "open Spotify to connect"}
 				</span>
-			</div>
+			</output>
 		</div>
 	);
 }

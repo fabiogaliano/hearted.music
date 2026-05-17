@@ -30,7 +30,6 @@ import { SongAnalysisService } from "@/lib/domains/enrichment/content-analysis/s
 import { LlmService } from "@/lib/integrations/llm/service";
 import { LyricsService } from "@/lib/domains/enrichment/lyrics/service";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
-import { getApiKeyForProvider } from "@/lib/integrations/llm/config";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import type { LandingSongManifest } from "@/lib/content/landing/landing-songs";
 

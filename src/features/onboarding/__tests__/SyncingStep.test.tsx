@@ -59,7 +59,9 @@ describe("SyncingStep", () => {
 		render(<SyncingStep phaseJobIds={null} />);
 
 		await waitFor(() => {
-			expect(screen.getByText(/Reading liked songs/i)).toBeInTheDocument();
+			expect(
+				screen.getByText(/Reading (your )?liked songs/i),
+			).toBeInTheDocument();
 		});
 	});
 

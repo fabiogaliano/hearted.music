@@ -4,19 +4,19 @@
  */
 
 import { Result } from "better-result";
-import { createAnalysisPipeline } from "@/lib/domains/enrichment/content-analysis/pipeline";
-import { selectPipelineBatch } from "@/lib/workflows/enrichment-pipeline/batch";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import { createAnalysisPipeline } from "@/lib/domains/enrichment/content-analysis/pipeline";
+import { selectEnrichmentWorkPlan } from "@/lib/workflows/enrichment-pipeline/batch";
 
 const supabase = createAdminSupabaseClient();
 const { data: account } = await supabase.from("account").select("id").limit(1).single();
 if (!account) { console.error("No account"); process.exit(1); }
 
-console.log("1. Selecting batch...");
-const batch = await selectPipelineBatch(account.id, 1);
-if (batch.songIds.length === 0) { console.log("No songs"); process.exit(0); }
+console.log("1. Selecting work plan...");
+const workPlan = await selectEnrichmentWorkPlan(account.id, 1);
+if (workPlan.allSongIds.length === 0) { console.log("No songs"); process.exit(0); }
 
-const songId = batch.songIds[0];
+const songId = workPlan.allSongIds[0];
 console.log(`   Song ID: ${songId}`);
 
 console.log("2. Creating analysis pipeline...");

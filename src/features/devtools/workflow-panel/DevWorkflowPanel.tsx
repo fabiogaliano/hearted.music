@@ -84,14 +84,26 @@ export function DevWorkflowPanel() {
 					isRunningRef.current = false;
 					return;
 				}
-				nextStep = ONBOARDING_STEPS[currentIdx - 1]!;
+				const previousStep = ONBOARDING_STEPS[currentIdx - 1];
+				if (!previousStep) {
+					setLastAction(`Could not resolve previous step from ${currentStep}`);
+					isRunningRef.current = false;
+					return;
+				}
+				nextStep = previousStep;
 			} else if (target === "next") {
 				if (currentIdx >= ONBOARDING_STEPS.length - 1) {
 					setLastAction(`Already at last step (${currentStep})`);
 					isRunningRef.current = false;
 					return;
 				}
-				nextStep = ONBOARDING_STEPS[currentIdx + 1]!;
+				const followingStep = ONBOARDING_STEPS[currentIdx + 1];
+				if (!followingStep) {
+					setLastAction(`Could not resolve next step from ${currentStep}`);
+					isRunningRef.current = false;
+					return;
+				}
+				nextStep = followingStep;
 			} else {
 				nextStep = target;
 			}
@@ -233,8 +245,8 @@ function usePaneRealAvailable(): boolean {
 				(p) => p.name === ONBOARDING_PANE_NAME,
 			)?.id;
 			if (!id) return false;
-			const vals = PaneStore.getValues(id);
-			return (vals["realAvailable"] as boolean) ?? false;
+			const vals = PaneStore.getValues(id) as { realAvailable?: boolean };
+			return vals.realAvailable ?? false;
 		},
 		() => false,
 	);

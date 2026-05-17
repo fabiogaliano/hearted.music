@@ -5,7 +5,7 @@
 
 import { Result } from "better-result";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
-import { selectPipelineBatch } from "@/lib/workflows/enrichment-pipeline/batch";
+import { selectEnrichmentWorkPlan } from "@/lib/workflows/enrichment-pipeline/batch";
 
 const accountId = process.env.TEST_ACCOUNT_ID;
 if (!accountId) {
@@ -18,14 +18,18 @@ if (!accountId) {
 	console.log(`Using account: ${data.id}`);
 }
 
-const id = process.env.TEST_ACCOUNT_ID!;
+const id = process.env.TEST_ACCOUNT_ID;
+if (!id) {
+	console.error("TEST_ACCOUNT_ID not set");
+	process.exit(1);
+}
 
-console.log("1. Selecting batch...");
-const batch = await selectPipelineBatch(id, 5);
-console.log(`   Songs: ${batch.songIds.length}`);
+console.log("1. Selecting work plan...");
+const workPlan = await selectEnrichmentWorkPlan(id, 5);
+console.log(`   Songs needing embedding: ${workPlan.needEmbedding.length}`);
 
-if (batch.songIds.length === 0) {
-	console.log("No songs in batch, nothing to embed.");
+if (workPlan.needEmbedding.length === 0) {
+	console.log("No songs need embedding, nothing to do.");
 	process.exit(0);
 }
 
@@ -33,7 +37,7 @@ console.log("2. Creating EmbeddingService...");
 const service = new EmbeddingService();
 
 console.log("3. Running embedBatch...");
-const result = await service.embedBatch(batch.songIds);
+const result = await service.embedBatch(workPlan.needEmbedding);
 
 if (Result.isError(result)) {
 	console.error("embedBatch returned error:", result.error);

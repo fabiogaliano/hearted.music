@@ -34,25 +34,32 @@ function AnalysisToggle({
 	};
 
 	return (
-		<div
-			role="button"
-			tabIndex={0}
+		<button
+			type="button"
 			onClick={toggle}
-			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") toggle();
-			}}
 			onMouseEnter={() => setHovered(true)}
 			onMouseLeave={() => setHovered(false)}
 			className="cursor-pointer select-none"
-			style={{ position: "relative" }}
+			style={{
+				position: "relative",
+				padding: 0,
+				border: "none",
+				background: "transparent",
+				textAlign: "left",
+				width: "100%",
+			}}
 		>
-			<div
+			<span
 				key={animKey}
-				style={{ animation: "hearted-fade 250ms ease forwards" }}
+				style={{
+					animation: "hearted-fade 250ms ease forwards",
+					display: "block",
+				}}
 			>
 				{isOpen ? (
-					<p
+					<span
 						style={{
+							display: "block",
 							fontFamily: fonts.body,
 							fontSize: "var(--s0)",
 							lineHeight: 1.55,
@@ -63,10 +70,11 @@ function AnalysisToggle({
 						}}
 					>
 						{interpretation}
-					</p>
+					</span>
 				) : (
-					<p
+					<span
 						style={{
+							display: "block",
 							fontFamily: fonts.display,
 							fontSize: "clamp(1.25rem, 1.6vw, 1.75rem)",
 							fontWeight: 400,
@@ -76,9 +84,9 @@ function AnalysisToggle({
 						}}
 					>
 						{headline}
-					</p>
+					</span>
 				)}
-			</div>
+			</span>
 			<span
 				style={{
 					fontFamily: fonts.body,
@@ -94,7 +102,7 @@ function AnalysisToggle({
 			>
 				{isOpen ? "\u2190 back" : "read deeper \u2192"}
 			</span>
-		</div>
+		</button>
 	);
 }
 

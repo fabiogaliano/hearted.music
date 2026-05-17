@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Json } from "@/lib/data/database.types";
+import type { Json, Tables } from "@/lib/data/database.types";
 import {
 	getMatchDecisionsForSongs,
 	upsertMatchDecision,
@@ -74,7 +74,7 @@ export interface SongMatchesResult {
 // Internal helpers
 // ============================================================================
 
-type MatchResult = { song_id: string; playlist_id: string; score: number };
+type MatchResult = Tables<"match_result">;
 type MatchDecision = { song_id: string; playlist_id: string };
 
 async function getMatchSnapshotData(

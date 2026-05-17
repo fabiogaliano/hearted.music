@@ -273,19 +273,6 @@ function CDCaseMock({ frameColor }: { frameColor: string }) {
 
 // ─── Status Indicators ─────────────────────────────────────────────────
 
-function StatusDot({ color, label }: { color: string; label: string }) {
-	const theme = useTheme();
-	return (
-		<span
-			className="flex items-center gap-2 text-xs tracking-widest uppercase"
-			style={{ fontFamily: fonts.body, color: theme.textMuted }}
-		>
-			<span className="size-2 rounded-full" style={{ background: color }} />
-			{label}
-		</span>
-	);
-}
-
 function StatusRow({
 	colors,
 	rowLabel,
