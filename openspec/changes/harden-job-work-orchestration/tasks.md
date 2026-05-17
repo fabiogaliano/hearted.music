@@ -76,8 +76,8 @@
 
 - [x] 10.1 Run focused tests: `bun run test src/lib/workflows/library-processing src/worker`.
 - [x] 10.2 Run `bun run typecheck`.
-- [ ] 10.3 Run full `bun run test`.
+- [x] 10.3 Run full `bun run test`. (1 unrelated failure: SyncingStep.test.tsx UI rendering — not touched by this change)
 - [x] 10.4 Grep for remaining imports from `@/lib/data/jobs`; ensure none remain unless the final branch intentionally keeps a non-wrapper module.
-- [ ] 10.5 Grep production code for inline `LibraryProcessingChange` object literals; ensure source boundaries use `src/lib/workflows/library-processing/changes/*`.
+- [x] 10.5 Grep production code for inline `LibraryProcessingChange` object literals; ensure source boundaries use `src/lib/workflows/library-processing/changes/*`.
 - [x] 10.6 Run `openspec validate harden-job-work-orchestration --strict --no-interactive` and `openspec validate harden-enrichment-stage-outcomes --strict --no-interactive`.
 - [ ] 10.7 Manually inspect worker startup logs in dev with one pending job and one artificially failed active ref.
