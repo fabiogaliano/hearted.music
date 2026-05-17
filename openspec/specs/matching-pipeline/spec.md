@@ -106,7 +106,7 @@ The system SHALL use cache-first context hashing to avoid redundant computation 
 #### Scenario: No ready candidates
 - **WHEN** there are no current data-enriched liked-song candidates ready for matching
 - **THEN** the refresh workflow SHALL publish a snapshot with zero matches for the current target playlist set
-- **AND** it SHALL NOT use `item_status` as a proxy for published matching currency
+- **AND** it SHALL NOT use `account_item_newness` as a proxy for published matching currency
 
 #### Scenario: Unmatched songs terminology
 - **WHEN** a song has zero matches above the score threshold (0.3)
@@ -301,18 +301,18 @@ The matching stage SHALL return which songs received suggestions and which did n
 
 ---
 
-### Requirement: Pipeline Writes item_status
+### Requirement: Pipeline Writes Account Item Newness
 
-The enrichment pipeline orchestrator SHALL write `item_status` for batch songs only to record candidate-side processing state, not published matching currency.
+The enrichment pipeline orchestrator SHALL write `account_item_newness` for batch songs only to record candidate-side processing state, not published matching currency.
 
-#### Scenario: All completed batch songs get item_status
+#### Scenario: All completed batch songs get account item newness
 - **WHEN** the orchestrator finishes the shared enrichment stages for a batch song
-- **THEN** it SHALL create or update `item_status` for that song
+- **THEN** it SHALL create or update `account_item_newness` for that song
 - **AND** the row SHALL indicate pipeline processing completion for the account
 
 #### Scenario: Pipeline processing does not depend on target playlists
 - **WHEN** an enrichment chunk completes for an account with zero target playlists
-- **THEN** the orchestrator SHALL still write `item_status` for completed batch songs
+- **THEN** the orchestrator SHALL still write `account_item_newness` for completed batch songs
 - **AND** it SHALL not wait for target-playlist refresh to publish a snapshot first
 
 #### Scenario: Pipeline does not mark published new suggestions
@@ -323,7 +323,7 @@ The enrichment pipeline orchestrator SHALL write `item_status` for batch songs o
 #### Scenario: Refresh publish marks new suggestions
 - **WHEN** a target-playlist refresh publishes suggestions for liked songs
 - **THEN** that publish path SHALL mark those songs as new in account-visible state
-- **AND** `item_status` row existence SHALL continue to reflect pipeline processing state rather than snapshot ownership
+- **AND** `account_item_newness` row existence SHALL continue to reflect pipeline processing state rather than snapshot ownership
 
 ---
 
@@ -333,25 +333,25 @@ The enrichment pipeline batch selector SHALL use DB-side full-pipeline and data-
 
 #### Scenario: Full-pipeline selector returns songs missing shared artifacts
 - **WHEN** a liked song is missing any of the 4 shared data artifacts (audio features, genres, analysis, embedding)
-- **THEN** the full-pipeline selector SHALL return that song for pipeline processing regardless of `item_status`
+- **THEN** the full-pipeline selector SHALL return that song for pipeline processing regardless of `account_item_newness`
 - **AND** selection SHALL happen in the database rather than by loading all processed IDs into application memory first
 
 #### Scenario: Full-pipeline selector returns songs missing per-account pipeline completion only
 - **WHEN** a liked song already has all 4 shared data artifacts
-- **AND** the song has no `item_status` row for the account
+- **AND** the song has no `account_item_newness` row for the account
 - **THEN** the full-pipeline selector SHALL still return that song so the pipeline can record account-scoped processing completion
 - **AND** shared enrichment stages MAY skip for that song because the artifacts already exist
 
 #### Scenario: Full-pipeline selector skips fully pipeline-processed songs
 - **WHEN** a liked song has all 4 shared data artifacts
-- **AND** the song has an `item_status` row for the account
+- **AND** the song has an `account_item_newness` row for the account
 - **THEN** the full-pipeline selector SHALL NOT return that song for pipeline processing
 - **AND** the selector SHALL not treat missing snapshot publication as pipeline-owned work
 
 #### Scenario: Data-enrichment selector preserves refresh candidate semantics
 - **WHEN** target-playlist refresh loads current liked-song candidates
 - **THEN** the data-enrichment selector SHALL return liked songs that satisfy the 4 shared data-artifact requirements
-- **AND** it SHALL NOT require account-scoped `item_status` for that refresh candidate set
+- **AND** it SHALL NOT require account-scoped `account_item_newness` for that refresh candidate set
 
 #### Scenario: Selector execution avoids giant app-side exclusion lists
 - **WHEN** the system selects the next liked songs needing enrichment or refresh eligibility

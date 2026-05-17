@@ -14,16 +14,16 @@ The system SHALL track when items become "new" to display badges.
 
 #### Scenario: New songs synced
 - **WHEN** new liked songs sync from Spotify
-- **THEN** create `item_status` record with `is_new = true`
+- **THEN** create `account_item_newness` record with `is_new = true`
 
 #### Scenario: New match suggestions generated
 - **WHEN** enrichment pipeline or re-match produces `match_result` rows for songs
 - **THEN** call `markItemsNew` for songs that received at least one match suggestion
-- **AND** set `is_new = true` on those `item_status` records
+- **AND** set `is_new = true` on those `account_item_newness` records
 
 #### Scenario: New playlists discovered
 - **WHEN** new playlists sync from Spotify
-- **THEN** create `item_status` record with `is_new = true`
+- **THEN** create `account_item_newness` record with `is_new = true`
 
 ---
 
@@ -40,12 +40,12 @@ The system SHALL display counts of items in navigation, distinguishing total act
 #### Scenario: Dashboard "new songs" count (new only)
 - **WHEN** rendering the dashboard "Ready to match" widget
 - **THEN** show count of songs with actionable suggestions that the user has NOT yet seen
-- **AND** query: join `match_result` with `item_status` where `is_new = true` and `context_id = (latest context)`
+- **AND** query: join `match_result` with `account_item_newness` where `is_new = true` and `context_id = (latest context)`
 
 #### Scenario: Stats RPC returns new_suggestions
 - **WHEN** calling `get_liked_songs_stats`
 - **THEN** the return type SHALL include a `new_suggestions` column
-- **AND** `new_suggestions` SHALL count songs with undecided `match_result` rows AND `item_status.is_new = true`
+- **AND** `new_suggestions` SHALL count songs with undecided `match_result` rows AND `account_item_newness.is_new = true`
 
 #### Scenario: Playlists badge
 - **WHEN** rendering sidebar navigation
@@ -73,7 +73,7 @@ The system SHALL clear "new" status when user views items.
 
 ### Requirement: Action-Based Clearing
 
-The system SHALL clear "new" status via session-based batch `markSeen` when the user leaves the matching page, decoupled from individual actions. User decisions are recorded in `match_decision`, not `item_status`.
+The system SHALL clear "new" status via session-based batch `markSeen` when the user leaves the matching page, decoupled from individual actions. User decisions are recorded in `match_decision`, not `account_item_newness`.
 
 #### Scenario: Add to playlist
 - **WHEN** user adds song to a specific playlist
@@ -104,7 +104,7 @@ The system SHALL clear "new" status via session-based batch `markSeen` when the 
 
 ### Requirement: Matching Status Derivation
 
-The system SHALL derive matching status from `match_result` and `match_decision` records, NOT from `item_status.action_type`.
+The system SHALL derive matching status from `match_result` and `match_decision` records, NOT from `account_item_newness.action_type`.
 
 #### Scenario: Song has actionable suggestions
 - **WHEN** a song has `match_result` rows in the latest `match_context`
@@ -118,11 +118,11 @@ The system SHALL derive matching status from `match_result` and `match_decision`
 
 #### Scenario: Song has no suggestions
 - **WHEN** a song has no `match_result` rows in the latest `match_context`
-- **AND** the song has an `item_status` row (pipeline processed it)
+- **AND** the song has an `account_item_newness` row (pipeline processed it)
 - **THEN** the song's matching status is `no_suggestions`
 
 #### Scenario: Song is pending
-- **WHEN** a song has no `item_status` row
+- **WHEN** a song has no `account_item_newness` row
 - **THEN** the song's matching status is `pending`
 
 #### Scenario: SQL functions use match_result for filtering
@@ -163,10 +163,21 @@ The system SHALL automatically expire old "new" items.
 
 ---
 
+### Requirement: Account item newness schema
+
+The system SHALL store account-scoped item newness in `account_item_newness`.
+
+#### Scenario: Account item newness table exists
+- **WHEN** the schema is initialized
+- **THEN** `account_item_newness` table exists with `account_id`, `item_type`, `item_id`, `is_new`, `viewed_at`, and timestamps
+- **AND** it SHALL have a unique constraint over `(account_id, item_type, item_id)`
+
+---
+
 ## Database Schema
 
 ```sql
-CREATE TABLE item_status (
+CREATE TABLE account_item_newness (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   account_id UUID NOT NULL REFERENCES account(id) ON DELETE CASCADE,
   item_type TEXT NOT NULL,  -- 'song', 'match', 'analysis', 'playlist'
@@ -177,7 +188,7 @@ CREATE TABLE item_status (
   UNIQUE(account_id, item_type, item_id)
 );
 
-CREATE INDEX idx_item_status_new ON item_status(account_id, item_type)
+CREATE INDEX idx_account_item_newness_new ON account_item_newness(account_id, item_type)
   WHERE is_new = true;
 ```
 

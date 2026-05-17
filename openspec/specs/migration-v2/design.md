@@ -24,8 +24,8 @@
 | `user_preferences`        | —                         | DROP (#017)                  |
 | `provider_keys`           | —                         | DROP (#016)                  |
 | `analysis_jobs`           | `job`                     | Unified (#021)               |
-| `track_analysis_attempts` | `job_failure`             | Rename                       |
-| —                         | `item_status`             | NEW (newness)                |
+| `track_analysis_attempts` | `job_item_failure`        | Rename                       |
+| —                         | `account_item_newness`    | NEW (newness)                |
 | —                         | `user_preferences`        | NEW (settings)               |
 
 ---
@@ -65,7 +65,7 @@
 | #007     | UUID primary keys                   | Platform independence; Supabase RLS patterns  |
 | #008     | Separate `song_audio_feature` table | Different source/lifecycle; keeps `song` lean |
 | #010     | Soft delete with `unliked_at`       | Preserves timeline for archival               |
-| #021-023 | Unified `job` + `job_failure`       | Single query for "what's running?"            |
+| #021-023 | Unified `job` + `job_item_failure`  | Single query for "what's running?"            |
 | #044-046 | Separate `user_preferences` table   | Clean separation from account identity        |
 
 ---
@@ -147,7 +147,7 @@ Tier 2:               liked_song, playlist, song_audio_feature,
                       song_analysis, song_embedding, job
 
 Tier 3:               playlist_song, playlist_analysis, playlist_profile,
-                      job_failure, match_context, item_status, user_preferences
+                      job_item_failure, match_context, account_item_newness, user_preferences
 
 Tier 4:               match_result
 ```

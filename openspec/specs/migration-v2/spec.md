@@ -77,9 +77,9 @@ The system SHALL use soft delete for unliked songs to preserve timeline history.
 - **WHEN** fetching user's liked songs
 - **THEN** filter with `WHERE unliked_at IS NULL`
 
-#### Scenario: Matching status derived from item_status
+#### Scenario: Matching status derived from account_item_newness
 - **WHEN** a liked song is matched or ignored
-- **THEN** the matching status is recorded in `item_status` (not `liked_song.status`)
+- **THEN** the matching status is recorded in `account_item_newness` (not `liked_song.status`)
 - **AND** `liked_song` table SHALL NOT have a `status` column
 
 ### Requirement: Newness Tracking
@@ -88,7 +88,7 @@ The system SHALL track "new" status for items to display badges in the UI.
 
 #### Scenario: New songs synced
 - **WHEN** new liked songs are synced from Spotify
-- **THEN** create `item_status` records with `is_new = true`
+- **THEN** create `account_item_newness` records with `is_new = true`
 
 #### Scenario: View-based clearing
 - **WHEN** user views a new item for 2+ seconds
@@ -98,9 +98,9 @@ The system SHALL track "new" status for items to display badges in the UI.
 - **WHEN** user adds a song to a playlist
 - **THEN** set `actioned_at`, `action_type`, and clear `is_new`
 
-#### Scenario: Item status table exists
+#### Scenario: Account item newness table exists
 - **WHEN** the schema is initialized
-- **THEN** `item_status` table exists with account_id, item_type, item_id, is_new, timestamps
+- **THEN** `account_item_newness` table exists with account_id, item_type, item_id, is_new, timestamps
 
 ### Requirement: User Preferences Separation
 
@@ -142,7 +142,7 @@ The system SHALL use functional query modules owned by bounded contexts instead 
 - **WHEN** services need to read or write matching data
 - **THEN** import from `src/lib/domains/taste/song-matching/queries.ts`
 
-#### Scenario: Newness module provides item status tracking
+#### Scenario: Newness module provides account item newness tracking
 - **WHEN** services need to track new, viewed, or actioned items
 - **THEN** import from `src/lib/domains/library/liked-songs/status-queries.ts`
 
@@ -297,7 +297,7 @@ The system SHALL track individual item failures within jobs.
 
 #### Scenario: Failed item recorded
 - **WHEN** a song or playlist fails during a job
-- **THEN** create `job_failure` with item_type, item_id (UUID), error_type, and error_message
+- **THEN** create `job_item_failure` with item_type, item_id (UUID), error_type, and error_message
 
 ### Requirement: Factory-Free Service Composition
 

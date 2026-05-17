@@ -101,12 +101,12 @@ The system SHALL derive actionable suggestions from `match_result` for the lates
 #### Scenario: Dashboard badge count (new only)
 - **WHEN** computing the dashboard "X new songs" count
 - **THEN** count distinct `song_id` values in `match_result` for the latest `match_context`
-- **AND** filter to songs where `item_status.is_new = true`
+- **AND** filter to songs where `account_item_newness.is_new = true`
 
 #### Scenario: Matching page song list ordering
 - **WHEN** rendering the matching page song queue
 - **THEN** query `match_result` for the latest `match_context`
-- **AND** order new songs first (`item_status.is_new DESC`), then by score descending
+- **AND** order new songs first (`account_item_newness.is_new DESC`), then by score descending
 
 #### Scenario: Playlist suggestions for a song
 - **WHEN** showing playlist suggestions for song X

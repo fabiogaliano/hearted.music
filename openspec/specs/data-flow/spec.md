@@ -19,7 +19,7 @@ Define the canonical data-flow patterns for UI state, server state, and job prog
 ├─────────────────────────────────────────────────────────┤
 │ Server Functions (TanStack Start createServerFn)        │
 ├─────────────────────────────────────────────────────────┤
-│ Query Modules (lib/data/*.ts)                           │
+│ Domain/platform query modules                            │
 ├─────────────────────────────────────────────────────────┤
 │ Supabase (PostgreSQL + RLS)                             │
 └─────────────────────────────────────────────────────────┘
@@ -65,7 +65,7 @@ The system SHALL use Zustand for ephemeral UI state only.
 
 ### Requirement: Server Functions for Mutations
 
-The system SHALL use TanStack Start server functions for data mutations. Matching actions SHALL write to `match_decision`, not `item_status`. All matching-related server functions SHALL reside in `src/lib/server/matching.functions.ts`.
+The system SHALL use TanStack Start server functions for data mutations. Matching actions SHALL write to `match_decision`, not `account_item_newness`. All matching-related server functions SHALL reside in `src/lib/server/matching.functions.ts`.
 
 #### Scenario: Server function definition
 - **WHEN** creating a server mutation
@@ -82,7 +82,7 @@ The system SHALL use TanStack Start server functions for data mutations. Matchin
 #### Scenario: addSongToPlaylist writes match_decision
 - **WHEN** user adds song to a specific playlist
 - **THEN** `addSongToPlaylist` server function SHALL insert `match_decision(song_id, playlist_id, 'added')`
-- **AND** SHALL NOT write to `item_status.action_type`
+- **AND** SHALL NOT write to `account_item_newness.action_type`
 - **AND** SHALL reside in `src/lib/server/matching.functions.ts`
 
 #### Scenario: dismissSong batch-declines
@@ -248,10 +248,10 @@ queryKey: ['preferences', accountId]
 ## Server Function Pattern
 
 ```typescript
-// lib/server/liked-songs.server.ts
+// lib/server/matching.functions.ts
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { insertMatchDecision } from '~/lib/data/match-decision-queries'
+import { upsertMatchDecision } from '~/lib/domains/taste/song-matching/decision-queries'
 
 export const addSongToPlaylist = createServerFn()
   .validator(z.object({
@@ -261,8 +261,8 @@ export const addSongToPlaylist = createServerFn()
     spotifyPlaylistId: z.string().min(1),
   }))
   .handler(async ({ data }) => {
-    // Matching decisions are recorded in match_decision, not item_status
-    await insertMatchDecision(session.accountId, data.songId, data.playlistId, 'added')
+    // Matching decisions are recorded in match_decision, not account_item_newness
+    await upsertMatchDecision(session.accountId, data.songId, data.playlistId, 'added')
     return { success: true }
   })
 ```
