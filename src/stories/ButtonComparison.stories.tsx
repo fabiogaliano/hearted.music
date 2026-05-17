@@ -1,14 +1,14 @@
 import type { Story } from "@ladle/react";
 import {
-	X,
-	LockSimple,
 	ArrowSquareOut,
 	CaretLeft,
 	CaretRight,
+	LockSimple,
+	X,
 } from "@phosphor-icons/react";
+import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import { Button } from "@/components/ui/Button";
 
 function Row({
 	label,

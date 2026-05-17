@@ -240,11 +240,11 @@ export class LocalProvider implements MLProvider {
 		documents: string[],
 		options?: RerankOptions,
 	): Promise<Result<RerankResult, MLProviderError>> {
+		const model = this.metadata.rerankerModel;
+		if (!model) throw new Error("Reranker model not configured");
+
 		if (documents.length === 0) {
-			return Result.ok({
-				scores: [],
-				model: this.metadata.rerankerModel!,
-			});
+			return Result.ok({ scores: [], model });
 		}
 
 		try {
@@ -271,10 +271,7 @@ export class LocalProvider implements MLProvider {
 			const topK = options?.topK ?? 0;
 			const finalScores = topK > 0 ? sorted.slice(0, topK) : sorted;
 
-			return Result.ok({
-				scores: finalScores,
-				model: this.metadata.rerankerModel!,
-			});
+			return Result.ok({ scores: finalScores, model });
 		} catch (error) {
 			return this.mapDirectError(error, "rerank");
 		}

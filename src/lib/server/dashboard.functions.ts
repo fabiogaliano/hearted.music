@@ -15,7 +15,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import type { ActivityItem, MatchPreview } from "@/features/dashboard/types";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { getLastCompletedSync } from "@/lib/platform/jobs/sync-phase-jobs";
 import { getAnalyzedCountForAccount } from "@/lib/domains/enrichment/content-analysis/queries";
 import {
 	getCount as getLikedSongCount,
@@ -26,6 +25,7 @@ import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries"
 import { getPlaylistCount } from "@/lib/domains/library/playlists/queries";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
+import { getLastCompletedSync } from "@/lib/platform/jobs/sync-phase-jobs";
 import { getUndecidedSongs } from "@/lib/server/matching.functions";
 
 // ============================================================================

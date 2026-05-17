@@ -1,15 +1,14 @@
 import type { Story } from "@ladle/react";
-import { SongSelectionBar } from "@/features/liked-songs/components/SongSelectionBar";
-import { ExtensionSetupTrail } from "@/features/onboarding/components/ExtensionSetupTrail";
-import { fonts } from "@/lib/theme/fonts";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
-
 import {
 	ArrowSquareOut,
 	Check,
 	LockSimple,
 	Sparkle,
 } from "@phosphor-icons/react";
+import { SongSelectionBar } from "@/features/liked-songs/components/SongSelectionBar";
+import { ExtensionSetupTrail } from "@/features/onboarding/components/ExtensionSetupTrail";
+import { fonts } from "@/lib/theme/fonts";
+import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
 function Section({
 	title,

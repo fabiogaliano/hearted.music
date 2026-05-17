@@ -160,7 +160,8 @@ export const acknowledgePlaylistCreate = createServerFn({ method: "POST" })
 	.inputValidator((data) => AcknowledgeCreateSchema.parse(data))
 	.handler(async ({ data, context }) => {
 		const { session } = context;
-		const spotifyId = parsePlaylistSpotifyId(data.uri)!;
+		const spotifyId = parsePlaylistSpotifyId(data.uri);
+		if (!spotifyId) throw new Error(`Invalid Spotify URI: ${data.uri}`);
 
 		const result = await upsertPlaylists(session.accountId, [
 			{
@@ -240,7 +241,8 @@ export const acknowledgePlaylistDelete = createServerFn({ method: "POST" })
 	.inputValidator((data) => AcknowledgeDeleteSchema.parse(data))
 	.handler(async ({ data, context }) => {
 		const { session } = context;
-		const spotifyId = parsePlaylistSpotifyId(data.uri)!;
+		const spotifyId = parsePlaylistSpotifyId(data.uri);
+		if (!spotifyId) throw new Error(`Invalid Spotify URI: ${data.uri}`);
 
 		const existing = await getPlaylistBySpotifyId(session.accountId, spotifyId);
 		if (Result.isError(existing)) {

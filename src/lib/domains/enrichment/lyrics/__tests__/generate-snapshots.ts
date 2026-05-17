@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
 
-import { Result } from "better-result";
 /**
  * Lyrics Snapshot Generator
  *
@@ -17,6 +16,7 @@ import { Result } from "better-result";
 import { existsSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { Result } from "better-result";
 import { LyricsService } from "../service";
 import type { TransformedLyricsBySection } from "../utils/lyrics-transformer";
 

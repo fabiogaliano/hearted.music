@@ -28,8 +28,8 @@ vi.mock("../record-failure", () => ({
 	recordStageFailure: vi.fn().mockResolvedValue(Result.ok(undefined)),
 }));
 
-import { recordStageFailure } from "../record-failure";
 import { resolveJobStageFailures } from "@/lib/platform/jobs/item-failures";
+import { recordStageFailure } from "../record-failure";
 import { runGenreTagging } from "../stages/genre-tagging";
 
 function makeSong(id: string, genres: string[] = []): Song {

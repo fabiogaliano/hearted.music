@@ -23,11 +23,6 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
-import {
-	createJob,
-	type JobProgress,
-	updateJobProgress,
-} from "@/lib/platform/jobs/repository";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import { getBatch as getAudioFeaturesBatch } from "@/lib/domains/enrichment/audio-features/queries";
 import { get as getSongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
@@ -36,6 +31,11 @@ import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
 import { getApiKeyForProvider } from "@/lib/integrations/llm/config";
 import { LlmService } from "@/lib/integrations/llm/service";
 import { finalizeJob, startJob } from "@/lib/platform/jobs/lifecycle";
+import {
+	createJob,
+	type JobProgress,
+	updateJobProgress,
+} from "@/lib/platform/jobs/repository";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	NoLyricsAvailableError,

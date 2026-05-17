@@ -35,7 +35,7 @@ export function likedSongsStatsQueryOptions(accountId: string) {
 export function songSuggestionsQueryOptions(songId: string | null) {
 	return queryOptions({
 		queryKey: likedSongsKeys.songSuggestions(songId ?? ""),
-		queryFn: () => getSongSuggestions({ data: { songId: songId! } }),
+		queryFn: () => getSongSuggestions({ data: { songId: songId as string } }),
 		enabled: songId != null,
 		staleTime: 30 * 60_000,
 	});

@@ -33,12 +33,12 @@ import {
 	markJobCompleted,
 	markJobFailed,
 } from "@/lib/platform/jobs/repository";
-import type { LibraryProcessingApplyError } from "../types";
 import {
 	executeEnrichmentJob,
 	executeMatchSnapshotRefreshJob,
 } from "@/worker/execute";
 import { runClaimedJob } from "../runner";
+import type { LibraryProcessingApplyError } from "../types";
 
 function makeJob(overrides: Partial<Job> = {}): Job {
 	return {

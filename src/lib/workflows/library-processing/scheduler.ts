@@ -1,10 +1,5 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import {
-	ensureEnrichmentJob,
-	ensureMatchSnapshotRefreshJob,
-} from "@/lib/platform/jobs/library-processing-queue";
-import { getJobById } from "@/lib/platform/jobs/repository";
 import { readBillingState } from "@/lib/domains/billing/queries";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
@@ -12,7 +7,12 @@ import {
 	getPlaylistSongs,
 	getTargetPlaylists,
 } from "@/lib/domains/library/playlists/queries";
+import {
+	ensureEnrichmentJob,
+	ensureMatchSnapshotRefreshJob,
+} from "@/lib/platform/jobs/library-processing-queue";
 import { EnrichmentChunkProgressSchema } from "@/lib/platform/jobs/progress/enrichment";
+import { getJobById } from "@/lib/platform/jobs/repository";
 import {
 	batchSizeForSequence,
 	makeInitialProgress,

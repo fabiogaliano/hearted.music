@@ -110,7 +110,8 @@ describe("FlagPlaylistsStep", () => {
 			.getByText("Continue with 2 playlists")
 			.closest("button");
 		expect(continueButton).toBeTruthy();
-		await user.click(continueButton!);
+		if (!continueButton) throw new Error("button not found");
+		await user.click(continueButton);
 
 		await waitFor(() => {
 			expect(mockSavePlaylistTargets).toHaveBeenCalledWith({
@@ -164,8 +165,8 @@ describe("FlagPlaylistsStep", () => {
 			(btn) => !btn.hasAttribute("disabled"),
 		);
 		expect(enabledSkipButton).toBeDefined();
-
-		await user.click(enabledSkipButton!);
+		if (!enabledSkipButton) throw new Error("skip button not found");
+		await user.click(enabledSkipButton);
 
 		await waitFor(() => {
 			expect(mockSavePlaylistTargets).toHaveBeenCalledWith({

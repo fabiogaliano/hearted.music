@@ -12,11 +12,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getRequest } from "@tanstack/react-start/server";
 import { Result } from "better-result";
-import { validateExtensionApiToken } from "@/lib/platform/auth/extension-api-tokens";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { getCount } from "@/lib/domains/library/liked-songs/queries";
 import { getPlaylistCount } from "@/lib/domains/library/playlists/queries";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
+import { validateExtensionApiToken } from "@/lib/platform/auth/extension-api-tokens";
 import {
 	extensionCorsPreflightResponse,
 	getExtensionCorsHeaders,

@@ -39,9 +39,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 import { toast } from "sonner";
+import type { SyncStats } from "@/features/onboarding/types";
 import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
-import type { SyncStats } from "@/features/onboarding/types";
 import {
 	getOnboardingSession,
 	saveOnboardingStep,

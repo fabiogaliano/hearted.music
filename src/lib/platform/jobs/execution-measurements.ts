@@ -1,8 +1,8 @@
 import { Result } from "better-result";
+import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json, Tables } from "@/lib/data/database.types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { fromSupabaseMaybe } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "@/lib/data/client";
 
 export type JobExecutionMeasurement = Tables<"job_execution_measurement">;
 

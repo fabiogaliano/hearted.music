@@ -8,9 +8,9 @@
  */
 
 import { Result } from "better-result";
-import type { JobProgress } from "@/lib/platform/jobs/repository";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
+import type { JobProgress } from "@/lib/platform/jobs/repository";
 import { computeAdaptiveWeights, DEFAULT_MATCHING_CONFIG } from "./config";
 import { computeAudioFeatureScore } from "./scoring";
 import { cosineSimilarity } from "./semantic";

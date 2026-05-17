@@ -13,9 +13,9 @@ import { Result } from "better-result";
 import {
 	type Job,
 	type JobProgress,
-	markJobRunning,
 	markJobCompleted,
 	markJobFailed,
+	markJobRunning,
 } from "@/lib/platform/jobs/repository";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { withRetry } from "@/lib/shared/utils/result-wrappers/generic";

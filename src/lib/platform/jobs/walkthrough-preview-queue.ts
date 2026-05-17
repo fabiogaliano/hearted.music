@@ -1,13 +1,13 @@
 import { Result } from "better-result";
-import type { JobProgress } from "@/lib/platform/jobs/progress/types";
-import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
-import { fromSupabaseSingle } from "@/lib/shared/utils/result-wrappers/supabase";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { JobProgress } from "@/lib/platform/jobs/progress/types";
 import {
+	getActiveJob,
 	type Job,
 	type JobType,
-	getActiveJob,
 } from "@/lib/platform/jobs/repository";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import { fromSupabaseSingle } from "@/lib/shared/utils/result-wrappers/supabase";
 
 export async function ensureWalkthroughPreviewJob(
 	accountId: string,

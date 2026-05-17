@@ -1,6 +1,5 @@
 import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
-import { updateJobProgress } from "@/lib/platform/jobs/repository";
 import { getBatch } from "@/lib/domains/enrichment/audio-features/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { getByIds } from "@/lib/domains/library/songs/queries";
@@ -19,6 +18,7 @@ import {
 	type MatchRefreshStageName,
 	type MatchSnapshotRefreshProgress,
 } from "@/lib/platform/jobs/progress/match-snapshot-refresh";
+import { updateJobProgress } from "@/lib/platform/jobs/repository";
 import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
 import { rerankMatches } from "@/lib/workflows/enrichment-pipeline/reranking";
 import { loadExclusionSet } from "@/lib/workflows/enrichment-pipeline/stages/matching";

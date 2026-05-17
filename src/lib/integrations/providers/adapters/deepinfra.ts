@@ -11,12 +11,12 @@
 
 import { Result } from "better-result";
 import {
-	getEmbeddingModel,
-	getEmbeddingDims,
-	embedText,
 	embedBatch,
-	rerank,
+	embedText,
+	getEmbeddingDims,
+	getEmbeddingModel,
 	isAvailable,
+	rerank,
 } from "@/lib/integrations/deepinfra/service";
 import {
 	MLApiError,

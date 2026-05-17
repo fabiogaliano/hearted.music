@@ -2,8 +2,8 @@ import { Result } from "better-result";
 import { get } from "@/lib/domains/enrichment/content-analysis/queries";
 import {
 	analyzeSongBatch,
-	createSongBatchAnalyzerDeps,
 	type BatchSong,
+	createSongBatchAnalyzerDeps,
 } from "@/lib/domains/enrichment/content-analysis/song-batch-analysis";
 import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";

@@ -15,11 +15,11 @@ import { PanelVariantLinesStage } from "@/features/liked-songs/components/varian
 import { PanelVariantLyricDeck } from "@/features/liked-songs/components/variants/PanelVariantLyricDeck";
 import { PanelVariantMoodFirst } from "@/features/liked-songs/components/variants/PanelVariantMoodFirst";
 import { PanelVariantMotionRibbon } from "@/features/liked-songs/components/variants/PanelVariantMotionRibbon";
-import { PanelVariantQuoteFirst } from "@/features/liked-songs/components/variants/PanelVariantQuoteFirst";
 import { PanelVariantQuietLoud } from "@/features/liked-songs/components/variants/PanelVariantQuietLoud";
+import { PanelVariantQuoteFirst } from "@/features/liked-songs/components/variants/PanelVariantQuoteFirst";
 import { PanelVariantReverse } from "@/features/liked-songs/components/variants/PanelVariantReverse";
-import { PanelVariantScrubTape } from "@/features/liked-songs/components/variants/PanelVariantScrubTape";
 import { PanelVariantScrollScore } from "@/features/liked-songs/components/variants/PanelVariantScrollScore";
+import { PanelVariantScrubTape } from "@/features/liked-songs/components/variants/PanelVariantScrubTape";
 import { PanelVariantTapReveal } from "@/features/liked-songs/components/variants/PanelVariantTapReveal";
 import { PanelVariantThemePivot } from "@/features/liked-songs/components/variants/PanelVariantThemePivot";
 import { PanelVariantVerbatim } from "@/features/liked-songs/components/variants/PanelVariantVerbatim";

@@ -35,7 +35,9 @@ function shuffleArray<T>(arr: T[]): T[] {
 	const shuffled = [...arr];
 	for (let i = shuffled.length - 1; i > 0; i--) {
 		const j = Math.floor(Math.random() * (i + 1));
-		[shuffled[i]!, shuffled[j]!] = [shuffled[j]!, shuffled[i]!];
+		const a = shuffled[j] as T;
+		shuffled[j] = shuffled[i] as T;
+		shuffled[i] = a;
 	}
 	return shuffled;
 }
@@ -45,7 +47,10 @@ export function getShuffledLandingData(): {
 	initialDetail: LandingSongDetail;
 } {
 	const shuffled = shuffleArray(manifest);
-	const firstSong = shuffled[0]!;
-	const initialDetail = detailsByTrackId.get(firstSong.spotifyTrackId)!;
+	const firstSong = shuffled[0];
+	if (!firstSong) throw new Error("landing manifest is empty");
+	const initialDetail = detailsByTrackId.get(firstSong.spotifyTrackId);
+	if (!initialDetail)
+		throw new Error(`No detail for track ${firstSong.spotifyTrackId}`);
 	return { manifest: shuffled, initialDetail };
 }

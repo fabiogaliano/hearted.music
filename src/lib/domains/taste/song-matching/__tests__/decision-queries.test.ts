@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MatchDecision } from "../decision-queries";
 
 let upsertResponse: { data: unknown; error: unknown };
@@ -127,11 +127,12 @@ describe("upsertMatchDecision", () => {
 		await upsertMatchDecision(ACCOUNT_ID, SONG_ID, PLAYLIST_ID, "added");
 
 		expect(lastUpsertArgs).not.toBeNull();
-		expect(lastUpsertArgs!.options).toEqual({
+		assert(lastUpsertArgs !== null);
+		expect(lastUpsertArgs.options).toEqual({
 			onConflict: "account_id,song_id,playlist_id",
 		});
 
-		const data = lastUpsertArgs!.data as Record<string, unknown>;
+		const data = lastUpsertArgs.data as Record<string, unknown>;
 		expect(data.account_id).toBe(ACCOUNT_ID);
 		expect(data.song_id).toBe(SONG_ID);
 		expect(data.playlist_id).toBe(PLAYLIST_ID);
@@ -242,11 +243,12 @@ describe("upsertMatchDecisions", () => {
 		]);
 
 		expect(lastUpsertArgs).not.toBeNull();
-		expect(lastUpsertArgs!.options).toEqual({
+		assert(lastUpsertArgs !== null);
+		expect(lastUpsertArgs.options).toEqual({
 			onConflict: "account_id,song_id,playlist_id",
 		});
 
-		const rows = lastUpsertArgs!.data as Record<string, unknown>[];
+		const rows = lastUpsertArgs.data as Record<string, unknown>[];
 		expect(rows).toHaveLength(1);
 		expect(rows[0].account_id).toBe(ACCOUNT_ID);
 		expect(rows[0].song_id).toBe(SONG_ID);
@@ -359,8 +361,9 @@ describe("getMatchDecisionsForSongs", () => {
 			expect(result.value).toHaveLength(2);
 		}
 
-		expect(lastChain!.eq).toHaveBeenCalledWith("account_id", ACCOUNT_ID);
-		expect(lastChain!.in).toHaveBeenCalledWith("song_id", [
+		assert(lastChain !== null);
+		expect(lastChain.eq).toHaveBeenCalledWith("account_id", ACCOUNT_ID);
+		expect(lastChain.in).toHaveBeenCalledWith("song_id", [
 			"song-001",
 			"song-002",
 		]);

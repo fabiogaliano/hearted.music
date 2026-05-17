@@ -127,8 +127,9 @@ describe.skipIf(!IS_LOCAL)(
 	() => {
 		it("baseline: song with no failure rows needs audio_features and genre_tagging", async () => {
 			if (!supabase || !fixture) throw new Error("missing");
+			const f = fixture;
 			const rows = await callSelector(fixture.accountId);
-			const row = rows.find((r) => r.song_id === fixture!.songId);
+			const row = rows.find((r) => r.song_id === f.songId);
 			expect(row).toBeDefined();
 			expect(row?.needs_audio_features).toBe(true);
 			expect(row?.needs_genre_tagging).toBe(true);
@@ -136,6 +137,7 @@ describe.skipIf(!IS_LOCAL)(
 
 		it("non-terminal failure with active suppress_until suppresses the stage", async () => {
 			if (!supabase || !fixture) throw new Error("missing");
+			const f = fixture;
 			const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
 			await supabase
@@ -152,7 +154,7 @@ describe.skipIf(!IS_LOCAL)(
 				.throwOnError();
 
 			const rows = await callSelector(fixture.accountId);
-			const row = rows.find((r) => r.song_id === fixture!.songId);
+			const row = rows.find((r) => r.song_id === f.songId);
 			expect(row?.needs_audio_features).toBe(false);
 			// Other stages still need work
 			expect(row?.needs_genre_tagging).toBe(true);
@@ -160,6 +162,7 @@ describe.skipIf(!IS_LOCAL)(
 
 		it("expired suppress_until does NOT suppress (auto-recovery)", async () => {
 			if (!supabase || !fixture) throw new Error("missing");
+			const f = fixture;
 			const past = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
 			await supabase
@@ -176,12 +179,13 @@ describe.skipIf(!IS_LOCAL)(
 				.throwOnError();
 
 			const rows = await callSelector(fixture.accountId);
-			const row = rows.find((r) => r.song_id === fixture!.songId);
+			const row = rows.find((r) => r.song_id === f.songId);
 			expect(row?.needs_audio_features).toBe(true);
 		});
 
 		it("resolved_at set means the row no longer suppresses, even with future suppress_until", async () => {
 			if (!supabase || !fixture) throw new Error("missing");
+			const f = fixture;
 			const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
 			await supabase
@@ -199,12 +203,13 @@ describe.skipIf(!IS_LOCAL)(
 				.throwOnError();
 
 			const rows = await callSelector(fixture.accountId);
-			const row = rows.find((r) => r.song_id === fixture!.songId);
+			const row = rows.find((r) => r.song_id === f.songId);
 			expect(row?.needs_genre_tagging).toBe(true);
 		});
 
 		it("terminal failure excludes the song entirely (no row returned)", async () => {
 			if (!supabase || !fixture) throw new Error("missing");
+			const f = fixture;
 			await supabase
 				.from("job_item_failure")
 				.insert({
@@ -218,11 +223,12 @@ describe.skipIf(!IS_LOCAL)(
 				.throwOnError();
 
 			const rows = await callSelector(fixture.accountId);
-			expect(rows.find((r) => r.song_id === fixture!.songId)).toBeUndefined();
+			expect(rows.find((r) => r.song_id === f.songId)).toBeUndefined();
 		});
 
 		it("song_analysis stage suppression: active suppress_until blocks needs_analysis", async () => {
 			if (!supabase || !fixture) throw new Error("missing");
+			const f = fixture;
 			const future = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
 
 			await supabase
@@ -239,12 +245,13 @@ describe.skipIf(!IS_LOCAL)(
 				.throwOnError();
 
 			const rows = await callSelector(fixture.accountId);
-			const row = rows.find((r) => r.song_id === fixture!.songId);
+			const row = rows.find((r) => r.song_id === f.songId);
 			expect(row?.needs_analysis).toBe(false);
 		});
 
 		it("resolve_job_item_stage_failures RPC clears suppression so stage is selectable again", async () => {
 			if (!supabase || !fixture) throw new Error("missing");
+			const f = fixture;
 			const future = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
 
 			await supabase
@@ -261,7 +268,7 @@ describe.skipIf(!IS_LOCAL)(
 				.throwOnError();
 
 			let rows = await callSelector(fixture.accountId);
-			let row = rows.find((r) => r.song_id === fixture!.songId);
+			let row = rows.find((r) => r.song_id === f.songId);
 			expect(row?.needs_audio_features).toBe(false);
 
 			const { error: rpcError } = await supabase.rpc(
@@ -275,7 +282,7 @@ describe.skipIf(!IS_LOCAL)(
 			expect(rpcError).toBeNull();
 
 			rows = await callSelector(fixture.accountId);
-			row = rows.find((r) => r.song_id === fixture!.songId);
+			row = rows.find((r) => r.song_id === f.songId);
 			expect(row?.needs_audio_features).toBe(true);
 		});
 

@@ -17,10 +17,9 @@
  */
 
 import { Result } from "better-result";
-
+import { getTargetPlaylists } from "@/lib/domains/library/playlists/queries";
 import { getActiveJob } from "@/lib/platform/jobs/repository";
 import { ensureWalkthroughPreviewJob } from "@/lib/platform/jobs/walkthrough-preview-queue";
-import { getTargetPlaylists } from "@/lib/domains/library/playlists/queries";
 
 import {
 	computePreviewFingerprint,

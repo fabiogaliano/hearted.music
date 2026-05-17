@@ -1,4 +1,6 @@
 import { Result } from "better-result";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Enums, Tables } from "@/lib/data/database.types";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
 import {
 	JobProgressSchema as JobProgressSchemaImpl,
@@ -10,8 +12,6 @@ import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Enums, Tables } from "@/lib/data/database.types";
 
 export type Job = Tables<"job">;
 export type JobType = Enums<"job_type">;

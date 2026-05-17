@@ -11,9 +11,9 @@
  */
 
 import { Result } from "better-result";
+import { createAdminSupabaseClient } from "@/lib/data/client";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { fromSupabaseSingle } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "@/lib/data/client";
 
 interface RecordJobFailureParams {
 	jobId: string;

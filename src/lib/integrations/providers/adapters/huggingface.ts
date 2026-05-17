@@ -14,10 +14,10 @@
 
 import { Result } from "better-result";
 import {
-	getEmbeddingModel,
-	getEmbeddingDims,
-	embedText,
 	embedBatch,
+	embedText,
+	getEmbeddingDims,
+	getEmbeddingModel,
 	isAvailable,
 } from "@/lib/integrations/huggingface/service";
 import {

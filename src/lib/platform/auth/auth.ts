@@ -17,9 +17,9 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { env } from "@/env";
 import {
-	user,
-	session,
 	oauthAccount,
+	session,
+	user,
 	verification,
 } from "@/lib/platform/auth/auth-schema";
 

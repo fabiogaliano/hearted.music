@@ -24,8 +24,8 @@
 
 import { Result } from "better-result";
 import { beforeAll, describe, expect, test } from "vitest";
-import * as jobsData from "@/lib/platform/jobs/repository";
 import type { JobProgress } from "@/lib/platform/jobs/progress/types";
+import * as jobsData from "@/lib/platform/jobs/repository";
 import type { PipelineResult } from "../pipeline";
 import { createAnalysisPipeline, type SongToAnalyze } from "../pipeline";
 
@@ -117,7 +117,8 @@ async function getOrCreateTestSongs(): Promise<SongToAnalyze[]> {
 
 	// Build SongToAnalyze array with real song IDs
 	return KNOWN_TRACKS.map((track) => {
-		const song = songMap.get(track.spotifyId)!;
+		const song = songMap.get(track.spotifyId);
+		if (!song) throw new Error(`No song found for track ${track.spotifyId}`);
 		return {
 			songId: song.id,
 			artist: track.artist,

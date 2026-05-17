@@ -1,15 +1,15 @@
 import { Result } from "better-result";
+import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json } from "@/lib/data/database.types";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
 import { createInitialMatchSnapshotRefreshProgress } from "@/lib/platform/jobs/progress/match-snapshot-refresh";
-import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
-import { fromSupabaseSingle } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "@/lib/data/client";
 import {
+	getActiveJob,
 	type Job,
 	type JobType,
-	getActiveJob,
 } from "@/lib/platform/jobs/repository";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import { fromSupabaseSingle } from "@/lib/shared/utils/result-wrappers/supabase";
 
 function enrichmentProgressToJson(progress: EnrichmentChunkProgress): Json {
 	const stages: { [key: string]: Json | undefined } = {};

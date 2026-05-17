@@ -8,10 +8,10 @@ import type {
 } from "@/features/liked-songs/types";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
 import {
-	type LikedSongPageRow,
-	getPageWithDetails,
 	getPageRowBySlug,
+	getPageWithDetails,
 	getStats,
+	type LikedSongPageRow,
 } from "@/lib/domains/library/liked-songs/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 

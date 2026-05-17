@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { describe, expect, it, vi } from "vitest";
+import { assert, describe, expect, it, vi } from "vitest";
 import type {
 	MatchingSong,
 	MatchResult,
@@ -83,11 +83,13 @@ describe("rerankMatches", () => {
 		await rerankMatches(matches, songs, playlists, reranker);
 
 		// s1's score should now be the reranked score
-		const s1Results = matches.get("s1")!;
+		const s1Results = matches.get("s1");
+		assert(s1Results !== undefined);
 		expect(s1Results[0].score).toBe(0.3);
 
 		// s2's score should be updated too
-		const s2Results = matches.get("s2")!;
+		const s2Results = matches.get("s2");
+		assert(s2Results !== undefined);
 		expect(s2Results[0].score).toBe(0.95);
 	});
 
@@ -126,8 +128,9 @@ describe("rerankMatches", () => {
 
 		// Both should produce identical results
 		for (const songId of ["s1", "s2"]) {
-			const pipelineResults = pipelineMatches.get(songId)!;
-			const rematchResults = rematchMatches.get(songId)!;
+			const pipelineResults = pipelineMatches.get(songId);
+			const rematchResults = rematchMatches.get(songId);
+			assert(pipelineResults !== undefined && rematchResults !== undefined);
 
 			expect(pipelineResults).toHaveLength(rematchResults.length);
 			for (let i = 0; i < pipelineResults.length; i++) {
@@ -153,7 +156,9 @@ describe("rerankMatches", () => {
 		await rerankMatches(matches, songs, playlists, failingReranker);
 
 		// Scores should be unchanged
-		expect(matches.get("s1")![0].score).toBe(0.8);
+		const s1 = matches.get("s1");
+		assert(s1 !== undefined);
+		expect(s1[0].score).toBe(0.8);
 	});
 
 	it("handles reranker returning reranked: false", async () => {
@@ -178,7 +183,9 @@ describe("rerankMatches", () => {
 		await rerankMatches(matches, songs, playlists, skippingReranker);
 
 		// Scores should be unchanged
-		expect(matches.get("s1")![0].score).toBe(0.8);
+		const s1 = matches.get("s1");
+		assert(s1 !== undefined);
+		expect(s1[0].score).toBe(0.8);
 	});
 
 	it("passes candidates to reranker in descending base-score order", async () => {

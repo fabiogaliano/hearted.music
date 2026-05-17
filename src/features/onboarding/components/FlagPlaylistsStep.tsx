@@ -9,9 +9,9 @@
 import { ArrowRight } from "@phosphor-icons/react";
 import { useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/Button";
 import { toast } from "sonner";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
+import { Button } from "@/components/ui/Button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";

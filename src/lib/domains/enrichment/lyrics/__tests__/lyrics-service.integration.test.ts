@@ -15,11 +15,11 @@
  *   bun src/lib/domains/enrichment/lyrics/__tests__/generate-snapshots.ts
  */
 
-import { Result } from "better-result";
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { beforeAll, describe, expect, test } from "vitest";
+import { Result } from "better-result";
+import { assert, beforeAll, describe, expect, test } from "vitest";
 
 import {
 	GeniusConfigError,
@@ -111,9 +111,9 @@ describe.skipIf(!RUN_VALIDATION || !HAS_TOKEN)(
 		let service: LyricsService;
 
 		beforeAll(async () => {
-			service = new LyricsService({
-				accessToken: process.env.GENIUS_CLIENT_TOKEN!,
-			});
+			const token = process.env.GENIUS_CLIENT_TOKEN;
+			if (!token) throw new Error("GENIUS_CLIENT_TOKEN not set");
+			service = new LyricsService({ accessToken: token });
 
 			console.log("\n🔄 Fetching lyrics from Genius API...");
 			results = await fetchAllSongs(service, snapshots);
@@ -140,11 +140,12 @@ describe.skipIf(!RUN_VALIDATION || !HAS_TOKEN)(
 				test("fetch succeeded", () => {
 					const res = results.get(key);
 					expect(res, `No result for ${key}`).toBeDefined();
+					assert(res !== undefined);
 					expect(
-						res!.error,
-						`Fetch failed: ${res!.error?.message}`,
+						res.error,
+						`Fetch failed: ${res.error?.message}`,
 					).toBeUndefined();
-					expect(res!.result, "Result is undefined").toBeDefined();
+					expect(res.result, "Result is undefined").toBeDefined();
 				});
 
 				test("same number of sections", () => {

@@ -16,9 +16,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
 import { z } from "zod";
-import { validateExtensionApiToken } from "@/lib/platform/auth/extension-api-tokens";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { createJob } from "@/lib/platform/jobs/repository";
 import { updatePhaseJobIds } from "@/lib/domains/library/accounts/preferences-queries";
 import { getAll } from "@/lib/domains/library/liked-songs/queries";
 import {
@@ -27,8 +25,10 @@ import {
 	type Playlist,
 } from "@/lib/domains/library/playlists/queries";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
+import { validateExtensionApiToken } from "@/lib/platform/auth/extension-api-tokens";
 import { completeJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
+import { createJob } from "@/lib/platform/jobs/repository";
 import {
 	extensionCorsPreflightResponse,
 	getExtensionCorsHeaders,

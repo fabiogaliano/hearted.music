@@ -24,7 +24,7 @@ export function playlistTrackPreviewQueryOptions(playlistId: string | null) {
 	return queryOptions({
 		queryKey: playlistKeys.trackPreview(playlistId ?? ""),
 		queryFn: () =>
-			getPlaylistTrackPreview({ data: { playlistId: playlistId! } }),
+			getPlaylistTrackPreview({ data: { playlistId: playlistId as string } }),
 		enabled: playlistId != null,
 		staleTime: 30 * 60_000,
 	});

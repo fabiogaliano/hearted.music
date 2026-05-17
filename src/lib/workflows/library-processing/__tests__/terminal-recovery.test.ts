@@ -36,8 +36,8 @@ vi.mock(
 );
 
 import { getLatestJobExecutionMeasurement } from "@/lib/platform/jobs/execution-measurements";
-import { applyLibraryProcessingChange } from "../service";
 import { findTerminalActiveRefs } from "../queries";
+import { applyLibraryProcessingChange } from "../service";
 import {
 	recoverDeadLetteredLibraryProcessingJob,
 	recoverDeadLetteredLibraryProcessingJobs,

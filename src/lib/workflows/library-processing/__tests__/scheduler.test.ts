@@ -50,12 +50,12 @@ vi.mock("@/lib/data/client", () => ({
 	}),
 }));
 
-import type { LibraryProcessingState } from "../types";
 import {
+	deriveNeedsTargetSongEnrichment,
 	executeEffect,
 	loadJobOutcomeMetadata,
-	deriveNeedsTargetSongEnrichment,
 } from "../scheduler";
+import type { LibraryProcessingState } from "../types";
 
 function makeState(
 	overrides: Partial<LibraryProcessingState> = {},

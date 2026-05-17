@@ -35,8 +35,8 @@ const { getByIds: mockGetSongsByIds } = await import(
 
 import {
 	analyzeSongBatch,
-	createSongBatchAnalyzerDeps,
 	type BatchSong,
+	createSongBatchAnalyzerDeps,
 	type SongBatchAnalyzerDeps,
 } from "../song-batch-analysis";
 

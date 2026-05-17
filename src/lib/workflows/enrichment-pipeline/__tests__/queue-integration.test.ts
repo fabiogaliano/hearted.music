@@ -303,7 +303,7 @@ describe("getActiveEnrichmentJob", () => {
 		expect(result).toBeOk();
 		if (Result.isOk(result)) {
 			expect(result.value).not.toBeNull();
-			expect(result.value!.id).toBe("job-active-999");
+			if (result.value) expect(result.value.id).toBe("job-active-999");
 		}
 	});
 });

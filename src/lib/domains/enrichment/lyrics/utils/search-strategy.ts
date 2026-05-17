@@ -278,7 +278,9 @@ export function findBestMatch(
 
 	// Check if best match meets minimum threshold
 	if (best.score >= MIN_COMBINED_SCORE) {
-		const matchingResult = results.find((r) => r.id === best.id)!;
+		const matchingResult = results.find((r) => r.id === best.id);
+		if (!matchingResult)
+			throw new Error(`Candidate ${best.id} not found in results`);
 		return {
 			result: matchingResult,
 			score: best.score,

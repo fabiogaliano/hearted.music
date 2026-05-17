@@ -1,5 +1,4 @@
 import { Result } from "better-result";
-import { updateJobProgress } from "@/lib/platform/jobs/repository";
 import { get as getSongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
@@ -7,6 +6,7 @@ import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-pro
 import type { LlmService } from "@/lib/integrations/llm/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
+import { updateJobProgress } from "@/lib/platform/jobs/repository";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	hasMoreSongsNeedingEnrichmentWork,

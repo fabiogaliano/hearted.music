@@ -5,7 +5,7 @@
  * Returns Result<T, DbError> for composable error handling.
  */
 
-import { Result } from "better-result";
+import type { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Tables } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";

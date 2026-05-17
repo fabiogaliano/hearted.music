@@ -2,10 +2,10 @@ import { Result } from "better-result";
 import { z } from "zod";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import {
-	type SongAnalysis,
-	type InsertData as SongAnalysisInsertData,
 	get as getSongAnalysis,
 	insert as insertSongAnalysis,
+	type SongAnalysis,
+	type InsertData as SongAnalysisInsertData,
 } from "@/lib/domains/enrichment/content-analysis/queries";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import type { DbError } from "@/lib/shared/errors/database";

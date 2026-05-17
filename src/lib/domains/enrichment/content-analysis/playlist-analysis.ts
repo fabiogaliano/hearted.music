@@ -15,10 +15,10 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import {
-	type InsertData as InsertPlaylistAnalysis,
-	type PlaylistAnalysis,
 	get as getPlaylistAnalysis,
+	type InsertData as InsertPlaylistAnalysis,
 	insert as insertPlaylistAnalysis,
+	type PlaylistAnalysis,
 } from "@/lib/domains/enrichment/content-analysis/playlist-queries";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import type { DbError } from "@/lib/shared/errors/database";

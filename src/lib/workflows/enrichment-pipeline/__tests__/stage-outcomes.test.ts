@@ -17,10 +17,10 @@ vi.mock("@/lib/platform/jobs/item-failures", () => ({
 
 import { FAILURE_CODES } from "../failure-policy";
 import {
-	type StageOutcome,
-	StageAccountingError,
 	finalizeStageOutcome,
 	makeThrownOutcome,
+	StageAccountingError,
+	type StageOutcome,
 	summarizeOutcome,
 	validateOutcome,
 } from "../stage-outcomes";
