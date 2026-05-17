@@ -299,7 +299,7 @@ HF_TOKEN=                 # HuggingFace Inference API
 RESEND_API_KEY=           # waitlist confirmation emails
 
 # Extension
-VITE_CHROME_EXTENSION_ID= # Chrome extension ID for externally_connectable messaging
+VITE_CHROME_EXTENSION_ID=ohaaafmgbbfohhjhogonolonpjhhfohk # Chrome extension ID for externally_connectable messaging
 ```
 
 ### Database

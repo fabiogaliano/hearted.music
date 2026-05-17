@@ -22,7 +22,7 @@ import { PlaylistDescription } from "./PlaylistDescription";
 import { PlaylistTrackList } from "./PlaylistTrackList";
 
 const EXTENSION_STORE_URL =
-	"https://chrome.google.com/webstore/detail/hearted-spotify-sync/EXTENSION_ID";
+	"https://chromewebstore.google.com/detail/everything-you-ever-heart/ohaaafmgbbfohhjhogonolonpjhhfohk";
 
 type ThemeCssVariables = {
 	"--t-bg": string;

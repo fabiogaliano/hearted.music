@@ -30,7 +30,7 @@ import { ExtensionSetupTrail } from "./ExtensionSetupTrail";
 import { StaggeredContent } from "./StaggeredContent";
 
 const EXTENSION_STORE_URL =
-	"https://chrome.google.com/webstore/detail/hearted-spotify-sync/EXTENSION_ID";
+	"https://chromewebstore.google.com/detail/everything-you-ever-heart/ohaaafmgbbfohhjhogonolonpjhhfohk";
 const SPOTIFY_LOGIN_URL =
 	"https://accounts.spotify.com/en-GB/login?continue=https%3A%2F%2Fopen.spotify.com%2F";
 
