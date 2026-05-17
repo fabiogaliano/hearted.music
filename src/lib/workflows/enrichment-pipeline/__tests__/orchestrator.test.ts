@@ -374,6 +374,38 @@ describe("executeWorkerChunk sub-batching", () => {
 		consoleSpy.mockRestore();
 	});
 
+	it("records durable per-candidate failures when an audio readiness check throws", async () => {
+		const workPlan = makeWorkPlan({
+			allSongIds: ["s1", "s2"],
+			needAudioFeatures: ["s1", "s2"],
+		});
+		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
+		mockLoadBatchSongs.mockResolvedValue(makeBatch(["s1", "s2"]));
+		mockRunAudioFeatures.mockRejectedValue(
+			new Error("Failed to check existing audio features: connection refused"),
+		);
+		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		const result = await executeWorkerChunk("account-1", "job-1", 10, 0);
+
+		expect(result.failedCount).toBe(2);
+		expect(recordStageFailure).toHaveBeenCalledTimes(2);
+		const failureRows = vi
+			.mocked(recordStageFailure)
+			.mock.calls.map(([params]) => params);
+		expect(failureRows.map((row) => row.songId).sort()).toEqual(["s1", "s2"]);
+		for (const row of failureRows) {
+			expect(row).toMatchObject({
+				stage: "audio_features",
+				failureCode: FAILURE_CODES.PROVIDER_TRANSIENT,
+				errorMessage:
+					"Failed to check existing audio features: connection refused",
+			});
+		}
+
+		consoleSpy.mockRestore();
+	});
+
 	it("triggers analysis-input compensation through finalized song-analysis accounting", async () => {
 		const workPlan = makeWorkPlan({
 			allSongIds: ["pack-song"],

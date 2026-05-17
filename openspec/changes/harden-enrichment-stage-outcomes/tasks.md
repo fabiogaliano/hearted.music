@@ -2,7 +2,7 @@
 
 - [x] 1.1 Add tests for `src/lib/workflows/enrichment-pipeline/failure-policy.ts` covering all existing failure codes and the new `content_activation_failed` code.
 - [x] 1.2 Add a regression test showing a thrown stage handler records one failure per candidate song and returns failed count equal to candidate count.
-- [ ] 1.3 Add a regression test for readiness-check failure: candidate songs receive durable non-terminal failures rather than count-only failures.
+- [x] 1.3 Add a regression test for readiness-check failure: candidate songs receive durable non-terminal failures rather than count-only failures.
 - [x] 1.4 Add a test proving `analysis_inputs_missing` compensation is triggered only for terminal analysis-input failures and only after durable failure recording succeeds.
 - [x] 1.5 Add a test proving content activation DB/RPC failure leaves songs unactivated and records retryable failures.
 
@@ -86,10 +86,10 @@
 
 ## 12. Clean Up and Verify
 
-- [ ] 12.1 Remove old count-only `StageResult` and direct `applyStageResult` usage from `orchestrator.ts`.
-- [ ] 12.2 Grep for direct `recordStageFailure` and `resolveStageFailures` imports under `src/lib/workflows/enrichment-pipeline/stages/`; ensure none remain.
-- [ ] 12.3 Grep for worker-path `song_analysis` job creation; ensure enrichment uses only the parent job row.
-- [ ] 12.4 Run focused tests: `bun run test src/lib/workflows/enrichment-pipeline src/lib/domains/enrichment/content-analysis`.
-- [ ] 12.5 Run `bun run typecheck`.
-- [ ] 12.6 Run full `bun run test`.
-- [ ] 12.7 Run `openspec validate harden-enrichment-stage-outcomes --strict --no-interactive` and `openspec validate harden-job-work-orchestration --strict --no-interactive`.
+- [x] 12.1 Remove old count-only `StageResult` and direct `applyStageResult` usage from `orchestrator.ts`.
+- [x] 12.2 Grep for direct `recordStageFailure` and `resolveStageFailures` imports under `src/lib/workflows/enrichment-pipeline/stages/`; ensure none remain.
+- [x] 12.3 Grep for worker-path `song_analysis` job creation; ensure enrichment uses only the parent job row.
+- [x] 12.4 Run focused tests: `bun run test src/lib/workflows/enrichment-pipeline src/lib/domains/enrichment/content-analysis`.
+- [x] 12.5 Run `bun run typecheck`.
+- [x] 12.6 Run full `bun run test`.
+- [x] 12.7 Run `openspec validate harden-enrichment-stage-outcomes --strict --no-interactive` and `openspec validate harden-job-work-orchestration --strict --no-interactive`.

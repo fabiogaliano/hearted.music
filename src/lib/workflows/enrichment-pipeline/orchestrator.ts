@@ -39,8 +39,6 @@ import {
 	PipelineBootstrapError,
 } from "./types";
 
-type StageResult = { total: number; succeeded: number; failed: number };
-
 function initEmbeddingService(): Result<
 	EmbeddingService,
 	PipelineBootstrapError
@@ -82,20 +80,20 @@ function buildContext(
 	};
 }
 
-function applyStageResult(
+function applyStageSummary(
 	progress: InitializedEnrichmentChunkProgress,
 	stageName: EnrichmentStageName,
-	result: StageResult,
+	summary: StageSummary,
 	status: "completed" | "failed" | "skipped",
 ): void {
 	progress.stages[stageName] = {
 		status,
-		succeeded: result.succeeded,
-		failed: result.failed,
+		succeeded: summary.succeeded,
+		failed: summary.failed,
 	};
-	progress.succeeded += result.succeeded;
-	progress.failed += result.failed;
-	progress.done += result.succeeded + result.failed;
+	progress.succeeded += summary.succeeded;
+	progress.failed += summary.failed;
+	progress.done += summary.succeeded + summary.failed;
 }
 
 async function persistProgress(
@@ -110,8 +108,8 @@ async function persistProgress(
 	}
 }
 
-function stageStatus(result: StageResult): "completed" | "failed" {
-	return result.failed > 0 && result.succeeded === 0 ? "failed" : "completed";
+function stageStatus(summary: StageSummary): "completed" | "failed" {
+	return summary.failed > 0 && summary.succeeded === 0 ? "failed" : "completed";
 }
 
 interface RunStageWithAccountingParams {
@@ -270,16 +268,16 @@ async function enrichSongs(
 		throw genreAccountingResult.error;
 	}
 
-	const audioResult: StageResult = audioAccountingResult.value;
-	const genreResult: StageResult = genreAccountingResult.value;
+	const audioResult: StageSummary = audioAccountingResult.value;
+	const genreResult: StageSummary = genreAccountingResult.value;
 
-	applyStageResult(
+	applyStageSummary(
 		progress,
 		"audio_features",
 		audioResult,
 		audioSubBatch.songIds.length > 0 ? stageStatus(audioResult) : "skipped",
 	);
-	applyStageResult(
+	applyStageSummary(
 		progress,
 		"genre_tagging",
 		genreResult,
@@ -332,9 +330,9 @@ async function enrichSongs(
 		throw analysisAccountingResult.error;
 	}
 
-	const analysisResult: StageResult = analysisAccountingResult.value;
+	const analysisResult: StageSummary = analysisAccountingResult.value;
 
-	applyStageResult(
+	applyStageSummary(
 		progress,
 		"song_analysis",
 		analysisResult,
@@ -371,9 +369,9 @@ async function enrichSongs(
 		throw embeddingAccountingResult.error;
 	}
 
-	const embeddingResult: StageResult = embeddingAccountingResult.value;
+	const embeddingResult: StageSummary = embeddingAccountingResult.value;
 
-	applyStageResult(
+	applyStageSummary(
 		progress,
 		"song_embedding",
 		embeddingResult,
@@ -409,9 +407,9 @@ async function enrichSongs(
 		throw activationAccountingResult.error;
 	}
 
-	const activationResult: StageResult = activationAccountingResult.value;
+	const activationResult: StageSummary = activationAccountingResult.value;
 
-	applyStageResult(
+	applyStageSummary(
 		progress,
 		"content_activation",
 		activationResult,
