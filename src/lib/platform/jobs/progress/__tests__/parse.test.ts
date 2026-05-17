@@ -69,6 +69,7 @@ describe("parseJobProgress", () => {
 			expect(result.progress.total).toBe(0);
 			expect(result.progress.batchSize).toBe(0);
 			expect(result.progress.stages.audio_features?.status).toBe("pending");
+			expect(result.progress.stages.content_activation?.status).toBe("pending");
 		}
 	});
 

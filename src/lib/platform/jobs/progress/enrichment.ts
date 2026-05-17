@@ -6,6 +6,7 @@ const ENRICHMENT_STAGE_NAMES = [
 	"genre_tagging",
 	"song_analysis",
 	"song_embedding",
+	"content_activation",
 ] as const;
 
 const EnrichmentStageNameSchema = z.enum(ENRICHMENT_STAGE_NAMES);
@@ -16,6 +17,7 @@ const EnrichmentStageProgressMapSchema = z
 		genre_tagging: StageProgressSchema,
 		song_analysis: StageProgressSchema,
 		song_embedding: StageProgressSchema,
+		content_activation: StageProgressSchema,
 	})
 	.partial();
 export type EnrichmentStageProgressMap = z.infer<
@@ -38,5 +40,6 @@ export function createPendingEnrichmentStages(): Required<EnrichmentStageProgres
 		genre_tagging: { status: "pending", succeeded: 0, failed: 0 },
 		song_analysis: { status: "pending", succeeded: 0, failed: 0 },
 		song_embedding: { status: "pending", succeeded: 0, failed: 0 },
+		content_activation: { status: "pending", succeeded: 0, failed: 0 },
 	};
 }

@@ -8,7 +8,8 @@ export type EnrichmentStageName =
 	| "audio_features"
 	| "genre_tagging"
 	| "song_analysis"
-	| "song_embedding";
+	| "song_embedding"
+	| "content_activation";
 
 export interface ReadyResult {
 	readonly ready: string[];

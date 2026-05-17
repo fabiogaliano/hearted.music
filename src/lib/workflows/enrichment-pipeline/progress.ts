@@ -17,6 +17,7 @@ const ALL_STAGE_NAMES: EnrichmentStageName[] = [
 	"genre_tagging",
 	"song_analysis",
 	"song_embedding",
+	"content_activation",
 ];
 
 const BATCH_SIZES = [1, 5, 10, 25, 50];
@@ -32,6 +33,7 @@ function countPlannedWork(flags: readonly SongStageFlags[]): number {
 		if (f.needsGenreTagging) total++;
 		if (f.needsAnalysis) total++;
 		if (f.needsEmbedding) total++;
+		if (f.needsContentActivation) total++;
 	}
 	return total;
 }

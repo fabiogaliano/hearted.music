@@ -26,14 +26,15 @@ describe("makeInitialProgress", () => {
 		expect(progress.failed).toBe(0);
 	});
 
-	it("tracks only the candidate-side enrichment stages", () => {
+	it("tracks all enrichment progress stages", () => {
 		const progress = makeInitialProgress(10, 2, 3);
-		expect(progress.total).toBe(12);
+		expect(progress.total).toBe(15);
 		expect(Object.keys(progress.stages)).toEqual([
 			"audio_features",
 			"genre_tagging",
 			"song_analysis",
 			"song_embedding",
+			"content_activation",
 		]);
 	});
 });

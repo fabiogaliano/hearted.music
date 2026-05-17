@@ -25,9 +25,9 @@
 
 ## 4. Update Progress Model
 
-- [ ] 4.1 Add `content_activation` to `EnrichmentStageName`.
-- [ ] 4.2 Update `src/lib/platform/jobs/progress/enrichment.ts` and `src/lib/workflows/enrichment-pipeline/progress.ts` so initial progress includes `content_activation`.
-- [ ] 4.3 Update progress parser tests in `src/lib/platform/jobs/progress/__tests__/parse.test.ts`.
+- [x] 4.1 Add `content_activation` to `EnrichmentStageName`.
+- [x] 4.2 Update `src/lib/platform/jobs/progress/enrichment.ts` and `src/lib/workflows/enrichment-pipeline/progress.ts` so initial progress includes `content_activation`.
+- [x] 4.3 Update progress parser tests in `src/lib/platform/jobs/progress/__tests__/parse.test.ts`.
 - [ ] 4.4 Update orchestrator progress application to consume `StageSummary` from finalized outcomes.
 
 ## 5. Replace Generic Stage Runner
