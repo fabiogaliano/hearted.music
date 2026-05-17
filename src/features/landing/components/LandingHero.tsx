@@ -5,7 +5,10 @@ import {
 	type HeartRippleHandle,
 } from "@/components/ui/HeartRippleBackground";
 import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
-import { type LandingSongForUI, toLikedSong } from "@/lib/data/landing-songs";
+import {
+	type LandingSongForUI,
+	toLikedSong,
+} from "@/lib/content/landing/landing-songs";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 import { extractHue, getPastelColor } from "@/lib/utils/color";

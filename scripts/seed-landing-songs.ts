@@ -32,7 +32,7 @@ import { LyricsService } from "@/lib/domains/enrichment/lyrics/service";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { getApiKeyForProvider } from "@/lib/integrations/llm/config";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
-import type { LandingSongManifest } from "@/lib/data/landing-songs";
+import type { LandingSongManifest } from "@/lib/content/landing/landing-songs";
 
 const LANDING_SONGS_DIR = resolve(
 	import.meta.dirname,

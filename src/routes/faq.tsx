@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LegalPageShell } from "@/features/legal/LegalPageShell";
-import { faqData } from "@/lib/data/legal";
+import { faqData } from "@/lib/content/legal";
 import { fonts } from "@/lib/theme/fonts";
 
 export const Route = createFileRoute("/faq")({

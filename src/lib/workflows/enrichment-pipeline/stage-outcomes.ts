@@ -1,5 +1,5 @@
 import { Result, TaggedError } from "better-result";
-import { resolveStageFailures } from "@/lib/data/job-failures";
+import { resolveJobStageFailures } from "@/lib/platform/jobs/item-failures";
 import type { DbError } from "@/lib/shared/errors/database";
 import type { FAILURE_CODES } from "./failure-policy";
 import { recordStageFailure } from "./record-failure";
@@ -234,7 +234,7 @@ export async function finalizeStageOutcome(
 	if (outcome.succeededSongIds.length > 0) {
 		const resolveResults = await Promise.all(
 			outcome.succeededSongIds.map((songId) =>
-				resolveStageFailures({
+				resolveJobStageFailures({
 					accountId,
 					itemId: songId,
 					stage: outcome.stage,

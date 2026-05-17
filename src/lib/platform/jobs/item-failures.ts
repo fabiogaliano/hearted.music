@@ -13,7 +13,7 @@
 import { Result } from "better-result";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { fromSupabaseSingle } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "./client";
+import { createAdminSupabaseClient } from "@/lib/data/client";
 
 interface RecordJobFailureParams {
 	jobId: string;
@@ -26,7 +26,7 @@ interface RecordJobFailureParams {
 	resolvedAt?: Date | null;
 }
 
-export function recordJobFailure(
+export function recordJobItemFailure(
 	params: RecordJobFailureParams,
 ): Promise<Result<void, DbError>> {
 	const supabase = createAdminSupabaseClient();
@@ -56,7 +56,7 @@ export function recordJobFailure(
  * resolved. Called from stage-success paths so prior suppression rows stop
  * blocking future selector passes.
  */
-export async function resolveStageFailures(params: {
+export async function resolveJobStageFailures(params: {
 	accountId: string;
 	itemId: string;
 	stage: string;
@@ -81,7 +81,7 @@ export async function resolveStageFailures(params: {
  * Count unresolved non-terminal failures for a song's stage + code. Used by
  * the failure-policy module to escalate transient backoff windows.
  */
-export async function countUnresolvedFailures(params: {
+export async function countUnresolvedJobStageFailures(params: {
 	accountId: string;
 	itemId: string;
 	stage: string;

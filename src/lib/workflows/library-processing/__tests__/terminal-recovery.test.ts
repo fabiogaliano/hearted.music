@@ -1,6 +1,6 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { JobExecutionMeasurement } from "@/lib/data/job-measurements";
+import type { JobExecutionMeasurement } from "@/lib/platform/jobs/execution-measurements";
 import type { Job } from "@/lib/platform/jobs/repository";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { reconcileLibraryProcessing } from "../reconciler";
@@ -21,16 +21,21 @@ vi.mock("../queries", async (importOriginal) => {
 	};
 });
 
-vi.mock("@/lib/data/job-measurements", async (importOriginal) => {
-	const original =
-		await importOriginal<typeof import("@/lib/data/job-measurements")>();
-	return {
-		...original,
-		getLatestExecutionMeasurementForJob: vi.fn(),
-	};
-});
+vi.mock(
+	"@/lib/platform/jobs/execution-measurements",
+	async (importOriginal) => {
+		const original =
+			await importOriginal<
+				typeof import("@/lib/platform/jobs/execution-measurements")
+			>();
+		return {
+			...original,
+			getLatestJobExecutionMeasurement: vi.fn(),
+		};
+	},
+);
 
-import { getLatestExecutionMeasurementForJob } from "@/lib/data/job-measurements";
+import { getLatestJobExecutionMeasurement } from "@/lib/platform/jobs/execution-measurements";
 import { applyLibraryProcessingChange } from "../service";
 import { findTerminalActiveRefs } from "../queries";
 import {
@@ -41,7 +46,7 @@ import {
 
 const applyMock = vi.mocked(applyLibraryProcessingChange);
 const findTerminalActiveRefsMock = vi.mocked(findTerminalActiveRefs);
-const getMeasurementMock = vi.mocked(getLatestExecutionMeasurementForJob);
+const getMeasurementMock = vi.mocked(getLatestJobExecutionMeasurement);
 
 function makeJob(overrides: Partial<Job> = {}): Job {
 	return {

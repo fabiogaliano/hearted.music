@@ -7,13 +7,13 @@ vi.mock("@/lib/platform/jobs/repository", () => ({
 	markJobFailed: vi.fn(),
 }));
 
-const recordExecutionMeasurementMock = vi
+const recordJobExecutionMeasurementMock = vi
 	.fn()
 	.mockResolvedValue(Result.ok(undefined));
 
-vi.mock("@/lib/data/job-measurements", () => ({
-	recordExecutionMeasurement: (...args: unknown[]) =>
-		recordExecutionMeasurementMock(...args),
+vi.mock("@/lib/platform/jobs/execution-measurements", () => ({
+	recordJobExecutionMeasurement: (...args: unknown[]) =>
+		recordJobExecutionMeasurementMock(...args),
 }));
 
 vi.mock("@/worker/execute", () => ({
@@ -102,7 +102,7 @@ describe("runClaimedJob", () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 		vi.clearAllMocks();
-		recordExecutionMeasurementMock.mockResolvedValue(Result.ok(undefined));
+		recordJobExecutionMeasurementMock.mockResolvedValue(Result.ok(undefined));
 		applyLibraryProcessingChangeMock.mockResolvedValue(APPLY_OK_RESULT);
 	});
 
@@ -180,7 +180,7 @@ describe("runClaimedJob", () => {
 	describe("measurement-before-apply ordering", () => {
 		it("writes measurement before applying library-processing change on success", async () => {
 			const callOrder: string[] = [];
-			recordExecutionMeasurementMock.mockImplementation(async () => {
+			recordJobExecutionMeasurementMock.mockImplementation(async () => {
 				callOrder.push("measurement");
 				return Result.ok(undefined);
 			});
@@ -201,7 +201,7 @@ describe("runClaimedJob", () => {
 
 		it("writes measurement before applying library-processing change on failure", async () => {
 			const callOrder: string[] = [];
-			recordExecutionMeasurementMock.mockImplementation(async () => {
+			recordJobExecutionMeasurementMock.mockImplementation(async () => {
 				callOrder.push("measurement");
 				return Result.ok(undefined);
 			});
@@ -224,7 +224,7 @@ describe("runClaimedJob", () => {
 
 		it("writes measurement before applying change for match_snapshot_refresh", async () => {
 			const callOrder: string[] = [];
-			recordExecutionMeasurementMock.mockImplementation(async () => {
+			recordJobExecutionMeasurementMock.mockImplementation(async () => {
 				callOrder.push("measurement");
 				return Result.ok(undefined);
 			});

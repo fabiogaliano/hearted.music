@@ -39,8 +39,9 @@ vi.mock("@/lib/platform/auth/auth.server", () => ({
 	getAuthSession: (...args: unknown[]) => mockGetAuthSession(...args),
 }));
 
-vi.mock("@/lib/data/api-tokens", () => ({
-	validateApiToken: (...args: unknown[]) => mockValidateApiToken(...args),
+vi.mock("@/lib/platform/auth/api-tokens", () => ({
+	validateExtensionApiToken: (...args: unknown[]) =>
+		mockValidateApiToken(...args),
 }));
 
 vi.mock("@/lib/domains/library/artists/queries", () => ({

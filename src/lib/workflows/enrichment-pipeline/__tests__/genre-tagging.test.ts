@@ -20,8 +20,8 @@ vi.mock("@/lib/domains/enrichment/genre-tagging/service", () => ({
 	}),
 }));
 
-vi.mock("@/lib/data/job-failures", () => ({
-	resolveStageFailures: vi.fn().mockResolvedValue(Result.ok(0)),
+vi.mock("@/lib/platform/jobs/item-failures", () => ({
+	resolveJobStageFailures: vi.fn().mockResolvedValue(Result.ok(0)),
 }));
 
 vi.mock("../record-failure", () => ({
@@ -29,7 +29,7 @@ vi.mock("../record-failure", () => ({
 }));
 
 import { recordStageFailure } from "../record-failure";
-import { resolveStageFailures } from "@/lib/data/job-failures";
+import { resolveJobStageFailures } from "@/lib/platform/jobs/item-failures";
 import { runGenreTagging } from "../stages/genre-tagging";
 
 function makeSong(id: string, genres: string[] = []): Song {
@@ -289,14 +289,14 @@ describe("runGenreTagging → StageOutcome", () => {
 		expect(outcome.succeededSongIds).toEqual(["s2"]);
 	});
 
-	it("does not call resolveStageFailures or recordStageFailure directly", async () => {
+	it("does not call resolveJobStageFailures or recordStageFailure directly", async () => {
 		mockEnrichBatch.mockResolvedValue(
 			Result.ok(makeBatchResult({ resultIds: ["s1"], notFound: ["s2"] })),
 		);
 
 		await runGenreTagging(makeCtx(), makeBatch(["s1", "s2"]));
 
-		expect(resolveStageFailures).not.toHaveBeenCalled();
+		expect(resolveJobStageFailures).not.toHaveBeenCalled();
 		expect(recordStageFailure).not.toHaveBeenCalled();
 	});
 

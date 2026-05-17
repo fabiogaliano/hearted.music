@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
 import { z } from "zod";
-import { validateApiToken } from "@/lib/data/api-tokens";
+import { validateExtensionApiToken } from "@/lib/platform/auth/api-tokens";
 import { getWithImagesBySpotifyIds } from "@/lib/domains/library/artists/queries";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import {
@@ -27,7 +27,7 @@ async function getAuthenticatedAccountId(
 	}
 
 	const token = authHeader.slice(7);
-	const tokenResult = await validateApiToken(token);
+	const tokenResult = await validateExtensionApiToken(token);
 	if (Result.isOk(tokenResult) && tokenResult.value) {
 		return tokenResult.value;
 	}

@@ -404,8 +404,8 @@ vi.mock("@/lib/platform/jobs/repository", () => ({
 	updateJobProgress: vi.fn().mockResolvedValue(Result.ok(undefined)),
 }));
 
-vi.mock("@/lib/data/job-failures", () => ({
-	resolveStageFailures: vi.fn().mockResolvedValue(Result.ok(0)),
+vi.mock("@/lib/platform/jobs/item-failures", () => ({
+	resolveJobStageFailures: vi.fn().mockResolvedValue(Result.ok(0)),
 }));
 
 vi.mock("../record-failure", () => ({

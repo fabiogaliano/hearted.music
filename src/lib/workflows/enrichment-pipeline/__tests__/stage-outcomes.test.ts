@@ -10,8 +10,8 @@ vi.mock("../record-failure", () => ({
 		mockRecordStageFailure(params),
 }));
 
-vi.mock("@/lib/data/job-failures", () => ({
-	resolveStageFailures: (params: Record<string, unknown>) =>
+vi.mock("@/lib/platform/jobs/item-failures", () => ({
+	resolveJobStageFailures: (params: Record<string, unknown>) =>
 		mockResolveStageFailures(params),
 }));
 

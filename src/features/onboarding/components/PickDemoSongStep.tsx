@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { CDCase } from "@/components/ui/CDCase";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
-import type { LandingSongManifest } from "@/lib/data/landing-songs";
+import type { LandingSongManifest } from "@/lib/content/landing/landing-songs";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import {

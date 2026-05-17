@@ -21,7 +21,7 @@ type DecisionType = "added" | "dismissed";
  * Upserts a single match decision.
  * On conflict (same account + song + playlist), updates the decision and decided_at.
  */
-export function insertMatchDecision(
+export function upsertMatchDecision(
 	accountId: string,
 	songId: string,
 	playlistId: string,
@@ -50,7 +50,7 @@ export function insertMatchDecision(
  * Batch upserts match decisions.
  * On conflict (same account + song + playlist), updates the decision and decided_at.
  */
-export function insertMatchDecisions(
+export function upsertMatchDecisions(
 	decisions: {
 		accountId: string;
 		songId: string;

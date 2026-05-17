@@ -1,4 +1,4 @@
-import type { ContentBlock } from "@/lib/data/legal";
+import type { ContentBlock } from "@/lib/content/legal";
 
 const SUPPORT_EMAIL = "support@hearted.music";
 

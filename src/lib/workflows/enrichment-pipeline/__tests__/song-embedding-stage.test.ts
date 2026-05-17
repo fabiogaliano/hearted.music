@@ -12,8 +12,8 @@ vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
 	get: (...args: unknown[]) => mockGetAnalysis(...args),
 }));
 
-vi.mock("@/lib/data/job-failures", () => ({
-	resolveStageFailures: vi.fn().mockResolvedValue(Result.ok(0)),
+vi.mock("@/lib/platform/jobs/item-failures", () => ({
+	resolveJobStageFailures: vi.fn().mockResolvedValue(Result.ok(0)),
 }));
 
 vi.mock("../record-failure", () => ({

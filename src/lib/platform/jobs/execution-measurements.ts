@@ -2,7 +2,7 @@ import { Result } from "better-result";
 import type { Json, Tables } from "@/lib/data/database.types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { fromSupabaseMaybe } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "./client";
+import { createAdminSupabaseClient } from "@/lib/data/client";
 
 export type JobExecutionMeasurement = Tables<"job_execution_measurement">;
 
@@ -19,7 +19,7 @@ interface MeasurementInput {
 	details?: Record<string, Json>;
 }
 
-export async function recordExecutionMeasurement(
+export async function recordJobExecutionMeasurement(
 	input: MeasurementInput,
 ): Promise<Result<void, DbError>> {
 	const supabase = createAdminSupabaseClient();
@@ -46,7 +46,7 @@ export async function recordExecutionMeasurement(
 	return Result.ok(undefined);
 }
 
-export function getLatestExecutionMeasurementForJob(
+export function getLatestJobExecutionMeasurement(
 	jobId: string,
 ): Promise<Result<JobExecutionMeasurement | null, DbError>> {
 	const supabase = createAdminSupabaseClient();

@@ -14,9 +14,9 @@ import type {
 	WalkthroughSong,
 } from "@/features/onboarding/step-resolver";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { getDemoMatchesForSong } from "@/lib/data/demo-matches";
-import type { LandingSongManifest } from "@/lib/data/landing-songs";
-import { getLandingSongsManifest } from "@/lib/data/landing-songs.server";
+import { getDemoMatchesForSong } from "@/lib/content/landing/demo-matches";
+import type { LandingSongManifest } from "@/lib/content/landing/landing-songs";
+import { getLandingSongsManifest } from "@/lib/content/landing/landing-songs.server";
 import { readBillingState } from "@/lib/domains/billing/queries";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { grantFreeAllocation } from "@/lib/domains/billing/unlocks";

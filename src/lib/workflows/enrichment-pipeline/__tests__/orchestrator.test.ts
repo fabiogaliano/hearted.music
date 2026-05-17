@@ -73,8 +73,8 @@ vi.mock("@/lib/domains/billing/compensation", () => ({
 		mockGrantAnalysisFailureReplacementCredit(...args),
 }));
 
-vi.mock("@/lib/data/job-failures", () => ({
-	resolveStageFailures: vi.fn().mockResolvedValue(Result.ok(0)),
+vi.mock("@/lib/platform/jobs/item-failures", () => ({
+	resolveJobStageFailures: vi.fn().mockResolvedValue(Result.ok(0)),
 }));
 
 vi.mock("../record-failure", () => ({

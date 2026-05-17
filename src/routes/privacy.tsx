@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ContentBlocks } from "@/features/legal/components";
 import { LegalPageShell } from "@/features/legal/LegalPageShell";
-import { privacyData } from "@/lib/data/legal";
+import { privacyData } from "@/lib/content/legal";
 import { fonts } from "@/lib/theme/fonts";
 
 export const Route = createFileRoute("/privacy")({

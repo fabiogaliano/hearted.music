@@ -11,7 +11,7 @@ import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-import { createAdminSupabaseClient } from "./client";
+import { createAdminSupabaseClient } from "@/lib/data/client";
 
 async function hashToken(token: string): Promise<string> {
 	const encoder = new TextEncoder();
@@ -33,7 +33,7 @@ function generateRandomToken(): string {
  * Generates a new API token for the given account.
  * Returns the plain token (only time it's available).
  */
-export async function generateApiToken(
+export async function createExtensionApiToken(
 	accountId: string,
 ): Promise<Result<string, DbError>> {
 	const plainToken = generateRandomToken();
@@ -64,7 +64,7 @@ export async function generateApiToken(
  * Updates last_used_at on successful validation.
  * Returns the accountId if valid, null if not found or revoked.
  */
-export async function validateApiToken(
+export async function validateExtensionApiToken(
 	token: string,
 ): Promise<Result<string | null, DbError>> {
 	const tokenHash = await hashToken(token);
@@ -95,7 +95,7 @@ export async function validateApiToken(
 /**
  * Revokes all API tokens for an account.
  */
-export async function revokeAllTokensForAccount(
+export async function revokeExtensionApiTokensForAccount(
 	accountId: string,
 ): Promise<Result<void, DbError>> {
 	const supabase = createAdminSupabaseClient();

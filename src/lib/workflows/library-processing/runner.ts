@@ -1,6 +1,6 @@
 import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
-import { recordExecutionMeasurement } from "@/lib/data/job-measurements";
+import { recordJobExecutionMeasurement } from "@/lib/platform/jobs/execution-measurements";
 import {
 	type Job,
 	markJobCompleted,
@@ -237,7 +237,7 @@ async function writeMeasurement(
 	details?: Record<string, Json>,
 ): Promise<void> {
 	try {
-		const result = await recordExecutionMeasurement({
+		const result = await recordJobExecutionMeasurement({
 			jobId: job.id,
 			accountId: job.account_id,
 			workflow,

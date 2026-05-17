@@ -8,7 +8,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { Landing } from "@/features/landing/Landing";
-import { getShuffledLandingData } from "@/lib/data/landing-songs.server";
+import { getShuffledLandingData } from "@/lib/content/landing/landing-songs.server";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
 
 const checkAuth = createServerFn({ method: "GET" }).handler(async () => {

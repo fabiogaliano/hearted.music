@@ -10,9 +10,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
 import {
-	generateApiToken,
-	revokeAllTokensForAccount,
-} from "@/lib/data/api-tokens";
+	createExtensionApiToken,
+	revokeExtensionApiTokensForAccount,
+} from "@/lib/platform/auth/api-tokens";
 import { requireAuthSession } from "@/lib/platform/auth/auth.server";
 
 export const Route = createFileRoute("/api/extension/token")({
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/extension/token")({
 				const authContext = await requireAuthSession();
 				const { accountId } = authContext.session;
 
-				const tokenResult = await generateApiToken(accountId);
+				const tokenResult = await createExtensionApiToken(accountId);
 				if (Result.isError(tokenResult)) {
 					return Response.json(
 						{ error: "Failed to generate token" },
@@ -37,7 +37,8 @@ export const Route = createFileRoute("/api/extension/token")({
 				const authContext = await requireAuthSession();
 				const { accountId } = authContext.session;
 
-				const revokeResult = await revokeAllTokensForAccount(accountId);
+				const revokeResult =
+					await revokeExtensionApiTokensForAccount(accountId);
 				if (Result.isError(revokeResult)) {
 					return Response.json(
 						{ error: "Failed to revoke tokens" },

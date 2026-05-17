@@ -1,6 +1,6 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { MatchDecision } from "./match-decision-queries";
+import type { MatchDecision } from "../decision-queries";
 
 let upsertResponse: { data: unknown; error: unknown };
 let selectResponse: { data: unknown; error: unknown };
@@ -72,9 +72,9 @@ vi.mock("@/lib/data/client", () => ({
 import {
 	getMatchDecisions,
 	getMatchDecisionsForSongs,
-	insertMatchDecision,
-	insertMatchDecisions,
-} from "./match-decision-queries";
+	upsertMatchDecision,
+	upsertMatchDecisions,
+} from "../decision-queries";
 
 const ACCOUNT_ID = "acct-test-123";
 const SONG_ID = "song-001";
@@ -93,7 +93,7 @@ function fakeDecision(overrides: Partial<MatchDecision> = {}): MatchDecision {
 	};
 }
 
-describe("insertMatchDecision", () => {
+describe("upsertMatchDecision", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		upsertResponse = { data: null, error: null };
@@ -106,7 +106,7 @@ describe("insertMatchDecision", () => {
 		const decision = fakeDecision();
 		upsertResponse = { data: decision, error: null };
 
-		const result = await insertMatchDecision(
+		const result = await upsertMatchDecision(
 			ACCOUNT_ID,
 			SONG_ID,
 			PLAYLIST_ID,
@@ -124,7 +124,7 @@ describe("insertMatchDecision", () => {
 	it("uses upsert with the correct onConflict clause and mapped data", async () => {
 		upsertResponse = { data: fakeDecision(), error: null };
 
-		await insertMatchDecision(ACCOUNT_ID, SONG_ID, PLAYLIST_ID, "added");
+		await upsertMatchDecision(ACCOUNT_ID, SONG_ID, PLAYLIST_ID, "added");
 
 		expect(lastUpsertArgs).not.toBeNull();
 		expect(lastUpsertArgs!.options).toEqual({
@@ -149,7 +149,7 @@ describe("insertMatchDecision", () => {
 			},
 		};
 
-		const result = await insertMatchDecision(
+		const result = await upsertMatchDecision(
 			ACCOUNT_ID,
 			"bad-song",
 			PLAYLIST_ID,
@@ -168,7 +168,7 @@ describe("insertMatchDecision", () => {
 			error: { code: "PGRST301", message: "connection refused" },
 		};
 
-		const result = await insertMatchDecision(
+		const result = await upsertMatchDecision(
 			ACCOUNT_ID,
 			SONG_ID,
 			PLAYLIST_ID,
@@ -183,7 +183,7 @@ describe("insertMatchDecision", () => {
 	});
 });
 
-describe("insertMatchDecisions", () => {
+describe("upsertMatchDecisions", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		upsertResponse = { data: null, error: null };
@@ -193,7 +193,7 @@ describe("insertMatchDecisions", () => {
 	});
 
 	it("returns empty array for empty input without calling supabase", async () => {
-		const result = await insertMatchDecisions([]);
+		const result = await upsertMatchDecisions([]);
 
 		expect(result).toBeOk();
 		if (Result.isOk(result)) {
@@ -208,7 +208,7 @@ describe("insertMatchDecisions", () => {
 		];
 		upsertResponse = { data: decisions, error: null };
 
-		const result = await insertMatchDecisions([
+		const result = await upsertMatchDecisions([
 			{
 				accountId: ACCOUNT_ID,
 				songId: "song-001",
@@ -232,7 +232,7 @@ describe("insertMatchDecisions", () => {
 	it("passes correct onConflict and maps camelCase to snake_case", async () => {
 		upsertResponse = { data: [fakeDecision()], error: null };
 
-		await insertMatchDecisions([
+		await upsertMatchDecisions([
 			{
 				accountId: ACCOUNT_ID,
 				songId: SONG_ID,
@@ -260,7 +260,7 @@ describe("insertMatchDecisions", () => {
 			error: { code: "PGRST301", message: "timeout" },
 		};
 
-		const result = await insertMatchDecisions([
+		const result = await upsertMatchDecisions([
 			{
 				accountId: ACCOUNT_ID,
 				songId: SONG_ID,

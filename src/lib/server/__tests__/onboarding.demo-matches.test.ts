@@ -85,11 +85,11 @@ vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: () => mockCreateAdminSupabaseClient(),
 }));
 
-vi.mock("@/lib/data/demo-matches", () => ({
+vi.mock("@/lib/content/landing/demo-matches", () => ({
 	getDemoMatchesForSong: (id: string) => mockGetDemoMatches(id),
 }));
 
-vi.mock("@/lib/data/landing-songs.server", () => ({
+vi.mock("@/lib/content/landing/landing-songs.server", () => ({
 	getLandingSongsManifest: () => [],
 }));
 

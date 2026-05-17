@@ -431,7 +431,7 @@ describe("runSongAnalysis: pipeline config failure", () => {
 });
 
 describe("runSongAnalysis: does not import failure recording", () => {
-	it("the module source does not import recordStageFailure or resolveStageFailures", async () => {
+	it("the module source does not import recordStageFailure or resolveJobStageFailures", async () => {
 		const fs = await import("node:fs");
 		const path = await import("node:path");
 		const source = fs.readFileSync(
@@ -439,7 +439,7 @@ describe("runSongAnalysis: does not import failure recording", () => {
 			"utf-8",
 		);
 		expect(source).not.toContain("recordStageFailure");
-		expect(source).not.toContain("resolveStageFailures");
+		expect(source).not.toContain("resolveJobStageFailures");
 		expect(source).not.toContain("grantAnalysisFailureReplacementCredit");
 		expect(source).not.toContain("createAdminSupabaseClient");
 	});

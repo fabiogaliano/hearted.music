@@ -12,7 +12,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getRequest } from "@tanstack/react-start/server";
 import { Result } from "better-result";
-import { validateApiToken } from "@/lib/data/api-tokens";
+import { validateExtensionApiToken } from "@/lib/platform/auth/api-tokens";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { getCount } from "@/lib/domains/library/liked-songs/queries";
 import { getPlaylistCount } from "@/lib/domains/library/playlists/queries";
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/api/extension/status")({
 					const authHeader = request.headers.get("Authorization");
 					if (authHeader?.startsWith("Bearer ")) {
 						const token = authHeader.slice(7);
-						const tokenResult = await validateApiToken(token);
+						const tokenResult = await validateExtensionApiToken(token);
 						if (Result.isOk(tokenResult) && tokenResult.value) {
 							accountId = tokenResult.value;
 						} else {

@@ -15,12 +15,12 @@
 import { useEffect, useRef, useState } from "react";
 import { MatchesSection } from "@/features/matching/components/MatchesSection";
 import { SongSection } from "@/features/matching/components/SongSection";
-import { getDemoMatchesForSong } from "@/lib/data/demo-matches";
+import { getDemoMatchesForSong } from "@/lib/content/landing/demo-matches";
 import {
 	type LandingSongDetail,
 	type LandingSongManifest,
 	loadLandingSongDetail,
-} from "@/lib/data/landing-songs";
+} from "@/lib/content/landing/landing-songs";
 import { fonts } from "@/lib/theme/fonts";
 import { LandingHero } from "./components/LandingHero";
 import { SpotifyLoginButton } from "./components/SpotifyLoginButton";

@@ -9,7 +9,7 @@ import {
 import { PaneStore } from "uipane";
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
 import type { WalkthroughSong } from "@/features/onboarding/step-resolver";
-import { getDemoMatchesForSong } from "@/lib/data/demo-matches";
+import { getDemoMatchesForSong } from "@/lib/content/landing/demo-matches";
 import {
 	type DemoMatchPlaylist,
 	getDemoSongMatches,

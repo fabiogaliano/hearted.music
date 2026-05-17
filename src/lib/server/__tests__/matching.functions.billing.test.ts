@@ -79,11 +79,11 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 		mockGetMatchResultsForSong(...args),
 }));
 
-vi.mock("@/lib/data/match-decision-queries", () => ({
+vi.mock("@/lib/domains/taste/song-matching/decision-queries", () => ({
 	getMatchDecisionsForSongs: (...args: unknown[]) =>
 		mockGetMatchDecisionsForSongs(...args),
-	insertMatchDecision: vi.fn(),
-	insertMatchDecisions: vi.fn(),
+	upsertMatchDecision: vi.fn(),
+	upsertMatchDecisions: vi.fn(),
 }));
 
 vi.mock("@/lib/domains/library/liked-songs/status-queries", () => ({

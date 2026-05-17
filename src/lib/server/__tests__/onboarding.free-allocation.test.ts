@@ -75,7 +75,7 @@ vi.mock("@/lib/workflows/library-processing/service", () => ({
 	applyLibraryProcessingChange: vi.fn(),
 }));
 
-vi.mock("@/lib/data/demo-matches", () => ({
+vi.mock("@/lib/content/landing/demo-matches", () => ({
 	getDemoMatchesForSong: vi.fn(() => []),
 }));
 

@@ -5,7 +5,7 @@
 
 import { useLocation } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import type { LandingSongManifest } from "@/lib/data/landing-songs";
+import type { LandingSongManifest } from "@/lib/content/landing/landing-songs";
 import {
 	ONBOARDING_STEPS,
 	type OnboardingStep,

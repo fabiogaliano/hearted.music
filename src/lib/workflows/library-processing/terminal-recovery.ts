@@ -1,8 +1,8 @@
 import { Result } from "better-result";
 import {
-	getLatestExecutionMeasurementForJob,
+	getLatestJobExecutionMeasurement,
 	type JobExecutionMeasurement,
-} from "@/lib/data/job-measurements";
+} from "@/lib/platform/jobs/execution-measurements";
 import type { Job } from "@/lib/platform/jobs/repository";
 import { EnrichmentChanges } from "./changes/enrichment";
 import { MatchSnapshotChanges } from "./changes/match-snapshot";
@@ -152,7 +152,7 @@ async function buildTerminalRefChange(ref: TerminalActiveRef): Promise<{
 		};
 	}
 
-	const measurementResult = await getLatestExecutionMeasurementForJob(job.id);
+	const measurementResult = await getLatestJobExecutionMeasurement(job.id);
 	if (Result.isError(measurementResult) || !measurementResult.value) {
 		return {
 			change:

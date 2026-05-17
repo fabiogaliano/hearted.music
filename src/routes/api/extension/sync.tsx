@@ -16,7 +16,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
 import { z } from "zod";
-import { validateApiToken } from "@/lib/data/api-tokens";
+import { validateExtensionApiToken } from "@/lib/platform/auth/api-tokens";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { createJob } from "@/lib/platform/jobs/repository";
 import { updatePhaseJobIds } from "@/lib/domains/library/accounts/preferences-queries";
@@ -127,7 +127,7 @@ export const Route = createFileRoute("/api/extension/sync")({
 					const authHeader = request.headers.get("Authorization");
 					if (authHeader?.startsWith("Bearer ")) {
 						const token = authHeader.slice(7);
-						const tokenResult = await validateApiToken(token);
+						const tokenResult = await validateExtensionApiToken(token);
 						if (Result.isOk(tokenResult) && tokenResult.value) {
 							accountId = tokenResult.value;
 						}

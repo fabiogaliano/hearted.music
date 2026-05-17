@@ -5,9 +5,9 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json } from "@/lib/data/database.types";
 import {
 	getMatchDecisionsForSongs,
-	insertMatchDecision,
-	insertMatchDecisions,
-} from "@/lib/data/match-decision-queries";
+	upsertMatchDecision,
+	upsertMatchDecisions,
+} from "@/lib/domains/taste/song-matching/decision-queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
 import {
 	getLatestMatchSnapshot,
@@ -455,7 +455,7 @@ export const addSongToPlaylist = createServerFn({ method: "POST" })
 	.inputValidator((data) => AddToPlaylistSchema.parse(data))
 	.handler(async ({ data, context }): Promise<AddToPlaylistResult> => {
 		const { session } = context;
-		const result = await insertMatchDecision(
+		const result = await upsertMatchDecision(
 			session.accountId,
 			data.songId,
 			data.playlistId,
@@ -485,7 +485,7 @@ export const dismissSong = createServerFn({ method: "POST" })
 			playlistId,
 			decision: "dismissed" as const,
 		}));
-		const result = await insertMatchDecisions(decisions);
+		const result = await upsertMatchDecisions(decisions);
 		return { success: Result.isOk(result) };
 	});
 

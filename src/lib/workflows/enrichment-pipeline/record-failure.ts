@@ -6,15 +6,15 @@
  *   - applies the policy
  *   - writes the row
  *
- * Stage code should call this instead of recordJobFailure directly so the
+ * Stage code should call this instead of recordJobItemFailure directly so the
  * suppression behavior stays centralized.
  */
 
 import { Result } from "better-result";
 import {
-	countUnresolvedFailures,
-	recordJobFailure,
-} from "@/lib/data/job-failures";
+	countUnresolvedJobStageFailures,
+	recordJobItemFailure,
+} from "@/lib/platform/jobs/item-failures";
 import type { DbError } from "@/lib/shared/errors/database";
 import { applyFailurePolicy, BACKOFF_CODES } from "./failure-policy";
 
@@ -36,7 +36,7 @@ export async function recordStageFailure(
 	// Only backoff-driven codes need the prior-count lookup. The set is owned
 	// by the policy module so additions stay in lockstep.
 	if (BACKOFF_CODES.has(params.failureCode)) {
-		const countResult = await countUnresolvedFailures({
+		const countResult = await countUnresolvedJobStageFailures({
 			accountId: params.accountId,
 			itemId: params.songId,
 			stage: params.stage,
@@ -51,7 +51,7 @@ export async function recordStageFailure(
 		now: params.now,
 	});
 
-	return recordJobFailure({
+	return recordJobItemFailure({
 		jobId: params.jobId,
 		itemId: params.songId,
 		stage: params.stage,
