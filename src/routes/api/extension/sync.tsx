@@ -16,7 +16,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
 import { z } from "zod";
-import { validateExtensionApiToken } from "@/lib/platform/auth/api-tokens";
+import { validateExtensionApiToken } from "@/lib/platform/auth/extension-api-tokens";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { createJob } from "@/lib/platform/jobs/repository";
 import { updatePhaseJobIds } from "@/lib/domains/library/accounts/preferences-queries";

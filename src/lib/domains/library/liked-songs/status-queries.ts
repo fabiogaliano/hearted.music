@@ -1,5 +1,5 @@
 /**
- * Item status tracking operations for newness/viewed/actioned state.
+ * Account item newness tracking operations.
  *
  * Uses service role client to bypass RLS since we use custom auth.
  * Returns Result<T, DbError> for composable error handling.
@@ -15,8 +15,7 @@ import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
 // Type Exports
 // ============================================================================
 
-/** Item status row type */
-type ItemStatus = Tables<"item_status">;
+type AccountItemNewness = Tables<"account_item_newness">;
 
 /** Item type enum from database */
 type ItemType = Enums<"item_type">;
@@ -37,7 +36,7 @@ export async function getNewItemIds(
 
 	const result = await fromSupabaseMany(
 		supabase
-			.from("item_status")
+			.from("account_item_newness")
 			.select("item_id")
 			.eq("account_id", accountId)
 			.eq("item_type", itemType)
@@ -56,22 +55,22 @@ export async function getNewItemIds(
 // ============================================================================
 
 /**
- * Marks items as new (creates or updates item_status records).
+ * Marks items as new (creates or updates account_item_newness records).
  * Uses (account_id, item_id, item_type) as the conflict target.
  */
 export function markItemsNew(
 	accountId: string,
 	itemType: ItemType,
 	itemIds: string[],
-): Promise<Result<ItemStatus[], DbError>> {
+): Promise<Result<AccountItemNewness[], DbError>> {
 	if (itemIds.length === 0) {
-		return Promise.resolve(Result.ok<ItemStatus[], DbError>([]));
+		return Promise.resolve(Result.ok<AccountItemNewness[], DbError>([]));
 	}
 
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseMany(
 		supabase
-			.from("item_status")
+			.from("account_item_newness")
 			.upsert(
 				itemIds.map((itemId) => ({
 					account_id: accountId,

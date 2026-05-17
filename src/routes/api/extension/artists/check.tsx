@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
 import { z } from "zod";
-import { validateExtensionApiToken } from "@/lib/platform/auth/api-tokens";
+import { validateExtensionApiToken } from "@/lib/platform/auth/extension-api-tokens";
 import { getWithImagesBySpotifyIds } from "@/lib/domains/library/artists/queries";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import {

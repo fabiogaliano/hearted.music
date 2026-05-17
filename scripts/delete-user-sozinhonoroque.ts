@@ -10,11 +10,11 @@
  *
  * What gets deleted (in FK-safe order):
  *   - match_result, match_snapshot (matching data)
- *   - job_failure, job (background jobs)
- *   - item_status (UI state)
+ *   - job_item_failure, job (background jobs)
+ *   - account_item_newness (UI state)
  *   - playlist_profile, playlist_analysis, playlist_song, playlist (playlists)
  *   - liked_song (liked songs)
- *   - api_token (extension tokens)
+ *   - extension_api_token (extension tokens)
  *   - user_preferences (settings)
  *   - account (app-level user)
  *   - session, oauth_account (Better Auth)
@@ -124,7 +124,7 @@ async function main() {
 	let jobFailures = 0;
 	if (jobIds.length > 0) {
 		const { count } = await supabase
-			.from("job_failure")
+			.from("job_item_failure")
 			.delete({ count: "exact" })
 			.in("job_id", jobIds);
 		jobFailures = count ?? 0;
@@ -135,8 +135,8 @@ async function main() {
 		.delete({ count: "exact" })
 		.eq("account_id", accountId);
 
-	const { count: itemStatuses } = await supabase
-		.from("item_status")
+	const { count: accountItemNewnessRows } = await supabase
+		.from("account_item_newness")
 		.delete({ count: "exact" })
 		.eq("account_id", accountId);
 
@@ -180,7 +180,7 @@ async function main() {
 		.eq("account_id", accountId);
 
 	const { count: apiTokens } = await supabase
-		.from("api_token")
+		.from("extension_api_token")
 		.delete({ count: "exact" })
 		.eq("account_id", accountId);
 
@@ -194,7 +194,7 @@ async function main() {
 	deleted("match snapshots", matchSnapshots ?? 0);
 	deleted("job failures", jobFailures);
 	deleted("jobs", jobCount ?? 0);
-	deleted("item statuses", itemStatuses ?? 0);
+	deleted("account item newness rows", accountItemNewnessRows ?? 0);
 	deleted("playlist profiles", playlistProfiles);
 	deleted("playlist analyses", playlistAnalyses);
 	deleted("playlist songs", playlistSongs);

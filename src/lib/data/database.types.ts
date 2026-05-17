@@ -125,6 +125,47 @@ export type Database = {
 					},
 				];
 			};
+			account_item_newness: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					id: string;
+					is_new: boolean;
+					item_id: string;
+					item_type: Database["public"]["Enums"]["item_type"];
+					updated_at: string;
+					viewed_at: string | null;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					id?: string;
+					is_new?: boolean;
+					item_id: string;
+					item_type: Database["public"]["Enums"]["item_type"];
+					updated_at?: string;
+					viewed_at?: string | null;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					id?: string;
+					is_new?: boolean;
+					item_id?: string;
+					item_type?: Database["public"]["Enums"]["item_type"];
+					updated_at?: string;
+					viewed_at?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "item_status_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			account_song_unlock: {
 				Row: {
 					account_id: string;
@@ -178,44 +219,6 @@ export type Database = {
 						columns: ["song_id"];
 						isOneToOne: false;
 						referencedRelation: "song";
-						referencedColumns: ["id"];
-					},
-				];
-			};
-			api_token: {
-				Row: {
-					account_id: string;
-					created_at: string;
-					id: string;
-					last_used_at: string | null;
-					name: string | null;
-					revoked_at: string | null;
-					token_hash: string;
-				};
-				Insert: {
-					account_id: string;
-					created_at?: string;
-					id?: string;
-					last_used_at?: string | null;
-					name?: string | null;
-					revoked_at?: string | null;
-					token_hash: string;
-				};
-				Update: {
-					account_id?: string;
-					created_at?: string;
-					id?: string;
-					last_used_at?: string | null;
-					name?: string | null;
-					revoked_at?: string | null;
-					token_hash?: string;
-				};
-				Relationships: [
-					{
-						foreignKeyName: "api_token_account_id_fkey";
-						columns: ["account_id"];
-						isOneToOne: false;
-						referencedRelation: "account";
 						referencedColumns: ["id"];
 					},
 				];
@@ -419,40 +422,37 @@ export type Database = {
 					},
 				];
 			};
-			item_status: {
+			extension_api_token: {
 				Row: {
 					account_id: string;
 					created_at: string;
 					id: string;
-					is_new: boolean;
-					item_id: string;
-					item_type: Database["public"]["Enums"]["item_type"];
-					updated_at: string;
-					viewed_at: string | null;
+					last_used_at: string | null;
+					name: string | null;
+					revoked_at: string | null;
+					token_hash: string;
 				};
 				Insert: {
 					account_id: string;
 					created_at?: string;
 					id?: string;
-					is_new?: boolean;
-					item_id: string;
-					item_type: Database["public"]["Enums"]["item_type"];
-					updated_at?: string;
-					viewed_at?: string | null;
+					last_used_at?: string | null;
+					name?: string | null;
+					revoked_at?: string | null;
+					token_hash: string;
 				};
 				Update: {
 					account_id?: string;
 					created_at?: string;
 					id?: string;
-					is_new?: boolean;
-					item_id?: string;
-					item_type?: Database["public"]["Enums"]["item_type"];
-					updated_at?: string;
-					viewed_at?: string | null;
+					last_used_at?: string | null;
+					name?: string | null;
+					revoked_at?: string | null;
+					token_hash?: string;
 				};
 				Relationships: [
 					{
-						foreignKeyName: "item_status_account_id_fkey";
+						foreignKeyName: "api_token_account_id_fkey";
 						columns: ["account_id"];
 						isOneToOne: false;
 						referencedRelation: "account";
@@ -582,7 +582,7 @@ export type Database = {
 					},
 				];
 			};
-			job_failure: {
+			job_item_failure: {
 				Row: {
 					created_at: string;
 					error_message: string | null;
@@ -1921,7 +1921,7 @@ export type Database = {
 				Args: { p_account_id: string };
 				Returns: number;
 			};
-			count_unresolved_failures: {
+			count_unresolved_job_item_failures: {
 				Args: {
 					p_account_id: string;
 					p_failure_code: string;
@@ -2149,7 +2149,7 @@ export type Database = {
 				Args: { p_account_id: string };
 				Returns: number;
 			};
-			resolve_stage_failures: {
+			resolve_job_item_stage_failures: {
 				Args: { p_account_id: string; p_item_id: string; p_stage: string };
 				Returns: number;
 			};
@@ -2388,6 +2388,31 @@ export type TablesInsert<
 			: never
 		: never;
 
+export type TablesUpdate<
+	DefaultSchemaTableNameOrOptions extends
+		| keyof DefaultSchema["Tables"]
+		| { schema: keyof DatabaseWithoutInternals },
+	TableName extends DefaultSchemaTableNameOrOptions extends {
+		schema: keyof DatabaseWithoutInternals;
+	}
+		? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+		: never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+	schema: keyof DatabaseWithoutInternals;
+}
+	? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+			Update: infer U;
+		}
+		? U
+		: never
+	: DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+		? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+				Update: infer U;
+			}
+			? U
+			: never
+		: never;
+
 export type Enums<
 	DefaultSchemaEnumNameOrOptions extends
 		| keyof DefaultSchema["Enums"]
@@ -2403,6 +2428,23 @@ export type Enums<
 	? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
 	: DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
 		? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+		: never;
+
+export type CompositeTypes<
+	PublicCompositeTypeNameOrOptions extends
+		| keyof DefaultSchema["CompositeTypes"]
+		| { schema: keyof DatabaseWithoutInternals },
+	CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+		schema: keyof DatabaseWithoutInternals;
+	}
+		? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+		: never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+	schema: keyof DatabaseWithoutInternals;
+}
+	? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+	: PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+		? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
 		: never;
 
 export const Constants = {

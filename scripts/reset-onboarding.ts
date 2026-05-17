@@ -47,7 +47,7 @@ ${colors.cyan}Default reset:${colors.reset}
   - phase_job_ids -> NULL
   - theme -> NULL
   - playlist.is_target -> false
-  - clear account-scoped workflow outputs: jobs, item_status, match data, match decisions,
+  - clear account-scoped workflow outputs: jobs, account_item_newness, match data, match decisions,
     library_processing_state
   - preserve liked songs, playlists, and API token
 
@@ -95,7 +95,7 @@ interface ResetCounts {
 	matchSnapshots: number;
 	jobFailures: number;
 	jobs: number;
-	itemStatuses: number;
+	accountItemNewnessRows: number;
 	targetPlaylistsReset: number;
 	likedSongsDeleted: number;
 	playlistSongsDeleted: number;
@@ -195,7 +195,7 @@ function makeEmptyCounts(): ResetCounts {
 		matchSnapshots: 0,
 		jobFailures: 0,
 		jobs: 0,
-		itemStatuses: 0,
+		accountItemNewnessRows: 0,
 		targetPlaylistsReset: 0,
 		likedSongsDeleted: 0,
 		playlistSongsDeleted: 0,
@@ -214,10 +214,10 @@ async function deleteCount(
 		| "match_snapshot"
 		| "match_decision"
 		| "job"
-		| "item_status"
+		| "account_item_newness"
 		| "liked_song"
 		| "playlist"
-		| "api_token",
+		| "extension_api_token",
 	accountId: string,
 ): Promise<number> {
 	const { count, error: deleteError } = await supabase
@@ -316,7 +316,7 @@ async function clearJobs(
 	let jobFailures = 0;
 	if (jobIds.length > 0) {
 		const { count, error: failuresError } = await supabase
-			.from("job_failure")
+			.from("job_item_failure")
 			.delete({ count: "exact" })
 			.in("job_id", jobIds);
 		if (failuresError) {
@@ -546,7 +546,7 @@ async function resetOnboarding(
 	counts.jobFailures = jobCounts.jobFailures;
 	counts.jobs = jobCounts.jobs;
 
-	counts.itemStatuses = await deleteCount(supabase, "item_status", accountId);
+	counts.accountItemNewnessRows = await deleteCount(supabase, "account_item_newness", accountId);
 
 	counts.billingRowsCleared = await resetBillingState(supabase, accountId);
 
@@ -562,7 +562,7 @@ async function resetOnboarding(
 	}
 
 	if (options.clearApiToken) {
-		counts.apiTokensDeleted = await deleteCount(supabase, "api_token", accountId);
+		counts.apiTokensDeleted = await deleteCount(supabase, "extension_api_token", accountId);
 	}
 
 	await resetUserPreferences(supabase, accountId);
@@ -577,7 +577,7 @@ function printCounts(counts: ResetCounts): void {
 		["match snapshots", counts.matchSnapshots],
 		["job failures", counts.jobFailures],
 		["jobs", counts.jobs],
-		["item statuses", counts.itemStatuses],
+		["account item newness rows", counts.accountItemNewnessRows],
 		["target playlists reset", counts.targetPlaylistsReset],
 		["liked songs deleted", counts.likedSongsDeleted],
 		["playlist songs deleted", counts.playlistSongsDeleted],

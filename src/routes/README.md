@@ -202,7 +202,7 @@ The web app communicates with the extension via `chrome.runtime.sendMessage` (re
 | `POST /api/extension/token`   | Session cookie (required)     | Generate a new API token                       |
 | `DELETE /api/extension/token` | Session cookie (required)     | Revoke all tokens for account                  |
 
-API tokens are long-lived opaque Bearer tokens stored in `api_token`. The extension stores the token in `chrome.storage` after `CONNECT`.
+API tokens are long-lived opaque Bearer tokens stored in `extension_api_token`. The extension stores the token in `chrome.storage` after `CONNECT`.
 
 ### Spotify write-back (via extension)
 
@@ -262,7 +262,8 @@ Enrichment job                                   Match Snapshot Refresh job
 │   embedding model)      │              │      · Vector similarity (cosine)    │
 │                         │              │      · Audio feature score           │
 │ Marks songs as pipeline │              │      · Genre overlap                 │
-│ processed in item_status│              │    Adaptive weights per data avail.  │
+│ processed in            │
+│ account_item_newness    │              │    Adaptive weights per data avail.  │
 │                         │              │    Optional cross-encoder reranking  │
 │ Signals new candidates  │              │                                      │
 │ available if any song   │              │ 5. publishing                        │
@@ -418,7 +419,7 @@ bun run reset:onboarding user@example.com --wipe-library      # also delete like
 bun run reset:onboarding user@example.com --clear-api-token   # also revoke extension API token
 ```
 
-What a warm reset clears: jobs, item_status, match data, match decisions, library_processing_state, target playlist flags, onboarding preferences.  
+What a warm reset clears: jobs, account_item_newness, match data, match decisions, library_processing_state, target playlist flags, onboarding preferences.  
 What it preserves: liked songs, playlists, extension API token.
 
 ---

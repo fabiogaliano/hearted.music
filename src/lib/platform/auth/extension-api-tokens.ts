@@ -1,5 +1,5 @@
 /**
- * API token data operations for extension bearer auth.
+ * Extension API token data operations for extension bearer auth.
  *
  * Tokens are SHA-256 hashed before storage — plain tokens are only
  * returned once at generation time and never persisted.
@@ -42,7 +42,7 @@ export async function createExtensionApiToken(
 
 	const insertResult = await fromSupabaseSingle(
 		supabase
-			.from("api_token")
+			.from("extension_api_token")
 			.insert({
 				account_id: accountId,
 				token_hash: tokenHash,
@@ -72,7 +72,7 @@ export async function validateExtensionApiToken(
 
 	const result = await fromSupabaseMaybe(
 		supabase
-			.from("api_token")
+			.from("extension_api_token")
 			.select("id, account_id, revoked_at")
 			.eq("token_hash", tokenHash)
 			.is("revoked_at", null)
@@ -85,7 +85,7 @@ export async function validateExtensionApiToken(
 	const { id, account_id } = result.value;
 
 	await supabase
-		.from("api_token")
+		.from("extension_api_token")
 		.update({ last_used_at: new Date().toISOString() })
 		.eq("id", id);
 
@@ -101,7 +101,7 @@ export async function revokeExtensionApiTokensForAccount(
 	const supabase = createAdminSupabaseClient();
 
 	const { error } = await supabase
-		.from("api_token")
+		.from("extension_api_token")
 		.update({ revoked_at: new Date().toISOString() })
 		.eq("account_id", accountId)
 		.is("revoked_at", null);

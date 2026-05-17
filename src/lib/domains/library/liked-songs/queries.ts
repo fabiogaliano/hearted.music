@@ -241,7 +241,7 @@ export async function getStats(
 }
 
 /**
- * Gets liked songs that haven't been processed yet (no item_status record).
+ * Gets liked songs that haven't been processed yet (no account_item_newness record).
  * These are songs waiting for user action (add to playlist, dismiss, etc.).
  */
 export async function getPending(
@@ -267,7 +267,7 @@ export async function getPending(
 		return Result.ok<LikedSong[], DbError>([]);
 	}
 
-	// Get song IDs that have item_status records (chunked to avoid URI-too-long)
+	// Get song IDs that have account_item_newness records (chunked to avoid URI-too-long)
 	const songIds = likedSongs.map((ls: LikedSong) => ls.song_id);
 	const CHUNK_SIZE = 50;
 	const CHUNK_CONCURRENCY = 4;
@@ -279,7 +279,7 @@ export async function getPending(
 		(chunk) =>
 			fromSupabaseMany<{ item_id: string }>(
 				supabase
-					.from("item_status")
+					.from("account_item_newness")
 					.select("item_id")
 					.eq("account_id", accountId)
 					.eq("item_type", "song")

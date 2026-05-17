@@ -644,7 +644,7 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 			expect(selfHostedBillingState.unlimitedAccess.kind).toBe("self_hosted");
 		});
 
-		it("self_hosted activation writes item_status via markItemsNew", async () => {
+		it("self_hosted activation writes account_item_newness via markItemsNew", async () => {
 			// Directly test the content-activation module behavior via
 			// the billing state assertions — the mock structure verifies:
 			// 1. readBillingState returns self_hosted

@@ -12,7 +12,7 @@ import { Result } from "better-result";
 import {
 	createExtensionApiToken,
 	revokeExtensionApiTokensForAccount,
-} from "@/lib/platform/auth/api-tokens";
+} from "@/lib/platform/auth/extension-api-tokens";
 import { requireAuthSession } from "@/lib/platform/auth/auth.server";
 
 export const Route = createFileRoute("/api/extension/token")({

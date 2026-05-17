@@ -505,7 +505,7 @@ export const markSeenSongs = createServerFn({ method: "POST" })
 		const { session } = context;
 		const supabase = createAdminSupabaseClient();
 		const now = new Date().toISOString();
-		const { error } = await supabase.from("item_status").upsert(
+		const { error } = await supabase.from("account_item_newness").upsert(
 			data.songIds.map((itemId) => ({
 				account_id: session.accountId,
 				item_id: itemId,

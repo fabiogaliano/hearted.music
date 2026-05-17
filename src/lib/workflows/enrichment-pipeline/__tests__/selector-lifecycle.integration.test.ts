@@ -1,6 +1,6 @@
 /**
  * Selector lifecycle suppression — exercises migration
- * 20260426180000_job_failure_lifecycle. Verifies that the work-plan selector
+ * 20260426180000_job_failure_lifecycle (table since renamed to job_item_failure). Verifies that the work-plan selector
  * uses suppress_until / resolved_at instead of raw failure-row existence:
  *
  *   - terminal failures still exclude the song entirely (CTE terminal gate)
@@ -139,7 +139,7 @@ describe.skipIf(!IS_LOCAL)(
 			const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
 			await supabase
-				.from("job_failure")
+				.from("job_item_failure")
 				.insert({
 					job_id: fixture.jobId,
 					item_type: "song",
@@ -163,7 +163,7 @@ describe.skipIf(!IS_LOCAL)(
 			const past = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
 			await supabase
-				.from("job_failure")
+				.from("job_item_failure")
 				.insert({
 					job_id: fixture.jobId,
 					item_type: "song",
@@ -185,7 +185,7 @@ describe.skipIf(!IS_LOCAL)(
 			const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
 			await supabase
-				.from("job_failure")
+				.from("job_item_failure")
 				.insert({
 					job_id: fixture.jobId,
 					item_type: "song",
@@ -206,7 +206,7 @@ describe.skipIf(!IS_LOCAL)(
 		it("terminal failure excludes the song entirely (no row returned)", async () => {
 			if (!supabase || !fixture) throw new Error("missing");
 			await supabase
-				.from("job_failure")
+				.from("job_item_failure")
 				.insert({
 					job_id: fixture.jobId,
 					item_type: "song",
@@ -226,7 +226,7 @@ describe.skipIf(!IS_LOCAL)(
 			const future = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
 
 			await supabase
-				.from("job_failure")
+				.from("job_item_failure")
 				.insert({
 					job_id: fixture.jobId,
 					item_type: "song",
@@ -243,12 +243,12 @@ describe.skipIf(!IS_LOCAL)(
 			expect(row?.needs_analysis).toBe(false);
 		});
 
-		it("resolve_stage_failures RPC clears suppression so stage is selectable again", async () => {
+		it("resolve_job_item_stage_failures RPC clears suppression so stage is selectable again", async () => {
 			if (!supabase || !fixture) throw new Error("missing");
 			const future = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
 
 			await supabase
-				.from("job_failure")
+				.from("job_item_failure")
 				.insert({
 					job_id: fixture.jobId,
 					item_type: "song",
@@ -264,11 +264,14 @@ describe.skipIf(!IS_LOCAL)(
 			let row = rows.find((r) => r.song_id === fixture!.songId);
 			expect(row?.needs_audio_features).toBe(false);
 
-			const { error: rpcError } = await supabase.rpc("resolve_stage_failures", {
-				p_account_id: fixture.accountId,
-				p_item_id: fixture.songId,
-				p_stage: "audio_features",
-			});
+			const { error: rpcError } = await supabase.rpc(
+				"resolve_job_item_stage_failures",
+				{
+					p_account_id: fixture.accountId,
+					p_item_id: fixture.songId,
+					p_stage: "audio_features",
+				},
+			);
 			expect(rpcError).toBeNull();
 
 			rows = await callSelector(fixture.accountId);
@@ -276,12 +279,12 @@ describe.skipIf(!IS_LOCAL)(
 			expect(row?.needs_audio_features).toBe(true);
 		});
 
-		it("count_unresolved_failures RPC returns active count for stage+code", async () => {
+		it("count_unresolved_job_item_failures RPC returns active count for stage+code", async () => {
 			if (!supabase || !fixture) throw new Error("missing");
 			const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
 			await supabase
-				.from("job_failure")
+				.from("job_item_failure")
 				.insert([
 					{
 						job_id: fixture.jobId,
@@ -304,12 +307,15 @@ describe.skipIf(!IS_LOCAL)(
 				])
 				.throwOnError();
 
-			const { data, error } = await supabase.rpc("count_unresolved_failures", {
-				p_account_id: fixture.accountId,
-				p_item_id: fixture.songId,
-				p_stage: "audio_features",
-				p_failure_code: "provider_transient",
-			});
+			const { data, error } = await supabase.rpc(
+				"count_unresolved_job_item_failures",
+				{
+					p_account_id: fixture.accountId,
+					p_item_id: fixture.songId,
+					p_stage: "audio_features",
+					p_failure_code: "provider_transient",
+				},
+			);
 			expect(error).toBeNull();
 			expect(data).toBe(2);
 		});

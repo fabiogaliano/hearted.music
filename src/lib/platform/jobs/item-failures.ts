@@ -1,7 +1,7 @@
 /**
  * Per-item job failure tracking with lifecycle metadata.
  *
- * Lifecycle columns (added by 20260426180000_job_failure_lifecycle):
+ * Lifecycle columns:
  *   - is_terminal:    permanent block when true.
  *   - suppress_until: temporary block window for non-terminal failures.
  *   - resolved_at:    set on stage success to retire historical rows.
@@ -32,7 +32,7 @@ export function recordJobItemFailure(
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
 		supabase
-			.from("job_failure")
+			.from("job_item_failure")
 			.insert({
 				job_id: params.jobId,
 				item_type: "song",
@@ -62,11 +62,14 @@ export async function resolveJobStageFailures(params: {
 	stage: string;
 }): Promise<Result<number, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase.rpc("resolve_stage_failures", {
-		p_account_id: params.accountId,
-		p_item_id: params.itemId,
-		p_stage: params.stage,
-	});
+	const { data, error } = await supabase.rpc(
+		"resolve_job_item_stage_failures",
+		{
+			p_account_id: params.accountId,
+			p_item_id: params.itemId,
+			p_stage: params.stage,
+		},
+	);
 
 	if (error) {
 		return Result.err(
@@ -88,12 +91,15 @@ export async function countUnresolvedJobStageFailures(params: {
 	failureCode: string;
 }): Promise<Result<number, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase.rpc("count_unresolved_failures", {
-		p_account_id: params.accountId,
-		p_item_id: params.itemId,
-		p_stage: params.stage,
-		p_failure_code: params.failureCode,
-	});
+	const { data, error } = await supabase.rpc(
+		"count_unresolved_job_item_failures",
+		{
+			p_account_id: params.accountId,
+			p_item_id: params.itemId,
+			p_stage: params.stage,
+			p_failure_code: params.failureCode,
+		},
+	);
 
 	if (error) {
 		return Result.err(

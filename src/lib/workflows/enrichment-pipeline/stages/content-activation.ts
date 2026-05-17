@@ -106,7 +106,7 @@ async function activateForSelfHosted(
 			failures: songIds.map((songId) => ({
 				songId,
 				failureCode: FAILURE_CODES.CONTENT_ACTIVATION_FAILED,
-				message: `item_status write failed: ${markResult.error.message}`,
+				message: `account_item_newness write failed: ${markResult.error.message}`,
 			})),
 		};
 	}
@@ -125,7 +125,7 @@ async function activateForFreeOrPack(
 			failures: songIds.map((songId) => ({
 				songId,
 				failureCode: FAILURE_CODES.CONTENT_ACTIVATION_FAILED,
-				message: `item_status write failed: ${markResult.error.message}`,
+				message: `account_item_newness write failed: ${markResult.error.message}`,
 			})),
 		};
 	}

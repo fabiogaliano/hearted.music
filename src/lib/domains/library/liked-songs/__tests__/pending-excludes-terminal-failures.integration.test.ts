@@ -3,7 +3,7 @@
  *
  * Exercises the SQL change in migration
  * 20260426150000_pending_excludes_terminal_failures: a terminally failed
- * entitled song with no item_status row must NOT count as pending in
+ * entitled song with no account_item_newness row must NOT count as pending in
  * get_liked_songs_stats and must NOT be returned by p_filter='pending' in
  * get_liked_songs_page.
  *
@@ -125,7 +125,7 @@ async function setupFixtures() {
 	// Terminal failure for the failed-but-entitled song. The pending bucket /
 	// pending filter must skip it from now on.
 	await supabase
-		.from("job_failure")
+		.from("job_item_failure")
 		.insert({
 			job_id: jobRow.id,
 			item_type: "song",
@@ -140,7 +140,7 @@ async function setupFixtures() {
 async function teardownFixtures() {
 	if (!supabase) return;
 	// account FK is ON DELETE CASCADE — wipes liked_song, account_billing,
-	// account_song_unlock, job (and through job → job_failure).
+	// account_song_unlock, job (and through job → job_item_failure).
 	await supabase.from("account").delete().eq("id", ACCOUNT_ID);
 	await supabase
 		.from("song")

@@ -129,7 +129,9 @@ describe("runContentActivation", () => {
 			expect(outcome.failures[0].failureCode).toBe(
 				FAILURE_CODES.CONTENT_ACTIVATION_FAILED,
 			);
-			expect(outcome.failures[0].message).toContain("item_status write failed");
+			expect(outcome.failures[0].message).toContain(
+				"account_item_newness write failed",
+			);
 		});
 	});
 
@@ -240,7 +242,7 @@ describe("runContentActivation", () => {
 	});
 
 	describe("self-hosted users", () => {
-		it("succeeds when both item_status and unlock-row persist", async () => {
+		it("succeeds when both account_item_newness and unlock-row persist", async () => {
 			mockReadBillingState.mockResolvedValue(
 				Result.ok(
 					makeBillingState({
@@ -302,7 +304,9 @@ describe("runContentActivation", () => {
 			expect(outcome.failures[0].failureCode).toBe(
 				FAILURE_CODES.CONTENT_ACTIVATION_FAILED,
 			);
-			expect(outcome.failures[0].message).toContain("item_status write failed");
+			expect(outcome.failures[0].message).toContain(
+				"account_item_newness write failed",
+			);
 		});
 
 		it("returns failures and does not mark items new when unlock RPC fails", async () => {
