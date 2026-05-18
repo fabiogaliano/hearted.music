@@ -1,0 +1,185 @@
+name: Main
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.changes.outputs.code }}
+      shared: ${{ steps.changes.outputs.shared }}
+      app: ${{ steps.changes.outputs.app }}
+      worker: ${{ steps.changes.outputs.worker }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@9d7afb8d214ad99e78fbd4247752c4caed2b6e4c # v4.0.0
+        id: changes
+        with:
+          filters: |
+            code:
+              - 'src/**'
+              - 'public/**'
+              - 'scripts/**'
+              - 'shared/**'
+              - 'supabase/**'
+              - 'extension/**'
+              - '.github/workflows/**'
+              - 'package.json'
+              - 'bun.lock'
+              - 'tsconfig.json'
+              - 'biome.json'
+              - 'components.json'
+              - 'Dockerfile.worker'
+              - 'ladle-vite.config.ts'
+              - 'lefthook.yml'
+              - 'vite.config.ts'
+              - 'wrangler.jsonc'
+            shared:
+              - 'src/lib/**'
+              - 'package.json'
+              - 'bun.lock'
+              - 'tsconfig.json'
+              - 'biome.json'
+            app:
+              - 'src/routes/**'
+              - 'src/features/**'
+              - 'src/components/**'
+              - 'src/integrations/**'
+              - 'src/types/**'
+              - 'src/env.ts'
+              - 'src/routeTree.gen.ts'
+              - 'public/**'
+              - 'vite.config.ts'
+              - 'wrangler.jsonc'
+            worker:
+              - 'src/worker/**'
+              - 'Dockerfile.worker'
+
+  verify:
+    needs: detect
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: verify-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Skip docs-only changes
+        if: needs.detect.outputs.code != 'true'
+        run: echo "No code changes detected; skipping verify."
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        if: needs.detect.outputs.code == 'true'
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: needs.detect.outputs.code == 'true'
+        with:
+          no-cache: true
+
+      - name: Restore Bun install cache
+        if: needs.detect.outputs.code == 'true'
+        id: bun-cache-restore
+        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-install-cache-${{ hashFiles('package.json', 'bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-install-cache-
+
+      - if: needs.detect.outputs.code == 'true'
+        run: bun install --frozen-lockfile
+      - if: needs.detect.outputs.code == 'true'
+        run: bun run check
+      - if: needs.detect.outputs.code == 'true'
+        run: bun run typecheck
+      - if: needs.detect.outputs.code == 'true'
+        run: bun run typecheck:worker
+      - if: needs.detect.outputs.code == 'true'
+        run: bun run test
+
+      - name: Build webapp
+        if: needs.detect.outputs.code == 'true' && (needs.detect.outputs.app == 'true' || needs.detect.outputs.shared == 'true')
+        run: bun run build
+
+      - name: Smoke-build worker image
+        if: needs.detect.outputs.code == 'true' && (needs.detect.outputs.worker == 'true' || needs.detect.outputs.shared == 'true')
+        run: docker build -f Dockerfile.worker .
+
+      - name: Save Bun install cache
+        if: needs.detect.outputs.code == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.bun-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ steps.bun-cache-restore.outputs.cache-primary-key }}
+
+  deploy-app:
+    needs: [detect, verify]
+    if: github.event_name == 'push' && needs.detect.outputs.code == 'true' && (needs.detect.outputs.app == 'true' || needs.detect.outputs.shared == 'true')
+    runs-on: ubuntu-latest
+    environment: production-app
+    timeout-minutes: 20
+    concurrency:
+      group: deploy-app-production
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          no-cache: true
+
+      - name: Restore Bun install cache
+        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-install-cache-${{ hashFiles('package.json', 'bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-install-cache-
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
+          VITE_SENTRY_ENVIRONMENT: ${{ vars.VITE_SENTRY_ENVIRONMENT }}
+          VITE_CHROME_EXTENSION_ID: ${{ vars.VITE_CHROME_EXTENSION_ID }}
+          VITE_APP_TITLE: ${{ vars.VITE_APP_TITLE }}
+
+  deploy-worker:
+    needs: [detect, verify]
+    if: github.event_name == 'push' && needs.detect.outputs.code == 'true' && (needs.detect.outputs.worker == 'true' || needs.detect.outputs.shared == 'true')
+    runs-on: ubuntu-latest
+    environment: production-worker
+    timeout-minutes: 10
+    concurrency:
+      group: deploy-worker-production
+      cancel-in-progress: false
+
+    steps:
+      - name: Trigger Coolify deploy
+        run: >-
+          curl
+          --fail
+          --silent
+          --show-error
+          --retry 3
+          --retry-delay 2
+          --retry-all-errors
+          --max-time 30
+          -X POST
+          "${{ secrets.COOLIFY_WORKER_DEPLOY_HOOK }}"

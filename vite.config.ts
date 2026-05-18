@@ -10,6 +10,7 @@ import { defineConfig, loadEnv, type Plugin } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 
 const isTest = process.env.VITEST === "true";
+const isRelease = process.env.RELEASE === "true";
 const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
 
 // Load env files for tests (Vitest doesn't auto-load non-VITE_ prefixed vars)
@@ -67,6 +68,12 @@ export default defineConfig(({ command }) => {
 	// shell didn't export NODE_ENV.
 	const isBuild = command === "build";
 
+	if (isBuild && isRelease && !sentryAuthToken) {
+		throw new Error(
+			"RELEASE=true build requires SENTRY_AUTH_TOKEN so Sentry source maps upload with the production bundle.",
+		);
+	}
+
 	return {
 		test: {
 			environment: "jsdom",
@@ -119,11 +126,12 @@ export default defineConfig(({ command }) => {
 				}),
 			viteReact(),
 			// Sentry must come last so it sees the final bundle for source map upload.
-			// Only runs when SENTRY_AUTH_TOKEN is present (CI/release builds).
+			// Release builds fail fast when the auth token is missing instead of
+			// silently shipping unreadable production stack traces.
 			// Tunneling is handled by our own `/api/sentry-tunnel` file route, not
 			// the plugin — same mechanism dev and prod, no auth-token gating.
 			!isTest &&
-				!!sentryAuthToken &&
+				isRelease &&
 				sentryTanstackStart({
 					org: "f-inc",
 					project: "hearted-music",
