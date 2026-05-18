@@ -8,8 +8,8 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
-import { PaneRoot, PaneSlot, PaneStore, usePane } from "uipane";
 import { resolveSession } from "@/features/onboarding/step-resolver";
+import { PaneRoot, PaneSlot, PaneStore, usePane } from "@/integrations/uipane";
 import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
 import type { OnboardingAuthPayload } from "@/lib/server/onboarding.functions";
 import {

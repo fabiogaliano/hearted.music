@@ -74,6 +74,8 @@ export default defineConfig(({ command }) => {
 		);
 	}
 
+	const useUipaneStub = isBuild || isTest;
+
 	return {
 		test: {
 			environment: "jsdom",
@@ -101,6 +103,15 @@ export default defineConfig(({ command }) => {
 		},
 		resolve: {
 			alias: {
+				// CI may not have the local `file:../../uipane` package. Build/test use
+				// the internal stub so dev-only pane wiring never ships or blocks verify.
+				...(useUipaneStub
+					? {
+							"@/integrations/uipane": fileURLToPath(
+								new URL("./src/integrations/uipane.stub.ts", import.meta.url),
+							),
+						}
+					: {}),
 				"@": fileURLToPath(new URL("./src", import.meta.url)),
 			},
 		},

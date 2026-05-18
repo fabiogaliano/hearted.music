@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
-import { PaneRoot, usePane } from "uipane";
 import { SongDetailPanel } from "@/features/liked-songs/components/SongDetailPanel";
 import { PanelVariantCompactStack } from "@/features/liked-songs/components/variants/PanelVariantCompactStack";
 import { PanelVariantCompass } from "@/features/liked-songs/components/variants/PanelVariantCompass";
@@ -25,6 +24,7 @@ import { PanelVariantThemePivot } from "@/features/liked-songs/components/varian
 import { PanelVariantVerbatim } from "@/features/liked-songs/components/variants/PanelVariantVerbatim";
 import { PanelVariantWideOpen } from "@/features/liked-songs/components/variants/PanelVariantWideOpen";
 import type { AnalysisContent, LikedSong } from "@/features/liked-songs/types";
+import { PaneRoot, usePane } from "@/integrations/uipane";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { themes } from "@/lib/theme/colors";
 import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
