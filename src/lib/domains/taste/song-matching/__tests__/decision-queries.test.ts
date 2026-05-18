@@ -43,7 +43,9 @@ vi.mock("@/lib/data/client", () => ({
 			});
 
 			// Terminal for many-row queries (no .single())
-			const originalOrder = chain.order;
+			const originalOrder = chain.order as unknown as (
+				...args: unknown[]
+			) => unknown;
 			chain.order = vi.fn((...args: unknown[]) => {
 				originalOrder(...args);
 				if (!isUpsertPath) {

@@ -7,7 +7,6 @@ import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type Plugin } from "vite";
-import viteTsConfigPaths from "vite-tsconfig-paths";
 
 const isTest = process.env.VITEST === "true";
 const isRelease = process.env.RELEASE === "true";
@@ -102,6 +101,7 @@ export default defineConfig(({ command }) => {
 			},
 		},
 		resolve: {
+			tsconfigPaths: true,
 			alias: {
 				// CI may not have the local `file:../../uipane` package. Build/test use
 				// the internal stub so dev-only pane wiring never ships or blocks verify.
@@ -118,9 +118,6 @@ export default defineConfig(({ command }) => {
 		plugins: [
 			embeddingSidecarPlugin(),
 			!isBuild && devtools(),
-			viteTsConfigPaths({
-				projects: ["./tsconfig.json"],
-			}),
 			tailwindcss(),
 			// Cloudflare must come BEFORE tanstackStart per Cloudflare docs:
 			// https://developers.cloudflare.com/changelog/2025-10-24-tanstack-start/

@@ -19,9 +19,9 @@ vi.mock("@/lib/domains/enrichment/lyrics/service", async (importOriginal) => {
 		>();
 	return {
 		...actual,
-		LyricsService: vi.fn().mockImplementation(() => ({
-			getLyricsText: vi.fn(),
-		})),
+		LyricsService: vi.fn().mockImplementation(function () {
+			return { getLyricsText: vi.fn() };
+		}),
 	};
 });
 
@@ -74,21 +74,27 @@ vi.mock("@/lib/domains/library/songs/queries", () => ({
 
 // Mock LLM service
 vi.mock("@/lib/integrations/llm/service", () => ({
-	LlmService: vi.fn().mockImplementation(() => ({})),
+	LlmService: vi.fn().mockImplementation(function () {
+		return {};
+	}),
 }));
 
 // Mock song analysis service
 vi.mock("../song-analysis", () => ({
-	SongAnalysisService: vi.fn().mockImplementation(() => ({
-		analyzeSong: vi
-			.fn()
-			.mockResolvedValue(Result.ok({ themes: ["test"], mood: "happy" })),
-	})),
+	SongAnalysisService: vi.fn().mockImplementation(function () {
+		return {
+			analyzeSong: vi
+				.fn()
+				.mockResolvedValue(Result.ok({ themes: ["test"], mood: "happy" })),
+		};
+	}),
 }));
 
 // Mock playlist analysis service
 vi.mock("../playlist-analysis", () => ({
-	PlaylistAnalysisService: vi.fn().mockImplementation(() => ({})),
+	PlaylistAnalysisService: vi.fn().mockImplementation(function () {
+		return {};
+	}),
 }));
 
 import { LyricsService } from "@/lib/domains/enrichment/lyrics/service";
@@ -103,9 +109,9 @@ describe("Pipeline Lyrics Integration", () => {
 		// Set up the mock lyrics service
 		mockGetLyricsText = vi.fn();
 		(LyricsService as unknown as ReturnType<typeof vi.fn>).mockImplementation(
-			() => ({
-				getLyricsText: mockGetLyricsText,
-			}),
+			function () {
+				return { getLyricsText: mockGetLyricsText };
+			},
 		);
 
 		// Set required env vars
@@ -232,9 +238,9 @@ describe("Pipeline Lyrics Integration", () => {
 				.mockResolvedValue(Result.ok({ themes: ["love"], mood: "romantic" }));
 			(
 				SongAnalysisService as unknown as ReturnType<typeof vi.fn>
-			).mockImplementation(() => ({
-				analyzeSong: mockAnalyzeSong,
-			}));
+			).mockImplementation(function () {
+				return { analyzeSong: mockAnalyzeSong };
+			});
 
 			mockGetLyricsText.mockResolvedValueOnce(
 				Result.ok("Prefetched lyrics content"),
@@ -264,9 +270,9 @@ describe("Pipeline Lyrics Integration", () => {
 				.mockResolvedValue(Result.ok({ themes: ["test"], mood: "happy" }));
 			(
 				SongAnalysisService as unknown as ReturnType<typeof vi.fn>
-			).mockImplementation(() => ({
-				analyzeSong: mockAnalyzeSong,
-			}));
+			).mockImplementation(function () {
+				return { analyzeSong: mockAnalyzeSong };
+			});
 
 			const pipeline = await unwrapPipeline();
 			const songs: SongToAnalyze[] = [
@@ -299,7 +305,9 @@ describe("Pipeline Lyrics Integration", () => {
 			const mockAnalyzeSong = mockNoAnalyze();
 			(
 				SongAnalysisService as unknown as ReturnType<typeof vi.fn>
-			).mockImplementation(() => ({ analyzeSong: mockAnalyzeSong }));
+			).mockImplementation(function () {
+				return { analyzeSong: mockAnalyzeSong };
+			});
 			return mockAnalyzeSong;
 		}
 
@@ -311,7 +319,9 @@ describe("Pipeline Lyrics Integration", () => {
 			const { SongAnalysisService } = await import("../song-analysis");
 			(
 				SongAnalysisService as unknown as ReturnType<typeof vi.fn>
-			).mockImplementation(() => ({ analyzeSong: mockAnalyzeSong }));
+			).mockImplementation(function () {
+				return { analyzeSong: mockAnalyzeSong };
+			});
 
 			mockGetLyricsText.mockResolvedValueOnce(
 				Result.err(new GeniusNotFoundError("A", "T")),
@@ -408,7 +418,9 @@ describe("Pipeline Lyrics Integration", () => {
 			const { SongAnalysisService } = await import("../song-analysis");
 			(
 				SongAnalysisService as unknown as ReturnType<typeof vi.fn>
-			).mockImplementation(() => ({ analyzeSong: mockAnalyzeSong }));
+			).mockImplementation(function () {
+				return { analyzeSong: mockAnalyzeSong };
+			});
 
 			mockGetLyricsText.mockResolvedValueOnce(
 				Result.err(new GeniusNotFoundError("A", "T")),
@@ -442,7 +454,9 @@ describe("Pipeline Lyrics Integration", () => {
 			const mockAnalyzeSong = vi.fn();
 			(
 				SongAnalysisService as unknown as ReturnType<typeof vi.fn>
-			).mockImplementation(() => ({ analyzeSong: mockAnalyzeSong }));
+			).mockImplementation(function () {
+				return { analyzeSong: mockAnalyzeSong };
+			});
 			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
 				Result.ok(new Map()),
 			);
@@ -473,7 +487,9 @@ describe("Pipeline Lyrics Integration", () => {
 			const { SongAnalysisService } = await import("../song-analysis");
 			(
 				SongAnalysisService as unknown as ReturnType<typeof vi.fn>
-			).mockImplementation(() => ({ analyzeSong: mockAnalyzeSong }));
+			).mockImplementation(function () {
+				return { analyzeSong: mockAnalyzeSong };
+			});
 
 			mockGetLyricsText.mockResolvedValueOnce(
 				Result.err(new GeniusFetchError("https://genius.com/x", 503)),
@@ -506,7 +522,9 @@ describe("Pipeline Lyrics Integration", () => {
 			const { SongAnalysisService } = await import("../song-analysis");
 			(
 				SongAnalysisService as unknown as ReturnType<typeof vi.fn>
-			).mockImplementation(() => ({ analyzeSong: mockAnalyzeSong }));
+			).mockImplementation(function () {
+				return { analyzeSong: mockAnalyzeSong };
+			});
 
 			mockGetLyricsText.mockResolvedValueOnce(
 				Result.err(new GeniusFetchError("https://genius.com/x", 503)),

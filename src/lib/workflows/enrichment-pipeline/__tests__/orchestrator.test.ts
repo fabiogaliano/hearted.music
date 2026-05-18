@@ -55,9 +55,9 @@ const { mockGetEmbeddings, mockGetAnalysis } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/domains/enrichment/embeddings/service", () => ({
-	EmbeddingService: vi.fn().mockImplementation(() => ({
-		getEmbeddings: mockGetEmbeddings,
-	})),
+	EmbeddingService: vi.fn().mockImplementation(function () {
+		return { getEmbeddings: mockGetEmbeddings };
+	}),
 }));
 
 vi.mock("@/lib/platform/jobs/repository", () => ({

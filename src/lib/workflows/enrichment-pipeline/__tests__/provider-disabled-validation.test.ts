@@ -395,9 +395,9 @@ vi.mock("@/lib/domains/library/liked-songs/status-queries", () => ({
 // ---------------------------------------------------------------------------
 
 vi.mock("@/lib/domains/enrichment/embeddings/service", () => ({
-	EmbeddingService: vi.fn().mockImplementation(() => ({
-		getEmbeddings: vi.fn().mockResolvedValue(Result.ok(new Map())),
-	})),
+	EmbeddingService: vi.fn().mockImplementation(function () {
+		return { getEmbeddings: vi.fn().mockResolvedValue(Result.ok(new Map())) };
+	}),
 }));
 
 vi.mock("@/lib/platform/jobs/repository", () => ({
