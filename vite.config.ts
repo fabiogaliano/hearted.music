@@ -61,70 +61,74 @@ function embeddingSidecarPlugin(): Plugin {
 	};
 }
 
-const config = defineConfig({
-	test: {
-		environment: "jsdom",
-		setupFiles: ["./src/test/setup.tsx"],
-		exclude: [
-			"**/node_modules/**",
-			"**/old_app/**",
-			// Sibling Hono service mounted via symlink; runs from its own root.
-			"**/v1_hearted_brand/**",
-		],
-		server: {
-			deps: {
-				inline: ["tiny-warning"],
+export default defineConfig(({ command }) => {
+	// Use Vite's `command` rather than process.env.NODE_ENV: Vite sets it
+	// itself, so the prod-only route filter can't silently miss when the
+	// shell didn't export NODE_ENV.
+	const isBuild = command === "build";
+
+	return {
+		test: {
+			environment: "jsdom",
+			setupFiles: ["./src/test/setup.tsx"],
+			exclude: [
+				"**/node_modules/**",
+				"**/old_app/**",
+				// Sibling Hono service mounted via symlink; runs from its own root.
+				"**/v1_hearted_brand/**",
+			],
+			server: {
+				deps: {
+					inline: ["tiny-warning"],
+				},
 			},
 		},
-	},
-	server: {
-		host: "127.0.0.1",
-		port: 5173,
-		cors: {
-			origin: true,
-			methods: ["GET", "POST", "OPTIONS"],
-			allowedHeaders: ["Authorization", "Content-Type"],
+		server: {
+			host: "127.0.0.1",
+			port: 5173,
+			cors: {
+				origin: true,
+				methods: ["GET", "POST", "OPTIONS"],
+				allowedHeaders: ["Authorization", "Content-Type"],
+			},
 		},
-	},
-	resolve: {
-		alias: {
-			"@": fileURLToPath(new URL("./src", import.meta.url)),
+		resolve: {
+			alias: {
+				"@": fileURLToPath(new URL("./src", import.meta.url)),
+			},
 		},
-	},
-	plugins: [
-		embeddingSidecarPlugin(),
-		devtools(),
-		viteTsConfigPaths({
-			projects: ["./tsconfig.json"],
-		}),
-		tailwindcss(),
-		// Cloudflare must come BEFORE tanstackStart per Cloudflare docs:
-		// https://developers.cloudflare.com/changelog/2025-10-24-tanstack-start/
-		!isTest && cloudflare({ viteEnvironment: { name: "ssr" } }),
-		!isTest &&
-			tanstackStart({
-				// @ts-expect-error - preset exists at runtime but missing from types
-				preset: "node-ws",
-				router: {
-					routeFileIgnorePattern:
-						process.env.NODE_ENV === "production"
+		plugins: [
+			embeddingSidecarPlugin(),
+			!isBuild && devtools(),
+			viteTsConfigPaths({
+				projects: ["./tsconfig.json"],
+			}),
+			tailwindcss(),
+			// Cloudflare must come BEFORE tanstackStart per Cloudflare docs:
+			// https://developers.cloudflare.com/changelog/2025-10-24-tanstack-start/
+			!isTest && cloudflare({ viteEnvironment: { name: "ssr" } }),
+			!isTest &&
+				tanstackStart({
+					// @ts-expect-error - preset exists at runtime but missing from types
+					preset: "node-ws",
+					router: {
+						routeFileIgnorePattern: isBuild
 							? "^dev-|\\.test\\.(ts|tsx)$"
 							: "\\.test\\.(ts|tsx)$",
-				},
-			}),
-		viteReact(),
-		// Sentry must come last so it sees the final bundle for source map upload.
-		// Only runs when SENTRY_AUTH_TOKEN is present (CI/release builds).
-		// Tunneling is handled by our own `/api/sentry-tunnel` file route, not
-		// the plugin — same mechanism dev and prod, no auth-token gating.
-		!isTest &&
-			!!sentryAuthToken &&
-			sentryTanstackStart({
-				org: "f-inc",
-				project: "hearted-music",
-				authToken: sentryAuthToken,
-			}),
-	].filter(Boolean),
+					},
+				}),
+			viteReact(),
+			// Sentry must come last so it sees the final bundle for source map upload.
+			// Only runs when SENTRY_AUTH_TOKEN is present (CI/release builds).
+			// Tunneling is handled by our own `/api/sentry-tunnel` file route, not
+			// the plugin — same mechanism dev and prod, no auth-token gating.
+			!isTest &&
+				!!sentryAuthToken &&
+				sentryTanstackStart({
+					org: "f-inc",
+					project: "hearted-music",
+					authToken: sentryAuthToken,
+				}),
+		].filter(Boolean),
+	};
 });
-
-export default config;

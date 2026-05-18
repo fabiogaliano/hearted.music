@@ -13,8 +13,6 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FaqRouteImport } from './routes/faq'
-import { Route as DevSongDetailPanelV2RouteImport } from './routes/dev-song-detail-panel-v2'
-import { Route as DevSongDetailPanelRouteImport } from './routes/dev-song-detail-panel'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
@@ -53,16 +51,6 @@ const LoginRoute = LoginRouteImport.update({
 const FaqRoute = FaqRouteImport.update({
   id: '/faq',
   path: '/faq',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DevSongDetailPanelV2Route = DevSongDetailPanelV2RouteImport.update({
-  id: '/dev-song-detail-panel-v2',
-  path: '/dev-song-detail-panel-v2',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DevSongDetailPanelRoute = DevSongDetailPanelRouteImport.update({
-  id: '/dev-song-detail-panel',
-  path: '/dev-song-detail-panel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -166,8 +154,6 @@ const ApiExtensionArtistsCheckRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/dev-song-detail-panel': typeof DevSongDetailPanelRoute
-  '/dev-song-detail-panel-v2': typeof DevSongDetailPanelV2Route
   '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
@@ -192,8 +178,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dev-song-detail-panel': typeof DevSongDetailPanelRoute
-  '/dev-song-detail-panel-v2': typeof DevSongDetailPanelV2Route
   '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
@@ -220,8 +204,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/dev-song-detail-panel': typeof DevSongDetailPanelRoute
-  '/dev-song-detail-panel-v2': typeof DevSongDetailPanelV2Route
   '/faq': typeof FaqRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
@@ -248,8 +230,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/dev-song-detail-panel'
-    | '/dev-song-detail-panel-v2'
     | '/faq'
     | '/login'
     | '/privacy'
@@ -274,8 +254,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/dev-song-detail-panel'
-    | '/dev-song-detail-panel-v2'
     | '/faq'
     | '/login'
     | '/privacy'
@@ -301,8 +279,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
-    | '/dev-song-detail-panel'
-    | '/dev-song-detail-panel-v2'
     | '/faq'
     | '/login'
     | '/privacy'
@@ -329,8 +305,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  DevSongDetailPanelRoute: typeof DevSongDetailPanelRoute
-  DevSongDetailPanelV2Route: typeof DevSongDetailPanelV2Route
   FaqRoute: typeof FaqRoute
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -373,20 +347,6 @@ declare module '@tanstack/react-router' {
       path: '/faq'
       fullPath: '/faq'
       preLoaderRoute: typeof FaqRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dev-song-detail-panel-v2': {
-      id: '/dev-song-detail-panel-v2'
-      path: '/dev-song-detail-panel-v2'
-      fullPath: '/dev-song-detail-panel-v2'
-      preLoaderRoute: typeof DevSongDetailPanelV2RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dev-song-detail-panel': {
-      id: '/dev-song-detail-panel'
-      path: '/dev-song-detail-panel'
-      fullPath: '/dev-song-detail-panel'
-      preLoaderRoute: typeof DevSongDetailPanelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -556,8 +516,6 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  DevSongDetailPanelRoute: DevSongDetailPanelRoute,
-  DevSongDetailPanelV2Route: DevSongDetailPanelV2Route,
   FaqRoute: FaqRoute,
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
