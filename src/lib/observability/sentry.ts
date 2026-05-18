@@ -1,21 +1,24 @@
-import * as Sentry from "@sentry/react";
+import type { AnyRouter } from "@tanstack/router-core";
+import { createClientOnlyFn } from "@tanstack/react-start";
 
-export const RUNTIME_TAG = "web" as const;
+const loadSentryClient = createClientOnlyFn(() => import("./sentry.client"));
 
 type CaptureContext = {
 	route?: string;
 	[key: string]: unknown;
 };
 
+export function initSentry(router: AnyRouter): void {
+	void loadSentryClient().then((module) => {
+		module?.initSentry(router);
+	});
+}
+
 export function captureRouteError(
 	error: unknown,
 	context: CaptureContext = {},
 ): void {
-	Sentry.captureException(error, {
-		tags: {
-			runtime: RUNTIME_TAG,
-			...(context.route ? { route: context.route } : {}),
-		},
-		contexts: { route: context },
+	void loadSentryClient().then((module) => {
+		module?.captureRouteError(error, context);
 	});
 }

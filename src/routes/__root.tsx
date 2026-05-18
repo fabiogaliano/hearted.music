@@ -9,14 +9,10 @@ import {
 	Scripts,
 } from "@tanstack/react-router";
 import { type CSSProperties, lazy, useEffect, useRef, useState } from "react";
-import { Toaster } from "sonner";
 import { Button } from "@/components/ui/Button";
-import {
-	HeartRippleBackground,
-	type HeartRippleHandle,
-} from "@/components/ui/HeartRippleBackground";
+import type { HeartRippleHandle } from "@/components/ui/HeartRippleBackground";
 import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
-import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
+import { LazyHeartRippleBackground } from "@/components/ui/LazyHeartRippleBackground";
 import { captureRouteError } from "@/lib/observability/sentry";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
@@ -138,9 +134,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 function RootComponent() {
 	return (
 		<ThemeHueProvider>
-			<KeyboardShortcutProvider>
-				<Outlet />
-			</KeyboardShortcutProvider>
+			<Outlet />
 		</ThemeHueProvider>
 	);
 }
@@ -258,8 +252,8 @@ function NotFoundPage() {
 			<div
 				className={`absolute inset-0 z-10 transition-opacity duration-1000 ${isBackgroundReady ? "opacity-100" : "opacity-0"}`}
 			>
-				<HeartRippleBackground
-					ref={heartRippleRef}
+				<LazyHeartRippleBackground
+					rippleRef={heartRippleRef}
 					onReady={() => setIsBackgroundReady(true)}
 				/>
 			</div>
@@ -321,7 +315,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</head>
 			<body>
 				{children}
-				<Toaster richColors position="top-right" />
 				{DevToolsShell && <DevToolsShell />}
 				<Scripts />
 			</body>

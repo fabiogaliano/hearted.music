@@ -3,8 +3,6 @@
  * Uses PING/PONG pattern to check if the hearted. Chrome extension is installed.
  */
 
-import { env } from "@/env";
-
 declare const chrome: {
 	runtime?: {
 		sendMessage: (
@@ -16,7 +14,11 @@ declare const chrome: {
 	};
 };
 
-const EXTENSION_ID = env.VITE_CHROME_EXTENSION_ID ?? "";
+const EXTENSION_ID =
+	typeof import.meta.env.VITE_CHROME_EXTENSION_ID === "string" &&
+	import.meta.env.VITE_CHROME_EXTENSION_ID.length > 0
+		? import.meta.env.VITE_CHROME_EXTENSION_ID
+		: "";
 
 type ExtensionSyncCounter = {
 	fetched: number;

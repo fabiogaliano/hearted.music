@@ -12,25 +12,38 @@
  */
 
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { z } from "zod";
 import { Onboarding } from "@/features/onboarding/Onboarding";
-import { ONBOARDING_STEPS } from "@/lib/domains/library/accounts/preferences-queries";
+import {
+	DEFAULT_ONBOARDING_STEP,
+	isOnboardingStep,
+	ONBOARDING_STEP_VALUES,
+	type OnboardingStep,
+} from "@/lib/domains/library/accounts/onboarding-steps";
 import { getOnboardingData } from "@/lib/server/onboarding.functions";
 
 /**
- * Search params schema - URL is the source of truth for navigation
+ * Search params parser - URL is the source of truth for navigation
  * Theme and jobId are loaded from DB, not URL.
  */
-const onboardingSearchSchema = z.object({
-	step: fallback(ONBOARDING_STEPS, "welcome").default("welcome"),
-});
-export type OnboardingSearch = z.infer<typeof onboardingSearchSchema>;
+export interface OnboardingSearch {
+	step: OnboardingStep;
+}
+
+function validateOnboardingSearch(
+	search: Record<string, unknown>,
+): OnboardingSearch {
+	const step =
+		typeof search.step === "string" && isOnboardingStep(search.step)
+			? search.step
+			: DEFAULT_ONBOARDING_STEP;
+
+	return { step };
+}
 
 const ONBOARDING_DATA_QUERY_KEY = ["auth", "onboarding-data"] as const;
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
-	validateSearch: zodValidator(onboardingSearchSchema),
+	validateSearch: validateOnboardingSearch,
 	beforeLoad: async ({ search, context }) => {
 		// Session is available from parent _authenticated layout
 		const { session, queryClient } = context;
@@ -53,7 +66,7 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 		// Step progression validation
 		// Prevents users from manually navigating ahead of their saved progress
 		const savedStep = data.session.status;
-		const stepOrder = ONBOARDING_STEPS.options;
+		const stepOrder = ONBOARDING_STEP_VALUES;
 		const urlStepIndex = stepOrder.indexOf(search.step);
 		const savedStepIndex = stepOrder.indexOf(savedStep);
 

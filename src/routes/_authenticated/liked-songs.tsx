@@ -1,21 +1,52 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { z } from "zod";
 
 import { LikedSongsPage } from "@/features/liked-songs/LikedSongsPage";
 import {
+	type FilterOption,
 	likedSongBySlugQueryOptions,
 	likedSongsInfiniteQueryOptions,
 } from "@/features/liked-songs/queries";
 
-const searchSchema = z.object({
-	filter: fallback(z.enum(["all", "pending", "matched", "analyzed"]), "all"),
-	song: z.string().optional(),
-});
+const SEARCH_FILTER_VALUES = ["all", "pending", "matched", "analyzed"] as const;
+type SearchFilter = (typeof SEARCH_FILTER_VALUES)[number];
+
+interface LikedSongsSearch {
+	filter: SearchFilter;
+	song?: string;
+}
+
+function isSearchFilter(value: string): value is SearchFilter {
+	return SEARCH_FILTER_VALUES.some((option) => option === value);
+}
+
+function validateLikedSongsSearch(
+	search: Record<string, unknown>,
+): LikedSongsSearch {
+	const filter =
+		typeof search.filter === "string" && isSearchFilter(search.filter)
+			? search.filter
+			: "all";
+	const song = typeof search.song === "string" ? search.song : undefined;
+
+	return { filter, song };
+}
+
+function toQueryFilter(filter: SearchFilter): FilterOption {
+	if (filter === "matched") {
+		// Older deep links used `matched`; the server filter is now named
+		// `has_suggestions`, which is the closest equivalent user-facing state.
+		return "has_suggestions";
+	}
+
+	return filter;
+}
 
 export const Route = createFileRoute("/_authenticated/liked-songs")({
-	validateSearch: zodValidator(searchSchema),
-	loaderDeps: ({ search }) => ({ filter: search.filter, song: search.song }),
+	validateSearch: validateLikedSongsSearch,
+	loaderDeps: ({ search }) => ({
+		filter: toQueryFilter(search.filter),
+		song: search.song,
+	}),
 	// No precondition guard needed. `/_authenticated` already resolved the
 	// session via `resolveSession`; if the user is here and the session is
 	// in `song-walkthrough`, the DU guarantees `session.song` is populated.

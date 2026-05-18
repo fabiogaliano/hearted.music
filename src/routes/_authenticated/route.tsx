@@ -18,6 +18,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
+import { Toaster } from "sonner";
 import { usePostPurchaseReturn } from "@/features/billing/hooks/usePostPurchaseReturn";
 import { billingKeys } from "@/features/billing/query-keys";
 import { matchingSessionQueryOptions } from "@/features/matching/queries";
@@ -32,6 +33,7 @@ import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
 import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getBillingState } from "@/lib/server/billing.functions";
 import { getOnboardingSession } from "@/lib/server/onboarding.functions";
+import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
 import { AuthenticatedThemeProvider } from "@/lib/theme/authenticated-theme";
 import { DEFAULT_THEME } from "@/lib/theme/types";
 import { Sidebar } from "./-components/Sidebar";
@@ -143,20 +145,23 @@ function AuthenticatedLayout() {
 
 	return (
 		<AuthenticatedThemeProvider initialThemeColor={themeColor ?? DEFAULT_THEME}>
-			{showShell ? (
-				<AuthenticatedShell
-					account={account}
-					billingState={billingState}
-					pendingSuggestions={pendingSuggestions}
-					devPanel={devPanel}
-					showSidebar={isComplete}
-				/>
-			) : (
-				<>
-					<Outlet />
-					{devPanel}
-				</>
-			)}
+			<KeyboardShortcutProvider>
+				{showShell ? (
+					<AuthenticatedShell
+						account={account}
+						billingState={billingState}
+						pendingSuggestions={pendingSuggestions}
+						devPanel={devPanel}
+						showSidebar={isComplete}
+					/>
+				) : (
+					<>
+						<Outlet />
+						{devPanel}
+					</>
+				)}
+				<Toaster richColors position="top-right" />
+			</KeyboardShortcutProvider>
 		</AuthenticatedThemeProvider>
 	);
 }

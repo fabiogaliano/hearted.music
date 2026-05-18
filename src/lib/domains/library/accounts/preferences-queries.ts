@@ -9,6 +9,11 @@ import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Enums, Tables } from "@/lib/data/database.types";
+import {
+	DEFAULT_ONBOARDING_STEP,
+	ONBOARDING_STEP_VALUES,
+	type OnboardingStep,
+} from "@/lib/domains/library/accounts/onboarding-steps";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
@@ -18,20 +23,8 @@ import {
 
 export type UserPreferences = Tables<"user_preferences">;
 
-export const ONBOARDING_STEPS = z.enum([
-	"welcome",
-	"pick-color",
-	"install-extension",
-	"syncing",
-	"flag-playlists",
-	"pick-demo-song",
-	"song-walkthrough",
-	"match-walkthrough",
-	"plan-selection",
-	"complete",
-]);
-
-export type OnboardingStep = z.infer<typeof ONBOARDING_STEPS>;
+export const ONBOARDING_STEPS = z.enum(ONBOARDING_STEP_VALUES);
+export type { OnboardingStep };
 
 /**
  * Gets preferences for an account.
@@ -81,7 +74,7 @@ export async function getOrCreatePreferences(
 			.insert({
 				account_id: accountId,
 				// theme is intentionally omitted - starts as null
-				onboarding_step: ONBOARDING_STEPS.enum.welcome,
+				onboarding_step: DEFAULT_ONBOARDING_STEP,
 			})
 			.select()
 			.single(),

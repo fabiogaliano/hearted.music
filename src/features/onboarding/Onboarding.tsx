@@ -7,9 +7,9 @@ import { useLocation } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { LandingSongManifest } from "@/lib/content/landing/landing-songs";
 import {
-	ONBOARDING_STEPS,
+	ONBOARDING_STEP_VALUES,
 	type OnboardingStep,
-} from "@/lib/domains/library/accounts/preferences-queries";
+} from "@/lib/domains/library/accounts/onboarding-steps";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type {
 	OnboardingData,
@@ -100,7 +100,7 @@ const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 };
 
 /** Steps that show in the progress indicator */
-const INDICATOR_STEPS = ONBOARDING_STEPS.options.filter(
+const INDICATOR_STEPS = ONBOARDING_STEP_VALUES.filter(
 	(s) => !STEP_CONFIG[s].hideIndicator,
 );
 

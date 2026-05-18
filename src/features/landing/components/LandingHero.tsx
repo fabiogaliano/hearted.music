@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
-import {
-	HeartRippleBackground,
-	type HeartRippleHandle,
-} from "@/components/ui/HeartRippleBackground";
+import type { HeartRippleHandle } from "@/components/ui/HeartRippleBackground";
 import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
+import { LazyHeartRippleBackground } from "@/components/ui/LazyHeartRippleBackground";
 import {
 	type LandingSongForUI,
 	toLikedSong,
@@ -199,8 +197,8 @@ export function LandingHero({
 						<div
 							className={`absolute inset-0 z-10 transition-opacity duration-1000 ${isBackgroundReady ? "opacity-100" : "opacity-0"}`}
 						>
-							<HeartRippleBackground
-								ref={heartRippleRef}
+							<LazyHeartRippleBackground
+								rippleRef={heartRippleRef}
 								onReady={() => setIsBackgroundReady(true)}
 							/>
 						</div>

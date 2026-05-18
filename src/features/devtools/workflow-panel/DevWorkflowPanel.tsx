@@ -10,25 +10,16 @@ import {
 } from "react";
 import { resolveSession } from "@/features/onboarding/step-resolver";
 import { PaneRoot, PaneSlot, PaneStore, usePane } from "@/integrations/uipane";
-import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
+import {
+	DEFAULT_ONBOARDING_STEP,
+	ONBOARDING_STEP_VALUES,
+	type OnboardingStep,
+} from "@/lib/domains/library/accounts/onboarding-steps";
 import type { OnboardingAuthPayload } from "@/lib/server/onboarding.functions";
 import {
 	getOnboardingSession,
 	saveOnboardingStep,
 } from "@/lib/server/onboarding.functions";
-
-const ONBOARDING_STEPS: OnboardingStep[] = [
-	"welcome",
-	"pick-color",
-	"install-extension",
-	"syncing",
-	"flag-playlists",
-	"pick-demo-song",
-	"song-walkthrough",
-	"match-walkthrough",
-	"plan-selection",
-	"complete",
-];
 
 const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
 const ONBOARDING_PANE_NAME = "Onboarding";
@@ -46,11 +37,11 @@ export function DevWorkflowPanel() {
 	const currentOnboardingStep: OnboardingStep =
 		liveOnboarding?.session.status === "complete"
 			? "complete"
-			: (liveOnboarding?.session.status ?? "welcome");
+			: (liveOnboarding?.session.status ?? DEFAULT_ONBOARDING_STEP);
 
 	const stepOptions = useMemo(
 		() =>
-			ONBOARDING_STEPS.map((s, i) => {
+			ONBOARDING_STEP_VALUES.map((s, i) => {
 				const num = String(i + 1).padStart(2, "0");
 				return {
 					value: s,
@@ -74,8 +65,8 @@ export function DevWorkflowPanel() {
 			const currentStep: OnboardingStep =
 				cached?.session.status === "complete"
 					? "complete"
-					: (cached?.session.status ?? "welcome");
-			const currentIdx = ONBOARDING_STEPS.indexOf(currentStep);
+					: (cached?.session.status ?? DEFAULT_ONBOARDING_STEP);
+			const currentIdx = ONBOARDING_STEP_VALUES.indexOf(currentStep);
 
 			let nextStep: OnboardingStep;
 			if (target === "prev") {
@@ -84,7 +75,7 @@ export function DevWorkflowPanel() {
 					isRunningRef.current = false;
 					return;
 				}
-				const previousStep = ONBOARDING_STEPS[currentIdx - 1];
+				const previousStep = ONBOARDING_STEP_VALUES[currentIdx - 1];
 				if (!previousStep) {
 					setLastAction(`Could not resolve previous step from ${currentStep}`);
 					isRunningRef.current = false;
@@ -92,12 +83,12 @@ export function DevWorkflowPanel() {
 				}
 				nextStep = previousStep;
 			} else if (target === "next") {
-				if (currentIdx >= ONBOARDING_STEPS.length - 1) {
+				if (currentIdx >= ONBOARDING_STEP_VALUES.length - 1) {
 					setLastAction(`Already at last step (${currentStep})`);
 					isRunningRef.current = false;
 					return;
 				}
-				const followingStep = ONBOARDING_STEPS[currentIdx + 1];
+				const followingStep = ONBOARDING_STEP_VALUES[currentIdx + 1];
 				if (!followingStep) {
 					setLastAction(`Could not resolve next step from ${currentStep}`);
 					isRunningRef.current = false;
