@@ -1,6 +1,6 @@
 {
 	"extends": "../../tsconfig.json",
-	"include": ["./**/*.ts", "../../src/lib/**/*.ts"],
+	"include": ["./**/*.ts", "../../src/test/vitest.d.ts"],
 	"exclude": ["../../old_app", "../../node_modules", "../../extension"],
 	"compilerOptions": {
 		"types": ["@types/bun"]

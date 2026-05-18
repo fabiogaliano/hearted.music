@@ -1,6 +1,7 @@
 # Plan: Validate Extension Sync Reachability (Post-Implementation)
 
 ## TL;DR
+
 - **Summary:** The core reachability/config fix is already implemented. This plan now focuses on validating the active extension artifact and closing only residual runtime/deployment gaps.
 - **Deliverables:** reproducible validation checklist + conditional hardening (only if issue still reproduces)
 - **Effort:** Quick
@@ -22,6 +23,7 @@
 - **Primary Driver:** Verify and stabilize transport/runtime state with minimal change.
 
 ## Must NOT
+
 - Do not modify `SyncingStep.tsx` progress/waiting UX for this issue.
 - Do not add speculative global CORS/server middleware.
 - Do not duplicate backend URL config across multiple constants/files.
@@ -29,6 +31,7 @@
 ## Tasks
 
 ### Task 1: Validate active runtime path end-to-end
+
 - **Files:**
   - `extension/src/background/service-worker.ts`
   - `src/lib/extension/detect.ts`
@@ -43,18 +46,20 @@
   - Onboarding leaves “Waiting for extension” once jobs are persisted.
 
 ### Task 2: Validate build-mode/manifest behavior (dev vs prod)
+
 - **Files:**
   - `extension/src/manifest.json`
   - `extension/scripts/build.ts`
   - `extension/dist/manifest.json` (artifact check)
 - **Actions:**
   - Verify dev workflow uses watch build when testing against localhost/127 origins.
-  - Verify production build strips local origins and keeps `hearted.app` domains only.
+  - Verify production build strips local origins and keeps `hearted.music` domains only.
 - **Acceptance criteria:**
   - Dev artifact accepts localhost/127 origins across ports.
   - Production artifact excludes localhost/127 origins.
 
 ### Task 3: Conditional hardening (only if issue reproduces after Task 1-2)
+
 - **Files:**
   - `extension/src/background/service-worker.ts`
 - **Actions:**
