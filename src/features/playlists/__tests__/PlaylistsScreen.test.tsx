@@ -8,6 +8,16 @@ import { PlaylistsScreen } from "../PlaylistsScreen";
 const mockPlaylistData = vi.fn();
 const mockIsExtensionInstalled = vi.fn();
 
+vi.mock("@tanstack/react-router", async () => {
+	const actual = await vi.importActual<typeof import("@tanstack/react-router")>(
+		"@tanstack/react-router",
+	);
+	return {
+		...actual,
+		useNavigate: () => vi.fn(),
+	};
+});
+
 vi.mock("@/lib/server/playlists.functions", () => ({
 	getPlaylistManagementData: () => mockPlaylistData(),
 	getPlaylistTrackPreview: vi.fn().mockResolvedValue([]),
