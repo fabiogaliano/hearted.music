@@ -1,13 +1,21 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { DesignSwitcher } from "@/features/liked-songs/components/playground/DesignSwitcher";
 import { MOCK_SONGS } from "@/features/liked-songs/components/playground/mock-data";
 import { PanelPrototype } from "@/features/liked-songs/components/playground/PanelPrototype";
 import type { DesignConfig } from "@/features/liked-songs/components/playground/types";
 import { DEFAULT_CONFIG } from "@/features/liked-songs/components/playground/types";
+import { requireAuthSession } from "@/lib/platform/auth/auth.server";
 import { fonts } from "@/lib/theme/fonts";
 
 export const Route = createFileRoute("/dev-song-detail-panel")({
+	beforeLoad: async () => {
+		if (import.meta.env.PROD) {
+			throw notFound();
+		}
+
+		await requireAuthSession();
+	},
 	component: DevPlayground,
 });
 

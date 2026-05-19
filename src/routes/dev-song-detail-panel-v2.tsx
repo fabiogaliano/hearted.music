@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { SongDetailPanel } from "@/features/liked-songs/components/SongDetailPanel";
@@ -26,6 +26,8 @@ import { PanelVariantWideOpen } from "@/features/liked-songs/components/variants
 import type { AnalysisContent, LikedSong } from "@/features/liked-songs/types";
 import { PaneRoot, usePane } from "@/integrations/uipane";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
+import { requireAuthSession } from "@/lib/platform/auth/auth.server";
 import { themes } from "@/lib/theme/colors";
 import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
 import { DEFAULT_THEME } from "@/lib/theme/types";
@@ -111,8 +113,13 @@ function getAudioFeatureRow(value: unknown): DevAudioFeatureRow | null {
 	};
 }
 
-const fetchDevSongs = createServerFn({ method: "GET" }).handler(
-	async (): Promise<LikedSong[]> => {
+const fetchDevSongs = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.handler(async (): Promise<LikedSong[]> => {
+		if (import.meta.env.PROD) {
+			throw new Response("Not Found", { status: 404 });
+		}
+
 		const supabase = createAdminSupabaseClient();
 
 		const { data: songs, error } = await supabase
@@ -194,10 +201,16 @@ const fetchDevSongs = createServerFn({ method: "GET" }).handler(
 					: null,
 			};
 		});
-	},
-);
+	});
 
 export const Route = createFileRoute("/dev-song-detail-panel-v2")({
+	beforeLoad: async () => {
+		if (import.meta.env.PROD) {
+			throw notFound();
+		}
+
+		await requireAuthSession();
+	},
 	component: DevPlaygroundV2,
 });
 
