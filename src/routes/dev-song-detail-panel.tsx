@@ -5,7 +5,7 @@ import { MOCK_SONGS } from "@/features/liked-songs/components/playground/mock-da
 import { PanelPrototype } from "@/features/liked-songs/components/playground/PanelPrototype";
 import type { DesignConfig } from "@/features/liked-songs/components/playground/types";
 import { DEFAULT_CONFIG } from "@/features/liked-songs/components/playground/types";
-import { requireAuthSession } from "@/lib/platform/auth/auth.server";
+import { requireAuthSession } from "@/lib/server/auth.functions";
 import { fonts } from "@/lib/theme/fonts";
 
 export const Route = createFileRoute("/dev-song-detail-panel")({

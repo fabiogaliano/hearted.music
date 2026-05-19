@@ -57,6 +57,7 @@ export function getAuth() {
 		},
 		account: {
 			modelName: "oauth_account",
+			encryptOAuthTokens: true,
 		},
 		plugins: [tanstackStartCookies()],
 		databaseHooks: {

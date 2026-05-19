@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import type { HeartRippleHandle } from "@/components/ui/HeartRippleBackground";
 import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
 import { LazyHeartRippleBackground } from "@/components/ui/LazyHeartRippleBackground";
+import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
 import { captureRouteError } from "@/lib/observability/sentry";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
@@ -166,7 +167,9 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 function RootComponent() {
 	return (
 		<ThemeHueProvider>
-			<Outlet />
+			<KeyboardShortcutProvider>
+				<Outlet />
+			</KeyboardShortcutProvider>
 		</ThemeHueProvider>
 	);
 }

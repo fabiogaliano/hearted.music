@@ -27,7 +27,7 @@ import type { AnalysisContent, LikedSong } from "@/features/liked-songs/types";
 import { PaneRoot, usePane } from "@/integrations/uipane";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
-import { requireAuthSession } from "@/lib/platform/auth/auth.server";
+import { requireAuthSession } from "@/lib/server/auth.functions";
 import { themes } from "@/lib/theme/colors";
 import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
 import { DEFAULT_THEME } from "@/lib/theme/types";

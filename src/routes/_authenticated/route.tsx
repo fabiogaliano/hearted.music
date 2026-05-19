@@ -30,7 +30,6 @@ import {
 import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
-import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
 import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getBillingState } from "@/lib/server/billing.functions";
 import { getOnboardingSession } from "@/lib/server/onboarding.functions";
@@ -145,23 +144,21 @@ function AuthenticatedLayout() {
 
 	return (
 		<AuthenticatedThemeProvider initialThemeColor={themeColor ?? DEFAULT_THEME}>
-			<KeyboardShortcutProvider>
-				{showShell ? (
-					<AuthenticatedShell
-						account={account}
-						billingState={billingState}
-						pendingSuggestions={pendingSuggestions}
-						devPanel={devPanel}
-						showSidebar={isComplete}
-					/>
-				) : (
-					<>
-						<Outlet />
-						{devPanel}
-					</>
-				)}
-				<Toaster richColors position="top-right" />
-			</KeyboardShortcutProvider>
+			{showShell ? (
+				<AuthenticatedShell
+					account={account}
+					billingState={billingState}
+					pendingSuggestions={pendingSuggestions}
+					devPanel={devPanel}
+					showSidebar={isComplete}
+				/>
+			) : (
+				<>
+					<Outlet />
+					{devPanel}
+				</>
+			)}
+			<Toaster richColors position="top-right" />
 		</AuthenticatedThemeProvider>
 	);
 }
