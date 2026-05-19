@@ -1,8 +1,8 @@
 import { createRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 import { createIsomorphicFn } from "@tanstack/react-start";
-import { initSentry } from "./lib/observability/sentry";
 import { getContext } from "./integrations/tanstack-query/root-provider";
+import { initSentry } from "./lib/observability/sentry";
 
 import { routeTree } from "./routeTree.gen";
 

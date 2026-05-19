@@ -30,10 +30,10 @@ import {
 import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
+import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
 import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getBillingState } from "@/lib/server/billing.functions";
 import { getOnboardingSession } from "@/lib/server/onboarding.functions";
-import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
 import { AuthenticatedThemeProvider } from "@/lib/theme/authenticated-theme";
 import { DEFAULT_THEME } from "@/lib/theme/types";
 import { Sidebar } from "./-components/Sidebar";

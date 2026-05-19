@@ -25,5 +25,4 @@ biome.json
 lefthook.yml
 wrangler.jsonc
 vite.config.ts
-tsconfig.json
 .mcp.json

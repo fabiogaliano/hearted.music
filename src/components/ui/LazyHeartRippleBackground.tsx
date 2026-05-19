@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import type { CSSProperties, Ref } from "react";
+import { useEffect, useState } from "react";
 import type { HeartRippleHandle } from "./HeartRippleBackground";
 
 type HeartRippleBackgroundComponent =

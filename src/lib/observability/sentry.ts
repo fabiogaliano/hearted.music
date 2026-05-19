@@ -1,5 +1,5 @@
-import type { AnyRouter } from "@tanstack/router-core";
 import { createClientOnlyFn } from "@tanstack/react-start";
+import type { AnyRouter } from "@tanstack/router-core";
 
 const loadSentryClient = createClientOnlyFn(() => import("./sentry.client"));
 

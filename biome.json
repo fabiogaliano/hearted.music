@@ -47,6 +47,9 @@
 				"rules": {
 					"suspicious": {
 						"noExplicitAny": "off"
+					},
+					"complexity": {
+						"useArrowFunction": "off"
 					}
 				}
 			}
