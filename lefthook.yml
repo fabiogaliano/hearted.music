@@ -1,16 +1,27 @@
 # Lefthook configuration
-# pre-commit: auto-format staged files
-# pre-push:   full biome check (lint + assist) so CI failures get caught locally
+# pre-commit: auto-fix staged files (format + safe lint fixes + organize imports)
+# pre-push:   full quality gates (biome check + typecheck + tests) in parallel
+
+min_version: 2.1.6
 
 pre-commit:
   parallel: true
   commands:
-    format:
+    check:
       glob: "*.{ts,tsx,js,jsx,json,css,md}"
-      run: bun biome format --write --no-errors-on-unmatched {staged_files}
+      run: bun biome check --write --no-errors-on-unmatched {staged_files}
       stage_fixed: true
+      skip: [merge, rebase]
 
 pre-push:
+  parallel: true
   commands:
     check:
       run: bun run check
+      skip: [merge, rebase]
+    typecheck:
+      run: bun run typecheck
+      skip: [merge, rebase]
+    test:
+      run: bun run test
+      skip: [merge, rebase]
