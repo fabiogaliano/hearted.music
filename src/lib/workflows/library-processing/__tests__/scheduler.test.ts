@@ -196,11 +196,11 @@ describe("scheduler", () => {
 
 			expect(Result.isError(result)).toBe(true);
 			if (Result.isError(result)) {
-				expect(result.error).toEqual({
-					kind: "effect_ensure_failed",
-					effectKind: "ensure_enrichment_job",
-					cause: dbError,
-				});
+				expect(result.error.kind).toBe("effect_ensure_failed");
+				if (result.error.kind === "effect_ensure_failed") {
+					expect(result.error.effectKind).toBe("ensure_enrichment_job");
+					expect(result.error.cause).toBe(dbError);
+				}
 			}
 			expect(state.enrichment.activeJobId).toBeNull();
 		});
@@ -276,11 +276,13 @@ describe("scheduler", () => {
 
 			expect(Result.isError(result)).toBe(true);
 			if (Result.isError(result)) {
-				expect(result.error).toEqual({
-					kind: "effect_ensure_failed",
-					effectKind: "ensure_match_snapshot_refresh_job",
-					cause: dbError,
-				});
+				expect(result.error.kind).toBe("effect_ensure_failed");
+				if (result.error.kind === "effect_ensure_failed") {
+					expect(result.error.effectKind).toBe(
+						"ensure_match_snapshot_refresh_job",
+					);
+					expect(result.error.cause).toBe(dbError);
+				}
 			}
 			expect(state.matchSnapshotRefresh.activeJobId).toBeNull();
 		});
