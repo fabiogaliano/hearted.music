@@ -21,23 +21,29 @@ These handlers complete the subscription lifecycle in the billing service. Witho
 ## Scope
 
 ### `invoice.paid` (billing_reason=subscription_create)
+- Fetch the current Stripe subscription
 - Read `conversion_id` from subscription metadata
 - If present: call `apply_subscription_upgrade_conversion`
-- Call `activate_subscription` RPC
+- If the fetched subscription is still active: call `activate_subscription(..., p_stripe_event_created_at)`
+- Otherwise: call `update_subscription_state(..., p_stripe_event_created_at)` only
 - Bridge to app: unlimited activation with `stripe_event_id`, `account_id`, `stripe_subscription_id`, `subscription_period_end`
 
 ### `invoice.paid` (billing_reason=subscription_cycle)
-- Call `update_subscription_state` — confirm continued access
+- Fetch the current Stripe subscription
+- Call `update_subscription_state(..., p_stripe_event_created_at)` — confirm continued access
 
 ### `invoice.payment_failed`
-- Call `update_subscription_state` to reflect `past_due`
+- Fetch the current Stripe subscription
+- Call `update_subscription_state(..., p_stripe_event_created_at)` with the current Stripe status
 
 ### `customer.subscription.updated`
-- Call `update_subscription_state` for cancel/uncancel/status changes
+- Fetch the current Stripe subscription
+- Call `update_subscription_state(..., p_stripe_event_created_at)` for cancel/uncancel/status changes
 - Handle `cancel_at_period_end` changes
 
 ### `customer.subscription.deleted`
-- Call `deactivate_subscription` RPC
+- Call `update_subscription_state(..., p_stripe_event_created_at)`
+- Call `deactivate_subscription(..., p_stripe_event_created_at)`
 - Bridge to app: subscription deactivated
 
 ## Out of scope
@@ -57,13 +63,15 @@ These handlers complete the subscription lifecycle in the billing service. Witho
 - Initial activation must apply any pending conversion before `activate_subscription`
 - Renewals do NOT re-activate — just refresh lifecycle fields
 - `deactivate_subscription` does NOT restore converted pack value
+- All lifecycle RPC writes must include Stripe `event.created` so stale events are ignored at the SQL boundary
+- Non-terminal lifecycle handlers should refresh the current Stripe subscription before writing state
 - All handlers are idempotent via `billing_webhook_event`
 
 ## Acceptance criteria
 
 - [ ] Initial `invoice.paid` applies conversion (if present) then activates subscription
 - [ ] Renewal `invoice.paid` refreshes lifecycle state only
-- [ ] `payment_failed` sets `past_due` state
+- [ ] `payment_failed` writes the current Stripe lifecycle status and period state
 - [ ] Cancel sets `cancel_at_period_end = true`
 - [ ] Uncancel clears `cancel_at_period_end`
 - [ ] Deletion deactivates subscription
@@ -74,6 +82,7 @@ These handlers complete the subscription lifecycle in the billing service. Witho
 
 - Test each webhook event type with Stripe test mode
 - Duplicate delivery for each event type → no-op
+- Out-of-order lifecycle deliveries do not overwrite newer state
 
 ## Parallelization notes
 

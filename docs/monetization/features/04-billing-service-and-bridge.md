@@ -25,11 +25,11 @@ The public app enforces entitlement and gating (Features 01–03), but cannot pr
   - `checkout.session.completed` (payment) → `fulfill_pack_purchase` → bridge pack fulfillment to app
   - `checkout.session.completed` (subscription) → store customer/subscription refs
   - `checkout.session.expired` → `release_subscription_upgrade_conversion`
-  - `invoice.paid` (initial) → apply conversion if present → `activate_subscription` → bridge unlimited activation to app
-  - `invoice.paid` (renewal) → `update_subscription_state`
-  - `invoice.payment_failed` → `update_subscription_state` (past_due)
-  - `customer.subscription.updated` → `update_subscription_state` (cancel/uncancel)
-  - `customer.subscription.deleted` → `deactivate_subscription`
+  - `invoice.paid` (initial) → fetch current Stripe subscription → apply conversion if present → `activate_subscription(..., p_stripe_event_created_at)` only if still active → otherwise `update_subscription_state(..., p_stripe_event_created_at)`
+  - `invoice.paid` (renewal) → fetch current Stripe subscription → `update_subscription_state(..., p_stripe_event_created_at)`
+  - `invoice.payment_failed` → fetch current Stripe subscription → `update_subscription_state(..., p_stripe_event_created_at)` with the current Stripe status
+  - `customer.subscription.updated` → fetch current Stripe subscription → `update_subscription_state(..., p_stripe_event_created_at)`
+  - `customer.subscription.deleted` → `update_subscription_state(..., p_stripe_event_created_at)` then `deactivate_subscription(..., p_stripe_event_created_at)`
   - `charge.refunded` / `charge.dispute.created` → pack reversal OR unlimited reversal + conversion reversal → bridge revocation to app
 - **Stripe customer reuse** — reuse `account_billing.stripe_customer_id` when it exists
 - **Metadata strategy** — `{ account_id, conversion_id? }` on Checkout Session and subscription metadata
@@ -38,7 +38,7 @@ The public app enforces entitlement and gating (Features 01–03), but cannot pr
 ### App bridge (`v1_hearted/`)
 
 - **Billing bridge ingress endpoint** — authenticated HTTP route that receives bridge calls from the billing service
-- **`billing_bridge_event` idempotency** — `INSERT ... ON CONFLICT DO NOTHING`; proceed only if insert succeeded
+- **`billing_bridge_event` idempotency** — lease-based claim/finalize state machine (`claim_billing_bridge_event`, `mark_billing_bridge_event_processed`, `mark_billing_bridge_event_failed`) so failed or crashed handlers are reclaimable
 - **Bridge handlers**:
   - Pack fulfillment → emit `BillingChanges.songsUnlocked(accountId, bonusUnlockedSongIds)`
   - Unlimited activation → insert `billing_activation` marker → emit `BillingChanges.unlimitedActivated(accountId)`
@@ -87,8 +87,8 @@ The public app enforces entitlement and gating (Features 01–03), but cannot pr
 5. **Portal session endpoint** — `/portal/session`; Customer Portal with cancel + payment update
 6. **Stripe webhook endpoint + event dispatch** — signature verification; `billing_webhook_event` idempotency; webhook winner detection; event routing
 7. **Pack fulfillment handler** — `checkout.session.completed` (payment) → `fulfill_pack_purchase` → bridge to app
-8. **Subscription activation handler** — `checkout.session.completed` (subscription) + `invoice.paid` (initial) → conversion apply → `activate_subscription` → bridge to app
-9. **Subscription lifecycle handlers** — renewal, payment failure, cancel/uncancel, deletion → appropriate RPCs
+8. **Subscription activation handler** — `checkout.session.completed` (subscription) + `invoice.paid` (initial) → fetch current Stripe subscription → conversion apply → `activate_subscription(..., p_stripe_event_created_at)` or `update_subscription_state(..., p_stripe_event_created_at)` → bridge to app when access is actually activated
+9. **Subscription lifecycle handlers** — renewal, payment failure, cancel/uncancel, deletion → fetch current Stripe subscription as needed and call freshness-aware RPCs with `p_stripe_event_created_at`
 10. **Refund/dispute handlers** — pack reversal, unlimited-period reversal, conversion reversal → bridge revocation to app
 11. **Checkout expiry handler** — `checkout.session.expired` → `release_subscription_upgrade_conversion`
 

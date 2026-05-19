@@ -81,6 +81,7 @@ export type Database = {
 					cancel_at_period_end: boolean;
 					created_at: string;
 					credit_balance: number;
+					last_subscription_state_event_created_at: string | null;
 					plan: string;
 					stripe_customer_id: string | null;
 					stripe_subscription_id: string | null;
@@ -94,6 +95,7 @@ export type Database = {
 					cancel_at_period_end?: boolean;
 					created_at?: string;
 					credit_balance?: number;
+					last_subscription_state_event_created_at?: string | null;
 					plan?: string;
 					stripe_customer_id?: string | null;
 					stripe_subscription_id?: string | null;
@@ -107,6 +109,7 @@ export type Database = {
 					cancel_at_period_end?: boolean;
 					created_at?: string;
 					credit_balance?: number;
+					last_subscription_state_event_created_at?: string | null;
 					plan?: string;
 					stripe_customer_id?: string | null;
 					stripe_subscription_id?: string | null;
@@ -1784,6 +1787,7 @@ export type Database = {
 					p_account_id: string;
 					p_plan: string;
 					p_stripe_customer_id: string;
+					p_stripe_event_created_at: string;
 					p_stripe_subscription_id: string;
 					p_subscription_period_end: string;
 				};
@@ -1934,7 +1938,10 @@ export type Database = {
 				Returns: number;
 			};
 			deactivate_subscription: {
-				Args: { p_account_id: string };
+				Args: {
+					p_account_id: string;
+					p_stripe_event_created_at: string;
+				};
 				Returns: undefined;
 			};
 			fulfill_pack_purchase: {
@@ -2295,6 +2302,7 @@ export type Database = {
 				Args: {
 					p_account_id: string;
 					p_cancel_at_period_end: boolean;
+					p_stripe_event_created_at: string;
 					p_subscription_period_end: string;
 					p_subscription_status: string;
 				};

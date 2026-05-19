@@ -22,19 +22,25 @@ These RPCs manage the subscription lifecycle state on `account_billing`. The bil
 ### `activate_subscription`
 - Sets `plan`, `stripe_subscription_id`, `stripe_customer_id`, `subscription_status = 'active'`, `subscription_period_end`
 - Sets `unlimited_access_source = 'subscription'`
-- Calls `reprioritize_pending_jobs_for_account` as final step
+- Accepts `p_stripe_event_created_at` and persists `last_subscription_state_event_created_at`
+- Ignores stale lifecycle writes older than the last applied Stripe event timestamp
+- Calls `reprioritize_pending_jobs_for_account` as final step only when the write applies
 
 ### `deactivate_subscription`
 - Reverts `plan` to `'free'`
 - Clears `unlimited_access_source` when current source is `subscription`
 - Does NOT restore previously converted pack value
-- Calls `reprioritize_pending_jobs_for_account` as final step
+- Accepts `p_stripe_event_created_at` and persists `last_subscription_state_event_created_at`
+- Ignores stale lifecycle writes older than the last applied Stripe event timestamp
+- Calls `reprioritize_pending_jobs_for_account` as final step only when the write applies
 
 ### `update_subscription_state`
 - Updates `subscription_status`, `subscription_period_end`, `cancel_at_period_end`
 - Does NOT change `plan` or `unlimited_access_source`
 - Used for: `invoice.payment_failed`, `customer.subscription.updated`, renewal period-end refresh
-- Calls `reprioritize_pending_jobs_for_account` as final step
+- Accepts `p_stripe_event_created_at` and persists `last_subscription_state_event_created_at`
+- Ignores stale lifecycle writes older than the last applied Stripe event timestamp
+- Calls `reprioritize_pending_jobs_for_account` as final step only when the write applies
 
 All: `SECURITY DEFINER`, `SET search_path = public`
 
@@ -64,8 +70,9 @@ All: `SECURITY DEFINER`, `SET search_path = public`
 - [ ] `deactivate_subscription` reverts to free and clears `subscription`-sourced unlimited access
 - [ ] `deactivate_subscription` preserves `self_hosted` unlimited access on a self-hosted account
 - [ ] `update_subscription_state` updates lifecycle fields without touching plan or access source
-- [ ] `reprioritize_pending_jobs_for_account` called in all three RPCs
+- [ ] `reprioritize_pending_jobs_for_account` called in all three RPCs when the write applies
 - [ ] All RPCs are idempotent (safe to call with same state twice)
+- [ ] Stale lifecycle events do not overwrite newer subscription state
 
 ## Verification
 

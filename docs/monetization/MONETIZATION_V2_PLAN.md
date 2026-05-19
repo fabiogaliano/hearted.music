@@ -930,19 +930,23 @@ Notes:
 ### `activate_subscription`
 
 ```sql
--- Set plan + Stripe refs + lifecycle state and mark paid unlimited access
+-- Set plan + Stripe refs + lifecycle state and mark paid unlimited access.
+-- Ignores stale events older than the last applied Stripe lifecycle write.
 CREATE FUNCTION activate_subscription(
   p_account_id UUID,
   p_plan TEXT,
   p_stripe_subscription_id TEXT,
   p_stripe_customer_id TEXT,
-  p_period_end TIMESTAMPTZ
+  p_subscription_period_end TIMESTAMPTZ,
+  p_stripe_event_created_at TIMESTAMPTZ
 ) RETURNS VOID
 ```
 
 Notes:
 - sets `unlimited_access_source = 'subscription'`
-- as its final step, this RPC must call `reprioritize_pending_jobs_for_account(p_account_id)`
+- persists `last_subscription_state_event_created_at`
+- ignores stale lifecycle writes whose `p_stripe_event_created_at` is older than the last applied one
+- as its final step, this RPC calls `reprioritize_pending_jobs_for_account(p_account_id)` only when the write actually applied
 
 ### `deactivate_subscription`
 
@@ -950,14 +954,17 @@ Notes:
 -- Revert plan to 'free' and clear subscription-backed unlimited access
 -- without recreating any previously converted pack value.
 CREATE FUNCTION deactivate_subscription(
-  p_account_id UUID
+  p_account_id UUID,
+  p_stripe_event_created_at TIMESTAMPTZ
 ) RETURNS VOID
 ```
 
 Notes:
 - normal subscription end does not restore previously converted pack value; only refund/dispute reversal does that
 - clears `unlimited_access_source` when the current source is `subscription`
-- as its final step, this RPC must call `reprioritize_pending_jobs_for_account(p_account_id)` so pending jobs fall back to the band implied by remaining balance/state
+- persists `last_subscription_state_event_created_at`
+- ignores stale lifecycle writes whose `p_stripe_event_created_at` is older than the last applied one
+- as its final step, this RPC calls `reprioritize_pending_jobs_for_account(p_account_id)` only when the write actually applied so pending jobs fall back to the band implied by remaining balance/state
 
 ### `update_subscription_state`
 
@@ -969,12 +976,15 @@ Notes:
 CREATE FUNCTION update_subscription_state(
   p_account_id UUID,
   p_subscription_status TEXT,
-  p_period_end TIMESTAMPTZ,
-  p_cancel_at_period_end BOOLEAN
+  p_subscription_period_end TIMESTAMPTZ,
+  p_cancel_at_period_end BOOLEAN,
+  p_stripe_event_created_at TIMESTAMPTZ
 ) RETURNS VOID
 ```
 
 Notes:
+- persists `last_subscription_state_event_created_at`
+- ignores stale lifecycle writes whose `p_stripe_event_created_at` is older than the last applied one
 - updates Stripe lifecycle fields for subscription-backed unlimited access; it does not mint `self_hosted` access
 - as its final step, this RPC must call `reprioritize_pending_jobs_for_account(p_account_id)` so `past_due` / recovery transitions cannot leave pending jobs at a stale priority
 
@@ -1316,10 +1326,10 @@ Instead:
 | `checkout.session.completed` (mode=payment)      | call `fulfill_pack_purchase` RPC (which also reprioritizes pending jobs if the queue band changed), then call app bridge with fulfillment outcome                                                                                                       |
 | `checkout.session.completed` (mode=subscription) | store customer/subscription mapping                                                                                                                                                                                                                       |
 | `checkout.session.expired`                       | read `conversion_id` from Stripe metadata, then call `release_subscription_upgrade_conversion` for that pending unlimited-upgrade conversion                                                                                                           |
-| `invoice.paid`                                   | on initial subscription invoices: read `conversion_id` from Stripe metadata, apply any pending upgrade conversion, then call `activate_subscription` (which also reprioritizes pending jobs), then call app bridge for unlimited activation; on renewals: call `update_subscription_state` (which also reprioritizes if the resolved band changed) |
-| `invoice.payment_failed`                         | call `update_subscription_state` to reflect `past_due` / payment-problem state; that RPC also reprioritizes pending jobs so stale unlimited priority cannot linger                                                                                     |
-| `customer.subscription.updated`                  | call `update_subscription_state` for cancel/uncancel/status changes; that RPC also reprioritizes pending jobs if the lifecycle change affects the resolved band                                                                                        |
-| `customer.subscription.deleted`                  | call `deactivate_subscription` RPC; that RPC also reprioritizes pending jobs based on the post-cancellation state                                                                                                                                        |
+| `invoice.paid`                                   | on initial subscription invoices: fetch the current Stripe subscription, read `conversion_id` from metadata, apply any pending upgrade conversion, then call `activate_subscription(..., p_stripe_event_created_at)` if the subscription is still active; on renewals: call `update_subscription_state(..., p_stripe_event_created_at)` using the fresh Stripe subscription snapshot |
+| `invoice.payment_failed`                         | fetch the current Stripe subscription and call `update_subscription_state(..., p_stripe_event_created_at)` with its current status; that RPC also reprioritizes pending jobs so stale unlimited priority cannot linger                                                                         |
+| `customer.subscription.updated`                  | fetch the current Stripe subscription and call `update_subscription_state(..., p_stripe_event_created_at)` for cancel/uncancel/status changes; that RPC also reprioritizes pending jobs if the lifecycle change affects the resolved band                                                    |
+| `customer.subscription.deleted`                  | call `update_subscription_state(..., p_stripe_event_created_at)` to record the canceled lifecycle snapshot, then call `deactivate_subscription(..., p_stripe_event_created_at)`; stale events are ignored at the SQL boundary                                                               |
 | `charge.refunded` / `charge.dispute.created`     | for pack purchases: call `reverse_pack_entitlement` (which also reprioritizes pending jobs), then call app bridge with reversal outcome; for the initial unlimited invoice: call `reverse_subscription_upgrade_conversion`, `reverse_unlimited_period_entitlement`, and any needed subscription-state mutation (`deactivate_subscription` or `update_subscription_state`) so the overall refund/dispute flow leaves pending jobs at the final post-refund band before calling app bridge; create admin task for anything ambiguous |
 
 ### Subscription fulfillment strategy
@@ -1328,9 +1338,10 @@ Instead:
 - `/checkout/pack`: create Stripe Checkout with `checkout_attempt_id` forwarded as Stripe `idempotency_key`
 - `/checkout/unlimited`: if open pack-credit lots exist, call `prepare_subscription_upgrade_conversion(...)`, create the one-time first-invoice discount, create Stripe Checkout with `checkout_attempt_id` forwarded as Stripe `idempotency_key`, then persist the real Checkout Session id via `link_subscription_upgrade_checkout(...)`
 - if Stripe coupon creation or Checkout Session creation fails after prepare succeeds, immediately call `release_subscription_upgrade_conversion(...)` before returning an error
-- `invoice.paid` + subscription active: on initial purchase, apply any pending upgrade conversion first (`apply_subscription_upgrade_conversion(...)` using metadata `conversion_id`), then grant access (`activate_subscription`); on renewal, refresh lifecycle fields only (`update_subscription_state`)
+- `invoice.paid` + subscription active: on initial purchase, fetch the current Stripe subscription, apply any pending upgrade conversion first (`apply_subscription_upgrade_conversion(...)` using metadata `conversion_id`), then grant access (`activate_subscription(..., p_stripe_event_created_at)`); on renewal, refresh lifecycle fields only (`update_subscription_state(..., p_stripe_event_created_at)`)
+- if the fetched subscription is no longer active on the initial `invoice.paid`, do not re-grant access; write lifecycle state only
 - this avoids double-granting on initial subscription
-- renewals: `invoice.paid` with `billing_reason=subscription_cycle` confirms continued access
+- renewals: `invoice.paid` with `billing_reason=subscription_cycle` confirms continued access using the current Stripe subscription snapshot
 - accept `customer.subscription.updated` with `cancel_at_period_end = false` as the uncancel path
 - `checkout.session.expired` must release any still-pending upgrade conversion so the user can keep using those songs to explore if they abandon checkout
 - use `billing_webhook_event` table for idempotency on all handlers
@@ -1620,8 +1631,10 @@ webhook: checkout.session.expired
 
 webhook: invoice.paid (billing_reason=subscription_create)
   → billing service verifies event
+  → billing service fetches current Stripe subscription
   → if checkout included a pending upgrade conversion: read conversion_id from Stripe metadata and call apply_subscription_upgrade_conversion(...)
-  → calls activate_subscription(account_id, plan, ...)
+  → if fetched subscription is still active: calls activate_subscription(account_id, plan, ..., stripe_event_created_at)
+  → else: calls update_subscription_state(account_id, ..., stripe_event_created_at) only
   → plan set to 'quarterly' or 'yearly'
   → unlimited_access_source set to 'subscription'
   → billing service calls bridge endpoint in v1_hearted with stripe_event_id, account_id, stripe_subscription_id, subscription_period_end
@@ -1637,8 +1650,8 @@ webhook: invoice.paid (billing_reason=subscription_create)
 ```
 webhook: invoice.paid (billing_reason=subscription_cycle)
   → billing service verifies event
-  → confirms subscription still active
-  → calls update_subscription_state(account_id, ...)
+  → billing service fetches current Stripe subscription
+  → calls update_subscription_state(account_id, ..., stripe_event_created_at)
   → no other action needed (user already has unlimited access)
 ```
 
@@ -1649,12 +1662,14 @@ user opens Customer Portal → cancels
   → Stripe sets cancel_at_period_end = true
 
 webhook: customer.subscription.updated
-  → billing service calls update_subscription_state(account_id, ...)
+  → billing service fetches current Stripe subscription
+  → billing service calls update_subscription_state(account_id, ..., stripe_event_created_at)
   → user keeps access through period end
 
 when period ends:
 webhook: customer.subscription.deleted
-  → billing service calls deactivate_subscription(account_id)
+  → billing service calls update_subscription_state(account_id, ..., stripe_event_created_at)
+  → billing service calls deactivate_subscription(account_id, stripe_event_created_at)
   → plan reverts to 'free'
   → unlimited_access_source cleared
   → previously converted purchased pack value is not restored on normal subscription end
@@ -1670,7 +1685,8 @@ if unlimited access ends while jobs are already running:
 
 if user reverses cancellation before period end:
 webhook: customer.subscription.updated
-  → billing service calls update_subscription_state(account_id, ...)
+  → billing service fetches current Stripe subscription
+  → billing service calls update_subscription_state(account_id, ..., stripe_event_created_at)
   → access continues without interruption
 ```
 
@@ -1826,7 +1842,7 @@ Mitigation:
 - treat `past_due` and `unpaid` as not entitled for unlimited access
 - keep access only to songs already unlocked for that account while that state is active
 - stop scheduling new unlimited-authorized work while that state is active
-- update lifecycle fields through `update_subscription_state(...)` so app/UI reads stay canonical
+- update lifecycle fields through `update_subscription_state(..., p_stripe_event_created_at)` so app/UI reads stay canonical
 - expose that state in `BillingState` so UI copy is accurate
 
 ### 18. Target-playlist song enrichment must stay outside billing
