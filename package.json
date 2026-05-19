@@ -101,7 +101,7 @@
 		"lefthook": "^2.1.1",
 		"react-scan": "^0.5.3",
 		"tsx": "^4.22.2",
-		"typescript": "^5.9.3",
+		"typescript": "^6.0.3",
 		"vite": "^8.0.13",
 		"vitest": "^4.1.6",
 		"wrangler": "^4.68.1"

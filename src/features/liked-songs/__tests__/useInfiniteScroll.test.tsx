@@ -7,6 +7,7 @@ const observers: MockIntersectionObserver[] = [];
 class MockIntersectionObserver implements IntersectionObserver {
 	readonly root: Element | Document | null;
 	readonly rootMargin: string;
+	readonly scrollMargin = "0px";
 	readonly thresholds: readonly number[];
 	readonly observe = vi.fn();
 	readonly unobserve = vi.fn();

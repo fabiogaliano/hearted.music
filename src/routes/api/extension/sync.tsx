@@ -17,6 +17,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { TablesUpdate } from "@/lib/data/database.types";
 import { updatePhaseJobIds } from "@/lib/domains/library/accounts/preferences-queries";
 import { getAll } from "@/lib/domains/library/liked-songs/queries";
 import {
@@ -194,7 +195,10 @@ export const Route = createFileRoute("/api/extension/sync")({
 							);
 						}
 
-						const accountUpdate: Record<string, string> = {};
+						const accountUpdate: Pick<
+							TablesUpdate<"account">,
+							"spotify_id" | "display_name" | "image_url"
+						> = {};
 						if (!currentAccount.spotify_id) {
 							accountUpdate.spotify_id = payload.userProfile.spotifyId;
 						}

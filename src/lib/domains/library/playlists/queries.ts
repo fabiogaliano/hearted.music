@@ -7,7 +7,11 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Tables, TablesInsert } from "@/lib/data/database.types";
+import type {
+	Tables,
+	TablesInsert,
+	TablesUpdate,
+} from "@/lib/data/database.types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
@@ -233,7 +237,10 @@ export function updatePlaylistMetadata(
 		image_url?: string | null;
 	},
 ): Promise<Result<Playlist, DbError>> {
-	const fields: Record<string, string | number | null> = {};
+	const fields: Pick<
+		TablesUpdate<"playlist">,
+		"name" | "description" | "song_count" | "image_url"
+	> = {};
 	if (metadata.name !== undefined) fields.name = metadata.name;
 	if (metadata.description !== undefined)
 		fields.description = metadata.description;

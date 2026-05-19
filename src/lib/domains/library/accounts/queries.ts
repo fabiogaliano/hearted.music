@@ -129,12 +129,15 @@ export async function createAccountForBetterAuthUser(
 
 	const account = accountResult.value;
 
-	const billingInsert = env.BILLING_ENABLED
-		? { account_id: account.id }
-		: {
-				account_id: account.id,
-				unlimited_access_source: "self_hosted" as const,
-			};
+	const billingInsert: Pick<
+		TablesInsert<"account_billing">,
+		"account_id" | "unlimited_access_source"
+	> = {
+		account_id: account.id,
+		...(env.BILLING_ENABLED
+			? {}
+			: { unlimited_access_source: "self_hosted" as const }),
+	};
 
 	const { error: billingError } = await supabase
 		.from("account_billing")
