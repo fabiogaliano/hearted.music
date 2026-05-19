@@ -102,26 +102,58 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 		],
 	}),
 	headers: ({ ssr }) => {
-		if (!ssr?.nonce || import.meta.env.DEV) return;
-		const nonce = ssr.nonce;
-		return {
-			"Content-Security-Policy": [
-				"default-src 'self'",
-				"base-uri 'self'",
-				"form-action 'self'",
-				"frame-ancestors 'none'",
-				`script-src 'strict-dynamic' 'nonce-${nonce}'`,
-				`style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
-				"font-src 'self' https://fonts.gstatic.com",
-				`img-src 'self' data: https://i.scdn.co https://*.googleusercontent.com`,
-				"connect-src 'self'",
-				"object-src 'none'",
-				"upgrade-insecure-requests",
-			].join("; "),
+		const baseHeaders = {
 			"X-Frame-Options": "DENY",
 			"X-Content-Type-Options": "nosniff",
 			"Referrer-Policy": "strict-origin-when-cross-origin",
 			"X-XSS-Protection": "0",
+			"Strict-Transport-Security":
+				"max-age=63072000; includeSubDomains; preload",
+			"Permissions-Policy":
+				"camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+		};
+		const cspDirectives = [
+			"default-src 'self'",
+			"base-uri 'self'",
+			"form-action 'self'",
+			"frame-ancestors 'none'",
+			`style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
+			"font-src 'self' https://fonts.gstatic.com",
+			`img-src 'self' data: https://i.scdn.co https://*.googleusercontent.com`,
+			"object-src 'none'",
+			"upgrade-insecure-requests",
+		];
+
+		if (import.meta.env.DEV) {
+			return {
+				...baseHeaders,
+				"Content-Security-Policy": [
+					...cspDirectives,
+					"script-src 'self' 'unsafe-eval' 'unsafe-inline' http://localhost:* http://127.0.0.1:*",
+					"connect-src 'self' ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:*",
+				].join("; "),
+			};
+		}
+
+		if (!ssr?.nonce) {
+			return {
+				...baseHeaders,
+				"Content-Security-Policy": [
+					...cspDirectives,
+					"script-src 'self'",
+					"connect-src 'self'",
+				].join("; "),
+			};
+		}
+
+		const nonce = ssr.nonce;
+		return {
+			...baseHeaders,
+			"Content-Security-Policy": [
+				...cspDirectives,
+				`script-src 'strict-dynamic' 'nonce-${nonce}'`,
+				"connect-src 'self'",
+			].join("; "),
 		};
 	},
 
