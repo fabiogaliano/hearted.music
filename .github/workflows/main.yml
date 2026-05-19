@@ -98,7 +98,7 @@ jobs:
             ${{ runner.os }}-bun-install-cache-
 
       - if: needs.detect.outputs.code == 'true'
-        run: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile --omit=optional
       - if: needs.detect.outputs.code == 'true'
         run: bun run check
       - if: needs.detect.outputs.code == 'true'
@@ -148,7 +148,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bun-install-cache-
 
-      - run: bun install --frozen-lockfile
+      - run: bun install --frozen-lockfile --omit=optional
 
       - run: bun run deploy
         env:
