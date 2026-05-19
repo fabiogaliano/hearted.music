@@ -1,5 +1,20 @@
+const MAX_WORKER_CONCURRENCY = 20;
+
+function parsePositiveIntegerEnv(
+	value: string | undefined,
+	fallback: number,
+): number {
+	if (!value) return fallback;
+	const parsed = Number(value);
+	if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+	return Math.floor(parsed);
+}
+
 export const workerConfig = {
-	concurrency: Number(process.env.WORKER_CONCURRENCY ?? 2),
+	concurrency: Math.min(
+		parsePositiveIntegerEnv(process.env.WORKER_CONCURRENCY, 2),
+		MAX_WORKER_CONCURRENCY,
+	),
 	pollIntervalMs: Number(process.env.WORKER_POLL_INTERVAL_MS ?? 5_000),
 	heartbeatIntervalMs: Number(
 		process.env.WORKER_HEARTBEAT_INTERVAL_MS ?? 30_000,

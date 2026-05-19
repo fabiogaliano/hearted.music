@@ -13,6 +13,7 @@ export function setUnhealthy() {
 
 export function startHealthServer() {
 	return Bun.serve({
+		hostname: "127.0.0.1",
 		port: workerConfig.healthPort,
 		fetch(req) {
 			const url = new URL(req.url);
