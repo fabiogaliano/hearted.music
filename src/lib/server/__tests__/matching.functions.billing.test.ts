@@ -1,6 +1,8 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+	addSongToPlaylist,
+	dismissSong,
 	getMatchingSession,
 	getSongMatches,
 	getSongSuggestions,
@@ -13,6 +15,8 @@ const {
 	mockGetMatchResultsForSong,
 	mockGetMatchDecisionsForSongs,
 	mockGetNewItemIds,
+	mockUpsertMatchDecision,
+	mockUpsertMatchDecisions,
 	mockRpc,
 	mockSelect,
 	mockFrom,
@@ -31,6 +35,8 @@ const {
 		mockGetMatchResultsForSong: vi.fn(),
 		mockGetMatchDecisionsForSongs: vi.fn(),
 		mockGetNewItemIds: vi.fn(),
+		mockUpsertMatchDecision: vi.fn(),
+		mockUpsertMatchDecisions: vi.fn(),
 		mockRpc: vi.fn(),
 		mockSelect,
 		mockFrom,
@@ -82,8 +88,9 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 vi.mock("@/lib/domains/taste/song-matching/decision-queries", () => ({
 	getMatchDecisionsForSongs: (...args: unknown[]) =>
 		mockGetMatchDecisionsForSongs(...args),
-	upsertMatchDecision: vi.fn(),
-	upsertMatchDecisions: vi.fn(),
+	upsertMatchDecision: (...args: unknown[]) => mockUpsertMatchDecision(...args),
+	upsertMatchDecisions: (...args: unknown[]) =>
+		mockUpsertMatchDecisions(...args),
 }));
 
 vi.mock("@/lib/domains/library/liked-songs/status-queries", () => ({
@@ -261,6 +268,7 @@ describe("getSongSuggestions (billing-aware)", () => {
 describe("getSongMatches (billing-aware)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 	});
 
 	function setupEntitledSongMatches(entitledSongIds: string[]) {
@@ -347,6 +355,19 @@ describe("getSongMatches (billing-aware)", () => {
 			};
 		});
 	}
+
+	it("returns null when snapshot does not belong to the account", async () => {
+		mockGetLatestMatchSnapshot.mockResolvedValue(
+			Result.ok({ id: "snap-other" }),
+		);
+
+		const result = await getSongMatches({
+			data: { snapshotId: "snap-1", offset: 0 },
+		});
+
+		expect(result).toBeNull();
+		expect(mockGetMatchResults).not.toHaveBeenCalled();
+	});
 
 	it("filters undecided songs to only entitled ones", async () => {
 		setupEntitledSongMatches(["song-1", "song-3"]);
@@ -441,5 +462,94 @@ describe("getSongMatches (billing-aware)", () => {
 
 		expect(mockGetMatchResults).toHaveBeenCalledTimes(1);
 		expect(mockGetMatchDecisionsForSongs).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("match decision ownership checks", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockUpsertMatchDecision.mockResolvedValue(Result.ok({ id: "dec-1" }));
+		mockUpsertMatchDecisions.mockResolvedValue(Result.ok([{ id: "dec-1" }]));
+	});
+
+	it("rejects addSongToPlaylist when the song is not owned by the account", async () => {
+		mockFrom.mockImplementation((table: string) => {
+			if (table === "liked_song") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								is: vi.fn().mockReturnValue({
+									maybeSingle: vi
+										.fn()
+										.mockResolvedValue({ data: null, error: null }),
+								}),
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "playlist") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							in: vi.fn().mockResolvedValue({
+								data: [{ id: "pl-1" }],
+								error: null,
+							}),
+						}),
+					}),
+				};
+			}
+			return { select: vi.fn() };
+		});
+
+		const result = await addSongToPlaylist({
+			data: { songId: "song-1", playlistId: "pl-1" },
+		});
+
+		expect(result).toEqual({ success: false });
+		expect(mockUpsertMatchDecision).not.toHaveBeenCalled();
+	});
+
+	it("rejects dismissSong when any playlist is not owned by the account", async () => {
+		mockFrom.mockImplementation((table: string) => {
+			if (table === "liked_song") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								is: vi.fn().mockReturnValue({
+									maybeSingle: vi.fn().mockResolvedValue({
+										data: { song_id: "song-1" },
+										error: null,
+									}),
+								}),
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "playlist") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							in: vi.fn().mockResolvedValue({
+								data: [{ id: "pl-1" }],
+								error: null,
+							}),
+						}),
+					}),
+				};
+			}
+			return { select: vi.fn() };
+		});
+
+		const result = await dismissSong({
+			data: { songId: "song-1", playlistIds: ["pl-1", "pl-2"] },
+		});
+
+		expect(result).toEqual({ success: false });
+		expect(mockUpsertMatchDecisions).not.toHaveBeenCalled();
 	});
 });

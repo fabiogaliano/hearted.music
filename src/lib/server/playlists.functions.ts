@@ -24,6 +24,8 @@ function parsePlaylistSpotifyId(uri: string): string | null {
 	return match ? match[1] : null;
 }
 
+const NoInputSchema = z.undefined();
+
 // ============================================================================
 // Playlist management reads
 // ============================================================================
@@ -32,6 +34,7 @@ export const getPlaylistManagementData = createServerFn({
 	method: "GET",
 })
 	.middleware([authMiddleware])
+	.inputValidator((data: undefined) => NoInputSchema.parse(data))
 	.handler(async ({ context }) => {
 		const { session } = context;
 

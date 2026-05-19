@@ -77,6 +77,51 @@ export interface SongMatchesResult {
 type MatchResult = Tables<"match_result">;
 type MatchDecision = { song_id: string; playlist_id: string };
 
+async function doesSnapshotBelongToAccount(
+	snapshotId: string,
+	accountId: string,
+): Promise<boolean> {
+	const snapshotResult = await getLatestMatchSnapshot(accountId);
+	if (Result.isError(snapshotResult) || !snapshotResult.value) {
+		return false;
+	}
+
+	return snapshotResult.value.id === snapshotId;
+}
+
+async function doesSongBelongToAccount(
+	songId: string,
+	accountId: string,
+): Promise<boolean> {
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase
+		.from("liked_song")
+		.select("song_id")
+		.eq("account_id", accountId)
+		.eq("song_id", songId)
+		.is("unliked_at", null)
+		.maybeSingle();
+
+	return !error && Boolean(data);
+}
+
+async function doPlaylistsBelongToAccount(
+	playlistIds: string[],
+	accountId: string,
+): Promise<boolean> {
+	const uniquePlaylistIds = [...new Set(playlistIds)];
+	if (uniquePlaylistIds.length === 0) return false;
+
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase
+		.from("playlist")
+		.select("id")
+		.eq("account_id", accountId)
+		.in("id", uniquePlaylistIds);
+
+	return !error && (data?.length ?? 0) === uniquePlaylistIds.length;
+}
+
 async function getMatchSnapshotData(
 	snapshotId: string,
 	accountId: string,
@@ -288,6 +333,12 @@ export const getSongMatches = createServerFn({ method: "GET" })
 		const { session } = context;
 		const supabase = createAdminSupabaseClient();
 
+		const ownsSnapshot = await doesSnapshotBelongToAccount(
+			data.snapshotId,
+			session.accountId,
+		);
+		if (!ownsSnapshot) return null;
+
 		const snapshotDataPromise = getMatchSnapshotData(
 			data.snapshotId,
 			session.accountId,
@@ -455,6 +506,14 @@ export const addSongToPlaylist = createServerFn({ method: "POST" })
 	.inputValidator((data) => AddToPlaylistSchema.parse(data))
 	.handler(async ({ data, context }): Promise<AddToPlaylistResult> => {
 		const { session } = context;
+		const [songOwned, playlistOwned] = await Promise.all([
+			doesSongBelongToAccount(data.songId, session.accountId),
+			doPlaylistsBelongToAccount([data.playlistId], session.accountId),
+		]);
+		if (!songOwned || !playlistOwned) {
+			return { success: false };
+		}
+
 		const result = await upsertMatchDecision(
 			session.accountId,
 			data.songId,
@@ -479,6 +538,14 @@ export const dismissSong = createServerFn({ method: "POST" })
 	.inputValidator((data) => DismissSongSchema.parse(data))
 	.handler(async ({ data, context }) => {
 		const { session } = context;
+		const [songOwned, playlistsOwned] = await Promise.all([
+			doesSongBelongToAccount(data.songId, session.accountId),
+			doPlaylistsBelongToAccount(data.playlistIds, session.accountId),
+		]);
+		if (!songOwned || !playlistsOwned) {
+			return { success: false };
+		}
+
 		const decisions = data.playlistIds.map((playlistId) => ({
 			accountId: session.accountId,
 			songId: data.songId,

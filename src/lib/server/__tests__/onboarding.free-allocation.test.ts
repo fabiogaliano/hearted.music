@@ -81,7 +81,10 @@ vi.mock("@/lib/content/landing/demo-matches", () => ({
 }));
 
 import type { BillingState } from "@/lib/domains/billing/state";
-import { markOnboardingComplete } from "../onboarding.functions";
+import {
+	markOnboardingComplete,
+	saveDemoSongSelection,
+} from "../onboarding.functions";
 
 function makeBillingState(overrides: Partial<BillingState> = {}): BillingState {
 	return {
@@ -95,6 +98,55 @@ function makeBillingState(overrides: Partial<BillingState> = {}): BillingState {
 		...overrides,
 	};
 }
+
+describe("saveDemoSongSelection ownership", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("rejects demo songs that are not liked by the authenticated account", async () => {
+		const single = vi.fn().mockResolvedValue({
+			data: { id: "song-1" },
+			error: null,
+		});
+		const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+		const updateEq = vi.fn().mockResolvedValue({ error: null });
+
+		mockCreateAdminSupabaseClient.mockReturnValue({
+			from: (table: string) => {
+				if (table === "song") {
+					return {
+						select: () => ({
+							eq: () => ({ single }),
+						}),
+					};
+				}
+				if (table === "liked_song") {
+					return {
+						select: () => ({
+							eq: () => ({
+								eq: () => ({
+									is: () => ({ maybeSingle }),
+								}),
+							}),
+						}),
+					};
+				}
+				if (table === "user_preferences") {
+					return {
+						update: () => ({ eq: updateEq }),
+					};
+				}
+				throw new Error(`Unexpected table: ${table}`);
+			},
+		});
+
+		await expect(
+			saveDemoSongSelection({ data: { spotifyTrackId: "spotify:track:abc" } }),
+		).rejects.toThrow(/lookup_demo_song/);
+		expect(updateEq).not.toHaveBeenCalled();
+	});
+});
 
 describe("markOnboardingComplete — free allocation", () => {
 	const fakeClient = { id: "admin-client" };

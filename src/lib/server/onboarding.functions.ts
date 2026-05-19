@@ -733,6 +733,22 @@ const saveDemoSongSelectionInputSchema = z.object({
 	spotifyTrackId: z.string().min(1),
 });
 
+async function doesDemoSongBelongToAccount(
+	accountId: string,
+	songId: string,
+): Promise<boolean> {
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase
+		.from("liked_song")
+		.select("song_id")
+		.eq("account_id", accountId)
+		.eq("song_id", songId)
+		.is("unliked_at", null)
+		.maybeSingle();
+
+	return !error && Boolean(data);
+}
+
 /**
  * Saves the user's demo song selection during onboarding.
  * Looks up the song by Spotify ID and stores the UUID in user_preferences.
@@ -755,6 +771,19 @@ export const saveDemoSongSelection = createServerFn({ method: "POST" })
 				"lookup_demo_song",
 				songError ??
 					new Error(`Song not found for spotify_id: ${data.spotifyTrackId}`),
+			);
+		}
+
+		const songOwned = await doesDemoSongBelongToAccount(
+			session.accountId,
+			song.id,
+		);
+		if (!songOwned) {
+			throw new OnboardingError(
+				"lookup_demo_song",
+				new Error(
+					`Song ${song.id} is not an active liked song for account ${session.accountId}`,
+				),
 			);
 		}
 
@@ -800,6 +829,19 @@ export const commitDemoSongAndEnterWalkthrough = createServerFn({
 				"lookup_demo_song",
 				songError ??
 					new Error(`Song not found for spotify_id: ${data.spotifyTrackId}`),
+			);
+		}
+
+		const songOwned = await doesDemoSongBelongToAccount(
+			session.accountId,
+			song.id,
+		);
+		if (!songOwned) {
+			throw new OnboardingError(
+				"lookup_demo_song",
+				new Error(
+					`Song ${song.id} is not an active liked song for account ${session.accountId}`,
+				),
 			);
 		}
 
