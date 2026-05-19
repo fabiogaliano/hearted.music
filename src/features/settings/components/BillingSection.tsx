@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
+import { portalErrorMessage } from "@/features/billing/error-copy";
 import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
@@ -69,14 +70,7 @@ export function BillingSection({ billingState }: BillingSectionProps) {
 				return;
 			}
 
-			switch (result.error) {
-				case "billing_disabled":
-					toast.error("Billing is not available right now.");
-					break;
-				case "billing_service_error":
-					toast.error("Something went sideways. Let's try that again.");
-					break;
-			}
+			toast.error(portalErrorMessage(result.error));
 		} catch {
 			toast.error("Something went sideways. Let's try that again.");
 		} finally {

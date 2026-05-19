@@ -18,7 +18,7 @@
  */
 
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
+import { Result } from "better-result";
 import { env } from "@/env";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import {
@@ -28,45 +28,11 @@ import {
 	handleUnlimitedActivated,
 	handleUnlimitedPeriodReversed,
 } from "@/lib/domains/billing/bridge-handlers";
+import {
+	type BridgePayload,
+	parseBridgePayload,
+} from "@/lib/domains/billing/bridge-payloads";
 import { verifyBridgeHmac } from "@/lib/domains/billing/hmac";
-
-const BridgePayloadSchema = z.discriminatedUnion("event_kind", [
-	z.object({
-		stripe_event_id: z.string().min(1),
-		event_kind: z.literal("pack_fulfilled"),
-		account_id: z.string().uuid(),
-		bonus_unlocked_song_ids: z.array(z.string().uuid()),
-	}),
-	z.object({
-		stripe_event_id: z.string().min(1),
-		event_kind: z.literal("unlimited_activated"),
-		account_id: z.string().uuid(),
-		stripe_subscription_id: z.string().min(1),
-		subscription_period_end: z.string().min(1),
-	}),
-	z.object({
-		stripe_event_id: z.string().min(1),
-		event_kind: z.literal("pack_reversed"),
-		account_id: z.string().uuid(),
-		pack_stripe_event_id: z.string().min(1),
-		reason: z.enum(["refund", "chargeback"]),
-	}),
-	z.object({
-		stripe_event_id: z.string().min(1),
-		event_kind: z.literal("unlimited_period_reversed"),
-		account_id: z.string().uuid(),
-		stripe_subscription_id: z.string().min(1),
-		subscription_period_end: z.string().min(1),
-		reason: z.enum(["refund", "chargeback"]),
-	}),
-	z.object({
-		stripe_event_id: z.string().min(1),
-		event_kind: z.literal("subscription_deactivated"),
-		account_id: z.string().uuid(),
-	}),
-]);
-
-type BridgePayload = z.infer<typeof BridgePayloadSchema>;
 
 // Long enough to outlast any realistic handler run, short enough that a
 // crashed worker's stuck row becomes reclaimable within the same Stripe
@@ -110,7 +76,24 @@ export const Route = createFileRoute("/api/billing-bridge")({
 				let payload: BridgePayload;
 				try {
 					const raw = JSON.parse(hmacResult.body);
-					payload = BridgePayloadSchema.parse(raw);
+					const parsed = parseBridgePayload(raw);
+					if (Result.isError(parsed)) {
+						if (parsed.error.kind === "unsupported_schema_version") {
+							console.error(
+								`[billing-bridge] Unsupported schema_version=${String(parsed.error.schemaVersion)} for event_kind=${parsed.error.eventKind}`,
+							);
+							return Response.json(
+								{ error: "Unsupported bridge schema version" },
+								{ status: 500 },
+							);
+						}
+
+						return Response.json(
+							{ error: "Invalid request payload" },
+							{ status: 400 },
+						);
+					}
+					payload = parsed.value;
 				} catch {
 					return Response.json(
 						{ error: "Invalid request payload" },
@@ -225,21 +208,16 @@ async function dispatchBridgeEvent(payload: BridgePayload): Promise<void> {
 			break;
 		}
 		case "pack_reversed": {
-			await handlePackReversed(supabase, {
+			await handlePackReversed({
 				accountId: payload.account_id,
-				packStripeEventId: payload.pack_stripe_event_id,
-				stripeEventId: payload.stripe_event_id,
-				reason: payload.reason,
+				accessRemoved: payload.access_removed,
 			});
 			break;
 		}
 		case "unlimited_period_reversed": {
-			await handleUnlimitedPeriodReversed(supabase, {
+			await handleUnlimitedPeriodReversed({
 				accountId: payload.account_id,
-				stripeSubscriptionId: payload.stripe_subscription_id,
-				subscriptionPeriodEnd: payload.subscription_period_end,
-				stripeEventId: payload.stripe_event_id,
-				reason: payload.reason,
+				accessRemoved: payload.access_removed,
 			});
 			break;
 		}

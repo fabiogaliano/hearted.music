@@ -151,19 +151,10 @@ describe("handleUnlimitedActivated", () => {
 });
 
 describe("handlePackReversed", () => {
-	it("emits candidateAccessRevoked when songs were revoked", async () => {
-		const supabase = makeSupabase({
-			rpc: vi.fn().mockResolvedValue({
-				data: { credits_reversed: 5, revoked_song_ids: ["s1", "s2"] },
-				error: null,
-			}),
-		});
-
-		await handlePackReversed(supabase, {
+	it("emits candidateAccessRevoked when accessRemoved is true", async () => {
+		await handlePackReversed({
 			accountId: "acc-1",
-			packStripeEventId: "evt_pack",
-			stripeEventId: "evt_refund",
-			reason: "refund",
+			accessRemoved: true,
 		});
 
 		expect(mockedApplyChange).toHaveBeenCalledOnce();
@@ -173,57 +164,25 @@ describe("handlePackReversed", () => {
 		});
 	});
 
-	it("does not emit when no songs were revoked", async () => {
-		const supabase = makeSupabase({
-			rpc: vi.fn().mockResolvedValue({
-				data: { credits_reversed: 5, revoked_song_ids: [] },
-				error: null,
-			}),
-		});
+	it("does nothing when accessRemoved is false", async () => {
+		const supabase = makeSupabase();
 
-		await handlePackReversed(supabase, {
+		await handlePackReversed({
 			accountId: "acc-1",
-			packStripeEventId: "evt_pack",
-			stripeEventId: "evt_refund",
-			reason: "refund",
+			accessRemoved: false,
 		});
 
 		expect(mockedApplyChange).not.toHaveBeenCalled();
-	});
-
-	it("throws on RPC error", async () => {
-		const supabase = makeSupabase({
-			rpc: vi
-				.fn()
-				.mockResolvedValue({ data: null, error: { message: "rpc fail" } }),
-		});
-
-		await expect(
-			handlePackReversed(supabase, {
-				accountId: "acc-1",
-				packStripeEventId: "evt_pack",
-				stripeEventId: "evt_refund",
-				reason: "chargeback",
-			}),
-		).rejects.toThrow("reverse_pack_entitlement failed");
+		// Bridge must not call reversal RPCs anymore — mutation lives in the billing service.
+		expect(supabase.rpc).not.toHaveBeenCalled();
 	});
 });
 
 describe("handleUnlimitedPeriodReversed", () => {
-	it("emits candidateAccessRevoked when songs were revoked", async () => {
-		const supabase = makeSupabase({
-			rpc: vi.fn().mockResolvedValue({
-				data: [{ song_id: "s1" }, { song_id: "s2" }],
-				error: null,
-			}),
-		});
-
-		await handleUnlimitedPeriodReversed(supabase, {
+	it("emits candidateAccessRevoked when accessRemoved is true", async () => {
+		await handleUnlimitedPeriodReversed({
 			accountId: "acc-1",
-			stripeSubscriptionId: "sub_123",
-			subscriptionPeriodEnd: "2026-05-01T00:00:00Z",
-			stripeEventId: "evt_refund",
-			reason: "refund",
+			accessRemoved: true,
 		});
 
 		expect(mockedApplyChange).toHaveBeenCalledOnce();
@@ -233,38 +192,16 @@ describe("handleUnlimitedPeriodReversed", () => {
 		});
 	});
 
-	it("does not emit when no songs were revoked", async () => {
-		const supabase = makeSupabase({
-			rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
-		});
+	it("does nothing when accessRemoved is false", async () => {
+		const supabase = makeSupabase();
 
-		await handleUnlimitedPeriodReversed(supabase, {
+		await handleUnlimitedPeriodReversed({
 			accountId: "acc-1",
-			stripeSubscriptionId: "sub_123",
-			subscriptionPeriodEnd: "2026-05-01T00:00:00Z",
-			stripeEventId: "evt_refund",
-			reason: "chargeback",
+			accessRemoved: false,
 		});
 
 		expect(mockedApplyChange).not.toHaveBeenCalled();
-	});
-
-	it("throws on RPC error", async () => {
-		const supabase = makeSupabase({
-			rpc: vi
-				.fn()
-				.mockResolvedValue({ data: null, error: { message: "rpc fail" } }),
-		});
-
-		await expect(
-			handleUnlimitedPeriodReversed(supabase, {
-				accountId: "acc-1",
-				stripeSubscriptionId: "sub_123",
-				subscriptionPeriodEnd: "2026-05-01T00:00:00Z",
-				stripeEventId: "evt_refund",
-				reason: "refund",
-			}),
-		).rejects.toThrow("reverse_unlimited_period_entitlement failed");
+		expect(supabase.rpc).not.toHaveBeenCalled();
 	});
 });
 

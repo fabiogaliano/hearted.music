@@ -47,8 +47,7 @@ describe("useCheckoutFlow", () => {
 	it("does not persist checkout intent when session creation fails", async () => {
 		mockCreateCheckoutSession.mockResolvedValue({
 			success: false,
-			error: "billing_service_error",
-			message: "boom",
+			error: "billing_unavailable",
 		});
 
 		const { result } = renderHook(() => useCheckoutFlow(billingState));

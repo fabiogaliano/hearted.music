@@ -27,13 +27,16 @@ export type RequestSongUnlockResponse =
 export type CreateCheckoutSessionResponse =
 	| { success: true; checkoutUrl: string }
 	| { success: false; error: "billing_disabled" }
-	| { success: false; error: "invalid_offer" }
-	| { success: false; error: "billing_service_error"; message: string };
+	| { success: false; error: "billing_unavailable" }
+	| { success: false; error: "invalid_billing_redirect" }
+	| { success: false; error: "rate_limited" };
 
 export type CreatePortalSessionResponse =
 	| { success: true; portalUrl: string }
 	| { success: false; error: "billing_disabled" }
-	| { success: false; error: "billing_service_error"; message: string };
+	| { success: false; error: "billing_unavailable" }
+	| { success: false; error: "invalid_billing_redirect" }
+	| { success: false; error: "rate_limited" };
 
 export interface PlanSelectionConfig {
 	billingEnabled: boolean;

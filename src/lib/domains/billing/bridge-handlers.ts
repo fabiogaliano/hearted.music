@@ -17,17 +17,12 @@ interface UnlimitedActivatedParams {
 
 interface PackReversedParams {
 	accountId: string;
-	packStripeEventId: string;
-	stripeEventId: string;
-	reason: "refund" | "chargeback";
+	accessRemoved: boolean;
 }
 
 interface UnlimitedPeriodReversedParams {
 	accountId: string;
-	stripeSubscriptionId: string;
-	subscriptionPeriodEnd: string;
-	stripeEventId: string;
-	reason: "refund" | "chargeback";
+	accessRemoved: boolean;
 }
 
 export async function handlePackFulfilled(
@@ -84,70 +79,36 @@ export async function handleUnlimitedActivated(
 }
 
 export async function handlePackReversed(
-	supabase: AdminSupabaseClient,
 	params: PackReversedParams,
 ): Promise<void> {
-	const { data, error } = await supabase.rpc("reverse_pack_entitlement", {
-		p_account_id: params.accountId,
-		p_pack_stripe_event_id: params.packStripeEventId,
-		p_stripe_event_id: params.stripeEventId,
-		p_reason: params.reason,
-	});
-
-	if (error) {
-		throw new Error(
-			`[bridge-handlers] reverse_pack_entitlement failed: ${error.message}`,
-		);
+	if (!params.accessRemoved) {
+		return;
 	}
 
-	const result = data as {
-		credits_reversed?: number;
-		revoked_song_ids?: string[];
-	} | null;
-	const revokedCount = result?.revoked_song_ids?.length ?? 0;
-
-	if (revokedCount > 0) {
-		const change = BillingChanges.candidateAccessRevoked(params.accountId);
-		const applyResult = await applyLibraryProcessingChange(change);
-		if (Result.isError(applyResult)) {
-			console.error(
-				"[bridge-handlers] library-processing apply failed:",
-				applyResult.error,
-			);
-		}
+	const change = BillingChanges.candidateAccessRevoked(params.accountId);
+	const applyResult = await applyLibraryProcessingChange(change);
+	if (Result.isError(applyResult)) {
+		console.error(
+			"[bridge-handlers] library-processing apply failed:",
+			applyResult.error,
+		);
 	}
 }
 
 export async function handleUnlimitedPeriodReversed(
-	supabase: AdminSupabaseClient,
 	params: UnlimitedPeriodReversedParams,
 ): Promise<void> {
-	const { data, error } = await supabase.rpc(
-		"reverse_unlimited_period_entitlement",
-		{
-			p_stripe_subscription_id: params.stripeSubscriptionId,
-			p_subscription_period_end: params.subscriptionPeriodEnd,
-			p_stripe_event_id: params.stripeEventId,
-			p_revoked_reason: params.reason,
-		},
-	);
-
-	if (error) {
-		throw new Error(
-			`[bridge-handlers] reverse_unlimited_period_entitlement failed: ${error.message}`,
-		);
+	if (!params.accessRemoved) {
+		return;
 	}
 
-	const revokedSongs = data as Array<{ song_id: string }> | null;
-	if (revokedSongs && revokedSongs.length > 0) {
-		const change = BillingChanges.candidateAccessRevoked(params.accountId);
-		const applyResult = await applyLibraryProcessingChange(change);
-		if (Result.isError(applyResult)) {
-			console.error(
-				"[bridge-handlers] library-processing apply failed:",
-				applyResult.error,
-			);
-		}
+	const change = BillingChanges.candidateAccessRevoked(params.accountId);
+	const applyResult = await applyLibraryProcessingChange(change);
+	if (Result.isError(applyResult)) {
+		console.error(
+			"[bridge-handlers] library-processing apply failed:",
+			applyResult.error,
+		);
 	}
 }
 

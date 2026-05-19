@@ -132,7 +132,7 @@ describe("createCheckoutSession", () => {
 		expect(mockFetch).not.toHaveBeenCalled();
 	});
 
-	it("returns billing_service_error when env vars are missing", async () => {
+	it("returns billing_unavailable when env vars are missing", async () => {
 		mockEnv.value = {
 			BILLING_ENABLED: true,
 			BILLING_SERVICE_URL: undefined,
@@ -146,12 +146,7 @@ describe("createCheckoutSession", () => {
 			},
 		});
 
-		expect(result).toEqual({
-			success: false,
-			error: "billing_service_error",
-			message:
-				"BILLING_SERVICE_URL and BILLING_SHARED_SECRET must be set when BILLING_ENABLED=true",
-		});
+		expect(result).toEqual({ success: false, error: "billing_unavailable" });
 	});
 
 	it("sends HMAC-signed request to /checkout/pack for song_pack_500", async () => {
@@ -163,7 +158,9 @@ describe("createCheckoutSession", () => {
 
 		mockFetch.mockResolvedValue(
 			new Response(
-				JSON.stringify({ checkout_url: "https://stripe.com/pay/123" }),
+				JSON.stringify({
+					checkout_url: "https://checkout.stripe.com/c/pay/cs_test_123",
+				}),
 				{
 					status: 200,
 				},
@@ -179,7 +176,7 @@ describe("createCheckoutSession", () => {
 
 		expect(result).toEqual({
 			success: true,
-			checkoutUrl: "https://stripe.com/pay/123",
+			checkoutUrl: "https://checkout.stripe.com/c/pay/cs_test_123",
 		});
 
 		expect(mockSignBridgeRequest).toHaveBeenCalledWith(
@@ -220,7 +217,9 @@ describe("createCheckoutSession", () => {
 
 		mockFetch.mockResolvedValue(
 			new Response(
-				JSON.stringify({ checkout_url: "https://stripe.com/sub/456" }),
+				JSON.stringify({
+					checkout_url: "https://checkout.stripe.com/c/sub/cs_test_456",
+				}),
 				{
 					status: 200,
 				},
@@ -236,7 +235,7 @@ describe("createCheckoutSession", () => {
 
 		expect(result).toEqual({
 			success: true,
-			checkoutUrl: "https://stripe.com/sub/456",
+			checkoutUrl: "https://checkout.stripe.com/c/sub/cs_test_456",
 		});
 
 		expect(mockFetch).toHaveBeenCalledWith(
@@ -245,7 +244,7 @@ describe("createCheckoutSession", () => {
 		);
 	});
 
-	it("returns billing_service_error on non-ok response", async () => {
+	it("returns billing_unavailable on non-ok response without leaking body", async () => {
 		mockEnv.value = {
 			BILLING_ENABLED: true,
 			BILLING_SERVICE_URL: "https://billing.example.com",
@@ -253,7 +252,7 @@ describe("createCheckoutSession", () => {
 		};
 
 		mockFetch.mockResolvedValue(
-			new Response("Internal Server Error", { status: 500 }),
+			new Response("Internal Server Error: secret_token_xyz", { status: 500 }),
 		);
 
 		const result = await createCheckoutSessionForTest({
@@ -263,14 +262,33 @@ describe("createCheckoutSession", () => {
 			},
 		});
 
-		expect(result).toEqual({
-			success: false,
-			error: "billing_service_error",
-			message: "Billing service returned 500: Internal Server Error",
-		});
+		expect(result).toEqual({ success: false, error: "billing_unavailable" });
+		expect(JSON.stringify(result)).not.toContain("secret_token_xyz");
+		expect(JSON.stringify(result)).not.toContain("500");
 	});
 
-	it("returns billing_service_error on network failure", async () => {
+	it("returns rate_limited on 429 response", async () => {
+		mockEnv.value = {
+			BILLING_ENABLED: true,
+			BILLING_SERVICE_URL: "https://billing.example.com",
+			BILLING_SHARED_SECRET: "test-secret",
+		};
+
+		mockFetch.mockResolvedValue(
+			new Response("Too Many Requests", { status: 429 }),
+		);
+
+		const result = await createCheckoutSessionForTest({
+			data: {
+				offer: "song_pack_500",
+				checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440000",
+			},
+		});
+
+		expect(result).toEqual({ success: false, error: "rate_limited" });
+	});
+
+	it("returns billing_unavailable on network failure without leaking error text", async () => {
 		mockEnv.value = {
 			BILLING_ENABLED: true,
 			BILLING_SERVICE_URL: "https://billing.example.com",
@@ -286,10 +304,63 @@ describe("createCheckoutSession", () => {
 			},
 		});
 
+		expect(result).toEqual({ success: false, error: "billing_unavailable" });
+		expect(JSON.stringify(result)).not.toContain("Connection refused");
+	});
+
+	it("returns invalid_billing_redirect when checkout_url is not on checkout.stripe.com", async () => {
+		mockEnv.value = {
+			BILLING_ENABLED: true,
+			BILLING_SERVICE_URL: "https://billing.example.com",
+			BILLING_SHARED_SECRET: "test-secret",
+		};
+
+		mockFetch.mockResolvedValue(
+			new Response(
+				JSON.stringify({ checkout_url: "https://stripe.com/pay/123" }),
+				{ status: 200 },
+			),
+		);
+
+		const result = await createCheckoutSessionForTest({
+			data: {
+				offer: "song_pack_500",
+				checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440000",
+			},
+		});
+
 		expect(result).toEqual({
 			success: false,
-			error: "billing_service_error",
-			message: "Connection refused",
+			error: "invalid_billing_redirect",
+		});
+	});
+
+	it("returns invalid_billing_redirect when checkout_url uses http instead of https", async () => {
+		mockEnv.value = {
+			BILLING_ENABLED: true,
+			BILLING_SERVICE_URL: "https://billing.example.com",
+			BILLING_SHARED_SECRET: "test-secret",
+		};
+
+		mockFetch.mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					checkout_url: "http://checkout.stripe.com/c/pay/cs_test_123",
+				}),
+				{ status: 200 },
+			),
+		);
+
+		const result = await createCheckoutSessionForTest({
+			data: {
+				offer: "song_pack_500",
+				checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440000",
+			},
+		});
+
+		expect(result).toEqual({
+			success: false,
+			error: "invalid_billing_redirect",
 		});
 	});
 
@@ -372,21 +443,60 @@ describe("createPortalSession", () => {
 		});
 	});
 
-	it("returns billing_service_error on non-ok response", async () => {
+	it("returns billing_unavailable on non-ok response without leaking body", async () => {
 		mockEnv.value = {
 			BILLING_ENABLED: true,
 			BILLING_SERVICE_URL: "https://billing.example.com",
 			BILLING_SHARED_SECRET: "test-secret",
 		};
 
-		mockFetch.mockResolvedValue(new Response("Forbidden", { status: 403 }));
+		mockFetch.mockResolvedValue(
+			new Response("Forbidden: secret_token_xyz", { status: 403 }),
+		);
+
+		const result = await createPortalSessionForTest();
+
+		expect(result).toEqual({ success: false, error: "billing_unavailable" });
+		expect(JSON.stringify(result)).not.toContain("secret_token_xyz");
+	});
+
+	it("returns rate_limited on 429 response", async () => {
+		mockEnv.value = {
+			BILLING_ENABLED: true,
+			BILLING_SERVICE_URL: "https://billing.example.com",
+			BILLING_SHARED_SECRET: "test-secret",
+		};
+
+		mockFetch.mockResolvedValue(
+			new Response("Too Many Requests", { status: 429 }),
+		);
+
+		const result = await createPortalSessionForTest();
+
+		expect(result).toEqual({ success: false, error: "rate_limited" });
+	});
+
+	it("returns invalid_billing_redirect when portal_url is not on billing.stripe.com", async () => {
+		mockEnv.value = {
+			BILLING_ENABLED: true,
+			BILLING_SERVICE_URL: "https://billing.example.com",
+			BILLING_SHARED_SECRET: "test-secret",
+		};
+
+		mockFetch.mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					portal_url: "https://checkout.stripe.com/portal/abc",
+				}),
+				{ status: 200 },
+			),
+		);
 
 		const result = await createPortalSessionForTest();
 
 		expect(result).toEqual({
 			success: false,
-			error: "billing_service_error",
-			message: "Billing service returned 403: Forbidden",
+			error: "invalid_billing_redirect",
 		});
 	});
 });

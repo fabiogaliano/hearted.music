@@ -15,6 +15,10 @@ import {
 } from "@/lib/domains/billing/offers";
 import { readBillingState } from "@/lib/domains/billing/queries";
 import type { BillingState } from "@/lib/domains/billing/state";
+import {
+	parseStripeCheckoutUrl,
+	parseStripePortalUrl,
+} from "@/lib/domains/billing/stripe-redirects";
 import { requestSongUnlock as orchestrateUnlock } from "@/lib/domains/billing/unlocks";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 
@@ -158,33 +162,35 @@ function checkoutEndpointForOffer(offer: OfferId): string {
 export type CreateCheckoutSessionResponse =
 	| { success: true; checkoutUrl: string }
 	| { success: false; error: "billing_disabled" }
-	| { success: false; error: "invalid_offer" }
-	| { success: false; error: "billing_service_error"; message: string };
+	| { success: false; error: "billing_unavailable" }
+	| { success: false; error: "invalid_billing_redirect" }
+	| { success: false; error: "rate_limited" };
 
 export type CreatePortalSessionResponse =
 	| { success: true; portalUrl: string }
 	| { success: false; error: "billing_disabled" }
-	| { success: false; error: "billing_service_error"; message: string };
+	| { success: false; error: "billing_unavailable" }
+	| { success: false; error: "invalid_billing_redirect" }
+	| { success: false; error: "rate_limited" };
 
 /**
- * Reads and validates billing config. Returns typed error when billing is
- * disabled or env vars are misconfigured.
+ * Reads and validates billing config. Detailed reasons are only logged
+ * server-side — callers receive a single opaque "unavailable" signal so no
+ * env or config detail leaks to the browser.
  */
 function resolveBillingConfig():
 	| { ok: true; serviceUrl: string; sharedSecret: string }
 	| { ok: false; error: "billing_disabled" }
-	| { ok: false; error: "billing_service_error"; message: string } {
+	| { ok: false; error: "billing_unavailable" } {
 	if (!env.BILLING_ENABLED) {
 		return { ok: false, error: "billing_disabled" };
 	}
 
 	if (!env.BILLING_SERVICE_URL || !env.BILLING_SHARED_SECRET) {
-		return {
-			ok: false,
-			error: "billing_service_error",
-			message:
-				"BILLING_SERVICE_URL and BILLING_SHARED_SECRET must be set when BILLING_ENABLED=true",
-		};
+		console.error(
+			"[billing] BILLING_ENABLED=true but BILLING_SERVICE_URL/BILLING_SHARED_SECRET are unset",
+		);
+		return { ok: false, error: "billing_unavailable" };
 	}
 
 	return {
@@ -217,15 +223,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
 	.handler(
 		async ({ data, context }): Promise<CreateCheckoutSessionResponse> => {
 			const config = resolveBillingConfig();
-			if (!config.ok) {
-				return config.error === "billing_disabled"
-					? { success: false, error: "billing_disabled" }
-					: {
-							success: false,
-							error: "billing_service_error",
-							message: config.message,
-						};
-			}
+			if (!config.ok) return { success: false, error: config.error };
 
 			const endpoint = checkoutEndpointForOffer(data.offer);
 			const requestBody = JSON.stringify({
@@ -242,35 +240,52 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
 					config.sharedSecret,
 				);
 			} catch (err) {
-				return {
-					success: false,
-					error: "billing_service_error",
-					message:
-						err instanceof Error
-							? err.message
-							: "Failed to reach billing service",
-				};
+				console.error(
+					"[billing] checkout: failed to reach billing service:",
+					err instanceof Error ? err.message : err,
+				);
+				return { success: false, error: "billing_unavailable" };
+			}
+
+			if (response.status === 429) {
+				return { success: false, error: "rate_limited" };
 			}
 
 			if (!response.ok) {
 				const text = await response.text().catch(() => "");
-				return {
-					success: false,
-					error: "billing_service_error",
-					message: `Billing service returned ${String(response.status)}: ${text}`,
-				};
+				console.error(
+					`[billing] checkout: billing service returned ${String(response.status)}: ${text}`,
+				);
+				return { success: false, error: "billing_unavailable" };
 			}
 
-			const json = (await response.json()) as { checkout_url?: string };
-			if (!json.checkout_url) {
-				return {
-					success: false,
-					error: "billing_service_error",
-					message: "Billing service returned no checkout_url",
-				};
+			let json: { checkout_url?: unknown };
+			try {
+				json = (await response.json()) as { checkout_url?: unknown };
+			} catch (err) {
+				console.error(
+					"[billing] checkout: failed to parse billing service response:",
+					err instanceof Error ? err.message : err,
+				);
+				return { success: false, error: "billing_unavailable" };
 			}
 
-			return { success: true, checkoutUrl: json.checkout_url };
+			if (typeof json.checkout_url !== "string") {
+				console.error(
+					"[billing] checkout: billing service returned no checkout_url",
+				);
+				return { success: false, error: "billing_unavailable" };
+			}
+
+			const checkoutUrl = parseStripeCheckoutUrl(json.checkout_url);
+			if (!checkoutUrl) {
+				console.error(
+					`[billing] checkout: rejected non-Stripe checkout URL: ${json.checkout_url}`,
+				);
+				return { success: false, error: "invalid_billing_redirect" };
+			}
+
+			return { success: true, checkoutUrl };
 		},
 	);
 
@@ -278,15 +293,7 @@ export const createPortalSession = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
 	.handler(async ({ context }): Promise<CreatePortalSessionResponse> => {
 		const config = resolveBillingConfig();
-		if (!config.ok) {
-			return config.error === "billing_disabled"
-				? { success: false, error: "billing_disabled" }
-				: {
-						success: false,
-						error: "billing_service_error",
-						message: config.message,
-					};
-		}
+		if (!config.ok) return { success: false, error: config.error };
 
 		const requestBody = JSON.stringify({
 			account_id: context.session.accountId,
@@ -300,35 +307,50 @@ export const createPortalSession = createServerFn({ method: "POST" })
 				config.sharedSecret,
 			);
 		} catch (err) {
-			return {
-				success: false,
-				error: "billing_service_error",
-				message:
-					err instanceof Error
-						? err.message
-						: "Failed to reach billing service",
-			};
+			console.error(
+				"[billing] portal: failed to reach billing service:",
+				err instanceof Error ? err.message : err,
+			);
+			return { success: false, error: "billing_unavailable" };
+		}
+
+		if (response.status === 429) {
+			return { success: false, error: "rate_limited" };
 		}
 
 		if (!response.ok) {
 			const text = await response.text().catch(() => "");
-			return {
-				success: false,
-				error: "billing_service_error",
-				message: `Billing service returned ${String(response.status)}: ${text}`,
-			};
+			console.error(
+				`[billing] portal: billing service returned ${String(response.status)}: ${text}`,
+			);
+			return { success: false, error: "billing_unavailable" };
 		}
 
-		const json = (await response.json()) as { portal_url?: string };
-		if (!json.portal_url) {
-			return {
-				success: false,
-				error: "billing_service_error",
-				message: "Billing service returned no portal_url",
-			};
+		let json: { portal_url?: unknown };
+		try {
+			json = (await response.json()) as { portal_url?: unknown };
+		} catch (err) {
+			console.error(
+				"[billing] portal: failed to parse billing service response:",
+				err instanceof Error ? err.message : err,
+			);
+			return { success: false, error: "billing_unavailable" };
 		}
 
-		return { success: true, portalUrl: json.portal_url };
+		if (typeof json.portal_url !== "string") {
+			console.error("[billing] portal: billing service returned no portal_url");
+			return { success: false, error: "billing_unavailable" };
+		}
+
+		const portalUrl = parseStripePortalUrl(json.portal_url);
+		if (!portalUrl) {
+			console.error(
+				`[billing] portal: rejected non-Stripe portal URL: ${json.portal_url}`,
+			);
+			return { success: false, error: "invalid_billing_redirect" };
+		}
+
+		return { success: true, portalUrl };
 	});
 
 // ---------------------------------------------------------------------------

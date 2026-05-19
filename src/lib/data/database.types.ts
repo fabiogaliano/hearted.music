@@ -966,6 +966,7 @@ export type Database = {
 					original_credits: number;
 					price_cents: number;
 					remaining_credits: number;
+					reversed_at: string | null;
 					stripe_event_id: string;
 				};
 				Insert: {
@@ -976,6 +977,7 @@ export type Database = {
 					original_credits: number;
 					price_cents: number;
 					remaining_credits: number;
+					reversed_at?: string | null;
 					stripe_event_id: string;
 				};
 				Update: {
@@ -986,6 +988,7 @@ export type Database = {
 					original_credits?: number;
 					price_cents?: number;
 					remaining_credits?: number;
+					reversed_at?: string | null;
 					stripe_event_id?: string;
 				};
 				Relationships: [

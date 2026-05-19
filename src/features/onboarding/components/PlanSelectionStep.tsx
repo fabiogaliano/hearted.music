@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/kbd";
+import { checkoutErrorMessage } from "@/features/billing/error-copy";
 import { billingKeys } from "@/features/billing/query-keys";
 import {
 	SONG_PACK_500,
@@ -168,15 +169,7 @@ export function PlanSelectionStep({
 			});
 
 			if (!result.success) {
-				const message =
-					result.error === "billing_disabled"
-						? "Billing is not available right now."
-						: result.error === "invalid_offer"
-							? "Invalid plan selected."
-							: "message" in result
-								? result.message
-								: "Something went wrong. Please try again.";
-				toast.error(message);
+				toast.error(checkoutErrorMessage(result.error));
 				clearCheckoutIntent();
 				setActiveCheckout(null);
 				return;

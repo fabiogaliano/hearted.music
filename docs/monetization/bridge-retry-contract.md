@@ -6,6 +6,7 @@ semantics between `v1_hearted_brand` (the billing service) and
 
 Keep it in sync with the code:
 - App receiver: `v1_hearted/src/routes/api/billing-bridge.ts`
+- Payload parser/versioning: `v1_hearted/src/lib/domains/billing/bridge-payloads.ts`
 - Claim RPCs: `v1_hearted/supabase/migrations/20260420000000_billing_bridge_event_status_lease.sql`
 - Service client: `v1_hearted_brand/src/lib/bridge.ts`
 
@@ -15,10 +16,10 @@ Keep it in sync with the code:
 | ------ | ---------------------------- | --------------------------- | ------------------------------ |
 | 200    | `{ ok: true }`               | Event processed             | Terminal success               |
 | 200    | `{ ok: true, duplicate: true }` | Already processed        | Terminal success (no-op)       |
-| 400    | `{ error: "Invalid ..." }`   | Bad payload                 | Terminal failure (do not retry)|
+| 400    | `{ error: "Invalid ..." }`   | Bad payload for the current schema version | Terminal failure (do not retry)|
 | 401    | `{ error: "..." }`           | Bad HMAC / config           | Terminal failure (do not retry)|
 | 409    | `{ error: "in_progress" }`   | Another worker holds the processing lease | **Transient — retry with backoff** |
-| 500    | `{ error: "..." }`           | Server / handler / claim error | **Transient — retry with backoff** |
+| 500    | `{ error: "..." }`           | Server / handler / claim error, or unsupported bridge schema version | **Transient — retry with backoff** |
 
 ## Why 409 exists
 
@@ -32,6 +33,16 @@ instead of being silently double-dispatched.
 If 409 is treated as terminal the event is effectively dropped for the
 duration of the lease, even though the app is perfectly willing to
 serve the retry once the lease expires or the holding worker finishes.
+
+## Schema versioning
+
+Bridge payloads now require `schema_version: 2`.
+
+Rules:
+- The billing service must send `schema_version: 2` on every bridge payload.
+- The app receiver accepts only `schema_version: 2`.
+- Missing `schema_version` is an invalid payload (`400`).
+- An otherwise valid payload with a non-current `schema_version` returns `500`, not `400`, so a future staggered deploy retries instead of dropping the event.
 
 ## Required billing-service behavior
 

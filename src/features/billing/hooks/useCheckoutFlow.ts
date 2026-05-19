@@ -9,6 +9,7 @@
 
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { checkoutErrorMessage } from "@/features/billing/error-copy";
 import {
 	type CheckoutIntent,
 	type CheckoutOffer,
@@ -56,15 +57,7 @@ export function useCheckoutFlow(billingState: BillingState) {
 					return;
 				}
 
-				const message =
-					result.error === "billing_disabled"
-						? "Billing is not available right now."
-						: result.error === "invalid_offer"
-							? "Invalid plan selected."
-							: "message" in result
-								? result.message
-								: "Something went wrong. Please try again.";
-				toast.error(message);
+				toast.error(checkoutErrorMessage(result.error));
 			} catch {
 				toast.error("Failed to start checkout. Please try again.");
 			}
