@@ -1,4 +1,8 @@
-import { ArrowRight, Check, LockSimple } from "@phosphor-icons/react";
+import {
+	ArrowRightIcon,
+	CheckIcon,
+	LockSimpleIcon,
+} from "@phosphor-icons/react";
 import { memo, useCallback, useMemo } from "react";
 
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
@@ -210,7 +214,7 @@ const SongCardContent = memo(function SongCardContent({
 				)}
 				{isLocked && (
 					<div className="absolute inset-0 flex items-center justify-center bg-black/35">
-						<LockSimple size={16} color="white" weight="regular" />
+						<LockSimpleIcon size={16} color="white" weight="regular" />
 					</div>
 				)}
 				{!isLocked && isNew && (
@@ -269,7 +273,11 @@ const SongCardContent = memo(function SongCardContent({
 						className={`${isChecked ? "theme-primary-bg" : "bg-transparent"} ${isChecked ? "border-(--t-primary)" : "theme-border-color"} flex size-5 shrink-0 items-center justify-center border`}
 					>
 						{isChecked && (
-							<Check size={12} color="var(--t-text-on-primary)" weight="bold" />
+							<CheckIcon
+								size={12}
+								color="var(--t-text-on-primary)"
+								weight="bold"
+							/>
 						)}
 					</span>
 				) : isLocked ? (
@@ -278,7 +286,7 @@ const SongCardContent = memo(function SongCardContent({
 							className="theme-text-muted flex shrink-0 items-center gap-1 text-xs"
 							style={{ fontFamily: fonts.body }}
 						>
-							<LockSimple size={11} weight="regular" />
+							<LockSimpleIcon size={11} weight="regular" />
 							<span className="hidden lg:inline">Unlock</span>
 						</span>
 					)

@@ -1,5 +1,5 @@
 import type { Story } from "@ladle/react";
-import { Check, LockSimple, X } from "@phosphor-icons/react";
+import { CheckIcon, LockSimpleIcon, XIcon } from "@phosphor-icons/react";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
@@ -178,7 +178,7 @@ export const AllElements: Story = () => {
 					className="flex cursor-pointer items-center gap-1 border-0 bg-transparent px-3 py-1.5 text-xs transition-[transform,opacity] duration-150 hover:scale-[1.03] hover:opacity-90 active:scale-[0.98]"
 					style={{ fontFamily: fonts.body, color: theme.textMuted }}
 				>
-					<X size={14} />
+					<XIcon size={14} />
 					Cancel
 				</button>
 			</Section>
@@ -217,7 +217,7 @@ export const AllElements: Story = () => {
 					className="flex size-5 shrink-0 items-center justify-center border"
 					style={{ borderColor: theme.primary, background: theme.primary }}
 				>
-					<Check size={12} color={theme.bg} weight="bold" />
+					<CheckIcon size={12} color={theme.bg} weight="bold" />
 				</span>
 			</Section>
 
@@ -264,7 +264,7 @@ export const AllElements: Story = () => {
 							}}
 						>
 							<span className="flex items-center gap-2">
-								<LockSimple size={13} weight="regular" />
+								<LockSimpleIcon size={13} weight="regular" />
 								Unlock
 							</span>
 						</button>

@@ -1,9 +1,9 @@
 import type { Story } from "@ladle/react";
 import {
-	ArrowSquareOut,
-	Check,
-	LockSimple,
-	Sparkle,
+	ArrowSquareOutIcon,
+	CheckIcon,
+	LockSimpleIcon,
+	SparkleIcon,
 } from "@phosphor-icons/react";
 import { SongSelectionBar } from "@/features/liked-songs/components/SongSelectionBar";
 import { ExtensionSetupTrail } from "@/features/onboarding/components/ExtensionSetupTrail";
@@ -86,7 +86,7 @@ export const Components: Story = () => {
 							background: `color-mix(in srgb, ${theme.primary} 15%, transparent)`,
 						}}
 					>
-						<LockSimple size={20} color={theme.primary} weight="light" />
+						<LockSimpleIcon size={20} color={theme.primary} weight="light" />
 					</div>
 					<div>
 						<p
@@ -109,20 +109,24 @@ export const Components: Story = () => {
 						className="relative flex size-16 items-center justify-center rounded-sm"
 						style={{ background: "rgba(0,0,0,0.5)" }}
 					>
-						<LockSimple size={16} color="white" weight="regular" />
+						<LockSimpleIcon size={16} color="white" weight="regular" />
 					</div>
 					<span className="theme-border-color flex size-5 shrink-0 items-center justify-center border" />
 					<span
 						className="theme-primary-bg flex size-5 shrink-0 items-center justify-center border"
 						style={{ borderColor: theme.primary }}
 					>
-						<Check size={12} color="var(--t-text-on-primary)" weight="bold" />
+						<CheckIcon
+							size={12}
+							color="var(--t-text-on-primary)"
+							weight="bold"
+						/>
 					</span>
 					<button
 						type="button"
 						className="theme-primary-action inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium tracking-wider uppercase"
 					>
-						<LockSimple size={11} weight="regular" />
+						<LockSimpleIcon size={11} weight="regular" />
 						Unlock
 					</button>
 				</div>
@@ -136,14 +140,14 @@ export const Components: Story = () => {
 					style={{ fontFamily: fonts.body }}
 				>
 					Manage subscription
-					<ArrowSquareOut size={12} weight="light" />
+					<ArrowSquareOutIcon size={12} weight="light" />
 				</button>
 			</Section>
 
 			{/* Sparkle — PaywallCTA icon */}
 			<Section title="PaywallCTA Icon — Sparkle">
 				<div className="flex flex-col items-center gap-3">
-					<Sparkle size={24} color={theme.primary} weight="regular" />
+					<SparkleIcon size={24} color={theme.primary} weight="regular" />
 					<p
 						className="text-base"
 						style={{ fontFamily: fonts.display, color: theme.text }}

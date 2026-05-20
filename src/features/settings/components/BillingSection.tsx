@@ -1,4 +1,4 @@
-import { ArrowSquareOut } from "@phosphor-icons/react";
+import { ArrowSquareOutIcon } from "@phosphor-icons/react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
@@ -141,7 +141,9 @@ export function BillingSection({ billingState }: BillingSectionProps) {
 						style={{ fontFamily: fonts.body }}
 					>
 						{isLoadingPortal ? "Opening…" : "Manage subscription"}
-						{!isLoadingPortal && <ArrowSquareOut size={12} weight="light" />}
+						{!isLoadingPortal && (
+							<ArrowSquareOutIcon size={12} weight="light" />
+						)}
 					</Button>
 				</div>
 			)}

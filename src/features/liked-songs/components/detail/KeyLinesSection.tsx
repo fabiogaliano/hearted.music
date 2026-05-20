@@ -1,4 +1,4 @@
-import { CaretDown } from "@phosphor-icons/react";
+import { CaretDownIcon } from "@phosphor-icons/react";
 import { useCallback, useRef, useState } from "react";
 import { fonts } from "@/lib/theme/fonts";
 import type { ColorProps } from "./types";
@@ -120,7 +120,7 @@ export function KeyLinesSection({ keyLines, colors }: KeyLinesSectionProps) {
 										transition: "opacity 180ms ease",
 									}}
 								>
-									<CaretDown size={12} />
+									<CaretDownIcon size={12} />
 								</span>
 							</span>
 							<span

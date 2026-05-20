@@ -1,4 +1,4 @@
-import { LockSimple, X } from "@phosphor-icons/react";
+import { LockSimpleIcon, XIcon } from "@phosphor-icons/react";
 import type { Ref } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -34,7 +34,7 @@ export function SongSelectionBar({
 					className="flex items-center gap-1"
 					style={{ fontFamily: fonts.body }}
 				>
-					<X size={14} />
+					<XIcon size={14} />
 					Cancel
 				</Button>
 				<span
@@ -57,7 +57,7 @@ export function SongSelectionBar({
 				className="flex items-center gap-2 rounded-full"
 				style={{ fontFamily: fonts.body }}
 			>
-				<LockSimple size={13} weight="regular" />
+				<LockSimpleIcon size={13} weight="regular" />
 				Unlock {selectedCount > 0 ? selectedCount : ""}{" "}
 				{selectedCount === 1 ? "song" : "songs"}
 			</Button>

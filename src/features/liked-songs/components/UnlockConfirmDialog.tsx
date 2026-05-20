@@ -1,9 +1,9 @@
 import {
-	CheckCircle,
-	CircleNotch,
-	LockSimple,
-	Warning,
-	X,
+	CheckCircleIcon,
+	CircleNotchIcon,
+	LockSimpleIcon,
+	WarningIcon,
+	XIcon,
 } from "@phosphor-icons/react";
 import { useEffect } from "react";
 
@@ -79,7 +79,7 @@ export function UnlockConfirmDialog({
 
 				{flowState.step === "unlocking" && (
 					<div className="flex flex-col items-center gap-4 py-4">
-						<CircleNotch
+						<CircleNotchIcon
 							size={24}
 							className="theme-primary animate-spin"
 							weight="regular"
@@ -96,7 +96,7 @@ export function UnlockConfirmDialog({
 
 				{flowState.step === "success" && (
 					<div className="flex flex-col items-center gap-4 py-4">
-						<CheckCircle size={24} className="theme-primary" />
+						<CheckCircleIcon size={24} className="theme-primary" />
 						<div className="text-center">
 							<p
 								className="theme-text text-sm"
@@ -118,7 +118,7 @@ export function UnlockConfirmDialog({
 
 				{flowState.step === "insufficient_balance" && (
 					<div className="flex flex-col items-center gap-4 py-4">
-						<Warning size={24} className="theme-primary" weight="regular" />
+						<WarningIcon size={24} className="theme-primary" weight="regular" />
 						<div className="text-center">
 							<p
 								className="theme-text text-sm"
@@ -148,7 +148,7 @@ export function UnlockConfirmDialog({
 
 				{flowState.step === "error" && (
 					<div className="flex flex-col items-center gap-4 py-4">
-						<Warning size={24} className="theme-primary" weight="regular" />
+						<WarningIcon size={24} className="theme-primary" weight="regular" />
 						<p
 							className="theme-text text-center text-sm"
 							style={{ fontFamily: fonts.body }}
@@ -190,11 +190,11 @@ function ConfirmContent({
 				className="absolute top-4 right-4"
 				aria-label="Cancel"
 			>
-				<X size={16} />
+				<XIcon size={16} />
 			</Button>
 
 			<div className="flex flex-col items-center gap-4">
-				<LockSimple size={24} className="theme-primary" weight="regular" />
+				<LockSimpleIcon size={24} className="theme-primary" weight="regular" />
 				<div className="text-center">
 					<p
 						className="theme-text text-base"

@@ -1,4 +1,4 @@
-import { LockSimple } from "@phosphor-icons/react";
+import { LockSimpleIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
@@ -202,7 +202,11 @@ export function PanelContent({
 									background: `color-mix(in srgb, ${colors.accent} 15%, transparent)`,
 								}}
 							>
-								<LockSimple size={20} color={colors.accent} weight="light" />
+								<LockSimpleIcon
+									size={20}
+									color={colors.accent}
+									weight="light"
+								/>
 							</div>
 							<div>
 								<p

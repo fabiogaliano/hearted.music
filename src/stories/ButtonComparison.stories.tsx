@@ -1,10 +1,10 @@
 import type { Story } from "@ladle/react";
 import {
-	ArrowSquareOut,
-	CaretLeft,
-	CaretRight,
-	LockSimple,
-	X,
+	ArrowSquareOutIcon,
+	CaretLeftIcon,
+	CaretRightIcon,
+	LockSimpleIcon,
+	XIcon,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
@@ -147,13 +147,13 @@ export const SideBySide: Story = () => {
 						type="button"
 						className="theme-primary-action flex cursor-pointer items-center gap-2 rounded-full px-5 py-2 text-sm transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
 					>
-						<LockSimple size={14} weight="regular" />
+						<LockSimpleIcon size={14} weight="regular" />
 						Unlock 3 songs
 					</button>
 				</Column>
 				<Column heading="After">
 					<Button className="flex items-center gap-2 rounded-full">
-						<LockSimple size={14} weight="regular" />
+						<LockSimpleIcon size={14} weight="regular" />
 						Unlock 3 songs
 					</Button>
 				</Column>
@@ -312,7 +312,7 @@ export const SideBySide: Story = () => {
 						className="theme-text-muted inline-flex cursor-pointer items-center gap-2 text-xs font-normal tracking-widest uppercase transition-opacity duration-150 hover:opacity-70 disabled:cursor-wait disabled:opacity-50"
 					>
 						Manage subscription
-						<ArrowSquareOut size={12} weight="light" />
+						<ArrowSquareOutIcon size={12} weight="light" />
 					</button>
 					{/* PlaylistDescription cancel — no transitions at all */}
 					<button
@@ -338,7 +338,7 @@ export const SideBySide: Story = () => {
 						className="inline-flex items-center gap-2"
 					>
 						Manage subscription
-						<ArrowSquareOut size={12} weight="light" />
+						<ArrowSquareOutIcon size={12} weight="light" />
 					</Button>
 					<Button variant="ghost" size="sm">
 						Cancel
@@ -364,7 +364,7 @@ export const SideBySide: Story = () => {
 						className="theme-text-muted inline-flex cursor-pointer items-center gap-2 text-xs font-normal tracking-widest uppercase transition-opacity duration-150 hover:opacity-70 disabled:cursor-wait disabled:opacity-50"
 					>
 						Manage subscription
-						<ArrowSquareOut size={12} weight="light" />
+						<ArrowSquareOutIcon size={12} weight="light" />
 					</button>
 				</Column>
 				<Column heading="After">
@@ -378,7 +378,7 @@ export const SideBySide: Story = () => {
 						className="inline-flex items-center gap-2"
 					>
 						Manage subscription
-						<ArrowSquareOut size={12} weight="light" />
+						<ArrowSquareOutIcon size={12} weight="light" />
 					</Button>
 				</Column>
 			</Row>
@@ -410,7 +410,7 @@ export const SideBySide: Story = () => {
 						type="button"
 						className="theme-text-muted cursor-pointer p-1 transition-opacity hover:opacity-70"
 					>
-						<X size={18} style={{ color: theme.textMuted }} />
+						<XIcon size={18} style={{ color: theme.textMuted }} />
 					</button>
 					{/* PlaylistDetailView close — p-2, opacity fades */}
 					<button
@@ -418,7 +418,7 @@ export const SideBySide: Story = () => {
 						className="theme-text-muted p-2"
 						style={{ opacity: 0.7 }}
 					>
-						<X size={18} style={{ color: theme.textMuted }} />
+						<XIcon size={18} style={{ color: theme.textMuted }} />
 					</button>
 					{/* PlaylistCard remove — p-2, reveal-on-hover (forced visible here) */}
 					<button
@@ -426,18 +426,18 @@ export const SideBySide: Story = () => {
 						className="p-2 transition-opacity duration-150 ease-out"
 						style={{ opacity: 0.7 }}
 					>
-						<X size={16} style={{ color: theme.textMuted }} />
+						<XIcon size={16} style={{ color: theme.textMuted }} />
 					</button>
 				</Column>
 				<Column heading="After">
 					<Button variant="icon">
-						<X size={18} style={{ color: theme.textMuted }} />
+						<XIcon size={18} style={{ color: theme.textMuted }} />
 					</Button>
 					<Button variant="icon">
-						<X size={18} style={{ color: theme.textMuted }} />
+						<XIcon size={18} style={{ color: theme.textMuted }} />
 					</Button>
 					<Button variant="icon">
-						<X size={16} style={{ color: theme.textMuted }} />
+						<XIcon size={16} style={{ color: theme.textMuted }} />
 					</Button>
 				</Column>
 			</Row>
@@ -451,14 +451,14 @@ export const SideBySide: Story = () => {
 						className="p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9] disabled:opacity-30"
 						style={{ color: theme.textMuted }}
 					>
-						<CaretLeft size={20} weight="bold" />
+						<CaretLeftIcon size={20} weight="bold" />
 					</button>
 					<button
 						type="button"
 						className="p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9] disabled:opacity-30"
 						style={{ color: theme.textMuted }}
 					>
-						<CaretRight size={20} weight="bold" />
+						<CaretRightIcon size={20} weight="bold" />
 					</button>
 					<button
 						type="button"
@@ -466,18 +466,18 @@ export const SideBySide: Story = () => {
 						className="p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9] disabled:opacity-30"
 						style={{ color: theme.textMuted }}
 					>
-						<CaretLeft size={20} weight="bold" />
+						<CaretLeftIcon size={20} weight="bold" />
 					</button>
 				</Column>
 				<Column heading="After">
 					<Button variant="icon" style={{ color: theme.textMuted }}>
-						<CaretLeft size={20} weight="bold" />
+						<CaretLeftIcon size={20} weight="bold" />
 					</Button>
 					<Button variant="icon" style={{ color: theme.textMuted }}>
-						<CaretRight size={20} weight="bold" />
+						<CaretRightIcon size={20} weight="bold" />
 					</Button>
 					<Button variant="icon" disabled style={{ color: theme.textMuted }}>
-						<CaretLeft size={20} weight="bold" />
+						<CaretLeftIcon size={20} weight="bold" />
 					</Button>
 				</Column>
 			</Row>
@@ -490,12 +490,12 @@ export const SideBySide: Story = () => {
 						type="button"
 						className="theme-text-muted cursor-pointer border-0 bg-transparent"
 					>
-						<X size={16} style={{ color: theme.textMuted }} />
+						<XIcon size={16} style={{ color: theme.textMuted }} />
 					</button>
 				</Column>
 				<Column heading="After">
 					<Button variant="icon" size="sm">
-						<X size={16} style={{ color: theme.textMuted }} />
+						<XIcon size={16} style={{ color: theme.textMuted }} />
 					</Button>
 				</Column>
 			</Row>

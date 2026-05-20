@@ -1,4 +1,4 @@
-import { Check } from "@phosphor-icons/react";
+import { CheckIcon } from "@phosphor-icons/react";
 import { fonts } from "@/lib/theme/fonts";
 
 type TrailRowProps = {
@@ -29,7 +29,7 @@ function TrailRow({ isDone, doneLabel, waitingLabel }: TrailRowProps) {
 						transition: "opacity 150ms ease-out, transform 150ms ease-out",
 					}}
 				/>
-				<Check
+				<CheckIcon
 					size={12}
 					weight="bold"
 					style={{
