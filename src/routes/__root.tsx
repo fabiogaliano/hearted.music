@@ -120,7 +120,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			"frame-ancestors 'none'",
 			`style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
 			"font-src 'self' https://fonts.gstatic.com",
-			`img-src 'self' data: https://i.scdn.co https://*.googleusercontent.com`,
+			`img-src 'self' data: https://i.scdn.co https://*.scdn.co https://*.spotifycdn.com https://*.googleusercontent.com`,
 			"object-src 'none'",
 			"upgrade-insecure-requests",
 		];
