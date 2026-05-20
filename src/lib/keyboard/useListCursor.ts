@@ -46,6 +46,10 @@ export function useListCursor<T>(
 	const [interactionMode, setInteractionMode] =
 		useState<ListInteractionMode>("idle");
 	const [hasFocusWithin, setHasFocusWithin] = useState<boolean>(false);
+	const hasFocusWithinRef = useRef(hasFocusWithin);
+	hasFocusWithinRef.current = hasFocusWithin;
+	const interactionModeRef = useRef<ListInteractionMode>(interactionMode);
+	interactionModeRef.current = interactionMode;
 	const [lastCursorChange, setLastCursorChange] =
 		useState<ListCursorChange | null>(null);
 
@@ -55,6 +59,21 @@ export function useListCursor<T>(
 	const cursorChangeSequenceRef = useRef<number>(0);
 	const isProgrammaticFocusRef = useRef<boolean>(false);
 	const pendingFocusSourceRef = useRef<ListNavigationSource | null>(null);
+
+	// Per-item cache so `getItemProps` returns referentially-stable callbacks
+	// across renders for the same id. Without this, every render allocates new
+	// `ref`/`onPointerDown`/`onFocus`/`onBlur` arrow functions, defeating any
+	// `memo()` on the consuming row component.
+	type ItemCallbacks = {
+		ref: (el: HTMLElement | null) => void;
+		onPointerDown: () => void;
+		onFocus: () => void;
+		onBlur: (event: FocusEvent<HTMLElement>) => void;
+	};
+	const itemCallbacksRef = useRef<Map<string | number, ItemCallbacks>>(
+		new Map(),
+	);
+	const itemIndexCacheRef = useRef<Map<string | number, number>>(new Map());
 
 	const itemsRef = useRef(items);
 	const getIdRef = useRef(getId);
@@ -258,74 +277,103 @@ export function useListCursor<T>(
 		onCursorChange?.(lastCursorChange, item);
 	}, [items, lastCursorChange, onCursorChange]);
 
+	const syncFocusedIndexRef = useRef(syncFocusedIndex);
+	syncFocusedIndexRef.current = syncFocusedIndex;
+
+	// Drop cached callbacks/index entries for items that have left the list, so
+	// the per-item cache doesn't grow unbounded across filters/sorts.
+	useEffect(() => {
+		const currentIds = new Set<string | number>();
+		for (const item of items) currentIds.add(getId(item));
+		for (const cachedId of itemCallbacksRef.current.keys()) {
+			if (!currentIds.has(cachedId)) {
+				itemCallbacksRef.current.delete(cachedId);
+				itemIndexCacheRef.current.delete(cachedId);
+			}
+		}
+	}, [items, getId]);
+
 	const getItemProps = useCallback(
 		(item: T, index: number) => {
 			const id = getId(item);
-			const isFocused = focusedIndex === index;
-			const isVisuallyFocused =
-				interactionMode === "keyboard" && hasFocusWithin && isFocused;
-			const isTabFocused =
-				interactionMode === "idle" && hasFocusWithin && isFocused;
+			itemIndexCacheRef.current.set(id, index);
+
+			let callbacks = itemCallbacksRef.current.get(id);
+			if (!callbacks) {
+				callbacks = {
+					ref: (el: HTMLElement | null) => {
+						if (el) {
+							itemRefs.current.set(id, el);
+						} else {
+							itemRefs.current.delete(id);
+						}
+					},
+					onPointerDown: () => {
+						const idx = itemIndexCacheRef.current.get(id) ?? -1;
+						if (idx < 0) return;
+						pendingFocusSourceRef.current = "pointer";
+						syncFocusedIndexRef.current(idx, {
+							source: "pointer",
+							mode: "pointer",
+							focus: false,
+						});
+					},
+					onFocus: () => {
+						const idx = itemIndexCacheRef.current.get(id) ?? -1;
+						if (idx < 0) return;
+						const focusSource = pendingFocusSourceRef.current;
+						pendingFocusSourceRef.current = null;
+
+						if (
+							!hasFocusWithinRef.current &&
+							!isProgrammaticFocusRef.current &&
+							focusSource !== "pointer"
+						) {
+							setInteractionMode("idle");
+						}
+
+						setHasFocusWithin(true);
+						setFocusedIndex(idx);
+					},
+					onBlur: (event: FocusEvent<HTMLElement>) => {
+						const nextFocusedTarget = event.relatedTarget;
+						const nextFocused =
+							nextFocusedTarget instanceof HTMLElement
+								? nextFocusedTarget
+								: null;
+						if (!nextFocused) {
+							setHasFocusWithin(false);
+							return;
+						}
+
+						for (const el of itemRefs.current.values()) {
+							if (el === nextFocused) return;
+						}
+						setHasFocusWithin(false);
+					},
+				};
+				itemCallbacksRef.current.set(id, callbacks);
+			}
+
+			const fi = focusedIndexRef.current;
+			const im = interactionModeRef.current;
+			const hfw = hasFocusWithinRef.current;
+			const isFocused = fi === index;
+			const isVisuallyFocused = im === "keyboard" && hfw && isFocused;
+			const isTabFocused = im === "idle" && hfw && isFocused;
 
 			return {
-				ref: (el: HTMLElement | null) => {
-					if (el) {
-						itemRefs.current.set(id, el);
-					} else {
-						itemRefs.current.delete(id);
-					}
-				},
+				ref: callbacks.ref,
 				"data-focused": isVisuallyFocused,
-				"data-nav-engaged": interactionMode === "keyboard",
+				"data-nav-engaged": im === "keyboard",
 				"data-tab-focused": isTabFocused,
-				onPointerDown: () => {
-					pendingFocusSourceRef.current = "pointer";
-					syncFocusedIndex(index, {
-						source: "pointer",
-						mode: "pointer",
-						focus: false,
-					});
-				},
-				onFocus: () => {
-					const focusSource = pendingFocusSourceRef.current;
-					pendingFocusSourceRef.current = null;
-
-					if (
-						!hasFocusWithin &&
-						!isProgrammaticFocusRef.current &&
-						focusSource !== "pointer"
-					) {
-						setInteractionMode("idle");
-					}
-
-					setHasFocusWithin(true);
-					setFocusedIndex(index);
-				},
-				onBlur: (event: FocusEvent<HTMLElement>) => {
-					const nextFocusedTarget = event.relatedTarget;
-					const nextFocused =
-						nextFocusedTarget instanceof HTMLElement ? nextFocusedTarget : null;
-					if (!nextFocused) {
-						setHasFocusWithin(false);
-						return;
-					}
-
-					for (const el of itemRefs.current.values()) {
-						if (el === nextFocused) return;
-					}
-					setHasFocusWithin(false);
-				},
-				tabIndex: isFocused || (focusedIndex === -1 && index === 0) ? 0 : -1,
+				onPointerDown: callbacks.onPointerDown,
+				onFocus: callbacks.onFocus,
+				onBlur: callbacks.onBlur,
+				tabIndex: isFocused || (fi === -1 && index === 0) ? 0 : -1,
 			};
 		},
-		[
-			focusedIndex,
-			getId,
-			hasFocusWithin,
-			interactionMode,
-			setFocusedIndex,
-			syncFocusedIndex,
-		],
+		[getId, setFocusedIndex],
 	);
 
 	return {

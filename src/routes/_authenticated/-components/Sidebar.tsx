@@ -8,6 +8,9 @@ import { UserAvatar } from "@/components/ui/UserAvatar";
 import { fonts } from "@/lib/theme/fonts";
 import { NavItem } from "./NavItem";
 
+const bodyFontStyle = { fontFamily: fonts.body } as const;
+const displayFontStyle = { fontFamily: fonts.display } as const;
+
 interface SidebarProps {
 	unsortedCount: number;
 	userName: string | null;
@@ -49,7 +52,7 @@ export function Sidebar({
 		<aside className="theme-border-color sticky top-0 flex h-screen w-64 flex-col border-r px-6 py-8">
 			<h1
 				className="theme-text text-4xl font-extralight"
-				style={{ fontFamily: fonts.display }}
+				style={displayFontStyle}
 			>
 				hearted.
 			</h1>
@@ -77,22 +80,19 @@ export function Sidebar({
 					{userName && (
 						<p
 							className={`${isRouteActive("/settings") ? "theme-text font-medium" : "theme-text-muted font-normal"} truncate text-sm`}
-							style={{ fontFamily: fonts.body }}
+							style={bodyFontStyle}
 						>
 							{userName}
 						</p>
 					)}
 					<p
 						className="theme-text-muted text-xs tracking-widest uppercase"
-						style={{ fontFamily: fonts.body }}
+						style={bodyFontStyle}
 					>
 						{userPlan}
 					</p>
 					{userBalance != null && (
-						<p
-							className="theme-text-muted text-xs"
-							style={{ fontFamily: fonts.body }}
-						>
+						<p className="theme-text-muted text-xs" style={bodyFontStyle}>
 							{userBalance} {userBalance === 1 ? "song" : "songs"} to explore
 						</p>
 					)}

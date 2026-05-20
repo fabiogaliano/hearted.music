@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { memo } from "react";
 import { fonts } from "@/lib/theme/fonts";
 
 interface NavItemProps {
@@ -8,7 +9,14 @@ interface NavItemProps {
 	isActive: boolean;
 }
 
-export function NavItem({ to, label, badge, isActive }: NavItemProps) {
+const bodyFontStyle = { fontFamily: fonts.body } as const;
+
+export const NavItem = memo(function NavItem({
+	to,
+	label,
+	badge,
+	isActive,
+}: NavItemProps) {
 	return (
 		<Link
 			to={to}
@@ -16,18 +24,18 @@ export function NavItem({ to, label, badge, isActive }: NavItemProps) {
 		>
 			<span
 				className={`${isActive ? "theme-text font-medium" : "theme-text-muted font-normal"} text-xs tracking-widest uppercase`}
-				style={{ fontFamily: fonts.body }}
+				style={bodyFontStyle}
 			>
 				{label}
 			</span>
 			{badge !== undefined && badge > 0 && (
 				<span
 					className="theme-text-muted text-xs tabular-nums"
-					style={{ fontFamily: fonts.body }}
+					style={bodyFontStyle}
 				>
 					{badge}
 				</span>
 			)}
 		</Link>
 	);
-}
+});

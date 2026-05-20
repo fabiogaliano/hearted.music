@@ -1,5 +1,5 @@
 import { ArrowRight, Check, LockSimple } from "@phosphor-icons/react";
-import { memo, useCallback } from "react";
+import { memo, useCallback, useMemo } from "react";
 
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { fonts } from "@/lib/theme/fonts";
@@ -42,7 +42,7 @@ interface SongCardContentProps {
 	hideLockedBadge: boolean;
 }
 
-export function SongCard({
+export const SongCard = memo(function SongCard({
 	song,
 	albumArtUrl,
 	isSelected,
@@ -86,6 +86,44 @@ export function SongCard({
 		[onToggleSelect, songId],
 	);
 
+	const buttonStyle = useMemo<React.CSSProperties>(
+		() =>
+			({
+				"--hover-bg": isEnabled
+					? "color-mix(in srgb, var(--t-text) 6%, transparent)"
+					: "transparent",
+				position: "relative",
+				background: isSelectionChecked
+					? "var(--t-surface-dim)"
+					: isSelected
+						? "var(--t-surface)"
+						: undefined,
+				borderLeft:
+					isFocused || isSelected || showWalkthroughUi
+						? "2px solid var(--t-primary)"
+						: "2px solid transparent",
+				marginLeft: "-2px",
+				boxShadow: dataTabFocused ? "0 0 0 1px var(--t-primary)" : undefined,
+				scrollMarginTop,
+				opacity: !isEnabled ? 0.5 : isSelectionChecked ? 1 : isLocked ? 0.6 : 1,
+				pointerEvents: !isEnabled ? "none" : undefined,
+				animation: isWalkthroughHighlight
+					? "walkthrough-pulse 2s ease-in-out infinite"
+					: undefined,
+			}) as React.CSSProperties,
+		[
+			isEnabled,
+			isSelectionChecked,
+			isSelected,
+			isFocused,
+			showWalkthroughUi,
+			dataTabFocused,
+			scrollMarginTop,
+			isLocked,
+			isWalkthroughHighlight,
+		],
+	);
+
 	return (
 		<button
 			type="button"
@@ -99,37 +137,7 @@ export function SongCard({
 			onFocus={onFocus}
 			onBlur={onBlur}
 			className={`song-card -mx-3 flex w-full cursor-pointer items-center gap-4 border-0 bg-transparent px-3 py-4 text-left transition-transform duration-100 active:scale-[0.98]${isWalkthroughHighlight ? " walkthrough-highlight" : ""}`}
-			style={
-				{
-					"--hover-bg": isEnabled
-						? "color-mix(in srgb, var(--t-text) 6%, transparent)"
-						: "transparent",
-					position: "relative",
-					background: isSelectionChecked
-						? "var(--t-surface-dim)"
-						: isSelected
-							? "var(--t-surface)"
-							: undefined,
-					borderLeft:
-						isFocused || isSelected || showWalkthroughUi
-							? "2px solid var(--t-primary)"
-							: "2px solid transparent",
-					marginLeft: "-2px",
-					boxShadow: dataTabFocused ? "0 0 0 1px var(--t-primary)" : undefined,
-					scrollMarginTop,
-					opacity: !isEnabled
-						? 0.5
-						: isSelectionChecked
-							? 1
-							: isLocked
-								? 0.6
-								: 1,
-					pointerEvents: !isEnabled ? "none" : undefined,
-					animation: isWalkthroughHighlight
-						? "walkthrough-pulse 2s ease-in-out infinite"
-						: undefined,
-				} as React.CSSProperties
-			}
+			style={buttonStyle}
 		>
 			<SongCardContent
 				song={song}
@@ -144,7 +152,7 @@ export function SongCard({
 			/>
 		</button>
 	);
-}
+});
 
 const SongCardContent = memo(function SongCardContent({
 	song,
@@ -250,7 +258,7 @@ const SongCardContent = memo(function SongCardContent({
 							animation: "walkthrough-arrow-nudge 2s ease-in-out infinite",
 						}}
 					>
-						<ArrowRight size={14} />
+						<ArrowRightIcon size={14} />
 					</span>
 				</span>
 			)}
