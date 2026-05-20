@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
 
 type PlaylistMatchRowAction =
@@ -26,59 +27,59 @@ export function PlaylistMatchRow({
 	size = "sm",
 	action,
 }: PlaylistMatchRowProps) {
-	const nameFontSize = size === "lg" ? "1.125rem" : "0.875rem";
-	const paddingBottom = size === "lg" ? "1.25rem" : "0.75rem";
+	const nameFontSize = size === "lg" ? "1.5rem" : "1rem";
+	const paddingBottom = size === "lg" ? "1.5rem" : "0.875rem";
+
+	const actionElement =
+		action.type === "added" ? (
+			<span
+				className="theme-text-muted text-xs tracking-widest uppercase opacity-60"
+				style={{ fontFamily: fonts.body }}
+			>
+				Added
+			</span>
+		) : action.type === "custom" ? (
+			action.node
+		) : (
+			<Button
+				variant="secondary"
+				size="sm"
+				onClick={() => action.onAdd(playlistId)}
+			>
+				Add
+			</Button>
+		);
 
 	return (
 		<div
 			className="theme-border-color group border-b"
 			style={{ paddingBottom }}
 		>
-			<div className="flex items-start justify-between gap-4">
-				<div className="flex min-w-0 flex-1 items-start gap-2">
-					{scoreDisplay}
-					<div className="min-w-0 pt-0.5">
-						<span
-							className="theme-text font-light"
-							style={{
-								fontFamily: fonts.display,
-								fontSize: nameFontSize,
-							}}
-						>
-							{name}
-						</span>
-						{reason && (
-							<p
-								className="theme-text-muted mt-0.5 text-xs"
-								style={{ fontFamily: fonts.body }}
-							>
-								{reason}
-							</p>
-						)}
-					</div>
-				</div>
+			<div className="flex items-center gap-6">
+				<div className="shrink-0">{scoreDisplay}</div>
 
-				<div className="shrink-0">
-					{action.type === "added" ? (
-						<span
-							className="theme-text-muted text-xs tracking-widest uppercase opacity-50"
+				<div className="min-w-0 flex-1">
+					<p
+						className="theme-text truncate font-light leading-[1.15]"
+						style={{
+							fontFamily: fonts.display,
+							fontSize: nameFontSize,
+						}}
+						title={name}
+					>
+						{name}
+					</p>
+					{reason && (
+						<p
+							className="theme-text-muted mt-1.5 text-xs leading-snug"
 							style={{ fontFamily: fonts.body }}
 						>
-							Added
-						</span>
-					) : action.type === "custom" ? (
-						action.node
-					) : (
-						<button
-							type="button"
-							onClick={() => action.onAdd(playlistId)}
-							className="theme-text text-xs tracking-widest uppercase opacity-0 transition-opacity group-hover:opacity-100"
-							style={{ fontFamily: fonts.body }}
-						>
-							Add
-						</button>
+							{reason}
+						</p>
 					)}
 				</div>
+
+				<div className="shrink-0">{actionElement}</div>
 			</div>
 		</div>
 	);

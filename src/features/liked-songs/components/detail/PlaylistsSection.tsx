@@ -39,7 +39,7 @@ export function PlaylistsSection({
 						name={suggestion.playlistName}
 						scoreDisplay={
 							<span
-								className={`${suggestion.score >= 0.7 ? "theme-text" : "theme-text-muted"} font-extralight tabular-nums`}
+								className="theme-text font-extralight tabular-nums leading-none"
 								style={{
 									fontFamily: fonts.display,
 									fontSize: "1.125rem",
