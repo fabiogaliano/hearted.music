@@ -45,11 +45,10 @@ export interface MatchPreview {
 }
 
 export interface DashboardProps {
+	accountId: string;
 	displayName: string | null;
 	recentActivity: ActivityItem[];
 	matchPreviews: MatchPreview[];
 	stats: DashboardStats;
-	isEnrichmentRunning: boolean;
-	smoothAnalyzedPercent: number;
 	lastSyncText: string;
 }

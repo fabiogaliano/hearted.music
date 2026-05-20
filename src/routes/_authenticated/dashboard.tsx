@@ -8,8 +8,6 @@ import {
 	recentActivityQueryOptions,
 	seedDashboardCaches,
 } from "@/features/dashboard/queries";
-import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
-import { useSmoothProgress } from "@/lib/hooks/useSmoothProgress";
 import { formatRelativeTime } from "@/lib/shared/utils/format-time";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -37,26 +35,13 @@ function DashboardHome() {
 		matchPreviewsQueryOptions(session.accountId),
 	);
 
-	const { isEnrichmentRunning, enrichmentProgress } = useActiveJobs(
-		session.accountId,
-	);
-
-	const rawPercent = enrichmentProgress
-		? enrichmentProgress.total > 0
-			? Math.round((enrichmentProgress.done / enrichmentProgress.total) * 100)
-			: 0
-		: stats.analyzedPercent;
-	const smoothAnalyzedPercent = useSmoothProgress(
-		rawPercent,
-		!isEnrichmentRunning && rawPercent >= 100,
-	);
-
 	const lastSyncText = stats.lastSyncAt
 		? formatRelativeTime(stats.lastSyncAt)
 		: "Never";
 
 	return (
 		<Dashboard
+			accountId={session.accountId}
 			displayName={displayName}
 			stats={{
 				totalSongs: stats.totalSongs,
@@ -64,8 +49,6 @@ function DashboardHome() {
 				playlistCount: stats.playlistCount,
 				reviewCount: stats.newSuggestions,
 			}}
-			isEnrichmentRunning={isEnrichmentRunning}
-			smoothAnalyzedPercent={Math.floor(smoothAnalyzedPercent)}
 			lastSyncText={lastSyncText}
 			matchPreviews={matchPreviews}
 			recentActivity={recentActivity}

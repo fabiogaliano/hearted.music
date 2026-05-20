@@ -38,13 +38,26 @@ export function useActiveJobs(accountId: string, enabled = true) {
 	};
 }
 
+interface RunningJobs {
+	enrichment: boolean;
+	matchSnapshotRefresh: boolean;
+}
+
+const selectRunningJobs = (data: ActiveJobs | undefined): RunningJobs => ({
+	enrichment: !!data?.enrichment,
+	matchSnapshotRefresh: !!data?.matchSnapshotRefresh,
+});
+
 export function useActiveJobCompletionEffects(
 	accountId: string,
 	enabled = true,
 ) {
-	const { data } = useQuery(activeJobsQueryOptions(accountId, enabled));
+	const { data } = useQuery({
+		...activeJobsQueryOptions(accountId, enabled),
+		select: selectRunningJobs,
+	});
 	const queryClient = useQueryClient();
-	const prevRef = useRef<ActiveJobs | undefined>(undefined);
+	const prevRef = useRef<RunningJobs | undefined>(undefined);
 
 	useEffect(() => {
 		const prev = prevRef.current;

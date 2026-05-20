@@ -8,20 +8,18 @@ import { MatchReviewCTA } from "./sections/MatchReviewCTA";
 import type { DashboardProps } from "./types";
 
 export function Dashboard({
+	accountId,
 	displayName,
 	recentActivity,
 	matchPreviews,
 	stats,
-	isEnrichmentRunning,
-	smoothAnalyzedPercent,
 	lastSyncText,
 }: DashboardProps) {
 	return (
 		<div className="max-w-4xl">
 			<DashboardHeader
+				accountId={accountId}
 				stats={stats}
-				isEnrichmentRunning={isEnrichmentRunning}
-				smoothAnalyzedPercent={smoothAnalyzedPercent}
 				displayName={displayName}
 				lastSyncText={lastSyncText}
 			/>

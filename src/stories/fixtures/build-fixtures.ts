@@ -133,7 +133,6 @@ const dashboard = {
 	recentActivity,
 	matchPreviews: [],
 	isEnrichmentRunning: false,
-	smoothAnalyzedPercent: dashboardStats.analyzedPercent,
 	lastSyncText: "Just now",
 };
 

@@ -1,24 +1,32 @@
 /** Welcome greeting with stats and sync button. */
 
 import { Button } from "@/components/ui/Button";
+import { ClientNumberFlow } from "@/features/matching/components/ClientNumberFlow";
+import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { fonts } from "@/lib/theme/fonts";
 import type { DashboardStats } from "../types";
 
 interface DashboardHeaderProps {
+	accountId: string;
 	stats: DashboardStats;
-	isEnrichmentRunning: boolean;
-	smoothAnalyzedPercent: number;
 	displayName: string | null;
 	lastSyncText: string;
 }
 
 export function DashboardHeader({
+	accountId,
 	stats,
-	isEnrichmentRunning,
-	smoothAnalyzedPercent,
 	displayName,
 	lastSyncText,
 }: DashboardHeaderProps) {
+	const { isEnrichmentRunning, enrichmentProgress } = useActiveJobs(accountId);
+
+	const analyzedPercent = enrichmentProgress
+		? enrichmentProgress.total > 0
+			? Math.round((enrichmentProgress.done / enrichmentProgress.total) * 100)
+			: 0
+		: stats.analyzedPercent;
+
 	return (
 		<div className="mb-8 flex items-start justify-between">
 			<div>
@@ -52,7 +60,7 @@ export function DashboardHeader({
 				</span>
 				<span className="opacity-40">·</span>
 				<span className="tabular-nums">
-					{isEnrichmentRunning ? smoothAnalyzedPercent : stats.analyzedPercent}%{" "}
+					<ClientNumberFlow value={analyzedPercent} suffix="%" continuous />{" "}
 					<span className="tracking-widest uppercase">
 						{isEnrichmentRunning ? "analyzing" : "analyzed"}
 					</span>
