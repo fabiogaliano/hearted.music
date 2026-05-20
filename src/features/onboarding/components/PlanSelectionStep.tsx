@@ -6,7 +6,7 @@
  * Billing-disabled: renders success immediately (free-tier copy).
  */
 
-import { ArrowRight } from "@phosphor-icons/react";
+import { ArrowRightIcon } from "@phosphor-icons/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -514,7 +514,7 @@ function SuccessView({
 					<span className="text-xl font-medium tracking-wide">
 						Start Exploring
 					</span>
-					<ArrowRight
+					<ArrowRightIcon
 						size={16}
 						className="theme-text-muted inline-block transition-transform group-hover:translate-x-1"
 					/>

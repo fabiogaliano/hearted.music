@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRightIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 import { fonts } from "@/lib/theme/fonts";
 import type { ColorProps } from "./types";
@@ -156,7 +156,7 @@ export function HorizontalJourney({ journey, colors }: HorizontalJourneyProps) {
 						transition: "opacity 200ms, color 200ms",
 					}}
 				>
-					<ArrowRight size={13} />
+					<ArrowRightIcon size={13} />
 				</button>
 			</div>
 		</div>

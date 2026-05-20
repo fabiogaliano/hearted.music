@@ -7,7 +7,7 @@
  * transitions from a pending state to a confirmation once fulfilled.
  */
 
-import { ArrowRight } from "@phosphor-icons/react";
+import { ArrowRightIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -122,7 +122,7 @@ function CheckoutSuccessPage() {
 					<span className="text-sm font-medium tracking-widest uppercase">
 						Back to dashboard
 					</span>
-					<ArrowRight
+					<ArrowRightIcon
 						size={14}
 						className="inline-block transition-transform duration-200 group-hover:translate-x-1"
 						style={{ opacity: 0.7 }}
@@ -161,7 +161,7 @@ function CheckoutSuccessPage() {
 				<span className="text-sm font-medium tracking-widest uppercase">
 					Start exploring
 				</span>
-				<ArrowRight
+				<ArrowRightIcon
 					size={14}
 					className="inline-block transition-transform duration-200 group-hover:translate-x-1"
 					style={{ opacity: 0.7 }}

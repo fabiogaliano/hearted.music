@@ -1,4 +1,4 @@
-import { ArrowRight } from "@phosphor-icons/react";
+import { ArrowRightIcon } from "@phosphor-icons/react";
 import type { QueryClient } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
@@ -331,7 +331,7 @@ function NotFoundPage() {
 					<span className="text-lg font-medium tracking-wide">
 						Back to hearted.
 					</span>
-					<ArrowRight
+					<ArrowRightIcon
 						size={16}
 						className="inline-block transition-transform group-hover:translate-x-1"
 						style={{ opacity: 0.7 }}
