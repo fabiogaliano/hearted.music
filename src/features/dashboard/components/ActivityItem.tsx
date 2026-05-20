@@ -3,9 +3,11 @@
  * Switch on `item.type` for exhaustive handling; TypeScript enforces coverage.
  */
 
+import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { formatRelativeTime } from "@/lib/shared/utils/format-time";
 import { fonts } from "@/lib/theme/fonts";
+import { generateSongSlug } from "@/lib/utils/slug";
 import type { ActivityItem as ActivityItemType } from "../types";
 
 interface ActivityItemProps {
@@ -89,9 +91,14 @@ function renderMeta(item: ActivityItemType): ReactNode {
 export function ActivityItem({ item }: ActivityItemProps) {
 	const imageUrl = item.imageUrl ?? "";
 	const songName = item.songName;
+	const songSlug = generateSongSlug(item.artistName, songName);
 
 	return (
-		<div className="theme-hover-surface -mx-4 flex items-center gap-6 px-4 py-5 transition-[background-color] duration-150 ease-out">
+		<Link
+			to="/liked-songs"
+			search={{ filter: "all", song: songSlug }}
+			className="theme-hover-surface -mx-4 flex items-center gap-6 px-4 py-5 transition-[background-color] duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:[outline-color:var(--t-primary)]"
+		>
 			{imageUrl ? (
 				<img
 					src={imageUrl}
@@ -124,6 +131,6 @@ export function ActivityItem({ item }: ActivityItemProps) {
 				</p>
 			</div>
 			<div className="w-32 shrink-0 text-right">{renderMeta(item)}</div>
-		</div>
+		</Link>
 	);
 }

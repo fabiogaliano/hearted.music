@@ -32,7 +32,7 @@ export function MatchReviewCTA({
 					className="theme-text text-3xl font-extralight text-balance"
 					style={{ fontFamily: fonts.display }}
 				>
-					{reviewCount} new {reviewCount === 1 ? "song" : "songs"}
+					{reviewCount} {reviewCount === 1 ? "song" : "songs"} to match
 				</h3>
 				<div className="flex items-center gap-8">
 					<FanSpreadAlbumArt images={matchPreviews} />
