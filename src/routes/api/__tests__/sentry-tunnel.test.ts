@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const ALLOWED_DSN = "https://public@example.ingest.sentry.io/123456";
+const MAX_ENVELOPE_BYTES = 15 * 1024 * 1024;
+const UPSTREAM_TIMEOUT_MS = 15_000;
 
 const fetchMock =
 	vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
@@ -38,6 +40,20 @@ function createEnvelope(
 	return `${JSON.stringify({ dsn })}\n${payload}`;
 }
 
+async function readBody(body: BodyInit | null | undefined): Promise<string> {
+	if (body == null) {
+		return "";
+	}
+
+	return new Response(body).text();
+}
+
+function createAbortError(): Error {
+	const error = new Error("Aborted");
+	error.name = "AbortError";
+	return error;
+}
+
 async function loadRoute(
 	viteSentryDsn: string | undefined,
 ): Promise<TunnelRoute> {
@@ -73,25 +89,31 @@ describe("/api/sentry-tunnel", () => {
 	});
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.restoreAllMocks();
 	});
 
-	it("forwards matching envelopes to the configured Sentry ingest URL", async () => {
+	it("streams matching envelopes to the configured Sentry ingest URL", async () => {
 		const route = await loadRoute(ALLOWED_DSN);
-		const response = await route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/sentry-tunnel", {
-				method: "POST",
-				body: createEnvelope(),
-			}),
+		const request = new Request("https://hearted.test/api/sentry-tunnel", {
+			method: "POST",
+			body: createEnvelope(),
 		});
+		const arrayBufferSpy = vi.spyOn(request, "arrayBuffer");
+
+		const response = await route.server.handlers.POST({ request });
 
 		expect(fetchMock).toHaveBeenCalledWith(
 			"https://example.ingest.sentry.io/api/123456/envelope/",
 			expect.objectContaining({
 				method: "POST",
 				headers: { "Content-Type": "application/x-sentry-envelope" },
+				duplex: "half",
 			}),
 		);
+		const [, upstreamInit] = fetchMock.mock.calls[0] ?? [];
+		expect(await readBody(upstreamInit?.body)).toBe(createEnvelope());
+		expect(arrayBufferSpy).not.toHaveBeenCalled();
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({ ok: true });
 	});
@@ -107,20 +129,6 @@ describe("/api/sentry-tunnel", () => {
 
 		expect(response.status).toBe(403);
 		expect(await response.text()).toBe("DSN not allowed");
-		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
-	it("rejects oversized envelopes", async () => {
-		const route = await loadRoute(ALLOWED_DSN);
-		const response = await route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/sentry-tunnel", {
-				method: "POST",
-				body: createEnvelope(ALLOWED_DSN, "a".repeat(200_001)),
-			}),
-		});
-
-		expect(response.status).toBe(413);
-		expect(await response.text()).toBe("Payload too large");
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
@@ -154,24 +162,40 @@ describe("/api/sentry-tunnel", () => {
 
 	it("rejects malformed envelopes before forwarding", async () => {
 		const route = await loadRoute(ALLOWED_DSN);
-
-		const malformedResponse = await route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/sentry-tunnel", {
+		const malformedRequest = new Request(
+			"https://hearted.test/api/sentry-tunnel",
+			{
 				method: "POST",
 				body: "not-an-envelope",
-			}),
+			},
+		);
+		const malformedArrayBufferSpy = vi.spyOn(malformedRequest, "arrayBuffer");
+
+		const malformedResponse = await route.server.handlers.POST({
+			request: malformedRequest,
 		});
 		expect(malformedResponse.status).toBe(400);
 		expect(await malformedResponse.text()).toBe("Malformed envelope");
+		expect(malformedArrayBufferSpy).not.toHaveBeenCalled();
 
-		const invalidHeaderResponse = await route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/sentry-tunnel", {
+		const invalidHeaderRequest = new Request(
+			"https://hearted.test/api/sentry-tunnel",
+			{
 				method: "POST",
 				body: "{invalid-json}\npayload",
-			}),
+			},
+		);
+		const invalidHeaderArrayBufferSpy = vi.spyOn(
+			invalidHeaderRequest,
+			"arrayBuffer",
+		);
+
+		const invalidHeaderResponse = await route.server.handlers.POST({
+			request: invalidHeaderRequest,
 		});
 		expect(invalidHeaderResponse.status).toBe(400);
 		expect(await invalidHeaderResponse.text()).toBe("Invalid envelope header");
+		expect(invalidHeaderArrayBufferSpy).not.toHaveBeenCalled();
 
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
@@ -200,20 +224,73 @@ describe("/api/sentry-tunnel", () => {
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
-	it("rejects requests whose content-length exceeds the cap before reading the body", async () => {
-		const route = await loadRoute(ALLOWED_DSN);
-		const request = new Request("https://hearted.test/api/sentry-tunnel", {
-			method: "POST",
-			body: createEnvelope(),
-			headers: { "content-length": "200001" },
+	it("rejects envelopes that exceed the streaming size cap", async () => {
+		fetchMock.mockImplementationOnce(async (_input, init) => {
+			await new Response(init?.body).arrayBuffer();
+			return new Response(JSON.stringify({ ok: true }), {
+				status: 200,
+				headers: { "Content-Type": "application/json" },
+			});
 		});
-		const arrayBufferSpy = vi.spyOn(request, "arrayBuffer");
-
-		const response = await route.server.handlers.POST({ request });
+		const route = await loadRoute(ALLOWED_DSN);
+		const response = await route.server.handlers.POST({
+			request: new Request("https://hearted.test/api/sentry-tunnel", {
+				method: "POST",
+				body: createEnvelope(ALLOWED_DSN, "a".repeat(MAX_ENVELOPE_BYTES)),
+			}),
+		});
 
 		expect(response.status).toBe(413);
 		expect(await response.text()).toBe("Payload too large");
-		expect(arrayBufferSpy).not.toHaveBeenCalled();
-		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it("times out when Sentry ingest does not respond in time", async () => {
+		vi.useFakeTimers();
+		fetchMock.mockImplementationOnce(
+			(_input, init) =>
+				new Promise<Response>((_resolve, reject) => {
+					const signal = init?.signal;
+					if (!(signal instanceof AbortSignal)) {
+						reject(new Error("Missing abort signal"));
+						return;
+					}
+
+					if (signal.aborted) {
+						reject(createAbortError());
+						return;
+					}
+
+					signal.addEventListener("abort", () => reject(createAbortError()), {
+						once: true,
+					});
+				}),
+		);
+		const route = await loadRoute(ALLOWED_DSN);
+		const responsePromise = route.server.handlers.POST({
+			request: new Request("https://hearted.test/api/sentry-tunnel", {
+				method: "POST",
+				body: createEnvelope(),
+			}),
+		});
+
+		await vi.advanceTimersByTimeAsync(UPSTREAM_TIMEOUT_MS);
+		const response = await responsePromise;
+
+		expect(response.status).toBe(504);
+		expect(await response.text()).toBe("Timed out sending envelope to Sentry");
+	});
+
+	it("returns 502 when forwarding to Sentry ingest throws", async () => {
+		fetchMock.mockRejectedValueOnce(new Error("upstream down"));
+		const route = await loadRoute(ALLOWED_DSN);
+		const response = await route.server.handlers.POST({
+			request: new Request("https://hearted.test/api/sentry-tunnel", {
+				method: "POST",
+				body: createEnvelope(),
+			}),
+		});
+
+		expect(response.status).toBe(502);
+		expect(await response.text()).toBe("Failed to reach Sentry ingest");
 	});
 });
