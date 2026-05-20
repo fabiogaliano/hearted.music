@@ -3,26 +3,24 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { SongDetailPanel } from "@/features/liked-songs/components/SongDetailPanel";
+import { PanelVariantBerryPick } from "@/features/liked-songs/components/variants/PanelVariantBerryPick";
 import { PanelVariantCompactStack } from "@/features/liked-songs/components/variants/PanelVariantCompactStack";
-import { PanelVariantCompass } from "@/features/liked-songs/components/variants/PanelVariantCompass";
-import { PanelVariantConstellation } from "@/features/liked-songs/components/variants/PanelVariantConstellation";
-import { PanelVariantEqualizer } from "@/features/liked-songs/components/variants/PanelVariantEqualizer";
-import { PanelVariantFieldGuide } from "@/features/liked-songs/components/variants/PanelVariantFieldGuide";
+import { PanelVariantEvidence } from "@/features/liked-songs/components/variants/PanelVariantEvidence";
+import { PanelVariantFacetedBrowser } from "@/features/liked-songs/components/variants/PanelVariantFacetedBrowser";
+import { PanelVariantGuidedRead } from "@/features/liked-songs/components/variants/PanelVariantGuidedRead";
+import { PanelVariantHub } from "@/features/liked-songs/components/variants/PanelVariantHub";
 import { PanelVariantJourneyCenter } from "@/features/liked-songs/components/variants/PanelVariantJourneyCenter";
-import { PanelVariantLinerNotes } from "@/features/liked-songs/components/variants/PanelVariantLinerNotes";
-import { PanelVariantLinesStage } from "@/features/liked-songs/components/variants/PanelVariantLinesStage";
-import { PanelVariantLyricDeck } from "@/features/liked-songs/components/variants/PanelVariantLyricDeck";
-import { PanelVariantMoodFirst } from "@/features/liked-songs/components/variants/PanelVariantMoodFirst";
-import { PanelVariantMotionRibbon } from "@/features/liked-songs/components/variants/PanelVariantMotionRibbon";
-import { PanelVariantQuietLoud } from "@/features/liked-songs/components/variants/PanelVariantQuietLoud";
-import { PanelVariantQuoteFirst } from "@/features/liked-songs/components/variants/PanelVariantQuoteFirst";
-import { PanelVariantReverse } from "@/features/liked-songs/components/variants/PanelVariantReverse";
-import { PanelVariantScrollScore } from "@/features/liked-songs/components/variants/PanelVariantScrollScore";
-import { PanelVariantScrubTape } from "@/features/liked-songs/components/variants/PanelVariantScrubTape";
-import { PanelVariantTapReveal } from "@/features/liked-songs/components/variants/PanelVariantTapReveal";
+import { PanelVariantMarginalia } from "@/features/liked-songs/components/variants/PanelVariantMarginalia";
+import { PanelVariantMoodArc } from "@/features/liked-songs/components/variants/PanelVariantMoodArc";
+import { PanelVariantPairCompare } from "@/features/liked-songs/components/variants/PanelVariantPairCompare";
+import { PanelVariantQuoteReader } from "@/features/liked-songs/components/variants/PanelVariantQuoteReader";
+import { PanelVariantSongMap } from "@/features/liked-songs/components/variants/PanelVariantSongMap";
+import { PanelVariantTaskIndex } from "@/features/liked-songs/components/variants/PanelVariantTaskIndex";
+import { PanelVariantThemeAtlas } from "@/features/liked-songs/components/variants/PanelVariantThemeAtlas";
 import { PanelVariantThemePivot } from "@/features/liked-songs/components/variants/PanelVariantThemePivot";
+import { PanelVariantTwoPane } from "@/features/liked-songs/components/variants/PanelVariantTwoPane";
 import { PanelVariantVerbatim } from "@/features/liked-songs/components/variants/PanelVariantVerbatim";
-import { PanelVariantWideOpen } from "@/features/liked-songs/components/variants/PanelVariantWideOpen";
+import { PanelVariantWalk } from "@/features/liked-songs/components/variants/PanelVariantWalk";
 import type { AnalysisContent, LikedSong } from "@/features/liked-songs/types";
 import { PaneRoot, usePane } from "@/integrations/uipane";
 import { createAdminSupabaseClient } from "@/lib/data/client";
@@ -32,28 +30,60 @@ import { themes } from "@/lib/theme/colors";
 import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
 import { DEFAULT_THEME } from "@/lib/theme/types";
 
+type VariantComponentProps = {
+	song: LikedSong;
+	albumArtUrl?: string;
+	artistImageUrl?: string;
+	isExpanded: boolean;
+	onClose: () => void;
+};
+
+type VariantComponent = React.ComponentType<VariantComponentProps>;
+
+const VARIANT_MAP: Record<string, VariantComponent> = {
+	v2: PanelVariantVerbatim,
+	v3: PanelVariantJourneyCenter,
+	v4: PanelVariantThemePivot,
+	v5: PanelVariantCompactStack,
+	v6: PanelVariantFacetedBrowser,
+	v7: PanelVariantTaskIndex,
+	v8: PanelVariantTwoPane,
+	v9: PanelVariantBerryPick,
+	v10: PanelVariantWalk,
+	v11: PanelVariantEvidence,
+	v12: PanelVariantQuoteReader,
+	v13: PanelVariantThemeAtlas,
+	v14: PanelVariantMoodArc,
+	v15: PanelVariantMarginalia,
+	v16: PanelVariantPairCompare,
+	v17: PanelVariantSongMap,
+	v18: PanelVariantGuidedRead,
+	v19: PanelVariantHub,
+};
+
 const PANEL_OPTIONS = [
 	{ value: "prod", label: "1. Prod Panel" },
 	{ value: "v2", label: "2. Verbatim" },
-	{ value: "v3", label: "3. Quote First" },
-	{ value: "v4", label: "4. Mood First" },
-	{ value: "v5", label: "5. Journey Center" },
-	{ value: "v6", label: "6. Tap Reveal" },
-	{ value: "v7", label: "7. Theme Pivot" },
-	{ value: "v8", label: "8. Lines Stage" },
-	{ value: "v9", label: "9. Reverse" },
-	{ value: "v10", label: "10. Compact Stack" },
-	{ value: "v11", label: "11. Wide Open" },
-	{ value: "v12", label: "12. Compass" },
-	{ value: "v13", label: "13. Scrub Tape" },
-	{ value: "v14", label: "14. Liner Notes" },
-	{ value: "v15", label: "15. Constellation" },
-	{ value: "v16", label: "16. Quiet Loud" },
-	{ value: "v17", label: "17. Scroll Score" },
-	{ value: "v18", label: "18. Field Guide" },
-	{ value: "v19", label: "19. Equalizer" },
-	{ value: "v20", label: "20. Lyric Deck" },
-	{ value: "v21", label: "21. Motion Ribbon" },
+	{ value: "v3", label: "3. Journey Center" },
+	{ value: "v4", label: "4. Theme Pivot" },
+	{ value: "v5", label: "5. Compact Stack" },
+	{ value: "v6", label: "6. Faceted Browser" },
+	{ value: "v7", label: "7. Task Index" },
+	{ value: "v8", label: "8. Two-Pane Reader" },
+	{ value: "v9", label: "9. Berry-Pick" },
+	{ value: "v10", label: "10. Walk · moment-by-moment cross-cut" },
+	{ value: "v11", label: "11. Evidence · headline + by-theme/line/section" },
+	{ value: "v12", label: "12. Quote Reader · line + section + theme" },
+	{
+		value: "v13",
+		label: "13. Theme Atlas · theme = lens over lines + sections",
+	},
+	{ value: "v14", label: "14. Mood Arc · clickable mood trajectory" },
+	{ value: "v15", label: "15. Marginalia · annotated prose" },
+	{ value: "v16", label: "16. Pair · side-by-side compare" },
+	{ value: "v17", label: "17. Song Map · timeline + line marks" },
+	{ value: "v18", label: "18. Guided Read · synthesized prompts" },
+	{ value: "v19", label: "19. Hub · cross-reference paths" },
 ];
 
 interface DevAnalysisRow {
@@ -314,225 +344,22 @@ function DevPlaygroundV2() {
 					/>
 				)}
 
-				{song && selectedPanel === "v2" && (
-					<PanelVariantVerbatim
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v3" && (
-					<PanelVariantQuoteFirst
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v4" && (
-					<PanelVariantMoodFirst
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v5" && (
-					<PanelVariantJourneyCenter
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v6" && (
-					<PanelVariantTapReveal
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v7" && (
-					<PanelVariantThemePivot
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v8" && (
-					<PanelVariantLinesStage
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v9" && (
-					<PanelVariantReverse
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v10" && (
-					<PanelVariantCompactStack
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v11" && (
-					<PanelVariantWideOpen
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v12" && (
-					<PanelVariantCompass
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v13" && (
-					<PanelVariantScrubTape
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v14" && (
-					<PanelVariantLinerNotes
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v15" && (
-					<PanelVariantConstellation
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v16" && (
-					<PanelVariantQuietLoud
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v17" && (
-					<PanelVariantScrollScore
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v18" && (
-					<PanelVariantFieldGuide
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v19" && (
-					<PanelVariantEqualizer
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v20" && (
-					<PanelVariantLyricDeck
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
-
-				{song && selectedPanel === "v21" && (
-					<PanelVariantMotionRibbon
-						key={song.track.id}
-						song={song}
-						albumArtUrl={song.track.image_url ?? undefined}
-						artistImageUrl={song.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						onClose={() => setIsExpanded(false)}
-					/>
-				)}
+				{song &&
+					selectedPanel !== "prod" &&
+					(() => {
+						const Variant = VARIANT_MAP[selectedPanel as string];
+						if (!Variant) return null;
+						return (
+							<Variant
+								key={song.track.id}
+								song={song}
+								albumArtUrl={song.track.image_url ?? undefined}
+								artistImageUrl={song.track.artist_image_url ?? undefined}
+								isExpanded={isExpanded}
+								onClose={() => setIsExpanded(false)}
+							/>
+						);
+					})()}
 
 				<PaneRoot>{null}</PaneRoot>
 			</div>
