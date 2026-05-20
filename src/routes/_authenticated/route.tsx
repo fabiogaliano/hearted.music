@@ -131,9 +131,10 @@ function AuthenticatedLayout() {
 	useActiveJobCompletionEffects(session.accountId, isComplete);
 	usePostPurchaseReturn(session.accountId, billingState);
 
-	const { data: matchingSession } = useQuery(
-		matchingSessionQueryOptions(session.accountId),
-	);
+	const { data: matchingSession } = useQuery({
+		...matchingSessionQueryOptions(session.accountId),
+		enabled: isComplete,
+	});
 	const pendingSuggestions = matchingSession?.totalSongs ?? 0;
 
 	const devPanel = DevWorkflowPanel ? (
@@ -143,23 +144,27 @@ function AuthenticatedLayout() {
 	) : null;
 
 	return (
-		<AuthenticatedThemeProvider initialThemeColor={themeColor ?? DEFAULT_THEME}>
-			{showShell ? (
-				<AuthenticatedShell
-					account={account}
-					billingState={billingState}
-					pendingSuggestions={pendingSuggestions}
-					devPanel={devPanel}
-					showSidebar={isComplete}
-				/>
-			) : (
-				<>
-					<Outlet />
-					{devPanel}
-				</>
-			)}
+		<>
+			<AuthenticatedThemeProvider
+				initialThemeColor={themeColor ?? DEFAULT_THEME}
+			>
+				{showShell ? (
+					<AuthenticatedShell
+						account={account}
+						billingState={billingState}
+						pendingSuggestions={pendingSuggestions}
+						devPanel={devPanel}
+						showSidebar={isComplete}
+					/>
+				) : (
+					<>
+						<Outlet />
+						{devPanel}
+					</>
+				)}
+			</AuthenticatedThemeProvider>
 			<Toaster richColors position="top-right" />
-		</AuthenticatedThemeProvider>
+		</>
 	);
 }
 
