@@ -1,6 +1,15 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import { flushSync } from "react-dom";
+
+const useIsomorphicLayoutEffect =
+	typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 const supportsViewTransitions =
 	typeof document !== "undefined" && "startViewTransition" in document;
@@ -27,6 +36,17 @@ interface ExpandedRect {
 	height: number;
 }
 
+const ZERO_RECT: ExpandedRect = { top: 0, left: 0, width: 0, height: 0 };
+
+function rectsEqual(a: ExpandedRect, b: ExpandedRect): boolean {
+	return (
+		a.top === b.top &&
+		a.left === b.left &&
+		a.width === b.width &&
+		a.height === b.height
+	);
+}
+
 interface UsePlaylistExpansionOptions {
 	selectedPlaylistId?: string | null;
 	getRouteRefForPlaylistId: (playlistId: string) => string | null;
@@ -46,6 +66,7 @@ export function usePlaylistExpansion({
 	const [closingToPlaylistId, setClosingToPlaylistId] = useState<string | null>(
 		null,
 	);
+	const [expandedRect, setExpandedRect] = useState<ExpandedRect>(ZERO_RECT);
 	const expansionColumnRef = useRef<HTMLDivElement>(null);
 	const isClosingRef = useRef(false);
 	type PendingRouteSelection =
@@ -53,9 +74,10 @@ export function usePlaylistExpansion({
 		| { type: "closed" };
 	const pendingRouteSelectionRef = useRef<PendingRouteSelection | null>(null);
 
-	const getExpandedRect = useCallback((): ExpandedRect => {
-		if (!expansionColumnRef.current)
-			return { top: 0, left: 0, width: 0, height: 0 };
+	// Reads layout (getBoundingClientRect + window.innerHeight). Callers must
+	// avoid invoking this during render — it forces a synchronous reflow.
+	const measureExpandedRect = useCallback((): ExpandedRect => {
+		if (!expansionColumnRef.current) return ZERO_RECT;
 		const colRect = expansionColumnRef.current.getBoundingClientRect();
 		const top = Math.max(0, colRect.top);
 		return {
@@ -101,6 +123,13 @@ export function usePlaylistExpansion({
 				width: itemRect.width,
 				height: itemRect.height,
 			});
+			// Measure the destination rect here (during the click handler, before
+			// any state update commits) so the panel's first render at
+			// isExpanded=false already has the correct fixed-position geometry.
+			// The rAF×2 below then flips isExpanded to true, giving the browser
+			// a paint frame at the from-state before transitioning to to-state.
+			const nextRect = measureExpandedRect();
+			setExpandedRect((prev) => (rectsEqual(prev, nextRect) ? prev : nextRect));
 
 			setLocalSelectedId(id);
 			pendingRouteSelectionRef.current = { type: "playlist", id };
@@ -112,7 +141,7 @@ export function usePlaylistExpansion({
 				});
 			});
 		},
-		[updateUrl],
+		[measureExpandedRect, updateUrl],
 	);
 
 	const handleClose = useCallback(async () => {
@@ -139,7 +168,10 @@ export function usePlaylistExpansion({
 		isClosingRef.current = false;
 	}, [localSelectedId, updateUrl]);
 
-	// Sync local state from route changes (back/forward, deep links)
+	// Sync local state from route changes we did NOT initiate (back/forward,
+	// deep links, sidebar navigation). For changes we initiated via
+	// handleExpand/handleClose, pendingRouteSelectionRef marks them as
+	// already-owned so we don't pre-empt the rAF-driven transition timing.
 	useEffect(() => {
 		const routeId = routePlaylistId ?? null;
 		const pendingRouteSelection = pendingRouteSelectionRef.current;
@@ -150,11 +182,10 @@ export function usePlaylistExpansion({
 					? routeId === null
 					: routeId === pendingRouteSelection.id;
 
-			if (!matchesPendingSelection) {
-				return;
+			if (matchesPendingSelection) {
+				pendingRouteSelectionRef.current = null;
 			}
-
-			pendingRouteSelectionRef.current = null;
+			return;
 		}
 
 		if (routeId === null) {
@@ -182,13 +213,33 @@ export function usePlaylistExpansion({
 		setIsExpanded(true);
 	}, [isExpanded, localSelectedId, routePlaylistId]);
 
+	// Measure overlay geometry after layout so paint happens with the correct
+	// rect. Runs on mount when isExpanded is already true (deep links / route
+	// remount on first open) and whenever isExpanded flips on.
+	useIsomorphicLayoutEffect(() => {
+		if (!isExpanded) return;
+		const next = measureExpandedRect();
+		setExpandedRect((prev) => (rectsEqual(prev, next) ? prev : next));
+	}, [isExpanded, measureExpandedRect]);
+
+	// Keep the overlay correctly sized when the viewport changes while open.
+	useEffect(() => {
+		if (!isExpanded) return;
+		const handleResize = () => {
+			const next = measureExpandedRect();
+			setExpandedRect((prev) => (rectsEqual(prev, next) ? prev : next));
+		};
+		window.addEventListener("resize", handleResize);
+		return () => window.removeEventListener("resize", handleResize);
+	}, [isExpanded, measureExpandedRect]);
+
 	const selectedPlaylistId = localSelectedId;
 
 	return {
 		selectedPlaylistId,
 		isExpanded,
 		startRect,
-		expandedRect: getExpandedRect(),
+		expandedRect,
 		expansionColumnRef,
 		handleExpand,
 		handleClose,

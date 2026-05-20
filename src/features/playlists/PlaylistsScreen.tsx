@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { scrollListElementIntoView } from "@/lib/keyboard/listScroll";
@@ -24,14 +25,12 @@ const useIsomorphicLayoutEffect =
 interface PlaylistsScreenProps {
 	theme: ThemeConfig;
 	accountId: string;
-	selectedPlaylistRef?: string;
 }
 
-export function PlaylistsScreen({
-	theme,
-	accountId,
-	selectedPlaylistRef,
-}: PlaylistsScreenProps) {
+export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
+	// strict:false lets this read the param when the active match is
+	// /playlists/$playlistRef and return undefined when on /playlists.
+	const { playlistRef: selectedPlaylistRef } = useParams({ strict: false });
 	const { data } = useQuery(playlistManagementQueryOptions(accountId));
 	const { extensionStatus } = useExtensionStatus();
 	const { optimisticTargets, toggleTarget, markMetadataChanged } =
@@ -166,6 +165,10 @@ export function PlaylistsScreen({
 		() => data?.playlists.find((p) => p.id === selectedPlaylistId) ?? null,
 		[data?.playlists, selectedPlaylistId],
 	);
+	// Inline layout occupies the column itself, so the active panel must
+	// step aside. Overlay layout (position: fixed) leaves the column free,
+	// and the active panel fades to opacity 0 underneath it.
+	const isInlineDetail = expandedPlaylist !== null && startRect === null;
 
 	if (!data) {
 		return (
@@ -210,15 +213,33 @@ export function PlaylistsScreen({
 	return (
 		<div className="relative min-h-[600px]">
 			<div className="grid max-w-6xl grid-cols-[1fr_280px] gap-10">
-				<ActivePlaylistsPanel
-					playlists={targetPlaylists}
-					onSelectPlaylist={handleExpand}
-					onRemove={(id) => handleToggleTarget(id, false)}
-					columnRef={expansionColumnRef}
-					isExpanded={isExpanded}
-					closingToPlaylistId={closingToPlaylistId}
-					selectedPlaylistId={selectedPlaylistId}
-				/>
+				<div ref={expansionColumnRef} className="relative">
+					{!isInlineDetail && (
+						<ActivePlaylistsPanel
+							playlists={targetPlaylists}
+							onSelectPlaylist={handleExpand}
+							onRemove={(id) => handleToggleTarget(id, false)}
+							isExpanded={isExpanded}
+							closingToPlaylistId={closingToPlaylistId}
+							selectedPlaylistId={selectedPlaylistId}
+						/>
+					)}
+					{expandedPlaylist && (
+						<PlaylistDetailView
+							theme={theme}
+							playlist={expandedPlaylist}
+							isTarget={targetIds.has(expandedPlaylist.id)}
+							isExpanded={isExpanded}
+							startRect={startRect}
+							expandedRect={expandedRect}
+							extensionStatus={extensionStatus}
+							accountId={accountId}
+							onClose={handleClose}
+							onToggleTarget={handleToggleTarget}
+							onMetadataChanged={markMetadataChanged}
+						/>
+					)}
+				</div>
 
 				<PlaylistLibrary
 					playlists={availablePlaylists}
@@ -228,22 +249,6 @@ export function PlaylistsScreen({
 					getItemProps={getItemProps}
 					selectedPlaylistId={selectedPlaylistId}
 				/>
-
-				{expandedPlaylist && (
-					<PlaylistDetailView
-						theme={theme}
-						playlist={expandedPlaylist}
-						isTarget={targetIds.has(expandedPlaylist.id)}
-						isExpanded={isExpanded}
-						startRect={startRect}
-						expandedRect={expandedRect}
-						extensionStatus={extensionStatus}
-						accountId={accountId}
-						onClose={handleClose}
-						onToggleTarget={handleToggleTarget}
-						onMetadataChanged={markMetadataChanged}
-					/>
-				)}
 			</div>
 		</div>
 	);

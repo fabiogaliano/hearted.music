@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { PlaylistsScreen } from "@/features/playlists/PlaylistsScreen";
 import { playlistManagementQueryOptions } from "@/features/playlists/queries";
 import { DEFAULT_THEME } from "@/lib/theme/types";
@@ -18,5 +18,10 @@ function PlaylistsPage() {
 	const { theme: themeColor, session } = Route.useRouteContext();
 	const theme = getTheme(themeColor ?? DEFAULT_THEME);
 
-	return <PlaylistsScreen theme={theme} accountId={session.accountId} />;
+	return (
+		<>
+			<PlaylistsScreen theme={theme} accountId={session.accountId} />
+			<Outlet />
+		</>
+	);
 }

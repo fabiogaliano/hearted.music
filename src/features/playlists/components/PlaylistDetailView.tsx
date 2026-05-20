@@ -41,6 +41,9 @@ interface PlaylistDetailViewProps {
 	playlist: Playlist;
 	isTarget: boolean;
 	isExpanded: boolean;
+	// When null, the panel renders as a sticky in-column layout (SSR-friendly,
+	// used for deep links). When set, the panel renders as a fixed overlay
+	// animating from the clicked card's geometry to expandedRect.
 	startRect: {
 		top: number;
 		left: number;
@@ -209,27 +212,7 @@ export function PlaylistDetailView({
 		}
 	};
 
-	const offsetY = startRect
-		? Math.round((startRect.top - expandedRect.top) * 0.25)
-		: 0;
-
-	const panelStyle: CSSProperties & ThemeCssVariables = {
-		position: "fixed",
-		background: "var(--t-bg)",
-		top: expandedRect.top,
-		left: expandedRect.left,
-		width: expandedRect.width,
-		height: expandedRect.height,
-		transformOrigin: "top center",
-		transform: isExpanded
-			? "translateY(0) scale(1)"
-			: `translateY(${offsetY}px) scale(0.98)`,
-		opacity: isExpanded ? 1 : 0,
-		transition: isExpanded
-			? "transform 280ms var(--ease-out-expo), opacity 220ms var(--ease-out-expo)"
-			: "transform 220ms var(--ease-out-expo), opacity 160ms var(--ease-out-expo)",
-		willChange: "transform, opacity",
-		pointerEvents: isExpanded ? "auto" : "none",
+	const themeVariables: ThemeCssVariables = {
 		"--t-bg": theme.bg,
 		"--t-surface": theme.surface,
 		"--t-surface-dim": theme.surfaceDim,
@@ -240,6 +223,42 @@ export function PlaylistDetailView({
 		"--t-primary": theme.primary,
 		"--t-primary-hover": theme.primaryHover,
 	};
+
+	const sharedStyle: CSSProperties & ThemeCssVariables = {
+		background: "var(--t-bg)",
+		opacity: isExpanded ? 1 : 0,
+		pointerEvents: isExpanded ? "auto" : "none",
+		...themeVariables,
+	};
+
+	// Without startRect there is no card to animate from, so use a sticky
+	// in-column layout that renders correctly from SSR HTML (deep links).
+	const panelStyle: CSSProperties & ThemeCssVariables =
+		startRect === null
+			? {
+					...sharedStyle,
+					position: "sticky",
+					top: "2rem",
+					width: "100%",
+					height: "calc(100vh - 2rem)",
+					transition: "opacity 160ms var(--ease-out-expo)",
+				}
+			: {
+					...sharedStyle,
+					position: "fixed",
+					top: expandedRect.top,
+					left: expandedRect.left,
+					width: expandedRect.width,
+					height: expandedRect.height,
+					transformOrigin: "top center",
+					transform: isExpanded
+						? "translateY(0) scale(1)"
+						: `translateY(${Math.round((startRect.top - expandedRect.top) * 0.25)}px) scale(0.98)`,
+					transition: isExpanded
+						? "transform 280ms var(--ease-out-expo), opacity 220ms var(--ease-out-expo)"
+						: "transform 220ms var(--ease-out-expo), opacity 160ms var(--ease-out-expo)",
+					willChange: "transform, opacity",
+				};
 
 	return (
 		<div
