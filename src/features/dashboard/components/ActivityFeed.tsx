@@ -12,17 +12,21 @@ export function ActivityFeed({ activities = [] }: ActivityFeedProps) {
 	if (activities.length === 0) return null;
 
 	return (
-		<div className="space-y-1">
+		<section>
 			<p
-				className="theme-text-muted mb-4 text-xs tracking-widest uppercase"
+				className="theme-text-muted mb-6 text-xs tracking-widest uppercase"
 				style={{ fontFamily: fonts.body }}
 			>
 				Recent Activity
 			</p>
 
-			{activities.map((item, idx) => (
-				<ActivityItem key={item.id} item={item} showBorder={idx > 0} />
-			))}
-		</div>
+			<ul className="flex flex-col">
+				{activities.map((item) => (
+					<li key={item.id}>
+						<ActivityItem item={item} />
+					</li>
+				))}
+			</ul>
+		</section>
 	);
 }

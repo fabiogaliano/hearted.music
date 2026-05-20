@@ -28,7 +28,7 @@ export function DashboardHeader({
 		: stats.analyzedPercent;
 
 	return (
-		<div className="mb-8 flex items-start justify-between">
+		<div className="mb-10 flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
 			<div>
 				<p
 					className="theme-text-muted text-xs tracking-widest uppercase"
@@ -38,7 +38,7 @@ export function DashboardHeader({
 				</p>
 				{displayName && (
 					<h2
-						className="theme-text mt-3 text-page-title font-extralight tracking-tight"
+						className="theme-text mt-3 text-page-title font-extralight tracking-tight text-balance"
 						style={{ fontFamily: fonts.display }}
 					>
 						{displayName}
@@ -46,36 +46,37 @@ export function DashboardHeader({
 				)}
 			</div>
 			<div
-				className="theme-text-muted flex items-center gap-2 text-xs"
+				className="theme-text-muted flex flex-wrap items-center gap-x-2 gap-y-2 text-xs"
 				style={{ fontFamily: fonts.body }}
 			>
 				<span className="tabular-nums">
 					{stats.totalSongs}{" "}
 					<span className="tracking-widest uppercase">songs</span>
 				</span>
-				<span className="opacity-40">·</span>
+				<span aria-hidden="true" className="opacity-40">
+					·
+				</span>
 				<span className="tabular-nums">
 					{stats.playlistCount}{" "}
 					<span className="tracking-widest uppercase">playlists</span>
 				</span>
-				<span className="opacity-40">·</span>
+				<span aria-hidden="true" className="opacity-40">
+					·
+				</span>
 				<span className="tabular-nums">
 					<ClientNumberFlow value={analyzedPercent} suffix="%" continuous />{" "}
 					<span className="tracking-widest uppercase">
 						{isEnrichmentRunning ? "analyzing" : "analyzed"}
 					</span>
 				</span>
-				<span className="mx-1 opacity-40">|</span>
-				<span className="flex items-center gap-2">
+				<span aria-hidden="true" className="mx-1 opacity-40">
+					|
+				</span>
+				<span className="flex items-center gap-2" aria-live="polite">
 					<span className="theme-text-muted-bg size-1.5 rounded-full" />
 					{lastSyncText}
 				</span>
-				<Button
-					variant="link"
-					size="sm"
-					style={{ fontFamily: fonts.body }}
-					aria-label="Sync library"
-				>
+				<Button variant="link" size="sm" style={{ fontFamily: fonts.body }}>
 					Sync
 				</Button>
 			</div>

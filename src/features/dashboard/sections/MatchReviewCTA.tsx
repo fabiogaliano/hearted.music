@@ -19,7 +19,7 @@ export function MatchReviewCTA({
 	return (
 		<Link
 			to="/match"
-			className="theme-surface-bg group -mx-4 mb-10 block px-4 py-6 transition-colors"
+			className="theme-surface-bg group -mx-4 mb-10 block px-4 py-6 transition-[transform,background-color,opacity] duration-200 ease-out hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:[outline-color:var(--t-primary)] motion-safe:active:scale-[0.99]"
 		>
 			<p
 				className="theme-text-muted mb-2 text-xs tracking-widest uppercase"
@@ -27,9 +27,9 @@ export function MatchReviewCTA({
 			>
 				Ready to match
 			</p>
-			<div className="flex items-center justify-between">
+			<div className="flex items-center justify-between gap-6">
 				<h3
-					className="theme-text text-3xl font-extralight"
+					className="theme-text text-3xl font-extralight text-balance"
 					style={{ fontFamily: fonts.display }}
 				>
 					{reviewCount} new {reviewCount === 1 ? "song" : "songs"}
@@ -37,10 +37,11 @@ export function MatchReviewCTA({
 				<div className="flex items-center gap-8">
 					<FanSpreadAlbumArt images={matchPreviews} />
 					<span
-						className="theme-text-muted text-sm transition-transform group-hover:translate-x-1"
+						className="theme-text-muted inline-flex items-center gap-1.5 text-sm transition-transform duration-200 ease-out motion-safe:group-hover:translate-x-1"
 						style={{ fontFamily: fonts.body }}
 					>
-						Start <ArrowRightIcon size={14} />
+						Start
+						<ArrowRightIcon size={14} weight="regular" />
 					</span>
 				</div>
 			</div>

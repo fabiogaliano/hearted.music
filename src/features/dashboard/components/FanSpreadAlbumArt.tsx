@@ -18,7 +18,6 @@ interface FanSpreadConfig {
 	rotate: number;
 }
 
-/** Returns composition configs optimized for the given image count. */
 function getComposition(count: number): FanSpreadConfig[] {
 	switch (count) {
 		case 1:
@@ -44,15 +43,18 @@ export function FanSpreadAlbumArt({ images }: FanSpreadAlbumArtProps) {
 	const composition = getComposition(limitedImages.length);
 
 	return (
-		<div className="relative -my-12 h-36 w-60">
+		<div aria-hidden="true" className="relative -my-12 h-36 w-60">
 			{limitedImages.map((item, idx) => {
 				const comp = composition[idx];
 				if (!comp) return null;
 
+				// The hover state writes a full `transform` value with !important so it
+				// beats the inline `transform: rotate(...)` base — pulling the card out
+				// of the fan (rotation snaps to 0, card lifts and scales forward).
 				return (
 					<div
 						key={item.id}
-						className="absolute cursor-pointer shadow-2xl transition-[transform,opacity] duration-200 hover:z-10! hover:-translate-y-3! hover:scale-110! hover:opacity-100!"
+						className="absolute transition-[transform,opacity] duration-200 ease-out motion-safe:hover:[transform:translateY(-12px)_scale(1.08)]! motion-safe:hover:z-10! motion-safe:hover:opacity-100!"
 						style={{
 							width: `${comp.size}px`,
 							height: `${comp.size}px`,
@@ -66,7 +68,9 @@ export function FanSpreadAlbumArt({ images }: FanSpreadAlbumArtProps) {
 						<img
 							src={item.image}
 							alt=""
-							className="h-full w-full object-cover"
+							loading="lazy"
+							className="h-full w-full object-cover shadow-md"
+							style={{ outline: "1px solid rgba(255, 255, 255, 0.1)" }}
 						/>
 					</div>
 				);
