@@ -9,25 +9,28 @@ export const MatchingHeader = memo(function MatchingHeader({
 	const progress = ((currentIndex + 1) / totalSongs) * 100;
 
 	return (
-		<div className="mb-8 flex items-center justify-between">
-			<div>
-				<p
-					className="theme-text-muted text-xs tracking-widest uppercase"
-					style={{ fontFamily: fonts.body }}
-				>
-					Matching
-				</p>
-				<h2
-					className="theme-text mt-3 text-page-title font-extralight tracking-tight"
-					style={{ fontFamily: fonts.display }}
-				>
-					{currentIndex + 1} of {totalSongs}
-				</h2>
+		<div className="mb-12">
+			<div className="mb-5 flex items-end justify-between gap-6">
+				<div>
+					<p
+						className="theme-text-muted text-xs tracking-widest uppercase"
+						style={{ fontFamily: fonts.body }}
+					>
+						Matching
+					</p>
+					<h2
+						className="theme-text mt-3 text-3xl font-extralight tabular-nums leading-none"
+						style={{ fontFamily: fonts.display }}
+					>
+						<span>{currentIndex + 1}</span>
+						<span className="theme-text-muted opacity-60"> / {totalSongs}</span>
+					</h2>
+				</div>
 			</div>
 
-			<div className="theme-border-bg h-1 w-32 overflow-hidden rounded-full">
+			<div className="theme-border-bg relative h-px w-full overflow-hidden">
 				<div
-					className="theme-text-muted-bg h-full transition-[width] duration-200"
+					className="theme-primary-bg absolute inset-y-0 left-0 transition-[width] duration-500 ease-out"
 					style={{ width: `${progress}%` }}
 				/>
 			</div>

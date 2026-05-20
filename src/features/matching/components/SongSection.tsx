@@ -58,6 +58,7 @@ export const SongSection = memo(function SongSection({
 								src={albumArtUrl}
 								alt={song.album}
 								className="aspect-square w-full object-cover"
+								style={{ outline: "1px solid rgba(255, 255, 255, 0.1)" }}
 							/>
 						) : (
 							<div className="aspect-square w-full">
@@ -66,22 +67,22 @@ export const SongSection = memo(function SongSection({
 						)}
 					</div>
 
-					<div className="mt-6">
+					<div className="mt-10">
 						<p
-							className="theme-text-muted text-xs tracking-widest uppercase"
+							className="theme-text-muted truncate text-[10px] tracking-[0.25em] uppercase opacity-70"
 							style={{ fontFamily: fonts.body }}
 						>
 							{song.album}
 						</p>
 						<h2
-							className="theme-text mt-2 text-4xl leading-tight font-extralight"
+							className="theme-text mt-4 text-5xl font-extralight text-balance leading-[1]"
 							style={{ fontFamily: fonts.display }}
 						>
 							{song.name}
 						</h2>
 						<p
-							className="theme-text-muted mt-2 text-lg"
-							style={{ fontFamily: fonts.body }}
+							className="theme-text-muted mt-4 text-xl italic"
+							style={{ fontFamily: fonts.display }}
 						>
 							{song.artist}
 						</p>

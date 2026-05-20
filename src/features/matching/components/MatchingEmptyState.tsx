@@ -1,3 +1,4 @@
+import { ArrowRightIcon } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
 
 import { fonts } from "@/lib/theme/fonts";
@@ -32,26 +33,28 @@ export function MatchingEmptyState({ reason }: Props) {
 			</p>
 
 			<h1
-				className="theme-text max-w-[520px] text-[44px] leading-[1.1] font-extralight tracking-tight md:text-[54px]"
+				className="theme-text max-w-[520px] text-[44px] leading-[1.1] font-extralight tracking-tight text-balance md:text-[54px]"
 				style={{ fontFamily: fonts.display }}
 			>
 				{headline[0]} <em>{headline[1]}</em>
 			</h1>
 
-			<p className="theme-text-muted mt-8 max-w-[360px] text-base leading-relaxed">
+			<p className="theme-text-muted mt-8 max-w-[360px] text-base leading-relaxed text-pretty">
 				{body}
 			</p>
 
 			<div className="mt-12">
 				<Link
 					to="/"
-					className="theme-text group inline-flex items-center gap-3 transition-transform duration-100 active:scale-[0.98]"
+					className="theme-text group inline-flex items-center gap-3 transition-transform duration-150 ease-out motion-safe:active:scale-[0.98]"
 					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-base font-medium tracking-wide">Back home</span>
-					<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
-						&rarr;
-					</span>
+					<ArrowRightIcon
+						size={16}
+						weight="regular"
+						className="theme-text-muted transition-transform duration-200 ease-out motion-safe:group-hover:translate-x-1"
+					/>
 				</Link>
 			</div>
 		</div>

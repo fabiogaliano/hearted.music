@@ -45,8 +45,6 @@ export function MatchingSession({
 
 	return (
 		<>
-			<div className="theme-border-bg mb-10 h-px" />
-
 			<div
 				ref={wrapperRef}
 				className="origin-top overflow-hidden will-change-[height]"

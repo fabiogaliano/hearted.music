@@ -1,3 +1,4 @@
+import { ArrowRightIcon } from "@phosphor-icons/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { memo } from "react";
 import { Button } from "@/components/ui/Button";
@@ -111,7 +112,7 @@ export const MatchesSection = memo(function MatchesSection({
 									duration: 0.25,
 									ease: [0.165, 0.84, 0.44, 1],
 								}}
-								className="theme-surface-bg theme-text mt-3 flex w-full items-center justify-between overflow-hidden rounded-lg px-4 py-2.5"
+								className="theme-surface-bg theme-text mt-3 flex w-full items-center justify-between overflow-hidden px-4 py-2.5"
 								style={{ fontFamily: fonts.body }}
 							>
 								<span className="text-xs">Real matches are ready</span>
@@ -124,7 +125,6 @@ export const MatchesSection = memo(function MatchesSection({
 
 					<div className="mt-6 flex min-h-0 flex-1 flex-col gap-5">
 						{playlists.map((playlist) => {
-							const isGoodMatch = playlist.matchScore >= 0.7;
 							return (
 								<PlaylistMatchRow
 									key={playlist.id}
@@ -134,10 +134,10 @@ export const MatchesSection = memo(function MatchesSection({
 										<NumberFlow
 											value={Math.round(playlist.matchScore * 100)}
 											suffix="%"
-											className={`${isGoodMatch ? "theme-text" : "theme-text-muted"} font-extralight tabular-nums`}
+											className="theme-text font-extralight tabular-nums leading-none"
 											style={{
 												fontFamily: fonts.display,
-												fontSize: "2rem",
+												fontSize: "1.5rem",
 											}}
 										/>
 									}
@@ -175,9 +175,11 @@ export const MatchesSection = memo(function MatchesSection({
 							<span className="text-base font-medium tracking-wide">
 								Next Song
 							</span>
-							<span className="theme-text-muted inline-block transition-transform group-hover:translate-x-1">
-								&rarr;
-							</span>
+							<ArrowRightIcon
+								size={16}
+								weight="regular"
+								className="theme-text-muted transition-transform duration-200 ease-out motion-safe:group-hover:translate-x-1"
+							/>
 						</Button>
 					</div>
 				</motion.div>

@@ -132,7 +132,7 @@ function NormalMatchPage() {
 	return (
 		<div className="mx-auto w-full max-w-[min(1600px,100%)]">
 			{hasNewSnapshot && (
-				<div className="theme-surface-bg theme-border-color mb-4 flex items-center justify-between rounded-lg border px-5 py-3">
+				<div className="theme-surface-bg theme-border-color mb-4 flex items-center justify-between border px-5 py-3">
 					<p
 						className="theme-text-muted text-sm"
 						style={{ fontFamily: fonts.body }}
