@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { ANIMATION_TIMING, LAYOUT, PANEL_KEYFRAMES } from "./panel-constants";
 import {
 	clamp01,
@@ -675,26 +674,6 @@ export function usePanelAnimation(options: UsePanelAnimationOptions) {
 			}
 		}
 	}, [songId, isExpanded]);
-
-	useShortcut({
-		key: "escape",
-		handler: toggleAnalysis,
-		description: "Close analysis",
-		scope: "liked-detail-analysis",
-		category: "actions",
-		enabled: isExpanded && isAnalysisOpen,
-	});
-
-	useShortcut({
-		key: "enter",
-		handler: () => {
-			if (hasHeadline) toggleAnalysis();
-		},
-		description: "Open analysis",
-		scope: "liked-detail",
-		category: "actions",
-		enabled: isExpanded,
-	});
 
 	return {
 		refs: {

@@ -6,13 +6,12 @@
  */
 import { Fragment, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
-import { fonts } from "@/lib/theme/fonts";
-
-import { type CatalogEntry, SHORTCUT_CATALOG } from "./catalog";
 import {
 	useShortcutHelpState,
 	useShortcutRegistryState,
-} from "./KeyboardShortcutProvider";
+} from "@/lib/keyboard/KeyboardShortcutProvider";
+import { fonts } from "@/lib/theme/fonts";
+import { type CatalogEntry, SHORTCUT_CATALOG } from "./catalog";
 import type { ShortcutScope } from "./types";
 
 const SCOPE_LABELS: Record<ShortcutScope, string> = {

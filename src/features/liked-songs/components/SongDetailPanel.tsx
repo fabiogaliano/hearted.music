@@ -35,6 +35,7 @@ import { LAYOUT } from "./detail/panel-constants";
 import { getThemedDarkColors } from "./detail/themed-dark-colors";
 import type { ColorProps, PanelColors } from "./detail/types";
 import { usePanelAnimation } from "./detail/usePanelAnimation";
+import { usePanelShortcuts } from "./detail/usePanelShortcuts";
 
 type ThemeCssVariables = {
 	"--t-bg": string;
@@ -241,6 +242,7 @@ export function SongDetailPanel({
 		setAddedTo((prev) => [...prev, playlistId]);
 	};
 
+	const hasHeadline = !!analysis?.headline;
 	const {
 		refs: {
 			scrollRef,
@@ -271,10 +273,17 @@ export function SongDetailPanel({
 		albumArtUrl,
 		artistImageUrl,
 		panelColors,
-		hasHeadline: !!analysis?.headline,
+		hasHeadline,
 		hasSuggestions,
 		sonicTextureText: analysis?.sonic_texture,
 		heroHeight,
+	});
+
+	usePanelShortcuts({
+		isExpanded,
+		isAnalysisOpen,
+		hasHeadline,
+		toggleAnalysis,
 	});
 
 	const vignetteGradient = darkPalette
