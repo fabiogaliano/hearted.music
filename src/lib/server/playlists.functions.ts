@@ -77,16 +77,36 @@ export const getPlaylistTrackPreview = createServerFn({ method: "GET" })
 		const { session } = context;
 
 		const playlistResult = await getPlaylistById(data.playlistId);
-		if (
-			Result.isError(playlistResult) ||
-			!playlistResult.value ||
-			playlistResult.value.account_id !== session.accountId
-		) {
-			return [];
+		if (Result.isError(playlistResult)) {
+			console.warn("Failed to load playlist", {
+				playlistId: data.playlistId,
+				error: playlistResult.error,
+			});
+			throw new Error("Failed to load playlist");
+		}
+		if (playlistResult.value === null) {
+			throw new Error("Playlist not found");
+		}
+		// Only authorization gate for this read: service-role bypasses RLS, so
+		// without this check any session could fetch any account's tracks.
+		if (playlistResult.value.account_id !== session.accountId) {
+			console.warn("Playlist access denied: account mismatch", {
+				playlistId: data.playlistId,
+				ownerAccountId: playlistResult.value.account_id,
+				sessionAccountId: session.accountId,
+			});
+			throw new Error("Playlist not found");
 		}
 
 		const songsResult = await getPlaylistSongs(data.playlistId);
-		if (Result.isError(songsResult) || songsResult.value.length === 0) {
+		if (Result.isError(songsResult)) {
+			console.warn("Failed to load playlist tracks", {
+				playlistId: data.playlistId,
+				error: songsResult.error,
+			});
+			throw new Error("Failed to load playlist tracks");
+		}
+		if (songsResult.value.length === 0) {
 			return [];
 		}
 
@@ -95,7 +115,11 @@ export const getPlaylistTrackPreview = createServerFn({ method: "GET" })
 		const songsDataResult = await getSongsByIds(songIds);
 
 		if (Result.isError(songsDataResult)) {
-			return [];
+			console.warn("Failed to load track details", {
+				playlistId: data.playlistId,
+				error: songsDataResult.error,
+			});
+			throw new Error("Failed to load track details");
 		}
 
 		const songMap = new Map(songsDataResult.value.map((s) => [s.id, s]));

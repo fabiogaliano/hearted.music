@@ -219,26 +219,120 @@ describe("getPlaylistTrackPreview", () => {
 		expect(result).toHaveLength(0);
 	});
 
-	it("filters out songs missing from song table", async () => {
+	it("filters out songs missing from song table while keeping matched rows", async () => {
 		mockGetPlaylistSongs.mockResolvedValue(
 			Result.ok([
 				{
 					id: "ps-1",
 					playlist_id: "uuid-1",
+					song_id: "song-1",
+					position: 0,
+					added_at: "2026-03-28T00:00:00Z",
+					created_at: "2026-03-28T00:00:00Z",
+				},
+				{
+					id: "ps-2",
+					playlist_id: "uuid-1",
 					song_id: "song-missing",
+					position: 1,
+					added_at: "2026-03-28T00:00:00Z",
+					created_at: "2026-03-28T00:00:00Z",
+				},
+			]),
+		);
+		mockGetSongsByIds.mockResolvedValue(
+			Result.ok([makeSong({ id: "song-1" })]),
+		);
+
+		const result = await getPlaylistTrackPreview({
+			data: { playlistId: "uuid-1" },
+		});
+
+		expect(result).toHaveLength(1);
+		expect(result[0].songId).toBe("song-1");
+	});
+
+	it("throws sanitized error when playlist lookup fails", async () => {
+		mockGetPlaylistById.mockResolvedValue(
+			Result.err(new DatabaseError({ code: "42000", message: "db boom" })),
+		);
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+		await expect(
+			getPlaylistTrackPreview({ data: { playlistId: "uuid-1" } }),
+		).rejects.toThrow("Failed to load playlist");
+
+		expect(warnSpy).toHaveBeenCalled();
+		warnSpy.mockRestore();
+	});
+
+	it("throws 'Playlist not found' when playlist is missing", async () => {
+		mockGetPlaylistById.mockResolvedValue(Result.ok(null));
+
+		await expect(
+			getPlaylistTrackPreview({ data: { playlistId: "uuid-1" } }),
+		).rejects.toThrow("Playlist not found");
+	});
+
+	it("throws 'Playlist not found' when playlist belongs to another account", async () => {
+		mockGetPlaylistById.mockResolvedValue(
+			Result.ok(makePlaylist({ account_id: "acct-other" })),
+		);
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+		await expect(
+			getPlaylistTrackPreview({ data: { playlistId: "uuid-1" } }),
+		).rejects.toThrow("Playlist not found");
+
+		expect(warnSpy).toHaveBeenCalledWith(
+			"Playlist access denied: account mismatch",
+			expect.objectContaining({
+				playlistId: "uuid-1",
+				ownerAccountId: "acct-other",
+				sessionAccountId: "acct-1",
+			}),
+		);
+		warnSpy.mockRestore();
+	});
+
+	it("throws sanitized error when playlist-song query fails", async () => {
+		mockGetPlaylistSongs.mockResolvedValue(
+			Result.err(new DatabaseError({ code: "42000", message: "db boom" })),
+		);
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+		await expect(
+			getPlaylistTrackPreview({ data: { playlistId: "uuid-1" } }),
+		).rejects.toThrow("Failed to load playlist tracks");
+
+		expect(warnSpy).toHaveBeenCalled();
+		warnSpy.mockRestore();
+	});
+
+	it("throws sanitized error when song details query fails", async () => {
+		mockGetPlaylistSongs.mockResolvedValue(
+			Result.ok([
+				{
+					id: "ps-1",
+					playlist_id: "uuid-1",
+					song_id: "song-1",
 					position: 0,
 					added_at: "2026-03-28T00:00:00Z",
 					created_at: "2026-03-28T00:00:00Z",
 				},
 			]),
 		);
-		mockGetSongsByIds.mockResolvedValue(Result.ok([]));
+		mockGetSongsByIds.mockResolvedValue(
+			Result.err(new DatabaseError({ code: "42000", message: "db boom" })),
+		);
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-		const result = await getPlaylistTrackPreview({
-			data: { playlistId: "uuid-1" },
-		});
+		await expect(
+			getPlaylistTrackPreview({ data: { playlistId: "uuid-1" } }),
+		).rejects.toThrow("Failed to load track details");
 
-		expect(result).toHaveLength(0);
+		expect(warnSpy).toHaveBeenCalled();
+		warnSpy.mockRestore();
 	});
 });
 
