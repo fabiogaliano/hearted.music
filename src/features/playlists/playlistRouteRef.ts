@@ -2,14 +2,18 @@ import type { Playlist } from "@/lib/domains/library/playlists/queries";
 
 const PLAYLIST_ROUTE_ID_PREFIX_LENGTH = 12;
 
-function slugifyPlaylistName(name: string): string {
-	const slug = name
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/^-|-$/g, "")
-		.slice(0, 80);
-
+function normalizePlaylistSlug(value: string): string {
+	const slug = value.replace(/^-+|-+$/g, "");
 	return slug.length > 0 ? slug : "playlist";
+}
+
+function slugifyPlaylistName(name: string): string {
+	return normalizePlaylistSlug(
+		name
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, "-")
+			.slice(0, 80),
+	);
 }
 
 function normalizePlaylistId(id: string): string {
@@ -25,14 +29,14 @@ function parsePlaylistRouteRef(
 ): { slug: string; idPrefix: string } | null {
 	const match = playlistRef
 		.toLowerCase()
-		.match(/^(?<slug>[a-z0-9]+(?:-[a-z0-9]+)*)--(?<idPrefix>[a-f0-9]{12})$/);
+		.match(/^(?<slug>[a-z0-9]+(?:-[a-z0-9]+)*)-+-(?<idPrefix>[a-f0-9]{12})$/);
 
 	if (!match?.groups) {
 		return null;
 	}
 
 	return {
-		slug: match.groups.slug,
+		slug: normalizePlaylistSlug(match.groups.slug),
 		idPrefix: match.groups.idPrefix,
 	};
 }

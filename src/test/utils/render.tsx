@@ -23,6 +23,5 @@ function renderWithProviders(
 	};
 }
 
-export { renderWithProviders as render };
 export * from "@testing-library/react";
-export { userEvent };
+export { renderWithProviders as render, userEvent };

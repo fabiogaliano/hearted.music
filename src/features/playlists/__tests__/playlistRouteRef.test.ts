@@ -62,6 +62,31 @@ describe("playlistRouteRef", () => {
 		).toBe(second.id);
 	});
 
+	it("trims trailing hyphens introduced by slug truncation", () => {
+		const playlist = createPlaylist({
+			id: "36536617-ed4f-408e-aeb3-5c5a098d1e33",
+			name: "Dubolt Mix Kendrick Lamar Ross From Friends Kaytranada Totally Enormous Extinct Dinosaurs",
+		});
+
+		expect(buildPlaylistRouteRef(playlist)).toBe(
+			"dubolt-mix-kendrick-lamar-ross-from-friends-kaytranada-totally-enormous-extinct--36536617ed4f",
+		);
+	});
+
+	it("resolves legacy refs with an extra hyphen before the id prefix", () => {
+		const playlist = createPlaylist({
+			id: "36536617-ed4f-408e-aeb3-5c5a098d1e33",
+			name: "Dubolt Mix Kendrick Lamar Ross From Friends Kaytranada Totally Enormous Extinct Dinosaurs",
+		});
+
+		expect(
+			resolvePlaylistIdFromRouteRef(
+				[playlist],
+				"dubolt-mix-kendrick-lamar-ross-from-friends-kaytranada-totally-enormous-extinct---36536617ed4f",
+			),
+		).toBe(playlist.id);
+	});
+
 	it("returns null for invalid refs", () => {
 		const playlist = createPlaylist({});
 

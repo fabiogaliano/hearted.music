@@ -186,7 +186,7 @@ async function loadDataEnrichedSongIds(
 
 	for (const songId of batch.songIds) {
 		const song = songById.get(songId);
-		if (!song || !song.genres || song.genres.length === 0) {
+		if (!song?.genres || song.genres.length === 0) {
 			continue;
 		}
 
