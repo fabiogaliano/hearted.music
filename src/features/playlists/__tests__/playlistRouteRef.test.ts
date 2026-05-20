@@ -94,4 +94,34 @@ describe("playlistRouteRef", () => {
 			null,
 		);
 	});
+
+	it("returns null when the id prefix matches no playlist", () => {
+		const playlist = createPlaylist({});
+
+		expect(
+			resolvePlaylistIdFromRouteRef(
+				[playlist],
+				"ambient-morning--ffffffffffff",
+			),
+		).toBe(null);
+	});
+
+	it("returns null when the prefix is ambiguous and the slug matches none", () => {
+		const first = createPlaylist({
+			id: "cc5695a5-2241-408e-aeb3-5c5a098d1e33",
+			name: "Ambient Morning",
+		});
+		const second = createPlaylist({
+			id: "cc5695a5-2241-4f4a-aeb3-5c5a098d9f90",
+			name: "Driving At Night",
+			spotify_id: "spotify-2",
+		});
+
+		expect(
+			resolvePlaylistIdFromRouteRef(
+				[first, second],
+				"unrelated-name--cc5695a52241",
+			),
+		).toBe(null);
+	});
 });

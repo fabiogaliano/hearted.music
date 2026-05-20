@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { resolvePlaylistIdFromRouteRef } from "@/features/playlists/playlistRouteRef";
 import {
 	playlistManagementQueryOptions,
@@ -15,17 +15,23 @@ export const Route = createFileRoute("/_authenticated/playlists/$playlistRef")({
 	loader: async ({ context, params }) => {
 		const accountId = context.session.accountId;
 
-		const data = await context.queryClient.ensureQueryData(
-			playlistManagementQueryOptions(accountId),
-		);
+		// Route-resolution guards must read fresh playlist data so recently
+		// added/removed playlists do not leave deep links on stale decisions.
+		const data = await context.queryClient.fetchQuery({
+			...playlistManagementQueryOptions(accountId),
+			staleTime: 0,
+		});
 
 		const playlistId = resolvePlaylistIdFromRouteRef(
 			data.playlists,
 			params.playlistRef,
 		);
 
+		// Unresolved refs (malformed, stale, unknown prefix, ambiguous, or
+		// belonging to another account) get cleaned up by sending the user
+		// back to the list URL rather than leaving a misleading detail URL.
 		if (playlistId === null) {
-			return;
+			throw redirect({ to: "/playlists", replace: true });
 		}
 
 		try {
