@@ -5,7 +5,7 @@ import {
 	deletePlaylist,
 	getPlaylistById,
 	getPlaylistBySpotifyId,
-	getPlaylistSongs,
+	getPlaylistSongsPage,
 	getPlaylists,
 	getTargetPlaylists,
 	setPlaylistTarget,
@@ -57,7 +57,7 @@ export const getPlaylistManagementData = createServerFn({
 		};
 	});
 
-export interface PlaylistTrackPreview {
+export interface PlaylistTrack {
 	position: number;
 	songId: string;
 	name: string;
@@ -66,15 +66,26 @@ export interface PlaylistTrackPreview {
 	imageUrl: string | null;
 }
 
-const PlaylistTracksSchema = z.object({
+export interface PlaylistTracksPageResult {
+	tracks: PlaylistTrack[];
+	nextCursor: number | null;
+}
+
+const PLAYLIST_TRACKS_DEFAULT_LIMIT = 50;
+const PLAYLIST_TRACKS_MAX_LIMIT = 100;
+
+const PlaylistTracksPageSchema = z.object({
 	playlistId: z.string().uuid(),
+	cursor: z.number().int().min(0).optional(),
+	limit: z.number().int().min(1).max(PLAYLIST_TRACKS_MAX_LIMIT).optional(),
 });
 
-export const getPlaylistTrackPreview = createServerFn({ method: "GET" })
+export const getPlaylistTracksPage = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => PlaylistTracksSchema.parse(data))
-	.handler(async ({ data, context }): Promise<PlaylistTrackPreview[]> => {
+	.inputValidator((data) => PlaylistTracksPageSchema.parse(data))
+	.handler(async ({ data, context }): Promise<PlaylistTracksPageResult> => {
 		const { session } = context;
+		const limit = data.limit ?? PLAYLIST_TRACKS_DEFAULT_LIMIT;
 
 		const playlistResult = await getPlaylistById(data.playlistId);
 		if (Result.isError(playlistResult)) {
@@ -98,46 +109,61 @@ export const getPlaylistTrackPreview = createServerFn({ method: "GET" })
 			throw new Error("Playlist not found");
 		}
 
-		const songsResult = await getPlaylistSongs(data.playlistId);
-		if (Result.isError(songsResult)) {
-			console.warn("Failed to load playlist tracks", {
-				playlistId: data.playlistId,
-				error: songsResult.error,
+		let cursor = data.cursor;
+
+		while (true) {
+			const songsResult = await getPlaylistSongsPage(data.playlistId, {
+				cursor,
+				limit,
 			});
-			throw new Error("Failed to load playlist tracks");
+			if (Result.isError(songsResult)) {
+				console.warn("Failed to load playlist tracks", {
+					playlistId: data.playlistId,
+					error: songsResult.error,
+				});
+				throw new Error("Failed to load playlist tracks");
+			}
+
+			const { items: playlistSongs, nextCursor } = songsResult.value;
+			if (playlistSongs.length === 0) {
+				return { tracks: [], nextCursor: null };
+			}
+
+			const songIds = playlistSongs.map((ps) => ps.song_id);
+			const songsDataResult = await getSongsByIds(songIds);
+
+			if (Result.isError(songsDataResult)) {
+				console.warn("Failed to load track details", {
+					playlistId: data.playlistId,
+					error: songsDataResult.error,
+				});
+				throw new Error("Failed to load track details");
+			}
+
+			const songMap = new Map(songsDataResult.value.map((s) => [s.id, s]));
+			const tracks = playlistSongs
+				.map((ps) => {
+					const song = songMap.get(ps.song_id);
+					if (!song) return null;
+					return {
+						position: ps.position,
+						songId: song.id,
+						name: song.name,
+						artists: song.artists ?? [],
+						albumName: song.album_name,
+						imageUrl: song.image_url,
+					};
+				})
+				.filter((t): t is PlaylistTrack => t !== null);
+
+			if (tracks.length > 0 || nextCursor === null) {
+				return { tracks, nextCursor };
+			}
+
+			// Skip synthetic empty pages caused by dangling playlist_song rows so the
+			// client only sees an empty state when no loadable tracks remain.
+			cursor = nextCursor;
 		}
-		if (songsResult.value.length === 0) {
-			return [];
-		}
-
-		const playlistSongs = songsResult.value;
-		const songIds = playlistSongs.map((ps) => ps.song_id);
-		const songsDataResult = await getSongsByIds(songIds);
-
-		if (Result.isError(songsDataResult)) {
-			console.warn("Failed to load track details", {
-				playlistId: data.playlistId,
-				error: songsDataResult.error,
-			});
-			throw new Error("Failed to load track details");
-		}
-
-		const songMap = new Map(songsDataResult.value.map((s) => [s.id, s]));
-
-		return playlistSongs
-			.map((ps) => {
-				const song = songMap.get(ps.song_id);
-				if (!song) return null;
-				return {
-					position: ps.position,
-					songId: song.id,
-					name: song.name,
-					artists: song.artists ?? [],
-					albumName: song.album_name,
-					imageUrl: song.image_url,
-				};
-			})
-			.filter((t): t is PlaylistTrackPreview => t !== null);
 	});
 
 // ============================================================================

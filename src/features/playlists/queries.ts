@@ -1,15 +1,16 @@
-import { queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import {
 	getPlaylistManagementData,
-	getPlaylistTrackPreview,
+	getPlaylistTracksPage,
 } from "@/lib/server/playlists.functions";
+
+export const PLAYLIST_TRACKS_PAGE_SIZE = 25;
 
 export const playlistKeys = {
 	all: ["playlists"] as const,
 	management: (accountId: string) =>
 		["playlists", "management", accountId] as const,
-	trackPreview: (playlistId: string) =>
-		["playlists", "track-preview", playlistId] as const,
+	tracks: (playlistId: string) => ["playlists", "tracks", playlistId] as const,
 };
 
 export function playlistManagementQueryOptions(accountId: string) {
@@ -20,12 +21,20 @@ export function playlistManagementQueryOptions(accountId: string) {
 	});
 }
 
-export function playlistTrackPreviewQueryOptions(playlistId: string | null) {
-	return queryOptions({
-		queryKey: playlistKeys.trackPreview(playlistId ?? ""),
-		queryFn: () =>
-			getPlaylistTrackPreview({ data: { playlistId: playlistId as string } }),
+export function playlistTracksInfiniteQueryOptions(playlistId: string | null) {
+	return infiniteQueryOptions({
+		queryKey: playlistKeys.tracks(playlistId ?? ""),
+		queryFn: ({ pageParam }) =>
+			getPlaylistTracksPage({
+				data: {
+					playlistId: playlistId as string,
+					cursor: pageParam,
+					limit: PLAYLIST_TRACKS_PAGE_SIZE,
+				},
+			}),
 		enabled: playlistId != null,
+		initialPageParam: undefined as number | undefined,
+		getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
 		staleTime: 30 * 60_000,
 	});
 }

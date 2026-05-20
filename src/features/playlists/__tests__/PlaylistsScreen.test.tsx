@@ -21,7 +21,9 @@ vi.mock("@tanstack/react-router", async () => {
 
 vi.mock("@/lib/server/playlists.functions", () => ({
 	getPlaylistManagementData: () => mockPlaylistData(),
-	getPlaylistTrackPreview: vi.fn().mockResolvedValue([]),
+	getPlaylistTracksPage: vi
+		.fn()
+		.mockResolvedValue({ tracks: [], nextCursor: null }),
 	setPlaylistTargetMutation: vi.fn(),
 	flushPlaylistManagementSession: vi.fn(),
 }));

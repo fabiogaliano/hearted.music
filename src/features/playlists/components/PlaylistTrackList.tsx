@@ -1,14 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
-import type { PlaylistTrackPreview } from "@/lib/server/playlists.functions";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
+import type { PlaylistTrack } from "@/lib/server/playlists.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { playlistTrackPreviewQueryOptions } from "../queries";
+import { playlistTracksInfiniteQueryOptions } from "../queries";
 
 type TrackListState =
 	| { kind: "noSelection" }
 	| { kind: "loading" }
 	| { kind: "error" }
 	| { kind: "empty" }
-	| { kind: "ready"; tracks: PlaylistTrackPreview[] };
+	| { kind: "ready"; tracks: PlaylistTrack[] };
 
 const TRACK_LIST_MESSAGES: Record<
 	Exclude<TrackListState["kind"], "ready">,
@@ -32,14 +33,13 @@ function getTrackListState({
 	playlistId: string | null;
 	isLoading: boolean;
 	isError: boolean;
-	tracks: PlaylistTrackPreview[] | undefined;
+	tracks: PlaylistTrack[];
 }): TrackListState {
 	if (playlistId === null) return { kind: "noSelection" };
 	if (isLoading) return { kind: "loading" };
 	if (isError) return { kind: "error" };
-	const list = tracks ?? [];
-	if (list.length === 0) return { kind: "empty" };
-	return { kind: "ready", tracks: list };
+	if (tracks.length === 0) return { kind: "empty" };
+	return { kind: "ready", tracks };
 }
 
 interface PlaylistTrackListProps {
@@ -52,12 +52,23 @@ export function PlaylistTrackList({
 	isExpanded,
 }: PlaylistTrackListProps) {
 	const {
-		data: tracks,
+		data,
 		isLoading,
 		isError,
-	} = useQuery(playlistTrackPreviewQueryOptions(playlistId));
+		fetchNextPage,
+		hasNextPage,
+		isFetchingNextPage,
+	} = useInfiniteQuery(playlistTracksInfiniteQueryOptions(playlistId));
 
+	const tracks = data?.pages.flatMap((page) => page.tracks) ?? [];
 	const state = getTrackListState({ playlistId, isLoading, isError, tracks });
+
+	const { sentinelRef } = useInfiniteScroll({
+		onLoadMore: () => {
+			if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+		},
+		hasMore: Boolean(hasNextPage),
+	});
 
 	return (
 		<div
@@ -86,37 +97,49 @@ export function PlaylistTrackList({
 					{TRACK_LIST_MESSAGES[state.kind]}
 				</p>
 			) : (
-				state.tracks.slice(0, 12).map((track, index) => (
-					<div
-						key={track.songId}
-						className="theme-border-color theme-hover-surface group flex items-center gap-4 border-b py-3 transition-colors duration-150 ease-out"
-						style={{
-							animation: `playlist-track-enter 200ms var(--ease-out-expo) ${index * 40}ms both`,
-						}}
-					>
-						<span
-							className="theme-text-muted w-6 text-right text-xs tabular-nums"
+				<>
+					{state.tracks.map((track, index) => (
+						<div
+							key={track.songId}
+							className="theme-border-color theme-hover-surface group flex items-center gap-4 border-b py-3 transition-colors duration-150 ease-out"
+							style={{
+								animation: `playlist-track-enter 200ms var(--ease-out-expo) ${index * 40}ms both`,
+							}}
+						>
+							<span
+								className="theme-text-muted w-6 text-right text-xs tabular-nums"
+								style={{ fontFamily: fonts.body }}
+							>
+								{track.position + 1}
+							</span>
+							<div className="min-w-0 flex-1">
+								<p
+									className="theme-text truncate text-sm"
+									style={{ fontFamily: fonts.body }}
+								>
+									{track.name}
+								</p>
+								<p
+									className="theme-text-muted truncate text-xs"
+									style={{ fontFamily: fonts.body }}
+								>
+									{track.artists[0] ?? "Unknown Artist"}
+									{track.albumName ? ` · ${track.albumName}` : ""}
+								</p>
+							</div>
+						</div>
+					))}
+					{hasNextPage ? (
+						<div
+							ref={sentinelRef}
+							data-playlist-tracks-sentinel
+							className="theme-text-muted py-4 text-center text-xs"
 							style={{ fontFamily: fonts.body }}
 						>
-							{track.position + 1}
-						</span>
-						<div className="min-w-0 flex-1">
-							<p
-								className="theme-text truncate text-sm"
-								style={{ fontFamily: fonts.body }}
-							>
-								{track.name}
-							</p>
-							<p
-								className="theme-text-muted truncate text-xs"
-								style={{ fontFamily: fonts.body }}
-							>
-								{track.artists[0] ?? "Unknown Artist"}
-								{track.albumName ? ` · ${track.albumName}` : ""}
-							</p>
+							{isFetchingNextPage ? "Loading more…" : null}
 						</div>
-					</div>
-				))
+					) : null}
+				</>
 			)}
 		</div>
 	);

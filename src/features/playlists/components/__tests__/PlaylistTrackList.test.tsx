@@ -1,15 +1,29 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, screen } from "@testing-library/react";
+import { act, cleanup, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@/test/utils/render";
 import { PlaylistTrackList } from "../PlaylistTrackList";
 
-const mockGetPlaylistTrackPreview = vi.fn();
+const mockGetPlaylistTracksPage = vi.fn();
 
 vi.mock("@/lib/server/playlists.functions", () => ({
-	getPlaylistTrackPreview: (...args: unknown[]) =>
-		mockGetPlaylistTrackPreview(...args),
+	getPlaylistTracksPage: (...args: unknown[]) =>
+		mockGetPlaylistTracksPage(...args),
 	getPlaylistManagementData: vi.fn(),
+}));
+
+interface CapturedInfiniteScrollCall {
+	onLoadMore: () => void;
+	hasMore: boolean;
+}
+
+const infiniteScrollCalls: CapturedInfiniteScrollCall[] = [];
+
+vi.mock("@/lib/hooks/useInfiniteScroll", () => ({
+	useInfiniteScroll: (opts: CapturedInfiniteScrollCall) => {
+		infiniteScrollCalls.push(opts);
+		return { sentinelRef: () => {} };
+	},
 }));
 
 function renderList(playlistId: string | null) {
@@ -23,9 +37,27 @@ function renderList(playlistId: string | null) {
 	);
 }
 
+function trackPage(
+	tracks: Array<{ position: number; songId: string; name: string }>,
+	nextCursor: number | null,
+) {
+	return {
+		tracks: tracks.map((t) => ({
+			position: t.position,
+			songId: t.songId,
+			name: t.name,
+			artists: ["Artist"],
+			albumName: null,
+			imageUrl: null,
+		})),
+		nextCursor,
+	};
+}
+
 describe("PlaylistTrackList", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		infiniteScrollCalls.length = 0;
 	});
 
 	afterEach(() => {
@@ -38,24 +70,22 @@ describe("PlaylistTrackList", () => {
 		expect(
 			screen.getByText("Select a playlist to see tracks."),
 		).toBeInTheDocument();
-		expect(mockGetPlaylistTrackPreview).not.toHaveBeenCalled();
+		expect(mockGetPlaylistTracksPage).not.toHaveBeenCalled();
 	});
 
 	it("shows the loading message while a non-null playlist query is pending", () => {
-		// Never-resolving promise keeps the query stuck in the loading state.
-		mockGetPlaylistTrackPreview.mockReturnValue(new Promise(() => {}));
+		mockGetPlaylistTracksPage.mockReturnValue(new Promise(() => {}));
 
 		renderList("uuid-1");
 
 		expect(screen.getByText("Loading tracks…")).toBeInTheDocument();
-		expect(mockGetPlaylistTrackPreview).toHaveBeenCalledTimes(1);
+		expect(mockGetPlaylistTracksPage).toHaveBeenCalledTimes(1);
 	});
 
 	it("shows the error message when the query rejects", async () => {
-		mockGetPlaylistTrackPreview.mockRejectedValue(
+		mockGetPlaylistTracksPage.mockRejectedValue(
 			new Error("Failed to load playlist tracks"),
 		);
-		// React Query logs failed queries to console.error; suppress for noise.
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
 		renderList("uuid-1");
@@ -67,8 +97,8 @@ describe("PlaylistTrackList", () => {
 		errorSpy.mockRestore();
 	});
 
-	it("shows the empty message when the query resolves to an empty array", async () => {
-		mockGetPlaylistTrackPreview.mockResolvedValue([]);
+	it("shows the empty message when the first page resolves with no tracks", async () => {
+		mockGetPlaylistTracksPage.mockResolvedValue(trackPage([], null));
 
 		renderList("uuid-1");
 
@@ -77,25 +107,16 @@ describe("PlaylistTrackList", () => {
 		).toBeInTheDocument();
 	});
 
-	it("renders track rows when the query resolves with tracks", async () => {
-		mockGetPlaylistTrackPreview.mockResolvedValue([
-			{
-				position: 0,
-				songId: "song-1",
-				name: "First Song",
-				artists: ["Artist A"],
-				albumName: "Album A",
-				imageUrl: null,
-			},
-			{
-				position: 1,
-				songId: "song-2",
-				name: "Second Song",
-				artists: ["Artist B"],
-				albumName: null,
-				imageUrl: null,
-			},
-		]);
+	it("renders the first page of tracks when the query resolves", async () => {
+		mockGetPlaylistTracksPage.mockResolvedValue(
+			trackPage(
+				[
+					{ position: 0, songId: "song-1", name: "First Song" },
+					{ position: 1, songId: "song-2", name: "Second Song" },
+				],
+				null,
+			),
+		);
 
 		renderList("uuid-1");
 
@@ -104,5 +125,66 @@ describe("PlaylistTrackList", () => {
 		expect(
 			screen.queryByText("No track data available for this playlist yet."),
 		).not.toBeInTheDocument();
+	});
+
+	it("fetches the next page when the sentinel triggers onLoadMore", async () => {
+		mockGetPlaylistTracksPage
+			.mockResolvedValueOnce(
+				trackPage([{ position: 0, songId: "song-1", name: "First Song" }], 1),
+			)
+			.mockResolvedValueOnce(
+				trackPage(
+					[{ position: 1, songId: "song-2", name: "Second Song" }],
+					null,
+				),
+			);
+
+		renderList("uuid-1");
+
+		await screen.findByText("First Song");
+
+		// Trigger the most recent onLoadMore (sentinel intersection).
+		const lastCall = infiniteScrollCalls[infiniteScrollCalls.length - 1];
+		expect(lastCall.hasMore).toBe(true);
+		await act(async () => {
+			lastCall.onLoadMore();
+		});
+
+		expect(await screen.findByText("Second Song")).toBeInTheDocument();
+		expect(mockGetPlaylistTracksPage).toHaveBeenCalledTimes(2);
+		const secondCallArgs = mockGetPlaylistTracksPage.mock.calls[1][0];
+		expect(secondCallArgs.data.cursor).toBe(1);
+	});
+
+	it("renders 'Loading more…' while the next page is fetching", async () => {
+		let resolveSecondPage: ((value: unknown) => void) | undefined;
+		mockGetPlaylistTracksPage
+			.mockResolvedValueOnce(
+				trackPage([{ position: 0, songId: "song-1", name: "First Song" }], 1),
+			)
+			.mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveSecondPage = resolve;
+				}),
+			);
+
+		renderList("uuid-1");
+		await screen.findByText("First Song");
+
+		const lastCall = infiniteScrollCalls[infiniteScrollCalls.length - 1];
+		await act(async () => {
+			lastCall.onLoadMore();
+		});
+
+		expect(await screen.findByText("Loading more…")).toBeInTheDocument();
+
+		await act(async () => {
+			resolveSecondPage?.(
+				trackPage(
+					[{ position: 1, songId: "song-2", name: "Second Song" }],
+					null,
+				),
+			);
+		});
 	});
 });

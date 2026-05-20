@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
+import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import type { LikedSong } from "../types";
-import { useInfiniteScroll } from "./useInfiniteScroll";
 import { useSongSuggestionPrefetch } from "./useSongSuggestionPrefetch";
 
 interface UseLikedSongsListModelOptions {

@@ -11,7 +11,7 @@ const mockUseSongSuggestionPrefetch = vi.fn((args: unknown) => {
 	return vi.fn();
 });
 
-vi.mock("../hooks/useInfiniteScroll", () => ({
+vi.mock("@/lib/hooks/useInfiniteScroll", () => ({
 	useInfiniteScroll: (args: unknown) => mockUseInfiniteScroll(args),
 }));
 

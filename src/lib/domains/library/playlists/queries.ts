@@ -306,6 +306,44 @@ export function getPlaylistSongs(
 }
 
 /**
+ * Paginated read of playlist songs using an offset cursor.
+ *
+ * We intentionally avoid keyset pagination on `position` because the schema
+ * does not enforce `(playlist_id, position)` uniqueness. Using the row offset
+ * keeps pagination correct even if duplicate positions slip into the table.
+ */
+export async function getPlaylistSongsPage(
+	playlistId: string,
+	options: { cursor?: number; limit: number },
+): Promise<
+	Result<{ items: PlaylistSong[]; nextCursor: number | null }, DbError>
+> {
+	const supabase = createAdminSupabaseClient();
+	const pageLimit = options.limit + 1;
+	const start = options.cursor ?? 0;
+
+	const result = await fromSupabaseMany(
+		supabase
+			.from("playlist_song")
+			.select("*")
+			.eq("playlist_id", playlistId)
+			.order("position", { ascending: true })
+			.order("id", { ascending: true })
+			.range(start, start + pageLimit - 1),
+	);
+	if (Result.isError(result)) {
+		return Result.err(result.error);
+	}
+
+	const rows = result.value;
+	const hasMore = rows.length > options.limit;
+	const items = hasMore ? rows.slice(0, options.limit) : rows;
+	const nextCursor = hasMore ? start + items.length : null;
+
+	return Result.ok({ items, nextCursor });
+}
+
+/**
  * Creates or updates songs in a playlist.
  * Uses (playlist_id, song_id) as the conflict target.
  * Returns all upserted playlist-song records.

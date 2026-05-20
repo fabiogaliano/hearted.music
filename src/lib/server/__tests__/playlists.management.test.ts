@@ -8,7 +8,7 @@ import type { LibraryProcessingApplyOutcome } from "@/lib/workflows/library-proc
 import {
 	flushPlaylistManagementSession,
 	getPlaylistManagementData,
-	getPlaylistTrackPreview,
+	getPlaylistTracksPage,
 	setPlaylistTargetMutation,
 } from "../playlists.functions";
 
@@ -17,7 +17,7 @@ const {
 	mockGetPlaylists,
 	mockGetTargetPlaylists,
 	mockGetPlaylistById,
-	mockGetPlaylistSongs,
+	mockGetPlaylistSongsPage,
 	mockGetSongsByIds,
 	mockSetPlaylistTarget,
 	mockApplyLibraryProcessingChange,
@@ -29,7 +29,7 @@ const {
 	mockGetPlaylists: vi.fn(),
 	mockGetTargetPlaylists: vi.fn(),
 	mockGetPlaylistById: vi.fn(),
-	mockGetPlaylistSongs: vi.fn(),
+	mockGetPlaylistSongsPage: vi.fn(),
 	mockGetSongsByIds: vi.fn(),
 	mockSetPlaylistTarget: vi.fn(),
 	mockApplyLibraryProcessingChange: vi.fn(),
@@ -64,7 +64,8 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	getTargetPlaylists: (...args: unknown[]) => mockGetTargetPlaylists(...args),
 	getPlaylistById: (...args: unknown[]) => mockGetPlaylistById(...args),
 	getPlaylistBySpotifyId: vi.fn(),
-	getPlaylistSongs: (...args: unknown[]) => mockGetPlaylistSongs(...args),
+	getPlaylistSongsPage: (...args: unknown[]) =>
+		mockGetPlaylistSongsPage(...args),
 	deletePlaylist: vi.fn(),
 	setPlaylistTarget: (...args: unknown[]) => mockSetPlaylistTarget(...args),
 	updatePlaylistMetadata: vi.fn(),
@@ -174,7 +175,18 @@ describe("getPlaylistManagementData", () => {
 	});
 });
 
-describe("getPlaylistTrackPreview", () => {
+function makePlaylistSongRow(overrides: { song_id: string; position: number }) {
+	return {
+		id: `ps-${overrides.position}`,
+		playlist_id: "uuid-1",
+		song_id: overrides.song_id,
+		position: overrides.position,
+		added_at: "2026-03-28T00:00:00Z",
+		created_at: "2026-03-28T00:00:00Z",
+	};
+}
+
+describe("getPlaylistTracksPage", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockGetPlaylistById.mockResolvedValue(
@@ -182,74 +194,182 @@ describe("getPlaylistTrackPreview", () => {
 		);
 	});
 
-	it("joins playlist songs with song data", async () => {
-		mockGetPlaylistSongs.mockResolvedValue(
+	it("returns first page with nextCursor when more rows exist", async () => {
+		mockGetPlaylistSongsPage.mockResolvedValue(
+			Result.ok({
+				items: [
+					makePlaylistSongRow({ song_id: "song-1", position: 0 }),
+					makePlaylistSongRow({ song_id: "song-2", position: 1 }),
+				],
+				nextCursor: 2,
+			}),
+		);
+		mockGetSongsByIds.mockResolvedValue(
 			Result.ok([
-				{
-					id: "ps-1",
-					playlist_id: "uuid-1",
-					song_id: "song-1",
-					position: 0,
-					added_at: "2026-03-28T00:00:00Z",
-					created_at: "2026-03-28T00:00:00Z",
-				},
+				makeSong({ id: "song-1", name: "Song One" }),
+				makeSong({ id: "song-2", name: "Song Two" }),
 			]),
+		);
+
+		const result = await getPlaylistTracksPage({
+			data: { playlistId: "uuid-1", limit: 2 },
+		});
+
+		expect(mockGetPlaylistSongsPage).toHaveBeenCalledWith("uuid-1", {
+			cursor: undefined,
+			limit: 2,
+		});
+		expect(result.tracks).toHaveLength(2);
+		expect(result.tracks[0].name).toBe("Song One");
+		expect(result.tracks[1].name).toBe("Song Two");
+		expect(result.nextCursor).toBe(2);
+	});
+
+	it("forwards cursor to the domain query for subsequent pages", async () => {
+		mockGetPlaylistSongsPage.mockResolvedValue(
+			Result.ok({
+				items: [makePlaylistSongRow({ song_id: "song-3", position: 2 })],
+				nextCursor: null,
+			}),
+		);
+		mockGetSongsByIds.mockResolvedValue(
+			Result.ok([makeSong({ id: "song-3", name: "Song Three" })]),
+		);
+
+		const result = await getPlaylistTracksPage({
+			data: { playlistId: "uuid-1", cursor: 2, limit: 2 },
+		});
+
+		expect(mockGetPlaylistSongsPage).toHaveBeenCalledWith("uuid-1", {
+			cursor: 2,
+			limit: 2,
+		});
+		expect(result.tracks).toHaveLength(1);
+		expect(result.tracks[0].position).toBe(2);
+		expect(result.nextCursor).toBeNull();
+	});
+
+	it("preserves the order returned by the domain query", async () => {
+		mockGetPlaylistSongsPage.mockResolvedValue(
+			Result.ok({
+				items: [
+					makePlaylistSongRow({ song_id: "song-1", position: 0 }),
+					makePlaylistSongRow({ song_id: "song-2", position: 1 }),
+					makePlaylistSongRow({ song_id: "song-3", position: 2 }),
+				],
+				nextCursor: null,
+			}),
+		);
+		// Return songs in a different order than the playlist order to prove
+		// we re-order to match the playlist_song positions, not the song
+		// table response order.
+		mockGetSongsByIds.mockResolvedValue(
+			Result.ok([
+				makeSong({ id: "song-3", name: "Song Three" }),
+				makeSong({ id: "song-1", name: "Song One" }),
+				makeSong({ id: "song-2", name: "Song Two" }),
+			]),
+		);
+
+		const result = await getPlaylistTracksPage({
+			data: { playlistId: "uuid-1", limit: 50 },
+		});
+
+		expect(result.tracks.map((t) => t.songId)).toEqual([
+			"song-1",
+			"song-2",
+			"song-3",
+		]);
+	});
+
+	it("returns empty page when playlist has no tracks", async () => {
+		mockGetPlaylistSongsPage.mockResolvedValue(
+			Result.ok({ items: [], nextCursor: null }),
+		);
+
+		const result = await getPlaylistTracksPage({
+			data: { playlistId: "uuid-1", limit: 50 },
+		});
+
+		expect(result.tracks).toHaveLength(0);
+		expect(result.nextCursor).toBeNull();
+	});
+
+	it("returns nextCursor: null on the final page", async () => {
+		mockGetPlaylistSongsPage.mockResolvedValue(
+			Result.ok({
+				items: [makePlaylistSongRow({ song_id: "song-1", position: 0 })],
+				nextCursor: null,
+			}),
 		);
 		mockGetSongsByIds.mockResolvedValue(
 			Result.ok([makeSong({ id: "song-1" })]),
 		);
 
-		const result = await getPlaylistTrackPreview({
-			data: { playlistId: "uuid-1" },
+		const result = await getPlaylistTracksPage({
+			data: { playlistId: "uuid-1", limit: 50 },
 		});
 
-		expect(result).toHaveLength(1);
-		expect(result[0].name).toBe("Test Song");
-		expect(result[0].artists).toEqual(["Artist A"]);
-		expect(result[0].position).toBe(0);
-	});
-
-	it("returns empty for playlist with no tracks", async () => {
-		mockGetPlaylistSongs.mockResolvedValue(Result.ok([]));
-
-		const result = await getPlaylistTrackPreview({
-			data: { playlistId: "uuid-1" },
-		});
-
-		expect(result).toHaveLength(0);
+		expect(result.nextCursor).toBeNull();
 	});
 
 	it("filters out songs missing from song table while keeping matched rows", async () => {
-		mockGetPlaylistSongs.mockResolvedValue(
-			Result.ok([
-				{
-					id: "ps-1",
-					playlist_id: "uuid-1",
-					song_id: "song-1",
-					position: 0,
-					added_at: "2026-03-28T00:00:00Z",
-					created_at: "2026-03-28T00:00:00Z",
-				},
-				{
-					id: "ps-2",
-					playlist_id: "uuid-1",
-					song_id: "song-missing",
-					position: 1,
-					added_at: "2026-03-28T00:00:00Z",
-					created_at: "2026-03-28T00:00:00Z",
-				},
-			]),
+		mockGetPlaylistSongsPage.mockResolvedValue(
+			Result.ok({
+				items: [
+					makePlaylistSongRow({ song_id: "song-1", position: 0 }),
+					makePlaylistSongRow({ song_id: "song-missing", position: 1 }),
+				],
+				nextCursor: null,
+			}),
 		);
 		mockGetSongsByIds.mockResolvedValue(
 			Result.ok([makeSong({ id: "song-1" })]),
 		);
 
-		const result = await getPlaylistTrackPreview({
-			data: { playlistId: "uuid-1" },
+		const result = await getPlaylistTracksPage({
+			data: { playlistId: "uuid-1", limit: 50 },
 		});
 
-		expect(result).toHaveLength(1);
-		expect(result[0].songId).toBe("song-1");
+		expect(result.tracks).toHaveLength(1);
+		expect(result.tracks[0].songId).toBe("song-1");
+	});
+
+	it("skips filtered-empty pages and keeps loading until loadable tracks remain", async () => {
+		mockGetPlaylistSongsPage
+			.mockResolvedValueOnce(
+				Result.ok({
+					items: [
+						makePlaylistSongRow({ song_id: "song-missing", position: 0 }),
+					],
+					nextCursor: 1,
+				}),
+			)
+			.mockResolvedValueOnce(
+				Result.ok({
+					items: [makePlaylistSongRow({ song_id: "song-2", position: 1 })],
+					nextCursor: null,
+				}),
+			);
+		mockGetSongsByIds
+			.mockResolvedValueOnce(Result.ok([]))
+			.mockResolvedValueOnce(Result.ok([makeSong({ id: "song-2" })]));
+
+		const result = await getPlaylistTracksPage({
+			data: { playlistId: "uuid-1", limit: 1 },
+		});
+
+		expect(mockGetPlaylistSongsPage).toHaveBeenNthCalledWith(1, "uuid-1", {
+			cursor: undefined,
+			limit: 1,
+		});
+		expect(mockGetPlaylistSongsPage).toHaveBeenNthCalledWith(2, "uuid-1", {
+			cursor: 1,
+			limit: 1,
+		});
+		expect(result.tracks).toHaveLength(1);
+		expect(result.tracks[0].songId).toBe("song-2");
+		expect(result.nextCursor).toBeNull();
 	});
 
 	it("throws sanitized error when playlist lookup fails", async () => {
@@ -259,7 +379,7 @@ describe("getPlaylistTrackPreview", () => {
 		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
 		await expect(
-			getPlaylistTrackPreview({ data: { playlistId: "uuid-1" } }),
+			getPlaylistTracksPage({ data: { playlistId: "uuid-1", limit: 50 } }),
 		).rejects.toThrow("Failed to load playlist");
 
 		expect(warnSpy).toHaveBeenCalled();
@@ -270,7 +390,7 @@ describe("getPlaylistTrackPreview", () => {
 		mockGetPlaylistById.mockResolvedValue(Result.ok(null));
 
 		await expect(
-			getPlaylistTrackPreview({ data: { playlistId: "uuid-1" } }),
+			getPlaylistTracksPage({ data: { playlistId: "uuid-1", limit: 50 } }),
 		).rejects.toThrow("Playlist not found");
 	});
 
@@ -281,7 +401,7 @@ describe("getPlaylistTrackPreview", () => {
 		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
 		await expect(
-			getPlaylistTrackPreview({ data: { playlistId: "uuid-1" } }),
+			getPlaylistTracksPage({ data: { playlistId: "uuid-1", limit: 50 } }),
 		).rejects.toThrow("Playlist not found");
 
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -295,14 +415,14 @@ describe("getPlaylistTrackPreview", () => {
 		warnSpy.mockRestore();
 	});
 
-	it("throws sanitized error when playlist-song query fails", async () => {
-		mockGetPlaylistSongs.mockResolvedValue(
+	it("throws sanitized error when playlist-song page query fails", async () => {
+		mockGetPlaylistSongsPage.mockResolvedValue(
 			Result.err(new DatabaseError({ code: "42000", message: "db boom" })),
 		);
 		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
 		await expect(
-			getPlaylistTrackPreview({ data: { playlistId: "uuid-1" } }),
+			getPlaylistTracksPage({ data: { playlistId: "uuid-1", limit: 50 } }),
 		).rejects.toThrow("Failed to load playlist tracks");
 
 		expect(warnSpy).toHaveBeenCalled();
@@ -310,17 +430,11 @@ describe("getPlaylistTrackPreview", () => {
 	});
 
 	it("throws sanitized error when song details query fails", async () => {
-		mockGetPlaylistSongs.mockResolvedValue(
-			Result.ok([
-				{
-					id: "ps-1",
-					playlist_id: "uuid-1",
-					song_id: "song-1",
-					position: 0,
-					added_at: "2026-03-28T00:00:00Z",
-					created_at: "2026-03-28T00:00:00Z",
-				},
-			]),
+		mockGetPlaylistSongsPage.mockResolvedValue(
+			Result.ok({
+				items: [makePlaylistSongRow({ song_id: "song-1", position: 0 })],
+				nextCursor: null,
+			}),
 		);
 		mockGetSongsByIds.mockResolvedValue(
 			Result.err(new DatabaseError({ code: "42000", message: "db boom" })),
@@ -328,7 +442,7 @@ describe("getPlaylistTrackPreview", () => {
 		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
 		await expect(
-			getPlaylistTrackPreview({ data: { playlistId: "uuid-1" } }),
+			getPlaylistTracksPage({ data: { playlistId: "uuid-1", limit: 50 } }),
 		).rejects.toThrow("Failed to load track details");
 
 		expect(warnSpy).toHaveBeenCalled();
