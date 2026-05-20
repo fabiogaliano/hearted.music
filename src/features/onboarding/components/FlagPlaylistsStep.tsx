@@ -49,17 +49,15 @@ export function FlagPlaylistsStep({
 
 	const fewPlaylists = initialPlaylists.length < 16;
 
-	const [rowCount, setRowCount] = useState(() =>
-		fewPlaylists ||
-		(typeof window !== "undefined" &&
-			window.matchMedia("(max-height: 900px)").matches)
-			? 2
-			: 3,
-	);
+	const [rowCount, setRowCount] = useState(() => (fewPlaylists ? 2 : 3));
 
 	useEffect(() => {
-		if (fewPlaylists) return;
+		if (fewPlaylists) {
+			setRowCount(2);
+			return;
+		}
 		const mediaQuery = window.matchMedia("(max-height: 900px)");
+		setRowCount(mediaQuery.matches ? 2 : 3);
 		const handleChange = (e: MediaQueryListEvent) => {
 			setRowCount(e.matches ? 2 : 3);
 		};

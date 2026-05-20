@@ -52,13 +52,19 @@ function getDetail(intent: CheckoutIntent | null, state: BillingState): string {
 function CheckoutSuccessPage() {
 	const contextBilling = Route.useRouteContext().billingState;
 
-	const [intent] = useState(() => loadCheckoutIntent());
+	const [intent, setIntent] = useState<CheckoutIntent | null>(null);
+	const [hasHydrated, setHasHydrated] = useState(false);
 	const [timedOut, setTimedOut] = useState(false);
 
 	const { data: billingState = contextBilling } = useQuery({
 		queryKey: billingKeys.state,
 		queryFn: () => getBillingState(),
 	});
+
+	useEffect(() => {
+		setIntent(loadCheckoutIntent());
+		setHasHydrated(true);
+	}, []);
 
 	const confirmed =
 		intent !== null && isCheckoutFulfilled(intent, billingState);
@@ -71,7 +77,7 @@ function CheckoutSuccessPage() {
 		return () => clearTimeout(id);
 	}, [confirmed, intent]);
 
-	if (pending) {
+	if (!hasHydrated || pending) {
 		return (
 			<div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
 				<p className="theme-primary animate-pulse text-2xl">♡</p>

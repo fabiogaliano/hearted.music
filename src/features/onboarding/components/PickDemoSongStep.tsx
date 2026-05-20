@@ -34,15 +34,11 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 	const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 
-	const [rowCount, setRowCount] = useState(() =>
-		typeof window !== "undefined" &&
-		window.matchMedia("(max-height: 1050px)").matches
-			? 2
-			: 3,
-	);
+	const [rowCount, setRowCount] = useState(3);
 
 	useEffect(() => {
 		const mediaQuery = window.matchMedia("(max-height: 1050px)");
+		setRowCount(mediaQuery.matches ? 2 : 3);
 		const handleChange = (e: MediaQueryListEvent) => {
 			setRowCount(e.matches ? 2 : 3);
 		};

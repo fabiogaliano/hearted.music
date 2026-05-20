@@ -67,11 +67,7 @@ export function PlanSelectionStep({
 	syncStats,
 	readyCopyVariant,
 }: PlanSelectionStepProps) {
-	const [planState, setPlanState] = useState<PlanState>(() => {
-		// If returning from Stripe, start in polling
-		if (loadCheckoutIntent()) return "polling";
-		return "initial";
-	});
+	const [planState, setPlanState] = useState<PlanState>("initial");
 
 	const [configState, setConfigState] = useState<ConfigState>({
 		status: "loading",
@@ -81,7 +77,7 @@ export function PlanSelectionStep({
 	);
 
 	const [pendingIntent, setPendingIntent] = useState<CheckoutIntent | null>(
-		() => loadCheckoutIntent(),
+		null,
 	);
 
 	const { data: billingState } = useQuery<BillingState>({
@@ -90,6 +86,14 @@ export function PlanSelectionStep({
 	});
 
 	const pollingState = useCheckoutPolling(pendingIntent);
+
+	useEffect(() => {
+		const persistedIntent = loadCheckoutIntent();
+		if (persistedIntent) {
+			setPendingIntent(persistedIntent);
+			setPlanState("polling");
+		}
+	}, []);
 
 	// Fetch plan config on mount
 	useEffect(() => {
