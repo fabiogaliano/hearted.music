@@ -33,6 +33,7 @@ const LikedSongsPageSchema = z.object({
 	]),
 	cursor: z.string().optional(),
 	limit: z.number().int().min(1).max(100).optional(),
+	search: z.string().trim().max(100).optional(),
 });
 
 const LikedSongBySlugSchema = z.object({
@@ -99,11 +100,15 @@ export const getLikedSongsPage = createServerFn({ method: "GET" })
 		const { session } = context;
 
 		const limit = data.limit ?? 15;
+		const trimmedSearch = data.search?.trim();
+		const search =
+			trimmedSearch && trimmedSearch.length > 0 ? trimmedSearch : undefined;
 
 		const result = await getPageWithDetails(session.accountId, {
 			cursor: data.cursor,
 			limit,
 			filter: data.filter,
+			search,
 		});
 
 		if (Result.isError(result)) {

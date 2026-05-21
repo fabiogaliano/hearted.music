@@ -6,6 +6,7 @@ import type { LikedSong } from "../types";
 
 interface UseLikedSongsCollectionOptions {
 	filter: FilterOption;
+	search?: string;
 	isWalkthrough: boolean;
 	walkthroughSong: WalkthroughSong | null;
 }
@@ -42,11 +43,12 @@ function buildSyntheticLikedSong(ws: WalkthroughSong): LikedSong {
 
 export function useLikedSongsCollection({
 	filter,
+	search,
 	isWalkthrough,
 	walkthroughSong,
 }: UseLikedSongsCollectionOptions) {
 	const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-		useInfiniteQuery(likedSongsInfiniteQueryOptions(filter));
+		useInfiniteQuery(likedSongsInfiniteQueryOptions(filter, search));
 
 	const songs = useMemo(
 		() => data?.pages.flatMap((page) => page.songs) ?? [],

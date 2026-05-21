@@ -1964,6 +1964,7 @@ export type Database = {
 					p_cursor?: string;
 					p_filter?: string;
 					p_limit?: number;
+					p_search?: string;
 				};
 				Returns: {
 					analysis_content: Json;

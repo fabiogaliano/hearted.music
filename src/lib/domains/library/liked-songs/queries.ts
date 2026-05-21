@@ -149,18 +149,23 @@ export async function getPageWithDetails(
 		cursor?: string;
 		limit?: number;
 		filter?: LikedSongFilter;
+		search?: string;
 	} = {},
 ): Promise<
 	Result<{ items: LikedSongPageRow[]; nextCursor: string | null }, DbError>
 > {
 	const supabase = createAdminSupabaseClient();
 	const limit = options.limit ?? 50;
+	const trimmedSearch = options.search?.trim();
+	const search =
+		trimmedSearch && trimmedSearch.length > 0 ? trimmedSearch : undefined;
 
 	const { data, error } = await supabase.rpc("get_liked_songs_page", {
 		p_account_id: accountId,
 		p_cursor: options.cursor,
 		p_limit: limit,
 		p_filter: options.filter ?? "all",
+		p_search: search,
 	});
 
 	if (error) {

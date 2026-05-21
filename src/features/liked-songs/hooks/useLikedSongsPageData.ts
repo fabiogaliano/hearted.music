@@ -7,6 +7,7 @@ import { useSelectedLikedSongBySlug } from "./useSelectedLikedSongBySlug";
 interface UseLikedSongsPageDataOptions {
 	accountId: string;
 	filter: FilterOption;
+	search?: string;
 	selectedSlug?: string | null;
 	isWalkthrough: boolean;
 	walkthroughSong: WalkthroughSong | null;
@@ -16,6 +17,7 @@ interface UseLikedSongsPageDataOptions {
 export function useLikedSongsPageData({
 	accountId,
 	filter,
+	search,
 	selectedSlug,
 	isWalkthrough,
 	walkthroughSong,
@@ -30,6 +32,7 @@ export function useLikedSongsPageData({
 		isFetchingNextPage,
 	} = useLikedSongsCollection({
 		filter,
+		search,
 		isWalkthrough,
 		walkthroughSong,
 	});
