@@ -42,6 +42,12 @@ code {
   --ease-out-expo: var(--ease-out-expo);
   --ease-out-quart: var(--ease-out-quart);
 
+  /* Single source of truth for keyboard focus indication.
+     Tweak --focus-ring-width to change every focus ring in the app. */
+  --focus-ring-width: 2px;
+  --focus-ring-color: var(--ring);
+  --focus-ring-offset: 4px;
+
   --kbd-text-color: var(--t-text-muted);
   --kbd-bg-color: color-mix(in oklch, var(--t-text) 10%, transparent);
   --kbd-border-color: color-mix(in oklch, var(--t-text-muted) 30%, transparent);
@@ -97,10 +103,10 @@ code {
     color: var(--t-text);
   }
 
-  /* Global keyboard focus indicator - ring style */
+  /* Floating focus ring - standalone interactive elements */
   :is(button, input, textarea, select, a, [role="button"], [role="option"], [tabindex]):focus-visible {
-    outline: 1px solid var(--ring);
-    outline-offset: 4px;
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
   }
 
   /* Hide browser focus ring when custom navigation indicator is active */
@@ -112,12 +118,24 @@ code {
   [data-nav-engaged="true"]:focus-visible {
     outline: none;
   }
+
+  /* Inset focus ring - roving-tabindex list items.
+     Semantically equivalent to :focus-visible, but applied via data-attr to
+     avoid the flicker that would occur as focus hops between siblings during
+     arrow-key navigation. Sits inside the box so dense lists don't overflow.
+     The :focus-visible variant exists to beat the global :is(...):focus-visible
+     rule on specificity; the plain variant covers programmatic data-tab-focused. */
+  [data-tab-focused="true"],
+  [data-tab-focused="true"]:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: calc(var(--focus-ring-width) * -1);
+  }
 }
 
 @layer utilities {
   /* Solid outline focus - for buttons and interactive elements */
   .focus-outline-solid {
-    outline: 1px solid transparent;
+    outline: 2px solid transparent;
     outline-offset: 4px;
   }
   .focus-outline-solid:focus-visible {
@@ -126,7 +144,7 @@ code {
 
   /* Dashed outline focus - for selectable items in lists/grids */
   .focus-outline-dashed {
-    outline: 1px dashed transparent;
+    outline: 2px dashed transparent;
     outline-offset: 4px;
   }
   .focus-outline-dashed:focus-visible {
@@ -138,11 +156,9 @@ code {
     background: var(--hover-bg);
   }
 
-  .song-card:focus-visible {
-    outline: none;
-  }
-
-  /* Song cards stay fully renderable so keyboard navigation updates paint immediately. */
+  /* Song cards stay fully renderable so keyboard navigation updates paint immediately.
+     Focus visuals are handled globally via [data-tab-focused="true"] and the
+     [data-nav-engaged="true"]:focus-visible flicker-suppression rule. */
 
   .theme-text {
     color: var(--t-text);
@@ -246,9 +262,7 @@ code {
     border-left-color: var(--t-primary);
   }
 
-  .theme-selectable-row[data-tab-focused="true"] {
-    box-shadow: inset 0 0 0 1px var(--t-primary);
-  }
+  /* Tab-focus is handled by the global [data-tab-focused="true"] rule */
 
   .theme-border-brighten:hover {
     border-color: var(--t-text-muted);
