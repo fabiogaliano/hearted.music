@@ -64,6 +64,7 @@ describe("useLikedSongsListModel", () => {
 				walkthroughSongId: null,
 				selectionMode: true,
 				showSelectionUI: true,
+				activeFilter: "all",
 			}),
 		);
 
@@ -92,6 +93,7 @@ describe("useLikedSongsListModel", () => {
 				walkthroughSongId: null,
 				selectionMode: true,
 				showSelectionUI: true,
+				activeFilter: "all",
 			}),
 		);
 

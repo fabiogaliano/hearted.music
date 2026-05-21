@@ -96,7 +96,7 @@ export function ActivityItem({ item }: ActivityItemProps) {
 	return (
 		<Link
 			to="/liked-songs"
-			search={{ filter: "all", song: songSlug }}
+			search={{ song: songSlug }}
 			className="theme-hover-surface -mx-4 flex items-center gap-6 px-4 py-5 transition-[background-color] duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:[outline-color:var(--t-primary)]"
 		>
 			{imageUrl ? (

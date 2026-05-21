@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
+import type { SearchFilter } from "../filter";
 import type { LikedSong } from "../types";
 import { useSongSuggestionPrefetch } from "./useSongSuggestionPrefetch";
 
@@ -13,6 +14,7 @@ interface UseLikedSongsListModelOptions {
 	walkthroughSongId: string | null;
 	selectionMode: boolean;
 	showSelectionUI: boolean;
+	activeFilter: SearchFilter;
 }
 
 export function useLikedSongsListModel({
@@ -25,13 +27,21 @@ export function useLikedSongsListModel({
 	walkthroughSongId,
 	selectionMode,
 	showSelectionUI,
+	activeFilter,
 }: UseLikedSongsListModelOptions) {
+	// Show only locked songs when either the user is in unlock-selection mode
+	// or they've explicitly filtered to "locked". Both paths reuse the same
+	// auto-paginate loop below so sparsely-distributed locked rows still
+	// surface without the user having to scroll.
+	const showLockedOnly =
+		(selectionMode && showSelectionUI) || activeFilter === "locked";
+
 	const visibleSongs = useMemo(
 		() =>
-			selectionMode && showSelectionUI
+			showLockedOnly
 				? displayedSongs.filter((song) => song.displayState === "locked")
 				: displayedSongs,
-		[displayedSongs, selectionMode, showSelectionUI],
+		[displayedSongs, showLockedOnly],
 	);
 
 	const hasMore = isWalkthrough ? false : (hasNextPage ?? false);
@@ -43,8 +53,7 @@ export function useLikedSongsListModel({
 
 	useEffect(() => {
 		if (
-			selectionMode &&
-			showSelectionUI &&
+			showLockedOnly &&
 			visibleSongs.length === 0 &&
 			hasMore &&
 			!isFetchingNextPage
@@ -52,8 +61,7 @@ export function useLikedSongsListModel({
 			handleLoadMore();
 		}
 	}, [
-		selectionMode,
-		showSelectionUI,
+		showLockedOnly,
 		visibleSongs.length,
 		hasMore,
 		isFetchingNextPage,

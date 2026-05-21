@@ -20,47 +20,42 @@ export function SongSelectionBar({
 	containerRef,
 }: SongSelectionBarProps) {
 	const canAfford = selectedCount <= remainingBalance;
+	const projectedRemaining = Math.max(0, remainingBalance - selectedCount);
 
 	return (
 		<div
 			ref={containerRef}
-			className="theme-bg theme-border-color sticky top-0 z-50 -mx-3 flex items-center justify-between border-t px-9 py-4"
+			className="theme-bg theme-border-color sticky top-0 z-50 -mt-6 flex items-center justify-between border-b py-4"
 		>
-			<div className="flex items-center gap-4">
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={onCancel}
-					className="flex items-center gap-1"
-					style={{ fontFamily: fonts.body }}
-				>
-					<XIcon size={14} />
-					Cancel
-				</Button>
-				<span
-					className="theme-text text-sm tabular-nums"
-					style={{ fontFamily: fonts.body }}
-				>
-					{selectedCount} {selectedCount === 1 ? "song" : "songs"} selected
-				</span>
+			<Button
+				variant="ghost"
+				size="sm"
+				onClick={onCancel}
+				className="flex items-center gap-1"
+				style={{ fontFamily: fonts.body }}
+			>
+				<XIcon size={14} />
+				Cancel
+			</Button>
+
+			<div className="flex items-center gap-3">
 				<span
 					className="theme-text-muted text-xs tabular-nums"
 					style={{ fontFamily: fonts.body }}
 				>
-					· {remainingBalance} songs to explore remaining
+					{projectedRemaining} left after this
 				</span>
+				<Button
+					onClick={onConfirm}
+					disabled={selectedCount === 0 || !canAfford}
+					className="flex items-center gap-2 rounded-full"
+					style={{ fontFamily: fonts.body }}
+				>
+					<LockSimpleIcon size={13} weight="regular" />
+					Unlock {selectedCount > 0 ? selectedCount : ""}{" "}
+					{selectedCount === 1 ? "song" : "songs"}
+				</Button>
 			</div>
-
-			<Button
-				onClick={onConfirm}
-				disabled={selectedCount === 0 || !canAfford}
-				className="flex items-center gap-2 rounded-full"
-				style={{ fontFamily: fonts.body }}
-			>
-				<LockSimpleIcon size={13} weight="regular" />
-				Unlock {selectedCount > 0 ? selectedCount : ""}{" "}
-				{selectedCount === 1 ? "song" : "songs"}
-			</Button>
 		</div>
 	);
 }

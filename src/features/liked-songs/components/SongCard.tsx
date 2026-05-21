@@ -31,7 +31,6 @@ interface SongCardProps {
 	scrollMarginTop?: string;
 	isEnabled?: boolean;
 	isWalkthroughHighlight?: boolean;
-	hideLockedBadge?: boolean;
 }
 
 interface SongCardContentProps {
@@ -43,7 +42,6 @@ interface SongCardContentProps {
 	isChecked: boolean;
 	isWalkthroughHighlight: boolean;
 	showWalkthroughUi: boolean;
-	hideLockedBadge: boolean;
 }
 
 export const SongCard = memo(function SongCard({
@@ -67,7 +65,6 @@ export const SongCard = memo(function SongCard({
 	scrollMarginTop,
 	isEnabled = true,
 	isWalkthroughHighlight = false,
-	hideLockedBadge = false,
 }: SongCardProps) {
 	const songId = song.track.id;
 	const isLocked = song.displayState === "locked";
@@ -107,7 +104,6 @@ export const SongCard = memo(function SongCard({
 						? "2px solid var(--t-primary)"
 						: "2px solid transparent",
 				marginLeft: "-2px",
-				boxShadow: dataTabFocused ? "0 0 0 1px var(--t-primary)" : undefined,
 				scrollMarginTop,
 				opacity: !isEnabled ? 0.5 : isSelectionChecked ? 1 : isLocked ? 0.6 : 1,
 				pointerEvents: !isEnabled ? "none" : undefined,
@@ -121,7 +117,6 @@ export const SongCard = memo(function SongCard({
 			isSelected,
 			isFocused,
 			showWalkthroughUi,
-			dataTabFocused,
 			scrollMarginTop,
 			isLocked,
 			isWalkthroughHighlight,
@@ -140,7 +135,7 @@ export const SongCard = memo(function SongCard({
 			onPointerDown={onPointerDown}
 			onFocus={onFocus}
 			onBlur={onBlur}
-			className={`song-card -mx-3 flex w-full cursor-pointer items-center gap-4 border-0 bg-transparent px-3 py-4 text-left transition-transform duration-100 active:scale-[0.98]${isWalkthroughHighlight ? " walkthrough-highlight" : ""}`}
+			className={`song-card -mx-3 flex w-full cursor-pointer items-center gap-4 border-0 bg-transparent px-5 py-4 text-left transition-transform duration-100 active:scale-[0.98]${isWalkthroughHighlight ? " walkthrough-highlight" : ""}`}
 			style={buttonStyle}
 		>
 			<SongCardContent
@@ -152,7 +147,6 @@ export const SongCard = memo(function SongCard({
 				isChecked={isChecked}
 				isWalkthroughHighlight={isWalkthroughHighlight}
 				showWalkthroughUi={showWalkthroughUi}
-				hideLockedBadge={hideLockedBadge}
 			/>
 		</button>
 	);
@@ -167,7 +161,6 @@ const SongCardContent = memo(function SongCardContent({
 	isChecked,
 	isWalkthroughHighlight,
 	showWalkthroughUi,
-	hideLockedBadge,
 }: SongCardContentProps) {
 	const isNew = isNewSong(song.liked_at);
 	const isLocked = song.displayState === "locked";
@@ -280,19 +273,9 @@ const SongCardContent = memo(function SongCardContent({
 							/>
 						)}
 					</span>
-				) : isLocked ? (
-					hideLockedBadge ? null : (
-						<span
-							className="theme-text-muted flex shrink-0 items-center gap-1 text-xs"
-							style={{ fontFamily: fonts.body }}
-						>
-							<LockSimpleIcon size={11} weight="regular" />
-							<span className="hidden lg:inline">Unlock</span>
-						</span>
-					)
 				) : (
 					<span
-						className="theme-text-muted hidden shrink-0 text-xs lg:block"
+						className="theme-text-muted hidden shrink-0 text-xs tabular-nums md:block"
 						style={{ fontFamily: fonts.body }}
 					>
 						{formatRelativeTime(song.liked_at)}

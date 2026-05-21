@@ -101,7 +101,7 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 				nextPayload,
 			);
 
-			await router.navigate({ to: "/liked-songs", search: { filter: "all" } });
+			await router.navigate({ to: "/liked-songs" });
 		} catch (error) {
 			console.error("Failed to commit demo song walkthrough:", error);
 			toast.error("Failed to save selection. Please try again.");

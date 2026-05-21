@@ -22,19 +22,22 @@ import { LikedSongsList } from "./components/LikedSongsList";
 import { SongDetailPanel } from "./components/SongDetailPanel";
 import { SongSelectionBar } from "./components/SongSelectionBar";
 import { UnlockConfirmDialog } from "./components/UnlockConfirmDialog";
+import type { SearchFilter } from "./filter";
+import { toQueryFilter } from "./filter";
 import { useLikedSongsListController } from "./hooks/useLikedSongsListController";
 import { useLikedSongsListModel } from "./hooks/useLikedSongsListModel";
 import { useLikedSongsPageData } from "./hooks/useLikedSongsPageData";
 import { useSongExpansion } from "./hooks/useSongExpansion";
 import { useSongUnlock } from "./hooks/useSongUnlock";
-import type { FilterOption } from "./queries";
 
 const useIsomorphicLayoutEffect =
 	typeof window !== "undefined" ? useLayoutEffect : useEffect;
 const LIST_TOP_GAP_PX = 24;
+const SEARCH_DEBOUNCE_MS = 250;
 
 interface LikedSongsPageProps {
-	initialFilter?: FilterOption;
+	filter?: SearchFilter;
+	onFilterChange?: (filter: SearchFilter) => void;
 	selectedSlug?: string | null;
 	accountId: string;
 	billingState?: BillingState;
@@ -42,7 +45,8 @@ interface LikedSongsPageProps {
 }
 
 export function LikedSongsPage({
-	initialFilter = "all",
+	filter = "all",
+	onFilterChange,
 	selectedSlug,
 	accountId,
 	billingState,
@@ -72,6 +76,8 @@ export function LikedSongsPage({
 	const [selectedSongIds, setSelectedSongIds] = useState<Set<string>>(
 		new Set(),
 	);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 	const selectionBarRef = useRef<HTMLDivElement | null>(null);
 	const [selectionBarHeight, setSelectionBarHeight] = useState<number>(0);
 
@@ -120,7 +126,25 @@ export function LikedSongsPage({
 		category: "actions",
 	});
 
-	const filter = initialFilter;
+	const queryFilter = toQueryFilter(filter);
+	const handleFilterChange = useCallback(
+		(next: SearchFilter) => {
+			onFilterChange?.(next);
+		},
+		[onFilterChange],
+	);
+
+	useEffect(() => {
+		const trimmed = searchQuery.trim();
+		if (trimmed === debouncedSearchQuery) return;
+
+		const handle = window.setTimeout(() => {
+			setDebouncedSearchQuery(trimmed);
+		}, SEARCH_DEBOUNCE_MS);
+
+		return () => window.clearTimeout(handle);
+	}, [searchQuery, debouncedSearchQuery]);
+
 	const {
 		isLoading,
 		displayedSongs,
@@ -134,7 +158,8 @@ export function LikedSongsPage({
 		stats,
 	} = useLikedSongsPageData({
 		accountId,
-		filter,
+		filter: queryFilter,
+		search: debouncedSearchQuery,
 		selectedSlug,
 		isWalkthrough,
 		walkthroughSong,
@@ -180,7 +205,10 @@ export function LikedSongsPage({
 		walkthroughSongId: walkthroughSong?.id ?? null,
 		selectionMode,
 		showSelectionUI,
+		activeFilter: filter,
 	});
+
+	const isSearching = debouncedSearchQuery.length > 0;
 
 	useIsomorphicLayoutEffect(() => {
 		if (!selectionMode || !showSelectionUI) {
@@ -272,59 +300,75 @@ export function LikedSongsPage({
 	});
 
 	return (
-		<div ref={containerRef} className="relative min-h-150 max-w-5xl">
-			<LikedSongsHeader
-				stats={stats}
-				lockedSongCount={lockedSongCount}
-				showSelectionUI={showSelectionUI}
-				selectionMode={selectionMode}
-				onEnterSelectionMode={enterSelectionMode}
-			/>
-
-			{selectionMode && showSelectionUI && billingState && (
-				<SongSelectionBar
-					containerRef={selectionBarRef}
-					selectedCount={selectedSongIds.size}
-					remainingBalance={billingState.creditBalance}
-					onConfirm={handleUnlockConfirm}
-					onCancel={exitSelectionMode}
+		<div className="relative min-h-150">
+			<div
+				ref={containerRef}
+				className="mx-auto max-w-4xl transition-transform duration-300 motion-reduce:transition-none"
+				style={{
+					transform: isExpanded
+						? "translate3d(calc(-1 * max(0px, min(clamp(190px, 22.5vw, calc((100vw - 256px) / 2)), calc((100vw - 1216px) / 2)))), 0, 0)"
+						: "translate3d(0, 0, 0)",
+					transitionTimingFunction: "var(--ease-out-quart)",
+				}}
+			>
+				<LikedSongsHeader
+					stats={stats}
+					lockedSongCount={lockedSongCount}
+					showSelectionUI={showSelectionUI}
+					selectionMode={selectionMode}
+					activeFilter={filter}
+					onFilterChange={handleFilterChange}
+					onEnterSelectionMode={enterSelectionMode}
+					searchQuery={searchQuery}
+					onSearchChange={setSearchQuery}
 				/>
-			)}
 
-			{showPaywall && billingState && (
-				<div className="theme-surface-dim-bg theme-border-color mb-6 rounded-xl border px-6 py-4">
-					<PaywallCTA billingState={billingState} />
-				</div>
-			)}
+				{selectionMode && showSelectionUI && billingState && (
+					<SongSelectionBar
+						containerRef={selectionBarRef}
+						selectedCount={selectedSongIds.size}
+						remainingBalance={billingState.creditBalance}
+						onConfirm={handleUnlockConfirm}
+						onCancel={exitSelectionMode}
+					/>
+				)}
 
-			<LikedSongsList
-				data={{
-					isLoading,
-					filter,
-					displayedSongs,
-					visibleSongs,
-					hasMore,
-				}}
-				selection={{
-					isActive: selectionMode && showSelectionUI,
-					selectedSongIds,
-					scrollMarginTop: selectionModeScrollMarginTop,
-					onToggleSelect: toggleSongSelection,
-				}}
-				navigation={{
-					selectedSongId,
-					closingToSongId,
-					isExpanded,
-					navIndexBySongId,
-					getItemProps,
-					onCardClick: handleCardClick,
-					sentinelRef,
-				}}
-				walkthrough={{
-					isActive: isWalkthrough,
-					songId: walkthroughSong?.id ?? null,
-				}}
-			/>
+				{showPaywall && billingState && (
+					<div className="theme-surface-dim-bg theme-border-color mb-6 rounded-xl border px-6 py-4">
+						<PaywallCTA billingState={billingState} />
+					</div>
+				)}
+
+				<LikedSongsList
+					data={{
+						isLoading,
+						filter,
+						displayedSongs,
+						visibleSongs,
+						hasMore,
+						searchQuery: isSearching ? debouncedSearchQuery : null,
+					}}
+					selection={{
+						isActive: selectionMode && showSelectionUI,
+						selectedSongIds,
+						scrollMarginTop: selectionModeScrollMarginTop,
+						onToggleSelect: toggleSongSelection,
+					}}
+					navigation={{
+						selectedSongId,
+						closingToSongId,
+						isExpanded,
+						navIndexBySongId,
+						getItemProps,
+						onCardClick: handleCardClick,
+						sentinelRef,
+					}}
+					walkthrough={{
+						isActive: isWalkthrough,
+						songId: walkthroughSong?.id ?? null,
+					}}
+				/>
+			</div>
 
 			{selectedSong && (
 				<SongDetailPanel

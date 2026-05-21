@@ -1,17 +1,20 @@
+import { CircleNotchIcon } from "@phosphor-icons/react";
 import type { RefCallback } from "react";
 import { useCallback } from "react";
 import type { ListItemNavigationProps } from "@/lib/keyboard/types";
 import { fonts } from "@/lib/theme/fonts";
-import type { FilterOption } from "../queries";
+import type { SearchFilter } from "../filter";
 import type { LikedSong } from "../types";
 import { SongCard } from "./SongCard";
 
 interface LikedSongsListData {
 	isLoading: boolean;
-	filter: FilterOption;
+	filter: SearchFilter;
 	displayedSongs: readonly LikedSong[];
 	visibleSongs: readonly LikedSong[];
 	hasMore: boolean;
+	/** Active search query, or null when not searching. */
+	searchQuery: string | null;
 }
 
 interface LikedSongsListSelection {
@@ -43,6 +46,56 @@ interface LikedSongsListProps {
 	walkthrough: LikedSongsListWalkthrough;
 }
 
+function EditorialNotice({
+	eyebrow,
+	headline,
+	body,
+	isLoading = false,
+}: {
+	eyebrow: string;
+	headline: string;
+	body?: string;
+	isLoading?: boolean;
+}) {
+	return (
+		<div className="flex min-h-80 flex-col items-center justify-center px-6 text-center">
+			{isLoading ? (
+				<CircleNotchIcon
+					size={24}
+					weight="regular"
+					className="theme-primary mb-5 animate-spin"
+					aria-hidden="true"
+				/>
+			) : (
+				<span
+					aria-hidden="true"
+					className="theme-border-bg mb-5 block h-px w-8"
+				/>
+			)}
+			<p
+				className="theme-text-muted text-xs tracking-widest uppercase"
+				style={{ fontFamily: fonts.body }}
+			>
+				{eyebrow}
+			</p>
+			<p
+				className="theme-text mt-2 text-lg font-extralight tracking-tight"
+				style={{ fontFamily: fonts.display }}
+			>
+				{headline}
+			</p>
+			{body && (
+				<p
+					className="theme-text-muted mt-2 max-w-sm text-sm leading-relaxed"
+					style={{ fontFamily: fonts.body }}
+				>
+					{body}
+				</p>
+			)}
+		</div>
+	);
+}
+
 export function LikedSongsList({
 	data,
 	selection,
@@ -53,50 +106,62 @@ export function LikedSongsList({
 
 	if (data.isLoading) {
 		return (
-			<div className="theme-border-color -mx-3 border-t px-3 pt-6">
-				<div className="py-12 text-center">
-					<p
-						className="theme-text-muted text-sm"
-						style={{ fontFamily: fonts.body }}
-					>
-						Loading your liked songs…
-					</p>
-				</div>
+			<div className="-mx-3 px-3 pt-4">
+				<EditorialNotice eyebrow="Loading" headline="One moment." isLoading />
+			</div>
+		);
+	}
+
+	const isLockedOnlyView = selection.isActive || data.filter === "locked";
+
+	if (
+		data.searchQuery &&
+		data.visibleSongs.length === 0 &&
+		(!isLockedOnlyView || !data.hasMore)
+	) {
+		return (
+			<div className="-mx-3 px-3 pt-4">
+				<EditorialNotice
+					eyebrow="No matches"
+					headline={`Nothing for "${data.searchQuery}".`}
+					body="Try a different search or clear it to browse your library."
+				/>
 			</div>
 		);
 	}
 
 	if (data.displayedSongs.length === 0) {
+		const isAll = data.filter === "all";
 		return (
-			<div className="theme-border-color -mx-3 border-t px-3 pt-6">
-				<div className="py-12 text-center">
-					<p
-						className="theme-text-muted text-sm"
-						style={{ fontFamily: fonts.body }}
-					>
-						{data.filter === "all"
-							? "No liked songs yet. Like songs on Spotify to see them here."
-							: `No ${data.filter} songs.`}
-					</p>
-				</div>
+			<div className="-mx-3 px-3 pt-4">
+				<EditorialNotice
+					eyebrow={isAll ? "Nothing yet" : `No ${data.filter}`}
+					headline={isAll ? "Like a song on Spotify." : "Try another filter."}
+					body={
+						isAll
+							? "Your liked songs will land here as soon as you tap the heart."
+							: undefined
+					}
+				/>
 			</div>
 		);
 	}
 
 	return (
-		<div className="theme-border-color -mx-3 border-t px-3 pt-6">
+		<div className="-mx-3 px-3 pt-4">
 			<div className="space-y-1">
-				{data.visibleSongs.length === 0 && selection.isActive && (
-					<div className="py-12 text-center">
-						<p
-							className="theme-text-muted text-sm"
-							style={{ fontFamily: fonts.body }}
-						>
-							{data.hasMore
-								? "Finding locked songs..."
-								: "No locked songs available to unlock."}
-						</p>
-					</div>
+				{data.visibleSongs.length === 0 && isLockedOnlyView && (
+					<EditorialNotice
+						eyebrow={data.hasMore ? "Searching" : "All clear"}
+						headline={
+							data.hasMore
+								? "Finding locked songs…"
+								: selection.isActive
+									? "Nothing left to unlock."
+									: "Nothing locked."
+						}
+						isLoading={data.hasMore}
+					/>
 				)}
 				{data.visibleSongs.map((song) => {
 					const isDemoSong =
@@ -132,7 +197,6 @@ export function LikedSongsList({
 							scrollMarginTop={selection.scrollMarginTop}
 							isEnabled={isSongEnabled}
 							isWalkthroughHighlight={!!isDemoSong && !navigation.isExpanded}
-							hideLockedBadge={walkthrough.isActive}
 						/>
 					);
 				})}
