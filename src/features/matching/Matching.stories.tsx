@@ -8,6 +8,7 @@ const defaultCompletionStats: CompletionStats = {
 	totalSongs: matchingSongs.length,
 	songsMatched: 0,
 	totalAdditions: 0,
+	dismissedCount: 0,
 	skippedCount: 0,
 };
 

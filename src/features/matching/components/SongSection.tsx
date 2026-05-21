@@ -1,7 +1,17 @@
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { memo } from "react";
+import { PlayIcon, XIcon } from "@phosphor-icons/react";
+import {
+	AnimatePresence,
+	motion,
+	useIsPresent,
+	useReducedMotion,
+} from "framer-motion";
+import { memo, type ReactNode, useEffect, useRef, useState } from "react";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { fonts } from "@/lib/theme/fonts";
+import {
+	preloadSpotifyEmbedAPI,
+	SpotifyEmbedIframe,
+} from "./SpotifyEmbedIframe";
 
 const ALBUM_SIZE = "min(100%, clamp(280px, 30vw, 560px))";
 
@@ -13,59 +23,29 @@ interface SongSectionProps {
 	};
 	albumArtUrl?: string;
 	songKey?: string;
+	spotifyId?: string;
 }
 
 export const SongSection = memo(function SongSection({
 	song,
 	albumArtUrl,
 	songKey,
+	spotifyId,
 }: SongSectionProps) {
 	const prefersReducedMotion = useReducedMotion();
 
 	return (
 		<div>
 			<AnimatePresence mode="wait">
-				<motion.div
+				<AnimatedSongPanel
 					key={songKey}
-					initial={prefersReducedMotion ? false : { opacity: 0, x: 20 }}
-					animate={{
-						opacity: 1,
-						x: 0,
-						transition: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
-					}}
-					exit={
-						prefersReducedMotion
-							? {}
-							: {
-									opacity: 0,
-									x: -20,
-									transition: {
-										duration: 0.18,
-										ease: [0.645, 0.045, 0.355, 1],
-									},
-								}
-					}
+					prefersReducedMotion={prefersReducedMotion ?? false}
 				>
-					<div
-						className="relative shrink-0 origin-top"
-						style={{
-							maxWidth: ALBUM_SIZE,
-							width: ALBUM_SIZE,
-						}}
-					>
-						{albumArtUrl ? (
-							<img
-								src={albumArtUrl}
-								alt={song.album}
-								className="aspect-square w-full object-cover"
-								style={{ outline: "1px solid rgba(255, 255, 255, 0.1)" }}
-							/>
-						) : (
-							<div className="aspect-square w-full">
-								<AlbumPlaceholder />
-							</div>
-						)}
-					</div>
+					<AlbumWithPlayer
+						album={song.album}
+						albumArtUrl={albumArtUrl}
+						spotifyId={spotifyId}
+					/>
 
 					<div className="mt-10">
 						<p
@@ -87,8 +67,174 @@ export const SongSection = memo(function SongSection({
 							{song.artist}
 						</p>
 					</div>
-				</motion.div>
+				</AnimatedSongPanel>
 			</AnimatePresence>
 		</div>
 	);
 });
+
+interface AnimatedSongPanelProps {
+	prefersReducedMotion: boolean;
+	children: ReactNode;
+}
+
+function AnimatedSongPanel({
+	prefersReducedMotion,
+	children,
+}: AnimatedSongPanelProps) {
+	// Exiting copies remain mounted briefly under AnimatePresence mode="wait";
+	// disable pointer events so stale DOM cannot receive clicks.
+	const isPresent = useIsPresent();
+	return (
+		<motion.div
+			initial={prefersReducedMotion ? false : { opacity: 0, x: 20 }}
+			animate={{
+				opacity: 1,
+				x: 0,
+				transition: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
+			}}
+			exit={
+				prefersReducedMotion
+					? {}
+					: {
+							opacity: 0,
+							x: -20,
+							transition: {
+								duration: 0.18,
+								ease: [0.645, 0.045, 0.355, 1],
+							},
+						}
+			}
+			style={{ pointerEvents: isPresent ? "auto" : "none" }}
+		>
+			{children}
+		</motion.div>
+	);
+}
+
+interface AlbumWithPlayerProps {
+	album: string;
+	albumArtUrl?: string;
+	spotifyId?: string;
+}
+
+function AlbumWithPlayer({
+	album,
+	albumArtUrl,
+	spotifyId,
+}: AlbumWithPlayerProps) {
+	const [activated, setActivated] = useState(false);
+	const [premounted, setPremounted] = useState(false);
+	const premountTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const canPreview = Boolean(spotifyId);
+
+	useEffect(() => {
+		return () => {
+			if (premountTimeoutRef.current) clearTimeout(premountTimeoutRef.current);
+		};
+	}, []);
+
+	const cancelPremount = () => {
+		if (premountTimeoutRef.current) {
+			clearTimeout(premountTimeoutRef.current);
+			premountTimeoutRef.current = null;
+		}
+	};
+
+	const warmPreview = (delayMs: 0 | 50) => {
+		preloadSpotifyEmbedAPI();
+		if (premounted) return;
+		cancelPremount();
+		if (delayMs === 0) {
+			setPremounted(true);
+			return;
+		}
+		// Avoid iframe work for drive-by pointer movement while keeping deliberate
+		// hover/focus effectively instant.
+		premountTimeoutRef.current = setTimeout(() => {
+			setPremounted(true);
+			premountTimeoutRef.current = null;
+		}, delayMs);
+	};
+
+	const handlePreviewIntent = () => warmPreview(50);
+
+	const handlePreviewLeave = () => cancelPremount();
+
+	const handleActivate = () => {
+		warmPreview(0);
+		setActivated(true);
+	};
+
+	const showIframe = canPreview && spotifyId && (premounted || activated);
+
+	return (
+		<div
+			className="relative aspect-square shrink-0 origin-top overflow-hidden"
+			style={{
+				maxWidth: ALBUM_SIZE,
+				width: ALBUM_SIZE,
+			}}
+		>
+			{!activated &&
+				(albumArtUrl ? (
+					<img
+						src={albumArtUrl}
+						alt={album}
+						className="absolute inset-0 h-full w-full object-cover"
+					/>
+				) : (
+					<div className="absolute inset-0">
+						<AlbumPlaceholder />
+					</div>
+				))}
+
+			{canPreview && !activated && (
+				<button
+					type="button"
+					onClick={handleActivate}
+					onPointerEnter={handlePreviewIntent}
+					onPointerDown={() => warmPreview(0)}
+					onPointerLeave={handlePreviewLeave}
+					onFocus={handlePreviewIntent}
+					onBlur={handlePreviewLeave}
+					className="group absolute inset-0 z-10 flex cursor-pointer items-center justify-center bg-black/10 transition-colors duration-200 hover:bg-black/35 focus-visible:bg-black/35 focus-visible:outline-none motion-safe:active:scale-[0.96]"
+					aria-label="Play preview"
+				>
+					<span className="theme-primary flex size-16 items-center justify-center rounded-full bg-white/70 shadow-md [transition:transform_200ms_cubic-bezier(0.165,0.84,0.44,1),background-color_500ms_ease-out] group-hover:scale-110 group-hover:bg-white group-focus-visible:scale-110 group-focus-visible:bg-white group-focus-visible:ring-2 group-focus-visible:ring-[var(--ring)] group-focus-visible:ring-inset">
+						<PlayIcon size={22} weight="fill" style={{ marginLeft: 2 }} />
+					</span>
+				</button>
+			)}
+
+			{showIframe && spotifyId && (
+				<motion.div
+					className="absolute inset-0"
+					initial={{ opacity: 0 }}
+					animate={{
+						opacity: activated ? 1 : 0,
+						transition: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
+					}}
+					style={{ pointerEvents: activated ? "auto" : "none" }}
+				>
+					<SpotifyEmbedIframe spotifyId={spotifyId} playWhenReady={activated} />
+					{activated && (
+						<button
+							type="button"
+							onClick={() => setActivated(false)}
+							aria-label="Close preview"
+							className="absolute top-6 left-6 z-10 cursor-pointer text-white opacity-90 drop-shadow-md transition-opacity duration-200 hover:opacity-100 motion-safe:active:scale-[0.96]"
+						>
+							<XIcon size={28} weight="bold" />
+						</button>
+					)}
+				</motion.div>
+			)}
+
+			<div
+				className="pointer-events-none absolute inset-0 z-20"
+				style={{ boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.16)" }}
+			/>
+		</div>
+	);
+}

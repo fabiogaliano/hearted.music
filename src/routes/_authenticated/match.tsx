@@ -1,6 +1,6 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { MatchingEmptyState } from "@/features/matching/components/MatchingEmptyState";
 import { useMatchingSession } from "@/features/matching/hooks/useMatchingSession";
@@ -179,6 +179,10 @@ function MatchingPageContent({
 }: MatchingPageContentProps) {
 	const [offset, setOffset] = useState(0);
 	const [addedTo, setAddedTo] = useState<string[]>([]);
+	const [navigationStatus, setNavigationStatus] = useState<"idle" | "pending">(
+		"idle",
+	);
+	const navigationLockedRef = useRef(false);
 
 	const [sessionStats, setSessionStats] = useState(() => ({
 		addedCount: 0,
@@ -197,10 +201,32 @@ function MatchingPageContent({
 	const { data: songData } = useSuspenseQuery(
 		songMatchesQueryOptions(snapshotId, offset),
 	);
+	const currentSong: SongForMatching | null = songData?.song ?? null;
 
 	const { reconnectNeeded, setReconnectNeeded } = useSpotifyReconnectState(
-		songData?.song.id ?? "",
+		currentSong?.id ?? "",
 	);
+
+	const lockNavigation = useCallback(() => {
+		if (navigationLockedRef.current) return false;
+		navigationLockedRef.current = true;
+		setNavigationStatus("pending");
+		return true;
+	}, []);
+
+	const releaseNavigation = useCallback(() => {
+		navigationLockedRef.current = false;
+		setNavigationStatus("idle");
+	}, []);
+
+	const navigationTargetKey = isComplete
+		? "complete"
+		: (currentSong?.id ?? "none");
+
+	useEffect(() => {
+		if (!navigationTargetKey) return;
+		releaseNavigation();
+	}, [navigationTargetKey, releaseNavigation]);
 
 	useEffect(() => {
 		if (!songData) return;
@@ -221,7 +247,6 @@ function MatchingPageContent({
 		];
 	}, [songData, pastSongs]);
 
-	const currentSong: SongForMatching | null = songData?.song ?? null;
 	const currentMatches: Playlist[] = useMemo(
 		() =>
 			songData?.matches.map((m) => ({
@@ -239,6 +264,7 @@ function MatchingPageContent({
 			totalSongs,
 			songsMatched: sessionStats.songsWithAdditions.size,
 			totalAdditions: sessionStats.addedCount,
+			dismissedCount: sessionStats.dismissedCount,
 			skippedCount:
 				offset -
 				sessionStats.songsWithAdditions.size -
@@ -249,7 +275,7 @@ function MatchingPageContent({
 
 	const handleAdd = useCallback(
 		async (playlistId: string) => {
-			if (!currentSong) return;
+			if (!currentSong || navigationLockedRef.current) return;
 			setReconnectNeeded(false);
 			addPresented(currentSong.id);
 			const playlist = currentMatches.find((p) => p.id === playlistId);
@@ -301,27 +327,46 @@ function MatchingPageContent({
 	}, [currentSong]);
 
 	const handleDismiss = useCallback(async () => {
-		if (!currentSong) return;
-		addPresented(currentSong.id);
-		recordCurrentSong();
-		const playlistIds = currentMatches.map((m) => m.id);
-		if (playlistIds.length > 0) {
-			await dismissSong({ data: { songId: currentSong.id, playlistIds } });
+		if (!currentSong || !lockNavigation()) return;
+		try {
+			addPresented(currentSong.id);
+			recordCurrentSong();
+			const playlistIds = currentMatches.map((m) => m.id);
+			if (playlistIds.length > 0) {
+				await dismissSong({ data: { songId: currentSong.id, playlistIds } });
+			}
+			setSessionStats((prev) => ({
+				...prev,
+				dismissedCount: prev.dismissedCount + 1,
+			}));
+			setAddedTo([]);
+			setOffset((prev) => prev + 1);
+		} catch (error) {
+			releaseNavigation();
+			throw error;
 		}
-		setSessionStats((prev) => ({
-			...prev,
-			dismissedCount: prev.dismissedCount + 1,
-		}));
-		setAddedTo([]);
-		setOffset((prev) => prev + 1);
-	}, [currentSong, currentMatches, addPresented, recordCurrentSong]);
+	}, [
+		currentSong,
+		currentMatches,
+		addPresented,
+		recordCurrentSong,
+		lockNavigation,
+		releaseNavigation,
+	]);
 
 	const handleNext = useCallback(() => {
-		if (currentSong) addPresented(currentSong.id);
+		if (!currentSong || !lockNavigation()) return;
+		addPresented(currentSong.id);
 		recordCurrentSong();
 		setAddedTo([]);
 		setOffset((prev) => prev + 1);
-	}, [currentSong, addPresented, recordCurrentSong]);
+	}, [currentSong, addPresented, recordCurrentSong, lockNavigation]);
+
+	const handlePrevious = useCallback(() => {
+		if (offset === 0 || !lockNavigation()) return;
+		setAddedTo([]);
+		setOffset((prev) => Math.max(0, prev - 1));
+	}, [offset, lockNavigation]);
 
 	return (
 		<Matching
@@ -334,9 +379,11 @@ function MatchingPageContent({
 			completionStats={completionStats}
 			recentSongs={recentSongs}
 			reconnectNeeded={reconnectNeeded}
+			navigationDisabled={navigationStatus === "pending"}
 			onAdd={handleAdd}
 			onDismiss={handleDismiss}
 			onNext={handleNext}
+			onPrevious={handlePrevious}
 			onExit={onExit}
 		/>
 	);

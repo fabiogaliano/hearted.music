@@ -13,9 +13,11 @@ export function Matching({
 	completionStats,
 	recentSongs,
 	reconnectNeeded,
+	navigationDisabled,
 	onAdd,
 	onDismiss,
 	onNext,
+	onPrevious,
 	onExit,
 }: MatchingProps) {
 	if (isComplete) {
@@ -39,9 +41,12 @@ export function Matching({
 				playlists={currentMatches}
 				addedTo={addedTo}
 				reconnectNeeded={reconnectNeeded}
+				navigationDisabled={navigationDisabled}
+				isLastSong={offset >= totalSongs - 1}
 				onAdd={onAdd}
 				onDismiss={onDismiss}
 				onNext={onNext}
+				onPrevious={offset > 0 ? onPrevious : undefined}
 			/>
 		</div>
 	);

@@ -37,6 +37,7 @@ export interface CompletionStats {
 	totalSongs: number;
 	songsMatched: number;
 	totalAdditions: number;
+	dismissedCount: number;
 	skippedCount: number;
 }
 
@@ -47,10 +48,13 @@ export interface MatchingSessionProps {
 	isDemo?: boolean;
 	realAvailable?: boolean;
 	reconnectNeeded?: boolean;
+	navigationDisabled?: boolean;
+	isLastSong?: boolean;
 	onRefresh?: () => void;
 	onAdd: (playlistId: string) => void;
 	onDismiss: () => void;
 	onNext: () => void;
+	onPrevious?: () => void;
 }
 
 export interface CompletionScreenProps {
@@ -74,8 +78,10 @@ export interface MatchingProps {
 	completionStats: CompletionStats;
 	recentSongs: Array<{ id: string; albumArtUrl?: string | null; name: string }>;
 	reconnectNeeded?: boolean;
+	navigationDisabled?: boolean;
 	onAdd: (playlistId: string) => void;
 	onDismiss: () => void;
 	onNext: () => void;
+	onPrevious?: () => void;
 	onExit: () => void;
 }

@@ -11,10 +11,13 @@ export function MatchingSession({
 	isDemo,
 	realAvailable,
 	reconnectNeeded,
+	navigationDisabled,
+	isLastSong,
 	onRefresh,
 	onAdd,
 	onDismiss,
 	onNext,
+	onPrevious,
 }: MatchingSessionProps) {
 	const song = useMemo(
 		() => ({
@@ -44,36 +47,38 @@ export function MatchingSession({
 	}, []);
 
 	return (
-		<>
+		<div
+			ref={wrapperRef}
+			className="origin-top overflow-hidden will-change-[height]"
+		>
 			<div
-				ref={wrapperRef}
-				className="origin-top overflow-hidden will-change-[height]"
+				ref={topGridRef}
+				className="origin-top transition-transform duration-300 ease-in-out"
 			>
-				<div
-					ref={topGridRef}
-					className="origin-top transition-transform duration-300 ease-in-out"
-				>
-					<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
-						<SongSection
-							songKey={currentSong.id}
-							song={song}
-							albumArtUrl={currentSong.albumArtUrl ?? undefined}
-						/>
-						<MatchesSection
-							songKey={currentSong.id}
-							playlists={playlists}
-							addedTo={addedTo}
-							isDemo={isDemo}
-							realAvailable={realAvailable}
-							reconnectNeeded={reconnectNeeded}
-							onRefresh={onRefresh}
-							onAdd={onAdd}
-							onDismiss={onDismiss}
-							onNext={onNext}
-						/>
-					</div>
+				<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
+					<SongSection
+						songKey={currentSong.id}
+						song={song}
+						albumArtUrl={currentSong.albumArtUrl ?? undefined}
+						spotifyId={currentSong.spotifyId}
+					/>
+					<MatchesSection
+						songKey={currentSong.id}
+						playlists={playlists}
+						addedTo={addedTo}
+						isDemo={isDemo}
+						realAvailable={realAvailable}
+						reconnectNeeded={reconnectNeeded}
+						navigationDisabled={navigationDisabled}
+						isLastSong={isLastSong}
+						onRefresh={onRefresh}
+						onAdd={onAdd}
+						onDismiss={onDismiss}
+						onNext={onNext}
+						onPrevious={onPrevious}
+					/>
 				</div>
 			</div>
-		</>
+		</div>
 	);
 }

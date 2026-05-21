@@ -4,7 +4,7 @@ import { fonts } from "@/lib/theme/fonts";
 
 type PlaylistMatchRowAction =
 	| { type: "added" }
-	| { type: "add"; onAdd: (playlistId: string) => void }
+	| { type: "add"; disabled?: boolean; onAdd: (playlistId: string) => void }
 	| { type: "custom"; node: ReactNode };
 
 interface PlaylistMatchRowProps {
@@ -44,6 +44,7 @@ export function PlaylistMatchRow({
 			<Button
 				variant="secondary"
 				size="sm"
+				disabled={action.disabled}
 				onClick={() => action.onAdd(playlistId)}
 			>
 				Add
@@ -55,7 +56,7 @@ export function PlaylistMatchRow({
 			className="theme-border-color group border-b"
 			style={{ paddingBottom }}
 		>
-			<div className="flex items-center gap-6">
+			<div className="flex items-center gap-6 py-1 pr-1">
 				<div className="shrink-0">{scoreDisplay}</div>
 
 				<div className="min-w-0 flex-1">

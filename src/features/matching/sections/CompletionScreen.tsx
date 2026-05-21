@@ -23,14 +23,44 @@ export const CompletionScreen = memo(function CompletionScreen({
 			staggerDelay={0.08}
 			initialDelay={0.1}
 		>
-			<p
-				className="theme-text-muted text-xs tracking-widest uppercase"
-				style={{ fontFamily: fonts.body }}
-			>
-				Session Complete
-			</p>
+			<header className="mb-12 flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+				<div>
+					<p
+						className="theme-text-muted text-xs tracking-widest uppercase"
+						style={{ fontFamily: fonts.body }}
+					>
+						Matching
+					</p>
+					<h1
+						className="theme-text mt-3 text-page-title font-extralight tracking-tight text-balance"
+						style={{ fontFamily: fonts.display }}
+					>
+						Session Complete
+					</h1>
+				</div>
+				<div
+					className="theme-text-muted flex flex-wrap items-center gap-x-2 gap-y-2 text-xs"
+					style={{ fontFamily: fonts.body }}
+				>
+					{stats.dismissedCount > 0 && (
+						<>
+							<span className="tabular-nums">
+								{stats.dismissedCount}{" "}
+								<span className="tracking-widest uppercase">dismissed</span>
+							</span>
+							<span aria-hidden="true" className="opacity-40">
+								·
+							</span>
+						</>
+					)}
+					<span className="tabular-nums">
+						{stats.skippedCount}{" "}
+						<span className="tracking-widest uppercase">skipped</span>
+					</span>
+				</div>
+			</header>
 
-			<div className="mt-20 mb-6">
+			<div className="mb-6">
 				<p
 					className="theme-text font-extralight tabular-nums leading-[0.9]"
 					style={{
@@ -48,30 +78,13 @@ export const CompletionScreen = memo(function CompletionScreen({
 				</p>
 			</div>
 
-			<div
-				className="theme-text-muted mt-20 flex items-center gap-x-3 text-xs"
-				style={{ fontFamily: fonts.body }}
-			>
-				<span className="tabular-nums">
-					{stats.totalSongs}{" "}
-					<span className="tracking-widest uppercase">reviewed</span>
-				</span>
-				<span aria-hidden="true" className="opacity-40">
-					·
-				</span>
-				<span className="tabular-nums">
-					{stats.skippedCount}{" "}
-					<span className="tracking-widest uppercase">skipped</span>
-				</span>
-			</div>
-
 			{songs.length > 0 && (
-				<div className="mt-16">
+				<div className="mt-20">
 					<p
 						className="theme-text-muted mb-5 text-xs tracking-widest uppercase"
 						style={{ fontFamily: fonts.body }}
 					>
-						Matched this session
+						Reviewed this session
 					</p>
 					<div className="flex gap-2">
 						{songs.slice(0, 5).map((song) => (
