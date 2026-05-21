@@ -121,6 +121,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			`style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
 			"font-src 'self' https://fonts.gstatic.com",
 			`img-src 'self' data: https://i.scdn.co https://*.scdn.co https://*.spotifycdn.com https://*.googleusercontent.com`,
+			"frame-src https://open.spotify.com",
 			"object-src 'none'",
 			"upgrade-insecure-requests",
 		];
@@ -130,7 +131,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 				...baseHeaders,
 				"Content-Security-Policy": [
 					...cspDirectives,
-					"script-src 'self' 'unsafe-eval' 'unsafe-inline' http://localhost:* http://127.0.0.1:*",
+					"script-src 'self' 'unsafe-eval' 'unsafe-inline' https://open.spotify.com https://*.spotifycdn.com http://localhost:* http://127.0.0.1:*",
 					"connect-src 'self' ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:*",
 				].join("; "),
 			};
@@ -141,7 +142,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 				...baseHeaders,
 				"Content-Security-Policy": [
 					...cspDirectives,
-					"script-src 'self'",
+					"script-src 'self' https://open.spotify.com https://*.spotifycdn.com",
 					"connect-src 'self'",
 				].join("; "),
 			};
