@@ -1,7 +1,12 @@
 import "@testing-library/jest-dom/vitest";
+import { cleanup } from "@testing-library/react";
 import { Result } from "better-result";
 import type React from "react";
-import { expect, vi } from "vitest";
+import { afterEach, expect, vi } from "vitest";
+
+afterEach(() => {
+	cleanup();
+});
 
 expect.extend({
 	toBeOk(received: Result<unknown, unknown>) {
