@@ -259,7 +259,7 @@ describe("runAudioFeatures → StageOutcome", () => {
 			"ReccoBeats API timeout",
 		);
 
-		const { runStageWithAccounting } = await import("../orchestrator");
+		const { runStageWithAccounting } = await import("../stage-accounting");
 		const { FAILURE_CODES: codes } = await import("../failure-policy");
 
 		vi.mocked(recordStageFailure).mockResolvedValue(Result.ok(undefined));

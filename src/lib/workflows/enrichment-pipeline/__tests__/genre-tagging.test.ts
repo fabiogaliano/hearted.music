@@ -307,7 +307,7 @@ describe("runGenreTagging → StageOutcome", () => {
 			runGenreTagging(makeCtx(), makeBatch(["s1", "s2"])),
 		).rejects.toThrow("Last.fm timeout");
 
-		const { runStageWithAccounting } = await import("../orchestrator");
+		const { runStageWithAccounting } = await import("../stage-accounting");
 
 		vi.mocked(recordStageFailure).mockResolvedValue(Result.ok(undefined));
 		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});

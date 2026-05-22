@@ -7,7 +7,6 @@ import type { LlmService } from "@/lib/integrations/llm/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
 import { updateJobProgress } from "@/lib/platform/jobs/repository";
-import type { DbError } from "@/lib/shared/errors/database";
 import {
 	hasMoreSongsNeedingEnrichmentWork,
 	loadBatchSongs,
@@ -19,14 +18,8 @@ import {
 	type InitializedEnrichmentChunkProgress,
 	makeInitialProgress,
 } from "./progress";
-import {
-	type FailureCode,
-	finalizeStageOutcome,
-	makeThrownOutcome,
-	type StageAccountingError,
-	type StageOutcome,
-	type StageSummary,
-} from "./stage-outcomes";
+import { runStageWithAccounting } from "./stage-accounting";
+import type { StageAccountingError, StageSummary } from "./stage-outcomes";
 import { runAudioFeatures } from "./stages/audio-features";
 import { runContentActivation } from "./stages/content-activation";
 import { runGenreTagging } from "./stages/genre-tagging";
@@ -110,44 +103,6 @@ async function persistProgress(
 
 function stageStatus(summary: StageSummary): "completed" | "failed" {
 	return summary.failed > 0 && summary.succeeded === 0 ? "failed" : "completed";
-}
-
-interface RunStageWithAccountingParams {
-	stage: EnrichmentStageName;
-	candidateSongIds: string[];
-	jobId: string;
-	accountId: string;
-	fallbackCode?: FailureCode;
-	compensate?: (songId: string) => Promise<Result<void, DbError>>;
-	run: (candidateSongIds: string[]) => Promise<StageOutcome>;
-}
-
-export async function runStageWithAccounting(
-	params: RunStageWithAccountingParams,
-): Promise<Result<StageSummary, StageAccountingError>> {
-	const {
-		stage,
-		candidateSongIds,
-		jobId,
-		accountId,
-		fallbackCode = FAILURE_CODES.PROVIDER_TRANSIENT,
-		run,
-	} = params;
-
-	let outcome: StageOutcome;
-	try {
-		outcome = await run(candidateSongIds);
-	} catch (error) {
-		console.error(`[worker-chunk] Stage ${stage} threw:`, error);
-		outcome = makeThrownOutcome(stage, candidateSongIds, error, fallbackCode);
-	}
-
-	return finalizeStageOutcome({
-		outcome,
-		jobId,
-		accountId,
-		compensate: params.compensate,
-	});
 }
 
 function filterBatch(batch: PipelineBatch, songIds: string[]): PipelineBatch {

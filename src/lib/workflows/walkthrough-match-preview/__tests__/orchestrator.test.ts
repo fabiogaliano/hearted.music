@@ -4,6 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockGetPreview = vi.fn();
 const mockMarkReady = vi.fn();
 const mockMarkFailed = vi.fn();
+const { mockWriteMatchSnapshot, mockWriteEmptySnapshot } = vi.hoisted(() => ({
+	mockWriteMatchSnapshot: vi.fn(),
+	mockWriteEmptySnapshot: vi.fn(),
+}));
 vi.mock("../queries", async () => {
 	const actual =
 		await vi.importActual<typeof import("../queries")>("../queries");
@@ -62,6 +66,11 @@ vi.mock("@/lib/domains/taste/song-matching/service", () => ({
 const mockLightweightEnrichment = vi.fn().mockResolvedValue({});
 vi.mock("@/lib/workflows/playlist-sync/lightweight-enrichment", () => ({
 	runLightweightEnrichment: (args: unknown) => mockLightweightEnrichment(args),
+}));
+
+vi.mock("@/lib/workflows/match-snapshot-refresh/write-match-snapshot", () => ({
+	writeMatchSnapshot: mockWriteMatchSnapshot,
+	writeEmptySnapshot: mockWriteEmptySnapshot,
 }));
 
 const mockLoadProfiles = vi.fn();
@@ -192,18 +201,10 @@ describe("executeWalkthroughPreview", () => {
 		);
 		mockMarkReady.mockResolvedValue(Result.ok({}));
 
-		// Spy on the snapshot writer module — if the orchestrator regresses and
-		// pulls it in, the test should fail.
-		const snapshotWriter = await import(
-			"@/lib/workflows/match-snapshot-refresh/write-match-snapshot"
-		);
-		const writeSpy = vi.spyOn(snapshotWriter, "writeMatchSnapshot");
-		const writeEmptySpy = vi.spyOn(snapshotWriter, "writeEmptySnapshot");
-
 		await executeWalkthroughPreview("acct-1");
 
-		expect(writeSpy).not.toHaveBeenCalled();
-		expect(writeEmptySpy).not.toHaveBeenCalled();
+		expect(mockWriteMatchSnapshot).not.toHaveBeenCalled();
+		expect(mockWriteEmptySnapshot).not.toHaveBeenCalled();
 	});
 
 	it("scopes scoring to the captured target_playlist_ids snapshot", async () => {

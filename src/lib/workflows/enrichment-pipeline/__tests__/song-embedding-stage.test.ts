@@ -253,7 +253,7 @@ describe("runSongEmbedding → StageOutcome", () => {
 			runSongEmbedding(makeCtx(), makeBatch(["s1", "s2", "s3"])),
 		).rejects.toThrow("Failed to check existing embeddings");
 
-		const { runStageWithAccounting } = await import("../orchestrator");
+		const { runStageWithAccounting } = await import("../stage-accounting");
 
 		vi.mocked(recordStageFailure).mockResolvedValue(Result.ok(undefined));
 		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
