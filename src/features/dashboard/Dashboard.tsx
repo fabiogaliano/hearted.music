@@ -18,7 +18,7 @@ export function Dashboard({
 }: DashboardProps) {
 	return (
 		<StaggeredContent
-			className="mx-auto max-w-4xl"
+			className="mx-auto max-w-5xl"
 			staggerDelay={0.06}
 			initialDelay={0.05}
 		>

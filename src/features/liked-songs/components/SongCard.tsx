@@ -275,7 +275,7 @@ const SongCardContent = memo(function SongCardContent({
 					</span>
 				) : (
 					<span
-						className="theme-text-muted hidden shrink-0 text-xs tabular-nums md:block"
+						className="theme-text-muted hidden shrink-0 text-xs tabular-nums @[500px]:block"
 						style={{ fontFamily: fonts.body }}
 					>
 						{formatRelativeTime(song.liked_at)}

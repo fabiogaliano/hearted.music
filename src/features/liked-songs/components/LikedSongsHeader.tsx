@@ -93,7 +93,7 @@ export function LikedSongsHeader({
 					<Button
 						variant="surface"
 						onClick={onEnterSelectionMode}
-						className="hidden sm:inline-flex"
+						className="hidden @[900px]:inline-flex"
 						style={{ fontFamily: fonts.body }}
 					>
 						Unlock Songs
@@ -112,7 +112,7 @@ export function LikedSongsHeader({
 								type="button"
 								onClick={() => onFilterChange(value)}
 								aria-pressed={isActive}
-								className={`relative -mb-px min-w-[6rem] cursor-pointer border-b px-2 py-1.5 text-center transition-[color,border-color] duration-150 ${
+								className={`relative -mb-px cursor-pointer border-b px-2 py-1.5 text-center transition-[color,border-color] duration-150 @[700px]:min-w-[6rem] ${
 									isActive
 										? "theme-text border-(--t-primary)"
 										: "theme-text-muted border-transparent hover:text-(--t-text)"
@@ -136,7 +136,7 @@ export function LikedSongsHeader({
 					})}
 				</nav>
 
-				<label className="relative ml-auto flex items-center gap-2 pb-2.5">
+				<label className="relative ml-auto hidden items-center gap-2 pb-2.5 @[900px]:flex">
 					<input
 						ref={searchInputRef}
 						type="search"

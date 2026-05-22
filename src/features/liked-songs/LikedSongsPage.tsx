@@ -300,17 +300,14 @@ export function LikedSongsPage({
 	});
 
 	return (
-		<div className="relative min-h-150">
-			<div
-				ref={containerRef}
-				className="mx-auto max-w-4xl transition-transform duration-300 motion-reduce:transition-none"
-				style={{
-					transform: isExpanded
-						? "translate3d(calc(-1 * max(0px, min(clamp(190px, 22.5vw, calc((100vw - 256px) / 2)), calc((100vw - 1216px) / 2)))), 0, 0)"
-						: "translate3d(0, 0, 0)",
-					transitionTimingFunction: "var(--ease-out-quart)",
-				}}
-			>
+		<div
+			className="relative min-h-150 transition-[padding-right] duration-300 motion-reduce:transition-none"
+			style={{
+				paddingRight: isExpanded ? "45vw" : "0px",
+				transitionTimingFunction: "var(--ease-out-quart)",
+			}}
+		>
+			<div ref={containerRef} className="@container mx-auto max-w-5xl">
 				<LikedSongsHeader
 					stats={stats}
 					lockedSongCount={lockedSongCount}
