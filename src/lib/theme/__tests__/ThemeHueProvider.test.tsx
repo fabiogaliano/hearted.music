@@ -16,7 +16,7 @@ describe("ThemeHueProvider", () => {
 			</ThemeHueProvider>,
 		);
 
-		expect(screen.getByText("Fresh")).toBeTruthy();
+		expect(screen.getByText("Bloom")).toBeTruthy();
 		expect(container.querySelector("style")?.textContent).toContain(
 			"--theme-hue: 135",
 		);
@@ -42,7 +42,7 @@ describe("ThemeHueProvider", () => {
 			</ThemeHueProvider>,
 		);
 
-		expect(screen.getByText("Dreamy")).toBeTruthy();
+		expect(screen.getByText("Reverie")).toBeTruthy();
 		expect(container.querySelector("style")?.textContent).toContain(
 			"--theme-hue: 300",
 		);

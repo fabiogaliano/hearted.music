@@ -39,10 +39,10 @@ const VISIBILITY_LABELS: Record<VisibilityKey, string> = {
 };
 
 const THEME_LABELS: Record<ThemeColor, string> = {
-	blue: "Calm",
-	green: "Fresh",
-	rose: "Warm",
-	lavender: "Dreamy",
+	blue: "Hush",
+	green: "Bloom",
+	rose: "Ember",
+	lavender: "Reverie",
 };
 
 export function DesignSwitcher({

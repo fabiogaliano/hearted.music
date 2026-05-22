@@ -41,10 +41,10 @@ export const THEME_COLORS = Constants.public.Enums.theme;
 
 /** Human-readable labels for each theme */
 export const COLOR_LABELS: Record<ThemeColor, string> = {
-	blue: "Calm",
-	green: "Fresh",
-	rose: "Warm",
-	lavender: "Dreamy",
+	blue: "Hush",
+	green: "Bloom",
+	rose: "Ember",
+	lavender: "Reverie",
 };
 
 /**

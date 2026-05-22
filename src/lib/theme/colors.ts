@@ -9,7 +9,7 @@ import type { ThemeColor, ThemeConfig } from "./types";
 
 export const themes: Record<ThemeColor, ThemeConfig> = {
 	blue: {
-		name: "Calm",
+		name: "Hush",
 		bg: "hsl(218, 25%, 88%)",
 		surface: "hsl(218, 25%, 92%)",
 		surfaceDim: "hsl(218, 25%, 82%)",
@@ -21,7 +21,7 @@ export const themes: Record<ThemeColor, ThemeConfig> = {
 		primaryHover: "hsl(218, 22%, 22%)",
 	},
 	green: {
-		name: "Fresh",
+		name: "Bloom",
 		bg: "hsl(135, 26%, 87%)",
 		surface: "hsl(135, 26%, 92%)",
 		surfaceDim: "hsl(135, 26%, 80%)",
@@ -33,7 +33,7 @@ export const themes: Record<ThemeColor, ThemeConfig> = {
 		primaryHover: "hsl(135, 28%, 24%)",
 	},
 	rose: {
-		name: "Warm",
+		name: "Ember",
 		bg: "hsl(340, 32%, 85%)",
 		surface: "hsl(340, 32%, 91%)",
 		surfaceDim: "hsl(340, 32%, 78%)",
@@ -45,7 +45,7 @@ export const themes: Record<ThemeColor, ThemeConfig> = {
 		primaryHover: "hsl(340, 30%, 20%)",
 	},
 	lavender: {
-		name: "Dreamy",
+		name: "Reverie",
 		bg: "hsl(300, 21%, 88%)",
 		surface: "hsl(300, 21%, 93%)",
 		surfaceDim: "hsl(300, 21%, 81%)",
