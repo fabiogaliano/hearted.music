@@ -117,7 +117,7 @@ describe("getDashboardStats (billing-aware)", () => {
 		mockGetLikedSongCount.mockResolvedValue(Result.ok(10));
 		mockGetAnalyzedCountForAccount.mockResolvedValue(Result.ok(3));
 		mockGetLastCompletedSync.mockResolvedValue(Result.ok(null));
-		mockGetLikedSongStats.mockResolvedValue(Result.ok({ new_suggestions: 0 }));
+		mockGetLikedSongStats.mockResolvedValue(Result.ok({ has_suggestions: 0 }));
 		mockGetPlaylistCount.mockResolvedValue(Result.ok(2));
 
 		const stats = await getDashboardStats();
@@ -131,7 +131,7 @@ describe("getDashboardStats (billing-aware)", () => {
 		mockGetLikedSongCount.mockResolvedValue(Result.ok(5));
 		mockGetAnalyzedCountForAccount.mockResolvedValue(Result.ok(0));
 		mockGetLastCompletedSync.mockResolvedValue(Result.ok(null));
-		mockGetLikedSongStats.mockResolvedValue(Result.ok({ new_suggestions: 0 }));
+		mockGetLikedSongStats.mockResolvedValue(Result.ok({ has_suggestions: 0 }));
 		mockGetPlaylistCount.mockResolvedValue(Result.ok(0));
 
 		const stats = await getDashboardStats();
@@ -145,7 +145,7 @@ describe("getDashboardStats (billing-aware)", () => {
 			Result.err(new Error("db error")),
 		);
 		mockGetLastCompletedSync.mockResolvedValue(Result.ok(null));
-		mockGetLikedSongStats.mockResolvedValue(Result.ok({ new_suggestions: 0 }));
+		mockGetLikedSongStats.mockResolvedValue(Result.ok({ has_suggestions: 0 }));
 		mockGetPlaylistCount.mockResolvedValue(Result.ok(0));
 
 		const stats = await getDashboardStats();

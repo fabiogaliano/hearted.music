@@ -36,7 +36,7 @@ export interface DashboardStats {
 	totalSongs: number;
 	analyzedPercent: number;
 	lastSyncAt: string | null;
-	newSuggestions: number;
+	hasSuggestions: number;
 	playlistCount: number;
 }
 
@@ -68,8 +68,8 @@ async function fetchDashboardStats(accountId: string): Promise<DashboardStats> {
 	const totalSongs = Result.isOk(totalResult) ? totalResult.value : 0;
 	const analyzedCount = Result.isOk(analyzedResult) ? analyzedResult.value : 0;
 	const lastSync = Result.isOk(lastSyncResult) ? lastSyncResult.value : null;
-	const newSuggestions = Result.isOk(statsResult)
-		? Number(statsResult.value.new_suggestions)
+	const hasSuggestions = Result.isOk(statsResult)
+		? Number(statsResult.value.has_suggestions)
 		: 0;
 	const playlistCount = Result.isOk(playlistCountResult)
 		? playlistCountResult.value
@@ -80,7 +80,7 @@ async function fetchDashboardStats(accountId: string): Promise<DashboardStats> {
 		analyzedPercent:
 			totalSongs > 0 ? Math.round((analyzedCount / totalSongs) * 100) : 0,
 		lastSyncAt: lastSync?.completed_at ?? null,
-		newSuggestions,
+		hasSuggestions,
 		playlistCount,
 	};
 }
