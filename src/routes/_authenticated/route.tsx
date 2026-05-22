@@ -29,6 +29,7 @@ import {
 } from "@/features/onboarding/step-resolver";
 import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
 import type { BillingState } from "@/lib/domains/billing/state";
+import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
 import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getBillingState } from "@/lib/server/billing.functions";
@@ -129,6 +130,8 @@ function AuthenticatedLayout() {
 	const showShell = isComplete || mode === "walkthrough";
 
 	useActiveJobCompletionEffects(session.accountId, isComplete);
+	// Post-purchase return must observe the *real* billing state — it handles
+	// real Stripe redirects, not display.
 	usePostPurchaseReturn(session.accountId, billingState);
 
 	const { data: matchingSession } = useQuery({
@@ -181,6 +184,12 @@ function AuthenticatedShell({
 	devPanel: React.ReactNode;
 	showSidebar: boolean;
 }) {
+	// "Free" in user terms: no unlimited access and no purchased credits.
+	// Song-Pack users (creditBalance > 0) have already converted, so we don't
+	// nudge them in the sidebar. They can still upgrade from /settings.
+	const showUpgradeCTA =
+		!hasUnlimitedAccess(billingState) && billingState.creditBalance === 0;
+
 	return (
 		<div className="theme-bg theme-text flex min-h-screen">
 			{showSidebar && (
@@ -190,6 +199,7 @@ function AuthenticatedShell({
 					userPlan={getPlanLabel(billingState)}
 					userBalance={getDisplayBalance(billingState)}
 					userImageUrl={account?.image_url}
+					showUpgradeCTA={showUpgradeCTA}
 				/>
 			)}
 			<main className="flex-1 p-8">

@@ -17,20 +17,31 @@ export const NavItem = memo(function NavItem({
 	badge,
 	isActive,
 }: NavItemProps) {
+	const hasBadge = badge !== undefined && badge > 0;
 	return (
 		<Link
 			to={to}
-			className="flex w-full items-center justify-between py-2 text-left"
+			data-active={isActive || undefined}
+			aria-current={isActive ? "page" : undefined}
+			className="group flex w-full items-center justify-between py-2 text-left"
 		>
 			<span
-				className={`${isActive ? "theme-text font-medium" : "theme-text-muted font-normal"} text-xs tracking-widest uppercase`}
+				className={`text-xs tracking-widest uppercase transition-colors duration-150 ease motion-reduce:transition-none ${
+					isActive
+						? "theme-text font-medium"
+						: "theme-text-muted font-normal group-hover:text-(--t-text) group-focus-visible:text-(--t-text)"
+				}`}
 				style={bodyFontStyle}
 			>
 				{label}
 			</span>
-			{badge !== undefined && badge > 0 && (
+			{hasBadge && (
 				<span
-					className="theme-text-muted text-xs tabular-nums"
+					className={`text-xs tabular-nums transition-colors duration-150 ease motion-reduce:transition-none ${
+						isActive
+							? "theme-text"
+							: "theme-text-muted group-hover:text-(--t-text) group-focus-visible:text-(--t-text)"
+					}`}
 					style={bodyFontStyle}
 				>
 					{badge}
