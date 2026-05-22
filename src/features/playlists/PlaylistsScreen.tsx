@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { Link, useParams } from "@tanstack/react-router";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { scrollListElementIntoView } from "@/lib/keyboard/listScroll";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
@@ -10,6 +10,7 @@ import type { ThemeConfig } from "@/lib/theme/types";
 import { ActivePlaylistsPanel } from "./components/ActivePlaylistsPanel";
 import { PlaylistDetailView } from "./components/PlaylistDetailView";
 import { PlaylistLibrary } from "./components/PlaylistLibrary";
+import { PlaylistsHeader } from "./components/PlaylistsHeader";
 import { useExtensionStatus } from "./hooks/useExtensionStatus";
 import { usePlaylistExpansion } from "./hooks/usePlaylistExpansion";
 import { usePlaylistSession } from "./hooks/usePlaylistSession";
@@ -76,13 +77,29 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 		return ids;
 	}, [data, optimisticTargets]);
 
+	const [searchQuery, setSearchQuery] = useState("");
+	const normalizedQuery = searchQuery.trim().toLowerCase();
+	const isSearching = normalizedQuery.length > 0;
+
 	const { targetPlaylists, availablePlaylists } = useMemo(() => {
 		if (!data) return { targetPlaylists: [], availablePlaylists: [] };
-		return {
-			targetPlaylists: data.playlists.filter((p) => targetIds.has(p.id)),
-			availablePlaylists: data.playlists.filter((p) => !targetIds.has(p.id)),
+		// Filter runs over both columns simultaneously so a single query feels
+		// like one search across the user's full library — not two siloed
+		// searches that could leave a hit hidden in the unfocused column.
+		const matchesQuery = (p: Playlist) => {
+			if (!isSearching) return true;
+			const haystack = `${p.name} ${p.description ?? ""}`.toLowerCase();
+			return haystack.includes(normalizedQuery);
 		};
-	}, [data, targetIds]);
+		return {
+			targetPlaylists: data.playlists.filter(
+				(p) => targetIds.has(p.id) && matchesQuery(p),
+			),
+			availablePlaylists: data.playlists.filter(
+				(p) => !targetIds.has(p.id) && matchesQuery(p),
+			),
+		};
+	}, [data, targetIds, isSearching, normalizedQuery]);
 
 	const {
 		focusedIndex,
@@ -172,35 +189,49 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 
 	if (!data) {
 		return (
-			<div className="flex min-h-[60vh] items-center justify-center">
-				<p
-					className="theme-text-muted text-sm"
-					style={{ fontFamily: fonts.body }}
-				>
-					Loading playlists…
-				</p>
+			<div className="mx-auto max-w-5xl">
+				<PlaylistsHeader
+					totalCount={null}
+					searchQuery={searchQuery}
+					onSearchChange={setSearchQuery}
+				/>
+				<div className="flex min-h-[40vh] items-center justify-center">
+					<p
+						className="theme-text-muted text-sm"
+						style={{ fontFamily: fonts.body }}
+					>
+						Listening for your playlists…
+					</p>
+				</div>
 			</div>
 		);
 	}
 
 	if (data.playlists.length === 0) {
 		return (
-			<div className="flex min-h-[60vh] items-center justify-center">
-				<div className="text-center">
-					<h2
-						className="theme-text mb-3 text-2xl font-extralight"
-						style={{ fontFamily: fonts.display }}
-					>
-						No playlists synced yet
-					</h2>
-					<p
-						className="theme-text-muted max-w-sm text-sm"
-						style={{ fontFamily: fonts.body }}
-					>
-						{extensionStatus === "unavailable"
-							? "Install the hearted. extension and sync your library to see your playlists here."
-							: "Sync your library through the extension to see your playlists here."}
-					</p>
+			<div className="mx-auto max-w-5xl">
+				<PlaylistsHeader
+					totalCount={0}
+					searchQuery={searchQuery}
+					onSearchChange={setSearchQuery}
+				/>
+				<div className="flex min-h-[40vh] items-start pt-12">
+					<div className="max-w-md">
+						<h2
+							className="theme-text mb-4 text-3xl font-extralight italic leading-tight text-balance"
+							style={{ fontFamily: fonts.display }}
+						>
+							No playlists yet.
+						</h2>
+						<p
+							className="theme-text-muted text-sm leading-relaxed text-pretty"
+							style={{ fontFamily: fonts.body }}
+						>
+							{extensionStatus === "unavailable"
+								? "Install the hearted. extension and your library will find its way here."
+								: "Sync your library through the extension, your playlists will be waiting."}
+						</p>
+					</div>
 				</div>
 			</div>
 		);
@@ -210,9 +241,50 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 		void toggleTarget(id, isTarget);
 	};
 
+	// Deep-link route (/playlists/$playlistRef) gets a focused single-column
+	// editorial page rather than the two-column list view. The page-mode
+	// detail view flows in the document instead of sticking to the viewport,
+	// and the parent owns the breadcrumb so the section nav stays light.
+	if (isInlineDetail && expandedPlaylist) {
+		return (
+			<div className="mx-auto max-w-4xl">
+				<nav className="mb-10" aria-label="Breadcrumb">
+					<Link
+						to="/playlists"
+						className="theme-text-muted inline-flex items-center gap-2 text-xs tracking-widest uppercase transition-colors duration-150 hover:text-(--t-text)"
+						style={{ fontFamily: fonts.body }}
+					>
+						<span aria-hidden="true">←</span>
+						Playlists
+					</Link>
+				</nav>
+
+				<PlaylistDetailView
+					theme={theme}
+					playlist={expandedPlaylist}
+					isTarget={targetIds.has(expandedPlaylist.id)}
+					isExpanded={true}
+					startRect={null}
+					expandedRect={expandedRect}
+					extensionStatus={extensionStatus}
+					accountId={accountId}
+					onClose={handleClose}
+					onToggleTarget={handleToggleTarget}
+					onMetadataChanged={markMetadataChanged}
+					layoutMode="page"
+				/>
+			</div>
+		);
+	}
+
 	return (
-		<div className="relative min-h-[600px]">
-			<div className="grid max-w-6xl grid-cols-[1fr_280px] gap-10">
+		<div className="relative mx-auto min-h-[600px] max-w-5xl">
+			<PlaylistsHeader
+				totalCount={data.playlists.length}
+				searchQuery={searchQuery}
+				onSearchChange={setSearchQuery}
+			/>
+			<div className="grid grid-cols-[1fr_280px] gap-10">
 				<div ref={expansionColumnRef} className="relative">
 					{!isInlineDetail && (
 						<ActivePlaylistsPanel
@@ -222,6 +294,8 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 							isExpanded={isExpanded}
 							closingToPlaylistId={closingToPlaylistId}
 							selectedPlaylistId={selectedPlaylistId}
+							searchQuery={isSearching ? searchQuery : null}
+							onClearSearch={() => setSearchQuery("")}
 						/>
 					)}
 					{expandedPlaylist && (
@@ -248,6 +322,8 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 					closingToPlaylistId={closingToPlaylistId}
 					getItemProps={getItemProps}
 					selectedPlaylistId={selectedPlaylistId}
+					searchQuery={isSearching ? searchQuery : null}
+					onClearSearch={() => setSearchQuery("")}
 				/>
 			</div>
 		</div>

@@ -48,8 +48,8 @@ export function PlaylistDescription({
 					ref={textareaRef}
 					value={draftDescription}
 					onChange={(e) => onDraftChange(e.target.value)}
-					placeholder="Add a description for this playlist..."
-					className="theme-primary theme-border-color w-full resize-none border-b-2 bg-transparent pb-2 text-sm leading-relaxed outline-none"
+					placeholder="Add a description for this playlist…"
+					className="theme-text theme-border-color w-full resize-none border-b bg-transparent pb-2 text-sm leading-relaxed outline-none transition-colors duration-150 focus:border-(--t-primary)"
 					style={{ fontFamily: fonts.body }}
 					rows={3}
 				/>
@@ -70,63 +70,80 @@ export function PlaylistDescription({
 		);
 	}
 
-	return (
-		<div className={`group/desc ${isExpanded ? "mb-6" : "mb-0"}`}>
-			{isExpanded ? (
-				extensionStatus === "available" ? (
-					<button
-						type="button"
-						onClick={onEdit}
-						className="group/edit relative w-full max-w-lg text-left"
-					>
-						{description ? (
-							<div className="theme-hover-surface -mx-3 flex items-start gap-4 rounded px-3 py-2 transition-colors">
-								<p
-									className="theme-text-muted flex-1 text-sm leading-relaxed"
-									style={{
-										fontFamily: fonts.body,
-										viewTransitionName:
-											enableViewTransition && isExpanded
-												? "playlist-description"
-												: "none",
-									}}
-								>
-									{description}
-								</p>
-								<span
-									className="theme-text flex-shrink-0 text-xs tracking-widest uppercase opacity-50 transition-opacity group-hover/edit:opacity-100"
-									style={{ fontFamily: fonts.body }}
-								>
-									Edit
-								</span>
-							</div>
-						) : (
-							<div className="theme-border-brighten theme-border-color border-2 border-dashed px-4 py-3 transition-colors">
-								<p
-									className="theme-text-muted text-sm"
-									style={{ fontFamily: fonts.body }}
-								>
-									+ Add description
-								</p>
-							</div>
-						)}
-					</button>
-				) : (
+	if (!isExpanded) {
+		return (
+			<p
+				className="theme-text-muted mb-0 line-clamp-1 max-w-sm text-sm"
+				style={{ fontFamily: fonts.body }}
+			>
+				{description || `${trackCount} tracks`}
+			</p>
+		);
+	}
+
+	const canEdit = extensionStatus === "available";
+	const hasDescription = Boolean(description);
+
+	if (!canEdit) {
+		return (
+			<p
+				className="theme-text mb-6 max-w-lg text-base leading-relaxed text-pretty"
+				style={{
+					fontFamily: fonts.body,
+					viewTransitionName: enableViewTransition
+						? "playlist-description"
+						: "none",
+				}}
+			>
+				{description || `${trackCount} tracks`}
+			</p>
+		);
+	}
+
+	if (!hasDescription) {
+		return (
+			<div className="mb-6 max-w-lg">
+				<button
+					type="button"
+					onClick={onEdit}
+					className="theme-border-color theme-border-brighten -mx-3 block w-full cursor-pointer border-b px-3 py-3 text-left transition-colors duration-150"
+				>
 					<p
-						className="theme-text-muted text-sm leading-relaxed"
+						className="theme-text-muted text-sm italic"
 						style={{ fontFamily: fonts.body }}
 					>
-						{description || `${trackCount} tracks`}
+						Add a description…
 					</p>
-				)
-			) : (
+				</button>
+			</div>
+		);
+	}
+
+	return (
+		<button
+			type="button"
+			onClick={onEdit}
+			className="group/edit theme-row-hover -mx-3 mb-6 block w-full max-w-lg cursor-pointer px-3 py-2 text-left"
+		>
+			<div className="flex items-start gap-4">
 				<p
-					className="theme-text-muted line-clamp-1 max-w-sm text-sm"
+					className="theme-text flex-1 text-base leading-relaxed text-pretty"
+					style={{
+						fontFamily: fonts.body,
+						viewTransitionName: enableViewTransition
+							? "playlist-description"
+							: "none",
+					}}
+				>
+					{description}
+				</p>
+				<span
+					className="theme-text flex-shrink-0 self-center text-xs tracking-widest uppercase opacity-40 transition-opacity duration-150 group-hover/edit:opacity-100"
 					style={{ fontFamily: fonts.body }}
 				>
-					{description || `${trackCount} tracks`}
-				</p>
-			)}
-		</div>
+					Edit
+				</span>
+			</div>
+		</button>
 	);
 }

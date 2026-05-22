@@ -74,7 +74,7 @@ describe("PlaylistsScreen", () => {
 
 		renderWithClient(<PlaylistsScreen theme={theme} accountId="acct-1" />);
 
-		expect(await screen.findByText("No playlists synced yet")).toBeTruthy();
+		expect(await screen.findByText("No playlists yet.")).toBeTruthy();
 	});
 
 	it("renders split view with target rail and library", async () => {

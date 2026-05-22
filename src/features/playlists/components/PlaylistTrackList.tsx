@@ -1,4 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import type { PlaylistTrack } from "@/lib/server/playlists.functions";
 import { fonts } from "@/lib/theme/fonts";
@@ -45,11 +46,13 @@ function getTrackListState({
 interface PlaylistTrackListProps {
 	playlistId: string | null;
 	isExpanded: boolean;
+	totalTrackCount?: number | null;
 }
 
 export function PlaylistTrackList({
 	playlistId,
 	isExpanded,
+	totalTrackCount = null,
 }: PlaylistTrackListProps) {
 	const {
 		data,
@@ -81,13 +84,21 @@ export function PlaylistTrackList({
 					: "opacity 150ms var(--ease-out-expo)",
 			}}
 		>
-			<div className="theme-border-color mb-4 flex items-center justify-between border-b pb-3">
+			<div className="mb-5 flex items-baseline gap-3">
 				<h3
 					className="theme-text-muted text-xs tracking-widest uppercase"
 					style={{ fontFamily: fonts.body }}
 				>
 					Tracks
 				</h3>
+				{totalTrackCount != null && totalTrackCount > 0 && (
+					<span
+						className="theme-text-muted text-xs tabular-nums opacity-70"
+						style={{ fontFamily: fonts.body }}
+					>
+						{totalTrackCount}
+					</span>
+				)}
 			</div>
 			{state.kind !== "ready" ? (
 				<p
@@ -98,37 +109,62 @@ export function PlaylistTrackList({
 				</p>
 			) : (
 				<>
-					{state.tracks.map((track, index) => (
-						<div
-							key={track.songId}
-							className="theme-border-color theme-hover-surface group flex items-center gap-4 border-b py-3 transition-colors duration-150 ease-out"
-							style={{
-								animation: `playlist-track-enter 200ms var(--ease-out-expo) ${index * 40}ms both`,
-							}}
-						>
-							<span
-								className="theme-text-muted w-6 text-right text-xs tabular-nums"
-								style={{ fontFamily: fonts.body }}
-							>
-								{track.position + 1}
-							</span>
-							<div className="min-w-0 flex-1">
-								<p
-									className="theme-text truncate text-sm"
-									style={{ fontFamily: fonts.body }}
+					<ul
+						className="flex flex-col"
+						aria-label={`${state.tracks.length} tracks`}
+					>
+						{state.tracks.map((track, index) => {
+							// Cap stagger so longer lists don't crawl. 20ms × 8 = 160ms
+							// total before the rest enter together, which keeps perceived
+							// responsiveness even when 100+ tracks load.
+							const staggerMs = Math.min(index, 8) * 20;
+							const artistLine =
+								(track.artists[0] ?? "Unknown Artist") +
+								(track.albumName ? ` · ${track.albumName}` : "");
+							return (
+								<li
+									key={track.songId}
+									className="theme-row-hover group -mx-3 flex items-center gap-4 px-3 py-3"
+									style={{
+										animation: `playlist-track-enter 200ms var(--ease-out-expo) ${staggerMs}ms both`,
+									}}
 								>
-									{track.name}
-								</p>
-								<p
-									className="theme-text-muted truncate text-xs"
-									style={{ fontFamily: fonts.body }}
-								>
-									{track.artists[0] ?? "Unknown Artist"}
-									{track.albumName ? ` · ${track.albumName}` : ""}
-								</p>
-							</div>
-						</div>
-					))}
+									<span
+										className="theme-text-muted w-7 flex-shrink-0 text-right text-xs tabular-nums opacity-70"
+										style={{ fontFamily: fonts.body }}
+										aria-hidden="true"
+									>
+										{track.position + 1}
+									</span>
+									<div className="image-outline relative size-10 flex-shrink-0 overflow-hidden">
+										{track.imageUrl ? (
+											<img
+												src={track.imageUrl}
+												alt=""
+												className="h-full w-full object-cover"
+											/>
+										) : (
+											<AlbumPlaceholder />
+										)}
+									</div>
+									<div className="min-w-0 flex-1">
+										<p
+											className="theme-text truncate text-sm"
+											style={{ fontFamily: fonts.body }}
+										>
+											{track.name}
+										</p>
+										<p
+											className="theme-text-muted truncate text-xs"
+											style={{ fontFamily: fonts.body }}
+										>
+											{artistLine}
+										</p>
+									</div>
+								</li>
+							);
+						})}
+					</ul>
 					{hasNextPage ? (
 						<div
 							ref={sentinelRef}

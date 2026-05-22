@@ -156,6 +156,20 @@ code {
     background: var(--hover-bg);
   }
 
+  /* Generic theme-aware row hover. Mixes 6% of the text color into transparent
+     so the hover lifts above the page background even when surface tokens are
+     only marginally different from the page bg (the case in our pastel
+     themes). Use on list rows that should feel like SongCard / ActivityItem
+     without the inline JS variable. */
+  .theme-row-hover {
+    transition-property: background-color, transform;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .theme-row-hover:hover {
+    background: color-mix(in srgb, var(--t-text) 6%, transparent);
+  }
+
   /* Song cards stay fully renderable so keyboard navigation updates paint immediately.
      Focus visuals are handled globally via [data-tab-focused="true"] and the
      [data-nav-engaged="true"]:focus-visible flicker-suppression rule. */
@@ -224,15 +238,31 @@ code {
     --kbd-shadow-color: color-mix(in srgb, var(--t-text-muted) 20%, transparent);
   }
 
+  /* Not matching → primary CTA so the "Add to Matching" affordance reads as a
+     decisive next step. Matching → outlined affirmative state so the page
+     communicates a stable status rather than an active call. Hover on the
+     selected state previews the destructive direction (lighter border, faint
+     primary tint) without committing visual weight to it. */
   .theme-target-toggle {
-    background: var(--t-surface);
-    color: var(--t-text);
-  }
-
-  .theme-target-toggle:hover,
-  .theme-target-toggle[data-selected="true"] {
     background: var(--t-primary);
     color: var(--t-text-on-primary);
+    border: 1px solid var(--t-primary);
+  }
+
+  .theme-target-toggle:hover {
+    background: var(--t-primary-hover);
+    border-color: var(--t-primary-hover);
+  }
+
+  .theme-target-toggle[data-selected="true"] {
+    background: transparent;
+    color: var(--t-text);
+    border-color: var(--t-border);
+  }
+
+  .theme-target-toggle[data-selected="true"]:hover {
+    background: color-mix(in oklch, var(--t-primary) 6%, transparent);
+    border-color: var(--t-text-muted);
   }
 
   .theme-hover-surface:hover {
@@ -276,6 +306,17 @@ code {
   }
   .hover-border-brighten:hover {
     border-color: var(--t-text-muted);
+  }
+
+  /* Subtle 1px image outline that adapts to light/dark surfaces. Inset
+     box-shadow paints the line inside the image edge — no layout shift, and
+     it shows through cropped covers. Color stays pure black/white per
+     design-principles; a tinted outline reads as dirt on the edge. */
+  .image-outline {
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  }
+  .dark .image-outline {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
   }
 }
 

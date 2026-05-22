@@ -1,5 +1,4 @@
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
-import { Button } from "@/components/ui/Button";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { fonts } from "@/lib/theme/fonts";
 
@@ -20,6 +19,13 @@ interface PlaylistCardProps {
 	onFocus?: React.FocusEventHandler<HTMLElement>;
 	onBlur?: React.FocusEventHandler<HTMLElement>;
 }
+
+// Persistent right-edge action button styling. Always visible at low opacity
+// so the affordance is discoverable without hover; lifts to full contrast on
+// row hover or button focus. Tracking-widest uppercase keeps the visual
+// language consistent with the rest of the editorial type system.
+const rowActionClass =
+	"theme-text-muted inline-flex h-9 min-w-[3.5rem] flex-shrink-0 cursor-pointer items-center justify-center px-3 text-[11px] tracking-widest uppercase opacity-60 transition-[opacity,color,transform] duration-150 ease-out hover:text-(--t-text) hover:opacity-100 focus-visible:opacity-100 active:scale-[0.97] group-hover:opacity-90";
 
 export function PlaylistCard({
 	playlist,
@@ -52,13 +58,13 @@ export function PlaylistCard({
 			<div
 				role="button"
 				tabIndex={0}
-				className="theme-active-row group flex cursor-pointer items-center gap-5 py-5 transition-transform duration-100 ease-out active:scale-[0.995]"
+				className="theme-active-row group flex cursor-pointer items-center gap-5 py-5 transition-transform duration-150 ease-out active:scale-[0.995]"
 				data-selected={isSelected === true}
 				onClick={(event) => onSelect?.(playlist.id, event.currentTarget)}
 				onKeyDown={handleSelectKeyDown}
 			>
 				<div
-					className="size-16 flex-shrink-0 overflow-hidden"
+					className="image-outline relative size-16 flex-shrink-0 overflow-hidden"
 					style={{
 						viewTransitionName: isAnimatingTo ? "playlist-cover" : "none",
 					}}
@@ -66,7 +72,7 @@ export function PlaylistCard({
 					{playlist.image_url ? (
 						<img
 							src={playlist.image_url}
-							alt={playlist.name}
+							alt=""
 							className="h-full w-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
 						/>
 					) : (
@@ -76,7 +82,7 @@ export function PlaylistCard({
 
 				<div className="min-w-0 flex-1">
 					<h3
-						className="theme-text truncate text-2xl font-extralight"
+						className="theme-text truncate text-2xl font-extralight text-balance"
 						style={{
 							fontFamily: fonts.display,
 							fontWeight: isSelected ? 400 : undefined,
@@ -87,7 +93,7 @@ export function PlaylistCard({
 					</h3>
 					{playlist.description && (
 						<p
-							className="theme-text-muted mt-1 truncate text-sm"
+							className="theme-text-muted mt-1 truncate text-sm text-pretty"
 							style={{
 								fontFamily: fonts.body,
 								viewTransitionName: isAnimatingTo
@@ -100,17 +106,18 @@ export function PlaylistCard({
 					)}
 				</div>
 
-				<Button
-					variant="icon"
+				<button
+					type="button"
 					onClick={(e) => {
 						e.stopPropagation();
 						onRemove?.(playlist.id);
 					}}
-					className="opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100"
+					className={rowActionClass}
+					style={{ fontFamily: fonts.body }}
 					aria-label={`Remove ${playlist.name} from matching`}
 				>
-					<span className="theme-text-muted text-xl leading-none">×</span>
-				</Button>
+					Remove
+				</button>
 			</div>
 		);
 	}
@@ -130,13 +137,13 @@ export function PlaylistCard({
 			onFocus={onFocus}
 			onBlur={onBlur}
 			role="button"
-			className="theme-selectable-row group -mx-3 flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors duration-150 ease-out"
+			className="theme-selectable-row group -mx-3 flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-[background-color,transform,border-color] duration-150 ease-out active:scale-[0.995]"
 			data-highlighted={hasHighlight}
 			onClick={(event) => onSelect?.(playlist.id, event.currentTarget)}
 			onKeyDown={handleSelectKeyDown}
 		>
 			<div
-				className="size-10 flex-shrink-0 overflow-hidden"
+				className="image-outline relative size-11 flex-shrink-0 overflow-hidden"
 				style={{
 					viewTransitionName: isAnimatingTo ? "playlist-cover" : "none",
 				}}
@@ -144,7 +151,7 @@ export function PlaylistCard({
 				{playlist.image_url ? (
 					<img
 						src={playlist.image_url}
-						alt={playlist.name}
+						alt=""
 						className="h-full w-full object-cover"
 					/>
 				) : (
@@ -154,7 +161,7 @@ export function PlaylistCard({
 
 			<div className="min-w-0 flex-1">
 				<p
-					className="theme-text truncate text-sm"
+					className="theme-text truncate text-sm text-pretty"
 					style={{
 						fontFamily: fonts.body,
 						fontWeight: isSelected ? 400 : 300,
@@ -173,17 +180,21 @@ export function PlaylistCard({
 				)}
 			</div>
 
-			<Button
-				variant="icon"
+			<button
+				type="button"
 				onClick={(e) => {
 					e.stopPropagation();
 					onAction?.(playlist.id);
 				}}
-				className="opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100"
+				className={rowActionClass}
+				style={{ fontFamily: fonts.body }}
 				aria-label={`Add ${playlist.name} to matching`}
 			>
-				<span className="theme-text-muted text-base leading-none">+</span>
-			</Button>
+				<span aria-hidden="true" className="mr-1 text-sm leading-none">
+					+
+				</span>
+				Add
+			</button>
 		</div>
 	);
 }
