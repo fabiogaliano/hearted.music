@@ -44,6 +44,11 @@ function formatPeriodEnd(iso: string | null): string {
 	});
 }
 
+/**
+ * Renders only the *contents* of the Subscription row. The enclosing
+ * editorial heading + microcopy live in SettingsPage's SettingsSection, so
+ * this component intentionally omits its own title.
+ */
 export function BillingSection({ billingState }: BillingSectionProps) {
 	const [isLoadingPortal, setIsLoadingPortal] = useState(false);
 
@@ -79,59 +84,54 @@ export function BillingSection({ billingState }: BillingSectionProps) {
 	}, [isLoadingPortal]);
 
 	return (
-		<section>
+		<div>
 			<p
-				className="theme-text text-xl font-light"
-				style={{ fontFamily: fonts.display }}
+				className="theme-text-muted text-xs tracking-widest uppercase opacity-60"
+				style={{ fontFamily: fonts.body }}
 			>
-				Billing
+				Current plan
+			</p>
+			<p
+				className="theme-text mt-2 text-base leading-relaxed"
+				style={{ fontFamily: fonts.body }}
+			>
+				{isSelfHosted && (
+					<span>
+						Unlimited <span className="theme-text-muted">· Self-hosted</span>
+					</span>
+				)}
+				{!isSelfHosted && hasSubscription && (
+					<>
+						<span className="theme-text">{planLabel}</span>
+						<span className="theme-text-muted ml-3 inline-flex items-center gap-2">
+							<span
+								aria-hidden="true"
+								className="inline-block size-2 rounded-full"
+								style={{
+									background: getStatusColor(billingState.subscriptionStatus),
+								}}
+							/>
+							{billingState.subscriptionStatus === "ending"
+								? `Active until ${formatPeriodEnd(billingState.subscriptionPeriodEnd)}`
+								: billingState.subscriptionStatus === "past_due"
+									? "Payment failed"
+									: STATUS_LABELS[billingState.subscriptionStatus]}
+						</span>
+					</>
+				)}
+				{!isSelfHosted && !hasSubscription && balance !== null && (
+					<>
+						<span className="theme-text">{planLabel}</span>
+						<span className="theme-text-muted ml-3">
+							· <span className="tabular-nums">{balance}</span> songs remaining
+						</span>
+					</>
+				)}
+				{!isSelfHosted && !hasSubscription && balance === null && "Free"}
 			</p>
 
-			<div className="mt-3">
-				<p
-					className="theme-text-muted text-xs tracking-widest uppercase"
-					style={{ fontFamily: fonts.body, opacity: 0.6 }}
-				>
-					Current plan
-				</p>
-				<p
-					className="theme-text mt-1 text-sm"
-					style={{ fontFamily: fonts.body }}
-				>
-					{isSelfHosted && "Unlimited (Self-hosted)"}
-					{!isSelfHosted && hasSubscription && (
-						<>
-							{planLabel}
-							<span className="theme-text-muted ml-3 inline-flex items-center gap-2">
-								<span
-									className="inline-block size-2 rounded-full"
-									style={{
-										background: getStatusColor(billingState.subscriptionStatus),
-									}}
-								/>
-								{billingState.subscriptionStatus === "ending"
-									? `Active until ${formatPeriodEnd(billingState.subscriptionPeriodEnd)}`
-									: billingState.subscriptionStatus === "past_due"
-										? "Payment failed"
-										: STATUS_LABELS[billingState.subscriptionStatus]}
-							</span>
-						</>
-					)}
-					{!isSelfHosted && !hasSubscription && balance !== null && (
-						<>
-							{planLabel}
-							<span className="theme-text-muted">
-								{" · "}
-								{balance} songs remaining
-							</span>
-						</>
-					)}
-					{!isSelfHosted && !hasSubscription && balance === null && "Free"}
-				</p>
-			</div>
-
 			{showPortalButton && (
-				<div className="mt-4">
+				<div className="mt-5">
 					<Button
 						variant="ghost"
 						size="sm"
@@ -149,10 +149,10 @@ export function BillingSection({ billingState }: BillingSectionProps) {
 			)}
 
 			{showPackEntry && (
-				<div className="mt-4">
+				<div className="mt-5">
 					<PaywallCTA billingState={billingState} compact />
 				</div>
 			)}
-		</section>
+		</div>
 	);
 }
