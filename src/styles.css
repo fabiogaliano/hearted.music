@@ -273,31 +273,17 @@ code {
     background: var(--t-surface);
   }
 
-  .theme-active-row {
-    border-bottom: 1px solid var(--t-border);
-    border-left: 2px solid transparent;
-  }
-
-  .theme-active-row:hover,
-  .theme-active-row[data-selected="true"],
-  .theme-active-row[data-highlighted="true"] {
-    background: var(--t-surface);
-  }
-
-  .theme-active-row[data-selected="true"],
-  .theme-active-row[data-highlighted="true"] {
-    border-left-color: var(--t-primary);
-  }
-
   .theme-selectable-row {
     border-left: 2px solid transparent;
   }
 
   .theme-selectable-row:hover,
+  .theme-selectable-row[data-selected="true"],
   .theme-selectable-row[data-highlighted="true"] {
     background: var(--t-surface);
   }
 
+  .theme-selectable-row[data-selected="true"],
   .theme-selectable-row[data-highlighted="true"] {
     border-left-color: var(--t-primary);
   }

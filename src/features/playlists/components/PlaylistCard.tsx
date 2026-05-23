@@ -68,7 +68,7 @@ export function PlaylistCard({
 				onPointerDown={onPointerDown}
 				onFocus={onFocus}
 				onBlur={onBlur}
-				className="theme-active-row group flex cursor-pointer items-center gap-5 py-5 transition-transform duration-150 ease-out active:scale-[0.995]"
+				className="theme-selectable-row group -mx-3 flex cursor-pointer items-center gap-5 px-3 py-5 transition-[background-color,transform,border-color] duration-150 ease-out active:scale-[0.995]"
 				data-selected={isSelected === true}
 				data-highlighted={activeHasHighlight}
 				onClick={(event) => onSelect?.(playlist.id, event.currentTarget)}
