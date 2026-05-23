@@ -123,16 +123,19 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 		autoScroll: false,
 	});
 
-	// Source-aware scroll: keyboard → center, pointer → nearest
+	// Source-aware scroll: keyboard → center, pointer → nearest. While the
+	// detail panel is open, keep the list cursor synced without moving the page.
 	useIsomorphicLayoutEffect(() => {
-		if (!lastCursorChange) return;
+		if (isExpanded || !lastCursorChange || lastCursorChange.source === "url") {
+			return;
+		}
 
 		const element = getElementAtIndex(lastCursorChange.index);
 		if (!element) return;
 
 		const block = lastCursorChange.source === "pointer" ? "nearest" : "center";
 		scrollListElementIntoView(element, block);
-	}, [lastCursorChange, getElementAtIndex]);
+	}, [isExpanded, lastCursorChange, getElementAtIndex]);
 
 	useShortcut({
 		key: "enter",
@@ -160,13 +163,13 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 			if (index >= 0) {
 				syncFocusedIndex(index, {
 					focus: false,
-					scroll: true,
+					scroll: !isExpanded,
 					scrollBlock: "center",
 					source: "url",
 				});
 			}
 		}
-	}, [selectedPlaylistId, availablePlaylists, syncFocusedIndex]);
+	}, [isExpanded, selectedPlaylistId, availablePlaylists, syncFocusedIndex]);
 
 	// Restore focus to Available list when detail panel closes
 	const prevSelectedIdRef = useRef<string | null>(null);
@@ -174,7 +177,7 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 		const prev = prevSelectedIdRef.current;
 		prevSelectedIdRef.current = selectedPlaylistId;
 		if (prev && !selectedPlaylistId) {
-			focusFocusedItem({ mode: "keyboard" });
+			focusFocusedItem({ mode: "keyboard", scroll: false });
 		}
 	}, [selectedPlaylistId, focusFocusedItem]);
 
@@ -245,7 +248,12 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 				onSearchChange={setSearchQuery}
 			/>
 			<div className="grid grid-cols-[1fr_280px] gap-10">
-				<div ref={expansionColumnRef} className="relative">
+				<div
+					ref={expansionColumnRef}
+					className={`relative ${
+						selectedPlaylistId && !startRect ? "min-h-[calc(100vh-12rem)]" : ""
+					}`}
+				>
 					<ActivePlaylistsPanel
 						playlists={targetPlaylists}
 						onSelectPlaylist={handleExpand}

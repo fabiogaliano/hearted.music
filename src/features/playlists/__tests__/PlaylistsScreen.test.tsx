@@ -7,6 +7,9 @@ import { PlaylistsScreen } from "../PlaylistsScreen";
 
 const mockPlaylistData = vi.fn();
 const mockIsExtensionInstalled = vi.fn();
+const mockRouterState = vi.hoisted(() => ({
+	params: {} as { playlistRef?: string },
+}));
 
 vi.mock("@tanstack/react-router", async () => {
 	const actual = await vi.importActual<typeof import("@tanstack/react-router")>(
@@ -15,7 +18,7 @@ vi.mock("@tanstack/react-router", async () => {
 	return {
 		...actual,
 		useNavigate: () => vi.fn(),
-		useParams: () => ({}),
+		useParams: () => mockRouterState.params,
 	};
 });
 
@@ -63,6 +66,7 @@ function renderWithClient(ui: React.ReactElement) {
 describe("PlaylistsScreen", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockRouterState.params = {};
 		mockIsExtensionInstalled.mockResolvedValue(false);
 	});
 
@@ -144,5 +148,51 @@ describe("PlaylistsScreen", () => {
 		renderWithClient(<PlaylistsScreen theme={theme} accountId="acct-1" />);
 
 		expect(await screen.findByText("No matching playlists yet.")).toBeTruthy();
+	});
+
+	it("does not scroll the page when opening a direct playlist link", async () => {
+		const scrollIntoView = vi.fn();
+		const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+		HTMLElement.prototype.scrollIntoView = scrollIntoView;
+
+		try {
+			mockRouterState.params = { playlistRef: "yilkes--a5223c95a3f5" };
+			mockPlaylistData.mockResolvedValue({
+				playlists: [
+					{
+						id: "a5223c95a3f5",
+						account_id: "acct-1",
+						spotify_id: "sp1",
+						name: "yilkes!",
+						description: "2!!",
+						snapshot_id: null,
+						is_public: true,
+						song_count: 3,
+						is_target: false,
+						image_url: null,
+						created_at: "2026-03-28T00:00:00Z",
+						updated_at: "2026-03-28T00:00:00Z",
+					},
+				],
+				targetPlaylistIds: [],
+			});
+
+			const { user } = renderWithClient(
+				<PlaylistsScreen theme={theme} accountId="acct-1" />,
+			);
+
+			expect(
+				await screen.findByRole("heading", { name: "yilkes!" }),
+			).toBeTruthy();
+			expect(scrollIntoView).not.toHaveBeenCalled();
+
+			await user.click(
+				screen.getByRole("button", { name: "Close detail view" }),
+			);
+			await new Promise((resolve) => setTimeout(resolve, 250));
+			expect(scrollIntoView).not.toHaveBeenCalled();
+		} finally {
+			HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+		}
 	});
 });

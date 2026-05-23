@@ -42,9 +42,11 @@ interface PlaylistDetailViewProps {
 	playlist: Playlist;
 	isTarget: boolean;
 	isExpanded: boolean;
-	// When null, the panel renders as a sticky in-column layout (SSR-friendly,
-	// used for deep links). When set, the panel renders as a fixed overlay
-	// animating from the clicked card's geometry to expandedRect.
+	// When null, the panel renders as an absolute in-column layout
+	// (SSR-friendly, used for deep links) so the first paint shows the
+	// detail without waiting for client-side measurement. When set, the
+	// panel renders as a fixed overlay animating from the clicked card's
+	// geometry to expandedRect.
 	startRect: {
 		top: number;
 		left: number;
@@ -232,18 +234,17 @@ export function PlaylistDetailView({
 		...themeVariables,
 	};
 
-	// Deep-link arrivals have no source rect to morph from, so the overlay
-	// snaps to expandedRect with only a fade. Card-click arrivals carry a
-	// startRect and animate from there.
+	// Deep-link arrivals have no source rect to morph from and no DOM to
+	// measure on the server, so the panel lays itself out in-column with
+	// `position: absolute; inset: 0` — fully CSS-driven, paintable from
+	// SSR HTML on the first frame. Card-click arrivals carry a startRect
+	// and animate from there using measured fixed-overlay geometry.
 	const panelStyle: CSSProperties & ThemeCssVariables =
 		startRect === null
 			? {
 					...sharedStyle,
-					position: "fixed",
-					top: expandedRect.top,
-					left: expandedRect.left,
-					width: expandedRect.width,
-					height: expandedRect.height,
+					position: "absolute",
+					inset: 0,
 					transition: "opacity 160ms var(--ease-out-expo)",
 					willChange: "opacity",
 				}

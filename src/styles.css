@@ -9,6 +9,10 @@
   scrollbar-color: color-mix(in oklch, var(--t-text) 35%, transparent) transparent;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   @apply m-0;
   font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
