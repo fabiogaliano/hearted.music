@@ -1,6 +1,7 @@
-import { MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
-import { useRef } from "react";
+import { InfoIcon, MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
+import { useRef, useState } from "react";
 import { fonts } from "@/lib/theme/fonts";
+import { DescriptionRoleDialog } from "./DescriptionRoleDialog";
 
 interface PlaylistsHeaderProps {
 	totalCount: number | null;
@@ -14,6 +15,8 @@ export function PlaylistsHeader({
 	onSearchChange,
 }: PlaylistsHeaderProps) {
 	const searchInputRef = useRef<HTMLInputElement>(null);
+	const [isHelpOpen, setIsHelpOpen] = useState(false);
+	const openHelp = () => setIsHelpOpen(true);
 
 	return (
 		<header className="mb-10">
@@ -40,18 +43,55 @@ export function PlaylistsHeader({
 				</span>
 			</h1>
 
-			<p
-				className="theme-text-muted mt-4 max-w-lg text-base leading-relaxed text-pretty"
-				style={{ fontFamily: fonts.body }}
-			>
-				Your liked songs are looking for{" "}
-				<em style={{ fontFamily: fonts.display, fontStyle: "italic" }}>
-					homes
-				</em>
-				. Pick the playlists they can move into.
-			</p>
+			<div className="theme-border-color mt-6 flex flex-wrap items-end justify-between gap-x-8 gap-y-3 border-b">
+				<p
+					className="theme-text-muted max-w-lg pb-2.5 text-base leading-relaxed text-pretty"
+					style={{ fontFamily: fonts.body }}
+				>
+					Your liked songs find{" "}
+					<button
+						type="button"
+						onClick={openHelp}
+						className="theme-text m-0 cursor-pointer border-0 bg-transparent p-0 underline-offset-4 transition-[text-decoration] duration-150 hover:underline focus-visible:underline"
+						style={{
+							fontSize: "inherit",
+							lineHeight: "inherit",
+						}}
+					>
+						<em style={{ fontFamily: fonts.display, fontStyle: "italic" }}>
+							homes
+						</em>
+					</button>{" "}
+					through each playlist's{" "}
+					<button
+						type="button"
+						onClick={openHelp}
+						className="theme-text m-0 cursor-pointer border-0 bg-transparent p-0 underline-offset-4 transition-[text-decoration] duration-150 hover:underline focus-visible:underline"
+						style={{
+							fontSize: "inherit",
+							lineHeight: "inherit",
+						}}
+					>
+						<em style={{ fontFamily: fonts.display, fontStyle: "italic" }}>
+							description
+						</em>
+					</button>
+					.{" "}
+					<button
+						type="button"
+						onClick={openHelp}
+						aria-label="Learn how songs find their way into playlists"
+						className="theme-text-muted -m-2 inline-flex size-9 cursor-pointer items-center justify-center align-middle transition-colors duration-150 hover:text-(--t-text) focus-visible:text-(--t-text)"
+					>
+						<InfoIcon
+							aria-hidden="true"
+							size={14}
+							weight="regular"
+							className="shrink-0"
+						/>
+					</button>
+				</p>
 
-			<div className="theme-border-color mt-8 flex items-end justify-end border-b">
 				<label className="relative flex items-center gap-2 pb-2.5">
 					<input
 						ref={searchInputRef}
@@ -91,6 +131,9 @@ export function PlaylistsHeader({
 					/>
 				</label>
 			</div>
+			{isHelpOpen && (
+				<DescriptionRoleDialog onClose={() => setIsHelpOpen(false)} />
+			)}
 		</header>
 	);
 }

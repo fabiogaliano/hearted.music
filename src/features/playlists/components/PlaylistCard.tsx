@@ -91,7 +91,7 @@ export function PlaylistCard({
 					>
 						{playlist.name}
 					</h3>
-					{playlist.description && (
+					{playlist.description ? (
 						<p
 							className="theme-text-muted mt-1 truncate text-sm text-pretty"
 							style={{
@@ -102,6 +102,17 @@ export function PlaylistCard({
 							}}
 						>
 							{playlist.description}
+						</p>
+					) : (
+						<p
+							className="theme-text-muted mt-1 truncate text-sm"
+							style={{ fontFamily: fonts.body }}
+						>
+							Tell hearted what this is{" "}
+							<em style={{ fontFamily: fonts.display, fontStyle: "italic" }}>
+								for
+							</em>
+							, songs find their way here <span aria-hidden="true">→</span>
 						</p>
 					)}
 				</div>

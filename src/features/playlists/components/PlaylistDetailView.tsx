@@ -20,6 +20,7 @@ import { playlistKeys } from "../queries";
 import { DescriptionConflictDialog } from "./DescriptionConflictDialog";
 import { PlaylistDescription } from "./PlaylistDescription";
 import { PlaylistTrackList } from "./PlaylistTrackList";
+import { PlaylistVoices } from "./PlaylistVoices";
 
 const EXTENSION_STORE_URL =
 	"https://chromewebstore.google.com/detail/everything-you-ever-heart/ohaaafmgbbfohhjhogonolonpjhhfohk";
@@ -342,6 +343,7 @@ export function PlaylistDetailView({
 								onSave={handleSaveDescription}
 								onCancel={handleCancelDescription}
 								onDraftChange={handleDraftDescriptionChange}
+								prominent={isPageMode}
 							/>
 
 							{editState.kind === "confirm-overwrite" &&
@@ -410,6 +412,20 @@ export function PlaylistDetailView({
 										</a>
 									</div>
 								)}
+
+							{(isExpanded || isPageMode) && (
+								<div
+									className="mb-6 max-w-lg"
+									style={{
+										opacity: isExpanded || isPageMode ? 1 : 0,
+										transition: isPageMode
+											? "none"
+											: "opacity 200ms var(--ease-out-expo) 100ms",
+									}}
+								>
+									<PlaylistVoices playlist={playlist} />
+								</div>
+							)}
 
 							<div
 								className="mt-2 flex flex-wrap items-center gap-3"
