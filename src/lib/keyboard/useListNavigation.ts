@@ -39,6 +39,10 @@ export function useListNavigation<T>(
 		rows,
 		scrollBlock = "nearest",
 		autoScroll = true,
+		onOverflowUp,
+		onOverflowDown,
+		onLateralLeft,
+		onLateralRight,
 	} = options;
 
 	const cursor = useListCursor<T>({
@@ -67,53 +71,110 @@ export function useListNavigation<T>(
 		[hasMore, items.length, onLoadMore],
 	);
 
+	// Returns true when the cursor moved; false when it clamped at an edge
+	// (or the list is empty / no item was focused). Callers fire overflow
+	// callbacks based on the false branch.
 	const moveFocus = useCallback(
-		(step: number) => {
+		(step: number): boolean => {
 			const change = cursor.moveFocusedIndex(step, {
 				source: "keyboard",
 				mode: "keyboard",
 			});
-			if (!change) return;
+			if (!change) return false;
 
 			maybeLoadMore(change.index);
 			queueScroll(change.sequence);
+			return true;
 		},
 		[cursor, maybeLoadMore, queueScroll],
+	);
+
+	// True when DOM focus is on a descendant of a row but not the row itself —
+	// i.e. a nested control like an "Add" / "Remove" button. Lateral shortcuts
+	// must not hijack interaction with these controls.
+	const isFocusOnNestedRowControl = useCallback((): boolean => {
+		if (typeof document === "undefined") return false;
+		const active = document.activeElement;
+		if (!(active instanceof HTMLElement)) return false;
+		for (let i = 0; i < items.length; i += 1) {
+			const row = cursor.getElementAtIndex(i);
+			if (!row) continue;
+			if (row === active) return false;
+			if (row.contains(active)) return true;
+		}
+		return false;
+	}, [cursor, items.length]);
+
+	const shouldHandleListShortcut = useCallback(
+		() => !isFocusOnNestedRowControl(),
+		[isFocusOnNestedRowControl],
 	);
 
 	const isColumnMajor = rows !== undefined;
 	const verticalStep = direction === "grid" ? (isColumnMajor ? 1 : columns) : 1;
 	const horizontalStep = isColumnMajor ? rows : 1;
 
-	const handleRight = useCallback(
-		() => moveFocus(horizontalStep),
-		[horizontalStep, moveFocus],
-	);
-	const handleLeft = useCallback(
-		() => moveFocus(-horizontalStep),
-		[horizontalStep, moveFocus],
-	);
-	const handleDown = useCallback(
-		() => moveFocus(verticalStep),
-		[moveFocus, verticalStep],
-	);
-	const handleUp = useCallback(
-		() => moveFocus(-verticalStep),
-		[moveFocus, verticalStep],
-	);
+	const handleDown = useCallback(() => {
+		// Read from the cursor's ref, not the React state, because the focus event
+		// that put us at the bottom edge may not have flushed state yet.
+		const previousIndex = cursor.getCurrentIndex();
+		const moved = moveFocus(verticalStep);
+		if (moved) return;
+		if (
+			items.length > 0 &&
+			previousIndex === items.length - 1 &&
+			onOverflowDown
+		) {
+			onOverflowDown();
+		}
+	}, [cursor, items.length, moveFocus, onOverflowDown, verticalStep]);
+
+	const handleUp = useCallback(() => {
+		const previousIndex = cursor.getCurrentIndex();
+		const moved = moveFocus(-verticalStep);
+		if (moved) return;
+		if (items.length > 0 && previousIndex === 0 && onOverflowUp) {
+			onOverflowUp();
+		}
+	}, [cursor, items.length, moveFocus, onOverflowUp, verticalStep]);
+
+	const handleRight = useCallback(() => {
+		if (onLateralRight) {
+			if (isFocusOnNestedRowControl()) return;
+			onLateralRight();
+			return;
+		}
+		moveFocus(horizontalStep);
+	}, [horizontalStep, isFocusOnNestedRowControl, moveFocus, onLateralRight]);
+
+	const handleLeft = useCallback(() => {
+		if (onLateralLeft) {
+			if (isFocusOnNestedRowControl()) return;
+			onLateralLeft();
+			return;
+		}
+		moveFocus(-horizontalStep);
+	}, [horizontalStep, isFocusOnNestedRowControl, moveFocus, onLateralLeft]);
 
 	const handleSelect = useCallback(() => {
+		if (isFocusOnNestedRowControl()) return;
 		if (cursor.focusedIndex < 0 || cursor.focusedIndex >= items.length) return;
 
 		const item = items[cursor.focusedIndex];
 		const element = cursor.getFocusedElement();
 		onSelect?.(item, cursor.focusedIndex, element);
-	}, [cursor, items, onSelect]);
+	}, [cursor, isFocusOnNestedRowControl, items, onSelect]);
 
 	const verticalEnabled =
 		enabled && (direction === "vertical" || direction === "grid");
 	const horizontalEnabled =
 		enabled && (direction === "horizontal" || direction === "grid");
+	// Register left/right whenever lateral callbacks are wired, even when the
+	// direction doesn't include horizontal movement — the callback always wins.
+	const leftShortcutEnabled =
+		horizontalEnabled || (enabled && Boolean(onLateralLeft));
+	const rightShortcutEnabled =
+		horizontalEnabled || (enabled && Boolean(onLateralRight));
 
 	useShortcut({
 		key: "j",
@@ -122,6 +183,7 @@ export function useListNavigation<T>(
 		scope,
 		category: "navigation",
 		enabled: verticalEnabled,
+		shouldHandle: shouldHandleListShortcut,
 	});
 
 	useShortcut({
@@ -131,6 +193,7 @@ export function useListNavigation<T>(
 		scope,
 		category: "navigation",
 		enabled: verticalEnabled,
+		shouldHandle: shouldHandleListShortcut,
 	});
 
 	useShortcut({
@@ -140,6 +203,7 @@ export function useListNavigation<T>(
 		scope,
 		category: "navigation",
 		enabled: verticalEnabled,
+		shouldHandle: shouldHandleListShortcut,
 	});
 
 	useShortcut({
@@ -149,6 +213,7 @@ export function useListNavigation<T>(
 		scope,
 		category: "navigation",
 		enabled: verticalEnabled,
+		shouldHandle: shouldHandleListShortcut,
 	});
 
 	useShortcut({
@@ -157,7 +222,8 @@ export function useListNavigation<T>(
 		description: "Next item",
 		scope,
 		category: "navigation",
-		enabled: horizontalEnabled,
+		enabled: rightShortcutEnabled,
+		shouldHandle: shouldHandleListShortcut,
 	});
 
 	useShortcut({
@@ -166,7 +232,8 @@ export function useListNavigation<T>(
 		description: "Next item",
 		scope,
 		category: "navigation",
-		enabled: horizontalEnabled,
+		enabled: rightShortcutEnabled,
+		shouldHandle: shouldHandleListShortcut,
 	});
 
 	useShortcut({
@@ -175,7 +242,8 @@ export function useListNavigation<T>(
 		description: "Previous item",
 		scope,
 		category: "navigation",
-		enabled: horizontalEnabled,
+		enabled: leftShortcutEnabled,
+		shouldHandle: shouldHandleListShortcut,
 	});
 
 	useShortcut({
@@ -184,7 +252,8 @@ export function useListNavigation<T>(
 		description: "Previous item",
 		scope,
 		category: "navigation",
-		enabled: horizontalEnabled,
+		enabled: leftShortcutEnabled,
+		shouldHandle: shouldHandleListShortcut,
 	});
 
 	useShortcut({
@@ -194,6 +263,7 @@ export function useListNavigation<T>(
 		scope,
 		category: "actions",
 		enabled: enabled && cursor.focusedIndex >= 0,
+		shouldHandle: shouldHandleListShortcut,
 	});
 
 	useIsomorphicLayoutEffect(() => {
@@ -254,10 +324,12 @@ export function useListNavigation<T>(
 		focusedItem: cursor.focusedItem,
 		interactionMode: cursor.interactionMode,
 		lastCursorChange: cursor.lastCursorChange,
+		hasFocusWithin: cursor.hasFocusWithin,
 		getFocusedElement: cursor.getFocusedElement,
 		getElementAtIndex: cursor.getElementAtIndex,
 		syncFocusedIndex,
 		focusFocusedItem,
+		focusIndex: cursor.focusIndex,
 		getItemProps: cursor.getItemProps,
 	};
 }

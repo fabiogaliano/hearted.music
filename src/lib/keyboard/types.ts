@@ -41,6 +41,8 @@ export interface Shortcut {
 	 */
 	key: string;
 	handler: () => void;
+	/** Return false to let the original key event continue normally. */
+	shouldHandle?: (event: KeyboardEvent) => boolean;
 	/** Shown in help modal */
 	description: string;
 	scope: ShortcutScope;
@@ -133,6 +135,10 @@ export interface ListCursorResult<T> {
 	focusedItem: T | null;
 	interactionMode: ListInteractionMode;
 	lastCursorChange: ListCursorChange | null;
+	/** True while DOM focus is on one of this list's rows. */
+	hasFocusWithin: boolean;
+	/** Reads the cursor index from the internal ref (updated synchronously on focus). Use this when React state may not have flushed yet. */
+	getCurrentIndex: () => number;
 	getFocusedElement: () => HTMLElement | null;
 	getElementAtIndex: (index: number) => HTMLElement | null;
 	moveFocusedIndex: (
@@ -164,6 +170,14 @@ export interface ListNavigationOptions<T> extends ListCursorOptions<T> {
 	scrollBlock?: ListScrollBlock;
 	/** Default: true. Disable when the consumer wants to own scroll timing/policy. */
 	autoScroll?: boolean;
+	/** Fired when vertical up movement clamps at index 0. */
+	onOverflowUp?: () => void;
+	/** Fired when vertical down movement clamps at the last index. */
+	onOverflowDown?: () => void;
+	/** Fired for Left / h, regardless of `direction`. Suppressed when focus is on a nested control inside a row. */
+	onLateralLeft?: () => void;
+	/** Fired for Right / l, regardless of `direction`. Suppressed when focus is on a nested control inside a row. */
+	onLateralRight?: () => void;
 }
 
 export interface ListNavigationResult<T>
@@ -173,8 +187,10 @@ export interface ListNavigationResult<T>
 		| "focusedItem"
 		| "interactionMode"
 		| "lastCursorChange"
+		| "hasFocusWithin"
 		| "getFocusedElement"
 		| "getElementAtIndex"
+		| "focusIndex"
 		| "getItemProps"
 	> {
 	syncFocusedIndex: (

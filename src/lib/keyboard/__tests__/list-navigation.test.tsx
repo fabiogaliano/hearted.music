@@ -311,3 +311,145 @@ describe("useListNavigation", () => {
 		expect(scrollIntoViewSpy).toHaveBeenCalledTimes(1);
 	});
 });
+
+interface OverflowHarnessOptions {
+	onOverflowUp?: () => void;
+	onOverflowDown?: () => void;
+	onLateralLeft?: () => void;
+	onLateralRight?: () => void;
+	withNestedControl?: boolean;
+}
+
+function OverflowHarness(props: OverflowHarnessOptions) {
+	const { getItemProps, focusIndex } = useListNavigation({
+		items: ITEMS,
+		scope: "liked-list",
+		getId: (item) => item,
+		onOverflowUp: props.onOverflowUp,
+		onOverflowDown: props.onOverflowDown,
+		onLateralLeft: props.onLateralLeft,
+		onLateralRight: props.onLateralRight,
+	});
+
+	return (
+		<div>
+			<button
+				type="button"
+				onClick={() => {
+					focusIndex(0, { mode: "keyboard" });
+				}}
+			>
+				focus first
+			</button>
+			<button
+				type="button"
+				onClick={() => {
+					focusIndex(ITEMS.length - 1, { mode: "keyboard" });
+				}}
+			>
+				focus last
+			</button>
+			{ITEMS.map((item, index) => {
+				const itemProps = getItemProps(item, index);
+				return (
+					// biome-ignore lint/a11y/useSemanticElements: Test harness mirrors production rows that contain nested controls.
+					<div
+						key={item}
+						ref={itemProps.ref}
+						role="button"
+						tabIndex={itemProps.tabIndex}
+						data-focused={itemProps["data-focused"]}
+						data-nav-engaged={itemProps["data-nav-engaged"]}
+						onPointerDown={itemProps.onPointerDown}
+						onFocus={itemProps.onFocus}
+						onBlur={itemProps.onBlur}
+					>
+						<span>{item}</span>
+						{props.withNestedControl ? (
+							<button type="button" aria-label={`${item} action`}>
+								act
+							</button>
+						) : null}
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
+describe("useListNavigation overflow + lateral callbacks", () => {
+	function mount(harness: React.ReactElement) {
+		return render(
+			<ThemeHueProvider>
+				<KeyboardShortcutProvider>{harness}</KeyboardShortcutProvider>
+			</ThemeHueProvider>,
+		);
+	}
+
+	it("fires onOverflowDown only when pressing Down on the last row", () => {
+		const onOverflowDown = vi.fn();
+		mount(<OverflowHarness onOverflowDown={onOverflowDown} />);
+
+		fireEvent.click(screen.getByRole("button", { name: "focus first" }));
+		fireEvent.keyDown(window, { key: "j" });
+		fireEvent.keyDown(window, { key: "j" });
+		expect(onOverflowDown).not.toHaveBeenCalled();
+
+		fireEvent.keyDown(window, { key: "j" });
+		expect(onOverflowDown).toHaveBeenCalledTimes(1);
+	});
+
+	it("fires onOverflowUp only when pressing Up on the first row", () => {
+		const onOverflowUp = vi.fn();
+		mount(<OverflowHarness onOverflowUp={onOverflowUp} />);
+
+		fireEvent.click(screen.getByRole("button", { name: "focus last" }));
+		fireEvent.keyDown(window, { key: "k" });
+		fireEvent.keyDown(window, { key: "k" });
+		expect(onOverflowUp).not.toHaveBeenCalled();
+
+		fireEvent.keyDown(window, { key: "k" });
+		expect(onOverflowUp).toHaveBeenCalledTimes(1);
+	});
+
+	it("fires onLateralLeft / onLateralRight on h / l and Left / Right", () => {
+		const onLateralLeft = vi.fn();
+		const onLateralRight = vi.fn();
+		mount(
+			<OverflowHarness
+				onLateralLeft={onLateralLeft}
+				onLateralRight={onLateralRight}
+			/>,
+		);
+		fireEvent.click(screen.getByRole("button", { name: "focus first" }));
+
+		fireEvent.keyDown(window, { key: "l" });
+		fireEvent.keyDown(window, { key: "ArrowRight" });
+		expect(onLateralRight).toHaveBeenCalledTimes(2);
+
+		fireEvent.keyDown(window, { key: "h" });
+		fireEvent.keyDown(window, { key: "ArrowLeft" });
+		expect(onLateralLeft).toHaveBeenCalledTimes(2);
+	});
+
+	it("suppresses lateral callbacks when focus is on a nested row control", () => {
+		const onLateralLeft = vi.fn();
+		const onLateralRight = vi.fn();
+		mount(
+			<OverflowHarness
+				onLateralLeft={onLateralLeft}
+				onLateralRight={onLateralRight}
+				withNestedControl
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: "focus first" }));
+		const nested = screen.getByRole("button", { name: "first action" });
+		nested.focus();
+
+		fireEvent.keyDown(window, { key: "l" });
+		fireEvent.keyDown(window, { key: "h" });
+		expect(onLateralLeft).not.toHaveBeenCalled();
+		expect(onLateralRight).not.toHaveBeenCalled();
+	});
+});

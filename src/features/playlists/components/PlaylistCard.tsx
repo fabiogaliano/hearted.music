@@ -47,19 +47,30 @@ export function PlaylistCard({
 	const handleSelectKeyDown: React.KeyboardEventHandler<HTMLElement> = (
 		event,
 	) => {
+		if (event.target !== event.currentTarget) return;
 		if (event.key !== "Enter" && event.key !== " ") return;
 		event.preventDefault();
 		onSelect?.(playlist.id, event.currentTarget);
 	};
 
 	if (status === "active") {
+		const activeIsFocused = dataFocused === true;
+		const activeHasHighlight = activeIsFocused || isSelected;
 		return (
 			// biome-ignore lint/a11y/useSemanticElements: The row contains a nested remove button, so a button wrapper would create invalid nested interactive controls.
 			<div
+				ref={itemRef}
 				role="button"
-				tabIndex={0}
+				tabIndex={tabIndex ?? 0}
+				data-focused={dataFocused}
+				data-tab-focused={dataTabFocused}
+				data-nav-engaged={navEngaged}
+				onPointerDown={onPointerDown}
+				onFocus={onFocus}
+				onBlur={onBlur}
 				className="theme-active-row group flex cursor-pointer items-center gap-5 py-5 transition-transform duration-150 ease-out active:scale-[0.995]"
 				data-selected={isSelected === true}
+				data-highlighted={activeHasHighlight}
 				onClick={(event) => onSelect?.(playlist.id, event.currentTarget)}
 				onKeyDown={handleSelectKeyDown}
 			>

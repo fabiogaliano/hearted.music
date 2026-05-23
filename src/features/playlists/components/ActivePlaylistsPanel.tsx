@@ -1,4 +1,5 @@
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
+import type { ListNavigationResult } from "@/lib/keyboard/types";
 import { fonts } from "@/lib/theme/fonts";
 import { PlaylistCard } from "./PlaylistCard";
 
@@ -11,6 +12,7 @@ interface ActivePlaylistsPanelProps {
 	selectedPlaylistId?: string | null;
 	searchQuery: string | null;
 	onClearSearch: () => void;
+	getItemProps?: ListNavigationResult<Playlist>["getItemProps"];
 }
 
 export function ActivePlaylistsPanel({
@@ -22,6 +24,7 @@ export function ActivePlaylistsPanel({
 	selectedPlaylistId,
 	searchQuery,
 	onClearSearch,
+	getItemProps,
 }: ActivePlaylistsPanelProps) {
 	const isSearching = searchQuery !== null && searchQuery.length > 0;
 
@@ -90,19 +93,31 @@ export function ActivePlaylistsPanel({
 					</div>
 				)
 			) : (
-				<div className="space-y-0">
-					{playlists.map((playlist) => (
-						<PlaylistCard
-							key={playlist.id}
-							playlist={playlist}
-							status="active"
-							isSelected={selectedPlaylistId === playlist.id}
-							onSelect={onSelectPlaylist}
-							onRemove={onRemove}
-							isAnimatingTo={closingToPlaylistId === playlist.id}
-						/>
-					))}
-				</div>
+				<ul className="space-y-0" aria-label="Matching playlists">
+					{playlists.map((playlist, index) => {
+						const itemProps = getItemProps?.(playlist, index);
+						return (
+							<li key={playlist.id}>
+								<PlaylistCard
+									playlist={playlist}
+									status="active"
+									isSelected={selectedPlaylistId === playlist.id}
+									onSelect={onSelectPlaylist}
+									onRemove={onRemove}
+									isAnimatingTo={closingToPlaylistId === playlist.id}
+									itemRef={itemProps?.ref}
+									tabIndex={itemProps?.tabIndex}
+									dataFocused={itemProps?.["data-focused"]}
+									dataTabFocused={itemProps?.["data-tab-focused"]}
+									navEngaged={itemProps?.["data-nav-engaged"]}
+									onPointerDown={itemProps?.onPointerDown}
+									onFocus={itemProps?.onFocus}
+									onBlur={itemProps?.onBlur}
+								/>
+							</li>
+						);
+					})}
+				</ul>
 			)}
 		</div>
 	);

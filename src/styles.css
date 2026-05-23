@@ -278,8 +278,14 @@ code {
     border-left: 2px solid transparent;
   }
 
-  .theme-active-row[data-selected="true"] {
+  .theme-active-row:hover,
+  .theme-active-row[data-selected="true"],
+  .theme-active-row[data-highlighted="true"] {
     background: var(--t-surface);
+  }
+
+  .theme-active-row[data-selected="true"],
+  .theme-active-row[data-highlighted="true"] {
     border-left-color: var(--t-primary);
   }
 

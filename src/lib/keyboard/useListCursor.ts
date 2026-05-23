@@ -109,6 +109,8 @@ export function useListCursor<T>(
 		}
 	}, []);
 
+	const getCurrentIndex = useCallback(() => focusedIndexRef.current, []);
+
 	const getElementAtIndex = useCallback(
 		(index: number): HTMLElement | null => {
 			if (index < 0 || index >= items.length) return null;
@@ -155,9 +157,11 @@ export function useListCursor<T>(
 		[],
 	);
 
+	// `enabled` deliberately does not gate this. Programmatic focus (cross-list
+	// coordination, focus restore) must work even when keyboard shortcuts are
+	// suppressed on this list — `enabled` only governs user-initiated nav.
 	const focusIndex = useCallback(
 		(index: number, focusOptions?: { mode?: ListInteractionMode }) => {
-			if (!enabled) return;
 			if (index < 0 || index >= items.length) return;
 
 			if (focusOptions?.mode !== undefined) {
@@ -172,7 +176,7 @@ export function useListCursor<T>(
 			element.focus({ preventScroll: true });
 			isProgrammaticFocusRef.current = false;
 		},
-		[enabled, items.length, getElementAtIndex],
+		[items.length, getElementAtIndex],
 	);
 
 	const focusFocusedItem = useCallback(
@@ -381,6 +385,8 @@ export function useListCursor<T>(
 		focusedItem,
 		interactionMode,
 		lastCursorChange,
+		hasFocusWithin,
+		getCurrentIndex,
 		getFocusedElement,
 		getElementAtIndex,
 		moveFocusedIndex,

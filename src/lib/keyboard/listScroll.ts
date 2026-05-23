@@ -15,6 +15,7 @@ export function scrollListElementIntoView(
 	element: HTMLElement,
 	block: ListScrollBlock,
 ): void {
+	if (typeof element.scrollIntoView !== "function") return;
 	element.scrollIntoView({
 		behavior: resolveListScrollBehavior(block),
 		block,

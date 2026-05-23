@@ -78,30 +78,31 @@ export function PlaylistLibrary({
 						</p>
 					)
 				) : (
-					<div className="space-y-0">
+					<ul className="space-y-0" aria-label="Available playlists">
 						{playlists.map((playlist, index) => {
 							const itemProps = getItemProps(playlist, index);
 							return (
-								<PlaylistCard
-									key={playlist.id}
-									playlist={playlist}
-									status="available"
-									isSelected={selectedPlaylistId === playlist.id}
-									onSelect={onSelectPlaylist}
-									onAction={onAddPlaylist}
-									isAnimatingTo={closingToPlaylistId === playlist.id}
-									itemRef={itemProps.ref}
-									tabIndex={itemProps.tabIndex}
-									dataFocused={itemProps["data-focused"]}
-									dataTabFocused={itemProps["data-tab-focused"]}
-									navEngaged={itemProps["data-nav-engaged"]}
-									onPointerDown={itemProps.onPointerDown}
-									onFocus={itemProps.onFocus}
-									onBlur={itemProps.onBlur}
-								/>
+								<li key={playlist.id}>
+									<PlaylistCard
+										playlist={playlist}
+										status="available"
+										isSelected={selectedPlaylistId === playlist.id}
+										onSelect={onSelectPlaylist}
+										onAction={onAddPlaylist}
+										isAnimatingTo={closingToPlaylistId === playlist.id}
+										itemRef={itemProps.ref}
+										tabIndex={itemProps.tabIndex}
+										dataFocused={itemProps["data-focused"]}
+										dataTabFocused={itemProps["data-tab-focused"]}
+										navEngaged={itemProps["data-nav-engaged"]}
+										onPointerDown={itemProps.onPointerDown}
+										onFocus={itemProps.onFocus}
+										onBlur={itemProps.onBlur}
+									/>
+								</li>
 							);
 						})}
-					</div>
+					</ul>
 				)}
 			</div>
 		</div>

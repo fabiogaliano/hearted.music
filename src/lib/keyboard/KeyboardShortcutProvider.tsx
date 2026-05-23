@@ -208,8 +208,10 @@ export function KeyboardShortcutProvider({
 			const enabledShortcuts = shortcutsRef.current.filter(
 				(s) => s.enabled !== false,
 			);
-			const matchingShortcuts = enabledShortcuts.filter((s) =>
-				eventMatchesShortcut(event, s.key),
+			const matchingShortcuts = enabledShortcuts.filter(
+				(s) =>
+					eventMatchesShortcut(event, s.key) &&
+					(s.shouldHandle?.(event) ?? true),
 			);
 
 			if (matchingShortcuts.length === 0) return;

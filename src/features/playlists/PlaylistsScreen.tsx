@@ -1,8 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { scrollListElementIntoView } from "@/lib/keyboard/listScroll";
+import type { ListNavigationResult } from "@/lib/keyboard/types";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
@@ -22,6 +30,8 @@ import { playlistManagementQueryOptions } from "./queries";
 
 const useIsomorphicLayoutEffect =
 	typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+type PlaylistColumn = "matching" | "available";
 
 interface PlaylistsScreenProps {
 	theme: ThemeConfig;
@@ -101,85 +111,268 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 		};
 	}, [data, targetIds, isSearching, normalizedQuery]);
 
-	const {
-		focusedIndex,
-		lastCursorChange,
-		syncFocusedIndex,
-		getFocusedElement,
-		getElementAtIndex,
-		focusFocusedItem,
-		getItemProps,
-	} = useListNavigation<Playlist>({
-		items: availablePlaylists,
+	// Forward-refs let each hook's callbacks reach the other's focusIndex even
+	// though one is declared before the other. Assigned right after both hooks
+	// run so the refs always point at the latest result object.
+	const matchingNavRef = useRef<ListNavigationResult<Playlist> | null>(null);
+	const availableNavRef = useRef<ListNavigationResult<Playlist> | null>(null);
+	const detailOriginColumnRef = useRef<PlaylistColumn | null>(null);
+	const targetIdsRef = useRef(targetIds);
+	targetIdsRef.current = targetIds;
+
+	const handleExpandFromColumn = useCallback(
+		(id: string, element: HTMLElement) => {
+			detailOriginColumnRef.current = targetIdsRef.current.has(id)
+				? "matching"
+				: "available";
+			handleExpand(id, element);
+		},
+		[handleExpand],
+	);
+
+	const focusNavIndex = useCallback(
+		(nav: ListNavigationResult<Playlist> | null, index: number) => {
+			if (!nav) return;
+			nav.focusIndex(index, { mode: "keyboard" });
+			const element = nav.getElementAtIndex(index);
+			if (element) scrollListElementIntoView(element, "center");
+		},
+		[],
+	);
+
+	// Which column currently owns keyboard nav. Kept in React state so that
+	// focus transitions trigger a re-render — that re-render is what flips the
+	// `enabled` flag of each hook and re-registers (or unregisters) shortcuts.
+	// `null` means neither column has been focused yet; we fall back to
+	// whichever column has rows so the first `j` from a fresh page has
+	// somewhere to go.
+	const [activeColumn, setActiveColumn] = useState<PlaylistColumn | null>(null);
+
+	const matchingEnabled =
+		!isExpanded &&
+		(activeColumn === "matching" ||
+			(activeColumn === null && targetPlaylists.length > 0));
+	const availableEnabled =
+		!isExpanded &&
+		(activeColumn === "available" ||
+			(activeColumn === null &&
+				targetPlaylists.length === 0 &&
+				availablePlaylists.length > 0));
+
+	const matchingNav = useListNavigation<Playlist>({
+		items: targetPlaylists,
 		scope: "playlists-list",
-		enabled: !isExpanded && availablePlaylists.length > 0,
+		enabled: matchingEnabled,
 		onSelect: (playlist, _index, element) => {
-			if (element) {
-				handleExpand(playlist.id, element);
-			}
+			if (element) handleExpandFromColumn(playlist.id, element);
 		},
 		getId: (playlist) => playlist.id,
 		scrollBlock: "center",
 		autoScroll: false,
+		onOverflowDown: () => {
+			focusNavIndex(availableNavRef.current, 0);
+		},
+		onLateralRight: () => {
+			focusNavIndex(availableNavRef.current, 0);
+		},
 	});
 
-	// Source-aware scroll: keyboard → center, pointer → nearest. While the
-	// detail panel is open, keep the list cursor synced without moving the page.
-	useIsomorphicLayoutEffect(() => {
-		if (isExpanded || !lastCursorChange || lastCursorChange.source === "url") {
+	const availableNav = useListNavigation<Playlist>({
+		items: availablePlaylists,
+		scope: "playlists-list",
+		enabled: availableEnabled,
+		onSelect: (playlist, _index, element) => {
+			if (element) handleExpandFromColumn(playlist.id, element);
+		},
+		getId: (playlist) => playlist.id,
+		scrollBlock: "center",
+		autoScroll: false,
+		onOverflowUp: () => {
+			const last = targetPlaylists.length - 1;
+			focusNavIndex(matchingNavRef.current, last);
+		},
+		onLateralLeft: () => {
+			focusNavIndex(matchingNavRef.current, 0);
+		},
+	});
+
+	matchingNavRef.current = matchingNav;
+	availableNavRef.current = availableNav;
+
+	// Sync the active-column state from the hooks' focus-within state. The
+	// effect runs after commit, so we re-render once more after focus moves —
+	// that second render is where the inactive hook becomes `enabled` and
+	// registers its shortcuts. The trailing `null` branch handles the case
+	// where focus leaves both columns (e.g., when a column empties out).
+	useEffect(() => {
+		if (matchingNav.hasFocusWithin) {
+			setActiveColumn("matching");
 			return;
 		}
+		if (availableNav.hasFocusWithin) {
+			setActiveColumn("available");
+			return;
+		}
+		setActiveColumn(null);
+	}, [matchingNav.hasFocusWithin, availableNav.hasFocusWithin]);
 
-		const element = getElementAtIndex(lastCursorChange.index);
+	// Source-aware scroll for matching column: keyboard → center,
+	// pointer → nearest. Skip while detail is open or when source is "url".
+	useIsomorphicLayoutEffect(() => {
+		const change = matchingNav.lastCursorChange;
+		if (isExpanded || !change || change.source === "url") return;
+		const element = matchingNav.getElementAtIndex(change.index);
 		if (!element) return;
-
-		const block = lastCursorChange.source === "pointer" ? "nearest" : "center";
+		const block = change.source === "pointer" ? "nearest" : "center";
 		scrollListElementIntoView(element, block);
-	}, [isExpanded, lastCursorChange, getElementAtIndex]);
+	}, [isExpanded, matchingNav.lastCursorChange, matchingNav.getElementAtIndex]);
 
+	useIsomorphicLayoutEffect(() => {
+		const change = availableNav.lastCursorChange;
+		if (isExpanded || !change || change.source === "url") return;
+		const element = availableNav.getElementAtIndex(change.index);
+		if (!element) return;
+		const block = change.source === "pointer" ? "nearest" : "center";
+		scrollListElementIntoView(element, block);
+	}, [
+		isExpanded,
+		availableNav.lastCursorChange,
+		availableNav.getElementAtIndex,
+	]);
+
+	const isFocusOnNestedPlaylistControl = useCallback((): boolean => {
+		if (typeof document === "undefined") return false;
+		const active = document.activeElement;
+		if (!(active instanceof HTMLElement)) return false;
+
+		const containsNestedFocus = (
+			nav: ListNavigationResult<Playlist>,
+			length: number,
+		) => {
+			for (let i = 0; i < length; i += 1) {
+				const row = nav.getElementAtIndex(i);
+				if (!row) continue;
+				if (row === active) return false;
+				if (row.contains(active)) return true;
+			}
+			return false;
+		};
+
+		return (
+			containsNestedFocus(matchingNav, targetPlaylists.length) ||
+			containsNestedFocus(availableNav, availablePlaylists.length)
+		);
+	}, [
+		matchingNav,
+		availableNav,
+		targetPlaylists.length,
+		availablePlaylists.length,
+	]);
+
+	// Single Enter handler dispatches to whichever column currently owns focus.
+	// Space is handled inside each useListNavigation via onSelect.
 	useShortcut({
 		key: "enter",
 		handler: () => {
-			if (focusedIndex >= 0 && focusedIndex < availablePlaylists.length) {
-				const playlist = availablePlaylists[focusedIndex];
-				const element = getFocusedElement();
-				if (element) {
-					handleExpand(playlist.id, element);
-				}
+			if (isFocusOnNestedPlaylistControl()) return;
+			if (
+				matchingNav.hasFocusWithin &&
+				matchingNav.focusedIndex >= 0 &&
+				matchingNav.focusedIndex < targetPlaylists.length
+			) {
+				const playlist = targetPlaylists[matchingNav.focusedIndex];
+				const element = matchingNav.getFocusedElement();
+				if (element) handleExpandFromColumn(playlist.id, element);
+				return;
+			}
+			if (
+				availableNav.focusedIndex >= 0 &&
+				availableNav.focusedIndex < availablePlaylists.length
+			) {
+				const playlist = availablePlaylists[availableNav.focusedIndex];
+				const element = availableNav.getFocusedElement();
+				if (element) handleExpandFromColumn(playlist.id, element);
 			}
 		},
 		description: "Open playlist details",
 		scope: "playlists-list",
 		category: "actions",
-		enabled: !isExpanded && focusedIndex >= 0,
+		shouldHandle: () => !isFocusOnNestedPlaylistControl(),
+		enabled:
+			!isExpanded &&
+			(matchingNav.focusedIndex >= 0 || availableNav.focusedIndex >= 0),
 	});
 
-	// Sync cursor with route-backed selected playlist
+	// Sync cursor with route-backed selected playlist in whichever column owns it.
 	useIsomorphicLayoutEffect(() => {
-		if (selectedPlaylistId) {
-			const index = availablePlaylists.findIndex(
-				(p) => p.id === selectedPlaylistId,
-			);
-			if (index >= 0) {
-				syncFocusedIndex(index, {
-					focus: false,
-					scroll: !isExpanded,
-					scrollBlock: "center",
-					source: "url",
-				});
-			}
-		}
-	}, [isExpanded, selectedPlaylistId, availablePlaylists, syncFocusedIndex]);
+		if (!selectedPlaylistId) return;
 
-	// Restore focus to Available list when detail panel closes
+		const matchIdx = targetPlaylists.findIndex(
+			(p) => p.id === selectedPlaylistId,
+		);
+		if (matchIdx >= 0) {
+			matchingNav.syncFocusedIndex(matchIdx, {
+				focus: false,
+				scroll: !isExpanded,
+				scrollBlock: "center",
+				source: "url",
+			});
+			return;
+		}
+
+		const availIdx = availablePlaylists.findIndex(
+			(p) => p.id === selectedPlaylistId,
+		);
+		if (availIdx >= 0) {
+			availableNav.syncFocusedIndex(availIdx, {
+				focus: false,
+				scroll: !isExpanded,
+				scrollBlock: "center",
+				source: "url",
+			});
+		}
+	}, [
+		isExpanded,
+		selectedPlaylistId,
+		targetPlaylists,
+		availablePlaylists,
+		matchingNav,
+		availableNav,
+	]);
+
+	// Restore focus to the originating column on detail close. Falls back to
+	// the other non-empty column when the origin column is empty.
 	const prevSelectedIdRef = useRef<string | null>(null);
 	useEffect(() => {
 		const prev = prevSelectedIdRef.current;
 		prevSelectedIdRef.current = selectedPlaylistId;
-		if (prev && !selectedPlaylistId) {
-			focusFocusedItem({ mode: "keyboard", scroll: false });
-		}
-	}, [selectedPlaylistId, focusFocusedItem]);
+		if (!prev || selectedPlaylistId) return;
+
+		const origin = detailOriginColumnRef.current;
+		detailOriginColumnRef.current = null;
+
+		const restore = (column: PlaylistColumn) => {
+			if (column === "matching" && targetPlaylists.length > 0) {
+				matchingNav.focusFocusedItem({ mode: "keyboard", scroll: false });
+				return true;
+			}
+			if (column === "available" && availablePlaylists.length > 0) {
+				availableNav.focusFocusedItem({ mode: "keyboard", scroll: false });
+				return true;
+			}
+			return false;
+		};
+
+		if (origin && restore(origin)) return;
+		if (restore("matching")) return;
+		restore("available");
+	}, [
+		selectedPlaylistId,
+		matchingNav,
+		availableNav,
+		targetPlaylists.length,
+		availablePlaylists.length,
+	]);
 
 	const expandedPlaylist = useMemo(
 		() => data?.playlists.find((p) => p.id === selectedPlaylistId) ?? null,
@@ -256,13 +449,14 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 				>
 					<ActivePlaylistsPanel
 						playlists={targetPlaylists}
-						onSelectPlaylist={handleExpand}
+						onSelectPlaylist={handleExpandFromColumn}
 						onRemove={(id) => handleToggleTarget(id, false)}
 						isExpanded={isExpanded}
 						closingToPlaylistId={closingToPlaylistId}
 						selectedPlaylistId={selectedPlaylistId}
 						searchQuery={isSearching ? searchQuery : null}
 						onClearSearch={() => setSearchQuery("")}
+						getItemProps={matchingNav.getItemProps}
 					/>
 					{expandedPlaylist && (
 						<PlaylistDetailView
@@ -283,10 +477,10 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 
 				<PlaylistLibrary
 					playlists={availablePlaylists}
-					onSelectPlaylist={handleExpand}
+					onSelectPlaylist={handleExpandFromColumn}
 					onAddPlaylist={(id) => handleToggleTarget(id, true)}
 					closingToPlaylistId={closingToPlaylistId}
-					getItemProps={getItemProps}
+					getItemProps={availableNav.getItemProps}
 					selectedPlaylistId={selectedPlaylistId}
 					searchQuery={isSearching ? searchQuery : null}
 					onClearSearch={() => setSearchQuery("")}
