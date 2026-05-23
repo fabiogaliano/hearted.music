@@ -234,6 +234,16 @@ export function PlaylistDetailView({
 		...themeVariables,
 	};
 
+	// Title scales down in three tiers so a 6-char name still feels hero-sized
+	// while a 200-char Spotify auto-generated name doesn't blow past the cover.
+	// The 2-line clamp on the <h2> caps the worst case; this just keeps each
+	// tier visually balanced inside that clamp. font-extralight reads fine at
+	// 48px but loses presence at 30px, so the smaller tiers bump to font-light.
+	const nameLength = playlist.name.length;
+	const titleSizeClass =
+		nameLength <= 24 ? "text-5xl" : nameLength <= 60 ? "text-4xl" : "text-3xl";
+	const titleWeightClass = nameLength <= 24 ? "font-extralight" : "font-light";
+
 	// Deep-link arrivals have no source rect to morph from and no DOM to
 	// measure on the server, so the panel lays itself out in-column with
 	// `position: absolute; inset: 0` — fully CSS-driven, paintable from
@@ -286,10 +296,16 @@ export function PlaylistDetailView({
 						<XIcon size={20} weight="regular" />
 					</button>
 
-					<div className="flex items-start gap-8">
+					{/* Grid with the cover spanning both rows and `grid-rows-[1fr_auto]`
+					   pins the action row to the cover's bottom edge by structure: row 1
+					   absorbs any vertical slack, row 2 is sized to the button and lives
+					   at the bottom of the grid track — which is the bottom of the cover.
+					   Robust to root font-size / zoom changes that would break min-height
+					   matching. */}
+					<div className="grid grid-cols-[14rem_1fr] grid-rows-[1fr_auto] gap-x-8 gap-y-2">
 						{isExpanded && (
 							<div
-								className="image-outline size-56 flex-shrink-0 overflow-hidden shadow-xl"
+								className="image-outline row-span-2 size-56 self-start overflow-hidden shadow-xl"
 								style={{
 									viewTransitionName: "playlist-cover",
 								}}
@@ -306,14 +322,15 @@ export function PlaylistDetailView({
 							</div>
 						)}
 
-						<div className="min-w-0 flex-1">
+						<div className="flex min-w-0 flex-col">
 							{isExpanded && (
 								<h2
-									className="theme-text mb-4 text-5xl leading-[0.95] font-extralight tracking-tight text-balance"
+									className={`theme-text mb-4 line-clamp-2 leading-[0.95] tracking-tight text-balance ${titleSizeClass} ${titleWeightClass}`}
 									style={{
 										fontFamily: fonts.display,
 										viewTransitionName: "playlist-title",
 									}}
+									title={playlist.name.length > 30 ? playlist.name : undefined}
 								>
 									{playlist.name}
 								</h2>
@@ -398,7 +415,7 @@ export function PlaylistDetailView({
 
 							{isExpanded && (
 								<div
-									className="mb-6 max-w-lg"
+									className="max-w-lg"
 									style={{
 										opacity: 1,
 										transition: "opacity 200ms var(--ease-out-expo) 100ms",
@@ -407,9 +424,15 @@ export function PlaylistDetailView({
 									<PlaylistVoices playlist={playlist} />
 								</div>
 							)}
+						</div>
 
+						{/* Row 2, col 2: self-end pins to the bottom of the row, which is
+						   pinned to the bottom of the cover by the grid's 1fr/auto rows.
+						   Hidden during description editing — Save/Cancel are the only
+						   verbs that should be live in that mode. */}
+						{!isEditingDescription && (
 							<div
-								className="mt-2 flex flex-wrap items-center gap-3"
+								className="flex min-w-0 flex-wrap items-center gap-3 self-end"
 								style={{
 									opacity: isExpanded ? 1 : 0,
 									transition: "opacity 200ms var(--ease-out-expo) 120ms",
@@ -438,7 +461,7 @@ export function PlaylistDetailView({
 									</span>
 								)}
 							</div>
-						</div>
+						)}
 					</div>
 				</div>
 

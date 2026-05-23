@@ -51,16 +51,6 @@ export function PlaylistDescription({
 					style={{ fontFamily: fonts.body }}
 					rows={3}
 				/>
-				<p
-					className="theme-text-muted mt-3 text-xs leading-relaxed text-pretty"
-					style={{ fontFamily: fonts.body }}
-				>
-					New songs find their way here by what you{" "}
-					<em style={{ fontFamily: fonts.display, fontStyle: "italic" }}>
-						write
-					</em>
-					. The clearer, the better.
-				</p>
 				<div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
 					<Button size="sm" onClick={onSave} style={{ fontFamily: fonts.body }}>
 						Save
@@ -73,12 +63,6 @@ export function PlaylistDescription({
 					>
 						Cancel
 					</Button>
-					<span
-						className="theme-text-muted text-[11px] tracking-widest uppercase opacity-70"
-						style={{ fontFamily: fonts.body }}
-					>
-						Saves to Spotify
-					</span>
 				</div>
 			</div>
 		);
@@ -101,11 +85,12 @@ export function PlaylistDescription({
 	if (!canEdit) {
 		return (
 			<p
-				className="theme-text mb-6 max-w-lg text-base leading-relaxed text-pretty"
+				className="theme-text mb-2 line-clamp-3 max-w-lg text-base leading-relaxed text-pretty"
 				style={{
 					fontFamily: fonts.body,
 					viewTransitionName: "playlist-description",
 				}}
+				title={description || undefined}
 			>
 				{description || `${trackCount} tracks`}
 			</p>
@@ -114,7 +99,7 @@ export function PlaylistDescription({
 
 	if (!hasDescription) {
 		return (
-			<div className="mb-6 max-w-lg">
+			<div className="mb-2 max-w-lg">
 				<button
 					type="button"
 					onClick={onEdit}
@@ -139,20 +124,23 @@ export function PlaylistDescription({
 		<button
 			type="button"
 			onClick={onEdit}
-			className="group/edit theme-row-hover -mx-3 mb-6 block w-full max-w-lg cursor-pointer px-3 py-2 text-left"
+			className="group/edit theme-border-color theme-border-brighten -mx-3 mb-2 block w-full max-w-lg cursor-pointer border-b px-3 py-2 text-left transition-colors duration-150"
 		>
 			<div className="flex items-start gap-4">
 				<p
-					className="theme-text flex-1 text-base leading-relaxed text-pretty"
+					className="theme-text line-clamp-3 flex-1 text-base leading-relaxed text-pretty"
 					style={{
 						fontFamily: fonts.body,
 						viewTransitionName: "playlist-description",
 					}}
+					title={description ?? undefined}
 				>
 					{description}
 				</p>
+				{/* Color shift (muted → text) reads as "I'm becoming active" more
+				   clearly than an opacity fade, which can suggest "disabled". */}
 				<span
-					className="theme-text flex-shrink-0 self-center text-xs tracking-widest uppercase opacity-40 transition-opacity duration-150 group-hover/edit:opacity-100"
+					className="theme-text-muted flex-shrink-0 self-center text-xs tracking-widest uppercase transition-colors duration-150 group-hover/edit:text-(--t-text)"
 					style={{ fontFamily: fonts.body }}
 				>
 					Edit

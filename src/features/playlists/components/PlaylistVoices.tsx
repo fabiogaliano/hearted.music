@@ -14,23 +14,6 @@ interface PlaylistVoicesProps {
 	className?: string;
 }
 
-// Two-state framing: with songs vs without songs. Users don't experience their
-// playlist as four matcher buckets — they experience "empty" or "growing".
-function copyFor(weights: PlaylistVoiceWeights) {
-	if (weights.state === "cold-start") {
-		return {
-			before: "No songs yet, so new ones will find their way here by what you ",
-			italic: "wrote",
-			after: ".",
-		};
-	}
-	return {
-		before: "New songs find their way here by what you ",
-		italic: "wrote",
-		after: ".",
-	};
-}
-
 export function PlaylistVoices({
 	playlist,
 	weights: weightsProp,
@@ -46,21 +29,14 @@ export function PlaylistVoices({
 	// second indicator on top of an absent description doubles the noise.
 	if (!weights.hasDescription) return null;
 
-	const copy = copyFor(weights);
-
 	return (
 		<>
 			<span
 				className={`theme-text-muted inline-flex items-center gap-2 text-xs leading-relaxed text-pretty ${className ?? ""}`}
 				style={{ fontFamily: fonts.body }}
 			>
-				<PulseDot />
 				<span>
-					{copy.before}
-					<em style={{ fontFamily: fonts.display, fontStyle: "italic" }}>
-						{copy.italic}
-					</em>
-					{copy.after}
+					Set the vibe. New songs find their way here from your description.
 				</span>
 				<HelpButton onClick={() => setIsHelpOpen(true)} />
 			</span>
@@ -68,15 +44,6 @@ export function PlaylistVoices({
 				<DescriptionRoleDialog onClose={() => setIsHelpOpen(false)} />
 			)}
 		</>
-	);
-}
-
-function PulseDot() {
-	return (
-		<span aria-hidden="true" className="relative inline-flex size-2">
-			<span className="theme-primary-bg absolute inset-0 rounded-full opacity-70" />
-			<span className="theme-primary-bg absolute inset-0 rounded-full opacity-40 motion-safe:animate-ping motion-reduce:hidden" />
-		</span>
 	);
 }
 

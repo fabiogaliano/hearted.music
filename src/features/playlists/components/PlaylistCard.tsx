@@ -81,25 +81,31 @@ export function PlaylistCard({
 				</div>
 
 				<div className="min-w-0 flex-1">
+					{/* line-clamp-2 + title for the name (preserve identity on long titles),
+					   1-line truncate for the description (preserve row rhythm). text-balance
+					   and text-pretty removed: they silently overrode truncate's nowrap via
+					   the text-wrap-mode cascade. */}
 					<h3
-						className="theme-text truncate text-2xl font-extralight text-balance"
+						className="theme-text line-clamp-2 text-2xl font-extralight"
 						style={{
 							fontFamily: fonts.display,
 							fontWeight: isSelected ? 400 : undefined,
 							viewTransitionName: isAnimatingTo ? "playlist-title" : "none",
 						}}
+						title={playlist.name.length > 30 ? playlist.name : undefined}
 					>
 						{playlist.name}
 					</h3>
 					{playlist.description ? (
 						<p
-							className="theme-text-muted mt-1 truncate text-sm text-pretty"
+							className="theme-text-muted mt-1 truncate text-sm"
 							style={{
 								fontFamily: fonts.body,
 								viewTransitionName: isAnimatingTo
 									? "playlist-description"
 									: "none",
 							}}
+							title={playlist.description}
 						>
 							{playlist.description}
 						</p>
@@ -171,13 +177,17 @@ export function PlaylistCard({
 			</div>
 
 			<div className="min-w-0 flex-1">
+				{/* line-clamp-2 + title mirrors the header's treatment for long names.
+				   text-pretty removed: it silently overrode truncate's nowrap because
+				   text-wrap-mode cascade rules — the title was wrapping to 6+ lines. */}
 				<p
-					className="theme-text truncate text-sm text-pretty"
+					className="theme-text line-clamp-2 text-sm"
 					style={{
 						fontFamily: fonts.body,
 						fontWeight: isSelected ? 400 : 300,
 						viewTransitionName: isAnimatingTo ? "playlist-title" : "none",
 					}}
+					title={playlist.name.length > 30 ? playlist.name : undefined}
 				>
 					{playlist.name}
 				</p>
@@ -185,6 +195,7 @@ export function PlaylistCard({
 					<p
 						className="theme-text-muted truncate text-xs"
 						style={{ fontFamily: fonts.body }}
+						title={playlist.description}
 					>
 						{playlist.description}
 					</p>
