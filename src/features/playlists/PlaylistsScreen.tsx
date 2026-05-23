@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { scrollListElementIntoView } from "@/lib/keyboard/listScroll";
@@ -182,10 +182,6 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 		() => data?.playlists.find((p) => p.id === selectedPlaylistId) ?? null,
 		[data?.playlists, selectedPlaylistId],
 	);
-	// Inline layout occupies the column itself, so the active panel must
-	// step aside. Overlay layout (position: fixed) leaves the column free,
-	// and the active panel fades to opacity 0 underneath it.
-	const isInlineDetail = expandedPlaylist !== null && startRect === null;
 
 	if (!data) {
 		return (
@@ -241,42 +237,6 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 		void toggleTarget(id, isTarget);
 	};
 
-	// Deep-link route (/playlists/$playlistRef) gets a focused single-column
-	// editorial page rather than the two-column list view. The page-mode
-	// detail view flows in the document instead of sticking to the viewport,
-	// and the parent owns the breadcrumb so the section nav stays light.
-	if (isInlineDetail && expandedPlaylist) {
-		return (
-			<div className="mx-auto max-w-4xl">
-				<nav className="mb-10" aria-label="Breadcrumb">
-					<Link
-						to="/playlists"
-						className="theme-text-muted inline-flex items-center gap-2 text-xs tracking-widest uppercase transition-colors duration-150 hover:text-(--t-text)"
-						style={{ fontFamily: fonts.body }}
-					>
-						<span aria-hidden="true">←</span>
-						Playlists
-					</Link>
-				</nav>
-
-				<PlaylistDetailView
-					theme={theme}
-					playlist={expandedPlaylist}
-					isTarget={targetIds.has(expandedPlaylist.id)}
-					isExpanded={true}
-					startRect={null}
-					expandedRect={expandedRect}
-					extensionStatus={extensionStatus}
-					accountId={accountId}
-					onClose={handleClose}
-					onToggleTarget={handleToggleTarget}
-					onMetadataChanged={markMetadataChanged}
-					layoutMode="page"
-				/>
-			</div>
-		);
-	}
-
 	return (
 		<div className="relative mx-auto min-h-[600px] max-w-5xl">
 			<PlaylistsHeader
@@ -286,18 +246,16 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 			/>
 			<div className="grid grid-cols-[1fr_280px] gap-10">
 				<div ref={expansionColumnRef} className="relative">
-					{!isInlineDetail && (
-						<ActivePlaylistsPanel
-							playlists={targetPlaylists}
-							onSelectPlaylist={handleExpand}
-							onRemove={(id) => handleToggleTarget(id, false)}
-							isExpanded={isExpanded}
-							closingToPlaylistId={closingToPlaylistId}
-							selectedPlaylistId={selectedPlaylistId}
-							searchQuery={isSearching ? searchQuery : null}
-							onClearSearch={() => setSearchQuery("")}
-						/>
-					)}
+					<ActivePlaylistsPanel
+						playlists={targetPlaylists}
+						onSelectPlaylist={handleExpand}
+						onRemove={(id) => handleToggleTarget(id, false)}
+						isExpanded={isExpanded}
+						closingToPlaylistId={closingToPlaylistId}
+						selectedPlaylistId={selectedPlaylistId}
+						searchQuery={isSearching ? searchQuery : null}
+						onClearSearch={() => setSearchQuery("")}
+					/>
 					{expandedPlaylist && (
 						<PlaylistDetailView
 							theme={theme}

@@ -62,11 +62,6 @@ interface PlaylistDetailViewProps {
 	onClose: () => void;
 	onToggleTarget: (id: string, isTarget: boolean) => void;
 	onMetadataChanged: () => void;
-	// "overlay" → fixed-positioned panel that morphs from a card or sits as a
-	// sticky in-column block. "page" → document-flow editorial layout used by
-	// the deep-link route, where the parent owns the breadcrumb and width so
-	// this component focuses on hero + tracks rhythm.
-	layoutMode?: "overlay" | "page";
 }
 
 type DescriptionEditState =
@@ -93,9 +88,7 @@ export function PlaylistDetailView({
 	onClose,
 	onToggleTarget,
 	onMetadataChanged,
-	layoutMode = "overlay",
 }: PlaylistDetailViewProps) {
-	const isPageMode = layoutMode === "page";
 	const queryClient = useQueryClient();
 	const [isEditingDescription, setIsEditingDescription] = useState(false);
 	const [draftDescription, setDraftDescription] = useState("");
@@ -239,25 +232,20 @@ export function PlaylistDetailView({
 		...themeVariables,
 	};
 
-	// Page mode (deep-link route) flows in the document — no fixed/sticky
-	// positioning and no inner scroll container. The parent route owns the
-	// width and the breadcrumb. Overlay mode keeps the original card-morph
-	// or sticky-in-column behavior.
-	const panelStyle: CSSProperties & ThemeCssVariables = isPageMode
-		? {
-				...themeVariables,
-				background: "transparent",
-				opacity: 1,
-				pointerEvents: "auto",
-			}
-		: startRect === null
+	// Deep-link arrivals have no source rect to morph from, so the overlay
+	// snaps to expandedRect with only a fade. Card-click arrivals carry a
+	// startRect and animate from there.
+	const panelStyle: CSSProperties & ThemeCssVariables =
+		startRect === null
 			? {
 					...sharedStyle,
-					position: "sticky",
-					top: "2rem",
-					width: "100%",
-					height: "calc(100vh - 2rem)",
+					position: "fixed",
+					top: expandedRect.top,
+					left: expandedRect.left,
+					width: expandedRect.width,
+					height: expandedRect.height,
 					transition: "opacity 160ms var(--ease-out-expo)",
+					willChange: "opacity",
 				}
 			: {
 					...sharedStyle,
@@ -276,32 +264,31 @@ export function PlaylistDetailView({
 					willChange: "transform, opacity",
 				};
 
-	const outerClass = isPageMode ? "" : "z-50 overflow-hidden";
-	const innerClass = isPageMode ? "pb-16" : "h-full overflow-y-auto px-6 py-8";
-
 	return (
-		<div data-playlist-panel className={outerClass} style={panelStyle}>
-			<div className={innerClass}>
+		<div
+			data-playlist-panel
+			className="z-50 overflow-hidden"
+			style={panelStyle}
+		>
+			<div className="h-full overflow-y-auto px-6 py-8">
 				<div className="relative mb-10">
-					{!isPageMode && (
-						<button
-							type="button"
-							onClick={onClose}
-							className="theme-text-muted absolute top-0 right-0 z-20 inline-flex size-11 cursor-pointer items-center justify-center transition-[opacity,transform,color] duration-150 hover:text-(--t-text) active:scale-[0.96]"
-							style={{
-								opacity: isExpanded ? 1 : 0,
-								transition: "opacity 200ms var(--ease-out-expo) 80ms",
-							}}
-							aria-label="Close detail view"
-						>
-							<XIcon size={20} weight="regular" />
-						</button>
-					)}
+					<button
+						type="button"
+						onClick={onClose}
+						className="theme-text-muted absolute top-0 right-0 z-20 inline-flex size-11 cursor-pointer items-center justify-center transition-[opacity,transform,color] duration-150 hover:text-(--t-text) active:scale-[0.96]"
+						style={{
+							opacity: isExpanded ? 1 : 0,
+							transition: "opacity 200ms var(--ease-out-expo) 80ms",
+						}}
+						aria-label="Close detail view"
+					>
+						<XIcon size={20} weight="regular" />
+					</button>
 
 					<div className="flex items-start gap-8">
-						{(isExpanded || isPageMode) && (
+						{isExpanded && (
 							<div
-								className={`image-outline ${isPageMode ? "size-48" : "size-56"} flex-shrink-0 overflow-hidden shadow-xl`}
+								className="image-outline size-56 flex-shrink-0 overflow-hidden shadow-xl"
 								style={{
 									viewTransitionName: "playlist-cover",
 								}}
@@ -319,7 +306,7 @@ export function PlaylistDetailView({
 						)}
 
 						<div className="min-w-0 flex-1">
-							{(isExpanded || isPageMode) && (
+							{isExpanded && (
 								<h2
 									className="theme-text mb-4 text-5xl leading-[0.95] font-extralight tracking-tight text-balance"
 									style={{
@@ -334,8 +321,7 @@ export function PlaylistDetailView({
 							<PlaylistDescription
 								description={playlist.description}
 								trackCount={playlist.song_count ?? 0}
-								isExpanded={isExpanded || isPageMode}
-								enableViewTransition={!isPageMode}
+								isExpanded={isExpanded}
 								isEditing={isEditingDescription}
 								draftDescription={draftDescription}
 								extensionStatus={extensionStatus}
@@ -343,22 +329,20 @@ export function PlaylistDetailView({
 								onSave={handleSaveDescription}
 								onCancel={handleCancelDescription}
 								onDraftChange={handleDraftDescriptionChange}
-								prominent={isPageMode}
 							/>
 
-							{editState.kind === "confirm-overwrite" &&
-								(isExpanded || isPageMode) && (
-									<DescriptionConflictDialog
-										latestDescription={editState.latestDescription}
-										draftDescription={draftDescription || null}
-										onKeepMine={() => {
-											void commitDescriptionSave(editState.commit);
-										}}
-										onUseSpotifys={() => setEditState({ kind: "idle" })}
-									/>
-								)}
+							{editState.kind === "confirm-overwrite" && isExpanded && (
+								<DescriptionConflictDialog
+									latestDescription={editState.latestDescription}
+									draftDescription={draftDescription || null}
+									onKeepMine={() => {
+										void commitDescriptionSave(editState.commit);
+									}}
+									onUseSpotifys={() => setEditState({ kind: "idle" })}
+								/>
+							)}
 
-							{editState.kind === "failed" && (isExpanded || isPageMode) && (
+							{editState.kind === "failed" && isExpanded && (
 								<div
 									role="alert"
 									className="mb-4 flex max-w-lg items-center gap-2"
@@ -376,51 +360,47 @@ export function PlaylistDetailView({
 								</div>
 							)}
 
-							{editState.kind === "reconnect-required" &&
-								(isExpanded || isPageMode) && (
-									<div className="mb-4 flex items-center gap-3">
-										<p
-											className="theme-primary text-xs"
-											style={{ fontFamily: fonts.body }}
-										>
-											Reconnect to Spotify, then repeat this edit.
-										</p>
-										<SpotifyReconnectLink />
-									</div>
-								)}
+							{editState.kind === "reconnect-required" && isExpanded && (
+								<div className="mb-4 flex items-center gap-3">
+									<p
+										className="theme-primary text-xs"
+										style={{ fontFamily: fonts.body }}
+									>
+										Reconnect to Spotify, then repeat this edit.
+									</p>
+									<SpotifyReconnectLink />
+								</div>
+							)}
 
-							{editState.kind === "extension-required" &&
-								(isExpanded || isPageMode) && (
-									<div className="mb-4 flex items-center gap-3">
-										<p
-											className="theme-primary text-xs"
-											style={{ fontFamily: fonts.body }}
-										>
-											The extension is required to edit playlists.
-										</p>
-										<a
-											href={EXTENSION_STORE_URL}
-											target="_blank"
-											rel="noopener noreferrer"
-											className="hover-border-brighten inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs tracking-widest uppercase active:scale-[0.98]"
-											style={{ fontFamily: fonts.body }}
-										>
-											Install extension
-											<span className="text-xs" style={{ opacity: 0.45 }}>
-												↗
-											</span>
-										</a>
-									</div>
-								)}
+							{editState.kind === "extension-required" && isExpanded && (
+								<div className="mb-4 flex items-center gap-3">
+									<p
+										className="theme-primary text-xs"
+										style={{ fontFamily: fonts.body }}
+									>
+										The extension is required to edit playlists.
+									</p>
+									<a
+										href={EXTENSION_STORE_URL}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="hover-border-brighten inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs tracking-widest uppercase active:scale-[0.98]"
+										style={{ fontFamily: fonts.body }}
+									>
+										Install extension
+										<span className="text-xs" style={{ opacity: 0.45 }}>
+											↗
+										</span>
+									</a>
+								</div>
+							)}
 
-							{(isExpanded || isPageMode) && (
+							{isExpanded && (
 								<div
 									className="mb-6 max-w-lg"
 									style={{
-										opacity: isExpanded || isPageMode ? 1 : 0,
-										transition: isPageMode
-											? "none"
-											: "opacity 200ms var(--ease-out-expo) 100ms",
+										opacity: 1,
+										transition: "opacity 200ms var(--ease-out-expo) 100ms",
 									}}
 								>
 									<PlaylistVoices playlist={playlist} />
@@ -430,10 +410,8 @@ export function PlaylistDetailView({
 							<div
 								className="mt-2 flex flex-wrap items-center gap-3"
 								style={{
-									opacity: isExpanded || isPageMode ? 1 : 0,
-									transition: isPageMode
-										? "none"
-										: "opacity 200ms var(--ease-out-expo) 120ms",
+									opacity: isExpanded ? 1 : 0,
+									transition: "opacity 200ms var(--ease-out-expo) 120ms",
 								}}
 							>
 								<button
@@ -450,23 +428,22 @@ export function PlaylistDetailView({
 									{isTarget ? "In Matching" : "Add to Matching"}
 								</button>
 
-								{extensionStatus === "unavailable" &&
-									(isExpanded || isPageMode) && (
-										<span
-											className="theme-text-muted text-xs italic"
-											style={{ fontFamily: fonts.body }}
-										>
-											Extension required for edits
-										</span>
-									)}
+								{extensionStatus === "unavailable" && isExpanded && (
+									<span
+										className="theme-text-muted text-xs italic"
+										style={{ fontFamily: fonts.body }}
+									>
+										Extension required for edits
+									</span>
+								)}
 							</div>
 						</div>
 					</div>
 				</div>
 
 				<PlaylistTrackList
-					playlistId={isExpanded || isPageMode ? playlist.id : null}
-					isExpanded={isExpanded || isPageMode}
+					playlistId={isExpanded ? playlist.id : null}
+					isExpanded={isExpanded}
 					totalTrackCount={playlist.song_count ?? null}
 				/>
 			</div>

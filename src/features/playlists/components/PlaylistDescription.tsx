@@ -14,12 +14,6 @@ interface PlaylistDescriptionProps {
 	onSave: () => void;
 	onCancel: () => void;
 	onDraftChange: (value: string) => void;
-	enableViewTransition?: boolean;
-	// When the description is load-bearing for matching, lift it visually so
-	// users feel the field's weight. Page mode (deep-link route) opts in; the
-	// overlay panel keeps the standard size because the cover image already
-	// competes for attention.
-	prominent?: boolean;
 }
 
 export function PlaylistDescription({
@@ -33,8 +27,6 @@ export function PlaylistDescription({
 	onSave,
 	onCancel,
 	onDraftChange,
-	enableViewTransition = true,
-	prominent = false,
 }: PlaylistDescriptionProps) {
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -47,25 +39,15 @@ export function PlaylistDescription({
 		textarea.setSelectionRange(length, length);
 	}, [isEditing, isExpanded]);
 
-	const containerWidth = prominent ? "max-w-xl" : "max-w-lg";
-	const proseSize = prominent
-		? "text-xl leading-snug"
-		: "text-base leading-relaxed";
-	const emptySize = prominent
-		? "text-lg leading-snug"
-		: "text-sm leading-relaxed";
-
 	if (isEditing && isExpanded) {
 		return (
-			<div className={`mb-6 ${containerWidth}`}>
+			<div className="mb-6 max-w-lg">
 				<textarea
 					ref={textareaRef}
 					value={draftDescription}
 					onChange={(e) => onDraftChange(e.target.value)}
 					placeholder="What's this playlist about?"
-					className={`theme-text theme-border-color w-full resize-none border-b bg-transparent pb-2 outline-none transition-colors duration-150 focus:border-(--t-primary) ${
-						prominent ? "text-lg leading-snug" : "text-sm leading-relaxed"
-					}`}
+					className="theme-text theme-border-color w-full resize-none border-b bg-transparent pb-2 text-sm leading-relaxed outline-none transition-colors duration-150 focus:border-(--t-primary)"
 					style={{ fontFamily: fonts.body }}
 					rows={3}
 				/>
@@ -119,12 +101,10 @@ export function PlaylistDescription({
 	if (!canEdit) {
 		return (
 			<p
-				className={`theme-text mb-6 text-pretty ${containerWidth} ${proseSize}`}
+				className="theme-text mb-6 max-w-lg text-base leading-relaxed text-pretty"
 				style={{
 					fontFamily: fonts.body,
-					viewTransitionName: enableViewTransition
-						? "playlist-description"
-						: "none",
+					viewTransitionName: "playlist-description",
 				}}
 			>
 				{description || `${trackCount} tracks`}
@@ -134,14 +114,14 @@ export function PlaylistDescription({
 
 	if (!hasDescription) {
 		return (
-			<div className={`mb-6 ${containerWidth}`}>
+			<div className="mb-6 max-w-lg">
 				<button
 					type="button"
 					onClick={onEdit}
 					className="theme-border-color theme-border-brighten -mx-3 block w-full cursor-pointer border-b px-3 py-4 text-left transition-colors duration-150"
 				>
 					<p
-						className={`theme-text-muted text-pretty ${emptySize}`}
+						className="theme-text-muted text-sm leading-relaxed text-pretty"
 						style={{ fontFamily: fonts.body }}
 					>
 						Tell hearted what this playlist is{" "}
@@ -159,16 +139,14 @@ export function PlaylistDescription({
 		<button
 			type="button"
 			onClick={onEdit}
-			className={`group/edit theme-row-hover -mx-3 mb-6 block w-full cursor-pointer px-3 py-2 text-left ${containerWidth}`}
+			className="group/edit theme-row-hover -mx-3 mb-6 block w-full max-w-lg cursor-pointer px-3 py-2 text-left"
 		>
 			<div className="flex items-start gap-4">
 				<p
-					className={`theme-text flex-1 text-pretty ${proseSize}`}
+					className="theme-text flex-1 text-base leading-relaxed text-pretty"
 					style={{
 						fontFamily: fonts.body,
-						viewTransitionName: enableViewTransition
-							? "playlist-description"
-							: "none",
+						viewTransitionName: "playlist-description",
 					}}
 				>
 					{description}
