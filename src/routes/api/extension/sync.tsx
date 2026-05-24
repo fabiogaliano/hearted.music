@@ -50,6 +50,7 @@ import type {
 	SpotifyPlaylistDTO,
 	SpotifyTrackDTO,
 } from "@/lib/workflows/spotify-sync/types";
+import { captureWithWaitUntil } from "@/utils/posthog-server";
 
 const SpotifyTrackDTOSchema = z.object({
 	added_at: z.string(),
@@ -458,6 +459,21 @@ export const Route = createFileRoute("/api/extension/sync")({
 						{ status: 500, headers: corsHeaders },
 					);
 				}
+
+				const likedSongsSyncResult = results.likedSongs as
+					| { total?: number; added?: number; removed?: number }
+					| undefined;
+				await captureWithWaitUntil({
+					distinctId: accountId,
+					event: "library_synced",
+					properties: {
+						liked_songs_total: likedSongsSyncResult?.total,
+						liked_songs_added: likedSongsSyncResult?.added ?? 0,
+						liked_songs_removed: likedSongsSyncResult?.removed ?? 0,
+						playlists_synced: extensionPlaylists.length,
+						source: "extension",
+					},
+				});
 
 				return Response.json(
 					{

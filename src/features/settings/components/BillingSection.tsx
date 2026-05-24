@@ -7,6 +7,7 @@ import { portalErrorMessage } from "@/features/billing/error-copy";
 import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
+import { useAnalytics } from "@/lib/observability/useAnalytics";
 import { createPortalSession } from "@/lib/server/billing.functions";
 import { fonts } from "@/lib/theme/fonts";
 
@@ -50,6 +51,7 @@ function formatPeriodEnd(iso: string | null): string {
  * this component intentionally omits its own title.
  */
 export function BillingSection({ billingState }: BillingSectionProps) {
+	const analytics = useAnalytics();
 	const [isLoadingPortal, setIsLoadingPortal] = useState(false);
 
 	const isSelfHosted = billingState.unlimitedAccess.kind === "self_hosted";
@@ -66,6 +68,7 @@ export function BillingSection({ billingState }: BillingSectionProps) {
 	const handlePortalLaunch = useCallback(async () => {
 		if (isLoadingPortal) return;
 		setIsLoadingPortal(true);
+		analytics.capture("billing_portal_opened");
 
 		try {
 			const result = await createPortalSession();
@@ -81,7 +84,7 @@ export function BillingSection({ billingState }: BillingSectionProps) {
 		} finally {
 			setIsLoadingPortal(false);
 		}
-	}, [isLoadingPortal]);
+	}, [isLoadingPortal, analytics]);
 
 	return (
 		<div>

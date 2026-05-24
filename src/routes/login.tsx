@@ -7,6 +7,7 @@
 
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState } from "react";
+import { useAnalytics } from "@/lib/observability/useAnalytics";
 import { signIn } from "@/lib/platform/auth/auth-client";
 import { getAuthSession } from "@/lib/server/auth.functions";
 import { fonts } from "@/lib/theme/fonts";
@@ -24,10 +25,12 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState<string | null>(null);
+	const analytics = useAnalytics();
 
 	async function handleGoogleLogin() {
 		setError(null);
 		setLoading("google");
+		analytics.capture("user_logged_in", { provider: "google" });
 		try {
 			await signIn.social({
 				provider: "google",
@@ -35,6 +38,7 @@ function LoginPage() {
 				newUserCallbackURL: "/onboarding",
 			});
 		} catch {
+			analytics.capture("login_error", { provider: "google" });
 			setError("Failed to sign in with Google. Please try again.");
 			setLoading(null);
 		}

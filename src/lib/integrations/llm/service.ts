@@ -129,12 +129,20 @@ export class LlmService {
 	 */
 	async generateText(
 		prompt: string,
+		options?: { functionId?: string; distinctId?: string },
 	): Promise<Result<TextGenerationResult, LlmServiceError>> {
 		return this.limiter.run(async () => {
 			try {
 				const result = await generateText({
 					model: this.languageModel(this.model),
 					prompt,
+					experimental_telemetry: {
+						isEnabled: true,
+						functionId: options?.functionId ?? "llm-generate-text",
+						metadata: options?.distinctId
+							? { posthog_distinct_id: options.distinctId }
+							: undefined,
+					},
 				});
 
 				const tokens = this.extractTokenUsage(result.usage);
@@ -156,6 +164,7 @@ export class LlmService {
 	async generateObject<T>(
 		prompt: string,
 		schema: z.ZodType<T>,
+		options?: { functionId?: string; distinctId?: string },
 	): Promise<Result<ObjectGenerationResult<T>, LlmServiceError>> {
 		return this.limiter.run(async () => {
 			try {
@@ -163,6 +172,13 @@ export class LlmService {
 					model: this.languageModel(this.model),
 					prompt,
 					schema,
+					experimental_telemetry: {
+						isEnabled: true,
+						functionId: options?.functionId ?? "llm-generate-object",
+						metadata: options?.distinctId
+							? { posthog_distinct_id: options.distinctId }
+							: undefined,
+					},
 				});
 
 				const tokens = this.extractTokenUsage(result.usage);

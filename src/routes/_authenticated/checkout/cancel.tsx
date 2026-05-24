@@ -9,6 +9,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { clearCheckoutIntent } from "@/features/onboarding/checkout-intent";
+import { useAnalytics } from "@/lib/observability/useAnalytics";
 
 export const Route = createFileRoute("/_authenticated/checkout/cancel")({
 	component: CheckoutCancelPage,
@@ -16,11 +17,13 @@ export const Route = createFileRoute("/_authenticated/checkout/cancel")({
 
 function CheckoutCancelPage() {
 	const navigate = useNavigate();
+	const analytics = useAnalytics();
 
 	useEffect(() => {
+		analytics.capture("checkout_cancelled");
 		clearCheckoutIntent();
 		navigate({ to: "/dashboard", replace: true });
-	}, [navigate]);
+	}, [navigate, analytics]);
 
 	return null;
 }

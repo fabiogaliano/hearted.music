@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/bun";
+import { initPostHogOtel } from "./posthog-otel";
 
 const dsn = process.env.SENTRY_DSN;
 
@@ -12,3 +13,5 @@ if (dsn) {
 		initialScope: { tags: { runtime: "worker" } },
 	});
 }
+
+initPostHogOtel();

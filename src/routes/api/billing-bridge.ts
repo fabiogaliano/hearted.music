@@ -33,6 +33,7 @@ import {
 	parseBridgePayload,
 } from "@/lib/domains/billing/bridge-payloads";
 import { verifyBridgeHmac } from "@/lib/domains/billing/hmac";
+import { captureWithWaitUntil } from "@/utils/posthog-server";
 
 // Long enough to outlast any realistic handler run, short enough that a
 // crashed worker's stuck row becomes reclaimable within the same Stripe
@@ -180,6 +181,17 @@ export const Route = createFileRoute("/api/billing-bridge")({
 				console.log(
 					`[billing-bridge] Dispatched event_kind=${payload.event_kind}`,
 				);
+
+				// Fire-and-forget on the response itself; waitUntil keeps the
+				// network round-trip alive past the Response return on CF Workers.
+				await captureWithWaitUntil({
+					distinctId: payload.account_id,
+					event: "payment_processed",
+					properties: {
+						event_kind: payload.event_kind,
+						stripe_event_id: payload.stripe_event_id,
+					},
+				});
 
 				return Response.json({ ok: true });
 			},

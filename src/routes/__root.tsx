@@ -1,4 +1,5 @@
 import { ArrowRightIcon } from "@phosphor-icons/react";
+import { PostHogProvider } from "@posthog/react";
 import type { QueryClient } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
@@ -14,6 +15,7 @@ import type { HeartRippleHandle } from "@/components/ui/HeartRippleBackground";
 import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
 import { LazyHeartRippleBackground } from "@/components/ui/LazyHeartRippleBackground";
 import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
+import { linkPostHogToSentry } from "@/lib/observability/posthog-sentry-link";
 import { captureRouteError } from "@/lib/observability/sentry";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
@@ -24,6 +26,51 @@ import appCss from "../styles.css?url";
 const DevToolsShell = import.meta.env.DEV
 	? lazy(() => import("@/components/dev/DevToolsShell"))
 	: null;
+
+const DEFAULT_POSTHOG_HOST = "https://eu.i.posthog.com";
+const DEFAULT_POSTHOG_ASSET_HOST = "https://eu-assets.i.posthog.com";
+
+function getPostHogConfig(): {
+	apiKey: string;
+	apiHost: string;
+	assetHost: string;
+} | null {
+	const apiKey = import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN;
+	if (!apiKey) {
+		if (import.meta.env.PROD) {
+			throw new Error(
+				"PostHog is required in production. Set VITE_PUBLIC_POSTHOG_PROJECT_TOKEN.",
+			);
+		}
+		return null;
+	}
+
+	const configuredHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST;
+	if (!configuredHost) {
+		return {
+			apiKey,
+			apiHost: DEFAULT_POSTHOG_HOST,
+			assetHost: DEFAULT_POSTHOG_ASSET_HOST,
+		};
+	}
+
+	let apiHost: string;
+	try {
+		apiHost = new URL(configuredHost).origin;
+	} catch {
+		throw new Error(
+			"VITE_PUBLIC_POSTHOG_HOST must be a valid URL when PostHog is enabled.",
+		);
+	}
+
+	if (apiHost !== DEFAULT_POSTHOG_HOST) {
+		throw new Error(
+			"hearted is configured for PostHog EU only. Use https://eu.i.posthog.com.",
+		);
+	}
+
+	return { apiKey, apiHost, assetHost: DEFAULT_POSTHOG_ASSET_HOST };
+}
 
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -126,13 +173,43 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			"upgrade-insecure-requests",
 		];
 
+		const posthogConfig = getPostHogConfig();
+		const posthogScriptHosts = posthogConfig ? [posthogConfig.assetHost] : [];
+		const posthogConnectHosts = posthogConfig
+			? [...new Set([posthogConfig.apiHost, posthogConfig.assetHost])]
+			: [];
+
+		// PostHog SDK lazy-loads exception autocapture, session recording,
+		// surveys, and feature-flag deps from its asset host. With
+		// `capture_exceptions: true` + the 2025-05-24 defaults bundle, the
+		// loader fetches those chunks on first error. Without these hosts in
+		// script-src (for execution) and connect-src (for the fetch), prod
+		// silently drops exception telemetry.
 		if (import.meta.env.DEV) {
 			return {
 				...baseHeaders,
 				"Content-Security-Policy": [
 					...cspDirectives,
-					"script-src 'self' 'unsafe-eval' 'unsafe-inline' https://open.spotify.com https://*.spotifycdn.com http://localhost:* http://127.0.0.1:*",
-					"connect-src 'self' ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:*",
+					[
+						"script-src",
+						"'self'",
+						"'unsafe-eval'",
+						"'unsafe-inline'",
+						"https://open.spotify.com",
+						"https://*.spotifycdn.com",
+						"http://localhost:*",
+						"http://127.0.0.1:*",
+						...posthogScriptHosts,
+					].join(" "),
+					[
+						"connect-src",
+						"'self'",
+						"ws://localhost:*",
+						"ws://127.0.0.1:*",
+						"http://localhost:*",
+						"http://127.0.0.1:*",
+						...posthogConnectHosts,
+					].join(" "),
 				].join("; "),
 			};
 		}
@@ -142,8 +219,14 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 				...baseHeaders,
 				"Content-Security-Policy": [
 					...cspDirectives,
-					"script-src 'self' https://open.spotify.com https://*.spotifycdn.com",
-					"connect-src 'self'",
+					[
+						"script-src",
+						"'self'",
+						"https://open.spotify.com",
+						"https://*.spotifycdn.com",
+						...posthogScriptHosts,
+					].join(" "),
+					["connect-src", "'self'", ...posthogConnectHosts].join(" "),
 				].join("; "),
 			};
 		}
@@ -153,8 +236,13 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			...baseHeaders,
 			"Content-Security-Policy": [
 				...cspDirectives,
-				`script-src 'strict-dynamic' 'nonce-${nonce}'`,
-				"connect-src 'self'",
+				[
+					"script-src",
+					"'strict-dynamic'",
+					`'nonce-${nonce}'`,
+					...posthogScriptHosts,
+				].join(" "),
+				["connect-src", "'self'", ...posthogConnectHosts].join(" "),
 			].join("; "),
 		};
 	},
@@ -344,14 +432,40 @@ function NotFoundPage() {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+	const posthogConfig = getPostHogConfig();
+
 	return (
 		<html lang="en">
 			<head>
 				<HeadContent />
 			</head>
 			<body>
-				{children}
-				{DevToolsShell && <DevToolsShell />}
+				{posthogConfig ? (
+					<PostHogProvider
+						apiKey={posthogConfig.apiKey}
+						options={{
+							api_host: posthogConfig.apiHost,
+							defaults: "2025-05-24",
+							capture_exceptions: true,
+							debug: import.meta.env.DEV,
+							loaded: linkPostHogToSentry,
+							// GeoIP enrichment stays on at the SDK level so aggregate
+							// analytics (country/city breakdowns) keep working. We
+							// suppress GeoIP from PERSON profiles via PostHog's project
+							// setting (Settings → Person processing → Disable GeoIP on
+							// persons) — that's the only way to split event vs person
+							// GeoIP cleanly.
+						}}
+					>
+						{children}
+						{DevToolsShell && <DevToolsShell />}
+					</PostHogProvider>
+				) : (
+					<>
+						{children}
+						{DevToolsShell && <DevToolsShell />}
+					</>
+				)}
 				<Scripts />
 			</body>
 		</html>

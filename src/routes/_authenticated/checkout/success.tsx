@@ -10,13 +10,14 @@
 import { ArrowRightIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isCheckoutFulfilled } from "@/features/billing/checkout-fulfillment";
 import { billingKeys } from "@/features/billing/query-keys";
 import type { CheckoutIntent } from "@/features/onboarding/checkout-intent";
 import { loadCheckoutIntent } from "@/features/onboarding/checkout-intent";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
+import { useAnalytics } from "@/lib/observability/useAnalytics";
 import { getBillingState } from "@/lib/server/billing.functions";
 import { fonts } from "@/lib/theme/fonts";
 
@@ -51,6 +52,7 @@ function getDetail(intent: CheckoutIntent | null, state: BillingState): string {
 
 function CheckoutSuccessPage() {
 	const contextBilling = Route.useRouteContext().billingState;
+	const analytics = useAnalytics();
 
 	const [intent, setIntent] = useState<CheckoutIntent | null>(null);
 	const [hasHydrated, setHasHydrated] = useState(false);
@@ -68,6 +70,16 @@ function CheckoutSuccessPage() {
 
 	const confirmed =
 		intent !== null && isCheckoutFulfilled(intent, billingState);
+
+	const capturedRef = useRef(false);
+	useEffect(() => {
+		if (!confirmed || capturedRef.current) return;
+		capturedRef.current = true;
+		analytics.capture("purchase_confirmed", {
+			plan_kind: intent?.kind,
+			offer: intent?.offer,
+		});
+	}, [confirmed, intent, analytics]);
 	const pending = intent !== null && !confirmed && !timedOut;
 
 	useEffect(() => {

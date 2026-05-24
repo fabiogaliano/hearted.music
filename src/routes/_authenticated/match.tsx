@@ -19,6 +19,7 @@ import { sessionMode } from "@/features/onboarding/step-resolver";
 import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
 import { addToPlaylist } from "@/lib/extension/spotify-client";
 import { useSpotifyReconnectState } from "@/lib/extension/useSpotifyReconnectState";
+import { useAnalytics } from "@/lib/observability/useAnalytics";
 import {
 	addSongToPlaylist,
 	dismissSong,
@@ -177,6 +178,7 @@ function MatchingPageContent({
 	onExit,
 	queryClient,
 }: MatchingPageContentProps) {
+	const analytics = useAnalytics();
 	const [offset, setOffset] = useState(0);
 	const [addedTo, setAddedTo] = useState<string[]>([]);
 	const [navigationStatus, setNavigationStatus] = useState<"idle" | "pending">(
@@ -197,6 +199,15 @@ function MatchingPageContent({
 	const { addPresented } = useMatchingSession(accountId);
 
 	const isComplete = offset >= totalSongs;
+
+	const completionCapturedRef = useRef(false);
+	useEffect(() => {
+		if (!isComplete || completionCapturedRef.current) return;
+		completionCapturedRef.current = true;
+		analytics.capture("matching_session_completed", {
+			total_songs: totalSongs,
+		});
+	}, [isComplete, totalSongs, analytics]);
 
 	const { data: songData } = useSuspenseQuery(
 		songMatchesQueryOptions(snapshotId, offset),
@@ -297,6 +308,11 @@ function MatchingPageContent({
 					playlistId,
 				},
 			});
+			analytics.capture("song_added_to_playlist", {
+				song_id: currentSong.id,
+				playlist_id: playlistId,
+				playlist_name: currentMatches.find((p) => p.id === playlistId)?.name,
+			});
 			setAddedTo((prev) => [...prev, playlistId]);
 			setSessionStats((prev) => {
 				const next = new Set(prev.songsWithAdditions);
@@ -308,7 +324,7 @@ function MatchingPageContent({
 				};
 			});
 		},
-		[currentSong, currentMatches, addPresented, setReconnectNeeded],
+		[currentSong, currentMatches, addPresented, setReconnectNeeded, analytics],
 	);
 
 	const recordCurrentSong = useCallback(() => {
@@ -331,6 +347,7 @@ function MatchingPageContent({
 		try {
 			addPresented(currentSong.id);
 			recordCurrentSong();
+			analytics.capture("song_dismissed", { song_id: currentSong.id });
 			const playlistIds = currentMatches.map((m) => m.id);
 			if (playlistIds.length > 0) {
 				await dismissSong({ data: { songId: currentSong.id, playlistIds } });
@@ -352,6 +369,7 @@ function MatchingPageContent({
 		recordCurrentSong,
 		lockNavigation,
 		releaseNavigation,
+		analytics,
 	]);
 
 	const handleNext = useCallback(() => {

@@ -9,6 +9,7 @@ import {
 	startWalkthroughPreviewPolling,
 	stopWalkthroughPreviewPolling,
 } from "./poll-walkthrough-preview";
+import { shutdownPostHogOtel } from "./posthog-otel";
 import { runDefaultSweepTick, startDefaultSweep } from "./sweep";
 
 let draining = false;
@@ -62,6 +63,7 @@ async function main() {
 		}
 
 		healthServer.stop();
+		await shutdownPostHogOtel();
 		log.info("worker-stopped");
 		process.exit(0);
 	};

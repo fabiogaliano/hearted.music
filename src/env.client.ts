@@ -11,4 +11,9 @@ export const clientEnv = {
 	VITE_SENTRY_ENVIRONMENT: readOptionalClientEnv(
 		import.meta.env.VITE_SENTRY_ENVIRONMENT,
 	),
+	// Only used to build deep links from PostHog exception events into Sentry
+	// issues. The Sentry⇄PostHog integration becomes a no-op without it.
+	VITE_SENTRY_ORG_SLUG: readOptionalClientEnv(
+		import.meta.env.VITE_SENTRY_ORG_SLUG,
+	),
 } as const;

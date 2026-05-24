@@ -25,6 +25,7 @@ import {
 	hasUnlimitedAccess,
 } from "@/lib/domains/billing/state";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
+import { useAnalytics } from "@/lib/observability/useAnalytics";
 import {
 	createCheckoutSession,
 	getBillingState,
@@ -67,6 +68,7 @@ export function PlanSelectionStep({
 	syncStats,
 	readyCopyVariant,
 }: PlanSelectionStepProps) {
+	const analytics = useAnalytics();
 	const [planState, setPlanState] = useState<PlanState>("initial");
 
 	const [configState, setConfigState] = useState<ConfigState>({
@@ -143,6 +145,7 @@ export function PlanSelectionStep({
 
 	const handleFree = () => {
 		if (activeCheckout || pendingIntent) return;
+		analytics.capture("free_plan_selected");
 		setPlanState("success");
 	};
 
@@ -166,6 +169,11 @@ export function PlanSelectionStep({
 						baselineCreditBalance: billingState.creditBalance,
 					}
 				: { kind: "unlimited", offer, checkoutAttemptId };
+
+		analytics.capture("checkout_started", {
+			plan_kind: intent.kind,
+			offer,
+		});
 
 		try {
 			const result = await createCheckoutSession({
@@ -402,10 +410,15 @@ function SuccessView({
 }) {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
+	const analytics = useAnalytics();
 	const [isCompleting, setIsCompleting] = useState(false);
 
 	const handleStart = async () => {
 		setIsCompleting(true);
+		analytics.capture("onboarding_completed", {
+			songs: syncStats.songs,
+			playlists: syncStats.playlists,
+		});
 		try {
 			await markOnboardingComplete();
 			// Refetch the authoritative session so `/_authenticated`'s

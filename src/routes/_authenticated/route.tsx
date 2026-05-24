@@ -17,7 +17,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "sonner";
 import { usePostPurchaseReturn } from "@/features/billing/hooks/usePostPurchaseReturn";
 import { billingKeys } from "@/features/billing/query-keys";
@@ -31,6 +31,7 @@ import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
+import { useAnalytics } from "@/lib/observability/useAnalytics";
 import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getBillingState } from "@/lib/server/billing.functions";
 import { getOnboardingSession } from "@/lib/server/onboarding.functions";
@@ -124,6 +125,27 @@ function AuthenticatedLayout() {
 		billingState,
 		onboardingSession,
 	} = Route.useRouteContext();
+	const analytics = useAnalytics();
+
+	// PostHog identity. Without this, client events (anonymous cookie ID) and
+	// server events (account UUID) end up on two different person profiles,
+	// which silently breaks any cross-boundary funnel. Identify is idempotent
+	// per accountId — re-runs only when the user actually changes.
+	//
+	// Only the Spotify identity is attached as a person property — the public
+	// handle (open.spotify.com/user/<id>) and the Spotify display name. We
+	// deliberately do NOT send email or avatar URL; those are Google PII.
+	useEffect(() => {
+		analytics.identify(session.accountId, {
+			spotify_id: account?.spotify_id ?? undefined,
+			spotify_display_name: account?.display_name ?? undefined,
+		});
+	}, [
+		analytics,
+		session.accountId,
+		account?.spotify_id,
+		account?.display_name,
+	]);
 
 	const mode = sessionMode(onboardingSession);
 	const isComplete = mode === "complete";
