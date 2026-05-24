@@ -61,6 +61,7 @@ import {
 /** Playlist view model for onboarding UI (camelCase frontend format) */
 export interface OnboardingPlaylist {
 	id: string;
+	spotifyId: string;
 	name: string;
 	description: string | null;
 	imageUrl: string | null;
@@ -437,6 +438,7 @@ async function loadOnboardingData(accountId: string): Promise<OnboardingData> {
 
 	const playlists = playlistsResult.value.map((p) => ({
 		id: p.id,
+		spotifyId: p.spotify_id,
 		name: p.name,
 		description: p.description,
 		imageUrl: p.image_url,

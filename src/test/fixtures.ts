@@ -162,6 +162,7 @@ export const ALL_SONGS = Object.values(SONGS);
 
 export interface OnboardingPlaylist {
 	id: string;
+	spotifyId: string;
 	name: string;
 	description: string | null;
 	imageUrl: string | null;
@@ -177,6 +178,7 @@ export function toOnboardingPlaylist(
 ): OnboardingPlaylist {
 	return {
 		id: playlist.id,
+		spotifyId: playlist.spotify_id,
 		name: playlist.name,
 		description: playlist.description || null,
 		imageUrl: playlist.image_url,

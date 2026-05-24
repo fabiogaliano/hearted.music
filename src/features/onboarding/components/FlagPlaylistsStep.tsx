@@ -10,7 +10,6 @@ import { ArrowRightIcon } from "@phosphor-icons/react";
 import { useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { Button } from "@/components/ui/Button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
@@ -22,7 +21,32 @@ import {
 import { fonts } from "@/lib/theme/fonts";
 import { useFlagPlaylistsScroll } from "../hooks/useFlagPlaylistsScroll";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
+import { OnboardingDescriptionDialog } from "./OnboardingDescriptionDialog";
 import "../types"; // Ensure HistoryState augmentation is loaded
+
+const DESCRIPTION_DIALOG_SEEN_KEY =
+	"hearted:has-seen-onboarding-description-dialog";
+
+// Per-user lifetime flag. Recoverable via the (!) icon in /playlists right
+// after onboarding, so we don't need server-side persistence here.
+function hasSeenDescriptionDialog(): boolean {
+	if (typeof window === "undefined") return true;
+	try {
+		return window.localStorage.getItem(DESCRIPTION_DIALOG_SEEN_KEY) === "1";
+	} catch {
+		return true;
+	}
+}
+
+function markDescriptionDialogSeen(): void {
+	if (typeof window === "undefined") return;
+	try {
+		window.localStorage.setItem(DESCRIPTION_DIALOG_SEEN_KEY, "1");
+	} catch {
+		// Storage unavailable (private mode, quota) — silently no-op. The dialog
+		// will re-fire next session, which is acceptable for an edge case.
+	}
+}
 
 interface FlagPlaylistsStepProps {
 	playlists: OnboardingPlaylist[];
@@ -46,6 +70,8 @@ export function FlagPlaylistsStep({
 		() => new Set(initialPlaylists.filter((p) => p.isTarget).map((p) => p.id)),
 	);
 	const [isSaving, setIsSaving] = useState(false);
+	const [descriptionDialogPlaylist, setDescriptionDialogPlaylist] =
+		useState<OnboardingPlaylist | null>(null);
 
 	const fewPlaylists = initialPlaylists.length < 16;
 
@@ -75,22 +101,38 @@ export function FlagPlaylistsStep({
 		{ isReady: initialPlaylists.length > 0 },
 	);
 
-	const togglePlaylist = useCallback((id: string) => {
-		setSelectedIds((prev) => {
-			const next = new Set(prev);
-			if (next.has(id)) {
-				next.delete(id);
-			} else {
-				next.add(id);
+	// The "should open dialog" decision is computed from current state BEFORE
+	// the setter runs — keeping side effects out of the reducer avoids
+	// double-invocation footguns under React strict mode and makes the
+	// trigger semantics independent of state-update batching.
+	const togglePlaylist = useCallback(
+		(playlist: OnboardingPlaylist) => {
+			const wasSelected = selectedIds.has(playlist.id);
+			const wasEmpty = selectedIds.size === 0;
+
+			setSelectedIds((prev) => {
+				const next = new Set(prev);
+				if (next.has(playlist.id)) {
+					next.delete(playlist.id);
+				} else {
+					next.add(playlist.id);
+				}
+				return next;
+			});
+
+			// Teach on every 0→1 transition within the step. The lifetime "seen"
+			// flag (set on Continue/Skip) gates re-entries, not in-step retries.
+			if (!wasSelected && wasEmpty && !hasSeenDescriptionDialog()) {
+				setDescriptionDialogPlaylist(playlist);
 			}
-			return next;
-		});
-	}, []);
+		},
+		[selectedIds],
+	);
 
 	// Space toggles selection; Enter continues (separation enables keyboard-only flow)
 	const handlePlaylistSelect = useCallback(
 		(playlist: OnboardingPlaylist) => {
-			togglePlaylist(playlist.id);
+			togglePlaylist(playlist);
 		},
 		[togglePlaylist],
 	);
@@ -99,10 +141,20 @@ export function FlagPlaylistsStep({
 	const handlePlaylistClick = useCallback(
 		(e: React.MouseEvent<HTMLButtonElement>) => {
 			const id = e.currentTarget.dataset.playlistId;
-			if (id) togglePlaylist(id);
+			if (!id) return;
+			const playlist = initialPlaylists.find((p) => p.id === id);
+			if (playlist) togglePlaylist(playlist);
 		},
-		[togglePlaylist],
+		[togglePlaylist, initialPlaylists],
 	);
+
+	// Dismiss only closes the dialog; the lifetime "seen" flag is set when the
+	// user leaves the step (Continue / Skip). This lets the dialog re-fire on
+	// later 0→1 transitions within the same onboarding session — e.g. if the
+	// user deselects everything and starts over.
+	const closeDescriptionDialog = useCallback(() => {
+		setDescriptionDialogPlaylist(null);
+	}, []);
 
 	const { getItemProps } = useListNavigation({
 		items: initialPlaylists,
@@ -120,6 +172,7 @@ export function FlagPlaylistsStep({
 			await savePlaylistTargets({
 				data: { playlistIds: Array.from(selectedIds) },
 			});
+			markDescriptionDialogSeen();
 			await goToStep("pick-demo-song", { syncStats });
 		} catch (error) {
 			console.error("Failed to save playlist targets:", error);
@@ -133,6 +186,7 @@ export function FlagPlaylistsStep({
 		try {
 			// Skip: save empty selection so user can configure later
 			await savePlaylistTargets({ data: { playlistIds: [] } });
+			markDescriptionDialogSeen();
 			await goToStep("pick-demo-song", { syncStats });
 		} catch (error) {
 			console.error("Failed to skip playlists:", error);
@@ -146,7 +200,11 @@ export function FlagPlaylistsStep({
 		handler: handleContinue,
 		description: "Continue",
 		scope: "onboarding-playlists",
-		enabled: !isSaving && selectedIds.size > 0,
+		// While the teaching dialog is open, Enter should belong to the modal's
+		// focused control (textarea newline / button activation), not advance the
+		// underlying onboarding step.
+		enabled:
+			!isSaving && selectedIds.size > 0 && descriptionDialogPlaylist === null,
 	});
 
 	return (
@@ -176,10 +234,19 @@ export function FlagPlaylistsStep({
 				<div ref={viewportRef} className="mt-8 flex-1 overflow-hidden">
 					<div ref={trackRef} className="flex h-full items-center">
 						<div
-							className="playlist-grid grid h-full auto-cols-[min(200px,40vw)] content-center gap-x-4 gap-y-6 py-1 pl-[max(1.5rem,env(safe-area-inset-left))] md:pl-[max(3rem,env(safe-area-inset-left))]"
+							className="playlist-grid grid h-full content-center gap-x-4 gap-y-6 py-1 pl-[max(1.5rem,env(safe-area-inset-left))] md:pl-[max(3rem,env(safe-area-inset-left))]"
 							style={{
 								gridAutoFlow: "column",
 								gridTemplateRows: `repeat(${rowCount}, auto)`,
+								// Card width scales with viewport height so playlist names
+								// stay visible on short screens. Calibration anchor: at
+								// 1280x820 (MacBook Air 13") with 2 rows, chrome occupies
+								// ~324px (header + footer + safe-area + grid margins), leaving
+								// exactly 200px per card. Below 820px, cards shrink so the
+								// name labels below them keep clearing the viewport bottom.
+								// Caps at min(200px, 40vw) on tall/wide screens; never below
+								// 80px on extremely small ones.
+								gridAutoColumns: `max(80px, min(200px, 40vw, calc((100dvh - ${300 + rowCount * 60}px) / ${rowCount})))`,
 							}}
 						>
 							{initialPlaylists.map((playlist, index) => {
@@ -214,9 +281,15 @@ export function FlagPlaylistsStep({
 										<div
 											className="aspect-square w-full overflow-hidden transition-[filter,opacity] duration-200"
 											style={{
-												filter: isSelected
-													? "grayscale(0%)"
-													: "grayscale(100%)",
+												// Grayscale is a no-op on already-gray placeholders,
+												// so skip it there. Opacity stays universal: every
+												// unselected card — image or placeholder — fades to
+												// the same "off" state for parallel ghosting.
+												filter: playlist.imageUrl
+													? isSelected
+														? "grayscale(0%)"
+														: "grayscale(100%)"
+													: undefined,
 												opacity: isSelected ? 1 : 0.35,
 											}}
 										>
@@ -227,7 +300,30 @@ export function FlagPlaylistsStep({
 													className="h-full w-full object-cover"
 												/>
 											) : (
-												<AlbumPlaceholder />
+												<div
+													className="flex h-full w-full items-center justify-center transition-colors duration-200"
+													style={{
+														// Soft inversion: selected blends text-muted
+														// with surface so the fill lands between theme
+														// steps — readable as "on" without competing
+														// with album art for attention.
+														background: isSelected
+															? "color-mix(in srgb, var(--t-text-muted) 50%, var(--t-surface))"
+															: "var(--t-surface-dim)",
+													}}
+													aria-hidden="true"
+												>
+													<span
+														className="select-none text-4xl transition-colors duration-200"
+														style={{
+															color: isSelected
+																? "var(--t-surface)"
+																: "var(--t-text-muted)",
+														}}
+													>
+														♫
+													</span>
+												</div>
 											)}
 										</div>
 										<div className="mt-2 min-w-0 max-w-full">
@@ -256,10 +352,21 @@ export function FlagPlaylistsStep({
 						disabled={isSaving || selectedIds.size === 0}
 						style={{ fontFamily: fonts.body }}
 					>
-						<span className="text-lg font-medium tracking-wide">
-							{isSaving
-								? "Saving..."
-								: `Continue with ${selectedIds.size} playlists`}
+						<span className="text-lg font-medium tracking-wide tabular-nums">
+							{isSaving ? (
+								"Saving..."
+							) : (
+								<>
+									Continue with{" "}
+									<span
+										className="inline-block text-center"
+										style={{ minWidth: "2ch" }}
+									>
+										{selectedIds.size}
+									</span>{" "}
+									playlists
+								</>
+							)}
 						</span>
 						<ArrowRightIcon
 							size={16}
@@ -312,6 +419,12 @@ export function FlagPlaylistsStep({
 					</div>
 				</footer>
 			</div>
+			{descriptionDialogPlaylist && (
+				<OnboardingDescriptionDialog
+					playlist={descriptionDialogPlaylist}
+					onClose={closeDescriptionDialog}
+				/>
+			)}
 		</section>
 	);
 }
