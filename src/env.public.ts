@@ -7,6 +7,12 @@ export const clientEnv = {
 	VITE_CHROME_EXTENSION_ID: readOptionalClientEnv(
 		import.meta.env.VITE_CHROME_EXTENSION_ID,
 	),
+	VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: readOptionalClientEnv(
+		import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN,
+	),
+	VITE_PUBLIC_POSTHOG_HOST: readOptionalClientEnv(
+		import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
+	),
 	VITE_SENTRY_DSN: readOptionalClientEnv(import.meta.env.VITE_SENTRY_DSN),
 	VITE_SENTRY_ENVIRONMENT: readOptionalClientEnv(
 		import.meta.env.VITE_SENTRY_ENVIRONMENT,

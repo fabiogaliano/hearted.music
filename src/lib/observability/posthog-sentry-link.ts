@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/react";
 import type { PostHogInterface } from "posthog-js";
-import { clientEnv } from "@/env.client";
+import { clientEnv } from "@/env.public";
 
 type SentryIntegration = Parameters<typeof Sentry.addIntegration>[0];
 

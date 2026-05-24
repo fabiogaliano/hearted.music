@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/react";
 import type { AnyRouter } from "@tanstack/router-core";
-import { clientEnv } from "@/env.client";
+import { clientEnv } from "@/env.public";
 
 export const RUNTIME_TAG = "web" as const;
 
