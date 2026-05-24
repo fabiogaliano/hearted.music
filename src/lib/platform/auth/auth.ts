@@ -22,6 +22,8 @@ import {
 	user,
 	verification,
 } from "@/lib/platform/auth/auth-schema";
+import { sendPasswordResetEmail } from "@/lib/platform/email/send-password-reset-email";
+import { sendVerificationEmail } from "@/lib/platform/email/send-verification-email";
 
 export function getAuth() {
 	const sql = postgres(env.DATABASE_URL, {
@@ -54,6 +56,28 @@ export function getAuth() {
 						clientSecret: env.GOOGLE_CLIENT_SECRET,
 					},
 				}),
+		},
+		emailAndPassword: {
+			enabled: true,
+			// Soft verification: users can sign in immediately. The verification
+			// email still goes out via emailVerification.sendOnSignUp below; the
+			// app shell shows a non-blocking banner until `user.emailVerified`
+			// flips to true. Flip this to `true` if we ever want a hard gate.
+			requireEmailVerification: false,
+			autoSignIn: true,
+			minPasswordLength: 8,
+			maxPasswordLength: 128,
+			revokeSessionsOnPasswordReset: true,
+			sendResetPassword: async ({ user, url }) => {
+				await sendPasswordResetEmail({ to: user.email, resetUrl: url });
+			},
+		},
+		emailVerification: {
+			sendOnSignUp: true,
+			autoSignInAfterVerification: true,
+			sendVerificationEmail: async ({ user, url }) => {
+				await sendVerificationEmail({ to: user.email, verifyUrl: url });
+			},
 		},
 		account: {
 			modelName: "oauth_account",

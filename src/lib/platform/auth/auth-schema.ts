@@ -50,8 +50,12 @@ export const oauthAccount = pgTable("oauth_account", {
 	accessTokenExpiresAt: timestamp("access_token_expires_at", {
 		withTimezone: true,
 	}),
+	refreshTokenExpiresAt: timestamp("refresh_token_expires_at", {
+		withTimezone: true,
+	}),
 	scope: text("scope"),
 	idToken: text("id_token"),
+	password: text("password"),
 	createdAt: timestamp("created_at", { withTimezone: true })
 		.notNull()
 		.defaultNow(),

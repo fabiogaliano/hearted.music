@@ -9,9 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as DevSongDetailPanelV2RouteImport } from './routes/dev-song-detail-panel-v2'
 import { Route as DevSongDetailPanelRouteImport } from './routes/dev-song-detail-panel'
@@ -26,6 +29,7 @@ import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authentic
 import { Route as AuthenticatedMatchRouteImport } from './routes/_authenticated/match'
 import { Route as AuthenticatedLikedSongsRouteImport } from './routes/_authenticated/liked-songs'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as ApiPosthogSplatRouteImport } from './routes/api/posthog/$'
 import { Route as ApiExtensionTokenRouteImport } from './routes/api/extension/token'
 import { Route as ApiExtensionSyncRouteImport } from './routes/api/extension/sync'
 import { Route as ApiExtensionStatusRouteImport } from './routes/api/extension/status'
@@ -35,9 +39,19 @@ import { Route as AuthenticatedCheckoutSuccessRouteImport } from './routes/_auth
 import { Route as AuthenticatedCheckoutCancelRouteImport } from './routes/_authenticated/checkout/cancel'
 import { Route as ApiExtensionArtistsCheckRouteImport } from './routes/api/extension/artists/check'
 
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -48,6 +62,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FaqRoute = FaqRouteImport.update({
@@ -119,6 +138,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPosthogSplatRoute = ApiPosthogSplatRouteImport.update({
+  id: '/api/posthog/$',
+  path: '/api/posthog/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiExtensionTokenRoute = ApiExtensionTokenRouteImport.update({
   id: '/api/extension/token',
   path: '/api/extension/token',
@@ -169,9 +193,12 @@ export interface FileRoutesByFullPath {
   '/dev-song-detail-panel': typeof DevSongDetailPanelRoute
   '/dev-song-detail-panel-v2': typeof DevSongDetailPanelV2Route
   '/faq': typeof FaqRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/liked-songs': typeof AuthenticatedLikedSongsRoute
   '/match': typeof AuthenticatedMatchRoute
@@ -188,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
+  '/api/posthog/$': typeof ApiPosthogSplatRoute
   '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
 }
 export interface FileRoutesByTo {
@@ -195,9 +223,12 @@ export interface FileRoutesByTo {
   '/dev-song-detail-panel': typeof DevSongDetailPanelRoute
   '/dev-song-detail-panel-v2': typeof DevSongDetailPanelV2Route
   '/faq': typeof FaqRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/liked-songs': typeof AuthenticatedLikedSongsRoute
   '/match': typeof AuthenticatedMatchRoute
@@ -214,6 +245,7 @@ export interface FileRoutesByTo {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
+  '/api/posthog/$': typeof ApiPosthogSplatRoute
   '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
 }
 export interface FileRoutesById {
@@ -223,9 +255,12 @@ export interface FileRoutesById {
   '/dev-song-detail-panel': typeof DevSongDetailPanelRoute
   '/dev-song-detail-panel-v2': typeof DevSongDetailPanelV2Route
   '/faq': typeof FaqRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/liked-songs': typeof AuthenticatedLikedSongsRoute
   '/_authenticated/match': typeof AuthenticatedMatchRoute
@@ -242,6 +277,7 @@ export interface FileRoutesById {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRoute
   '/api/extension/token': typeof ApiExtensionTokenRoute
+  '/api/posthog/$': typeof ApiPosthogSplatRoute
   '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
 }
 export interface FileRouteTypes {
@@ -251,9 +287,12 @@ export interface FileRouteTypes {
     | '/dev-song-detail-panel'
     | '/dev-song-detail-panel-v2'
     | '/faq'
+    | '/forgot-password'
     | '/login'
     | '/privacy'
+    | '/reset-password'
     | '/terms'
+    | '/verify-email'
     | '/dashboard'
     | '/liked-songs'
     | '/match'
@@ -270,6 +309,7 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
+    | '/api/posthog/$'
     | '/api/extension/artists/check'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -277,9 +317,12 @@ export interface FileRouteTypes {
     | '/dev-song-detail-panel'
     | '/dev-song-detail-panel-v2'
     | '/faq'
+    | '/forgot-password'
     | '/login'
     | '/privacy'
+    | '/reset-password'
     | '/terms'
+    | '/verify-email'
     | '/dashboard'
     | '/liked-songs'
     | '/match'
@@ -296,6 +339,7 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
+    | '/api/posthog/$'
     | '/api/extension/artists/check'
   id:
     | '__root__'
@@ -304,9 +348,12 @@ export interface FileRouteTypes {
     | '/dev-song-detail-panel'
     | '/dev-song-detail-panel-v2'
     | '/faq'
+    | '/forgot-password'
     | '/login'
     | '/privacy'
+    | '/reset-password'
     | '/terms'
+    | '/verify-email'
     | '/_authenticated/dashboard'
     | '/_authenticated/liked-songs'
     | '/_authenticated/match'
@@ -323,6 +370,7 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
+    | '/api/posthog/$'
     | '/api/extension/artists/check'
   fileRoutesById: FileRoutesById
 }
@@ -332,9 +380,12 @@ export interface RootRouteChildren {
   DevSongDetailPanelRoute: typeof DevSongDetailPanelRoute
   DevSongDetailPanelV2Route: typeof DevSongDetailPanelV2Route
   FaqRoute: typeof FaqRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   TermsRoute: typeof TermsRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
   ApiBillingBridgeRoute: typeof ApiBillingBridgeRoute
   ApiSentryTunnelRoute: typeof ApiSentryTunnelRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
@@ -342,16 +393,31 @@ export interface RootRouteChildren {
   ApiExtensionStatusRoute: typeof ApiExtensionStatusRoute
   ApiExtensionSyncRoute: typeof ApiExtensionSyncRoute
   ApiExtensionTokenRoute: typeof ApiExtensionTokenRoute
+  ApiPosthogSplatRoute: typeof ApiPosthogSplatRoute
   ApiExtensionArtistsCheckRoute: typeof ApiExtensionArtistsCheckRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -366,6 +432,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/faq': {
@@ -465,6 +538,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/posthog/$': {
+      id: '/api/posthog/$'
+      path: '/api/posthog/$'
+      fullPath: '/api/posthog/$'
+      preLoaderRoute: typeof ApiPosthogSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/extension/token': {
       id: '/api/extension/token'
@@ -571,9 +651,12 @@ const rootRouteChildren: RootRouteChildren = {
   DevSongDetailPanelRoute: DevSongDetailPanelRoute,
   DevSongDetailPanelV2Route: DevSongDetailPanelV2Route,
   FaqRoute: FaqRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   TermsRoute: TermsRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
   ApiBillingBridgeRoute: ApiBillingBridgeRoute,
   ApiSentryTunnelRoute: ApiSentryTunnelRoute,
   AuthLogoutRoute: AuthLogoutRoute,
@@ -581,6 +664,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiExtensionStatusRoute: ApiExtensionStatusRoute,
   ApiExtensionSyncRoute: ApiExtensionSyncRoute,
   ApiExtensionTokenRoute: ApiExtensionTokenRoute,
+  ApiPosthogSplatRoute: ApiPosthogSplatRoute,
   ApiExtensionArtistsCheckRoute: ApiExtensionArtistsCheckRoute,
 }
 export const routeTree = rootRouteImport

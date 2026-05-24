@@ -20,9 +20,15 @@ export interface AppSession {
 	accountId: string;
 }
 
+export interface AuthIdentity {
+	email: string;
+	emailVerified: boolean;
+}
+
 interface AuthContext {
 	session: AppSession;
 	account: Account | null;
+	identity: AuthIdentity;
 }
 
 /**
@@ -48,6 +54,10 @@ export async function getAuthSession(): Promise<AuthContext | null> {
 		return {
 			session: { accountId: account.id },
 			account,
+			identity: {
+				email: betterAuthSession.user.email,
+				emailVerified: betterAuthSession.user.emailVerified,
+			},
 		};
 	} catch (error) {
 		console.warn("Failed to get auth session:", (error as Error).message);

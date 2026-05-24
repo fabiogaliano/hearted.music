@@ -84,6 +84,8 @@ export default defineConfig(({ command }) => {
 				"**/old_app/**",
 				// Sibling Hono service mounted via symlink; runs from its own root.
 				"**/v1_hearted_brand/**",
+				// Live-stack E2E suite — run via `bun run test:e2e`, not Vitest.
+				"**/tests/e2e/**",
 			],
 			server: {
 				deps: {

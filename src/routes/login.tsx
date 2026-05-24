@@ -1,18 +1,29 @@
 /**
- * /login - Social login page
+ * /login - Sign in / sign up.
  *
  * Public route. Redirects to /dashboard if already authenticated.
- * Provides Google sign-in via Better Auth social providers.
+ * Supports Google social login plus email/password (Better Auth).
+ * `?mode=signup` opens the form in sign-up state.
  */
 
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { z } from "zod";
+import {
+	LoginForm,
+	type LoginMode,
+	type SubmitHandler,
+} from "@/features/auth/LoginForm";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
-import { signIn } from "@/lib/platform/auth/auth-client";
+import { signIn, signUp } from "@/lib/platform/auth/auth-client";
 import { getAuthSession } from "@/lib/server/auth.functions";
-import { fonts } from "@/lib/theme/fonts";
+
+const searchSchema = z.object({
+	mode: z.enum(["signin", "signup"]).optional(),
+});
 
 export const Route = createFileRoute("/login")({
+	validateSearch: searchSchema,
 	beforeLoad: async () => {
 		const session = await getAuthSession();
 		if (session) {
@@ -22,13 +33,21 @@ export const Route = createFileRoute("/login")({
 	component: LoginPage,
 });
 
+type LoadingState = "google" | "credentials" | null;
+
 function LoginPage() {
-	const [error, setError] = useState<string | null>(null);
-	const [loading, setLoading] = useState<string | null>(null);
+	const { mode: initialMode } = Route.useSearch();
+	const navigate = useNavigate();
 	const analytics = useAnalytics();
 
-	async function handleGoogleLogin() {
+	const [mode, setMode] = useState<LoginMode>(initialMode ?? "signin");
+	const [error, setError] = useState<string | null>(null);
+	const [notice, setNotice] = useState<string | null>(null);
+	const [loading, setLoading] = useState<LoadingState>(null);
+
+	async function handleGoogle() {
 		setError(null);
+		setNotice(null);
 		setLoading("google");
 		analytics.capture("user_logged_in", { provider: "google" });
 		try {
@@ -39,66 +58,93 @@ function LoginPage() {
 			});
 		} catch {
 			analytics.capture("login_error", { provider: "google" });
-			setError("Failed to sign in with Google. Please try again.");
+			setError("Something went sideways. Let's try that again.");
 			setLoading(null);
 		}
 	}
 
+	const handleSubmit: SubmitHandler = async ({
+		mode: submittedMode,
+		email,
+		password,
+		name,
+	}) => {
+		setError(null);
+		setNotice(null);
+		setLoading("credentials");
+
+		if (submittedMode === "signup") {
+			analytics.capture("user_signed_up", { provider: "credentials" });
+			const { error: err } = await signUp.email({
+				email,
+				password,
+				name,
+				callbackURL: "/onboarding",
+			});
+			if (err) {
+				analytics.capture("signup_error", { provider: "credentials" });
+				setError(humanizeAuthError(err.message ?? "Could not create account."));
+				setLoading(null);
+				return;
+			}
+			// `autoSignIn: true` issues a session. Land on /dashboard and let
+			// the _authenticated guard redirect into the onboarding flow with
+			// the correct step search param.
+			navigate({ to: "/dashboard" });
+			return;
+		}
+
+		analytics.capture("user_logged_in", { provider: "credentials" });
+		const { error: err } = await signIn.email({
+			email,
+			password,
+			callbackURL: "/dashboard",
+		});
+		if (err) {
+			analytics.capture("login_error", { provider: "credentials" });
+			setError(humanizeAuthError(err.message ?? "Could not sign in."));
+			setLoading(null);
+			return;
+		}
+		navigate({ to: "/dashboard" });
+	};
+
+	function handleForgotPassword() {
+		navigate({ to: "/forgot-password" });
+	}
+
+	function handleModeChange(next: LoginMode) {
+		setMode(next);
+		setError(null);
+		setNotice(null);
+	}
+
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-neutral-50">
-			<div className="w-full max-w-sm space-y-6 px-6">
-				<div className="text-center">
-					<h1 className="text-3xl" style={{ fontFamily: fonts.display }}>
-						Sign in to hearted.
-					</h1>
-				</div>
-
-				{error && <p className="text-center text-sm text-red-600">{error}</p>}
-
-				<div className="space-y-3">
-					<button
-						type="button"
-						disabled={loading !== null}
-						onClick={handleGoogleLogin}
-						className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-md border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-800 transition-[background-color,transform] duration-150 hover:bg-neutral-50 active:scale-[0.98] disabled:opacity-50"
-					>
-						<GoogleIcon />
-						{loading === "google" ? "Redirecting..." : "Continue with Google"}
-					</button>
-				</div>
-
-				<div className="text-center">
-					<Link
-						to="/"
-						className="text-sm text-neutral-500 transition-[color,transform] duration-150 hover:text-neutral-700 active:scale-[0.98]"
-					>
-						Back
-					</Link>
-				</div>
-			</div>
-		</div>
+		<LoginForm
+			mode={mode}
+			onModeChange={handleModeChange}
+			onSubmit={handleSubmit}
+			onGoogle={handleGoogle}
+			onForgotPassword={handleForgotPassword}
+			error={error}
+			notice={notice}
+			loading={loading}
+		/>
 	);
 }
 
-function GoogleIcon() {
-	return (
-		<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-			<path
-				d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
-				fill="#4285F4"
-			/>
-			<path
-				d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"
-				fill="#34A853"
-			/>
-			<path
-				d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
-				fill="#FBBC05"
-			/>
-			<path
-				d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
-				fill="#EA4335"
-			/>
-		</svg>
-	);
+// Better Auth surfaces machine-y messages ("INVALID_EMAIL_OR_PASSWORD" etc.).
+// Translate the common ones into Hearted voice. Unknown messages pass through
+// after stripping ALL_CAPS shouting.
+function humanizeAuthError(raw: string): string {
+	const upper = raw.toUpperCase();
+	if (upper.includes("INVALID_EMAIL_OR_PASSWORD"))
+		return "That email and password don't match.";
+	if (upper.includes("USER_ALREADY_EXISTS"))
+		return "An account with that email already exists. Try signing in.";
+	if (upper.includes("PASSWORD_TOO_SHORT"))
+		return "Password needs at least 8 characters.";
+	if (upper.includes("EMAIL_NOT_VERIFIED"))
+		return "Check your inbox to verify this email first.";
+	return raw;
 }
