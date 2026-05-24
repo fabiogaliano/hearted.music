@@ -14,7 +14,12 @@ import { Button } from "@/components/ui/Button";
 import type { HeartRippleHandle } from "@/components/ui/HeartRippleBackground";
 import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
 import { LazyHeartRippleBackground } from "@/components/ui/LazyHeartRippleBackground";
+import { clientEnv } from "@/env.public";
 import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
+import {
+	POSTHOG_TUNNEL_PATH,
+	resolvePostHogHosts,
+} from "@/lib/observability/posthog-hosts";
 import { linkPostHogToSentry } from "@/lib/observability/posthog-sentry-link";
 import { captureRouteError } from "@/lib/observability/sentry";
 import { themes } from "@/lib/theme/colors";
@@ -27,49 +32,38 @@ const DevToolsShell = import.meta.env.DEV
 	? lazy(() => import("@/components/dev/DevToolsShell"))
 	: null;
 
-const DEFAULT_POSTHOG_HOST = "https://eu.i.posthog.com";
-const DEFAULT_POSTHOG_ASSET_HOST = "https://eu-assets.i.posthog.com";
-
 function getPostHogConfig(): {
 	apiKey: string;
 	apiHost: string;
-	assetHost: string;
+	uiHost: string;
 } | null {
-	const apiKey = import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN;
+	// PostHog is production-only. Keeps dev consoles quiet and avoids
+	// polluting prod analytics with local sessions even if a token leaks
+	// into a dev .env.
+	if (!import.meta.env.PROD) return null;
+
+	const apiKey = clientEnv.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN;
 	if (!apiKey) {
-		if (import.meta.env.PROD) {
-			throw new Error(
-				"PostHog is required in production. Set VITE_PUBLIC_POSTHOG_PROJECT_TOKEN.",
-			);
-		}
-		return null;
-	}
-
-	const configuredHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST;
-	if (!configuredHost) {
-		return {
-			apiKey,
-			apiHost: DEFAULT_POSTHOG_HOST,
-			assetHost: DEFAULT_POSTHOG_ASSET_HOST,
-		};
-	}
-
-	let apiHost: string;
-	try {
-		apiHost = new URL(configuredHost).origin;
-	} catch {
 		throw new Error(
-			"VITE_PUBLIC_POSTHOG_HOST must be a valid URL when PostHog is enabled.",
+			"PostHog is required in production. Set VITE_PUBLIC_POSTHOG_PROJECT_TOKEN.",
 		);
 	}
 
-	if (apiHost !== DEFAULT_POSTHOG_HOST) {
-		throw new Error(
-			"hearted is configured for PostHog EU only. Use https://eu.i.posthog.com.",
-		);
+	const resolvedHosts = resolvePostHogHosts(
+		clientEnv.VITE_PUBLIC_POSTHOG_HOST,
+		{
+			strict: import.meta.env.PROD,
+		},
+	);
+	if (resolvedHosts.kind === "invalid") {
+		throw new Error(resolvedHosts.reason);
 	}
 
-	return { apiKey, apiHost, assetHost: DEFAULT_POSTHOG_ASSET_HOST };
+	return {
+		apiKey,
+		apiHost: POSTHOG_TUNNEL_PATH,
+		uiHost: resolvedHosts.value.uiHost,
+	};
 }
 
 interface MyRouterContext {
@@ -173,18 +167,8 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			"upgrade-insecure-requests",
 		];
 
-		const posthogConfig = getPostHogConfig();
-		const posthogScriptHosts = posthogConfig ? [posthogConfig.assetHost] : [];
-		const posthogConnectHosts = posthogConfig
-			? [...new Set([posthogConfig.apiHost, posthogConfig.assetHost])]
-			: [];
+		getPostHogConfig();
 
-		// PostHog SDK lazy-loads exception autocapture, session recording,
-		// surveys, and feature-flag deps from its asset host. With
-		// `capture_exceptions: true` + the 2025-05-24 defaults bundle, the
-		// loader fetches those chunks on first error. Without these hosts in
-		// script-src (for execution) and connect-src (for the fetch), prod
-		// silently drops exception telemetry.
 		if (import.meta.env.DEV) {
 			return {
 				...baseHeaders,
@@ -199,7 +183,6 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 						"https://*.spotifycdn.com",
 						"http://localhost:*",
 						"http://127.0.0.1:*",
-						...posthogScriptHosts,
 					].join(" "),
 					[
 						"connect-src",
@@ -208,7 +191,6 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 						"ws://127.0.0.1:*",
 						"http://localhost:*",
 						"http://127.0.0.1:*",
-						...posthogConnectHosts,
 					].join(" "),
 				].join("; "),
 			};
@@ -224,9 +206,8 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 						"'self'",
 						"https://open.spotify.com",
 						"https://*.spotifycdn.com",
-						...posthogScriptHosts,
 					].join(" "),
-					["connect-src", "'self'", ...posthogConnectHosts].join(" "),
+					["connect-src", "'self'"].join(" "),
 				].join("; "),
 			};
 		}
@@ -236,13 +217,8 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			...baseHeaders,
 			"Content-Security-Policy": [
 				...cspDirectives,
-				[
-					"script-src",
-					"'strict-dynamic'",
-					`'nonce-${nonce}'`,
-					...posthogScriptHosts,
-				].join(" "),
-				["connect-src", "'self'", ...posthogConnectHosts].join(" "),
+				["script-src", "'strict-dynamic'", `'nonce-${nonce}'`].join(" "),
+				["connect-src", "'self'"].join(" "),
 			].join("; "),
 		};
 	},
@@ -445,6 +421,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 						apiKey={posthogConfig.apiKey}
 						options={{
 							api_host: posthogConfig.apiHost,
+							ui_host: posthogConfig.uiHost,
 							defaults: "2025-05-24",
 							capture_exceptions: true,
 							debug: import.meta.env.DEV,

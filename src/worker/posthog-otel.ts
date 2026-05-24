@@ -1,30 +1,30 @@
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { PostHogSpanProcessor } from "@posthog/ai/otel";
+import { resolvePostHogHosts } from "@/lib/observability/posthog-hosts";
 
-const DEFAULT_POSTHOG_HOST = "https://eu.i.posthog.com";
 const apiKey = process.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN;
 const configuredHost = process.env.VITE_PUBLIC_POSTHOG_HOST;
 
 let sdk: NodeSDK | null = null;
 
 export function initPostHogOtel() {
+	// Production-only: avoid shipping local LLM spans to prod analytics.
+	if (process.env.NODE_ENV !== "production") return;
 	if (!apiKey) return;
 
-	let host = DEFAULT_POSTHOG_HOST;
-	if (configuredHost) {
-		const configuredOrigin = new URL(configuredHost).origin;
-		if (configuredOrigin !== DEFAULT_POSTHOG_HOST) {
-			throw new Error(
-				"hearted is configured for PostHog EU only. Use https://eu.i.posthog.com.",
-			);
-		}
-		host = configuredOrigin;
+	const resolvedHosts = resolvePostHogHosts(configuredHost, {
+		strict: process.env.NODE_ENV === "production",
+	});
+	if (resolvedHosts.kind === "invalid") {
+		throw new Error(resolvedHosts.reason);
 	}
 
 	sdk = new NodeSDK({
 		resource: resourceFromAttributes({ "service.name": "hearted-worker" }),
-		spanProcessors: [new PostHogSpanProcessor({ apiKey, host })],
+		spanProcessors: [
+			new PostHogSpanProcessor({ apiKey, host: resolvedHosts.value.apiHost }),
+		],
 	});
 	sdk.start();
 }

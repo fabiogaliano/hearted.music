@@ -1,6 +1,5 @@
 import { PostHog } from "posthog-node";
-
-const DEFAULT_POSTHOG_HOST = "https://eu.i.posthog.com";
+import { resolvePostHogHosts } from "@/lib/observability/posthog-hosts";
 
 /**
  * Per-request PostHog client for Cloudflare Workers.
@@ -15,23 +14,22 @@ const DEFAULT_POSTHOG_HOST = "https://eu.i.posthog.com";
  * past the Response return without blocking the user.
  */
 export function createPostHogClient(): PostHog | null {
+	// Production-only: keep dev runs out of prod analytics.
+	if (!import.meta.env.PROD) return null;
+
 	const apiKey = import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN;
 	if (!apiKey) return null;
 
-	const configuredHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST;
-	let host = DEFAULT_POSTHOG_HOST;
-	if (configuredHost) {
-		const configuredOrigin = new URL(configuredHost).origin;
-		if (configuredOrigin !== DEFAULT_POSTHOG_HOST) {
-			throw new Error(
-				"hearted is configured for PostHog EU only. Use https://eu.i.posthog.com.",
-			);
-		}
-		host = configuredOrigin;
+	const resolvedHosts = resolvePostHogHosts(
+		import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
+		{ strict: import.meta.env.PROD },
+	);
+	if (resolvedHosts.kind === "invalid") {
+		throw new Error(resolvedHosts.reason);
 	}
 
 	return new PostHog(apiKey, {
-		host,
+		host: resolvedHosts.value.apiHost,
 		flushAt: 1,
 		flushInterval: 0,
 	});
