@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "January 31, 2026",
+  "lastUpdated": "May 24, 2026",
   "summary": "hearted. exists to help you understand your music. This policy explains what data is collected, why, and how it's protected.\n\nYour music library is accessed to provide the service\nYour data isn't sold to anyone\nSong analyses are stored globally (not tied to you personally)\nYou can delete your account and personal data anytime",
   "sections": [
     {
@@ -63,7 +63,9 @@
           "items": [
             { "term": "Spotify", "description": "Handles login authentication. Provides access to your music library." },
             { "term": "Google (Gemini AI)", "description": "Song lyrics and metadata are sent to generate analyses. No personal information is included in these requests." },
-            { "term": "Stripe", "description": "Handles payment processing. Receives your email and payment details when you make a purchase. hearted. does not store credit card information." }
+            { "term": "Stripe", "description": "Handles payment processing. Receives your email and payment details when you make a purchase. hearted. does not store credit card information." },
+            { "term": "PostHog", "description": "Collects usage analytics — which features you use, when, and on what kind of device — so we can understand how hearted. is used. Tied to your Spotify ID and Spotify display name." },
+            { "term": "Sentry", "description": "Captures error reports when something breaks. Reports include the page you were on and what went wrong. No personal data is included." }
           ]
         },
         {
@@ -119,7 +121,7 @@
           "items": [
             { "term": "Personal data", "description": "Kept while your account is active. Deleted when you delete your account." },
             { "term": "Song analyses", "description": "Kept indefinitely" },
-            { "term": "Usage analytics", "description": "Anonymized and aggregated, no personal identifiers." }
+            { "term": "Usage analytics", "description": "Tied to your Spotify ID and Spotify display name. Country-level location only captured. Kept while your account is active. Deleted when you delete your account." }
           ]
         }
       ]
@@ -136,12 +138,13 @@
           "type": "definition-list",
           "items": [
             { "term": "Authentication", "description": "To keep you logged in" },
-            { "term": "Preferences", "description": "To remember your settings" }
+            { "term": "Preferences", "description": "To remember your settings" },
+            { "term": "Analytics", "description": "A PostHog cookie remembers your session so usage stats don't double-count you." }
           ]
         },
         {
           "type": "paragraph",
-          "text": "No advertising or tracking cookies are used."
+          "text": "No advertising cookies are used."
         }
       ]
     },
