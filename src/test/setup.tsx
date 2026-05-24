@@ -65,19 +65,23 @@ expect.extend({
 	},
 });
 
-Object.defineProperty(window, "matchMedia", {
-	writable: true,
-	value: vi.fn().mockImplementation((query: string) => ({
-		matches: false,
-		media: query,
-		onchange: null,
-		addListener: vi.fn(),
-		removeListener: vi.fn(),
-		addEventListener: vi.fn(),
-		removeEventListener: vi.fn(),
-		dispatchEvent: vi.fn(),
-	})),
-});
+// Guard so this shared setup also works in node-environment test files (e.g.
+// server-only integration tests that opt out of jsdom).
+if (typeof window !== "undefined") {
+	Object.defineProperty(window, "matchMedia", {
+		writable: true,
+		value: vi.fn().mockImplementation((query: string) => ({
+			matches: false,
+			media: query,
+			onchange: null,
+			addListener: vi.fn(),
+			removeListener: vi.fn(),
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+			dispatchEvent: vi.fn(),
+		})),
+	});
+}
 
 vi.mock("framer-motion", async () => {
 	const actual =

@@ -79,6 +79,12 @@ vi.mock("@/lib/integrations/llm/service", () => ({
 	}),
 }));
 
+// Mock LLM config so the pipeline's API-key precondition is satisfied without
+// reading the validated env schema (which guards server vars in jsdom tests).
+vi.mock("@/lib/integrations/llm/config", () => ({
+	getApiKeyForProvider: vi.fn().mockReturnValue("test-key"),
+}));
+
 // Mock song analysis service
 vi.mock("../song-analysis", () => ({
 	SongAnalysisService: vi.fn().mockImplementation(function () {
@@ -114,9 +120,9 @@ describe("Pipeline Lyrics Integration", () => {
 			},
 		);
 
-		// Set required env vars
+		// Genius token is still read via process.env in the pipeline; the LLM key
+		// is supplied by the mocked getApiKeyForProvider above.
 		process.env.GENIUS_CLIENT_TOKEN = "test-token";
-		process.env.GOOGLE_GENERATIVE_AI_API_KEY = "test-key";
 	});
 
 	/** Helper to unwrap pipeline Result or fail test */

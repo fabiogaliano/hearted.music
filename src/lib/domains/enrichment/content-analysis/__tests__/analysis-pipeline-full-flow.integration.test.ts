@@ -1,5 +1,9 @@
+// @vitest-environment node
 /**
  * Analysis Pipeline Full Flow Integration Test
+ *
+ * Runs in the node environment (not jsdom): this is a server-only flow, and the
+ * validated env schema blocks server-var reads when a `window` global exists.
  *
  * Validates the complete end-to-end flow of song analysis:
  * 1. Genius lyrics fetching

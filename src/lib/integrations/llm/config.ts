@@ -1,7 +1,8 @@
+import { env } from "@/env";
 import type { LlmProviderName } from "./service";
 
 /**
- * Resolves API key for a provider from environment variables.
+ * Resolves API key for a provider from the validated env schema.
  * Google uses a fallback chain matching Vercel AI SDK conventions.
  */
 export function getApiKeyForProvider(
@@ -10,13 +11,13 @@ export function getApiKeyForProvider(
 	switch (provider) {
 		case "google":
 			return (
-				process.env.GEMINI_API_KEY ??
-				process.env.GOOGLE_GENERATIVE_AI_API_KEY ??
-				process.env.GOOGLE_API_KEY
+				env.GEMINI_API_KEY ??
+				env.GOOGLE_GENERATIVE_AI_API_KEY ??
+				env.GOOGLE_API_KEY
 			);
 		case "anthropic":
-			return process.env.ANTHROPIC_API_KEY;
+			return env.ANTHROPIC_API_KEY;
 		case "openai":
-			return process.env.OPENAI_API_KEY;
+			return env.OPENAI_API_KEY;
 	}
 }

@@ -32,6 +32,14 @@ export const env = createEnv({
 		GENIUS_CLIENT_TOKEN: z.string().min(1).optional(),
 		// ML provider selection (optional - defaults to deepinfra if key exists, else huggingface)
 		ML_PROVIDER: z.enum(["deepinfra", "huggingface", "local"]).optional(),
+		// LLM providers for content analysis (optional - analysis degrades gracefully
+		// when absent; see src/lib/integrations/llm/config.ts). Google reads a fallback
+		// chain matching Vercel AI SDK conventions.
+		GEMINI_API_KEY: z.string().min(1).optional(),
+		GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
+		GOOGLE_API_KEY: z.string().min(1).optional(),
+		ANTHROPIC_API_KEY: z.string().min(1).optional(),
+		OPENAI_API_KEY: z.string().min(1).optional(),
 		// Email (optional - waitlist confirmation emails skipped if not set)
 		RESEND_API_KEY: z.string().min(1).optional(),
 		// Billing integration
@@ -79,6 +87,11 @@ export const env = createEnv({
 		HF_TOKEN: serverEnv.HF_TOKEN,
 		GENIUS_CLIENT_TOKEN: serverEnv.GENIUS_CLIENT_TOKEN,
 		ML_PROVIDER: serverEnv.ML_PROVIDER,
+		GEMINI_API_KEY: serverEnv.GEMINI_API_KEY,
+		GOOGLE_GENERATIVE_AI_API_KEY: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY,
+		GOOGLE_API_KEY: serverEnv.GOOGLE_API_KEY,
+		ANTHROPIC_API_KEY: serverEnv.ANTHROPIC_API_KEY,
+		OPENAI_API_KEY: serverEnv.OPENAI_API_KEY,
 		RESEND_API_KEY: serverEnv.RESEND_API_KEY,
 		BILLING_ENABLED: serverEnv.BILLING_ENABLED,
 		BILLING_SERVICE_URL: serverEnv.BILLING_SERVICE_URL,
