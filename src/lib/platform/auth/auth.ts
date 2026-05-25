@@ -18,6 +18,7 @@ import postgres from "postgres";
 import { env } from "@/env";
 import {
 	oauthAccount,
+	rateLimit,
 	session,
 	user,
 	verification,
@@ -44,6 +45,7 @@ export function getAuth() {
 				session,
 				oauthAccount,
 				verification,
+				rateLimit,
 				account: oauthAccount,
 				oauth_account: oauthAccount,
 			},
@@ -82,6 +84,31 @@ export function getAuth() {
 		account: {
 			modelName: "oauth_account",
 			encryptOAuthTokens: true,
+		},
+		// Without this, rate-limit keys default to x-forwarded-for. On Cloudflare
+		// that's the spoofable hop list, not the trusted edge IP — an attacker
+		// could forge it to dodge the per-IP login cap. cf-connecting-ip is set by
+		// the edge and can't be overridden by the client.
+		advanced: {
+			ipAddress: {
+				ipAddressHeaders: ["cf-connecting-ip"],
+			},
+		},
+		rateLimit: {
+			// Auto-on in production only; local dev stays unthrottled so the
+			// rate_limit migration isn't a prerequisite for running the app.
+			enabled: import.meta.env.PROD,
+			// Database storage, not the in-memory default: Worker isolates share no
+			// memory, so memory storage silently never rate limits on Cloudflare.
+			storage: "database",
+			window: 60,
+			max: 100,
+			customRules: {
+				// Tight cap on the credential-stuffing surface, per IP.
+				"/sign-in/email": { window: 60, max: 10 },
+				// Slow password-reset email spam / account enumeration.
+				"/forget-password": { window: 60, max: 5 },
+			},
 		},
 		plugins: [tanstackStartCookies()],
 		databaseHooks: {

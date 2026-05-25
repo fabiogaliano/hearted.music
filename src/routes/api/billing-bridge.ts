@@ -33,6 +33,10 @@ import {
 	parseBridgePayload,
 } from "@/lib/domains/billing/bridge-payloads";
 import { verifyBridgeHmac } from "@/lib/domains/billing/hmac";
+import {
+	clientIpFrom,
+	withinRateLimit,
+} from "@/lib/platform/rate-limit/edge-rate-limit";
 import { captureWithWaitUntil } from "@/utils/posthog-server";
 
 // Long enough to outlast any realistic handler run, short enough that a
@@ -56,6 +60,20 @@ export const Route = createFileRoute("/api/billing-bridge")({
 			POST: async ({ request }) => {
 				if (!env.BILLING_ENABLED) {
 					return new Response("Not Found", { status: 404 });
+				}
+
+				// Throttle before HMAC verification so a flood can't burn worker
+				// CPU on signature checks. Keyed by caller IP. Returns 503, not a
+				// bare 429: the retry contract has the billing-service retry any 5xx,
+				// so a legit burst that trips the limit is retried with backoff
+				// instead of dropped (a 429 is a non-retryable 4xx under the contract).
+				if (
+					!(await withinRateLimit("BILLING_LIMITER", clientIpFrom(request)))
+				) {
+					return Response.json(
+						{ error: "rate_limited" },
+						{ status: 503, headers: { "retry-after": "60" } },
+					);
 				}
 
 				const secret = env.BILLING_SHARED_SECRET;

@@ -5,7 +5,14 @@
  * Must stay in sync with supabase/migrations/20260303154135_add_better_auth_tables.sql
  */
 
-import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import {
+	bigint,
+	boolean,
+	integer,
+	pgTable,
+	text,
+	timestamp,
+} from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
 	id: text("id").primaryKey(),
@@ -71,4 +78,14 @@ export const verification = pgTable("verification", {
 	expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// Backs Better Auth's `rateLimit.storage: "database"`. Field names mirror
+// Better Auth's rateLimit model; columns are snake_case per this repo's
+// convention. See migration 20260525090047_add_better_auth_rate_limit.sql.
+export const rateLimit = pgTable("rate_limit", {
+	id: text("id").primaryKey(),
+	key: text("key"),
+	count: integer("count"),
+	lastRequest: bigint("last_request", { mode: "number" }),
 });

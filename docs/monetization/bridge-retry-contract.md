@@ -20,6 +20,7 @@ Keep it in sync with the code:
 | 401    | `{ error: "..." }`           | Bad HMAC / config           | Terminal failure (do not retry)|
 | 409    | `{ error: "in_progress" }`   | Another worker holds the processing lease | **Transient — retry with backoff** |
 | 500    | `{ error: "..." }`           | Server / handler / claim error, or unsupported bridge schema version | **Transient — retry with backoff** |
+| 503    | `{ error: "rate_limited" }`  | Per-IP rate limit tripped (sends `Retry-After`) | **Transient — retry with backoff** |
 
 ## Why 409 exists
 

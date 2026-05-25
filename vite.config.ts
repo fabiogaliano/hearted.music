@@ -114,6 +114,20 @@ export default defineConfig(({ command }) => {
 		resolve: {
 			tsconfigPaths: true,
 			alias: {
+				// `cloudflare:workers` is a workerd-only runtime module Vite can't
+				// resolve under Vitest; point it at a stub so server code that imports
+				// it stays transformable. Test-only — production resolves the real
+				// module via @cloudflare/vite-plugin.
+				...(isTest
+					? {
+							"cloudflare:workers": fileURLToPath(
+								new URL(
+									"./src/test/cloudflare-workers.stub.ts",
+									import.meta.url,
+								),
+							),
+						}
+					: {}),
 				// CI may not have the local `file:../../uipane` package. Build/test use
 				// the internal stub so dev-only pane wiring never ships or blocks verify.
 				...(useUipaneStub
