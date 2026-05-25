@@ -583,7 +583,8 @@ export class AnalysisPipeline {
 		// Fetch lyrics in parallel (LyricsService handles rate limiting internally)
 		const fetchPromises = songsNeedingLyrics.map(async (song) => {
 			try {
-				const lyricsResult = await lyricsService.getLyricsText(
+				const lyricsResult = await lyricsService.fetchAndStoreLyrics(
+					song.songId,
 					song.artist,
 					song.title,
 				);

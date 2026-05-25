@@ -67,7 +67,7 @@ function makeAudioFeature(songId: string): AudioFeature {
 
 describe("analyzeSongBatch", () => {
 	let mockAnalyzeSong: ReturnType<typeof vi.fn>;
-	let mockGetLyricsText: ReturnType<typeof vi.fn>;
+	let mockFetchAndStoreLyrics: ReturnType<typeof vi.fn>;
 	let deps: SongBatchAnalyzerDeps;
 
 	beforeEach(() => {
@@ -80,10 +80,10 @@ describe("analyzeSongBatch", () => {
 				cached: false,
 			}),
 		);
-		mockGetLyricsText = vi.fn();
+		mockFetchAndStoreLyrics = vi.fn();
 
 		deps = {
-			lyricsService: { getLyricsText: mockGetLyricsText } as never,
+			lyricsService: { fetchAndStoreLyrics: mockFetchAndStoreLyrics } as never,
 			songAnalysisService: { analyzeSong: mockAnalyzeSong } as never,
 			concurrency: 5,
 		};
@@ -112,7 +112,7 @@ describe("analyzeSongBatch", () => {
 			vi.mocked(mockGetAudioFeaturesBatch).mockResolvedValueOnce(
 				Result.ok(new Map<string, AudioFeature>()),
 			);
-			mockGetLyricsText.mockResolvedValueOnce(
+			mockFetchAndStoreLyrics.mockResolvedValueOnce(
 				Result.err(new GeniusNotFoundError("Artist", "Song s1")),
 			);
 
@@ -131,7 +131,7 @@ describe("analyzeSongBatch", () => {
 			vi.mocked(mockGetAudioFeaturesBatch).mockResolvedValueOnce(
 				Result.ok(new Map<string, AudioFeature>()),
 			);
-			mockGetLyricsText.mockResolvedValueOnce(
+			mockFetchAndStoreLyrics.mockResolvedValueOnce(
 				Result.err(new GeniusFetchError("Timeout", 500)),
 			);
 
@@ -149,7 +149,7 @@ describe("analyzeSongBatch", () => {
 			vi.mocked(mockGetAudioFeaturesBatch).mockResolvedValueOnce(
 				Result.err({ message: "DB unavailable" } as never),
 			);
-			mockGetLyricsText.mockResolvedValueOnce(
+			mockFetchAndStoreLyrics.mockResolvedValueOnce(
 				Result.err(new GeniusNotFoundError("Artist", "Song s1")),
 			);
 
@@ -166,7 +166,7 @@ describe("analyzeSongBatch", () => {
 			vi.mocked(mockGetAudioFeaturesBatch).mockResolvedValueOnce(
 				Result.err({ message: "DB unavailable" } as never),
 			);
-			mockGetLyricsText.mockResolvedValueOnce(
+			mockFetchAndStoreLyrics.mockResolvedValueOnce(
 				Result.err(new GeniusFetchError("Timeout", 500)),
 			);
 
@@ -236,7 +236,7 @@ describe("analyzeSongBatch", () => {
 
 			// Songs needing lyrics fetch: s1, s2, s3 (s4 has lyrics)
 			// s1: confirmed missing, s2: found (but also has audio), s3: found
-			mockGetLyricsText
+			mockFetchAndStoreLyrics
 				.mockResolvedValueOnce(
 					Result.err(new GeniusNotFoundError("Artist", "Song s1")),
 				)

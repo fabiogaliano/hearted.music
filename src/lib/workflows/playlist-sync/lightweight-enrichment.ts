@@ -327,7 +327,11 @@ async function backfillLyricsEmbeddings(
 				return "skipped";
 			}
 
-			const textResult = await lyricsService.getLyricsText(artist, song.name);
+			const textResult = await lyricsService.fetchAndStoreLyrics(
+				song.id,
+				artist,
+				song.name,
+			);
 			if (Result.isError(textResult)) {
 				return "failed";
 			}

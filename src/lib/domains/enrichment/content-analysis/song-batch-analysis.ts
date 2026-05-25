@@ -121,7 +121,8 @@ async function prefetchLyrics(
 	await Promise.all(
 		songsNeedingLyrics.map(async (song) => {
 			try {
-				const lyricsResult = await lyricsService.getLyricsText(
+				const lyricsResult = await lyricsService.fetchAndStoreLyrics(
+					song.songId,
 					song.artist,
 					song.title,
 				);

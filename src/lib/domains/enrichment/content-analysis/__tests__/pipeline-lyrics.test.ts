@@ -20,7 +20,7 @@ vi.mock("@/lib/domains/enrichment/lyrics/service", async (importOriginal) => {
 	return {
 		...actual,
 		LyricsService: vi.fn().mockImplementation(function () {
-			return { getLyricsText: vi.fn() };
+			return { fetchAndStoreLyrics: vi.fn() };
 		}),
 	};
 });
@@ -107,16 +107,16 @@ import { LyricsService } from "@/lib/domains/enrichment/lyrics/service";
 import type { SongToAnalyze } from "../pipeline";
 
 describe("Pipeline Lyrics Integration", () => {
-	let mockGetLyricsText: ReturnType<typeof vi.fn>;
+	let mockFetchAndStoreLyrics: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 
 		// Set up the mock lyrics service
-		mockGetLyricsText = vi.fn();
+		mockFetchAndStoreLyrics = vi.fn();
 		(LyricsService as unknown as ReturnType<typeof vi.fn>).mockImplementation(
 			function () {
-				return { getLyricsText: mockGetLyricsText };
+				return { fetchAndStoreLyrics: mockFetchAndStoreLyrics };
 			},
 		);
 
@@ -137,7 +137,7 @@ describe("Pipeline Lyrics Integration", () => {
 
 	describe("prefetchLyrics behavior", () => {
 		it("fetches lyrics for songs without existing lyrics", async () => {
-			mockGetLyricsText
+			mockFetchAndStoreLyrics
 				.mockResolvedValueOnce(Result.ok("Lyrics for song 1"))
 				.mockResolvedValueOnce(Result.ok("Lyrics for song 2"));
 
@@ -151,9 +151,17 @@ describe("Pipeline Lyrics Integration", () => {
 			await pipeline.analyzeSongs("account-123", songs);
 
 			// Should have fetched lyrics for both songs
-			expect(mockGetLyricsText).toHaveBeenCalledTimes(2);
-			expect(mockGetLyricsText).toHaveBeenCalledWith("Artist 1", "Song 1");
-			expect(mockGetLyricsText).toHaveBeenCalledWith("Artist 2", "Song 2");
+			expect(mockFetchAndStoreLyrics).toHaveBeenCalledTimes(2);
+			expect(mockFetchAndStoreLyrics).toHaveBeenCalledWith(
+				"1",
+				"Artist 1",
+				"Song 1",
+			);
+			expect(mockFetchAndStoreLyrics).toHaveBeenCalledWith(
+				"2",
+				"Artist 2",
+				"Song 2",
+			);
 		});
 
 		it("skips fetching for songs that already have lyrics", async () => {
@@ -169,15 +177,19 @@ describe("Pipeline Lyrics Integration", () => {
 				{ songId: "2", artist: "Artist 2", title: "Song 2", lyrics: "" },
 			];
 
-			mockGetLyricsText.mockResolvedValueOnce(
+			mockFetchAndStoreLyrics.mockResolvedValueOnce(
 				Result.ok("Fetched lyrics for song 2"),
 			);
 
 			await pipeline.analyzeSongs("account-123", songs);
 
 			// Should only fetch for song without lyrics
-			expect(mockGetLyricsText).toHaveBeenCalledTimes(1);
-			expect(mockGetLyricsText).toHaveBeenCalledWith("Artist 2", "Song 2");
+			expect(mockFetchAndStoreLyrics).toHaveBeenCalledTimes(1);
+			expect(mockFetchAndStoreLyrics).toHaveBeenCalledWith(
+				"2",
+				"Artist 2",
+				"Song 2",
+			);
 		});
 
 		it("handles lyrics fetch failure gracefully when audio features exist", async () => {
@@ -185,7 +197,7 @@ describe("Pipeline Lyrics Integration", () => {
 				"@/lib/shared/errors/external/genius"
 			);
 
-			mockGetLyricsText.mockResolvedValueOnce(
+			mockFetchAndStoreLyrics.mockResolvedValueOnce(
 				Result.err(new GeniusNotFoundError("Artist 1", "Song 1")),
 			);
 			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
@@ -248,7 +260,7 @@ describe("Pipeline Lyrics Integration", () => {
 				return { analyzeSong: mockAnalyzeSong };
 			});
 
-			mockGetLyricsText.mockResolvedValueOnce(
+			mockFetchAndStoreLyrics.mockResolvedValueOnce(
 				Result.ok("Prefetched lyrics content"),
 			);
 
@@ -293,7 +305,7 @@ describe("Pipeline Lyrics Integration", () => {
 			await pipeline.analyzeSongs("account-123", songs);
 
 			// Should use the original lyrics, not fetch new ones
-			expect(mockGetLyricsText).not.toHaveBeenCalled();
+			expect(mockFetchAndStoreLyrics).not.toHaveBeenCalled();
 			expect(mockAnalyzeSong).toHaveBeenCalledWith(
 				expect.objectContaining({
 					lyrics: "Original lyrics",
@@ -329,7 +341,7 @@ describe("Pipeline Lyrics Integration", () => {
 				return { analyzeSong: mockAnalyzeSong };
 			});
 
-			mockGetLyricsText.mockResolvedValueOnce(
+			mockFetchAndStoreLyrics.mockResolvedValueOnce(
 				Result.err(new GeniusNotFoundError("A", "T")),
 			);
 			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
@@ -355,7 +367,9 @@ describe("Pipeline Lyrics Integration", () => {
 		it("analyzes when only lyrics are available (no audio features row)", async () => {
 			const mockAnalyzeSong = await withMockAnalyzer();
 
-			mockGetLyricsText.mockResolvedValueOnce(Result.ok("Some lyrics here"));
+			mockFetchAndStoreLyrics.mockResolvedValueOnce(
+				Result.ok("Some lyrics here"),
+			);
 			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
 				Result.ok(new Map()),
 			);
@@ -387,7 +401,7 @@ describe("Pipeline Lyrics Integration", () => {
 			);
 			const mockAnalyzeSong = await withMockAnalyzer();
 
-			mockGetLyricsText.mockResolvedValueOnce(
+			mockFetchAndStoreLyrics.mockResolvedValueOnce(
 				Result.err(new GeniusNotFoundError("A", "T")),
 			);
 			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
@@ -428,7 +442,7 @@ describe("Pipeline Lyrics Integration", () => {
 				return { analyzeSong: mockAnalyzeSong };
 			});
 
-			mockGetLyricsText.mockResolvedValueOnce(
+			mockFetchAndStoreLyrics.mockResolvedValueOnce(
 				Result.err(new GeniusNotFoundError("A", "T")),
 			);
 			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
@@ -497,7 +511,7 @@ describe("Pipeline Lyrics Integration", () => {
 				return { analyzeSong: mockAnalyzeSong };
 			});
 
-			mockGetLyricsText.mockResolvedValueOnce(
+			mockFetchAndStoreLyrics.mockResolvedValueOnce(
 				Result.err(new GeniusFetchError("https://genius.com/x", 503)),
 			);
 			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
@@ -532,7 +546,7 @@ describe("Pipeline Lyrics Integration", () => {
 				return { analyzeSong: mockAnalyzeSong };
 			});
 
-			mockGetLyricsText.mockResolvedValueOnce(
+			mockFetchAndStoreLyrics.mockResolvedValueOnce(
 				Result.err(new GeniusFetchError("https://genius.com/x", 503)),
 			);
 			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(

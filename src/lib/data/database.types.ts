@@ -362,6 +362,7 @@ export type Database = {
 					created_at: string;
 					error_message: string | null;
 					processed_at: string | null;
+					processing_started_at: string | null;
 					status: string;
 					stripe_event_id: string;
 					updated_at: string;
@@ -370,6 +371,7 @@ export type Database = {
 					created_at?: string;
 					error_message?: string | null;
 					processed_at?: string | null;
+					processing_started_at?: string | null;
 					status: string;
 					stripe_event_id: string;
 					updated_at?: string;
@@ -378,6 +380,7 @@ export type Database = {
 					created_at?: string;
 					error_message?: string | null;
 					processed_at?: string | null;
+					processing_started_at?: string | null;
 					status?: string;
 					stripe_event_id?: string;
 					updated_at?: string;
@@ -918,8 +921,10 @@ export type Database = {
 					created_at: string;
 					id: string;
 					id_token: string | null;
+					password: string | null;
 					provider_id: string;
 					refresh_token: string | null;
+					refresh_token_expires_at: string | null;
 					scope: string | null;
 					updated_at: string;
 					user_id: string;
@@ -931,8 +936,10 @@ export type Database = {
 					created_at?: string;
 					id: string;
 					id_token?: string | null;
+					password?: string | null;
 					provider_id: string;
 					refresh_token?: string | null;
+					refresh_token_expires_at?: string | null;
 					scope?: string | null;
 					updated_at?: string;
 					user_id: string;
@@ -944,8 +951,10 @@ export type Database = {
 					created_at?: string;
 					id?: string;
 					id_token?: string | null;
+					password?: string | null;
 					provider_id?: string;
 					refresh_token?: string | null;
+					refresh_token_expires_at?: string | null;
 					scope?: string | null;
 					updated_at?: string;
 					user_id?: string;
@@ -1501,6 +1510,50 @@ export type Database = {
 					},
 				];
 			};
+			song_lyrics: {
+				Row: {
+					content_hash: string;
+					created_at: string;
+					document: Json;
+					has_annotations: boolean;
+					id: string;
+					schema_version: number;
+					song_id: string;
+					source: string;
+					updated_at: string;
+				};
+				Insert: {
+					content_hash: string;
+					created_at?: string;
+					document: Json;
+					has_annotations?: boolean;
+					id?: string;
+					schema_version?: number;
+					song_id: string;
+					source: string;
+					updated_at?: string;
+				};
+				Update: {
+					content_hash?: string;
+					created_at?: string;
+					document?: Json;
+					has_annotations?: boolean;
+					id?: string;
+					schema_version?: number;
+					song_id?: string;
+					source?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "song_lyrics_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			subscription_credit_conversion: {
 				Row: {
 					account_id: string;
@@ -1820,6 +1873,10 @@ export type Database = {
 				};
 				Returns: string;
 			};
+			claim_billing_webhook_event: {
+				Args: { p_lease_ms: number; p_stripe_event_id: string };
+				Returns: string;
+			};
 			claim_pending_library_processing_job: {
 				Args: never;
 				Returns: {
@@ -1938,10 +1995,7 @@ export type Database = {
 				Returns: number;
 			};
 			deactivate_subscription: {
-				Args: {
-					p_account_id: string;
-					p_stripe_event_created_at: string;
-				};
+				Args: { p_account_id: string; p_stripe_event_created_at: string };
 				Returns: undefined;
 			};
 			fulfill_pack_purchase: {
@@ -2217,6 +2271,7 @@ export type Database = {
 					song_id: string;
 				}[];
 			};
+			song_artists_joined: { Args: { p_artists: string[] }; Returns: string };
 			sweep_stale_library_processing_jobs: {
 				Args: { stale_threshold: string };
 				Returns: {

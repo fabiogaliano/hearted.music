@@ -18,6 +18,7 @@ import {
 } from "@/lib/shared/errors/external/genius";
 import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
 
+import { getSongLyricsDocument, upsertSongLyrics } from "./queries";
 import type {
 	ResponseHitsResult,
 	ResponseReferents,
@@ -100,6 +101,43 @@ export class LyricsService {
 			return Result.err(sectionsResult.error);
 		}
 		return Result.ok(formatLyricsCompact(sectionsResult.value));
+	}
+
+	/**
+	 * Returns cached lyrics when available; otherwise fetches from Genius,
+	 * persists the structured sections for the song, and returns compact text
+	 * for analysis. Cache read/write failures are logged but never block fetches.
+	 */
+	public async fetchAndStoreLyrics(
+		songId: string,
+		artist: string,
+		song: string,
+	): Promise<Result<string, GeniusError>> {
+		const cachedResult = await getSongLyricsDocument(songId);
+		if (Result.isOk(cachedResult) && cachedResult.value !== null) {
+			return Result.ok(formatLyricsCompact(cachedResult.value.sections));
+		}
+		if (Result.isError(cachedResult)) {
+			console.warn(
+				`[LyricsService] Failed to read cached lyrics for ${songId} (${artist} - ${song}): ${cachedResult.error.message}`,
+			);
+		}
+
+		const sectionsResult = await this.getLyrics(artist, song);
+		if (Result.isError(sectionsResult)) {
+			return Result.err(sectionsResult.error);
+		}
+
+		const sections = sectionsResult.value;
+
+		const saveResult = await upsertSongLyrics(songId, sections);
+		if (Result.isError(saveResult)) {
+			console.warn(
+				`[LyricsService] Failed to persist lyrics for ${songId} (${artist} - ${song}): ${saveResult.error.message}`,
+			);
+		}
+
+		return Result.ok(formatLyricsCompact(sections));
 	}
 
 	private async searchSong(
