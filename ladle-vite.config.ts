@@ -1,17 +1,15 @@
+import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath, URL } from "url";
 import { defineConfig } from "vite";
 
-// Do NOT add @vitejs/plugin-react here. The root project's `vite` is
-// rolldown-vite (depends on `rolldown`), and the matching
-// @vitejs/plugin-react@6 registers a rolldown builtin
-// (`vite-react-refresh-wrapper`) that crashes inside Ladle's bundled
-// Rollup-based Vite 6 with "Missing field `moduleType`".
-// Ladle auto-injects @vitejs/plugin-react-swc when no React plugin is
-// present in this config — that's the path we want.
-// See https://github.com/tajo/ladle/issues/623
+// We use @vitejs/plugin-react here (same as the app). Our forked Ladle
+// bundles Vite 8 (Rolldown), matching the app's engine, so plugin-react@6's
+// Rolldown refresh builtin loads fine. On upstream Ladle (Rollup-based Vite 6)
+// this crashed with "Missing field `moduleType`" and we had to omit it and let
+// Ladle auto-inject @vitejs/plugin-react-swc instead. See tajo/ladle#623.
 export default defineConfig({
-	plugins: [tailwindcss()],
+	plugins: [react(), tailwindcss()],
 	optimizeDeps: {
 		exclude: ["@tanstack/react-start/server"],
 	},
