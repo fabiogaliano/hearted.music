@@ -10,32 +10,27 @@
 import { redirect } from "@tanstack/react-router";
 import { getRequest } from "@tanstack/react-start/server";
 import { Result } from "better-result";
-import {
-	type Account,
-	getAccountByBetterAuthUserId,
-} from "@/lib/domains/library/accounts/queries";
+import { getAccountByBetterAuthUserId } from "@/lib/domains/library/accounts/queries";
 import { getAuth } from "@/lib/platform/auth/auth";
-
-export interface AppSession {
-	accountId: string;
-}
-
-export interface AuthIdentity {
-	email: string;
-	emailVerified: boolean;
-}
-
-interface AuthContext {
-	session: AppSession;
-	account: Account | null;
-	identity: AuthIdentity;
-}
+import { getAuthRequestState } from "@/lib/platform/auth/auth-request-state";
+import type { AuthContext } from "@/lib/platform/auth/auth-types";
 
 /**
  * Gets the current auth session, or null if not authenticated.
  * Use in contexts where auth is optional (e.g., landing page).
  */
 export async function getAuthSession(): Promise<AuthContext | null> {
+	const authRequest = getAuthRequestState();
+	const cachedSession = authRequest.getCachedSession();
+
+	if (cachedSession) {
+		return cachedSession;
+	}
+
+	return authRequest.cacheSession(loadAuthSession());
+}
+
+async function loadAuthSession(): Promise<AuthContext | null> {
 	try {
 		const request = getRequest();
 		const betterAuthSession = await getAuth().api.getSession({
@@ -60,7 +55,8 @@ export async function getAuthSession(): Promise<AuthContext | null> {
 			},
 		};
 	} catch (error) {
-		console.warn("Failed to get auth session:", (error as Error).message);
+		const message = error instanceof Error ? error.message : String(error);
+		console.warn("Failed to get auth session:", message);
 		return null;
 	}
 }
