@@ -163,6 +163,8 @@ jobs:
           VITE_SENTRY_ENVIRONMENT: ${{ vars.VITE_SENTRY_ENVIRONMENT }}
           VITE_CHROME_EXTENSION_ID: ${{ vars.VITE_CHROME_EXTENSION_ID }}
           VITE_APP_TITLE: ${{ vars.VITE_APP_TITLE }}
+          VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: ${{ vars.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN }}
+          VITE_PUBLIC_POSTHOG_HOST: ${{ vars.VITE_PUBLIC_POSTHOG_HOST }}
 
   deploy-worker:
     needs: [detect, verify]

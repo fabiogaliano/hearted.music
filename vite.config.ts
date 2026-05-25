@@ -80,6 +80,16 @@ export default defineConfig(({ command }) => {
 		);
 	}
 
+	// getPostHogConfig() throws at SSR render when this token is missing in a
+	// prod bundle, 500ing every page. Fail the release build instead so a
+	// missing token surfaces in CI, not in users' browsers. Host is optional —
+	// resolvePostHogHosts defaults to EU when unset.
+	if (isBuild && isRelease && !process.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN) {
+		throw new Error(
+			"RELEASE=true build requires VITE_PUBLIC_POSTHOG_PROJECT_TOKEN; getPostHogConfig() 500s every page without it.",
+		);
+	}
+
 	const useUipaneStub = isBuild || isTest;
 
 	return {
