@@ -9,8 +9,15 @@ import viteReact from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 
 const isTest = process.env.VITEST === "true";
+const isLiveTest = process.env.VITEST_LIVE === "true";
 const isRelease = process.env.RELEASE === "true";
 const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
+
+const liveTestExcludes = [
+	"**/analysis-pipeline-full-flow.integration.test.ts",
+	"**/lyrics-service.integration.test.ts",
+	"**/playlist-profiling-integration.test.ts",
+];
 
 // Load env files for tests (Vitest doesn't auto-load non-VITE_ prefixed vars)
 if (isTest) {
@@ -86,6 +93,8 @@ export default defineConfig(({ command }) => {
 				"**/v1_hearted_brand/**",
 				// Live-stack E2E suite — run via `bun run test:e2e`, not Vitest.
 				"**/tests/e2e/**",
+				// Opt-in live integration tests — run via `bun run test:live`.
+				...(!isLiveTest ? liveTestExcludes : []),
 			],
 			server: {
 				deps: {

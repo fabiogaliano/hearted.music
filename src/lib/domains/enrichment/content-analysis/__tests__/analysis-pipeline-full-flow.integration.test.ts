@@ -14,7 +14,7 @@
  * SKIPPED BY DEFAULT - This test hits real external APIs (Genius, LLM providers)
  * and the database. Run explicitly with:
  *
- *   FULL_FLOW_TEST=true bun test analysis-pipeline-full-flow.integration
+ *   FULL_FLOW_TEST=true bun run test:live -- analysis-pipeline-full-flow.integration
  *
  * REQUIREMENTS:
  * - GENIUS_CLIENT_TOKEN must be set
@@ -30,8 +30,7 @@ import { Result } from "better-result";
 import { beforeAll, describe, expect, test } from "vitest";
 import type { JobProgress } from "@/lib/platform/jobs/progress/types";
 import * as jobsData from "@/lib/platform/jobs/repository";
-import type { PipelineResult } from "../pipeline";
-import { createAnalysisPipeline, type SongToAnalyze } from "../pipeline";
+import type { PipelineResult, SongToAnalyze } from "../pipeline";
 
 // ─────────────────────────────────────────────────────────────
 // Test Configuration
@@ -205,6 +204,7 @@ describe.skipIf(!RUN_TEST || !HAS_GENIUS || !HAS_LLM || !HAS_TEST_ACCOUNT)(
 			console.log(`✓ Using test account: ${accountResult.value.spotify_id}`);
 
 			// Create pipeline
+			const { createAnalysisPipeline } = await import("../pipeline");
 			const pipelineCreation = createAnalysisPipeline();
 			if (!Result.isOk(pipelineCreation)) {
 				throw new Error(
@@ -433,7 +433,7 @@ describe.skipIf(RUN_TEST)("Analysis Pipeline Full Flow (Skipped)", () => {
 	test("requires FULL_FLOW_TEST=true and TEST_ACCOUNT_ID to run", () => {
 		console.log("\n⏭️  Analysis Pipeline Full Flow test skipped");
 		console.log(
-			"   Set FULL_FLOW_TEST=true and TEST_ACCOUNT_ID=<account-id> to run",
+			"   Run: FULL_FLOW_TEST=true TEST_ACCOUNT_ID=<account-id> bun run test:live -- analysis-pipeline-full-flow.integration",
 		);
 		console.log("   Requires:");
 		console.log("     - GENIUS_CLIENT_TOKEN");

@@ -14,7 +14,7 @@
  * SKIPPED BY DEFAULT - This test requires database access and
  * the embedding service. Run explicitly with:
  *
- *   PROFILING_TEST=true bun test playlist-profiling-integration
+ *   PROFILING_TEST=true bun run test:live -- playlist-profiling-integration
  *
  * REQUIREMENTS:
  * - Database must be accessible

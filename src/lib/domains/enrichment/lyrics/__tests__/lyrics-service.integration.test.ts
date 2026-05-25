@@ -9,7 +9,8 @@
  * 2. Genius HTML changes - Their page structure changed
  *
  * SKIPPED BY DEFAULT - These hit the real Genius API.
- * Run explicitly with: PARSER_VALIDATION=true bun test lyrics-service.integration
+ * Run explicitly with:
+ * PARSER_VALIDATION=true bun run test:live -- lyrics-service.integration
  *
  * To regenerate snapshots after intentional changes:
  *   bun src/lib/domains/enrichment/lyrics/__tests__/generate-snapshots.ts
