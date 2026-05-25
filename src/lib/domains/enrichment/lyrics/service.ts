@@ -8,7 +8,6 @@
  */
 
 import { Result } from "better-result";
-import wretch from "wretch";
 import {
 	GeniusConfigError,
 	type GeniusError,
@@ -42,10 +41,12 @@ interface LyricsServiceConfig {
 
 // Shared across all instances so concurrent worker jobs respect a single rate limit
 const sharedLimiter = new ConcurrencyLimiter(5, 50, 200);
+// Bound each call so a hung upstream can't pin a worker slot indefinitely.
+const REQUEST_TIMEOUT_MS = 15_000;
 
 export class LyricsService {
 	private readonly baseUrl = "https://api.genius.com";
-	private readonly client: ReturnType<typeof wretch>;
+	private readonly authHeaders: Record<string, string>;
 	private readonly limiter = sharedLimiter;
 
 	constructor(config: LyricsServiceConfig) {
@@ -53,8 +54,29 @@ export class LyricsService {
 			throw new GeniusConfigError("Access token is required");
 		}
 
-		this.client = wretch(this.baseUrl).headers({
+		this.authHeaders = {
 			Authorization: `Bearer ${config.accessToken}`,
+		};
+	}
+
+	// fetch resolves non-2xx responses instead of rejecting, so the !ok throw
+	// inside the try is what surfaces HTTP errors; Result.tryPromise also
+	// captures timeouts and JSON-parse failures as a typed GeniusError.
+	private async getJson<T>(path: string): Promise<Result<T, GeniusError>> {
+		const url = `${this.baseUrl}${path}`;
+		return Result.tryPromise({
+			try: async () => {
+				const response = await fetch(url, {
+					headers: this.authHeaders,
+					signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+				});
+				if (!response.ok) {
+					throw new GeniusFetchError(url);
+				}
+				return (await response.json()) as T;
+			},
+			catch: (error) =>
+				error instanceof GeniusFetchError ? error : new GeniusFetchError(url),
 		});
 	}
 
@@ -159,44 +181,38 @@ export class LyricsService {
 		for (const query of queryVariants) {
 			const searchQuery = encodeURIComponent(query);
 			const searchPath = `/search?q=${searchQuery}`;
-			const searchUrl = `${this.baseUrl}${searchPath}`;
-			try {
-				const response: SearchResponse = await this.limiter.run(() =>
-					this.client.get(searchPath).json(),
-				);
-				hadSuccessfulResponse = true;
 
-				const hits = response.response?.hits;
-				if (!hits || hits.length === 0) continue;
-
-				const results = hits
-					.map((hit) => hit.result)
-					.filter((r): r is ResponseHitsResult => !!r?.url);
-
-				if (debug) debugCandidates(results, artist, song);
-
-				const match = findBestMatch(results, artist, song, query);
-				if (match) {
-					if (debug) {
-						console.log(
-							`[LyricsService] Match found: ${match.result.primary_artist.name} - ${match.result.title} (${(match.score * 100).toFixed(0)}%)`,
-						);
-					}
-					return Result.ok(match.result);
-				}
-			} catch (error) {
-				lastError =
-					error instanceof GeniusFetchError || error instanceof GeniusParseError
-						? error
-						: error instanceof GeniusNotFoundError
-							? error
-							: new GeniusFetchError(searchUrl);
+			const responseResult = await this.limiter.run(() =>
+				this.getJson<SearchResponse>(searchPath),
+			);
+			if (Result.isError(responseResult)) {
+				lastError = responseResult.error;
 				if (debug) {
 					console.warn(
 						`[LyricsService] Search failed for "${query}": ${lastError.message}`,
 					);
 				}
-				// Try next variant
+				continue;
+			}
+			hadSuccessfulResponse = true;
+
+			const hits = responseResult.value.response?.hits;
+			if (!hits || hits.length === 0) continue;
+
+			const results = hits
+				.map((hit) => hit.result)
+				.filter((r): r is ResponseHitsResult => !!r?.url);
+
+			if (debug) debugCandidates(results, artist, song);
+
+			const match = findBestMatch(results, artist, song, query);
+			if (match) {
+				if (debug) {
+					console.log(
+						`[LyricsService] Match found: ${match.result.primary_artist.name} - ${match.result.title} (${(match.score * 100).toFixed(0)}%)`,
+					);
+				}
+				return Result.ok(match.result);
 			}
 		}
 
@@ -237,20 +253,14 @@ export class LyricsService {
 		page: number,
 		perPage: number,
 	): Promise<ResponseReferents[]> {
-		try {
-			const response = (await this.limiter.run(() =>
-				this.client
-					.url(
-						`/referents?song_id=${songId}&text_format=plain&per_page=${perPage}&page=${page}`,
-					)
-					.get()
-					.json(),
-			)) as { response?: { referents?: ResponseReferents[] } };
-			return response.response?.referents || [];
-		} catch {
-			// Page doesn't exist or error - return empty
-			return [];
-		}
+		const result = await this.limiter.run(() =>
+			this.getJson<{ response?: { referents?: ResponseReferents[] } }>(
+				`/referents?song_id=${songId}&text_format=plain&per_page=${perPage}&page=${page}`,
+			),
+		);
+		// Page doesn't exist or error - return empty
+		if (Result.isError(result)) return [];
+		return result.value.response?.referents || [];
 	}
 
 	private async fetchLyrics(url: string): Promise<
@@ -263,15 +273,25 @@ export class LyricsService {
 			GeniusError
 		>
 	> {
-		let response: string;
-		try {
-			response = await this.limiter.run(() => wretch(url).get().text());
-		} catch (error) {
-			if (error instanceof GeniusFetchError) {
-				return Result.err(error);
-			}
-			return Result.err(new GeniusFetchError(url));
+		const responseResult = await this.limiter.run(() =>
+			Result.tryPromise({
+				try: async () => {
+					const res = await fetch(url, {
+						signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+					});
+					if (!res.ok) {
+						throw new GeniusFetchError(url);
+					}
+					return res.text();
+				},
+				catch: (error) =>
+					error instanceof GeniusFetchError ? error : new GeniusFetchError(url),
+			}),
+		);
+		if (Result.isError(responseResult)) {
+			return Result.err(responseResult.error);
 		}
+		const response = responseResult.value;
 
 		if (!response.includes("lyrics-root")) {
 			return Result.err(

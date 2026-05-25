@@ -94,15 +94,27 @@ const SpotifyPlaylistDTOSchema = z.object({
 	image_url: z.string().nullable(),
 });
 
+// Spotify-aligned ceilings: above any real library, below "this is an attack".
+// Caps bound post-validation work (DB writes + per-row job enqueues); the
+// MAX_SYNC_BODY_BYTES guard below bounds pre-validation memory since
+// request.json() buffers the whole body before Zod runs.
+const MAX_LIKED_SONGS = 50_000;
+const MAX_PLAYLISTS = 11_000;
+const MAX_TRACKS_PER_PLAYLIST = 10_000;
+const MAX_SYNC_BODY_BYTES = 20 * 1024 * 1024;
+
 const PlaylistTrackEntrySchema = z.object({
 	playlistSpotifyId: z.string(),
-	tracks: z.array(SpotifyTrackDTOSchema),
+	tracks: z.array(SpotifyTrackDTOSchema).max(MAX_TRACKS_PER_PLAYLIST),
 });
 
 const SyncPayloadSchema = z.object({
-	likedSongs: z.array(SpotifyTrackDTOSchema),
-	playlists: z.array(SpotifyPlaylistDTOSchema),
-	playlistTracks: z.array(PlaylistTrackEntrySchema).optional(),
+	likedSongs: z.array(SpotifyTrackDTOSchema).max(MAX_LIKED_SONGS),
+	playlists: z.array(SpotifyPlaylistDTOSchema).max(MAX_PLAYLISTS),
+	playlistTracks: z
+		.array(PlaylistTrackEntrySchema)
+		.max(MAX_PLAYLISTS)
+		.optional(),
 	userProfile: z
 		.object({
 			spotifyId: z.string(),
@@ -140,6 +152,17 @@ export const Route = createFileRoute("/api/extension/sync")({
 					return Response.json(
 						{ error: "Not authenticated" },
 						{ status: 401, headers: corsHeaders },
+					);
+				}
+
+				const declaredLength = Number(request.headers.get("content-length"));
+				if (
+					Number.isFinite(declaredLength) &&
+					declaredLength > MAX_SYNC_BODY_BYTES
+				) {
+					return Response.json(
+						{ error: "Payload too large" },
+						{ status: 413, headers: corsHeaders },
 					);
 				}
 

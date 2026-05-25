@@ -29,6 +29,8 @@ import {
 // ============================================================================
 
 const BASE_URL = "https://api.reccobeats.com/v1";
+// Bound each call so a hung upstream can't pin a worker slot indefinitely.
+const REQUEST_TIMEOUT_MS = 15_000;
 
 // Shared across all instances so concurrent worker jobs respect a single rate limit
 const sharedLimiter = new ConcurrencyLimiter(5, 50);
@@ -135,7 +137,8 @@ export class ReccoBeatsService {
 			const url = `${BASE_URL}/track?ids=${spotifyTrackId}`;
 
 			const fetchResult = await Result.tryPromise({
-				try: () => fetch(url),
+				try: () =>
+					fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
 				catch: (e) =>
 					new ReccoBeatsApiError(
 						0,
@@ -217,7 +220,8 @@ export class ReccoBeatsService {
 			const url = `${BASE_URL}/track/${reccoBeatsId}/audio-features`;
 
 			const fetchResult = await Result.tryPromise({
-				try: () => fetch(url),
+				try: () =>
+					fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
 				catch: (e) =>
 					new ReccoBeatsApiError(
 						0,

@@ -338,7 +338,7 @@ Scores are clamped to `[0, 1]`. Results below `minScoreThreshold` are discarded.
 | Number animation  | `@number-flow/react`                                    |
 | Icons             | `lucide-react`                                          |
 | Notifications     | `sonner`                                                |
-| HTTP client       | `wretch`                                                |
+| HTTP client       | native `fetch`                                          |
 
 ### Backend (server functions + API routes)
 

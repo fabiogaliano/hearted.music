@@ -81,6 +81,12 @@ type LlmServiceError = LlmError;
 // Shared across all instances so concurrent worker jobs respect a single rate limit
 const sharedLimiter = new ConcurrencyLimiter(3, 100, 500);
 
+// Safety ceiling against runaway output cost (50 songs/job × concurrent calls).
+// Deliberately generous: well above any real structured analysis, but a hard
+// cap so a degenerate/looping generation can't bill unbounded tokens. Callers
+// pass a tighter value when they know their output is small.
+const DEFAULT_MAX_OUTPUT_TOKENS = 4000;
+
 // ============================================================================
 // Service
 // ============================================================================
@@ -129,13 +135,19 @@ export class LlmService {
 	 */
 	async generateText(
 		prompt: string,
-		options?: { functionId?: string; distinctId?: string },
+		options?: {
+			functionId?: string;
+			distinctId?: string;
+			maxOutputTokens?: number;
+		},
 	): Promise<Result<TextGenerationResult, LlmServiceError>> {
 		return this.limiter.run(async () => {
 			try {
 				const result = await generateText({
 					model: this.languageModel(this.model),
 					prompt,
+					maxOutputTokens:
+						options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
 					experimental_telemetry: {
 						isEnabled: true,
 						functionId: options?.functionId ?? "llm-generate-text",
@@ -164,7 +176,11 @@ export class LlmService {
 	async generateObject<T>(
 		prompt: string,
 		schema: z.ZodType<T>,
-		options?: { functionId?: string; distinctId?: string },
+		options?: {
+			functionId?: string;
+			distinctId?: string;
+			maxOutputTokens?: number;
+		},
 	): Promise<Result<ObjectGenerationResult<T>, LlmServiceError>> {
 		return this.limiter.run(async () => {
 			try {
@@ -172,6 +188,8 @@ export class LlmService {
 					model: this.languageModel(this.model),
 					prompt,
 					schema,
+					maxOutputTokens:
+						options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
 					experimental_telemetry: {
 						isEnabled: true,
 						functionId: options?.functionId ?? "llm-generate-object",

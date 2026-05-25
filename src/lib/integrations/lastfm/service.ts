@@ -28,6 +28,8 @@ import { canonicalizeGenre, isGenre } from "./whitelist";
 
 const BASE_URL = "https://ws.audioscrobbler.com/2.0";
 const MAX_GENRES = 3;
+// Bound each call so a hung upstream can't pin a worker slot indefinitely.
+const REQUEST_TIMEOUT_MS = 15_000;
 
 // Shared across all instances so concurrent worker jobs respect a single rate limit
 const sharedLimiter = new ConcurrencyLimiter(5, 50, 200);
@@ -58,7 +60,10 @@ export class LastFmService {
 
 		return this.limiter.run(async () => {
 			const fetchResult = await Result.tryPromise({
-				try: () => fetch(`${BASE_URL}?${params}`),
+				try: () =>
+					fetch(`${BASE_URL}?${params}`, {
+						signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+					}),
 				catch: (e) =>
 					new LastFmApiError(0, e instanceof Error ? e.message : String(e)),
 			});
@@ -134,7 +139,10 @@ export class LastFmService {
 
 		return this.limiter.run(async () => {
 			const fetchResult = await Result.tryPromise({
-				try: () => fetch(`${BASE_URL}?${params}`),
+				try: () =>
+					fetch(`${BASE_URL}?${params}`, {
+						signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+					}),
 				catch: (e) =>
 					new LastFmApiError(0, e instanceof Error ? e.message : String(e)),
 			});
