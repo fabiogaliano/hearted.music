@@ -1676,6 +1676,9 @@ export type Database = {
 			user_preferences: {
 				Row: {
 					account_id: string;
+					consent_status: string | null;
+					consent_updated_at: string | null;
+					consent_version: number | null;
 					created_at: string;
 					demo_song_id: string | null;
 					id: string;
@@ -1687,6 +1690,9 @@ export type Database = {
 				};
 				Insert: {
 					account_id: string;
+					consent_status?: string | null;
+					consent_updated_at?: string | null;
+					consent_version?: number | null;
 					created_at?: string;
 					demo_song_id?: string | null;
 					id?: string;
@@ -1698,6 +1704,9 @@ export type Database = {
 				};
 				Update: {
 					account_id?: string;
+					consent_status?: string | null;
+					consent_updated_at?: string | null;
+					consent_version?: number | null;
 					created_at?: string;
 					demo_song_id?: string | null;
 					id?: string;

@@ -22,3 +22,15 @@ export function captureRouteError(
 		module?.captureRouteError(error, context);
 	});
 }
+
+export function enableSentryReplay(): void {
+	void loadSentryClient().then((module) => {
+		module?.enableSentryReplay();
+	});
+}
+
+export function disableSentryReplay(): void {
+	void loadSentryClient().then((module) => {
+		module?.disableSentryReplay();
+	});
+}

@@ -9,12 +9,17 @@ import {
 	Outlet,
 	Scripts,
 } from "@tanstack/react-router";
+import type { PostHogConfig } from "posthog-js";
 import { type CSSProperties, lazy, useEffect, useRef, useState } from "react";
+import { ConsentBanner } from "@/components/consent/ConsentBanner";
 import { Button } from "@/components/ui/Button";
 import type { HeartRippleHandle } from "@/components/ui/HeartRippleBackground";
 import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
 import { LazyHeartRippleBackground } from "@/components/ui/LazyHeartRippleBackground";
 import { clientEnv } from "@/env.public";
+import { ConsentProvider } from "@/lib/consent/ConsentProvider";
+import { CURRENT_CONSENT_VERSION } from "@/lib/consent/consent-policy";
+import { CONSENT_MAX_AGE_SECONDS } from "@/lib/consent/consent-storage";
 import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
 import {
 	POSTHOG_TUNNEL_PATH,
@@ -22,6 +27,7 @@ import {
 } from "@/lib/observability/posthog-hosts";
 import { linkPostHogToSentry } from "@/lib/observability/posthog-sentry-link";
 import { captureRouteError } from "@/lib/observability/sentry";
+import { getInitialConsentState } from "@/lib/server/consent.functions";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
@@ -63,6 +69,46 @@ function getPostHogConfig(): {
 		apiKey,
 		apiHost: POSTHOG_TUNNEL_PATH,
 		uiHost: resolvedHosts.value.uiHost,
+	};
+}
+
+// cookieless_mode exists in posthog-js at runtime but is missing from the
+// published PostHogConfig type in this version, so we declare it locally.
+type PostHogInitOptions = Partial<PostHogConfig> & {
+	cookieless_mode?: "always" | "on_reject";
+};
+
+const POSTHOG_CONSENT_PERSISTENCE_NAME = `hearted_posthog_consent_v${CURRENT_CONSENT_VERSION}`;
+
+function buildPostHogOptions(
+	config: NonNullable<ReturnType<typeof getPostHogConfig>>,
+): PostHogInitOptions {
+	return {
+		api_host: config.apiHost,
+		ui_host: config.uiHost,
+		defaults: "2025-05-24",
+		capture_exceptions: true,
+		debug: import.meta.env.DEV,
+		loaded: linkPostHogToSentry,
+		// Keep PostHog's own explicit opt-in marker on a versioned cookie with the
+		// same lifetime as our app cookie. That prevents an old SDK-side grant from
+		// surviving a consent expiry or policy-version bump before ConsentProvider
+		// gets a chance to reconcile state.
+		consent_persistence_name: POSTHOG_CONSENT_PERSISTENCE_NAME,
+		opt_out_capturing_persistence_type: "cookie",
+		cookie_expiration: CONSENT_MAX_AGE_SECONDS / (60 * 60 * 24),
+		// Consent gate (ePrivacy/GDPR) via cookieless_mode "on_reject":
+		//  • pending (no choice yet): nothing captured, no cookies/localStorage.
+		//  • Decline: users are still counted anonymously via a server-side
+		//    daily-rotating hash (no device storage, no identify, no replay) —
+		//    consent-exempt audience measurement.
+		//  • Accept: ConsentProvider opts in for full identified capture and
+		//    session replay.
+		// GeoIP/person enrichment only applies to accepted (identified)
+		// sessions; cookieless events carry no person profile.
+		cookieless_mode: "on_reject",
+		// Replay never auto-starts; ConsentProvider starts it only on Accept.
+		disable_session_recording: true,
 	};
 }
 
@@ -223,6 +269,9 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 		};
 	},
 
+	// Resolved server-side so an authenticated user with valid DB consent never
+	// sees a banner flash, even when their cookie is gone.
+	loader: () => getInitialConsentState(),
 	component: RootComponent,
 	errorComponent: RootErrorComponent,
 	notFoundComponent: NotFoundPage,
@@ -230,12 +279,30 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 });
 
 function RootComponent() {
-	return (
+	const consent = Route.useLoaderData();
+
+	const content = (
 		<ThemeHueProvider>
 			<KeyboardShortcutProvider>
 				<Outlet />
 			</KeyboardShortcutProvider>
 		</ThemeHueProvider>
+	);
+
+	// Consent UI only exists where PostHog does (production). In dev there is no
+	// PostHogProvider ancestor and nothing to gate, so the banner stays absent —
+	// matching the previous behavior. RootComponent renders inside RootDocument's
+	// PostHogProvider, so usePostHog() still resolves here.
+	if (getPostHogConfig() === null) return content;
+
+	return (
+		<ConsentProvider
+			isAuthenticated={consent.isAuthenticated}
+			initialConsent={consent.consent}
+		>
+			{content}
+			<ConsentBanner />
+		</ConsentProvider>
 	);
 }
 
@@ -419,20 +486,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				{posthogConfig ? (
 					<PostHogProvider
 						apiKey={posthogConfig.apiKey}
-						options={{
-							api_host: posthogConfig.apiHost,
-							ui_host: posthogConfig.uiHost,
-							defaults: "2025-05-24",
-							capture_exceptions: true,
-							debug: import.meta.env.DEV,
-							loaded: linkPostHogToSentry,
-							// GeoIP enrichment stays on at the SDK level so aggregate
-							// analytics (country/city breakdowns) keep working. We
-							// suppress GeoIP from PERSON profiles via PostHog's project
-							// setting (Settings → Person processing → Disable GeoIP on
-							// persons) — that's the only way to split event vs person
-							// GeoIP cleanly.
-						}}
+						options={buildPostHogOptions(posthogConfig)}
 					>
 						{children}
 						{DevToolsShell && <DevToolsShell />}

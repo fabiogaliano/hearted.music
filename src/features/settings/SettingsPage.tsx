@@ -19,6 +19,7 @@ import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { COLOR_LABELS, THEME_COLORS, type ThemeColor } from "@/lib/theme/types";
 import { BillingSection } from "./components/BillingSection";
+import { ConsentSection } from "./components/ConsentSection";
 import { ExtensionStatusRow } from "./components/ExtensionStatusRow";
 
 interface SettingsPageProps {
@@ -165,6 +166,16 @@ export function SettingsPage({
 			>
 				<ExtensionStatusRow />
 			</SettingsSection>
+
+			{import.meta.env.PROD && (
+				<SettingsSection
+					index={5}
+					title="Privacy"
+					description="Review the analytics and replay choice for this account."
+				>
+					<ConsentSection />
+				</SettingsSection>
+			)}
 
 			<SettingsSection
 				title="Session"

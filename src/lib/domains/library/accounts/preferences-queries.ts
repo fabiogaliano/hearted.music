@@ -7,6 +7,11 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
+import {
+	evaluateStoredConsent,
+	type ResolvedConsent,
+} from "@/lib/consent/consent-policy";
+import type { ConsentStatus } from "@/lib/consent/consent-storage";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Enums, Tables } from "@/lib/data/database.types";
 import {
@@ -203,3 +208,51 @@ export function clearPhaseJobIds(
 
 // Legacy orchestration pointer helpers removed — active job refs are now in
 // library_processing_state, managed by src/lib/workflows/library-processing/
+
+/**
+ * Resolves an account's durable consent decision against the current policy.
+ * A missing preferences row is "absent" (never decided), not an error.
+ */
+export async function resolveStoredConsent(
+	accountId: string,
+): Promise<Result<ResolvedConsent, DbError>> {
+	const result = await getPreferences(accountId);
+
+	if (Result.isError(result)) {
+		return Result.err(result.error);
+	}
+
+	if (result.value === null) {
+		return Result.ok({ state: "absent" });
+	}
+
+	return Result.ok(evaluateStoredConsent(result.value));
+}
+
+/**
+ * Persists a consent decision as the durable source of truth for an account.
+ * Stamps consent_updated_at so validity can be derived at read time, and
+ * records the policy version the authenticated user decided under.
+ */
+export function saveConsentPreference(
+	accountId: string,
+	status: ConsentStatus,
+	version: number,
+): Promise<Result<UserPreferences, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("user_preferences")
+			.upsert(
+				{
+					account_id: accountId,
+					consent_status: status,
+					consent_updated_at: new Date().toISOString(),
+					consent_version: version,
+				},
+				{ onConflict: "account_id" },
+			)
+			.select()
+			.single(),
+	);
+}
