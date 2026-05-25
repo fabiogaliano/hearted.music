@@ -166,11 +166,6 @@ export default defineConfig(({ command }) => {
 							? "^dev-|\\.test\\.(ts|tsx)$"
 							: "\\.test\\.(ts|tsx)$",
 					},
-					// CSRF is handled by SameSite=lax session cookies + Better Auth's
-					// originCheckMiddleware. Audited 2026-05; see src/start.ts.
-					serverFns: {
-						disableCsrfMiddlewareWarning: true,
-					},
 				}),
 			viteReact(),
 			// Sentry must come last so it sees the final bundle for source map upload.
