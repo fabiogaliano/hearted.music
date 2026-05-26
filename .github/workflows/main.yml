@@ -17,6 +17,7 @@ jobs:
       shared: ${{ steps.changes.outputs.shared }}
       app: ${{ steps.changes.outputs.app }}
       worker: ${{ steps.changes.outputs.worker }}
+      db_security: ${{ steps.changes.outputs.db_security }}
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -65,6 +66,10 @@ jobs:
             worker:
               - 'src/worker/**'
               - 'Dockerfile.worker'
+            db_security:
+              - 'supabase/**'
+              - 'src/lib/data/**'
+              - '.github/workflows/**'
 
   verify:
     needs: detect
@@ -90,7 +95,7 @@ jobs:
       - name: Restore Bun install cache
         if: needs.detect.outputs.code == 'true'
         id: bun-cache-restore
-        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-install-cache-${{ hashFiles('package.json', 'bun.lock') }}
@@ -105,6 +110,7 @@ jobs:
         run: bun run typecheck
       - if: needs.detect.outputs.code == 'true'
         run: bun run typecheck:worker
+
       - if: needs.detect.outputs.code == 'true'
         run: bun run test
 
@@ -118,14 +124,65 @@ jobs:
 
       - name: Save Bun install cache
         if: needs.detect.outputs.code == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.bun-cache-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.bun/install/cache
           key: ${{ steps.bun-cache-restore.outputs.cache-primary-key }}
 
+  db-security:
+    needs: detect
+    if: needs.detect.outputs.db_security == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: db-security-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          no-cache: true
+
+      - name: Restore Bun install cache
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-install-cache-${{ hashFiles('package.json', 'bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-install-cache-
+
+      - run: bun install --frozen-lockfile
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
+        with:
+          version: 2.101.0
+          github-token: ${{ github.token }}
+
+      - name: Start local Supabase and export test env
+        run: |
+          supabase start
+          supabase status -o env \
+            --override-name db.url=DATABASE_URL \
+            --override-name api.url=SUPABASE_URL \
+            --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY \
+            --override-name auth.anon_key=SUPABASE_ANON_KEY \
+            >> "$GITHUB_ENV"
+
+      - name: Run DB security invariants
+        run: bun run test src/lib/data/__tests__/security-invariants.integration.test.ts
+
   deploy-app:
-    needs: [detect, verify]
-    if: github.event_name == 'push' && needs.detect.outputs.code == 'true' && (needs.detect.outputs.app == 'true' || needs.detect.outputs.shared == 'true')
+    needs: [detect, verify, db-security]
+    if: >-
+      !cancelled()
+      && needs.verify.result == 'success'
+      && (needs.db-security.result == 'success' || needs.db-security.result == 'skipped')
+      && github.event_name == 'push'
+      && needs.detect.outputs.code == 'true'
+      && (needs.detect.outputs.app == 'true' || needs.detect.outputs.shared == 'true')
     runs-on: ubuntu-latest
     environment: production-app
     timeout-minutes: 20
@@ -145,7 +202,7 @@ jobs:
           no-cache: true
 
       - name: Restore Bun install cache
-        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-install-cache-${{ hashFiles('package.json', 'bun.lock') }}
@@ -169,8 +226,14 @@ jobs:
           VITE_APP_RELEASE: ${{ github.sha }}
 
   deploy-worker:
-    needs: [detect, verify]
-    if: github.event_name == 'push' && needs.detect.outputs.code == 'true' && (needs.detect.outputs.worker == 'true' || needs.detect.outputs.shared == 'true')
+    needs: [detect, verify, db-security]
+    if: >-
+      !cancelled()
+      && needs.verify.result == 'success'
+      && (needs.db-security.result == 'success' || needs.db-security.result == 'skipped')
+      && github.event_name == 'push'
+      && needs.detect.outputs.code == 'true'
+      && (needs.detect.outputs.worker == 'true' || needs.detect.outputs.shared == 'true')
     runs-on: ubuntu-latest
     environment: production-worker
     timeout-minutes: 10
