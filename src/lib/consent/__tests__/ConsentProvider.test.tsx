@@ -187,17 +187,12 @@ describe("ConsentProvider — authenticated (DB authoritative)", () => {
 
 		await user.click(await screen.findByRole("button", { name: /accept/i }));
 
+		// toast.error is the user-observable failure signal; wait on it instead of
+		// the internal console.error message, which no consumer observes.
 		await waitFor(() =>
-			expect(consoleError).toHaveBeenCalledWith(
-				"[consent] Failed to persist consent decision",
-				expect.objectContaining({
-					source: "banner-action",
-					decision: "granted",
-				}),
+			expect(toast.error).toHaveBeenCalledWith(
+				"We couldn't save your privacy choice. Your previous setting is still in effect.",
 			),
-		);
-		expect(toast.error).toHaveBeenCalledWith(
-			"We couldn't save your privacy choice. Your previous setting is still in effect.",
 		);
 		expect(writeConsentMock).not.toHaveBeenCalled();
 		expect(posthog.opt_in_capturing).not.toHaveBeenCalled();

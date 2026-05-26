@@ -177,7 +177,11 @@ describe("/api/sentry-tunnel", () => {
 		expect(malformedResponse.status).toBe(400);
 		expect(await malformedResponse.text()).toBe("Malformed envelope");
 		expect(malformedArrayBufferSpy).not.toHaveBeenCalled();
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
 
+	it("rejects envelopes with an invalid JSON header before forwarding", async () => {
+		const route = await loadRoute(ALLOWED_DSN);
 		const invalidHeaderRequest = new Request(
 			"https://hearted.test/api/sentry-tunnel",
 			{
@@ -196,11 +200,10 @@ describe("/api/sentry-tunnel", () => {
 		expect(invalidHeaderResponse.status).toBe(400);
 		expect(await invalidHeaderResponse.text()).toBe("Invalid envelope header");
 		expect(invalidHeaderArrayBufferSpy).not.toHaveBeenCalled();
-
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
-	it("rejects envelopes with missing or non-string DSNs", async () => {
+	it("rejects envelopes with a missing DSN", async () => {
 		const route = await loadRoute(ALLOWED_DSN);
 
 		const missingDsnResponse = await route.server.handlers.POST({
@@ -211,6 +214,11 @@ describe("/api/sentry-tunnel", () => {
 		});
 		expect(missingDsnResponse.status).toBe(400);
 		expect(await missingDsnResponse.text()).toBe("Missing DSN");
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it("rejects envelopes with a non-string DSN", async () => {
+		const route = await loadRoute(ALLOWED_DSN);
 
 		const nonStringDsnResponse = await route.server.handlers.POST({
 			request: new Request("https://hearted.test/api/sentry-tunnel", {
@@ -220,7 +228,6 @@ describe("/api/sentry-tunnel", () => {
 		});
 		expect(nonStringDsnResponse.status).toBe(400);
 		expect(await nonStringDsnResponse.text()).toBe("Missing DSN");
-
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
 

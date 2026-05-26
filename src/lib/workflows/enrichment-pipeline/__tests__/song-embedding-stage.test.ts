@@ -243,45 +243,18 @@ describe("runSongEmbedding → StageOutcome", () => {
 		expect(outcome.succeededSongIds).toEqual(["s2"]);
 	});
 
-	it("thrown stage expands to per-candidate failures via runStageWithAccounting", async () => {
+	it("throws when the existing-embeddings check fails", async () => {
 		mockGetAnalysis.mockResolvedValue(Result.ok(new Map([["s1", {}]])));
 		mockGetEmbeddings.mockResolvedValue(
 			Result.err({ message: "DB connection lost" }),
 		);
 
+		// Throwing is the contract the orchestrator relies on: it wraps this runner
+		// in runStageWithAccounting, which catches the throw and expands it to
+		// per-candidate failure rows (covered by orchestrator.test.ts).
 		await expect(
 			runSongEmbedding(makeCtx(), makeBatch(["s1", "s2", "s3"])),
 		).rejects.toThrow("Failed to check existing embeddings");
-
-		const { runStageWithAccounting } = await import("../stage-accounting");
-
-		vi.mocked(recordStageFailure).mockResolvedValue(Result.ok(undefined));
-		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-		const result = await runStageWithAccounting({
-			stage: "song_embedding",
-			candidateSongIds: ["s1", "s2", "s3"],
-			jobId: "job-1",
-			accountId: "account-1",
-			fallbackCode: FAILURE_CODES.PROVIDER_TRANSIENT,
-			run: async () => {
-				throw new Error("DB connection lost");
-			},
-		});
-
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) throw new Error("unreachable");
-		expect(result.value).toEqual({ total: 3, succeeded: 0, failed: 3 });
-		expect(recordStageFailure).toHaveBeenCalledTimes(3);
-		expect(recordStageFailure).toHaveBeenCalledWith(
-			expect.objectContaining({
-				songId: "s1",
-				stage: "song_embedding",
-				failureCode: FAILURE_CODES.PROVIDER_TRANSIENT,
-				errorMessage: "DB connection lost",
-			}),
-		);
-		consoleSpy.mockRestore();
 	});
 
 	it("mixes succeeded and failed songs in the same outcome", async () => {

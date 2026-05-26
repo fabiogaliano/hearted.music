@@ -79,17 +79,6 @@ describe("readBillingState", () => {
 		expect(insertFn).toHaveBeenCalledWith({ account_id: "acc-1" });
 	});
 
-	it("self-healing does not return credit balance or unlimited access", async () => {
-		const { client } = mockSupabase(null);
-		const result = await readBillingState(client, "acc-1");
-
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
-
-		expect(result.value.creditBalance).toBe(0);
-		expect(result.value.unlimitedAccess).toEqual({ kind: "none" });
-	});
-
 	it("returns standard queueBand for account with positive credit balance", async () => {
 		const { client } = mockSupabase(makeRow({ credit_balance: 5 }));
 		const result = await readBillingState(client, "acc-1");

@@ -350,9 +350,9 @@ describe("PlaylistsScreen", () => {
 
 			const searchInput =
 				screen.queryByRole("searchbox") ?? screen.queryByRole("textbox");
-			// Falls through if the header doesn't expose a discoverable input;
-			// we still assert that typing into a focused input doesn't move list focus.
-			if (!searchInput) return;
+			if (!searchInput) {
+				throw new Error("expected a focusable search input to be rendered");
+			}
 			searchInput.focus();
 			fireEvent.keyDown(searchInput, { key: "j" });
 			expect(document.activeElement).toBe(searchInput);
@@ -421,7 +421,8 @@ describe("PlaylistsScreen", () => {
 			await user.click(
 				screen.getByRole("button", { name: "Close detail view" }),
 			);
-			await new Promise((resolve) => setTimeout(resolve, 250));
+			// Flush pending effects deterministically rather than sleeping on a timer.
+			await act(async () => {});
 			expect(scrollIntoView).not.toHaveBeenCalled();
 		} finally {
 			HTMLElement.prototype.scrollIntoView = originalScrollIntoView;

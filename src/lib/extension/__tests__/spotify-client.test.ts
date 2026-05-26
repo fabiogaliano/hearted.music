@@ -230,26 +230,30 @@ describe("extension unavailable", () => {
 		});
 	});
 
-	it("returns NETWORK_ERROR for all command types when extension is unavailable", async () => {
+	const unavailableCommands = [
+		["addToPlaylist", () => addToPlaylist("uri", ["track"])],
+		["removeFromPlaylist", () => removeFromPlaylist("uri", ["uid"])],
+		["createPlaylist", () => createPlaylist("name", "user")],
+		["updatePlaylist", () => updatePlaylist("id", { name: "n" })],
+		["deletePlaylist", () => deletePlaylist("uri", "user")],
+		["queryArtistOverview", () => queryArtistOverview("uri")],
+		["fetchPlaylistMetadata", () => fetchPlaylistMetadata("uri")],
+	] as const;
+
+	// Per-command cases (not one loop) so a regression localizes to the command
+	// that broke; toMatchObject asserts the contract without an ok-narrowing guard.
+	it.each(
+		unavailableCommands,
+	)("%s returns NETWORK_ERROR when the extension is unavailable", async (_name, invoke) => {
 		mockSendExtensionCommand.mockResolvedValue(null);
 
-		const results = await Promise.all([
-			addToPlaylist("uri", ["track"]),
-			removeFromPlaylist("uri", ["uid"]),
-			createPlaylist("name", "user"),
-			updatePlaylist("id", { name: "n" }),
-			deletePlaylist("uri", "user"),
-			queryArtistOverview("uri"),
-			fetchPlaylistMetadata("uri"),
-		]);
+		const result = await invoke();
 
-		for (const result of results) {
-			expect(result.ok).toBe(false);
-			if (!result.ok) {
-				expect(result.errorCode).toBe("NETWORK_ERROR");
-				expect(result.retryable).toBe(false);
-			}
-		}
+		expect(result).toMatchObject({
+			ok: false,
+			errorCode: "NETWORK_ERROR",
+			retryable: false,
+		});
 	});
 });
 

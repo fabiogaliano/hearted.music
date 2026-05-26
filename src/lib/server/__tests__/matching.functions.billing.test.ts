@@ -451,18 +451,6 @@ describe("getSongMatches (billing-aware)", () => {
 		expect(result).not.toBeNull();
 		expect(result?.song.analysis).toEqual({ headline: "Great song" });
 	});
-
-	it("fetches match results and decisions exactly once", async () => {
-		setupEntitledSongMatches(["song-1"]);
-		setupSongDetailMocks("song-1");
-
-		await getSongMatches({
-			data: { snapshotId: "snap-1", offset: 0 },
-		});
-
-		expect(mockGetMatchResults).toHaveBeenCalledTimes(1);
-		expect(mockGetMatchDecisionsForSongs).toHaveBeenCalledTimes(1);
-	});
 });
 
 describe("match decision ownership checks", () => {

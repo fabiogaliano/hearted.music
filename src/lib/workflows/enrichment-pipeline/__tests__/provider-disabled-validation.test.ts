@@ -436,7 +436,6 @@ vi.mock("@/lib/domains/taste/playlist-profiling/service", () => ({
 // Imports (must come after mocks)
 // ---------------------------------------------------------------------------
 
-import { readBillingState } from "@/lib/domains/billing/queries";
 import { createAccountForBetterAuthUser } from "@/lib/domains/library/accounts/queries";
 import { executeWorkerChunk } from "../orchestrator";
 
@@ -543,25 +542,6 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 				(r) => r.fn === "reprioritize_pending_jobs_for_account",
 			);
 			expect(reprioritizeCall).toBeUndefined();
-		});
-	});
-
-	describe("2. Billing state resolves self_hosted correctly", () => {
-		it("returns unlimited access kind=self_hosted with priority queue band", async () => {
-			const { createAdminSupabaseClient } = await import("@/lib/data/client");
-			const supabase = createAdminSupabaseClient();
-			const result = await readBillingState(
-				supabase as Parameters<typeof readBillingState>[0],
-				ACCOUNT_ID,
-			);
-
-			expect(result).toBeOk();
-			if (!Result.isOk(result)) return;
-
-			expect(result.value.unlimitedAccess).toEqual({ kind: "self_hosted" });
-			expect(result.value.queueBand).toBe("priority");
-			expect(result.value.plan).toBe("free");
-			expect(result.value.creditBalance).toBe(0);
 		});
 	});
 

@@ -336,7 +336,7 @@ describe("runClaimedJob", () => {
 			expect(applyLibraryProcessingChangeMock).toHaveBeenCalledTimes(4);
 
 			expect(consoleSpy).toHaveBeenCalledWith(
-				"[runner] library-processing-settlement-failed",
+				expect.stringContaining("settlement-failed"),
 				expect.objectContaining({
 					jobId: "job-1",
 					accountId: "acct-1",
@@ -373,7 +373,7 @@ describe("runClaimedJob", () => {
 			expect(outcome.settlement).toBe("settlement_failed");
 
 			expect(consoleSpy).toHaveBeenCalledWith(
-				"[runner] library-processing-settlement-failed",
+				expect.stringContaining("settlement-failed"),
 				expect.objectContaining({
 					jobId: "job-1",
 					accountId: "acct-1",

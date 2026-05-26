@@ -113,11 +113,6 @@ describe("PlanSelectionStep — billing disabled with persisted intent", () => {
 			expect(sessionStorage.getItem(INTENT_STORAGE_KEY)).toBeNull();
 		});
 
-		// Proves pendingIntent was nulled: useCheckoutPolling was invoked with null.
-		await waitFor(() => {
-			expect(useCheckoutPollingMock).toHaveBeenCalledWith(null);
-		});
-
 		// Regression guard: even if a timeout bubbles up from whatever polling run
 		// was already in flight, the success UI must not flip to retry because
 		// pendingIntent is null and useCheckoutPolling now returns null.

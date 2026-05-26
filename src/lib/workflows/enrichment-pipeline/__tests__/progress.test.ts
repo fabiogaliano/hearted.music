@@ -29,12 +29,14 @@ describe("makeInitialProgress", () => {
 	it("tracks all enrichment progress stages", () => {
 		const progress = makeInitialProgress(10, 2, 3);
 		expect(progress.total).toBe(15);
-		expect(Object.keys(progress.stages)).toEqual([
-			"audio_features",
-			"genre_tagging",
-			"song_analysis",
-			"song_embedding",
-			"content_activation",
-		]);
+		expect(new Set(Object.keys(progress.stages))).toEqual(
+			new Set([
+				"audio_features",
+				"genre_tagging",
+				"song_analysis",
+				"song_embedding",
+				"content_activation",
+			]),
+		);
 	});
 });

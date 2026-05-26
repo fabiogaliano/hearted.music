@@ -7,6 +7,9 @@ let insertJobResponse: { data: unknown; error: unknown };
 // When set to a non-empty array, select-path calls shift from here instead
 // of reading activeJobResponse. Allows per-call sequencing for race tests.
 let activeJobResponseQueue: { data: unknown; error: unknown }[] = [];
+// Captures the row passed to .insert() so tests can assert the serialized
+// payload rather than the mock's echoed return value.
+let lastInsertPayload: Record<string, unknown> | null = null;
 
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: vi.fn(() => ({
@@ -25,8 +28,9 @@ vi.mock("@/lib/data/client", () => ({
 
 			let isInsertPath = false;
 
-			chain.insert = vi.fn(() => {
+			chain.insert = vi.fn((payload: Record<string, unknown>) => {
 				isInsertPath = true;
+				lastInsertPayload = payload;
 				return chain;
 			});
 
@@ -81,6 +85,7 @@ describe("Queue integration: getOrCreateEnrichmentJob", () => {
 		};
 		insertJobResponse = { data: null, error: null };
 		activeJobResponseQueue = [];
+		lastInsertPayload = null;
 	});
 
 	describe("sync-triggered queueing (no active job)", () => {
@@ -117,9 +122,17 @@ describe("Queue integration: getOrCreateEnrichmentJob", () => {
 			const result = await getOrCreateEnrichmentJob(ACCOUNT_ID, progress);
 
 			expect(result).toBeOk();
-			if (Result.isOk(result)) {
-				expect(result.value.id).toBe("job-batch-10");
-			}
+			// The mock echoes any id, so the id alone proves nothing. Assert the
+			// serialized progress actually reached the insert payload — dropping it
+			// upstream is the regression this test exists to catch.
+			expect(lastInsertPayload).toMatchObject({
+				account_id: ACCOUNT_ID,
+				type: "enrichment",
+				status: "pending",
+			});
+			expect(
+				(lastInsertPayload as { progress: Record<string, unknown> }).progress,
+			).toMatchObject({ batchSize: 10, batchSequence: 3 });
 		});
 	});
 

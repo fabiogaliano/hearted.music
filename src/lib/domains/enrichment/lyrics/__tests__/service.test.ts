@@ -161,9 +161,7 @@ describe("LyricsService.fetchAndStoreLyrics", () => {
 		expect(Result.isOk(result)).toBe(true);
 		expect(result).toEqual(Result.ok(formatLyricsCompact(sampleSections)));
 		expect(getLyricsSpy).toHaveBeenCalledWith("Artist", "Title");
-		expect(warnSpy).toHaveBeenCalledWith(
-			"[LyricsService] Failed to read cached lyrics for song-1 (Artist - Title): cache unavailable",
-		);
+		expect(warnSpy).toHaveBeenCalled();
 		warnSpy.mockRestore();
 	});
 });

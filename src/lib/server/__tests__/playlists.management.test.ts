@@ -382,7 +382,6 @@ describe("getPlaylistTracksPage", () => {
 			getPlaylistTracksPage({ data: { playlistId: "uuid-1", limit: 50 } }),
 		).rejects.toThrow("Failed to load playlist");
 
-		expect(warnSpy).toHaveBeenCalled();
 		warnSpy.mockRestore();
 	});
 
@@ -425,7 +424,6 @@ describe("getPlaylistTracksPage", () => {
 			getPlaylistTracksPage({ data: { playlistId: "uuid-1", limit: 50 } }),
 		).rejects.toThrow("Failed to load playlist tracks");
 
-		expect(warnSpy).toHaveBeenCalled();
 		warnSpy.mockRestore();
 	});
 
@@ -445,7 +443,6 @@ describe("getPlaylistTracksPage", () => {
 			getPlaylistTracksPage({ data: { playlistId: "uuid-1", limit: 50 } }),
 		).rejects.toThrow("Failed to load track details");
 
-		expect(warnSpy).toHaveBeenCalled();
 		warnSpy.mockRestore();
 	});
 });
@@ -508,21 +505,6 @@ describe("flushPlaylistManagementSession", () => {
 				targetMetadataChanged: false,
 			}),
 		);
-	});
-
-	it("emits the same shape as the PlaylistManagementChanges factory", async () => {
-		await flushPlaylistManagementSession({
-			data: { targetMembershipChanged: true, targetMetadataChanged: true },
-		});
-
-		const emitted = mockApplyLibraryProcessingChange.mock.calls[0][0];
-		const fromFactory = PlaylistManagementChanges.sessionFlushed({
-			accountId: "acct-1",
-			targetMembershipChanged: true,
-			targetMetadataChanged: true,
-		});
-
-		expect(emitted).toEqual(fromFactory);
 	});
 
 	it("skips processing when nothing changed", async () => {

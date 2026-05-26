@@ -162,5 +162,7 @@ describe("rerankMatches", () => {
 		} as unknown as RerankerService;
 
 		await rerankMatches(matches, songs, playlists, inspectingReranker);
+
+		expect(inspectingReranker.rerank).toHaveBeenCalledOnce();
 	});
 });

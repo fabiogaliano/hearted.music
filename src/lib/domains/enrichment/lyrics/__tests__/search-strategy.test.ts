@@ -149,13 +149,18 @@ describe("scoreResult", () => {
 	it("uses 55/45 title/artist weighting", () => {
 		// Perfect title, wrong artist
 		const titleMatch = createMockResult("Blinding Lights", "Wrong Artist");
-		const titleScore = scoreResult(titleMatch, "The Weeknd", "Blinding Lights");
+		const scored = scoreResult(titleMatch, "The Weeknd", "Blinding Lights");
 
 		// Title match should have high title score but low artist score
-		expect(titleScore.titleScore).toBeGreaterThan(0.9);
-		expect(titleScore.artistScore).toBeLessThan(0.5);
-		// Overall score should reflect the 55/45 weighting
-		expect(titleScore.score).toBeGreaterThan(0.5);
+		expect(scored.titleScore).toBeGreaterThan(0.9);
+		expect(scored.artistScore).toBeLessThan(0.5);
+		expect(scored.collaboratorBonus).toBe(0);
+		// Pin the exact 55/45 blend. A looser bound (e.g. > 0.5) would also pass
+		// for 50/50 or 70/30; asserting the relationship catches any weight change.
+		expect(scored.score).toBeCloseTo(
+			scored.titleScore * 0.55 + scored.artistScore * 0.45,
+			5,
+		);
 	});
 
 	it("applies collaborator bonus when matched", () => {

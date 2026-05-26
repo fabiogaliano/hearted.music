@@ -300,40 +300,14 @@ describe("runGenreTagging → StageOutcome", () => {
 		expect(recordStageFailure).not.toHaveBeenCalled();
 	});
 
-	it("thrown stage expands to per-candidate failures via runStageWithAccounting", async () => {
+	it("throws when the genre provider call fails", async () => {
 		mockEnrichBatch.mockRejectedValue(new Error("Last.fm timeout"));
 
+		// Throwing is the contract the orchestrator relies on: it wraps this runner
+		// in runStageWithAccounting, which catches the throw and expands it to
+		// per-candidate failure rows (covered by orchestrator.test.ts).
 		await expect(
 			runGenreTagging(makeCtx(), makeBatch(["s1", "s2"])),
 		).rejects.toThrow("Last.fm timeout");
-
-		const { runStageWithAccounting } = await import("../stage-accounting");
-
-		vi.mocked(recordStageFailure).mockResolvedValue(Result.ok(undefined));
-		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-		const result = await runStageWithAccounting({
-			stage: "genre_tagging",
-			candidateSongIds: ["s1", "s2"],
-			jobId: "job-1",
-			accountId: "account-1",
-			run: async () => {
-				throw new Error("Last.fm timeout");
-			},
-		});
-
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) throw new Error("unreachable");
-		expect(result.value).toEqual({ total: 2, succeeded: 0, failed: 2 });
-		expect(recordStageFailure).toHaveBeenCalledTimes(2);
-		expect(recordStageFailure).toHaveBeenCalledWith(
-			expect.objectContaining({
-				songId: "s1",
-				stage: "genre_tagging",
-				failureCode: FAILURE_CODES.PROVIDER_TRANSIENT,
-				errorMessage: "Last.fm timeout",
-			}),
-		);
-		consoleSpy.mockRestore();
 	});
 });

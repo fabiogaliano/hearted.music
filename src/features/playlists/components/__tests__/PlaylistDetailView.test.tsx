@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, screen } from "@testing-library/react";
+import { act, cleanup, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import type { PreparedPlaylistDescriptionSave } from "@/lib/extension/playlist-description-save";
@@ -117,7 +117,9 @@ describe("PlaylistDetailView", () => {
 
 	it("does not fetch metadata when the detail opens", async () => {
 		renderView();
-		await new Promise((resolve) => setTimeout(resolve, 20));
+		// Flush on-mount async (extension check) deterministically instead of
+		// waiting on a wall-clock timer before asserting the negative.
+		await act(async () => {});
 		expect(mockPrepareSave).not.toHaveBeenCalled();
 		expect(mockCommitSave).not.toHaveBeenCalled();
 	});

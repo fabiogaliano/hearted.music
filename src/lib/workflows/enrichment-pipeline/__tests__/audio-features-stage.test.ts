@@ -247,7 +247,7 @@ describe("runAudioFeatures → StageOutcome", () => {
 		);
 	});
 
-	it("thrown stage expands to per-candidate failures via runStageWithAccounting", async () => {
+	it("throws when an audio-feature provider call fails", async () => {
 		mockGetAudioFeaturesBatch.mockResolvedValue(Result.ok(new Map()));
 		mockGetOrFetchFeatures.mockRejectedValue(
 			new Error("ReccoBeats API timeout"),
@@ -255,38 +255,11 @@ describe("runAudioFeatures → StageOutcome", () => {
 
 		const batch = makeBatch(["s1", "s2", "s3"]);
 
+		// Throwing is the contract the orchestrator relies on: it wraps this runner
+		// in runStageWithAccounting, which catches the throw and expands it to
+		// per-candidate failure rows (covered by orchestrator.test.ts).
 		await expect(runAudioFeatures(makeCtx(), batch)).rejects.toThrow(
 			"ReccoBeats API timeout",
 		);
-
-		const { runStageWithAccounting } = await import("../stage-accounting");
-		const { FAILURE_CODES: codes } = await import("../failure-policy");
-
-		vi.mocked(recordStageFailure).mockResolvedValue(Result.ok(undefined));
-		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-		const result = await runStageWithAccounting({
-			stage: "audio_features",
-			candidateSongIds: ["s1", "s2", "s3"],
-			jobId: "job-1",
-			accountId: "account-1",
-			run: async () => {
-				throw new Error("ReccoBeats API timeout");
-			},
-		});
-
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) throw new Error("unreachable");
-		expect(result.value).toEqual({ total: 3, succeeded: 0, failed: 3 });
-		expect(recordStageFailure).toHaveBeenCalledTimes(3);
-		expect(recordStageFailure).toHaveBeenCalledWith(
-			expect.objectContaining({
-				songId: "s1",
-				stage: "audio_features",
-				failureCode: codes.PROVIDER_TRANSIENT,
-				errorMessage: "ReccoBeats API timeout",
-			}),
-		);
-		consoleSpy.mockRestore();
 	});
 });
