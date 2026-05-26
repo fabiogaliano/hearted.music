@@ -19,6 +19,29 @@ const liveTestExcludes = [
 	"**/playlist-profiling-integration.test.ts",
 ];
 
+const sharedTestExcludes = [
+	"**/node_modules/**",
+	"**/old_app/**",
+	// Sibling Hono service mounted via symlink; runs from its own root.
+	"**/v1_hearted_brand/**",
+	// Live-stack E2E suite — run via `bun run test:e2e`, not Vitest.
+	"**/tests/e2e/**",
+	// Opt-in live integration tests — run via `bun run test:live`.
+	...(!isLiveTest ? liveTestExcludes : []),
+];
+
+// .test.ts files that need a DOM (renderHook, document/window APIs) despite the
+// non-tsx extension. Routed to the jsdom project; everything else .test.ts runs
+// in the much cheaper node environment.
+const domTestFiles = [
+	"src/features/onboarding/__tests__/useStepNavigation.test.ts",
+	"src/features/billing/__tests__/useCheckoutFlow.test.ts",
+	"src/lib/extension/__tests__/reconnect-link.test.ts",
+	"src/lib/consent/__tests__/consent-storage.test.ts",
+	"src/lib/extension/__tests__/useSpotifyReconnectState.test.ts",
+	"src/features/playlists/__tests__/usePlaylistVoices.test.ts",
+];
+
 // Load env files for tests (Vitest doesn't auto-load non-VITE_ prefixed vars)
 if (isTest) {
 	const env = loadEnv("test", process.cwd(), "");
@@ -94,23 +117,37 @@ export default defineConfig(({ command }) => {
 
 	return {
 		test: {
-			environment: "jsdom",
-			setupFiles: ["./src/test/setup.tsx"],
-			exclude: [
-				"**/node_modules/**",
-				"**/old_app/**",
-				// Sibling Hono service mounted via symlink; runs from its own root.
-				"**/v1_hearted_brand/**",
-				// Live-stack E2E suite — run via `bun run test:e2e`, not Vitest.
-				"**/tests/e2e/**",
-				// Opt-in live integration tests — run via `bun run test:live`.
-				...(!isLiveTest ? liveTestExcludes : []),
-			],
-			server: {
-				deps: {
-					inline: ["tiny-warning"],
+			// Threads spawn faster than the default forks pool and these suites have
+			// no fork-only needs (no process.exit, no native addons requiring process
+			// isolation); verified stable across repeated runs.
+			pool: "threads",
+			// Two projects split by environment cost: jsdom is initialized per file
+			// and dominates total runtime, so only the ~25 files that touch a DOM pay
+			// for it. The other ~90 run in the much cheaper node environment.
+			projects: [
+				{
+					extends: true,
+					test: {
+						name: "node",
+						environment: "node",
+						include: ["**/*.test.ts"],
+						exclude: [...sharedTestExcludes, ...domTestFiles],
+						setupFiles: ["./src/test/setup.node.ts"],
+						server: { deps: { inline: ["tiny-warning"] } },
+					},
 				},
-			},
+				{
+					extends: true,
+					test: {
+						name: "dom",
+						environment: "jsdom",
+						include: ["**/*.test.tsx", ...domTestFiles],
+						exclude: sharedTestExcludes,
+						setupFiles: ["./src/test/setup.tsx"],
+						server: { deps: { inline: ["tiny-warning"] } },
+					},
+				},
+			],
 		},
 		server: {
 			host: "127.0.0.1",
