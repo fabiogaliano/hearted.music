@@ -1,3 +1,4 @@
+import { captureException } from "@sentry/bun";
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -11,6 +12,10 @@ vi.mock("@/lib/platform/jobs/repository", () => ({
 const mockExecute = vi.fn();
 vi.mock("../orchestrator", () => ({
 	executeWalkthroughPreview: (...args: unknown[]) => mockExecute(...args),
+}));
+
+vi.mock("@sentry/bun", () => ({
+	captureException: vi.fn(),
 }));
 
 const { runWalkthroughPreviewJob } = await import("../runner");
@@ -70,5 +75,15 @@ describe("runWalkthroughPreviewJob", () => {
 			expect(outcome.error).toBe("boom");
 		}
 		expect(mockMarkFailed).toHaveBeenCalledWith("job-1", "boom");
+		expect(captureException).toHaveBeenCalledWith(
+			expect.any(Error),
+			expect.objectContaining({
+				tags: {
+					workflow: "walkthrough_match_preview",
+					phase: "job-execution",
+				},
+				extra: { jobId: "job-1", accountId: "acct-1" },
+			}),
+		);
 	});
 });

@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/bun";
 import { workerConfig } from "./config";
+import { setWorkerFatalObserver } from "./fatal-handlers";
 import { setShuttingDown, setUnhealthy, startHealthServer } from "./health";
 import { startKeepAlive } from "./keep-alive";
 import { log } from "./logger";
@@ -11,6 +12,11 @@ import {
 } from "./poll-walkthrough-preview";
 import { shutdownPostHogOtel } from "./posthog-otel";
 import { runDefaultSweepTick, startDefaultSweep } from "./sweep";
+
+setWorkerFatalObserver((error, phase) => {
+	log.error(phase, { error: String(error) });
+	setUnhealthy();
+});
 
 let draining = false;
 

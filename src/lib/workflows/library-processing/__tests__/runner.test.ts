@@ -1,3 +1,4 @@
+import { captureException } from "@sentry/bun";
 import { Result } from "better-result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseError } from "@/lib/shared/errors/database";
@@ -19,6 +20,10 @@ vi.mock("@/lib/platform/jobs/execution-measurements", () => ({
 vi.mock("@/worker/execute", () => ({
 	executeEnrichmentJob: vi.fn(),
 	executeMatchSnapshotRefreshJob: vi.fn(),
+}));
+
+vi.mock("@sentry/bun", () => ({
+	captureException: vi.fn(),
 }));
 
 const applyLibraryProcessingChangeMock = vi.fn();
@@ -147,9 +152,8 @@ describe("runClaimedJob", () => {
 	});
 
 	it("returns failed outcome and marks job failed on execution error", async () => {
-		vi.mocked(executeEnrichmentJob).mockRejectedValue(
-			new Error("provider down"),
-		);
+		const thrown = new Error("provider down");
+		vi.mocked(executeEnrichmentJob).mockRejectedValue(thrown);
 		vi.mocked(markJobFailed).mockResolvedValue(
 			Result.ok(makeJob({ status: "failed" })),
 		);
@@ -161,6 +165,34 @@ describe("runClaimedJob", () => {
 			expect(outcome.error).toBe("provider down");
 		}
 		expect(markJobFailed).toHaveBeenCalledWith("job-1", "provider down");
+		expect(captureException).toHaveBeenCalledWith(
+			thrown,
+			expect.objectContaining({
+				tags: { workflow: "enrichment", phase: "job-execution" },
+				extra: { jobId: "job-1", accountId: "acct-1" },
+			}),
+		);
+	});
+
+	it("reports match_snapshot_refresh execution errors to Sentry", async () => {
+		const thrown = new Error("snapshot exploded");
+		vi.mocked(executeMatchSnapshotRefreshJob).mockRejectedValue(thrown);
+		vi.mocked(markJobFailed).mockResolvedValue(
+			Result.ok(makeJob({ status: "failed" })),
+		);
+
+		const outcome = await runClaimedJob(
+			makeJob({ id: "job-2", type: "match_snapshot_refresh" }),
+		);
+
+		expect(outcome.status).toBe("failed");
+		expect(captureException).toHaveBeenCalledWith(
+			thrown,
+			expect.objectContaining({
+				tags: { workflow: "match_snapshot_refresh", phase: "job-execution" },
+				extra: { jobId: "job-2", accountId: "acct-1" },
+			}),
+		);
 	});
 
 	it("preserves workflow result payloads on completed outcomes", async () => {

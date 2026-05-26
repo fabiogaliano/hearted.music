@@ -17,6 +17,7 @@ import {
 	executeMatchSnapshotRefreshJob,
 	type MatchSnapshotRefreshExecuteResult,
 } from "@/worker/execute";
+import { captureWorkerJobFailure } from "@/worker/job-failure-reporting";
 import { EnrichmentChanges } from "./changes/enrichment";
 import { MatchSnapshotChanges } from "./changes/match-snapshot";
 import { applyLibraryProcessingChange } from "./service";
@@ -96,6 +97,12 @@ async function runEnrichmentJob(job: Job): Promise<RunJobOutcome> {
 		return { status: "completed", workflow: "enrichment", result, settlement };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
+		// Failure is returned as outcome, not thrown — capture here while the Error is intact.
+		captureWorkerJobFailure(error, {
+			workflow: "enrichment",
+			jobId: job.id,
+			accountId: job.account_id,
+		});
 		await markJobFailedSafe(job, message);
 		await writeMeasurement(job, "enrichment", startedAt, "error");
 
@@ -160,6 +167,11 @@ async function runMatchSnapshotRefreshJob(job: Job): Promise<RunJobOutcome> {
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
+		captureWorkerJobFailure(error, {
+			workflow: "match_snapshot_refresh",
+			jobId: job.id,
+			accountId: job.account_id,
+		});
 		await markJobFailedSafe(job, message);
 		await writeMeasurement(job, "match_snapshot_refresh", startedAt, "error");
 

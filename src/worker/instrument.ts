@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/bun";
+import { registerWorkerFatalHandlers } from "./fatal-handlers";
 import { initPostHogOtel } from "./posthog-otel";
 
 const dsn = process.env.SENTRY_DSN;
@@ -16,4 +17,8 @@ if (dsn) {
 	});
 }
 
+// This preload runs before src/worker/index.ts. Register fatal handlers here
+// so bootstrap errors from PostHog init or later worker module loads are
+// captured before control reaches the main entrypoint.
+registerWorkerFatalHandlers();
 initPostHogOtel();

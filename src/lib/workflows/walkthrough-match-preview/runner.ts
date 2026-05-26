@@ -13,7 +13,7 @@ import {
 	markJobCompleted,
 	markJobFailed,
 } from "@/lib/platform/jobs/repository";
-
+import { captureWorkerJobFailure } from "@/worker/job-failure-reporting";
 import {
 	executeWalkthroughPreview,
 	type WalkthroughPreviewExecuteResult,
@@ -43,6 +43,11 @@ export async function runWalkthroughPreviewJob(
 		return { status: "completed", result };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
+		captureWorkerJobFailure(error, {
+			workflow: "walkthrough_match_preview",
+			jobId: job.id,
+			accountId: job.account_id,
+		});
 		const failResult = await markJobFailed(job.id, message);
 		if (Result.isError(failResult)) {
 			console.error(
