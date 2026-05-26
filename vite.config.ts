@@ -46,6 +46,21 @@ const domTestFiles = [
 if (isTest) {
 	const env = loadEnv("test", process.cwd(), "");
 	Object.assign(process.env, env);
+
+	// node-project tests set isServer:true in env.ts, so t3-env validates the
+	// server schema at import. CI has no .env, so seed placeholders (only when
+	// unset — real values locally and in the db-security job are kept).
+	const testEnvDefaults: Record<string, string> = {
+		SUPABASE_URL: "http://localhost:54321",
+		SUPABASE_ANON_KEY: "test-anon-key",
+		SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
+		BETTER_AUTH_SECRET: "test-better-auth-secret-0000000000000000",
+		BETTER_AUTH_URL: "http://localhost:3000",
+		DATABASE_URL: "postgresql://postgres:postgres@localhost:54322/postgres",
+	};
+	for (const [key, value] of Object.entries(testEnvDefaults)) {
+		if (!process.env[key]) process.env[key] = value;
+	}
 }
 
 function embeddingSidecarPlugin(): Plugin {
