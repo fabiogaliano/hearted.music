@@ -164,18 +164,26 @@ jobs:
           version: 2.101.0
           github-token: ${{ github.token }}
 
-      - name: Start local Supabase and export test env
+      - name: Start local Supabase and run DB security invariants
         run: |
           supabase start
+          # Redirect, not `. <(...)`: process substitution hides a status failure from set -e.
           supabase status -o env \
             --override-name db.url=DATABASE_URL \
             --override-name api.url=SUPABASE_URL \
             --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY \
-            --override-name auth.anon_key=SUPABASE_ANON_KEY \
-            >> "$GITHUB_ENV"
+            --override-name auth.anon_key=SUPABASE_ANON_KEY > "$RUNNER_TEMP/supabase.env"
+          set -a
+          . "$RUNNER_TEMP/supabase.env"
+          set +a
+          # Gate must fail, not silently skip, on a missing/non-local URL.
+          : "${DATABASE_URL:?DATABASE_URL not exported}"
+          case "$DATABASE_URL" in
+            *127.0.0.1*|*localhost*) ;;
+            *) echo "::error::DATABASE_URL is not local; security invariants would skip"; exit 1 ;;
+          esac
 
-      - name: Run DB security invariants
-        run: bun run test src/lib/data/__tests__/security-invariants.integration.test.ts
+          bun run test src/lib/data/__tests__/security-invariants.integration.test.ts
 
   migrate-prod:
     needs: [detect, verify, db-security]
