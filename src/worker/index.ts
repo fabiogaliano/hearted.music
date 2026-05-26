@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/bun";
 import { workerConfig } from "./config";
+import { startDatabaseBackupScheduler } from "./db-backup";
 import { setWorkerFatalObserver } from "./fatal-handlers";
 import { setShuttingDown, setUnhealthy, startHealthServer } from "./health";
 import { startKeepAlive } from "./keep-alive";
@@ -27,6 +28,7 @@ async function main() {
 	log.info("health-server-started", { port: healthServer.port });
 
 	const keepAlive = startKeepAlive();
+	const dbBackup = startDatabaseBackupScheduler();
 
 	// Awaited startup recovery pass. If the previous worker crashed mid-job,
 	// a stale preview row may still be `running` and holding the unique
@@ -46,6 +48,7 @@ async function main() {
 		stopPolling();
 		stopWalkthroughPreviewPolling();
 		keepAlive.stop();
+		dbBackup.stop();
 		sweep.stop();
 
 		const deadline = Date.now() + workerConfig.drainTimeoutMs;

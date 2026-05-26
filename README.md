@@ -410,9 +410,10 @@ isn't in the dev path). Leave `VITE_SENTRY_DSN` unset locally and Sentry stays s
 | ----------------------------------- | ------------------------------------------------------------------------- |
 | `src/routes/README.md`              | Routes layout, architecture, matching pipeline, full tech stack reference |
 | `docs/library-processing/`          | Library-processing state machine design                                   |
-| `docs/brand/`                       | Brand voice, copy guide, positioning                                      |
-| `docs/runbooks/prod-db-migrations.md` | Prod Supabase migration workflow, secrets, PITR, rollback policy          |
-| `openspec/specs/`                   | Feature specifications                                                    |
+| `docs/brand/`                         | Brand voice, copy guide, positioning                                      |
+| `docs/runbooks/prod-db-migrations.md` | Prod Supabase migration workflow, secrets, restore prerequisites, rollback policy |
+| `docs/runbooks/prod-db-backups.md`    | Free-plan backup strategy, worker backup env, restore runbook             |
+| `openspec/specs/`                     | Feature specifications                                                    |
 | `supabase/migrations/`              | Database migration history                                                |
 
 ---

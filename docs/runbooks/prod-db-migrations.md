@@ -41,7 +41,7 @@ The workflow fails fast with a clear error if any of these are missing.
 ## Preflight Prerequisites
 
 Before relying on auto-migrate, do two one-time checks: confirm migration history is in sync,
-and confirm Supabase Point-in-Time Recovery is enabled for prod.
+and confirm production restore coverage is documented.
 
 ### Migration History Baseline Check
 
@@ -62,21 +62,22 @@ Healthy result:
 If they do not match, reconcile that manually before enabling auto-migrate. Otherwise the first
 `supabase db push` can fail on already-existing objects or skip migrations that prod still needs.
 
-### PITR Prerequisite
+### Restore Coverage Prerequisite
 
-Confirm Supabase Point-in-Time Recovery is enabled for prod.
-Record the answer outside the workflow before the first real migration lands.
+Document how production recovery works before the first real migration lands.
+For paid Supabase plans, that can be PITR. For the current free-plan setup, this repo uses the
+worker-driven `pg_dump` strategy in `docs/runbooks/prod-db-backups.md`.
 
 Minimum checklist:
 
-- PITR enabled in Supabase project settings
+- current protection documented: PITR or logical backups
 - at least one person with restore access verified
 - restore target project/process documented
 - rough expectations written down for:
   - RPO: how much data loss is acceptable
   - RTO: how long restore can take
 
-This repo cannot verify PITR from CI; the owner must confirm it in the Supabase dashboard.
+This repo cannot verify PITR or backup freshness from CI; the owner must confirm it operationally.
 
 ## Safe for Auto-Apply
 
@@ -109,7 +110,7 @@ Do not merge these expecting the auto job to be the only safeguard:
 - anything needing `CREATE INDEX CONCURRENTLY`
 - anything that needs a maintenance window or operator observation
 
-For those cases, run a supervised manual `supabase db push --linked` with PITR confirmed and a rollback/forward-fix plan ready.
+For those cases, run a supervised manual `supabase db push --linked` with the current restore strategy confirmed and a rollback/forward-fix plan ready.
 
 ## Rollback Policy
 
@@ -120,7 +121,7 @@ If a bad migration reaches prod:
 1. stop further deploys
 2. assess whether the issue is app-only or schema/data
 3. prefer a follow-up additive fix migration
-4. use Supabase restore/PITR only for true recovery scenarios
+4. use the documented restore path (PITR or logical backup restore) only for true recovery scenarios
 
 ## Local Developer Workflow
 
