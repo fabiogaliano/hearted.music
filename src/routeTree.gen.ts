@@ -14,6 +14,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as HealthRouteImport } from './routes/health'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as DevSongDetailPanelV2RouteImport } from './routes/dev-song-detail-panel-v2'
@@ -62,6 +63,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HealthRoute = HealthRouteImport.update({
+  id: '/health',
+  path: '/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -194,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/dev-song-detail-panel-v2': typeof DevSongDetailPanelV2Route
   '/faq': typeof FaqRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/health': typeof HealthRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -224,6 +231,7 @@ export interface FileRoutesByTo {
   '/dev-song-detail-panel-v2': typeof DevSongDetailPanelV2Route
   '/faq': typeof FaqRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/health': typeof HealthRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -256,6 +264,7 @@ export interface FileRoutesById {
   '/dev-song-detail-panel-v2': typeof DevSongDetailPanelV2Route
   '/faq': typeof FaqRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/health': typeof HealthRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -288,6 +297,7 @@ export interface FileRouteTypes {
     | '/dev-song-detail-panel-v2'
     | '/faq'
     | '/forgot-password'
+    | '/health'
     | '/login'
     | '/privacy'
     | '/reset-password'
@@ -318,6 +328,7 @@ export interface FileRouteTypes {
     | '/dev-song-detail-panel-v2'
     | '/faq'
     | '/forgot-password'
+    | '/health'
     | '/login'
     | '/privacy'
     | '/reset-password'
@@ -349,6 +360,7 @@ export interface FileRouteTypes {
     | '/dev-song-detail-panel-v2'
     | '/faq'
     | '/forgot-password'
+    | '/health'
     | '/login'
     | '/privacy'
     | '/reset-password'
@@ -381,6 +393,7 @@ export interface RootRouteChildren {
   DevSongDetailPanelV2Route: typeof DevSongDetailPanelV2Route
   FaqRoute: typeof FaqRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  HealthRoute: typeof HealthRoute
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -432,6 +445,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -652,6 +672,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevSongDetailPanelV2Route: DevSongDetailPanelV2Route,
   FaqRoute: FaqRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  HealthRoute: HealthRoute,
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
