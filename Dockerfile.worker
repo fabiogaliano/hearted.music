@@ -17,8 +17,10 @@ USER bun
 
 EXPOSE 3002
 
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD bun -e "const port = process.env.WORKER_HEALTH_PORT ?? '3002'; fetch(\`http://localhost:${port}/health\`).then(r => { if (!r.ok) process.exit(1); }).catch(() => process.exit(1))"
+# Exec form (no shell) so bun interpolates the port instead of /bin/sh eating
+# ${port}; 127.0.0.1 matches the server's bind (health.ts), avoiding IPv6 localhost.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["bun", "-e", "fetch(`http://127.0.0.1:${process.env.WORKER_HEALTH_PORT ?? '3002'}/health`).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
 
 # No `run` subcommand: `bun --preload X run Y` drops Y; run the file directly.
 CMD ["bun", "--preload", "./src/worker/instrument.ts", "src/worker/index.ts"]
