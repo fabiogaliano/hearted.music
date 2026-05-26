@@ -305,12 +305,17 @@ VITE_CHROME_EXTENSION_ID=ohaaafmgbbfohhjhogonolonpjhhfohk # Chrome extension ID 
 ### Database
 
 ```bash
-# Apply migrations
+# Apply local migrations
 bunx supabase db push
 
 # Generate TypeScript types from schema
 bun run gen:types
 ```
+
+Production migrations are applied by GitHub Actions before deploys when files under
+`supabase/migrations/**` change on `main`. See `docs/runbooks/prod-db-migrations.md`
+for the prod job, required GitHub secrets, PITR prerequisite, and the safe-vs-manual
+migration policy.
 
 ### Development
 
@@ -401,13 +406,14 @@ isn't in the dev path). Leave `VITE_SENTRY_DSN` unset locally and Sentry stays s
 
 ## Documentation
 
-| Path                       | Contents                                                                  |
-| -------------------------- | ------------------------------------------------------------------------- |
-| `src/routes/README.md`     | Routes layout, architecture, matching pipeline, full tech stack reference |
-| `docs/library-processing/` | Library-processing state machine design                                   |
-| `docs/brand/`              | Brand voice, copy guide, positioning                                      |
-| `openspec/specs/`          | Feature specifications                                                    |
-| `supabase/migrations/`     | Database migration history                                                |
+| Path                                | Contents                                                                  |
+| ----------------------------------- | ------------------------------------------------------------------------- |
+| `src/routes/README.md`              | Routes layout, architecture, matching pipeline, full tech stack reference |
+| `docs/library-processing/`          | Library-processing state machine design                                   |
+| `docs/brand/`                       | Brand voice, copy guide, positioning                                      |
+| `docs/runbooks/prod-db-migrations.md` | Prod Supabase migration workflow, secrets, PITR, rollback policy          |
+| `openspec/specs/`                   | Feature specifications                                                    |
+| `supabase/migrations/`              | Database migration history                                                |
 
 ---
 
