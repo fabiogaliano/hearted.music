@@ -60,7 +60,7 @@ vi.mock("@/lib/domains/library/liked-songs/queries", () => ({
 vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	getPlaylistCount: vi.fn(),
 	getPlaylists: vi.fn(),
-	setPlaylistTarget: vi.fn(),
+	setPlaylistTargets: vi.fn(),
 }));
 
 vi.mock("@/lib/domains/taste/song-matching/queries", () => ({

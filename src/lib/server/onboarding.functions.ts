@@ -36,7 +36,7 @@ import {
 	getPlaylistCount,
 	getPlaylistSongCount,
 	getPlaylists,
-	setPlaylistTarget,
+	setPlaylistTargets,
 } from "@/lib/domains/library/playlists/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import {
@@ -683,22 +683,12 @@ export const savePlaylistTargets = createServerFn({ method: "POST" })
 	.handler(async ({ data, context }): Promise<{ success: true }> => {
 		const { session } = context;
 
-		const playlistsResult = await getPlaylists(session.accountId);
-
-		if (Result.isError(playlistsResult)) {
-			throw new OnboardingError("get_playlists", playlistsResult.error);
-		}
-
-		const updates = playlistsResult.value.map((playlist) => {
-			const shouldBeTarget = data.playlistIds.includes(playlist.id);
-			return setPlaylistTarget(playlist.id, shouldBeTarget);
-		});
-
-		const results = await Promise.all(updates);
-
-		const firstError = results.find(Result.isError);
-		if (firstError) {
-			throw new OnboardingError("update_playlist_targets", firstError.error);
+		const targetsResult = await setPlaylistTargets(
+			session.accountId,
+			data.playlistIds,
+		);
+		if (Result.isError(targetsResult)) {
+			throw new OnboardingError("update_playlist_targets", targetsResult.error);
 		}
 
 		const applyResult = await applyLibraryProcessingChange(

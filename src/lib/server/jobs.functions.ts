@@ -46,10 +46,13 @@ export const getActiveJobs = createServerFn({ method: "GET" })
 
 			const [enrichmentResult, matchRefreshResult] = await Promise.all([
 				state.enrichment.activeJobId
-					? resolveJobInfo(state.enrichment.activeJobId)
+					? resolveJobInfo(state.enrichment.activeJobId, session.accountId)
 					: null,
 				state.matchSnapshotRefresh.activeJobId
-					? resolveJobInfo(state.matchSnapshotRefresh.activeJobId)
+					? resolveJobInfo(
+							state.matchSnapshotRefresh.activeJobId,
+							session.accountId,
+						)
 					: null,
 			]);
 			enrichment = enrichmentResult;
@@ -63,8 +66,11 @@ export const getActiveJobs = createServerFn({ method: "GET" })
 		};
 	});
 
-async function resolveJobInfo(jobId: string): Promise<ActiveJobInfo | null> {
-	const result = await getJobById(jobId);
+async function resolveJobInfo(
+	jobId: string,
+	accountId: string,
+): Promise<ActiveJobInfo | null> {
+	const result = await getJobById(jobId, accountId);
 	if (Result.isError(result) || !result.value) return null;
 
 	const job = result.value;

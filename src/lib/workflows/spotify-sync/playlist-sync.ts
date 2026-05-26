@@ -11,7 +11,7 @@ import type {
 	PlaylistSong,
 } from "@/lib/domains/library/playlists/queries";
 import {
-	deletePlaylist,
+	deletePlaylists,
 	getPlaylistSongs,
 	getPlaylists,
 	removePlaylistSongs,
@@ -193,8 +193,11 @@ export async function syncPlaylists(
 		.filter((playlist): playlist is Playlist => playlist !== undefined)
 		.map((playlist) => playlist.id);
 
-	for (const playlist of toRemove) {
-		const deleteResult = await deletePlaylist(playlist.id);
+	if (toRemove.length > 0) {
+		const deleteResult = await deletePlaylists(
+			accountId,
+			toRemove.map((playlist) => playlist.id),
+		);
 		if (Result.isError(deleteResult)) {
 			return Result.err(deleteResult.error);
 		}
@@ -323,6 +326,7 @@ export async function syncPlaylistTracksFromData(
 	}
 
 	const countResult = await updatePlaylistSongCount(
+		playlist.account_id,
 		playlist.id,
 		spotifyTracks.length,
 	);

@@ -194,7 +194,7 @@ describe("acknowledgePlaylistDelete", () => {
 
 		expect(result).toEqual({ success: true, alreadyAbsent: false });
 		expect(mockGetPlaylistBySpotifyId).toHaveBeenCalledWith("acct-1", "abc123");
-		expect(mockDeletePlaylist).toHaveBeenCalledWith("uuid-1");
+		expect(mockDeletePlaylist).toHaveBeenCalledWith("acct-1", "uuid-1");
 	});
 
 	it("treats already-absent row as idempotent success", async () => {

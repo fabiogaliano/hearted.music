@@ -19,11 +19,21 @@ export type JobStatus = Enums<"job_status">;
 export type JobProgress = JobProgressType;
 export const JobProgressSchema = JobProgressSchemaImpl;
 
-export function getJobById(id: string): Promise<Result<Job | null, DbError>> {
+/**
+ * Gets a job by ID. Pass `accountId` from user-facing call sites to scope the
+ * read to the owning account (the service-role client bypasses RLS). Internal
+ * worker sweeps that legitimately operate across accounts may omit it.
+ */
+export function getJobById(
+	id: string,
+	accountId?: string,
+): Promise<Result<Job | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMaybe(
-		supabase.from("job").select("*").eq("id", id).single(),
-	);
+	let query = supabase.from("job").select("*").eq("id", id);
+	if (accountId !== undefined) {
+		query = query.eq("account_id", accountId);
+	}
+	return fromSupabaseMaybe(query.single());
 }
 
 export function getActiveJob(

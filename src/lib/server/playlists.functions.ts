@@ -87,7 +87,10 @@ export const getPlaylistTracksPage = createServerFn({ method: "GET" })
 		const { session } = context;
 		const limit = data.limit ?? PLAYLIST_TRACKS_DEFAULT_LIMIT;
 
-		const playlistResult = await getPlaylistById(data.playlistId);
+		const playlistResult = await getPlaylistById(
+			session.accountId,
+			data.playlistId,
+		);
 		if (Result.isError(playlistResult)) {
 			console.warn("Failed to load playlist", {
 				playlistId: data.playlistId,
@@ -181,7 +184,10 @@ export const setPlaylistTargetMutation = createServerFn({ method: "POST" })
 	.handler(async ({ data, context }) => {
 		const { session } = context;
 
-		const playlistResult = await getPlaylistById(data.playlistId);
+		const playlistResult = await getPlaylistById(
+			session.accountId,
+			data.playlistId,
+		);
 		if (
 			Result.isError(playlistResult) ||
 			!playlistResult.value ||
@@ -190,7 +196,11 @@ export const setPlaylistTargetMutation = createServerFn({ method: "POST" })
 			throw new Error("Playlist not found");
 		}
 
-		const result = await setPlaylistTarget(data.playlistId, data.isTarget);
+		const result = await setPlaylistTarget(
+			session.accountId,
+			data.playlistId,
+			data.isTarget,
+		);
 
 		if (Result.isError(result)) {
 			throw new Error(`Failed to set playlist target: ${result.error.message}`);
@@ -309,7 +319,10 @@ export const acknowledgePlaylistDelete = createServerFn({ method: "POST" })
 			return { success: true, alreadyAbsent: true };
 		}
 
-		const deleteResult = await deletePlaylist(existing.value.id);
+		const deleteResult = await deletePlaylist(
+			session.accountId,
+			existing.value.id,
+		);
 		if (Result.isError(deleteResult)) {
 			throw new Error(
 				`Failed to acknowledge playlist delete: ${deleteResult.error.message}`,

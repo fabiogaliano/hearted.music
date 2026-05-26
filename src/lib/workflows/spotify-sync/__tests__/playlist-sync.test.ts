@@ -5,12 +5,12 @@ import type { SpotifyPlaylistDTO } from "../types";
 
 const mockGetPlaylists = vi.fn();
 const mockUpsertPlaylists = vi.fn();
-const mockDeletePlaylist = vi.fn();
+const mockDeletePlaylists = vi.fn();
 
 vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	getPlaylists: (...args: unknown[]) => mockGetPlaylists(...args),
 	upsertPlaylists: (...args: unknown[]) => mockUpsertPlaylists(...args),
-	deletePlaylist: (...args: unknown[]) => mockDeletePlaylist(...args),
+	deletePlaylists: (...args: unknown[]) => mockDeletePlaylists(...args),
 }));
 
 const { syncPlaylists } = await import("../playlist-sync");
@@ -50,7 +50,7 @@ function makeSpotifyPlaylist(
 describe("syncPlaylists", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockDeletePlaylist.mockResolvedValue(Result.ok(null));
+		mockDeletePlaylists.mockResolvedValue(Result.ok(null));
 		mockUpsertPlaylists.mockResolvedValue(Result.ok([]));
 	});
 
@@ -120,7 +120,7 @@ describe("syncPlaylists", () => {
 			expect(result.value.removed).toBe(0);
 		}
 		expect(mockUpsertPlaylists).not.toHaveBeenCalled();
-		expect(mockDeletePlaylist).not.toHaveBeenCalled();
+		expect(mockDeletePlaylists).not.toHaveBeenCalled();
 	});
 
 	it("preserves is_target on acknowledged row during sync enrichment", async () => {

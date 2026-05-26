@@ -467,7 +467,11 @@ describe("setPlaylistTargetMutation", () => {
 		});
 
 		expect(result.success).toBe(true);
-		expect(mockSetPlaylistTarget).toHaveBeenCalledWith("uuid-1", true);
+		expect(mockSetPlaylistTarget).toHaveBeenCalledWith(
+			"acct-1",
+			"uuid-1",
+			true,
+		);
 	});
 
 	it("throws when setPlaylistTarget fails", async () => {

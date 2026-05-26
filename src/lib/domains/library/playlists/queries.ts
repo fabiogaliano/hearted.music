@@ -53,15 +53,26 @@ export type UpsertPlaylistSongData = Pick<
 // ============================================================================
 
 /**
- * Gets a playlist by its UUID.
- * Returns null if not found (not an error).
+ * Gets a playlist by its UUID, scoped to the owning account.
+ * Returns null if not found or not owned by the account (not an error).
+ *
+ * The account_id filter is the authorization boundary: the service-role client
+ * bypasses RLS, so a non-owned id must return null rather than another tenant's
+ * playlist. Callers may still re-check ownership, but safety no longer depends
+ * on them doing so.
  */
 export function getPlaylistById(
+	accountId: string,
 	id: string,
 ): Promise<Result<Playlist | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseMaybe(
-		supabase.from("playlist").select("*").eq("id", id).single(),
+		supabase
+			.from("playlist")
+			.select("*")
+			.eq("id", id)
+			.eq("account_id", accountId)
+			.single(),
 	);
 }
 
@@ -195,19 +206,51 @@ export function upsertPlaylists(
 }
 
 /**
- * Deletes a playlist by ID.
+ * Deletes a playlist by ID, scoped to the owning account.
  * Note: This cascades to playlist_song due to FK constraint.
  */
-export function deletePlaylist(id: string): Promise<Result<null, DbError>> {
+export function deletePlaylist(
+	accountId: string,
+	id: string,
+): Promise<Result<null, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMaybe(supabase.from("playlist").delete().eq("id", id));
+	return fromSupabaseMaybe(
+		supabase.from("playlist").delete().eq("id", id).eq("account_id", accountId),
+	);
 }
 
 /**
- * Sets whether a playlist is a target for auto-sorting.
- * Returns the updated playlist.
+ * Deletes multiple playlists by ID in a single statement, scoped to the
+ * owning account. Replaces per-row deletes in sync flows.
+ */
+export async function deletePlaylists(
+	accountId: string,
+	ids: string[],
+): Promise<Result<null, DbError>> {
+	if (ids.length === 0) {
+		return Result.ok(null);
+	}
+	const supabase = createAdminSupabaseClient();
+	const result = await fromSupabaseMany(
+		supabase
+			.from("playlist")
+			.delete()
+			.eq("account_id", accountId)
+			.in("id", ids)
+			.select(),
+	);
+	if (Result.isError(result)) {
+		return Result.err(result.error);
+	}
+	return Result.ok(null);
+}
+
+/**
+ * Sets whether a playlist is a target for auto-sorting, scoped to the owning
+ * account. Returns the updated playlist.
  */
 export function setPlaylistTarget(
+	accountId: string,
 	id: string,
 	isTarget: boolean,
 ): Promise<Result<Playlist, DbError>> {
@@ -217,9 +260,51 @@ export function setPlaylistTarget(
 			.from("playlist")
 			.update({ is_target: isTarget })
 			.eq("id", id)
+			.eq("account_id", accountId)
 			.select()
 			.single(),
 	);
+}
+
+/**
+ * Replaces the target-playlist selection for an account in a fixed number of
+ * statements (clear all, then set the chosen ones), instead of one update per
+ * playlist. `targetIds` that don't belong to the account are ignored by the
+ * account_id scope.
+ */
+export async function setPlaylistTargets(
+	accountId: string,
+	targetIds: string[],
+): Promise<Result<null, DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const clearResult = await fromSupabaseMany(
+		supabase
+			.from("playlist")
+			.update({ is_target: false })
+			.eq("account_id", accountId)
+			.eq("is_target", true)
+			.select(),
+	);
+	if (Result.isError(clearResult)) {
+		return Result.err(clearResult.error);
+	}
+
+	if (targetIds.length > 0) {
+		const setResult = await fromSupabaseMany(
+			supabase
+				.from("playlist")
+				.update({ is_target: true })
+				.eq("account_id", accountId)
+				.in("id", targetIds)
+				.select(),
+		);
+		if (Result.isError(setResult)) {
+			return Result.err(setResult.error);
+		}
+	}
+
+	return Result.ok(null);
 }
 
 /**
@@ -272,6 +357,7 @@ export function updatePlaylistMetadata(
 }
 
 export function updatePlaylistSongCount(
+	accountId: string,
 	playlistId: string,
 	songCount: number,
 ): Promise<Result<null, DbError>> {
@@ -280,7 +366,8 @@ export function updatePlaylistSongCount(
 		supabase
 			.from("playlist")
 			.update({ song_count: songCount })
-			.eq("id", playlistId),
+			.eq("id", playlistId)
+			.eq("account_id", accountId),
 	);
 }
 
