@@ -7,8 +7,8 @@ if (dsn) {
 	Sentry.init({
 		dsn,
 		environment: process.env.SENTRY_ENVIRONMENT ?? process.env.NODE_ENV,
-		// Undefined until Coolify passes APP_RELEASE (H14); Sentry omits it meanwhile.
-		release: process.env.APP_RELEASE,
+		// Coolify injects SOURCE_COMMIT at runtime; APP_RELEASE is a manual override.
+		release: process.env.SOURCE_COMMIT ?? process.env.APP_RELEASE,
 		tracesSampleRate: 0.01,
 		sendDefaultPii: false,
 		enableLogs: false,
