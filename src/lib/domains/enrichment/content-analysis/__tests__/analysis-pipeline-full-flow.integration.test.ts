@@ -425,26 +425,7 @@ describe.skipIf(!RUN_TEST || !HAS_GENIUS || !HAS_LLM || !HAS_TEST_ACCOUNT)(
 	},
 );
 
-// ─────────────────────────────────────────────────────────────
-// Skipped Test Notice
-// ─────────────────────────────────────────────────────────────
-
-describe.skipIf(RUN_TEST)("Analysis Pipeline Full Flow (Skipped)", () => {
-	test("requires FULL_FLOW_TEST=true and TEST_ACCOUNT_ID to run", () => {
-		console.log("\n⏭️  Analysis Pipeline Full Flow test skipped");
-		console.log(
-			"   Run: FULL_FLOW_TEST=true TEST_ACCOUNT_ID=<account-id> bun run test:live -- analysis-pipeline-full-flow.integration",
-		);
-		console.log("   Requires:");
-		console.log("     - GENIUS_CLIENT_TOKEN");
-		console.log("     - GOOGLE_GENERATIVE_AI_API_KEY or ANTHROPIC_API_KEY");
-		console.log("     - TEST_ACCOUNT_ID (real account from database)");
-		console.log("     - Database access");
-
-		if (!HAS_GENIUS) console.log("   ✗ Missing: GENIUS_CLIENT_TOKEN");
-		if (!HAS_LLM) console.log("   ✗ Missing: LLM API key");
-		if (!HAS_TEST_ACCOUNT) console.log("   ✗ Missing: TEST_ACCOUNT_ID");
-
-		expect(true).toBe(true);
-	});
-});
+// This suite only runs when FULL_FLOW_TEST=true. To run it:
+//   FULL_FLOW_TEST=true TEST_ACCOUNT_ID=<account-id> bun run test:live -- analysis-pipeline-full-flow.integration
+// Requires: GENIUS_CLIENT_TOKEN, GOOGLE_GENERATIVE_AI_API_KEY or ANTHROPIC_API_KEY,
+// TEST_ACCOUNT_ID (a real account from the database), and database access.

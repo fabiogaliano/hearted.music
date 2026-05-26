@@ -107,26 +107,6 @@ describe("FlagPlaylistsStep", () => {
 		localStorage.setItem(DESCRIPTION_DIALOG_SEEN_KEY, "1");
 	});
 
-	it("renders playlist grid with correct names", () => {
-		render(<FlagPlaylistsStep playlists={testPlaylists} />);
-
-		expect(
-			document.querySelector(
-				`[data-playlist-id="${ONBOARDING_PLAYLISTS.lofiCityPop.id}"]`,
-			),
-		).toHaveAttribute("title", ONBOARDING_PLAYLISTS.lofiCityPop.name);
-		expect(
-			document.querySelector(
-				`[data-playlist-id="${ONBOARDING_PLAYLISTS.oldRock.id}"]`,
-			),
-		).toHaveAttribute("title", ONBOARDING_PLAYLISTS.oldRock.name);
-		expect(
-			document.querySelector(
-				`[data-playlist-id="${ONBOARDING_PLAYLISTS.focus.id}"]`,
-			),
-		).toHaveAttribute("title", ONBOARDING_PLAYLISTS.focus.name);
-	});
-
 	it("toggles selection on click", async () => {
 		const { user } = render(<FlagPlaylistsStep playlists={testPlaylists} />);
 

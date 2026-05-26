@@ -1,7 +1,11 @@
+import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { computeIntentWeight } from "@/lib/domains/taste/playlist-profiling/calculations";
-import { computePlaylistVoices } from "../hooks/usePlaylistVoices";
+import {
+	computePlaylistVoices,
+	usePlaylistVoices,
+} from "../hooks/usePlaylistVoices";
 
 function createPlaylist(overrides: Partial<Playlist>): Playlist {
 	return {
@@ -77,19 +81,28 @@ describe("computePlaylistVoices", () => {
 	});
 
 	it("derives hasDescription from a Playlist by trimming whitespace-only descriptions", () => {
-		const empty = createPlaylist({ song_count: 0, description: "   " });
-		const real = createPlaylist({ song_count: 0, description: "A real one." });
-		const nullDesc = createPlaylist({ song_count: 0, description: null });
+		// song_count is non-zero so hasDescription actually influences the curve;
+		// at 0 songs the cold-start branch ignores it.
+		const whitespace = renderHook(() =>
+			usePlaylistVoices(createPlaylist({ song_count: 50, description: "   " })),
+		).result.current;
+		const real = renderHook(() =>
+			usePlaylistVoices(
+				createPlaylist({ song_count: 50, description: "A real one." }),
+			),
+		).result.current;
+		const nullDesc = renderHook(() =>
+			usePlaylistVoices(createPlaylist({ song_count: 50, description: null })),
+		).result.current;
 
-		// computePlaylistVoices doesn't take a Playlist directly, but the hook does
-		// the trim. Mirror that contract here so we exercise the same edge.
-		const emptyHas = Boolean(empty.description?.trim());
-		const realHas = Boolean(real.description?.trim());
-		const nullHas = Boolean(nullDesc.description?.trim());
+		expect(whitespace.hasDescription).toBe(false);
+		expect(real.hasDescription).toBe(true);
+		expect(nullDesc.hasDescription).toBe(false);
 
-		expect(emptyHas).toBe(false);
-		expect(realHas).toBe(true);
-		expect(nullHas).toBe(false);
+		// Whitespace-only must land on the name-only floor, identical to null —
+		// not the description-present floor.
+		expect(whitespace.vibe).toBeCloseTo(nullDesc.vibe, 10);
+		expect(whitespace.vibe).not.toBeCloseTo(real.vibe, 5);
 	});
 
 	it("songs + vibe always sum to 1", () => {

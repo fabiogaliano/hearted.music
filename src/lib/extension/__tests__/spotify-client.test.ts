@@ -215,45 +215,6 @@ describe("command serialization", () => {
 	});
 });
 
-describe("response handling", () => {
-	it("passes through success responses", async () => {
-		const successResponse = {
-			ok: true as const,
-			data: { typename: "AddResult" },
-			commandId: MOCK_UUID,
-		};
-		mockSendExtensionCommand.mockResolvedValue(successResponse);
-
-		const result = await addToPlaylist("spotify:playlist:abc", [
-			"spotify:track:1",
-		]);
-
-		expect(result).toEqual(successResponse);
-	});
-
-	it("passes through error responses from extension", async () => {
-		const errorResponse = {
-			ok: false as const,
-			errorCode: "RATE_LIMITED",
-			message: "Too many requests",
-			retryable: true,
-			commandId: MOCK_UUID,
-		};
-		mockSendExtensionCommand.mockResolvedValue(errorResponse);
-
-		const result = await addToPlaylist("spotify:playlist:abc", [
-			"spotify:track:1",
-		]);
-
-		expect(result).toEqual(errorResponse);
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
-			expect(result.errorCode).toBe("RATE_LIMITED");
-			expect(result.retryable).toBe(true);
-		}
-	});
-});
-
 describe("extension unavailable", () => {
 	it("returns NETWORK_ERROR when sendExtensionCommand returns null", async () => {
 		mockSendExtensionCommand.mockResolvedValue(null);

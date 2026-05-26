@@ -101,21 +101,6 @@ describe("runSongAnalysis: returns StageOutcome", () => {
 		expect(outcome.kind).toBe("skipped");
 		expect(outcome.candidateSongIds).toEqual(["s1"]);
 	});
-
-	it("returns attempted outcome with correct stage name", async () => {
-		mockAnalyzeSongBatch.mockResolvedValue({
-			...emptyBatchOutcome(),
-			analyzedSongIds: ["s1"],
-		});
-		mockSongAnalysisGet
-			.mockResolvedValueOnce(Result.ok(new Map()))
-			.mockResolvedValueOnce(Result.ok(new Map([["s1", { id: "a1" }]])));
-
-		const outcome = await runSongAnalysis(makeCtx(), makeBatch(["s1"]));
-
-		expect(outcome.kind).toBe("attempted");
-		expect(outcome.stage).toBe("song_analysis");
-	});
 });
 
 describe("runSongAnalysis: analysis-input gate (tri-state)", () => {

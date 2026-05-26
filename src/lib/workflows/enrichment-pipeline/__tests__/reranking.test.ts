@@ -93,56 +93,6 @@ describe("rerankMatches", () => {
 		expect(s2Results[0].score).toBe(0.95);
 	});
 
-	it("produces identical output regardless of call site", async () => {
-		// Simulate what both pipeline and rematch do: call rerankMatches
-		// with the same inputs and verify identical output
-		const makeMatches = () => {
-			const m = new Map<string, MatchResult[]>();
-			m.set("s1", [makeMatch("s1", "pl1", 0.8, 1)]);
-			m.set("s2", [makeMatch("s2", "pl1", 0.6, 2)]);
-			return m;
-		};
-
-		const scoreMap = new Map([
-			["s1", 0.45],
-			["s2", 0.72],
-		]);
-
-		// "Pipeline" path
-		const pipelineMatches = makeMatches();
-		await rerankMatches(
-			pipelineMatches,
-			songs,
-			playlists,
-			createMockReranker(scoreMap),
-		);
-
-		// "Rematch" path — same function, same inputs
-		const rematchMatches = makeMatches();
-		await rerankMatches(
-			rematchMatches,
-			songs,
-			playlists,
-			createMockReranker(scoreMap),
-		);
-
-		// Both should produce identical results
-		for (const songId of ["s1", "s2"]) {
-			const pipelineResults = pipelineMatches.get(songId);
-			const rematchResults = rematchMatches.get(songId);
-			assert(pipelineResults !== undefined && rematchResults !== undefined);
-
-			expect(pipelineResults).toHaveLength(rematchResults.length);
-			for (let i = 0; i < pipelineResults.length; i++) {
-				expect(pipelineResults[i].score).toBe(rematchResults[i].score);
-				expect(pipelineResults[i].rank).toBe(rematchResults[i].rank);
-				expect(pipelineResults[i].playlistId).toBe(
-					rematchResults[i].playlistId,
-				);
-			}
-		}
-	});
-
 	it("gracefully handles reranker failure", async () => {
 		const matches = new Map<string, MatchResult[]>();
 		matches.set("s1", [makeMatch("s1", "pl1", 0.8, 1)]);

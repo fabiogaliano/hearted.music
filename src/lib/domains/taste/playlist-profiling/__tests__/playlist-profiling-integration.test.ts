@@ -293,14 +293,6 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 	});
 
 	describe("Genre distribution", () => {
-		test("genre distribution is computed", () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const profile = profileResult.value;
-			expect(profile.genreDistribution).toBeDefined();
-			expect(typeof profile.genreDistribution).toBe("object");
-		});
-
 		test("genre counts match test data", () => {
 			if (!Result.isOk(profileResult)) return;
 
@@ -424,7 +416,6 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 			if (!Result.isOk(profileResult)) return;
 
 			const profile = profileResult.value;
-			expect(typeof profile.fromCache).toBe("boolean");
 
 			// First computation with skipCache should not be from cache
 			expect(profile.fromCache).toBe(false);

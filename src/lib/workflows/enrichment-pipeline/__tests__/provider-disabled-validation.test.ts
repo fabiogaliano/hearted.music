@@ -565,39 +565,6 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 		});
 	});
 
-	describe("3. Enrichment selector returns all songs with full stage flags", () => {
-		it("all songs get Phase A + B + C + activation flags for self_hosted account", () => {
-			const workPlan = makeFullWorkPlan();
-
-			expect(workPlan.allSongIds).toEqual(["song-1", "song-2", "song-3"]);
-			expect(workPlan.needAudioFeatures).toEqual([
-				"song-1",
-				"song-2",
-				"song-3",
-			]);
-			expect(workPlan.needGenreTagging).toEqual(["song-1", "song-2", "song-3"]);
-			expect(workPlan.needAnalysis).toEqual(["song-1", "song-2", "song-3"]);
-			expect(workPlan.needEmbedding).toEqual(["song-1", "song-2", "song-3"]);
-			expect(workPlan.needContentActivation).toEqual([
-				"song-1",
-				"song-2",
-				"song-3",
-			]);
-		});
-
-		it("per-song flags are all true for entitled self_hosted songs", () => {
-			const workPlan = makeFullWorkPlan();
-
-			for (const flag of workPlan.flags) {
-				expect(flag.needsAudioFeatures).toBe(true);
-				expect(flag.needsGenreTagging).toBe(true);
-				expect(flag.needsAnalysis).toBe(true);
-				expect(flag.needsEmbedding).toBe(true);
-				expect(flag.needsContentActivation).toBe(true);
-			}
-		});
-	});
-
 	describe("4. Full pipeline runs all phases (A + B + C + activation)", () => {
 		it("orchestrator runs all four enrichment stages for self_hosted account", async () => {
 			const result = await executeWorkerChunk(ACCOUNT_ID, "job-1", 50, 0);
@@ -639,59 +606,7 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 		});
 	});
 
-	describe("5. Content activation behavior for self_hosted", () => {
-		it("self_hosted billing state routes to self_hosted activation path", () => {
-			expect(selfHostedBillingState.unlimitedAccess.kind).toBe("self_hosted");
-		});
-
-		it("self_hosted activation writes account_item_newness via markItemsNew", async () => {
-			// Directly test the content-activation module behavior via
-			// the billing state assertions — the mock structure verifies:
-			// 1. readBillingState returns self_hosted
-			// 2. activateForSelfHosted calls markItemsNew + insert_song_unlocks_without_charge
-			// This is covered by content-activation.test.ts (S3-04) with:
-			//   - mockMarkItemsNew called with (accountId, "song", songIds)
-			//   - mockRpc called with ("insert_song_unlocks_without_charge",
-			//     { p_account_id, p_song_ids, p_source: "self_hosted" })
-			expect(selfHostedBillingState.unlimitedAccess.kind).toBe("self_hosted");
-		});
-
-		it("unlock rows use source='self_hosted' (not 'subscription' or other)", () => {
-			// The content-activation module's activateForSelfHosted always passes
-			// p_source: "self_hosted" to insert_song_unlocks_without_charge.
-			// Verified in content-activation.test.ts and here via billing state.
-			expect(selfHostedBillingState.unlimitedAccess.kind).toBe("self_hosted");
-			expect(selfHostedBillingState.unlimitedAccess.kind).not.toBe(
-				"subscription",
-			);
-		});
-	});
-
 	describe("6. No regressions: self_hosted equivalent to pre-billing full-library", () => {
-		it("self_hosted billing state has unlimited access", () => {
-			expect(selfHostedBillingState.unlimitedAccess.kind).not.toBe("none");
-			expect(selfHostedBillingState.unlimitedAccess.kind).toBe("self_hosted");
-		});
-
-		it("queue band is priority for self_hosted (fast processing)", () => {
-			expect(selfHostedBillingState.queueBand).toBe("priority");
-		});
-
-		it("all songs are entitled — none gated from Phase B/C", () => {
-			const workPlan = makeFullWorkPlan();
-
-			const gatedOutSongs = workPlan.flags.filter(
-				(f) => !f.needsAnalysis || !f.needsEmbedding,
-			);
-			expect(gatedOutSongs).toHaveLength(0);
-		});
-
-		it("content activation runs for all songs (none skipped due to entitlement)", () => {
-			const workPlan = makeFullWorkPlan();
-
-			expect(workPlan.needContentActivation).toEqual(workPlan.allSongIds);
-		});
-
 		it("orchestrator processes same count as pre-billing (all songs)", async () => {
 			const result = await executeWorkerChunk(ACCOUNT_ID, "job-1", 50, 0);
 

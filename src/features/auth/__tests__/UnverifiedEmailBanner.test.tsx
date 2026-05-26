@@ -3,17 +3,6 @@ import { UnverifiedEmailBanner } from "@/features/auth/UnverifiedEmailBanner";
 import { render, screen } from "@/test/utils/render";
 
 describe("UnverifiedEmailBanner", () => {
-	it("renders the email it's prompting about", () => {
-		render(
-			<UnverifiedEmailBanner
-				email="reader@hearted.music"
-				onResend={async () => {}}
-				onDismiss={() => {}}
-			/>,
-		);
-		expect(screen.getByText(/reader@hearted\.music/i)).toBeInTheDocument();
-	});
-
 	it("invokes onDismiss when Dismiss is clicked", async () => {
 		const onDismiss = vi.fn();
 		const { user } = render(

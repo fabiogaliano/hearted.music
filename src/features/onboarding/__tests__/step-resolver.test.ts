@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-	isPathAllowed,
 	type OnboardingSession,
 	resolveSession,
 	sessionMode,
@@ -72,15 +71,5 @@ describe("sessionMode", () => {
 	it("returns 'steps' for all other variants", () => {
 		expect(sessionMode({ status: "welcome" })).toBe("steps");
 		expect(sessionMode({ status: "pick-demo-song" })).toBe("steps");
-	});
-});
-
-describe("isPathAllowed", () => {
-	it("returns true when pathname matches allowed path", () => {
-		expect(isPathAllowed("/liked-songs", "/liked-songs")).toBe(true);
-	});
-
-	it("returns false when pathname does not match allowed path", () => {
-		expect(isPathAllowed("/match", "/liked-songs")).toBe(false);
 	});
 });

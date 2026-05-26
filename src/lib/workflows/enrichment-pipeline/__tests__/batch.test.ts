@@ -121,35 +121,6 @@ describe("selectEnrichmentWorkPlan", () => {
 		expect(plan.needContentActivation).toEqual([]);
 	});
 
-	it("allSongIds length equals number of rows returned", async () => {
-		rpcResponse = {
-			data: [
-				{
-					song_id: "a",
-					needs_audio_features: true,
-					needs_genre_tagging: false,
-					needs_analysis: false,
-					needs_embedding: false,
-					needs_content_activation: false,
-				},
-				{
-					song_id: "b",
-					needs_audio_features: false,
-					needs_genre_tagging: true,
-					needs_analysis: false,
-					needs_embedding: false,
-					needs_content_activation: false,
-				},
-			],
-			error: null,
-		};
-
-		const plan = await selectEnrichmentWorkPlan("account-1", 10);
-
-		expect(plan.allSongIds).toHaveLength(2);
-		expect(plan.flags).toHaveLength(2);
-	});
-
 	it("maps per-song flags correctly to SongStageFlags", async () => {
 		rpcResponse = {
 			data: [

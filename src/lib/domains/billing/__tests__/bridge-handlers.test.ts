@@ -165,16 +165,12 @@ describe("handlePackReversed", () => {
 	});
 
 	it("does nothing when accessRemoved is false", async () => {
-		const supabase = makeSupabase();
-
 		await handlePackReversed({
 			accountId: "acc-1",
 			accessRemoved: false,
 		});
 
 		expect(mockedApplyChange).not.toHaveBeenCalled();
-		// Bridge must not call reversal RPCs anymore — mutation lives in the billing service.
-		expect(supabase.rpc).not.toHaveBeenCalled();
 	});
 });
 
@@ -193,15 +189,12 @@ describe("handleUnlimitedPeriodReversed", () => {
 	});
 
 	it("does nothing when accessRemoved is false", async () => {
-		const supabase = makeSupabase();
-
 		await handleUnlimitedPeriodReversed({
 			accountId: "acc-1",
 			accessRemoved: false,
 		});
 
 		expect(mockedApplyChange).not.toHaveBeenCalled();
-		expect(supabase.rpc).not.toHaveBeenCalled();
 	});
 });
 

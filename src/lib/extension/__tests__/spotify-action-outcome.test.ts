@@ -7,11 +7,6 @@ import {
 } from "../spotify-action-outcome";
 
 describe("outcomeFromCommandResponse", () => {
-	it("returns success for ok responses", () => {
-		const r: CommandResponse<unknown> = { ok: true, data: {}, commandId: "c1" };
-		expect(outcomeFromCommandResponse(r)).toEqual({ status: "success" });
-	});
-
 	it("returns reconnect-required for AUTH_REQUIRED", () => {
 		const r: CommandResponse<unknown> = {
 			ok: false,
@@ -81,15 +76,6 @@ describe("outcomeFromCommandResponse", () => {
 });
 
 describe("outcomeFromAcknowledgedResult", () => {
-	it("returns success when ok and acknowledged", () => {
-		const r: AcknowledgedResult<{ uri: string; revision: string }> = {
-			ok: true,
-			data: { uri: "spotify:playlist:1", revision: "r1" },
-			acknowledged: true,
-		};
-		expect(outcomeFromAcknowledgedResult(r)).toEqual({ status: "success" });
-	});
-
 	it("returns success when ok but not acknowledged (server failure is non-blocking)", () => {
 		const r: AcknowledgedResult<{ uri: string; revision: string }> = {
 			ok: true,

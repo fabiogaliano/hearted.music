@@ -114,7 +114,6 @@ describe("EnrichmentChunkProgressSchema", () => {
 
 		const result = EnrichmentChunkProgressSchema.parse(progress);
 		const audioFeatures = result.stages.audio_features;
-		expect(audioFeatures).toBeDefined();
 		expect(audioFeatures?.succeeded).toBe(0);
 		expect(audioFeatures?.failed).toBe(0);
 	});

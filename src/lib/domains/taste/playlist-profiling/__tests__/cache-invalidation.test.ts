@@ -89,14 +89,16 @@ describe("playlist profile cache invalidation", () => {
 		expect(a).toBe(b);
 	});
 
-	it("profile version bump changes contentHash prefix", async () => {
+	it("namespaces contentHash with a profile-version prefix so versions can't collide", async () => {
 		const params = {
 			playlistId: "pl-1",
 			songIds: ["s1"],
 		};
 
 		const hash = await hashPlaylistProfile(params);
-		// contentHash embeds PLAYLIST_PROFILE_VERSION in its prefix
-		expect(hash).toMatch(/^pp_v3_/);
+		// The version number itself is asserted by the modelBundleHash tests; here
+		// we only guard that the prefix mechanism stays in place (matching the
+		// literal v3 would just mirror PLAYLIST_PROFILE_VERSION and break on bumps).
+		expect(hash).toMatch(/^pp_v\d+_/);
 	});
 });
