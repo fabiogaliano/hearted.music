@@ -56,7 +56,11 @@ if (isTest) {
 		SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
 		BETTER_AUTH_SECRET: "test-better-auth-secret-0000000000000000",
 		BETTER_AUTH_URL: "http://localhost:3000",
-		DATABASE_URL: "postgresql://postgres:postgres@localhost:54322/postgres",
+		// Host must NOT look local: security-invariants.integration.test.ts
+		// runs only when DATABASE_URL points at localhost/127.0.0.1, and is
+		// meant to run solely in the db-security job (which sets a real one).
+		DATABASE_URL:
+			"postgresql://placeholder:placeholder@db.placeholder.test:5432/placeholder",
 	};
 	for (const [key, value] of Object.entries(testEnvDefaults)) {
 		if (!process.env[key]) process.env[key] = value;
