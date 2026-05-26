@@ -1,3 +1,13 @@
+import type {
+	ExtensionSyncBackendFailureCode,
+	ExtensionSyncRequestResult,
+	ExtensionSyncBackendFailure as SyncBackendFailure,
+} from "../../../shared/extension-sync-contract";
+import {
+	EXTENSION_SYNC_ALREADY_RUNNING,
+	EXTENSION_SYNC_COOLDOWN,
+	EXTENSION_SYNC_UNKNOWN_FAILURE,
+} from "../../../shared/extension-sync-contract";
 import { parseSpotifyCommand } from "../../../shared/spotify-command-protocol";
 import { DEFAULT_BACKEND_URL } from "../shared/constants";
 import { updateHash } from "../shared/hash-registry";
@@ -300,17 +310,72 @@ async function postToBackend(
 	});
 }
 
-type SyncResult = {
-	count: number;
-	backendResult?: unknown;
-	backendError?: string;
-};
+type SyncResult =
+	| {
+			kind: "success";
+			count: number;
+			backendResult?: unknown;
+	  }
+	| {
+			kind: "backend-failure";
+			count: number;
+			failure: SyncBackendFailure;
+	  };
+
+function isBackendFailureCode(
+	value: unknown,
+): value is ExtensionSyncBackendFailureCode {
+	return (
+		value === EXTENSION_SYNC_ALREADY_RUNNING ||
+		value === EXTENSION_SYNC_COOLDOWN ||
+		value === EXTENSION_SYNC_UNKNOWN_FAILURE
+	);
+}
+
+function parseRetryAfterSeconds(value: unknown): number | null {
+	if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+		return null;
+	}
+	return Math.ceil(value);
+}
+
+function parseBackendFailure(
+	status: number,
+	payload: unknown,
+	response: Response,
+): SyncBackendFailure {
+	const retryAfterHeader = response.headers.get("Retry-After");
+	const retryAfterFromHeader = retryAfterHeader
+		? parseRetryAfterSeconds(Number(retryAfterHeader))
+		: null;
+
+	if (typeof payload !== "object" || payload === null) {
+		return {
+			status,
+			code: EXTENSION_SYNC_UNKNOWN_FAILURE,
+			message: null,
+			retryAfterSeconds: retryAfterFromHeader,
+		};
+	}
+
+	const code = Reflect.get(payload, "code");
+	const error = Reflect.get(payload, "error");
+	const retryAfterSeconds = parseRetryAfterSeconds(
+		Reflect.get(payload, "retryAfterSeconds"),
+	);
+
+	return {
+		status,
+		code: isBackendFailureCode(code) ? code : EXTENSION_SYNC_UNKNOWN_FAILURE,
+		message: typeof error === "string" ? error : null,
+		retryAfterSeconds: retryAfterSeconds ?? retryAfterFromHeader,
+	};
+}
 
 async function performSync(): Promise<SyncResult> {
 	if (!isTokenValid()) throw new Error("No valid token");
 	if (isSyncing) {
-		console.log("[hearted.] Sync already in progress, skipping");
-		return { count: 0 };
+		throw new Error("Sync already in progress");
 	}
 	isSyncing = true;
 	const token = (cachedToken as SpotifyTokenPayload).accessToken;
@@ -455,19 +520,30 @@ async function performSync(): Promise<SyncResult> {
 					lastSyncAt: Date.now(),
 				});
 				console.log("[hearted.] Backend sync result:", result);
-				return { count: likedSongs.length, backendResult: result };
-			} else {
-				await setSyncState({
-					status: "error",
-					error: `Backend HTTP ${res.status}`,
-				});
-				console.warn(`[hearted.] Backend sync failed: ${res.status}`);
-				return { count: likedSongs.length, backendError: `HTTP ${res.status}` };
+				return {
+					kind: "success",
+					count: likedSongs.length,
+					backendResult: result,
+				};
 			}
+
+			let payload: unknown = null;
+			try {
+				payload = await res.json();
+			} catch {
+				payload = null;
+			}
+			const failure = parseBackendFailure(res.status, payload, res);
+			await setSyncState({
+				status: "error",
+				error: failure.message ?? `Backend HTTP ${res.status}`,
+			});
+			console.warn("[hearted.] Backend sync failed:", failure);
+			return { kind: "backend-failure", count: likedSongs.length, failure };
 		} catch {
 			await setSyncState({ status: "error", error: "Backend unreachable" });
 			console.warn("[hearted.] Backend unreachable");
-			return { count: likedSongs.length, backendError: "unreachable" };
+			throw new Error("Backend unreachable");
 		}
 	} catch (err) {
 		const error = err instanceof Error ? err.message : "Unknown error";
@@ -925,10 +1001,30 @@ chrome.runtime.onMessage.addListener(
 				(async () => {
 					try {
 						const result = await performSync();
-						sendResponse({ ok: true, ...result });
+						if (result.kind === "success") {
+							const response: ExtensionSyncRequestResult = {
+								ok: true,
+								count: result.count,
+								backendResult: result.backendResult,
+							};
+							sendResponse(response);
+							return;
+						}
+						const response: ExtensionSyncRequestResult = {
+							ok: false,
+							source: "backend",
+							count: result.count,
+							backendFailure: result.failure,
+						};
+						sendResponse(response);
 					} catch (err) {
 						const error = err instanceof Error ? err.message : "Unknown error";
-						sendResponse({ ok: false, error });
+						const response: ExtensionSyncRequestResult = {
+							ok: false,
+							source: "extension",
+							error,
+						};
+						sendResponse(response);
 					}
 				})();
 				return true;

@@ -3,6 +3,12 @@
  * Uses PING/PONG pattern to check if the hearted. Chrome extension is installed.
  */
 
+import type {
+	ExtensionSyncBackendFailure,
+	ExtensionSyncBackendFailureCode,
+	ExtensionSyncRequestResult,
+} from "../../../shared/extension-sync-contract";
+
 declare const chrome: {
 	runtime?: {
 		sendMessage: (
@@ -49,6 +55,8 @@ export type ExtensionStatusResponse = {
 	tokenExpiresAtMs: number | null;
 	sync: ExtensionSyncState;
 };
+
+export type { ExtensionSyncBackendFailure, ExtensionSyncBackendFailureCode };
 
 export async function sendExtensionCommand<T = unknown>(
 	message: Record<string, unknown>,
@@ -163,6 +171,21 @@ export function triggerExtensionSync(): void {
 	} catch {
 		// fire-and-forget — sync call doesn't return a promise
 	}
+}
+
+/** Awaited outcome of a TRIGGER_SYNC command (mirrors the service worker reply). */
+export type { ExtensionSyncRequestResult };
+
+/**
+ * Awaited TRIGGER_SYNC. Unlike `triggerExtensionSync` (fire-and-forget, right
+ * for onboarding's retry loop), the dashboard needs the command's outcome to
+ * drive its CTA state. Returns `null` only when the extension is unreachable —
+ * a reachable extension always resolves to an `ok`/`error` envelope.
+ */
+export async function requestExtensionSync(): Promise<ExtensionSyncRequestResult | null> {
+	return sendExtensionCommand<ExtensionSyncRequestResult>({
+		type: "TRIGGER_SYNC",
+	});
 }
 
 export async function isExtensionInstalled(): Promise<boolean> {

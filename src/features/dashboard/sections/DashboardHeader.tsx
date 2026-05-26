@@ -1,9 +1,10 @@
-/** Welcome greeting with stats and sync button. */
+/** Welcome greeting with stats and the inline sync control. */
 
-import { Button } from "@/components/ui/Button";
 import { ClientNumberFlow } from "@/features/matching/components/ClientNumberFlow";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { fonts } from "@/lib/theme/fonts";
+import { DashboardSyncControl } from "../components/DashboardSyncControl";
+import { useDashboardSync } from "../hooks/useDashboardSync";
 import type { DashboardStats } from "../types";
 
 interface DashboardHeaderProps {
@@ -20,6 +21,8 @@ export function DashboardHeader({
 	lastSyncText,
 }: DashboardHeaderProps) {
 	const { isEnrichmentRunning, enrichmentProgress } = useActiveJobs(accountId);
+	const { state: syncState, onAction: onSyncAction } =
+		useDashboardSync(accountId);
 
 	const analyzedPercent = enrichmentProgress
 		? enrichmentProgress.total > 0
@@ -76,9 +79,7 @@ export function DashboardHeader({
 					<span className="theme-text-muted-bg size-1.5 rounded-full" />
 					{lastSyncText}
 				</span>
-				<Button variant="link" size="sm" style={{ fontFamily: fonts.body }}>
-					Sync
-				</Button>
+				<DashboardSyncControl state={syncState} onAction={onSyncAction} />
 			</div>
 		</div>
 	);

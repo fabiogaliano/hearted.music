@@ -4,20 +4,15 @@
  */
 
 import { ArrowRightIcon } from "@phosphor-icons/react";
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
-import {
-	type ExtensionSyncState,
-	getExtensionStatus,
-	triggerExtensionSync,
-} from "@/lib/extension/detect";
+import type { ExtensionSyncState } from "@/lib/extension/detect";
+import { useExtensionSyncStatus } from "@/lib/extension/useExtensionSyncStatus";
 import { useSmoothProgress } from "@/lib/hooks/useSmoothProgress";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import { fonts } from "@/lib/theme/fonts";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 
-const EXTENSION_STATUS_POLL_MS = 1_000;
-const SYNC_TRIGGER_RETRY_MS = 2_000;
 const UPLOAD_PHASE_WEIGHT = 0.08;
 
 const COUNTER_KEYS = [
@@ -44,49 +39,6 @@ type PhaseCounter = {
 
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(max, Math.max(min, value));
-}
-
-function useExtensionSyncStatus(): ExtensionSyncState | null {
-	const [syncState, setSyncState] = useState<ExtensionSyncState | null>(null);
-	const latestStateRef = useRef<ExtensionSyncState | null>(null);
-
-	useEffect(() => {
-		let isCancelled = false;
-
-		const pollStatus = async () => {
-			const response = await getExtensionStatus();
-			if (isCancelled) {
-				return;
-			}
-
-			const nextState = response?.sync ?? null;
-			latestStateRef.current = nextState;
-			setSyncState(nextState);
-		};
-
-		const triggerIfIdle = () => {
-			const status = latestStateRef.current?.status;
-			if (status == null || status === "idle") {
-				triggerExtensionSync();
-			}
-		};
-
-		triggerExtensionSync();
-		void pollStatus();
-
-		const pollInterval = setInterval(() => {
-			void pollStatus();
-		}, EXTENSION_STATUS_POLL_MS);
-		const triggerInterval = setInterval(triggerIfIdle, SYNC_TRIGGER_RETRY_MS);
-
-		return () => {
-			isCancelled = true;
-			clearInterval(pollInterval);
-			clearInterval(triggerInterval);
-		};
-	}, []);
-
-	return syncState;
 }
 
 function calculateCombinedProgress(
@@ -200,7 +152,7 @@ interface SyncingStepProps {
 
 export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
 	const { goToStep } = useOnboardingNavigation();
-	const syncState = useExtensionSyncStatus();
+	const { sync: syncState } = useExtensionSyncStatus({ autoTrigger: true });
 
 	const { phaseCounts, counters } = useMemo(() => {
 		const counts = {

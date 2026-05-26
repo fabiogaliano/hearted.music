@@ -15,8 +15,8 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/kbd";
+import { pairExtension } from "@/lib/extension/connect";
 import {
-	connectExtension,
 	getSpotifyConnectionStatus,
 	isExtensionInstalled,
 	triggerExtensionSync,
@@ -185,15 +185,15 @@ export function InstallExtensionStep() {
 
 	const handleAccept = useCallback(async () => {
 		setIsAdvancing(true);
+		const paired = await pairExtension();
+		if (!paired.ok) {
+			console.error("[hearted.] handleAccept failed:", paired.error);
+			toast.error("Couldn't connect the extension. Please try again.");
+			setIsAdvancing(false);
+			return;
+		}
+
 		try {
-			const res = await fetch("/api/extension/token", { method: "POST" });
-			if (!res.ok) throw new Error(`Token request failed: ${res.status}`);
-			const { token } = await res.json();
-			if (!token) throw new Error("No token in response");
-
-			const connected = await connectExtension(token, window.location.origin);
-			if (!connected) throw new Error("Extension did not acknowledge CONNECT");
-
 			// Clear stale phaseJobIds so SyncingStep starts fresh ("Waiting for extension")
 			// instead of subscribing to stale jobs from a previous run.
 			await resetSyncJobs();
