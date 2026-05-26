@@ -27,6 +27,39 @@ export default defineConfig({
 					),
 				),
 			},
+			// `cloudflare:workers` is a workerd-only runtime module that
+			// @cloudflare/vite-plugin provides in the app build. Ladle doesn't run
+			// that plugin, so the dep scanner can't resolve the dynamic import in
+			// auth-request-state.ts. Reuse the test stub (no-op waitUntil, empty env).
+			{
+				find: "cloudflare:workers",
+				replacement: fileURLToPath(
+					new URL("./src/test/cloudflare-workers.stub.ts", import.meta.url),
+				),
+			},
+			// TanStack Start's start-storage-context runs `new AsyncLocalStorage()`
+			// at module load. The app build strips that server module via the Start
+			// Vite plugin, but Ladle doesn't run it — so the module reaches the
+			// browser, where Vite externalizes node:async_hooks to a stub whose
+			// AsyncLocalStorage isn't constructable, crashing any story that imports
+			// a server function. This shim makes construction a no-op; handlers are
+			// RPC callers that never execute in Ladle, so run/getStore stay unused.
+			{
+				find: "node:async_hooks",
+				replacement: fileURLToPath(
+					new URL("./src/test/async-hooks.stub.ts", import.meta.url),
+				),
+			},
+			// Every server function attaches authMiddleware, whose .server() body
+			// pulls better-auth (and its Node `Buffer` usage) into the browser.
+			// Stubbing the middleware cuts that graph for all server functions at
+			// once, so individual function modules can bundle harmlessly.
+			{
+				find: /^@\/lib\/platform\/auth\/auth\.middleware$/,
+				replacement: fileURLToPath(
+					new URL("./src/__mocks__/auth.middleware.stub.ts", import.meta.url),
+				),
+			},
 			// Server function modules that transitively pull in Node.js-only
 			// packages (better-auth, postgres, drizzle) via the auth chain.
 			{

@@ -1,4 +1,5 @@
 import type { GlobalProvider } from "@ladle/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
 	createMemoryHistory,
 	createRootRoute,
@@ -15,6 +16,15 @@ import "./ladle.css";
 import "@/styles.css";
 
 const THEME_COLORS: ThemeColor[] = ["blue", "green", "rose", "lavender"];
+
+// Components like DashboardHeader read React Query (useActiveJobs, useDashboardSync).
+// Server functions can't run in Ladle, so disable retries and refetching — stories
+// that need seeded data nest their own QueryClientProvider over this one.
+const storyQueryClient = new QueryClient({
+	defaultOptions: {
+		queries: { retry: false, refetchOnWindowFocus: false, gcTime: Infinity },
+	},
+});
 
 function StoryRouter({ children }: { children: React.ReactNode }) {
 	const rootRoute = createRootRoute({
@@ -56,20 +66,22 @@ export const Provider: GlobalProvider = ({ children, globalState }) => {
 	const theme = getTheme(themeColor);
 
 	return (
-		<ThemeHueProvider theme={theme}>
-			<div
-				style={{
-					background: theme.bg,
-					color: theme.text,
-					minHeight: "100vh",
-					padding: 0,
-				}}
-			>
-				<KeyboardShortcutProvider>
-					<StoryRouter>{children}</StoryRouter>
-				</KeyboardShortcutProvider>
-			</div>
-		</ThemeHueProvider>
+		<QueryClientProvider client={storyQueryClient}>
+			<ThemeHueProvider theme={theme}>
+				<div
+					style={{
+						background: theme.bg,
+						color: theme.text,
+						minHeight: "100vh",
+						padding: 0,
+					}}
+				>
+					<KeyboardShortcutProvider>
+						<StoryRouter>{children}</StoryRouter>
+					</KeyboardShortcutProvider>
+				</div>
+			</ThemeHueProvider>
+		</QueryClientProvider>
 	);
 };
 
