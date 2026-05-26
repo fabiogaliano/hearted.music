@@ -165,6 +165,8 @@ jobs:
           VITE_APP_TITLE: ${{ vars.VITE_APP_TITLE }}
           VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: ${{ vars.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN }}
           VITE_PUBLIC_POSTHOG_HOST: ${{ vars.VITE_PUBLIC_POSTHOG_HOST }}
+          # Canonical release: Sentry tag + sourcemap name + PostHog app_release.
+          VITE_APP_RELEASE: ${{ github.sha }}
 
   deploy-worker:
     needs: [detect, verify]

@@ -27,6 +27,8 @@ export default Sentry.withSentry(
 	(env: WorkerEnv) => ({
 		dsn: env.SENTRY_DSN,
 		environment: env.SENTRY_ENVIRONMENT ?? "production",
+		// Vite inlines this at build, matching the browser + sourcemap release.
+		release: import.meta.env.VITE_APP_RELEASE,
 		tracesSampleRate: 0.05,
 		sendDefaultPii: false,
 		enableLogs: false,

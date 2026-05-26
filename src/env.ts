@@ -60,6 +60,8 @@ export const env = createEnv({
 		// Worker env binding (wrangler secret), not process.env.
 		VITE_SENTRY_DSN: z.url().optional(),
 		VITE_SENTRY_ENVIRONMENT: z.string().min(1).optional(),
+		// Git SHA stamped at build; canonical release for Sentry + PostHog.
+		VITE_APP_RELEASE: z.string().min(1).optional(),
 	},
 
 	/**
@@ -104,6 +106,7 @@ export const env = createEnv({
 		VITE_PUBLIC_POSTHOG_HOST: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
 		VITE_SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN,
 		VITE_SENTRY_ENVIRONMENT: import.meta.env.VITE_SENTRY_ENVIRONMENT,
+		VITE_APP_RELEASE: import.meta.env.VITE_APP_RELEASE,
 	},
 
 	emptyStringAsUndefined: true,

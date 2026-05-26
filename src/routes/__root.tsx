@@ -89,7 +89,13 @@ function buildPostHogOptions(
 		defaults: "2025-05-24",
 		capture_exceptions: true,
 		debug: import.meta.env.DEV,
-		loaded: linkPostHogToSentry,
+		loaded: (posthog) => {
+			// Segment analytics by deploy — PostHog's equivalent of a release tag.
+			if (clientEnv.VITE_APP_RELEASE) {
+				posthog.register({ app_release: clientEnv.VITE_APP_RELEASE });
+			}
+			linkPostHogToSentry(posthog);
+		},
 		// Keep PostHog's own explicit opt-in marker on a versioned cookie with the
 		// same lifetime as our app cookie. That prevents an old SDK-side grant from
 		// surviving a consent expiry or policy-version bump before ConsentProvider

@@ -34,6 +34,8 @@ export function initSentry(router: AnyRouter): void {
 	Sentry.init({
 		dsn: clientEnv.VITE_SENTRY_DSN,
 		environment: clientEnv.VITE_SENTRY_ENVIRONMENT ?? import.meta.env.MODE,
+		// Must match the plugin's sourcemap release or prod traces stay minified.
+		release: clientEnv.VITE_APP_RELEASE,
 		// Same-origin tunnel sidesteps ad-blockers in both dev and prod.
 		tunnel: "/api/sentry-tunnel",
 		integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],

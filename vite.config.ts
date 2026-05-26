@@ -179,6 +179,8 @@ export default defineConfig(({ command }) => {
 					org: "f-inc",
 					project: "hearted-music",
 					authToken: sentryAuthToken,
+					// Pin to the inlined SHA so sourcemaps resolve; else git auto-detect.
+					release: { name: process.env.VITE_APP_RELEASE },
 				}),
 		].filter(Boolean),
 	};

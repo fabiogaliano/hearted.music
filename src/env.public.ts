@@ -22,4 +22,5 @@ export const clientEnv = {
 	VITE_SENTRY_ORG_SLUG: readOptionalClientEnv(
 		import.meta.env.VITE_SENTRY_ORG_SLUG,
 	),
+	VITE_APP_RELEASE: readOptionalClientEnv(import.meta.env.VITE_APP_RELEASE),
 } as const;
