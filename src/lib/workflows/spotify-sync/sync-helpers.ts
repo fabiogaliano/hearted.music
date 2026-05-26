@@ -220,10 +220,17 @@ export async function runPhase<T>(
 	const result = await syncFn();
 
 	if (Result.isError(result)) {
-		await failJob(jobId, result.error.message);
+		const failResult = await failJob(jobId, result.error.message);
+		if (Result.isError(failResult)) {
+			return Result.err(failResult.error);
+		}
 		return result;
 	}
 
-	await completeJob(jobId);
+	const completeResult = await completeJob(jobId);
+	if (Result.isError(completeResult)) {
+		return Result.err(completeResult.error);
+	}
+
 	return result;
 }

@@ -1214,6 +1214,27 @@ export type Database = {
 					},
 				];
 			};
+			rate_limit: {
+				Row: {
+					count: number | null;
+					id: string;
+					key: string | null;
+					last_request: number | null;
+				};
+				Insert: {
+					count?: number | null;
+					id: string;
+					key?: string | null;
+					last_request?: number | null;
+				};
+				Update: {
+					count?: number | null;
+					id?: string;
+					key?: string | null;
+					last_request?: number | null;
+				};
+				Relationships: [];
+			};
 			session: {
 				Row: {
 					created_at: string;
@@ -2162,6 +2183,32 @@ export type Database = {
 			};
 			mark_dead_walkthrough_preview_jobs: {
 				Args: { stale_threshold: string };
+				Returns: {
+					account_id: string;
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error: string | null;
+					heartbeat_at: string | null;
+					id: string;
+					max_attempts: number;
+					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
+					started_at: string | null;
+					status: Database["public"]["Enums"]["job_status"];
+					type: Database["public"]["Enums"]["job_type"];
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
+			mark_stale_extension_sync_jobs: {
+				Args: { p_account_id: string; p_stale_threshold: string };
 				Returns: {
 					account_id: string;
 					attempts: number;

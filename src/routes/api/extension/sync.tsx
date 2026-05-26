@@ -27,9 +27,14 @@ import {
 } from "@/lib/domains/library/playlists/queries";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import { validateExtensionApiToken } from "@/lib/platform/auth/extension-api-tokens";
-import { completeJob, startJob } from "@/lib/platform/jobs/lifecycle";
+import { completeJob, failJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import { createJob } from "@/lib/platform/jobs/repository";
+import {
+	getActiveSync,
+	getLastCompletedSync,
+	markStaleSyncJobs,
+} from "@/lib/platform/jobs/sync-phase-jobs";
 import {
 	extensionCorsPreflightResponse,
 	getExtensionCorsHeaders,
@@ -51,6 +56,10 @@ import type {
 	SpotifyTrackDTO,
 } from "@/lib/workflows/spotify-sync/types";
 import { captureWithWaitUntil } from "@/utils/posthog-server";
+import {
+	EXTENSION_SYNC_ALREADY_RUNNING,
+	EXTENSION_SYNC_COOLDOWN,
+} from "../../../../shared/extension-sync-contract";
 
 const SpotifyTrackDTOSchema = z.object({
 	added_at: z.string(),
@@ -102,6 +111,14 @@ const MAX_LIKED_SONGS = 50_000;
 const MAX_PLAYLISTS = 11_000;
 const MAX_TRACKS_PER_PLAYLIST = 10_000;
 const MAX_SYNC_BODY_BYTES = 20 * 1024 * 1024;
+const SYNC_COOLDOWN_MS = 60_000;
+
+// Sync jobs are inline request work with no worker sweep. If a request dies
+// after creating phase jobs, the rows stay active and lock getActiveSync's
+// gate. A request that legitimately takes this long is already lost, so any
+// sync_* job older than this is safe to fail before a fresh attempt. Comfortably
+// above any real sync duration.
+const SYNC_STALE_THRESHOLD = "10 minutes";
 
 const PlaylistTrackEntrySchema = z.object({
 	playlistSpotifyId: z.string(),
@@ -125,6 +142,10 @@ const SyncPayloadSchema = z.object({
 		})
 		.optional(),
 });
+
+function getRetryAfterSeconds(remainingMs: number): number {
+	return Math.max(1, Math.ceil(remainingMs / 1000));
+}
 
 export const Route = createFileRoute("/api/extension/sync")({
 	server: {
@@ -153,6 +174,73 @@ export const Route = createFileRoute("/api/extension/sync")({
 						{ error: "Not authenticated" },
 						{ status: 401, headers: corsHeaders },
 					);
+				}
+
+				// Self-heal before the active gate: fail any sync_* jobs orphaned by a
+				// prior request that died mid-flight, so getActiveSync reflects reality
+				// instead of locking the account into a permanent 429. Best-effort —
+				// a cleanup failure shouldn't block a legitimate sync.
+				const staleCleanupResult = await markStaleSyncJobs(
+					accountId,
+					SYNC_STALE_THRESHOLD,
+				);
+				if (Result.isError(staleCleanupResult)) {
+					console.warn(
+						"Failed to clean up stale sync jobs:",
+						staleCleanupResult.error,
+					);
+				}
+
+				const [activeSyncResult, lastCompletedSyncResult] = await Promise.all([
+					getActiveSync(accountId),
+					getLastCompletedSync(accountId),
+				]);
+
+				if (
+					Result.isError(activeSyncResult) ||
+					Result.isError(lastCompletedSyncResult)
+				) {
+					return Response.json(
+						{ error: "Failed to inspect recent sync activity" },
+						{ status: 500, headers: corsHeaders },
+					);
+				}
+
+				if (activeSyncResult.value) {
+					return Response.json(
+						{
+							code: EXTENSION_SYNC_ALREADY_RUNNING,
+							error:
+								"A library sync is already running for this account. Wait for it to finish before trying again.",
+						},
+						{ status: 429, headers: corsHeaders },
+					);
+				}
+
+				const lastCompletedSync = lastCompletedSyncResult.value;
+				const lastCompletedAt = lastCompletedSync?.completed_at;
+				if (typeof lastCompletedAt === "string") {
+					const elapsedMs = Date.now() - new Date(lastCompletedAt).getTime();
+					if (elapsedMs < SYNC_COOLDOWN_MS) {
+						const retryAfterSeconds = getRetryAfterSeconds(
+							SYNC_COOLDOWN_MS - elapsedMs,
+						);
+						return Response.json(
+							{
+								code: EXTENSION_SYNC_COOLDOWN,
+								error:
+									"Library sync was run too recently for this account. Wait before trying again.",
+								retryAfterSeconds,
+							},
+							{
+								status: 429,
+								headers: {
+									...corsHeaders,
+									"Retry-After": String(retryAfterSeconds),
+								},
+							},
+						);
+					}
 				}
 
 				const declaredLength = Number(request.headers.get("content-length"));
@@ -259,6 +347,18 @@ export const Route = createFileRoute("/api/extension/sync")({
 					Result.isError(playlistsJobResult) ||
 					Result.isError(tracksJobResult)
 				) {
+					// A partial batch leaves the created siblings pending; fail them so
+					// they don't lock the next attempt out via the active-sync gate.
+					const createdJobIds = [
+						songsJobResult,
+						playlistsJobResult,
+						tracksJobResult,
+					].flatMap((result) => (Result.isOk(result) ? [result.value.id] : []));
+					await Promise.all(
+						createdJobIds.map((id) =>
+							failJob(id, "Sibling sync job creation failed"),
+						),
+					);
 					return Response.json(
 						{ error: "Failed to create sync jobs" },
 						{ status: 500, headers: corsHeaders },
@@ -271,241 +371,321 @@ export const Route = createFileRoute("/api/extension/sync")({
 					playlist_tracks: tracksJobResult.value.id,
 				};
 
-				// Persist to DB so the web app can discover them via preferences
-				const persistResult = await updatePhaseJobIds(accountId, phaseJobIds);
-				if (Result.isError(persistResult)) {
-					console.warn("Failed to persist phaseJobIds:", persistResult.error);
-				}
-
-				const results: Record<string, unknown> = {};
-				const changedPlaylistIds: string[] = [];
-
-				// Phase 1: Sync liked songs
-				if (likedSongs.length > 0) {
-					const songsResult = await runPhase(
+				// A phase job is "settled" only after a confirmed terminal transition.
+				// On any early return or thrown path below, failUnsettled fails whatever
+				// the route created but never drove to completion, so no sync_* row is
+				// left pending/running to lock the account out.
+				const settledJobIds = new Set<string>();
+				const failUnsettledJobs = async (reason: string): Promise<void> => {
+					const unsettled = [
 						phaseJobIds.liked_songs,
-						async () => {
-							const existingResult = await getAll(accountId);
-							if (Result.isError(existingResult)) {
-								return existingResult;
-							}
-
-							const isInitial = existingResult.value.length === 0;
-							const syncResult = isInitial
-								? await initialSync(accountId, likedSongs)
-								: await incrementalSync(accountId, {
-										likedSongs,
-										existingLikedSongs: existingResult.value,
-										likedSongsIds: new Set(likedSongs.map((t) => t.track.id)),
-									});
-
-							return syncResult;
-						},
-					);
-
-					if (Result.isError(songsResult)) {
-						return Response.json(
-							{
-								error: `Liked songs sync failed: ${songsResult.error.message}`,
-								phaseJobIds,
-							},
-							{ status: 500, headers: corsHeaders },
-						);
-					}
-
-					results.likedSongs = {
-						total: songsResult.value.total,
-						added: songsResult.value.added,
-						removed: songsResult.value.removed,
-					};
-				} else {
-					await completeJob(phaseJobIds.liked_songs);
-				}
-
-				// Phase 2: Sync playlists
-				if (extensionPlaylists.length > 0) {
-					const playlistResult = await runPhase(
 						phaseJobIds.playlists,
-						async () => {
-							const syncResult = await syncPlaylists(
-								accountId,
-								extensionPlaylists,
-							);
+						phaseJobIds.playlist_tracks,
+					].filter((id) => !settledJobIds.has(id));
+					await Promise.all(unsettled.map((id) => failJob(id, reason)));
+				};
 
-							return syncResult;
-						},
+				try {
+					// Persist to DB so the web app can discover them via preferences.
+					// This stays inside the post-job-creation guard so a thrown write
+					// still finalizes the fresh phase jobs in the catch below.
+					const persistResult = await updatePhaseJobIds(accountId, phaseJobIds);
+					if (Result.isError(persistResult)) {
+						console.warn("Failed to persist phaseJobIds:", persistResult.error);
+					}
+
+					const results: Record<string, unknown> = {};
+					const changedPlaylistIds: string[] = [];
+
+					// Phase 1: Sync liked songs
+					if (likedSongs.length > 0) {
+						const songsResult = await runPhase(
+							phaseJobIds.liked_songs,
+							async () => {
+								const existingResult = await getAll(accountId);
+								if (Result.isError(existingResult)) {
+									return existingResult;
+								}
+
+								const isInitial = existingResult.value.length === 0;
+								const syncResult = isInitial
+									? await initialSync(accountId, likedSongs)
+									: await incrementalSync(accountId, {
+											likedSongs,
+											existingLikedSongs: existingResult.value,
+											likedSongsIds: new Set(likedSongs.map((t) => t.track.id)),
+										});
+
+								return syncResult;
+							},
+						);
+
+						if (Result.isError(songsResult)) {
+							await failUnsettledJobs(
+								`Liked songs sync failed: ${songsResult.error.message}`,
+							);
+							return Response.json(
+								{
+									error: `Liked songs sync failed: ${songsResult.error.message}`,
+									phaseJobIds,
+								},
+								{ status: 500, headers: corsHeaders },
+							);
+						}
+
+						settledJobIds.add(phaseJobIds.liked_songs);
+						results.likedSongs = {
+							total: songsResult.value.total,
+							added: songsResult.value.added,
+							removed: songsResult.value.removed,
+						};
+					} else {
+						const completeResult = await completeJob(phaseJobIds.liked_songs);
+						if (Result.isError(completeResult)) {
+							await failUnsettledJobs("Failed to finalize liked songs job");
+							return Response.json(
+								{ error: "Failed to finalize sync jobs", phaseJobIds },
+								{ status: 500, headers: corsHeaders },
+							);
+						}
+						settledJobIds.add(phaseJobIds.liked_songs);
+					}
+
+					// Phase 2: Sync playlists
+					if (extensionPlaylists.length > 0) {
+						const playlistResult = await runPhase(
+							phaseJobIds.playlists,
+							async () => {
+								const syncResult = await syncPlaylists(
+									accountId,
+									extensionPlaylists,
+								);
+
+								return syncResult;
+							},
+						);
+
+						if (Result.isError(playlistResult)) {
+							await failUnsettledJobs(
+								`Playlist sync failed: ${playlistResult.error.message}`,
+							);
+							return Response.json(
+								{
+									error: `Playlist sync failed: ${playlistResult.error.message}`,
+									phaseJobIds,
+								},
+								{ status: 500, headers: corsHeaders },
+							);
+						}
+
+						settledJobIds.add(phaseJobIds.playlists);
+						results.playlists = {
+							total: playlistResult.value.total,
+							created: playlistResult.value.created,
+							updated: playlistResult.value.updated,
+							removed: playlistResult.value.removed,
+							removedTargetPlaylistIds:
+								playlistResult.value.removedTargetPlaylistIds,
+							updatedTargetMetadataPlaylistIds:
+								playlistResult.value.updatedTargetMetadataPlaylistIds,
+							updatedTargetProfileTextPlaylistIds:
+								playlistResult.value.updatedTargetProfileTextPlaylistIds,
+						};
+					} else {
+						const completeResult = await completeJob(phaseJobIds.playlists);
+						if (Result.isError(completeResult)) {
+							await failUnsettledJobs("Failed to finalize playlists job");
+							return Response.json(
+								{ error: "Failed to finalize sync jobs", phaseJobIds },
+								{ status: 500, headers: corsHeaders },
+							);
+						}
+						settledJobIds.add(phaseJobIds.playlists);
+					}
+
+					// Phase 3: Sync playlist tracks
+					if (incomingPlaylistTracks.length > 0) {
+						const startResult = await startJob(phaseJobIds.playlist_tracks);
+						if (Result.isError(startResult)) {
+							await failUnsettledJobs("Failed to start playlist tracks job");
+							return Response.json(
+								{ error: "Failed to start playlist tracks sync", phaseJobIds },
+								{ status: 500, headers: corsHeaders },
+							);
+						}
+
+						// Resolve DB playlists by spotify_id
+						const dbPlaylistsResult = await getPlaylists(accountId);
+						const dbPlaylistMap = Result.isOk(dbPlaylistsResult)
+							? new Map(dbPlaylistsResult.value.map((p) => [p.spotify_id, p]))
+							: new Map<string, Playlist>();
+
+						const trackSyncResults = await mapWithConcurrency(
+							incomingPlaylistTracks,
+							4,
+							async (entry) => {
+								const dbPlaylist = dbPlaylistMap.get(entry.playlistSpotifyId);
+								if (!dbPlaylist) {
+									return { tracksProcessed: 0, changedPlaylistId: null };
+								}
+
+								const trackResult = await syncPlaylistTracksFromData(
+									dbPlaylist,
+									entry.tracks,
+								);
+
+								if (Result.isError(trackResult)) {
+									return { tracksProcessed: 0, changedPlaylistId: null };
+								}
+
+								const changed =
+									trackResult.value.added > 0 || trackResult.value.removed > 0;
+								return {
+									tracksProcessed: entry.tracks.length,
+									changedPlaylistId: changed ? dbPlaylist.id : null,
+								};
+							},
+						);
+
+						const tracksProcessed = trackSyncResults.reduce(
+							(total, result) => total + result.tracksProcessed,
+							0,
+						);
+						changedPlaylistIds.push(
+							...trackSyncResults.flatMap((result) =>
+								result.changedPlaylistId ? [result.changedPlaylistId] : [],
+							),
+						);
+
+						const completeResult = await completeJob(
+							phaseJobIds.playlist_tracks,
+						);
+						if (Result.isError(completeResult)) {
+							await failUnsettledJobs("Failed to finalize playlist tracks job");
+							return Response.json(
+								{ error: "Failed to finalize sync jobs", phaseJobIds },
+								{ status: 500, headers: corsHeaders },
+							);
+						}
+						settledJobIds.add(phaseJobIds.playlist_tracks);
+
+						results.playlistTracks = {
+							total: tracksProcessed,
+							playlistsSynced: incomingPlaylistTracks.length,
+							playlistsChanged: changedPlaylistIds.length,
+						};
+					} else {
+						const completeResult = await completeJob(
+							phaseJobIds.playlist_tracks,
+						);
+						if (Result.isError(completeResult)) {
+							await failUnsettledJobs("Failed to finalize playlist tracks job");
+							return Response.json(
+								{ error: "Failed to finalize sync jobs", phaseJobIds },
+								{ status: 500, headers: corsHeaders },
+							);
+						}
+						settledJobIds.add(phaseJobIds.playlist_tracks);
+					}
+
+					// Classify sync results and emit one aggregated library-processing change
+					const likedSongsResult = results.likedSongs as
+						| { added?: number; removed?: number }
+						| undefined;
+					const playlistSyncResult = results.playlists as
+						| {
+								removedTargetPlaylistIds?: string[];
+								updatedTargetProfileTextPlaylistIds?: string[];
+						  }
+						| undefined;
+
+					const playlistTracksResult = results.playlistTracks as
+						| { playlistsChanged?: number }
+						| undefined;
+
+					// Compute target-side change facts before the data is stale
+					const targetResult = await getTargetPlaylists(accountId);
+					const currentTargetIds = Result.isOk(targetResult)
+						? new Set(targetResult.value.map((p) => p.id))
+						: new Set<string>();
+
+					const removedTargets =
+						playlistSyncResult?.removedTargetPlaylistIds ?? [];
+					const updatedProfileTextTargets =
+						playlistSyncResult?.updatedTargetProfileTextPlaylistIds ?? [];
+
+					const trackMembershipChanged =
+						(playlistTracksResult?.playlistsChanged ?? 0) > 0 &&
+						changedPlaylistIds.some((id) => currentTargetIds.has(id));
+
+					const profileTextChanged =
+						updatedProfileTextTargets.length > 0 &&
+						updatedProfileTextTargets.some((id) => currentTargetIds.has(id));
+
+					const likedSongsAdded = (likedSongsResult?.added ?? 0) > 0;
+					const likedSongsRemoved = (likedSongsResult?.removed ?? 0) > 0;
+					const targetPlaylistsRemoved = removedTargets.length > 0;
+
+					const applyResult = await applyLibraryProcessingChange(
+						SyncChanges.librarySynced(accountId, {
+							likedSongs: {
+								added: likedSongsAdded,
+								removed: likedSongsRemoved,
+							},
+							targetPlaylists: {
+								trackMembershipChanged,
+								profileTextChanged,
+								removed: targetPlaylistsRemoved,
+							},
+						}),
 					);
 
-					if (Result.isError(playlistResult)) {
+					if (Result.isError(applyResult)) {
 						return Response.json(
 							{
-								error: `Playlist sync failed: ${playlistResult.error.message}`,
+								ok: false,
+								error: "library_processing_apply_failed",
 								phaseJobIds,
 							},
 							{ status: 500, headers: corsHeaders },
 						);
 					}
 
-					results.playlists = {
-						total: playlistResult.value.total,
-						created: playlistResult.value.created,
-						updated: playlistResult.value.updated,
-						removed: playlistResult.value.removed,
-						removedTargetPlaylistIds:
-							playlistResult.value.removedTargetPlaylistIds,
-						updatedTargetMetadataPlaylistIds:
-							playlistResult.value.updatedTargetMetadataPlaylistIds,
-						updatedTargetProfileTextPlaylistIds:
-							playlistResult.value.updatedTargetProfileTextPlaylistIds,
-					};
-				} else {
-					await completeJob(phaseJobIds.playlists);
-				}
-
-				// Phase 3: Sync playlist tracks
-				if (incomingPlaylistTracks.length > 0) {
-					await startJob(phaseJobIds.playlist_tracks);
-
-					// Resolve DB playlists by spotify_id
-					const dbPlaylistsResult = await getPlaylists(accountId);
-					const dbPlaylistMap = Result.isOk(dbPlaylistsResult)
-						? new Map(dbPlaylistsResult.value.map((p) => [p.spotify_id, p]))
-						: new Map<string, Playlist>();
-
-					const trackSyncResults = await mapWithConcurrency(
-						incomingPlaylistTracks,
-						4,
-						async (entry) => {
-							const dbPlaylist = dbPlaylistMap.get(entry.playlistSpotifyId);
-							if (!dbPlaylist) {
-								return { tracksProcessed: 0, changedPlaylistId: null };
-							}
-
-							const trackResult = await syncPlaylistTracksFromData(
-								dbPlaylist,
-								entry.tracks,
-							);
-
-							if (Result.isError(trackResult)) {
-								return { tracksProcessed: 0, changedPlaylistId: null };
-							}
-
-							const changed =
-								trackResult.value.added > 0 || trackResult.value.removed > 0;
-							return {
-								tracksProcessed: entry.tracks.length,
-								changedPlaylistId: changed ? dbPlaylist.id : null,
-							};
+					const likedSongsSyncResult = results.likedSongs as
+						| { total?: number; added?: number; removed?: number }
+						| undefined;
+					await captureWithWaitUntil({
+						distinctId: accountId,
+						event: "library_synced",
+						properties: {
+							liked_songs_total: likedSongsSyncResult?.total,
+							liked_songs_added: likedSongsSyncResult?.added ?? 0,
+							liked_songs_removed: likedSongsSyncResult?.removed ?? 0,
+							playlists_synced: extensionPlaylists.length,
+							source: "extension",
 						},
-					);
+					});
 
-					const tracksProcessed = trackSyncResults.reduce(
-						(total, result) => total + result.tracksProcessed,
-						0,
-					);
-					changedPlaylistIds.push(
-						...trackSyncResults.flatMap((result) =>
-							result.changedPlaylistId ? [result.changedPlaylistId] : [],
-						),
-					);
-
-					await completeJob(phaseJobIds.playlist_tracks);
-
-					results.playlistTracks = {
-						total: tracksProcessed,
-						playlistsSynced: incomingPlaylistTracks.length,
-						playlistsChanged: changedPlaylistIds.length,
-					};
-				} else {
-					await completeJob(phaseJobIds.playlist_tracks);
-				}
-
-				// Classify sync results and emit one aggregated library-processing change
-				const likedSongsResult = results.likedSongs as
-					| { added?: number; removed?: number }
-					| undefined;
-				const playlistSyncResult = results.playlists as
-					| {
-							removedTargetPlaylistIds?: string[];
-							updatedTargetProfileTextPlaylistIds?: string[];
-					  }
-					| undefined;
-
-				const playlistTracksResult = results.playlistTracks as
-					| { playlistsChanged?: number }
-					| undefined;
-
-				// Compute target-side change facts before the data is stale
-				const targetResult = await getTargetPlaylists(accountId);
-				const currentTargetIds = Result.isOk(targetResult)
-					? new Set(targetResult.value.map((p) => p.id))
-					: new Set<string>();
-
-				const removedTargets =
-					playlistSyncResult?.removedTargetPlaylistIds ?? [];
-				const updatedProfileTextTargets =
-					playlistSyncResult?.updatedTargetProfileTextPlaylistIds ?? [];
-
-				const trackMembershipChanged =
-					(playlistTracksResult?.playlistsChanged ?? 0) > 0 &&
-					changedPlaylistIds.some((id) => currentTargetIds.has(id));
-
-				const profileTextChanged =
-					updatedProfileTextTargets.length > 0 &&
-					updatedProfileTextTargets.some((id) => currentTargetIds.has(id));
-
-				const likedSongsAdded = (likedSongsResult?.added ?? 0) > 0;
-				const likedSongsRemoved = (likedSongsResult?.removed ?? 0) > 0;
-				const targetPlaylistsRemoved = removedTargets.length > 0;
-
-				const applyResult = await applyLibraryProcessingChange(
-					SyncChanges.librarySynced(accountId, {
-						likedSongs: {
-							added: likedSongsAdded,
-							removed: likedSongsRemoved,
-						},
-						targetPlaylists: {
-							trackMembershipChanged,
-							profileTextChanged,
-							removed: targetPlaylistsRemoved,
-						},
-					}),
-				);
-
-				if (Result.isError(applyResult)) {
 					return Response.json(
 						{
-							ok: false,
-							error: "library_processing_apply_failed",
+							ok: true,
+							results,
 							phaseJobIds,
 						},
+						{ headers: corsHeaders },
+					);
+				} catch (error) {
+					// Any thrown path after job creation would otherwise leave phase
+					// jobs pending/running and lock the account out; fail whatever
+					// hasn't reached a terminal state before surfacing the failure.
+					const message =
+						error instanceof Error ? error.message : "Unexpected sync error";
+					await failUnsettledJobs(message);
+					return Response.json(
+						{ ok: false, error: "sync_failed", phaseJobIds },
 						{ status: 500, headers: corsHeaders },
 					);
 				}
-
-				const likedSongsSyncResult = results.likedSongs as
-					| { total?: number; added?: number; removed?: number }
-					| undefined;
-				await captureWithWaitUntil({
-					distinctId: accountId,
-					event: "library_synced",
-					properties: {
-						liked_songs_total: likedSongsSyncResult?.total,
-						liked_songs_added: likedSongsSyncResult?.added ?? 0,
-						liked_songs_removed: likedSongsSyncResult?.removed ?? 0,
-						playlists_synced: extensionPlaylists.length,
-						source: "extension",
-					},
-				});
-
-				return Response.json(
-					{
-						ok: true,
-						results,
-						phaseJobIds,
-					},
-					{ headers: corsHeaders },
-				);
 			},
 		},
 	},
