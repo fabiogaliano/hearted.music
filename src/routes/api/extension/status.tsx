@@ -4,9 +4,9 @@
  * GET /api/extension/status
  *
  * Returns quick status for the Chrome extension to check whether
- * the user is authenticated and what data has been synced.
+ * the extension API token is valid and what data has been synced.
  *
- * Auth: Better Auth session cookie OR Bearer token (extension API token)
+ * Auth: Bearer token (extension API token)
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -15,7 +15,6 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { getCount } from "@/lib/domains/library/liked-songs/queries";
 import { getPlaylistCount } from "@/lib/domains/library/playlists/queries";
-import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import { validateExtensionApiToken } from "@/lib/platform/auth/extension-api-tokens";
 import {
 	extensionCorsPreflightResponse,
@@ -29,50 +28,31 @@ export const Route = createFileRoute("/api/extension/status")({
 			GET: async () => {
 				const request = getRequest();
 				const corsHeaders = getExtensionCorsHeaders(request);
-				let accountId: string | null = null;
-				let displayName: string | null = null;
-				let email: string | null = null;
+				const authHeader = request.headers.get("Authorization");
 
-				const authContext = await getAuthSession();
-				if (authContext) {
-					accountId = authContext.session.accountId;
-					displayName = authContext.account?.display_name ?? null;
-					email = authContext.account?.email ?? null;
-				} else {
-					const authHeader = request.headers.get("Authorization");
-					if (authHeader?.startsWith("Bearer ")) {
-						const token = authHeader.slice(7);
-						const tokenResult = await validateExtensionApiToken(token);
-						if (Result.isOk(tokenResult) && tokenResult.value) {
-							accountId = tokenResult.value;
-						} else {
-							return Response.json(
-								{ error: "Invalid or revoked API token" },
-								{ status: 401, headers: corsHeaders },
-							);
-						}
-					}
-				}
-
-				if (!accountId) {
+				if (!authHeader?.startsWith("Bearer ")) {
 					return Response.json(
 						{ authenticated: false, likedSongCount: 0, playlistCount: 0 },
 						{ headers: corsHeaders },
 					);
 				}
 
-				if (!displayName && !email) {
-					const supabase = createAdminSupabaseClient();
-					const { data: account } = await supabase
-						.from("account")
-						.select("display_name, email")
-						.eq("id", accountId)
-						.single();
-					if (account) {
-						displayName = account.display_name;
-						email = account.email;
-					}
+				const token = authHeader.slice(7);
+				const tokenResult = await validateExtensionApiToken(token);
+				if (Result.isError(tokenResult) || !tokenResult.value) {
+					return Response.json(
+						{ error: "Invalid or revoked API token" },
+						{ status: 401, headers: corsHeaders },
+					);
 				}
+
+				const accountId = tokenResult.value;
+				const supabase = createAdminSupabaseClient();
+				const { data: account } = await supabase
+					.from("account")
+					.select("display_name, email")
+					.eq("id", accountId)
+					.single();
 
 				const [likedCountResult, playlistCountResult] = await Promise.all([
 					getCount(accountId),
@@ -83,8 +63,8 @@ export const Route = createFileRoute("/api/extension/status")({
 					{
 						authenticated: true,
 						accountId,
-						displayName,
-						email,
+						displayName: account?.display_name ?? null,
+						email: account?.email ?? null,
 						likedSongCount: Result.isOk(likedCountResult)
 							? likedCountResult.value
 							: 0,

@@ -1,10 +1,16 @@
 /**
- * Any chrome-extension:// origin is accepted because the Bearer API token
- * is the actual auth gate — the origin is just an extra signal, not a secret.
- * Reflecting the exact origin (instead of *) is required by browsers when
- * credentials (Authorization header) are present.
+ * Only extension origins get CORS headers. The Bearer API token remains the
+ * real auth gate; Origin is just the browser-enforced read gate.
  */
 const DEFAULT_ALLOWED_HEADERS = "Authorization, Content-Type";
+
+function isExtensionOrigin(origin: string | null): origin is string {
+	return (
+		typeof origin === "string" &&
+		(origin.startsWith("chrome-extension://") ||
+			origin.startsWith("moz-extension://"))
+	);
+}
 
 function getCorsHeaders(request: Request): Record<string, string> {
 	const origin = request.headers.get("Origin");
@@ -12,20 +18,19 @@ function getCorsHeaders(request: Request): Record<string, string> {
 		"Access-Control-Request-Headers",
 	);
 
-	const isExtensionOrigin =
-		origin?.startsWith("chrome-extension://") ||
-		origin?.startsWith("moz-extension://");
-
-	const allowOrigin = isExtensionOrigin && origin ? origin : "*";
-
-	return {
-		"Access-Control-Allow-Origin": allowOrigin,
+	const headers: Record<string, string> = {
 		"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 		"Access-Control-Allow-Headers": requestedHeaders ?? DEFAULT_ALLOWED_HEADERS,
-		"Access-Control-Allow-Private-Network": "true",
 		"Access-Control-Max-Age": "86400",
 		Vary: "Origin, Access-Control-Request-Headers, Access-Control-Request-Method",
 	};
+
+	if (isExtensionOrigin(origin)) {
+		headers["Access-Control-Allow-Origin"] = origin;
+		headers["Access-Control-Allow-Private-Network"] = "true";
+	}
+
+	return headers;
 }
 
 export function getExtensionCorsHeaders(

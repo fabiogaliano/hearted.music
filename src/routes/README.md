@@ -198,7 +198,7 @@ The web app communicates with the extension via `chrome.runtime.sendMessage` (re
 | Endpoint                      | Auth                          | Purpose                                        |
 | ----------------------------- | ----------------------------- | ---------------------------------------------- |
 | `POST /api/extension/sync`    | Session cookie or Bearer token | Receive full library snapshot, enqueue jobs    |
-| `GET  /api/extension/status`  | Session cookie or Bearer token | Account auth state, liked song & playlist counts |
+| `GET  /api/extension/status`  | Bearer token                  | Account auth state, liked song & playlist counts |
 | `POST /api/extension/token`   | Session cookie (required)     | Generate a new API token                       |
 | `DELETE /api/extension/token` | Session cookie (required)     | Revoke all tokens for account                  |
 
