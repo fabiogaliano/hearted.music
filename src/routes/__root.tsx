@@ -11,13 +11,11 @@ import {
 } from "@tanstack/react-router";
 import type { PostHogConfig } from "posthog-js";
 import { type CSSProperties, lazy, useEffect, useRef, useState } from "react";
-import { ConsentBanner } from "@/components/consent/ConsentBanner";
 import { Button } from "@/components/ui/Button";
 import type { HeartRippleHandle } from "@/components/ui/HeartRippleBackground";
 import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
 import { LazyHeartRippleBackground } from "@/components/ui/LazyHeartRippleBackground";
 import { clientEnv } from "@/env.public";
-import { ConsentProvider } from "@/lib/consent/ConsentProvider";
 import { CURRENT_CONSENT_VERSION } from "@/lib/consent/consent-policy";
 import { CONSENT_MAX_AGE_SECONDS } from "@/lib/consent/consent-storage";
 import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
@@ -27,7 +25,6 @@ import {
 } from "@/lib/observability/posthog-hosts";
 import { linkPostHogToSentry } from "@/lib/observability/posthog-sentry-link";
 import { captureRouteError } from "@/lib/observability/sentry";
-import { getInitialConsentState } from "@/lib/server/consent.functions";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
@@ -277,7 +274,6 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 	// Resolved server-side so an authenticated user with valid DB consent never
 	// sees a banner flash, even when their cookie is gone.
-	loader: () => getInitialConsentState(),
 	component: RootComponent,
 	errorComponent: RootErrorComponent,
 	notFoundComponent: NotFoundPage,
@@ -285,30 +281,12 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 });
 
 function RootComponent() {
-	const consent = Route.useLoaderData();
-
-	const content = (
+	return (
 		<ThemeHueProvider>
 			<KeyboardShortcutProvider>
 				<Outlet />
 			</KeyboardShortcutProvider>
 		</ThemeHueProvider>
-	);
-
-	// Consent UI only exists where PostHog does (production). In dev there is no
-	// PostHogProvider ancestor and nothing to gate, so the banner stays absent —
-	// matching the previous behavior. RootComponent renders inside RootDocument's
-	// PostHogProvider, so usePostHog() still resolves here.
-	if (getPostHogConfig() === null) return content;
-
-	return (
-		<ConsentProvider
-			isAuthenticated={consent.isAuthenticated}
-			initialConsent={consent.consent}
-		>
-			{content}
-			<ConsentBanner />
-		</ConsentProvider>
 	);
 }
 

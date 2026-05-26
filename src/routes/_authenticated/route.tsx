@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "sonner";
+import { ConsentBanner } from "@/components/consent/ConsentBanner";
 import { UnverifiedEmailBanner } from "@/features/auth/UnverifiedEmailBanner";
 import { usePostPurchaseReturn } from "@/features/billing/hooks/usePostPurchaseReturn";
 import { billingKeys } from "@/features/billing/query-keys";
@@ -28,6 +29,7 @@ import {
 	resolveSession,
 	sessionMode,
 } from "@/features/onboarding/step-resolver";
+import { ConsentProvider } from "@/lib/consent/ConsentProvider";
 import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
@@ -36,6 +38,7 @@ import { useAnalytics } from "@/lib/observability/useAnalytics";
 import { sendVerificationEmail } from "@/lib/platform/auth/auth-client";
 import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getBillingState } from "@/lib/server/billing.functions";
+import { getInitialConsentState } from "@/lib/server/consent.functions";
 import { getOnboardingSession } from "@/lib/server/onboarding.functions";
 import { AuthenticatedThemeProvider } from "@/lib/theme/authenticated-theme";
 import { DEFAULT_THEME } from "@/lib/theme/types";
@@ -117,6 +120,11 @@ export const Route = createFileRoute("/_authenticated")({
 			identity,
 		};
 	},
+	// Durable (DB) consent for this signed-in user, resolved server-side so the
+	// banner renders flash-free. Lives on the authenticated layout — not the
+	// root — so public/marketing pages never solicit analytics consent or pay
+	// for the lookup; the gate appears only once the user is in the product.
+	loader: () => getInitialConsentState(),
 	component: AuthenticatedLayout,
 });
 
@@ -129,6 +137,7 @@ function AuthenticatedLayout() {
 		onboardingSession,
 		identity,
 	} = Route.useRouteContext();
+	const consent = Route.useLoaderData();
 	const analytics = useAnalytics();
 
 	// PostHog identity. Without this, client events (anonymous cookie ID) and
@@ -202,7 +211,7 @@ function AuthenticatedLayout() {
 		/>
 	) : null;
 
-	return (
+	const layout = (
 		<>
 			<AuthenticatedThemeProvider
 				initialThemeColor={themeColor ?? DEFAULT_THEME}
@@ -226,6 +235,23 @@ function AuthenticatedLayout() {
 			</AuthenticatedThemeProvider>
 			<Toaster richColors position="top-right" />
 		</>
+	);
+
+	// Consent UI lives only where PostHog does (production), mirroring the PROD
+	// gate in getPostHogConfig (__root.tsx); dev has no PostHogProvider ancestor
+	// to gate. Mounting it here — not at the root — keeps the analytics and
+	// session-replay consent prompt off public pages: it surfaces only after
+	// sign-in, where identified capture and replay actually begin.
+	if (!import.meta.env.PROD) return layout;
+
+	return (
+		<ConsentProvider
+			isAuthenticated={consent.isAuthenticated}
+			initialConsent={consent.consent}
+		>
+			{layout}
+			<ConsentBanner />
+		</ConsentProvider>
 	);
 }
 
