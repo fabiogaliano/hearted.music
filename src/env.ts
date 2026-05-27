@@ -38,6 +38,12 @@ export const env = createEnv({
 		GEMINI_API_KEY: z.string().min(1).optional(),
 		GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
 		GOOGLE_API_KEY: z.string().min(1).optional(),
+		// Vertex AI (default Google transport): bills the GCP project so analysis
+		// draws Cloud credits. Auth via ADC — set GOOGLE_APPLICATION_CREDENTIALS_JSON
+		// in container deploys, or `gcloud auth application-default login` locally.
+		GOOGLE_VERTEX_PROJECT: z.string().min(1).optional(),
+		GOOGLE_VERTEX_LOCATION: z.string().min(1).optional(),
+		GOOGLE_APPLICATION_CREDENTIALS_JSON: z.string().min(1).optional(),
 		ANTHROPIC_API_KEY: z.string().min(1).optional(),
 		OPENAI_API_KEY: z.string().min(1).optional(),
 		// Email (optional - waitlist confirmation emails skipped if not set)
@@ -92,6 +98,10 @@ export const env = createEnv({
 		GEMINI_API_KEY: serverEnv.GEMINI_API_KEY,
 		GOOGLE_GENERATIVE_AI_API_KEY: serverEnv.GOOGLE_GENERATIVE_AI_API_KEY,
 		GOOGLE_API_KEY: serverEnv.GOOGLE_API_KEY,
+		GOOGLE_VERTEX_PROJECT: serverEnv.GOOGLE_VERTEX_PROJECT,
+		GOOGLE_VERTEX_LOCATION: serverEnv.GOOGLE_VERTEX_LOCATION,
+		GOOGLE_APPLICATION_CREDENTIALS_JSON:
+			serverEnv.GOOGLE_APPLICATION_CREDENTIALS_JSON,
 		ANTHROPIC_API_KEY: serverEnv.ANTHROPIC_API_KEY,
 		OPENAI_API_KEY: serverEnv.OPENAI_API_KEY,
 		RESEND_API_KEY: serverEnv.RESEND_API_KEY,

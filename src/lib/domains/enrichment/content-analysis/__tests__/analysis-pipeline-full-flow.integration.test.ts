@@ -18,7 +18,7 @@
  *
  * REQUIREMENTS:
  * - GENIUS_CLIENT_TOKEN must be set
- * - GOOGLE_GENERATIVE_AI_API_KEY or ANTHROPIC_API_KEY must be set
+ * - GOOGLE_VERTEX_PROJECT or GOOGLE_GENERATIVE_AI_API_KEY or ANTHROPIC_API_KEY must be set
  * - Database must be accessible (uses real Supabase)
  * - Test account ID must exist in database
  *
@@ -41,7 +41,9 @@ const TEST_ACCOUNT_ID = process.env.TEST_ACCOUNT_ID; // Must be real account ID
 
 const HAS_GENIUS = !!process.env.GENIUS_CLIENT_TOKEN;
 const HAS_LLM =
-	!!process.env.GOOGLE_GENERATIVE_AI_API_KEY || !!process.env.ANTHROPIC_API_KEY;
+	!!process.env.GOOGLE_VERTEX_PROJECT ||
+	!!process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+	!!process.env.ANTHROPIC_API_KEY;
 const HAS_TEST_ACCOUNT = !!TEST_ACCOUNT_ID;
 
 // ─────────────────────────────────────────────────────────────

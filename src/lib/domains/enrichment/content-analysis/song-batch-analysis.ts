@@ -2,7 +2,7 @@ import { Result } from "better-result";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import { getBatch as getAudioFeaturesBatch } from "@/lib/domains/enrichment/audio-features/queries";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
-import { getApiKeyForProvider } from "@/lib/integrations/llm/config";
+import { resolveLlmConfig } from "@/lib/integrations/llm/config";
 import { LlmService } from "@/lib/integrations/llm/service";
 import {
 	NoLyricsAvailableError,
@@ -44,7 +44,7 @@ export interface BatchAnalysisOutcome {
 
 export interface BatchAnalysisConfig {
 	concurrency?: number;
-	provider?: "google" | "anthropic" | "openai";
+	provider?: "google" | "google-vertex" | "anthropic" | "openai";
 }
 
 type InputEvidence = "present" | "missing_confirmed" | "missing_unconfirmed";
@@ -296,7 +296,7 @@ export async function analyzeSongBatch(
 export function createSongBatchAnalyzerDeps(
 	config?: BatchAnalysisConfig,
 ): Result<SongBatchAnalyzerDeps, PipelineConfigError> {
-	const provider = config?.provider ?? "google";
+	const provider = config?.provider ?? "google-vertex";
 	const concurrency = config?.concurrency ?? 5;
 
 	if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 10) {
@@ -308,14 +308,9 @@ export function createSongBatchAnalyzerDeps(
 		);
 	}
 
-	const llmApiKey = getApiKeyForProvider(provider);
-	if (!llmApiKey || llmApiKey.trim() === "") {
-		return Result.err(
-			new PipelineConfigError(
-				"Missing API key. Please set the required environment variable.",
-				provider,
-			),
-		);
+	const llmConfig = resolveLlmConfig(provider);
+	if (!llmConfig.ok) {
+		return Result.err(new PipelineConfigError(llmConfig.reason, provider));
 	}
 
 	const geniusToken = process.env.GENIUS_CLIENT_TOKEN;
@@ -323,7 +318,7 @@ export function createSongBatchAnalyzerDeps(
 		? new LyricsService({ accessToken: geniusToken })
 		: null;
 
-	const llm = new LlmService({ provider, apiKey: llmApiKey });
+	const llm = new LlmService(llmConfig.config);
 	const songAnalysisService = new SongAnalysisService(llm);
 
 	return Result.ok({ lyricsService, songAnalysisService, concurrency });

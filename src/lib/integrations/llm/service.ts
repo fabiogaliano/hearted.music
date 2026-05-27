@@ -14,9 +14,11 @@
 
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createVertex } from "@ai-sdk/google-vertex";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject, generateText } from "ai";
 import { Result } from "better-result";
+import type { CredentialBody } from "google-auth-library";
 import { z } from "zod";
 import {
 	isRetryableLlmError,
@@ -27,23 +29,45 @@ import {
 } from "@/lib/shared/errors/external/llm";
 import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
 import { withRetry } from "@/lib/shared/utils/result-wrappers/generic";
-import { getApiKeyForProvider } from "./config";
+import { DEFAULT_LLM_PROVIDER, resolveLlmConfig } from "./config";
 
 // ============================================================================
 // Zod Schemas (single source of truth)
 // ============================================================================
 
 /** Supported LLM provider names */
-const LlmProviderNameSchema = z.enum(["google", "anthropic", "openai"]);
+const LlmProviderNameSchema = z.enum([
+	"google",
+	"google-vertex",
+	"anthropic",
+	"openai",
+]);
 export type LlmProviderName = z.infer<typeof LlmProviderNameSchema>;
 
-/** Configuration for LLM service */
-const LlmConfigSchema = z.object({
-	provider: LlmProviderNameSchema,
+/** Providers authenticated with a single API key. */
+const ApiKeyProviderSchema = z.enum(["google", "anthropic", "openai"]);
+
+// Vertex bills the GCP project (drawing Cloud credits) and authenticates with
+// Application Default Credentials, so project/location replace apiKey.
+// Credentials are optional: when omitted, google-auth-library resolves ADC from
+// GOOGLE_APPLICATION_CREDENTIALS or `gcloud auth application-default login`.
+const VertexConfigSchema = z.object({
+	provider: z.literal("google-vertex"),
+	project: z.string().min(1),
+	location: z.string().min(1).default("us-central1"),
+	credentials: z.custom<CredentialBody>().optional(),
+	model: z.string().optional(),
+});
+
+const ApiKeyConfigSchema = z.object({
+	provider: ApiKeyProviderSchema,
 	apiKey: z.string().min(1),
 	model: z.string().optional(),
 });
-type LlmConfig = z.infer<typeof LlmConfigSchema>;
+
+/** Configuration for LLM service — keyless Vertex or key-based providers. */
+const LlmConfigSchema = z.union([VertexConfigSchema, ApiKeyConfigSchema]);
+export type LlmConfig = z.infer<typeof LlmConfigSchema>;
 
 /** Token usage information */
 const TokenUsageSchema = z.object({
@@ -75,6 +99,7 @@ interface ObjectGenerationResult<T> {
 /** Default models per provider */
 const DEFAULT_MODELS: Record<LlmProviderName, string> = {
 	google: "gemini-2.5-flash",
+	"google-vertex": "gemini-2.5-flash",
 	anthropic: "claude-sonnet-4-20250514",
 	openai: "gpt-4o-mini",
 };
@@ -108,6 +133,7 @@ export class LlmService {
 	private readonly limiter = sharedLimiter;
 	private readonly languageModel:
 		| ReturnType<typeof createGoogleGenerativeAI>
+		| ReturnType<typeof createVertex>
 		| ReturnType<typeof createAnthropic>
 		| ReturnType<typeof createOpenAI>;
 
@@ -123,6 +149,15 @@ export class LlmService {
 			case "google":
 				this.languageModel = createGoogleGenerativeAI({
 					apiKey: validated.apiKey,
+				});
+				break;
+			case "google-vertex":
+				this.languageModel = createVertex({
+					project: validated.project,
+					location: validated.location,
+					...(validated.credentials
+						? { googleAuthOptions: { credentials: validated.credentials } }
+						: {}),
 				});
 				break;
 			case "anthropic":
@@ -320,15 +355,15 @@ export class LlmService {
 
 /**
  * Creates an LLM service from environment variables.
- * Defaults to Google if no provider specified.
+ * Defaults to Vertex AI (GCP-billed) when no provider is specified.
  */
 export function createLlmService(
-	provider: LlmProviderName = "google",
+	provider: LlmProviderName = DEFAULT_LLM_PROVIDER,
 ): LlmService {
-	const apiKey = getApiKeyForProvider(provider);
-	if (!apiKey) {
-		throw new Error(`Missing API key for provider: ${provider}`);
+	const resolution = resolveLlmConfig(provider);
+	if (!resolution.ok) {
+		throw new Error(resolution.reason);
 	}
 
-	return new LlmService({ provider, apiKey });
+	return new LlmService(resolution.config);
 }

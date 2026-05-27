@@ -41,6 +41,7 @@
 	"dependencies": {
 		"@ai-sdk/anthropic": "^3.0.47",
 		"@ai-sdk/google": "^3.0.31",
+		"@ai-sdk/google-vertex": "^4",
 		"@ai-sdk/openai": "^3.0.34",
 		"@gsap/react": "^2.1.2",
 		"@huggingface/inference": "^4.13.13",

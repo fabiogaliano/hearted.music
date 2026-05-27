@@ -79,10 +79,17 @@ vi.mock("@/lib/integrations/llm/service", () => ({
 	}),
 }));
 
-// Mock LLM config so the pipeline's API-key precondition is satisfied without
+// Mock LLM config so the pipeline's provider precondition is satisfied without
 // reading the validated env schema (which guards server vars in jsdom tests).
 vi.mock("@/lib/integrations/llm/config", () => ({
-	getApiKeyForProvider: vi.fn().mockReturnValue("test-key"),
+	resolveLlmConfig: vi.fn().mockReturnValue({
+		ok: true,
+		config: {
+			provider: "google-vertex",
+			project: "test-project",
+			location: "us-central1",
+		},
+	}),
 }));
 
 // Mock song analysis service
@@ -120,8 +127,8 @@ describe("Pipeline Lyrics Integration", () => {
 			},
 		);
 
-		// Genius token is still read via process.env in the pipeline; the LLM key
-		// is supplied by the mocked getApiKeyForProvider above.
+		// Genius token is still read via process.env in the pipeline; the LLM
+		// config is supplied by the mocked resolveLlmConfig above.
 		process.env.GENIUS_CLIENT_TOKEN = "test-token";
 	});
 

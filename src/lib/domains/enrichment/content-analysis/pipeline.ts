@@ -28,8 +28,8 @@ import { getBatch as getAudioFeaturesBatch } from "@/lib/domains/enrichment/audi
 import { get as getSongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
 import { getAll as getLikedSongsAll } from "@/lib/domains/library/liked-songs/queries";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
-import { getApiKeyForProvider } from "@/lib/integrations/llm/config";
-import { LlmService } from "@/lib/integrations/llm/service";
+import { resolveLlmConfig } from "@/lib/integrations/llm/config";
+import { type LlmConfig, LlmService } from "@/lib/integrations/llm/service";
 import { finalizeJob, startJob } from "@/lib/platform/jobs/lifecycle";
 import {
 	createJob,
@@ -65,18 +65,19 @@ export const PipelineConfigSchema = z.object({
 	/** Max concurrent LLM calls */
 	concurrency: z.number().min(1).max(10).default(5),
 	/** LLM provider to use */
-	provider: z.enum(["google", "anthropic", "openai"]).default("google"),
+	provider: z
+		.enum(["google", "google-vertex", "anthropic", "openai"])
+		.default("google-vertex"),
 });
 export type PipelineConfig = z.infer<typeof PipelineConfigSchema>;
 
-/** Internal resolved config (includes API keys from env) */
-const ResolvedConfigSchema = PipelineConfigSchema.extend({
-	/** Resolved LLM API key */
-	llmApiKey: z.string().min(1),
+/** Internal resolved config (includes the env-resolved LLM config) */
+type ResolvedConfig = PipelineConfig & {
+	/** Resolved LLM transport config (keyless Vertex or key-based provider) */
+	llmConfig: LlmConfig;
 	/** Resolved Genius token (optional - lyrics will be skipped if not set) */
-	geniusToken: z.string().optional(),
-});
-type ResolvedConfig = z.infer<typeof ResolvedConfigSchema>;
+	geniusToken?: string;
+};
 
 /** Progress callback signature */
 export type ProgressCallback = (progress: JobProgress) => void | Promise<void>;
@@ -228,10 +229,7 @@ export class AnalysisPipeline {
 	 */
 	constructor(config: ResolvedConfig) {
 		this.config = config;
-		this.llm = new LlmService({
-			provider: config.provider,
-			apiKey: config.llmApiKey,
-		});
+		this.llm = new LlmService(config.llmConfig);
 		this.songAnalysis = new SongAnalysisService(this.llm);
 		this.playlistAnalysis = new PlaylistAnalysisService(this.llm);
 
@@ -649,7 +647,7 @@ export class AnalysisPipeline {
 
 /**
  * Creates an analysis pipeline with configuration from environment.
- * Returns Result instead of throwing for missing API keys.
+ * Returns Result instead of throwing for missing provider configuration.
  *
  * @example
  * ```ts
@@ -667,15 +665,10 @@ export function createAnalysisPipeline(
 	// 1. Parse user config with defaults
 	const parsed = PipelineConfigSchema.parse(config ?? {});
 
-	// 2. Resolve LLM API key from environment
-	const llmApiKey = getApiKeyForProvider(parsed.provider);
-	if (!llmApiKey || llmApiKey.trim() === "") {
-		return Result.err(
-			new PipelineConfigError(
-				"Missing API key. Please set the required environment variable.",
-				parsed.provider,
-			),
-		);
+	// 2. Resolve LLM transport config from environment
+	const llm = resolveLlmConfig(parsed.provider);
+	if (!llm.ok) {
+		return Result.err(new PipelineConfigError(llm.reason, parsed.provider));
 	}
 
 	// 3. Resolve optional Genius token
@@ -684,7 +677,7 @@ export function createAnalysisPipeline(
 	// 4. Build resolved config
 	const resolvedConfig: ResolvedConfig = {
 		...parsed,
-		llmApiKey,
+		llmConfig: llm.config,
 		geniusToken,
 	};
 

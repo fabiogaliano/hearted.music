@@ -28,7 +28,14 @@ vi.mock("@/lib/integrations/llm/service", () => ({
 }));
 
 vi.mock("@/lib/integrations/llm/config", () => ({
-	getApiKeyForProvider: vi.fn().mockReturnValue("test-key"),
+	resolveLlmConfig: vi.fn().mockReturnValue({
+		ok: true,
+		config: {
+			provider: "google-vertex",
+			project: "test-project",
+			location: "us-central1",
+		},
+	}),
 }));
 
 const { getBatch: mockGetAudioFeaturesBatch } = await import(
