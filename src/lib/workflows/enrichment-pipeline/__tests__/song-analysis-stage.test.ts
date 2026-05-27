@@ -18,10 +18,23 @@ vi.mock(
 	}),
 );
 
+import type { AnalysisFailureClassification } from "@/lib/domains/enrichment/content-analysis/failure-classification";
 import type { PipelineBatch } from "../batch";
 import type { StageOutcome } from "../stage-outcomes";
 import { runSongAnalysis } from "../stages/song-analysis";
 import type { EnrichmentContext } from "../types";
+
+function classification(
+	isRetryable: boolean,
+	extra: Partial<AnalysisFailureClassification> = {},
+): AnalysisFailureClassification {
+	return {
+		isRetryable,
+		cause: isRetryable ? "llm_rate_limit" : "unknown",
+		message: isRetryable ? "transient failure" : "permanent failure",
+		...extra,
+	};
+}
 
 function makeBatch(songIds: string[]): PipelineBatch {
 	const now = new Date().toISOString();
@@ -61,6 +74,7 @@ function emptyBatchOutcome() {
 	return {
 		analyzedSongIds: [],
 		failedSongIds: [],
+		failureClassifications: new Map<string, AnalysisFailureClassification>(),
 		skippedConfirmedInputsMissing: [],
 		skippedUnconfirmedLyrics: [],
 		skippedUnconfirmedAudio: [],
@@ -232,10 +246,16 @@ describe("runSongAnalysis: analysis-input gate (tri-state)", () => {
 });
 
 describe("runSongAnalysis: genuine analysis failures", () => {
-	it("maps genuinely failed songs to permanent when post-run confirms no analysis", async () => {
+	it("maps genuinely failed songs to permanent when post-run confirms no analysis and failure is not transient", async () => {
+		const failureClassifications = new Map<
+			string,
+			AnalysisFailureClassification
+		>();
+		failureClassifications.set("llm-fail", classification(false));
 		mockAnalyzeSongBatch.mockResolvedValue({
 			...emptyBatchOutcome(),
 			failedSongIds: ["llm-fail"],
+			failureClassifications,
 		});
 		mockSongAnalysisGet
 			.mockResolvedValueOnce(Result.ok(new Map()))
@@ -251,6 +271,42 @@ describe("runSongAnalysis: genuine analysis failures", () => {
 			failureCode: "permanent",
 		});
 		expect(outcome.succeededSongIds).toEqual([]);
+	});
+
+	it("maps LLM rate-limit failures to provider_transient and preserves retry metadata", async () => {
+		const failureClassifications = new Map<
+			string,
+			AnalysisFailureClassification
+		>();
+		failureClassifications.set(
+			"rate-limited",
+			classification(true, {
+				cause: "llm_rate_limit",
+				retryAfterMs: 5000,
+				provider: "google",
+			}),
+		);
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			failedSongIds: ["rate-limited"],
+			failureClassifications,
+		});
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(Result.ok(new Map()));
+
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["rate-limited"])),
+		);
+
+		expect(outcome.failures).toHaveLength(1);
+		expect(outcome.failures[0]).toMatchObject({
+			songId: "rate-limited",
+			failureCode: "provider_transient",
+			retryAfterMs: 5000,
+			provider: "google",
+			causeTag: "llm_rate_limit",
+		});
 	});
 
 	it("does not classify as permanent if post-run check shows analysis exists", async () => {
@@ -369,10 +425,16 @@ describe("runSongAnalysis: success classification", () => {
 	});
 
 	it("mixed batch: success + skip + permanent", async () => {
+		const failureClassifications = new Map<
+			string,
+			AnalysisFailureClassification
+		>();
+		failureClassifications.set("llm-fail", classification(false));
 		mockAnalyzeSongBatch.mockResolvedValue({
 			...emptyBatchOutcome(),
 			analyzedSongIds: ["ok"],
 			failedSongIds: ["llm-fail"],
+			failureClassifications,
 			skippedConfirmedInputsMissing: ["confirmed"],
 		});
 		mockSongAnalysisGet
@@ -395,7 +457,7 @@ describe("runSongAnalysis: success classification", () => {
 });
 
 describe("runSongAnalysis: pipeline config failure", () => {
-	it("returns transient failures for all ready songs when deps creation fails", async () => {
+	it("returns provider_unavailable for all ready songs when deps creation fails (e.g. missing API key)", async () => {
 		const { PipelineConfigError } = await import(
 			"@/lib/shared/errors/domain/analysis"
 		);
@@ -409,7 +471,7 @@ describe("runSongAnalysis: pipeline config failure", () => {
 
 		expect(outcome.failures).toHaveLength(2);
 		for (const f of outcome.failures) {
-			expect(f.failureCode).toBe("provider_transient");
+			expect(f.failureCode).toBe("provider_unavailable");
 		}
 		expect(outcome.succeededSongIds).toEqual([]);
 	});

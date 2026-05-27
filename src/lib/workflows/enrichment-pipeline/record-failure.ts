@@ -25,6 +25,8 @@ interface RecordStageFailureParams {
 	stage: string;
 	failureCode: string;
 	errorMessage?: string;
+	/** Provider Retry-After floor in ms, forwarded to the transient backoff. */
+	retryAfterMs?: number;
 	now?: Date;
 }
 
@@ -48,6 +50,7 @@ export async function recordStageFailure(
 	const policy = applyFailurePolicy({
 		failureCode: params.failureCode,
 		priorUnresolvedCount,
+		retryAfterMs: params.retryAfterMs,
 		now: params.now,
 	});
 

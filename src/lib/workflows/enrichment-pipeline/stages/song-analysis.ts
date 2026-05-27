@@ -2,6 +2,7 @@ import { Result } from "better-result";
 import { get } from "@/lib/domains/enrichment/content-analysis/queries";
 import {
 	analyzeSongBatch,
+	type BatchAnalysisOutcome,
 	type BatchSong,
 	createSongBatchAnalyzerDeps,
 } from "@/lib/domains/enrichment/content-analysis/song-batch-analysis";
@@ -11,6 +12,36 @@ import type { StageFailure, StageOutcome } from "../stage-outcomes";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
 const STAGE = "song_analysis" as const;
+
+/**
+ * Map a batch failure onto a stage failure, preserving retry metadata
+ * (Retry-After floor, provider, status, cause) instead of flattening to a bare
+ * message. Retryable verdicts become a transient code (policy backs off and
+ * retries); everything else is permanent.
+ */
+function toStageFailure(
+	songId: string,
+	outcome: BatchAnalysisOutcome,
+): StageFailure {
+	const classification = outcome.failureClassifications.get(songId);
+	const isRetryable = classification?.isRetryable ?? false;
+
+	return {
+		songId,
+		failureCode: isRetryable
+			? FAILURE_CODES.PROVIDER_TRANSIENT
+			: FAILURE_CODES.PERMANENT,
+		message:
+			classification?.message ??
+			(isRetryable
+				? "Song analysis failed (transient — will retry)"
+				: "Song analysis failed"),
+		retryAfterMs: classification?.retryAfterMs,
+		provider: classification?.provider,
+		statusCode: classification?.statusCode,
+		causeTag: classification?.cause,
+	};
+}
 
 async function getReadyForSongAnalysis(
 	batchSongIds: string[],
@@ -56,7 +87,7 @@ export async function runSongAnalysis(
 			succeededSongIds: [],
 			failures: readiness.ready.map((songId) => ({
 				songId,
-				failureCode: FAILURE_CODES.PROVIDER_TRANSIENT,
+				failureCode: FAILURE_CODES.PROVIDER_UNAVAILABLE,
 				message: `Analysis pipeline config unavailable: ${depsResult.error.message}`,
 			})),
 		};
@@ -126,10 +157,9 @@ export async function runSongAnalysis(
 		});
 	}
 
-	// Post-run verification: check which ready songs now have an analysis.
-	// Terminal `permanent` classification requires knowing the post-run state.
-	// If the lookup fails we classify uncertain songs with a retryable code
-	// rather than permanently blocking them.
+	// Post-run check: which ready songs now have an analysis. A terminal
+	// `permanent` verdict needs this state, so if the lookup fails we mark
+	// uncertain songs retryable rather than permanently blocking them.
 	const postRunCheck = await get(readiness.ready);
 
 	if (Result.isError(postRunCheck)) {
@@ -158,17 +188,13 @@ export async function runSongAnalysis(
 	const succeededSongIds = readiness.ready.filter((id) => analyzedSet.has(id));
 	failures = failures.filter((failure) => !analyzedSet.has(failure.songId));
 
-	// Songs that aren't in any skip bucket, weren't confirmed analyzed by the
-	// post-run check, AND were reported as failed by the batch analyzer.
+	// Reported failed by the analyzer, not in any skip bucket, and not confirmed
+	// analyzed by the post-run check.
 	const genuinelyFailed = failedSongIds.filter(
 		(id) => !skippedSet.has(id) && !analyzedSet.has(id),
 	);
 	for (const songId of genuinelyFailed) {
-		failures.push({
-			songId,
-			failureCode: FAILURE_CODES.PERMANENT,
-			message: "Song analysis failed",
-		});
+		failures.push(toStageFailure(songId, batchOutcome));
 	}
 
 	return {

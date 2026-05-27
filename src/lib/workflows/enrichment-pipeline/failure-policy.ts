@@ -24,9 +24,9 @@ export const FAILURE_CODES = {
 	CONTENT_ACTIVATION_FAILED: "content_activation_failed",
 } as const;
 
-// Codes that escalate suppression by prior unresolved-row count. Centralised
-// so the data-layer wrapper and the policy stay in lockstep — any code here
-// also needs the prior-count lookup before applyFailurePolicy is called.
+// Codes whose suppression escalates by prior unresolved-row count. Listed here
+// so the data-layer wrapper does the prior-count lookup before
+// applyFailurePolicy runs.
 export const BACKOFF_CODES: ReadonlySet<string> = new Set<string>([
 	FAILURE_CODES.PROVIDER_TRANSIENT,
 	FAILURE_CODES.ANALYSIS_POSTRUN_LOOKUP_UNAVAILABLE,
@@ -40,7 +40,15 @@ interface FailurePolicyOutcome {
 interface FailurePolicyInput {
 	failureCode: string;
 	priorUnresolvedCount?: number;
+	/**
+	 * Provider Retry-After floor in ms (e.g. a 429). For transient codes it
+	 * raises the suppression window so we never retry before the upstream said,
+	 * still bounded by the transient cap.
+	 */
+	retryAfterMs?: number;
 	now?: Date;
+	/** Injectable jitter source; defaults to Math.random. Tests pass a fixed value. */
+	random?: () => number;
 }
 
 const SOURCE_NOT_FOUND_SUPPRESS_MS = 30 * DAY_MS;
@@ -49,15 +57,28 @@ const ANALYSIS_BLOCKED_SUPPRESS_MS = 6 * HOUR_MS;
 const TRANSIENT_BASE_MS = 15 * MIN_MS;
 const TRANSIENT_CAP_MS = 24 * HOUR_MS;
 
-// Default for unknown codes — non-terminal, modest backoff. Keeps unknown
-// failures from wedging the selector while still avoiding hot-loops.
+// Unknown codes: non-terminal, modest backoff — neither wedges the selector
+// nor hot-loops.
 const UNKNOWN_DEFAULT_SUPPRESS_MS = PROVIDER_UNAVAILABLE_SUPPRESS_MS;
 
-function computeTransientSuppressMs(priorUnresolvedCount: number): number {
+function computeTransientSuppressMs(
+	priorUnresolvedCount: number,
+	retryAfterMs: number | undefined,
+	random: () => number,
+): number {
 	const exponent = Math.max(0, priorUnresolvedCount);
 	const raw = TRANSIENT_BASE_MS * 2 ** exponent;
-	if (!Number.isFinite(raw)) return TRANSIENT_CAP_MS;
-	return Math.min(raw, TRANSIENT_CAP_MS);
+	const backoff = Number.isFinite(raw)
+		? Math.min(raw, TRANSIENT_CAP_MS)
+		: TRANSIENT_CAP_MS;
+	// Equal jitter (AWS): keep half the window, randomize the rest, so a batch
+	// that failed together doesn't wake in lockstep and re-hammer the provider.
+	const jittered = backoff / 2 + random() * (backoff / 2);
+	// Retry-After acts as a floor: never retry before it elapses, but stay within
+	// the transient cap so a hostile header can't wedge us.
+	const floored =
+		retryAfterMs != null ? Math.max(jittered, retryAfterMs) : jittered;
+	return Math.min(floored, TRANSIENT_CAP_MS);
 }
 
 export function applyFailurePolicy(
@@ -82,7 +103,11 @@ export function applyFailurePolicy(
 
 		case FAILURE_CODES.PROVIDER_TRANSIENT:
 		case FAILURE_CODES.ANALYSIS_POSTRUN_LOOKUP_UNAVAILABLE: {
-			const ms = computeTransientSuppressMs(input.priorUnresolvedCount ?? 0);
+			const ms = computeTransientSuppressMs(
+				input.priorUnresolvedCount ?? 0,
+				input.retryAfterMs,
+				input.random ?? Math.random,
+			);
 			return {
 				isTerminal: false,
 				suppressUntil: new Date(now.getTime() + ms),

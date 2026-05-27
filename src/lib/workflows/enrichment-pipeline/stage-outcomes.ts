@@ -11,6 +11,16 @@ export type StageFailure = {
 	songId: string;
 	failureCode: FailureCode;
 	message: string;
+	/**
+	 * Structured context from the underlying failure so the persistence/policy
+	 * layer can act on it (e.g. floor the transient backoff with a Retry-After)
+	 * instead of re-parsing the message. Optional: callers that set only
+	 * `failureCode` keep working unchanged.
+	 */
+	retryAfterMs?: number;
+	provider?: string;
+	statusCode?: number;
+	causeTag?: string;
 };
 
 export type StageOutcome =
@@ -265,6 +275,7 @@ export async function finalizeStageOutcome(
 					stage: outcome.stage,
 					failureCode: f.failureCode,
 					errorMessage: f.message,
+					retryAfterMs: f.retryAfterMs,
 				}),
 			),
 		);

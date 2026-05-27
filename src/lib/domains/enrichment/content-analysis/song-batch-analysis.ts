@@ -17,6 +17,10 @@ import {
 } from "@/lib/shared/errors/external/genius";
 import { chunkArray } from "@/lib/shared/utils/concurrency";
 import { LyricsService } from "../lyrics/service";
+import {
+	type AnalysisFailureClassification,
+	classifyAnalysisFailure,
+} from "./failure-classification";
 import type { AnalyzeSongInput } from "./song-analysis";
 import { SongAnalysisService } from "./song-analysis";
 
@@ -30,6 +34,8 @@ export interface BatchSong {
 export interface BatchAnalysisOutcome {
 	analyzedSongIds: string[];
 	failedSongIds: string[];
+	/** Per-song structured failure verdict so the stage can preserve retry metadata. */
+	failureClassifications: Map<string, AnalysisFailureClassification>;
 	skippedConfirmedInputsMissing: string[];
 	skippedUnconfirmedLyrics: string[];
 	skippedUnconfirmedAudio: string[];
@@ -167,6 +173,7 @@ export async function analyzeSongBatch(
 		return {
 			analyzedSongIds: [],
 			failedSongIds: [],
+			failureClassifications: new Map(),
 			skippedConfirmedInputsMissing: [],
 			skippedUnconfirmedLyrics: [],
 			skippedUnconfirmedAudio: [],
@@ -234,6 +241,10 @@ export async function analyzeSongBatch(
 
 	const analyzedSongIds: string[] = [];
 	const failedSongIds: string[] = [];
+	const failureClassifications = new Map<
+		string,
+		AnalysisFailureClassification
+	>();
 
 	const chunks = chunkArray(analyzableSongs, deps.concurrency);
 	for (const chunk of chunks) {
@@ -263,6 +274,10 @@ export async function analyzeSongBatch(
 				analyzedSongIds.push(songId);
 			} else {
 				failedSongIds.push(songId);
+				failureClassifications.set(
+					songId,
+					classifyAnalysisFailure(result.error),
+				);
 			}
 		}
 	}
@@ -270,6 +285,7 @@ export async function analyzeSongBatch(
 	return {
 		analyzedSongIds,
 		failedSongIds,
+		failureClassifications,
 		skippedConfirmedInputsMissing,
 		skippedUnconfirmedLyrics,
 		skippedUnconfirmedAudio,
