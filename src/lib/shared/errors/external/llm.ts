@@ -43,3 +43,23 @@ export class LlmRateLimitError extends TaggedError("LlmRateLimitError")<{
 
 /** All LLM errors */
 export type LlmError = LlmProviderError | LlmRateLimitError;
+
+/**
+ * Retryable LLM errors: rate limits and transient upstream failures (429 / 5xx).
+ * Deterministic 4xx and unknown shapes are not. Owned here so the retry wrapper
+ * and the analysis-stage classifier share one definition.
+ */
+export function isRetryableLlmError(error: unknown): boolean {
+	if (error instanceof LlmRateLimitError) return true;
+	if (error instanceof LlmProviderError) {
+		const status = error.statusCode;
+		if (status === 429) return true;
+		if (status !== undefined && status >= 500) return true;
+	}
+	return false;
+}
+
+/** Retry-After floor in ms, when the provider supplied one (rate limits). */
+export function llmRetryAfterMs(error: unknown): number | undefined {
+	return error instanceof LlmRateLimitError ? error.retryAfterMs : undefined;
+}

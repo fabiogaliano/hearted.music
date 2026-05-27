@@ -19,11 +19,14 @@ import { generateObject, generateText } from "ai";
 import { Result } from "better-result";
 import { z } from "zod";
 import {
+	isRetryableLlmError,
 	type LlmError,
 	LlmProviderError,
 	LlmRateLimitError,
+	llmRetryAfterMs,
 } from "@/lib/shared/errors/external/llm";
 import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
+import { withRetry } from "@/lib/shared/utils/result-wrappers/generic";
 import { getApiKeyForProvider } from "./config";
 
 // ============================================================================
@@ -87,6 +90,14 @@ const sharedLimiter = new ConcurrencyLimiter(3, 100, 500);
 // pass a tighter value when they know their output is small.
 const DEFAULT_MAX_OUTPUT_TOKENS = 4000;
 
+const LLM_RETRY_OPTIONS = {
+	maxRetries: 2,
+	baseDelayMs: 1000,
+	maxDelayMs: 30_000,
+	isRetryable: isRetryableLlmError,
+	getRetryAfterMs: llmRetryAfterMs,
+} as const;
+
 // ============================================================================
 // Service
 // ============================================================================
@@ -141,33 +152,37 @@ export class LlmService {
 			maxOutputTokens?: number;
 		},
 	): Promise<Result<TextGenerationResult, LlmServiceError>> {
-		return this.limiter.run(async () => {
-			try {
-				const result = await generateText({
-					model: this.languageModel(this.model),
-					prompt,
-					maxOutputTokens:
-						options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
-					experimental_telemetry: {
-						isEnabled: true,
-						functionId: options?.functionId ?? "llm-generate-text",
-						metadata: options?.distinctId
-							? { posthog_distinct_id: options.distinctId }
-							: undefined,
-					},
-				});
+		return withRetry(
+			() =>
+				this.limiter.run(async () => {
+					try {
+						const result = await generateText({
+							model: this.languageModel(this.model),
+							prompt,
+							maxOutputTokens:
+								options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+							experimental_telemetry: {
+								isEnabled: true,
+								functionId: options?.functionId ?? "llm-generate-text",
+								metadata: options?.distinctId
+									? { posthog_distinct_id: options.distinctId }
+									: undefined,
+							},
+						});
 
-				const tokens = this.extractTokenUsage(result.usage);
+						const tokens = this.extractTokenUsage(result.usage);
 
-				return Result.ok({
-					text: result.text,
-					model: this.getCurrentModel(),
-					tokens,
-				});
-			} catch (error) {
-				return Result.err(this.normalizeError(error));
-			}
-		});
+						return Result.ok({
+							text: result.text,
+							model: this.getCurrentModel(),
+							tokens,
+						});
+					} catch (error) {
+						return Result.err(this.normalizeError(error));
+					}
+				}),
+			LLM_RETRY_OPTIONS,
+		);
 	}
 
 	/**
@@ -182,34 +197,38 @@ export class LlmService {
 			maxOutputTokens?: number;
 		},
 	): Promise<Result<ObjectGenerationResult<T>, LlmServiceError>> {
-		return this.limiter.run(async () => {
-			try {
-				const result = await generateObject({
-					model: this.languageModel(this.model),
-					prompt,
-					schema,
-					maxOutputTokens:
-						options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
-					experimental_telemetry: {
-						isEnabled: true,
-						functionId: options?.functionId ?? "llm-generate-object",
-						metadata: options?.distinctId
-							? { posthog_distinct_id: options.distinctId }
-							: undefined,
-					},
-				});
+		return withRetry(
+			() =>
+				this.limiter.run(async () => {
+					try {
+						const result = await generateObject({
+							model: this.languageModel(this.model),
+							prompt,
+							schema,
+							maxOutputTokens:
+								options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+							experimental_telemetry: {
+								isEnabled: true,
+								functionId: options?.functionId ?? "llm-generate-object",
+								metadata: options?.distinctId
+									? { posthog_distinct_id: options.distinctId }
+									: undefined,
+							},
+						});
 
-				const tokens = this.extractTokenUsage(result.usage);
+						const tokens = this.extractTokenUsage(result.usage);
 
-				return Result.ok({
-					output: result.object as T,
-					model: this.getCurrentModel(),
-					tokens,
-				});
-			} catch (error) {
-				return Result.err(this.normalizeError(error));
-			}
-		});
+						return Result.ok({
+							output: result.object as T,
+							model: this.getCurrentModel(),
+							tokens,
+						});
+					} catch (error) {
+						return Result.err(this.normalizeError(error));
+					}
+				}),
+			LLM_RETRY_OPTIONS,
+		);
 	}
 
 	/**

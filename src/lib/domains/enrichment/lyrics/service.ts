@@ -16,6 +16,7 @@ import {
 	GeniusParseError,
 } from "@/lib/shared/errors/external/genius";
 import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
+import { withRetry } from "@/lib/shared/utils/result-wrappers/generic";
 
 import { getSongLyricsDocument, upsertSongLyrics } from "./queries";
 import type {
@@ -44,6 +45,23 @@ const sharedLimiter = new ConcurrencyLimiter(5, 50, 200);
 // Bound each call so a hung upstream can't pin a worker slot indefinitely.
 const REQUEST_TIMEOUT_MS = 15_000;
 
+// Retry only transient fetch failures: network/timeout (no status) or 5xx.
+// 4xx, parse failures, and not-found are permanent. Genius exposes no
+// Retry-After, so plain bounded backoff is all we apply.
+function isGeniusRetryable(error: GeniusError): boolean {
+	if (error instanceof GeniusFetchError) {
+		return error.statusCode === undefined || error.statusCode >= 500;
+	}
+	return false;
+}
+
+const GENIUS_RETRY_OPTIONS = {
+	maxRetries: 2,
+	baseDelayMs: 500,
+	maxDelayMs: 15_000,
+	isRetryable: isGeniusRetryable,
+} as const;
+
 export class LyricsService {
 	private readonly baseUrl = "https://api.genius.com";
 	private readonly authHeaders: Record<string, string>;
@@ -71,7 +89,7 @@ export class LyricsService {
 					signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 				});
 				if (!response.ok) {
-					throw new GeniusFetchError(url);
+					throw new GeniusFetchError(url, response.status);
 				}
 				return (await response.json()) as T;
 			},
@@ -182,8 +200,9 @@ export class LyricsService {
 			const searchQuery = encodeURIComponent(query);
 			const searchPath = `/search?q=${searchQuery}`;
 
-			const responseResult = await this.limiter.run(() =>
-				this.getJson<SearchResponse>(searchPath),
+			const responseResult = await withRetry(
+				() => this.limiter.run(() => this.getJson<SearchResponse>(searchPath)),
+				GENIUS_RETRY_OPTIONS,
 			);
 			if (Result.isError(responseResult)) {
 				lastError = responseResult.error;
@@ -273,20 +292,26 @@ export class LyricsService {
 			GeniusError
 		>
 	> {
-		const responseResult = await this.limiter.run(() =>
-			Result.tryPromise({
-				try: async () => {
-					const res = await fetch(url, {
-						signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-					});
-					if (!res.ok) {
-						throw new GeniusFetchError(url);
-					}
-					return res.text();
-				},
-				catch: (error) =>
-					error instanceof GeniusFetchError ? error : new GeniusFetchError(url),
-			}),
+		const responseResult = await withRetry(
+			() =>
+				this.limiter.run(() =>
+					Result.tryPromise({
+						try: async () => {
+							const res = await fetch(url, {
+								signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+							});
+							if (!res.ok) {
+								throw new GeniusFetchError(url, res.status);
+							}
+							return res.text();
+						},
+						catch: (error) =>
+							error instanceof GeniusFetchError
+								? error
+								: new GeniusFetchError(url),
+					}),
+				),
+			GENIUS_RETRY_OPTIONS,
 		);
 		if (Result.isError(responseResult)) {
 			return Result.err(responseResult.error);

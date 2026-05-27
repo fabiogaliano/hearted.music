@@ -6,7 +6,7 @@ import { Result } from "better-result";
 import { NetworkError } from "@/lib/shared/errors/external/network";
 
 export interface RetryOptions<E> {
-	/** Maximum retry attempts (default: 2) */
+	/** Maximum retry attempts (default: 3) */
 	maxRetries?: number;
 	/** Base delay in ms for exponential backoff (default: 500) */
 	baseDelayMs?: number;
@@ -14,6 +14,8 @@ export interface RetryOptions<E> {
 	maxDelayMs?: number;
 	/** Predicate to determine if error is retryable (default: always true) */
 	isRetryable?: (error: E) => boolean;
+	/** Retry-after override in ms from the error (e.g. a 429 Retry-After header) */
+	getRetryAfterMs?: (error: E) => number | undefined;
 }
 
 const DEFAULT_RETRY_OPTIONS = {
@@ -41,6 +43,7 @@ export async function withRetry<T, E>(
 		baseDelayMs = DEFAULT_RETRY_OPTIONS.baseDelayMs,
 		maxDelayMs = DEFAULT_RETRY_OPTIONS.maxDelayMs,
 		isRetryable = () => true,
+		getRetryAfterMs,
 	} = options;
 
 	const totalAttempts = maxRetries + 1;
@@ -57,7 +60,20 @@ export async function withRetry<T, E>(
 			return result;
 		}
 
-		const delay = Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
+		// A Retry-After longer than our in-request budget is a real back-off, not a
+		// blip. Surface the error so the caller's job-level backoff (which honors
+		// long windows) takes over, instead of burning an attempt too early.
+		const retryAfter = getRetryAfterMs?.(result.error);
+		if (retryAfter != null && retryAfter > maxDelayMs) {
+			return result;
+		}
+
+		// Equal jitter (AWS): keep half the delay, randomize the other half, so
+		// concurrent retries de-synchronize instead of hammering in lockstep.
+		const exponential = Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
+		const jittered = exponential / 2 + Math.random() * (exponential / 2);
+		const delay =
+			retryAfter != null ? Math.max(retryAfter, jittered) : jittered;
 		await sleep(delay);
 	}
 

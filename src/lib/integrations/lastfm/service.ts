@@ -15,6 +15,7 @@ import {
 	LastFmRateLimitError,
 } from "@/lib/shared/errors/external/lastfm";
 import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
+import { withRetry } from "@/lib/shared/utils/result-wrappers/generic";
 import { extractPrimaryArtist, normalizeAlbumName } from "./normalize";
 import {
 	type GenreLookupResult,
@@ -33,6 +34,29 @@ const REQUEST_TIMEOUT_MS = 15_000;
 
 // Shared across all instances so concurrent worker jobs respect a single rate limit
 const sharedLimiter = new ConcurrencyLimiter(5, 50, 200);
+
+// Retry only transient cases: rate limits (error 29) and our synthesized
+// network/parse failures (code 0). Real API error codes (not-found, config)
+// would fail identically, so don't.
+function isLastFmRetryable(error: LastFmError): boolean {
+	if (error instanceof LastFmRateLimitError) return true;
+	if (error instanceof LastFmApiError) return error.code === 0;
+	return false;
+}
+
+function lastFmRetryAfterMs(error: LastFmError): number | undefined {
+	return error instanceof LastFmRateLimitError && error.retryAfter
+		? error.retryAfter * 1000
+		: undefined;
+}
+
+const LASTFM_RETRY_OPTIONS = {
+	maxRetries: 2,
+	baseDelayMs: 500,
+	maxDelayMs: 15_000,
+	isRetryable: isLastFmRetryable,
+	getRetryAfterMs: lastFmRetryAfterMs,
+} as const;
 
 export class LastFmService {
 	private readonly apiKey: string;
@@ -58,69 +82,75 @@ export class LastFmService {
 			format: "json",
 		});
 
-		return this.limiter.run(async () => {
-			const fetchResult = await Result.tryPromise({
-				try: () =>
-					fetch(`${BASE_URL}?${params}`, {
-						signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-					}),
-				catch: (e) =>
-					new LastFmApiError(0, e instanceof Error ? e.message : String(e)),
-			});
+		return withRetry(
+			() =>
+				this.limiter.run(async () => {
+					const fetchResult = await Result.tryPromise({
+						try: () =>
+							fetch(`${BASE_URL}?${params}`, {
+								signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+							}),
+						catch: (e) =>
+							new LastFmApiError(0, e instanceof Error ? e.message : String(e)),
+					});
 
-			if (Result.isError(fetchResult)) {
-				return Result.err<GenreLookupResult | null, LastFmError>(
-					fetchResult.error,
-				);
-			}
+					if (Result.isError(fetchResult)) {
+						return Result.err<GenreLookupResult | null, LastFmError>(
+							fetchResult.error,
+						);
+					}
 
-			const jsonResult = await Result.tryPromise({
-				try: () => fetchResult.value.json(),
-				catch: () => new LastFmApiError(0, "Failed to parse JSON response"),
-			});
+					const jsonResult = await Result.tryPromise({
+						try: () => fetchResult.value.json(),
+						catch: () => new LastFmApiError(0, "Failed to parse JSON response"),
+					});
 
-			if (Result.isError(jsonResult)) {
-				return Result.err<GenreLookupResult | null, LastFmError>(
-					jsonResult.error,
-				);
-			}
+					if (Result.isError(jsonResult)) {
+						return Result.err<GenreLookupResult | null, LastFmError>(
+							jsonResult.error,
+						);
+					}
 
-			// Try error response first
-			const errorParse = LastFmErrorResponseSchema.safeParse(jsonResult.value);
-			if (errorParse.success) {
-				const data = errorParse.data;
-				if (data.error === 29) {
-					return Result.err<GenreLookupResult | null, LastFmError>(
-						new LastFmRateLimitError(),
+					// Try error response first
+					const errorParse = LastFmErrorResponseSchema.safeParse(
+						jsonResult.value,
 					);
-				}
-				if (data.error === 6) {
-					return Result.err<GenreLookupResult | null, LastFmError>(
-						new LastFmNotFoundError(artist, undefined, album),
+					if (errorParse.success) {
+						const data = errorParse.data;
+						if (data.error === 29) {
+							return Result.err<GenreLookupResult | null, LastFmError>(
+								new LastFmRateLimitError(),
+							);
+						}
+						if (data.error === 6) {
+							return Result.err<GenreLookupResult | null, LastFmError>(
+								new LastFmNotFoundError(artist, undefined, album),
+							);
+						}
+						return Result.err<GenreLookupResult | null, LastFmError>(
+							new LastFmApiError(data.error, data.message),
+						);
+					}
+
+					// Validate success response
+					const parseResult = LastFmAlbumTopTagsResponseSchema.safeParse(
+						jsonResult.value,
 					);
-				}
-				return Result.err<GenreLookupResult | null, LastFmError>(
-					new LastFmApiError(data.error, data.message),
-				);
-			}
+					if (!parseResult.success) {
+						return Result.err<GenreLookupResult | null, LastFmError>(
+							new LastFmApiError(
+								0,
+								`Invalid API response: ${parseResult.error.message}`,
+							),
+						);
+					}
 
-			// Validate success response
-			const parseResult = LastFmAlbumTopTagsResponseSchema.safeParse(
-				jsonResult.value,
-			);
-			if (!parseResult.success) {
-				return Result.err<GenreLookupResult | null, LastFmError>(
-					new LastFmApiError(
-						0,
-						`Invalid API response: ${parseResult.error.message}`,
-					),
-				);
-			}
-
-			return Result.ok<GenreLookupResult | null, LastFmError>(
-				this.tagsToResult(parseResult.data.toptags.tag, "album"),
-			);
-		});
+					return Result.ok<GenreLookupResult | null, LastFmError>(
+						this.tagsToResult(parseResult.data.toptags.tag, "album"),
+					);
+				}),
+			LASTFM_RETRY_OPTIONS,
+		);
 	}
 
 	/**
@@ -137,69 +167,75 @@ export class LastFmService {
 			format: "json",
 		});
 
-		return this.limiter.run(async () => {
-			const fetchResult = await Result.tryPromise({
-				try: () =>
-					fetch(`${BASE_URL}?${params}`, {
-						signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-					}),
-				catch: (e) =>
-					new LastFmApiError(0, e instanceof Error ? e.message : String(e)),
-			});
+		return withRetry(
+			() =>
+				this.limiter.run(async () => {
+					const fetchResult = await Result.tryPromise({
+						try: () =>
+							fetch(`${BASE_URL}?${params}`, {
+								signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+							}),
+						catch: (e) =>
+							new LastFmApiError(0, e instanceof Error ? e.message : String(e)),
+					});
 
-			if (Result.isError(fetchResult)) {
-				return Result.err<GenreLookupResult | null, LastFmError>(
-					fetchResult.error,
-				);
-			}
+					if (Result.isError(fetchResult)) {
+						return Result.err<GenreLookupResult | null, LastFmError>(
+							fetchResult.error,
+						);
+					}
 
-			const jsonResult = await Result.tryPromise({
-				try: () => fetchResult.value.json(),
-				catch: () => new LastFmApiError(0, "Failed to parse JSON response"),
-			});
+					const jsonResult = await Result.tryPromise({
+						try: () => fetchResult.value.json(),
+						catch: () => new LastFmApiError(0, "Failed to parse JSON response"),
+					});
 
-			if (Result.isError(jsonResult)) {
-				return Result.err<GenreLookupResult | null, LastFmError>(
-					jsonResult.error,
-				);
-			}
+					if (Result.isError(jsonResult)) {
+						return Result.err<GenreLookupResult | null, LastFmError>(
+							jsonResult.error,
+						);
+					}
 
-			// Try error response first
-			const errorParse = LastFmErrorResponseSchema.safeParse(jsonResult.value);
-			if (errorParse.success) {
-				const data = errorParse.data;
-				if (data.error === 29) {
-					return Result.err<GenreLookupResult | null, LastFmError>(
-						new LastFmRateLimitError(),
+					// Try error response first
+					const errorParse = LastFmErrorResponseSchema.safeParse(
+						jsonResult.value,
 					);
-				}
-				if (data.error === 6) {
-					return Result.err<GenreLookupResult | null, LastFmError>(
-						new LastFmNotFoundError(artist),
+					if (errorParse.success) {
+						const data = errorParse.data;
+						if (data.error === 29) {
+							return Result.err<GenreLookupResult | null, LastFmError>(
+								new LastFmRateLimitError(),
+							);
+						}
+						if (data.error === 6) {
+							return Result.err<GenreLookupResult | null, LastFmError>(
+								new LastFmNotFoundError(artist),
+							);
+						}
+						return Result.err<GenreLookupResult | null, LastFmError>(
+							new LastFmApiError(data.error, data.message),
+						);
+					}
+
+					// Validate success response
+					const parseResult = LastFmArtistTopTagsResponseSchema.safeParse(
+						jsonResult.value,
 					);
-				}
-				return Result.err<GenreLookupResult | null, LastFmError>(
-					new LastFmApiError(data.error, data.message),
-				);
-			}
+					if (!parseResult.success) {
+						return Result.err<GenreLookupResult | null, LastFmError>(
+							new LastFmApiError(
+								0,
+								`Invalid API response: ${parseResult.error.message}`,
+							),
+						);
+					}
 
-			// Validate success response
-			const parseResult = LastFmArtistTopTagsResponseSchema.safeParse(
-				jsonResult.value,
-			);
-			if (!parseResult.success) {
-				return Result.err<GenreLookupResult | null, LastFmError>(
-					new LastFmApiError(
-						0,
-						`Invalid API response: ${parseResult.error.message}`,
-					),
-				);
-			}
-
-			return Result.ok<GenreLookupResult | null, LastFmError>(
-				this.tagsToResult(parseResult.data.toptags.tag, "artist"),
-			);
-		});
+					return Result.ok<GenreLookupResult | null, LastFmError>(
+						this.tagsToResult(parseResult.data.toptags.tag, "artist"),
+					);
+				}),
+			LASTFM_RETRY_OPTIONS,
+		);
 	}
 
 	/**
