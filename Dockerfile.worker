@@ -17,6 +17,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json tsconfig.json ./
 COPY src/ ./src/
 
+RUN find ./src -type d -name "__tests__" -exec rm -rf {} + 2>/dev/null; \
+    find ./src -type d -name "__snapshots__" -exec rm -rf {} + 2>/dev/null; \
+    find ./src -type f \( -name "*.test.ts" -o -name "*.test.tsx" -o -name "*.stories.tsx" -o -name "*.stories.ts" -o -name "*.spec.ts" \) -delete 2>/dev/null; \
+    true
+
 USER bun
 
 EXPOSE 3002
