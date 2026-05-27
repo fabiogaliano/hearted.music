@@ -76,6 +76,16 @@ vi.mock("@tanstack/react-router", () => ({
 	createFileRoute: () => (routeConfig: unknown) => routeConfig,
 }));
 
+vi.mock("@/lib/platform/rate-limit/edge-rate-limit", () => ({
+	clientIpFrom: (request: Request) =>
+		request.headers.get("cf-connecting-ip") ?? "unknown",
+	withinRateLimit: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock("@sentry/cloudflare", () => ({
+	captureException: vi.fn(),
+}));
+
 describe("/api/sentry-tunnel", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -285,6 +295,24 @@ describe("/api/sentry-tunnel", () => {
 
 		expect(response.status).toBe(504);
 		expect(await response.text()).toBe("Timed out sending envelope to Sentry");
+	});
+
+	it("returns 429 when rate limited", async () => {
+		const { withinRateLimit } = await import(
+			"@/lib/platform/rate-limit/edge-rate-limit"
+		);
+		vi.mocked(withinRateLimit).mockResolvedValueOnce(false);
+
+		const route = await loadRoute(ALLOWED_DSN);
+		const response = await route.server.handlers.POST({
+			request: new Request("https://hearted.test/api/sentry-tunnel", {
+				method: "POST",
+				body: createEnvelope(),
+			}),
+		});
+
+		expect(response.status).toBe(429);
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
 	it("returns 502 when forwarding to Sentry ingest throws", async () => {

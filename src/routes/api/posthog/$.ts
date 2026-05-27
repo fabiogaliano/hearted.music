@@ -59,6 +59,26 @@ function createUpstreamRequest(request: Request): RequestInit {
 	return streamingRequest;
 }
 
+const SAFE_RESPONSE_HEADERS = new Set([
+	"content-type",
+	"content-length",
+	"content-encoding",
+	"cache-control",
+	"etag",
+	"date",
+	"vary",
+]);
+
+function sanitizeResponseHeaders(upstream: Response): Headers {
+	const sanitized = new Headers();
+	for (const [key, value] of upstream.headers) {
+		if (SAFE_RESPONSE_HEADERS.has(key.toLowerCase())) {
+			sanitized.set(key, value);
+		}
+	}
+	return sanitized;
+}
+
 async function forwardRequest(request: Request): Promise<Response> {
 	const abortController = new AbortController();
 	const timeoutId = setTimeout(() => {
@@ -72,7 +92,7 @@ async function forwardRequest(request: Request): Promise<Response> {
 		});
 		return new Response(upstream.body, {
 			status: upstream.status,
-			headers: upstream.headers,
+			headers: sanitizeResponseHeaders(upstream),
 		});
 	} catch (error) {
 		if (error instanceof InvalidPostHogConfigError) {

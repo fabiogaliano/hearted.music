@@ -114,6 +114,34 @@ describe("/api/posthog/$", () => {
 		expect(await response.json()).toEqual({ ok: true });
 	});
 
+	it("strips upstream access-control headers from responses", async () => {
+		fetchMock.mockResolvedValueOnce(
+			new Response(JSON.stringify({ ok: true }), {
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+					"Access-Control-Allow-Origin": "*",
+					"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+					"Access-Control-Allow-Headers": "Content-Type",
+					"Cache-Control": "no-cache",
+				},
+			}),
+		);
+		const route = await loadRoute(undefined);
+		const response = await route.server.handlers.POST({
+			request: new Request("https://hearted.test/api/posthog/e/", {
+				method: "POST",
+				body: "{}",
+			}),
+		});
+
+		expect(response.headers.get("content-type")).toBe("application/json");
+		expect(response.headers.get("cache-control")).toBe("no-cache");
+		expect(response.headers.has("access-control-allow-origin")).toBe(false);
+		expect(response.headers.has("access-control-allow-methods")).toBe(false);
+		expect(response.headers.has("access-control-allow-headers")).toBe(false);
+	});
+
 	it("forwards asset requests to PostHog's asset host", async () => {
 		const route = await loadRoute("https://eu.i.posthog.com");
 		const response = await route.server.handlers.GET({

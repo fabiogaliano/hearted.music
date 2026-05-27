@@ -1,5 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "@/env";
+import {
+	clientIpFrom,
+	withinRateLimit,
+} from "@/lib/platform/rate-limit/edge-rate-limit";
 
 // Sentry tunnel: same-origin proxy that forwards browser-sent envelopes to
 // one configured Sentry project. Ad-blockers block requests to
@@ -298,6 +302,18 @@ export const Route = createFileRoute("/api/sentry-tunnel")({
 						return new Response("Sentry tunnel misconfigured", { status: 500 });
 					}
 
+					if (
+						!(await withinRateLimit(
+							"SENTRY_TUNNEL_LIMITER",
+							clientIpFrom(request),
+						))
+					) {
+						return new Response("Too Many Requests", {
+							status: 429,
+							headers: { "retry-after": "60" },
+						});
+					}
+
 					const envelope = await readEnvelopeStream(request);
 					if (envelope.kind === "response") {
 						return envelope.response;
@@ -343,6 +359,10 @@ export const Route = createFileRoute("/api/sentry-tunnel")({
 					});
 				} catch (error) {
 					console.error("[sentry-tunnel] Failed to forward envelope", error);
+					try {
+						const { captureException } = await import("@sentry/cloudflare");
+						captureException(error, { tags: { source: "sentry-tunnel" } });
+					} catch {}
 					return new Response("Failed to reach Sentry ingest", { status: 502 });
 				}
 			},

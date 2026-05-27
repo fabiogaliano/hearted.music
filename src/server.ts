@@ -7,11 +7,36 @@ interface WorkerEnv {
 	[key: string]: unknown;
 }
 
-// Defensive try/catch around handler.fetch. withSentry's automatic exception
-// capture is unreliable when wrapping createServerEntry (TanStack's framework
-// layers can swallow throws or surface them in shapes withSentry doesn't see).
-// An explicit captureException here is the reliable backstop; if withSentry
-// also catches, Sentry dedupes by event ID.
+function validateSentryEnv(env: WorkerEnv): {
+	dsn?: string;
+	environment: string;
+} {
+	const rawEnvironment = env.SENTRY_ENVIRONMENT;
+	if (rawEnvironment !== undefined && typeof rawEnvironment !== "string") {
+		throw new Error("SENTRY_ENVIRONMENT must be a string when provided");
+	}
+	const environment =
+		typeof rawEnvironment === "string" && rawEnvironment.trim().length > 0
+			? rawEnvironment.trim()
+			: "production";
+
+	const dsn = env.SENTRY_DSN;
+	if (dsn === undefined || dsn === "") {
+		return { environment };
+	}
+	if (typeof dsn !== "string") {
+		throw new Error("SENTRY_DSN must be a string when provided");
+	}
+
+	try {
+		new URL(dsn);
+	} catch {
+		throw new Error("SENTRY_DSN must be a valid URL");
+	}
+
+	return { dsn, environment };
+}
+
 const entry = createServerEntry({
 	async fetch(request: Request) {
 		try {
@@ -23,16 +48,15 @@ const entry = createServerEntry({
 	},
 });
 
-export default Sentry.withSentry(
-	(env: WorkerEnv) => ({
-		dsn: env.SENTRY_DSN,
-		environment: env.SENTRY_ENVIRONMENT ?? "production",
-		// Vite inlines this at build, matching the browser + sourcemap release.
+export default Sentry.withSentry((env: WorkerEnv) => {
+	const sentryConfig = validateSentryEnv(env);
+	return {
+		dsn: sentryConfig.dsn,
+		environment: sentryConfig.environment,
 		release: import.meta.env.VITE_APP_RELEASE,
 		tracesSampleRate: 0.05,
 		sendDefaultPii: false,
 		enableLogs: false,
 		initialScope: { tags: { runtime: "web-server" } },
-	}),
-	entry,
-);
+	};
+}, entry);
