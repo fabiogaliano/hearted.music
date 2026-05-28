@@ -4,6 +4,7 @@ import {
 	type JobExecutionMeasurement,
 } from "@/lib/platform/jobs/execution-measurements";
 import type { Job } from "@/lib/platform/jobs/repository";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import { EnrichmentChanges } from "./changes/enrichment";
 import { MatchSnapshotChanges } from "./changes/match-snapshot";
 import { findTerminalActiveRefs, type TerminalActiveRef } from "./queries";
@@ -244,7 +245,7 @@ export async function recoverTerminalLibraryProcessingRefs(): Promise<
 				jobId: ref.job.id,
 				accountId: ref.job.account_id,
 				workflow: ref.workflow,
-				error: error instanceof Error ? error.message : String(error),
+				error: errorMessage(error),
 			});
 		}
 	}

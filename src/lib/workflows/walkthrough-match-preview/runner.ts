@@ -7,12 +7,12 @@
  */
 
 import { Result } from "better-result";
-
 import {
 	type Job,
 	markJobCompleted,
 	markJobFailed,
 } from "@/lib/platform/jobs/repository";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import { captureWorkerJobFailure } from "@/worker/job-failure-reporting";
 import {
 	executeWalkthroughPreview,
@@ -42,7 +42,7 @@ export async function runWalkthroughPreviewJob(
 
 		return { status: "completed", result };
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
+		const message = errorMessage(error);
 		captureWorkerJobFailure(error, {
 			workflow: "walkthrough_match_preview",
 			jobId: job.id,

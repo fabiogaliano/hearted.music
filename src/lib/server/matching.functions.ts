@@ -3,6 +3,7 @@ import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json, Tables } from "@/lib/data/database.types";
+import { isSongOwnedByAccount } from "@/lib/domains/library/liked-songs/queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
 import {
 	getMatchDecisionsForSongs,
@@ -87,22 +88,6 @@ async function doesSnapshotBelongToAccount(
 	}
 
 	return snapshotResult.value.id === snapshotId;
-}
-
-async function doesSongBelongToAccount(
-	songId: string,
-	accountId: string,
-): Promise<boolean> {
-	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase
-		.from("liked_song")
-		.select("song_id")
-		.eq("account_id", accountId)
-		.eq("song_id", songId)
-		.is("unliked_at", null)
-		.maybeSingle();
-
-	return !error && Boolean(data);
 }
 
 async function doPlaylistsBelongToAccount(
@@ -507,7 +492,7 @@ export const addSongToPlaylist = createServerFn({ method: "POST" })
 	.handler(async ({ data, context }): Promise<AddToPlaylistResult> => {
 		const { session } = context;
 		const [songOwned, playlistOwned] = await Promise.all([
-			doesSongBelongToAccount(data.songId, session.accountId),
+			isSongOwnedByAccount(session.accountId, data.songId),
 			doPlaylistsBelongToAccount([data.playlistId], session.accountId),
 		]);
 		if (!songOwned || !playlistOwned) {
@@ -539,7 +524,7 @@ export const dismissSong = createServerFn({ method: "POST" })
 	.handler(async ({ data, context }) => {
 		const { session } = context;
 		const [songOwned, playlistsOwned] = await Promise.all([
-			doesSongBelongToAccount(data.songId, session.accountId),
+			isSongOwnedByAccount(session.accountId, data.songId),
 			doPlaylistsBelongToAccount(data.playlistIds, session.accountId),
 		]);
 		if (!songOwned || !playlistsOwned) {

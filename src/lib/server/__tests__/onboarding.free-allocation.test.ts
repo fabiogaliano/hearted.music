@@ -53,9 +53,15 @@ vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: () => mockCreateAdminSupabaseClient(),
 }));
 
-vi.mock("@/lib/domains/library/liked-songs/queries", () => ({
-	getCount: vi.fn(),
-}));
+vi.mock(
+	"@/lib/domains/library/liked-songs/queries",
+	async (importOriginal) => ({
+		...(await importOriginal<
+			typeof import("@/lib/domains/library/liked-songs/queries")
+		>()),
+		getCount: vi.fn(),
+	}),
+);
 
 vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	getPlaylistCount: vi.fn(),

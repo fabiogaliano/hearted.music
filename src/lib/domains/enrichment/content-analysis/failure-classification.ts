@@ -9,6 +9,7 @@
 
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import {
 	isRetryableLlmError,
 	LlmProviderError,
@@ -88,6 +89,6 @@ export function classifyAnalysisFailure(
 	return {
 		isRetryable: false,
 		cause: "unknown",
-		message: error instanceof Error ? error.message : String(error),
+		message: errorMessage(error),
 	};
 }

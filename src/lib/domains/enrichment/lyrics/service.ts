@@ -8,6 +8,7 @@
  */
 
 import { Result } from "better-result";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import {
 	GeniusConfigError,
 	type GeniusError,
@@ -330,7 +331,7 @@ export class LyricsService {
 			if (error instanceof GeniusParseError) {
 				return Result.err(error);
 			}
-			const reason = error instanceof Error ? error.message : String(error);
+			const reason = errorMessage(error);
 			return Result.err(new GeniusParseError(url, reason));
 		}
 	}

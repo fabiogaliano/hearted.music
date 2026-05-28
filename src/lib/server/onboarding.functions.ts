@@ -30,7 +30,10 @@ import {
 	updateTheme,
 } from "@/lib/domains/library/accounts/preferences-queries";
 import { getLibraryArtistCount } from "@/lib/domains/library/artists/queries";
-import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
+import {
+	getCount as getLikedSongCount,
+	isSongOwnedByAccount,
+} from "@/lib/domains/library/liked-songs/queries";
 import {
 	getPlaylistCount,
 	getPlaylistSongCount,
@@ -43,6 +46,7 @@ import {
 	PhaseJobIdsSchema,
 } from "@/lib/platform/jobs/progress/types";
 import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import { type ThemeColor, themeSchema } from "@/lib/theme/types";
 import { generateSongSlug } from "@/lib/utils/slug";
 import { OnboardingChanges } from "@/lib/workflows/library-processing/changes/onboarding";
@@ -156,7 +160,7 @@ async function awaitWalkthroughPreviewEnsure(args: {
 	} catch (err) {
 		console.warn(
 			"[onboarding] ensure walkthrough preview failed:",
-			err instanceof Error ? err.message : String(err),
+			errorMessage(err),
 		);
 	}
 }
@@ -699,22 +703,6 @@ const saveDemoSongSelectionInputSchema = z.object({
 	spotifyTrackId: z.string().min(1),
 });
 
-async function doesDemoSongBelongToAccount(
-	accountId: string,
-	songId: string,
-): Promise<boolean> {
-	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase
-		.from("liked_song")
-		.select("song_id")
-		.eq("account_id", accountId)
-		.eq("song_id", songId)
-		.is("unliked_at", null)
-		.maybeSingle();
-
-	return !error && Boolean(data);
-}
-
 /**
  * Saves the user's demo song selection during onboarding.
  * Looks up the song by Spotify ID and stores the UUID in user_preferences.
@@ -740,10 +728,7 @@ export const saveDemoSongSelection = createServerFn({ method: "POST" })
 			);
 		}
 
-		const songOwned = await doesDemoSongBelongToAccount(
-			session.accountId,
-			song.id,
-		);
+		const songOwned = await isSongOwnedByAccount(session.accountId, song.id);
 		if (!songOwned) {
 			throw new OnboardingError(
 				"lookup_demo_song",
@@ -798,10 +783,7 @@ export const commitDemoSongAndEnterWalkthrough = createServerFn({
 			);
 		}
 
-		const songOwned = await doesDemoSongBelongToAccount(
-			session.accountId,
-			song.id,
-		);
+		const songOwned = await isSongOwnedByAccount(session.accountId, song.id);
 		if (!songOwned) {
 			throw new OnboardingError(
 				"lookup_demo_song",

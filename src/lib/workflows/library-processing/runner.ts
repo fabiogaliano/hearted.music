@@ -7,6 +7,7 @@ import {
 	markJobFailed,
 } from "@/lib/platform/jobs/repository";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import {
 	type RetryOptions,
 	withRetry,
@@ -96,7 +97,7 @@ async function runEnrichmentJob(job: Job): Promise<RunJobOutcome> {
 
 		return { status: "completed", workflow: "enrichment", result, settlement };
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
+		const message = errorMessage(error);
 		// Failure is returned as outcome, not thrown — capture here while the Error is intact.
 		captureWorkerJobFailure(error, {
 			workflow: "enrichment",
@@ -166,7 +167,7 @@ async function runMatchSnapshotRefreshJob(job: Job): Promise<RunJobOutcome> {
 			settlement,
 		};
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
+		const message = errorMessage(error);
 		captureWorkerJobFailure(error, {
 			workflow: "match_snapshot_refresh",
 			jobId: job.id,
@@ -235,7 +236,7 @@ async function settleLibraryProcessing(
 	} catch (error) {
 		console.error("[runner] library-processing-settlement-threw", {
 			...context,
-			error: error instanceof Error ? error.message : String(error),
+			error: errorMessage(error),
 		});
 		return "settlement_failed";
 	}
@@ -269,7 +270,7 @@ async function writeMeasurement(
 	} catch (err) {
 		console.warn(
 			`[runner] measurement-write-error job=${job.id}:`,
-			err instanceof Error ? err.message : String(err),
+			errorMessage(err),
 		);
 	}
 }
@@ -285,7 +286,7 @@ async function markJobFailedSafe(job: Job, message: string): Promise<void> {
 	} catch (markError) {
 		console.error(
 			`[runner] mark-failed-error job=${job.id}:`,
-			markError instanceof Error ? markError.message : String(markError),
+			errorMessage(markError),
 		);
 	}
 }
