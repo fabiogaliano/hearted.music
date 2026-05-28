@@ -20,6 +20,7 @@ import {
 	getOnboardingSession,
 	saveOnboardingStep,
 } from "@/lib/server/onboarding.functions";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 
 const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
 const ONBOARDING_PANE_NAME = "Onboarding";
@@ -123,9 +124,7 @@ export function DevWorkflowPanel() {
 
 				setLastAction(`${currentStep} → ${nextStep}`);
 			} catch (e) {
-				setLastAction(
-					`Step error: ${e instanceof Error ? e.message : String(e)}`,
-				);
+				setLastAction(`Step error: ${errorMessage(e)}`);
 			} finally {
 				isRunningRef.current = false;
 			}

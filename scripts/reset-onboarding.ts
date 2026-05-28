@@ -18,6 +18,7 @@
  *   bun scripts/reset-onboarding.ts <email> --wipe-library --clear-api-token
  */
 
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import { env } from "@/env";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 
@@ -656,7 +657,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
-	const message = err instanceof Error ? err.message : String(err);
+	const message = errorMessage(err);
 	error(`Failed: ${message}`);
 	process.exit(1);
 });

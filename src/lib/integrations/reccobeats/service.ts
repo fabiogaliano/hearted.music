@@ -9,6 +9,7 @@
  */
 
 import { Result } from "better-result";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import {
 	ReccoBeatsApiError,
 	type ReccoBeatsError,
@@ -167,12 +168,7 @@ export class ReccoBeatsService {
 					const fetchResult = await Result.tryPromise({
 						try: () =>
 							fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
-						catch: (e) =>
-							new ReccoBeatsApiError(
-								0,
-								e instanceof Error ? e.message : String(e),
-								e,
-							),
+						catch: (e) => new ReccoBeatsApiError(0, errorMessage(e), e),
 					});
 
 					if (Result.isError(fetchResult)) {
@@ -255,12 +251,7 @@ export class ReccoBeatsService {
 					const fetchResult = await Result.tryPromise({
 						try: () =>
 							fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
-						catch: (e) =>
-							new ReccoBeatsApiError(
-								0,
-								e instanceof Error ? e.message : String(e),
-								e,
-							),
+						catch: (e) => new ReccoBeatsApiError(0, errorMessage(e), e),
 					});
 
 					if (Result.isError(fetchResult)) {

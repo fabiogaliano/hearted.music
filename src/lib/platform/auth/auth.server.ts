@@ -14,6 +14,7 @@ import { getAccountByBetterAuthUserId } from "@/lib/domains/library/accounts/que
 import { getAuth } from "@/lib/platform/auth/auth";
 import { getAuthRequestState } from "@/lib/platform/auth/auth-request-state";
 import type { AuthContext } from "@/lib/platform/auth/auth-types";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 
 /**
  * Gets the current auth session, or null if not authenticated.
@@ -55,7 +56,7 @@ async function loadAuthSession(): Promise<AuthContext | null> {
 			},
 		};
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
+		const message = errorMessage(error);
 		console.warn("Failed to get auth session:", message);
 		return null;
 	}

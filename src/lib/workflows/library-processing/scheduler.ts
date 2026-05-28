@@ -1,7 +1,7 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { readBillingState } from "@/lib/domains/billing/queries";
-import type { BillingState } from "@/lib/domains/billing/state";
+import { FREE_BILLING_STATE } from "@/lib/domains/billing/state";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
 import {
 	getPlaylistSongs,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/platform/jobs/library-processing-queue";
 import { EnrichmentChunkProgressSchema } from "@/lib/platform/jobs/progress/enrichment";
 import { getJobById } from "@/lib/platform/jobs/repository";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import {
 	batchSizeForSequence,
 	makeInitialProgress,
@@ -26,16 +27,6 @@ import type {
 	LibraryProcessingState,
 } from "./types";
 
-const FREE_DEFAULT_BILLING_STATE: BillingState = {
-	plan: "free",
-	creditBalance: 0,
-	subscriptionStatus: "none",
-	cancelAtPeriodEnd: false,
-	subscriptionPeriodEnd: null,
-	unlimitedAccess: { kind: "none" },
-	queueBand: "low",
-};
-
 export interface JobOutcomeMetadata {
 	satisfiedMarker: string | null;
 	batchSequence: number | null;
@@ -46,7 +37,7 @@ function toUnexpectedApplyCause(
 ): Extract<LibraryProcessingApplyCause, { kind: "unexpected" }> {
 	return {
 		kind: "unexpected",
-		message: error instanceof Error ? error.message : String(error),
+		message: errorMessage(error),
 	};
 }
 
@@ -182,9 +173,7 @@ export async function executeEffect(
 		const supabase = createAdminSupabaseClient();
 		const billingResult = await readBillingState(supabase, effect.accountId);
 		const billingBand = resolveQueuePriority(
-			Result.isOk(billingResult)
-				? billingResult.value
-				: FREE_DEFAULT_BILLING_STATE,
+			Result.isOk(billingResult) ? billingResult.value : FREE_BILLING_STATE,
 		);
 		const band =
 			change.kind === "onboarding_target_selection_confirmed"

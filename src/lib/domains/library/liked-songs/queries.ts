@@ -96,6 +96,29 @@ export async function getCount(
 }
 
 /**
+ * Returns true when the account currently likes the given song.
+ *
+ * A song is "owned" when an un-unliked `liked_song` row exists for the
+ * account. Returns false on query error (treat ambiguity as not-owned), so
+ * callers can use it directly as an authorization guard.
+ */
+export async function isSongOwnedByAccount(
+	accountId: string,
+	songId: string,
+): Promise<boolean> {
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase
+		.from("liked_song")
+		.select("song_id")
+		.eq("account_id", accountId)
+		.eq("song_id", songId)
+		.is("unliked_at", null)
+		.maybeSingle();
+
+	return !error && Boolean(data);
+}
+
+/**
  * Gets recent liked songs with song details for activity feed.
  * Uses Supabase foreign key join to fetch song name, artists, and image.
  */

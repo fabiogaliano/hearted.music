@@ -1,6 +1,7 @@
 import { Result, TaggedError } from "better-result";
 import { resolveJobStageFailures } from "@/lib/platform/jobs/item-failures";
 import type { DbError } from "@/lib/shared/errors/database";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import type { FAILURE_CODES } from "./failure-policy";
 import { recordStageFailure } from "./record-failure";
 import type { EnrichmentStageName } from "./types";
@@ -198,7 +199,7 @@ export function makeThrownOutcome(
 	error: unknown,
 	fallbackCode: FailureCode,
 ): StageOutcome {
-	const message = error instanceof Error ? error.message : String(error);
+	const message = errorMessage(error);
 	return {
 		kind: "attempted",
 		stage,

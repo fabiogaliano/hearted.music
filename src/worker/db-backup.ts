@@ -10,6 +10,7 @@ import {
 } from "node:fs/promises";
 import { join } from "node:path";
 import * as Sentry from "@sentry/bun";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import { log } from "./logger";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -572,7 +573,7 @@ export function startDatabaseBackupScheduler(): { stop: () => void } {
 				});
 			}
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
+			const message = errorMessage(error);
 			log.error("db-backup-failed", { error: message, trigger });
 			Sentry.captureException(error, {
 				tags: { feature: "db-backup", trigger },
@@ -611,7 +612,7 @@ export function startDatabaseBackupScheduler(): { stop: () => void } {
 		}
 		if (!stopped) scheduleNextRun();
 	})().catch((error) => {
-		const message = error instanceof Error ? error.message : String(error);
+		const message = errorMessage(error);
 		log.error("db-backup-scheduler-failed", { error: message });
 		Sentry.captureException(error, {
 			tags: { feature: "db-backup", phase: "scheduler-start" },

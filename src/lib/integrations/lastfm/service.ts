@@ -7,6 +7,7 @@
 
 import { Result } from "better-result";
 import { env } from "@/env";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import {
 	LastFmApiError,
 	LastFmConfigError,
@@ -90,8 +91,7 @@ export class LastFmService {
 							fetch(`${BASE_URL}?${params}`, {
 								signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 							}),
-						catch: (e) =>
-							new LastFmApiError(0, e instanceof Error ? e.message : String(e)),
+						catch: (e) => new LastFmApiError(0, errorMessage(e)),
 					});
 
 					if (Result.isError(fetchResult)) {
@@ -175,8 +175,7 @@ export class LastFmService {
 							fetch(`${BASE_URL}?${params}`, {
 								signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 							}),
-						catch: (e) =>
-							new LastFmApiError(0, e instanceof Error ? e.message : String(e)),
+						catch: (e) => new LastFmApiError(0, errorMessage(e)),
 					});
 
 					if (Result.isError(fetchResult)) {

@@ -37,6 +37,7 @@ import {
 	clientIpFrom,
 	withinRateLimit,
 } from "@/lib/platform/rate-limit/edge-rate-limit";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import { captureWithWaitUntil } from "@/utils/posthog-server";
 
 // Long enough to outlast any realistic handler run, short enough that a
@@ -157,7 +158,7 @@ export const Route = createFileRoute("/api/billing-bridge")({
 				} catch (err) {
 					// Release the lease so the next upstream retry can reclaim
 					// this event instead of being short-circuited as a duplicate.
-					const message = err instanceof Error ? err.message : String(err);
+					const message = errorMessage(err);
 					const failMark = await supabase.rpc(
 						"mark_billing_bridge_event_failed",
 						{

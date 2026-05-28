@@ -13,19 +13,12 @@ import type {
 	NormalizedSubscriptionStatus,
 	UnlimitedAccess,
 } from "@/lib/domains/billing/state";
-import { STRIPE_STATUS_TO_NORMALIZED } from "@/lib/domains/billing/state";
+import {
+	FREE_BILLING_STATE,
+	STRIPE_STATUS_TO_NORMALIZED,
+} from "@/lib/domains/billing/state";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { fromSupabaseMaybe } from "@/lib/shared/utils/result-wrappers/supabase";
-
-const FREE_DEFAULT: BillingState = {
-	plan: "free",
-	creditBalance: 0,
-	subscriptionStatus: "none",
-	cancelAtPeriodEnd: false,
-	subscriptionPeriodEnd: null,
-	unlimitedAccess: { kind: "none" },
-	queueBand: "low",
-};
 
 const VALID_PLANS = new Set<string>(["free", "quarterly", "yearly"]);
 
@@ -127,7 +120,7 @@ export async function readBillingState(
 			);
 		}
 
-		return Result.ok(FREE_DEFAULT);
+		return Result.ok(FREE_BILLING_STATE);
 	}
 
 	const plan = parsePlan(row.plan);

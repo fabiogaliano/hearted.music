@@ -79,6 +79,23 @@ export interface BillingState {
 }
 
 /**
+ * Canonical free-tier billing state.
+ *
+ * Used both as the self-heal default when an `account_billing` row is missing
+ * and as the degradation fallback when a billing read fails. Keep this as the
+ * single source so the two paths can never drift.
+ */
+export const FREE_BILLING_STATE: BillingState = {
+	plan: "free",
+	creditBalance: 0,
+	subscriptionStatus: "none",
+	cancelAtPeriodEnd: false,
+	subscriptionPeriodEnd: null,
+	unlimitedAccess: { kind: "none" },
+	queueBand: "low",
+};
+
+/**
  * Display state for a single song in an account's library.
  *
  * Replaces `UIAnalysisStatus`. `locked` is new — supersedes both analysis
