@@ -31,6 +31,9 @@ vi.mock("@/lib/domains/enrichment/audio-features/queries", () => ({
 
 const mockGetEmbeddings = vi.fn();
 class FakeEmbeddingService {
+	static create(): unknown {
+		return Result.ok(new FakeEmbeddingService());
+	}
 	getEmbeddings(songIds: string[]): unknown {
 		return mockGetEmbeddings(songIds);
 	}

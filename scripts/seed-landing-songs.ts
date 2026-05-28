@@ -236,13 +236,14 @@ async function main() {
 	console.log("── Stage 4: Song embedding ──");
 
 	let embeddingService: EmbeddingService | null = null;
-	try {
-		embeddingService = new EmbeddingService();
-	} catch (e) {
+	const embeddingResult = EmbeddingService.create();
+	if (Result.isError(embeddingResult)) {
 		console.log(
-			`  ⚠ EmbeddingService init failed (ML provider not configured): ${e instanceof Error ? e.message : e}`,
+			`  ⚠ EmbeddingService init failed (ML provider not configured): ${embeddingResult.error.message}`,
 		);
 		console.log("  Skipping embedding stage.\n");
+	} else {
+		embeddingService = embeddingResult.value;
 	}
 
 	if (embeddingService) {

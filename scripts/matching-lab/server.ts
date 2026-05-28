@@ -485,7 +485,11 @@ async function runMatching(req: MatchRequest) {
 			},
 		]),
 	);
-	const embeddingService = new EmbeddingService();
+	const embeddingResult = EmbeddingService.create();
+	if (Result.isError(embeddingResult)) {
+		throw embeddingResult.error;
+	}
+	const embeddingService = embeddingResult.value;
 	const matchingService = createMatchingService(embeddingService, null, {
 		minScoreThreshold: req.threshold ?? DEFAULT_MATCHING_CONFIG.minScoreThreshold,
 	});
@@ -759,7 +763,11 @@ async function reprofilePlaylists(accountId?: string) {
 	// Clear cached expansions so they get regenerated on next view
 	saveExpansions({});
 
-	const embeddingService = new EmbeddingService();
+	const embeddingResult = EmbeddingService.create();
+	if (Result.isError(embeddingResult)) {
+		throw embeddingResult.error;
+	}
+	const embeddingService = embeddingResult.value;
 
 	let llmService;
 	try {
@@ -923,7 +931,11 @@ async function getPlaylistSuggestions(
 	const matchingSongs = songs.map((song) =>
 		toMatchingSong(song, audioMap.get(song.id)),
 	);
-	const matchingService = createMatchingService(new EmbeddingService(), null, {
+	const embeddingResult = EmbeddingService.create();
+	if (Result.isError(embeddingResult)) {
+		throw embeddingResult.error;
+	}
+	const matchingService = createMatchingService(embeddingResult.value, null, {
 		minScoreThreshold: 0,
 		maxResultsPerSong: 1,
 	});

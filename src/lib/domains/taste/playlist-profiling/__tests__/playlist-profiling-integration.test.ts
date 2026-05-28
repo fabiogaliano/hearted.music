@@ -142,7 +142,13 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 		}
 
 		// Create embedding service
-		const embeddingService = new EmbeddingService();
+		const embeddingResult = EmbeddingService.create();
+		if (Result.isError(embeddingResult)) {
+			throw new Error(
+				`Failed to create EmbeddingService: ${embeddingResult.error.message}`,
+			);
+		}
+		const embeddingService = embeddingResult.value;
 
 		// Create profiling service
 		service = new PlaylistProfilingService(embeddingService);

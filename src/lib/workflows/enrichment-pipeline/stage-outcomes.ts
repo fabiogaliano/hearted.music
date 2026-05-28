@@ -217,7 +217,6 @@ interface FinalizeParams {
 	outcome: StageOutcome;
 	jobId: string;
 	accountId: string;
-	compensate?: (songId: string) => Promise<Result<void, DbError>>;
 }
 
 export async function finalizeStageOutcome(
@@ -290,26 +289,6 @@ export async function finalizeStageOutcome(
 					message: `Failed to record failure rows for stage ${outcome.stage}`,
 				}),
 			);
-		}
-	}
-
-	if (params.compensate && outcome.stage === "song_analysis") {
-		const compensationFailures = outcome.failures.filter(
-			(f) => f.failureCode === "analysis_inputs_missing",
-		);
-
-		for (const f of compensationFailures) {
-			const result = await params.compensate(f.songId);
-			if (Result.isError(result)) {
-				return Result.err(
-					new StageAccountingError({
-						stage: outcome.stage,
-						phase: "compensation",
-						cause: result.error,
-						message: `Compensation failed for song ${f.songId} in stage ${outcome.stage}`,
-					}),
-				);
-			}
 		}
 	}
 

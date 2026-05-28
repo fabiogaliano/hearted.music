@@ -21,12 +21,14 @@
  */
 
 import { Result } from "better-result";
+import { env } from "@/env";
 import {
 	MLApiError,
 	MLConfigError,
 	type MLProviderError,
 	MLProviderUnavailableError,
 	MLTimeoutError,
+	MLUnsupportedOperationError,
 } from "@/lib/shared/errors/domain/ml";
 import type { MLProvider } from "../ports";
 import type {
@@ -241,7 +243,9 @@ export class LocalProvider implements MLProvider {
 		options?: RerankOptions,
 	): Promise<Result<RerankResult, MLProviderError>> {
 		const model = this.metadata.rerankerModel;
-		if (!model) throw new Error("Reranker model not configured");
+		if (!model) {
+			return Result.err(new MLUnsupportedOperationError("local", "rerank"));
+		}
 
 		if (documents.length === 0) {
 			return Result.ok({ scores: [], model });
@@ -456,7 +460,7 @@ export class LocalProvider implements MLProvider {
  * @returns Result containing provider or error if not in local mode
  */
 export function createLocalProvider(): Result<LocalProvider, MLConfigError> {
-	const mlProvider = process.env.ML_PROVIDER;
+	const mlProvider = env.ML_PROVIDER;
 
 	if (mlProvider !== "local") {
 		return Result.err(

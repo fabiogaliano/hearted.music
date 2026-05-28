@@ -23,7 +23,11 @@ const supabase = createClient(
 async function main() {
 	console.log("\n🔄 Re-profiling playlists with HyDE expansion...\n");
 
-	const embeddingService = new EmbeddingService();
+	const embeddingResult = EmbeddingService.create();
+	if (Result.isError(embeddingResult)) {
+		throw embeddingResult.error;
+	}
+	const embeddingService = embeddingResult.value;
 
 	let llmService;
 	try {

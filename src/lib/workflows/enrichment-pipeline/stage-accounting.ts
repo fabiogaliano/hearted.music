@@ -1,5 +1,4 @@
 import type { Result } from "better-result";
-import type { DbError } from "@/lib/shared/errors/database";
 import { FAILURE_CODES } from "./failure-policy";
 import {
 	type FailureCode,
@@ -17,7 +16,6 @@ interface RunStageWithAccountingParams {
 	jobId: string;
 	accountId: string;
 	fallbackCode?: FailureCode;
-	compensate?: (songId: string) => Promise<Result<void, DbError>>;
 	run: (candidateSongIds: string[]) => Promise<StageOutcome>;
 }
 
@@ -45,6 +43,5 @@ export async function runStageWithAccounting(
 		outcome,
 		jobId,
 		accountId,
-		compensate: params.compensate,
 	});
 }

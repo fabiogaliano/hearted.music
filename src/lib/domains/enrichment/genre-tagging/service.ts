@@ -321,8 +321,7 @@ export class GenreEnrichmentService {
  */
 export function createGenreEnrichmentService(): GenreEnrichmentService {
 	const lastFmResult = createLastFmService();
-	const lastFmService =
-		lastFmResult && Result.isOk(lastFmResult) ? lastFmResult.value : null;
+	const lastFmService = Result.isOk(lastFmResult) ? lastFmResult.value : null;
 
 	return new GenreEnrichmentService(lastFmService);
 }

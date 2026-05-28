@@ -140,7 +140,7 @@ export class DataFetcher {
 		errors: string[],
 	): Promise<string[]> {
 		const serviceResult = createLastFmService();
-		if (!serviceResult || Result.isError(serviceResult)) {
+		if (Result.isError(serviceResult)) {
 			errors.push("Genres: Last.fm service not available");
 			return [];
 		}

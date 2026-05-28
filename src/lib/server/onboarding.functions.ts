@@ -19,10 +19,9 @@ import { getLandingSongsManifest } from "@/lib/content/landing/landing-songs.ser
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { readBillingState } from "@/lib/domains/billing/queries";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
-import { grantFreeAllocation } from "@/lib/domains/billing/unlocks";
+import { completeOnboardingWithAllocations } from "@/lib/domains/library/accounts/onboarding-allocation";
 import {
 	clearPhaseJobIds,
-	completeOnboarding,
 	getOrCreatePreferences,
 	ONBOARDING_STEPS,
 	type OnboardingStep,
@@ -634,39 +633,14 @@ export const markOnboardingComplete = createServerFn({
 	.handler(async ({ context }): Promise<{ success: true }> => {
 		const { session } = context;
 
-		const result = await completeOnboarding(session.accountId);
+		const supabase = createAdminSupabaseClient();
+		const result = await completeOnboardingWithAllocations(
+			supabase,
+			session.accountId,
+		);
 
 		if (Result.isError(result)) {
 			throw new OnboardingError("complete_onboarding", result.error);
-		}
-
-		const supabase = createAdminSupabaseClient();
-		const billingResult = await readBillingState(supabase, session.accountId);
-
-		if (Result.isOk(billingResult)) {
-			const billing = billingResult.value;
-			const isFree =
-				billing.plan === "free" &&
-				!hasUnlimitedAccess(billing) &&
-				billing.creditBalance === 0;
-
-			if (isFree) {
-				const allocationResult = await grantFreeAllocation(
-					supabase,
-					session.accountId,
-				);
-				if (Result.isError(allocationResult)) {
-					console.error(
-						"[onboarding] Free allocation failed:",
-						allocationResult.error,
-					);
-				}
-			}
-		} else {
-			console.error(
-				"[onboarding] Failed to read billing state for free allocation:",
-				billingResult.error,
-			);
 		}
 
 		return { success: true };

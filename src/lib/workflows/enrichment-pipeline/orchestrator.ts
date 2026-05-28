@@ -1,4 +1,6 @@
 import { Result } from "better-result";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import { grantAnalysisFailureReplacementCredit } from "@/lib/domains/billing/compensation";
 import { get as getSongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
@@ -19,7 +21,7 @@ import {
 	makeInitialProgress,
 } from "./progress";
 import { runStageWithAccounting } from "./stage-accounting";
-import type { StageAccountingError, StageSummary } from "./stage-outcomes";
+import { StageAccountingError, type StageSummary } from "./stage-outcomes";
 import { runAudioFeatures } from "./stages/audio-features";
 import { runContentActivation } from "./stages/content-activation";
 import { runGenreTagging } from "./stages/genre-tagging";
@@ -31,22 +33,6 @@ import {
 	type EnrichmentWorkPlan,
 	PipelineBootstrapError,
 } from "./types";
-
-function initEmbeddingService(): Result<
-	EmbeddingService,
-	PipelineBootstrapError
-> {
-	try {
-		return Result.ok(new EmbeddingService());
-	} catch (error) {
-		return Result.err(
-			new PipelineBootstrapError(
-				"Failed to initialize EmbeddingService",
-				error,
-			),
-		);
-	}
-}
 
 function initLlmService(): LlmService | undefined {
 	try {
@@ -156,6 +142,37 @@ async function loadDataEnrichedSongIds(
 	return enrichedSongIds;
 }
 
+/**
+ * Grants a replacement credit for each song that failed song_analysis with
+ * analysis_inputs_missing. The underlying RPC is idempotent, so re-running a
+ * chunk never double-grants. Throws a StageAccountingError (phase
+ * "compensation") on RPC failure, matching the prior in-accounting behavior of
+ * aborting the chunk so the failure surfaces.
+ */
+async function compensateAnalysisInputsMissing(
+	accountId: string,
+	songIds: string[],
+): Promise<void> {
+	if (songIds.length === 0) return;
+
+	const client = createAdminSupabaseClient();
+	for (const songId of songIds) {
+		const result = await grantAnalysisFailureReplacementCredit(client, {
+			accountId,
+			songId,
+			failureCode: FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
+		});
+		if (Result.isError(result)) {
+			throw new StageAccountingError({
+				stage: "song_analysis",
+				phase: "compensation",
+				cause: result.error,
+				message: `Compensation failed for song ${songId} in stage song_analysis`,
+			});
+		}
+	}
+}
+
 // --- Song enrichment phases (A-C) ---
 
 async function enrichSongs(
@@ -245,6 +262,11 @@ async function enrichSongs(
 	await persistProgress(jobId, progress);
 
 	const analysisSubBatch = filterBatch(batch, workPlan.needAnalysis);
+	// Capture analysis_inputs_missing failures so the orchestrator can grant
+	// replacement credits once the accounting layer has durably recorded the
+	// failure rows. A thrown stage yields PROVIDER_TRANSIENT failures (never
+	// this code), so the capture only fires on the normal outcome path.
+	let analysisInputsMissingSongIds: string[] = [];
 	const analysisAccountingResult =
 		analysisSubBatch.songIds.length > 0
 			? await runStageWithAccounting({
@@ -253,25 +275,18 @@ async function enrichSongs(
 					jobId,
 					accountId: ctx.accountId,
 					fallbackCode: FAILURE_CODES.PROVIDER_TRANSIENT,
-					compensate: async (songId: string) => {
-						const { createAdminSupabaseClient } = await import(
-							"@/lib/data/client"
-						);
-						const { grantAnalysisFailureReplacementCredit } = await import(
-							"@/lib/domains/billing/compensation"
-						);
-						const client = createAdminSupabaseClient();
-						const result = await grantAnalysisFailureReplacementCredit(client, {
-							accountId: ctx.accountId,
-							songId,
-							failureCode: FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
-						});
-						if (Result.isError(result)) {
-							return Result.err(result.error);
+					run: async () => {
+						const outcome = await runSongAnalysis(ctx, analysisSubBatch);
+						if (outcome.kind === "attempted") {
+							analysisInputsMissingSongIds = outcome.failures
+								.filter(
+									(f) =>
+										f.failureCode === FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
+								)
+								.map((f) => f.songId);
 						}
-						return Result.ok(undefined);
+						return outcome;
 					},
-					run: () => runSongAnalysis(ctx, analysisSubBatch),
 				})
 			: await emptyAccounting;
 
@@ -284,6 +299,13 @@ async function enrichSongs(
 		});
 		throw analysisAccountingResult.error;
 	}
+
+	// Accounting succeeded, so the failure rows are recorded — grant replacement
+	// credits for the captured analysis_inputs_missing failures.
+	await compensateAnalysisInputsMissing(
+		ctx.accountId,
+		analysisInputsMissingSongIds,
+	);
 
 	const analysisResult: StageSummary = analysisAccountingResult.value;
 
@@ -391,7 +413,7 @@ export async function executeWorkerChunk(
 	batchSize: number,
 	batchSequence: number,
 ): Promise<ChunkResult> {
-	const embeddingResult = initEmbeddingService();
+	const embeddingResult = EmbeddingService.create();
 	if (Result.isError(embeddingResult)) {
 		throw new PipelineBootstrapError(
 			"Failed to initialize EmbeddingService",
