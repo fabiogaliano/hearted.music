@@ -1,0 +1,215 @@
+{
+  "runId": "2026-05-27T17-22-18-063Z__phoebe-bridgers-motion-sickness__v9__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T17:22:18.063Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "9",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 7,
+    "medium": 1,
+    "low": 9
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 5,
+    "academic-register": 1,
+    "book-report-opener": 1,
+    "burstiness": 1,
+    "lexical-repetition": 7,
+    "dash": 1
+  },
+  "tokens": 5244,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "journey[1].description",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", confusing process of leaving a toxic relationship.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[3].description",
+      "span": ", influencing thoughts and feelings long after physical separation.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[2].description",
+      "span": ", seeing the chaos from a distance.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[2].description",
+      "span": ", knowing you are no longer in the center of the storm.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[0].insight",
+      "span": ", confusing feelings of a breakup with a manipulative person.",
+      "severity": "high"
+    },
+    {
+      "rule": "academic-register",
+      "field": "key_lines[1].insight",
+      "span": "disorientation",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "interpretation",
+      "span": "This is about the painful, confus",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "This is about the painful, confusing process of leaving a toxic relationship.",
+      "severity": "low",
+      "note": "CV=0.219 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "feel",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "feelings",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "relationship",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "feeling",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "sonic_texture",
+      "span": "raw",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[1].description",
+      "span": "emotional",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[3].description",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "themes[2].name",
+      "span": "self-preservation",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "headline": "A tangle of anger and longing. It's hard to let go when you feel both at once.",
+    "compound_mood": "Turbulent Acceptance",
+    "mood_description": "A whirlwind of contradictory feelings pulls you in different directions. You feel a deep ache, yet a need to break free.",
+    "interpretation": "This is about the painful, confusing process of leaving a toxic relationship. It shows the struggle to reconcile missing someone with the anger for what they did. The feeling of 'motion sickness' captures how disoriented and sick the betrayal leaves you. It is a slow, difficult reclamation of self.",
+    "themes": [
+      {
+        "name": "emotional turmoil",
+        "description": "A raw, honest look at the messy feelings that linger after a significant, hurtful relationship ends."
+      },
+      {
+        "name": "abuse and betrayal",
+        "description": "The lingering pain from a relationship where trust was broken and emotional manipulation was present."
+      },
+      {
+        "name": "self-preservation",
+        "description": "A necessary journey of extracting oneself from harm, even when the heart resists the departure."
+      },
+      {
+        "name": "lingering presence",
+        "description": "The ghost of a past relationship follows, influencing thoughts and feelings long after physical separation."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Conflicted Hurt",
+        "description": "A confession of raw, messy feelings opens the space. You feel the hate for past wrongs, but also a childlike longing."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Disoriented Anguish",
+        "description": "The world spins around you. A profound nausea sets in, an inability to orient yourself in the emotional aftermath."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Clear Eyed Release",
+        "description": "You pull back, seeing the chaos from a distance. A quiet relief settles in, knowing you are no longer in the center of the storm."
+      },
+      {
+        "section": "Second Chorus",
+        "mood": "Acerbic Acceptance",
+        "description": "A small, pointed observation cuts through. There is a resigned understanding that some things cannot change."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Recalled Betrayal",
+        "description": "The memory of past manipulations surfaces. You feel the unfairness of the power imbalance."
+      },
+      {
+        "section": "Outro Chorus",
+        "mood": "Fragile Hope",
+        "description": "A tentative step towards healing emerges. You wonder what would happen if you just let the feeling take over."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I hate you for what you did / And I miss you like a little kid",
+        "insight": "This perfectly captures the contradictory, confusing feelings of a breakup with a manipulative person."
+      },
+      {
+        "line": "I have emotional motion sickness / Somebody roll the windows down",
+        "insight": "The central metaphor vividly describes the internal disorientation and physical manifestation of emotional distress."
+      },
+      {
+        "line": "I'm on the outside looking through / You're throwing rocks around your room",
+        "insight": "This line illustrates the newfound clarity and distance gained after leaving a toxic situation."
+      },
+      {
+        "line": "You said when you met me, you were bored / And you, you were in a band when I was born",
+        "insight": "This exposes the deeply problematic age and power dynamic that underscored the relationship."
+      },
+      {
+        "line": "But I will try to drown you out",
+        "insight": "This shows a shift from feeling overwhelmed to actively taking steps to reclaim mental space."
+      }
+    ],
+    "sonic_texture": "A steady acoustic guitar strums a clear path forward. Subtle drums offer a quiet, insistent pulse. Warm synth pads cushion the edges. Her voice is close, almost a whisper, then it swells with raw feeling. The sound feels both delicate and determined."
+  }
+}

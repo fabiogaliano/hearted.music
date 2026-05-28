@@ -1,0 +1,152 @@
+{
+  "runId": "2026-05-27T11-53-02-290Z__kendrick-lamar-not-like-us__v7__google-gemini-2-5-flash",
+  "timestamp": "2026-05-27T11:53:02.290Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "7",
+  "model": "google:gemini-2.5-flash",
+  "totals": {
+    "high": 5,
+    "medium": 2,
+    "low": 1
+  },
+  "byRule": {
+    "copula-avoidance": 2,
+    "participial-closure": 2,
+    "self-reference": 2,
+    "book-report-opener": 1,
+    "burstiness": 1
+  },
+  "tokens": 7892,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "key_lines[2].insight",
+      "span": "serves as",
+      "severity": "medium"
+    },
+    {
+      "rule": "copula-avoidance",
+      "field": "key_lines[4].insight",
+      "span": "highlights the",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[2].insight",
+      "span": ", unifying mantra for the collective, drawing a clear line of demarcation.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[4].insight",
+      "span": ", indicating a readiness to sacrifice personal values for victory.",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "sonic_texture",
+      "span": "the track",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "journey[0].description",
+      "span": "the track",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "interpretation",
+      "span": "This is a declaration of war ",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A high-energy, West Coast-infused beat drives the track.",
+      "severity": "low",
+      "note": "CV=0.134 (threshold 0.25)"
+    }
+  ],
+  "analysis": {
+    "headline": "A community reclaims its power. An opponent faces total public dismantlement.",
+    "compound_mood": "Aggressive Triumph",
+    "mood_description": "A powerful beat propels confident words. The energy builds with each verbal strike.",
+    "interpretation": "This is a declaration of war on multiple fronts. It questions an opponent's moral character. It asserts cultural dominance. It unifies a community against an outsider.",
+    "themes": [
+      {
+        "name": "cultural authenticity",
+        "description": "It challenges the opponent's genuine connection to hip-hop culture."
+      },
+      {
+        "name": "community solidarity",
+        "description": "It rallies support from West Coast origins and broader Black communities."
+      },
+      {
+        "name": "moral indictment",
+        "description": "It levels serious personal and legal accusations against an adversary."
+      },
+      {
+        "name": "absolute dominance",
+        "description": "It proclaims an overwhelming victory and an unshakeable position in the rap landscape."
+      }
+    ],
+    "journey": [
+      {
+        "section": "intro",
+        "mood": "ominous warning",
+        "description": "An eerie whisper begins the track. A confident beat drops with a signature producer tag."
+      },
+      {
+        "section": "verse 1",
+        "mood": "escalating assault",
+        "description": "Verbal attacks begin immediately. Personal accusations become more direct and severe."
+      },
+      {
+        "section": "chorus",
+        "mood": "unifying chant",
+        "description": "A repetitive phrase clearly separates 'us' from 'them.' It creates a powerful collective identity."
+      },
+      {
+        "section": "verse 2",
+        "mood": "broad critique",
+        "description": "The attacks broaden to include cultural criticism. More specific allegations emerge against associates."
+      },
+      {
+        "section": "verse 3",
+        "mood": "cultural reclamation",
+        "description": "Claims of cultural appropriation are central. Collaborations are dismissed as exploitative and transactional."
+      },
+      {
+        "section": "bridge & outro",
+        "mood": "defiant celebration",
+        "description": "Accusations are repeated as a taunt. Instructions for a victory dance cement the message of triumph."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "This line directly attacks the opponent's brand and reputation with a shocking accusation."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "This defines the opponent's relationship to hip-hop culture as exploitative rather than collaborative."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "This serves as the powerful, unifying mantra for the collective, drawing a clear line of demarcation."
+      },
+      {
+        "line": "Sometimes you gotta pop out and show niggas",
+        "insight": "This demonstrates a willingness to confront and physically prove dominance rather than hide."
+      },
+      {
+        "line": "Beat your ass and hide the Bible if God watchin'",
+        "insight": "This highlights the extreme commitment to the battle, indicating a readiness to sacrifice personal values for victory."
+      }
+    ],
+    "sonic_texture": "A high-energy, West Coast-infused beat drives the track. Synths and a powerful bassline create a danceable rhythm. The production provides a dark, confident backdrop for the aggressive vocals."
+  }
+}

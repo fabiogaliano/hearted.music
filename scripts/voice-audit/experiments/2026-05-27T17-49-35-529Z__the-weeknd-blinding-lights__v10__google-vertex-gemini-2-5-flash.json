@@ -1,0 +1,331 @@
+{
+  "runId": "2026-05-27T17-49-35-529Z__the-weeknd-blinding-lights__v10__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T17:49:35.529Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "10",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 7,
+    "medium": 6,
+    "low": 21
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "puffery-adjective": 5,
+    "participial-closure": 7,
+    "burstiness": 1,
+    "rule-of-three": 1,
+    "lexical-repetition": 16,
+    "dash": 3
+  },
+  "tokens": 4684,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "key_lines[3].insight",
+      "span": "represents",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "interpretation",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "sonic_texture",
+      "span": "shimmering",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "themes[2].description",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "journey[1].description",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "key_lines[1].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", cutting synths create a sense of urgent movement.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", feeling both nostalgic and completely new.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[2].description",
+      "span": ", speeding through the night to find what he needs.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[3].description",
+      "span": ", dazzling and disorienting.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[3].description",
+      "span": ", feeling lost without it.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[4].description",
+      "span": ", pushing the limits of speed and control.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[5].description",
+      "span": ", stating it directly.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A powerful 80s synth production drives the whole thing.",
+      "severity": "low",
+      "note": "CV=0.166 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "themes[1].description",
+      "span": "He feels raw, sensitive, and incomplete without another person",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "night",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "desperate",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "feels",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "powerful",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "person",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "touch",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "becomes",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "feeling",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "dazzling",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "connection",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "profound",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "sonic_texture",
+      "span": "sense",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[0].description",
+      "span": "isolation",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[1].description",
+      "span": "physical",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "journey[0].description",
+      "span": "line",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "journey[1].description",
+      "span": "need",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "mood_description",
+      "span": "high-octane",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "interpretation",
+      "span": "late-night",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "journey[2].section",
+      "span": "pre-chorus",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "headline": "A dizzying night drive gives way to a desperate search. This is what it feels like to chase something you can barely see.",
+    "compound_mood": "Desperate Euphoria",
+    "mood_description": "A high-octane chase takes hold. You are racing against the dawn, driven by a powerful longing for one person. It feels like your very survival depends on their touch.",
+    "interpretation": "A breathless, late-night journey through a city that never sleeps. It becomes a metaphor for a deeper struggle, an addiction to a feeling or a person that pulls you forward. Every dazzling light and every turn of speed is a desperate plea for connection in a cold, empty world. The exhilaration masks a profound vulnerability.",
+    "themes": [
+      {
+        "name": "loneliness",
+        "description": "A deep sense of isolation pervades the glittering cityscape. He is alone even amidst the neon lights."
+      },
+      {
+        "name": "addiction",
+        "description": "A physical and emotional dependence drives the entire narrative. He feels raw, sensitive, and incomplete without another person."
+      },
+      {
+        "name": "the chase",
+        "description": "A relentless pursuit defines the experience. He runs out of time, speeding through the night to find what he needs."
+      },
+      {
+        "name": "salvation",
+        "description": "One singular touch offers the only possible escape. It provides a fragile hope for clarity and peace."
+      }
+    ],
+    "journey": [
+      {
+        "section": "intro",
+        "mood": "Electric anticipation",
+        "description": "A pulsating synth line emerges from the darkness. The beat drops with an urgent, driving rhythm."
+      },
+      {
+        "section": "verse 1",
+        "mood": "Vulnerable longing",
+        "description": "A voice calls out from a place of isolation. He admits a profound loneliness and a raw need for connection."
+      },
+      {
+        "section": "pre-chorus",
+        "mood": "Empty reflection",
+        "description": "The city feels cold and devoid of meaning. Clarity eludes him when the crucial presence is missing."
+      },
+      {
+        "section": "chorus",
+        "mood": "Overwhelming surrender",
+        "description": "The lights become a physical force, dazzling and disorienting. He confesses a complete reliance on one touch, feeling lost without it."
+      },
+      {
+        "section": "verse 2",
+        "mood": "Frenzied urgency",
+        "description": "Time is running out as morning approaches. He accelerates into the night, pushing the limits of speed and control."
+      },
+      {
+        "section": "bridge",
+        "mood": "Direct plea",
+        "description": "A promise is made with utmost conviction. He will not let go of this connection, stating it directly."
+      },
+      {
+        "section": "outro",
+        "mood": "Lingering echo",
+        "description": "The blinding sensation persists as the music fades. The desperate need for touch hangs in the air, unresolved."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I've been on my own for long enough",
+        "insight": "This line establishes the deep sense of isolation. It explains the desperation driving the entire song."
+      },
+      {
+        "line": "I'm goin' through withdrawals",
+        "insight": "He reveals the profound physical and emotional craving. This line connects his feelings to a powerful, irresistible addiction."
+      },
+      {
+        "line": "I can't see clearly when you're gone",
+        "insight": "His perception becomes entirely dependent on another person. Without them, the world is blurred and confusing."
+      },
+      {
+        "line": "I said, ooh, I'm blinded by the lights",
+        "insight": "This is the central image, a dazzling sensory overload. It represents the overwhelming nature of his feelings and his surroundings."
+      },
+      {
+        "line": "No, I can't sleep until I feel your touch",
+        "insight": "His need for connection is absolute and physical. It becomes the sole condition for peace and rest."
+      }
+    ],
+    "sonic_texture": "A powerful 80s synth production drives the whole thing. Bright, cutting synths create a sense of urgent movement. A strong, propulsive beat pushes you forward, feeling both nostalgic and completely new. The vocals stand out clear and desperate over the shimmering electronic soundscape."
+  }
+}

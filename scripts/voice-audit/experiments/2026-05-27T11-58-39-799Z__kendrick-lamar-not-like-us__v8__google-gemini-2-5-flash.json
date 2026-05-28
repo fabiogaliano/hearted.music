@@ -1,0 +1,141 @@
+{
+  "runId": "2026-05-27T11-58-39-799Z__kendrick-lamar-not-like-us__v8__google-gemini-2-5-flash",
+  "timestamp": "2026-05-27T11:58:39.799Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "8",
+  "model": "google:gemini-2.5-flash",
+  "totals": {
+    "high": 2,
+    "medium": 2,
+    "low": 2
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "puffery-adjective": 1,
+    "participial-closure": 1,
+    "book-report-opener": 1,
+    "burstiness": 2
+  },
+  "tokens": 8247,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "key_lines[3].insight",
+      "span": "highlights the",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "mood_description",
+      "span": "definitive",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[4].insight",
+      "span": ", rejecting the opponent's claim to local support.",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "interpretation",
+      "span": "This is a decisive victory la",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "This is a decisive victory lap.",
+      "severity": "low",
+      "note": "CV=0.226 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A driving, West Coast hip-hop beat carries the entire track.",
+      "severity": "low",
+      "note": "CV=0.226 (threshold 0.25)"
+    }
+  ],
+  "analysis": {
+    "headline": "A declaration of absolute dominance rings through. A stark line is drawn between sides.",
+    "compound_mood": "Vengeful Triumph",
+    "mood_description": "An unwavering conviction fills the air. It feels like a definitive end to a long struggle.",
+    "interpretation": "This is a decisive victory lap. It condemns the opponent’s perceived moral failings. The song also asserts cultural ownership. It declares a clear separation between authentic and performative identities.",
+    "themes": [
+      {
+        "name": "community defense",
+        "description": "The song rallies a specific community against perceived outsiders."
+      },
+      {
+        "name": "moral judgment",
+        "description": "It delivers severe accusations and shames the opponent on ethical grounds."
+      },
+      {
+        "name": "cultural authenticity",
+        "description": "The lyrics distinguish genuine ties to culture from exploitative appropriation."
+      },
+      {
+        "name": "undisputed victory",
+        "description": "The song confidently proclaims a final and total defeat of the opposition."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Ominous Warning",
+        "description": "A chilling whisper sets a dark, confrontational tone."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Direct Assault",
+        "description": "Rapid-fire accusations and taunts begin a brutal attack. The verbal blows land quickly."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Unifying Chant",
+        "description": "A repetitive, assertive declaration reinforces division. It creates a clear boundary between 'us' and 'them'."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Escalating Exposure",
+        "description": "More personal details and alleged wrongdoings are brought to light. The accusations become more severe and widespread."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Cultural Indictment",
+        "description": "The narrative shifts to broader themes of cultural appropriation. It directly labels the opponent a colonizer."
+      },
+      {
+        "section": "Outro",
+        "mood": "Triumphant Call",
+        "description": "A series of call-and-response prompts celebrate the victory. It solidifies the collective power of the unified front."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "This line directly redefines the opponent's public persona with a grave accusation."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "The repeated phrase creates a unifying anthem of separation and distinct identity."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "This powerful statement draws a clear line about cultural exploitation, not collaboration."
+      },
+      {
+        "line": "You better not ever go to cell block one",
+        "insight": "A specific and severe warning highlights the potential legal consequences of alleged actions."
+      },
+      {
+        "line": "I'm glad DeRoz' came home, y'all didn't deserve him neither",
+        "insight": "This line showcases loyalty to community figures, rejecting the opponent's claim to local support."
+      }
+    ],
+    "sonic_texture": "A driving, West Coast hip-hop beat carries the entire track. It features a persistent, thumping bassline. Energetic synth melodies weave through the production. The rhythm encourages movement and confidence."
+  }
+}

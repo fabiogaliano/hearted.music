@@ -1,0 +1,174 @@
+{
+  "runId": "2026-05-27T11-49-54-240Z__kendrick-lamar-not-like-us__v6__google-gemini-2-5-flash",
+  "timestamp": "2026-05-27T11:49:54.240Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "6",
+  "model": "google:gemini-2.5-flash",
+  "totals": {
+    "high": 12,
+    "medium": 1,
+    "low": 0
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 11,
+    "self-reference": 1
+  },
+  "tokens": 8045,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "sonic_texture",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", calling out an opponent's perceived inauthenticity and moral failings.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", riding the wave of an infectious, almost menacing rhythm.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[0].description",
+      "span": ", asserting a claim over the culture's roots.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[1].description",
+      "span": ", casting an opponent as morally corrupt and dangerous.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[3].description",
+      "span": ", forcing an enemy into the spotlight for judgment.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[2].description",
+      "span": ", pulling back layers to reveal more damning details and public shaming.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[3].description",
+      "span": ", dissecting an opponent's ties to various scenes.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[4].description",
+      "span": ", inviting participation in a public shaming, ending with a clear division.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[1].insight",
+      "span": ", turning a playful title into a damning label.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[2].insight",
+      "span": ", accusing someone of exploitation rather than collaboration.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[4].insight",
+      "span": ", forcing a physical response from the listener.",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "key_lines[4].insight",
+      "span": "the listener",
+      "severity": "high"
+    }
+  ],
+  "analysis": {
+    "headline": "A calculated, rhythmic takedown, weaponized for the dancefloor. It's an all-out war disguised as a party anthem.",
+    "compound_mood": "Rhythmic Condemnation",
+    "mood_description": "The beat compels you to move, an infectious pulse carrying venomous declarations. It feels like a celebration of victory, but with a sharp edge of accusation.",
+    "interpretation": "It's a complete dismantling, calling out an opponent's perceived inauthenticity and moral failings. The message is simple: there are lines you don't cross, and true belonging isn't bought or faked.",
+    "themes": [
+      {
+        "name": "cultural authenticity",
+        "description": "It draws clear lines between genuine belonging and performative appropriation, asserting a claim over the culture's roots."
+      },
+      {
+        "name": "moral judgment",
+        "description": "It lays bare serious accusations, casting an opponent as morally corrupt and dangerous."
+      },
+      {
+        "name": "territorial claim",
+        "description": "It fiercely defends hometown pride and the integrity of a community against perceived outsiders."
+      },
+      {
+        "name": "public exposure",
+        "description": "It's about bringing hidden truths to light, forcing an enemy into the spotlight for judgment."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro/Verse 1",
+        "mood": "Sinister Aggression",
+        "description": "A quiet threat morphs into a barrage of personal attacks and confident challenges."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Unified Defiance",
+        "description": "The central chant unites, clearly defining an 'us' against a 'them' with unwavering conviction."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Unrelenting Exposure",
+        "description": "The narrative sharpens, pulling back layers to reveal more damning details and public shaming."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Cultural Reckoning",
+        "description": "The focus shifts to a powerful critique of cultural exploitation, dissecting an opponent's ties to various scenes."
+      },
+      {
+        "section": "Bridge/Outro",
+        "mood": "Taunting Victory",
+        "description": "A mocking, rhythmic chant takes over, inviting participation in a public shaming, ending with a clear division."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Say, Drake, I hear you like 'em young You better not ever go to cell block one",
+        "insight": "Direct and brutal, it hits with a shocking accusation that aims to destroy an opponent's public image."
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "It reclaims and twists an opponent's own brand against them, turning a playful title into a damning label."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "This line cuts to the core of cultural authenticity, accusing someone of exploitation rather than collaboration."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "A simple, powerful refrain that creates an unbridgeable chasm between opposing identities."
+      },
+      {
+        "line": "Then step this way, step that way",
+        "insight": "It transforms a lyrical assault into an undeniable cultural moment, forcing a physical response from the listener."
+      }
+    ],
+    "sonic_texture": "The beat is a relentless, propulsive groove, underscored by deep bass and sharp drums. Vocals are front and center, direct and unadorned, riding the wave of an infectious, almost menacing rhythm."
+  }
+}

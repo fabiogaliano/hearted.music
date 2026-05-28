@@ -7,11 +7,14 @@ import {
 } from "@/lib/domains/enrichment/content-analysis/song-analysis";
 import {
 	academicRegister,
+	aiVocabulary,
 	antithesis,
 	bookReportOpener,
 	burstiness,
 	copulaAvoidance,
+	dashes,
 	hedging,
+	lexicalRepetition,
 	participialClosure,
 	pufferyAdjective,
 	ruleOfThree,
@@ -82,6 +85,20 @@ describe("antithesis", () => {
 		expect(hits.length).toBeGreaterThan(0);
 	});
 
+	it("flags 'not only X but Y'", () => {
+		const hits = antithesis(
+			withInterpretation("Not only a diss track, but a coronation of the coast."),
+		);
+		expect(hits.length).toBeGreaterThan(0);
+	});
+
+	it("flags the 'no X, no Y, just Z' negation", () => {
+		const hits = antithesis(
+			withInterpretation("No apology, no retreat, just a wall of sound."),
+		);
+		expect(hits.length).toBeGreaterThan(0);
+	});
+
 	it("leaves plain sentences alone", () => {
 		expect(
 			antithesis(withInterpretation("A goodbye said once and never again.")),
@@ -116,6 +133,23 @@ describe("puffery-adjective", () => {
 	});
 });
 
+describe("ai-vocabulary", () => {
+	it("flags a cluster of two or more AI-vocabulary words", () => {
+		const hits = aiVocabulary(
+			withInterpretation("An intricate tapestry of pivotal moments."),
+		);
+		const words = new Set(hits.map((h) => h.span.toLowerCase()));
+		expect(words.size).toBeGreaterThanOrEqual(2);
+		expect(hits.every((h) => h.severity === "medium")).toBe(true);
+	});
+
+	it("ignores a single isolated AI-vocabulary word", () => {
+		expect(
+			aiVocabulary(withInterpretation("The song is a quiet tapestry of grief.")),
+		).toEqual([]);
+	});
+});
+
 describe("participial-closure", () => {
 	it("flags comma-participle tail", () => {
 		const hits = participialClosure(
@@ -132,6 +166,44 @@ describe("participial-closure", () => {
 				withInterpretation(
 					"Breaking her silence, she walked out of the room forever.",
 				),
+			),
+		).toEqual([]);
+	});
+
+	it("does not flag a short attributive -ing adjective", () => {
+		expect(
+			participialClosure(
+				withInterpretation("A low, knocking drum. Pure menace."),
+			),
+		).toEqual([]);
+	});
+
+	it("does not flag an -ing adjective on a clause subject", () => {
+		expect(
+			participialClosure(
+				withInterpretation(
+					"A chilling whisper opens, thumping bass drives the rhythm forward.",
+				),
+			),
+		).toEqual([]);
+	});
+
+	it("still flags a genuine tacked-on participial after a noun object", () => {
+		const hits = participialClosure(
+			withInterpretation("She holds the room, exposing every weakness at once."),
+		);
+		expect(hits.length).toBeGreaterThan(0);
+	});
+
+	it("does not flag an -ing adjective whose subject takes 'provides' or 'add'", () => {
+		expect(
+			participialClosure(
+				withInterpretation("A bouncy groove takes over, driving drum beat provides a persistent pulse."),
+			),
+		).toEqual([]);
+		expect(
+			participialClosure(
+				withInterpretation("The beat hits first, swirling synths add a dreamy layer."),
 			),
 		).toEqual([]);
 	});
@@ -211,5 +283,81 @@ describe("rule-of-three", () => {
 			withInterpretation("Sharp, funny, and devastating all at once."),
 		);
 		expect(hits.length).toBeGreaterThan(0);
+	});
+
+	it("flags phrasal triplets, not just single words", () => {
+		const hits = ruleOfThree(
+			withInterpretation("A cry for help, a fist raised, and a quiet goodbye."),
+		);
+		expect(hits.length).toBeGreaterThan(0);
+	});
+});
+
+describe("lexical-repetition", () => {
+	it("flags a content word repeated three or more times", () => {
+		const hits = lexicalRepetition(
+			withInterpretation(
+				"The community moves as a community, a community against the world.",
+			),
+		);
+		expect(hits).toHaveLength(1);
+		expect(hits[0].span).toBe("community");
+		expect(hits[0].severity).toBe("low");
+		expect(hits[0].note).toContain("3");
+	});
+
+	it("leaves a content word repeated only twice alone", () => {
+		expect(
+			lexicalRepetition(
+				withInterpretation("The thunder answers the thunder, then fades."),
+			),
+		).toEqual([]);
+	});
+
+	it("ignores repeated function words", () => {
+		expect(
+			lexicalRepetition(
+				withInterpretation("It is what it is, and that is that, so it goes."),
+			),
+		).toEqual([]);
+	});
+});
+
+describe("dash", () => {
+	it("flags an em dash as medium", () => {
+		const hits = dashes(withInterpretation("She left — and the room went quiet."));
+		expect(hits).toHaveLength(1);
+		expect(hits[0].severity).toBe("medium");
+	});
+
+	it("flags an en dash as medium", () => {
+		const hits = dashes(withInterpretation("A slow burn – then nothing."));
+		expect(hits).toHaveLength(1);
+		expect(hits[0].severity).toBe("medium");
+	});
+
+	it("flags an intra-word hyphen as low and reports the whole compound", () => {
+		const hits = dashes(withInterpretation("A late-night confession."));
+		expect(hits).toHaveLength(1);
+		expect(hits[0].severity).toBe("low");
+		expect(hits[0].span).toBe("late-night");
+	});
+
+	it("flags a spaced hyphen used as a dash, as medium", () => {
+		const hits = dashes(withInterpretation("Quiet at first - then it erupts."));
+		expect(hits).toHaveLength(1);
+		expect(hits[0].severity).toBe("medium");
+	});
+
+	it("does not flag a hyphen inside a quoted lyric line", () => {
+		const analysis = {
+			...base(),
+			key_lines: [{ line: "we're tip-toeing out the door", insight: "A clean exit." }],
+		};
+		expect(dashes(analysis)).toEqual([]);
+	});
+
+	it("leaves dash-free prose alone", () => {
+		expect(dashes(withInterpretation("A clean goodbye said once."))).toEqual([]);
 	});
 });

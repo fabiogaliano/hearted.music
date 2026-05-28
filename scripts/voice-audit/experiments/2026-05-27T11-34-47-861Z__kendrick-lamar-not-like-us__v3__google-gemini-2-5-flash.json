@@ -1,0 +1,258 @@
+{
+  "runId": "2026-05-27T11-34-47-861Z__kendrick-lamar-not-like-us__v3__google-gemini-2-5-flash",
+  "timestamp": "2026-05-27T11:34:47.861Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "3",
+  "model": "google:gemini-2.5-flash",
+  "totals": {
+    "high": 19,
+    "medium": 6,
+    "low": 1
+  },
+  "byRule": {
+    "puffery-adjective": 6,
+    "participial-closure": 19,
+    "burstiness": 1
+  },
+  "tokens": 9183,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "headline",
+      "span": "blistering",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "mood_description",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "sonic_texture",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "journey[1].description",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "journey[4].description",
+      "span": "definitive",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "key_lines[2].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "headline",
+      "span": ", stripping away a rival's legitimacy with fierce accusations and an undeniable beat.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "mood_description",
+      "span": ", watching a rival fall.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", dismantling a perceived cultural appropriator through a barrage of direct, personal accusations.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", making the confrontation feel like an undeniable, public spectacle of triumph.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", making it impossible not to move.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[0].description",
+      "span": ", rejecting those deemed inauthentic or exploitative.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[1].description",
+      "span": ", aiming to discredit their character entirely.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[2].description",
+      "span": ", fostering a sense of shared identity and purpose.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[0].description",
+      "span": ", unsettling whisper quickly gives way to a confident producer tag, signaling an immediate, aggressive turn.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[1].description",
+      "span": ", launching into a barrage of pointed insults and personal accusations, delivered with a relentless flow.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[2].description",
+      "span": ", creating a collective declaration of separation and clear boundaries between rival factions.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[3].description",
+      "span": ", getting more specific and widely distributed, reinforcing the message of the rival's unworthiness with unwavering conviction.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[4].description",
+      "span": ", challenging perceived appropriation and strategic alliances, building to a definitive labeling of the rival as a colonizer.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[5].description",
+      "span": ", turning the accusations into a call-and-response that solidifies the message of ultimate rejection and freedom.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[0].insight",
+      "span": ", stripping away all romantic pretense.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[1].insight",
+      "span": ", drawing a line in the sand.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[2].insight",
+      "span": ", unifying chant of profound separation and cultural exclusion, declaring a clear divide.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[3].insight",
+      "span": ", painting a grim picture of retribution.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[4].insight",
+      "span": ", moving forward with renewed confidence.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "The song is a powerful assertion of authenticity and community, dismantling a pe",
+      "severity": "low",
+      "note": "CV=0.129 (threshold 0.25)"
+    }
+  ],
+  "analysis": {
+    "headline": "A blistering declaration of cultural ownership, stripping away a rival's legitimacy with fierce accusations and an undeniable beat.",
+    "compound_mood": "Scathing Confidence",
+    "mood_description": "A relentless energy pushes forward, grounded by a heavy beat. It feels like standing in the middle of a triumphant, unified crowd, watching a rival fall.",
+    "interpretation": "The song is a powerful assertion of authenticity and community, dismantling a perceived cultural appropriator through a barrage of direct, personal accusations. It draws a stark line between 'us' and 'them,' rallying a collective identity against an outsider. The production's infectious bounce belies the brutal lyrical content, making the confrontation feel like an undeniable, public spectacle of triumph.",
+    "themes": [
+      {
+        "name": "cultural authenticity",
+        "description": "Asserting a rightful place within a community and genre, rejecting those deemed inauthentic or exploitative."
+      },
+      {
+        "name": "allegations of misconduct",
+        "description": "Directly accusing a rival of serious ethical and legal transgressions, aiming to discredit their character entirely."
+      },
+      {
+        "name": "communal solidarity",
+        "description": "Uniting a local and cultural collective against an external threat, fostering a sense of shared identity and purpose."
+      },
+      {
+        "name": "predatory behavior",
+        "description": "Highlighting perceived manipulative alliances and exploitative relationships, particularly within the music industry."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Ominous Shift",
+        "description": "A quiet, unsettling whisper quickly gives way to a confident producer tag, signaling an immediate, aggressive turn."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Blunt Assault",
+        "description": "The beat drops hard, launching into a barrage of pointed insults and personal accusations, delivered with a relentless flow."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Unifying Rejection",
+        "description": "A powerful, repetitive chant takes over, creating a collective declaration of separation and clear boundaries between rival factions."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Deepening Attack",
+        "description": "The accusations intensify, getting more specific and widely distributed, reinforcing the message of the rival's unworthiness with unwavering conviction."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Cultural Indictment",
+        "description": "A broader critique unfolds, challenging perceived appropriation and strategic alliances, building to a definitive labeling of the rival as a colonizer."
+      },
+      {
+        "section": "Outro",
+        "mood": "Triumphant Taunt",
+        "description": "The song becomes a danceable, communal victory lap, turning the accusations into a call-and-response that solidifies the message of ultimate rejection and freedom."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "Shattering a carefully crafted public persona with a brutal, direct accusation, stripping away all romantic pretense."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "Dismantling legitimacy and accusing a rival of exploiting rather than contributing to culture, drawing a line in the sand."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "A defining, unifying chant of profound separation and cultural exclusion, declaring a clear divide."
+      },
+      {
+        "line": "You better not ever go to cell block one",
+        "insight": "A stark warning of the dire consequences faced for alleged misconduct, painting a grim picture of retribution."
+      },
+      {
+        "line": "City is back up, it's a must, we outside, ayy",
+        "insight": "A communal call to reclaim space and assert presence after the confrontation, moving forward with renewed confidence."
+      }
+    ],
+    "sonic_texture": "A driving, West Coast-infused hip-hop beat, propelled by a prominent bassline and crisp drums. The production creates a relentless, urgent backdrop for the direct vocal delivery, making it impossible not to move."
+  }
+}

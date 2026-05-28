@@ -1,0 +1,234 @@
+{
+  "runId": "2026-05-27T17-21-10-076Z__the-weeknd-blinding-lights__v9__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T17:21:10.076Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "9",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 4,
+    "medium": 2,
+    "low": 14
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "puffery-adjective": 1,
+    "participial-closure": 3,
+    "book-report-opener": 1,
+    "lexical-repetition": 10,
+    "dash": 4
+  },
+  "tokens": 4662,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "themes[3].description",
+      "span": "serves as",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "interpretation",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", grounding presence amidst neon chaos.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", creating a propulsive, 80s-inspired energy.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[0].insight",
+      "span": ", lingering isolation that precedes all the searching.",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "key_lines[4].insight",
+      "span": "This is a desperate, final vo",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "desperate",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "empty",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "person",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "world",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "feels",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "need",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "connection",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[0].description",
+      "span": "deep",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[1].description",
+      "span": "intense",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[1].description",
+      "span": "physical",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "sonic_texture",
+      "span": "neon-drenched",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "sonic_texture",
+      "span": "80s-inspired",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "journey[2].section",
+      "span": "Pre-Chorus",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "journey[4].description",
+      "span": "high-speed",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "headline": "A desperate drive through empty streets. Only one person can bring you back.",
+    "compound_mood": "Urgent Longing",
+    "mood_description": "The world feels cold and empty. A frantic energy builds, driven by the desperate need for one specific person's touch.",
+    "interpretation": "Life has become a blur of excess and isolation. Every moment feels like a frantic search for connection. This is a confession of profound dependence, a plea for someone to be the anchor when everything else is spiraling out of control. It's the yearning for a single, grounding presence amidst neon chaos.",
+    "themes": [
+      {
+        "name": "isolation",
+        "description": "Long periods of being alone have created a deep ache, a vulnerability."
+      },
+      {
+        "name": "addictive need",
+        "description": "The craving for another's presence feels as intense and physical as a withdrawal."
+      },
+      {
+        "name": "salvation in another",
+        "description": "One person becomes the sole source of clarity and trust in a confusing, overwhelming world."
+      },
+      {
+        "name": "hedonistic backdrop",
+        "description": "The wild, empty cityscape serves as a contrasting stage for intense personal desperation."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Lonely Confession",
+        "description": "A quick, almost whispered acknowledgement. It sets a solitary scene."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Vulnerable Admission",
+        "description": "The need for another person feels physical. A deep vulnerability is laid bare."
+      },
+      {
+        "section": "Pre-Chorus",
+        "mood": "Blurred Reality",
+        "description": "The city feels cold and empty. Vision blurs. Only one thing matters anymore."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Desperate Plea",
+        "description": "The dam breaks. A raw, honest desperation floods out. A singular focus emerges."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Frantic Chase",
+        "description": "Time is running out. A high-speed pursuit begins, driven by an urgent need."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Earnest Vow",
+        "description": "A heartfelt promise is made. A final, desperate declaration rings out."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I've been on my own for long enough",
+        "insight": "This line establishes the deep, lingering isolation that precedes all the searching."
+      },
+      {
+        "line": "I'm goin' through withdrawals",
+        "insight": "The need for connection feels like a powerful, physical addiction, an intense craving."
+      },
+      {
+        "line": "I can't see clearly when you're gone",
+        "insight": "Absence creates confusion and a lack of grounding. One person brings focus."
+      },
+      {
+        "line": "I said, ooh, I'm blinded by the lights",
+        "insight": "The world's overwhelming chaos becomes a blur. Only a singular connection offers clarity."
+      },
+      {
+        "line": "Will never let you go this time",
+        "insight": "This is a desperate, final vow. It's a pledge to cling to what little stability remains."
+      }
+    ],
+    "sonic_texture": "A throbbing synth beat drives through neon-drenched streets. The bassline pulses. Bright synth chords cut through the night, creating a propulsive, 80s-inspired energy."
+  }
+}

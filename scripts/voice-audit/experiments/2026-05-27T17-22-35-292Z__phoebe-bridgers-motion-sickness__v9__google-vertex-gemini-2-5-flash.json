@@ -1,0 +1,199 @@
+{
+  "runId": "2026-05-27T17-22-35-292Z__phoebe-bridgers-motion-sickness__v9__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T17:22:35.292Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "9",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 4,
+    "medium": 4,
+    "low": 7
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "puffery-adjective": 3,
+    "participial-closure": 2,
+    "book-report-opener": 2,
+    "burstiness": 1,
+    "lexical-repetition": 3,
+    "dash": 3
+  },
+  "tokens": 4719,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "journey[4].description",
+      "span": "highlights the",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "themes[3].description",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "key_lines[0].insight",
+      "span": "visceral",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "key_lines[2].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[2].description",
+      "span": ", observing the wreckage from a safe distance.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[1].insight",
+      "span": ", nauseating feeling of emotional turmoil, begging for relief.",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "key_lines[1].insight",
+      "span": "This is a perfect metaphor fo",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "key_lines[4].insight",
+      "span": "This is a potent metaphor of ",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "mood_description",
+      "span": "A churning stomach sensation washes over.",
+      "severity": "low",
+      "note": "CV=0.204 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "lingering",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "relationship",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "themes[2].description",
+      "span": "hard-won",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "themes[2].description",
+      "span": "well-being",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "key_lines[0].insight",
+      "span": "post-breakup",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "headline": "A powerful declaration of independence from a toxic past. It captures the lingering nausea of a relationship that never settled.",
+    "compound_mood": "Defiant Nausea",
+    "mood_description": "A churning stomach sensation washes over. The past still holds you, but you fight back. You feel the effort of trying to find solid ground.",
+    "interpretation": "The song untangles the lingering, physical unwellness of a toxic relationship. It acknowledges the paradox of hating what someone did while still missing a past version of them. It is a slow, difficult reclamation of self, where the act of speaking out becomes the path to release, even when words feel inadequate.",
+    "themes": [
+      {
+        "name": "emotional aftermath",
+        "description": "The physical and mental residue left by a damaging partnership."
+      },
+      {
+        "name": "toxic nostalgia",
+        "description": "The confusing pull between recognizing abuse and longing for what once was, or what was imagined."
+      },
+      {
+        "name": "self reclamation",
+        "description": "The hard-won battle to disentangle one's identity and well-being from a damaging connection."
+      },
+      {
+        "name": "unspoken truths",
+        "description": "Some experiences are so profound or hurtful that language itself feels insufficient to convey the pain or the need for escape."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "conflicted regret",
+        "description": "A soft acoustic strum lays bare raw, contradictory feelings. It's the ache of a past wound."
+      },
+      {
+        "section": "Chorus",
+        "mood": "overwhelmed plea",
+        "description": "The drums kick in, a sudden rush of discomfort. An urgent cry escapes to clear the air."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "clear eyed anger",
+        "description": "A sharper edge enters, observing the wreckage from a safe distance. A quiet triumph emerges from the damage."
+      },
+      {
+        "section": "Chorus",
+        "mood": "defiant breaking",
+        "description": "The intensity builds, a final attempt to sever the ties. There's a renewed resolve to speak out."
+      },
+      {
+        "section": "Bridge",
+        "mood": "stark realization",
+        "description": "The instrumentation pulls back, a simple, painful truth is delivered. The age difference highlights the power imbalance."
+      },
+      {
+        "section": "Outro",
+        "mood": "desperate surrender",
+        "description": "The sound swells and fades, a bittersweet embrace of the noise. It is the final push towards release."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I hate you for what you did / And I miss you like a little kid",
+        "insight": "This line captures the core paradox of post-breakup emotion, a visceral push and pull."
+      },
+      {
+        "line": "I have emotional motion sickness / Somebody roll the windows down",
+        "insight": "This is a perfect metaphor for the dizzying, nauseating feeling of emotional turmoil, begging for relief."
+      },
+      {
+        "line": "There are no words in the English language / I could scream to drown you out",
+        "insight": "This expresses the ultimate frustration of language failing to capture or escape profound pain."
+      },
+      {
+        "line": "You were in a band when I was born",
+        "insight": "This stark, chilling line brings the age and power dynamic of the relationship into sharp focus."
+      },
+      {
+        "line": "I try to stay clean and live without / And I wanna know what would happen / If I surrender to the sound",
+        "insight": "This is a potent metaphor of addiction and the complex desire to both resist and succumb to the lingering influence."
+      }
+    ],
+    "sonic_texture": "A warm acoustic guitar opens the space. Drums arrive with a driving, insistent rhythm. The bassline roots it with a steady pulse. Vocals are clear and close, a whispered confession that rises to a defiant shout. The sound feels expansive, almost like driving with the windows down."
+  }
+}

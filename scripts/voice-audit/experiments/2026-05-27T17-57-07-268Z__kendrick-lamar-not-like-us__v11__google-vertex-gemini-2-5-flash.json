@@ -1,0 +1,125 @@
+{
+  "runId": "2026-05-27T17-57-07-268Z__kendrick-lamar-not-like-us__v11__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T17:57:07.268Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "11",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 5
+  },
+  "byRule": {
+    "lexical-repetition": 5
+  },
+  "tokens": 8553,
+  "hits": [
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "shared",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "powerful",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "cultural",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "identity",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[1].description",
+      "span": "opponent",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "The air crackles with a defiant joy. You feel the pull of a shared, powerful declaration.",
+    "compound_mood": "Vindictive Celebration",
+    "mood_description": "A raw energy takes over. You feel a collective strength rise as lines are drawn.",
+    "interpretation": "A direct, unfiltered challenge lands. It draws a clear boundary between an authentic community and an outside force. The song becomes a cultural rallying cry. It asserts a dominant identity through accusations and public shaming.",
+    "themes": [
+      {
+        "name": "Cultural Ownership",
+        "description": "The music claims a specific regional sound and community identity. It stands against those seen as appropriating or disrespecting it."
+      },
+      {
+        "name": "Moral Judgment",
+        "description": "Serious allegations are leveled. They question the character and integrity of an opponent."
+      },
+      {
+        "name": "Collective Power",
+        "description": "The song unites a group under a shared banner of defiance. It reinforces loyalty through a common enemy."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Opening Salvo",
+        "mood": "Aggressive Confidence",
+        "description": "The beat drops with an undeniable swagger. Urgent accusations set an immediate combative tone."
+      },
+      {
+        "section": "The Declaration",
+        "mood": "Unifying Defiance",
+        "description": "The chorus rings out with a simple, powerful truth. It draws a stark line between 'us' and 'them'."
+      },
+      {
+        "section": "Deepening the Attack",
+        "mood": "Scathing Exposure",
+        "description": "The lyrical assault intensifies with pointed personal allegations. It exposes alleged hypocrisies and past transgressions."
+      },
+      {
+        "section": "Cultural Reckoning",
+        "mood": "Historic Condemnation",
+        "description": "The scope broadens to critique cultural appropriation. It labels an opponent as a 'colonizer' of black culture."
+      },
+      {
+        "section": "Celebratory Dismissal",
+        "mood": "Joyful Victory",
+        "description": "A playful, taunting dance instruction takes over. It invites collective celebration in the face of a defeated foe."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Nail a nigga to the cross, he walk around like Teezo",
+        "insight": "This line uses powerful biblical imagery. It conveys a complete and public humiliation of the opponent."
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "It directly renames an opponent's brand with a devastating accusation. It strips away any pretense of innocence."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "This refrain establishes a foundational divide. It fosters a strong sense of in group identity and exclusion."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "It redefines the relationship from peer to exploiter. It accuses an opponent of cultural theft rather than collaboration."
+      },
+      {
+        "line": "Then step this way, step that way",
+        "insight": "This invites listeners into a communal dance of triumph. It transforms the diss into a shared, physical celebration."
+      }
+    ],
+    "sonic_texture": "The beat hits you immediately. It is a bouncy, West Coast groove built on a driving bassline and sharp drums. Bright, celebratory synths provide a constant, insistent melody. The production is clean and direct."
+  }
+}

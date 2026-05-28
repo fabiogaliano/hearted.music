@@ -1,0 +1,266 @@
+{
+  "runId": "2026-05-27T18-23-11-978Z__the-weeknd-blinding-lights__v13__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-27T18:23:11.978Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "13",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 3,
+    "low": 19
+  },
+  "byRule": {
+    "puffery-adjective": 3,
+    "participial-closure": 2,
+    "burstiness": 5,
+    "lexical-repetition": 14
+  },
+  "tokens": 4642,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "themes[1].description",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "themes[1].description",
+      "span": "vibrant",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "key_lines[0].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", driving arpeggios fill the space.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[3].description",
+      "span": ", driving fast through the night.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "mood_description",
+      "span": "You are driving fast through a neon city.",
+      "severity": "low",
+      "note": "CV=0.000 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "A singular connection becomes your only anchor in a chaotic world.",
+      "severity": "low",
+      "note": "CV=0.218 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "The sound is a rush of 80s synth.",
+      "severity": "low",
+      "note": "CV=0.108 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "journey[2].description",
+      "span": "The city lights blur around you.",
+      "severity": "low",
+      "note": "CV=0.136 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "journey[4].description",
+      "span": "A moment of clarity arrives.",
+      "severity": "low",
+      "note": "CV=0.136 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "connection",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "world",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "blur",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "neon",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "driving",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "city",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "feeling",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "person",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "loneliness",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "sonic_texture",
+      "span": "powerful",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "sonic_texture",
+      "span": "night",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[0].description",
+      "span": "deep",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[0].description",
+      "span": "need",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[0].description",
+      "span": "feel",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "You are caught in a desperate search for connection. The world outside is a blur of neon and speed.",
+    "compound_mood": "Desperate Euphoria",
+    "mood_description": "You are driving fast through a neon city. Everything is a blur of light and feeling. There is a singular focus on one person.",
+    "interpretation": "A singular connection becomes your only anchor in a chaotic world. You are clinging to one person as your salvation. This person is the only clear thing in a haze of excess and loneliness. You are looking for redemption in a touch.",
+    "themes": [
+      {
+        "name": "addiction and dependence",
+        "description": "There is a deep need for something, or someone, to feel whole."
+      },
+      {
+        "name": "urban isolation",
+        "description": "You feel a profound loneliness even in a bustling, vibrant city."
+      },
+      {
+        "name": "redemptive love",
+        "description": "A powerful connection pulls you back from the brink of self destruction."
+      },
+      {
+        "name": "reckless abandon",
+        "description": "You are pushing limits and living on the edge, driving fast through the night."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Anticipatory build",
+        "description": "A quiet hum starts. You feel a tension rising. The stage is set for a late night drive."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Vulnerable plea",
+        "description": "A voice reaches out. There is a deep need for connection. You confess your isolation."
+      },
+      {
+        "section": "Pre Chorus",
+        "mood": "Disoriented search",
+        "description": "The city lights blur around you. You are lost without a specific person. Everything feels cold and empty."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Blinding release",
+        "description": "The beat drops. You are overwhelmed by a powerful feeling. The lights are too much."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Earnest promise",
+        "description": "A moment of clarity arrives. You vow to hold on tight. This time, you will not let go."
+      },
+      {
+        "section": "Outro",
+        "mood": "Lingering echo",
+        "description": "The feeling fades slowly. The need remains. You are still searching for that touch."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I've been on my own for long enough",
+        "insight": "A deep loneliness has settled in. It is a confession of profound isolation."
+      },
+      {
+        "line": "I can't see clearly when you're gone",
+        "insight": "The world loses its focus without this person. They are your only guide and clarity."
+      },
+      {
+        "line": "I said, ooh, I'm blinded by the lights",
+        "insight": "The intensity of the feeling is overwhelming. It is a surrender to pure emotion."
+      },
+      {
+        "line": "No, I can't sleep until I feel your touch",
+        "insight": "A physical connection is essential for peace. It is a desperate, consuming longing."
+      },
+      {
+        "line": "Will never let you go this time",
+        "insight": "A firm decision is made. You are committing to this connection with all your being."
+      }
+    ],
+    "sonic_texture": "The sound is a rush of 80s synth. Bright, driving arpeggios fill the space. A powerful drum machine pushes the rhythm forward. The vocals soar with a yearning intensity. It feels like a neon lit night drive."
+  }
+}

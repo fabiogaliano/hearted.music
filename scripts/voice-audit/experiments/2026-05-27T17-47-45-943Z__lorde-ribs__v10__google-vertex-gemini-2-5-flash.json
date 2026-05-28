@@ -1,0 +1,198 @@
+{
+  "runId": "2026-05-27T17-47-45-943Z__lorde-ribs__v10__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T17:47:45.943Z",
+  "song": "Lorde — Ribs",
+  "spotifyTrackId": "2MvvoeRt8NcOXWESkxWn3g",
+  "promptKind": "lyrical",
+  "promptVersion": "10",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 2,
+    "medium": 1,
+    "low": 11
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 1,
+    "book-report-opener": 1,
+    "burstiness": 2,
+    "lexical-repetition": 8,
+    "dash": 1
+  },
+  "tokens": 4853,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "key_lines[2].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[0].description",
+      "span": ", bringing anxieties about the future.",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "interpretation",
+      "span": "This is about the painful transit",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "This is about the painful transition from childhood to young adulthood.",
+      "severity": "low",
+      "note": "CV=0.085 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "Synths shimmer with a cool, expansive warmth.",
+      "severity": "low",
+      "note": "CV=0.194 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "fear",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "childhood",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "time",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "shared",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "comfort",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[3].description",
+      "span": "longing",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[3].description",
+      "span": "lost",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "journey[1].section",
+      "span": "Pre-Chorus",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "headline": "A bittersweet ache lingers for moments long past. You feel the pull of youth and the quiet dread of what comes next.",
+    "compound_mood": "Anxious Longing",
+    "mood_description": "You feel a gentle current pulling you back to simpler times. A quiet fear sits just beneath the surface as the present unfurls.",
+    "interpretation": "This is about the painful transition from childhood to young adulthood. It captures the raw vulnerability of realizing time moves forward without your consent. It describes the fear of losing shared innocence and the comfort of childhood bonds. A deep sense of nostalgia mixes with an unsettling dread for the future.",
+    "themes": [
+      {
+        "name": "youth's end",
+        "description": "Childhood's fleeting nature becomes clear, bringing anxieties about the future."
+      },
+      {
+        "name": "shared vulnerability",
+        "description": "Comfort is found in shared moments of fear and connection with friends."
+      },
+      {
+        "name": "fading innocence",
+        "description": "The carefree days give way to the awareness of life's complex realities."
+      },
+      {
+        "name": "time's passage",
+        "description": "An irreversible flow of time creates a longing for what has been lost."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Carefree Dread",
+        "description": "A youthful scene plays out, but a shadow of growing old already falls."
+      },
+      {
+        "section": "Pre-Chorus",
+        "mood": "Dreamy Prolongation",
+        "description": "Words try to hold onto a perfect moment. The desire for things to stay the same is strong."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Lonely Reality",
+        "description": "The fear of aging and isolation becomes a heavy weight. The sweetness of the dream starts to fade."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Desperate Yearning",
+        "description": "There is a direct plea to reclaim lost thoughts and past selves. The absence of what was is keenly felt."
+      },
+      {
+        "section": "Refrain",
+        "mood": "Temporary Solace",
+        "description": "Friendship offers a shared space of childlike comfort. This connection, however deep, cannot fully satisfy the longing."
+      },
+      {
+        "section": "Outro",
+        "mood": "Quiet Resignation",
+        "description": "The understanding settles that some things, even the best ones, will never be enough."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "It drives you crazy, getting old",
+        "insight": "This line directly states the central fear of inevitable change and aging."
+      },
+      {
+        "line": "And I've never felt more alone",
+        "insight": "It captures the isolating feeling that can come with the journey into adulthood."
+      },
+      {
+        "line": "I want 'em back, I want 'em back. The minds we had, the minds we had",
+        "insight": "A raw cry expresses the profound yearning for lost innocence and past perspectives."
+      },
+      {
+        "line": "Sharing beds like little kids",
+        "insight": "This image evokes a tender, innocent closeness found in childhood friendships."
+      },
+      {
+        "line": "But that will never be enough",
+        "insight": "It reveals the bittersweet truth that some bonds, no matter how strong, cannot stop time or satisfy every longing."
+      }
+    ],
+    "sonic_texture": "Synths shimmer with a cool, expansive warmth. A steady, electronic pulse underlies the movement. Vocals float above it, sometimes layered, sometimes clear. The sound builds and swells with a dreamlike, almost melancholic quality. It feels like a late night drive."
+  }
+}

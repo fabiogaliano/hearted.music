@@ -1,0 +1,228 @@
+{
+  "runId": "2026-05-27T18-04-54-139Z__phoebe-bridgers-motion-sickness__v12__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T18:04:54.139Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "12",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 5,
+    "medium": 2,
+    "low": 12
+  },
+  "byRule": {
+    "puffery-adjective": 2,
+    "participial-closure": 5,
+    "burstiness": 2,
+    "lexical-repetition": 10
+  },
+  "tokens": 6016,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "sonic_texture",
+      "span": "shimmering",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "key_lines[3].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[0].description",
+      "span": ", disorienting effects of a damaging relationship create a sensation like physical illness.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[3].description",
+      "span": ", making true escape difficult.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[3].description",
+      "span": ", irritating details from the past resurface.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[2].insight",
+      "span": ", highlighting how completely overwhelmed you are.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[4].insight",
+      "span": ", finding hope in letting go to the music.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "The song confronts the complex, often contradictory emotions that linger after e",
+      "severity": "low",
+      "note": "CV=0.153 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A clean electric guitar plays a shimmering, almost melancholic riff.",
+      "severity": "low",
+      "note": "CV=0.222 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "relationship",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "escape",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "emotional",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×7 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "find",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "like",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "physical",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "journey[0].description",
+      "span": "painful",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "journey[1].description",
+      "span": "feels",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "journey[1].description",
+      "span": "relief",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "You're caught in the dizzying aftermath of a relationship that left you reeling. There's a desperate need to escape the emotional turbulence.",
+    "compound_mood": "Turbulent Release",
+    "mood_description": "You're caught between intense hurt and the powerful urge to break free. The lingering effects of a past connection make it hard to find steady ground.",
+    "interpretation": "The song confronts the complex, often contradictory emotions that linger after escaping a toxic relationship. It captures the struggle to reconcile past affection with present resentment. The feeling is like an inescapable physical sickness caused by emotional trauma. You are desperately trying to find a way to clear your head and finally move on.",
+    "themes": [
+      {
+        "name": "emotional fallout",
+        "description": "The lingering, disorienting effects of a damaging relationship create a sensation like physical illness."
+      },
+      {
+        "name": "reclaiming agency",
+        "description": "There is a fierce determination to break free from a past abuser's influence and find your own voice."
+      },
+      {
+        "name": "contradictory feelings",
+        "description": "You feel both intense hatred and a surprising, childlike longing for someone who hurt you."
+      },
+      {
+        "name": "the past's persistence",
+        "description": "Memories and behaviors of an ex continue to haunt your present, making true escape difficult."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Conflicted resentment",
+        "description": "You confront the painful contradictions of hate and longing that follow a difficult breakup. You admit to faking happiness."
+      },
+      {
+        "section": "Chorus 1",
+        "mood": "Overwhelmed despair",
+        "description": "The emotional turmoil feels like a physical sickness. You yearn for relief from the overwhelming presence of a past pain."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Distant observation",
+        "description": "You observe the chaos from a safe distance. There is a sense of relief mixed with regret for how things ended."
+      },
+      {
+        "section": "Chorus 2",
+        "mood": "Growing resolve",
+        "description": "Small, irritating details from the past resurface. A firm declaration emerges that you will try to overcome the past."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Unequal dynamic",
+        "description": "The history of the relationship is laid bare. You acknowledge the significant age and power imbalance from the start."
+      },
+      {
+        "section": "Outro",
+        "mood": "Hopeful surrender",
+        "description": "The fight feels like an addiction you are trying to overcome. You consider letting the music itself carry you to peace."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I hate you for what you did And I miss you like a little kid",
+        "insight": "The immediate, raw honesty of conflicting emotions after a painful breakup hits you hard."
+      },
+      {
+        "line": "I have emotional motion sickness Somebody roll the windows down",
+        "insight": "This line perfectly encapsulates the disorienting, physical toll that emotional trauma takes on you."
+      },
+      {
+        "line": "There are no words in the English language I could scream to drown you out",
+        "insight": "The sheer depth of the pain feels inexpressible, highlighting how completely overwhelmed you are."
+      },
+      {
+        "line": "I'll be glad that I made it out And sorry that it all went down like it did",
+        "insight": "You feel both a profound relief at your escape and a deep sadness for the painful history."
+      },
+      {
+        "line": "I try to stay clean and live without And I wanna know what would happen If I surrender to the sound",
+        "insight": "You are wrestling with the impulse to treat the past like an addiction, finding hope in letting go to the music."
+      }
+    ],
+    "sonic_texture": "A clean electric guitar plays a shimmering, almost melancholic riff. The drums offer a steady, driving rhythm that keeps a deliberate pace. Her vocals are clear and intimate. They cut through the mix with a raw, confessional quality. There's an underlying current of gentle acoustic textures."
+  }
+}

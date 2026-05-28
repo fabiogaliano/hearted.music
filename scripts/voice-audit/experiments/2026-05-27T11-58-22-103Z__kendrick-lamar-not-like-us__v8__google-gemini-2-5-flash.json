@@ -1,0 +1,141 @@
+{
+  "runId": "2026-05-27T11-58-22-103Z__kendrick-lamar-not-like-us__v8__google-gemini-2-5-flash",
+  "timestamp": "2026-05-27T11:58:22.103Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "8",
+  "model": "google:gemini-2.5-flash",
+  "totals": {
+    "high": 4,
+    "medium": 1,
+    "low": 2
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "participial-closure": 2,
+    "self-reference": 2,
+    "burstiness": 2
+  },
+  "tokens": 9006,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "journey[3].description",
+      "span": "frames",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[4].description",
+      "span": ", ending with dance instructions.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[4].insight",
+      "span": ", turning the diss track into a club anthem.",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "journey[0].description",
+      "span": "the track",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "key_lines[0].insight",
+      "span": "the track",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "Lines are drawn between an authentic West Coast identity and perceived cultural ",
+      "severity": "low",
+      "note": "CV=0.187 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A driving, classic West Coast hip-hop beat powers the entire track.",
+      "severity": "low",
+      "note": "CV=0.221 (threshold 0.25)"
+    }
+  ],
+  "analysis": {
+    "headline": "A triumphant beat drives a stark separation. Loyalty defines a clear \"us\" from \"them.\"",
+    "compound_mood": "Vigilant Fury",
+    "mood_description": "An urgent energy builds immediately. It feels like an open challenge is being laid down.",
+    "interpretation": "Lines are drawn between an authentic West Coast identity and perceived cultural exploitation. It critiques perceived moral failings and professional hypocrisy. It asserts a dominant position in the rap landscape. The community rallies around a shared understanding of who belongs.",
+    "themes": [
+      {
+        "name": "cultural authenticity",
+        "description": "It champions a genuine connection to hip-hop roots and community values."
+      },
+      {
+        "name": "moral accountability",
+        "description": "It exposes alleged misconduct and calls for consequences."
+      },
+      {
+        "name": "community defense",
+        "description": "It protects figures and symbols respected within a specific cultural sphere."
+      },
+      {
+        "name": "rivalry and dominance",
+        "description": "It solidifies a victor in a public conflict through direct, unyielding attacks."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro and Verse 1",
+        "mood": "Aggressive Confrontation",
+        "description": "A dark whisper opens the track. Direct attacks start with a confident, West Coast beat."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Unifying Declaration",
+        "description": "The repeated phrase creates a powerful 'us versus them' mantra. It invites participation and solidarity."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Unflinching Exposure",
+        "description": "Specific accusations against the rival unfold in detail. The narrative focuses on alleged personal misdeeds."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Cultural Critique",
+        "description": "Historical context frames the rival as a colonizer. It calls out alleged exploitation of regional artists and slang."
+      },
+      {
+        "section": "Bridge and Outro",
+        "mood": "Triumphant Rally",
+        "description": "The beat remains insistent. It transforms accusations into a communal chant, ending with dance instructions."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Psst, I see dead people",
+        "insight": "An ominous, almost supernatural warning opens the track."
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "It redefines a rival's brand with a damning accusation."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "This repeated phrase establishes a core theme of division and community solidarity."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "It directly labels the rival's relationship to culture as exploitative."
+      },
+      {
+        "line": "Then step this way, step that way",
+        "insight": "It invites listeners to participate physically, turning the diss track into a club anthem."
+      }
+    ],
+    "sonic_texture": "A driving, classic West Coast hip-hop beat powers the entire track. Funk basslines and prominent drums give it a danceable, confident feel. Synthesizer melodies weave through the rhythm. It feels urgent and celebratory at the same time."
+  }
+}

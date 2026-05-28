@@ -1,0 +1,2145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Voice compare — exemplars vs latest runs</title>
+<style>
+	body { font: 14px/1.5 -apple-system, system-ui, sans-serif; max-width: 1400px; margin: 2rem auto; padding: 0 1rem; color: #111; }
+	h1 { font-size: 1.4rem; }
+	section.track { margin: 2.5rem 0; }
+	section.track header h2 { margin: 0 0 0.25rem; font-size: 1.1rem; }
+	section.track header .meta { margin: 0 0 0.75rem; color: #666; font-size: 0.85rem; }
+	table.compare { width: 100%; border-collapse: collapse; table-layout: fixed; }
+	table.compare th, table.compare td { border: 1px solid #e3e3e3; padding: 0.5rem 0.6rem; vertical-align: top; }
+	table.compare thead th { background: #f5f5f5; text-align: left; font-weight: 600; }
+	table.compare th.field { width: 14%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; color: #555; background: #fafafa; }
+	table.compare td.cell { width: 43%; white-space: pre-wrap; }
+	table.compare td.exemplar { background: #fafffa; }
+	table.compare td.candidate { background: #fafaff; }
+	table.compare td.cell:empty::before { content: "—"; color: #bbb; }
+</style>
+</head>
+<body>
+<h1>Voice compare — exemplars (gold) vs latest experiment runs</h1>
+<p>Each annotatable cell carries <code>data-cell-id="&lt;trackId&gt;::&lt;field&gt;::&lt;side&gt;"</code>. Run <code>scripts/voice-audit/merge-annotations.ts</code> on plannotator's output to group notes per field.</p>
+
+		<section class="track" data-track-id="6AI3ezQ4o3HUoP6Dhudph3" data-song="Kendrick Lamar — Not Like Us">
+			<header>
+				<h2>Kendrick Lamar — Not Like Us</h2>
+				<p class="meta">candidate: google-vertex:gemini-2.5-flash · prompt v13 · 2026-05-27T18:20:54.108Z</p>
+			</header>
+			<table class="compare">
+				<thead>
+					<tr><th>field</th><th>exemplar (gold)</th><th>candidate (model)</th></tr>
+				</thead>
+				<tbody>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::headline">
+				<th class="field">headline</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::headline::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="headline"
+					data-side="exemplar">the knockout, not the jab</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::headline::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="headline"
+					data-side="candidate">You feel the full force of a community standing together. A line is drawn in the sand, clear and unyielding.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::compound_mood">
+				<th class="field">compound_mood</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::compound_mood::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="compound_mood"
+					data-side="exemplar">Triumphant Contempt</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::compound_mood::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="compound_mood"
+					data-side="candidate">Aggressive Confidence</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::mood_description">
+				<th class="field">mood_description</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::mood_description::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="mood_description"
+					data-side="exemplar">It struts. Every line lands like it already knows it won, and it wants you dancing while it twists the knife.</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::mood_description::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="mood_description"
+					data-side="candidate">You feel the full weight of conviction. There is no room for doubt or compromise here.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::interpretation">
+				<th class="field">interpretation</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::interpretation::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="interpretation"
+					data-side="exemplar">A hometown hero deciding a rivalry is over and saying so out loud. The insults are not the point, the certainty is. He turns a diss into a block party, which is its own kind of cruelty. He is having more fun than the person he is burying.</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::interpretation::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="interpretation"
+					data-side="candidate">A declaration of war unfolds. The first front is personal, exposing alleged moral failings. The second challenges artistic authenticity and cultural appropriation. The third reclaims a community's identity and power.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::themes[0].name">
+				<th class="field">themes[0].name</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[0].name::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[0].name"
+					data-side="exemplar">Hometown as armor</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[0].name::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[0].name"
+					data-side="candidate">community defense</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::themes[0].description">
+				<th class="field">themes[0].description</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[0].description::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[0].description"
+					data-side="exemplar">Compton is not a backdrop here, it is the proof of who belongs and who is only visiting.</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[0].description::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[0].description"
+					data-side="candidate">The song rallies a community against perceived threats and outsiders.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::themes[1].name">
+				<th class="field">themes[1].name</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[1].name::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[1].name"
+					data-side="exemplar">The accusation as rhythm</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[1].name::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[1].name"
+					data-side="candidate">moral judgment</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::themes[1].description">
+				<th class="field">themes[1].description</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[1].description::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[1].description"
+					data-side="exemplar">The ugliest lines arrive on the bounciest beat, so the crowd chants them before they finish flinching.</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[1].description::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[1].description"
+					data-side="candidate">It delivers harsh judgments on character and alleged predatory behavior.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[0].section">
+				<th class="field">journey[0].section</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[0].section::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[0].section"
+					data-side="exemplar">Intro</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[0].section::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[0].section"
+					data-side="candidate">Intro</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[0].mood">
+				<th class="field">journey[0].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[0].mood::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[0].mood"
+					data-side="exemplar">Coiled</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[0].mood::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[0].mood"
+					data-side="candidate">Chilling Confrontation</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[0].description">
+				<th class="field">journey[0].description</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[0].description::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[0].description"
+					data-side="exemplar">The beat rolls in easy, almost friendly, like a smile right before the first punch.</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[0].description::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[0].description"
+					data-side="candidate">A whisper of 'I see dead people' sets a chilling tone. The beat drops, signaling an immediate confrontation.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[1].section">
+				<th class="field">journey[1].section</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[1].section::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[1].section"
+					data-side="exemplar">Verses</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[1].section::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[1].section"
+					data-side="candidate">Verse 1</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[1].mood">
+				<th class="field">journey[1].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[1].mood::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[1].mood"
+					data-side="exemplar">Relentless</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[1].mood::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[1].mood"
+					data-side="candidate">Direct Accusation</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[1].description">
+				<th class="field">journey[1].description</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[1].description::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[1].description"
+					data-side="exemplar">The names and dates pile up. He is not arguing, he is reading a verdict.</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[1].description::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[1].description"
+					data-side="candidate">Direct accusations fly. Personal attacks are launched with precision and force.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[2].section">
+				<th class="field">journey[2].section</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[2].section::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[2].section"
+					data-side="exemplar">Hook</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[2].section::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[2].section"
+					data-side="candidate">Chorus</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[2].mood">
+				<th class="field">journey[2].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[2].mood::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[2].mood"
+					data-side="exemplar">Communal</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[2].mood::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[2].mood"
+					data-side="candidate">Unified Declaration</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[2].description">
+				<th class="field">journey[2].description</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[2].description::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[2].description"
+					data-side="exemplar">They not like us becomes a whole city singing back. You are either in the room or you are the target.</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[2].description::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[2].description"
+					data-side="candidate">A unified chant rings out. The message is clear: 'They not like us.'</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[0].line">
+				<th class="field">key_lines[0].line</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[0].line::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[0].line"
+					data-side="exemplar">They not like us</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[0].line::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[0].line"
+					data-side="candidate">Say, Drake, I hear you like 'em young</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[0].insight">
+				<th class="field">key_lines[0].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[0].insight::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[0].insight"
+					data-side="exemplar">Four words doing the work of a manifesto. The line draws a circle and leaves someone outside it.</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[0].insight::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[0].insight"
+					data-side="candidate">A direct accusation of predatory behavior lands with a heavy impact.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[1].line">
+				<th class="field">key_lines[1].line</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[1].line::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[1].line"
+					data-side="exemplar">Tryna strike a chord and it's probably A minor</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[1].line::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[1].line"
+					data-side="candidate">Certified Lover Boy? Certified pedophiles</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[1].insight">
+				<th class="field">key_lines[1].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[1].insight::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[1].insight"
+					data-side="exemplar">The cruelest bar wears a pun, so the room laughs a half second before the meaning lands.</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[1].insight::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[1].insight"
+					data-side="candidate">A brand is twisted into a damning indictment.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::sonic_texture">
+				<th class="field">sonic_texture</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::sonic_texture::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="sonic_texture"
+					data-side="exemplar">A West Coast bounce that never breaks a sweat. The bass is round and warm, the beat keeps grinning, and the menace lives entirely in how relaxed it all sounds.</td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::sonic_texture::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="sonic_texture"
+					data-side="candidate">A driving, West Coast G funk beat powers the whole thing. Synths are bright and punchy. The bassline is infectious. Vocals are direct and confrontational, riding the groove with unwavering confidence.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::themes[2].name">
+				<th class="field">themes[2].name</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[2].name::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[2].name"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[2].name::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[2].name"
+					data-side="candidate">cultural authenticity</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::themes[2].description">
+				<th class="field">themes[2].description</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[2].description::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[2].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[2].description::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[2].description"
+					data-side="candidate">The lyrics question who truly belongs to and respects hip hop culture.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::themes[3].name">
+				<th class="field">themes[3].name</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[3].name::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[3].name"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[3].name::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[3].name"
+					data-side="candidate">territorial claim</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::themes[3].description">
+				<th class="field">themes[3].description</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[3].description::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[3].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::themes[3].description::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="themes[3].description"
+					data-side="candidate">It asserts ownership over West Coast identity and influence.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[3].section">
+				<th class="field">journey[3].section</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[3].section::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[3].section"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[3].section::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[3].section"
+					data-side="candidate">Verse 2</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[3].mood">
+				<th class="field">journey[3].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[3].mood::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[3].mood"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[3].mood::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[3].mood"
+					data-side="candidate">Credibility Challenge</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[3].description">
+				<th class="field">journey[3].description</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[3].description::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[3].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[3].description::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[3].description"
+					data-side="candidate">The challenge extends to artistic credibility. Allegations of hypocrisy and opportunism are laid bare.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[4].section">
+				<th class="field">journey[4].section</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[4].section::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[4].section"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[4].section::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[4].section"
+					data-side="candidate">Verse 3</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[4].mood">
+				<th class="field">journey[4].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[4].mood::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[4].mood"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[4].mood::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[4].mood"
+					data-side="candidate">Historical Indictment</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[4].description">
+				<th class="field">journey[4].description</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[4].description::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[4].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[4].description::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[4].description"
+					data-side="candidate">A historical context is drawn. Cultural appropriation is called out as a form of colonization.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[5].section">
+				<th class="field">journey[5].section</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[5].section::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[5].section"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[5].section::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[5].section"
+					data-side="candidate">Bridge</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[5].mood">
+				<th class="field">journey[5].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[5].mood::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[5].mood"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[5].mood::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[5].mood"
+					data-side="candidate">Taunting Celebration</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::journey[5].description">
+				<th class="field">journey[5].description</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[5].description::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[5].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::journey[5].description::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="journey[5].description"
+					data-side="candidate">The taunts become a dance. You are invited to join the celebration of victory.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[2].line">
+				<th class="field">key_lines[2].line</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[2].line::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[2].line"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[2].line::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[2].line"
+					data-side="candidate">No, you not a colleague, you a fuckin' colonizer</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[2].insight">
+				<th class="field">key_lines[2].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[2].insight::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[2].insight"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[2].insight::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[2].insight"
+					data-side="candidate">The relationship is redefined as exploitative, not collaborative.</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[3].line">
+				<th class="field">key_lines[3].line</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[3].line::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[3].line"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[3].line::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[3].line"
+					data-side="candidate">They not like us, they not like us, they not like us</td>
+			</tr>
+			<tr data-row-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[3].insight">
+				<th class="field">key_lines[3].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[3].insight::exemplar"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[3].insight"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="6AI3ezQ4o3HUoP6Dhudph3::key_lines[3].insight::candidate"
+					data-track-id="6AI3ezQ4o3HUoP6Dhudph3"
+					data-field="key_lines[3].insight"
+					data-side="candidate">This is the central, unifying cry of separation and belonging.</td>
+			</tr></tbody>
+			</table>
+		</section>
+
+		<section class="track" data-track-id="4ml4WlnHDEpOK8HRVYTCWf" data-song="Olivia Rodrigo — drivers license">
+			<header>
+				<h2>Olivia Rodrigo — drivers license</h2>
+				<p class="meta">candidate: google-vertex:gemini-2.5-flash · prompt v13 · 2026-05-27T18:21:51.039Z</p>
+			</header>
+			<table class="compare">
+				<thead>
+					<tr><th>field</th><th>exemplar (gold)</th><th>candidate (model)</th></tr>
+				</thead>
+				<tbody>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::headline">
+				<th class="field">headline</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::headline::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="headline"
+					data-side="exemplar">the long way home, alone this time</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::headline::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="headline"
+					data-side="candidate">You feel the sting of a first heartbreak. Every mile driven is a memory relived.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::compound_mood">
+				<th class="field">compound_mood</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::compound_mood::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="compound_mood"
+					data-side="exemplar">Aching Disbelief</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::compound_mood::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="compound_mood"
+					data-side="candidate">Raw Heartbreak</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::mood_description">
+				<th class="field">mood_description</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::mood_description::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="mood_description"
+					data-side="exemplar">Quiet at first, like talking to yourself in a parked car, until the feeling gets too big for the room and the whole thing floods.</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::mood_description::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="mood_description"
+					data-side="candidate">You are driving alone. The world outside is a blur of tears and memories.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::interpretation">
+				<th class="field">interpretation</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::interpretation::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="interpretation"
+					data-side="exemplar">A milestone that was supposed to be shared, reached alone. The license was a promise made to someone who is already gone, so passing the test only measures the distance between them. It is the moment a private heartbreak turns into an ordinary errand she now has to drive through.</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::interpretation::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="interpretation"
+					data-side="candidate">Gaining independence often coincides with profound loss. The freedom of the open road becomes a painful reminder of what was shared. Every familiar street corner holds a ghost of the past. Moving on feels impossible when everything around you speaks of them.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::themes[0].name">
+				<th class="field">themes[0].name</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[0].name::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[0].name"
+					data-side="exemplar">The promise that outlived the couple</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[0].name::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[0].name"
+					data-side="candidate">first heartbreak</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::themes[0].description">
+				<th class="field">themes[0].description</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[0].description::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[0].description"
+					data-side="exemplar">She passes the test she swore she would pass for him, and the win only counts the miles he is not in the car for.</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[0].description::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[0].description"
+					data-side="candidate">The intense, all consuming pain of a first significant breakup washes over you.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::themes[1].name">
+				<th class="field">themes[1].name</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[1].name::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[1].name"
+					data-side="exemplar">Suburban geography of grief</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[1].name::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[1].name"
+					data-side="candidate">coming of age</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::themes[1].description">
+				<th class="field">themes[1].description</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[1].description::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[1].description"
+					data-side="exemplar">Streets, stop signs, his neighborhood. The map of a small town doubles as a map of where it hurts.</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[1].description::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[1].description"
+					data-side="candidate">Newfound independence arrives hand in hand with deep emotional pain.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::journey[0].section">
+				<th class="field">journey[0].section</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[0].section::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[0].section"
+					data-side="exemplar">Verse</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[0].section::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[0].section"
+					data-side="candidate">Verse 1</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::journey[0].mood">
+				<th class="field">journey[0].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[0].mood::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[0].mood"
+					data-side="exemplar">Hushed</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[0].mood::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[0].mood"
+					data-side="candidate">Shared Dream Shattered</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::journey[0].description">
+				<th class="field">journey[0].description</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[0].description::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[0].description"
+					data-side="exemplar">Just her voice and a few chords, a diary left open on the dashboard.</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[0].description::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[0].description"
+					data-side="candidate">The excitement of a shared future turns into the crushing weight of a present loss.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::journey[1].section">
+				<th class="field">journey[1].section</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[1].section::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[1].section"
+					data-side="exemplar">Bridge</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[1].section::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[1].section"
+					data-side="candidate">Chorus</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::journey[1].mood">
+				<th class="field">journey[1].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[1].mood::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[1].mood"
+					data-side="exemplar">Overwhelmed</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[1].mood::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[1].mood"
+					data-side="candidate">Stinging Betrayal</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::journey[1].description">
+				<th class="field">journey[1].description</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[1].description::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[1].description"
+					data-side="exemplar">Red lights and stop signs blur. The harmonies stack up like thoughts she cannot stop having.</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[1].description::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[1].description"
+					data-side="candidate">You cannot comprehend how someone could move on so easily.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::journey[2].section">
+				<th class="field">journey[2].section</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[2].section::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[2].section"
+					data-side="exemplar">Final chorus</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[2].section::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[2].section"
+					data-side="candidate">Verse 3</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::journey[2].mood">
+				<th class="field">journey[2].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[2].mood::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[2].mood"
+					data-side="exemplar">Cathartic</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[2].mood::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[2].mood"
+					data-side="candidate">Lingering Attachment</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::journey[2].description">
+				<th class="field">journey[2].description</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[2].description::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[2].description"
+					data-side="exemplar">The dam breaks. What started as a whisper ends as the loudest she has been all song.</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[2].description::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[2].description"
+					data-side="candidate">Your friends are tired of hearing about it. You still feel a unique connection to them.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[0].line">
+				<th class="field">key_lines[0].line</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[0].line::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[0].line"
+					data-side="exemplar">I got my driver's license like I told you I would</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[0].line::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[0].line"
+					data-side="candidate">I got my driver's license last week Just like we always talked about</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[0].insight">
+				<th class="field">key_lines[0].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[0].insight::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[0].insight"
+					data-side="exemplar">A win that only counts as a loss. The accomplishment is addressed to someone who is not there to hear it.</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[0].insight::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[0].insight"
+					data-side="candidate">A symbol of newfound freedom becomes a stark reminder of a broken promise.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[1].line">
+				<th class="field">key_lines[1].line</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[1].line::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[1].line"
+					data-side="exemplar">And you're probably with that blonde girl</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[1].line::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[1].line"
+					data-side="candidate">And I just can't imagine how you could be so okay now that I'm gone</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[1].insight">
+				<th class="field">key_lines[1].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[1].insight::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[1].insight"
+					data-side="exemplar">Heartbreak does its worst work in the imagination, casting the exact scene it dreads.</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[1].insight::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[1].insight"
+					data-side="candidate">The sharpest pain comes from the other person's apparent indifference.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::sonic_texture">
+				<th class="field">sonic_texture</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::sonic_texture::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="sonic_texture"
+					data-side="exemplar">A ballad that grows a spine. Sparse piano and a small voice swell into stacked harmonies and a pounding bridge, mirroring a feeling that refuses to stay small.</td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::sonic_texture::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="sonic_texture"
+					data-side="candidate">A gentle piano opens the space. Strings swell with emotion. The vocals are raw and intimate, building to a powerful, yearning cry. A soft, driving beat pushes the narrative forward.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::themes[2].name">
+				<th class="field">themes[2].name</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[2].name::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[2].name"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[2].name::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[2].name"
+					data-side="candidate">memory and place</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::themes[2].description">
+				<th class="field">themes[2].description</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[2].description::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[2].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[2].description::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[2].description"
+					data-side="candidate">Physical locations become saturated with the echoes of a past relationship.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::themes[3].name">
+				<th class="field">themes[3].name</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[3].name::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[3].name"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[3].name::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[3].name"
+					data-side="candidate">unrequited longing</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::themes[3].description">
+				<th class="field">themes[3].description</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[3].description::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[3].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::themes[3].description::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="themes[3].description"
+					data-side="candidate">You still love someone who has clearly moved on.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::journey[3].section">
+				<th class="field">journey[3].section</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[3].section::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[3].section"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[3].section::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[3].section"
+					data-side="candidate">Bridge</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::journey[3].mood">
+				<th class="field">journey[3].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[3].mood::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[3].mood"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[3].mood::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[3].mood"
+					data-side="candidate">Overwhelming Presence</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::journey[3].description">
+				<th class="field">journey[3].description</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[3].description::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[3].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[3].description::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[3].description"
+					data-side="candidate">Every sight and sound on the road brings back vivid, painful memories of them.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::journey[4].section">
+				<th class="field">journey[4].section</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[4].section::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[4].section"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[4].section::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[4].section"
+					data-side="candidate">Outro</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::journey[4].mood">
+				<th class="field">journey[4].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[4].mood::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[4].mood"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[4].mood::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[4].mood"
+					data-side="candidate">Resigned Solitude</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::journey[4].description">
+				<th class="field">journey[4].description</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[4].description::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[4].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::journey[4].description::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="journey[4].description"
+					data-side="candidate">The finality of driving alone past their street settles in.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[2].line">
+				<th class="field">key_lines[2].line</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[2].line::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[2].line"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[2].line::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[2].line"
+					data-side="candidate">Cause you said forever, now I drive alone past your street</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[2].insight">
+				<th class="field">key_lines[2].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[2].insight::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[2].insight"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[2].insight::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[2].insight"
+					data-side="candidate">The broken promise is made real by the lonely act of driving past their house.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[3].line">
+				<th class="field">key_lines[3].line</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[3].line::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[3].line"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[3].line::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[3].line"
+					data-side="candidate">Can't drive past the places we used to go to 'Cause I still fuckin' love you, babe</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[3].insight">
+				<th class="field">key_lines[3].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[3].insight::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[3].insight"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[3].insight::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[3].insight"
+					data-side="candidate">The raw, unfiltered admission of enduring love cuts deep despite the pain.</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[4].line">
+				<th class="field">key_lines[4].line</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[4].line::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[4].line"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[4].line::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[4].line"
+					data-side="candidate">I still hear your voice in the traffic, we're laughing Over all the noise</td>
+			</tr>
+			<tr data-row-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[4].insight">
+				<th class="field">key_lines[4].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[4].insight::exemplar"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[4].insight"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="4ml4WlnHDEpOK8HRVYTCWf::key_lines[4].insight::candidate"
+					data-track-id="4ml4WlnHDEpOK8HRVYTCWf"
+					data-field="key_lines[4].insight"
+					data-side="candidate">Memories intrude on the present moment, making it impossible to escape the past.</td>
+			</tr></tbody>
+			</table>
+		</section>
+
+		<section class="track" data-track-id="0VjIjW4GlUZAMYd2vXMi3b" data-song="The Weeknd — Blinding Lights">
+			<header>
+				<h2>The Weeknd — Blinding Lights</h2>
+				<p class="meta">candidate: google-vertex:gemini-2.5-flash · prompt v13 · 2026-05-27T18:24:19.491Z</p>
+			</header>
+			<table class="compare">
+				<thead>
+					<tr><th>field</th><th>exemplar (gold)</th><th>candidate (model)</th></tr>
+				</thead>
+				<tbody>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::headline">
+				<th class="field">headline</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::headline::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="headline"
+					data-side="exemplar">neon, and no one to call</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::headline::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="headline"
+					data-side="candidate">You're driving fast, chasing a feeling you can't quite grasp. The city lights blur, but one light still guides you home.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::compound_mood">
+				<th class="field">compound_mood</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::compound_mood::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="compound_mood"
+					data-side="exemplar">Euphoric Loneliness</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::compound_mood::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="compound_mood"
+					data-side="candidate">Neon Desperation</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::mood_description">
+				<th class="field">mood_description</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::mood_description::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="mood_description"
+					data-side="exemplar">It sprints. The synths flood in like headlights on a wet road, gorgeous and a little desperate.</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::mood_description::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="mood_description"
+					data-side="candidate">You are speeding through a neon lit city at night. Everything is a blur, but you are searching for one specific connection to ground you.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::interpretation">
+				<th class="field">interpretation</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::interpretation::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="interpretation"
+					data-side="exemplar">Chasing a high, a city, a person, anything to outrun being alone at night. The euphoria is real and so is the emptiness underneath it. He floors it through the dark and hopes the motion will pass for connection.</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::interpretation::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="interpretation"
+					data-side="candidate">Salvation arrives in the form of another person. The blinding lights are the city's allure and the overwhelming nature of his feelings. He needs this person to see clearly. This is a confession of vulnerability and dependence.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::themes[0].name">
+				<th class="field">themes[0].name</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[0].name::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[0].name"
+					data-side="exemplar">Speed as avoidance</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[0].name::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[0].name"
+					data-side="candidate">urban isolation</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::themes[0].description">
+				<th class="field">themes[0].description</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[0].description::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[0].description"
+					data-side="exemplar">The faster the song moves, the clearer it gets that he is running from a quiet he cannot sit in.</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[0].description::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[0].description"
+					data-side="candidate">The city offers endless distractions but leaves you feeling profoundly alone.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::themes[1].name">
+				<th class="field">themes[1].name</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[1].name::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[1].name"
+					data-side="exemplar">City light as substitute</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[1].name::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[1].name"
+					data-side="candidate">desperate connection</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::themes[1].description">
+				<th class="field">themes[1].description</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[1].description::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[1].description"
+					data-side="exemplar">The glow of the strip stands in for the warmth of a person who is not picking up the phone.</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[1].description::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[1].description"
+					data-side="candidate">A singular person becomes the only anchor in a chaotic world.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[0].section">
+				<th class="field">journey[0].section</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[0].section::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[0].section"
+					data-side="exemplar">Intro</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[0].section::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[0].section"
+					data-side="candidate">Verse 1</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[0].mood">
+				<th class="field">journey[0].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[0].mood::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[0].mood"
+					data-side="exemplar">Surging</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[0].mood::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[0].mood"
+					data-side="candidate">Lonely yearning</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[0].description">
+				<th class="field">journey[0].description</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[0].description::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[0].description"
+					data-side="exemplar">The synth hits and the song is already at full speed, no warmup, like flooring it the second the light turns.</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[0].description::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[0].description"
+					data-side="candidate">A quiet desperation begins to build. You are alone and reaching out for a lifeline.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[1].section">
+				<th class="field">journey[1].section</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[1].section::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[1].section"
+					data-side="exemplar">Verses</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[1].section::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[1].section"
+					data-side="candidate">Pre Chorus</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[1].mood">
+				<th class="field">journey[1].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[1].mood::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[1].mood"
+					data-side="exemplar">Yearning</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[1].mood::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[1].mood"
+					data-side="candidate">Building anxiety</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[1].description">
+				<th class="field">journey[1].description</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[1].description::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[1].description"
+					data-side="exemplar">Under all the gloss he is just asking someone to be there. The need keeps peeking through the shine.</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[1].description::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[1].description"
+					data-side="candidate">The world feels vast and empty without this one person. A sense of panic starts to rise.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[2].section">
+				<th class="field">journey[2].section</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[2].section::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[2].section"
+					data-side="exemplar">Outro</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[2].section::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[2].section"
+					data-side="candidate">Chorus</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[2].mood">
+				<th class="field">journey[2].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[2].mood::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[2].mood"
+					data-side="exemplar">Spent</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[2].mood::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[2].mood"
+					data-side="candidate">Exhilarated confession</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[2].description">
+				<th class="field">journey[2].description</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[2].description::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[2].description"
+					data-side="exemplar">The lights keep flashing but the feeling never arrives. He is still driving, still alone.</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[2].description::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[2].description"
+					data-side="candidate">The feeling breaks through. You are overwhelmed by the city and your need for this person.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[0].line">
+				<th class="field">key_lines[0].line</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[0].line::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[0].line"
+					data-side="exemplar">I can't sleep until I feel your touch</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[0].line::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[0].line"
+					data-side="candidate">I've been on my own for long enough</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[0].insight">
+				<th class="field">key_lines[0].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[0].insight::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[0].insight"
+					data-side="exemplar">Insomnia dressed up as devotion. The glamour barely covers how plainly he needs someone.</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[0].insight::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[0].insight"
+					data-side="candidate">A deep loneliness sets the stage for everything that follows.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[1].line">
+				<th class="field">key_lines[1].line</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[1].line::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[1].line"
+					data-side="exemplar">I'm blinded by the lights</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[1].line::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[1].line"
+					data-side="candidate">I'm goin' through withdrawals You can turn me on with just a touch, baby</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[1].insight">
+				<th class="field">key_lines[1].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[1].insight::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[1].insight"
+					data-side="exemplar">The thing that thrills him is the thing keeping him from seeing clearly. The high is also the blindfold.</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[1].insight::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[1].insight"
+					data-side="candidate">The need for connection is a physical craving. It is a powerful, almost chemical dependence.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::sonic_texture">
+				<th class="field">sonic_texture</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::sonic_texture::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="sonic_texture"
+					data-side="exemplar">Glossy retro synthwave with a pulse you feel in your chest. Bright, propulsive, relentlessly forward, all chrome and cold night air.</td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::sonic_texture::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="sonic_texture"
+					data-side="candidate">Pulsing synthesizers create a neon lit soundscape. A driving beat pushes the rhythm forward. The vocals soar over shimmering pads and a powerful bassline. It feels like a late night drive through a city.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::themes[2].name">
+				<th class="field">themes[2].name</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[2].name::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[2].name"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[2].name::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[2].name"
+					data-side="candidate">addiction and clarity</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::themes[2].description">
+				<th class="field">themes[2].description</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[2].description::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[2].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[2].description::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[2].description"
+					data-side="candidate">The need for a person is as intense as a physical craving, offering a moment of clear sight.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::themes[3].name">
+				<th class="field">themes[3].name</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[3].name::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[3].name"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[3].name::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[3].name"
+					data-side="candidate">night drive escape</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::themes[3].description">
+				<th class="field">themes[3].description</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[3].description::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[3].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::themes[3].description::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="themes[3].description"
+					data-side="candidate">Speeding through the night is a way to outrun your thoughts and find a temporary high.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[3].section">
+				<th class="field">journey[3].section</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[3].section::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[3].section"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[3].section::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[3].section"
+					data-side="candidate">Verse 2</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[3].mood">
+				<th class="field">journey[3].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[3].mood::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[3].mood"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[3].mood::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[3].mood"
+					data-side="candidate">Urgent pursuit</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[3].description">
+				<th class="field">journey[3].description</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[3].description::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[3].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[3].description::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[3].description"
+					data-side="candidate">Time is slipping away. You push harder, driving faster to find what you need before it's too late.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[4].section">
+				<th class="field">journey[4].section</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[4].section::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[4].section"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[4].section::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[4].section"
+					data-side="candidate">Bridge</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[4].mood">
+				<th class="field">journey[4].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[4].mood::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[4].mood"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[4].mood::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[4].mood"
+					data-side="candidate">Determined declaration</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[4].description">
+				<th class="field">journey[4].description</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[4].description::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[4].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[4].description::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[4].description"
+					data-side="candidate">A moment of clarity arrives. You are making a promise, a commitment to hold onto this connection.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[5].section">
+				<th class="field">journey[5].section</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[5].section::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[5].section"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[5].section::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[5].section"
+					data-side="candidate">Outro</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[5].mood">
+				<th class="field">journey[5].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[5].mood::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[5].mood"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[5].mood::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[5].mood"
+					data-side="candidate">Lingering dependence</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::journey[5].description">
+				<th class="field">journey[5].description</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[5].description::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[5].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::journey[5].description::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="journey[5].description"
+					data-side="candidate">The feeling of being lost without them remains. The cycle of need continues.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[2].line">
+				<th class="field">key_lines[2].line</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[2].line::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[2].line"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[2].line::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[2].line"
+					data-side="candidate">I can't see clearly when you're gone</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[2].insight">
+				<th class="field">key_lines[2].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[2].insight::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[2].insight"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[2].insight::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[2].insight"
+					data-side="candidate">This person provides the only true clarity in a world of blurred lines.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[3].line">
+				<th class="field">key_lines[3].line</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[3].line::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[3].line"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[3].line::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[3].line"
+					data-side="candidate">I said, ooh, I'm blinded by the lights No, I can't sleep until I feel your touch</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[3].insight">
+				<th class="field">key_lines[3].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[3].insight::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[3].insight"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[3].insight::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[3].insight"
+					data-side="candidate">The city's allure is overwhelming, but only one touch can bring peace. It is a desperate plea for grounding.</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[4].line">
+				<th class="field">key_lines[4].line</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[4].line::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[4].line"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[4].line::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[4].line"
+					data-side="candidate">Will never let you go this time</td>
+			</tr>
+			<tr data-row-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[4].insight">
+				<th class="field">key_lines[4].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[4].insight::exemplar"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[4].insight"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="0VjIjW4GlUZAMYd2vXMi3b::key_lines[4].insight::candidate"
+					data-track-id="0VjIjW4GlUZAMYd2vXMi3b"
+					data-field="key_lines[4].insight"
+					data-side="candidate">A firm resolve emerges from the chaos. This connection is too important to lose.</td>
+			</tr></tbody>
+			</table>
+		</section>
+
+		<section class="track" data-track-id="5xo8RrjJ9CVNrtRg2S3B1R" data-song="Phoebe Bridgers — Motion Sickness">
+			<header>
+				<h2>Phoebe Bridgers — Motion Sickness</h2>
+				<p class="meta">candidate: google-vertex:gemini-2.5-flash · prompt v13 · 2026-05-27T18:25:50.271Z</p>
+			</header>
+			<table class="compare">
+				<thead>
+					<tr><th>field</th><th>exemplar (gold)</th><th>candidate (model)</th></tr>
+				</thead>
+				<tbody>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::headline">
+				<th class="field">headline</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::headline::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="headline"
+					data-side="exemplar">loving someone you would not call back</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::headline::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="headline"
+					data-side="candidate">You feel the lingering ache of a past relationship. It leaves you spinning.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::compound_mood">
+				<th class="field">compound_mood</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::compound_mood::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="compound_mood"
+					data-side="exemplar">Tender Resentment</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::compound_mood::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="compound_mood"
+					data-side="candidate">Conflicted Liberation</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::mood_description">
+				<th class="field">mood_description</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::mood_description::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="mood_description"
+					data-side="exemplar">Bright guitars carry a grudge. It sounds almost upbeat, which is exactly how you know it still hurts.</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::mood_description::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="mood_description"
+					data-side="candidate">You are caught between wanting to escape and still feeling the pull. A dizzying sensation washes over you.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::interpretation">
+				<th class="field">interpretation</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::interpretation::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="interpretation"
+					data-side="exemplar">The specific nausea of being tangled up with someone who hurt you and still takes up room in your day. She is not asking for closure, she is naming the dizziness of missing a person she also can't stand. Anger and longing share the same sentence and refuse to resolve.</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::interpretation::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="interpretation"
+					data-side="candidate">Escaping someone takes longer than leaving the room. The past relationship still causes a physical and emotional reaction. You are trying to find a way to clear your head and move forward. It is a messy process of letting go.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[0].name">
+				<th class="field">themes[0].name</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[0].name::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[0].name"
+					data-side="exemplar">Anger with receipts</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[0].name::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[0].name"
+					data-side="candidate">toxic aftermath</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[0].description">
+				<th class="field">themes[0].description</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[0].description::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[0].description"
+					data-side="exemplar">The hurt is concrete, dollar amounts and apartments and a hypnotherapist, never a vague ache.</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[0].description::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[0].description"
+					data-side="candidate">A relationship's end leaves a deep, unsettling impact.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[1].name">
+				<th class="field">themes[1].name</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[1].name::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[1].name"
+					data-side="exemplar">The pull that survives the verdict</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[1].name::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[1].name"
+					data-side="candidate">emotional whiplash</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[1].description">
+				<th class="field">themes[1].description</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[1].description::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[1].description"
+					data-side="exemplar">She has already decided he was bad for her, and she misses him anyway. Both stay true.</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[1].description::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[1].description"
+					data-side="candidate">Conflicting feelings of hate and longing create internal turmoil.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[0].section">
+				<th class="field">journey[0].section</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[0].section::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[0].section"
+					data-side="exemplar">Verse 1</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[0].section::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[0].section"
+					data-side="candidate">Verse 1</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[0].mood">
+				<th class="field">journey[0].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[0].mood::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[0].mood"
+					data-side="exemplar">Wry</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[0].mood::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[0].mood"
+					data-side="candidate">Bitter longing</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[0].description">
+				<th class="field">journey[0].description</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[0].description::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[0].description"
+					data-side="exemplar">She lists the damage in an almost conversational shrug, like recounting a bad trip to a friend.</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[0].description::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[0].description"
+					data-side="candidate">You are caught between sharp anger and a childish yearning for what was lost.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[1].section">
+				<th class="field">journey[1].section</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[1].section::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[1].section"
+					data-side="exemplar">Chorus</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[1].section::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[1].section"
+					data-side="candidate">Chorus</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[1].mood">
+				<th class="field">journey[1].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[1].mood::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[1].mood"
+					data-side="exemplar">Restless</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[1].mood::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[1].mood"
+					data-side="candidate">Dizzying overwhelm</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[1].description">
+				<th class="field">journey[1].description</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[1].description::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[1].description"
+					data-side="exemplar">The motion sickness hits. The melody lifts while the stomach drops.</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[1].description::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[1].description"
+					data-side="candidate">A wave of nausea hits you as the past spins around. You desperately need fresh air to clear your head.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[2].section">
+				<th class="field">journey[2].section</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[2].section::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[2].section"
+					data-side="exemplar">Bridge</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[2].section::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[2].section"
+					data-side="candidate">Verse 2</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[2].mood">
+				<th class="field">journey[2].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[2].mood::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[2].mood"
+					data-side="exemplar">Exposed</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[2].mood::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[2].mood"
+					data-side="candidate">Clear eyed perspective</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[2].description">
+				<th class="field">journey[2].description</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[2].description::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[2].description"
+					data-side="exemplar">The bravado thins out. For a second she just admits she has no clean way to feel about this.</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[2].description::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[2].description"
+					data-side="candidate">You see the chaos from a distance now. There is a quiet relief in having escaped.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[0].line">
+				<th class="field">key_lines[0].line</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[0].line::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[0].line"
+					data-side="exemplar">I have emotional motion sickness</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[0].line::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[0].line"
+					data-side="candidate">I hate you for what you did And I miss you like a little kid</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[0].insight">
+				<th class="field">key_lines[0].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[0].insight::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[0].insight"
+					data-side="exemplar">The whole song folded into one image. Feelings as a moving car you cannot get out of.</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[0].insight::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[0].insight"
+					data-side="candidate">The raw contradiction of love and hate still lives inside you.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[1].line">
+				<th class="field">key_lines[1].line</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[1].line::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[1].line"
+					data-side="exemplar">I hate you for what you did and I miss you like a little kid</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[1].line::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[1].line"
+					data-side="candidate">I have emotional motion sickness Somebody roll the windows down</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[1].insight">
+				<th class="field">key_lines[1].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[1].insight::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[1].insight"
+					data-side="exemplar">Two opposite truths in one breath, and she refuses to pick one.</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[1].insight::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[1].insight"
+					data-side="candidate">The past relationship leaves you feeling physically ill. You need to escape the feeling.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::sonic_texture">
+				<th class="field">sonic_texture</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::sonic_texture::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="sonic_texture"
+					data-side="exemplar">Jangly, propulsive indie rock with a clean forward push. The drums keep things moving even when the lyrics would rather lie down.</td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::sonic_texture::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="sonic_texture"
+					data-side="candidate">A gentle acoustic guitar opens the space. The drums enter with a steady, driving rhythm. Warm bass lines provide a solid foundation. Subtle electric guitar melodies weave through the verses. The sound builds with layers of shimmering synths. It feels both intimate and expansive.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[2].name">
+				<th class="field">themes[2].name</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[2].name::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[2].name"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[2].name::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[2].name"
+					data-side="candidate">seeking escape</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[2].description">
+				<th class="field">themes[2].description</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[2].description::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[2].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[2].description::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[2].description"
+					data-side="candidate">There is a desperate need to break free from the past's hold.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[3].name">
+				<th class="field">themes[3].name</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[3].name::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[3].name"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[3].name::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[3].name"
+					data-side="candidate">self preservation</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[3].description">
+				<th class="field">themes[3].description</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[3].description::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[3].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::themes[3].description::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="themes[3].description"
+					data-side="candidate">You are learning to protect yourself from further harm.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[3].section">
+				<th class="field">journey[3].section</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[3].section::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[3].section"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[3].section::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[3].section"
+					data-side="candidate">Second Chorus</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[3].mood">
+				<th class="field">journey[3].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[3].mood::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[3].mood"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[3].mood::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[3].mood"
+					data-side="candidate">Lingering irritation</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[3].description">
+				<th class="field">journey[3].description</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[3].description::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[3].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[3].description::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[3].description"
+					data-side="candidate">Small, annoying details from the past still surface. You acknowledge their presence but refuse to let them define you.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[4].section">
+				<th class="field">journey[4].section</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[4].section::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[4].section"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[4].section::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[4].section"
+					data-side="candidate">Bridge</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[4].mood">
+				<th class="field">journey[4].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[4].mood::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[4].mood"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[4].mood::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[4].mood"
+					data-side="candidate">Stark realization</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[4].description">
+				<th class="field">journey[4].description</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[4].description::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[4].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[4].description::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[4].description"
+					data-side="candidate">The power dynamic becomes painfully clear. You see the manipulation for what it was.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[5].section">
+				<th class="field">journey[5].section</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[5].section::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[5].section"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[5].section::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[5].section"
+					data-side="candidate">Final Chorus</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[5].mood">
+				<th class="field">journey[5].mood</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[5].mood::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[5].mood"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[5].mood::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[5].mood"
+					data-side="candidate">Hopeful surrender</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[5].description">
+				<th class="field">journey[5].description</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[5].description::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[5].description"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::journey[5].description::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="journey[5].description"
+					data-side="candidate">You are actively trying to heal and move on. There is a curiosity about what true release might feel like.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[2].line">
+				<th class="field">key_lines[2].line</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[2].line::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[2].line"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[2].line::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[2].line"
+					data-side="candidate">You were in a band when I was born</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[2].insight">
+				<th class="field">key_lines[2].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[2].insight::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[2].insight"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[2].insight::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[2].insight"
+					data-side="candidate">The age gap highlights a disturbing power imbalance. It was always there.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[3].line">
+				<th class="field">key_lines[3].line</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[3].line::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[3].line"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[3].line::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[3].line"
+					data-side="candidate">I try to stay clean and live without</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[3].insight">
+				<th class="field">key_lines[3].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[3].insight::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[3].insight"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[3].insight::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[3].insight"
+					data-side="candidate">Moving on feels like breaking an addiction. It is a conscious effort.</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[4].line">
+				<th class="field">key_lines[4].line</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[4].line::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[4].line"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[4].line::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[4].line"
+					data-side="candidate">And I wanna know what would happen If I surrender to the sound</td>
+			</tr>
+			<tr data-row-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[4].insight">
+				<th class="field">key_lines[4].insight</th>
+				<td class="cell exemplar"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[4].insight::exemplar"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[4].insight"
+					data-side="exemplar"></td>
+				<td class="cell candidate"
+					data-cell-id="5xo8RrjJ9CVNrtRg2S3B1R::key_lines[4].insight::candidate"
+					data-track-id="5xo8RrjJ9CVNrtRg2S3B1R"
+					data-field="key_lines[4].insight"
+					data-side="candidate">You wonder if letting go completely will bring peace. It is a hopeful question.</td>
+			</tr></tbody>
+			</table>
+		</section>
+</body>
+</html>

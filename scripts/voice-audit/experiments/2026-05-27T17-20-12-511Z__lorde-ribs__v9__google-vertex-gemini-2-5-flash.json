@@ -1,0 +1,185 @@
+{
+  "runId": "2026-05-27T17-20-12-511Z__lorde-ribs__v9__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T17:20:12.511Z",
+  "song": "Lorde — Ribs",
+  "spotifyTrackId": "2MvvoeRt8NcOXWESkxWn3g",
+  "promptKind": "lyrical",
+  "promptVersion": "9",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 2,
+    "medium": 2,
+    "low": 9
+  },
+  "byRule": {
+    "puffery-adjective": 2,
+    "participial-closure": 2,
+    "burstiness": 1,
+    "lexical-repetition": 8
+  },
+  "tokens": 4863,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "themes[2].description",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "key_lines[1].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "headline",
+      "span": ", leaving a yearning for simpler times.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[2].description",
+      "span": ", feeling profoundly alone and scared.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "It is a raw confession of the anxieties that come with growing up.",
+      "severity": "low",
+      "note": "CV=0.102 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "fear",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "growing",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "feeling",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "time",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "childhood",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "innocence",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "journey[3].description",
+      "span": "lost",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "journey[4].description",
+      "span": "cannot",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "The fear of growing up hits hard. It washes over you, leaving a yearning for simpler times.",
+    "compound_mood": "Anxious Nostalgia",
+    "mood_description": "You are caught between the thrill of the present and a deep ache for what is already gone. A shiver runs through you, a feeling of time slipping away.",
+    "interpretation": "It is a raw confession of the anxieties that come with growing up. The song captures the bittersweet pain of losing childhood innocence. It explores the fear of loneliness in the face of adult responsibilities. A deep longing for the comfort of the past runs through it all.",
+    "themes": [
+      {
+        "name": "fear of aging",
+        "description": "The natural progression of life brings a terrifying sense of loss and responsibility."
+      },
+      {
+        "name": "lost innocence",
+        "description": "The song mourns the carefree days of youth that slowly fade into memory."
+      },
+      {
+        "name": "loneliness in growth",
+        "description": "As one matures, there is a profound feeling of isolation despite being surrounded by others."
+      },
+      {
+        "name": "yearning for connection",
+        "description": "A desire for the simple, unburdened bonds of childhood friendships persists."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Lingering Reflection",
+        "description": "The past spills over into the present. A moment of childhood freedom is tinged with the creeping awareness of age."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Rising Anxiety",
+        "description": "The fear of growing older becomes a persistent refrain. It circles in your mind, an unavoidable truth."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Isolated Dread",
+        "description": "The imagined sweetness of adulthood turns sour. You wander through the night, feeling profoundly alone and scared."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Urgent Longing",
+        "description": "A desperate plea erupts for the return of lost thoughts and the innocence of younger minds. The sense of absence becomes unbearable."
+      },
+      {
+        "section": "Refrain",
+        "mood": "Bittersweet Closeness",
+        "description": "You cling to a shared moment of childlike joy, but a hollow ache remains. Even the deepest connection cannot fill the void of time."
+      },
+      {
+        "section": "Outro",
+        "mood": "Resigned Acceptance",
+        "description": "The final truth settles in. Some things, once lost, cannot be fully reclaimed."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "It drives you crazy, getting old",
+        "insight": "This line captures the core fear, a simple statement that resonates with a universal dread."
+      },
+      {
+        "line": "And I've never felt more alone",
+        "insight": "It expresses the profound isolation that often accompanies the transition into adulthood."
+      },
+      {
+        "line": "I want 'em back, I want 'em back The minds we had, the minds we had",
+        "insight": "This shows a desperate, raw yearning for lost innocence and simpler perspectives."
+      },
+      {
+        "line": "Laughing till our ribs get tough But that will never be enough",
+        "insight": "This perfectly encapsulates the bittersweet realization that even the most joyful moments cannot entirely stop the flow of time or the pain of change."
+      }
+    ],
+    "sonic_texture": "A pulse hums beneath the words, a steady, rhythmic throb. Swelling synths create a vast, emotional space. The sound feels both intimate and expansive, like a late night thought echoing in an empty room."
+  }
+}

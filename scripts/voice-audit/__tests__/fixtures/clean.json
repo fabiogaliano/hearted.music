@@ -1,7 +1,7 @@
 {
   "headline": "A goodbye whispered through clenched teeth, too proud to cry.",
   "compound_mood": "Stubborn Grief",
-  "mood_description": "Low strings crawl under a half-sung vocal. Everything feels held in.",
+  "mood_description": "Low strings crawl under a half sung vocal. Everything feels held in.",
   "interpretation": "Love ended and nobody wants to say it out loud. The silence between them does all the talking, and each line lands like a door clicking shut in a dark hallway.",
   "themes": [
     { "name": "quiet endings", "description": "The relationship dies in a whisper, not a fight." },
@@ -9,7 +9,7 @@
   ],
   "journey": [
     { "section": "Verse 1", "mood": "still air", "description": "A kitchen at midnight. One voice, one cup of coffee, one chair pulled out for no one." },
-    { "section": "Chorus", "mood": "tight throat", "description": "A refrain that almost breaks, then doesn't. Words swallowed mid-sentence." },
+    { "section": "Chorus", "mood": "tight throat", "description": "A refrain that almost breaks, then doesn't. Words swallowed mid sentence." },
     { "section": "Bridge", "mood": "ghost footsteps", "description": "The other person is remembered in past tense. Only the room answers back." },
     { "section": "Outro", "mood": "closed door", "description": "Three notes on a piano. Then nothing." }
   ],

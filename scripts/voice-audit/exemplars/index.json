@@ -1,0 +1,9 @@
+{
+  "description": "Hand-polished gold Hearted analyses. The bar the pairwise judge measures candidates against (gold-vs-candidate). Keyed by spotifyTrackId so they match experiment runs regardless of label formatting. Edit the prose freely; it defines 'reads like Hearted'.",
+  "entries": [
+    { "key": "not-like-us", "song": "Kendrick Lamar — Not Like Us", "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3", "file": "not-like-us.json" },
+    { "key": "drivers-license", "song": "Olivia Rodrigo — drivers license", "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf", "file": "drivers-license.json" },
+    { "key": "blinding-lights", "song": "The Weeknd — Blinding Lights", "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b", "file": "blinding-lights.json" },
+    { "key": "motion-sickness", "song": "Phoebe Bridgers — Motion Sickness", "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R", "file": "motion-sickness.json" }
+  ]
+}

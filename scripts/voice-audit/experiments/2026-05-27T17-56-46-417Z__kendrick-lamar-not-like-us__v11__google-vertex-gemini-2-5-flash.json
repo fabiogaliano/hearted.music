@@ -1,0 +1,212 @@
+{
+  "runId": "2026-05-27T17-56-46-417Z__kendrick-lamar-not-like-us__v11__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T17:56:46.417Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "11",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 8,
+    "medium": 1,
+    "low": 7
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "participial-closure": 3,
+    "self-reference": 2,
+    "book-report-opener": 3,
+    "burstiness": 2,
+    "lexical-repetition": 5
+  },
+  "tokens": 8624,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "themes[0].description",
+      "span": "represents",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[2].description",
+      "span": ", making clear who stands where.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[3].description",
+      "span": ", stripping away a public facade.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[0].insight",
+      "span": ", establishing an unshakeable boundary and a clear sense of belonging for some, and exclusion for others.",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "themes[2].description",
+      "span": "The track",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "journey[6].description",
+      "span": "The track",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "interpretation",
+      "span": "This is a reassertion of cult",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "themes[0].description",
+      "span": "This is about who genuinely repre",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "key_lines[4].insight",
+      "span": "This is an invitation for col",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "This is a reassertion of cultural boundaries and community values.",
+      "severity": "low",
+      "note": "CV=0.158 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "The beat hits hard with a classic West Coast bounce.",
+      "severity": "low",
+      "note": "CV=0.182 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "powerful",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "community",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "identity",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "perceived",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[1].description",
+      "span": "collective",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "A West Coast celebration cuts through the noise with sharp truths. It is a powerful declaration of community identity.",
+    "compound_mood": "Confident Fury",
+    "mood_description": "A fierce energy charges through. It is a confident assertion of identity and a powerful dismissal of an outsider.",
+    "interpretation": "This is a reassertion of cultural boundaries and community values. The song identifies a stark divide between genuine connection and performative association. It is a declaration of who truly belongs and who does not. A perceived opportunist is thoroughly and publicly unmasked.",
+    "themes": [
+      {
+        "name": "cultural authenticity",
+        "description": "This is about who genuinely represents a culture versus who merely adopts it for gain."
+      },
+      {
+        "name": "community defense",
+        "description": "A collective stands together to protect its values and its people from perceived external threats."
+      },
+      {
+        "name": "unmasking hypocrisy",
+        "description": "The track exposes inconsistencies and alleged falsehoods in an opponent's character and actions."
+      },
+      {
+        "name": "west coast pride",
+        "description": "A powerful affirmation of regional identity and influence takes center stage."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Ominous Warning",
+        "description": "A quiet threat hangs in the air. The mood is set for an impending confrontation."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Direct Confrontation",
+        "description": "Sharp accusations land with precision. Confidence radiates from every word spoken."
+      },
+      {
+        "section": "Chorus",
+        "mood": "United Declaration",
+        "description": "A collective voice rises in powerful agreement. Lines are drawn, making clear who stands where."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Personal Unveiling",
+        "description": "More intimate details emerge, stripping away a public facade. The perceived truth is laid bare."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Cultural Critique",
+        "description": "A historical lens clarifies current issues of appropriation. The argument expands beyond individuals to a broader context."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Hypnotic Taunt",
+        "description": "A rhythmic chant intensifies the message. It is a repetitive, almost mocking, call to recognize truth."
+      },
+      {
+        "section": "Outro",
+        "mood": "Communal Affirmation",
+        "description": "The track closes with an invitation to unity and shared movement. It solidifies the bond among those who belong."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "This is the core message, establishing an unshakeable boundary and a clear sense of belonging for some, and exclusion for others."
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "A shocking, direct accusation is leveled. It aims to completely dismantle an opponent's public image."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "This line elevates the dispute to a critique of cultural appropriation. It redefines a relationship from peer to exploiter."
+      },
+      {
+        "line": "I'm glad DeRoz' came home, y'all didn't deserve him neither. From Alondra down to Central, nigga better not speak on Serena",
+        "insight": "The song connects individual slights to broader community pride. It champions local heroes and protects revered figures from disrespect."
+      },
+      {
+        "line": "Then step this way, step that way",
+        "insight": "This is an invitation for collective celebration and movement. It grounds the triumph in a physical, unifying dance."
+      }
+    ],
+    "sonic_texture": "The beat hits hard with a classic West Coast bounce. Bright synths layer over a persistent bassline. An infectious groove makes this feel ready for a dance floor."
+  }
+}

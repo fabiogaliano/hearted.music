@@ -1,0 +1,194 @@
+{
+  "runId": "2026-05-27T11-48-10-465Z__kendrick-lamar-not-like-us__v4__google-gemini-2-5-flash",
+  "timestamp": "2026-05-27T11:48:10.465Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "4",
+  "model": "google:gemini-2.5-flash",
+  "totals": {
+    "high": 13,
+    "medium": 0,
+    "low": 2
+  },
+  "byRule": {
+    "participial-closure": 11,
+    "self-reference": 1,
+    "book-report-opener": 1,
+    "burstiness": 2
+  },
+  "tokens": 8853,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "headline",
+      "span": ", uniting against an outsider.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "mood_description",
+      "span": ", drawing a clear line in the sand.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", drawing a firm line between a community's genuine spirit and an outsider's perceived opportunism.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", rallying a collective identity against a designated foe.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", pushing the rhythm.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[0].description",
+      "span": ", setting the stage for conflict.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[1].description",
+      "span": ", laying out a series of damning claims without hesitation.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[3].description",
+      "span": ", touching on past misdeeds and cultural insensitivity.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[1].insight",
+      "span": ", redefining a relationship as exploitative.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[2].insight",
+      "span": ", unifying mantra that draws an undeniable line between two camps.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[3].insight",
+      "span": ", stripping away any sense of loyalty.",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "journey[5].description",
+      "span": "The track",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "interpretation",
+      "span": "This is a full-frontal assaul",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "This is a full-frontal assault, drawing a firm line between a community's genuin",
+      "severity": "low",
+      "note": "CV=0.217 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A West Coast G-funk inspired beat drives everything, built for collective moveme",
+      "severity": "low",
+      "note": "CV=0.207 (threshold 0.25)"
+    }
+  ],
+  "analysis": {
+    "headline": "A collective declaration of war and truth, uniting against an outsider.",
+    "compound_mood": "Exposing Triumph",
+    "mood_description": "It feels like a victory lap after a long-fought battle. A crowd roars together, drawing a clear line in the sand.",
+    "interpretation": "This is a full-frontal assault, drawing a firm line between a community's genuine spirit and an outsider's perceived opportunism. It unveils accusations of moral failings and cultural appropriation, rallying a collective identity against a designated foe. Every line asserts dominance and demands allegiance to a specific code.",
+    "themes": [
+      {
+        "name": "communal solidarity",
+        "description": "A rallying cry for those who truly belong, against those who don't."
+      },
+      {
+        "name": "cultural reclamation",
+        "description": "Unmasking perceived appropriation and asserting genuine roots."
+      },
+      {
+        "name": "exposed hypocrisy",
+        "description": "Unveiling past misdeeds and perceived moral failings of a rival."
+      },
+      {
+        "name": "rap battle supremacy",
+        "description": "A decisive declaration of lyrical and cultural dominance."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Ominous Ignition",
+        "description": "A whispered threat kicks things off. Then, a signature tag ignites the beat, setting the stage for conflict."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Unrelenting Accusation",
+        "description": "Direct and personal attacks fly, laying out a series of damning claims without hesitation."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Unifying Declaration",
+        "description": "A repetitive, insistent chant draws a clear boundary. It declares who belongs and who stands outside."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Broadening the Attack",
+        "description": "The accusations expand, touching on past misdeeds and cultural insensitivity. No detail is too small to highlight."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Cultural Condemnation",
+        "description": "The scope widens to critique cultural appropriation. It names names and solidifies the 'colonizer' narrative."
+      },
+      {
+        "section": "Outro",
+        "mood": "Triumphant Rally",
+        "description": "The track dissolves into a collective chant and simple dance instructions. It's a celebration of victory and shared identity."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "A devastating flip of a rival's own brand into a damning accusation."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "This cuts to the core of cultural authenticity, redefining a relationship as exploitative."
+      },
+      {
+        "line": "They not like us, they not like us",
+        "insight": "The central, unifying mantra that draws an undeniable line between two camps."
+      },
+      {
+        "line": "Fucked on Wayne girl while he was in jail, that's connivin'",
+        "insight": "Revealing a perceived deep betrayal to a mentor, stripping away any sense of loyalty."
+      },
+      {
+        "line": "City is back up, it's a must, we outside, ayy",
+        "insight": "A declaration of collective resurgence and readiness for confrontation."
+      }
+    ],
+    "sonic_texture": "A West Coast G-funk inspired beat drives everything, built for collective movement and defiant energy. The bassline is thick and prominent, pushing the rhythm. Vocals are front and center, delivered with sharp clarity over a clean, hard-hitting production."
+  }
+}

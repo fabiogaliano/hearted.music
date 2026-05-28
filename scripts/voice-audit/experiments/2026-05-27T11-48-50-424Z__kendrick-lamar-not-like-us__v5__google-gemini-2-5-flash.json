@@ -1,0 +1,148 @@
+{
+  "runId": "2026-05-27T11-48-50-424Z__kendrick-lamar-not-like-us__v5__google-gemini-2-5-flash",
+  "timestamp": "2026-05-27T11:48:50.424Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "5",
+  "model": "google:gemini-2.5-flash",
+  "totals": {
+    "high": 5,
+    "medium": 1,
+    "low": 2
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 2,
+    "self-reference": 3,
+    "burstiness": 2
+  },
+  "tokens": 7917,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "key_lines[3].insight",
+      "span": "visceral",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[3].description",
+      "span": ", leaving no room for doubt about who holds power.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[3].description",
+      "span": ", revealing perceived weaknesses and past missteps.",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "interpretation",
+      "span": "The track",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "sonic_texture",
+      "span": "the track",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "themes[1].description",
+      "span": "The track",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "It asserts a powerful claim to authenticity in hip-hop.",
+      "severity": "low",
+      "note": "CV=0.095 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A confident, pulsating beat drives the track.",
+      "severity": "low",
+      "note": "CV=0.169 (threshold 0.25)"
+    }
+  ],
+  "analysis": {
+    "headline": "Unleashed aggression meets triumphant community. It's a declaration of dominance.",
+    "compound_mood": "Defiant Triumph",
+    "mood_description": "A pulsating beat ignites a powerful sense of unity. There is an unwavering display of loyalty and defiance.",
+    "interpretation": "It asserts a powerful claim to authenticity in hip-hop. The track exposes perceived betrayals and moral failings. It rallies a community around a shared identity. The message is clear: \"You are not one of us.\"",
+    "themes": [
+      {
+        "name": "authenticity vs. imitation",
+        "description": "It draws a sharp contrast between genuine street credibility and perceived cultural appropriation."
+      },
+      {
+        "name": "community and loyalty",
+        "description": "The track celebrates allegiance to a specific West Coast identity and calls out those seen as disloyal."
+      },
+      {
+        "name": "moral accusation",
+        "description": "It levies serious accusations of predatory behavior and hypocrisy against an opponent."
+      },
+      {
+        "name": "dominance and conquest",
+        "description": "It asserts a clear victory in a public battle, leaving no room for doubt about who holds power."
+      }
+    ],
+    "journey": [
+      {
+        "section": "intro",
+        "mood": "aggressive taunt",
+        "description": "A chilling whisper sets a menacing tone. It quickly transitions into a producer tag that signals a direct confrontation."
+      },
+      {
+        "section": "verse 1",
+        "mood": "unrelenting attack",
+        "description": "Rapid-fire disses escalate immediately. Accusations of moral failings and insincerity are hurled with precision."
+      },
+      {
+        "section": "chorus",
+        "mood": "unified declaration",
+        "description": "The repeated phrase creates an anthem of exclusion. It unifies a collective against an outsider."
+      },
+      {
+        "section": "verse 2",
+        "mood": "exposing vulnerabilities",
+        "description": "The attacks continue, revealing perceived weaknesses and past missteps. It reinforces the idea of the opponent's inauthenticity."
+      },
+      {
+        "section": "verse 3",
+        "mood": "cultural critique",
+        "description": "The historical context of exploitation is invoked. It labels the opponent as a 'colonizer' of culture and community."
+      },
+      {
+        "section": "bridge/outro",
+        "mood": "triumphant dismissal",
+        "description": "A mocking refrain solidifies the opponent's status as an outsider. It invites collective celebration and movement."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "It forms the core chant of the song. It clearly defines an 'us' and a 'them'."
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "This line directly redefines an opponent's brand. It is a damning accusation that cuts deep."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "It strips away any pretense of equality. It recontextualizes the opponent's actions as exploitation."
+      },
+      {
+        "line": "Wop, wop, wop, wop, wop, Dot, fuck 'em up",
+        "insight": "The onomatopoeia creates a visceral sense of impact. It signals an overwhelming barrage of lyrical strikes."
+      }
+    ],
+    "sonic_texture": "A confident, pulsating beat drives the track. It has high danceability. The production feels clean and direct. Sharp synth stabs punctuate the rhythm. There is a deep, resonant bassline."
+  }
+}

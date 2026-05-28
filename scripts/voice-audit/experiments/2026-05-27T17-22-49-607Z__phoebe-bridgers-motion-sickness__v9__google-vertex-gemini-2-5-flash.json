@@ -1,0 +1,214 @@
+{
+  "runId": "2026-05-27T17-22-49-607Z__phoebe-bridgers-motion-sickness__v9__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T17:22:49.607Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "9",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 10,
+    "medium": 1,
+    "low": 7
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "participial-closure": 8,
+    "academic-register": 1,
+    "book-report-opener": 1,
+    "lexical-repetition": 7
+  },
+  "tokens": 4753,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "key_lines[2].insight",
+      "span": "highlights the",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", grounding the melodic shifts.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", carrying a quiet ache that builds with the intensity of the drums.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[0].description",
+      "span": ", revealing the pretense and the complex mix of emotions still present.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[3].description",
+      "span": ", asserting your intention to move on from the past.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[4].description",
+      "span": ", recognizing the deeper roots of the power dynamic.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[5].description",
+      "span": ", wanting to surrender only to healing and finding your own sense of calm.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[1].insight",
+      "span": ", seeking a literal and figurative breath of fresh air.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[2].insight",
+      "span": ", making its toxicity even clearer.",
+      "severity": "high"
+    },
+    {
+      "rule": "academic-register",
+      "field": "themes[1].description",
+      "span": "disorientation",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "interpretation",
+      "span": "This is a brutal disentanglem",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "air",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "conflicting",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "feelings",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "relationship",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "power",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "sense",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "A breakup pulls you apart. It takes everything to get back to yourself.",
+    "compound_mood": "Winding Catharsis",
+    "mood_description": "The air rushes past, but the turbulence inside remains. You try to steady yourself as conflicting feelings spin around.",
+    "interpretation": "This is a brutal disentanglement from a manipulative past. It reveals the deep hurt and lingering confusion left by a relationship built on uneven power. The song traces a path to freedom. It celebrates the struggle to reclaim your own sense of self.",
+    "themes": [
+      {
+        "name": "toxic dynamics",
+        "description": "The song exposes the power imbalances and manipulative behaviors inherent in a damaging relationship."
+      },
+      {
+        "name": "emotional whiplash",
+        "description": "Conflicting feelings of hatred and longing create a dizzying sense of disorientation for the person experiencing them."
+      },
+      {
+        "name": "self recovery",
+        "description": "The journey focuses on finding personal clarity and moving past the influence of a hurtful experience."
+      },
+      {
+        "name": "lingering anger",
+        "description": "Even with distance, a deep resentment remains, a force that needs expression and release."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Bitter Reflection",
+        "description": "Conflicting feelings hit like waves. Old wounds surface, revealing the pretense and the complex mix of emotions still present."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Disoriented Release",
+        "description": "The world spins. You need air, you need to scream it all away, but the words feel inadequate to express the pain."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Clear Eyed Resolve",
+        "description": "Distance brings clarity. You see the chaos clearly now, from a safe remove, glad to have escaped the turmoil."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Rising Defiance",
+        "description": "The scream builds inside. You find the will to try and push it all out, asserting your intention to move on from the past."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Painful Realization",
+        "description": "Old wounds feel fresh. You see the imbalance, the history of it all, recognizing the deeper roots of the power dynamic."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Empowered Acceptance",
+        "description": "A new resolve takes hold. You seek peace, wanting to surrender only to healing and finding your own sense of calm."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I hate you for what you did And I miss you like a little kid",
+        "insight": "These lines capture the core conflict of a breakup, the warring emotions that still cling to a toxic memory."
+      },
+      {
+        "line": "I have emotional motion sickness Somebody roll the windows down",
+        "insight": "This reveals the feeling of being overwhelmed and disoriented by a relationship's aftershocks, seeking a literal and figurative breath of fresh air."
+      },
+      {
+        "line": "You were in a band when I was born",
+        "insight": "This stark statement highlights the age gap and implicit power imbalance that defined the relationship, making its toxicity even clearer."
+      },
+      {
+        "line": "I try to stay clean and live without And I wanna know what would happen If I surrender to the sound",
+        "insight": "The imagery here suggests breaking an addiction. It shows a desire to move past the pain and embrace whatever release music or life itself offers."
+      }
+    ],
+    "sonic_texture": "A light, steady drum beat provides a restless pulse. The acoustic guitar strums a familiar, slightly anxious rhythm. A bass line thrums underneath, grounding the melodic shifts. Her voice feels close, intimate, carrying a quiet ache that builds with the intensity of the drums."
+  }
+}

@@ -1,0 +1,202 @@
+{
+  "runId": "2026-05-27T18-18-13-138Z__phoebe-bridgers-motion-sickness__v13__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-27T18:18:13.138Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "13",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 15
+  },
+  "byRule": {
+    "burstiness": 4,
+    "lexical-repetition": 11
+  },
+  "tokens": 4935,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "An acoustic guitar drives the rhythm.",
+      "severity": "low",
+      "note": "CV=0.069 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "journey[1].description",
+      "span": "A deep nausea washes over you.",
+      "severity": "low",
+      "note": "CV=0.204 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "journey[3].description",
+      "span": "A specific, petty annoyance surfaces.",
+      "severity": "low",
+      "note": "CV=0.202 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "journey[5].description",
+      "span": "You liken moving on to staying clean from an addiction.",
+      "severity": "low",
+      "note": "CV=0.144 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "feel",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "escape",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "relationship",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "clear",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "moving",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "like",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "sonic_texture",
+      "span": "feels",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[2].description",
+      "span": "need",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "journey[0].description",
+      "span": "feelings",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "journey[2].description",
+      "span": "see",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "The dizzying aftermath of a toxic love. You feel the pull to escape.",
+    "compound_mood": "Wounded Disorientation",
+    "mood_description": "You are caught in a swirling feeling of anger and regret. The past relationship still makes you feel sick.",
+    "interpretation": "The song explores the complex, often contradictory emotions that follow a deeply damaging relationship. It captures the struggle to reconcile lingering affection or habit with the clear understanding of past harm. Moving on is not a clean break. The emotional residue persists, like a physical illness.",
+    "themes": [
+      {
+        "name": "toxic aftermath",
+        "description": "The lingering pain and confusion after a harmful relationship ends."
+      },
+      {
+        "name": "emotional recovery",
+        "description": "The difficult, non linear process of healing from past wounds."
+      },
+      {
+        "name": "self preservation",
+        "description": "The urgent need to escape and protect oneself from further damage."
+      },
+      {
+        "name": "unresolved feelings",
+        "description": "The struggle to let go of someone you both hate and miss."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Bitter recollection",
+        "description": "You recall the conflicting feelings of hatred and longing for someone who hurt you. The past feels like a series of compromises and manipulations."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Overwhelmed frustration",
+        "description": "A deep nausea washes over you. You desperately need relief from the overwhelming feelings. There are no words strong enough to express the pain."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Clear eyed escape",
+        "description": "You see the chaos you left behind with a sense of relief. There is also a quiet regret that things unfolded as they did."
+      },
+      {
+        "section": "Second Chorus",
+        "mood": "Sharp defiance",
+        "description": "A specific, petty annoyance surfaces. You acknowledge the impossibility of changing the past. You declare your resolve to move past it."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Stark realization",
+        "description": "The age gap and power imbalance become starkly clear. You see the manipulative nature of the relationship's beginning."
+      },
+      {
+        "section": "Final Chorus",
+        "mood": "Tentative surrender",
+        "description": "You liken moving on to staying clean from an addiction. There is a curious pull to let go completely. You wonder what freedom truly feels like."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I hate you for what you did And I miss you like a little kid",
+        "insight": "The raw contradiction of post breakup feelings hits you immediately. You are caught between anger and a childlike longing."
+      },
+      {
+        "line": "I have emotional motion sickness Somebody roll the windows down",
+        "insight": "The central metaphor perfectly captures the physical and mental discomfort of emotional turmoil. You feel a desperate need for fresh air and escape."
+      },
+      {
+        "line": "You said when you met me, you were bored You were in a band when I was born",
+        "insight": "The lines expose a manipulative power dynamic. You see the age difference as a tool used against you."
+      },
+      {
+        "line": "I try to stay clean and live without And I wanna know what would happen If I surrender to the sound",
+        "insight": "Moving on feels like breaking an addiction. You consider the ultimate freedom of letting go completely."
+      }
+    ],
+    "sonic_texture": "An acoustic guitar drives the rhythm. A gentle drumbeat keeps time. The vocals are clear and direct. Subtle strings swell in the background. It feels intimate and slightly melancholic."
+  }
+}

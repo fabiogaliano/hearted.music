@@ -1,0 +1,228 @@
+{
+  "runId": "2026-05-27T18-21-06-959Z__olivia-rodrigo-drivers-license__v13__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-27T18:21:06.959Z",
+  "song": "Olivia Rodrigo — drivers license",
+  "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf",
+  "promptKind": "lyrical",
+  "promptVersion": "13",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 1,
+    "low": 16
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "participial-closure": 2,
+    "burstiness": 2,
+    "lexical-repetition": 14
+  },
+  "tokens": 4874,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "key_lines[1].insight",
+      "span": "amplifies",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "mood_description",
+      "span": ", reliving every moment of a love that just ended.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[1].description",
+      "span": ", comparing yourself to a new presence.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "Heartbreak arrives with a sudden, brutal force.",
+      "severity": "low",
+      "note": "CV=0.160 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A lone piano sets a somber tone.",
+      "severity": "low",
+      "note": "CV=0.061 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "heartbreak",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "feels",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "like",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "world",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "left",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "driving",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "shared",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "future",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "every",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "love",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "now",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[0].description",
+      "span": "pain",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[1].description",
+      "span": "becomes",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "journey[2].description",
+      "span": "promise",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "A first heartbreak feels like the end of the world. You are left driving through the ruins of a shared future.",
+    "compound_mood": "Wounded Longing",
+    "mood_description": "A raw ache fills the air. You are driving through the past, reliving every moment of a love that just ended.",
+    "interpretation": "Heartbreak arrives with a sudden, brutal force. It changes the familiar world into a landscape of loss. The things you once shared now mock you with their absence. You are left to navigate this new, solitary reality.",
+    "themes": [
+      {
+        "name": "first heartbreak",
+        "description": "The pain of a first love ending feels uniquely devastating."
+      },
+      {
+        "name": "lingering memories",
+        "description": "Every street and shared moment becomes a ghost of what once was."
+      },
+      {
+        "name": "public breakup",
+        "description": "The world watches as a private pain unfolds."
+      },
+      {
+        "name": "driving as escape",
+        "description": "The car becomes a sanctuary for grief, a way to process the hurt."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "bitter realization",
+        "description": "The dream of a shared future shatters. You are driving alone now, through a landscape that was supposed to be ours."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "gnawing insecurity",
+        "description": "The sting of replacement cuts deep. You question everything you are, comparing yourself to a new presence."
+      },
+      {
+        "section": "Chorus",
+        "mood": "raw disbelief",
+        "description": "The promise of forever feels like a cruel joke. You cannot comprehend how someone could move on so easily."
+      },
+      {
+        "section": "Bridge",
+        "mood": "overwhelming grief",
+        "description": "Every landmark triggers a memory. The world is full of ghosts, and the love still burns."
+      },
+      {
+        "section": "Outro",
+        "mood": "resigned sorrow",
+        "description": "The finality of the breakup settles in. You are left with the echoes of a broken promise."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I got my driver's license last week",
+        "insight": "A symbol of freedom becomes a cage of loneliness."
+      },
+      {
+        "line": "She's everything I'm insecure about",
+        "insight": "The pain of comparison amplifies the heartbreak."
+      },
+      {
+        "line": "Cause you said forever, now I drive alone past your street",
+        "insight": "A broken promise turns a shared future into a solitary present."
+      },
+      {
+        "line": "Can't drive past the places we used to go to",
+        "insight": "The physical world is now a minefield of memories."
+      },
+      {
+        "line": "God, I'm so blue, know we're through",
+        "insight": "The simple truth of the end hits with crushing weight."
+      }
+    ],
+    "sonic_texture": "A lone piano sets a somber tone. It builds with subtle drums and layered vocals. The sound feels intimate, like a whispered confession."
+  }
+}

@@ -1,0 +1,224 @@
+{
+  "runId": "2026-05-27T18-17-58-600Z__kendrick-lamar-not-like-us__v13__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-27T18:17:58.600Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "13",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 4,
+    "medium": 3,
+    "low": 11
+  },
+  "byRule": {
+    "copula-avoidance": 2,
+    "puffery-adjective": 1,
+    "participial-closure": 3,
+    "book-report-opener": 1,
+    "burstiness": 2,
+    "lexical-repetition": 9
+  },
+  "tokens": 8386,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "themes[0].description",
+      "span": "acts as",
+      "severity": "medium"
+    },
+    {
+      "rule": "copula-avoidance",
+      "field": "journey[4].description",
+      "span": "frames",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "themes[3].description",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[0].description",
+      "span": ", protecting a cultural identity and its people from perceived threats.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[1].description",
+      "span": ", exposing a carefully constructed persona.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[2].description",
+      "span": ", rejecting any form of appropriation or imitation.",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "key_lines[1].insight",
+      "span": "This is a direct and devastat",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "A direct, unapologetic attack on a rival unfolds.",
+      "severity": "low",
+      "note": "CV=0.115 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "The beat is infectious and makes you want to move.",
+      "severity": "low",
+      "note": "CV=0.234 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "community",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "powerful",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "direct",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "rival",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "cultural",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "sonic_texture",
+      "span": "clear",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[2].description",
+      "span": "appropriation",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[3].description",
+      "span": "leaves",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "journey[2].description",
+      "span": "line",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "You feel the ground shake. A community rises to defend itself.",
+    "compound_mood": "Aggressive Confidence",
+    "mood_description": "You are swept into a powerful current of collective anger. The energy is undeniable.",
+    "interpretation": "A direct, unapologetic attack on a rival unfolds. It defends a community and its cultural integrity. The lyrics expose alleged hypocrisy and predatory behavior. It reclaims ownership of a narrative.",
+    "themes": [
+      {
+        "name": "community defense",
+        "description": "The song acts as a rallying cry, protecting a cultural identity and its people from perceived threats."
+      },
+      {
+        "name": "unmasking hypocrisy",
+        "description": "It pulls back the curtain on alleged deceit and questionable actions, exposing a carefully constructed persona."
+      },
+      {
+        "name": "cultural ownership",
+        "description": "The lyrics assert authenticity and indigenous roots, rejecting any form of appropriation or imitation."
+      },
+      {
+        "name": "unwavering attack",
+        "description": "A relentless and direct lyrical assault leaves no room for ambiguity or retreat."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Eerie Warning",
+        "description": "A chilling whisper sets a dark, confrontational tone. It hints at unseen truths coming to light."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Unleashed Accusations",
+        "description": "The first wave of personal attacks hits hard. It leaves no room for doubt about the target."
+      },
+      {
+        "section": "Chorus",
+        "mood": "United Front",
+        "description": "A powerful chant unites a community. It draws a clear line between 'us' and 'them'."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Cultural Reckoning",
+        "description": "The critique expands to cultural appropriation. It challenges authenticity and past actions."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Historical Indictment",
+        "description": "A deeper historical context frames the rival as a 'colonizer'. It asserts cultural ownership."
+      },
+      {
+        "section": "Bridge/Outro",
+        "mood": "Triumphant Dismissal",
+        "description": "A mocking dance instruction seals the victory. It leaves the rival dismissed and exposed."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "This line is the core message of the song. It creates a clear boundary and fosters a sense of collective identity against an outsider."
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "This is a direct and devastating accusation. It redefines a rival's brand with a shocking claim."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "This line is a powerful statement about cultural appropriation. It denies legitimacy and asserts exploitation."
+      },
+      {
+        "line": "What's up with these jabroni-ass niggas tryna see Compton?",
+        "insight": "This line defends the artist's home and community. It challenges the audacity of an outsider encroaching on sacred ground."
+      },
+      {
+        "line": "Hey, hey, hey, hey, run for your life",
+        "insight": "This line is a taunting, victorious dismissal. It signals the end of the confrontation with a clear warning."
+      }
+    ],
+    "sonic_texture": "The beat is infectious and makes you want to move. West Coast G funk influences drive the rhythm. A prominent bassline and swaggering synths define the sound. Vocals are clear and assertive."
+  }
+}

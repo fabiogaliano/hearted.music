@@ -1,0 +1,157 @@
+{
+  "runId": "2026-05-27T18-22-11-002Z__lorde-ribs__v13__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-27T18:22:11.002Z",
+  "song": "Lorde — Ribs",
+  "spotifyTrackId": "2MvvoeRt8NcOXWESkxWn3g",
+  "promptKind": "lyrical",
+  "promptVersion": "13",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 3,
+    "low": 4
+  },
+  "byRule": {
+    "puffery-adjective": 3,
+    "participial-closure": 1,
+    "self-reference": 1,
+    "burstiness": 1,
+    "lexical-repetition": 3
+  },
+  "tokens": 4628,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "sonic_texture",
+      "span": "Shimmering",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "journey[1].description",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "key_lines[0].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[3].description",
+      "span": ", knowing it cannot last.",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "interpretation",
+      "span": "This song",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A pulsing synth bass creates a deep, rhythmic foundation.",
+      "severity": "low",
+      "note": "CV=0.221 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "growing",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "time",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "deep",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "The fear of growing up hits hard. You feel the ache of time passing too quickly.",
+    "compound_mood": "Anxious Nostalgia",
+    "mood_description": "You are caught between a carefree past and an uncertain future. A deep longing for what was mixes with a quiet dread of what is to come.",
+    "interpretation": "This song captures the universal terror of adolescence. You are standing on the edge of adulthood. The world feels both exciting and terrifying. It is a desperate attempt to hold onto the last vestiges of childhood innocence. You know it is a losing battle.",
+    "themes": [
+      {
+        "name": "fleeting youth",
+        "description": "The precious moments of childhood slip away too fast."
+      },
+      {
+        "name": "fear of aging",
+        "description": "Growing older brings a sense of loss and isolation."
+      },
+      {
+        "name": "shared intimacy",
+        "description": "Close friendships offer a temporary refuge from the anxieties of life."
+      },
+      {
+        "name": "inevitable change",
+        "description": "Time moves forward, and some things can never be brought back."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "carefree dread",
+        "description": "You are in a moment of youthful freedom. A quiet fear of what's next hums beneath the surface."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "growing unease",
+        "description": "The dream of growing up turns sour. You feel a profound sense of loneliness in the night."
+      },
+      {
+        "section": "Bridge",
+        "mood": "desperate longing",
+        "description": "A powerful wave of regret washes over you. You yearn for the simple minds of the past."
+      },
+      {
+        "section": "Refrain",
+        "mood": "bittersweet comfort",
+        "description": "You find solace in a shared, childlike bond. A deep sadness lingers, knowing it cannot last."
+      },
+      {
+        "section": "Outro",
+        "mood": "resigned acceptance",
+        "description": "The truth settles in. This comfort, this connection, will never be enough to stop time."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "It drives you crazy, getting old",
+        "insight": "The simple statement reveals a profound, relatable anxiety about the passage of time."
+      },
+      {
+        "line": "And I've never felt more alone",
+        "insight": "This line captures the isolating feeling of navigating the complexities of growing up."
+      },
+      {
+        "line": "I want 'em back, I want 'em back / The minds we had, the minds we had",
+        "insight": "A raw plea for lost innocence and the uncomplicated thoughts of youth."
+      },
+      {
+        "line": "And laughing till our ribs get tough",
+        "insight": "This vivid image paints a picture of intense, shared joy and resilience in friendship."
+      },
+      {
+        "line": "But that will never be enough",
+        "insight": "The heartbreaking realization that even the strongest bonds cannot halt the march of time."
+      }
+    ],
+    "sonic_texture": "A pulsing synth bass creates a deep, rhythmic foundation. Shimmering, layered vocals float above. The production feels expansive and slightly melancholic. It wraps around you like a cool night air."
+  }
+}
