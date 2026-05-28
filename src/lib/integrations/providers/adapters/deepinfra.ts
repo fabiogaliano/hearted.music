@@ -16,6 +16,7 @@ import {
 	embedText,
 	getEmbeddingDims,
 	getEmbeddingModel,
+	getRerankerModel,
 	isAvailable,
 	rerank,
 } from "@/lib/integrations/deepinfra/service";
@@ -51,7 +52,7 @@ class DeepInfraProvider implements MLProvider {
 			name: "deepinfra",
 			embeddingModel: getEmbeddingModel(),
 			embeddingDims: getEmbeddingDims(),
-			rerankerModel: "Qwen/Qwen3-Reranker-0.6B",
+			rerankerModel: getRerankerModel(),
 		};
 	}
 
