@@ -22,8 +22,8 @@ import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
 // ============================================================================
 
 const EMBEDDING_URL = "https://api.deepinfra.com/v1/openai/embeddings";
-const RERANKER_URL =
-	"https://api.deepinfra.com/v1/inference/Qwen/Qwen3-Reranker-0.6B";
+const RERANKER_MODEL = "Qwen/Qwen3-Reranker-0.6B";
+const RERANKER_URL = `https://api.deepinfra.com/v1/inference/${RERANKER_MODEL}`;
 const EMBEDDING_MODEL = "intfloat/multilingual-e5-large-instruct";
 const EMBEDDING_DIMS = 1024;
 
@@ -249,7 +249,7 @@ export async function rerank(
 	options: RerankOptions = {},
 ): Promise<Result<RerankResult, DeepInfraServiceError>> {
 	if (documents.length === 0) {
-		return Result.ok({ scores: [], model: "Qwen/Qwen3-Reranker-0.6B" });
+		return Result.ok({ scores: [], model: RERANKER_MODEL });
 	}
 
 	const { topK = 0, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
@@ -295,7 +295,7 @@ export async function rerank(
 
 			return Result.ok({
 				scores: scores.toSorted((a, b) => b.score - a.score),
-				model: "Qwen/Qwen3-Reranker-0.6B",
+				model: RERANKER_MODEL,
 			});
 		} catch (error) {
 			if (error instanceof Error && error.name === "TimeoutError") {
@@ -342,6 +342,13 @@ export function getEmbeddingDims(): number {
  */
 export function getEmbeddingModel(): string {
 	return EMBEDDING_MODEL;
+}
+
+/**
+ * Gets the reranker model name.
+ */
+export function getRerankerModel(): string {
+	return RERANKER_MODEL;
 }
 
 // ============================================================================
