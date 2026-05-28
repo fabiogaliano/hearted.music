@@ -10,6 +10,24 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// `@/env` is frozen at module load, so mutating process.env can't toggle the
+// token; mock it with a Proxy over a mutable object instead.
+const mockEnv: { GENIUS_CLIENT_TOKEN: string | undefined } = {
+	GENIUS_CLIENT_TOKEN: undefined,
+};
+
+vi.mock("@/env", () => ({
+	env: new Proxy(
+		{},
+		{
+			get: (_target, prop) =>
+				typeof prop === "string"
+					? mockEnv[prop as keyof typeof mockEnv]
+					: undefined,
+		},
+	),
+}));
+
 // Mock the lyrics service module while preserving real Genius error classes
 // re-exported through it.
 vi.mock("@/lib/domains/enrichment/lyrics/service", async (importOriginal) => {
@@ -127,9 +145,9 @@ describe("Pipeline Lyrics Integration", () => {
 			},
 		);
 
-		// Genius token is still read via process.env in the pipeline; the LLM
-		// config is supplied by the mocked resolveLlmConfig above.
-		process.env.GENIUS_CLIENT_TOKEN = "test-token";
+		// Genius token is read via the mocked `@/env` snapshot; the LLM config is
+		// supplied by the mocked resolveLlmConfig above.
+		mockEnv.GENIUS_CLIENT_TOKEN = "test-token";
 	});
 
 	/** Helper to unwrap pipeline Result or fail test */
@@ -231,7 +249,7 @@ describe("Pipeline Lyrics Integration", () => {
 		});
 
 		it("skips prefetch when GENIUS_CLIENT_TOKEN not set", async () => {
-			delete process.env.GENIUS_CLIENT_TOKEN;
+			mockEnv.GENIUS_CLIENT_TOKEN = undefined;
 
 			// Re-import to get fresh instance without lyrics service
 			vi.resetModules();
@@ -474,7 +492,7 @@ describe("Pipeline Lyrics Integration", () => {
 		});
 
 		it("no Genius token + audio confirmed missing => unconfirmed_lyrics (non-terminal, NOT terminal missing)", async () => {
-			delete process.env.GENIUS_CLIENT_TOKEN;
+			mockEnv.GENIUS_CLIENT_TOKEN = undefined;
 			vi.resetModules();
 
 			const { SongAnalysisService } = await import("../song-analysis");
