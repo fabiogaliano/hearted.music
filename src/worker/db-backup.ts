@@ -398,6 +398,26 @@ async function collectBackupFiles(
 	}
 }
 
+// Backup recency comes from the UTC timestamp encoded in the filename by
+// buildBackupFilename, never from file mtime: a restore, rsync, or container
+// remount rewrites mtime without changing backup content, which would silently
+// corrupt catch-up scheduling and retention pruning.
+const BACKUP_TIMESTAMP_PATTERN =
+	/-(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})\.dump$/;
+
+function parseBackupTimestampMs(filePath: string): number | null {
+	const match = BACKUP_TIMESTAMP_PATTERN.exec(filePath);
+	if (!match) return null;
+	const [, year, month, day, hour, minute] = match;
+	return Date.UTC(
+		Number(year),
+		Number(month) - 1,
+		Number(day),
+		Number(hour),
+		Number(minute),
+	);
+}
+
 async function readLatestCompletedBackupMs(
 	config: EnabledBackupConfig,
 ): Promise<number | null> {
@@ -405,10 +425,10 @@ async function readLatestCompletedBackupMs(
 	let latestBackupMs: number | null = null;
 
 	for (const filePath of backupFiles) {
-		const fileStat = await stat(filePath);
-		const modifiedMs = fileStat.mtimeMs;
-		if (latestBackupMs === null || modifiedMs > latestBackupMs) {
-			latestBackupMs = modifiedMs;
+		const backupMs = parseBackupTimestampMs(filePath);
+		if (backupMs === null) continue;
+		if (latestBackupMs === null || backupMs > latestBackupMs) {
+			latestBackupMs = backupMs;
 		}
 	}
 
@@ -430,8 +450,10 @@ async function removeExpiredBackups(
 	let deletedCount = 0;
 
 	for (const filePath of backupFiles) {
-		const fileStat = await stat(filePath);
-		if (fileStat.mtimeMs >= cutoffMs) continue;
+		const backupMs = parseBackupTimestampMs(filePath);
+		// Leave files with an unrecognized timestamp untouched: retention must
+		// never delete a backup it cannot reliably date.
+		if (backupMs === null || backupMs >= cutoffMs) continue;
 		await unlink(filePath);
 		deletedCount += 1;
 	}
