@@ -239,6 +239,9 @@ const mockLoadBatchSongs = vi
 const mockHasMoreSongsNeedingEnrichmentWork = vi
 	.fn<() => Promise<boolean>>()
 	.mockResolvedValue(false);
+const mockGetEntitledDataEnrichedSongIds = vi
+	.fn<() => Promise<string[]>>()
+	.mockResolvedValue([]);
 
 vi.mock("../batch", () => ({
 	selectEnrichmentWorkPlan: (...args: unknown[]) =>
@@ -246,6 +249,8 @@ vi.mock("../batch", () => ({
 	loadBatchSongs: (...args: unknown[]) => mockLoadBatchSongs(...(args as [])),
 	hasMoreSongsNeedingEnrichmentWork: (...args: unknown[]) =>
 		mockHasMoreSongsNeedingEnrichmentWork(...(args as [])),
+	getEntitledDataEnrichedSongIds: (...args: unknown[]) =>
+		mockGetEntitledDataEnrichedSongIds(...(args as [])),
 }));
 
 // ---------------------------------------------------------------------------
