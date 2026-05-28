@@ -61,6 +61,30 @@ import {
 	EXTENSION_SYNC_COOLDOWN,
 } from "../../../../shared/extension-sync-contract";
 
+// Per-phase sync outcomes. Typed so the downstream classification step reads
+// each phase's fields directly instead of re-casting an untyped accumulator.
+interface PhaseResults {
+	likedSongs?: {
+		total: number;
+		added: number;
+		removed: number;
+	};
+	playlists?: {
+		total: number;
+		created: number;
+		updated: number;
+		removed: number;
+		removedTargetPlaylistIds: string[];
+		updatedTargetMetadataPlaylistIds: string[];
+		updatedTargetProfileTextPlaylistIds: string[];
+	};
+	playlistTracks?: {
+		total: number;
+		playlistsSynced: number;
+		playlistsChanged: number;
+	};
+}
+
 const SpotifyTrackDTOSchema = z.object({
 	added_at: z.string(),
 	track: z.object({
@@ -394,7 +418,7 @@ export const Route = createFileRoute("/api/extension/sync")({
 						console.warn("Failed to persist phaseJobIds:", persistResult.error);
 					}
 
-					const results: Record<string, unknown> = {};
+					const results: PhaseResults = {};
 					const changedPlaylistIds: string[] = [];
 
 					// Phase 1: Sync liked songs
@@ -589,19 +613,9 @@ export const Route = createFileRoute("/api/extension/sync")({
 					}
 
 					// Classify sync results and emit one aggregated library-processing change
-					const likedSongsResult = results.likedSongs as
-						| { added?: number; removed?: number }
-						| undefined;
-					const playlistSyncResult = results.playlists as
-						| {
-								removedTargetPlaylistIds?: string[];
-								updatedTargetProfileTextPlaylistIds?: string[];
-						  }
-						| undefined;
-
-					const playlistTracksResult = results.playlistTracks as
-						| { playlistsChanged?: number }
-						| undefined;
+					const likedSongsResult = results.likedSongs;
+					const playlistSyncResult = results.playlists;
+					const playlistTracksResult = results.playlistTracks;
 
 					// Compute target-side change facts before the data is stale
 					const targetResult = await getTargetPlaylists(accountId);
@@ -651,9 +665,7 @@ export const Route = createFileRoute("/api/extension/sync")({
 						);
 					}
 
-					const likedSongsSyncResult = results.likedSongs as
-						| { total?: number; added?: number; removed?: number }
-						| undefined;
+					const likedSongsSyncResult = results.likedSongs;
 					await captureWithWaitUntil({
 						distinctId: accountId,
 						event: "library_synced",

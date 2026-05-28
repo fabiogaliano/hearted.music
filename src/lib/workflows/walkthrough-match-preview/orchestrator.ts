@@ -86,15 +86,12 @@ export async function executeWalkthroughPreview(
 		};
 	}
 
-	let embeddingService: EmbeddingService;
-	try {
-		embeddingService = new EmbeddingService();
-	} catch (err) {
-		const message = err instanceof Error ? err.message : String(err);
+	const embeddingResult = EmbeddingService.create();
+	if (Result.isError(embeddingResult)) {
 		await markPreviewFailed({
 			accountId,
 			fingerprint: preview.fingerprint,
-			error: `embedding-service-init: ${message}`,
+			error: `embedding-service-init: ${embeddingResult.error.message}`,
 		});
 		return {
 			accountId,
@@ -103,6 +100,7 @@ export async function executeWalkthroughPreview(
 			fingerprint: preview.fingerprint,
 		};
 	}
+	const embeddingService = embeddingResult.value;
 
 	let llmService: ReturnType<typeof createLlmService> | undefined;
 	try {

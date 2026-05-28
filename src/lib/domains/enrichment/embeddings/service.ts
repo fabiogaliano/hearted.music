@@ -27,6 +27,7 @@ import {
 	upsertSongEmbeddings,
 } from "@/lib/domains/enrichment/embeddings/queries";
 import { getMlProvider } from "@/lib/integrations/providers/factory";
+import type { MLProvider } from "@/lib/integrations/providers/ports";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	DimensionMismatchError,
@@ -63,18 +64,38 @@ type EmbeddingServiceError =
 	| DimensionMismatchError;
 
 export class EmbeddingService {
+	private readonly provider: MLProvider;
 	private readonly model: string;
 	private readonly dims: number;
 
-	constructor() {
-		// Get ML provider and extract metadata
+	private constructor(provider: MLProvider, model: string, dims: number) {
+		this.provider = provider;
+		this.model = model;
+		this.dims = dims;
+	}
+
+	/**
+	 * Resolves the ML provider once and captures its embedding metadata.
+	 *
+	 * Returns Result.err on provider unavailability so callers handle the
+	 * failure through the Result contract instead of try/catch. The resolved
+	 * provider is reused by every method, so getMetadata()/getMlProvider() are
+	 * never re-invoked after construction.
+	 */
+	static create(): Result<EmbeddingService, MLProviderError> {
 		const providerResult = getMlProvider();
 		if (Result.isError(providerResult)) {
-			throw providerResult.error;
+			return Result.err(providerResult.error);
 		}
-		const metadata = providerResult.value.getMetadata();
-		this.model = metadata.embeddingModel;
-		this.dims = metadata.embeddingDims;
+		const provider = providerResult.value;
+		const metadata = provider.getMetadata();
+		return Result.ok(
+			new EmbeddingService(
+				provider,
+				metadata.embeddingModel,
+				metadata.embeddingDims,
+			),
+		);
 	}
 
 	/**
@@ -127,11 +148,7 @@ export class EmbeddingService {
 		}
 
 		// 5. Generate embedding via ML provider
-		const providerResult = getMlProvider();
-		if (Result.isError(providerResult)) {
-			return Result.err(providerResult.error);
-		}
-		const embedResult = await providerResult.value.embed(text, {
+		const embedResult = await this.provider.embed(text, {
 			prefix: "passage:",
 		});
 		if (Result.isError(embedResult)) {
@@ -255,21 +272,8 @@ export class EmbeddingService {
 		}
 
 		// 3. Batch embed via ML provider
-		const providerResult = getMlProvider();
-		if (Result.isError(providerResult)) {
-			// Provider unavailable - all failed
-			const errorMsg =
-				providerResult.error instanceof Error
-					? providerResult.error.message
-					: String(providerResult.error);
-			for (const item of toEmbed) {
-				failed.push({ songId: item.songId, error: errorMsg });
-			}
-			return Result.ok({ succeeded: cached, failed });
-		}
-
 		const texts = toEmbed.map((item) => item.text);
-		const batchResult = await providerResult.value.embedBatch(texts, {
+		const batchResult = await this.provider.embedBatch(texts, {
 			prefix: "passage:",
 		});
 
@@ -367,14 +371,8 @@ export class EmbeddingService {
 	): Promise<Result<number[], MLProviderError | DimensionMismatchError>> {
 		const prefix = options?.prefix ?? "query:";
 
-		// Get ML provider
-		const providerResult = getMlProvider();
-		if (Result.isError(providerResult)) {
-			return Result.err(providerResult.error);
-		}
-
 		// Generate embedding
-		const embedResult = await providerResult.value.embed(text, { prefix });
+		const embedResult = await this.provider.embed(text, { prefix });
 		if (Result.isError(embedResult)) {
 			return Result.err(embedResult.error);
 		}
@@ -416,11 +414,7 @@ export class EmbeddingService {
 		}
 
 		// Generate embedding
-		const providerResult = getMlProvider();
-		if (Result.isError(providerResult)) {
-			return Result.err(providerResult.error);
-		}
-		const embedResult = await providerResult.value.embed(text, { prefix });
+		const embedResult = await this.provider.embed(text, { prefix });
 		if (Result.isError(embedResult)) {
 			return Result.err(embedResult.error);
 		}

@@ -55,9 +55,9 @@ const { mockGetEmbeddings, mockGetAnalysis } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/domains/enrichment/embeddings/service", () => ({
-	EmbeddingService: vi.fn().mockImplementation(function () {
-		return { getEmbeddings: mockGetEmbeddings };
-	}),
+	EmbeddingService: {
+		create: () => Result.ok({ getEmbeddings: mockGetEmbeddings }),
+	},
 }));
 
 vi.mock("@/lib/platform/jobs/repository", () => ({
@@ -439,6 +439,110 @@ describe("executeWorkerChunk sub-batching", () => {
 				failureCode: FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
 			},
 		);
+	});
+
+	it("compensates only analysis_inputs_missing failures, not other failure codes", async () => {
+		const workPlan = makeWorkPlan({
+			allSongIds: ["miss", "perm"],
+			needAnalysis: ["miss", "perm"],
+		});
+		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
+		mockLoadBatchSongs.mockResolvedValue(makeBatch(["miss", "perm"]));
+		mockRunSongAnalysis.mockResolvedValue({
+			kind: "attempted",
+			stage: "song_analysis",
+			candidateSongIds: ["miss", "perm"],
+			attemptedSongIds: ["miss", "perm"],
+			succeededSongIds: [],
+			failures: [
+				{
+					songId: "miss",
+					failureCode: FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
+					message: "missing inputs",
+				},
+				{
+					songId: "perm",
+					failureCode: FAILURE_CODES.PERMANENT,
+					message: "llm failed",
+				},
+			],
+		});
+
+		await executeWorkerChunk("account-1", "job-1", 10, 0);
+
+		expect(mockGrantAnalysisFailureReplacementCredit).toHaveBeenCalledOnce();
+		expect(mockGrantAnalysisFailureReplacementCredit).toHaveBeenCalledWith(
+			expect.anything(),
+			{
+				accountId: "account-1",
+				songId: "miss",
+				failureCode: FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
+			},
+		);
+	});
+
+	it("does not compensate when failure-row recording fails", async () => {
+		const workPlan = makeWorkPlan({
+			allSongIds: ["pack-song"],
+			needAnalysis: ["pack-song"],
+		});
+		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
+		mockLoadBatchSongs.mockResolvedValue(makeBatch(["pack-song"]));
+		mockRunSongAnalysis.mockResolvedValue({
+			kind: "attempted",
+			stage: "song_analysis",
+			candidateSongIds: ["pack-song"],
+			attemptedSongIds: ["pack-song"],
+			succeededSongIds: [],
+			failures: [
+				{
+					songId: "pack-song",
+					failureCode: FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
+					message: "missing inputs",
+				},
+			],
+		});
+		vi.mocked(recordStageFailure).mockResolvedValue(
+			Result.err(new DatabaseError({ code: "FAIL", message: "insert failed" })),
+		);
+		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		await expect(
+			executeWorkerChunk("account-1", "job-1", 10, 0),
+		).rejects.toThrow();
+
+		expect(mockGrantAnalysisFailureReplacementCredit).not.toHaveBeenCalled();
+		consoleSpy.mockRestore();
+	});
+
+	it("aborts the chunk when replacement-credit compensation fails", async () => {
+		const workPlan = makeWorkPlan({
+			allSongIds: ["pack-song"],
+			needAnalysis: ["pack-song"],
+		});
+		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
+		mockLoadBatchSongs.mockResolvedValue(makeBatch(["pack-song"]));
+		mockRunSongAnalysis.mockResolvedValue({
+			kind: "attempted",
+			stage: "song_analysis",
+			candidateSongIds: ["pack-song"],
+			attemptedSongIds: ["pack-song"],
+			succeededSongIds: [],
+			failures: [
+				{
+					songId: "pack-song",
+					failureCode: FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
+					message: "missing inputs",
+				},
+			],
+		});
+		mockGrantAnalysisFailureReplacementCredit.mockResolvedValue(
+			Result.err(new DatabaseError({ code: "FAIL", message: "rpc down" })),
+		);
+
+		await expect(
+			executeWorkerChunk("account-1", "job-1", 10, 0),
+		).rejects.toThrow();
 	});
 
 	it("expands a thrown song_analysis stage to one failure row per candidate", async () => {

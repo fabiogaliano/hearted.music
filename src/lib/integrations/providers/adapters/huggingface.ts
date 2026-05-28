@@ -29,9 +29,10 @@ import {
 	MLUnsupportedOperationError,
 } from "@/lib/shared/errors/domain/ml";
 import {
-	DeepInfraApiError,
-	DeepInfraRateLimitError,
-} from "@/lib/shared/errors/external/deepinfra";
+	HuggingFaceApiError,
+	type HuggingFaceError,
+	HuggingFaceRateLimitError,
+} from "@/lib/shared/errors/external/huggingface";
 import type { MLProvider } from "../ports";
 import type {
 	EmbeddingResult,
@@ -119,21 +120,18 @@ class HuggingFaceProvider implements MLProvider {
 
 	/**
 	 * Maps HuggingFace errors to domain ML errors.
-	 *
-	 * Note: HuggingFace service currently reuses DeepInfra error types for simplicity.
-	 * This adapter maps them to the generic ML error types.
 	 */
 	private mapError(
-		error: DeepInfraApiError | DeepInfraRateLimitError,
+		error: HuggingFaceError,
 		operation: string,
 	): MLProviderError {
 		// Rate limit
-		if (error instanceof DeepInfraRateLimitError) {
+		if (error instanceof HuggingFaceRateLimitError) {
 			return new MLRateLimitError("huggingface", error.retryAfterMs);
 		}
 
 		// API error
-		if (error instanceof DeepInfraApiError) {
+		if (error instanceof HuggingFaceApiError) {
 			// Timeout (no status code)
 			if (!error.statusCode) {
 				return new MLTimeoutError("huggingface", operation, 30000);

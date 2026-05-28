@@ -299,13 +299,12 @@ async function backfillLyricsEmbeddings(
 	}
 	const lyricsService = lyricsResult.value;
 
-	let embeddingService: EmbeddingService;
-	try {
-		embeddingService = new EmbeddingService();
-	} catch (_err) {
+	const embeddingResult = EmbeddingService.create();
+	if (Result.isError(embeddingResult)) {
 		console.warn("Embedding service unavailable, skipping lyrics embeddings");
 		return { stored: 0, skipped: candidateSongs.length, failed: 0 };
 	}
+	const embeddingService = embeddingResult.value;
 
 	// Check which songs already have embeddings
 	const songIds = candidateSongs.map((s) => s.id);

@@ -10,6 +10,7 @@
  */
 
 import { Result } from "better-result";
+import { env } from "@/env";
 import {
 	embedBatch,
 	embedText,
@@ -164,7 +165,7 @@ export function createDeepInfraProvider(): Result<
 	DeepInfraProvider,
 	MLConfigError
 > {
-	const apiKey = process.env.DEEPINFRA_API_KEY;
+	const apiKey = env.DEEPINFRA_API_KEY;
 
 	if (!apiKey) {
 		return Result.err(

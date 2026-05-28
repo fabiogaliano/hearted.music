@@ -34,7 +34,11 @@ if (workPlan.needEmbedding.length === 0) {
 }
 
 console.log("2. Creating EmbeddingService...");
-const service = new EmbeddingService();
+const serviceResult = EmbeddingService.create();
+if (Result.isError(serviceResult)) {
+	throw serviceResult.error;
+}
+const service = serviceResult.value;
 
 console.log("3. Running embedBatch...");
 const result = await service.embedBatch(workPlan.needEmbedding);

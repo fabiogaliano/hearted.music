@@ -9,7 +9,7 @@ import { Result } from "better-result";
 import { env } from "@/env";
 import {
 	LastFmApiError,
-	type LastFmConfigError,
+	LastFmConfigError,
 	type LastFmError,
 	LastFmNotFoundError,
 	LastFmRateLimitError,
@@ -313,16 +313,20 @@ export class LastFmService {
 
 /**
  * Factory function to create LastFmService.
- * Returns null if LASTFM_API_KEY is not configured (graceful degradation).
+ * Returns Result.err(LastFmConfigError) if LASTFM_API_KEY is not configured,
+ * so callers handle the missing-key case through the Result contract rather
+ * than a separate null branch.
  */
 export function createLastFmService(): Result<
 	LastFmService,
 	LastFmConfigError
-> | null {
+> {
 	const apiKey = env.LASTFM_API_KEY;
 
 	if (!apiKey) {
-		return null; // Graceful degradation - service not available
+		return Result.err(
+			new LastFmConfigError("LASTFM_API_KEY is not configured"),
+		);
 	}
 
 	return Result.ok(new LastFmService(apiKey));

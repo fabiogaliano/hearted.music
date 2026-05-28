@@ -11,9 +11,10 @@ import { InferenceClient } from "@huggingface/inference";
 import { Result } from "better-result";
 import { env } from "@/env";
 import {
-	DeepInfraApiError,
-	DeepInfraRateLimitError,
-} from "@/lib/shared/errors/external/deepinfra";
+	HuggingFaceApiError,
+	type HuggingFaceError,
+	HuggingFaceRateLimitError,
+} from "@/lib/shared/errors/external/huggingface";
 
 // ============================================================================
 // Types
@@ -28,8 +29,6 @@ export interface EmbedResult {
 	embedding: number[];
 	dims: number;
 }
-
-type HuggingFaceError = DeepInfraApiError | DeepInfraRateLimitError;
 
 // ============================================================================
 // Configuration
@@ -116,16 +115,16 @@ export async function embedText(
 				error.message.includes("rate limit") ||
 				error.message.includes("429")
 			) {
-				return Result.err(new DeepInfraRateLimitError(undefined));
+				return Result.err(new HuggingFaceRateLimitError(undefined));
 			}
 
 			return Result.err(
-				new DeepInfraApiError("huggingface/embed", undefined, error.message),
+				new HuggingFaceApiError("huggingface/embed", undefined, error.message),
 			);
 		}
 
 		return Result.err(
-			new DeepInfraApiError("huggingface/embed", undefined, "Unknown error"),
+			new HuggingFaceApiError("huggingface/embed", undefined, "Unknown error"),
 		);
 	}
 }
@@ -165,11 +164,11 @@ export async function embedBatch(
 				error.message.includes("rate limit") ||
 				error.message.includes("429")
 			) {
-				return Result.err(new DeepInfraRateLimitError(undefined));
+				return Result.err(new HuggingFaceRateLimitError(undefined));
 			}
 
 			return Result.err(
-				new DeepInfraApiError(
+				new HuggingFaceApiError(
 					"huggingface/embed-batch",
 					undefined,
 					error.message,
@@ -178,7 +177,7 @@ export async function embedBatch(
 		}
 
 		return Result.err(
-			new DeepInfraApiError(
+			new HuggingFaceApiError(
 				"huggingface/embed-batch",
 				undefined,
 				"Unknown error",

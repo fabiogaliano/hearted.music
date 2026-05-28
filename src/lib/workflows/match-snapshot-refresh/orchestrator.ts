@@ -132,14 +132,13 @@ export async function executeMatchSnapshotRefresh(
 	jobId?: string,
 ): Promise<MatchSnapshotRefreshResult> {
 	const progress = createInitialMatchSnapshotRefreshProgress(plan);
-	let embeddingService: EmbeddingService;
-	try {
-		embeddingService = new EmbeddingService();
-	} catch (err) {
+	const embeddingResult = EmbeddingService.create();
+	if (Result.isError(embeddingResult)) {
 		throw new Error(
-			`[target-refresh] Failed to initialize EmbeddingService: ${err instanceof Error ? err.message : String(err)}`,
+			`[target-refresh] Failed to initialize EmbeddingService: ${embeddingResult.error.message}`,
 		);
 	}
+	const embeddingService = embeddingResult.value;
 
 	let llmService: LlmService | undefined;
 	try {
