@@ -1,4 +1,3 @@
-import { createMiddleware, getGlobalStartContext } from "@tanstack/react-start";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
@@ -27,36 +26,12 @@ export interface AuthRequestState {
 }
 
 type AuthSqlClient = ReturnType<typeof postgres>;
-type BetterAuthInstance = ReturnType<typeof createBetterAuth>;
+export type BetterAuthInstance = ReturnType<typeof createBetterAuth>;
 
 const CONNECTION_IDLE_TIMEOUT_SECONDS = 20;
 const CONNECTION_CLOSE_TIMEOUT_SECONDS = 5;
 
-export const authRequestMiddleware = createMiddleware().server(
-	async ({ next }) => {
-		const authRequest = createAuthRequestState();
-
-		try {
-			return await next({ context: { authRequest } });
-		} finally {
-			await closeAuthRequestAfterResponse(authRequest);
-		}
-	},
-);
-
-export function getAuthRequestState(): AuthRequestState {
-	const context = getGlobalStartContext();
-
-	if (!context?.authRequest) {
-		throw new Error(
-			"Auth request context unavailable. Add authRequestMiddleware to src/start.ts and call auth helpers only within the TanStack Start request lifecycle.",
-		);
-	}
-
-	return context.authRequest;
-}
-
-function createAuthRequestState(): AuthRequestState {
+export function createAuthRequestState(): AuthRequestState {
 	let sql: AuthSqlClient | undefined;
 	let auth: BetterAuthInstance | undefined;
 	let authSessionPromise: Promise<AuthContext | null> | undefined;
@@ -192,7 +167,7 @@ function createBetterAuth(sql: AuthSqlClient) {
 	});
 }
 
-async function closeAuthRequestAfterResponse(
+export async function closeAuthRequestAfterResponse(
 	authRequest: AuthRequestState,
 ): Promise<void> {
 	const closePromise = authRequest.close();
