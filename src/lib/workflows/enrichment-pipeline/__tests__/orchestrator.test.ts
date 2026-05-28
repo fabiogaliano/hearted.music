@@ -10,6 +10,7 @@ import type { EnrichmentWorkPlan } from "../types";
 const mockSelectEnrichmentWorkPlan = vi.fn<() => Promise<EnrichmentWorkPlan>>();
 const mockLoadBatchSongs = vi.fn<() => Promise<PipelineBatch>>();
 const mockHasMoreSongsNeedingEnrichmentWork = vi.fn<() => Promise<boolean>>();
+const mockGetEntitledDataEnrichedSongIds = vi.fn<() => Promise<string[]>>();
 
 vi.mock("../batch", () => ({
 	selectEnrichmentWorkPlan: (...args: unknown[]) =>
@@ -17,6 +18,8 @@ vi.mock("../batch", () => ({
 	loadBatchSongs: (...args: unknown[]) => mockLoadBatchSongs(...(args as [])),
 	hasMoreSongsNeedingEnrichmentWork: (...args: unknown[]) =>
 		mockHasMoreSongsNeedingEnrichmentWork(...(args as [])),
+	getEntitledDataEnrichedSongIds: (...args: unknown[]) =>
+		mockGetEntitledDataEnrichedSongIds(...(args as [])),
 }));
 
 const mockRunAudioFeatures = vi.fn();
@@ -248,6 +251,7 @@ beforeEach(() => {
 	mockGetEmbeddings.mockResolvedValue(Result.ok(new Map()));
 	mockGetAnalysis.mockResolvedValue(Result.ok(new Map()));
 	mockGetByIds.mockResolvedValue(Result.ok([]));
+	mockGetEntitledDataEnrichedSongIds.mockResolvedValue([]);
 });
 
 describe("executeWorkerChunk sub-batching", () => {
@@ -628,34 +632,78 @@ describe("content activation", () => {
 	});
 });
 
-describe("newCandidatesAvailable readiness (audio optional)", () => {
-	it("flips true when a song reaches genres+analysis+embedding even without audio_features", async () => {
-		const songId = "audioless-song";
-		const batch = makeBatch([songId]);
+describe("newCandidatesAvailable readiness", () => {
+	// Readiness + entitlement is owned by the canonical selector
+	// (getEntitledDataEnrichedSongIds → select_entitled_data_enriched_liked_song_ids).
+	// These tests assert how the orchestrator consumes its before/after snapshots;
+	// the entitlement gate itself is exercised against the real DB in
+	// entitled-candidates-newly-ready.integration.test.ts.
 
+	function readinessWorkPlan(songId: string) {
 		const workPlan = makeWorkPlan({
 			allSongIds: [songId],
 			needAnalysis: [songId],
 			needEmbedding: [songId],
 		});
 		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
-		mockLoadBatchSongs.mockResolvedValue(batch);
+		mockLoadBatchSongs.mockResolvedValue(makeBatch([songId]));
+	}
 
-		// Re-query of the batch songs after stages run — readiness rule still
-		// requires song.genres, which makeBatch already populates.
-		mockGetByIds.mockResolvedValue(Result.ok(batch.songs));
+	it("flips true when an entitled batch song becomes newly ready", async () => {
+		const songId = "newly-ready-song";
+		readinessWorkPlan(songId);
 
-		// Before stages: no analysis or embedding rows yet.
-		// After stages: analysis + embedding present (audio is intentionally absent).
-		mockGetAnalysis
-			.mockResolvedValueOnce(Result.ok(new Map()))
-			.mockResolvedValueOnce(Result.ok(new Map([[songId, { id: "a-1" }]])));
-		mockGetEmbeddings
-			.mockResolvedValueOnce(Result.ok(new Map()))
-			.mockResolvedValueOnce(Result.ok(new Map([[songId, { id: "e-1" }]])));
+		// Not ready before; ready after the stages run.
+		mockGetEntitledDataEnrichedSongIds
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([songId]);
 
 		const result = await executeWorkerChunk("account-1", "job-1", 10, 0);
 
 		expect(result.newCandidatesAvailable).toBe(true);
+	});
+
+	it("stays false when a newly-ready song is not entitled (excluded by the selector)", async () => {
+		const songId = "locked-song";
+		readinessWorkPlan(songId);
+
+		// The selector applies the entitlement gate: a locked/revoked song is
+		// absent from its result even after gaining genres+analysis+embedding.
+		mockGetEntitledDataEnrichedSongIds
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([]);
+
+		const result = await executeWorkerChunk("account-1", "job-1", 10, 0);
+
+		expect(result.newCandidatesAvailable).toBe(false);
+	});
+
+	it("ignores entitled songs that became ready outside this batch", async () => {
+		const batchSongId = "batch-song";
+		readinessWorkPlan(batchSongId);
+
+		// Selector is account-wide; a song outside this batch must not count as a
+		// candidate produced by this chunk.
+		mockGetEntitledDataEnrichedSongIds
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce(["some-other-song"]);
+
+		const result = await executeWorkerChunk("account-1", "job-1", 10, 0);
+
+		expect(result.newCandidatesAvailable).toBe(false);
+	});
+
+	it("stays false when no batch song changed readiness", async () => {
+		const songId = "already-ready-song";
+		readinessWorkPlan(songId);
+
+		// Ready both before and after → nothing newly available.
+		mockGetEntitledDataEnrichedSongIds
+			.mockResolvedValueOnce([songId])
+			.mockResolvedValueOnce([songId]);
+
+		const result = await executeWorkerChunk("account-1", "job-1", 10, 0);
+
+		expect(result.newCandidatesAvailable).toBe(false);
 	});
 });

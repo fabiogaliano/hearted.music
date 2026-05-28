@@ -1,15 +1,14 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { grantAnalysisFailureReplacementCredit } from "@/lib/domains/billing/compensation";
-import { get as getSongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
-import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
 import { updateJobProgress } from "@/lib/platform/jobs/repository";
 import {
+	getEntitledDataEnrichedSongIds,
 	hasMoreSongsNeedingEnrichmentWork,
 	loadBatchSongs,
 	type PipelineBatch,
@@ -102,44 +101,27 @@ function filterBatch(batch: PipelineBatch, songIds: string[]): PipelineBatch {
 	};
 }
 
-async function loadDataEnrichedSongIds(
-	batch: PipelineBatch,
-	embeddingService: EmbeddingService,
-	songs = batch.songs,
+/**
+ * Returns the subset of `batchIds` that are entitled and data-enriched
+ * (ready for matching), per the canonical selector.
+ *
+ * Readiness + entitlement is defined once, in the RPC
+ * `select_entitled_data_enriched_liked_song_ids`. That selector is account-wide,
+ * so we intersect its result with the current batch to answer "did THIS batch
+ * make any *entitled* song newly matchable?". Routing through the RPC is what
+ * applies the entitlement gate — a locked or revoked song that just gained an
+ * embedding is correctly NOT counted as a new candidate.
+ */
+async function loadEntitledReadyInBatch(
+	accountId: string,
+	batchIds: Set<string>,
 ): Promise<Set<string>> {
-	if (batch.songIds.length === 0) {
+	if (batchIds.size === 0) {
 		return new Set();
 	}
 
-	// Mirrors select_entitled_data_enriched_liked_song_ids: audio_features is
-	// optional, so readiness is genres + analysis + embedding.
-	const [analysisResult, embeddingsResult] = await Promise.all([
-		getSongAnalysis(batch.songIds),
-		embeddingService.getEmbeddings(batch.songIds),
-	]);
-
-	if (Result.isError(analysisResult) || Result.isError(embeddingsResult)) {
-		throw new Error("Failed to resolve data-enriched songs for batch");
-	}
-
-	const songById = new Map(songs.map((song) => [song.id, song]));
-	const enrichedSongIds = new Set<string>();
-
-	for (const songId of batch.songIds) {
-		const song = songById.get(songId);
-		if (!song?.genres || song.genres.length === 0) {
-			continue;
-		}
-
-		if (
-			analysisResult.value.has(songId) &&
-			embeddingsResult.value.has(songId)
-		) {
-			enrichedSongIds.add(songId);
-		}
-	}
-
-	return enrichedSongIds;
+	const entitledReady = await getEntitledDataEnrichedSongIds(accountId);
+	return new Set(entitledReady.filter((songId) => batchIds.has(songId)));
 }
 
 /**
@@ -425,10 +407,8 @@ export async function executeWorkerChunk(
 
 	const workPlan = await selectEnrichmentWorkPlan(accountId, batchSize);
 	const batch = await loadBatchSongs(workPlan.allSongIds);
-	const enrichedBefore = await loadDataEnrichedSongIds(
-		batch,
-		embeddingResult.value,
-	);
+	const batchIds = new Set(batch.songIds);
+	const enrichedBefore = await loadEntitledReadyInBatch(accountId, batchIds);
 
 	const progress = makeInitialProgress(
 		batchSize,
@@ -442,22 +422,15 @@ export async function executeWorkerChunk(
 	progress.currentStage = undefined;
 	await persistProgress(jobId, progress);
 
-	const songsResult = await getSongsByIds(batch.songIds);
 	let newCandidatesAvailable = batch.songIds.length > 0;
-	if (Result.isOk(songsResult)) {
-		try {
-			const enrichedAfter = await loadDataEnrichedSongIds(
-				batch,
-				embeddingResult.value,
-				songsResult.value,
-			);
-			newCandidatesAvailable = [...enrichedAfter].some(
-				(songId) => !enrichedBefore.has(songId),
-			);
-		} catch {
-			// Preserve the prior behavior if post-run readiness checks fail.
-			newCandidatesAvailable = batch.songIds.length > 0;
-		}
+	try {
+		const enrichedAfter = await loadEntitledReadyInBatch(accountId, batchIds);
+		newCandidatesAvailable = [...enrichedAfter].some(
+			(songId) => !enrichedBefore.has(songId),
+		);
+	} catch {
+		// Preserve the prior behavior if the post-run readiness probe fails.
+		newCandidatesAvailable = batch.songIds.length > 0;
 	}
 
 	// Probe whether more songs still need pipeline processing via the DB selector
