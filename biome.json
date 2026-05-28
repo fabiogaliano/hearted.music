@@ -32,6 +32,9 @@
 			"recommended": true,
 			"suspicious": {
 				"noDeprecatedImports": "error"
+			},
+			"style": {
+				"noProcessEnv": "error"
 			}
 		}
 	},
@@ -55,6 +58,19 @@
 					},
 					"complexity": {
 						"useArrowFunction": "off"
+					},
+					"style": {
+						"noProcessEnv": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": ["**/src/env.ts", "**/src/worker/**", "**/vite.config.ts"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noProcessEnv": "off"
 					}
 				}
 			}

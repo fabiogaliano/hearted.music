@@ -8,6 +8,7 @@
  */
 
 import { Result } from "better-result";
+import { env } from "@/env";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import {
 	GeniusConfigError,
@@ -186,6 +187,7 @@ export class LyricsService {
 		song: string,
 	): Promise<Result<ResponseHitsResult, GeniusError>> {
 		const queryVariants = generateQueryVariants(artist, song);
+		// biome-ignore lint/style/noProcessEnv: dev-only debug flag, intentionally not part of validated env
 		const debug = process.env.DEBUG_LYRICS_SEARCH === "true";
 		let lastError: GeniusError | undefined;
 		let hadSuccessfulResponse = false;
@@ -345,7 +347,7 @@ export function createLyricsService(): Result<
 	LyricsService,
 	GeniusConfigError
 > {
-	const accessToken = process.env.GENIUS_CLIENT_TOKEN;
+	const accessToken = env.GENIUS_CLIENT_TOKEN;
 	if (!accessToken) {
 		return Result.err(
 			new GeniusConfigError(

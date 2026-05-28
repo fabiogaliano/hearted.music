@@ -10,6 +10,7 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
+import { env } from "@/env";
 import {
 	DeepInfraApiError,
 	type DeepInfraError,
@@ -125,7 +126,7 @@ const RerankApiResponseSchema = z.object({
  * Gets the DeepInfra API key from environment.
  */
 function getApiKey(): string {
-	const key = process.env.DEEPINFRA_API_KEY;
+	const key = env.DEEPINFRA_API_KEY;
 	if (!key) {
 		throw new Error("DEEPINFRA_API_KEY environment variable not set");
 	}

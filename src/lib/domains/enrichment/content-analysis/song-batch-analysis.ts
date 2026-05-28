@@ -1,4 +1,5 @@
 import { Result } from "better-result";
+import { env } from "@/env";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import { getBatch as getAudioFeaturesBatch } from "@/lib/domains/enrichment/audio-features/queries";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
@@ -313,7 +314,7 @@ export function createSongBatchAnalyzerDeps(
 		return Result.err(new PipelineConfigError(llmConfig.reason, provider));
 	}
 
-	const geniusToken = process.env.GENIUS_CLIENT_TOKEN;
+	const geniusToken = env.GENIUS_CLIENT_TOKEN;
 	const lyricsService = geniusToken
 		? new LyricsService({ accessToken: geniusToken })
 		: null;

@@ -23,6 +23,7 @@
 
 import { Result } from "better-result";
 import { z } from "zod";
+import { env } from "@/env";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import { getBatch as getAudioFeaturesBatch } from "@/lib/domains/enrichment/audio-features/queries";
 import { get as getSongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
@@ -672,7 +673,7 @@ export function createAnalysisPipeline(
 	}
 
 	// 3. Resolve optional Genius token
-	const geniusToken = process.env.GENIUS_CLIENT_TOKEN;
+	const geniusToken = env.GENIUS_CLIENT_TOKEN;
 
 	// 4. Build resolved config
 	const resolvedConfig: ResolvedConfig = {
