@@ -8,8 +8,9 @@
  * Consumers that need source-specific scroll behavior can use `autoScroll: false`
  * and react to `lastCursorChange` themselves.
  */
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
+import { useCallback, useRef } from "react";
+import { useIsomorphicLayoutEffect } from "@/lib/hooks/useIsomorphicLayoutEffect";
 import { scrollListElementIntoView } from "@/lib/keyboard/listScroll";
 import type {
 	ListNavigationOptions,
@@ -17,9 +18,6 @@ import type {
 } from "@/lib/keyboard/types";
 import { useListCursor } from "@/lib/keyboard/useListCursor";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
-
-const useIsomorphicLayoutEffect =
-	typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 export function useListNavigation<T>(
 	options: ListNavigationOptions<T>,

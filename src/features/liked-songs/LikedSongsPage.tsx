@@ -1,11 +1,4 @@
-import {
-	useCallback,
-	useEffect,
-	useLayoutEffect,
-	useRef,
-	useState,
-} from "react";
-
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
 import type {
 	OnboardingSession,
@@ -14,6 +7,7 @@ import type {
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
+import { useIsomorphicLayoutEffect } from "@/lib/hooks/useIsomorphicLayoutEffect";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
 
@@ -30,8 +24,6 @@ import { useLikedSongsPageData } from "./hooks/useLikedSongsPageData";
 import { useSongExpansion } from "./hooks/useSongExpansion";
 import { useSongUnlock } from "./hooks/useSongUnlock";
 
-const useIsomorphicLayoutEffect =
-	typeof window !== "undefined" ? useLayoutEffect : useEffect;
 const LIST_TOP_GAP_PX = 24;
 const SEARCH_DEBOUNCE_MS = 250;
 

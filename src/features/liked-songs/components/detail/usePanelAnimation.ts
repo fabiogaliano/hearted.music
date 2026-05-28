@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useIsomorphicLayoutEffect } from "@/lib/hooks/useIsomorphicLayoutEffect";
 
 import { ANIMATION_TIMING, LAYOUT, PANEL_KEYFRAMES } from "./panel-constants";
 import {
@@ -8,9 +9,6 @@ import {
 	springInterpolate,
 } from "./panel-interpolation";
 import type { PanelColors } from "./types";
-
-const useIsomorphicLayoutEffect =
-	typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 interface UsePanelAnimationOptions {
 	isExpanded: boolean;
