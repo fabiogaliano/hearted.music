@@ -230,6 +230,10 @@ export class LlmService {
 			functionId?: string;
 			distinctId?: string;
 			maxOutputTokens?: number;
+			// Left undefined by default, so the provider default applies. Lower values
+			// reduce sampling variance, which matters for structured analysis where the
+			// model otherwise "reaches" past prompt constraints on some draws.
+			temperature?: number;
 		},
 	): Promise<Result<ObjectGenerationResult<T>, LlmServiceError>> {
 		return withRetry(
@@ -242,6 +246,7 @@ export class LlmService {
 							schema,
 							maxOutputTokens:
 								options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+							temperature: options?.temperature,
 							experimental_telemetry: {
 								isEnabled: true,
 								functionId: options?.functionId ?? "llm-generate-object",
