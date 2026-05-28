@@ -1,0 +1,222 @@
+{
+  "runId": "2026-05-27T17-49-57-214Z__the-weeknd-blinding-lights__v10__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T17:49:57.214Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "10",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 4,
+    "medium": 3,
+    "low": 12
+  },
+  "byRule": {
+    "puffery-adjective": 3,
+    "participial-closure": 3,
+    "book-report-opener": 1,
+    "burstiness": 2,
+    "lexical-repetition": 6,
+    "dash": 4
+  },
+  "tokens": 4636,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "mood_description",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "sonic_texture",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "journey[2].description",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", pulsing synthesizers drive a relentless beat.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[3].description",
+      "span": ", chasing what is real.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[4].insight",
+      "span": ", signaling a firm decision.",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "interpretation",
+      "span": "This is a story of addiction ",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "This is a story of addiction and salvation.",
+      "severity": "low",
+      "note": "CV=0.195 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "Bright, pulsing synthesizers drive a relentless beat.",
+      "severity": "low",
+      "note": "CV=0.102 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "person",
+      "severity": "low",
+      "note": "repeated ×7 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "neon",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "need",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "connection",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "clarity",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[1].description",
+      "span": "feeling",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "mood_description",
+      "span": "neon-lit",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "sonic_texture",
+      "span": "neon-drenched",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "journey[1].section",
+      "span": "Pre-Chorus",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "journey[3].description",
+      "span": "fast-paced",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "headline": "A desperate plea rings out. One person cuts through the noise.",
+    "compound_mood": "Urgent Longing",
+    "mood_description": "A profound longing cuts through the chaos of a neon-lit night. There is an urgent need for connection.",
+    "interpretation": "This is a story of addiction and salvation. A destructive lifestyle leaves a person isolated and in pain. One specific connection offers the only escape from the dark. That person brings clarity and purpose.",
+    "themes": [
+      {
+        "name": "isolated longing",
+        "description": "A deep need for connection surfaces from a life of solitude and excess."
+      },
+      {
+        "name": "hedonistic escape",
+        "description": "The city offers fleeting thrills but ultimately leaves a person feeling hollow."
+      },
+      {
+        "name": "saving grace",
+        "description": "One true connection provides clarity and safety amidst overwhelming chaos."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro/Verse 1",
+        "mood": "Raw Vulnerability",
+        "description": "A quiet desperation builds from loneliness. A call goes out for help."
+      },
+      {
+        "section": "Pre-Chorus",
+        "mood": "Empty Disorientation",
+        "description": "The world around is a blur of neon and cold. Judgment disappears, but so does clarity."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Blinded Devotion",
+        "description": "A powerful light draws you in completely. The touch of one person becomes a profound necessity."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Urgent Pursuit",
+        "description": "Time slips away in the fast-paced life. A desperate drive begins, chasing what is real."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Firm Commitment",
+        "description": "A promise solidifies after a period of running. This connection is not going anywhere."
+      },
+      {
+        "section": "Outro",
+        "mood": "Lingering Need",
+        "description": "The feeling persists, a quiet echo of the main plea. That touch remains the only way to sleep."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I've been on my own for long enough",
+        "insight": "This line establishes a deep, underlying loneliness. It drives the whole song."
+      },
+      {
+        "line": "I'm goin' through withdrawals",
+        "insight": "These words pinpoint a physical and emotional struggle. The need for a specific person feels like a chemical dependency."
+      },
+      {
+        "line": "I can't see clearly when you're gone",
+        "insight": "The world loses all focus and meaning without this person. Clarity depends on their presence."
+      },
+      {
+        "line": "I said, ooh, I'm blinded by the lights",
+        "insight": "The feeling of being overwhelmed by intense emotions for someone takes center stage. It is a powerful declaration."
+      },
+      {
+        "line": "Will never let you go this time",
+        "insight": "A turning point arrives, signaling a firm decision. A crucial connection is now held tightly."
+      }
+    ],
+    "sonic_texture": "Bright, pulsing synthesizers drive a relentless beat. The sound pulls you into a sleek, neon-drenched night. An 80s pop sensibility feels urgent and immediate."
+  }
+}

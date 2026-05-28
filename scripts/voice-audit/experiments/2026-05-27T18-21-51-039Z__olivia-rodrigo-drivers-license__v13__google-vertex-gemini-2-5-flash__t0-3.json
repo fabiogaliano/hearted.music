@@ -1,0 +1,158 @@
+{
+  "runId": "2026-05-27T18-21-51-039Z__olivia-rodrigo-drivers-license__v13__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-27T18:21:51.039Z",
+  "song": "Olivia Rodrigo — drivers license",
+  "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf",
+  "promptKind": "lyrical",
+  "promptVersion": "13",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 1,
+    "low": 6
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 2,
+    "burstiness": 1,
+    "lexical-repetition": 5
+  },
+  "tokens": 5260,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "interpretation",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", building to a powerful, yearning cry.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[4].insight",
+      "span": ", making it impossible to escape the past.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "Gaining independence often coincides with profound loss.",
+      "severity": "low",
+      "note": "CV=0.238 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "every",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "driving",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "memories",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[0].description",
+      "span": "pain",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "You feel the sting of a first heartbreak. Every mile driven is a memory relived.",
+    "compound_mood": "Raw Heartbreak",
+    "mood_description": "You are driving alone. The world outside is a blur of tears and memories.",
+    "interpretation": "Gaining independence often coincides with profound loss. The freedom of the open road becomes a painful reminder of what was shared. Every familiar street corner holds a ghost of the past. Moving on feels impossible when everything around you speaks of them.",
+    "themes": [
+      {
+        "name": "first heartbreak",
+        "description": "The intense, all consuming pain of a first significant breakup washes over you."
+      },
+      {
+        "name": "coming of age",
+        "description": "Newfound independence arrives hand in hand with deep emotional pain."
+      },
+      {
+        "name": "memory and place",
+        "description": "Physical locations become saturated with the echoes of a past relationship."
+      },
+      {
+        "name": "unrequited longing",
+        "description": "You still love someone who has clearly moved on."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Shared Dream Shattered",
+        "description": "The excitement of a shared future turns into the crushing weight of a present loss."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Stinging Betrayal",
+        "description": "You cannot comprehend how someone could move on so easily."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Lingering Attachment",
+        "description": "Your friends are tired of hearing about it. You still feel a unique connection to them."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Overwhelming Presence",
+        "description": "Every sight and sound on the road brings back vivid, painful memories of them."
+      },
+      {
+        "section": "Outro",
+        "mood": "Resigned Solitude",
+        "description": "The finality of driving alone past their street settles in."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I got my driver's license last week Just like we always talked about",
+        "insight": "A symbol of newfound freedom becomes a stark reminder of a broken promise."
+      },
+      {
+        "line": "And I just can't imagine how you could be so okay now that I'm gone",
+        "insight": "The sharpest pain comes from the other person's apparent indifference."
+      },
+      {
+        "line": "Cause you said forever, now I drive alone past your street",
+        "insight": "The broken promise is made real by the lonely act of driving past their house."
+      },
+      {
+        "line": "Can't drive past the places we used to go to 'Cause I still fuckin' love you, babe",
+        "insight": "The raw, unfiltered admission of enduring love cuts deep despite the pain."
+      },
+      {
+        "line": "I still hear your voice in the traffic, we're laughing Over all the noise",
+        "insight": "Memories intrude on the present moment, making it impossible to escape the past."
+      }
+    ],
+    "sonic_texture": "A gentle piano opens the space. Strings swell with emotion. The vocals are raw and intimate, building to a powerful, yearning cry. A soft, driving beat pushes the narrative forward."
+  }
+}

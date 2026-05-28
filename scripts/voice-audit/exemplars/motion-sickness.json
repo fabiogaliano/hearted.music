@@ -1,0 +1,20 @@
+{
+  "headline": "loving someone you would not call back",
+  "compound_mood": "Tender Resentment",
+  "mood_description": "Bright guitars carry a grudge. It sounds almost upbeat, which is exactly how you know it still hurts.",
+  "interpretation": "The specific nausea of being tangled up with someone who hurt you and still takes up room in your day. She is not asking for closure, she is naming the dizziness of missing a person she also can't stand. Anger and longing share the same sentence and refuse to resolve.",
+  "themes": [
+    { "name": "Anger with receipts", "description": "The hurt is concrete, dollar amounts and apartments and a hypnotherapist, never a vague ache." },
+    { "name": "The pull that survives the verdict", "description": "She has already decided he was bad for her, and she misses him anyway. Both stay true." }
+  ],
+  "journey": [
+    { "section": "Verse 1", "mood": "Wry", "description": "She lists the damage in an almost conversational shrug, like recounting a bad trip to a friend." },
+    { "section": "Chorus", "mood": "Restless", "description": "The motion sickness hits. The melody lifts while the stomach drops." },
+    { "section": "Bridge", "mood": "Exposed", "description": "The bravado thins out. For a second she just admits she has no clean way to feel about this." }
+  ],
+  "key_lines": [
+    { "line": "I have emotional motion sickness", "insight": "The whole song folded into one image. Feelings as a moving car you cannot get out of." },
+    { "line": "I hate you for what you did and I miss you like a little kid", "insight": "Two opposite truths in one breath, and she refuses to pick one." }
+  ],
+  "sonic_texture": "Jangly, propulsive indie rock with a clean forward push. The drums keep things moving even when the lyrics would rather lie down."
+}

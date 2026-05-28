@@ -1,0 +1,211 @@
+{
+  "runId": "2026-05-27T11-50-26-976Z__kendrick-lamar-not-like-us__v2__google-gemini-2-5-flash",
+  "timestamp": "2026-05-27T11:50:26.976Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "2",
+  "model": "google:gemini-2.5-flash",
+  "totals": {
+    "high": 16,
+    "medium": 3,
+    "low": 0
+  },
+  "byRule": {
+    "antithesis": 1,
+    "puffery-adjective": 3,
+    "participial-closure": 15
+  },
+  "tokens": 8753,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "interpretation",
+      "span": "not just their music but",
+      "severity": "high"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "headline",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "sonic_texture",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "journey[4].description",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "headline",
+      "span": ", taunting declaration of war, fueled by a righteous anger that refuses to back down.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", attacking not just their music but their entire foundation.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", accusing the opponent of being an imposter who profits from it, while simultaneously celebrating a collective identity against the perceived outsider.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", booming West Coast beat with a relentless, driving bassline.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", pushing an urgent rhythm forward, while the vocals deliver a sharp, declarative flow, making it feel like a public address delivered from a crowded, kinetic dancefloor.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[1].description",
+      "span": ", searing attacks on the opponent's moral character and alleged illicit behavior.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[2].description",
+      "span": ", rallying a community against an outsider.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[3].description",
+      "span": ", leaving no room for retreat.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[1].description",
+      "span": ", feeling like a public exposé designed to shock and corner.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[2].description",
+      "span": ", pulling everyone into a shared declaration, a powerful us-vs-them anthem.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[3].description",
+      "span": ", questioning authenticity and allegiances, dissecting the opponent's entire career.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[4].description",
+      "span": ", ending with an urgent, almost playful warning.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[5].description",
+      "span": ", leaving no room for doubt about who stands victorious.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[1].insight",
+      "span": ", searing accusation of exploitation and appropriation within a culture.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[2].insight",
+      "span": ", rallying cry of a community standing united against an outsider, asserting a fundamental difference.",
+      "severity": "high"
+    }
+  ],
+  "analysis": {
+    "headline": "A relentless, taunting declaration of war, fueled by a righteous anger that refuses to back down.",
+    "compound_mood": "Scathing Exultation",
+    "mood_description": "A propulsive, undeniable rhythm carries a barrage of accusations. It feels like stepping onto a chaotic dancefloor where every move is a direct hit.",
+    "interpretation": "It's the complete and utter dismantling of a rival's persona, attacking not just their music but their entire foundation. There's a powerful reclaiming of cultural ownership, accusing the opponent of being an imposter who profits from it, while simultaneously celebrating a collective identity against the perceived outsider. The production's high energy creates an undeniable backdrop for the lyrical warfare.",
+    "themes": [
+      {
+        "name": "cultural authenticity",
+        "description": "Defending specific regional hip-hop roots and calling out perceived appropriation."
+      },
+      {
+        "name": "predatory accusations",
+        "description": "Direct, searing attacks on the opponent's moral character and alleged illicit behavior."
+      },
+      {
+        "name": "regional pride",
+        "description": "A fierce loyalty to Compton and the West Coast, rallying a community against an outsider."
+      },
+      {
+        "name": "strategic warfare",
+        "description": "The calculated and unyielding nature of the lyrical confrontation, leaving no room for retreat."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro/Verse 1",
+        "mood": "Ignited aggression",
+        "description": "A simmering fuse ignites. The beat hits hard, a direct challenge thrown down, each word a calculated punch targeting weaknesses."
+      },
+      {
+        "section": "Verse 1 (Accusations)",
+        "mood": "Unfiltered exposure",
+        "description": "The gloves come off. Accusations sharpen, details laid bare, feeling like a public exposé designed to shock and corner."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Unifying declaration",
+        "description": "An undeniable, unifying chant takes hold. The energy shifts, pulling everyone into a shared declaration, a powerful us-vs-them anthem."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Broadening attack",
+        "description": "The assault broadens beyond personal attacks. Accusations of exploitation echo, questioning authenticity and allegiances, dissecting the opponent's entire career."
+      },
+      {
+        "section": "Verse 3/Bridge",
+        "mood": "Chilling warning",
+        "description": "A calculated exposé on opportunistic relationships. The rhythm keeps driving, relentless in its dissection of parasitic ties, ending with an urgent, almost playful warning."
+      },
+      {
+        "section": "Outro",
+        "mood": "Victor's dismissal",
+        "description": "The crowd roars in affirmation, a call and response solidifying the message. A playful yet firm dismissal closes the chapter, leaving no room for doubt about who stands victorious."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "Exposing a public image as a disturbing, deceptive front."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "A direct, searing accusation of exploitation and appropriation within a culture."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "The simple, rallying cry of a community standing united against an outsider, asserting a fundamental difference."
+      },
+      {
+        "line": "You run to Atlanta when you need a check balance",
+        "insight": "Alleging calculated, transactional relationships for personal gain, devoid of genuine connection."
+      }
+    ],
+    "sonic_texture": "A raw, booming West Coast beat with a relentless, driving bassline. Percussion snaps and claps, pushing an urgent rhythm forward, while the vocals deliver a sharp, declarative flow, making it feel like a public address delivered from a crowded, kinetic dancefloor."
+  }
+}

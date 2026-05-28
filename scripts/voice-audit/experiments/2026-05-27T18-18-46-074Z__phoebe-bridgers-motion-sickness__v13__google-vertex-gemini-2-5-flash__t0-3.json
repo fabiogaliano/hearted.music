@@ -1,0 +1,225 @@
+{
+  "runId": "2026-05-27T18-18-46-074Z__phoebe-bridgers-motion-sickness__v13__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-27T18:18:46.074Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "13",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 4,
+    "medium": 1,
+    "low": 13
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 2,
+    "academic-register": 2,
+    "burstiness": 3,
+    "lexical-repetition": 10
+  },
+  "tokens": 5276,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "key_lines[1].insight",
+      "span": "visceral",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", making it hard to move forward.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[2].description",
+      "span": ", creating internal turmoil.",
+      "severity": "high"
+    },
+    {
+      "rule": "academic-register",
+      "field": "journey[5].description",
+      "span": "catharsis",
+      "severity": "high"
+    },
+    {
+      "rule": "academic-register",
+      "field": "key_lines[4].insight",
+      "span": "catharsis",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A gentle acoustic guitar starts it.",
+      "severity": "low",
+      "note": "CV=0.096 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "journey[2].description",
+      "span": "You see the damage from a distance.",
+      "severity": "low",
+      "note": "CV=0.113 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "journey[3].description",
+      "span": "The past still irritates you.",
+      "severity": "low",
+      "note": "CV=0.187 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "relationship",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "feeling",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "trying",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "find",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "emotional",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "strange",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[1].description",
+      "span": "healing",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[2].description",
+      "span": "turmoil",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "journey[1].description",
+      "span": "want",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "A past relationship leaves you feeling completely off kilter. You are trying to find your footing again.",
+    "compound_mood": "Disoriented Resentment",
+    "mood_description": "A past relationship still makes you feel sick. You are trying to find your balance. The emotional residue lingers.",
+    "interpretation": "Leaving a toxic relationship does not mean the feelings instantly disappear. The emotional residue lingers, making it hard to move forward. You are left grappling with conflicting feelings of anger and a strange sense of loss. It is a messy process of disentanglement.",
+    "themes": [
+      {
+        "name": "toxic aftermath",
+        "description": "The lingering effects of a damaging relationship continue to impact you."
+      },
+      {
+        "name": "emotional recovery",
+        "description": "The difficult process of healing and moving on from a painful past is a long road."
+      },
+      {
+        "name": "conflicted feelings",
+        "description": "You hold onto both hate and longing simultaneously, creating internal turmoil."
+      },
+      {
+        "name": "self preservation",
+        "description": "You are actively protecting yourself from further harm and seeking peace."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Conflicted opening",
+        "description": "You are caught between hate and missing someone. The past still holds a strange grip on you."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Overwhelmed sickness",
+        "description": "The emotional turmoil feels like physical motion sickness. You just want relief from the overwhelming feeling."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Clear eyed escape",
+        "description": "You see the damage from a distance. You are glad to be out of the situation. A sense of regret for how things unfolded remains."
+      },
+      {
+        "section": "Chorus 2",
+        "mood": "Lingering frustration",
+        "description": "The past still irritates you. You are actively trying to move past it. You are taking control of your healing."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Stark realization",
+        "description": "The age difference and power dynamic become painfully clear. You understand the imbalance of the relationship."
+      },
+      {
+        "section": "Outro",
+        "mood": "Seeking release",
+        "description": "There is a desire for catharsis and release. You want to let the music take over and find peace."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I hate you for what you did And I miss you like a little kid",
+        "insight": "The raw contradiction hits you immediately. It captures the confusing pain of a breakup. You feel both anger and a strange longing."
+      },
+      {
+        "line": "I have emotional motion sickness Somebody roll the windows down",
+        "insight": "The physical metaphor perfectly describes the internal turmoil. You just want relief from the overwhelming feeling. It is a visceral reaction."
+      },
+      {
+        "line": "You were in a band when I was born",
+        "insight": "The age gap starkly highlights a disturbing power dynamic. It reveals a significant imbalance in the relationship. This line lands with a punch."
+      },
+      {
+        "line": "But I will try to drown you out",
+        "insight": "This shows a shift from helplessness to active effort. You are taking control of your healing. It is a declaration of intent."
+      },
+      {
+        "line": "If I surrender to the sound",
+        "insight": "There is a desire for catharsis and release. You want to let the music take over. It is a plea for emotional freedom."
+      }
+    ],
+    "sonic_texture": "A gentle acoustic guitar starts it. A steady drum beat enters. The bassline is warm and round. Soft synths create a dreamy atmosphere. The vocals are clear and intimate. It feels like a late night conversation."
+  }
+}

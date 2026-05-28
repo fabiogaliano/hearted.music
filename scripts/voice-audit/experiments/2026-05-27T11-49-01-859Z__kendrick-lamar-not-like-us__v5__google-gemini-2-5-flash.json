@@ -1,0 +1,171 @@
+{
+  "runId": "2026-05-27T11-49-01-859Z__kendrick-lamar-not-like-us__v5__google-gemini-2-5-flash",
+  "timestamp": "2026-05-27T11:49:01.859Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "5",
+  "model": "google:gemini-2.5-flash",
+  "totals": {
+    "high": 3,
+    "medium": 2,
+    "low": 6
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "puffery-adjective": 1,
+    "self-reference": 2,
+    "book-report-opener": 1,
+    "burstiness": 6
+  },
+  "tokens": 7885,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "interpretation",
+      "span": "serves as",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "interpretation",
+      "span": "definitive",
+      "severity": "medium"
+    },
+    {
+      "rule": "self-reference",
+      "field": "interpretation",
+      "span": "The track",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "sonic_texture",
+      "span": "the track",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "headline",
+      "span": "This is a declaration of war.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "It is a forceful assertion of cultural authenticity.",
+      "severity": "low",
+      "note": "CV=0.088 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A hard-hitting West Coast beat drives the track.",
+      "severity": "low",
+      "note": "CV=0.175 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "journey[1].description",
+      "span": "Direct insults fly immediately.",
+      "severity": "low",
+      "note": "CV=0.234 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "journey[3].description",
+      "span": "Further allegations are detailed.",
+      "severity": "low",
+      "note": "CV=0.220 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "journey[4].description",
+      "span": "The scope widens to cultural exploitation.",
+      "severity": "low",
+      "note": "CV=0.083 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "journey[5].description",
+      "span": "The accusations intensify into a repetitive chant.",
+      "severity": "low",
+      "note": "CV=0.071 (threshold 0.25)"
+    }
+  ],
+  "analysis": {
+    "headline": "This is a declaration of war. It reclaims a culture and dismisses a foe.",
+    "compound_mood": "Defiant Triumph",
+    "mood_description": "It feels like an unwavering challenge. There is no middle ground.",
+    "interpretation": "It is a forceful assertion of cultural authenticity. It draws a stark boundary within hip-hop. The track exposes perceived exploitation and moral failings. It serves as a definitive dismissal of an opponent.",
+    "themes": [
+      {
+        "name": "cultural authenticity",
+        "description": "It champions true roots and calls out those who appropriate."
+      },
+      {
+        "name": "territorial claim",
+        "description": "It fiercely defends a specific geographic and cultural space."
+      },
+      {
+        "name": "moral judgment",
+        "description": "It casts a harsh light on an opponent's alleged ethical transgressions."
+      },
+      {
+        "name": "ultimate dismissal",
+        "description": "It completely rejects and discredits an adversary."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Ominous taunt",
+        "description": "A chilling whisper sets a menacing tone. The beat producer's tag confirms the West Coast origin."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Relentless attack",
+        "description": "Direct insults fly immediately. Accusations of hypocrisy and moral failings dominate. Every line is a punch."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Unifying declaration",
+        "description": "A powerful chant reinforces the division. It draws a clear line between \"us\" and \"them.\""
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Exposing scrutiny",
+        "description": "Further allegations are detailed. The opponent's character and associations are dissected. Every move is under a microscope."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Historical indictment",
+        "description": "The scope widens to cultural exploitation. Past collaborations are reframed as opportunism. A \"colonizer\" label is cemented."
+      },
+      {
+        "section": "Bridge/Outro",
+        "mood": "Triumphant dismissal",
+        "description": "The accusations intensify into a repetitive chant. It invites participation in the victory dance. The foe is fully cast out."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "It reclaims an opponent's album title. It replaces it with a damning accusation."
+      },
+      {
+        "line": "You run to Atlanta when you need a few dollars. No, you not a colleague, you a fuckin' colonizer",
+        "insight": "It critiques cultural exploitation. It defines the relationship as exploitative, not collaborative."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "It establishes an unbridgeable chasm. It defines group identity through exclusion."
+      },
+      {
+        "line": "Beat your ass and hide the Bible if God watchin'",
+        "insight": "It demonstrates an extreme commitment to confrontation. It shows a willingness to abandon moral codes for victory."
+      }
+    ],
+    "sonic_texture": "A hard-hitting West Coast beat drives the track. Heavy basslines pulse with urgency. Punchy drums create a danceable yet aggressive rhythm. Bright, sharp synths cut through the mix."
+  }
+}

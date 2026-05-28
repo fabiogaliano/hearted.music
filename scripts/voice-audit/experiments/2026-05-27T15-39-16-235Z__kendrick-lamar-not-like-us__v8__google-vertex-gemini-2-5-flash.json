@@ -1,0 +1,134 @@
+{
+  "runId": "2026-05-27T15-39-16-235Z__kendrick-lamar-not-like-us__v8__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T15:39:16.236Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "8",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 1,
+    "medium": 2,
+    "low": 2
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "puffery-adjective": 1,
+    "participial-closure": 1,
+    "burstiness": 2
+  },
+  "tokens": 7929,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "key_lines[3].insight",
+      "span": "acts as",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "sonic_texture",
+      "span": "vibrant",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[2].description",
+      "span": ", defining 'us' versus 'them'.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "A declaration of war built on cultural authenticity defines this track.",
+      "severity": "low",
+      "note": "CV=0.160 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A vibrant West Coast G-funk beat drives the sound.",
+      "severity": "low",
+      "note": "CV=0.141 (threshold 0.25)"
+    }
+  ],
+  "analysis": {
+    "headline": "A West Coast groove delivers a devastating blow. It declares a fundamental separation.",
+    "compound_mood": "Aggressive Defiance",
+    "mood_description": "A feeling of righteous anger and absolute certainty permeates the air. The energy is confrontational and unwavering.",
+    "interpretation": "A declaration of war built on cultural authenticity defines this track. It exposes perceived hypocrisy and moral failings. The song asserts a territorial claim over West Coast identity. It draws a clear line between two opposing forces.",
+    "themes": [
+      {
+        "name": "Authenticity",
+        "description": "A claim of genuine belonging contrasts with accusations of cultural appropriation."
+      },
+      {
+        "name": "Territorial Defense",
+        "description": "Compton is defended against outsiders and perceived invaders."
+      },
+      {
+        "name": "Moral Condemnation",
+        "description": "Accusations of serious misconduct are leveled directly."
+      },
+      {
+        "name": "Dominance",
+        "description": "The lyrical battle is asserted as a decisive victory."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Ominous Warning",
+        "description": "A playful but dark opening sets a confrontational tone."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Direct Assault",
+        "description": "Personal attacks and grave accusations escalate rapidly. It establishes the song's no-holds-barred approach."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Unifying Declaration",
+        "description": "A clear line is drawn, defining 'us' versus 'them'. It reinforces the core message of separation."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Deepening Accusations",
+        "description": "Further claims of misconduct and mockery intensify the assault. The lyrical jabs become more specific."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Cultural Critique",
+        "description": "The narrative shifts to an indictment of cultural exploitation. It labels the opponent a 'colonizer'."
+      },
+      {
+        "section": "Bridge & Outro",
+        "mood": "Taunting Victory",
+        "description": "The conclusion taunts the opponent and invites others to join the celebration. It offers dance instructions."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "This line delivers a shocking, direct accusation. It redefines a self-proclaimed identity with a severe moral indictment."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "This repeated phrase forms the song's central thesis. It creates an undeniable division between two groups."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "The line elevates the conflict to a cultural and historical critique. It labels the opponent as an exploiter rather than an equal peer."
+      },
+      {
+        "line": "You better not ever go to cell block one",
+        "insight": "This acts as a clear, threatening warning. It implies severe consequences for alleged actions."
+      },
+      {
+        "line": "Beat your ass and hide the Bible if God watchin'",
+        "insight": "It expresses an extreme commitment to confrontation. The line shows a willingness to abandon personal principles for the battle."
+      }
+    ],
+    "sonic_texture": "A vibrant West Coast G-funk beat drives the sound. It features a prominent bassline and crisp drums. Synthesizers add a classic California vibe. The high danceability pairs with aggressive vocal delivery."
+  }
+}

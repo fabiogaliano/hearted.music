@@ -1,0 +1,282 @@
+{
+  "runId": "2026-05-27T17-19-54-933Z__olivia-rodrigo-drivers-license__v9__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T17:19:54.933Z",
+  "song": "Olivia Rodrigo — drivers license",
+  "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf",
+  "promptKind": "lyrical",
+  "promptVersion": "9",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 14,
+    "medium": 4,
+    "low": 10
+  },
+  "byRule": {
+    "antithesis": 1,
+    "copula-avoidance": 1,
+    "puffery-adjective": 3,
+    "participial-closure": 13,
+    "burstiness": 2,
+    "lexical-repetition": 8
+  },
+  "tokens": 4846,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "key_lines[3].insight",
+      "span": "not just of love,",
+      "severity": "high"
+    },
+    {
+      "rule": "copula-avoidance",
+      "field": "journey[1].description",
+      "span": "embodies",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "themes[3].description",
+      "span": "haunting",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "key_lines[4].insight",
+      "span": "visceral",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "key_lines[4].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "mood_description",
+      "span": ", moving through places that hold too many memories.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "mood_description",
+      "span": ", watching it blur.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", building a tender atmosphere.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", supporting the emotional weight.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", adding drama without ever overpowering the voice.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[0].description",
+      "span": ", getting a driver's license, becomes an immediate source of sorrow.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[0].description",
+      "span": ", driving past a house that once meant everything.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[1].description",
+      "span": ", intensifying the feeling of abandonment.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[2].description",
+      "span": ", leaving you stranded in disbelief.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[4].description",
+      "span": ", making it impossible to escape the lingering love and pain.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[0].insight",
+      "span": ", showing the immediate impact of heartbreak.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[1].insight",
+      "span": ", revealing how heartbreak can magnify existing insecurities.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[3].insight",
+      "span": ", adding a layer of public hurt.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "The world keeps turning, but you are not ready to turn with it.",
+      "severity": "low",
+      "note": "CV=0.126 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A quiet piano opens it, a soft bed for the intimate, almost spoken vocals.",
+      "severity": "low",
+      "note": "CV=0.140 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "every",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "heartbreak",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "world",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "becomes",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "sonic_texture",
+      "span": "quiet",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[1].description",
+      "span": "love",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "journey[4].description",
+      "span": "pain",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "This is what it feels like when every familiar street holds a fresh sting. The ache of a first heartbreak settles deep.",
+    "compound_mood": "Anguished Reflection",
+    "mood_description": "You are caught in the car, moving through places that hold too many memories. The world keeps going, but you are frozen in the past, watching it blur.",
+    "interpretation": "The world keeps turning, but you are not ready to turn with it. A common rite of passage becomes a symbol of ultimate loneliness. Every signpost is a marker of what used to be, and what is gone forever.",
+    "themes": [
+      {
+        "name": "lost innocence",
+        "description": "The joy of a new milestone is stolen by an unexpected grief."
+      },
+      {
+        "name": "lingering pain",
+        "description": "Even with distance, the ghost of a past love still colors every experience."
+      },
+      {
+        "name": "public heartbreak",
+        "description": "The private sorrow of a relationship ends up playing out in the public eye."
+      },
+      {
+        "name": "suburban melancholia",
+        "description": "Familiar streets and shared places become haunting landscapes of memory."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Bitter memory",
+        "description": "The promise of freedom, getting a driver's license, becomes an immediate source of sorrow. The excitement is replaced by lonely tears, driving past a house that once meant everything."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Stinging jealousy",
+        "description": "The focus shifts to 'that blonde girl,' an unseen rival who embodies every insecurity. Comparison stings, intensifying the feeling of abandonment."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Raw disbelief",
+        "description": "A quiet fury rises at the thought of someone moving on so easily. The sting of broken promises and forgotten words cuts deep, leaving you stranded in disbelief."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Weary defense",
+        "description": "Your friends are tired of hearing it, but you still see something special in what you had. The past relationship becomes something only you truly understand, a secret world lost."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Overwhelming presence",
+        "description": "Every red light and front yard brings a flash of their face. Sounds and sights trigger memories, making it impossible to escape the lingering love and pain."
+      },
+      {
+        "section": "Outro",
+        "mood": "Final echo",
+        "description": "The main lament comes back, softer now, but just as poignant. The broken promise of 'forever' hangs in the air, a quiet, mournful thought as you drive alone."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "But today, I drove through the suburbs. Crying 'cause you weren't around",
+        "insight": "A moment meant for celebration turns into a stark reminder of loss, showing the immediate impact of heartbreak."
+      },
+      {
+        "line": "She's everything I'm insecure about",
+        "insight": "This line cuts to the core of personal vulnerability, revealing how heartbreak can magnify existing insecurities."
+      },
+      {
+        "line": "And I just can't imagine how you could be so okay now that I'm gone",
+        "insight": "It captures the searing pain of feeling disposable, of believing your absence should leave a deeper mark."
+      },
+      {
+        "line": "Guess you didn't mean what you wrote in that song about me",
+        "insight": "This line implies a betrayal not just of love, but of shared artistic expression, adding a layer of public hurt."
+      },
+      {
+        "line": "Cause I still fuckin' love you, babe",
+        "insight": "The raw, unedited expletive perfectly conveys the enduring, visceral nature of love, even in the midst of profound pain."
+      }
+    ],
+    "sonic_texture": "A quiet piano opens it, a soft bed for the intimate, almost spoken vocals. Subtle acoustic guitar layers in, building a tender atmosphere. The drums enter with a gentle, consistent pulse, supporting the emotional weight. Strings swell and recede, adding drama without ever overpowering the voice. It feels like a late night confession, recorded in a quiet room."
+  }
+}

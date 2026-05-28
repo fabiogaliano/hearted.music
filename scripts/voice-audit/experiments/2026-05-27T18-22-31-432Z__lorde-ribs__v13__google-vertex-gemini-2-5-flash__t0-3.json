@@ -1,0 +1,163 @@
+{
+  "runId": "2026-05-27T18-22-31-432Z__lorde-ribs__v13__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-27T18:22:31.432Z",
+  "song": "Lorde — Ribs",
+  "spotifyTrackId": "2MvvoeRt8NcOXWESkxWn3g",
+  "promptKind": "lyrical",
+  "promptVersion": "13",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 1,
+    "low": 7
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 1,
+    "lexical-repetition": 7
+  },
+  "tokens": 4803,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "interpretation",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[2].description",
+      "span": ", feeling utterly alone.",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "feel",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "youth",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "feels",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "like",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "time",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "innocence",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[0].description",
+      "span": "passage",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "You feel the ache of growing up. It's a bittersweet goodbye to childhood.",
+    "compound_mood": "Anxious Longing",
+    "mood_description": "A quiet dread settles in. You feel the years slipping away too fast.",
+    "interpretation": "Youth is a fragile thing. It feels like a dream that turns into a nightmare as awareness of time sets in. You desperately cling to moments of innocence and connection. But the inevitable march of age brings a profound sense of isolation.",
+    "themes": [
+      {
+        "name": "fear of aging",
+        "description": "The passage of time brings a deep anxiety about losing youth and innocence."
+      },
+      {
+        "name": "childhood nostalgia",
+        "description": "There is a powerful yearning for the carefree days and simple connections of the past."
+      },
+      {
+        "name": "loneliness in growing up",
+        "description": "Becoming an adult can feel isolating, even when surrounded by others."
+      },
+      {
+        "name": "comfort in friendship",
+        "description": "Shared moments with a close friend offer a temporary refuge from the anxieties of life."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Youthful Dread",
+        "description": "You are home, safe for now. The thought of getting old already starts to prickle."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Repeating Anxiety",
+        "description": "The fear of aging circles back. It feels like a constant, unsettling hum."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Midnight Isolation",
+        "description": "The dream of youth turns sour. You are out in the world, feeling utterly alone."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Desperate Longing",
+        "description": "A raw plea erupts. You want to rewind time and reclaim lost thoughts and innocence."
+      },
+      {
+        "section": "Refrain",
+        "mood": "Fleeting Comfort",
+        "description": "You find solace in a friend. Shared laughter and closeness feel like childhood again."
+      },
+      {
+        "section": "Outro",
+        "mood": "Lingering Insufficiency",
+        "description": "The comfort fades. You realize even the deepest connection cannot truly stop the passage of time."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "It drives you crazy, getting old",
+        "insight": "This line captures the core anxiety. The inevitability of time feels like a personal attack."
+      },
+      {
+        "line": "And I've never felt more alone",
+        "insight": "You hear the stark reality of isolation. Growing up can separate you from everyone."
+      },
+      {
+        "line": "I want 'em back, I want 'em back / The minds we had, the minds we had",
+        "insight": "A desperate cry for lost innocence rings out. It's a direct confrontation with regret."
+      },
+      {
+        "line": "Laughing till our ribs get tough",
+        "insight": "This image paints a picture of pure, uninhibited joy. It's the kind of freedom you long for."
+      },
+      {
+        "line": "But that will never be enough",
+        "insight": "The final, heartbreaking truth lands. No amount of comfort can truly stop the passage of time."
+      }
+    ],
+    "sonic_texture": "The sound builds slowly. It starts with a hushed, electronic pulse. Layers of synth create an atmospheric, almost ethereal space. A driving beat eventually pushes the feeling forward. It feels both intimate and vast."
+  }
+}

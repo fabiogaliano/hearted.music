@@ -1,0 +1,146 @@
+{
+  "runId": "2026-05-27T18-17-42-078Z__kendrick-lamar-not-like-us__v13__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-27T18:17:42.078Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "13",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 6
+  },
+  "byRule": {
+    "participial-closure": 1,
+    "burstiness": 1,
+    "lexical-repetition": 5
+  },
+  "tokens": 8416,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "journey[5].description",
+      "span": ", taunting send off.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A driving West Coast beat propels the whole thing.",
+      "severity": "low",
+      "note": "CV=0.170 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "cultural",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "line",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "journey[1].description",
+      "span": "personal",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "journey[2].description",
+      "span": "powerful",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "key_lines[0].insight",
+      "span": "accusation",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "The air crackles with a challenge. This is a unified front against an outsider.",
+    "compound_mood": "Unapologetic Fury",
+    "mood_description": "A defiant energy fills the space. You feel the urge to move, even as the words cut deep.",
+    "interpretation": "The song reclaims cultural authenticity. It exposes perceived hypocrisy and asserts a dominant position in a high stakes conflict. This is a clear line drawn between 'us' and 'them'.",
+    "themes": [
+      {
+        "name": "cultural authenticity",
+        "description": "The song champions genuine roots and lived experience."
+      },
+      {
+        "name": "moral reckoning",
+        "description": "It calls out perceived ethical failures and double standards."
+      },
+      {
+        "name": "territorial defense",
+        "description": "The lyrics protect a community and its values from outside influence."
+      },
+      {
+        "name": "collective identity",
+        "description": "It builds a strong sense of 'us' against an opposing force."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Ominous Whisper",
+        "description": "A chilling opening sets a dark, confrontational stage."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Aggressive Onslaught",
+        "description": "The initial attacks are sharp and personal. Accusations fly with precision."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Unifying Chant",
+        "description": "A simple phrase becomes a powerful, collective declaration. It solidifies the 'us' against 'them'."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Scathing Exposure",
+        "description": "Deeply personal accusations are laid bare. Every past action is brought into question."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Historical Indictment",
+        "description": "The conflict is framed within a larger cultural critique. It connects personal beef to systemic issues."
+      },
+      {
+        "section": "Bridge/Outro",
+        "mood": "Triumphant Dismissal",
+        "description": "The energy shifts to a celebratory, taunting send off. It feels like a victory lap."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Say, Drake, I hear you like 'em young You better not ever go to cell block one",
+        "insight": "The line delivers a direct, damaging accusation. It implies serious legal and moral consequences."
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "This reappropriates a brand name. It transforms a public image into a devastating accusation."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "The line is a powerful accusation of cultural appropriation. It draws a clear boundary of belonging."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "This simple repetition creates a powerful, unifying chant. It establishes an undeniable 'us' versus 'them' dynamic."
+      }
+    ],
+    "sonic_texture": "A driving West Coast beat propels the whole thing. The bassline is thick and infectious. Synths add a bright, almost celebratory layer."
+  }
+}

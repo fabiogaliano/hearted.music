@@ -1,0 +1,204 @@
+{
+  "runId": "2026-05-27T11-34-34-836Z__kendrick-lamar-not-like-us__v2__google-gemini-2-5-flash",
+  "timestamp": "2026-05-27T11:34:34.838Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "2",
+  "model": "google:gemini-2.5-flash",
+  "totals": {
+    "high": 15,
+    "medium": 3,
+    "low": 0
+  },
+  "byRule": {
+    "puffery-adjective": 3,
+    "participial-closure": 15
+  },
+  "tokens": 9760,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "headline",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "sonic_texture",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "journey[1].description",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "headline",
+      "span": ", tearing down pretenders with relentless jabs and undeniable swagger.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "mood_description",
+      "span": ", pulsing with a low, menacing thrum.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", separating genuine street authenticity from perceived cultural appropriation.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", exposing the perceived fakeness of those who claim kinship while profiting from a world they don't truly inhabit, all wrapped in a deceptively catchy, celebratory package.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", thumping bassline drives a relentless, West Coast-infused rhythm, layered with sharp, percussive snaps and an almost menacing synth melody.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[0].description",
+      "span": ", asserting who truly belongs.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[2].description",
+      "span": ", aiming to completely discredit an opponent beyond musical rivalry.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[3].description",
+      "span": ", daring anyone to challenge it.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[0].description",
+      "span": ", setting a hostile but rhythmic tone as the opening shots are fired.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[1].description",
+      "span": ", leaving no room for escape.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[2].description",
+      "span": ", rallying a collective identity against the 'outsiders' with an infectious, unshakeable groove.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[3].description",
+      "span": ", building the case.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[5].description",
+      "span": ", taunting celebration of the opponent's downfall, the energy infectious and unyielding until the very end.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[0].insight",
+      "span": ", leaving the target publicly exposed and utterly humiliated for all to see.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[2].insight",
+      "span": ", defining the opponent as an exploiter rather than an equal.",
+      "severity": "high"
+    }
+  ],
+  "analysis": {
+    "headline": "A furious declaration of cultural ownership, tearing down pretenders with relentless jabs and undeniable swagger.",
+    "compound_mood": "Vindictive Confidence",
+    "mood_description": "A wave of aggressive confidence washes over, pulsing with a low, menacing thrum. It feels like a late-night street party where every laugh carries an edge of triumph.",
+    "interpretation": "A stark line is drawn in the sand, separating genuine street authenticity from perceived cultural appropriation. It's a furious reassertion of ownership, exposing the perceived fakeness of those who claim kinship while profiting from a world they don't truly inhabit, all wrapped in a deceptively catchy, celebratory package.",
+    "themes": [
+      {
+        "name": "cultural authenticity",
+        "description": "The fierce protection of West Coast hip-hop roots against perceived outsiders, asserting who truly belongs."
+      },
+      {
+        "name": "performative allyship",
+        "description": "Calling out those who align with certain communities for personal gain rather than genuine connection or respect."
+      },
+      {
+        "name": "moral condemnation",
+        "description": "Accusations of serious misconduct and predatory behavior, aiming to completely discredit an opponent beyond musical rivalry."
+      },
+      {
+        "name": "territorial dominance",
+        "description": "A forceful, unapologetic claim over a specific geographic and cultural space, daring anyone to challenge it."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Menacing swagger",
+        "description": "A low, confident growl emerges from the shadows, setting a hostile but rhythmic tone as the opening shots are fired."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Savage exposure",
+        "description": "The rhythm intensifies, a relentless volley of personal attacks and accusations delivered with almost gleeful precision, leaving no room for escape."
+      },
+      {
+        "section": "Chorus",
+        "mood": "United defiance",
+        "description": "A simple, undeniable chant takes over, rallying a collective identity against the 'outsiders' with an infectious, unshakeable groove."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Unsparing dissection",
+        "description": "More layers of alleged deceit are peeled back, the lyrical blows landing with heavy, calculated impact while the beat remains a confident stride, building the case."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Righteous indignation",
+        "description": "The target is branded a 'colonizer,' a stark indictment of his perceived exploitation of Black artists and culture, the energy building to a simmering rage that boils over."
+      },
+      {
+        "section": "Outro",
+        "mood": "Unleashed jubilation",
+        "description": "The accusations transform into a communal dance, a victorious, taunting celebration of the opponent's downfall, the energy infectious and unyielding until the very end."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Nail a nigga to the cross, he walk around like Teezo",
+        "insight": "A total annihilation, leaving the target publicly exposed and utterly humiliated for all to see."
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "Rewriting the opponent's carefully crafted public persona with a damning, unforgivable label that sticks."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "Stripping away any claim to respect or belonging, defining the opponent as an exploiter rather than an equal."
+      },
+      {
+        "line": "Then step this way, step that way",
+        "insight": "Transforming a brutal diss track into an undeniable club anthem, an ultimate act of cultural takeover and public mockery."
+      }
+    ],
+    "sonic_texture": "A low, thumping bassline drives a relentless, West Coast-infused rhythm, layered with sharp, percussive snaps and an almost menacing synth melody. The production feels sparse yet incredibly potent, designed for a crowd to move to while soaking in every word."
+  }
+}

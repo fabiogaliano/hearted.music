@@ -1,0 +1,20 @@
+{
+  "headline": "the long way home, alone this time",
+  "compound_mood": "Aching Disbelief",
+  "mood_description": "Quiet at first, like talking to yourself in a parked car, until the feeling gets too big for the room and the whole thing floods.",
+  "interpretation": "A milestone that was supposed to be shared, reached alone. The license was a promise made to someone who is already gone, so passing the test only measures the distance between them. It is the moment a private heartbreak turns into an ordinary errand she now has to drive through.",
+  "themes": [
+    { "name": "The promise that outlived the couple", "description": "She passes the test she swore she would pass for him, and the win only counts the miles he is not in the car for." },
+    { "name": "Suburban geography of grief", "description": "Streets, stop signs, his neighborhood. The map of a small town doubles as a map of where it hurts." }
+  ],
+  "journey": [
+    { "section": "Verse", "mood": "Hushed", "description": "Just her voice and a few chords, a diary left open on the dashboard." },
+    { "section": "Bridge", "mood": "Overwhelmed", "description": "Red lights and stop signs blur. The harmonies stack up like thoughts she cannot stop having." },
+    { "section": "Final chorus", "mood": "Cathartic", "description": "The dam breaks. What started as a whisper ends as the loudest she has been all song." }
+  ],
+  "key_lines": [
+    { "line": "I got my driver's license like I told you I would", "insight": "A win that only counts as a loss. The accomplishment is addressed to someone who is not there to hear it." },
+    { "line": "And you're probably with that blonde girl", "insight": "Heartbreak does its worst work in the imagination, casting the exact scene it dreads." }
+  ],
+  "sonic_texture": "A ballad that grows a spine. Sparse piano and a small voice swell into stacked harmonies and a pounding bridge, mirroring a feeling that refuses to stay small."
+}

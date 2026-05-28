@@ -1,0 +1,143 @@
+{
+  "runId": "2026-05-27T18-20-54-108Z__kendrick-lamar-not-like-us__v13__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-27T18:20:54.108Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "13",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 4,
+    "medium": 0,
+    "low": 3
+  },
+  "byRule": {
+    "participial-closure": 4,
+    "burstiness": 1,
+    "lexical-repetition": 2
+  },
+  "tokens": 8436,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", exposing alleged moral failings.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", riding the groove with unwavering confidence.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[0].description",
+      "span": ", signaling an immediate confrontation.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[3].insight",
+      "span": ", unifying cry of separation and belonging.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "A declaration of war unfolds.",
+      "severity": "low",
+      "note": "CV=0.200 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "community",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "sonic_texture",
+      "span": "direct",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "You feel the full force of a community standing together. A line is drawn in the sand, clear and unyielding.",
+    "compound_mood": "Aggressive Confidence",
+    "mood_description": "You feel the full weight of conviction. There is no room for doubt or compromise here.",
+    "interpretation": "A declaration of war unfolds. The first front is personal, exposing alleged moral failings. The second challenges artistic authenticity and cultural appropriation. The third reclaims a community's identity and power.",
+    "themes": [
+      {
+        "name": "community defense",
+        "description": "The song rallies a community against perceived threats and outsiders."
+      },
+      {
+        "name": "moral judgment",
+        "description": "It delivers harsh judgments on character and alleged predatory behavior."
+      },
+      {
+        "name": "cultural authenticity",
+        "description": "The lyrics question who truly belongs to and respects hip hop culture."
+      },
+      {
+        "name": "territorial claim",
+        "description": "It asserts ownership over West Coast identity and influence."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Chilling Confrontation",
+        "description": "A whisper of 'I see dead people' sets a chilling tone. The beat drops, signaling an immediate confrontation."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Direct Accusation",
+        "description": "Direct accusations fly. Personal attacks are launched with precision and force."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Unified Declaration",
+        "description": "A unified chant rings out. The message is clear: 'They not like us.'"
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Credibility Challenge",
+        "description": "The challenge extends to artistic credibility. Allegations of hypocrisy and opportunism are laid bare."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Historical Indictment",
+        "description": "A historical context is drawn. Cultural appropriation is called out as a form of colonization."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Taunting Celebration",
+        "description": "The taunts become a dance. You are invited to join the celebration of victory."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Say, Drake, I hear you like 'em young",
+        "insight": "A direct accusation of predatory behavior lands with a heavy impact."
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "A brand is twisted into a damning indictment."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "The relationship is redefined as exploitative, not collaborative."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "This is the central, unifying cry of separation and belonging."
+      }
+    ],
+    "sonic_texture": "A driving, West Coast G funk beat powers the whole thing. Synths are bright and punchy. The bassline is infectious. Vocals are direct and confrontational, riding the groove with unwavering confidence."
+  }
+}

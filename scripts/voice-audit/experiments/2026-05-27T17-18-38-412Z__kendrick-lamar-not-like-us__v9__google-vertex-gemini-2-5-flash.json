@@ -1,0 +1,243 @@
+{
+  "runId": "2026-05-27T17-18-38-412Z__kendrick-lamar-not-like-us__v9__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T17:18:38.412Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "9",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 13,
+    "medium": 2,
+    "low": 7
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "puffery-adjective": 1,
+    "participial-closure": 12,
+    "book-report-opener": 1,
+    "burstiness": 2,
+    "rule-of-three": 1,
+    "lexical-repetition": 4
+  },
+  "tokens": 9018,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "themes[3].description",
+      "span": "represents",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "sonic_texture",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", drawing a stark line between who belongs and who does not.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", solidifying a position of unquestioned authority in a long standing conflict.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", making you move while you absorb every word.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[0].description",
+      "span": ", forcing a confrontation with past actions.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[1].description",
+      "span": ", defining an 'us' against an 'other' through shared values and experiences.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[3].description",
+      "span": ", contrasting it with those who merely appropriate.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[1].description",
+      "span": ", leaving no room for defense.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[3].description",
+      "span": ", dissecting credibility and questioning every past move.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[4].description",
+      "span": ", revealing a deeper critique of appropriation.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[0].insight",
+      "span": ", delivering the most damaging accusation with shocking bluntness.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[2].insight",
+      "span": ", moving beyond rivalry to a critique of fundamental power dynamics.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[3].insight",
+      "span": ", exposing a deep layer of disloyalty.",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "interpretation",
+      "span": "This is a direct confrontatio",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "This is a direct confrontation, an unmasking of perceived hypocrisy.",
+      "severity": "low",
+      "note": "CV=0.192 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "The beat pulses with a driving, almost relentless energy.",
+      "severity": "low",
+      "note": "CV=0.188 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "journey[5].description",
+      "span": "The message is simple, repeated, and impossible to ignore",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "clear",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "line",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "collective",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[0].description",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "A clear line is drawn. Victory is certain.",
+    "compound_mood": "Confident Annihilation",
+    "mood_description": "The air crackles with an undeniable force. You feel a tide turning, a collective spirit rising against an exposed enemy.",
+    "interpretation": "This is a direct confrontation, an unmasking of perceived hypocrisy. It brings a community together, drawing a stark line between who belongs and who does not. The song asserts dominance, solidifying a position of unquestioned authority in a long standing conflict.",
+    "themes": [
+      {
+        "name": "exposure",
+        "description": "Hidden truths are brought into the light, forcing a confrontation with past actions."
+      },
+      {
+        "name": "community loyalty",
+        "description": "It rallies a collective identity, defining an 'us' against an 'other' through shared values and experiences."
+      },
+      {
+        "name": "unquestioned dominance",
+        "description": "A clear assertion of power and authority leaves no room for debate or counterargument."
+      },
+      {
+        "name": "cultural authenticity",
+        "description": "It questions who genuinely represents and contributes to the culture, contrasting it with those who merely appropriate."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "Menacing Confidence",
+        "description": "A whisper starts, then a familiar tag drops. The mood immediately shifts to a knowing, powerful assertion."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "Aggressive Dismissal",
+        "description": "Accusations fly like rapid fire. Each line lands with a heavy blow, leaving no room for defense."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Unifying Chant",
+        "description": "The central message becomes a rallying cry. It is a shared understanding, a collective truth everyone can repeat."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Sharp Dissection",
+        "description": "The attacks become surgical, dissecting credibility and questioning every past move."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Historical Indictment",
+        "description": "The scope widens. Past collaborations are reframed as transactional, revealing a deeper critique of appropriation."
+      },
+      {
+        "section": "Bridge/Outro",
+        "mood": "Taunting Victory",
+        "description": "The energy shifts to a danceable, almost celebratory taunt. The message is simple, repeated, and impossible to ignore."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "This line cuts through the public image, delivering the most damaging accusation with shocking bluntness."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "This is the core, defining statement. It creates an immediate sense of 'us' and 'them', solidifying allegiance."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "It redefines the entire relationship, moving beyond rivalry to a critique of fundamental power dynamics."
+      },
+      {
+        "line": "Fucked on Wayne girl while he was in jail, that's connivin'",
+        "insight": "A specific, personal betrayal is laid bare, exposing a deep layer of disloyalty."
+      },
+      {
+        "line": "Sometimes you gotta pop out and show niggas",
+        "insight": "This line sets the stage for the entire song, a declaration that action is necessary and overdue."
+      }
+    ],
+    "sonic_texture": "The beat pulses with a driving, almost relentless energy. It is a club record, yet the bass feels heavy and the drums hit hard. There is a sense of controlled chaos, a backdrop for pointed, clear vocal delivery. The sound feels like an undeniable force, making you move while you absorb every word."
+  }
+}

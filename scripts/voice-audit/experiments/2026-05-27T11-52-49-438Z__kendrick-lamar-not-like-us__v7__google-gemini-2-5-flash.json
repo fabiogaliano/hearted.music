@@ -1,0 +1,147 @@
+{
+  "runId": "2026-05-27T11-52-49-438Z__kendrick-lamar-not-like-us__v7__google-gemini-2-5-flash",
+  "timestamp": "2026-05-27T11:52:49.438Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "7",
+  "model": "google:gemini-2.5-flash",
+  "totals": {
+    "high": 3,
+    "medium": 0,
+    "low": 4
+  },
+  "byRule": {
+    "participial-closure": 2,
+    "book-report-opener": 1,
+    "burstiness": 4
+  },
+  "tokens": 7539,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "journey[2].description",
+      "span": ", unifying chant emerges.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[4].insight",
+      "span": ", unifying movement despite the aggression.",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "interpretation",
+      "span": "This is a declaration of war.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "mood_description",
+      "span": "A confrontational energy fills the space.",
+      "severity": "low",
+      "note": "CV=0.163 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "This is a declaration of war.",
+      "severity": "low",
+      "note": "CV=0.114 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A bouncy West Coast hip-hop beat defines the sound.",
+      "severity": "low",
+      "note": "CV=0.049 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "journey[5].description",
+      "span": "A playful but commanding dance instruction emerges.",
+      "severity": "low",
+      "note": "CV=0.117 (threshold 0.25)"
+    }
+  ],
+  "analysis": {
+    "headline": "A dominant force takes control. It asserts absolute authority over its rivals.",
+    "compound_mood": "Defiant Triumph",
+    "mood_description": "A confrontational energy fills the space. It feels like an undeniable victory is being declared. There is no room for doubt or hesitation.",
+    "interpretation": "This is a declaration of war. It reclaims cultural authenticity for the West Coast. The lyrics systematically dismantle an opponent's reputation. It rallies a community against a perceived outsider.",
+    "themes": [
+      {
+        "name": "cultural authenticity",
+        "description": "The song draws a clear line between genuine roots and perceived appropriation within hip-hop culture."
+      },
+      {
+        "name": "assertion of dominance",
+        "description": "It aggressively claims superiority and power over a rival through direct attacks and challenges."
+      },
+      {
+        "name": "community allegiance",
+        "description": "Loyalty to one's origin and community forms a protective barrier against external threats."
+      },
+      {
+        "name": "moral indictment",
+        "description": "The lyrics expose and condemn alleged unethical behaviors of the opponent."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro/Verse 1",
+        "mood": "Aggressive Confrontation",
+        "description": "A confident beat drops. The lyrics immediately launch into sharp, personal attacks."
+      },
+      {
+        "section": "Verse 1 (accusations)",
+        "mood": "Scathing Accusation",
+        "description": "Direct allegations of misconduct are thrown. The tone becomes increasingly pointed and provocative."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Unifying Chant",
+        "description": "A repetitive, unifying chant emerges. It solidifies the 'us vs. them' mentality."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Escalated Taunting",
+        "description": "The attacks intensify with more taunts and accusations. It challenges the opponent's status and credibility."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "Cultural Critique",
+        "description": "The scope broadens to critique cultural exploitation. It condemns a rival's connections to Atlanta artists."
+      },
+      {
+        "section": "Bridge/Outro",
+        "mood": "Triumphant Command",
+        "description": "A playful but commanding dance instruction emerges. The chant reinforces the core message of exclusion. It invites participation in the victory."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "This line delivers a devastating blow. It recontextualizes the opponent's album title as a severe moral indictment."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "This refrain builds an impenetrable wall. It asserts a fundamental, irreconcilable difference between two sides."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "The words define the opponent's relationship to hip-hop. It labels the opponent as an exploitative outsider rather than an equal peer."
+      },
+      {
+        "line": "Hey, hey, hey, hey, run for your life",
+        "insight": "This direct warning carries a menacing playfulness. It blends a serious threat with a catchy, taunting quality."
+      },
+      {
+        "line": "Then step this way, step that way",
+        "insight": "The dance instructions juxtapose the severity of the lyrical content. It invites a celebratory, unifying movement despite the aggression."
+      }
+    ],
+    "sonic_texture": "A bouncy West Coast hip-hop beat defines the sound. Punchy drums and a prominent bassline drive the rhythm. Subtle synth melodies provide a dark, energetic backdrop. The vocals are upfront and delivered with unwavering confidence."
+  }
+}

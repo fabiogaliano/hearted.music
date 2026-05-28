@@ -1,0 +1,164 @@
+{
+  "runId": "2026-05-27T17-56-25-697Z__kendrick-lamar-not-like-us__v11__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T17:56:25.697Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "11",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 3,
+    "medium": 0,
+    "low": 7
+  },
+  "byRule": {
+    "participial-closure": 3,
+    "burstiness": 1,
+    "lexical-repetition": 6
+  },
+  "tokens": 8425,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "journey[1].description",
+      "span": ", targeting personal integrity.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[2].description",
+      "span": ", solidifying who belongs and who does not.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[3].insight",
+      "span": ", cementing its club appeal.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "A driving, infectious beat powers the whole thing.",
+      "severity": "low",
+      "note": "CV=0.088 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "west",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "coast",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "clear",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "cultural",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "perceived",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "appropriation",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "A West Coast anthem emerges from the fire. It calls out fakers and claims its truth.",
+    "compound_mood": "Confrontational Celebration",
+    "mood_description": "You feel the challenge laid bare. This is a moment of clear separation and West Coast pride.",
+    "interpretation": "This is not just a diss track. It is a cultural reclaiming. The song uses direct attacks to draw a line between perceived authenticity and appropriation. It invites listeners to side with a specific community and its values.",
+    "themes": [
+      {
+        "name": "authenticity",
+        "description": "The song questions the sincerity of others in hip hop culture."
+      },
+      {
+        "name": "community pride",
+        "description": "It fiercely defends West Coast identity and values."
+      },
+      {
+        "name": "reclamation",
+        "description": "The narrative actively takes back cultural ground."
+      },
+      {
+        "name": "confrontation",
+        "description": "It directly challenges perceived enemies without hesitation."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Intro",
+        "mood": "ominous declaration",
+        "description": "A whisper breaks the silence with a stark warning."
+      },
+      {
+        "section": "Verse 1",
+        "mood": "direct assault",
+        "description": "Barbed lines fly with precision, targeting personal integrity."
+      },
+      {
+        "section": "Chorus",
+        "mood": "unifying defiance",
+        "description": "A chant rises, solidifying who belongs and who does not."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "cultural critique",
+        "description": "The attack expands to industry influence and perceived exploitation."
+      },
+      {
+        "section": "Verse 3",
+        "mood": "historical context",
+        "description": "Deeper roots of appropriation are exposed through Atlanta's history."
+      },
+      {
+        "section": "Outro",
+        "mood": "call to action",
+        "description": "The invitation is clear: choose a side and move with the rhythm."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "This line becomes an anthem of division and solidarity."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "It articulates a powerful accusation against cultural appropriation."
+      },
+      {
+        "line": "Run for your life",
+        "insight": "This phrase turns a warning into a rhythmic, almost playful, threat."
+      },
+      {
+        "line": "Then step this way, step that way",
+        "insight": "It transforms the diss into a dance instruction, cementing its club appeal."
+      }
+    ],
+    "sonic_texture": "A driving, infectious beat powers the whole thing. Sharp, clear vocal delivery cuts through the mix. Synthesizers provide a distinct West Coast bounce. The bassline anchors the danceability with a heavy presence."
+  }
+}

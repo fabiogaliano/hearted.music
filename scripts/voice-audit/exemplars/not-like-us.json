@@ -1,0 +1,27 @@
+{
+  "headline": "Compton draws the line. The block party is on the right side of it.",
+  "compound_mood": "Triumphant Contempt",
+  "mood_description": "It struts. Every line lands like it already knows it won, and it wants you dancing while it twists the knife.",
+  "interpretation": "A Compton verdict on a rivalry, delivered loud enough that the rest of the country is welcome to overhear. The insults are not the point, the certainty is, and Kendrick stitches them into a beat the block can dance to. By the time he is calling Drake a colonizer the diss has already become an anthem, which is its own kind of cruelty.",
+  "themes": [
+    { "name": "community defense", "description": "Compton is not a backdrop here, it is the proof of who belongs and who is only visiting." },
+    { "name": "moral indictment", "description": "The charges are pointed and specific. The 'A minor' pun, the 'colonizer' line. He is not asking for a debate, he is filing the receipts." },
+    { "name": "celebration as weapon", "description": "The ugliest charges arrive on the bounciest beat, so the crowd chants them back before they finish flinching." },
+    { "name": "West Coast claim", "description": "The bounce, the cadence, the swing. Every choice plants a flag on a coast Drake does not get to share." }
+  ],
+  "journey": [
+    { "section": "Intro", "mood": "Coiled", "description": "A whispered 'I see dead people' breaks the silence, and Mustard's beat rolls in easy, almost friendly, the swing of a smile before the first punch." },
+    { "section": "Verse 1", "mood": "Pointed", "description": "The names start landing. Drake by name, the 'A minor' pun, the receipts in order. He is not arguing, he is reading a verdict." },
+    { "section": "Hook", "mood": "Communal", "description": "'They not like us' becomes a whole city singing back. You are either in the room or you are the target." },
+    { "section": "Verse 2", "mood": "Accusatory", "description": "He does not argue, he convicts. 'You not a colleague, you a fuckin' colonizer' lands like a sentence handed down." },
+    { "section": "Bridge", "mood": "Celebratory", "description": "The taunts turn into a dance. The crowd is chanting it back at him before the next line even drops." },
+    { "section": "Outro", "mood": "Settled", "description": "The beat coasts out. Nothing is left to argue. Compton has already moved on to the next song of the summer." }
+  ],
+  "key_lines": [
+    { "line": "They not like us", "insight": "Four words doing the work of a manifesto. The line draws a circle and leaves someone outside it." },
+    { "line": "Tryna strike a chord and it's probably A minor", "insight": "The cruelest bar wears a pun, so the room laughs half a second before the meaning lands." },
+    { "line": "No, you not a colleague, you a fuckin' colonizer", "insight": "The verdict, in plain language. Not collaboration, extraction." },
+    { "line": "Say, Drake, I hear you like 'em young", "insight": "The line that turned the diss into something the song could no longer be taken back from. Direct address, on purpose." }
+  ],
+  "sonic_texture": "A West Coast bounce that never breaks a sweat. The bass is round and warm, the beat keeps grinning, and the menace lives entirely in how relaxed it all sounds."
+}

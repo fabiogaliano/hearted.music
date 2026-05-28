@@ -1,0 +1,235 @@
+{
+  "runId": "2026-05-27T17-47-13-242Z__olivia-rodrigo-drivers-license__v10__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T17:47:13.242Z",
+  "song": "Olivia Rodrigo — drivers license",
+  "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf",
+  "promptKind": "lyrical",
+  "promptVersion": "10",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 6,
+    "medium": 3,
+    "low": 12
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "puffery-adjective": 2,
+    "participial-closure": 6,
+    "burstiness": 1,
+    "lexical-repetition": 9,
+    "dash": 2
+  },
+  "tokens": 5336,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "interpretation",
+      "span": "amplifies",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "themes[0].description",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "key_lines[0].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "headline",
+      "span": ", driving you deeper into a beautiful, aching sadness.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "mood_description",
+      "span": ", aching sadness settles in the chest.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "mood_description",
+      "span": ", leaving you breathless.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", building the emotion to a powerful, cathartic peak.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "journey[3].description",
+      "span": ", refusing to be contained.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "key_lines[3].insight",
+      "span": ", leaving an empty space where shared futures once existed.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "A powerful coming-of-age moment turns into a symbol of crushing loss.",
+      "severity": "low",
+      "note": "CV=0.144 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "new",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "first",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "every",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "sadness",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "feels",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "loss",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "personal",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[2].description",
+      "span": "pain",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "themes[3].description",
+      "span": "shared",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "interpretation",
+      "span": "coming-of-age",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "interpretation",
+      "span": "of-age",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "headline": "The joy of a new freedom collapses under the weight of a first, devastating heartbreak. Every memory becomes a fresh wound, driving you deeper into a beautiful, aching sadness.",
+    "compound_mood": "Crushing Heartbreak",
+    "mood_description": "A raw, aching sadness settles in the chest. Every memory feels like a fresh wound, leaving you breathless.",
+    "interpretation": "A powerful coming-of-age moment turns into a symbol of crushing loss. The freedom of the open road only amplifies a deep, personal grief. It captures the universal shock of a first heartbreak, magnified by public whispers and lingering questions. This is a story of navigating emotional devastation with a newly acquired independence.",
+    "themes": [
+      {
+        "name": "first heartbreak",
+        "description": "The sheer, unexpected weight of a first profound loss hits hard."
+      },
+      {
+        "name": "lost innocence",
+        "description": "A milestone meant for joy becomes a stark reminder of what has been taken away."
+      },
+      {
+        "name": "public grief",
+        "description": "Personal pain is amplified by the presence of a perceived rival and external judgment."
+      },
+      {
+        "name": "memory's sting",
+        "description": "Familiar places and shared experiences now only serve to intensify the current loneliness."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Bitter Freedom",
+        "description": "A new independence opens a road to unexpected sorrow. The future once shared now feels starkly empty."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Deep Insecurity",
+        "description": "The sting of a new relationship compounds existing doubts. Old insecurities resurface with painful clarity."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Shocked Disbelief",
+        "description": "A complete inability to grasp how someone could move on so easily. Lingering promises feel like hollow lies."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Raw Agony",
+        "description": "Every detail of the past comes flooding back with vivid intensity. An undeniable pain rises to the surface, refusing to be contained."
+      },
+      {
+        "section": "Outro",
+        "mood": "Lingering Ache",
+        "description": "The final echo of a broken promise hangs in the air. The long drive home feels heavier than ever."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "But today, I drove through the suburbs crying 'cause you weren't around",
+        "insight": "A moment of personal triumph immediately transforms into a scene of profound sadness."
+      },
+      {
+        "line": "She's everything I'm insecure about",
+        "insight": "The pain of loss is compounded by sharp, personal feelings of inadequacy."
+      },
+      {
+        "line": "And I just can't imagine how you could be so okay now that I'm gone",
+        "insight": "A deep, incredulous hurt arises from the perceived indifference of a former lover."
+      },
+      {
+        "line": "'Cause you said forever, now I drive alone past your street",
+        "insight": "A cherished promise breaks, leaving an empty space where shared futures once existed."
+      },
+      {
+        "line": "But I still fuckin' love you, babe",
+        "insight": "The raw, unfiltered confession of enduring love cuts through the pain."
+      }
+    ],
+    "sonic_texture": "A gentle piano opens the space. Quiet, vulnerable vocals draw you in. Strings swell, building the emotion to a powerful, cathartic peak. The soundscape feels expansive and emotionally charged, then pulls back to a hushed, reflective ending. It’s a journey from quiet despair to an orchestral outpouring of grief."
+  }
+}

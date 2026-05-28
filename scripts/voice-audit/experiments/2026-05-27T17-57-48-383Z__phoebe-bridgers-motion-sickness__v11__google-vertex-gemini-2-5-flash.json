@@ -1,0 +1,236 @@
+{
+  "runId": "2026-05-27T17-57-48-383Z__phoebe-bridgers-motion-sickness__v11__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-27T17:57:48.383Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "11",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 6,
+    "medium": 2,
+    "low": 12
+  },
+  "byRule": {
+    "copula-avoidance": 2,
+    "participial-closure": 4,
+    "self-reference": 1,
+    "book-report-opener": 1,
+    "burstiness": 2,
+    "lexical-repetition": 10
+  },
+  "tokens": 4708,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "key_lines[2].insight",
+      "span": "highlights the",
+      "severity": "medium"
+    },
+    {
+      "rule": "copula-avoidance",
+      "field": "key_lines[3].insight",
+      "span": "marks",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", driving drum beat provides a persistent pulse.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", swirling synths add a dreamy, melancholic layer.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", carrying a weary vulnerability.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[1].description",
+      "span": ", creating a disorienting inner state.",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "headline",
+      "span": "This song",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "interpretation",
+      "span": "This is a cathartic expressio",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "This is a cathartic expression of the tangled aftermath of a manipulative relati",
+      "severity": "low",
+      "note": "CV=0.171 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "sonic_texture",
+      "span": "Gentle acoustic guitar strumming opens the sound.",
+      "severity": "low",
+      "note": "CV=0.119 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "song",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "feeling",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "intense",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "relationship",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "escape",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "like",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "struggle",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "deep",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "emotional",
+      "severity": "low",
+      "note": "repeated ×7 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "This song is about the dizzying feeling of being caught between intense hatred and lingering longing after a breakup. It's a raw dive into the conflicting emotions of moving on from a toxic relationship.",
+    "compound_mood": "Conflicted Resignation",
+    "mood_description": "You are trying to escape a past relationship. The feeling is like a car sickness, where your body wants to eject something that is making you ill.",
+    "interpretation": "This is a cathartic expression of the tangled aftermath of a manipulative relationship. It captures the struggle to reconcile intense pain and anger with the persistent, almost childish, ache of missing someone. The song explores the complex process of disentangling one's identity from a person who has caused deep emotional damage. It ultimately portrays a journey toward reclaiming oneself, even if the path is turbulent.",
+    "themes": [
+      {
+        "name": "toxic relationships",
+        "description": "The song details the emotional toll and lasting impact of being involved with a manipulative partner."
+      },
+      {
+        "name": "emotional conflict",
+        "description": "Intense feelings of hatred and longing exist simultaneously, creating a disorienting inner state."
+      },
+      {
+        "name": "self preservation",
+        "description": "There is a strong desire to escape and protect oneself from further emotional harm."
+      },
+      {
+        "name": "moving on",
+        "description": "The struggle to achieve emotional freedom and independence from a harmful past is central."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "initial bitterness",
+        "description": "You feel the immediate sting of betrayal. There is a deep regret for what you gave."
+      },
+      {
+        "section": "Chorus",
+        "mood": "disoriented nausea",
+        "description": "A wave of emotional sickness washes over you. You desperately need to clear the air."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "clear eyed perspective",
+        "description": "You gain distance and see the damage from afar. A sense of relief comes with the escape."
+      },
+      {
+        "section": "Bridge",
+        "mood": "historical context",
+        "description": "The age difference and power imbalance are laid bare. You see the long shadow of the past."
+      },
+      {
+        "section": "Final Chorus",
+        "mood": "defiant effort",
+        "description": "A determination to break free takes hold. You are ready to fight the lingering pull."
+      },
+      {
+        "section": "Outro",
+        "mood": "hopeful surrender",
+        "description": "There is a tentative willingness to let go. You wonder what freedom truly feels like."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I hate you for what you did and I miss you like a little kid",
+        "insight": "This line immediately sets up the central paradox of the song. It shows the confusion of conflicting emotions after a painful breakup."
+      },
+      {
+        "line": "I have emotional motion sickness",
+        "insight": "The metaphor powerfully describes the disorienting and nauseating feeling of emotional turbulence. It captures the physical manifestation of deep emotional distress."
+      },
+      {
+        "line": "You were in a band when I was born",
+        "insight": "This line starkly highlights the significant age gap and potential power imbalance in the relationship. It adds a layer of uncomfortable context to the dynamic."
+      },
+      {
+        "line": "But I will try to drown you out",
+        "insight": "This shows a shift from passive suffering to active resistance. It marks a crucial step towards reclaiming agency and moving past the pain."
+      },
+      {
+        "line": "If I surrender to the sound",
+        "insight": "This suggests a yearning for release and a willingness to embrace the unknown. It offers a glimpse of potential peace found in letting go."
+      }
+    ],
+    "sonic_texture": "Gentle acoustic guitar strumming opens the sound. A steady, driving drum beat provides a persistent pulse. Soft, swirling synths add a dreamy, melancholic layer. The vocals are intimate and direct, carrying a weary vulnerability. It feels like a quiet, internal struggle made audible."
+  }
+}

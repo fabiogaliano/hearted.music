@@ -1,0 +1,169 @@
+{
+  "runId": "2026-05-27T18-23-54-524Z__the-weeknd-blinding-lights__v13__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-27T18:23:54.524Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "13",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 3,
+    "medium": 1,
+    "low": 6
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 3,
+    "burstiness": 1,
+    "lexical-repetition": 5
+  },
+  "tokens": 4621,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "sonic_texture",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "interpretation",
+      "span": ", pulling you back from the brink of self destruction.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "sonic_texture",
+      "span": ", pulsing synthesizers drive a relentless beat.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "themes[2].description",
+      "span": ", driving fast and living hard, seeking an escape.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "interpretation",
+      "span": "The wild, hedonistic lifestyle leaves you feeling empty.",
+      "severity": "low",
+      "note": "CV=0.234 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "city",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "bright",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "headline",
+      "span": "person",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "mood_description",
+      "span": "connection",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "interpretation",
+      "span": "touch",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "headline": "You are lost in the city's bright chaos. One person is your only anchor.",
+    "compound_mood": "Anxious Longing",
+    "mood_description": "A frantic energy pulses through you. You are searching for a singular connection in a world of blinding distractions.",
+    "interpretation": "The wild, hedonistic lifestyle leaves you feeling empty. You find your only true anchor in another person's touch. This connection is a lifeline, pulling you back from the brink of self destruction.",
+    "themes": [
+      {
+        "name": "desperate connection",
+        "description": "You crave a singular touch to ground you in a chaotic world."
+      },
+      {
+        "name": "urban isolation",
+        "description": "The bright city lights offer excitement but leave you feeling profoundly alone."
+      },
+      {
+        "name": "reckless abandon",
+        "description": "You push the limits, driving fast and living hard, seeking an escape."
+      },
+      {
+        "name": "vulnerable dependence",
+        "description": "Your stability hinges entirely on the presence and affection of one person."
+      }
+    ],
+    "journey": [
+      {
+        "section": "Verse 1",
+        "mood": "Vulnerable plea",
+        "description": "You reach out from a place of deep loneliness. You admit your need for love and connection."
+      },
+      {
+        "section": "Pre Chorus",
+        "mood": "Chaotic isolation",
+        "description": "The city feels cold and empty around you. You cannot see clearly without your person."
+      },
+      {
+        "section": "Chorus",
+        "mood": "Blinded desperation",
+        "description": "The lights overwhelm you. You can only sleep when you feel that crucial touch."
+      },
+      {
+        "section": "Verse 2",
+        "mood": "Urgent pursuit",
+        "description": "Time is running out. You speed through the night, driven by a desperate need."
+      },
+      {
+        "section": "Bridge",
+        "mood": "Fervent promise",
+        "description": "You return to make a clear statement. You promise to never let go again."
+      },
+      {
+        "section": "Outro",
+        "mood": "Lingering need",
+        "description": "The blinding sensation returns. You still cannot rest without that touch."
+      }
+    ],
+    "key_lines": [
+      {
+        "line": "I've been on my own for long enough",
+        "insight": "Loneliness settles deep within you."
+      },
+      {
+        "line": "I can't see clearly when you're gone",
+        "insight": "Your vision blurs without this person."
+      },
+      {
+        "line": "I'm blinded by the lights",
+        "insight": "The city's allure overwhelms your senses."
+      },
+      {
+        "line": "You can turn me on with just a touch, baby",
+        "insight": "Your sensitivity to this person is absolute."
+      },
+      {
+        "line": "Will never let you go this time",
+        "insight": "A firm commitment finally emerges."
+      }
+    ],
+    "sonic_texture": "Bright, pulsing synthesizers drive a relentless beat. A powerful vocal soars over the 80s inspired soundscape. The whole thing feels like a high speed chase through a neon lit city."
+  }
+}
