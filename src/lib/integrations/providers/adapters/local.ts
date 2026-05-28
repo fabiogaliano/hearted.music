@@ -56,6 +56,7 @@ export class LocalProvider implements MLProvider {
 			embeddingDims: 1024,
 			rerankerModel: "Xenova/bge-reranker-base",
 		};
+		// biome-ignore lint/style/noProcessEnv: dev-only local embedding sidecar port, intentionally not part of validated env
 		const port = process.env.EMBEDDING_SERVER_PORT || "9847";
 		this.serverBaseUrl = `http://127.0.0.1:${port}`;
 		if (options?.forceDirect) this.mode = "direct";
