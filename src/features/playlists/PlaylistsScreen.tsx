@@ -1,14 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import {
-	useCallback,
-	useEffect,
-	useLayoutEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
+import { useIsomorphicLayoutEffect } from "@/lib/hooks/useIsomorphicLayoutEffect";
 import { scrollListElementIntoView } from "@/lib/keyboard/listScroll";
 import type { ListNavigationResult } from "@/lib/keyboard/types";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
@@ -27,9 +21,6 @@ import {
 	resolvePlaylistIdFromRouteRef,
 } from "./playlistRouteRef";
 import { playlistManagementQueryOptions } from "./queries";
-
-const useIsomorphicLayoutEffect =
-	typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 type PlaylistColumn = "matching" | "available";
 

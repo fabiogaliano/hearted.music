@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { useIsomorphicLayoutEffect } from "@/lib/hooks/useIsomorphicLayoutEffect";
 import { scrollListElementIntoView } from "@/lib/keyboard/listScroll";
 import type {
 	ListNavigationSource,
@@ -10,9 +11,6 @@ import {
 	type PendingSelectionFocus,
 	useSongActivation,
 } from "./useSongActivation";
-
-const useIsomorphicLayoutEffect =
-	typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 interface UseLikedSongsListControllerOptions {
 	displayedSongs: readonly LikedSong[];
