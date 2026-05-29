@@ -42,31 +42,6 @@ const domTestFiles = [
 	"src/features/playlists/__tests__/usePlaylistVoices.test.ts",
 ];
 
-// Load env files for tests (Vitest doesn't auto-load non-VITE_ prefixed vars)
-if (isTest) {
-	const env = loadEnv("test", process.cwd(), "");
-	Object.assign(process.env, env);
-
-	// node-project tests set isServer:true in env.ts, so t3-env validates the
-	// server schema at import. CI has no .env, so seed placeholders (only when
-	// unset — real values locally and in the db-security job are kept).
-	const testEnvDefaults: Record<string, string> = {
-		SUPABASE_URL: "http://localhost:54321",
-		SUPABASE_ANON_KEY: "test-anon-key",
-		SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
-		BETTER_AUTH_SECRET: "test-better-auth-secret-0000000000000000",
-		BETTER_AUTH_URL: "http://localhost:3000",
-		// Host must NOT look local: security-invariants.integration.test.ts
-		// runs only when DATABASE_URL points at localhost/127.0.0.1, and is
-		// meant to run solely in the db-security job (which sets a real one).
-		DATABASE_URL:
-			"postgresql://placeholder:placeholder@db.placeholder.test:5432/placeholder",
-	};
-	for (const [key, value] of Object.entries(testEnvDefaults)) {
-		if (!process.env[key]) process.env[key] = value;
-	}
-}
-
 function embeddingSidecarPlugin(): Plugin {
 	let child: ChildProcess | null = null;
 
@@ -136,6 +111,24 @@ export default defineConfig(({ command }) => {
 
 	return {
 		test: {
+			// CI has no .env files, so seed placeholders as fallbacks; loadEnv
+			// values (real local secrets) spread last and win over these defaults.
+			// node tests set isServer:true in env.ts so t3-env validates the server
+			// schema at import — these vars must be present before any module loads.
+			// Host must NOT look local: security-invariants.integration.test.ts
+			// runs only when DATABASE_URL points at localhost/127.0.0.1.
+			env: isTest
+				? {
+						SUPABASE_URL: "http://localhost:54321",
+						SUPABASE_ANON_KEY: "test-anon-key",
+						SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
+						BETTER_AUTH_SECRET: "test-better-auth-secret-0000000000000000",
+						BETTER_AUTH_URL: "http://localhost:3000",
+						DATABASE_URL:
+							"postgresql://placeholder:placeholder@db.placeholder.test:5432/placeholder",
+						...loadEnv("test", process.cwd(), ""),
+					}
+				: {},
 			// Threads spawn faster than the default forks pool and these suites have
 			// no fork-only needs (no process.exit, no native addons requiring process
 			// isolation); verified stable across repeated runs.
