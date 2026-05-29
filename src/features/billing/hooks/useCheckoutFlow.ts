@@ -18,6 +18,7 @@ import {
 } from "@/features/onboarding/checkout-intent";
 import { SONG_PACK_500 } from "@/lib/domains/billing/offers";
 import type { BillingState } from "@/lib/domains/billing/state";
+import { parseStripeCheckoutUrl } from "@/lib/domains/billing/stripe-redirects";
 import { createCheckoutSession } from "@/lib/server/billing.functions";
 
 type CheckoutFlowState =
@@ -51,13 +52,17 @@ export function useCheckoutFlow(billingState: BillingState) {
 				});
 
 				if (result.success) {
-					saveCheckoutIntent(intent);
-					setState({ status: "redirecting", offer });
-					window.location.href = result.checkoutUrl;
-					return;
+					const safeUrl = parseStripeCheckoutUrl(result.checkoutUrl);
+					if (safeUrl) {
+						saveCheckoutIntent(intent);
+						setState({ status: "redirecting", offer });
+						window.location.href = safeUrl;
+						return;
+					}
+					toast.error(checkoutErrorMessage("invalid_billing_redirect"));
+				} else {
+					toast.error(checkoutErrorMessage(result.error));
 				}
-
-				toast.error(checkoutErrorMessage(result.error));
 			} catch {
 				toast.error("Failed to start checkout. Please try again.");
 			}

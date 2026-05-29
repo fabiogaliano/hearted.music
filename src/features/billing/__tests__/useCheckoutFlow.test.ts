@@ -78,7 +78,7 @@ describe("useCheckoutFlow", () => {
 	it("persists checkout intent and redirects on success", async () => {
 		mockCreateCheckoutSession.mockResolvedValue({
 			success: true,
-			checkoutUrl: "https://stripe.example/session_123",
+			checkoutUrl: "https://checkout.stripe.com/c/pay/session_123",
 		});
 
 		const { result } = renderHook(() => useCheckoutFlow(billingState));
@@ -91,6 +91,8 @@ describe("useCheckoutFlow", () => {
 		expect(persisted).not.toBeNull();
 		expect(persisted?.kind).toBe("pack");
 		expect(persisted?.offer).toBe(SONG_PACK_500);
-		expect(window.location.href).toBe("https://stripe.example/session_123");
+		expect(window.location.href).toBe(
+			"https://checkout.stripe.com/c/pay/session_123",
+		);
 	});
 });

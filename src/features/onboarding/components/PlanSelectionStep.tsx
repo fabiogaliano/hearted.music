@@ -24,6 +24,7 @@ import {
 	type BillingState,
 	hasUnlimitedAccess,
 } from "@/lib/domains/billing/state";
+import { parseStripeCheckoutUrl } from "@/lib/domains/billing/stripe-redirects";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import {
@@ -187,8 +188,16 @@ export function PlanSelectionStep({
 				return;
 			}
 
+			const safeUrl = parseStripeCheckoutUrl(result.checkoutUrl);
+			if (!safeUrl) {
+				toast.error(checkoutErrorMessage("invalid_billing_redirect"));
+				clearCheckoutIntent();
+				setActiveCheckout(null);
+				return;
+			}
+
 			saveCheckoutIntent(intent);
-			window.location.href = result.checkoutUrl;
+			window.location.href = safeUrl;
 		} catch {
 			toast.error("Failed to start checkout. Please try again.");
 			clearCheckoutIntent();
