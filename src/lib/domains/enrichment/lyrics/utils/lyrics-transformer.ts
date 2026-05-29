@@ -24,6 +24,17 @@ export function transformLyrics(
 	return lyrics.map((section) => transformSection(section, annotationMap));
 }
 
+// "accepted" and "verified" are Genius editor-approved; "pending" needs a vote
+// floor to exclude fresh/troll community annotations before they reach the DB.
+function isAnnotationWorthKeeping(a: {
+	state: string;
+	votes_total: number;
+}): boolean {
+	if (a.votes_total < 0) return false;
+	if (a.state === "verified" || a.state === "accepted") return true;
+	return a.votes_total >= 10;
+}
+
 function buildAnnotationMap(
 	referents: ResponseReferents[],
 ): Record<string, AnnotationInfo[]> {
@@ -32,12 +43,15 @@ function buildAnnotationMap(
 	for (const referent of referents) {
 		const id = referent.api_path.split("/").pop();
 		if (id && referent.annotations) {
-			annotationMap[id] = referent.annotations.map((a) => ({
-				text: a.body.plain,
-				verified: a.verified,
-				votes_total: a.votes_total,
-				pinnedRole: a.authors?.[0]?.pinned_role,
-			}));
+			annotationMap[id] = referent.annotations
+				.filter(isAnnotationWorthKeeping)
+				.map((a) => ({
+					text: a.body.plain,
+					verified: a.verified,
+					votes_total: a.votes_total,
+					pinnedRole: a.authors?.[0]?.pinned_role,
+					state: a.state,
+				}));
 		}
 	}
 

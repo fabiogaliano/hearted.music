@@ -78,19 +78,16 @@ function formatAnnotations(
 	const result: string[] = [];
 
 	for (const annotation of annotations) {
-		// Determine annotation type and whether to include
 		const isArtist = annotation.pinnedRole === "artist";
 		const isVerified = annotation.verified;
+		const isEditorApproved =
+			annotation.state === "verified" || annotation.state === "accepted";
 		const hasEnoughVotes = annotation.votes_total >= opts.minVotes;
 
-		// Filter logic:
-		// - Always include artist annotations (rare and valuable)
-		// - Always include verified annotations
-		// - Include community annotations only if enough votes (unless verifiedOnly mode)
-		if (opts.verifiedOnly && !isArtist && !isVerified) {
+		if (opts.verifiedOnly && !isArtist && !isVerified && !isEditorApproved) {
 			continue;
 		}
-		if (!isArtist && !isVerified && !hasEnoughVotes) {
+		if (!isArtist && !isVerified && !isEditorApproved && !hasEnoughVotes) {
 			continue;
 		}
 
