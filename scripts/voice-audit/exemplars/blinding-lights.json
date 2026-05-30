@@ -1,20 +1,37 @@
 {
-  "headline": "neon, and no one to call",
-  "compound_mood": "Euphoric Loneliness",
-  "mood_description": "It sprints. The synths flood in like headlights on a wet road, gorgeous and a little desperate.",
-  "interpretation": "Chasing a high, a city, a person, anything to outrun being alone at night. The euphoria is real and so is the emptiness underneath it. He floors it through the dark and hopes the motion will pass for connection.",
-  "themes": [
-    { "name": "Speed as avoidance", "description": "The faster the song moves, the clearer it gets that he is running from a quiet he cannot sit in." },
-    { "name": "City light as substitute", "description": "The glow of the strip stands in for the warmth of a person who is not picking up the phone." }
-  ],
-  "journey": [
-    { "section": "Intro", "mood": "Surging", "description": "The synth hits and the song is already at full speed, no warmup, like flooring it the second the light turns." },
-    { "section": "Verses", "mood": "Yearning", "description": "Under all the gloss he is just asking someone to be there. The need keeps peeking through the shine." },
-    { "section": "Outro", "mood": "Spent", "description": "The lights keep flashing but the feeling never arrives. He is still driving, still alone." }
-  ],
-  "key_lines": [
-    { "line": "I can't sleep until I feel your touch", "insight": "Insomnia dressed up as devotion. The glamour barely covers how plainly he needs someone." },
-    { "line": "I'm blinded by the lights", "insight": "The thing that thrills him is the thing keeping him from seeing clearly. The high is also the blindfold." }
-  ],
-  "sonic_texture": "Glossy retro synthwave with a pulse you feel in your chest. Bright, propulsive, relentlessly forward, all chrome and cold night air."
+  "read": {
+    "image": "neon, and no one to call",
+    "lens": "speed as avoidance",
+    "tension": "Euphoric Loneliness",
+    "take": "Chasing a high, a city, a person, anything to outrun being alone at night. The euphoria is real, and so is the emptiness underneath it. He floors it through the dark and hopes the motion will pass for connection.",
+    "contradiction": "The thing that thrills him is the thing keeping him blind.",
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Surging",
+        "scene": "The synth hits and the song is already at full speed, like flooring it the second the light turns."
+      },
+      {
+        "label": "Verses",
+        "mood": "Yearning",
+        "scene": "Under all the gloss he's just asking someone to be there. The need keeps peeking through the shine."
+      },
+      {
+        "label": "Outro",
+        "mood": "Spent",
+        "scene": "The lights keep flashing but the feeling never arrives. Still driving, still alone."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I can't sleep until I feel your touch",
+        "insight": "Insomnia dressed up as devotion. The glamour barely covers how plainly he needs someone."
+      },
+      {
+        "line": "I'm blinded by the lights",
+        "insight": "The thing that thrills him is the thing keeping him from seeing clearly. The high is also the blindfold."
+      }
+    ],
+    "texture": "Glossy retro synthwave, bright and propulsive, all chrome and cold night air."
+  }
 }
