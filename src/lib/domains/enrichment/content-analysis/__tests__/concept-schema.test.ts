@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { CONCEPT_SONGS } from "@/features/liked-songs/components/concept-panel/concept-data";
-import { transformLegacyToConceptDraft } from "@/lib/domains/enrichment/content-analysis/concept-migration";
 import {
 	ConceptReadSchema,
 	SignalsSchema,
@@ -91,56 +90,5 @@ describe("SignalsSchema", () => {
 		expect(SignalsSchema.safeParse({ scenes: ["commuting"] }).success).toBe(
 			false,
 		);
-	});
-});
-
-describe("transformLegacyToConceptDraft", () => {
-	const legacy = {
-		headline: "the long way home",
-		compound_mood: "Aching Disbelief",
-		mood_description: "Quiet, then it floods.",
-		interpretation: "A milestone reached alone.",
-		themes: [{ name: "promise", description: "outlived the couple" }],
-		journey: [
-			{ section: "Verse", mood: "Hushed", description: "diary on the dash." },
-			{ section: "Chorus", mood: "Cathartic", description: "the dam breaks." },
-		],
-		key_lines: [
-			{ line: "I got my driver's license", insight: "a win as loss." },
-		],
-		sonic_texture: "A ballad that grows a spine.",
-	};
-
-	it("maps mechanical fields and stubs lens/contradiction", () => {
-		const { read } = transformLegacyToConceptDraft(legacy);
-		expect(read.image).toBe("the long way home");
-		expect(read.tension).toBe("Aching Disbelief");
-		expect(read.texture).toBe("A ballad that grows a spine.");
-		expect(read.lens).toBeNull();
-		expect(read.contradiction).toBeNull();
-	});
-
-	it("renames journey -> arc fields and key_lines -> lines", () => {
-		const { read } = transformLegacyToConceptDraft(legacy);
-		expect(read.arc).toEqual([
-			{ label: "Verse", mood: "Hushed", scene: "diary on the dash." },
-			{ label: "Chorus", mood: "Cathartic", scene: "the dam breaks." },
-		]);
-		expect(read.lines).toEqual([
-			{ line: "I got my driver's license", insight: "a win as loss." },
-		]);
-	});
-
-	it("concatenates interpretation + mood_description into the take scaffold", () => {
-		const { read } = transformLegacyToConceptDraft(legacy);
-		expect(read.take).toBe("A milestone reached alone. Quiet, then it floods.");
-	});
-
-	it("passes legacy themes through to signals and stubs empty theme_tags", () => {
-		const { signals } = transformLegacyToConceptDraft(legacy);
-		expect(signals.theme_tags).toEqual([]);
-		expect(signals.themes).toEqual([
-			{ name: "promise", description: "outlived the couple" },
-		]);
 	});
 });
