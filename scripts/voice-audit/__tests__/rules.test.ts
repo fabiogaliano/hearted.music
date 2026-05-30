@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-	SongAnalysisLyricalSchema,
-	type SongAnalysisLyrical,
-} from "@/lib/domains/enrichment/content-analysis/song-analysis";
+	ConceptReadSchema,
+	type ConceptRead,
+} from "@/lib/domains/enrichment/content-analysis/concept-schema";
 import {
 	academicRegister,
 	aiVocabulary,
@@ -21,27 +21,26 @@ import {
 	runAllRules,
 	selfReference,
 } from "../tier1/rules";
-import { extractAnalysis } from "../tier1/report";
 
 const FIXTURES = path.join(__dirname, "fixtures");
 
-function loadLyrical(file: string): SongAnalysisLyrical {
+function loadRead(file: string): ConceptRead {
 	const raw = JSON.parse(readFileSync(path.join(FIXTURES, file), "utf-8"));
-	const { analysis } = extractAnalysis(raw);
-	if (!analysis) throw new Error(`no analysis in ${file}`);
-	return SongAnalysisLyricalSchema.parse(analysis);
+	return ConceptReadSchema.parse(raw);
 }
 
-function base(): SongAnalysisLyrical {
-	return loadLyrical("clean.json");
+function base(): ConceptRead {
+	return loadRead("clean.json");
 }
 
-function withInterpretation(text: string): SongAnalysisLyrical {
-	return { ...base(), interpretation: text };
+// The rules read free-text fields; `take` is the longest prose field (was
+// `interpretation`) and `image` is the short felt-image (was `headline`).
+function withTake(text: string): ConceptRead {
+	return { ...base(), take: text };
 }
 
-function withHeadline(text: string): SongAnalysisLyrical {
-	return { ...base(), headline: text };
+function withImage(text: string): ConceptRead {
+	return { ...base(), image: text };
 }
 
 describe("clean fixture is clean", () => {
@@ -52,7 +51,7 @@ describe("clean fixture is clean", () => {
 });
 
 describe("ai-slop fixture hits expected rules", () => {
-	const analysis = loadLyrical("ai-slop.json");
+	const analysis = loadRead("ai-slop.json");
 	const hits = runAllRules(analysis);
 	const byRule = new Set(hits.map((h) => h.rule));
 
@@ -72,7 +71,7 @@ describe("ai-slop fixture hits expected rules", () => {
 describe("antithesis", () => {
 	it("flags 'isn't X, it's Y' shape", () => {
 		const hits = antithesis(
-			withInterpretation("This isn't merely a diss track; it's a reclaiming."),
+			withTake("This isn't merely a diss track; it's a reclaiming."),
 		);
 		expect(hits.length).toBeGreaterThan(0);
 		expect(hits[0].severity).toBe("high");
@@ -80,28 +79,28 @@ describe("antithesis", () => {
 
 	it("flags 'not just X but Y'", () => {
 		const hits = antithesis(
-			withInterpretation("Not just a song, but a manifesto for the decade."),
+			withTake("Not just a song, but a manifesto for the decade."),
 		);
 		expect(hits.length).toBeGreaterThan(0);
 	});
 
 	it("flags 'not only X but Y'", () => {
 		const hits = antithesis(
-			withInterpretation("Not only a diss track, but a coronation of the coast."),
+			withTake("Not only a diss track, but a coronation of the coast."),
 		);
 		expect(hits.length).toBeGreaterThan(0);
 	});
 
 	it("flags the 'no X, no Y, just Z' negation", () => {
 		const hits = antithesis(
-			withInterpretation("No apology, no retreat, just a wall of sound."),
+			withTake("No apology, no retreat, just a wall of sound."),
 		);
 		expect(hits.length).toBeGreaterThan(0);
 	});
 
 	it("leaves plain sentences alone", () => {
 		expect(
-			antithesis(withInterpretation("A goodbye said once and never again.")),
+			antithesis(withTake("A goodbye said once and never again.")),
 		).toEqual([]);
 	});
 });
@@ -109,7 +108,7 @@ describe("antithesis", () => {
 describe("copula-avoidance", () => {
 	it("flags 'frames', 'positions', 'amplifies'", () => {
 		const hits = copulaAvoidance(
-			withInterpretation(
+			withTake(
 				"It frames the conflict. He positions himself. The beat amplifies the tension.",
 			),
 		);
@@ -121,14 +120,14 @@ describe("copula-avoidance", () => {
 
 describe("puffery-adjective", () => {
 	it("flags 'blistering'", () => {
-		const hits = pufferyAdjective(withHeadline("A blistering declaration."));
+		const hits = pufferyAdjective(withImage("A blistering declaration."));
 		expect(hits).toHaveLength(1);
-		expect(hits[0].field).toBe("headline");
+		expect(hits[0].field).toBe("image");
 	});
 
 	it("is case-insensitive", () => {
 		expect(
-			pufferyAdjective(withHeadline("VISCERAL and Transcendent.")),
+			pufferyAdjective(withImage("VISCERAL and Transcendent.")),
 		).toHaveLength(2);
 	});
 });
@@ -136,7 +135,7 @@ describe("puffery-adjective", () => {
 describe("ai-vocabulary", () => {
 	it("flags a cluster of two or more AI-vocabulary words", () => {
 		const hits = aiVocabulary(
-			withInterpretation("An intricate tapestry of pivotal moments."),
+			withTake("An intricate tapestry of pivotal moments."),
 		);
 		const words = new Set(hits.map((h) => h.span.toLowerCase()));
 		expect(words.size).toBeGreaterThanOrEqual(2);
@@ -145,7 +144,7 @@ describe("ai-vocabulary", () => {
 
 	it("ignores a single isolated AI-vocabulary word", () => {
 		expect(
-			aiVocabulary(withInterpretation("The song is a quiet tapestry of grief.")),
+			aiVocabulary(withTake("The song is a quiet tapestry of grief.")),
 		).toEqual([]);
 	});
 });
@@ -153,7 +152,7 @@ describe("ai-vocabulary", () => {
 describe("participial-closure", () => {
 	it("flags comma-participle tail", () => {
 		const hits = participialClosure(
-			withInterpretation(
+			withTake(
 				"A quiet kind of heartbreak, revealing the cost of pride.",
 			),
 		);
@@ -163,7 +162,7 @@ describe("participial-closure", () => {
 	it("does not flag participles mid-sentence", () => {
 		expect(
 			participialClosure(
-				withInterpretation(
+				withTake(
 					"Breaking her silence, she walked out of the room forever.",
 				),
 			),
@@ -173,7 +172,7 @@ describe("participial-closure", () => {
 	it("does not flag a short attributive -ing adjective", () => {
 		expect(
 			participialClosure(
-				withInterpretation("A low, knocking drum. Pure menace."),
+				withTake("A low, knocking drum. Pure menace."),
 			),
 		).toEqual([]);
 	});
@@ -181,7 +180,7 @@ describe("participial-closure", () => {
 	it("does not flag an -ing adjective on a clause subject", () => {
 		expect(
 			participialClosure(
-				withInterpretation(
+				withTake(
 					"A chilling whisper opens, thumping bass drives the rhythm forward.",
 				),
 			),
@@ -190,7 +189,7 @@ describe("participial-closure", () => {
 
 	it("still flags a genuine tacked-on participial after a noun object", () => {
 		const hits = participialClosure(
-			withInterpretation("She holds the room, exposing every weakness at once."),
+			withTake("She holds the room, exposing every weakness at once."),
 		);
 		expect(hits.length).toBeGreaterThan(0);
 	});
@@ -198,12 +197,12 @@ describe("participial-closure", () => {
 	it("does not flag an -ing adjective whose subject takes 'provides' or 'add'", () => {
 		expect(
 			participialClosure(
-				withInterpretation("A bouncy groove takes over, driving drum beat provides a persistent pulse."),
+				withTake("A bouncy groove takes over, driving drum beat provides a persistent pulse."),
 			),
 		).toEqual([]);
 		expect(
 			participialClosure(
-				withInterpretation("The beat hits first, swirling synths add a dreamy layer."),
+				withTake("The beat hits first, swirling synths add a dreamy layer."),
 			),
 		).toEqual([]);
 	});
@@ -212,7 +211,7 @@ describe("participial-closure", () => {
 describe("hedging", () => {
 	it("flags 'perhaps' and 'might be'", () => {
 		const hits = hedging(
-			withInterpretation(
+			withTake(
 				"Perhaps the refrain is a warning. It might be a confession.",
 			),
 		);
@@ -223,7 +222,7 @@ describe("hedging", () => {
 describe("academic-register", () => {
 	it("flags 'juxtaposition' and 'explores themes of'", () => {
 		const hits = academicRegister(
-			withInterpretation(
+			withTake(
 				"A juxtaposition of tenderness and fury that explores themes of loss.",
 			),
 		);
@@ -235,7 +234,7 @@ describe("academic-register", () => {
 describe("self-reference", () => {
 	it("flags 'this song' and 'the listener'", () => {
 		const hits = selfReference(
-			withInterpretation(
+			withTake(
 				"This song asks the listener to sit with the ache.",
 			),
 		);
@@ -246,7 +245,7 @@ describe("self-reference", () => {
 describe("book-report-opener", () => {
 	it("flags 'This is about' as a field opener", () => {
 		const hits = bookReportOpener(
-			withInterpretation("This is about losing everything at once."),
+			withTake("This is about losing everything at once."),
 		);
 		expect(hits).toHaveLength(1);
 	});
@@ -254,7 +253,7 @@ describe("book-report-opener", () => {
 	it("does not flag mid-field occurrences", () => {
 		expect(
 			bookReportOpener(
-				withInterpretation(
+				withTake(
 					"Standing in the rain, she realizes this is about more than the call.",
 				),
 			),
@@ -266,28 +265,28 @@ describe("burstiness", () => {
 	it("flags flat-rhythm prose", () => {
 		const flat =
 			"Word word word word word. Word word word word word. Word word word word word.";
-		const hits = burstiness({ ...base(), interpretation: flat });
-		expect(hits.map((h) => h.field)).toContain("interpretation");
+		const hits = burstiness({ ...base(), take: flat });
+		expect(hits.map((h) => h.field)).toContain("take");
 	});
 
 	it("leaves varied rhythm alone", () => {
 		const hits = burstiness(base());
-		const interpHits = hits.filter((h) => h.field === "interpretation");
-		expect(interpHits).toEqual([]);
+		const takeHits = hits.filter((h) => h.field === "take");
+		expect(takeHits).toEqual([]);
 	});
 });
 
 describe("rule-of-three", () => {
 	it("flags three-item parallel lists", () => {
 		const hits = ruleOfThree(
-			withInterpretation("Sharp, funny, and devastating all at once."),
+			withTake("Sharp, funny, and devastating all at once."),
 		);
 		expect(hits.length).toBeGreaterThan(0);
 	});
 
 	it("flags phrasal triplets, not just single words", () => {
 		const hits = ruleOfThree(
-			withInterpretation("A cry for help, a fist raised, and a quiet goodbye."),
+			withTake("A cry for help, a fist raised, and a quiet goodbye."),
 		);
 		expect(hits.length).toBeGreaterThan(0);
 	});
@@ -296,7 +295,7 @@ describe("rule-of-three", () => {
 describe("lexical-repetition", () => {
 	it("flags a content word repeated three or more times", () => {
 		const hits = lexicalRepetition(
-			withInterpretation(
+			withTake(
 				"The community moves as a community, a community against the world.",
 			),
 		);
@@ -309,7 +308,7 @@ describe("lexical-repetition", () => {
 	it("leaves a content word repeated only twice alone", () => {
 		expect(
 			lexicalRepetition(
-				withInterpretation("The thunder answers the thunder, then fades."),
+				withTake("The thunder answers the thunder, then fades."),
 			),
 		).toEqual([]);
 	});
@@ -317,7 +316,7 @@ describe("lexical-repetition", () => {
 	it("ignores repeated function words", () => {
 		expect(
 			lexicalRepetition(
-				withInterpretation("It is what it is, and that is that, so it goes."),
+				withTake("It is what it is, and that is that, so it goes."),
 			),
 		).toEqual([]);
 	});
@@ -325,26 +324,26 @@ describe("lexical-repetition", () => {
 
 describe("dash", () => {
 	it("flags an em dash as medium", () => {
-		const hits = dashes(withInterpretation("She left — and the room went quiet."));
+		const hits = dashes(withTake("She left — and the room went quiet."));
 		expect(hits).toHaveLength(1);
 		expect(hits[0].severity).toBe("medium");
 	});
 
 	it("flags an en dash as medium", () => {
-		const hits = dashes(withInterpretation("A slow burn – then nothing."));
+		const hits = dashes(withTake("A slow burn – then nothing."));
 		expect(hits).toHaveLength(1);
 		expect(hits[0].severity).toBe("medium");
 	});
 
 	it("flags an intra-word hyphen as low and reports the whole compound", () => {
-		const hits = dashes(withInterpretation("A late-night confession."));
+		const hits = dashes(withTake("A late-night confession."));
 		expect(hits).toHaveLength(1);
 		expect(hits[0].severity).toBe("low");
 		expect(hits[0].span).toBe("late-night");
 	});
 
 	it("flags a spaced hyphen used as a dash, as medium", () => {
-		const hits = dashes(withInterpretation("Quiet at first - then it erupts."));
+		const hits = dashes(withTake("Quiet at first - then it erupts."));
 		expect(hits).toHaveLength(1);
 		expect(hits[0].severity).toBe("medium");
 	});
@@ -352,12 +351,12 @@ describe("dash", () => {
 	it("does not flag a hyphen inside a quoted lyric line", () => {
 		const analysis = {
 			...base(),
-			key_lines: [{ line: "we're tip-toeing out the door", insight: "A clean exit." }],
+			lines: [{ line: "we're tip-toeing out the door", insight: "A clean exit." }],
 		};
 		expect(dashes(analysis)).toEqual([]);
 	});
 
 	it("leaves dash-free prose alone", () => {
-		expect(dashes(withInterpretation("A clean goodbye said once."))).toEqual([]);
+		expect(dashes(withTake("A clean goodbye said once."))).toEqual([]);
 	});
 });

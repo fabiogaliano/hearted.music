@@ -1,22 +1,19 @@
 {
-  "headline": "A goodbye whispered through clenched teeth, too proud to cry.",
-  "compound_mood": "Stubborn Grief",
-  "mood_description": "Low strings crawl under a half sung vocal. Everything feels held in.",
-  "interpretation": "Love ended and nobody wants to say it out loud. The silence between them does all the talking, and each line lands like a door clicking shut in a dark hallway.",
-  "themes": [
-    { "name": "quiet endings", "description": "The relationship dies in a whisper, not a fight." },
-    { "name": "held pride", "description": "Neither party will admit they're hurting." }
+  "image": "a goodbye whispered through clenched teeth",
+  "lens": "love as a closed door",
+  "tension": "Stubborn Grief",
+  "take": "Love ended and nobody wants to say it out loud. The silence between them does all the talking, and each line lands like a door clicking shut in a dark hallway.",
+  "contradiction": "They both know it is over, and neither will say so first.",
+  "arc": [
+    { "label": "Verse 1", "mood": "still air", "scene": "A kitchen at midnight. One voice, one cup of coffee, one chair pulled out for no one." },
+    { "label": "Chorus", "mood": "tight throat", "scene": "A refrain that almost breaks, then doesn't. Words swallowed mid sentence." },
+    { "label": "Bridge", "mood": "ghost footsteps", "scene": "The other person is remembered in past tense. Only the room answers back." },
+    { "label": "Outro", "mood": "closed door", "scene": "Three notes on a piano. Then nothing." }
   ],
-  "journey": [
-    { "section": "Verse 1", "mood": "still air", "description": "A kitchen at midnight. One voice, one cup of coffee, one chair pulled out for no one." },
-    { "section": "Chorus", "mood": "tight throat", "description": "A refrain that almost breaks, then doesn't. Words swallowed mid sentence." },
-    { "section": "Bridge", "mood": "ghost footsteps", "description": "The other person is remembered in past tense. Only the room answers back." },
-    { "section": "Outro", "mood": "closed door", "description": "Three notes on a piano. Then nothing." }
-  ],
-  "key_lines": [
+  "lines": [
     { "line": "you left your coat", "insight": "Small possessions outlast the people who owned them." },
     { "line": "the hallway light", "insight": "A tiny detail does the work a whole paragraph of grief couldn't." },
     { "line": "i don't miss you", "insight": "A lie told so carefully that both parties know exactly what it means." }
   ],
-  "sonic_texture": "Piano, low strings, a single breath between verses. No drums. Space does most of the work."
+  "texture": "Piano, low strings, a single breath between verses. No drums. Space does most of the work."
 }
