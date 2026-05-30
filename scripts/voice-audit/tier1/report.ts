@@ -1,17 +1,16 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
-	SongAnalysisLyricalSchema,
-	type SongAnalysisLyrical,
-	type SongAnalysisResult,
-} from "@/lib/domains/enrichment/content-analysis/song-analysis";
+	ConceptReadSchema,
+	type ConceptRead,
+} from "@/lib/domains/enrichment/content-analysis/concept-schema";
 import type {
 	FileReport,
 	LintReport,
 	RuleHit,
 	Severity,
 } from "../types";
-import { isLyricalShape } from "../types";
+import { isConceptReadShape } from "../types";
 import { runAllRules } from "./rules";
 
 export interface SeverityBudget {
@@ -42,33 +41,39 @@ function addHits(report: LintReport, file: FileReport, hits: RuleHit[]) {
 
 export function auditAnalysis(
 	source: string,
-	analysis: SongAnalysisLyrical,
+	read: ConceptRead,
 	songId?: string,
 ): { file: FileReport; hits: RuleHit[] } {
 	const file: FileReport = { source, songId, hits: [] };
-	const hits = runAllRules(analysis);
+	const hits = runAllRules(read);
 	file.hits.push(...hits);
 	return { file, hits };
 }
 
+// Unwraps a stored record to its read sub-object. Three on-disk containers exist: a
+// gold exemplar ({ read }), an experiment run ({ spotifyTrackId, analysis }), and a
+// bare read. Anything not in the redesigned shape (legacy 8-field rows, instrumentals)
+// returns null so the caller can skip it — old rows re-enrich via v14.
 export function extractAnalysis(raw: unknown): {
 	songId?: string;
-	analysis: SongAnalysisResult | null;
+	read: ConceptRead | null;
 } {
-	if (!raw || typeof raw !== "object") return { analysis: null };
+	if (!raw || typeof raw !== "object") return { read: null };
 	const wrapper = raw as Record<string, unknown>;
 	const songId =
 		typeof wrapper.spotifyTrackId === "string"
 			? wrapper.spotifyTrackId
 			: undefined;
 	const candidate =
-		wrapper.analysis && typeof wrapper.analysis === "object"
-			? (wrapper.analysis as Record<string, unknown>)
-			: wrapper;
-	if (!("headline" in candidate) || !("compound_mood" in candidate)) {
-		return { songId, analysis: null };
+		wrapper.read && typeof wrapper.read === "object"
+			? wrapper.read
+			: wrapper.analysis && typeof wrapper.analysis === "object"
+				? wrapper.analysis
+				: wrapper;
+	if (!isConceptReadShape(candidate)) {
+		return { songId, read: null };
 	}
-	return { songId, analysis: candidate as unknown as SongAnalysisResult };
+	return { songId, read: candidate };
 }
 
 export function auditFile(
@@ -79,21 +84,17 @@ export function auditFile(
 		? filePath
 		: path.resolve(process.cwd(), filePath);
 	const raw = JSON.parse(readFileSync(absolute, "utf-8"));
-	const { songId, analysis } = extractAnalysis(raw);
+	const { songId, read } = extractAnalysis(raw);
 	const file: FileReport = { source: absolute, songId, hits: [] };
 
-	if (!analysis) {
+	if (!read) {
+		// Not the redesigned read shape: a legacy 8-field row or an instrumental.
+		file.skipped = "legacy";
 		report.files.push(file);
 		return report;
 	}
 
-	if (!isLyricalShape(analysis)) {
-		file.skipped = "instrumental";
-		report.files.push(file);
-		return report;
-	}
-
-	const parsed = SongAnalysisLyricalSchema.safeParse(analysis);
+	const parsed = ConceptReadSchema.safeParse(read);
 	if (!parsed.success) {
 		report.files.push(file);
 		return report;

@@ -17,10 +17,12 @@
 import { Result } from "better-result";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { z } from "zod";
+import { SongAnalysisLyricalSchema } from "@/lib/domains/enrichment/content-analysis/song-analysis";
 import {
-	SongAnalysisLyricalSchema,
-	type SongAnalysisLyrical,
-} from "@/lib/domains/enrichment/content-analysis/song-analysis";
+	ConceptReadSchema,
+	type ConceptRead,
+} from "@/lib/domains/enrichment/content-analysis/concept-schema";
 import {
 	ACTIVE_LYRICAL_VERSION,
 	getLyricalPrompt,
@@ -132,16 +134,17 @@ function buildPrompt(
 
 function printAudit(
 	label: string,
-	analysis: SongAnalysisLyrical,
+	analysis: ConceptRead,
 	hits: ReturnType<typeof runAllRules>,
 ): void {
 	const { totals } = tallyHits(hits);
 	console.log(`\n=== ${label} ===`);
 	console.log(`${totals.high} high / ${totals.medium} medium / ${totals.low} low\n`);
-	console.log(`interpretation: ${analysis.interpretation}`);
-	console.log(`headline:       ${analysis.headline}`);
-	console.log("journey:");
-	for (const j of analysis.journey) console.log(`  • ${j.description}`);
+	console.log(`lens:  ${analysis.lens}`);
+	console.log(`image: ${analysis.image}`);
+	console.log(`take:  ${analysis.take}`);
+	console.log("arc:");
+	for (const beat of analysis.arc) console.log(`  • ${beat.scene}`);
 	if (hits.length) {
 		console.log("\nhits:");
 		for (const h of hits)
@@ -165,6 +168,11 @@ function mean(xs: number[]): number {
 async function main() {
 	const flags = parseFlags(process.argv.slice(2));
 	const prompt = getLyricalPrompt(flags.version);
+	// v14+ emits the redesigned { read } model; older prompts emit the legacy 8-field
+	// shape. The generation schema follows the prompt so generateObject validates the
+	// right contract; the audit step (read-only) requires the read shape.
+	const genSchema: z.ZodTypeAny =
+		Number(flags.version) >= 14 ? ConceptReadSchema : SongAnalysisLyricalSchema;
 	const songs = resolveSongs(flags.songs);
 
 	const resolution = resolveLlmConfig(flags.provider);
@@ -209,7 +217,7 @@ async function main() {
 			console.log(
 				`\n[${label}] [run ${i + 1}/${flags.runs}] prompt v${prompt.version} via ${llm.getCurrentModel()} (${tempLabel})...`,
 			);
-			const gen = await llm.generateObject(builtPrompt, SongAnalysisLyricalSchema, {
+			const gen = await llm.generateObject(builtPrompt, genSchema, {
 				maxOutputTokens: 4000,
 				temperature: flags.temperature,
 			});
@@ -218,7 +226,16 @@ async function main() {
 				continue;
 			}
 
-			const analysis = gen.value.output as SongAnalysisLyrical;
+			// The experiment store and Tier-1 rules grade the read shape. A pre-v14 prompt
+			// emits the legacy model, which can't be audited or recorded under the new rules.
+			const parsed = ConceptReadSchema.safeParse(gen.value.output);
+			if (!parsed.success) {
+				console.error(
+					`v${prompt.version} emits the legacy 8-field shape; voice-audit now grades the { read } model. Use --version 14+ to audit and record.`,
+				);
+				continue;
+			}
+			const analysis = parsed.data;
 			const hits = runAllRules(analysis);
 			const { totals, byRule } = tallyHits(hits);
 			if (detailed) printAudit(label, analysis, hits);

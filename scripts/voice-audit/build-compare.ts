@@ -11,7 +11,10 @@ import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from 
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadGoldExemplars, type GoldExemplar } from "./exemplars";
-import type { SongAnalysisLyrical } from "@/lib/domains/enrichment/content-analysis/song-analysis";
+import {
+	ConceptReadSchema,
+	type ConceptRead,
+} from "@/lib/domains/enrichment/content-analysis/concept-schema";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const EXPERIMENTS_DIR = join(HERE, "experiments");
@@ -25,17 +28,20 @@ interface ExperimentRun {
 	spotifyTrackId: string;
 	promptVersion: string;
 	model: string;
-	analysis: SongAnalysisLyrical;
+	analysis: ConceptRead;
 }
 
 // Picks the most recent run per spotifyTrackId. Timestamp lives in the JSON so we
-// don't depend on filename conventions staying stable.
+// don't depend on filename conventions staying stable. Old-shape (pre-v14) runs are
+// skipped: their analysis no longer validates as a read, so they cannot be compared
+// against the new-shape gold.
 function loadLatestRunPerTrack(): Map<string, ExperimentRun> {
 	const latest = new Map<string, ExperimentRun>();
 	const files = readdirSync(EXPERIMENTS_DIR).filter((f) => f.endsWith(".json"));
 	for (const file of files) {
 		const raw = JSON.parse(readFileSync(join(EXPERIMENTS_DIR, file), "utf-8"));
 		if (!raw.spotifyTrackId || !raw.analysis) continue;
+		if (!ConceptReadSchema.safeParse(raw.analysis).success) continue;
 		const prev = latest.get(raw.spotifyTrackId);
 		if (!prev || raw.timestamp > prev.timestamp) latest.set(raw.spotifyTrackId, raw as ExperimentRun);
 	}
@@ -47,26 +53,23 @@ type FieldMap = Map<string, string>;
 // Field order matters for the rendered page (top-to-bottom reading flow); arrays
 // are emitted up to the longer of the two sides so missing entries show as gaps,
 // which is itself useful comparison data.
-function flatten(a: SongAnalysisLyrical): FieldMap {
+function flatten(a: ConceptRead): FieldMap {
 	const out: FieldMap = new Map();
-	out.set("headline", a.headline);
-	out.set("compound_mood", a.compound_mood);
-	out.set("mood_description", a.mood_description);
-	out.set("interpretation", a.interpretation);
-	a.themes.forEach((t, i) => {
-		out.set(`themes[${i}].name`, t.name);
-		out.set(`themes[${i}].description`, t.description);
+	out.set("image", a.image);
+	out.set("lens", a.lens);
+	out.set("tension", a.tension);
+	out.set("take", a.take);
+	out.set("contradiction", a.contradiction ?? "");
+	a.arc.forEach((beat, i) => {
+		out.set(`arc[${i}].label`, beat.label);
+		out.set(`arc[${i}].mood`, beat.mood);
+		out.set(`arc[${i}].scene`, beat.scene);
 	});
-	a.journey.forEach((j, i) => {
-		out.set(`journey[${i}].section`, j.section);
-		out.set(`journey[${i}].mood`, j.mood);
-		out.set(`journey[${i}].description`, j.description);
+	a.lines.forEach((l, i) => {
+		out.set(`lines[${i}].line`, l.line);
+		out.set(`lines[${i}].insight`, l.insight);
 	});
-	a.key_lines.forEach((k, i) => {
-		out.set(`key_lines[${i}].line`, k.line);
-		out.set(`key_lines[${i}].insight`, k.insight);
-	});
-	out.set("sonic_texture", a.sonic_texture);
+	out.set("texture", a.texture);
 	return out;
 }
 
@@ -92,7 +95,7 @@ function esc(s: string): string {
 }
 
 function renderTrack(gold: GoldExemplar, run: ExperimentRun): string {
-	const left = flatten(gold.analysis);
+	const left = flatten(gold.read);
 	const right = flatten(run.analysis);
 	const fields = unionFieldOrder(left, right);
 	const trackId = gold.spotifyTrackId;
