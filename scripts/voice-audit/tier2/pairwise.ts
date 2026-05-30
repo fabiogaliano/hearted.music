@@ -8,7 +8,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
-import type { SongAnalysisLyrical } from "@/lib/domains/enrichment/content-analysis/song-analysis";
+import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
 import { runClaude } from "./claude-cli";
 
 const PERSONA_FILE = join(dirname(fileURLToPath(import.meta.url)), "judge-persona.md");
@@ -36,19 +36,18 @@ export const VerdictSchema = z.object({
 
 export type Verdict = z.infer<typeof VerdictSchema>;
 
-export function renderAnalysis(a: SongAnalysisLyrical): string {
+export function renderAnalysis(a: ConceptRead): string {
 	const lines = [
-		`headline: ${a.headline}`,
-		`compound_mood: ${a.compound_mood}`,
-		`mood_description: ${a.mood_description}`,
-		`interpretation: ${a.interpretation}`,
-		"themes:",
-		...a.themes.map((t) => `  - ${t.name}: ${t.description}`),
-		"journey:",
-		...a.journey.map((j) => `  - ${j.section} (${j.mood}): ${j.description}`),
-		"key_line_insights:",
-		...a.key_lines.map((k) => `  - on "${k.line}": ${k.insight}`),
-		`sonic_texture: ${a.sonic_texture}`,
+		`image: ${a.image}`,
+		`lens: ${a.lens}`,
+		`tension: ${a.tension}`,
+		`take: ${a.take}`,
+		`contradiction: ${a.contradiction ?? "(none)"}`,
+		"arc:",
+		...a.arc.map((beat) => `  - ${beat.label} (${beat.mood}): ${beat.scene}`),
+		"line_insights:",
+		...a.lines.map((l) => `  - on "${l.line}": ${l.insight}`),
+		`texture: ${a.texture}`,
 	];
 	return lines.join("\n");
 }
@@ -148,8 +147,8 @@ export function reconcile(
 
 export async function judgePair(
 	song: string,
-	first: SongAnalysisLyrical,
-	second: SongAnalysisLyrical,
+	first: ConceptRead,
+	second: ConceptRead,
 	options: JudgeOptions = {},
 ): Promise<BalancedVerdict> {
 	const firstText = renderAnalysis(first);

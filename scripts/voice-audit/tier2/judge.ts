@@ -3,9 +3,9 @@ import path from "node:path";
 import { Result } from "better-result";
 import { z } from "zod";
 import {
-	SongAnalysisLyricalSchema,
-	type SongAnalysisLyrical,
-} from "@/lib/domains/enrichment/content-analysis/song-analysis";
+	ConceptReadSchema,
+	type ConceptRead,
+} from "@/lib/domains/enrichment/content-analysis/concept-schema";
 import {
 	createLlmService,
 	type LlmService,
@@ -16,16 +16,17 @@ import type {
 	TokenBudget,
 	TokenUsage,
 } from "../types";
-import { isLyricalShape } from "../types";
 import { extractAnalysis } from "../tier1/report";
 import { abstractNounTrapPrompt } from "./prompts/abstract-noun-trap";
+import { arcNarrativePrompt } from "./prompts/arc-narrative";
 import { essayisticRegisterPrompt } from "./prompts/essayistic-register";
-import { journeyNarrativePrompt } from "./prompts/journey-narrative";
+import { lensCoherencePrompt } from "./prompts/lens-coherence";
 import { registerSpecificityPrompt } from "./prompts/register-specificity";
 import {
 	AbstractNounTrapSchema,
+	ArcNarrativeSchema,
 	EssayisticRegisterSchema,
-	JourneyNarrativeSchema,
+	LensCoherenceSchema,
 	RegisterSpecificitySchema,
 } from "./schemas";
 
@@ -38,7 +39,7 @@ interface JudgeRunner {
 	name: string;
 	run: (
 		llm: LlmService,
-		analysis: SongAnalysisLyrical,
+		read: ConceptRead,
 	) => Promise<
 		Result<
 			{
@@ -53,7 +54,7 @@ interface JudgeRunner {
 function makeJudge<T>(
 	name: string,
 	schema: z.ZodType<T>,
-	buildPrompt: (a: SongAnalysisLyrical) => string,
+	buildPrompt: (a: ConceptRead) => string,
 	toFinding: (result: T) => Omit<JudgeFinding, "judge">,
 ): JudgeRunner {
 	return {
@@ -108,12 +109,22 @@ const JUDGES: JudgeRunner[] = [
 		}),
 	),
 	makeJudge(
-		"journey-narrative",
-		JourneyNarrativeSchema,
-		journeyNarrativePrompt,
+		"arc-narrative",
+		ArcNarrativeSchema,
+		arcNarrativePrompt,
 		(r) => ({
 			passed: r.narrative,
 			evidence: r.disconnect_points,
+			rationale: r.rationale.join(" / "),
+		}),
+	),
+	makeJudge(
+		"lens-coherence",
+		LensCoherenceSchema,
+		lensCoherencePrompt,
+		(r) => ({
+			passed: r.coherent,
+			evidence: r.problems,
 			rationale: r.rationale.join(" / "),
 		}),
 	),
@@ -144,7 +155,7 @@ function wouldExceed(
 
 export async function judgeAnalysis(
 	llm: LlmService,
-	analysis: SongAnalysisLyrical,
+	analysis: ConceptRead,
 	totals: TokenUsage,
 	budget: TokenBudget,
 ): Promise<{
@@ -213,9 +224,9 @@ export async function runTier2OnFiles(
 			? filePath
 			: path.resolve(process.cwd(), filePath);
 		const raw = JSON.parse(readFileSync(absolute, "utf-8"));
-		const { songId, analysis } = extractAnalysis(raw);
-		if (!analysis || !isLyricalShape(analysis)) continue;
-		const parsed = SongAnalysisLyricalSchema.safeParse(analysis);
+		const { songId, read } = extractAnalysis(raw);
+		if (!read) continue;
+		const parsed = ConceptReadSchema.safeParse(read);
 		if (!parsed.success) continue;
 
 		const result = await judgeAnalysis(llm, parsed.data, totals, budget);

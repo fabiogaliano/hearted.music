@@ -1,27 +1,26 @@
-import type { SongAnalysisLyrical } from "@/lib/domains/enrichment/content-analysis/song-analysis";
+import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
 
-export function registerSpecificityPrompt(a: SongAnalysisLyrical): string {
+export function registerSpecificityPrompt(a: ConceptRead): string {
 	const fields = [
-		["headline", a.headline],
-		["mood_description", a.mood_description],
-		["interpretation", a.interpretation],
-		...a.themes.map(
-			(t, i) => [`themes[${i}]`, `${t.name}: ${t.description}`] as const,
+		["image", a.image],
+		["take", a.take],
+		...a.lines.map(
+			(l, i) => [`lines[${i}].insight`, l.insight] as const,
 		),
 	];
 	const body = fields.map(([name, value]) => `${name}: ${value}`).join("\n");
 
-	return `You are auditing one short song analysis for specificity.
+	return `You are auditing one short song read for specificity.
 
-A specific analysis makes claims that could only be true of *this* song. A generic analysis uses sentences that would still read fine if swapped into a review of almost any other song in the same genre.
+A specific read makes claims that could only be true of *this* song. A generic read uses sentences that would still read fine if swapped into a review of almost any other song in the same genre.
 
 Longer is not better. Do not reward filler or over-qualification.
 
-Answer one question: does this analysis make at least three claims that could only be true of this specific song?
+Answer one question: does this read make at least three claims that could only be true of this specific song?
 
 Evidence is required. If you say it is generic, quote the actual sentences that would fit any song. If you say it is specific, quote the sentences that ground it to this one.
 
-ANALYSIS:
+READ:
 ${body}
 
 Return:
