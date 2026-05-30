@@ -46,6 +46,17 @@ interface HarnessSong extends TestSong {
 // The validation set, chosen for maximum spread across genre, energy, valence,
 // acousticness, instrumentalness, and lyrical cadence (see the phase handoff). All
 // are mainstream vocal tracks, so lyrics resolve via DataFetcher's external fetch.
+//
+// The entries after do-i-wanna-know are the remaining lyric-diagnostic songs, added
+// Session 5.5 so the harness covers the full failure-mode spectrum the original
+// spread did not (schema-overprescription-lyric-diagnostic.md). Failure modes probed:
+// surface-true / lens-fabrication risk (Forever, No Sex For Ben), real depth but
+// monochrome arc / manufactured-movement trap (Beautiful Things), two-act narrative
+// the single-thesis lens fights (Pink Pony Club), tempo-emotion gap (As It Was),
+// paradox-poor gratitude / power-flirt (God's Plan, Houdini), literary misdirection
+// (Thinkin Bout You). They carry no spotifyTrackId: lyrics resolve by artist/title and
+// audio features are skipped, which the diagnostic deems acceptable (it found audio
+// features unreliable as an emotion proxy).
 const SONGS: HarnessSong[] = [
 	{ key: "not-like-us", artist: "Kendrick Lamar", title: "Not Like Us", spotifyTrackId: "6AI3ezQ4o3HUoP6Dhudph3", album: "Not Like Us", fallbackGenres: ["trap", "hip hop"] },
 	{ key: "drivers-license", artist: "Olivia Rodrigo", title: "drivers license", spotifyTrackId: "4ml4WlnHDEpOK8HRVYTCWf", album: "SOUR" },
@@ -55,6 +66,14 @@ const SONGS: HarnessSong[] = [
 	{ key: "too-sweet", artist: "Hozier", title: "Too Sweet", spotifyTrackId: "3HMY0r2BAdpasXMY8rseR0", album: "Unheard" },
 	{ key: "dtmf", artist: "Bad Bunny", title: "DtMF", spotifyTrackId: "3sK8wGT43QFpWrvNQsrQya", album: "DeBÍ TiRAR MáS FOToS" },
 	{ key: "do-i-wanna-know", artist: "Arctic Monkeys", title: "Do I Wanna Know?", spotifyTrackId: "5FVd6KXrgO9B3JPmC8OPst", album: "AM" },
+	{ key: "forever", artist: "Chris Brown", title: "Forever", album: "Exclusive: The Forever Edition", fallbackGenres: ["pop", "r&b", "dance-pop"] },
+	{ key: "beautiful-things", artist: "Benson Boone", title: "Beautiful Things", album: "Fireworks & Rollerblades", fallbackGenres: ["pop"] },
+	{ key: "pink-pony-club", artist: "Chappell Roan", title: "Pink Pony Club", album: "The Rise and Fall of a Midwest Princess", fallbackGenres: ["pop", "synth-pop"] },
+	{ key: "gods-plan", artist: "Drake", title: "God's Plan", album: "Scorpion", fallbackGenres: ["hip hop", "rap", "pop rap"] },
+	{ key: "houdini", artist: "Dua Lipa", title: "Houdini", album: "Radical Optimism", fallbackGenres: ["pop", "dance-pop"] },
+	{ key: "no-sex-for-ben", artist: "The Rapture", title: "No Sex for Ben", album: "Pieces of the People We Love", fallbackGenres: ["dance-punk", "indie rock"] },
+	{ key: "as-it-was", artist: "Harry Styles", title: "As It Was", album: "Harry's House", fallbackGenres: ["pop", "synth-pop"] },
+	{ key: "thinkin-bout-you", artist: "Frank Ocean", title: "Thinkin Bout You", album: "Channel Orange", fallbackGenres: ["r&b", "alternative r&b"] },
 ];
 
 // Cost tiers: generation is the billed, slow step, scaling with songs × runs. Don't
@@ -63,6 +82,11 @@ const SONGS: HarnessSong[] = [
 const TIERS: Record<string, string[]> = {
 	fast: ["not-like-us", "motion-sickness"],
 	standard: ["not-like-us", "drivers-license", "ribs", "blinding-lights", "motion-sickness"],
+	// The three songs whose lens/arc the diagnostic found hardest (manufactured movement,
+	// narrative-vs-thesis, lens fabrication) — the fastest probe for v14's known weak spots.
+	stress: ["forever", "beautiful-things", "pink-pony-club"],
+	// The full 10-song lyric diagnostic (schema-overprescription-lyric-diagnostic.md).
+	diagnostic: ["gods-plan", "houdini", "forever", "no-sex-for-ben", "dtmf", "ribs", "beautiful-things", "as-it-was", "pink-pony-club", "thinkin-bout-you"],
 	final: SONGS.map((s) => s.key),
 };
 
