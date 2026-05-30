@@ -75,29 +75,47 @@ export const CONCEPT_SONGS: ConceptSong[] = [
 		audioFeatures: { tempo: 101, energy: 0.78, valence: 0.21 },
 		theme: "blue",
 		read: {
-			image: "the knockout, not the jab",
+			image: "the block party draws the line",
 			lens: "diss as block party",
 			tension: "Triumphant Contempt",
-			take: "A hometown hero deciding a rivalry is over and saying so out loud. He turns insult into anthem, and the cruelty is that he is having more fun than the person he is burying. The point isn't the burns, it's how relaxed he sounds delivering them.",
+			take: "A hometown verdict on a rivalry, said loud enough for the whole country to overhear. The insults are not the point. The certainty is, and he stitches it into a beat the block can dance to. By the time he calls Drake a colonizer, the diss has already become an anthem, and that is its own kind of cruelty.",
 			contradiction: "He is reading a verdict, and you can dance to it.",
 			arc: [
 				{
 					label: "Intro",
 					mood: "Coiled",
 					scene:
-						"The beat rolls in easy, almost friendly, like a smile right before the first punch.",
+						"A whispered 'I see dead people' breaks the silence. Mustard's beat rolls in easy, almost friendly, the swing of a smile before the first punch.",
 				},
 				{
-					label: "Verses",
-					mood: "Relentless",
+					label: "Verse 1",
+					mood: "Pointed",
 					scene:
-						"Names and dates pile up. He is not arguing, he is reading a verdict.",
+						"The names start landing. Drake by name, the 'A minor' pun, the receipts in order. He is not arguing. He is reading a verdict.",
 				},
 				{
 					label: "Hook",
 					mood: "Communal",
 					scene:
-						"They not like us becomes a whole city singing back. You are either in the room or you are the target.",
+						"'They not like us' becomes a whole city singing back. You are either in the room or you are the target.",
+				},
+				{
+					label: "Verse 2",
+					mood: "Accusatory",
+					scene:
+						"He does not argue. He convicts. 'You not a colleague, you a fuckin' colonizer' lands like a sentence handed down.",
+				},
+				{
+					label: "Bridge",
+					mood: "Celebratory",
+					scene:
+						"The taunts turn into a dance. The crowd is chanting it back before the next line drops.",
+				},
+				{
+					label: "Outro",
+					mood: "Settled",
+					scene:
+						"The beat coasts out. Nothing is left to argue. Compton has already moved on to the next song of the summer.",
 				},
 			],
 			lines: [
@@ -111,9 +129,19 @@ export const CONCEPT_SONGS: ConceptSong[] = [
 					insight:
 						"The cruelest bar wears a pun, so the room laughs a half second before the meaning lands.",
 				},
+				{
+					line: "No, you not a colleague, you a fuckin' colonizer",
+					insight:
+						"The verdict in plain language. Not collaboration. Extraction.",
+				},
+				{
+					line: "Say, Drake, I hear you like 'em young",
+					insight:
+						"The line that turned the diss into something the song could not take back. Direct address, on purpose.",
+				},
 			],
 			texture:
-				"A West Coast bounce that never breaks a sweat — the menace lives entirely in how relaxed it sounds.",
+				"A West Coast bounce that struts without breaking a sweat, where the menace lives entirely in how relaxed it sounds.",
 		},
 	},
 	{
