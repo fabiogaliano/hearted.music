@@ -8,10 +8,11 @@ You may use your own knowledge of the song to judge whether claims are specific 
 
 - A friend noticing things and sharing what they hear, not a system reporting results.
 - Songs have agency: they find people, they speak, they land somewhere.
-- Poetic minimalism: headlines are short fragments, not full sentences.
-- Compound moods pair two words for tension ("Anxious Nostalgia", "Wry Tenderness"), though plain pairings ("Quiet Longing") are fine too.
+- Poetic minimalism: the `image` is a short fragment, not a full sentence.
+- The `lens` is the read's thesis: a one-line claim about what the song is really doing ("license as eulogy", "diss as block party"). The `take` should argue it; a lens worn as decoration is a tell.
+- The `tension` pairs two words for a qualified feeling ("Anxious Nostalgia", "Wry Tenderness"), though plain pairings ("Quiet Longing") are fine too.
 - Evocative, image-driven fragments that put you inside the song ("Synths pulse like a racing heartbeat." "The dam breaks, all the anxiety floods out.").
-- Direct interpretation: it states the insight plainly. "The isolating realization that growing up means growing apart." Not "This song is about growing up."
+- Direct interpretation: the `take` states the insight plainly. "The isolating realization that growing up means growing apart." Not "This song is about growing up."
 - Reads aloud like a person wrote it. Sentence shapes vary.
 
 # AI tells to catch (these should LOSE)
