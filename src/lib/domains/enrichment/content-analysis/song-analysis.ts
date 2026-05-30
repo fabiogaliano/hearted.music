@@ -12,6 +12,7 @@ import type { DbError } from "@/lib/shared/errors/database";
 import type { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
 import type { LlmError } from "@/lib/shared/errors/external/llm";
 import { getLyricsFormatLegend } from "../lyrics/utils/lyrics-formatter";
+import { type ConceptRead, ConceptReadSchema } from "./concept-schema";
 import {
 	ACTIVE_INSTRUMENTAL_VERSION,
 	ACTIVE_LYRICAL_VERSION,
@@ -110,9 +111,19 @@ export class SongAnalysisService {
 			? ACTIVE_INSTRUMENTAL_VERSION
 			: ACTIVE_LYRICAL_VERSION;
 
-		const schema = isInstrumental
+		// Parse-schema selection is version-aware (Session 5): from lyrical v14 on, the
+		// prompt emits the redesigned { read } model (ConceptReadSchema); v13 and earlier
+		// emit the legacy 8-field shape. While ACTIVE_LYRICAL_VERSION is "13" this branch
+		// is dormant — flipping it to "14" is the coordinated cutover that ships with the
+		// production panel swap (Session 6), since the panel + queries still read the old
+		// shape. See claudedocs/session-4-prompt-v14-comparison.md §5.
+		const lyricalSchema: z.ZodTypeAny =
+			Number(ACTIVE_LYRICAL_VERSION) >= 14
+				? ConceptReadSchema
+				: SongAnalysisLyricalSchema;
+		const schema: z.ZodTypeAny = isInstrumental
 			? SongAnalysisInstrumentalSchema
-			: SongAnalysisLyricalSchema;
+			: lyricalSchema;
 
 		// A low temperature roughly halves the rate of AI-writing tells (participial
 		// closures, framing openers) and collapses run-to-run variance, versus the
@@ -125,7 +136,7 @@ export class SongAnalysisService {
 		}
 
 		const analysisData = this.buildAnalysisData(
-			llmResult.value.output,
+			llmResult.value.output as SongAnalysisResult | ConceptRead,
 			input.audioFeatures,
 		);
 
@@ -249,7 +260,7 @@ Loudness: ${features.loudness ?? "unknown"} dB`;
 	}
 
 	private buildAnalysisData(
-		llmOutput: SongAnalysisResult,
+		llmOutput: SongAnalysisResult | ConceptRead,
 		audioFeatures?: AudioFeature | null,
 	): Record<string, unknown> {
 		const analysisData: Record<string, unknown> = { ...llmOutput };
