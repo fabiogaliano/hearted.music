@@ -5,17 +5,52 @@
 Open a fresh Claude Code session in this repo and paste:
 
 ```
-I'm continuing the Hearted song-analysis concept redesign.
+I'm continuing the Hearted song-analysis concept redesign (Session 5.5, MID-FLIGHT
+after a context reset).
 Master: claudedocs/concept-redesign-handoff-2026-05-28.md
 This session: claudedocs/session-5.5-v14-calibration.md
 
-Read both files, then execute this brief — run the now-migrated voice-audit
-eval layer against real generated v14 output for the first time, read the
-misses, and iterate lyrical-v14.ts until it clears measurable quality bars.
-This is measurement + prompt-iteration mode, NOT engineering. Do not flip
-generation or swap the panel (that's Session 6). Schema, lens vocabulary,
-and grammar are locked (Sessions 1-3); only the v14 PROMPT may change here.
+Read the master, then read this brief — but the live state is in the
+"## Progress so far" section near the top: the eval instrument is verified working,
+two prep changes are committed, the provider + bars are locked, and the first smoke
+runs already exposed the misses to fix. Resume from the "Next step" list there: the
+runs=3 baseline (no paid judging), then iterate lyrical-v14.ts. This is measurement +
+prompt-iteration mode, NOT engineering. Do not flip generation, rename v14, or swap
+the panel (Session 6). Schema, lens vocabulary, and grammar are locked (Sessions 1-3);
+only the v14 PROMPT may change here.
 ```
+
+---
+
+## Progress so far (2026-05-30 — mid-session; a fresh session RESUMES HERE)
+
+This session was paused for a context reset. The eval instrument is verified working and two prep changes are committed. Pick up at **Next step** below; don't redo the toolchain probe or the song-set archaeology.
+
+**Committed to `main` this session:**
+- `e9255f5` — cleanup. Removed the abandoned transform limb (`concept-migration.ts` + `scripts/voice-audit/transform-legacy-exemplars.ts` + `exemplars-v14-draft/`) and purged the 89-file legacy v2–v13 experiment corpus + `runs.jsonl` + stale `compare.html`. `baseline.json` kept (regenerate, never deleted). Master §6 has the changelog. `recordRun` recreates `experiments/` + `runs.jsonl` on the next run, so the harness is unaffected.
+- `95919c5` — harness. Added the 8 missing lyric-diagnostic songs to `regen.ts` so all 10 are present. New tiers: `stress` (forever, beautiful-things, pink-pony-club), `diagnostic` (the canonical 10), and `final` now spans all 16. The new songs have no `spotifyTrackId` (lyrics resolve by artist/title; audio features skipped — fine per the diagnostic's "audio unreliable" finding).
+
+**Locked this session (do not relitigate):**
+- **Provider works.** Vertex is the default and is configured: `.env` has `GOOGLE_VERTEX_PROJECT`/`GOOGLE_VERTEX_LOCATION`; `gcloud` ADC is authed (project `hearted-492606`). The `claude` CLI is present for the pairwise judge. (Earlier "Vertex not configured" worry was a shell-vs-`.env` false alarm.)
+- **Acceptance bars.** Pairwise win+tie ≥ ~65–70% over the 4 golds, AND report RAW win-rate separately (ties hide weakness); `evaluate.ts --limit 2`. Tier-1: zero-high = hard fail, mean-medium ≤ 0.5/read. lens-coherence: all pass + the 2 broken reads still flagged. **Max 3 prompt-revision cycles** before diminishing-returns / kill-switch.
+- **v14 stays named v14.** The `Number(version) >= 14` gate in `regen.ts` + `song-analysis.ts` selects `ConceptReadSchema`; renaming breaks it. Renumbering is a Session 6 gate-refactor (swap numeric gate for an explicit shape flag), not this session.
+- **Gold set = 4 songs** (`exemplars/index.json`): not-like-us, drivers-license, blinding-lights, motion-sickness. Only these get pairwise-judged; the other 12 are Tier-1 + lens-coherence + qualitative only. Authoring more golds is editorial and out of scope unless explicitly opted in.
+
+**Smoke findings so far (n=1–2 — the misses to fix; NOT yet confirmed at n=3):**
+- **participial-closure** (trailing `", <gerund>…"` clauses) in `arc`/`take` — appeared across 2 runs. High severity. The #1 target.
+- **lens-fabrication on surface-true songs** — Forever 5-high, Thinkin Bout You 4-high, while genuinely-deep-but-monochrome **Beautiful Things came back 0-high (clean)**. v14 over-reaches inventing a buried claim when there isn't one.
+- **puffery** ("profound" ×2) and **copula-avoidance** ("acts as") — medium.
+- **dash false-positives** on hyphenated compounds (`G-funk`) — Tier-1 rule limitation, NOT a v14 defect, and rule-editing is out of scope. Don't chase these.
+- **No Sex for Ben** — LLM `response did not match schema` (n=1). A content-zero chant may not satisfy a cardinality floor (arc≥2 / lines≥1); retry to tell flake from real edge.
+- **Lenses trending abstract** — `exclusion as belonging`, `ambivalence as physical symptom` vs concrete gold `diss as block party`, `anger with receipts`. This is the kill-switch's #1 watch signal; too early to call at n=2, but log it.
+
+**Next step (resume here):**
+1. **Baseline, NO paid judging:** `bun scripts/voice-audit/regen.ts --version 14 --songs diagnostic --runs 3` (30 generations, GCP cents). Then run lens-coherence over the output. Confirms the n=1 signal at n=3 and sets the number to beat.
+2. **Iterate `lyrical-v14.ts`** on the confirmed misses: reinforce the no-trailing-gerund rule, re-ban puffery, add explicit surface-song handling so it stops fabricating lenses. ONLY `lyrical-v14.ts` may change.
+3. **Re-generate + diff Tier-1 (free)** to prove the highs dropped.
+4. **THEN** spend on pairwise Opus judging (`bun scripts/voice-audit/evaluate.ts --version 14 --temperature 0.3`, ~$1–2) once Tier-1 is zero-high. Don't pay to judge prose that still has known high hits.
+
+Rationale for the order: Tier-1 is deterministic and free; the pairwise judge is ~$0.14/pair. Get Tier-1 to zero-high before buying the harder "reads like Hearted" signal.
 
 ---
 
