@@ -1,41 +1,14 @@
-/**
- * Step 0 concept schema for the new "read" presentation model.
- *
- * Three layers, by encounter order:
- *  - Layer 1 (The Read)   — image, lens, tension
- *  - Layer 2 (The Take)   — take, optional contradiction
- *  - Layer 3 (The Trace)  — arc[3], lines[2], texture
- *
- * Everything is shown inline; no progressive disclosure inside the panel.
- *
- * This schema is intentionally separate from AnalysisContent — Step 0
- * tests whether the concept reads coherently before we touch the
- * analysis schema or the prompt.
- */
+// The read shape is owned by the Zod schema (concept-schema.ts) so the UI can't
+// drift from what the prompt generates. ConceptSong is UI-only and stays here.
 
+import type {
+	ConceptArcBeat,
+	ConceptLineBeat,
+	ConceptRead,
+} from "@/lib/domains/enrichment/content-analysis/concept-schema";
 import type { ThemeColor } from "@/lib/theme/types";
 
-export interface ConceptArcBeat {
-	label: string;
-	mood: string;
-	scene: string;
-}
-
-export interface ConceptLineBeat {
-	line: string;
-	insight: string;
-}
-
-export interface ConceptRead {
-	image: string;
-	lens: string;
-	tension: string;
-	take: string;
-	contradiction?: string;
-	arc: [ConceptArcBeat, ConceptArcBeat, ConceptArcBeat];
-	lines: [ConceptLineBeat, ConceptLineBeat];
-	texture: string;
-}
+export type { ConceptArcBeat, ConceptLineBeat, ConceptRead };
 
 export interface ConceptSong {
 	id: string;
