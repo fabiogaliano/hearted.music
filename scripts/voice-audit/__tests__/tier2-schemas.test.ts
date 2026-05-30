@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
 	AbstractNounTrapSchema,
+	ArcNarrativeSchema,
 	EssayisticRegisterSchema,
-	JourneyNarrativeSchema,
+	LensCoherenceSchema,
 	RegisterSpecificitySchema,
 } from "../tier2/schemas";
 
@@ -30,9 +31,16 @@ describe("tier2 schemas", () => {
 			}).success,
 		).toBe(false);
 		expect(
-			JourneyNarrativeSchema.safeParse({
+			ArcNarrativeSchema.safeParse({
 				narrative: false,
 				disconnect_points: [],
+				rationale: [],
+			}).success,
+		).toBe(false);
+		expect(
+			LensCoherenceSchema.safeParse({
+				coherent: false,
+				problems: [],
 				rationale: [],
 			}).success,
 		).toBe(false);
@@ -61,9 +69,16 @@ describe("tier2 schemas", () => {
 			}).success,
 		).toBe(true);
 		expect(
-			JourneyNarrativeSchema.safeParse({
+			ArcNarrativeSchema.safeParse({
 				narrative: true,
 				disconnect_points: [],
+				rationale: [],
+			}).success,
+		).toBe(true);
+		expect(
+			LensCoherenceSchema.safeParse({
+				coherent: true,
+				problems: [],
 				rationale: [],
 			}).success,
 		).toBe(true);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { SongAnalysisLyrical } from "@/lib/domains/enrichment/content-analysis/song-analysis";
+import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
 import {
 	analysisProse,
 	burstinessStats,
@@ -8,15 +8,15 @@ import {
 	voiceStats,
 } from "../stats";
 
-const fixture: SongAnalysisLyrical = {
-	headline: "HEAD",
-	compound_mood: "MOOD",
-	mood_description: "MOODDESC",
-	interpretation: "INTERP",
-	themes: [{ name: "THEMENAME", description: "THEMEDESC" }],
-	journey: [{ section: "SEC", mood: "M", description: "JOURNEYDESC" }],
-	key_lines: [{ line: "QUOTEDLYRIC", insight: "KEYINSIGHT" }],
-	sonic_texture: "TEXTURE",
+const fixture: ConceptRead = {
+	image: "IMAGE",
+	lens: "LENS",
+	tension: "TENSION",
+	take: "TAKETEXT",
+	contradiction: "CONTRA",
+	arc: [{ label: "LBL", mood: "MD", scene: "SCENETEXT" }],
+	lines: [{ line: "QUOTEDLYRIC", insight: "KEYINSIGHT" }],
+	texture: "TEXTURE",
 };
 
 describe("functionWordRatio", () => {
@@ -62,8 +62,8 @@ describe("analysisProse", () => {
 	it("includes model prose but excludes quoted lyric lines", () => {
 		const prose = analysisProse(fixture);
 		expect(prose).toContain("KEYINSIGHT");
-		expect(prose).toContain("INTERP");
-		expect(prose).toContain("THEMEDESC");
+		expect(prose).toContain("TAKETEXT");
+		expect(prose).toContain("SCENETEXT");
 		expect(prose).not.toContain("QUOTEDLYRIC");
 	});
 });
