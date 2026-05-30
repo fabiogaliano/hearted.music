@@ -1,5 +1,5 @@
 {
-  "description": "Hand-polished gold Hearted analyses. The bar the pairwise judge measures candidates against (gold-vs-candidate). Keyed by spotifyTrackId so they match experiment runs regardless of label formatting. Edit the prose freely; it defines 'reads like Hearted'.",
+  "description": "Hand-polished gold Hearted reads in the redesigned { read } shape (ConceptReadSchema: image, lens, tension, take, contradiction, arc, lines, texture). The bar the pairwise judge measures candidates against (gold-vs-candidate). Promoted from concept-data.ts in Session 5; dashes normalized to the no-dash voice rule. Keyed by spotifyTrackId so they match experiment runs regardless of label formatting. Edit the prose freely; it defines 'reads like Hearted'.",
   "entries": [
     { "key": "not-like-us", "song": "Kendrick Lamar — Not Like Us", "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3", "file": "not-like-us.json" },
     { "key": "drivers-license", "song": "Olivia Rodrigo — drivers license", "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf", "file": "drivers-license.json" },

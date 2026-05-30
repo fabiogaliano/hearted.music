@@ -1,0 +1,59 @@
+{
+  "_draft": {
+    "source": "motion-sickness.json",
+    "needs_hand_authoring": [
+      "read.lens",
+      "read.contradiction",
+      "read.take"
+    ],
+    "note": "lens/contradiction have no legacy source; take is a mechanical concat scaffold. Author from concept-lens-vocabulary.md before promoting to gold."
+  },
+  "read": {
+    "image": "loving someone you would not call back",
+    "lens": null,
+    "tension": "Tender Resentment",
+    "take": "The specific nausea of being tangled up with someone who hurt you and still takes up room in your day. She is not asking for closure, she is naming the dizziness of missing a person she also can't stand. Anger and longing share the same sentence and refuse to resolve. Bright guitars carry a grudge. It sounds almost upbeat, which is exactly how you know it still hurts.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Wry",
+        "scene": "She lists the damage in an almost conversational shrug, like recounting a bad trip to a friend."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Restless",
+        "scene": "The motion sickness hits. The melody lifts while the stomach drops."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Exposed",
+        "scene": "The bravado thins out. For a second she just admits she has no clean way to feel about this."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I have emotional motion sickness",
+        "insight": "The whole song folded into one image. Feelings as a moving car you cannot get out of."
+      },
+      {
+        "line": "I hate you for what you did and I miss you like a little kid",
+        "insight": "Two opposite truths in one breath, and she refuses to pick one."
+      }
+    ],
+    "texture": "Jangly, propulsive indie rock with a clean forward push. The drums keep things moving even when the lyrics would rather lie down."
+  },
+  "signals": {
+    "theme_tags": [],
+    "themes": [
+      {
+        "name": "Anger with receipts",
+        "description": "The hurt is concrete, dollar amounts and apartments and a hypnotherapist, never a vague ache."
+      },
+      {
+        "name": "The pull that survives the verdict",
+        "description": "She has already decided he was bad for her, and she misses him anyway. Both stay true."
+      }
+    ]
+  }
+}
