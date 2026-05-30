@@ -11,7 +11,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { SongAnalysisLyrical } from "@/lib/domains/enrichment/content-analysis/song-analysis";
+import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
 import type { RuleHit, Severity } from "./types";
 
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "experiments");
@@ -34,7 +34,7 @@ export interface RunSummary {
 
 export interface RunRecord extends RunSummary {
 	hits: RuleHit[];
-	analysis: SongAnalysisLyrical;
+	analysis: ConceptRead;
 }
 
 export function tallyHits(hits: RuleHit[]): {

@@ -4,7 +4,7 @@
 // text. So these metrics are reported as context next to the pairwise judge verdict, not
 // optimized against. See claudedocs/voice-eval-design-decision-2026-05-27.md.
 
-import type { SongAnalysisLyrical } from "@/lib/domains/enrichment/content-analysis/song-analysis";
+import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
 import { splitSentences } from "./tier1/burstiness";
 
 // Closed-class function words. A healthy human-prose ratio sits roughly 0.40-0.55;
@@ -108,23 +108,23 @@ export interface VoiceStats {
 	wordCount: number;
 }
 
-// Concatenates the model's PROSE fields only. Quoted lyric lines (key_lines[].line)
-// are excluded: they are the artist's words, not the model's writing, so counting
-// them would pollute every lexical metric.
-export function analysisProse(a: SongAnalysisLyrical): string {
+// Concatenates the model's PROSE fields only. Quoted lyric lines (lines[].line) are
+// excluded: they are the artist's words, not the model's writing, so counting them
+// would pollute every lexical metric.
+export function analysisProse(a: ConceptRead): string {
 	return [
-		a.headline,
-		a.compound_mood,
-		a.mood_description,
-		a.interpretation,
-		...a.themes.flatMap((t) => [t.name, t.description]),
-		...a.journey.map((j) => j.description),
-		...a.key_lines.map((k) => k.insight),
-		a.sonic_texture,
+		a.image,
+		a.lens,
+		a.tension,
+		a.take,
+		a.contradiction ?? "",
+		...a.arc.map((beat) => beat.scene),
+		...a.lines.map((l) => l.insight),
+		a.texture,
 	].join(" ");
 }
 
-export function voiceStats(a: SongAnalysisLyrical): VoiceStats {
+export function voiceStats(a: ConceptRead): VoiceStats {
 	const prose = analysisProse(a);
 	return {
 		mtld: mtld(prose),

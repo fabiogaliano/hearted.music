@@ -1,4 +1,4 @@
-import type { SongAnalysisLyrical } from "@/lib/domains/enrichment/content-analysis/song-analysis";
+import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
 import type { RuleHit, Severity } from "../types";
 import { sentenceLengthCV, splitSentences } from "./burstiness";
 
@@ -9,36 +9,43 @@ interface StringField {
 	value: string;
 }
 
-function collectStringFields(a: SongAnalysisLyrical): StringField[] {
+// Every model-authored string in the read EXCEPT the quoted lyric (lines[].line),
+// which is the artist's words, not the model's voice — penalising a hyphen inside a
+// lyric quote would be wrong. The `dashes` rule walks this full set.
+function collectStringFields(a: ConceptRead): StringField[] {
 	const out: StringField[] = [
-		{ name: "headline", value: a.headline },
-		{ name: "compound_mood", value: a.compound_mood },
-		{ name: "mood_description", value: a.mood_description },
-		{ name: "interpretation", value: a.interpretation },
-		{ name: "sonic_texture", value: a.sonic_texture },
+		{ name: "image", value: a.image },
+		{ name: "lens", value: a.lens },
+		{ name: "tension", value: a.tension },
+		{ name: "take", value: a.take },
 	];
-	a.themes.forEach((t, i) => {
-		out.push({ name: `themes[${i}].name`, value: t.name });
-		out.push({ name: `themes[${i}].description`, value: t.description });
+	if (a.contradiction !== null) {
+		out.push({ name: "contradiction", value: a.contradiction });
+	}
+	out.push({ name: "texture", value: a.texture });
+	a.arc.forEach((beat, i) => {
+		out.push({ name: `arc[${i}].label`, value: beat.label });
+		out.push({ name: `arc[${i}].mood`, value: beat.mood });
+		out.push({ name: `arc[${i}].scene`, value: beat.scene });
 	});
-	a.journey.forEach((j, i) => {
-		out.push({ name: `journey[${i}].section`, value: j.section });
-		out.push({ name: `journey[${i}].mood`, value: j.mood });
-		out.push({ name: `journey[${i}].description`, value: j.description });
-	});
-	a.key_lines.forEach((k, i) => {
-		out.push({ name: `key_lines[${i}].insight`, value: k.insight });
+	a.lines.forEach((l, i) => {
+		out.push({ name: `lines[${i}].insight`, value: l.insight });
 	});
 	return out;
 }
 
-function prose(a: SongAnalysisLyrical): StringField[] {
+// Full-sentence prose only. The short label fields — `tension` (two-word A+N), `lens`
+// (the 2-5 word framing phrase), and each arc beat's `label`/`mood` — are excluded the
+// way `compound_mood`/`.section`/`.mood` were: the AI-slop regexes are built for
+// sentences and misfire on labels. `lens` quality is graded by the lens-coherence
+// judge, not these deterministic rules.
+function prose(a: ConceptRead): StringField[] {
 	return collectStringFields(a).filter(
 		(f) =>
-			f.name !== "compound_mood" &&
-			!f.name.endsWith(".section") &&
-			!f.name.endsWith(".mood") &&
-			!f.name.endsWith(".name"),
+			f.name !== "tension" &&
+			f.name !== "lens" &&
+			!f.name.endsWith(".label") &&
+			!f.name.endsWith(".mood"),
 	);
 }
 
@@ -95,7 +102,7 @@ const ANTITHESIS_FRAME =
 // huntingthemuse "no X, no Y, just Z" — staccato negation that manufactures emphasis.
 const ANTITHESIS_NEGATION_LIST = /\bno\s+[\w'-]+,\s+no\s+[\w'-]+,\s+(?:just|only)\b/gi;
 
-export const antithesis = (a: SongAnalysisLyrical): RuleHit[] => [
+export const antithesis = (a: ConceptRead): RuleHit[] => [
 	...matchRegexHits(prose(a), "antithesis", "high", ANTITHESIS_FRAME),
 	...matchRegexHits(prose(a), "antithesis", "high", ANTITHESIS_NEGATION_LIST),
 ];
@@ -115,7 +122,7 @@ const COPULA_AVOIDANCE_TERMS = [
 	"highlights the",
 ];
 
-export const copulaAvoidance = (a: SongAnalysisLyrical): RuleHit[] =>
+export const copulaAvoidance = (a: ConceptRead): RuleHit[] =>
 	matchWordList(prose(a), "copula-avoidance", "medium", COPULA_AVOIDANCE_TERMS);
 
 const PUFFERY_ADJECTIVES = [
@@ -135,7 +142,7 @@ const PUFFERY_ADJECTIVES = [
 	"shimmering",
 ];
 
-export const pufferyAdjective = (a: SongAnalysisLyrical): RuleHit[] =>
+export const pufferyAdjective = (a: ConceptRead): RuleHit[] =>
 	matchWordList(prose(a), "puffery-adjective", "medium", PUFFERY_ADJECTIVES);
 
 // The Wikipedia "Signs of AI writing" cluster. Kept disjoint from the puffery /
@@ -173,7 +180,7 @@ const AI_VOCABULARY = [
 
 // It is the co-occurrence of these words, not any single one, that signals AI
 // (per the Wikipedia page), so we only flag when two or more distinct ones appear.
-export const aiVocabulary = (a: SongAnalysisLyrical): RuleHit[] => {
+export const aiVocabulary = (a: ConceptRead): RuleHit[] => {
 	const hits = matchWordList(prose(a), "ai-vocabulary", "medium", AI_VOCABULARY);
 	const distinct = new Set(hits.map((h) => h.span.toLowerCase()));
 	return distinct.size >= 2 ? hits : [];
@@ -207,7 +214,7 @@ const PARTICIPIAL_FINITE_VERBS = new Set([
 // Flags an -ing clause tacked onto a sentence end ("..., revealing the cost of pride.").
 // Skips two look-alikes that aren't the tell: a short attributive tail ("..., knocking drums.")
 // and a subject modified by an -ing adjective ("..., thumping bassline drives the rhythm.").
-export const participialClosure = (a: SongAnalysisLyrical): RuleHit[] => {
+export const participialClosure = (a: ConceptRead): RuleHit[] => {
 	const hits: RuleHit[] = [];
 	const re = /[,;]\s+([A-Za-z][A-Za-z']*ing)\s+([^.!?]+)[.!?]/g;
 	for (const f of prose(a)) {
@@ -248,7 +255,7 @@ const HEDGING_TERMS = [
 	"it is important to note",
 ];
 
-export const hedging = (a: SongAnalysisLyrical): RuleHit[] =>
+export const hedging = (a: ConceptRead): RuleHit[] =>
 	matchRegexHits(
 		prose(a),
 		"hedging",
@@ -267,7 +274,7 @@ const ACADEMIC_TERMS = [
 	"delves into",
 ];
 
-export const academicRegister = (a: SongAnalysisLyrical): RuleHit[] =>
+export const academicRegister = (a: ConceptRead): RuleHit[] =>
 	matchWordList(prose(a), "academic-register", "high", ACADEMIC_TERMS);
 
 const SELF_REFERENCE_TERMS = [
@@ -280,7 +287,7 @@ const SELF_REFERENCE_TERMS = [
 	"the vocalist",
 ];
 
-export const selfReference = (a: SongAnalysisLyrical): RuleHit[] =>
+export const selfReference = (a: ConceptRead): RuleHit[] =>
 	matchRegexHits(
 		prose(a),
 		"self-reference",
@@ -297,7 +304,7 @@ const BOOK_REPORT_OPENERS = [
 	"More than a",
 ];
 
-export const bookReportOpener = (a: SongAnalysisLyrical): RuleHit[] => {
+export const bookReportOpener = (a: ConceptRead): RuleHit[] => {
 	const hits: RuleHit[] = [];
 	for (const f of prose(a)) {
 		const trimmed = f.value.trimStart();
@@ -316,15 +323,14 @@ export const bookReportOpener = (a: SongAnalysisLyrical): RuleHit[] => {
 	return hits;
 };
 
-export const burstiness = (a: SongAnalysisLyrical): RuleHit[] => {
+export const burstiness = (a: ConceptRead): RuleHit[] => {
 	const hits: RuleHit[] = [];
 	const longFields: StringField[] = [
-		{ name: "mood_description", value: a.mood_description },
-		{ name: "interpretation", value: a.interpretation },
-		{ name: "sonic_texture", value: a.sonic_texture },
-		...a.journey.map((j, i) => ({
-			name: `journey[${i}].description`,
-			value: j.description,
+		{ name: "take", value: a.take },
+		{ name: "texture", value: a.texture },
+		...a.arc.map((beat, i) => ({
+			name: `arc[${i}].scene`,
+			value: beat.scene,
 		})),
 	];
 	for (const f of longFields) {
@@ -348,7 +354,7 @@ export const burstiness = (a: SongAnalysisLyrical): RuleHit[] => {
 // favors phrasal triplets ("a cry for help, a fist raised, and a quiet goodbye").
 const TRIPLE_SLOT = "[\\w'-]+(?:\\s+[\\w'-]+){0,3}";
 
-export const ruleOfThree = (a: SongAnalysisLyrical): RuleHit[] =>
+export const ruleOfThree = (a: ConceptRead): RuleHit[] =>
 	matchRegexHits(
 		prose(a),
 		"rule-of-three",
@@ -381,7 +387,7 @@ export const LEXICAL_REPETITION_MIN = 3;
 // The literature's most-replicated lexical finding: AI text reuses content words
 // more than human text (Simon et al. 2023; André et al. 2023). We pool the prose,
 // drop function words, and flag any content word repeated three or more times.
-export const lexicalRepetition = (a: SongAnalysisLyrical): RuleHit[] => {
+export const lexicalRepetition = (a: ConceptRead): RuleHit[] => {
 	const seen = new Map<string, { count: number; field: string }>();
 	for (const f of prose(a)) {
 		const words = f.value.toLowerCase().match(/[a-z]{2,}/g) ?? [];
@@ -413,7 +419,7 @@ export const lexicalRepetition = (a: SongAnalysisLyrical): RuleHit[] => {
 // academic survey — GPT-3.5-era text actually used *fewer* dashes than humans.)
 // Em/en dashes and a spaced hyphen (a dash in disguise) are the strong tell → medium.
 // Intra-word hyphens ("late-night") are sometimes legitimate but the brand wants them
-// rephrased → low. collectStringFields excludes key_lines[].line, so a hyphen inside a
+// rephrased → low. collectStringFields excludes lines[].line, so a hyphen inside a
 // quoted lyric is never penalised — only the model's own voice is.
 const DASH_CHARS = /[‒–—―−]/g;
 
@@ -425,7 +431,7 @@ function hyphenSpan(value: string, index: number): string {
 	return value.slice(start, end);
 }
 
-export const dashes = (a: SongAnalysisLyrical): RuleHit[] => {
+export const dashes = (a: ConceptRead): RuleHit[] => {
 	const hits: RuleHit[] = [];
 	for (const f of collectStringFields(a)) {
 		const value = f.value;
@@ -468,6 +474,6 @@ export const ALL_RULES = [
 	dashes,
 ] as const;
 
-export function runAllRules(analysis: SongAnalysisLyrical): RuleHit[] {
+export function runAllRules(analysis: ConceptRead): RuleHit[] {
 	return ALL_RULES.flatMap((r) => r(analysis));
 }

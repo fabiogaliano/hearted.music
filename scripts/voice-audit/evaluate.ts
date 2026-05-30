@@ -17,6 +17,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ConceptReadSchema } from "@/lib/domains/enrichment/content-analysis/concept-schema";
 import type { RunRecord } from "./experiments";
 import { loadGoldExemplars, type GoldExemplar } from "./exemplars";
 import { voiceStats, type VoiceStats } from "./stats";
@@ -49,6 +50,10 @@ function parseFlags(argv: string[]): Flags {
 	return out;
 }
 
+// Old-shape (pre-v14) runs are skipped: their stored analysis is the legacy 8-field
+// model, which no longer validates against ConceptReadSchema. Until v14 generation
+// produces new-shape runs, this returns none and the evaluator reports "no matching
+// runs" — the documented audit-blindness window of the clean cut.
 function loadRuns(): RunRecord[] {
 	return readdirSync(EXPERIMENTS)
 		.filter((f) => f.endsWith(".json"))
@@ -59,7 +64,12 @@ function loadRuns(): RunRecord[] {
 				return null;
 			}
 		})
-		.filter((r): r is RunRecord => r !== null && r.promptKind === "lyrical");
+		.filter(
+			(r): r is RunRecord =>
+				r !== null &&
+				r.promptKind === "lyrical" &&
+				ConceptReadSchema.safeParse(r.analysis).success,
+		);
 }
 
 function selectCandidates(
@@ -138,7 +148,7 @@ async function main() {
 			let verdict: BalancedVerdict | undefined;
 			if (!flags.dryRun) {
 				process.stdout.write(`  judging ${g.key} (${run.promptVersion}) ... `);
-				verdict = await judgePair(g.song, run.analysis, g.analysis, {
+				verdict = await judgePair(g.song, run.analysis, g.read, {
 					model: flags.judgeModel,
 				});
 				totalCost += verdict.costUsd;
@@ -162,7 +172,7 @@ async function main() {
 
 	for (const e of evals) {
 		console.log(`\n${e.song}`);
-		console.log(`  gold:  ${statsLine(voiceStats(e.gold.analysis))}`);
+		console.log(`  gold:  ${statsLine(voiceStats(e.gold.read))}`);
 		for (const c of e.candidates) {
 			candidateCount++;
 			highSum += c.tier1.high;

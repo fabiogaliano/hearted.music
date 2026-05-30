@@ -1,7 +1,4 @@
-import type {
-	SongAnalysisLyrical,
-	SongAnalysisResult,
-} from "@/lib/domains/enrichment/content-analysis/song-analysis";
+import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
 
 export type Severity = "low" | "medium" | "high";
 
@@ -13,12 +10,17 @@ export interface RuleHit {
 	note?: string;
 }
 
-export type RuleFn = (analysis: SongAnalysisLyrical) => RuleHit[];
+// Tier-1 rules grade the redesigned read model (Session 5 migration). The audit
+// pipeline no longer touches the legacy 8-field shape; old rows re-enrich via v14.
+export type RuleFn = (read: ConceptRead) => RuleHit[];
 
 export interface FileReport {
 	source: string;
 	songId?: string;
-	skipped?: "instrumental";
+	// "legacy" marks a stored analysis still in the old 8-field shape (not yet
+	// re-enriched through v14); "instrumental" marks a non-lyrical analysis. Both are
+	// skipped: the new rules only grade ConceptRead.
+	skipped?: "instrumental" | "legacy";
 	hits: RuleHit[];
 }
 
@@ -63,8 +65,9 @@ export interface AuditReport {
 	};
 }
 
-export function isLyricalShape(
-	analysis: SongAnalysisResult,
-): analysis is SongAnalysisLyrical {
-	return "interpretation" in analysis && "journey" in analysis;
+// Detects the redesigned read shape. The audit only grades reads; old 8-field rows
+// and instrumental analyses fail this guard and are skipped upstream.
+export function isConceptReadShape(value: unknown): value is ConceptRead {
+	if (!value || typeof value !== "object") return false;
+	return "take" in value && "arc" in value && "lens" in value;
 }
