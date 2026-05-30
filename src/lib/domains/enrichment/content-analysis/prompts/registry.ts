@@ -12,6 +12,7 @@ import { lyricalV10 } from "./lyrical-v10";
 import { lyricalV11 } from "./lyrical-v11";
 import { lyricalV12 } from "./lyrical-v12";
 import { lyricalV13 } from "./lyrical-v13";
+import { lyricalV14 } from "./lyrical-v14";
 import type { PromptVersion } from "./types";
 
 const LYRICAL_PROMPTS: Record<string, PromptVersion> = {
@@ -27,6 +28,7 @@ const LYRICAL_PROMPTS: Record<string, PromptVersion> = {
 	"11": lyricalV11,
 	"12": lyricalV12,
 	"13": lyricalV13,
+	"14": lyricalV14,
 };
 
 const INSTRUMENTAL_PROMPTS: Record<string, PromptVersion> = {
@@ -36,6 +38,12 @@ const INSTRUMENTAL_PROMPTS: Record<string, PromptVersion> = {
 
 // The versions production ships today. Bump these to promote a new prompt; the
 // stored analysis records the active version, so output is always traceable to its prompt.
+//
+// v14 is registered (so getLyricalPrompt("14") resolves) but deliberately NOT active:
+// it emits the redesigned { read } model, while song-analysis.ts still parses against
+// the old SongAnalysisLyricalSchema and the voice-audit jury is still old-schema. The
+// generation-path + jury cutover to ConceptReadSchema is Session 5/6 work. See
+// claudedocs/session-4-prompt-v14-comparison.md.
 export const ACTIVE_LYRICAL_VERSION = "13";
 export const ACTIVE_INSTRUMENTAL_VERSION = "3";
 
