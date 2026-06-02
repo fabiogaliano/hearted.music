@@ -18,6 +18,7 @@ import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { TablesUpdate } from "@/lib/data/database.types";
+import { maybeGrantLikedSongAccessAfterSync } from "@/lib/domains/billing/liked-song-access-grant";
 import { updatePhaseJobIds } from "@/lib/domains/library/accounts/preferences-queries";
 import { getAll } from "@/lib/domains/library/liked-songs/queries";
 import {
@@ -663,6 +664,18 @@ export const Route = createFileRoute("/api/extension/sync")({
 							},
 							{ status: 500, headers: corsHeaders },
 						);
+					}
+
+					// Automatic waitlist path: apply any pending grant, else auto-grant
+					// the liked-song access benefit to a newly-eligible waitlist account.
+					// Best-effort — a failure here must never fail the sync response.
+					try {
+						await maybeGrantLikedSongAccessAfterSync(
+							createAdminSupabaseClient(),
+							accountId,
+						);
+					} catch (grantError) {
+						console.error("[sync] liked-song access grant threw:", grantError);
 					}
 
 					const likedSongsSyncResult = results.likedSongs;
