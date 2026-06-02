@@ -336,6 +336,17 @@ async function resetBillingState(
 ): Promise<number> {
 	let total = 0;
 
+	const { count: grants, error: grantsError } = await supabase
+		.from("account_liked_song_access_grant")
+		.delete({ count: "exact" })
+		.eq("account_id", accountId);
+	if (grantsError) {
+		throw new Error(
+			`Failed to delete from account_liked_song_access_grant: ${grantsError.message}`,
+		);
+	}
+	total += grants ?? 0;
+
 	const { count: unlocks, error: unlocksError } = await supabase
 		.from("account_song_unlock")
 		.delete({ count: "exact" })

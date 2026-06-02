@@ -29,6 +29,7 @@
 		"lyrics:validate": "PARSER_VALIDATION=true vitest run lyrics-service.integration",
 		"voice-audit": "bun scripts/voice-audit/cli.ts",
 		"reset:onboarding": "bun scripts/reset-onboarding.ts",
+		"grant:liked-access": "bun scripts/grant-liked-song-access.ts",
 		"ext:build": "bun extension/scripts/build.ts",
 		"ext:dev": "bun extension/scripts/build.ts --watch",
 		"ext:store": "bun extension/scripts/build.ts --store",

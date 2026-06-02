@@ -10,6 +10,38 @@ import {
 } from "./preferences-queries";
 
 /**
+ * True when the account already has a liked-song access grant row (pending or
+ * applied). Row existence — not applied_at — gates the free allocation: the
+ * 500-song benefit owns this account's unlocks, so the 10-song free allocation
+ * must be skipped even while the grant is still pending, to avoid stacking.
+ *
+ * Best-effort but fail-closed: on a read error we log and return true so we
+ * skip the free allocation. The plan's invariant is "never stack the 10-song
+ * free allocation on top of this benefit", and on uncertainty preserving that
+ * invariant is safer than granting extra access.
+ */
+async function hasLikedSongAccessGrant(
+	supabase: AdminSupabaseClient,
+	accountId: string,
+): Promise<boolean> {
+	const { data, error } = await supabase
+		.from("account_liked_song_access_grant")
+		.select("account_id")
+		.eq("account_id", accountId)
+		.maybeSingle();
+
+	if (error) {
+		console.error(
+			"[onboarding] Failed to check liked-song access grant:",
+			error.message,
+		);
+		return true;
+	}
+
+	return data !== null;
+}
+
+/**
  * Completes onboarding and, for free-plan accounts, grants the free song
  * allocation in one domain operation.
  *
@@ -39,7 +71,7 @@ export async function completeOnboardingWithAllocations(
 			!hasUnlimitedAccess(billing) &&
 			billing.creditBalance === 0;
 
-		if (isFree) {
+		if (isFree && !(await hasLikedSongAccessGrant(supabase, accountId))) {
 			const allocationResult = await grantFreeAllocation(supabase, accountId);
 			if (Result.isError(allocationResult)) {
 				console.error(

@@ -17,8 +17,11 @@ const waitlistSchema = z.object({
 export const joinWaitlist = createServerFn({ method: "POST" })
 	.inputValidator((data) => waitlistSchema.parse(data))
 	.handler(async ({ data }): Promise<{ success: boolean; error?: string }> => {
-		const { email } = data;
 		const supabase = createAdminSupabaseClient();
+
+		// Store normalized so waitlist eligibility (which matches account.email
+		// on lower(btrim(...))) and the normalized unique index agree on identity.
+		const email = data.email.trim().toLowerCase();
 
 		const { error } = await supabase.from("waitlist").insert({ email });
 

@@ -54,6 +54,8 @@ const {
 	mockUpdatePhaseJobIds,
 	mockLibrarySynced,
 	mockCaptureWithWaitUntil,
+	mockCreateAdminSupabaseClient,
+	mockMaybeGrantLikedSongAccessAfterSync,
 } = vi.hoisted(() => ({
 	mockGetAuthSession: vi.fn(),
 	mockValidateExtensionApiToken: vi.fn(),
@@ -73,6 +75,8 @@ const {
 	mockUpdatePhaseJobIds: vi.fn(),
 	mockLibrarySynced: vi.fn(),
 	mockCaptureWithWaitUntil: vi.fn(),
+	mockCreateAdminSupabaseClient: vi.fn(),
+	mockMaybeGrantLikedSongAccessAfterSync: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -80,7 +84,13 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("@/lib/data/client", () => ({
-	createAdminSupabaseClient: vi.fn(),
+	createAdminSupabaseClient: (...args: unknown[]) =>
+		mockCreateAdminSupabaseClient(...args),
+}));
+
+vi.mock("@/lib/domains/billing/liked-song-access-grant", () => ({
+	maybeGrantLikedSongAccessAfterSync: (...args: unknown[]) =>
+		mockMaybeGrantLikedSongAccessAfterSync(...args),
 }));
 
 vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
@@ -246,6 +256,8 @@ describe("/api/extension/sync", () => {
 		mockUpdatePhaseJobIds.mockResolvedValue(Result.ok({}));
 		mockLibrarySynced.mockReturnValue({});
 		mockCaptureWithWaitUntil.mockResolvedValue(undefined);
+		mockCreateAdminSupabaseClient.mockReturnValue({ id: "grant-admin-client" });
+		mockMaybeGrantLikedSongAccessAfterSync.mockResolvedValue(undefined);
 	});
 
 	afterEach(() => {
@@ -469,5 +481,36 @@ describe("/api/extension/sync", () => {
 			PLAYLISTS_JOB,
 			expect.anything(),
 		);
+	});
+
+	it("calls the post-sync grant helper after library processing succeeds", async () => {
+		const response = await route.server.handlers.POST({
+			request: syncRequest({ likedSongs: [], playlists: [] }),
+		});
+
+		expect(response.status).toBe(200);
+		expect(mockCreateAdminSupabaseClient).toHaveBeenCalledOnce();
+		expect(mockMaybeGrantLikedSongAccessAfterSync).toHaveBeenCalledWith(
+			{ id: "grant-admin-client" },
+			ACCOUNT_ID,
+		);
+		expect(
+			mockApplyLibraryProcessingChange.mock.invocationCallOrder[0],
+		).toBeLessThan(
+			mockMaybeGrantLikedSongAccessAfterSync.mock.invocationCallOrder[0],
+		);
+	});
+
+	it("does not fail the sync response when the post-sync grant helper throws", async () => {
+		mockMaybeGrantLikedSongAccessAfterSync.mockRejectedValueOnce(
+			new Error("grant blew up"),
+		);
+
+		const response = await route.server.handlers.POST({
+			request: syncRequest({ likedSongs: [], playlists: [] }),
+		});
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({ ok: true });
 	});
 });

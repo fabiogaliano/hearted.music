@@ -169,6 +169,41 @@ export type Database = {
 					},
 				];
 			};
+			account_liked_song_access_grant: {
+				Row: {
+					account_id: string;
+					applied_at: string | null;
+					created_at: string;
+					note: string | null;
+					origin: string;
+					requested_by: string | null;
+				};
+				Insert: {
+					account_id: string;
+					applied_at?: string | null;
+					created_at?: string;
+					note?: string | null;
+					origin: string;
+					requested_by?: string | null;
+				};
+				Update: {
+					account_id?: string;
+					applied_at?: string | null;
+					created_at?: string;
+					note?: string | null;
+					origin?: string;
+					requested_by?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "account_liked_song_access_grant_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: true;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			account_song_unlock: {
 				Row: {
 					account_id: string;
@@ -2102,6 +2137,15 @@ export type Database = {
 				};
 				Returns: number;
 			};
+			grant_liked_song_access: {
+				Args: {
+					p_account_id: string;
+					p_note?: string;
+					p_origin: string;
+					p_requested_by?: string;
+				};
+				Returns: Json;
+			};
 			insert_song_unlocks_without_charge: {
 				Args: {
 					p_account_id: string;
@@ -2115,6 +2159,10 @@ export type Database = {
 			};
 			is_account_song_entitled: {
 				Args: { p_account_id: string; p_song_id: string };
+				Returns: boolean;
+			};
+			is_waitlist_eligible_for_liked_song_grant: {
+				Args: { p_account_id: string };
 				Returns: boolean;
 			};
 			link_subscription_upgrade_checkout: {

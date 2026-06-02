@@ -155,7 +155,19 @@ describe("saveDemoSongSelection ownership", () => {
 });
 
 describe("markOnboardingComplete — free allocation", () => {
-	const fakeClient = { id: "admin-client" };
+	// Onboarding now reads account_liked_song_access_grant to skip the free
+	// allocation when the larger benefit owns the account; default to no grant
+	// row so these free-plan cases still allocate.
+	const fakeClient = {
+		id: "admin-client",
+		from: () => ({
+			select: () => ({
+				eq: () => ({
+					maybeSingle: () => Promise.resolve({ data: null, error: null }),
+				}),
+			}),
+		}),
+	};
 
 	beforeEach(() => {
 		vi.clearAllMocks();
