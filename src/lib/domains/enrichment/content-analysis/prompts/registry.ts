@@ -47,7 +47,7 @@ const INSTRUMENTAL_PROMPTS: Record<string, PromptVersion> = {
 // it emits the redesigned { read } model, while song-analysis.ts still parses against
 // the old SongAnalysisLyricalSchema and the voice-audit jury is still old-schema. The
 // generation-path + jury cutover to ConceptReadSchema is Session 5/6 work. See
-// claudedocs/session-4-prompt-v14-comparison.md.
+// claudedocs/session-6-prod-panel-swap.md.
 export const ACTIVE_LYRICAL_VERSION = "13";
 export const ACTIVE_INSTRUMENTAL_VERSION = "3";
 

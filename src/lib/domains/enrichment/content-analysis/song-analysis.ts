@@ -116,7 +116,7 @@ export class SongAnalysisService {
 		// emit the legacy 8-field shape. While ACTIVE_LYRICAL_VERSION is "13" this branch
 		// is dormant — flipping it to "14" is the coordinated cutover that ships with the
 		// production panel swap (Session 6), since the panel + queries still read the old
-		// shape. See claudedocs/session-4-prompt-v14-comparison.md §5.
+		// shape. See claudedocs/session-6-prod-panel-swap.md.
 		const lyricalSchema: z.ZodTypeAny =
 			Number(ACTIVE_LYRICAL_VERSION) >= 14
 				? ConceptReadSchema
@@ -127,7 +127,7 @@ export class SongAnalysisService {
 
 		// A low temperature roughly halves the rate of AI-writing tells (participial
 		// closures, framing openers) and collapses run-to-run variance, versus the
-		// provider default of ~1.0. See claudedocs/voice-prompt-brand-voice-phase-findings.
+		// provider default of ~1.0. See claudedocs/voice-prompt-handoff-eval-and-optimize-phase.md.
 		const llmResult = await this.llm.generateObject(prompt, schema, {
 			temperature: 0.3,
 		});

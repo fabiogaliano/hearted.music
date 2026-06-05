@@ -49,7 +49,7 @@ interface HarnessSong extends TestSong {
 //
 // The entries after do-i-wanna-know are the remaining lyric-diagnostic songs, added
 // Session 5.5 so the harness covers the full failure-mode spectrum the original
-// spread did not (schema-overprescription-lyric-diagnostic.md). Failure modes probed:
+// spread did not (failure-mode types: hearted-read-spec.md §5). Failure modes probed:
 // surface-true / lens-fabrication risk (Forever, No Sex For Ben), real depth but
 // monochrome arc / manufactured-movement trap (Beautiful Things), two-act narrative
 // the single-thesis lens fights (Pink Pony Club), tempo-emotion gap (As It Was),
@@ -88,7 +88,7 @@ const TIERS: Record<string, string[]> = {
 	// The three songs whose lens/arc the diagnostic found hardest (manufactured movement,
 	// narrative-vs-thesis, lens fabrication) — the fastest probe for v14's known weak spots.
 	stress: ["forever", "beautiful-things", "pink-pony-club"],
-	// The full 10-song lyric diagnostic (schema-overprescription-lyric-diagnostic.md).
+	// The full 10-song lyric-diagnostic spread (failure-mode types: hearted-read-spec.md §5).
 	diagnostic: ["gods-plan", "houdini", "forever", "no-sex-for-ben", "dtmf", "ribs", "beautiful-things", "as-it-was", "pink-pony-club", "thinkin-bout-you"],
 	final: SONGS.map((s) => s.key),
 };

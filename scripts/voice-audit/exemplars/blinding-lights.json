@@ -8,17 +8,17 @@
     "arc": [
       {
         "label": "Wanting",
-        "mood": "Yearning",
+        "mood": "Lonely Yearning",
         "scene": "He has been trying to call. He has been on his own for long enough. The city is cold and empty, and freedom with no one to answer to turns out to feel exactly like being alone. He cannot see clearly when she is gone."
       },
       {
         "label": "The Need",
-        "mood": "Hollow Euphoria",
+        "mood": "Sleepless Craving",
         "scene": "Blinded by the lights. Drowning in the night. He cannot sleep until he feels a touch and the city cannot give him that."
       },
       {
         "label": "Still Driving",
-        "mood": "Resolute",
+        "mood": "Blinded Resolve",
         "scene": "Coming back to tell her what he could never say on the phone, certain he will not let her go this time. He drives toward her through everything still blinding him."
       }
     ],
