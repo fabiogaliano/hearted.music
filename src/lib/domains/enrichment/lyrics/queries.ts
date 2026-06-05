@@ -31,6 +31,7 @@ const AnnotationInfoSchema = z.object({
 	votes_total: z.number(),
 	pinnedRole: z.string().optional(),
 	state: z.string().optional(),
+	geniusAnnotationId: z.number().optional(),
 });
 
 const TransformedLineSchema = z.object({
@@ -90,6 +91,7 @@ function toDocumentJson(document: LyricsDocument): Json {
 					votes_total: annotation.votes_total,
 					pinnedRole: annotation.pinnedRole,
 					state: annotation.state,
+					geniusAnnotationId: annotation.geniusAnnotationId,
 				})),
 			})),
 		})),

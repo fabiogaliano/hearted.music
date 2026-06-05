@@ -361,14 +361,19 @@ export class LlmService {
 /**
  * Creates an LLM service from environment variables.
  * Defaults to Vertex AI (GCP-billed) when no provider is specified.
+ * An explicit `model` overrides the provider default — e.g. a cheaper Flash-Lite
+ * for offline extraction work without changing the provider's analysis default.
  */
 export function createLlmService(
 	provider: LlmProviderName = DEFAULT_LLM_PROVIDER,
+	model?: string,
 ): LlmService {
 	const resolution = resolveLlmConfig(provider);
 	if (!resolution.ok) {
 		throw new Error(resolution.reason);
 	}
 
-	return new LlmService(resolution.config);
+	return new LlmService(
+		model ? { ...resolution.config, model } : resolution.config,
+	);
 }

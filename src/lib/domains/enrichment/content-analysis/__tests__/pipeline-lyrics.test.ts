@@ -181,11 +181,13 @@ describe("Pipeline Lyrics Integration", () => {
 				"1",
 				"Artist 1",
 				"Song 1",
+				expect.objectContaining({ distiller: expect.any(Function) }),
 			);
 			expect(mockFetchAndStoreLyrics).toHaveBeenCalledWith(
 				"2",
 				"Artist 2",
 				"Song 2",
+				expect.objectContaining({ distiller: expect.any(Function) }),
 			);
 		});
 
@@ -214,6 +216,7 @@ describe("Pipeline Lyrics Integration", () => {
 				"2",
 				"Artist 2",
 				"Song 2",
+				expect.objectContaining({ distiller: expect.any(Function) }),
 			);
 		});
 

@@ -51,6 +51,7 @@ import {
 } from "@/lib/shared/errors/external/genius";
 import { chunkArray } from "@/lib/shared/utils/concurrency";
 import { LyricsService } from "../lyrics/service";
+import { ensureAnnotationDistillations } from "./annotation-distillation";
 import {
 	type AnalyzePlaylistInput,
 	PlaylistAnalysisService,
@@ -586,6 +587,7 @@ export class AnalysisPipeline {
 					song.songId,
 					song.artist,
 					song.title,
+					{ distiller: ensureAnnotationDistillations },
 				);
 				if (Result.isOk(lyricsResult)) {
 					cache.set(song.songId, { lyrics: lyricsResult.value });
