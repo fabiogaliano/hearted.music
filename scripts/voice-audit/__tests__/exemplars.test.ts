@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadGoldExemplars } from "../exemplars";
-import { dashes } from "../tier1/rules";
+import { dashes, runAllRules } from "../tier1/rules";
 import { lensCoherencePrompt } from "../tier2/prompts/lens-coherence";
 
 describe("promoted gold exemplars", () => {
@@ -22,6 +22,23 @@ describe("promoted gold exemplars", () => {
 			"not-like-us",
 			"pink-pony-club",
 		]);
+	});
+
+	it("every gold produces zero HIGH and zero MEDIUM tier-1 hits (Phase 1 gate)", () => {
+		// Golds are the standing authority — a failure is a real conflict to fix by hand (fix
+		// the gold and log it, or scope the rule), never by weakening this assertion. LOW
+		// rules are diagnostic/non-gating, so only high/medium count.
+		for (const g of golds) {
+			const gating = runAllRules(g.read).filter(
+				(h) => h.severity === "high" || h.severity === "medium",
+			);
+			expect(
+				gating,
+				`${g.key}: ${gating
+					.map((h) => `${h.rule}@${h.field}:"${h.span}"`)
+					.join(", ")}`,
+			).toEqual([]);
+		}
 	});
 
 	it("has no surviving MEDIUM dashes - the Tier-1 fingerprint they anchor", () => {
