@@ -280,6 +280,7 @@ export const academicRegister = (a: ConceptRead): RuleHit[] =>
 const SELF_REFERENCE_TERMS = [
 	"this song",
 	"the track",
+	"the album",
 	"the listener",
 	"the speaker",
 	"the narrator",
@@ -299,8 +300,11 @@ const BOOK_REPORT_OPENERS = [
 	"This is about",
 	"This is an anthem",
 	"This is a",
+	"This song is",
 	"This isn't",
 	"It's not just",
+	"It's",
+	"It is",
 	"More than a",
 ];
 
@@ -320,6 +324,66 @@ export const bookReportOpener = (a: ConceptRead): RuleHit[] => {
 			}
 		}
 	}
+	return hits;
+};
+
+const STRUCTURAL_SECTION_TERMS = [
+	"refrain",
+	"verse",
+	"chorus",
+	"bridge",
+	"hook",
+	"intro",
+	"outro",
+	"pre-chorus",
+	"pre chorus",
+];
+
+// Section names belong to arc `label`s ("The Reckoning"), not interpretive prose. `texture`
+// is excluded — it's the sound field, where a musical term names a motif ("underneath each
+// hook"), not song structure. `lens`/`tension`/`label`/`mood`/`lines` already sit outside
+// `prose()`.
+export const structuralSection = (a: ConceptRead): RuleHit[] =>
+	matchWordList(
+		prose(a).filter((f) => f.name !== "texture"),
+		"structural-section",
+		"high",
+		STRUCTURAL_SECTION_TERMS,
+	);
+
+// A `mood` is a qualified emotion (>=2 words); only the lone bare word ("Yearning") fails.
+export const moodWidth = (a: ConceptRead): RuleHit[] => {
+	const hits: RuleHit[] = [];
+	a.arc.forEach((beat, i) => {
+		const words = beat.mood.trim().split(/\s+/).filter(Boolean);
+		if (words.length < 2) {
+			hits.push({
+				rule: "mood-width",
+				field: `arc[${i}].mood`,
+				span: beat.mood,
+				severity: "medium",
+			});
+		}
+	});
+	return hits;
+};
+
+// A `mood` repeating `tension` verbatim means one of the two fields is dead. Exact,
+// case-insensitive — a near-miss ("Aching Warmth" vs "Aching Nostalgia") is honest variation.
+export const tensionMoodDedup = (a: ConceptRead): RuleHit[] => {
+	const tension = a.tension.trim().toLowerCase();
+	const hits: RuleHit[] = [];
+	a.arc.forEach((beat, i) => {
+		if (beat.mood.trim().toLowerCase() === tension) {
+			hits.push({
+				rule: "tension-mood-dedup",
+				field: `arc[${i}].mood`,
+				span: beat.mood,
+				severity: "medium",
+				note: `duplicates tension "${a.tension}"`,
+			});
+		}
+	});
 	return hits;
 };
 
@@ -415,21 +479,11 @@ export const lexicalRepetition = (a: ConceptRead): RuleHit[] => {
 	return hits;
 };
 
-// Em dash, en dash, and prose hyphens. Trailing em dashes that end a clause abruptly
-// are the AI-writing tell → medium. Paired parenthetical em dashes (even count per field,
-// opening and closing a mid-sentence aside) are acceptable → low.
-// Intra-word hyphens ("late-night") are rephrased per brand → low.
-// collectStringFields excludes the `lines` array so a hyphen inside a quoted lyric
-// is never penalised — only the model's own voice is.
+// Em dash, en dash, and a spaced hyphen used as a dash. A trailing em dash ending a clause
+// abruptly is the AI tell → medium; paired parenthetical em dashes (even count per field) are
+// deliberate → low. Intra-word hyphens ("late-night", "neon-lit") are allowed.
+// `collectStringFields` excludes `lines`, so a hyphen inside a quoted lyric is never flagged.
 const DASH_CHARS = /[‒–—―−]/g;
-
-function hyphenSpan(value: string, index: number): string {
-	let start = index;
-	let end = index + 1;
-	while (start > 0 && /[A-Za-z0-9]/.test(value[start - 1])) start--;
-	while (end < value.length && /[A-Za-z0-9-]/.test(value[end])) end++;
-	return value.slice(start, end);
-}
 
 export const dashes = (a: ConceptRead): RuleHit[] => {
 	const hits: RuleHit[] = [];
@@ -450,12 +504,10 @@ export const dashes = (a: ConceptRead): RuleHit[] => {
 			const i = m.index;
 			const intraWord =
 				/[A-Za-z0-9]/.test(value[i - 1] ?? "") && /[A-Za-z0-9]/.test(value[i + 1] ?? "");
-			hits.push({
-				rule: "dash",
-				field: f.name,
-				span: intraWord ? hyphenSpan(value, i) : "-",
-				severity: intraWord ? "low" : "medium",
-			});
+			// Intra-word hyphens ("late-night") are allowed; only a spaced hyphen standing
+			// in for a dash ("first - then") is the tell.
+			if (intraWord) continue;
+			hits.push({ rule: "dash", field: f.name, span: "-", severity: "medium" });
 		}
 	}
 	return hits;
@@ -471,6 +523,9 @@ export const ALL_RULES = [
 	academicRegister,
 	selfReference,
 	bookReportOpener,
+	structuralSection,
+	moodWidth,
+	tensionMoodDedup,
 	burstiness,
 	ruleOfThree,
 	lexicalRepetition,

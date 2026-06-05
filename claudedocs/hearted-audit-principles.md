@@ -38,7 +38,7 @@ are the truth; this doc is downstream. When a gold and a principle disagree, fix
 `layer: prompt + editorial` · `status: GAP` · `rec: KEEP`
 
 **GRD-6** | **Annotation grounding is vote-gated.** A heard lyric is always valid. An annotation counts as grounding only when its `votes_total > 15`; low-voted annotations (≤ 15) are ignored. **Above the threshold, annotations are fair game — including real-person biography** (the former absolute ban on biographical annotations is relaxed to "high-voted only"). `verified` / `state` are available to tighten this further.
-`layer: prompt + tier2(grounding) + data` · `status: GAP` · `rec: KEEP — revised per your note`
+`layer: prompt + tier2(grounding) + data` · `status: PARTIAL (data half done — `selectGroundingAnnotations`, floor `GROUNDING_MIN_VOTES = 16` ≡ > 15, surfaces `verified`/`state`; prompt + tier2 grounding judge pending)` · `rec: KEEP — revised per your note`
 
 **GRD-7** | **The honest reflex:** when a claim can't survive "is that in the lyrics?", cut it — don't defend it.
 `layer: editorial (authoring discipline)` · `status: GAP` · `rec: KEEP`
@@ -47,7 +47,7 @@ are the truth; this doc is downstream. When a gold and a principle disagree, fix
 `layer: prompt` · `status: ENCODED` · `rec: KEEP`
 
 **GRD-9** | The prompt/input **must include an annotations slot**, populated when annotations exist for the lyrics. Annotations are optional, so absent is fine — but when present they must reach the model (with `votes_total`, so GRD-6 can gate them). v16's template has no annotations slot today.
-`layer: data/pipeline + prompt` · `status: GAP (task)` · `rec: KEEP — resolved per your note`
+`layer: data/pipeline + prompt` · `status: PARTIAL (data path built — `selectGroundingAnnotations` + `renderAnnotationsBlock` in `content-analysis/grounding-annotations.ts`; Phase 3 wires the rendered block into the v17 template slot)` · `rec: KEEP — resolved per your note`
 
 ---
 
@@ -67,16 +67,16 @@ with certainty. Talk to the person as "you." Let the song act. Name feelings in 
 `layer: tier1 dash (LOW even / MED odd)` · `status: ENCODED` · `rec: KEEP`
 
 **MEC-4** | ~~No intra-word hyphens~~ — **CUT.** Intra-word hyphens are allowed ("late-night," "neon-lit"). *Phase B: drop the intra-word-hyphen penalty from the tier1 `dash` rule and its `rules.test.ts` case. Em-dash parity grading (MEC-3) is unaffected.*
-`layer: —` · `status: was ENCODED (LOW) → removed` · `rec: CUT per your note`
+`layer: —` · `status: CUT — done (intra-word penalty removed from tier1 `dash`; MEC-3 parity intact)` · `rec: CUT per your note`
 
 **MEC-5** | Never open a field with "This is / It is / This song is" or any framing verb. Start with the noun or image.
-`layer: tier1 book-report-opener (HIGH) + prompt` · `status: PARTIAL (only a fixed opener list fires; "It is"/"This song is" not caught)` · `rec: KEEP + close gap`
+`layer: tier1 book-report-opener (HIGH) + prompt` · `status: ENCODED (tier1: added "It is" / "It's" / "This song is" to the opener list); prompt half Phase 3` · `rec: KEEP`
 
 **MEC-6** | Say what something **is**. Never the AI thesis-pivot "it isn't X, it's Y." The ban is that **move**, not just the tokens (e.g. "drive to his house, not past his street"). **Scope caveat (from gold validation):** natural subordinate contrasts are NOT the move and must not be flagged — golds use "could never be bought, only inherited" (Not Like Us) and "not because it hurts less but because it proves she chose right" (Pink Pony). The tier1 token regex correctly ignores these; keep the editorial extension scoped to the thesis-pivot.
 `layer: tier1 antithesis (HIGH, tokens) + editorial/tier2 (the move, scoped)` · `status: PARTIAL` · `rec: KEEP`
 
 **MEC-7** | Never write "this song / the track / **the album** / the narrator / the singer / the speaker / the listener" — not once, in any field.
-`layer: tier1 self-reference (HIGH) + prompt` · `status: PARTIAL ("the album" missing from the wordlist)` · `rec: KEEP + add "the album"`
+`layer: tier1 self-reference (HIGH) + prompt` · `status: ENCODED ("the album" added to the wordlist; "the song" stays editorial per GR3); prompt half Phase 3` · `rec: KEEP`
 
 **MEC-8** | No puffery adjectives ("blistering," "relentless," "haunting," "shimmering," "profound") or their adverbs.
 `layer: tier1 puffery-adjective (MED)` · `status: ENCODED` · `rec: KEEP`
@@ -84,8 +84,8 @@ with certainty. Talk to the person as "you." Let the song act. Name feelings in 
 **MEC-9** | No significance-inflation verbs ("serves as," "represents," "underscores," "highlights," "frames," "acts as").
 `layer: tier1 copula-avoidance (MED)` · `status: ENCODED` · `rec: KEEP`
 
-**MEC-10** | **No structural-section names** (refrain/verse/chorus/bridge/hook/intro/outro/pre-chorus) in **any prose field** (`take`, `scene`, `image`, `contradiction`). Does **not** touch the `lines` array. Also resolve v16's stray "Pre Chorus" line.
-`layer: tier1(NEW) + prompt` · `status: GAP (arc labels banned in prompt only; prose unscanned)` · `rec: KEEP — gate it (golds clean after GR2)`
+**MEC-10** | **No structural-section names** (refrain/verse/chorus/bridge/hook/intro/outro/pre-chorus) in the **interpretive prose fields** (`take`, `scene`, `image`, `contradiction`). Does **not** touch the `lines` array, the arc `label`s (house-form event names), or **`texture`** — the one field grounded in sound (GRD-8), where a musical term names a sonic motif ("ringing hollow underneath each hook") and is legitimate (see GR6). Also resolve v16's stray "Pre Chorus" line.
+`layer: tier1(NEW) + prompt` · `status: ENCODED (tier1 `structural-section`, HIGH; texture excluded — GR6); prompt half Phase 3` · `rec: KEEP`
 
 ---
 
@@ -210,7 +210,7 @@ with certainty. Talk to the person as "you." Let the song act. Name feelings in 
 `layer: prompt + tier1(2-word check)` · `status: PARTIAL` · `rec: KEEP`
 
 **TEN-6** | Don't duplicate an `arc` mood verbatim (with the `tension` or another beat). ✓ golds fixed (GR4/GR5); all 9 comply.
-`layer: tier1(NEW dedup) or editorial` · `status: GAP (golds clean; ready to gate)` · `rec: KEEP`
+`layer: tier1(NEW dedup) or editorial` · `status: ENCODED (tier1 `tension-mood-dedup`, MED — `tension` vs each beat mood, case-insensitive exact). Beat-vs-beat repeats are **not** gated: ARC-3 holds that monochrome songs honestly repeat moods.` · `rec: KEEP`
 
 ### take
 
@@ -296,7 +296,7 @@ with certainty. Talk to the person as "you." Let the song act. Name feelings in 
 `layer: prompt + editorial` · `status: PARTIAL (INT-2)` · `rec: KEEP — note the exception`
 
 **ARC-14** | Arc `mood` is a **two-word qualified emotion** — not an act ("Desperate Prayer"), not a lone bare word ("Arrival" → "Wild Arrival"). *(Beautiful Things, Pink Pony.)* ✓ blinding-lights fixed (GR1); all 9 golds now comply.
-`layer: prompt + tier1(mood-width check)` · `status: GAP (golds clean; ready to gate)` · `rec: KEEP`
+`layer: prompt + tier1(mood-width check)` · `status: ENCODED (tier1 `mood-width`, MED — flags <2 whitespace words); prompt half Phase 3` · `rec: KEEP`
 
 **ARC-15** | A person named in a scene whom an outsider won't know gets **relationship context, not a bare name** ("his brother," not "Jan") — **unless they're very famous** (no gloss needed for a Drake or a Beyoncé). *(DtMF — "who is Jan and Bernie? … makes sense to tell who they are rather than their name")*
 `layer: prompt + editorial` · `status: GAP` · `rec: KEEP — with the famous-person exception`
@@ -466,6 +466,16 @@ identical to the `tension`. **→ RESOLVED:** beat 1 → **"Sleepless Craving"**
 **GR5 — pink-pony-club beat-1 mood duplicated the tension (TEN-6).** Beat 1 (The Arrival) shipped
 `mood: "Unrepentant Joy"`, identical to the `tension`. **→ RESOLVED:** beat 1 → **"Giddy Liberation"**. (Found while verifying GR4.)
 
+**GR6 — as-it-was "underneath each hook" in `texture` vs MEC-10.** `as-it-was` ships
+`texture: "...ringing hollow underneath each hook."` — "hook" is a structural-section term MEC-10 bans,
+but here it names the recurring **sonic motif**, a legitimate sound description, not the "The chorus lands:"
+structural-naming GR2 fixed. Per the standing rule (fix the principle unless the gold is a clear straggler
+bug), this is not a bug. **→ RESOLVED:** MEC-10 scoped to the **interpretive** prose fields
+(image/take/contradiction/arc.scene) and **excludes `texture`** — the one field grounded in sound (GRD-8),
+where musical-structure vocabulary describes the sound. The principles-doc MEC-10 enumeration already listed
+only (take, scene, image, contradiction); the Phase-1 handoff's inclusion of `texture` was the over-reach.
+**Gold untouched; rule scoped.** (Found in the Phase-1 gold self-consistency sweep.)
+
 **MEC-6 caveat (scope note, no decision).** Keep the editorial "ban the move" extension scoped to the AI
 thesis-pivot ("it isn't X, it's Y"); do not flag the natural subordinate contrasts the golds use (see MEC-6).
 
@@ -490,3 +500,4 @@ thesis-pivot ("it isn't X, it's Y"); do not flag the natural subordinate contras
 - **GR4/GR5 resolved** (2026-06-05): mood==tension duplications fixed — blinding-lights beat 1 "Hollow Euphoria" → "Sleepless Craving"; pink-pony-club beat 1 "Unrepentant Joy" → "Giddy Liberation". All 9 golds now have 2-word moods, none equal to their tension; vitest green. TEN-6 unblocked.
 - **claudedocs cleanup** (2026-06-05): removed 12 superseded docs (11 `git rm` + 1 untracked) + empty `voice-compare/`; kept 9 (the 2 consolidation docs + 7 with unique live value); repointed 5 code-comment references to kept docs. Code clean (no dangling refs); deletions staged, not committed.
 - DECIDE items resolved to KEEP: GRD-7, SFT-3, TEN-5, TEN-6, CON-5, TEX-6, TEX-9, LIN-7.
+- **Phase 1 (deterministic encode) landed** (2026-06-05): tier1 gained **MEC-10** (`structural-section`, HIGH, interpretive prose only — `texture` excluded per GR6), **ARC-14** (`mood-width`, MED), **TEN-6** (`tension-mood-dedup`, MED — `tension` vs each beat mood only; ARC-3 keeps beat-vs-beat repeats legal). Patched **MEC-7** (+"the album"; "the song" stays editorial/GR3), **MEC-5** (+field-start "It is"/"It's"/"This song is"), **MEC-4** (intra-word-hyphen penalty removed from the `dash` rule; MEC-3 em-dash parity intact). Added the **gold self-consistency gate** (all 9 golds: 0 high / 0 medium under the full `runAllRules`, enforced in `exemplars.test.ts`). Built the **GRD-6/GRD-9/LIN-9 data path**: `selectGroundingAnnotations` + `renderAnnotationsBlock` in `src/lib/domains/enrichment/content-analysis/grounding-annotations.ts` (vote floor `GROUNDING_MIN_VOTES = 16` ≡ `> 15`). One fixture fix: `__tests__/fixtures/clean.json` scene "A refrain that…" → "A held note that…" (accidental structural word predating MEC-10 — a tier1 fixture, **not** a gold). New conflict **GR6** logged (texture scope). `bun run test scripts/voice-audit/__tests__` green (95/95); `bun run typecheck` clean. Phase 3 consumes the annotation util.

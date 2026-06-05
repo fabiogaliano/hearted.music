@@ -15,11 +15,14 @@ import {
 	dashes,
 	hedging,
 	lexicalRepetition,
+	moodWidth,
 	participialClosure,
 	pufferyAdjective,
 	ruleOfThree,
 	runAllRules,
 	selfReference,
+	structuralSection,
+	tensionMoodDedup,
 } from "../tier1/rules";
 
 const FIXTURES = path.join(__dirname, "fixtures");
@@ -250,6 +253,11 @@ describe("self-reference", () => {
 		);
 		expect(hits.length).toBeGreaterThanOrEqual(2);
 	});
+
+	it("flags 'the album'", () => {
+		const hits = selfReference(withTake("The album never once lets up."));
+		expect(hits.map((h) => h.span.toLowerCase())).toContain("the album");
+	});
 });
 
 describe("book-report-opener", () => {
@@ -268,6 +276,91 @@ describe("book-report-opener", () => {
 				),
 			),
 		).toEqual([]);
+	});
+
+	it("flags the framing openers 'It is', \"It's\", 'This song is'", () => {
+		expect(bookReportOpener(withTake("It is a song about leaving."))).toHaveLength(1);
+		expect(bookReportOpener(withTake("It's a slow unraveling."))).toHaveLength(1);
+		expect(bookReportOpener(withTake("This song is a goodbye."))).toHaveLength(1);
+	});
+});
+
+describe("structural-section", () => {
+	function withScene(scene: string): ConceptRead {
+		const a = base();
+		a.arc[0] = { ...a.arc[0], scene };
+		return a;
+	}
+
+	it("flags a section name in a scene", () => {
+		const hits = structuralSection(withScene("The chorus lands and the room stops."));
+		expect(hits).toHaveLength(1);
+		expect(hits[0].rule).toBe("structural-section");
+		expect(hits[0].severity).toBe("high");
+		expect(hits[0].field).toBe("arc[0].scene");
+	});
+
+	it("flags a section name in the take", () => {
+		expect(
+			structuralSection(withTake("A verse that turns the whole thing over.")).length,
+		).toBeGreaterThan(0);
+	});
+
+	it("does not flag house-form arc labels (Verse 1 / Chorus / Bridge / Outro)", () => {
+		// Labels carry section words, but `prose()` never scans `.label`.
+		expect(structuralSection(base())).toEqual([]);
+	});
+
+	it("does not scan texture — the sound field may name a sonic motif", () => {
+		const a = base();
+		a.texture = "Bright synth pop, ringing hollow underneath each hook.";
+		expect(structuralSection(a)).toEqual([]);
+	});
+
+	it("does not scan the lines array", () => {
+		const a = base();
+		a.lines = [{ line: "this is the bridge we burned" }];
+		expect(structuralSection(a)).toEqual([]);
+	});
+});
+
+describe("mood-width", () => {
+	it("flags a one-word arc mood", () => {
+		const a = base();
+		a.arc[0] = { ...a.arc[0], mood: "Yearning" };
+		const hits = moodWidth(a);
+		expect(hits).toHaveLength(1);
+		expect(hits[0].field).toBe("arc[0].mood");
+		expect(hits[0].severity).toBe("medium");
+	});
+
+	it("accepts a two-word mood", () => {
+		expect(moodWidth(base())).toEqual([]);
+	});
+});
+
+describe("tension-mood-dedup", () => {
+	it("flags an arc mood that repeats the tension verbatim", () => {
+		const a = base();
+		a.tension = "Hollow Euphoria";
+		a.arc[1] = { ...a.arc[1], mood: "Hollow Euphoria" };
+		const hits = tensionMoodDedup(a);
+		expect(hits).toHaveLength(1);
+		expect(hits[0].field).toBe("arc[1].mood");
+		expect(hits[0].severity).toBe("medium");
+	});
+
+	it("matches case-insensitively", () => {
+		const a = base();
+		a.arc[0] = { ...a.arc[0], mood: a.tension.toLowerCase() };
+		expect(tensionMoodDedup(a)).toHaveLength(1);
+	});
+
+	it("leaves a near-miss mood alone", () => {
+		const a = base();
+		a.tension = "Aching Warmth";
+		a.arc[0] = { ...a.arc[0], mood: "Aching Nostalgia" };
+		expect(tensionMoodDedup(a)).toEqual([]);
 	});
 });
 
@@ -345,11 +438,8 @@ describe("dash", () => {
 		expect(hits[0].severity).toBe("medium");
 	});
 
-	it("flags an intra-word hyphen as low and reports the whole compound", () => {
-		const hits = dashes(withTake("A late-night confession."));
-		expect(hits).toHaveLength(1);
-		expect(hits[0].severity).toBe("low");
-		expect(hits[0].span).toBe("late-night");
+	it("does not flag intra-word hyphens ('late-night', 'neon-lit' allowed)", () => {
+		expect(dashes(withTake("A late-night, neon-lit confession."))).toEqual([]);
 	});
 
 	it("flags a spaced hyphen used as a dash, as medium", () => {
