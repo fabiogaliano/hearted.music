@@ -24,13 +24,30 @@ interface FormatOptions {
 	maxAnnotationLength?: number;
 	/** Only include verified/artist annotations (default: false) */
 	verifiedOnly?: boolean;
+	/**
+	 * Map<normalizedText, distilledText>. When an annotation's normalized text has an
+	 * entry, the distilled (fact-compressed) form is rendered in full instead of the raw
+	 * text — and it skips truncation, since distilled text is already compact and lossless
+	 * on the facts. Absent keys fall back to raw + the length cap.
+	 */
+	distillations?: Map<string, string>;
 }
 
 const DEFAULT_OPTIONS: Required<FormatOptions> = {
 	minVotes: 5,
 	maxAnnotationLength: 200,
 	verifiedOnly: false,
+	distillations: new Map(),
 };
+
+/**
+ * Canonical annotation-text normalization. Shared by the dedup key here and the
+ * distillation cache lookup so the two can never drift: the distillation map is keyed
+ * by this exact form, and the formatter looks distilled text up by the same key.
+ */
+export function normalizeAnnotationText(text: string): string {
+	return text.replace(/\s+/g, " ").trim();
+}
 
 /**
  * Format lyrics to compact text representation for LLM prompts.
@@ -42,6 +59,12 @@ export function formatLyricsCompact(
 ): string {
 	const opts = { ...DEFAULT_OPTIONS, ...options };
 	const sections: string[] = [];
+	// A repeated chorus carries the same annotation on every occurrence, so the raw
+	// document stores it N times. Number each distinct annotation on first sight and, on
+	// any repeat, emit a back-reference instead of reprinting the body — lossless, and on a
+	// chorus-heavy song it removes most of the annotation tokens. Keyed by normalized text
+	// since the stored annotation shape carries no stable id.
+	const registry = new Map<string, number>();
 
 	for (const section of lyrics) {
 		const sectionLines: string[] = [];
@@ -56,7 +79,11 @@ export function formatLyricsCompact(
 
 			// Add annotations if present and pass filter
 			if (line.annotations?.length) {
-				const formattedAnnotations = formatAnnotations(line.annotations, opts);
+				const formattedAnnotations = formatAnnotations(
+					line.annotations,
+					opts,
+					registry,
+				);
 				sectionLines.push(...formattedAnnotations);
 			}
 		}
@@ -69,11 +96,13 @@ export function formatLyricsCompact(
 
 /**
  * Format annotations for a single line.
- * Filters by votes/verification and formats with appropriate prefix.
+ * Filters by votes/verification, numbers each distinct annotation, and emits a
+ * back-reference for any repeat instead of reprinting the body.
  */
 function formatAnnotations(
 	annotations: AnnotationInfo[],
 	opts: Required<FormatOptions>,
+	registry: Map<string, number>,
 ): string[] {
 	const result: string[] = [];
 
@@ -91,11 +120,24 @@ function formatAnnotations(
 			continue;
 		}
 
-		// Format the prefix based on type
-		const prefix = formatAnnotationPrefix(annotation);
+		// Dedup by content: a repeated line (a recurring chorus) points back to the number
+		// instead of reprinting the annotation.
+		const key = normalizeAnnotationText(annotation.text);
+		const existing = registry.get(key);
+		if (existing !== undefined) {
+			result.push(`  > [#${existing}, see above]`);
+			continue;
+		}
 
-		// Truncate long annotations
-		const text = truncateText(annotation.text, opts.maxAnnotationLength);
+		const num = registry.size + 1;
+		registry.set(key, num);
+
+		const prefix = formatAnnotationPrefix(annotation, num);
+		// A distilled annotation is already compact and lossless on the facts, so render it
+		// in full; only raw text is subject to the length cap.
+		const distilled = opts.distillations.get(key);
+		const text =
+			distilled ?? truncateText(annotation.text, opts.maxAnnotationLength);
 
 		result.push(`  > ${prefix} ${text}`);
 	}
@@ -104,19 +146,22 @@ function formatAnnotations(
 }
 
 /**
- * Format the annotation prefix based on type.
+ * Format the annotation prefix based on type, carrying its reference number.
  * Priority: Artist > Verified > Community votes
  */
-function formatAnnotationPrefix(annotation: AnnotationInfo): string {
+function formatAnnotationPrefix(
+	annotation: AnnotationInfo,
+	num: number,
+): string {
 	if (annotation.pinnedRole === "artist") {
-		return "[Artist]";
+		return `[#${num}, Artist]`;
 	}
 
 	if (annotation.verified) {
-		return `[Verified, ${annotation.votes_total} votes]`;
+		return `[#${num}, Verified, ${annotation.votes_total} votes]`;
 	}
 
-	return `[${annotation.votes_total} votes]`;
+	return `[#${num}, ${annotation.votes_total} votes]`;
 }
 
 /**
@@ -146,5 +191,5 @@ function truncateText(text: string, maxLength: number): string {
  * Should be included before the formatted lyrics.
  */
 export function getLyricsFormatLegend(): string {
-	return `(Format: [Section] = song part, ">" = annotation for line above)\n(Annotation types: [Artist] = songwriter's explanation, [Verified] = confirmed, [N votes] = community)`;
+	return `(Format: [Section] = song part, ">" = annotation for line above)\n(Annotations are numbered [#1], [#2], ...; types: [Artist] = songwriter's explanation, [Verified] = confirmed, [N votes] = community. A repeated line shows "[#N, see above]" pointing to where annotation N was first given.)`;
 }

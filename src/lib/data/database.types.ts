@@ -34,6 +34,33 @@ export type Database = {
 	};
 	public: {
 		Tables: {
+			annotation_distillation: {
+				Row: {
+					content_hash: string;
+					created_at: string;
+					distilled_text: string;
+					distiller_version: string;
+					model: string;
+					raw_text: string;
+				};
+				Insert: {
+					content_hash: string;
+					created_at?: string;
+					distilled_text: string;
+					distiller_version: string;
+					model: string;
+					raw_text: string;
+				};
+				Update: {
+					content_hash?: string;
+					created_at?: string;
+					distilled_text?: string;
+					distiller_version?: string;
+					model?: string;
+					raw_text?: string;
+				};
+				Relationships: [];
+			};
 			account: {
 				Row: {
 					better_auth_user_id: string | null;

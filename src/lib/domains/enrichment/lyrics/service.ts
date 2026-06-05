@@ -42,6 +42,15 @@ interface LyricsServiceConfig {
 	accessToken: string;
 }
 
+/**
+ * Injected by the analysis layer to compress annotations before formatting, keeping this
+ * service free of any LLM dependency. Returns Map<normalizedText, distilledText> and must
+ * never throw — distillation is an optimization, not a hard dependency.
+ */
+export type LyricsDistiller = (
+	sections: TransformedLyricsBySection[],
+) => Promise<Map<string, string>>;
+
 // Shared across all instances so concurrent worker jobs respect a single rate limit
 const sharedLimiter = new ConcurrencyLimiter(5, 50, 200);
 // Bound each call so a hung upstream can't pin a worker slot indefinitely.
@@ -154,10 +163,38 @@ export class LyricsService {
 		songId: string,
 		artist: string,
 		song: string,
+		options?: { distiller?: LyricsDistiller },
 	): Promise<Result<string, GeniusError>> {
+		const sectionsResult = await this.resolveSections(songId, artist, song);
+		if (Result.isError(sectionsResult)) {
+			return Result.err(sectionsResult.error);
+		}
+		const sections = sectionsResult.value;
+
+		const distillations = options?.distiller
+			? await options.distiller(sections)
+			: undefined;
+
+		return Result.ok(
+			formatLyricsCompact(
+				sections,
+				distillations ? { distillations } : undefined,
+			),
+		);
+	}
+
+	/**
+	 * Returns the song's lyrics sections from cache, or fetches from Genius and persists
+	 * them. Cache read/write failures are logged but never block the fetch.
+	 */
+	private async resolveSections(
+		songId: string,
+		artist: string,
+		song: string,
+	): Promise<Result<TransformedLyricsBySection[], GeniusError>> {
 		const cachedResult = await getSongLyricsDocument(songId);
 		if (Result.isOk(cachedResult) && cachedResult.value !== null) {
-			return Result.ok(formatLyricsCompact(cachedResult.value.sections));
+			return Result.ok(cachedResult.value.sections);
 		}
 		if (Result.isError(cachedResult)) {
 			console.warn(
@@ -179,7 +216,7 @@ export class LyricsService {
 			);
 		}
 
-		return Result.ok(formatLyricsCompact(sections));
+		return Result.ok(sections);
 	}
 
 	private async searchSong(

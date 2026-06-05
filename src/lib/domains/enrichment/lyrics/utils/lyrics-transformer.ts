@@ -51,6 +51,7 @@ function buildAnnotationMap(
 					votes_total: a.votes_total,
 					pinnedRole: a.authors?.[0]?.pinned_role,
 					state: a.state,
+					geniusAnnotationId: a.id,
 				}));
 		}
 	}

@@ -6,6 +6,8 @@ export interface AnnotationInfo {
 	pinnedRole?: string;
 	/** Genius review state: "verified" | "accepted" | "pending". Optional for backward compat with rows stored before this field was added. */
 	state?: string;
+	/** Stable Genius annotation id. Lets distillation/dedup key on annotation identity rather than fragile text-normalization. Optional for rows stored before this field was added. */
+	geniusAnnotationId?: number;
 }
 
 export interface LyricsSection {
