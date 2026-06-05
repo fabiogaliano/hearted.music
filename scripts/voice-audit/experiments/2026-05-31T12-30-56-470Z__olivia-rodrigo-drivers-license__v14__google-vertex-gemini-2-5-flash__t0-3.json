@@ -1,0 +1,132 @@
+{
+  "runId": "2026-05-31T12-30-56-470Z__olivia-rodrigo-drivers-license__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:30:56.470Z",
+  "song": "Olivia Rodrigo — drivers license",
+  "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 2,
+    "low": 3
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "puffery-adjective": 1,
+    "participial-closure": 2,
+    "burstiness": 1,
+    "lexical-repetition": 2
+  },
+  "tokens": 5956,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "lines[3].insight",
+      "span": "highlights the",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "lines[2].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", building into a sweeping, cinematic pop ballad.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[5].scene",
+      "span": ", leaving you alone on the street.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The driver's license was supposed to be a step into freedom.",
+      "severity": "low",
+      "note": "CV=0.196 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "freedom",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[4].scene",
+      "span": "every",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "suburban streets, tear stained",
+    "lens": "license as eulogy",
+    "tension": "Aching Nostalgia",
+    "take": "The driver's license was supposed to be a step into freedom. Instead, it becomes a vehicle for grief. You drive through memories, not towards new horizons.",
+    "contradiction": "She gets the freedom of the road. It only leads her back to him.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Anticipated Freedom",
+        "scene": "You finally get the license, but the joy is immediately replaced by absence."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Crushing Insecurity",
+        "scene": "The freedom of the road brings only thoughts of the new person and old doubts."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Raw Disbelief",
+        "scene": "You cannot comprehend how someone can move on so easily from what felt like forever."
+      },
+      {
+        "label": "Verse 3",
+        "mood": "Lingering Attachment",
+        "scene": "Even as friends tire of the pain, you still hold onto the imagined future."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Overwhelming Presence",
+        "scene": "Every street, every sound, every memory is still filled with him."
+      },
+      {
+        "label": "Outro",
+        "mood": "Echoing Loss",
+        "scene": "The final words repeat the broken promise, leaving you alone on the street."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I got my driver's license last week Just like we always talked about",
+        "insight": "The moment of triumph is immediately undercut by the memory of shared plans."
+      },
+      {
+        "line": "And you're probably with that blonde girl Who always made me doubt",
+        "insight": "The pain of loss is compounded by the sting of replacement and insecurity."
+      },
+      {
+        "line": "I just can't imagine how you could be so okay now that I'm gone",
+        "insight": "This line expresses the profound shock of unequal emotional recovery."
+      },
+      {
+        "line": "Guess you didn't mean what you wrote in that song about me",
+        "insight": "A direct accusation of broken promises highlights the feeling of betrayal."
+      },
+      {
+        "line": "Can't drive past the places we used to go to 'Cause I still fuckin' love you, babe",
+        "insight": "The physical act of driving becomes impossible due to the overwhelming emotional attachment."
+      }
+    ],
+    "texture": "A sparse piano opens the song, building into a sweeping, cinematic pop ballad. The raw vocal delivery cuts through the polished production."
+  }
+}

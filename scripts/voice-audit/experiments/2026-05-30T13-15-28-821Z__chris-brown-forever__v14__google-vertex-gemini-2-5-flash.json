@@ -1,0 +1,163 @@
+{
+  "runId": "2026-05-30T13-15-28-821Z__chris-brown-forever__v14__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-30T13:15:28.821Z",
+  "song": "Chris Brown — Forever",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 5,
+    "medium": 0,
+    "low": 7
+  },
+  "byRule": {
+    "participial-closure": 5,
+    "burstiness": 1,
+    "lexical-repetition": 5,
+    "dash": 1
+  },
+  "tokens": 4930,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", exhilarating night on the dance floor and stretches it into an endless feeling.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", breaking all rules.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[4].scene",
+      "span": ", making grand promises for this intense connection.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[5].scene",
+      "span": ", sealing the feeling of endless joy.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[1].insight",
+      "span": ", making it profoundly special.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song takes a single, exhilarating night on the dance floor and stretches it ",
+      "severity": "low",
+      "note": "CV=0.144 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "floor",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "night",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "dance",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "endless",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "connection",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "texture",
+      "span": "synth-pop",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "neon lights reflecting on a spinning floor",
+    "lens": "night into forever",
+    "tension": "Fleeting Ecstasy",
+    "take": "The song takes a single, exhilarating night on the dance floor and stretches it into an endless feeling. It captures the intoxicating belief that this one moment can last for all time. You feel the magic of a connection that feels both immediate and eternal.",
+    "contradiction": "It promises forever while insisting on only one night.",
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Anticipatory Excitement",
+        "scene": "A count in sets the stage for something big."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Building Connection",
+        "scene": "He pulls you into a shared experience, promising anything."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Euphoric Declaration",
+        "scene": "The dance floor becomes a timeless space where one night means everything."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Intimate Assurance",
+        "scene": "He asks for your trust as you move together, breaking all rules."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Soaring Devotion",
+        "scene": "He speaks of angels and falling, making grand promises for this intense connection."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Euphoric Declaration",
+        "scene": "The timeless dance floor returns, sealing the feeling of endless joy."
+      }
+    ],
+    "lines": [
+      {
+        "line": "It's you and me, moving at the speed of light into eternity, yeah",
+        "insight": "The opening lines immediately elevate the connection to something cosmic and infinite."
+      },
+      {
+        "line": "It's like I've waited my whole life for this one night",
+        "insight": "A single night holds the weight of a lifetime of longing, making it profoundly special."
+      },
+      {
+        "line": "We can be two rebels, Breaking the rules, me and you, you and I",
+        "insight": "This moment on the dance floor feels like a defiant escape, a world unto itself."
+      },
+      {
+        "line": "I'm driving, you can take the front seat",
+        "insight": "He offers a playful invitation to surrender control and trust the journey."
+      },
+      {
+        "line": "And dance fore-e-ever, fore-e-ever",
+        "insight": "The repeating mantra wills an impossible extension of joy into an endless present."
+      }
+    ],
+    "texture": "A bright, pulsing synth-pop beat drives the whole thing, layered with smooth R&B vocals that glide effortlessly above the rhythm."
+  }
+}

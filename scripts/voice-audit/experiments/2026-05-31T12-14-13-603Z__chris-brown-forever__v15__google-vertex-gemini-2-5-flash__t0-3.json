@@ -1,0 +1,136 @@
+{
+  "runId": "2026-05-31T12-14-13-603Z__chris-brown-forever__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:14:13.603Z",
+  "song": "Chris Brown — Forever",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 7
+  },
+  "byRule": {
+    "self-reference": 1,
+    "burstiness": 1,
+    "lexical-repetition": 5,
+    "dash": 1
+  },
+  "tokens": 6113,
+  "hits": [
+    {
+      "rule": "self-reference",
+      "field": "take",
+      "span": "This song",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "This song takes a single, intense night and stretches it into an endless feeling",
+      "severity": "low",
+      "note": "CV=0.166 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "single",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "night",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "dance",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "fleeting",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "moment",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[0].scene",
+      "span": "count-in",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "a single night under neon lights",
+    "lens": "one night into forever",
+    "tension": "Urgent Euphoria",
+    "take": "This song takes a single, intense night and stretches it into an endless feeling. It captures the intoxicating rush of a dance floor connection. Every beat works to make this fleeting moment feel infinite.",
+    "contradiction": "It promises forever. It only offers one night.",
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Anticipatory Pulse",
+        "scene": "A rhythmic count-in builds the energy."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Seductive Invitation",
+        "scene": "A connection begins on the dance floor."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Infinite Present",
+        "scene": "The night stretches into an endless dance."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Rebellious Connection",
+        "scene": "Two people find a deeper bond in the moment."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Romantic Declaration",
+        "scene": "A fleeting love feels like it will last."
+      },
+      {
+        "label": "Outro",
+        "mood": "Lingering Echo",
+        "scene": "The feeling of forever slowly fades."
+      }
+    ],
+    "lines": [
+      {
+        "line": "It's like I've waited my whole life for this one night",
+        "insight": "A single moment holds the weight of a lifetime of anticipation."
+      },
+      {
+        "line": "Double your pleasure, double your fun",
+        "insight": "The moment is a product to be consumed and maximized."
+      },
+      {
+        "line": "And dance fore-e-ever, fore-e-ever",
+        "insight": "The fleeting present is stretched into an imagined eternity."
+      },
+      {
+        "line": "I'm releasing my heart and it's feeling amazing",
+        "insight": "Vulnerability emerges within the high stakes of the night."
+      }
+    ],
+    "texture": "A smooth R&B groove drives forward with an insistent pop energy, yet its polished sound never loses its intimate feel."
+  }
+}

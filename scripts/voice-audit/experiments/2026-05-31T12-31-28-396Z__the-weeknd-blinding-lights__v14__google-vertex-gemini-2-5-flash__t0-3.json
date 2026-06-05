@@ -1,0 +1,118 @@
+{
+  "runId": "2026-05-31T12-31-28-396Z__the-weeknd-blinding-lights__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:31:28.396Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 1,
+    "low": 2
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 2,
+    "burstiness": 1,
+    "lexical-repetition": 1
+  },
+  "tokens": 6056,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "lines[1].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[4].scene",
+      "span": ", solidifying the chase.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[5].scene",
+      "span": ", fading into the neon haze.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The driving beat is a frantic search for one person.",
+      "severity": "low",
+      "note": "CV=0.166 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "beat",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a neon lit chase through an empty city",
+    "lens": "desperation as devotion",
+    "tension": "Urgent Vulnerability",
+    "take": "The driving beat is a frantic search for one person. Every synth pulse pushes you closer to a singular touch. This devotion is the only thing that makes sense in a world gone cold.",
+    "contradiction": "The blinding lights are both the source of the chaos and the path to clarity.",
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Anticipatory Pulse",
+        "scene": "A lone voice echoes in the quiet before the storm."
+      },
+      {
+        "label": "Verse",
+        "mood": "Raw Vulnerability",
+        "scene": "A confession of loneliness spills out into the night."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Desolate Longing",
+        "scene": "The city lights blur into a cold, empty expanse."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Urgent Devotion",
+        "scene": "A desperate plea cuts through the driving beat."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Firm Resolve",
+        "scene": "A promise is made, solidifying the chase."
+      },
+      {
+        "label": "Outro",
+        "mood": "Lingering Obsession",
+        "scene": "The plea repeats, fading into the neon haze."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I've been on my own for long enough",
+        "insight": "A deep loneliness drives the entire journey."
+      },
+      {
+        "line": "Sin City's cold and empty",
+        "insight": "The glittering facade hides a profound isolation."
+      },
+      {
+        "line": "I can't see clearly when you're gone",
+        "insight": "The absence of one person blurs all perception."
+      },
+      {
+        "line": "I said, ooh, I'm blinded by the lights",
+        "insight": "The overwhelming spectacle obscures the true path."
+      },
+      {
+        "line": "No, I can't sleep until I feel your touch",
+        "insight": "Only physical connection can bring peace and clarity."
+      }
+    ],
+    "texture": "A pulsing synthwave beat drives the whole thing, but the vocals carry a raw, human ache."
+  }
+}

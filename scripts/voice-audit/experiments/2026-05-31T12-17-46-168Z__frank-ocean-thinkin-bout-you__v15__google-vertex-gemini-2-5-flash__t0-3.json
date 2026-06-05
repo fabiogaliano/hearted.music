@@ -1,0 +1,120 @@
+{
+  "runId": "2026-05-31T12-17-46-168Z__frank-ocean-thinkin-bout-you__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:17:46.168Z",
+  "song": "Frank Ocean — Thinkin Bout You",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 5
+  },
+  "byRule": {
+    "participial-closure": 1,
+    "lexical-repetition": 5
+  },
+  "tokens": 6531,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", creating a dreamlike atmosphere.",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "tears",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "future",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "forever",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "person",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[1].scene",
+      "span": "question",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a quiet room, filled with rain and tears",
+    "lens": "first love as blueprint",
+    "tension": "Wistful Longing",
+    "take": "The song treats a first love as a blueprint for all future connection. It defines what \"forever\" means, even if the person who laid the blueprint does not share that vision. This foundational experience shapes every subsequent thought about commitment.",
+    "contradiction": "He thinks about forever. The other person does not.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Raw Honesty",
+        "scene": "A storm has passed through the room. Tears fall like rain in an unexpected place."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Urgent Questioning",
+        "scene": "A single question hangs in the air. It asks about a shared future."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Playful Denial",
+        "scene": "A playful dismissal hides deeper feelings. The words are a shield."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Enduring Memory",
+        "scene": "The memory of a first love is vivid. It feels like it will last forever."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Urgent Questioning",
+        "scene": "The same question returns. It still seeks an answer."
+      }
+    ],
+    "lines": [
+      {
+        "line": "My eyes don't shed tears, but boy, they pour",
+        "insight": "The tears are not typical. They are a flood."
+      },
+      {
+        "line": "Do you think about me still? Do ya, do ya?",
+        "insight": "The question is direct. It seeks a simple affirmation."
+      },
+      {
+        "line": "Or do you not think so far ahead? 'Cause I been thinkin' 'bout forever, ooh",
+        "insight": "A chasm opens between two different timelines. One person sees a future, the other does not."
+      },
+      {
+        "line": "No, I don't like you, I just thought you were cool enough to kick it",
+        "insight": "A casual dismissal attempts to mask deeper affection. It is a defense mechanism."
+      },
+      {
+        "line": "You know you were my first time. It won't ever get old, not in my soul, not in my spirit, keep it alive",
+        "insight": "A foundational experience remains fresh. It lives on inside."
+      }
+    ],
+    "texture": "The synths are warm and hazy, creating a dreamlike atmosphere. A sparse beat keeps it grounded in a quiet reality."
+  }
+}

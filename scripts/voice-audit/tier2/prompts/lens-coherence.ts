@@ -8,9 +8,7 @@ export function lensCoherencePrompt(a: ConceptRead): string {
 	const arc = a.arc
 		.map((beat) => `  - [${beat.label} — ${beat.mood}] ${beat.scene}`)
 		.join("\n");
-	const lines = a.lines
-		.map((l) => `  - "${l.line}": ${l.insight}`)
-		.join("\n");
+	const lines = a.lines.map((l) => `  - "${l.line}"`).join("\n");
 
 	return `You are auditing whether a song read holds together around its LENS.
 
@@ -18,9 +16,9 @@ The lens is the read's thesis: a one-line claim about what the song is really do
 
 Judge two things together:
 
-1. COHERENCE — does the \`take\` actually read THROUGH the lens? A coherent read argues the lens; the image, take, contradiction, and line insights are all evidence for that one claim. An incoherent read wears the lens as decoration: the lens says one thing and the take is about something else, or the lens could be swapped for any other phrase without changing a word of the take.
+1. COHERENCE — does the \`take\` actually read THROUGH the lens? A coherent read argues the lens; the image, take, and contradiction are all evidence for that one claim. An incoherent read wears the lens as decoration: the lens says one thing and the take is about something else, or the lens could be swapped for any other phrase without changing a word of the take.
 
-2. SURFACE ABUSE (the inverse failure) — a thin, descriptive lens (one that just names what the song DOES — "moving for the joy of moving", "the hook as the whole thesis") is only valid when the song is genuinely thin. If the lens is descriptive/surface-level BUT the take, contradiction, or line insights reveal a real buried claim (a genuine subtext the lens ignores), the read was lazy: it dodged the work a deeper lens would have named. Flag that.
+2. SURFACE ABUSE (the inverse failure) — a thin, descriptive lens (one that just names what the song DOES — "moving for the joy of moving", "the hook as the whole thesis") is only valid when the song is genuinely thin. If the lens is descriptive/surface-level BUT the take or contradiction reveal a real buried claim (a genuine subtext the lens ignores), the read was lazy: it dodged the work a deeper lens would have named. Flag that.
 
 Also fail the lens if it is category-typical slop the lens is supposed to violate:
 - an abstract summary noun doing the work ("a meditation on loss", "a journey of self-discovery", "a celebration of...", "a declaration of...", "X as catharsis/testament/tapestry")
@@ -37,7 +35,7 @@ TAKE: ${a.take}
 CONTRADICTION: ${a.contradiction ?? "(none)"}
 ARC:
 ${arc}
-LINE INSIGHTS:
+LINES:
 ${lines}
 
 Return:

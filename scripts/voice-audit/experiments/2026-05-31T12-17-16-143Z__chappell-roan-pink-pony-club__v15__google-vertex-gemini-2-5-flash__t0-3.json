@@ -1,0 +1,147 @@
+{
+  "runId": "2026-05-31T12-17-16-143Z__chappell-roan-pink-pony-club__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:17:16.146Z",
+  "song": "Chappell Roan — Pink Pony Club",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 1,
+    "low": 7
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 1,
+    "burstiness": 1,
+    "lexical-repetition": 5,
+    "dash": 1
+  },
+  "tokens": 6668,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "take",
+      "span": "vibrant",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", finding a place where you are truly seen.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song moves you from the weight of expectation into a vibrant, chosen world.",
+      "severity": "low",
+      "note": "CV=0.000 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "left",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "true",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "mother",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[0].scene",
+      "span": "new",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[2].scene",
+      "span": "home",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "take",
+      "span": "self-discovery",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "neon lights on a dance floor",
+    "lens": "expectation into queer utopia",
+    "tension": "Defiant Joy",
+    "take": "The song moves you from the weight of expectation into a vibrant, chosen world. It is a journey of self-discovery, finding a place where you are truly seen. You feel the thrill of belonging, even as you acknowledge what was left behind.",
+    "contradiction": "She finds her true self. She knows it hurts her mother.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "restless longing",
+        "scene": "Visions of a new life pull you away from the familiar."
+      },
+      {
+        "label": "Refrain",
+        "mood": "painful honesty",
+        "scene": "The cost of this new path is a mother's disapproval."
+      },
+      {
+        "label": "Chorus",
+        "mood": "exuberant belonging",
+        "scene": "You find your true home on a stage in West Hollywood."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "unapologetic freedom",
+        "scene": "The new life confirms every reason you left the old one."
+      },
+      {
+        "label": "Bridge",
+        "mood": "tender remembrance",
+        "scene": "You still hold love for the home you left behind."
+      },
+      {
+        "label": "Outro",
+        "mood": "endless celebration",
+        "scene": "The dancing continues, a defiant act of joy."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I know you wanted me to stay But I can't ignore the crazy visions of me in L.A.",
+        "insight": "A powerful internal pull overrides external expectations."
+      },
+      {
+        "line": "Won't make my mama proud, it's gonna cause a scene She sees her baby girl, I know she's gonna scream",
+        "insight": "The price of authenticity is a mother's pain."
+      },
+      {
+        "line": "On the stage in my heels, it's where I belong",
+        "insight": "A chosen space becomes a true home."
+      },
+      {
+        "line": "Every night's another reason why I left it all",
+        "insight": "Each new experience validates the difficult decision to leave."
+      },
+      {
+        "line": "Still love you and Tennessee, you're always on my mind",
+        "insight": "The past remains a part of you, even as you move forward."
+      }
+    ],
+    "texture": "Bright synths and a driving beat create an irresistible dancefloor energy, but a wistful undertone hints at the emotional weight beneath the glitter."
+  }
+}

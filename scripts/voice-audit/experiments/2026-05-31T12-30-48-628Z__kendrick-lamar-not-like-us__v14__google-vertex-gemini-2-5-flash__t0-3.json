@@ -1,0 +1,143 @@
+{
+  "runId": "2026-05-31T12-30-48-628Z__kendrick-lamar-not-like-us__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:30:48.628Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 7,
+    "medium": 0,
+    "low": 2
+  },
+  "byRule": {
+    "participial-closure": 5,
+    "self-reference": 1,
+    "book-report-opener": 1,
+    "burstiness": 1,
+    "lexical-repetition": 1
+  },
+  "tokens": 9178,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", defining who belongs and who does not.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", feeling both celebratory and menacing.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", drawing everyone into the 'us'.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", cementing the boundary.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[1].insight",
+      "span": ", shocking accusation that redefines Drake's brand.",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "take",
+      "span": "This song",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "lines[1].insight",
+      "span": "This is a direct, shocking ac",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "This song reclaims the narrative for the West Coast.",
+      "severity": "low",
+      "note": "CV=0.129 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "line",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a block party taking over the street",
+    "lens": "revenge as cultural reclamation",
+    "tension": "Righteous Fury",
+    "take": "This song reclaims the narrative for the West Coast. It draws a hard line, defining who belongs and who does not. The whole thing becomes a celebration of community identity against an outsider.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "aggressive taunting",
+        "scene": "The beat drops, and the accusations fly like rapid fire."
+      },
+      {
+        "label": "Chorus",
+        "mood": "unifying defiant",
+        "scene": "The chant solidifies the divide, drawing everyone into the 'us'."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "scathing exposing",
+        "scene": "More detailed allegations paint a picture of betrayal and hypocrisy."
+      },
+      {
+        "label": "Chorus",
+        "mood": "unifying defiant",
+        "scene": "The collective voice rises again, cementing the boundary."
+      },
+      {
+        "label": "Verse 3",
+        "mood": "analytical indicting",
+        "scene": "The scope widens to critique cultural appropriation and false alliances."
+      },
+      {
+        "label": "Bridge",
+        "mood": "triumphant celebratory",
+        "scene": "The insults turn into a dance, a collective movement of victory."
+      }
+    ],
+    "lines": [
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "This line is the central thesis, repeated for emphasis. It defines the boundary."
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "This is a direct, shocking accusation that redefines Drake's brand."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "This line summarizes the cultural critique and the lens of reclamation."
+      },
+      {
+        "line": "Wop, wop, wop, wop, wop, Dot, fuck 'em up",
+        "insight": "This captures the raw, aggressive energy and the call to action."
+      },
+      {
+        "line": "Then step this way, step that way",
+        "insight": "This transforms the diss into a dance, a communal celebration."
+      }
+    ],
+    "texture": "A West Coast G funk beat drives the whole thing, feeling both celebratory and menacing."
+  }
+}

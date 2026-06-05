@@ -1,0 +1,81 @@
+{
+  "runId": "2026-05-31T12-13-38-566Z__dua-lipa-houdini__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:13:38.566Z",
+  "song": "Dua Lipa — Houdini",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 0
+  },
+  "byRule": {
+    "self-reference": 1
+  },
+  "tokens": 6383,
+  "hits": [
+    {
+      "rule": "self-reference",
+      "field": "texture",
+      "span": "the track",
+      "severity": "high"
+    }
+  ],
+  "analysis": {
+    "image": "a quick escape, a dare to catch",
+    "lens": "elusiveness as a test",
+    "tension": "Confident Provocation",
+    "take": "A challenge is issued. It tests the depth of a potential connection. You must prove your worth to make her stay.",
+    "contradiction": "She declares her freedom to leave. She also offers a path to make her stay.",
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Anticipatory Calm",
+        "scene": "A moment hangs in the air."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Bold Challenge",
+        "scene": "The terms of engagement are laid out."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Measured Observation",
+        "scene": "She watches for a sign of true intent."
+      },
+      {
+        "label": "Post Chorus",
+        "mood": "Conditional Invitation",
+        "scene": "A hidden door opens for the worthy."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Skeptical Inquiry",
+        "scene": "She probes for genuine commitment."
+      },
+      {
+        "label": "Outro",
+        "mood": "Lingering Mystery",
+        "scene": "The question of her return remains."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Catch me or I go Houdini",
+        "insight": "This line defines the central challenge. It sets the stakes for the entire interaction."
+      },
+      {
+        "line": "Time is passin' like a solar eclipse",
+        "insight": "This emphasizes the urgency of the test. The opportunity is brief."
+      },
+      {
+        "line": "Maybe you could be the one to make me stay",
+        "insight": "This reveals the underlying hope for a successful outcome. It shows the test has a desired result."
+      }
+    ],
+    "texture": "A driving disco beat propels the track. It creates a sense of constant motion, but also a smooth confidence."
+  }
+}

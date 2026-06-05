@@ -1,0 +1,105 @@
+{
+  "runId": "2026-05-31T12-32-42-613Z__olivia-rodrigo-drivers-license__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:32:42.613Z",
+  "song": "Olivia Rodrigo — drivers license",
+  "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 1,
+    "low": 2
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "burstiness": 1,
+    "lexical-repetition": 1
+  },
+  "tokens": 7625,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "lines[1].insight",
+      "span": "embodies",
+      "severity": "medium"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "Your new freedom to drive becomes a cruel mirror.",
+      "severity": "low",
+      "note": "CV=0.082 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "every",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "suburban streets, blurring with tears",
+    "lens": "freedom as fixation",
+    "tension": "Bitter Freedom",
+    "take": "Your new freedom to drive becomes a cruel mirror. It reflects every memory of a future that will not happen. The open road is now a loop of what was.",
+    "contradiction": "She can go anywhere. She only drives in circles.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Shattered expectation",
+        "scene": "The freedom of the road immediately turns to tears."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Jealous insecurity",
+        "scene": "The thought of another girl twists inside you."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Disbelieving pain",
+        "scene": "You cannot understand how he is okay without you."
+      },
+      {
+        "label": "Verse 3",
+        "mood": "Isolated grief",
+        "scene": "Your friends cannot understand the depth of your loss."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Overwhelming presence",
+        "scene": "Every street and sound brings him back."
+      },
+      {
+        "label": "Outro",
+        "mood": "Resigned sorrow",
+        "scene": "The promise of forever is a lonely echo."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I got my driver's license last week Just like we always talked about",
+        "insight": "The shared dream becomes a solitary reality."
+      },
+      {
+        "line": "She's everything I'm insecure about",
+        "insight": "The new person embodies every fear you hold."
+      },
+      {
+        "line": "And I just can't imagine how you could be so okay now that I'm gone",
+        "insight": "His quick recovery feels like a personal insult."
+      },
+      {
+        "line": "Guess you didn't mean what you wrote in that song about me",
+        "insight": "His previous declarations now feel like lies."
+      },
+      {
+        "line": "I still fuckin' love you, babe",
+        "insight": "The unvarnished truth cuts through the pain."
+      }
+    ],
+    "texture": "A delicate piano intro gives way to a powerful, emotionally charged pop rock sound."
+  }
+}

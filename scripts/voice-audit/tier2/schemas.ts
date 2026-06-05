@@ -55,15 +55,20 @@ export const ArcNarrativeSchema = z
 	.object({
 		narrative: z.boolean(),
 		disconnect_points: z.array(z.string()).default([]),
+		recap_scenes: z.array(z.string()).default([]),
 		rationale: z.array(z.string()).default([]),
 	})
 	.superRefine((value, ctx) => {
-		if (!value.narrative && value.disconnect_points.length === 0) {
+		if (
+			!value.narrative &&
+			value.disconnect_points.length === 0 &&
+			value.recap_scenes.length === 0
+		) {
 			ctx.addIssue({
 				code: "custom",
 				path: ["disconnect_points"],
 				message:
-					"disconnect_points must include at least one quote when narrative is false",
+					"when narrative is false, cite evidence: disconnect_points (beats don't connect) and/or recap_scenes (a scene is flat event-recap)",
 			});
 		}
 	});

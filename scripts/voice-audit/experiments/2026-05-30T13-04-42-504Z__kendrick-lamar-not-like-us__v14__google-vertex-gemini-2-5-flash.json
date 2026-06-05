@@ -1,0 +1,105 @@
+{
+  "runId": "2026-05-30T13-04-42-504Z__kendrick-lamar-not-like-us__v14__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-30T13:04:42.504Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 0,
+    "medium": 1,
+    "low": 3
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "lexical-repetition": 2,
+    "dash": 1
+  },
+  "tokens": 10495,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "lines[2].insight",
+      "span": "acts as",
+      "severity": "medium"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "texture",
+      "span": "line",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "texture",
+      "span": "light",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "texture",
+      "span": "G-funk",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "the block party on a summer night",
+    "lens": "exclusion as belonging",
+    "tension": "Confident Aggression",
+    "take": "The song defines its own 'us' by sharply outlining who is 'not like us.' This is an anthem built on drawing hard boundaries. It creates a fierce sense of unity among those within its embrace.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "Opening Salvo",
+        "mood": "Bold Accusation",
+        "scene": "The first blows are landed with precision."
+      },
+      {
+        "label": "Unifying Cry",
+        "mood": "Assertive Solidarity",
+        "scene": "The community declares its boundaries clearly."
+      },
+      {
+        "label": "Relentless Unpacking",
+        "mood": "Exposing Truths",
+        "scene": "More allegations come to light, one after another."
+      },
+      {
+        "label": "Historical Context",
+        "mood": "Cultural Reckoning",
+        "scene": "The discussion shifts to a larger cultural betrayal."
+      },
+      {
+        "label": "Rallying Point",
+        "mood": "Communal Celebration",
+        "scene": "The song becomes a movement you can feel in your body."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Say, Drake, I hear you like 'em young. You better not ever go to cell block one.",
+        "insight": "This line delivers a direct, damning accusation that cuts deep. It uses implied threats to underline the severity of the charge."
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles.",
+        "insight": "The established brand is completely subverted here. It redefines his public image with a devastating label."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us.",
+        "insight": "This repeated phrase acts as a powerful, unifying statement. It solidifies the community's shared identity through opposition."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer.",
+        "insight": "This goes beyond personal attack. It recontextualizes the entire beef as a struggle against cultural appropriation."
+      },
+      {
+        "line": "The family matter and the truth of the matter. It was God's plan to show y'all the liar.",
+        "insight": "This line casts the entire conflict in a light of cosmic justice. It asserts that the truth was always meant to come out."
+      }
+    ],
+    "texture": "A G-funk inspired beat drives forward with a confident bounce. The bass line is sticky and heavy, but the synth melody keeps it light on its feet."
+  }
+}

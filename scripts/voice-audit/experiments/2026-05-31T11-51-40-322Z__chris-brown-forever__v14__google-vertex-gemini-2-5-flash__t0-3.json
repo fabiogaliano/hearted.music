@@ -1,0 +1,167 @@
+{
+  "runId": "2026-05-31T11-51-40-322Z__chris-brown-forever__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:51:40.322Z",
+  "song": "Chris Brown — Forever",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 2,
+    "low": 8
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "puffery-adjective": 1,
+    "participial-closure": 2,
+    "burstiness": 1,
+    "lexical-repetition": 6,
+    "dash": 1
+  },
+  "tokens": 5047,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "lines[1].insight",
+      "span": "frames",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "arc[4].scene",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", creating a polished sound that feels both weightless and grounded.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[5].scene",
+      "span": ", stretching the moment into memory.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song takes a single night on the dance floor and stretches it into an endles",
+      "severity": "low",
+      "note": "CV=0.154 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "floor",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "night",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "dance",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "feeling",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "moment",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[2].scene",
+      "span": "becomes",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[0].scene",
+      "span": "count-in",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "neon lights on a spinning floor",
+    "lens": "Moment into forever",
+    "tension": "Exhilarated Urgency",
+    "take": "The song takes a single night on the dance floor and stretches it into an endless feeling. Every beat and every move aims to make this fleeting connection feel like it could last forever. It captures the intoxicating rush of living fully in the present moment.",
+    "contradiction": "The night is fleeting. The feeling is infinite.",
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Anticipatory build",
+        "scene": "A simple count-in sets a playful mood."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Seductive invitation",
+        "scene": "A voice pulls you onto the floor, promising escape."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Ecstatic declaration",
+        "scene": "The dance floor becomes a universe where time stops."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Shared rebellion",
+        "scene": "Two people break rules and find a rhythm together."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Soaring romance",
+        "scene": "A sudden rush of feeling makes the connection feel profound."
+      },
+      {
+        "label": "Outro",
+        "mood": "Lingering echo",
+        "scene": "The word 'forever' repeats, stretching the moment into memory."
+      }
+    ],
+    "lines": [
+      {
+        "line": "It's you and me, moving at the speed of light into eternity, yeah",
+        "insight": "This line immediately sets the tone for the night's boundless feeling."
+      },
+      {
+        "line": "It's like I've waited my whole life for this one night",
+        "insight": "It frames a single moment as the culmination of a lifetime of anticipation."
+      },
+      {
+        "line": "Double your pleasure, double your fun",
+        "insight": "This commercial jingle is repurposed to amplify the night's immediate gratification."
+      },
+      {
+        "line": "We can be two rebels. Breaking the rules, me and you, you and I",
+        "insight": "The shared experience on the dance floor becomes an act of joyful defiance."
+      },
+      {
+        "line": "I'm releasing my heart and it's feeling amazing",
+        "insight": "The moment on the dance floor becomes a space for open, uninhibited emotion."
+      }
+    ],
+    "texture": "A bright synth melody floats over a driving R&B beat, creating a polished sound that feels both weightless and grounded."
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "runId": "2026-05-31T12-15-42-174Z__lorde-ribs__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:15:42.174Z",
+  "song": "Lorde — Ribs",
+  "spotifyTrackId": "2MvvoeRt8NcOXWESkxWn3g",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 2,
+    "low": 4
+  },
+  "byRule": {
+    "puffery-adjective": 2,
+    "burstiness": 1,
+    "lexical-repetition": 2,
+    "dash": 1
+  },
+  "tokens": 5619,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "texture",
+      "span": "shimmering",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "lines[3].insight",
+      "span": "visceral",
+      "severity": "medium"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song treats childhood innocence as something precious but already lost.",
+      "severity": "low",
+      "note": "CV=0.223 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "youth",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "cannot",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[1].label",
+      "span": "Pre-Chorus",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "midnight streets, reeling with friends",
+    "lens": "innocence as a fading photograph",
+    "tension": "Aching Nostalgia",
+    "take": "The song treats childhood innocence as something precious but already lost. It captures the bittersweet ache of holding onto youth while feeling it slip away. This feeling defines a generation's coming of age.",
+    "contradiction": "You want to stay a child forever. You know you cannot.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "carefree dread",
+        "scene": "Staying home feels like a victory. The fear of getting old already creeps in."
+      },
+      {
+        "label": "Pre-Chorus",
+        "mood": "dreamy escape",
+        "scene": "Imagination builds a perfect world. It feels like it could last forever."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "isolated fear",
+        "scene": "The dream of youth turns into a nightmare. You feel completely alone in the dark."
+      },
+      {
+        "label": "Bridge",
+        "mood": "desperate plea",
+        "scene": "The past becomes a tangible thing to reclaim. You want to bring back old thoughts and feelings."
+      },
+      {
+        "label": "Refrain",
+        "mood": "bittersweet bond",
+        "scene": "Friends offer a temporary shield. Their presence cannot stop time."
+      }
+    ],
+    "lines": [
+      {
+        "line": "It drives you crazy, getting old",
+        "insight": "The simple truth hits hard. It names the central anxiety."
+      },
+      {
+        "line": "This dream isn't feeling sweet",
+        "insight": "The illusion of eternal youth shatters. Reality sets in with a jolt."
+      },
+      {
+        "line": "And I've never felt more alone",
+        "insight": "The shared experience of growing up becomes isolating. A deep loneliness settles in."
+      },
+      {
+        "line": "I want 'em back, I want 'em back",
+        "insight": "The desire for lost innocence is visceral. It's a plea for an irretrievable past."
+      },
+      {
+        "line": "But that will never be enough",
+        "insight": "Even the deepest connection cannot halt time. The inevitable loss looms large."
+      }
+    ],
+    "texture": "A shimmering electronic pulse builds. It carries a deep, melancholic ache."
+  }
+}

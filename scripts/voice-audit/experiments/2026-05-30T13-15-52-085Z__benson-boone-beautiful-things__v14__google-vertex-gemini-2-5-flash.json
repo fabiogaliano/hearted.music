@@ -1,0 +1,104 @@
+{
+  "runId": "2026-05-30T13-15-52-085Z__benson-boone-beautiful-things__v14__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-30T13:15:52.085Z",
+  "song": "Benson Boone — Beautiful Things",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 3
+  },
+  "byRule": {
+    "burstiness": 1,
+    "lexical-repetition": 2
+  },
+  "tokens": 4897,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song finds a deep sense of peace and love.",
+      "severity": "low",
+      "note": "CV=0.163 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "fear",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[1].scene",
+      "span": "prayer",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a delicate balance held with shaking hands",
+    "lens": "Joy as Precariousness",
+    "tension": "Anxious Gratitude",
+    "take": "The song finds a deep sense of peace and love. It simultaneously acknowledges that these beautiful things can vanish at any moment. The fear of loss defines the joy itself.",
+    "contradiction": "He has everything he wants. He lives in constant fear of losing it all.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Grateful anticipation",
+        "scene": "A quiet life takes root."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Desperate clinging",
+        "scene": "A whisper turns into a fervent prayer."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Desperate clinging",
+        "scene": "Hands reach out to clutch what is held dear."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Anxious reflection",
+        "scene": "The mind wanders to worst case scenarios."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Desperate clinging",
+        "scene": "The plea becomes a raw, open wound."
+      },
+      {
+        "label": "Outro",
+        "mood": "Raw pleading",
+        "scene": "The final words hang in the air, a prayer without end."
+      }
+    ],
+    "lines": [
+      {
+        "line": "But I know the things He gives me, He can take away",
+        "insight": "This line introduces the central fear."
+      },
+      {
+        "line": "But there's no man as terrified as the man who stands to lose you",
+        "insight": "It defines the depth of his happiness by the terror of its potential absence."
+      },
+      {
+        "line": "Don't take These beautiful things that I've got",
+        "insight": "This is the core prayer, a plea against inevitable change."
+      },
+      {
+        "line": "If everything's good and it's great, why do I sit and wait 'til it's gone?",
+        "insight": "It lays bare the anxiety that shadows his happiness."
+      },
+      {
+        "line": "I've got peace and I've got love. But I'm up at night thinkin' I just might lose it all",
+        "insight": "The contrast between his current blessings and his overwhelming fear is stark."
+      }
+    ],
+    "texture": "A piano melody carries the vocal through a quiet opening. The drums and guitar then lift the whole thing into a driving pop rock anthem."
+  }
+}

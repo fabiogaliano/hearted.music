@@ -1,0 +1,671 @@
+{
+  "song": {
+    "id": "4b92eb17-60f6-41ce-849a-a9bd905a9282",
+    "name": "Pink Pony Club",
+    "artists": [
+      "Chappell Roan"
+    ],
+    "album_name": "The Rise and Fall of a Midwest Princess"
+  },
+  "lyrics": {
+    "source": "genius",
+    "document": {
+      "source": "genius",
+      "sections": [
+        {
+          "type": "Verse 1",
+          "lines": [
+            {
+              "id": 1,
+              "text": "I know you wanted me to stay",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "In the opening lyric of “Pink Pony Club,” Chappell Roan addresses her mother’s expectations for her. She struggles with her family’s desires to stay in her Midwest hometown — a concept that is referenced in the album’s title (The Rise and Fall of a Midwest Princess).\n\nThis isn’t the first time Roan’s addressed her mother’s conservative desires. In “Die Young,” Roan conveys a similar sentiment:\n\n”Look at your mama, now she’s crying”\n\nRoan has expressed in an interview with Headliner Magazine that she believes her lyrics have matured significantly since that song. “Pink Pony Club” shows less angst and more of a mature struggle between familial expectations and one’s own dreams.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 19
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "But I can't ignore the crazy visions of me in L.A.",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "Chappell had gone to LA for a little while back before she had blown up as an artist. She said that the space felt so comforting and welcoming, particularly to the queer community. In her words, she could “be who I wanted to be.” and that “changed everything.” Chappell grew up in the Midwest with a very conservative Christian family. She reported memories of going to church camp every summer, and always being considered a “god’s girl”. LA had changed her life and helped her discover who she wanted to be. She still resides there to this day.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 36
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "And I heard that there's a special place",
+              "range": {
+                "end": 3,
+                "start": 3
+              },
+              "annotations": [
+                {
+                  "text": "According to Roan, this special place is West Hollywood’s iconic gay bar The Abbey, which features male and female go-go dancers and regular drag shows. In 2023, she talked with Teen Vogue about her first time going to The Abbey at 21, just after moving to Los Angeles:\n\nThey have fog shooting out whenever the beat drops, and there’s dancers swinging from the ceiling.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 74
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "text": "Where boys and girls can all be queens every single day",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            }
+          ]
+        },
+        {
+          "type": "Refrain",
+          "lines": [
+            {
+              "id": 1,
+              "text": "I'm having wicked dreams of leaving Tennessee",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "Despite naming Tennessee in the refrain, Roan actually grew up in Willard, Missouri. She talked a bit about her experience growing up there in a 2022 profile with Rolling Stone:\n\nI felt so out of place in my hometown. I wish it was better. I wish I had better things to say. But mentally, I had a really tough time.\n\nIn recent years, Tennessee has become increasingly hostile towards its LGBTQ+ population, banning drag shows and attacking trans rights. Roan feels called to Santa Monica Boulevard in West Hollywood, CA, which is famous for its gay bars, drag shows, and queer culture and businesses, making it the perfect location for the Pink Pony Club.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 73
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Hear Santa Monica, I swear it's calling me",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "Won't make my mama proud, it's gonna cause a scene",
+              "range": {
+                "end": 3,
+                "start": 3
+              },
+              "annotations": [
+                {
+                  "text": "Here Roan touches on a painful experience familiar to many LGBTQ+ people raised in conservative families: To be true to herself as a queer person, she risks disappointment and rejection from her family and community, whom she still loves nonetheless.\n\nRoan’s narrator can embrace the “wicked dreams” she longs for as a performer dancing onstage at gay clubs, OR she can make her mother proud of her—but she can’t have both.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 36
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "text": "She sees her baby girl, I know she's gonna scream",
+              "range": {
+                "end": 4,
+                "start": 4
+              },
+              "annotations": [
+                {
+                  "text": "“Baby girl” shows her mother still viewing her as a baby and not the women she grew to be.\nThe first line is basically saying when her southern conservative mother sees her as this person she’s never actually viewed her as. Her mother has never seen her as a drag and LGBTQ icon. Shes only ever seen her as a religious young girl.\n\nThe second line shows the hate her mother would have towards the person she is since it contradicts all her mothers southern conservative views.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 25
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "Pre-Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "\"God, what have you done?",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "While being a “pink pony girl” here means that she dances at the Pink Pony Club, a pink pony is a stereotypical interest for a little girl in a place like Tennessee with strong horse riding and owning culture. Her mother, who would have seen her grow up, could also be decrying that she used to be such a feminine child and conformed to what was expected of her, and now she’s thrown that all away by leaving to live a Queer lifestyle and dance at a club.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 73
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "You're a pink pony girl, and you dance at the club,\" oh mama",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "She is trying to explain to her mother who hates her lifestyle that she’s living this way because she enjoys it and is having fun by living this way. Her mother would view her lifestyle as a dancer at the pink pony club almost blasphemous so the way Chappell is responding is almost brushing it off by saying “I’m just having fun” cause it’s telling her mother she actually enjoys this lifestyle.\n\n“On the stage in my heels” could be hinting towards her being a drag queen at the pink pony club. It could also be showing her mother that she still has the same femininity about her that her mother believed she had no matter her lifestyle.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 35
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "I'm just having fun",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "On the stage in my heels, it's where I belong, down at the",
+              "range": {
+                "end": 4,
+                "start": 4
+              },
+              "annotations": [
+                {
+                  "text": "Moving to Los Angeles in 2018 allowed Roan to live freely as a queer woman for the first time in her life. Roan found a sense of belonging outside her biological family within queer spaces, a common experience among LGBTQ+ people whose families may not offer support or acceptance. In response, many seek out chosen family and communities where they can express themselves freely and feel genuinely welcome.\n\nThe “Pink Pony Club” represents that space for Roan, a place where she discovered her queer community, sense of family, and safe space. This is reaffirmed in an interview with Rolling Stone, where Roan shared:\n\nI feel allowed to be who I want to be here. That changed everything.\n\nRoan is celebrating this idea of found family, the joy and healing that come from being fully accepted for who you are. When writing “Pink Pony Club,” Roan planned to have drag performers open for her if she ever took it on tour, in homage to her time at The Abbey, a gay bar located in West Hollywood, CA, known for their Drag Brunch performances.\n\nIn 2023, Roan performed alongside local drag queens in Nashville the same day that the Tennessee General Assembly passed an anti-drag bill prohibiting drag shows in non age-restricted venues. Roan would go on to share her sentiment of the show, revealing:\n\nIt was a very emotional show, it was heartbreaking. To know that I was one of the last shows that would happen with all ages with drag performers [for now] is just… I am not scared, because the queer community is strong, we have each other’s backs, and we will overcome hate. We always do. I will continue doing drag. We will continue this, this is not stopping.\n\n—via Teen Vogue\n\n\n\nA drag queen performs at Drag Brunch at the Abbey",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 63
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Pink Pony Club, I'm gonna keep on dancing at the\nWest Hollywood, I'm gonna keep on dancing at the",
+              "range": {
+                "end": 3,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "In a 2023 interview with Teen Vogue, Roan stated that the eponymous Pink Pony Club has become a real space through the crowd of her live shows, where drag queens are the openers and which are unapologetically queer, despite “whatever the fuck the lawmakers are doing.”:\n\nThe pink pony club not just as an idea, but as a real, tangible place she can create for people, if only for a night.  “You have to protect it,” she says. Queer joy, queer safety, queer love. “I have to protect it.”",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 74
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Pink Pony Club, I'm gonna keep on dancing down in",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "West Hollywood is a city located between Los Angeles and Beverly Hills in Los Angeles County, known for a large LGBTQ+ population and a historic association with the community, including numerous queer venues and businesses. One of these venues, The Abbey, is a bar that Chappell has said inspired this song after an “unforgettable” night out.\n\nThis song is a celebration of the freedom experienced by queer people in the environment of a gay bar.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 43
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "Pink Pony Club, Pink Pony Club",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            }
+          ]
+        },
+        {
+          "type": "Verse 2",
+          "lines": [
+            {
+              "id": 1,
+              "text": "I'm up and jaws are on the floor",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "The metaphor: she’s higher than the floor, dancing “on the stage in [her] heels,” giving a jaw dropping performance.  She is up; jaws are down.  It’s a firm, concrete image, one that measures both the audience’s awe and her double elevation—stage and heels.\n\nAnother playful example of this juxtaposition: she’s “down at the Pink Pony Club” where she is also “up.” And so, while “jaws are on the floor” that’s also where she is too, in awe, floored, amazed and amazing, “down.”",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 12
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Lovers in the bathroom and a line outside the door",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "‘Lovers in the Bathroom’ seems like an obvious allusion to people making out (or having sex) in a bathroom stall. This liberal attitude towards sexuality is often associated with queer venues like the ‘Pink Pony Club’ that the song is being written about –  Chappell sings about this in a seemingly celebratory manner.\n\nThis line also refers to the lovers being in their own world, not noticing their surroundings or the ‘line outside the door.’ This could show that in this fantasy place, it’s easy to get caught up in yourselves and not have to think about everyone else’s needs, which contrasts the commonly mentioned southern values that prevent the speaker’s mother from being able to support her dreams.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 38
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "Black lights and a mirrored disco ball",
+              "range": {
+                "end": 3,
+                "start": 3
+              },
+              "annotations": []
+            },
+            {
+              "id": 4,
+              "text": "Every night's another reason why I left it all",
+              "range": {
+                "end": 4,
+                "start": 4
+              },
+              "annotations": [
+                {
+                  "text": "Everything she’s experiencing since leave is just proving that leaving was the right thing to do. Shows she has no regrets of leaving everything behind.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 11
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "Refrain",
+          "lines": [
+            {
+              "id": 1,
+              "text": "I thank my wicked dreams, a year from Tennessee",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "The prior Refrain begins “I’m having wicked dreams”; this one, “I thank my wicked dreams.”  The song articulates and then realizes the narrator’s fantasy: what was first (only) a “wicked dream” and a “crazy vision” is now, “a year” later, a reality, a deliciously unreal reality “where boys and girls can all be queens every single day.”  But strangely and importantly, this Refrain repeats the narrator’s fantasy about her mother’s reaction: “She sees her baby girl, I know she’s gonna scream…”  Not, “She sees her baby girl and now she screams…“ Whereas her wicked dreams come true, she can only imagine—and continues to imagine—her mother’s reaction; the wickedness of the dream remains wicked even as it’s enjoyed.  The song then raises a question: why does the narrator sustain her mother’s scream?   As the narrator’s dream comes true, as she is finally “up and jaws on the floor / Lovers in the bathroom and a line outside the door,” the voice from Tennessee remains an imagined one, one she carries with her.  That is, the fantasy does not include her mother’s approval.  The fantasy, on the contrary, seems to require the forceful “scream,” the “drawl [heard] a thousand miles away.”  The Pink Pony Club then isn’t a delight in spite of her mother’s “what have you done?” but is a delight because it sustains the question as it answers it, if defiantly.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 21
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Oh, Santa Monica, you've been too good to me",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "Won't make my mama proud, it's gonna cause a scene",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "She sees her baby girl, I know she's gonna scream",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            }
+          ]
+        },
+        {
+          "type": "Pre-Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "\"God, what have you done?",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "While being a “pink pony girl” here means that she dances at the Pink Pony Club, a pink pony is a stereotypical interest for a little girl in a place like Tennessee with strong horse riding and owning culture. Her mother, who would have seen her grow up, could also be decrying that she used to be such a feminine child and conformed to what was expected of her, and now she’s thrown that all away by leaving to live a Queer lifestyle and dance at a club.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 73
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "You're a pink pony girl, and you dance at the club,\" oh mama",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "She is trying to explain to her mother who hates her lifestyle that she’s living this way because she enjoys it and is having fun by living this way. Her mother would view her lifestyle as a dancer at the pink pony club almost blasphemous so the way Chappell is responding is almost brushing it off by saying “I’m just having fun” cause it’s telling her mother she actually enjoys this lifestyle.\n\n“On the stage in my heels” could be hinting towards her being a drag queen at the pink pony club. It could also be showing her mother that she still has the same femininity about her that her mother believed she had no matter her lifestyle.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 35
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "I'm just having fun",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "On the stage in my heels, it's where I belong, down at the",
+              "range": {
+                "end": 4,
+                "start": 4
+              },
+              "annotations": [
+                {
+                  "text": "Moving to Los Angeles in 2018 allowed Roan to live freely as a queer woman for the first time in her life. Roan found a sense of belonging outside her biological family within queer spaces, a common experience among LGBTQ+ people whose families may not offer support or acceptance. In response, many seek out chosen family and communities where they can express themselves freely and feel genuinely welcome.\n\nThe “Pink Pony Club” represents that space for Roan, a place where she discovered her queer community, sense of family, and safe space. This is reaffirmed in an interview with Rolling Stone, where Roan shared:\n\nI feel allowed to be who I want to be here. That changed everything.\n\nRoan is celebrating this idea of found family, the joy and healing that come from being fully accepted for who you are. When writing “Pink Pony Club,” Roan planned to have drag performers open for her if she ever took it on tour, in homage to her time at The Abbey, a gay bar located in West Hollywood, CA, known for their Drag Brunch performances.\n\nIn 2023, Roan performed alongside local drag queens in Nashville the same day that the Tennessee General Assembly passed an anti-drag bill prohibiting drag shows in non age-restricted venues. Roan would go on to share her sentiment of the show, revealing:\n\nIt was a very emotional show, it was heartbreaking. To know that I was one of the last shows that would happen with all ages with drag performers [for now] is just… I am not scared, because the queer community is strong, we have each other’s backs, and we will overcome hate. We always do. I will continue doing drag. We will continue this, this is not stopping.\n\n—via Teen Vogue\n\n\n\nA drag queen performs at Drag Brunch at the Abbey",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 63
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Pink Pony Club, I'm gonna keep on dancing at the\nWest Hollywood, I'm gonna keep on dancing at the",
+              "range": {
+                "end": 3,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "In a 2023 interview with Teen Vogue, Roan stated that the eponymous Pink Pony Club has become a real space through the crowd of her live shows, where drag queens are the openers and which are unapologetically queer, despite “whatever the fuck the lawmakers are doing.”:\n\nThe pink pony club not just as an idea, but as a real, tangible place she can create for people, if only for a night.  “You have to protect it,” she says. Queer joy, queer safety, queer love. “I have to protect it.”",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 74
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Pink Pony Club, I'm gonna keep on dancing down in",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "West Hollywood is a city located between Los Angeles and Beverly Hills in Los Angeles County, known for a large LGBTQ+ population and a historic association with the community, including numerous queer venues and businesses. One of these venues, The Abbey, is a bar that Chappell has said inspired this song after an “unforgettable” night out.\n\nThis song is a celebration of the freedom experienced by queer people in the environment of a gay bar.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 43
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "Pink Pony Club, Pink Pony Club",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            }
+          ]
+        },
+        {
+          "type": "Bridge",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Don't think I've left you all behind",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "Despite leaving Tennessee, Chappell is still in touch with where she once was and the experiences she had while growing up. She hasn’t forgotten about anybody there and especially not her mother who wouldn’t approve of her new hyper femme/queer lifestyle in LA",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 22
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Still love you and Tennessee, you're always on my mind",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "And mama, every Saturday",
+              "range": {
+                "end": 3,
+                "start": 3
+              },
+              "annotations": []
+            },
+            {
+              "id": 4,
+              "text": "I can hear your Southern drawl a thousand miles away, saying",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            }
+          ]
+        },
+        {
+          "type": "Pre-Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "\"God, what have you done?",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "While being a “pink pony girl” here means that she dances at the Pink Pony Club, a pink pony is a stereotypical interest for a little girl in a place like Tennessee with strong horse riding and owning culture. Her mother, who would have seen her grow up, could also be decrying that she used to be such a feminine child and conformed to what was expected of her, and now she’s thrown that all away by leaving to live a Queer lifestyle and dance at a club.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 73
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "You're a pink pony girl, and you dance at the club,\" oh mama",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "She is trying to explain to her mother who hates her lifestyle that she’s living this way because she enjoys it and is having fun by living this way. Her mother would view her lifestyle as a dancer at the pink pony club almost blasphemous so the way Chappell is responding is almost brushing it off by saying “I’m just having fun” cause it’s telling her mother she actually enjoys this lifestyle.\n\n“On the stage in my heels” could be hinting towards her being a drag queen at the pink pony club. It could also be showing her mother that she still has the same femininity about her that her mother believed she had no matter her lifestyle.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 35
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "I'm just having fun",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "On the stage in my heels, it's where I belong, down at the",
+              "range": {
+                "end": 4,
+                "start": 4
+              },
+              "annotations": [
+                {
+                  "text": "Moving to Los Angeles in 2018 allowed Roan to live freely as a queer woman for the first time in her life. Roan found a sense of belonging outside her biological family within queer spaces, a common experience among LGBTQ+ people whose families may not offer support or acceptance. In response, many seek out chosen family and communities where they can express themselves freely and feel genuinely welcome.\n\nThe “Pink Pony Club” represents that space for Roan, a place where she discovered her queer community, sense of family, and safe space. This is reaffirmed in an interview with Rolling Stone, where Roan shared:\n\nI feel allowed to be who I want to be here. That changed everything.\n\nRoan is celebrating this idea of found family, the joy and healing that come from being fully accepted for who you are. When writing “Pink Pony Club,” Roan planned to have drag performers open for her if she ever took it on tour, in homage to her time at The Abbey, a gay bar located in West Hollywood, CA, known for their Drag Brunch performances.\n\nIn 2023, Roan performed alongside local drag queens in Nashville the same day that the Tennessee General Assembly passed an anti-drag bill prohibiting drag shows in non age-restricted venues. Roan would go on to share her sentiment of the show, revealing:\n\nIt was a very emotional show, it was heartbreaking. To know that I was one of the last shows that would happen with all ages with drag performers [for now] is just… I am not scared, because the queer community is strong, we have each other’s backs, and we will overcome hate. We always do. I will continue doing drag. We will continue this, this is not stopping.\n\n—via Teen Vogue\n\n\n\nA drag queen performs at Drag Brunch at the Abbey",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 63
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Pink Pony Club, I'm gonna keep on dancing at the\nWest Hollywood, I'm gonna keep on dancing at the",
+              "range": {
+                "end": 3,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "In a 2023 interview with Teen Vogue, Roan stated that the eponymous Pink Pony Club has become a real space through the crowd of her live shows, where drag queens are the openers and which are unapologetically queer, despite “whatever the fuck the lawmakers are doing.”:\n\nThe pink pony club not just as an idea, but as a real, tangible place she can create for people, if only for a night.  “You have to protect it,” she says. Queer joy, queer safety, queer love. “I have to protect it.”",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 74
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Pink Pony Club, I'm gonna keep on dancing down in",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "West Hollywood is a city located between Los Angeles and Beverly Hills in Los Angeles County, known for a large LGBTQ+ population and a historic association with the community, including numerous queer venues and businesses. One of these venues, The Abbey, is a bar that Chappell has said inspired this song after an “unforgettable” night out.\n\nThis song is a celebration of the freedom experienced by queer people in the environment of a gay bar.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 43
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "Pink Pony Club, Pink Pony Club",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            }
+          ]
+        },
+        {
+          "type": "Outro",
+          "lines": [
+            {
+              "id": 1,
+              "text": "I'm gonna keep on dancing",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "The repetition throughout of “I’m gonna keep on dancing” cements the song as a defiant celebration of survival, persistence and resilience. Despite rejection and oppression from hostile families, communities, and legislation, LGBTQ+ people will continue to find joy in their queer experiences and communities like the Pink Pony Club!",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 33
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "I'm gonna keep on dancing",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 1
+    },
+    "content_hash": "ly_v1_439052b11ac392b1",
+    "schema_version": 1,
+    "has_annotations": true
+  }
+}

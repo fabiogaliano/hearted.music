@@ -1,0 +1,124 @@
+{
+  "runId": "2026-05-31T12-16-25-621Z__benson-boone-beautiful-things__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:16:25.621Z",
+  "song": "Benson Boone — Beautiful Things",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 6
+  },
+  "byRule": {
+    "book-report-opener": 1,
+    "burstiness": 1,
+    "lexical-repetition": 4,
+    "dash": 1
+  },
+  "tokens": 5514,
+  "hits": [
+    {
+      "rule": "book-report-opener",
+      "field": "lines[3].insight",
+      "span": "This is a raw, primal cry for",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song finds a deep happiness.",
+      "severity": "low",
+      "note": "CV=0.204 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "happiness",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "desperate",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "plea",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "fear",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "lines[2].insight",
+      "span": "self-sabotage",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "a tight grip on a fragile moment",
+    "lens": "joy as a countdown",
+    "tension": "Clinging Dread",
+    "take": "The song finds a deep happiness. It immediately turns into a desperate plea to keep it. This joy comes with an inherent, terrifying deadline.",
+    "contradiction": "He has everything he wants. He lives in constant fear of losing it all.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Content, grateful",
+        "scene": "Life has turned around. Everything is finally good."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Anxious, pleading",
+        "scene": "A quiet dread begins to surface. He recognizes the fragility of his happiness."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Desperate, begging",
+        "scene": "He begs for these good things to stay. The fear becomes a desperate prayer."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Reflective, worried",
+        "scene": "He questions why he cannot simply enjoy his peace. The underlying anxiety remains."
+      },
+      {
+        "label": "Outro",
+        "mood": "Intense, pleading",
+        "scene": "The desperate plea echoes into the silence. He cannot let go of the fear."
+      }
+    ],
+    "lines": [
+      {
+        "line": "But I know the things He gives me, He can take away",
+        "insight": "This line introduces the central fear. It grounds his happiness in a terrifying impermanence."
+      },
+      {
+        "line": "But there's no man as terrified as the man who stands to lose you",
+        "insight": "His greatest joy creates his deepest terror. The stakes are impossibly high."
+      },
+      {
+        "line": "If everything's good and it's great, why do I sit and wait 'til it's gone?",
+        "insight": "He recognizes the self-sabotage of his anxiety. The fear is a constant companion."
+      },
+      {
+        "line": "I want you, I need you, oh God Don't take These beautiful things that I've got",
+        "insight": "This is a raw, primal cry for preservation. He is utterly vulnerable in his plea."
+      }
+    ],
+    "texture": "A soaring pop rock anthem builds with earnest vocals and powerful drums. It carries a desperate, almost frantic energy."
+  }
+}

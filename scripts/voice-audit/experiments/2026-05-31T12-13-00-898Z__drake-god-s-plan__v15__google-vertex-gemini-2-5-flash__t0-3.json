@@ -1,0 +1,98 @@
+{
+  "runId": "2026-05-31T12-13-00-898Z__drake-god-s-plan__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:13:00.899Z",
+  "song": "Drake — God's Plan",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 3
+  },
+  "byRule": {
+    "self-reference": 1,
+    "burstiness": 1,
+    "lexical-repetition": 1,
+    "dash": 1
+  },
+  "tokens": 7480,
+  "hits": [
+    {
+      "rule": "self-reference",
+      "field": "texture",
+      "span": "the track",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song treats his success as an inevitable path.",
+      "severity": "low",
+      "note": "CV=0.141 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "texture",
+      "span": "low-key",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "a bulletproof vest, worn with a smirk",
+    "lens": "destiny as armor",
+    "tension": "Fated Resilience",
+    "take": "The song treats his success as an inevitable path. He moves through threats with an unshakeable belief in his predetermined journey. This belief shields him from the negativity of others.",
+    "contradiction": "He fears death. He believes he is immortal.",
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Lingering Suspicion",
+        "scene": "Whispers of ill will surround him. He hears every word."
+      },
+      {
+        "label": "Verse",
+        "mood": "Calm Defiance",
+        "scene": "He moves through threats with quiet strength. His path is his own."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Fated Certainty",
+        "scene": "He names his destiny. His community stands with him."
+      },
+      {
+        "label": "Verse",
+        "mood": "Steadfast Allegiance",
+        "scene": "He acknowledges his closest allies. Their presence makes him whole."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I don't wanna die for them to miss me",
+        "insight": "He wants recognition in life. He does not want posthumous praise."
+      },
+      {
+        "line": "God's plan, God's plan",
+        "insight": "A higher power guides his journey. He trusts in this divine direction."
+      },
+      {
+        "line": "I only love my bed and my mama, I'm sorry",
+        "insight": "His deepest affections are few. He prioritizes comfort and family above all else."
+      },
+      {
+        "line": "Without 40, Oli, there'd be no me",
+        "insight": "He credits his success to his core team. Their support is foundational to his existence."
+      }
+    ],
+    "texture": "A smooth, low-key beat carries the track. It feels effortless, but a deep bass line grounds every word."
+  }
+}

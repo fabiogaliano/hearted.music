@@ -1,0 +1,145 @@
+{
+  "runId": "2026-05-31T12-17-35-092Z__chappell-roan-pink-pony-club__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:17:35.092Z",
+  "song": "Chappell Roan — Pink Pony Club",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 2,
+    "low": 7
+  },
+  "byRule": {
+    "puffery-adjective": 2,
+    "burstiness": 1,
+    "lexical-repetition": 4,
+    "dash": 2
+  },
+  "tokens": 6776,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "take",
+      "span": "vibrant",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "texture",
+      "span": "shimmering",
+      "severity": "medium"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song charts a course from familial expectation to chosen family.",
+      "severity": "low",
+      "note": "CV=0.098 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "new",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "self",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "mother",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "home",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[2].label",
+      "span": "Pre-Chorus",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "lines[3].insight",
+      "span": "self-expression",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "pink lights on a new stage",
+    "lens": "disapproval into belonging",
+    "tension": "Joyful Defiance",
+    "take": "The song charts a course from familial expectation to chosen family. It finds a vibrant, queer space where identity blossoms. This new world is a defiant embrace of self.",
+    "contradiction": "She loves her mother and her home. She cannot be herself there.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Restless Longing",
+        "scene": "A vision of a new life pulls you away from home."
+      },
+      {
+        "label": "Refrain",
+        "mood": "Familial Conflict",
+        "scene": "The thought of your mother's reaction hangs heavy."
+      },
+      {
+        "label": "Pre-Chorus",
+        "mood": "Defiant Joy",
+        "scene": "Your mother's judgment is a distant echo."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Unabashed Freedom",
+        "scene": "You dance without reservation in your new home."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Enduring Connection",
+        "scene": "You carry your past with you into this new world."
+      },
+      {
+        "label": "Outro",
+        "mood": "Persistent Joy",
+        "scene": "The dancing continues, a promise of forever."
+      }
+    ],
+    "lines": [
+      {
+        "line": "But I can't ignore the crazy visions of me in L.A.",
+        "insight": "A future self calls you from a distant city."
+      },
+      {
+        "line": "Where boys and girls can all be queens every single day",
+        "insight": "A place exists where everyone can claim their true self."
+      },
+      {
+        "line": "Won't make my mama proud, it's gonna cause a scene",
+        "insight": "Your path forward means disappointing those you love."
+      },
+      {
+        "line": "On the stage in my heels, it's where I belong",
+        "insight": "True belonging is found in self-expression."
+      },
+      {
+        "line": "Every night's another reason why I left it all",
+        "insight": "Each new experience validates your choice to leave."
+      }
+    ],
+    "texture": "A shimmering synthpop beat drives the whole thing, but a raw emotional honesty grounds its glitter."
+  }
+}

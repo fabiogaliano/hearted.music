@@ -1,0 +1,153 @@
+{
+  "runId": "2026-05-31T11-56-13-956Z__frank-ocean-thinkin-bout-you__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:56:13.956Z",
+  "song": "Frank Ocean — Thinkin Bout You",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 1,
+    "low": 7
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 2,
+    "burstiness": 1,
+    "lexical-repetition": 6
+  },
+  "tokens": 6101,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "take",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", searching for a sign of shared memory.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[4].insight",
+      "span": ", refusing to diminish over time.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song holds onto a future that feels out of reach.",
+      "severity": "low",
+      "note": "CV=0.166 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "quiet",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "future",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "shared",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "love",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "memory",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a quiet room, filled with rain",
+    "lens": "Clinging to a future",
+    "tension": "Persistent Longing",
+    "take": "The song holds onto a future that feels out of reach. It asks if a shared path still exists, even as it acknowledges the past's profound impact. You hear the quiet desperation of a love that refuses to fade.",
+    "contradiction": "The past is a clear memory. The future is an open question.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Reflective Regret",
+        "scene": "A life once chaotic finds order, then falls apart again in a flood of tears."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Persistent Questioning",
+        "scene": "The mind circles back to the same name, searching for a sign of shared memory."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Anxious Longing",
+        "scene": "A plea for a shared future hangs in the air, unanswered and uncertain."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Playful Denial",
+        "scene": "A defensive front hides deeper feelings, almost daring the other person to see through it."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Profound Affirmation",
+        "scene": "The undeniable truth of a first love, etched into memory, declares its lasting power."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Anxious Longing",
+        "scene": "The question of forever returns, now underscored by the weight of an unforgettable past."
+      }
+    ],
+    "lines": [
+      {
+        "line": "A tornado flew around my room before you came",
+        "insight": "A life in disarray finds a sudden calm, then returns to chaos with a memory."
+      },
+      {
+        "line": "My eyes don't shed tears, but boy, they pour",
+        "insight": "The emotion is so overwhelming it defies a simple description of crying."
+      },
+      {
+        "line": "Or do you not think so far ahead? 'Cause I been thinkin' 'bout forever, ooh",
+        "insight": "The core of the longing is a desire for a future that might only exist for one person."
+      },
+      {
+        "line": "No, I don't like you, I just thought you were cool enough to kick it",
+        "insight": "A casual dismissal attempts to mask the depth of true affection."
+      },
+      {
+        "line": "You know you were my first time. It won't ever get old, not in my soul, not in my spirit, keep it alive",
+        "insight": "The memory of a foundational love is held sacred, refusing to diminish over time."
+      }
+    ],
+    "texture": "A smooth, layered vocal floats over a sparse beat. It feels like a late night confession, whispered into the quiet, but the emotion is anything but hushed."
+  }
+}

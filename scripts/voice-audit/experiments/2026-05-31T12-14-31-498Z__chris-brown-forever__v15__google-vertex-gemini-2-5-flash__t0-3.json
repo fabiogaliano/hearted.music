@@ -1,0 +1,128 @@
+{
+  "runId": "2026-05-31T12-14-31-498Z__chris-brown-forever__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:14:31.498Z",
+  "song": "Chris Brown — Forever",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 7
+  },
+  "byRule": {
+    "burstiness": 1,
+    "lexical-repetition": 6
+  },
+  "tokens": 5564,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song takes a single night on the dance floor.",
+      "severity": "low",
+      "note": "CV=0.101 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "dance",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "floor",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "forever",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "night",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "moment",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "lines[0].insight",
+      "span": "line",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "spinning on the dance floor, forever",
+    "lens": "night into forever",
+    "tension": "Boundless Euphoria",
+    "take": "The song takes a single night on the dance floor. It stretches that moment into an endless feeling. You are invited into a shared eternity, just for tonight.",
+    "contradiction": "It is only one night. It feels like forever.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Anticipatory Excitement",
+        "scene": "A hand reaches out to pull you into the moment."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Shared Ecstasy",
+        "scene": "The dance floor becomes a world of its own."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Rebellious Confidence",
+        "scene": "Two people move as one. They find freedom from everything else."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Overwhelmed Devotion",
+        "scene": "Words of commitment spill out. They promise protection."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Shared Ecstasy",
+        "scene": "The promise of forever is sealed on the dance floor."
+      }
+    ],
+    "lines": [
+      {
+        "line": "It's you and me, moving at the speed of light into eternity, yeah",
+        "insight": "The opening line immediately sets the tone for the night's ambition. It promises an experience beyond the ordinary."
+      },
+      {
+        "line": "It's like I've waited my whole life for this one night",
+        "insight": "This line elevates the present moment. It makes the night feel destined and profoundly significant."
+      },
+      {
+        "line": "Double your pleasure, double your fun",
+        "insight": "This line is a direct invitation to excess. It pushes you to fully embrace the night's hedonism."
+      },
+      {
+        "line": "Feels like we're on another level, oh",
+        "insight": "The connection transcends the physical space. It suggests a unique bond forming in the moment."
+      },
+      {
+        "line": "I'm driving, you can take the front seat",
+        "insight": "It offers a confident lead. It asks for trust in the journey of the night."
+      }
+    ],
+    "texture": "The production is slick and propulsive. It layers bright synths over a driving beat."
+  }
+}

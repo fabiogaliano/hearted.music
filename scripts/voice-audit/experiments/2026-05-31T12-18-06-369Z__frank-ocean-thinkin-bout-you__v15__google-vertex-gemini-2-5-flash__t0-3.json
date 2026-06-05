@@ -1,0 +1,133 @@
+{
+  "runId": "2026-05-31T12-18-06-369Z__frank-ocean-thinkin-bout-you__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:18:06.369Z",
+  "song": "Frank Ocean — Thinkin Bout You",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 2,
+    "low": 4
+  },
+  "byRule": {
+    "puffery-adjective": 2,
+    "participial-closure": 2,
+    "burstiness": 1,
+    "lexical-repetition": 2,
+    "dash": 1
+  },
+  "tokens": 6139,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "take",
+      "span": "haunting",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "arc[3].scene",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", creating an intimate, floating sound.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", reaching for a shared future.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The memory of a first love becomes a haunting vision of a future that never arri",
+      "severity": "low",
+      "note": "CV=0.226 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "love",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[1].scene",
+      "span": "question",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "texture",
+      "span": "open-ended",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "a tornado in a quiet room",
+    "lens": "memory as a future ghost",
+    "tension": "Wistful Longing",
+    "take": "The memory of a first love becomes a haunting vision of a future that never arrived. It keeps you fixed on a \"forever\" that only exists in your mind. You wonder if they ever thought that far ahead.",
+    "contradiction": "He claims indifference. He is consumed by the thought of them.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Raw Vulnerability",
+        "scene": "A life is laid bare, disrupted by a past love."
+      },
+      {
+        "label": "Chorus Question",
+        "mood": "Wistful Longing",
+        "scene": "A desperate question hangs in the air, reaching for a shared future."
+      },
+      {
+        "label": "Defensive Denial",
+        "mood": "Sarcastic Hurt",
+        "scene": "A sharp, defensive retort tries to mask deeper feelings."
+      },
+      {
+        "label": "Enduring Memory",
+        "mood": "Deep Reverence",
+        "scene": "The profound impact of a first love is acknowledged as eternal."
+      },
+      {
+        "label": "Final Plea",
+        "mood": "Wistful Longing",
+        "scene": "The same question returns, heavier with the weight of memory."
+      }
+    ],
+    "lines": [
+      {
+        "line": "A tornado flew around my room before you came",
+        "insight": "A life was thrown into disarray by the arrival and departure of this person."
+      },
+      {
+        "line": "My eyes don't shed tears, but boy, they pour",
+        "insight": "The pain is so deep it bypasses typical expressions of sadness."
+      },
+      {
+        "line": "Do you think about me still? Do ya, do ya?",
+        "insight": "A simple question carries the weight of all unsaid things."
+      },
+      {
+        "line": "Or do you not think so far ahead? 'Cause I been thinkin' 'bout forever, ooh",
+        "insight": "The core tension of the song is revealed in a single, yearning question."
+      },
+      {
+        "line": "You know you were my first time",
+        "insight": "The significance of the relationship is rooted in its foundational impact."
+      }
+    ],
+    "texture": "A warm synth pad underpins a delicate falsetto, creating an intimate, floating sound. It feels vulnerable, yet it carries a vast, open-ended sadness."
+  }
+}

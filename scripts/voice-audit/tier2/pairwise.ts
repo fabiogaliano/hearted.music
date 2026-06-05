@@ -45,9 +45,9 @@ export function renderAnalysis(a: ConceptRead): string {
 		`contradiction: ${a.contradiction ?? "(none)"}`,
 		"arc:",
 		...a.arc.map((beat) => `  - ${beat.label} (${beat.mood}): ${beat.scene}`),
-		"line_insights:",
-		...a.lines.map((l) => `  - on "${l.line}": ${l.insight}`),
-		`texture: ${a.texture}`,
+		"lines:",
+		...a.lines.map((l) => `  - "${l.line}"`),
+		`texture: ${a.texture ?? "(none)"}`,
 	];
 	return lines.join("\n");
 }

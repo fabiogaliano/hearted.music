@@ -1,0 +1,112 @@
+{
+  "runId": "2026-05-31T11-50-40-332Z__drake-god-s-plan__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:50:40.332Z",
+  "song": "Drake — God's Plan",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 3
+  },
+  "byRule": {
+    "participial-closure": 1,
+    "burstiness": 1,
+    "lexical-repetition": 2
+  },
+  "tokens": 6337,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", knowing his fate is secured.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song asserts that his success is not just his own doing.",
+      "severity": "low",
+      "note": "CV=0.119 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "path",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a path cleared by fate",
+    "lens": "Destiny as Protection",
+    "tension": "Assured Protection",
+    "take": "The song asserts that his success is not just his own doing. It is a divinely ordained path that shields him from the ill wishes of others. You hear him move through the world with an untouchable confidence, knowing his fate is secured.",
+    "contradiction": "Bad things are wished upon him. He remains untouched.",
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Anticipatory Calm",
+        "scene": "A quiet confidence settles in. You feel the weight of unseen eyes."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Steady Assertion",
+        "scene": "He moves with purpose, aware of the ill will surrounding him."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Divine Declaration",
+        "scene": "The plan is named. His roots are deep."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Unwavering Shield",
+        "scene": "The bad wishes fall away. He stands protected."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Loyal Foundation",
+        "scene": "His circle is named. Their support is his strength."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Absolute Certainty",
+        "scene": "The truth of his path is undeniable."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I don't wanna die for them to miss me",
+        "insight": "He wants his recognition now."
+      },
+      {
+        "line": "Yes, I see the things that they wishin' on me",
+        "insight": "He is fully aware of the negativity directed at him."
+      },
+      {
+        "line": "God's plan, God's plan",
+        "insight": "This is the unwavering belief that guides his journey."
+      },
+      {
+        "line": "I only love my bed and my mama, I'm sorry",
+        "insight": "His core loyalties are few and absolute."
+      },
+      {
+        "line": "Without 40, Oli, there'd be no me",
+        "insight": "He acknowledges the essential people who built him."
+      }
+    ],
+    "texture": "A sparse, echoing beat creates a wide open space. His voice fills it with a calm, almost conversational certainty."
+  }
+}

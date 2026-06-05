@@ -11,9 +11,9 @@
     { "label": "Outro", "mood": "closed door", "scene": "Three notes on a piano. Then nothing." }
   ],
   "lines": [
-    { "line": "you left your coat", "insight": "Small possessions outlast the people who owned them." },
-    { "line": "the hallway light", "insight": "A tiny detail does the work a whole paragraph of grief couldn't." },
-    { "line": "i don't miss you", "insight": "A lie told so carefully that both parties know exactly what it means." }
+    { "line": "you left your coat" },
+    { "line": "the hallway light" },
+    { "line": "i don't miss you" }
   ],
   "texture": "Piano, low strings, a single breath between verses. No drums. Space does most of the work."
 }

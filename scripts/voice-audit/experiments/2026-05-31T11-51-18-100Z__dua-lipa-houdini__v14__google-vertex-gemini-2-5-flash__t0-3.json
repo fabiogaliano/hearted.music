@@ -1,0 +1,116 @@
+{
+  "runId": "2026-05-31T11-51-18-100Z__dua-lipa-houdini__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:51:18.100Z",
+  "song": "Dua Lipa — Houdini",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 6,
+    "medium": 1,
+    "low": 0
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "participial-closure": 6
+  },
+  "tokens": 6024,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "lines[0].insight",
+      "span": "frames",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", daring you to try and keep her.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", inviting you closer to the game.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", demanding substance behind your sweet words.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[1].insight",
+      "span": ", demanding proof of genuine effort.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[2].insight",
+      "span": ", urging swift action.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[4].insight",
+      "span": ", looking for actions that match spoken promises.",
+      "severity": "high"
+    }
+  ],
+  "analysis": {
+    "image": "a glitter trail fading fast",
+    "lens": "elusiveness as test",
+    "tension": "Testing Desire",
+    "take": "She presents her elusiveness as the ultimate test. You must prove your worth to keep her attention. This is her way of finding out who is truly capable of holding her.",
+    "contradiction": "She wants to disappear. She wants someone to make her stay.",
+    "arc": [
+      {
+        "label": "Chorus",
+        "mood": "Confident Challenge",
+        "scene": "She states her terms for engagement, daring you to try and keep her."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Playful Observation",
+        "scene": "She watches for a sign of genuine interest, inviting you closer to the game."
+      },
+      {
+        "label": "Post Chorus",
+        "mood": "Hopeful Vulnerability",
+        "scene": "She reveals the possibility of staying, if you are the right one."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Skeptical Inquiry",
+        "scene": "She questions your intentions, demanding substance behind your sweet words."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Catch me or I go Houdini",
+        "insight": "She frames her potential departure as a magical act, a challenge to be met."
+      },
+      {
+        "line": "Prove you got the right to please me",
+        "insight": "She sets a high bar for connection, demanding proof of genuine effort."
+      },
+      {
+        "line": "Time is passin' like a solar eclipse",
+        "insight": "She emphasizes the fleeting nature of her presence, urging swift action."
+      },
+      {
+        "line": "Maybe you could be the one to make me stay",
+        "insight": "She admits a hidden desire for a lasting connection, if someone can earn it."
+      },
+      {
+        "line": "do you practise everything that you preach?",
+        "insight": "She seeks authenticity, looking for actions that match spoken promises."
+      }
+    ],
+    "texture": "A driving disco beat keeps you moving. It is all bright lights and motion, but the words demand a deeper look."
+  }
+}

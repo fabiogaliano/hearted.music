@@ -1,0 +1,67 @@
+{
+  "runId": "2026-05-31T12-14-38-725Z__the-rapture-no-sex-for-ben__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:14:38.725Z",
+  "song": "The Rapture — No Sex for Ben",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 1
+  },
+  "byRule": {
+    "burstiness": 1
+  },
+  "tokens": 4595,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song takes a personal grievance and turns it into a communal chant.",
+      "severity": "low",
+      "note": "CV=0.199 (threshold 0.25)"
+    }
+  ],
+  "analysis": {
+    "image": "a crowd chanting one name in unison",
+    "lens": "insult into anthem",
+    "tension": "Public Ridicule",
+    "take": "The song takes a personal grievance and turns it into a communal chant. It builds a shared rejection around one person's perceived failings. The repetition makes the insult a rallying cry.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Anticipatory Tension",
+        "scene": "A collective voice prepares for a public shaming."
+      },
+      {
+        "label": "Verse",
+        "mood": "Unwavering Scorn",
+        "scene": "The charges against Ben are laid out for everyone to hear."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Communal Rejection",
+        "scene": "The group delivers its final, absolute judgment."
+      }
+    ],
+    "lines": [
+      {
+        "line": "No sex, no sex for Ben Rymer now",
+        "insight": "The central decree is delivered with absolute certainty."
+      },
+      {
+        "line": "Ben Rymer, trash people",
+        "insight": "The collective labels Ben with a dismissive, dehumanizing term."
+      },
+      {
+        "line": "Try to snatch the kitty off his girlfriend's mother",
+        "insight": "The specific, scandalous act that led to his downfall is revealed."
+      }
+    ],
+    "texture": "A driving, repetitive beat propels the chant forward. The raw, almost shouted vocals cut through the sparse instrumentation."
+  }
+}

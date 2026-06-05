@@ -1,0 +1,93 @@
+{
+  "runId": "2026-05-31T12-16-06-144Z__lorde-ribs__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:16:06.144Z",
+  "song": "Lorde — Ribs",
+  "spotifyTrackId": "2MvvoeRt8NcOXWESkxWn3g",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 1,
+    "low": 0
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 1,
+    "book-report-opener": 1
+  },
+  "tokens": 6200,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "lines[1].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", leaving only the ghost of what was.",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "lines[2].insight",
+      "span": "This is a raw plea for lost i",
+      "severity": "high"
+    }
+  ],
+  "analysis": {
+    "image": "midnight streets, reeling and alone",
+    "lens": "youth as phantom limb",
+    "tension": "Aching Nostalgia",
+    "take": "The song treats youth as a phantom limb. You feel the ache of something gone but still intensely present. It traces the exact moment when childhood slips away, leaving only the ghost of what was.",
+    "contradiction": "You can share beds like little kids. You know it will never be enough.",
+    "arc": [
+      {
+        "label": "Verse",
+        "mood": "quiet dread",
+        "scene": "A quiet dread settles in."
+      },
+      {
+        "label": "Chorus",
+        "mood": "growing isolation",
+        "scene": "The world feels vast and empty."
+      },
+      {
+        "label": "Bridge",
+        "mood": "desperate longing",
+        "scene": "The past calls out."
+      },
+      {
+        "label": "Refrain",
+        "mood": "fleeting comfort",
+        "scene": "You hold onto a moment. It slips away."
+      }
+    ],
+    "lines": [
+      {
+        "line": "It drives you crazy, getting old",
+        "insight": "The simple truth hits hard. It names the fear directly."
+      },
+      {
+        "line": "And I've never felt more alone",
+        "insight": "Growing up brings a profound sense of isolation. The world expands, but connections feel thinner."
+      },
+      {
+        "line": "I want 'em back, I want 'em back. The minds we had, the minds we had",
+        "insight": "This is a raw plea for lost innocence. It speaks to a specific kind of memory."
+      },
+      {
+        "line": "Sharing beds like little kids",
+        "insight": "You try to recreate the safety of childhood. It is a desperate act of preservation."
+      },
+      {
+        "line": "But that will never be enough",
+        "insight": "The comfort of friendship cannot stop time. It is a stark, unavoidable truth."
+      }
+    ],
+    "texture": "The electronic production is spacious and cool. It holds a deep, aching warmth."
+  }
+}

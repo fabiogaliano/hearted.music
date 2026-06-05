@@ -1,0 +1,108 @@
+{
+  "runId": "2026-05-31T11-54-18-607Z__benson-boone-beautiful-things__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:54:18.607Z",
+  "song": "Benson Boone — Beautiful Things",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 4
+  },
+  "byRule": {
+    "burstiness": 1,
+    "lexical-repetition": 3
+  },
+  "tokens": 4809,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song treats happiness as a fragile state.",
+      "severity": "low",
+      "note": "CV=0.196 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "fear",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "loss",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[0].scene",
+      "span": "things",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a tight grip on what could vanish",
+    "lens": "happiness as precarity",
+    "tension": "Anxious Gratitude",
+    "take": "The song treats happiness as a fragile state. It is a constant negotiation with fear. Every good thing comes with the weight of its potential loss.",
+    "contradiction": "He has everything he wants. He lives in fear of losing it all.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Contented Reflection",
+        "scene": "He lists the beautiful things in his life. A sense of peace settles over him."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Rising Dread",
+        "scene": "A sudden fear of loss breaks through. The good things feel fragile."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Desperate Plea",
+        "scene": "He begs for the beautiful things to stay. The fear becomes a direct address."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Internal Conflict",
+        "scene": "He questions his own inability to simply enjoy. The peace is disturbed by anxiety."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Desperate Plea",
+        "scene": "The plea repeats with urgency. He clings to what he has."
+      },
+      {
+        "label": "Outro",
+        "mood": "Clinging Hope",
+        "scene": "The need for these things intensifies. He cannot imagine life without them."
+      }
+    ],
+    "lines": [
+      {
+        "line": "But I know the things He gives me, He can take away",
+        "insight": "This line introduces the central fear. It grounds his happiness in a divine, yet precarious, gift."
+      },
+      {
+        "line": "But there's no man as terrified as the man who stands to lose you",
+        "insight": "The fear becomes deeply personal. It names the specific terror of losing a loved one."
+      },
+      {
+        "line": "If everything's good and it's great, why do I sit and wait 'til it's gone?",
+        "insight": "He articulates his internal struggle. He cannot reconcile his present joy with his future anxiety."
+      },
+      {
+        "line": "Don't take These beautiful things that I've got",
+        "insight": "This is the song's core prayer. It is a direct appeal against loss."
+      }
+    ],
+    "texture": "A soaring pop rock anthem built on a foundation of quiet dread."
+  }
+}

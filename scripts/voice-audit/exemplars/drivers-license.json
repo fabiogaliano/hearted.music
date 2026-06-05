@@ -1,37 +1,41 @@
 {
   "read": {
-    "image": "the long way home, alone this time",
+    "image": "crying through the suburbs without him",
     "lens": "license as eulogy",
     "tension": "Aching Disbelief",
-    "take": "She passed the test she swore she would pass for him, and now the win only measures how far the car can go without him in it. The streets she learned to drive on belong to someone she thought she'd be with by now. The whole song is the sound of a private promise turning into an ordinary errand.",
-    "contradiction": "She got everything she wanted. She got it alone.",
+    "take": "She got her license just like they always talked about, ready to drive up to his house, and now drives through tears past it. He is probably with that blonde girl who is everything she is insecure about. The license only circles her back through everything they were. She still fuckin' loves him.",
+    "contradiction": "He has moved on, and she is still driving the route to his door.",
     "arc": [
       {
-        "label": "Verse",
-        "mood": "Hushed",
-        "scene": "Just her voice and a few chords, a diary left open on the dashboard."
+        "label": "His Excitement",
+        "mood": "Tender Grief",
+        "scene": "He was the one who got excited about this, back when her passing the test meant she could finally drive out to where he was. She still heads out with all of that excitement, except now she is the only one who feels it."
       },
       {
-        "label": "Bridge",
-        "mood": "Overwhelmed",
-        "scene": "Red lights and stop signs blur. The harmonies stack up like thoughts she cannot stop having."
+        "label": "The Break",
+        "mood": "Overwhelmed Longing",
+        "scene": "On every road he turns up, his face in the white cars, his voice in the traffic. She can't make herself pass the places they used to go. Then the memory she has been fighting wins, the two of them laughing over the noise, back when the drive still had somewhere to go."
       },
       {
-        "label": "Final chorus",
-        "mood": "Cathartic",
-        "scene": "The dam breaks. What started as a whisper ends as the loudest she has been all song."
+        "label": "The Loop",
+        "mood": "Endless Devastation",
+        "scene": "For all of it, she ends up right back where she started, alone on his street. There is no one there to tell, so she says it to the empty road: \"You said forever, now I drive alone past your street.\""
       }
     ],
     "lines": [
       {
-        "line": "I got my driver's license like I told you I would",
-        "insight": "A win that only counts as a loss. The accomplishment is addressed to someone who is not there to hear it."
+        "line": "I got my driver's license last week\nJust like we always talked about"
       },
       {
-        "line": "And you're probably with that blonde girl",
-        "insight": "Heartbreak does its worst work in the imagination, casting the exact scene it dreads."
+        "line": "And you're probably with that blonde girl"
+      },
+      {
+        "line": "I just can't imagine how you could be so okay now that I'm gone"
+      },
+      {
+        "line": "I still fuckin' love you, babe"
       }
     ],
-    "texture": "A ballad that grows a spine. Sparse piano swells into stacked harmonies and a pounding bridge."
+    "texture": "Spare and acoustic, low and quiet, a ballad carried by her voice with almost nothing else in the frame."
   }
 }

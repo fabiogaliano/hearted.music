@@ -54,9 +54,12 @@ interface HarnessSong extends TestSong {
 // monochrome arc / manufactured-movement trap (Beautiful Things), two-act narrative
 // the single-thesis lens fights (Pink Pony Club), tempo-emotion gap (As It Was),
 // paradox-poor gratitude / power-flirt (God's Plan, Houdini), literary misdirection
-// (Thinkin Bout You). They carry no spotifyTrackId: lyrics resolve by artist/title and
-// audio features are skipped, which the diagnostic deems acceptable (it found audio
-// features unreliable as an emotion proxy).
+// (Thinkin Bout You). Lyrics resolve by artist/title (cache is keyed that way, not by
+// track id) and audio features are skipped, which the diagnostic deems acceptable (it
+// found audio features unreliable as an emotion proxy). Four of them (Beautiful Things,
+// Pink Pony Club, No Sex for Ben, As It Was) were promoted to gold exemplars in Session
+// 5.5-continued and carry a slug spotifyTrackId purely as the run-to-gold join key — it
+// is not a real Spotify id and is only ever string-matched against exemplars/index.json.
 const SONGS: HarnessSong[] = [
 	{ key: "not-like-us", artist: "Kendrick Lamar", title: "Not Like Us", spotifyTrackId: "6AI3ezQ4o3HUoP6Dhudph3", album: "Not Like Us", fallbackGenres: ["trap", "hip hop"] },
 	{ key: "drivers-license", artist: "Olivia Rodrigo", title: "drivers license", spotifyTrackId: "4ml4WlnHDEpOK8HRVYTCWf", album: "SOUR" },
@@ -67,12 +70,12 @@ const SONGS: HarnessSong[] = [
 	{ key: "dtmf", artist: "Bad Bunny", title: "DtMF", spotifyTrackId: "3sK8wGT43QFpWrvNQsrQya", album: "DeBÍ TiRAR MáS FOToS" },
 	{ key: "do-i-wanna-know", artist: "Arctic Monkeys", title: "Do I Wanna Know?", spotifyTrackId: "5FVd6KXrgO9B3JPmC8OPst", album: "AM" },
 	{ key: "forever", artist: "Chris Brown", title: "Forever", album: "Exclusive: The Forever Edition", fallbackGenres: ["pop", "r&b", "dance-pop"] },
-	{ key: "beautiful-things", artist: "Benson Boone", title: "Beautiful Things", album: "Fireworks & Rollerblades", fallbackGenres: ["pop"] },
-	{ key: "pink-pony-club", artist: "Chappell Roan", title: "Pink Pony Club", album: "The Rise and Fall of a Midwest Princess", fallbackGenres: ["pop", "synth-pop"] },
+	{ key: "beautiful-things", artist: "Benson Boone", title: "Beautiful Things", spotifyTrackId: "beautiful-things", album: "Fireworks & Rollerblades", fallbackGenres: ["pop"] },
+	{ key: "pink-pony-club", artist: "Chappell Roan", title: "Pink Pony Club", spotifyTrackId: "pink-pony-club", album: "The Rise and Fall of a Midwest Princess", fallbackGenres: ["pop", "synth-pop"] },
 	{ key: "gods-plan", artist: "Drake", title: "God's Plan", album: "Scorpion", fallbackGenres: ["hip hop", "rap", "pop rap"] },
 	{ key: "houdini", artist: "Dua Lipa", title: "Houdini", album: "Radical Optimism", fallbackGenres: ["pop", "dance-pop"] },
-	{ key: "no-sex-for-ben", artist: "The Rapture", title: "No Sex for Ben", album: "Pieces of the People We Love", fallbackGenres: ["dance-punk", "indie rock"] },
-	{ key: "as-it-was", artist: "Harry Styles", title: "As It Was", album: "Harry's House", fallbackGenres: ["pop", "synth-pop"] },
+	{ key: "no-sex-for-ben", artist: "The Rapture", title: "No Sex for Ben", spotifyTrackId: "no-sex-for-ben", album: "Pieces of the People We Love", fallbackGenres: ["dance-punk", "indie rock"] },
+	{ key: "as-it-was", artist: "Harry Styles", title: "As It Was", spotifyTrackId: "as-it-was", album: "Harry's House", fallbackGenres: ["pop", "synth-pop"] },
 	{ key: "thinkin-bout-you", artist: "Frank Ocean", title: "Thinkin Bout You", album: "Channel Orange", fallbackGenres: ["r&b", "alternative r&b"] },
 ];
 

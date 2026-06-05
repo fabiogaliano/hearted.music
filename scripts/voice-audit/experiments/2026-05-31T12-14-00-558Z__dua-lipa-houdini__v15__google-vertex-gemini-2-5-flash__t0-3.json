@@ -1,0 +1,116 @@
+{
+  "runId": "2026-05-31T12-14-00-558Z__dua-lipa-houdini__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:14:00.558Z",
+  "song": "Dua Lipa — Houdini",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 6
+  },
+  "byRule": {
+    "burstiness": 1,
+    "lexical-repetition": 3,
+    "dash": 2
+  },
+  "tokens": 6240,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "A high-stakes game of chase unfolds.",
+      "severity": "low",
+      "note": "CV=0.163 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "fleeting",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "game",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "challenge",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "take",
+      "span": "high-stakes",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[2].label",
+      "span": "Post-Chorus",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "a fleeting glance across a crowded room",
+    "lens": "elusiveness as invitation",
+    "tension": "Confident Elusiveness",
+    "take": "A high-stakes game of chase unfolds. She presents a challenge to a potential lover. Her elusiveness is an invitation to prove their devotion.",
+    "contradiction": "She threatens to vanish at any moment. She simultaneously asks to be convinced to remain.",
+    "arc": [
+      {
+        "label": "Intro/Verse 1",
+        "mood": "Intriguing Gaze",
+        "scene": "She observes the scene. A silent challenge begins."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Bold Declaration",
+        "scene": "She states her terms clearly. Her presence is a fleeting gift."
+      },
+      {
+        "label": "Post-Chorus",
+        "mood": "Vulnerable Opening",
+        "scene": "A hidden desire surfaces. She admits a longing to be made to stay."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Sincere Questioning",
+        "scene": "She probes for deeper truth. Words alone are not enough."
+      },
+      {
+        "label": "Chorus/Outro",
+        "mood": "Heightened Stakes",
+        "scene": "The game intensifies. She prepares for her exit."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Catch me or I go Houdini",
+        "insight": "The core challenge is laid bare. It defines the stakes of the game."
+      },
+      {
+        "line": "Time is passin' like a solar eclipse",
+        "insight": "The moment for action is brief. It emphasizes the fleeting nature of her presence."
+      },
+      {
+        "line": "Maybe you could be the one to make me stay",
+        "insight": "A genuine desire for connection surfaces. It offers a path to a different outcome."
+      },
+      {
+        "line": "Do you practise everything that you preach?",
+        "insight": "She demands authenticity. Empty words hold no power here."
+      }
+    ],
+    "texture": "A pulsing disco beat drives the whole thing forward. The urgency never breaks its effortless cool."
+  }
+}

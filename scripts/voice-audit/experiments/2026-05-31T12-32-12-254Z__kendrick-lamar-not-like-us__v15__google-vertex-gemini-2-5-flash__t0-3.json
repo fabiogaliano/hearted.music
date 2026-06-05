@@ -1,0 +1,104 @@
+{
+  "runId": "2026-05-31T12-32-12-254Z__kendrick-lamar-not-like-us__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:32:12.254Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 3
+  },
+  "byRule": {
+    "lexical-repetition": 3
+  },
+  "tokens": 9990,
+  "hits": [
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "party",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "everyone",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "line",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a block party, everyone dancing, pointing fingers",
+    "lens": "excommunication as block party",
+    "tension": "Joyful Fury",
+    "take": "Excommunication becomes a block party. The whole neighborhood gathers. They dance and point fingers at the outsider.",
+    "contradiction": "It draws a hard line between 'us' and 'them'. It unites everyone on one side of that line.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Aggressive Confidence",
+        "scene": "He steps into the ring. Every punch lands hard and fast."
+      },
+      {
+        "label": "Chorus",
+        "mood": "United Declaration",
+        "scene": "A unified voice rises. They draw a clear line in the sand."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Sharp Dissection",
+        "scene": "He dissects every claim. The truth is laid bare."
+      },
+      {
+        "label": "Chorus",
+        "mood": "United Declaration",
+        "scene": "The crowd chants the words. They know who belongs."
+      },
+      {
+        "label": "Verse 3",
+        "mood": "Cultural Critique",
+        "scene": "He calls out the culture vultures. A history of exploitation is revealed."
+      },
+      {
+        "label": "Outro",
+        "mood": "Collective Dismissal",
+        "scene": "The beat takes over. Everyone dances the outsider away."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Deebo any rap nigga, he a free throw",
+        "insight": "He establishes his dominance. He takes down any opponent with ease."
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "A shocking accusation is hurled. It aims to completely dismantle a public image."
+      },
+      {
+        "line": "They not like us, they not like us",
+        "insight": "A clear boundary is drawn. It defines who belongs and who does not."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "He redefines a relationship. It exposes a deeper systemic issue."
+      },
+      {
+        "line": "Then step this way, step that way",
+        "insight": "The beat commands movement. It turns the dismissal into a dance."
+      }
+    ],
+    "texture": "A West Coast bounce drives the whole thing. It feels like a party. The lyrics cut deep."
+  }
+}

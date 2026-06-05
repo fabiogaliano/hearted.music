@@ -15,9 +15,9 @@ describe("ConceptReadSchema", () => {
 		}
 	});
 
-	it("accepts a 6-beat arc (Not Like Us, the widest gold)", () => {
+	it("accepts a 4-beat arc (Not Like Us, the widest gold)", () => {
 		const nlu = CONCEPT_SONGS.find((s) => s.id === "not-like-us");
-		expect(nlu?.read.arc.length).toBe(6);
+		expect(nlu?.read.arc.length).toBe(4);
 		expect(ConceptReadSchema.safeParse(nlu?.read).success).toBe(true);
 	});
 
@@ -32,19 +32,19 @@ describe("ConceptReadSchema", () => {
 		expect(ConceptReadSchema.safeParse(flat).success).toBe(true);
 	});
 
-	it("enforces the arc envelope [2, 6]", () => {
+	it("enforces the arc envelope [2, 4]", () => {
 		const oneBeat = { ...baseRead, arc: baseRead.arc.slice(0, 1) };
 		expect(ConceptReadSchema.safeParse(oneBeat).success).toBe(false);
 
-		const sevenBeats = {
+		const fiveBeats = {
 			...baseRead,
-			arc: Array.from({ length: 7 }, (_, i) => ({
+			arc: Array.from({ length: 5 }, (_, i) => ({
 				label: `s${i}`,
 				mood: "m",
 				scene: "x.",
 			})),
 		};
-		expect(ConceptReadSchema.safeParse(sevenBeats).success).toBe(false);
+		expect(ConceptReadSchema.safeParse(fiveBeats).success).toBe(false);
 	});
 
 	it("enforces the lines envelope [1, 5]", () => {
@@ -53,7 +53,7 @@ describe("ConceptReadSchema", () => {
 
 		const sixLines = {
 			...baseRead,
-			lines: Array.from({ length: 6 }, () => ({ line: "l", insight: "i." })),
+			lines: Array.from({ length: 6 }, () => ({ line: "l" })),
 		};
 		expect(ConceptReadSchema.safeParse(sixLines).success).toBe(false);
 	});
@@ -63,6 +63,14 @@ describe("ConceptReadSchema", () => {
 		expect(ConceptReadSchema.safeParse(withNull).success).toBe(true);
 
 		const { contradiction: _omitted, ...withoutKey } = baseRead;
+		expect(ConceptReadSchema.safeParse(withoutKey).success).toBe(false);
+	});
+
+	it("requires an explicit texture key (null allowed when audio features absent, missing rejected)", () => {
+		const withNull = { ...baseRead, texture: null };
+		expect(ConceptReadSchema.safeParse(withNull).success).toBe(true);
+
+		const { texture: _omitted, ...withoutKey } = baseRead;
 		expect(ConceptReadSchema.safeParse(withoutKey).success).toBe(false);
 	});
 });

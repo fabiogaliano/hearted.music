@@ -1,35 +1,39 @@
 {
   "read": {
-    "image": "neon, and no one to call",
-    "lens": "speed as avoidance",
-    "tension": "Euphoric Loneliness",
-    "take": "Chasing a high, a city, a person, anything to outrun being alone at night. The euphoria is real, and so is the emptiness underneath it. He floors it through the dark and hopes the motion will pass for connection.",
-    "contradiction": "The thing that thrills him is the thing keeping him blind.",
+    "image": "Sin City lit and no one in it",
+    "lens": "freedom that turns out to be absence",
+    "tension": "Hollow Euphoria",
+    "take": "Las Vegas was supposed to be freedom. No one to answer to, no one around to judge, the whole city burning at 4 a.m. That turns out to be the problem. He is going through withdrawals — from her, from the high, from anything that makes him feel real — and the lights of Sin City are filling in for the touch he cannot sleep without. He drives into the sunrise to find her, blinded by everything he chose instead.",
+    "contradiction": "Sin City gave him everything he asked for and none of what he needed.",
     "arc": [
       {
-        "label": "Intro",
-        "mood": "Surging",
-        "scene": "The synth hits and the song is already at full speed, like flooring it the second the light turns."
-      },
-      {
-        "label": "Verses",
+        "label": "Wanting",
         "mood": "Yearning",
-        "scene": "Under all the gloss he's just asking someone to be there. The need keeps peeking through the shine."
+        "scene": "He has been trying to call. He has been on his own for long enough. The city is cold and empty, and freedom with no one to answer to turns out to feel exactly like being alone. He cannot see clearly when she is gone."
       },
       {
-        "label": "Outro",
-        "mood": "Spent",
-        "scene": "The lights keep flashing but the feeling never arrives. Still driving, still alone."
+        "label": "The Need",
+        "mood": "Hollow Euphoria",
+        "scene": "Blinded by the lights. Drowning in the night. He cannot sleep until he feels a touch and the city cannot give him that."
+      },
+      {
+        "label": "Still Driving",
+        "mood": "Resolute",
+        "scene": "Coming back to tell her what he could never say on the phone, certain he will not let her go this time. He drives toward her through everything still blinding him."
       }
     ],
     "lines": [
       {
-        "line": "I can't sleep until I feel your touch",
-        "insight": "Insomnia dressed up as devotion. The glamour barely covers how plainly he needs someone."
+        "line": "I can't sleep until I feel your touch"
       },
       {
-        "line": "I'm blinded by the lights",
-        "insight": "The thing that thrills him is the thing keeping him from seeing clearly. The high is also the blindfold."
+        "line": "I said, ooh, I'm blinded by the lights"
+      },
+      {
+        "line": "Sin City's cold and empty\nNo one's around to judge me"
+      },
+      {
+        "line": "I'm just coming back to let you know\nI could never say it on the phone"
       }
     ],
     "texture": "Glossy retro synthwave, bright and propulsive, all chrome and cold night air."

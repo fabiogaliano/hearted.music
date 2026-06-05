@@ -16,9 +16,13 @@ const ConceptArcBeatSchema = z.object({
 	scene: z.string(),
 });
 
+// A pivotal lyric quote. The per-line `insight` gloss was removed: it largely
+// restated what `take` and `arc` already say, concentrated the most voice-audit
+// violations, and was never read by the matching layer. The quote itself is the
+// curation signal. Kept as an object (not a bare string) so historical reads that
+// still carry `insight` keep validating — Zod strips the unknown key.
 const ConceptLineBeatSchema = z.object({
 	line: z.string(),
-	insight: z.string(),
 });
 
 export const ConceptReadSchema = z.object({
@@ -31,9 +35,13 @@ export const ConceptReadSchema = z.object({
 	take: z.string(),
 	// Required key, nullable value: forces explicit null over silent omission.
 	contradiction: z.string().nullable(),
-	arc: z.array(ConceptArcBeatSchema).min(2).max(6),
+	arc: z.array(ConceptArcBeatSchema).min(2).max(4),
 	lines: z.array(ConceptLineBeatSchema).min(1).max(5),
-	texture: z.string(),
+	// Required key, nullable value: texture is the one field grounded in sound,
+	// not lyrics, so it's written only when audio features exist (genre sharpens
+	// it) and null otherwise. The panel hides the block on null rather than let
+	// the model hallucinate a sound from the words.
+	texture: z.string().nullable(),
 });
 export type ConceptRead = z.infer<typeof ConceptReadSchema>;
 export type ConceptArcBeat = z.infer<typeof ConceptArcBeatSchema>;

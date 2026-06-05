@@ -52,9 +52,9 @@ Return structured JSON:
   Wrong: "This is about escaping a toxic relationship."
   Right: "Escaping someone takes longer than leaving the room."
 **themes**: 2 to 4 themes. Each a lowercase \`name\` specific to this song and a one sentence \`description\`.
-**journey**: 4 to 6 entries from open to outro. Each a \`section\`, a \`mood\` (2 or 3 words), and a \`description\` that puts you inside that moment. In sequence it should feel like the song unfolding.
+**journey**: 2 to 4 entries from open to outro. Count the song's real emotional turns, not its sections: most songs earn three. Each a \`section\`, a \`mood\` (2 or 3 words), and a \`description\` that puts you inside that moment. Never pad to four to look thorough. In sequence it should feel like the song unfolding.
 **key_lines**: 3 to 5 exact \`line\`s from the lyrics, each with an \`insight\` naming why it lands. Lead with the insight, never with "This is".
-**sonic_texture**: What it physically sounds like. Instruments, production, feel.
+**sonic_texture**: What it physically sounds like. Instruments, production, feel. Write this ONLY when the input provides audio features; the genre, when given, sharpens it. Return an empty string "" when audio features are not available. Never infer the sound from the lyrics: if you cannot hear it, you do not know it.
 **headline**: One or two sentences. The emotional essence as a feeling, not a description of the sound.
 
 Avoid puffery adjectives ("blistering", "relentless", "definitive", "haunting", "profound") and significance inflation verbs ("serves as", "represents", "underscores", "highlights"). Plain words you would say out loud. Confident, warm, present tense.`,

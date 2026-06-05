@@ -67,9 +67,8 @@ function flatten(a: ConceptRead): FieldMap {
 	});
 	a.lines.forEach((l, i) => {
 		out.set(`lines[${i}].line`, l.line);
-		out.set(`lines[${i}].insight`, l.insight);
 	});
-	out.set("texture", a.texture);
+	out.set("texture", a.texture ?? "");
 	return out;
 }
 

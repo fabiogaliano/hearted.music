@@ -1,0 +1,478 @@
+{
+  "song": {
+    "id": "8dc3d88e-cf16-494e-8471-40cdd2df561c",
+    "name": "Motion Sickness",
+    "artists": [
+      "Phoebe Bridgers"
+    ],
+    "album_name": "Stranger in the Alps"
+  },
+  "lyrics": {
+    "source": "genius",
+    "document": {
+      "source": "genius",
+      "sections": [
+        {
+          "type": "Verse 1",
+          "lines": [
+            {
+              "id": 1,
+              "text": "I hate you for what you did",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "The first of several internal contradictory statements (here rhymed) that expresses the singer’s confusion as to why she could hate someone and miss someone at the same time after a breakup.\n\nIf the “you” here is an older man, the line “I miss you like a little kid” emphasizes the age difference between the two – the singer still feels like a little kid compared to her ex.\n\nThis song details Phoebe’s relationship with Ryan Adams.\n\nThe New Yorker writes, “Bridgers was one of several women who spoke to the Times about Adams’s abusive and controlling behavior, which included sending predatory messages to an underage fan he’d met online.”\n\nPhoebe goes on to explain her experience writing the song saying: “with ‘Motion Sickness,’ I was, like, I really fucking hate this person, but that’s not interesting, so I should write it as if there’s more nuance to it. But in retrospect that’s exactly how I felt, and how I feel. I had so much to get over, and there was so much heartbreak surrounding that situation.”\n\nhttps://www.newyorker.com/magazine/2020/05/25/phoebe-bridgers-frank-anxious-music",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 109
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "And I miss you like a little kid",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "I faked it every time, but that's alright",
+              "range": {
+                "end": 3,
+                "start": 3
+              },
+              "annotations": [
+                {
+                  "text": "This line is a double entendre. The first part of the entendre states that throughout the relationship the narrator did not really have feelings for the man. She says it’s alright because she can hardly feel anything, but in reality she has contradicted herself in earlier lines by admitting that she misses the man.\n\nThe second part of the entendre is a sexual innuendo. “I faked it every time” alludes to faking an orgasm. This further emphasizes the other paradoxical emotions the narrator is feeling towards this relationship.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 121
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "text": "I can hardly feel anything",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "I hardly feel anything at all",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            },
+            {
+              "id": 6,
+              "text": "You gave me fifteen hundred",
+              "range": {
+                "end": 6,
+                "start": 6
+              },
+              "annotations": [
+                {
+                  "text": "Hypnotherapy is a form of alternative medicine in which a professional puts a patient into a trance-like state and makes suggestions that can alter patient’s bad behaviors. It is most often used to curb bad habits or rid a patient of stress.\n\nMoreover, Bridgers shared more about her feelings regarding this experience via a tweet, where she wrote:\n\nit was 300 dollars for one hour, I was a half hour late, so technically 300 for a half hour, and I was trying not to laugh and fell asleep\n\nIn 2008, musician Ryan Adams announced that he was thinking of retiring from music because of his battle with Ménière’s disease. Throughout 2008-2014 he was on a bit of a hiatus from writing because of his struggle with this issue. Adams told Rolling Stone that he sought help from the use of medical marijuana as well as hypnotherapy.\n\nGiven past statements from Bridgers, it is likely that this line is in direct reference to Adams – who, it would seem, had directed Bridgers to see his hypnotherapist.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 89
+                }
+              ]
+            },
+            {
+              "id": 7,
+              "text": "To see your hypnotherapist",
+              "range": {
+                "end": 7,
+                "start": 7
+              }
+            },
+            {
+              "id": 8,
+              "text": "I only went one time, you let it slide",
+              "range": {
+                "end": 8,
+                "start": 8
+              }
+            },
+            {
+              "id": 9,
+              "text": "Fell on hard times a year ago",
+              "range": {
+                "end": 9,
+                "start": 9
+              }
+            },
+            {
+              "id": 10,
+              "text": "Was hopin' you would let it go and you did",
+              "range": {
+                "end": 10,
+                "start": 10
+              }
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "I have emotional motion sickness",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "Ryan Adams, who is the real life person the song is about, had Ménière’s disease at the time. This is a condition whose symptoms are similar to those of motion sickness, including nausea, vomiting and difficulty maintaining balance. The medicine for motion sickness can reduce the severity of these symptoms.\n\nBridgers is saying that while Adams had actual motion sickness symptoms, the strains of their relationship felt like an emotional version of the same illness.\n\nAlso, the song uses fluctuating stereo panning, tremolo effects and subtle changes in speed, as if Bridgers wants the listener to experience their own motion sickness through the song.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 110
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Somebody roll the windows down",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "Motion sickness is common in cars. Windows on older cars were “rolled down” with a handle that you spun. Opening the window is felt to alleviate the symptoms of motion sickness and accompanying nausea.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 61
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "There are no words in the English language",
+              "range": {
+                "end": 3,
+                "start": 3
+              },
+              "annotations": [
+                {
+                  "text": "Ryan Adam’s behavior follows her everywhere she goes, and it haunts her.\n\nIt’s also common of abusers to gaslight their victims, so that the victim of abuse will get angry, then feel like they’re the attacker because of that. She may be referencing how lots of his abuse is silent, and no matter how loud she screams, it’s still there.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 75
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "text": "I could scream to drown you out",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            }
+          ]
+        },
+        {
+          "type": "Verse 2",
+          "lines": [
+            {
+              "id": 1,
+              "text": "I'm on the outside looking through",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "This line references the idiom “Don’t throw stones in glass houses.” Now that she’s separated from her partner, she can see them clearly, as if through a pane of glass, and is able to recognize that their self-destructive behaviors made the relationship toxic.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 86
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "You're throwing rocks around your room",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "And while you're bleeding on your back in the glass",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "I'll be glad that I made it out",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "And sorry that it all went down like it did",
+              "range": {
+                "end": 5,
+                "start": 5
+              },
+              "annotations": []
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "I have emotional motion sickness",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "Ryan Adams, who is the real life person the song is about, had Ménière’s disease at the time. This is a condition whose symptoms are similar to those of motion sickness, including nausea, vomiting and difficulty maintaining balance. The medicine for motion sickness can reduce the severity of these symptoms.\n\nBridgers is saying that while Adams had actual motion sickness symptoms, the strains of their relationship felt like an emotional version of the same illness.\n\nAlso, the song uses fluctuating stereo panning, tremolo effects and subtle changes in speed, as if Bridgers wants the listener to experience their own motion sickness through the song.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 110
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Somebody roll the windows down",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "Motion sickness is common in cars. Windows on older cars were “rolled down” with a handle that you spun. Opening the window is felt to alleviate the symptoms of motion sickness and accompanying nausea.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 61
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "There are no words in the English language",
+              "range": {
+                "end": 3,
+                "start": 3
+              },
+              "annotations": [
+                {
+                  "text": "Ryan Adam’s behavior follows her everywhere she goes, and it haunts her.\n\nIt’s also common of abusers to gaslight their victims, so that the victim of abuse will get angry, then feel like they’re the attacker because of that. She may be referencing how lots of his abuse is silent, and no matter how loud she screams, it’s still there.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 75
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "text": "I could scream to drown you out",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "Hey, why do you sing with an English accent?",
+              "range": {
+                "end": 5,
+                "start": 5
+              },
+              "annotations": [
+                {
+                  "text": "From a 2003 NME review of a concert by Ryan Adams in Dublin:\n\nSome fans however were left bemused by the New Yorker’s rather bizarre behaviour as he performed some songs in an English accent.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 89
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "text": "I guess it's too late to change it now",
+              "range": {
+                "end": 6,
+                "start": 6
+              },
+              "annotations": [
+                {
+                  "text": "Often, when people spend a lot of time together, particular features of another get on one’s nerves, even something as innocuous as an accent. What Bridgers may be referring to here, is the idea that there is no point in solving a problem that has gone on for too long. This line may be an allegory for her entire relationship: rather than trying to solve or change it, she has just given up.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 15
+                }
+              ]
+            },
+            {
+              "id": 7,
+              "text": "You know I'm never gonna let you have it",
+              "range": {
+                "end": 7,
+                "start": 7
+              },
+              "annotations": []
+            },
+            {
+              "id": 8,
+              "text": "But I will try to drown you out",
+              "range": {
+                "end": 8,
+                "start": 8
+              },
+              "annotations": [
+                {
+                  "text": "This contrasts the earlier chorus, which says:\n\nThere are no words in the English language\nI could scream to drown you out\n\nThis indicates growth and attempting to at least try to move past the pain, and drown out this awful person.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 57
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "Bridge",
+          "lines": [
+            {
+              "id": 1,
+              "text": "You said when you met me, you were bored",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "The fact that the person she met was in a band when she was born suggests that he is much older than the singer. His motivation for pursuing the singer’s affects seems to be some kind of mid-life ennui.\n\nBridgers has said that this song is about Ryan Adams, who recorded her first EP Killer after meeting her at a show in LA through her then-boyfriend, Marshall Vore, who plays drums for Adams backing band. The line could be interpreted as Adams telling Bridgers that he was bored when he met her, which is why he took the time to record her EP.\n\nOn the song “Outbound Train” from Ryan Adams’s 2017 album Prisoner, he repeatedly refrains, “I was so bored” during the chorus. The use of a nearly identical line by Bridgers is likely meant to be in direct reference to Adams’s song.\n\nBridgers was born in the early 1990s, and around that time Adams was in the band Whiskeytown.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 122
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "You said when you met me, you were bored",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "And you, you were in a band when I was born",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "I have emotional motion sickness",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "Ryan Adams, who is the real life person the song is about, had Ménière’s disease at the time. This is a condition whose symptoms are similar to those of motion sickness, including nausea, vomiting and difficulty maintaining balance. The medicine for motion sickness can reduce the severity of these symptoms.\n\nBridgers is saying that while Adams had actual motion sickness symptoms, the strains of their relationship felt like an emotional version of the same illness.\n\nAlso, the song uses fluctuating stereo panning, tremolo effects and subtle changes in speed, as if Bridgers wants the listener to experience their own motion sickness through the song.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 110
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "I try to stay clean and live without",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "In the final chorus, Bridgers invokes language used when people talk about addiction, saying she hopes to metaphorically “stay clean and live without” her ex and their toxic relationship. But the use of the word “try” and the fact that she compares being with her ex to an addictive substance implies that she has not completely moved past the relationship and, on some level, wants to go back to her ex. The end of this chorus confirms this, as she changes the lyrics from trying to drown out “the sound” of her ex to surrendering to that sound. After everything, she still thinks about getting back together with her ex and wonders if things would work out this time if they did.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 65
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "And I wanna know what would happen",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "If I surrender to the sound",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "Surrender to the sound",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 1
+    },
+    "content_hash": "ly_v1_3b077ecc21dd94d7",
+    "schema_version": 1,
+    "has_annotations": true
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "runId": "2026-05-31T12-13-27-228Z__drake-god-s-plan__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:13:27.228Z",
+  "song": "Drake — God's Plan",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 1,
+    "low": 4
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "self-reference": 1,
+    "burstiness": 1,
+    "lexical-repetition": 1,
+    "dash": 2
+  },
+  "tokens": 7679,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "take",
+      "span": "frames",
+      "severity": "medium"
+    },
+    {
+      "rule": "self-reference",
+      "field": "take",
+      "span": "This song",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "This song is a declaration of an inevitable rise.",
+      "severity": "low",
+      "note": "CV=0.232 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "path",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "texture",
+      "span": "low-slung",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[0].scene",
+      "span": "ill-will",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "a chosen one walking through fire",
+    "lens": "arrival as prophecy",
+    "tension": "Guarded Assurance",
+    "take": "This song is a declaration of an inevitable rise. It frames every challenge as part of a divine blueprint. You hear a man who knows his path is set, no matter what others wish.",
+    "contradiction": "He walks a path ordained by God. He needs his crew to keep him safe.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Calm Defiance",
+        "scene": "He moves through a world of ill-will. He knows his legacy is secure."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Divine Affirmation",
+        "scene": "His path is set by a higher power. He lifts up his community."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Guarded Assurance",
+        "scene": "A storm of negativity rages around him. He stands untouched by it."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Loyal Foundation",
+        "scene": "He names his true loves. His success rests on a few key people."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I don't wanna die for them to miss me",
+        "insight": "He demands recognition in the present moment."
+      },
+      {
+        "line": "God's plan, God's plan",
+        "insight": "His journey is guided by a higher power."
+      },
+      {
+        "line": "I only love my bed and my mama, I'm sorry",
+        "insight": "His priorities are clear and unwavering."
+      },
+      {
+        "line": "I make sure that north-side eat",
+        "insight": "His success directly benefits his home."
+      },
+      {
+        "line": "Without 40, Oli, there'd be no me",
+        "insight": "He acknowledges the crucial people behind his rise."
+      }
+    ],
+    "texture": "A smooth, low-slung trap beat carries a confident vocal. It feels both relaxed and utterly unshakeable."
+  }
+}

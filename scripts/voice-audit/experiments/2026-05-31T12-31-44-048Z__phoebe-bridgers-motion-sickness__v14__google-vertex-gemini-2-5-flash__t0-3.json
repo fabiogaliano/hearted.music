@@ -1,0 +1,111 @@
+{
+  "runId": "2026-05-31T12-31-44-048Z__phoebe-bridgers-motion-sickness__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:31:44.048Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 0,
+    "low": 2
+  },
+  "byRule": {
+    "participial-closure": 2,
+    "burstiness": 1,
+    "lexical-repetition": 1
+  },
+  "tokens": 7386,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", making you feel perpetually unwell.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[3].insight",
+      "span": ", irritating details of the past still prick at you.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song treats the aftermath of a toxic relationship like a physical illness.",
+      "severity": "low",
+      "note": "CV=0.159 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a car window rolled down, fast",
+    "lens": "Trauma as Motion Sickness",
+    "tension": "Bitter Disorientation",
+    "take": "The song treats the aftermath of a toxic relationship like a physical illness. You are caught in a dizzying spin of conflicting emotions. The past keeps resurfacing, making you feel perpetually unwell.",
+    "contradiction": "The relief of escape and the ache of attachment remain equally true.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Conflicted Resignation",
+        "scene": "You recount the messy details of a past you cannot shake."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Urgent Disorientation",
+        "scene": "The physical symptoms of emotional turmoil take over."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Clear Eyed Relief",
+        "scene": "You see the damage from a safe distance, but the pain lingers."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Defiant Disorientation",
+        "scene": "The sickness persists. A new resolve hardens."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Stark Revelation",
+        "scene": "The true nature of the power dynamic is laid bare."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Desperate Hope",
+        "scene": "You grapple with the addiction of the past. You wonder if letting go is the answer."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I hate you for what you did\nAnd I miss you like a little kid",
+        "insight": "The raw pain of conflicting emotions hits you immediately."
+      },
+      {
+        "line": "I have emotional motion sickness\nSomebody roll the windows down",
+        "insight": "The feeling of being physically ill from emotional turmoil is named."
+      },
+      {
+        "line": "I'm on the outside looking through\nYou're throwing rocks around your room",
+        "insight": "You gain clarity on the chaos you escaped."
+      },
+      {
+        "line": "Hey, why do you sing with an English accent?\nI guess it's too late to change it now",
+        "insight": "Small, irritating details of the past still prick at you."
+      },
+      {
+        "line": "I try to stay clean and live without\nAnd I wanna know what would happen\nIf I surrender to the sound",
+        "insight": "You grapple with the addiction of the past. You wonder if letting go is the answer."
+      }
+    ],
+    "texture": "A gentle acoustic strumming underpins a driving, restless rhythm section, but the soft, intimate vocals carry a sharp, cutting edge."
+  }
+}

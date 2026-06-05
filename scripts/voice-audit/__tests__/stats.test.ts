@@ -15,7 +15,7 @@ const fixture: ConceptRead = {
 	take: "TAKETEXT",
 	contradiction: "CONTRA",
 	arc: [{ label: "LBL", mood: "MD", scene: "SCENETEXT" }],
-	lines: [{ line: "QUOTEDLYRIC", insight: "KEYINSIGHT" }],
+	lines: [{ line: "QUOTEDLYRIC" }],
 	texture: "TEXTURE",
 };
 
@@ -61,7 +61,6 @@ describe("mtld", () => {
 describe("analysisProse", () => {
 	it("includes model prose but excludes quoted lyric lines", () => {
 		const prose = analysisProse(fixture);
-		expect(prose).toContain("KEYINSIGHT");
 		expect(prose).toContain("TAKETEXT");
 		expect(prose).toContain("SCENETEXT");
 		expect(prose).not.toContain("QUOTEDLYRIC");

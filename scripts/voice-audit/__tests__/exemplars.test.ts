@@ -6,24 +6,32 @@ import { lensCoherencePrompt } from "../tier2/prompts/lens-coherence";
 describe("promoted gold exemplars", () => {
 	const golds = [...loadGoldExemplars().values()];
 
-	it("loads and validates all four reads through ConceptReadSchema", () => {
+	it("loads and validates all nine reads through ConceptReadSchema", () => {
 		// loadGoldExemplars parses each .read through ConceptReadSchema, so reaching here
-		// means all four validated.
+		// means all nine validated. The original four were promoted in Session 5; the five
+		// variance-spanning golds (dtmf, no-sex-for-ben, beautiful-things, pink-pony-club,
+		// as-it-was) were added in Session 5.5-continued.
 		expect(golds.map((g) => g.key).sort()).toEqual([
+			"as-it-was",
+			"beautiful-things",
 			"blinding-lights",
 			"drivers-license",
+			"dtmf",
 			"motion-sickness",
+			"no-sex-for-ben",
 			"not-like-us",
+			"pink-pony-club",
 		]);
 	});
 
-	it("has no surviving dashes — the Tier-1 rule they anchor", () => {
-		// The brief's promotion requirement: normalize dashes so the golds don't fail the
-		// Tier-1 dash rule they are meant to anchor. (Other Tier-1 rules are NOT gated on
-		// the golds — they anchor the pairwise judge, not the deterministic linter. See
-		// the participial-closure finding in session-5-voice-audit-migration.md.)
+	it("has no surviving MEDIUM dashes - the Tier-1 fingerprint they anchor", () => {
+		// Golds may keep LOW paired-parenthetical dashes: a balanced aside is deliberate
+		// punctuation, not the AI tell. They must carry zero MEDIUM dashes: the trailing,
+		// clause-ending em dash that is the actual fingerprint. rules.ts splits paired (low)
+		// from trailing (medium); this gate enforces only the medium tier on the golds.
 		for (const g of golds) {
-			expect(dashes(g.read)).toEqual([]);
+			const trailing = dashes(g.read).filter((h) => h.severity !== "low");
+			expect(trailing).toEqual([]);
 		}
 	});
 });

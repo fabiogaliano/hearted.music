@@ -10,8 +10,8 @@
     { "label": "Outro", "mood": "Victorious taunt", "scene": "The beat coasts out, leaving the crowd, the city, and the verdict behind." }
   ],
   "lines": [
-    { "line": "They not like us", "insight": "A juxtaposition of tenderness and fury that explores themes of loss." },
-    { "line": "Certified Lover Boy", "insight": "Perhaps the refrain is a warning. It might be a confession." }
+    { "line": "They not like us" },
+    { "line": "Certified Lover Boy" }
   ],
   "texture": "A potent West Coast trap beat. It serves as the foundation, an intricate tapestry of relentless sound."
 }

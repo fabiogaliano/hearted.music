@@ -23,7 +23,7 @@ You may use your own knowledge of the song to judge whether claims are specific 
 - Participial pile-ups: images tacked on as trailing "..., creating a sense of..." / "..., evoking..." clauses instead of their own sentences.
 - Puffery adjectives and hedging: "hauntingly beautiful", "deeply moving", "perhaps", "might possibly".
 - Uniform rhythm: every sentence the same length and shape; list-like or essayistic flatness.
-- Em dashes or hyphens used for asides. Hearted uses commas. Their presence is a tell.
+- Trailing em dashes that end a phrase abruptly — the AI cliché. Paired parenthetical em dashes in the middle of a sentence are acceptable. Intra-word hyphens are ok.
 - Generic claims that would fit any song in the genre.
 
 # How to decide
@@ -43,15 +43,15 @@ A tie per dimension is allowed when they are genuinely even. The overall winner 
 Return ONLY a single JSON object, no prose before or after, in exactly this shape:
 
 {
-  "per_dimension": {
-    "warmth_attention": "A" | "B" | "tie",
-    "image_specificity": "A" | "B" | "tie",
-    "direct_interpretation": "A" | "B" | "tie",
-    "human_rhythm": "A" | "B" | "tie",
-    "absence_of_ai_tells": "A" | "B" | "tie"
-  },
-  "ai_tells_found": { "A": ["exact quote", "..."], "B": ["exact quote", "..."] },
-  "winner": "A" | "B" | "tie",
-  "confidence": "high" | "medium" | "low",
-  "rationale": "at most 60 words, quoting the specific phrases that decided it"
+"per_dimension": {
+"warmth_attention": "A" | "B" | "tie",
+"image_specificity": "A" | "B" | "tie",
+"direct_interpretation": "A" | "B" | "tie",
+"human_rhythm": "A" | "B" | "tie",
+"absence_of_ai_tells": "A" | "B" | "tie"
+},
+"ai_tells_found": { "A": ["exact quote", "..."], "B": ["exact quote", "..."] },
+"winner": "A" | "B" | "tie",
+"confidence": "high" | "medium" | "low",
+"rationale": "at most 60 words, quoting the specific phrases that decided it"
 }
