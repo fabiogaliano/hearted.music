@@ -1,58 +1,42 @@
 {
   "read": {
-    "image": "the block party draws the line",
-    "lens": "diss as block party",
-    "tension": "Triumphant Contempt",
-    "take": "A hometown verdict on a rivalry, said loud enough for the whole country to overhear. The insults are not the point. The certainty is, and he stitches it into a beat the block can dance to. By the time he calls Drake a colonizer, the diss has already become an anthem, and that is its own kind of cruelty.",
-    "contradiction": "He is reading a verdict, and you can dance to it.",
+    "image": "psst. i see dead people",
+    "lens": "the diss as cultural eviction notice",
+    "tension": "Collective Contempt",
+    "take": "They not like us draws a line and puts everyone on one side or the other. The charges are specific: the entourage with criminal cases, a warning to hide your little sister from him, the Atlanta trips for credibility he cannot earn at home. You not a colleague, you a fuckin' colonizer.",
+    "contradiction": "The line drawn to evict him is what makes everyone else belong.",
     "arc": [
       {
-        "label": "Intro",
-        "mood": "Coiled",
-        "scene": "A whispered 'I see dead people' breaks the silence. Mustard's beat rolls in easy, almost friendly, the swing of a smile before the first punch."
+        "label": "The Sport",
+        "mood": "Playful Menace",
+        "scene": "He enters already having won. There is no case to build, only one to read out, and he takes his time with it because winning this easily is its own kind of fun."
       },
       {
-        "label": "Verse 1",
-        "mood": "Pointed",
-        "scene": "The names start landing. Drake by name, the 'A minor' pun, the receipts in order. He is not arguing. He is reading a verdict."
+        "label": "The Us",
+        "mood": "Collective Belonging",
+        "scene": "Four words split the room and then fill one half of it. Saying them is the membership, and the man being named is the only one who cannot."
       },
       {
-        "label": "Hook",
-        "mood": "Communal",
-        "scene": "'They not like us' becomes a whole city singing back. You are either in the room or you are the target."
-      },
-      {
-        "label": "Verse 2",
-        "mood": "Accusatory",
-        "scene": "He does not argue. He convicts. 'You not a colleague, you a fuckin' colonizer' lands like a sentence handed down."
-      },
-      {
-        "label": "Bridge",
-        "mood": "Celebratory",
-        "scene": "The taunts turn into a dance. The crowd is chanting it back before the next line drops."
-      },
-      {
-        "label": "Outro",
-        "mood": "Settled",
-        "scene": "The beat coasts out. Nothing is left to argue. Compton has already moved on to the next song of the summer."
+        "label": "The History",
+        "mood": "Ancestral Pride",
+        "scene": "The accusation stops being personal. It reaches back centuries, to who built what and who only ever visited, and lands somewhere a diss cannot reach. What he wanted could never be bought, only inherited."
       }
     ],
     "lines": [
       {
-        "line": "They not like us",
-        "insight": "Four words doing the work of a manifesto. The line draws a circle and leaves someone outside it."
+        "line": "The industry can hate me, fuck 'em all and they mama"
       },
       {
-        "line": "Tryna strike a chord and it's probably A minor",
-        "insight": "The cruelest bar wears a pun, so the room laughs a half second before the meaning lands."
+        "line": "Sometimes you gotta pop out and show niggas"
       },
       {
-        "line": "No, you not a colleague, you a fuckin' colonizer",
-        "insight": "The verdict in plain language. Not collaboration. Extraction."
+        "line": "Tryna strike a chord and it's probably A minor"
       },
       {
-        "line": "Say, Drake, I hear you like 'em young",
-        "insight": "The line that turned the diss into something the song could not take back. Direct address, on purpose."
+        "line": "They not like us"
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer"
       }
     ],
     "texture": "A West Coast bounce that struts without breaking a sweat, where the menace lives entirely in how relaxed it sounds."

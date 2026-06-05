@@ -1,0 +1,130 @@
+{
+  "runId": "2026-05-31T11-52-24-438Z__the-rapture-no-sex-for-ben__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:52:24.438Z",
+  "song": "The Rapture — No Sex for Ben",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 6,
+    "medium": 1,
+    "low": 1
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 6,
+    "lexical-repetition": 1
+  },
+  "tokens": 5065,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "texture",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", cutting insult and transforms it into a communal rallying cry.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", creating a dance floor urgency, but the shouted vocals feel like a collective primal scream.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", pulling you into the moment.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", painting a picture of the accused.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[4].scene",
+      "span": ", justifying the collective anger.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[2].insight",
+      "span": ", painting a picture of the person being shamed.",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "collective",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a collective chant, a name on everyone's lips",
+    "lens": "insult into anthem",
+    "tension": "Collective Scorn",
+    "take": "The song takes a simple, cutting insult and transforms it into a communal rallying cry. It builds a shared experience around a single, repeated condemnation. You become part of the crowd, chanting along.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Building Anticipation",
+        "scene": "A countdown starts, pulling you into the moment."
+      },
+      {
+        "label": "Verse",
+        "mood": "Direct Accusation",
+        "scene": "A name is called out, the reason for the gathering is clear."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Collective Decree",
+        "scene": "The crowd joins in, a unified voice declares the verdict."
+      },
+      {
+        "label": "Verse",
+        "mood": "Escalating Scorn",
+        "scene": "More details emerge, painting a picture of the accused."
+      },
+      {
+        "label": "Verse",
+        "mood": "Specific Transgression",
+        "scene": "A particular offense is highlighted, justifying the collective anger."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Unrelenting Condemnation",
+        "scene": "The chant becomes a final, inescapable judgment."
+      }
+    ],
+    "lines": [
+      {
+        "line": "No sex, no sex for Ben Rymer now",
+        "insight": "This line is the entire point, the public shaming delivered directly."
+      },
+      {
+        "line": "Ben Rymer, trash people",
+        "insight": "It establishes the target and the collective judgment against him."
+      },
+      {
+        "line": "Fat trucker, cheap sucker",
+        "insight": "The insults become more vivid, painting a picture of the person being shamed."
+      },
+      {
+        "line": "Try to snatch the kitty off his girlfriend's mother",
+        "insight": "This reveals the specific, outrageous act that led to the condemnation."
+      }
+    ],
+    "texture": "A driving, insistent bassline propels the whole thing forward. The drums are tight and relentless, creating a dance floor urgency, but the shouted vocals feel like a collective primal scream."
+  }
+}

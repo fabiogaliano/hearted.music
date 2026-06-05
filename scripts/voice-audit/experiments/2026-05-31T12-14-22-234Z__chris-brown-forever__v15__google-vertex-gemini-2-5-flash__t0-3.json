@@ -1,0 +1,140 @@
+{
+  "runId": "2026-05-31T12-14-22-234Z__chris-brown-forever__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:14:22.235Z",
+  "song": "Chris Brown — Forever",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 7
+  },
+  "byRule": {
+    "participial-closure": 1,
+    "burstiness": 1,
+    "lexical-repetition": 6
+  },
+  "tokens": 5501,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", exhilarating escape from time.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "A single night on the dance floor becomes an endless moment.",
+      "severity": "low",
+      "note": "CV=0.240 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "single",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "night",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "floor",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "moment",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "feeling",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[1].scene",
+      "span": "world",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a single thrilling night on the floor",
+    "lens": "one night as forever",
+    "tension": "Fleeting Ecstasy",
+    "take": "A single night on the dance floor becomes an endless moment. It invites you into a shared, exhilarating escape from time. This feeling is all that matters.",
+    "contradiction": "It promises forever. It knows it only has one night.",
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Invitation, anticipation",
+        "scene": "The beat drops. A night begins."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Urgent, exhilarating",
+        "scene": "You are pulled into the moment. The world outside fades away."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Euphoric, timeless",
+        "scene": "The dance floor becomes an eternal space. Time stretches out endlessly."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Intimate, rebellious",
+        "scene": "A deeper connection forms. You are two rebels against the world."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Romantic, devoted",
+        "scene": "A sudden surge of deep feeling arrives. A promise of protection is made."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Exultant, endless",
+        "scene": "The feeling of forever returns. The night will never end."
+      }
+    ],
+    "lines": [
+      {
+        "line": "It's like I've waited my whole life for this one night",
+        "insight": "A single moment is elevated to a lifetime of anticipation."
+      },
+      {
+        "line": "It's gon' be me, you and the dance floor",
+        "insight": "The world shrinks to this intimate, shared space."
+      },
+      {
+        "line": "Cause we only got one night",
+        "insight": "The urgency of the moment is clear. It is a fleeting chance."
+      },
+      {
+        "line": "And dance fore-e-ever, fore-e-ever",
+        "insight": "The desire for the moment to last is overwhelming. It is a chant for eternity."
+      },
+      {
+        "line": "I'm driving, you can take the front seat",
+        "insight": "A clear invitation to trust is extended. You are asked to surrender control."
+      }
+    ],
+    "texture": "A driving, propulsive beat pushes the whole thing forward. It feels both smooth and relentlessly energetic."
+  }
+}

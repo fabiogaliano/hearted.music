@@ -54,7 +54,7 @@ Lyrics:
 
 Return structured JSON.
 
-**lens**: The thesis. Write this first. Two to five words, in exactly one of these three forms:
+**lens**: The thesis. Write this first. Two to six words, in exactly one of these three forms:
   - "X as Y" (also "X of Y", "X with Y"): the critical form. Asserts the song is really Y. Examples: "license as eulogy", "anger with receipts".
   - "X into Y": the transformation form, for a song that turns one thing into another across its length. Examples: "insult into anthem", "numbing into motion".
   - "Verb-ing the X": the narrative form, for when the motion is the meaning. Examples: "outrunning the quiet", "circling the same name".

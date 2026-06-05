@@ -1,9 +1,14 @@
 {
-  "description": "Hand-polished gold Hearted reads in the redesigned { read } shape (ConceptReadSchema: image, lens, tension, take, contradiction, arc, lines, texture). The bar the pairwise judge measures candidates against (gold-vs-candidate). Promoted from concept-data.ts in Session 5; dashes normalized to the no-dash voice rule. Keyed by spotifyTrackId so they match experiment runs regardless of label formatting. Edit the prose freely; it defines 'reads like Hearted'.",
+  "description": "Hand-polished gold Hearted reads in the redesigned { read } shape (ConceptReadSchema: image, lens, tension, take, contradiction, arc, lines, texture). The bar the pairwise judge measures candidates against (gold-vs-candidate). First 4 promoted from concept-data.ts in Session 5; dashes normalized to the no-dash voice rule. Expanded in Session 5.5-continued with 5 reads chosen to span lyric variance the original 4 missed: foreign-language with parenthetical glosses (DtMF), short surface-true chant (No Sex for Ben), monochrome deep dread (Beautiful Things), two-act narrative journey (Pink Pony Club), tempo-vs-emotion gap (As It Was). Keyed by spotifyTrackId so they match experiment runs regardless of label formatting; the 4 new non-DtMF entries use a stable slug join-key (no real Spotify ID needed for judging — backfill the real ID in both this file and regen.ts SONGS if ever wanted). Edit the prose freely; it defines 'reads like Hearted'.",
   "entries": [
     { "key": "not-like-us", "song": "Kendrick Lamar — Not Like Us", "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3", "file": "not-like-us.json" },
     { "key": "drivers-license", "song": "Olivia Rodrigo — drivers license", "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf", "file": "drivers-license.json" },
     { "key": "blinding-lights", "song": "The Weeknd — Blinding Lights", "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b", "file": "blinding-lights.json" },
-    { "key": "motion-sickness", "song": "Phoebe Bridgers — Motion Sickness", "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R", "file": "motion-sickness.json" }
+    { "key": "motion-sickness", "song": "Phoebe Bridgers — Motion Sickness", "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R", "file": "motion-sickness.json" },
+    { "key": "dtmf", "song": "Bad Bunny — DtMF", "spotifyTrackId": "3sK8wGT43QFpWrvNQsrQya", "file": "dtmf.json" },
+    { "key": "no-sex-for-ben", "song": "The Rapture — No Sex for Ben", "spotifyTrackId": "no-sex-for-ben", "file": "no-sex-for-ben.json" },
+    { "key": "beautiful-things", "song": "Benson Boone — Beautiful Things", "spotifyTrackId": "beautiful-things", "file": "beautiful-things.json" },
+    { "key": "pink-pony-club", "song": "Chappell Roan — Pink Pony Club", "spotifyTrackId": "pink-pony-club", "file": "pink-pony-club.json" },
+    { "key": "as-it-was", "song": "Harry Styles — As It Was", "spotifyTrackId": "as-it-was", "file": "as-it-was.json" }
   ]
 }

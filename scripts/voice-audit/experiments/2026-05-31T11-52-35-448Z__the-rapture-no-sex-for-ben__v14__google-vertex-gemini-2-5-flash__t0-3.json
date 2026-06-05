@@ -1,0 +1,154 @@
+{
+  "runId": "2026-05-31T11-52-35-448Z__the-rapture-no-sex-for-ben__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:52:35.448Z",
+  "song": "The Rapture — No Sex for Ben",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 3,
+    "medium": 1,
+    "low": 6
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 1,
+    "self-reference": 1,
+    "book-report-opener": 1,
+    "burstiness": 1,
+    "lexical-repetition": 5
+  },
+  "tokens": 4504,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "texture",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", solidifying the claim.",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "lines[4].insight",
+      "span": "the listener",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "lines[4].insight",
+      "span": "This is a direct call to acti",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song weaponizes a single name.",
+      "severity": "low",
+      "note": "CV=0.247 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "name",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "collective",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "accusation",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "becomes",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "lines[1].insight",
+      "span": "specific",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a crowd chanting one name, over and over",
+    "lens": "naming as shaming",
+    "tension": "Relentless Scorn",
+    "take": "The song weaponizes a single name. It builds a collective accusation, repeated until it becomes a truth. The act of naming itself becomes the punishment.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "anticipatory, building",
+        "scene": "A countdown begins. It sets the stage for something to happen."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "accusatory, direct",
+        "scene": "The name is called out. The first accusation lands with a blunt force."
+      },
+      {
+        "label": "Chorus",
+        "mood": "chanting, collective",
+        "scene": "The accusation becomes a refrain. A group voice rises, solidifying the claim."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "escalating, specific",
+        "scene": "More charges are piled on. New insults paint a clearer, uglier picture."
+      },
+      {
+        "label": "Verse 3",
+        "mood": "intensifying, commanding",
+        "scene": "The shaming intensifies. A call to action demands a final, decisive move."
+      },
+      {
+        "label": "Chorus",
+        "mood": "overwhelming, final",
+        "scene": "The collective voice takes over completely. The chant becomes an inescapable verdict."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Ben Rymer, trash people",
+        "insight": "This line delivers the core accusation with brutal simplicity. It immediately establishes the target and the collective judgment."
+      },
+      {
+        "line": "No sex, no sex for Ben Rymer now",
+        "insight": "This is the specific, repeated punishment. It highlights a social ostracization that feels personal and absolute."
+      },
+      {
+        "line": "One ladder, big liar",
+        "insight": "These short, sharp phrases add more specific, if vague, charges. They build a picture of deceit and betrayal."
+      },
+      {
+        "line": "Lookin' like a poor man's Arthur Baker now",
+        "insight": "This line offers a cutting, specific insult. It aims to diminish and mock the target's perceived status."
+      },
+      {
+        "line": "We gotta freeze them up now",
+        "insight": "This is a direct call to action. It urges the listener to join in the collective shaming and stop the named person."
+      }
+    ],
+    "texture": "A driving, insistent beat pushes the whole thing forward. It creates a relentless rhythm that feels like a mob closing in."
+  }
+}

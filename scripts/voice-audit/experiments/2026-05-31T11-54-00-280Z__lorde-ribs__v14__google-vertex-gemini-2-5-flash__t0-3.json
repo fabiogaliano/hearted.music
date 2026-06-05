@@ -1,0 +1,100 @@
+{
+  "runId": "2026-05-31T11-54-00-280Z__lorde-ribs__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:54:00.280Z",
+  "song": "Lorde — Ribs",
+  "spotifyTrackId": "2MvvoeRt8NcOXWESkxWn3g",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 1,
+    "low": 2
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "lexical-repetition": 2
+  },
+  "tokens": 6016,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "texture",
+      "span": "shimmering",
+      "severity": "medium"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "already",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[0].scene",
+      "span": "quiet",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "midnight streets, reeling, a shared bed",
+    "lens": "Innocence as Requiem",
+    "tension": "Fragile Dread",
+    "take": "The song treats innocence as a requiem. It mourns the end of childhood even as it's happening. A shared bed and late night talks become a funeral rite for what is already slipping away.",
+    "contradiction": "You desperately want to stay in this moment. You know it is already gone.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Lingering Dread",
+        "scene": "A late night sets the stage for a quiet fear of what comes next."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Fleeting Hope",
+        "scene": "Words try to conjure a permanent magic that cannot last."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Growing Isolation",
+        "scene": "The dream turns sour as the world feels vast and lonely."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Raw Longing",
+        "scene": "A direct cry rises to reclaim the past and what was lost."
+      },
+      {
+        "label": "Refrain",
+        "mood": "Bittersweet Cling",
+        "scene": "You find solace in a friend, but the moment is already marked by its end."
+      },
+      {
+        "label": "Outro",
+        "mood": "Resigned Echo",
+        "scene": "The truth settles in, a quiet, inevitable understanding."
+      }
+    ],
+    "lines": [
+      {
+        "line": "It drives you crazy, getting old",
+        "insight": "The simple truth of aging hits with a quiet, undeniable force."
+      },
+      {
+        "line": "This dream isn't feeling sweet",
+        "insight": "The imagined future of adulthood dissolves into a harsh reality."
+      },
+      {
+        "line": "I want 'em back, I want 'em back",
+        "insight": "A raw, unvarnished plea rises for the return of lost innocence."
+      },
+      {
+        "line": "Laughing till our ribs get tough",
+        "insight": "The joy of connection is undercut by the knowledge of its impermanence."
+      }
+    ],
+    "texture": "A shimmering electronic haze wraps around a pulsing, insistent beat. It creates a dreamlike space that feels both vast and claustrophobic."
+  }
+}

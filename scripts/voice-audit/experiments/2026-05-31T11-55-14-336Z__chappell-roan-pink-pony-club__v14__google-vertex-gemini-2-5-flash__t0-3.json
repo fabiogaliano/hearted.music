@@ -1,0 +1,111 @@
+{
+  "runId": "2026-05-31T11-55-14-336Z__chappell-roan-pink-pony-club__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:55:14.336Z",
+  "song": "Chappell Roan — Pink Pony Club",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 0,
+    "low": 2
+  },
+  "byRule": {
+    "participial-closure": 2,
+    "burstiness": 1,
+    "lexical-repetition": 1
+  },
+  "tokens": 6295,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", pulsing synths and a driving beat create an undeniable energy, but a subtle ache lingers in the vocal delivery.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", finding your place in the spotlight.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song transforms the weight of expectation into the lightness of self accepta",
+      "severity": "low",
+      "note": "CV=0.162 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "dancing",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "dancing under a mirrored disco ball",
+    "lens": "expectation into self",
+    "tension": "Liberated Longing",
+    "take": "The song transforms the weight of expectation into the lightness of self acceptance. It shows you what it feels like to finally land where you belong. You find your own stage and dance for yourself.",
+    "contradiction": "She dances free. Her mother's voice still echoes.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Restless Longing",
+        "scene": "You feel the pull of a distant city, a vision of who you could be."
+      },
+      {
+        "label": "Refrain",
+        "mood": "Painful Anticipation",
+        "scene": "The fear of disappointing family hangs heavy, but the call is stronger."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Joyful Affirmation",
+        "scene": "You step onto the stage, finding your place in the spotlight."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Unapologetic Belonging",
+        "scene": "You are dancing, fully present, in the club that is your home."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Enduring Connection",
+        "scene": "You remember where you came from, but your path is clear."
+      },
+      {
+        "label": "Outro",
+        "mood": "Persistent Joy",
+        "scene": "The dancing never stops."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I know you wanted me to stay",
+        "insight": "The song opens with the weight of someone else's desire for your life."
+      },
+      {
+        "line": "Where boys and girls can all be queens every single day",
+        "insight": "The destination promises a space where everyone can be their most authentic, celebrated self."
+      },
+      {
+        "line": "Won't make my mama proud, it's gonna cause a scene",
+        "insight": "You know this choice will create a rift, but you make it anyway."
+      },
+      {
+        "line": "On the stage in my heels, it's where I belong",
+        "insight": "This is the exact moment you realize you have found your true home."
+      },
+      {
+        "line": "Still love you and Tennessee, you're always on my mind",
+        "insight": "The love for your past remains, even as you build a new future."
+      }
+    ],
+    "texture": "Bright, pulsing synths and a driving beat create an undeniable energy, but a subtle ache lingers in the vocal delivery."
+  }
+}

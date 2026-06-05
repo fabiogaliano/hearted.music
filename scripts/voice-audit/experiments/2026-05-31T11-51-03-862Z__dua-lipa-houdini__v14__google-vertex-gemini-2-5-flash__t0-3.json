@@ -1,0 +1,129 @@
+{
+  "runId": "2026-05-31T11-51-03-862Z__dua-lipa-houdini__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:51:03.862Z",
+  "song": "Dua Lipa — Houdini",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 7,
+    "medium": 0,
+    "low": 1
+  },
+  "byRule": {
+    "antithesis": 2,
+    "participial-closure": 5,
+    "burstiness": 1
+  },
+  "tokens": 5439,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "take",
+      "span": "is not a warning;",
+      "severity": "high"
+    },
+    {
+      "rule": "antithesis",
+      "field": "lines[0].insight",
+      "span": "is not a threat;",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", whispering the terms of her surrender.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", searching for the truth behind them.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[4].scene",
+      "span": ", leaving only a whisper of her name.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[1].insight",
+      "span": ", knowing it is fleeting.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[3].insight",
+      "span": ", looking past superficial charm.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "She presents herself as someone who comes and goes.",
+      "severity": "low",
+      "note": "CV=0.207 (threshold 0.25)"
+    }
+  ],
+  "analysis": {
+    "image": "a glittering escape on the dance floor",
+    "lens": "elusiveness as a test",
+    "tension": "Wary Invitation",
+    "take": "She presents herself as someone who comes and goes. This is not a warning; it is a deliberate challenge to a potential lover. She is testing their ability to truly see her and make her want to stay.",
+    "contradiction": "She wants to be caught. She also wants to remain free.",
+    "arc": [
+      {
+        "label": "Chorus",
+        "mood": "Playful Challenge",
+        "scene": "She steps onto the floor, already halfway out the door."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Measured Observation",
+        "scene": "She watches you watching her, a silent dare in her eyes."
+      },
+      {
+        "label": "Post Chorus",
+        "mood": "Conditional Hope",
+        "scene": "She leans in close, whispering the terms of her surrender."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Skeptical Inquiry",
+        "scene": "She listens to your sweet words, searching for the truth behind them."
+      },
+      {
+        "label": "Outro",
+        "mood": "Lingering Question",
+        "scene": "She vanishes into the crowd, leaving only a whisper of her name."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Catch me or I go Houdini",
+        "insight": "This is not a threat; it is a direct challenge to your capability."
+      },
+      {
+        "line": "It's your moment, baby, don't let it slip",
+        "insight": "She hands you the opportunity to prove yourself, knowing it is fleeting."
+      },
+      {
+        "line": "Maybe you could be the one to make me stay",
+        "insight": "This is the core of her test, the prize for someone worthy."
+      },
+      {
+        "line": "Do you practise everything that you preach?",
+        "insight": "She demands authenticity, looking past superficial charm."
+      },
+      {
+        "line": "If you got it, baby, give it to me",
+        "insight": "She is ready to receive genuine effort, if you can offer it."
+      }
+    ],
+    "texture": "A slick, propulsive disco beat moves the body, but the vocal delivery holds a cool, detached power."
+  }
+}

@@ -1,0 +1,419 @@
+{
+  "song": {
+    "id": "df14a8d9-303c-4fe9-a862-b31dfcc0b510",
+    "name": "As It Was",
+    "artists": [
+      "Harry Styles"
+    ],
+    "album_name": "Harry's House"
+  },
+  "lyrics": {
+    "source": "genius",
+    "document": {
+      "source": "genius",
+      "sections": [
+        {
+          "type": "Intro",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Come on, Harry, we wanna say goodnight to you",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "Styles introduces us to his lead single with a voicemail from his goddaughter Ruby, whose father is British television producer Ben Winston, a close friend of the artist who also directed quite a few One Direction music videos. Styles confirmed this during an interview promoting the release of the single:\n\nIt’s my goddaughter at the start of the song. [She] got a streak of calling me every night before bed, and I missed it once, and she wanted to let me know that she was quite angry with me.\n\nA potential interpretation of this interjection, following the album’s promotional motif of doors, is that Ruby is speaking to Harry from the other side of a closed door as he refuses to let anyone into his house. This metaphor relates to the theme of struggling with honesty and vulnerability that is prevalent through Styles’s discography. The image of Styles behind a door mirrors the beginning of the music video.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 372
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "Verse 1",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Holdin' me back",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "Gravity's holdin' me back",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "I want you to hold out the palm of your hand",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "Why don't we leave it at that?",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "Nothin' to say",
+              "range": {
+                "end": 5,
+                "start": 5
+              },
+              "annotations": [
+                {
+                  "text": "This specific lyric reminisces of another line from “Two Ghosts,” a 2017 track that belongs to Harry’s debut album\n\nTelling those stories we already told\n\nStyles' 2019 single “Falling,” also shows similarities, when he sings:\n\nAnd the coffee’s out at the Beachwood Cafe\nAnd it kills me, ‘cause I know we’ve run out of things we can say\n\nAt this point in “As It Was,” we can interpret this line as Harry only being able to think about or focus on the past. Stuck within a loop of struggle, he can’t move on from whatever it is that has happened to him, but also doesn’t want to open up about it — which is something he probably should do, since talking with someone tends to be a healthy way of processing feelings or emotions.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 113
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "text": "When everything gets in the way",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            },
+            {
+              "id": 7,
+              "text": "Seems you cannot be replaced",
+              "range": {
+                "end": 7,
+                "start": 7
+              }
+            },
+            {
+              "id": 8,
+              "text": "And I'm the one who will stay, oh-oh-oh",
+              "range": {
+                "end": 8,
+                "start": 8
+              }
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "In this world, it's just us",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "You know it's not the same as it was\nYou know it's not the same as it was",
+              "range": {
+                "end": 4,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "In a May 2022 interview for Apple Music, Styles explained his perspective on this line:\n\nFor me, everything that happened in the pandemic, like, it’s never gonna be the same as before. All of the things happening in the world, it was so obvious that you just can’t go backwards, whether that’s us as people, or me in my personal life, or any of those things, you learn so much in those moments. A force to, like, face things head-on, whether that is your least favourite things about the world, or your least favourite things about yourself, all of those things, you just can’t then pretend that stuff doesn’t exist.\n\nThis line reflects on how the passage of time affects on many things and changes its essence. On one side, maybe because of a breakup, a hypothetical couple has been affected by some circumstances that changed them and their ways of acting with each other.\n\nOn the other hand, Styles could be talking to himself, contemplating how time and the experiences he faced have modified him.\n\nIn both cases, Harry seems to have gone through situations like this one, as he wrote in a similar way in the 2017 track, “Two Ghosts.” His debut album song reflects on the major character developments of two people after some time:\n\nWe’re not who we used to be",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 198
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "In this world, it's just us",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "As it was, as it was",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            },
+            {
+              "id": 5,
+              "text": "You know it's not the same",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            }
+          ]
+        },
+        {
+          "type": "Verse 2",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Answer the phone",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "\"Harry, you're no good alone",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "This manner of bearing with the distance of an ex partner resembles of the attitude Styles took previously on his 2017 track, “Meet Me in the Hallway:”\n\nJust let me know, I’ll be at the door, at the door\nHoping you’ll come around\nJust let me know, I’ll be on the floor, on the floor\nMaybe we’ll work it out\nI gotta get better, gotta get better\n\nThese lyrics show devastation, caused by the break-up. Styles finds himself alone and outside his lover’s bedroom, crawling for their comeback “on the floor,” “at the door.”\n\nThere’s also an interpretation that suggests those lyrics are taken from a possible conversation between Styles and his sister, Gemma, after their parents' divorce.\n\nThe pills mentioned in this verse are also reminiscent of the opening lines from “Meet Me In The Hallway:”\n\nMeet me in the hallway, meet me in the hallway\nI just left your bedroom, give me some morphine\nIs there any more to do?\n\nStyles also writes about his self-destructive behaviours on tracks such as April 2017’s “Ever Since New York,” as well as December 2019’s “To Be So Lonely.”",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 173
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "Why are you sitting at home on the floor?",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "What kind of pills are you on?\"",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "Ringin' the bell",
+              "range": {
+                "end": 5,
+                "start": 5
+              },
+              "annotations": [
+                {
+                  "text": "In most inpatient care facilities worldwide, patients have some form of ‘bell’ or ‘button’ they can ‘ring’ or activate to notify medical providers that they need assistance of some kind. Harry seems to be referencing this here – he keeps ringing the bell, and yet no one seems to notice or want to help him. Or maybe it just feels like that. Either way, the emotions are there.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 19
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "text": "And nobody's coming to help",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            },
+            {
+              "id": 7,
+              "text": "Your daddy lives by himself",
+              "range": {
+                "end": 7,
+                "start": 7
+              },
+              "annotations": [
+                {
+                  "text": "This lyric is probably the literal truth. When Styles was seven years old, his parents divorced. While his mother got remarried twice after the divorce, Styles' father has stayed single since, making it likely that he lives alone.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 108
+                }
+              ]
+            },
+            {
+              "id": 8,
+              "text": "He just wants to know that you're well, oh-oh-oh",
+              "range": {
+                "end": 8,
+                "start": 8
+              }
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "In this world, it's just us",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "You know it's not the same as it was\nYou know it's not the same as it was",
+              "range": {
+                "end": 4,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "In a May 2022 interview for Apple Music, Styles explained his perspective on this line:\n\nFor me, everything that happened in the pandemic, like, it’s never gonna be the same as before. All of the things happening in the world, it was so obvious that you just can’t go backwards, whether that’s us as people, or me in my personal life, or any of those things, you learn so much in those moments. A force to, like, face things head-on, whether that is your least favourite things about the world, or your least favourite things about yourself, all of those things, you just can’t then pretend that stuff doesn’t exist.\n\nThis line reflects on how the passage of time affects on many things and changes its essence. On one side, maybe because of a breakup, a hypothetical couple has been affected by some circumstances that changed them and their ways of acting with each other.\n\nOn the other hand, Styles could be talking to himself, contemplating how time and the experiences he faced have modified him.\n\nIn both cases, Harry seems to have gone through situations like this one, as he wrote in a similar way in the 2017 track, “Two Ghosts.” His debut album song reflects on the major character developments of two people after some time:\n\nWe’re not who we used to be",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 198
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "In this world, it's just us",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "As it was, as it was",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            },
+            {
+              "id": 5,
+              "text": "You know it's not the same",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            }
+          ]
+        },
+        {
+          "type": "Bridge",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Go home, get ahead, light-speed internet",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "I don't wanna talk about the way that it was",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "The motif of not wanting to talk about certain topics has already been expressed throughout Styles' discography. It made its first appearance on his breakout debut single, “Sign of the Times:”\n\nWe don’t talk enough, we should open up\nBefore it’s all too much\nWill we ever learn? We’ve been here before\nIt’s just what we know\n\nHarry’s debut album’s opening track, “Meet Me in the Hallway,” also expresses similar feelings:\n\nWe don’t talk about it, it’s something we don’t do\n‘Cause once you go without it, nothing else will do\n\nCarrying emotions and oppressing them because of the pain they could cause when opening up about them, seems to be a habit. This attitude towards emotions can lead to the recurrence of these harmful feelings. Consequently, it can also cause a sudden explosion of emotion within the person, which may destroy valuable things in their life.\n\nThis cycle was also represented on the song’s music video, where Styles and his partner can be seen running in a circle:",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 131
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "Leave America, two kids follow her",
+              "range": {
+                "end": 3,
+                "start": 3
+              },
+              "annotations": []
+            },
+            {
+              "id": 4,
+              "text": "I don't wanna talk about who's doin' it first",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            }
+          ]
+        },
+        {
+          "type": "Outro",
+          "lines": [
+            {
+              "id": 1,
+              "text": "(Hey)",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "As it was",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "You know it's not the same as it was",
+              "range": {
+                "end": 3,
+                "start": 3
+              },
+              "annotations": [
+                {
+                  "text": "In a May 2022 interview for Apple Music, Styles explained his perspective on this line:\n\nFor me, everything that happened in the pandemic, like, it’s never gonna be the same as before. All of the things happening in the world, it was so obvious that you just can’t go backwards, whether that’s us as people, or me in my personal life, or any of those things, you learn so much in those moments. A force to, like, face things head-on, whether that is your least favourite things about the world, or your least favourite things about yourself, all of those things, you just can’t then pretend that stuff doesn’t exist.\n\nThis line reflects on how the passage of time affects on many things and changes its essence. On one side, maybe because of a breakup, a hypothetical couple has been affected by some circumstances that changed them and their ways of acting with each other.\n\nOn the other hand, Styles could be talking to himself, contemplating how time and the experiences he faced have modified him.\n\nIn both cases, Harry seems to have gone through situations like this one, as he wrote in a similar way in the 2017 track, “Two Ghosts.” His debut album song reflects on the major character developments of two people after some time:\n\nWe’re not who we used to be",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 198
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "text": "As it was, as it was",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 1
+    },
+    "content_hash": "ly_v1_282cac5858b41bd2",
+    "schema_version": 1,
+    "has_annotations": true
+  }
+}

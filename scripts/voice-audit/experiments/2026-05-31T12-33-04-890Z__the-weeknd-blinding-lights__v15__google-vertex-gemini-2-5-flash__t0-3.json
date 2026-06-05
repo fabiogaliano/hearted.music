@@ -1,0 +1,137 @@
+{
+  "runId": "2026-05-31T12-33-04-890Z__the-weeknd-blinding-lights__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:33:04.890Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 1,
+    "low": 6
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 1,
+    "academic-register": 1,
+    "lexical-repetition": 5,
+    "dash": 1
+  },
+  "tokens": 7057,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "lines[2].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", reaching out for a connection.",
+      "severity": "high"
+    },
+    {
+      "rule": "academic-register",
+      "field": "lines[2].insight",
+      "span": "disorientation",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "lights",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "person",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "world",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "make",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "texture",
+      "span": "connection",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "texture",
+      "span": "neon-lit",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "neon lights blurring, a hand reaching",
+    "lens": "dazzle into anchor",
+    "tension": "Lonely Euphoria",
+    "take": "The song takes the overwhelming sensory input of a hedonistic life and funnels it into a singular, desperate need for one person. The dazzling lights of the city become a blur without their grounding presence. You are the only anchor in a world designed to make you drift.",
+    "contradiction": "The world is full of blinding lights. Only one person can make you see.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Desperate Longing",
+        "scene": "You are alone, reaching out for a connection."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Empty Chaos",
+        "scene": "The city is cold and empty around you."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Blinded Devotion",
+        "scene": "The lights overwhelm you, but one person is your only trust."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Returning Certainty",
+        "scene": "You come back to make a promise you will keep."
+      },
+      {
+        "label": "Outro",
+        "mood": "Blinded Devotion",
+        "scene": "The overwhelming feeling returns, centered on one touch."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I've been on my own for long enough",
+        "insight": "A deep loneliness sets the stage for everything that follows."
+      },
+      {
+        "line": "Sin City's cold and empty",
+        "insight": "The dazzling world offers no real warmth or connection."
+      },
+      {
+        "line": "I can't see clearly when you're gone",
+        "insight": "The absence of one person creates a profound disorientation."
+      },
+      {
+        "line": "No, I can't sleep until I feel your touch",
+        "insight": "A singular physical connection is the only path to peace."
+      }
+    ],
+    "texture": "The neon-lit synths propel you onto the dance floor. A desperate plea for connection grounds every beat."
+  }
+}

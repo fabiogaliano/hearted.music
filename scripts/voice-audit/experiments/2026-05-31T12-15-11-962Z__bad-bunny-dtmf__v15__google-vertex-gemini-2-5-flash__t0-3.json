@@ -1,0 +1,107 @@
+{
+  "runId": "2026-05-31T12-15-11-962Z__bad-bunny-dtmf__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:15:11.962Z",
+  "song": "Bad Bunny — DtMF",
+  "spotifyTrackId": "3sK8wGT43QFpWrvNQsrQya",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 4
+  },
+  "byRule": {
+    "burstiness": 1,
+    "lexical-repetition": 3
+  },
+  "tokens": 7022,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The present moment unfolds in vivid color.",
+      "severity": "low",
+      "note": "CV=0.181 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "present",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[4].scene",
+      "span": "final",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a loud party, with a quiet ache underneath",
+    "lens": "present as a past echo",
+    "tension": "Vibrant Regret",
+    "take": "The present moment unfolds in vivid color. It is always viewed through the lens of what was lost. Every joy carries the weight of a missed opportunity.",
+    "contradiction": "Life moves forward with new joys and connections. The past still holds its grip on every memory.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Vibrant Longing",
+        "scene": "A beautiful San Juan sunset unfolds. The mind drifts to a past gaze."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Deep Regret",
+        "scene": "A litany of missed chances plays out. You wish for more photos and kisses."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Wild Distraction",
+        "scene": "Dominoes with abuelo gives way to drunken revelry. The world spins out of control."
+      },
+      {
+        "label": "Interlude",
+        "mood": "Warm Connection",
+        "scene": "The crowd is embraced as family. Life's priorities shift to what truly matters."
+      },
+      {
+        "label": "Outro",
+        "mood": "Persistent Echo",
+        "scene": "The regrets return with a final, playful plea. The past still whispers."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Debí tirar más fotos de cuando te tuve",
+        "insight": "The core regret is tangible. It is about lost documentation of a past connection."
+      },
+      {
+        "line": "Pero queriendo volver a la última vez que a los ojos te miré",
+        "insight": "The present joy is interrupted. The mind is pulled back to a specific, final moment."
+      },
+      {
+        "line": "Hoy la calle la dejamo' 'esbaratá",
+        "insight": "The present is lived with wild abandon. It is a deliberate act of letting go."
+      },
+      {
+        "line": "Ya no estamo' pa' la movie' y las cadena' / 'Tamos pa' las cosa' que valgan la pena",
+        "insight": "Priorities have shifted with age. The focus is now on deeper, more meaningful connections."
+      },
+      {
+        "line": "Y que tú me envíe' más nude'",
+        "insight": "A final, unexpected line breaks the sentimentality. It adds a raw, human desire to the longing."
+      }
+    ],
+    "texture": "A smooth reggaeton beat carries a melancholic melody. It invites you to dance while holding a quiet sadness."
+  }
+}

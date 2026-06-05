@@ -1,0 +1,150 @@
+{
+  "runId": "2026-05-30T13-05-04-021Z__phoebe-bridgers-motion-sickness__v14__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-30T13:05:04.021Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 3,
+    "medium": 2,
+    "low": 5
+  },
+  "byRule": {
+    "puffery-adjective": 2,
+    "participial-closure": 3,
+    "burstiness": 1,
+    "lexical-repetition": 4
+  },
+  "tokens": 7202,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "lines[0].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "lines[4].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", conflicting emotions of a toxic relationship onto the experience of motion sickness.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", feeling relief and a familiar pang of sadness.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[4].scene",
+      "span": ", confirming the imbalance of power from the very beginning.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song maps the dizzying, conflicting emotions of a toxic relationship onto th",
+      "severity": "low",
+      "note": "CV=0.135 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "toxic",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "relationship",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "push",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[1].scene",
+      "span": "feeling",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "stomach churning, rolling the windows down",
+    "lens": "ambivalence as physical symptom",
+    "tension": "Persistent Nausea",
+    "take": "The song maps the dizzying, conflicting emotions of a toxic relationship onto the experience of motion sickness. It shows you how a broken heart can make your whole body reel. You feel the constant push and pull of wanting to escape while still missing what you left behind.",
+    "contradiction": "You are relieved to have escaped a toxic relationship. The body still remembers every lurch and turn.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Lingering Ache",
+        "scene": "You wrestle with the push and pull of love and loathing for someone who harmed you."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Disoriented Distress",
+        "scene": "The overwhelming feeling of nausea takes over, and you just want the world to stop spinning."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Clear Eyed Regret",
+        "scene": "You watch the chaos from a safe distance, feeling relief and a familiar pang of sadness."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Sharpened Resolve",
+        "scene": "The sickness remains, but a flicker of defiance grows as you push back against the memories."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Bitter Understanding",
+        "scene": "A memory resurfaces, confirming the imbalance of power from the very beginning."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Weary Surrender",
+        "scene": "You yearn for a way to let go completely, to surrender to something that might bring peace or an end to the feeling."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I hate you for what you did and I miss you like a little kid",
+        "insight": "Anger and profound longing coexist here. This sets the stage for the song's central tension."
+      },
+      {
+        "line": "I have emotional motion sickness Somebody roll the windows down",
+        "insight": "The physical metaphor for emotional turmoil grounds the abstract feeling in a concrete, relatable experience."
+      },
+      {
+        "line": "I'll be glad that I made it out And sorry that it all went down like it did",
+        "insight": "This reveals the double edged relief of escaping a toxic situation, where freedom is mixed with a deep seated regret."
+      },
+      {
+        "line": "You know I'm never gonna let you have it But I will try to drown you out",
+        "insight": "A quiet refusal to grant satisfaction turns into a determined effort to silence the lingering noise of the past."
+      },
+      {
+        "line": "And you, you were in a band when I was born",
+        "insight": "This stark statement reveals the profound age and power imbalance that colored the entire relationship."
+      }
+    ],
+    "texture": "A bright, propulsive acoustic guitar and driving rhythm section create an insistent forward motion. The vocals carry a raw, weary honesty that cuts through the surface shimmer."
+  }
+}

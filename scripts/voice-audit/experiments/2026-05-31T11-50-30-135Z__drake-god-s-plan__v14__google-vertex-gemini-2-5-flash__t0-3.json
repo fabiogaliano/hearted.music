@@ -1,0 +1,99 @@
+{
+  "runId": "2026-05-31T11-50-30-135Z__drake-god-s-plan__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:50:30.135Z",
+  "song": "Drake — God's Plan",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 1,
+    "low": 1
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "participial-closure": 1,
+    "burstiness": 1
+  },
+  "tokens": 6764,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "take",
+      "span": "acts as",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", watching for shadows.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "A deep conviction in a preordained path guides every move.",
+      "severity": "low",
+      "note": "CV=0.074 (threshold 0.25)"
+    }
+  ],
+  "analysis": {
+    "image": "a calm walk through chaos",
+    "lens": "Destiny as Defense",
+    "tension": "Steady Assurance",
+    "take": "A deep conviction in a preordained path guides every move. This belief acts as a shield against the negativity of the world. It allows for an unwavering confidence in the face of adversity.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Looming Threat",
+        "scene": "Whispers of ill will surround you."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Calm Resolve",
+        "scene": "You move with purpose, watching for shadows."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Divine Confidence",
+        "scene": "A deep conviction guides your every step."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Unbothered Awareness",
+        "scene": "The world's negativity washes over you, but does not stick."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Deep Loyalty",
+        "scene": "You stand firm, surrounded by your chosen few."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I don't wanna die for them to miss me",
+        "insight": "He wants his impact to be felt now, not posthumously."
+      },
+      {
+        "line": "God's plan, God's plan",
+        "insight": "This phrase anchors his entire worldview."
+      },
+      {
+        "line": "I make sure that north-side eat",
+        "insight": "His success is tied to the well being of his community."
+      },
+      {
+        "line": "I only love my bed and my mama, I'm sorry",
+        "insight": "He prioritizes his comfort and his deepest bond above all else."
+      },
+      {
+        "line": "Without 40, Oli, there'd be no me",
+        "insight": "He acknowledges the essential support system behind his rise."
+      }
+    ],
+    "texture": "A low thrumming bass and minimal percussion create a spacious sound. The vocal delivery feels both intimate and commanding."
+  }
+}

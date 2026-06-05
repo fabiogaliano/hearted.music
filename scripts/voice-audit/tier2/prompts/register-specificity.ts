@@ -1,11 +1,13 @@
 import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
 
 export function registerSpecificityPrompt(a: ConceptRead): string {
+	// The per-line insight gloss used to supply the per-moment specific claims this
+	// judge samples; with it gone, the arc scenes carry that role.
 	const fields = [
 		["image", a.image],
 		["take", a.take],
-		...a.lines.map(
-			(l, i) => [`lines[${i}].insight`, l.insight] as const,
+		...a.arc.map(
+			(beat, i) => [`arc[${i}].scene`, beat.scene] as const,
 		),
 	];
 	const body = fields.map(([name, value]) => `${name}: ${value}`).join("\n");

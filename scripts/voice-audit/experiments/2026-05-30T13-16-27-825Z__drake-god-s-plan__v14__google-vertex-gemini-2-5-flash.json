@@ -1,0 +1,104 @@
+{
+  "runId": "2026-05-30T13-16-27-825Z__drake-god-s-plan__v14__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-30T13:16:27.825Z",
+  "song": "Drake — God's Plan",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 2
+  },
+  "byRule": {
+    "self-reference": 1,
+    "burstiness": 1,
+    "lexical-repetition": 1
+  },
+  "tokens": 6892,
+  "hits": [
+    {
+      "rule": "self-reference",
+      "field": "take",
+      "span": "This song",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "This song claims divine favor as an impenetrable defense.",
+      "severity": "low",
+      "note": "CV=0.117 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "enemies watch from the shadow line",
+    "lens": "providence as protection",
+    "tension": "Secure Defiance",
+    "take": "This song claims divine favor as an impenetrable defense. It transforms every ill wish into proof of a larger, guiding narrative. You witness a powerful conviction that nothing can truly touch him.",
+    "contradiction": "He stands above all the negativity. He still names every single threat.",
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Whispered Threat",
+        "scene": "A soft loop warns you of unspoken animosity."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Calm Assertion",
+        "scene": "He moves calmly. He is fully aware of the dangers around him."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Anchored Resolve",
+        "scene": "A higher power guides his steps. His loyalties are clear."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Named Grievances",
+        "scene": "The world wishes him harm. He stands firm anyway."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Deep Roots",
+        "scene": "His inner circle and history are the foundation of his resilience."
+      },
+      {
+        "label": "Outro",
+        "mood": "Unyielding Presence",
+        "scene": "His position is secure. It is secure against all external forces."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I don't wanna die for them to miss me",
+        "insight": "He understands the value people assign posthumously."
+      },
+      {
+        "line": "God's plan, God's plan",
+        "insight": "This phrase anchors his entire belief system."
+      },
+      {
+        "line": "I only love my bed and my mama, I'm sorry",
+        "insight": "He prioritizes his core needs. His closest relationships are his most valued."
+      },
+      {
+        "line": "I make sure that north-side eat",
+        "insight": "His success is directly tied to the prosperity of his community."
+      },
+      {
+        "line": "Without 40, Oli, there'd be no me",
+        "insight": "He credits his success to his essential collaborators."
+      }
+    ],
+    "texture": "The beat is sparse and confident. It carries the weight of his words with ease."
+  }
+}

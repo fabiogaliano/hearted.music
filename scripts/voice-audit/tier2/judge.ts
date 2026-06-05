@@ -114,7 +114,7 @@ const JUDGES: JudgeRunner[] = [
 		arcNarrativePrompt,
 		(r) => ({
 			passed: r.narrative,
-			evidence: r.disconnect_points,
+			evidence: [...r.disconnect_points, ...r.recap_scenes],
 			rationale: r.rationale.join(" / "),
 		}),
 	),

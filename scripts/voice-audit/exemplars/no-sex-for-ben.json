@@ -1,0 +1,41 @@
+{
+  "read": {
+    "image": "no sex for ben",
+    "lens": "freezing the creep out",
+    "tension": "Mocking Glee",
+    "take": "Ben Rymer is a liar and a creep who even hit on his girlfriend's mother, so nobody will sleep with him anymore. Everyone agreed on it, and they are having a great time telling him so.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "The Name",
+        "mood": "Pointed Glee",
+        "scene": "Ben Rymer gets named, and the punishment lands in the same breath, no sex for Ben. He is written off before anyone says what he did, and the speed of it is the fun."
+      },
+      {
+        "label": "The Roast",
+        "mood": "Mounting Mockery",
+        "scene": "The reasons finally show up, and they land pettier than the punishment ever did. The meanest one does not even bother with his crimes. It calls him a poor man's Arthur Baker, a cheap knockoff, like the worst thing you can be is a budget version of somebody else. Nobody needed the proof, they are piling on for the fun of it."
+      },
+      {
+        "label": "The Freeze",
+        "mood": "Giddy Release",
+        "scene": "The nastiest line lands first, Ben going after his girlfriend's mother, and then the music cuts everyone off to freeze. One, two, three, freeze. The insults stop mid swing and the whole mood breaks open into a dance."
+      }
+    ],
+    "lines": [
+      {
+        "line": "No sex, no sex for Ben Rymer now"
+      },
+      {
+        "line": "Lookin' like a poor man's Arthur Baker now"
+      },
+      {
+        "line": "Try to snatch the kitty off his girlfriend's mother"
+      },
+      {
+        "line": "I said a one, two, three, freeze"
+      }
+    ],
+    "texture": "Electronic and loud, with an energy almost suspiciously upbeat for a song this mean. The vocals never really sing. They chant and shout over a steady danceable pound, and the brighter it all sounds, the funnier the meanness gets."
+  }
+}

@@ -1,0 +1,575 @@
+{
+  "song": {
+    "id": "c1d0a2e9-1758-478b-9f59-5f23502be75f",
+    "name": "DtMF",
+    "artists": [
+      "Bad Bunny"
+    ],
+    "album_name": "DeBÍ TiRAR MáS FOToS"
+  },
+  "lyrics": {
+    "source": "genius",
+    "document": {
+      "source": "genius",
+      "sections": [
+        {
+          "type": "Intro",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Eh, eh, eh, eh",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            }
+          ]
+        },
+        {
+          "type": "Verso 1",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Otro sunset bonito que veo en San Juan",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "Al igual que en el resto del álbum, Benito vuelve a presentar un homenaje y referencia a sus raíces boricuas.\n\nEn este caso, Bad habla sobre la capital de Puerto Rico, San Juan. Además de ser conocida por sus fiestas a lo largo del año, San Juan también es conocido por los atardeceres que se pueden ver desde allí, teniendo lugares dedicados para contemplar atardeceres.\n\n\n\n Vista de un atardecer desde una playa de San Juan, Puerto Rico.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 22
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Disfrutando de todas esas cosas que extrañan los que se van",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "Disfrutando de noche' de esas que ya no se dan",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "Que ya no se dan",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "Pero queriendo volver a la última vez",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            },
+            {
+              "id": 6,
+              "text": "Que a los ojos te miré",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            },
+            {
+              "id": 7,
+              "text": "Y contarte las cosas que no te conté (Te parece' a mi crush, jaja)",
+              "range": {
+                "end": 7,
+                "start": 7
+              }
+            },
+            {
+              "id": 8,
+              "text": "Y tirarte la' foto' que no te tiré (Acho, jura'o te ves bien linda, déjame tirarte una foto)",
+              "range": {
+                "end": 8,
+                "start": 8
+              }
+            },
+            {
+              "id": 9,
+              "text": "Ey, tengo el pecho pela'o, me dio una matá'",
+              "range": {
+                "end": 9,
+                "start": 9
+              }
+            },
+            {
+              "id": 10,
+              "text": "El corazón dándome patá'",
+              "range": {
+                "end": 10,
+                "start": 10
+              }
+            },
+            {
+              "id": 11,
+              "text": "Dime, baby, ¿dónde tú está'?",
+              "range": {
+                "end": 11,
+                "start": 11
+              }
+            },
+            {
+              "id": 12,
+              "text": "Pa' llegarle con RoRo, Julito, Krystal",
+              "range": {
+                "end": 12,
+                "start": 12
+              },
+              "annotations": [
+                {
+                  "text": "En estas barras, Bad Bunny menciona a varios músicos graduados de la Escuela Libre de Música y la Escuela Pablo Casals, invitados por Bad Bunny a participar en la instrumentación de varias canciones del álbum.\n\nEllos fueron presentados públicamente en la entrevista que dio Bad Bunny a Chente Ydrach días después del lanzamiento del álbum. Se autodenominaron “Los Ssobrinos”, y Benito nombra en orden cronológico a: Ronyel “Roro” Guzmán (percusionista), Julito Gastón (percusionista), Krystal Santana (bajista), Roig (trompetista), Edgar Salamán (percusionista), Sebastián “Seba” Torres (tecladista y pianista de 17 años), Oscar Oller ( trombonista), Darnell Febres García (trombonista)  y Jay Anthony “Big Jay” Núñez, productor y beatmaker.\n\nEl verso finaliza con la frase “tocando batá”, haciendo referencia a los tambores batá, instrumentos de percusión de origen africano, con gran significado en la música caribeña.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 11
+                }
+              ]
+            },
+            {
+              "id": 13,
+              "text": "Roig, Edgar, Seba, Óscar, Darnell y Big Jay, tocando batá",
+              "range": {
+                "end": 13,
+                "start": 13
+              }
+            },
+            {
+              "id": 14,
+              "text": "Hoy la calle la dejamo' 'esbaratá",
+              "range": {
+                "end": 14,
+                "start": 14
+              }
+            },
+            {
+              "id": 15,
+              "text": "Y sería cabrón que tú me toque' el güiro",
+              "range": {
+                "end": 15,
+                "start": 15
+              },
+              "annotations": [
+                {
+                  "text": "En este verso, Bad Bunny utiliza un juego de palabras con doble sentido.\n\nPor un lado, el güiro es un instrumento musical tradicional puertorriqueño, parecido a una calabaza larga y estrecha, que se raspa con un palo para producir un sonido rítmico. Sin embargo, la forma fálica del instrumento también sugiere una interpretación más explícita, insinuando una connotación sexual.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 12
+                }
+              ]
+            },
+            {
+              "id": 16,
+              "text": "Yo veo tu nombre y me salen suspiro'",
+              "range": {
+                "end": 16,
+                "start": 16
+              }
+            },
+            {
+              "id": 17,
+              "text": "No sé si son petardo' o si son tiro'",
+              "range": {
+                "end": 17,
+                "start": 17
+              }
+            },
+            {
+              "id": 18,
+              "text": "Mi blanquita, perico, mi kilo",
+              "range": {
+                "end": 18,
+                "start": 18
+              }
+            },
+            {
+              "id": 19,
+              "text": "Yo estoy en PR, tranquilo, pero",
+              "range": {
+                "end": 19,
+                "start": 19
+              }
+            }
+          ]
+        },
+        {
+          "type": "Estribillo",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Debí tirar más fotos de cuando te tuve",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": []
+            },
+            {
+              "id": 2,
+              "text": "Debí darte más beso' y abrazo' las vece' que pude",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "Ey, ojalá que los mío' nunca se muden",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "Y si hoy me emborracho, pues que me ayuden",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "Debí tirar más foto' de cuando te tuve",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            },
+            {
+              "id": 6,
+              "text": "Debí darte más beso' y abrazo' las veces que pude",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            },
+            {
+              "id": 7,
+              "text": "Ojalá que los mío' nunca se muden",
+              "range": {
+                "end": 7,
+                "start": 7
+              }
+            },
+            {
+              "id": 8,
+              "text": "Y si hoy me emborracho, pues que me ayuden",
+              "range": {
+                "end": 8,
+                "start": 8
+              }
+            }
+          ]
+        },
+        {
+          "type": "Verso 2",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Ey, hoy voy a estar con abuelo to'l día, jugando dominó",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "Durante el “rollout” de este álbum, Benito subió fotos en su Instagram. El 25 de enero de 2024 subió una foto jugando dominó:\n\n\n\n\n\nAsimismo, en un video hecho para Spotify subido el 26 de diciembre de 2024, Benito habla de este álbum mientras juega dominó.\n\nhttps://www.youtube.com/watch?v=mPzbItQcoxo",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 29
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Si me pregunta si aún pienso en ti, yo le digo que no",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "Que mi estadía cerquita de ti ya se terminó",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "Ya se terminó, ey",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "Que prendan la' máquina', voy pa' Santurce",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            },
+            {
+              "id": 6,
+              "text": "Aquí todavía se da caña",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            },
+            {
+              "id": 7,
+              "text": "Chequéate las babie', diablo, mami, qué dulce",
+              "range": {
+                "end": 7,
+                "start": 7
+              }
+            },
+            {
+              "id": 8,
+              "text": "Hoy yo quiero beber, beber, beber",
+              "range": {
+                "end": 8,
+                "start": 8
+              }
+            },
+            {
+              "id": 9,
+              "text": "Y hablar mierda hasta que me expulsen",
+              "range": {
+                "end": 9,
+                "start": 9
+              }
+            },
+            {
+              "id": 10,
+              "text": "'Toy bien loco ('Toy bien loco), 'toy bien loco ('Toy bien loco)",
+              "range": {
+                "end": 10,
+                "start": 10
+              }
+            },
+            {
+              "id": 11,
+              "text": "Cabrón, guía tú, que hasta caminando yo estoy que choco",
+              "range": {
+                "end": 11,
+                "start": 11
+              }
+            },
+            {
+              "id": 12,
+              "text": "'Toy bien loco ('Toy bien loco), 'toy bien loco ('Toy bien loco)",
+              "range": {
+                "end": 12,
+                "start": 12
+              }
+            },
+            {
+              "id": 13,
+              "text": "Vamo' a disfrutar, que nunca se sabe si nos queda poco",
+              "range": {
+                "end": 13,
+                "start": 13
+              }
+            },
+            {
+              "id": 14,
+              "text": "Debí tirar más f—",
+              "range": {
+                "end": 14,
+                "start": 14
+              }
+            }
+          ]
+        },
+        {
+          "type": "Interludio",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Gente, lo' quiero con cojone', los amo",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "Gracias por estar aquí, de verdad",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "Para mí e' bien importante que estén aquí",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "Cada uno de ustede' significa mucho para mí",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "Así que, vamo' pa' la foto, vengan pa'cá",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            },
+            {
+              "id": 6,
+              "text": "Métase to'l mundo, to'l corillo, vamo'",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            },
+            {
+              "id": 7,
+              "text": "Zumba",
+              "range": {
+                "end": 7,
+                "start": 7
+              }
+            }
+          ]
+        },
+        {
+          "type": "Verso 3",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Ya Bernie tiene el nene y Jan la nena",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "Bad Bunny menciona a su hermano Bernie y a su director creativo Jan. Bad Bunny fue tío, ya que Bernie tuvo un hijo en 2023.\n\nJan (abreviatura de Janthony), estudiaba en la misma secundaria que Benito pero no mantenían contacto. Posteriormente, acabaron entablando conversación cuando fueron juntos a la universidad. Jan se convirtió en el manager de Bad Bunny y también fue padre al igual que Bernie en septiembre de 2024.\n\nEn una entrevista, Bad Bunny se expresó sobre su relación con Jan:\n\nÉl estudió en la misma high que yo y yo lo veía y decía: ‘ha de ser ucraniano’. Pero no lo conocía, yo lo conocí en la universidad por amigos en común.\n — Bad Bunny vía Los40",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 33
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Ya no estamo' pa' la movie' y las cadena'",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "'Tamos pa' las cosa' que valgan la pena",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "Ey, pa'l perreo, la salsa, la bomba y la plena",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "Chequéate la mía cómo es que suena",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            }
+          ]
+        },
+        {
+          "type": "Outro",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Debí tirar más fotos de cuando te tuve",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "Debí darte más besos y abrazo' las veces que pude",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "Ojalá que los mío' nunca se muden",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "Y que tú me envíe' más nude'",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "Y si hoy me emborracho, que Beno me ayude",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 1
+    },
+    "content_hash": "ly_v1_5857b8e66c37ebe8",
+    "schema_version": 1,
+    "has_annotations": true
+  }
+}

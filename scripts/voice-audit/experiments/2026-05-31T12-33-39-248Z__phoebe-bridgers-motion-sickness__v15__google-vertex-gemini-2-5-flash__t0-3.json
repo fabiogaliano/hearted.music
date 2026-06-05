@@ -1,0 +1,126 @@
+{
+  "runId": "2026-05-31T12-33-39-248Z__phoebe-bridgers-motion-sickness__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:33:39.248Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 3,
+    "medium": 0,
+    "low": 4
+  },
+  "byRule": {
+    "participial-closure": 3,
+    "burstiness": 1,
+    "lexical-repetition": 1,
+    "dash": 2
+  },
+  "tokens": 6629,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", disorienting struggle to find solid ground after the emotional upheaval.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", unsettling churn of trying to move on while still being pulled back.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[0].insight",
+      "span": ", opposing feelings exist at the same time.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song treats the aftermath of a toxic relationship like a persistent physical",
+      "severity": "low",
+      "note": "CV=0.064 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "like",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "texture",
+      "span": "lullaby-like",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[2].mood",
+      "span": "Clear-Eyed",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "a car window down, the nausea still there",
+    "lens": "toxic memory as a chronic illness",
+    "tension": "Lingering Nausea",
+    "take": "The song treats the aftermath of a toxic relationship like a persistent physical sickness. It describes the constant, disorienting struggle to find solid ground after the emotional upheaval. You feel the deep, unsettling churn of trying to move on while still being pulled back.",
+    "contradiction": "You are glad to be out. You are sorry it happened at all.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Conflicted Resentment",
+        "scene": "Old wounds open with a sharp, familiar sting."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Disorienting Sickness",
+        "scene": "A churning stomach makes the world spin."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Clear-Eyed Regret",
+        "scene": "The view from a distance reveals the broken pieces."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Disorienting Sickness",
+        "scene": "The nausea returns with a specific, cutting memory."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Power Imbalance",
+        "scene": "A stark age difference casts a long shadow."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Lingering Pull",
+        "scene": "A desperate wish to be free fights against the familiar current."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I hate you for what you did / And I miss you like a little kid",
+        "insight": "Two powerful, opposing feelings exist at the same time."
+      },
+      {
+        "line": "I have emotional motion sickness / Somebody roll the windows down",
+        "insight": "The emotional turmoil feels like a physical illness. A desperate plea for relief comes out."
+      },
+      {
+        "line": "You were in a band when I was born",
+        "insight": "The age gap highlights a power imbalance that was always present."
+      },
+      {
+        "line": "I try to stay clean and live without / And I wanna know what would happen / If I surrender to the sound",
+        "insight": "Moving on feels like recovery from addiction. A dangerous curiosity about giving in to the past remains."
+      }
+    ],
+    "texture": "The acoustic guitar and gentle drums create a soft, almost lullaby-like backdrop. This contrasts sharply with the raw, cutting lyrics."
+  }
+}

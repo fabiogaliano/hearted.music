@@ -50,6 +50,16 @@ describe("clean fixture is clean", () => {
 	});
 });
 
+describe("null texture (audio features absent)", () => {
+	it("audits the remaining fields without crashing and never flags texture", () => {
+		const analysis: ConceptRead = { ...base(), texture: null };
+		expect(runAllRules(analysis)).toEqual([]);
+		expect(burstiness(analysis).some((h) => h.field === "texture")).toBe(
+			false,
+		);
+	});
+});
+
 describe("ai-slop fixture hits expected rules", () => {
 	const analysis = loadRead("ai-slop.json");
 	const hits = runAllRules(analysis);
@@ -351,7 +361,7 @@ describe("dash", () => {
 	it("does not flag a hyphen inside a quoted lyric line", () => {
 		const analysis = {
 			...base(),
-			lines: [{ line: "we're tip-toeing out the door", insight: "A clean exit." }],
+			lines: [{ line: "we're tip-toeing out the door" }],
 		};
 		expect(dashes(analysis)).toEqual([]);
 	});

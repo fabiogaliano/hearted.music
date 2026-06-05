@@ -1,0 +1,555 @@
+{
+  "song": {
+    "id": "a803252e-b76d-4839-8332-a47c83b63ed2",
+    "name": "drivers license",
+    "artists": [
+      "Olivia Rodrigo"
+    ],
+    "album_name": "SOUR"
+  },
+  "lyrics": {
+    "source": "genius",
+    "document": {
+      "source": "genius",
+      "sections": [
+        {
+          "type": "Verse 1",
+          "lines": [
+            {
+              "id": 1,
+              "text": "I got my driver's license last week",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "As Rodrigo told the New York Times, this lyric was originally an excerpt from a diary entry. She elaborated on this during a Vogue interview:\n\nI was aimlessly driving around my neighborhood, listening to sad music, and bringing up these emotions I hadn’t felt in a while. I’d just got my license, so I was relishing my freedom. When I got home, I sat down at the piano — and I love songs that feel like a diary entry and are confessional — so I took some lyrics from my diary and went from there.\n\n\n\nA parody of Rodrigo’s driver’s license, as printed on her offical merch.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 61
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Just like we always talked about",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "Joshua Bassett, who the song is rumored to be about, helped teach Olivia how to drive. In an Instagram Story from January 2020, Olivia talked about getting her first driving experience with Joshua, after they learned that the song they wrote together, “Just for a Moment.” would be used in High School Musical: The Musical: The Series:\n\nWe celebrated and we went to In-N-Out, and I couldn’t drive actually. I was sixteen, but I didn’t have my permit, and so he took me in his car, and we drove around the In-N-Out parking lot. That was my first time driving, so I’ll always remember that.\n\nOlivia has also referenced driving on her unreleased track “Gross”:\n\nAnd driving in your car, I feel all grown up",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 88
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "'Cause you were so excited for me",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "To finally drive up to your house",
+              "range": {
+                "end": 4,
+                "start": 4
+              },
+              "annotations": [
+                {
+                  "text": "Olivia Rodrigo was born in Temecula, California, a city of about 114,000 people though currently, she resides in Los Angeles. Joshua Bassett, who the song is rumored to be based off of, is from Oceanside, California which a population of about 167,000. Both stars currently reside in LA, where the song can be assumed to take place. The suburbs of a city are smaller communities adjacent to a city. Los Angeles has the most suburban cities in the United States with 15.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 51
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "text": "But today, I drove through the suburbs",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            },
+            {
+              "id": 6,
+              "text": "Crying 'cause you weren't around",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            }
+          ]
+        },
+        {
+          "type": "Verse 2",
+          "lines": [
+            {
+              "id": 1,
+              "text": "And you're probably with that blonde girl",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "It’s rumored that Olivia and Joshua Bassett began dating in 2019 while filming High School Musical: The Musical: The Series, and called it quits in early 2020.\n\nIn June 2020, Joshua and Sabrina Carpenter were spotted together at a protest, sparking dating rumors. Olivia posted the demo version of the song on Instagram the following month.\n\nSabrina has blonde hair and is four years older than Olivia. However, in the original lyrics, Olivia instead referred to the girl as a brunette. While Olivia has stated that some lyrics were changed at the recommendation of the song’s producer, Dan Nigro, the reason for this specific change has not been confirmed. There are multiple theories as to why, including “blonde” having less syllables than “brunette,” thus improving the lyrical flow; to emphasize how different the girl is from Olivia, who is a brunette herself; or that Olivia was being intentionally cryptic with the original lyrics.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 374
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Who always made me doubt",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "She's so much older than me",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "She's everything I'm insecure about",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "Yeah, today, I drove through the suburbs",
+              "range": {
+                "end": 5,
+                "start": 5
+              },
+              "annotations": []
+            },
+            {
+              "id": 6,
+              "text": "'Cause how could I ever love someone else?",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "And I know we weren't perfect, but I've never felt this way for no one",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "And I just can't imagine how you could be so okay now that I'm gone",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "This line is yet another confirmation of the theory that Joshua Bassett is the subject of Rodrigo’s multi-platinum debut single.\n\nAround the release of the track, rumors were swirling that Bassett and other Disney star Sabrina Carpenter were dating. Though not confirmed by either party, it would explain why Rodrigo would be upset that Bassett moved on so quickly without her.\n\nSabrina Carpenter’s song “Skin” was released in apparent response to “drivers license.” Some of the lines in the scathing track appear to be directly pointing to Bassett:\n\nYou can try\nTo get under my, under my, under my skin\nWhile he’s on mine\n\nWhile nothing is confirmed regarding who the songs are directed to, it appears to be a painful shot at Bassett for starting up a new relationship with Carpenter while Rodrigo was still getting over their relationship.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 56
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "Guess you didn't mean what you wrote in that song about me",
+              "range": {
+                "end": 3,
+                "start": 3
+              },
+              "annotations": [
+                {
+                  "text": "This could be a reference to Joshua Bassett’s July 2020 song “Anyone Else.” He stated that he wrote this song in the Salt Lake City apartment he lived in while filming season one of High School Musical: The Musical: The Series, after realizing that he was “hopelessly falling in love with a close friend… who was in a relationship.”\n\nSince the production of the show began back in early 2019, Bassett could’ve been referencing Rodrigo’s then-relationship with Ethan Wacker, her former Bizaardvark co-star.\n\nThis line differs from the original version of the song teased on Instagram on July 23, 2020, in which Rodrigo sings:\n\nAnd I don’t believe you when you say I did nothing wrong",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 241
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "text": "'Cause you said forever, now I drive alone past your street",
+              "range": {
+                "end": 4,
+                "start": 4
+              },
+              "annotations": [
+                {
+                  "text": "This line alludes to breakups, the theme of the song as Rodrigo has stated, and reminiscing on memories. As the song is presumably about Joshua Bassett and Olivia promising to obtain a driver’s license, — as stated in the song bio — the line also supports her fulfilling the promise.\n\nIn addition, this specific line was heavily popularized on the social media platform, TikTok, where most most of the short videos using this audio involved relationships and melancholic settings.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 71
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "Verse 3",
+          "lines": [
+            {
+              "id": 1,
+              "text": "And all my friends are tired",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "These lyrics are reminiscent of another SOUR track, called “favourite crime”:\n\nI crossed my heart as you crossed the line\nAnd I defended you to all my friends\n\nOlivia also sang a similar lyric on one of her unreleased songs, “Gross”:\n\nI bring you up in every conversation\n\nOlivia said on an Instagram Live (at about 29:45) the night the song came out that this line was especially about her former Bizaardvark co-star Madison Hu. She said she talked to Madison about all of her problems and Madison was more of the neutral one in the situation.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 203
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Of hearing how much I miss you, but",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "I kinda feel sorry for them",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "'Cause they'll never know you the way that I do",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "Yeah, today, I drove through the suburbs",
+              "range": {
+                "end": 5,
+                "start": 5
+              },
+              "annotations": [
+                {
+                  "text": "On Olivia’s 2022 project for Disney+, Olivia Rodrigo: driving home 2 u (a SOUR film), she explained:\n\nThat line can very literally be, like, I was driving home to your house or whatever, but I remember, at that time, I was really reconciling with the fact that sometimes, when you love a person so much and you spend so much time with them, that’s who you feel the most at home with. And I remember listening to that song, even when I hadn’t put it out, when I just had a demo on my phone and I’d drive around and listen to it. Every time that came on, my stomach would drop, just because I felt like it was so acutely how I was feeling.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 18
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "text": "And pictured I was driving home to you",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "And I know we weren't perfect, but I've never felt this way for no one, oh",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "And I just can't imagine how you could be so okay now that I'm gone",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "This line is yet another confirmation of the theory that Joshua Bassett is the subject of Rodrigo’s multi-platinum debut single.\n\nAround the release of the track, rumors were swirling that Bassett and other Disney star Sabrina Carpenter were dating. Though not confirmed by either party, it would explain why Rodrigo would be upset that Bassett moved on so quickly without her.\n\nSabrina Carpenter’s song “Skin” was released in apparent response to “drivers license.” Some of the lines in the scathing track appear to be directly pointing to Bassett:\n\nYou can try\nTo get under my, under my, under my skin\nWhile he’s on mine\n\nWhile nothing is confirmed regarding who the songs are directed to, it appears to be a painful shot at Bassett for starting up a new relationship with Carpenter while Rodrigo was still getting over their relationship.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 56
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "I guess you didn't mean what you wrote in that song about me",
+              "range": {
+                "end": 3,
+                "start": 3
+              },
+              "annotations": [
+                {
+                  "text": "This could be a reference to Joshua Bassett’s July 2020 song “Anyone Else.” He stated that he wrote this song in the Salt Lake City apartment he lived in while filming season one of High School Musical: The Musical: The Series, after realizing that he was “hopelessly falling in love with a close friend… who was in a relationship.”\n\nSince the production of the show began back in early 2019, Bassett could’ve been referencing Rodrigo’s then-relationship with Ethan Wacker, her former Bizaardvark co-star.\n\nThis line differs from the original version of the song teased on Instagram on July 23, 2020, in which Rodrigo sings:\n\nAnd I don’t believe you when you say I did nothing wrong",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 241
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "text": "'Cause you said forever, now I drive alone past your street",
+              "range": {
+                "end": 4,
+                "start": 4
+              },
+              "annotations": [
+                {
+                  "text": "This line alludes to breakups, the theme of the song as Rodrigo has stated, and reminiscing on memories. As the song is presumably about Joshua Bassett and Olivia promising to obtain a driver’s license, — as stated in the song bio — the line also supports her fulfilling the promise.\n\nIn addition, this specific line was heavily popularized on the social media platform, TikTok, where most most of the short videos using this audio involved relationships and melancholic settings.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 71
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "Bridge",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Red lights, stop signs",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "In keeping with the ideology of driving through the song, Rodrigo points to two symbols of stopping: traffic lights and stop signs, symbolizing the ending of her relationship.\n\nOlivia posted these lines to her Instagram accompanied by a red picture of her, in line with the songs.\n\n\n\nThis line is the first of three colored lyrics in the bridge, the other two colors being white and blue.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 95
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "I still see your face in the white cars, front yards",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "This line further points towards the song being about Joshua Bassett. As we know from Joshua’s YouTube channel, he does in fact drive a white Honda.\n\nhttps://www.youtube.com/watch?v=-c2o6wSLblk\n\nFurthermore, on January 4th, 2020, Bassett teased his then-upcoming song “Lie Lie Lie” on Instagram, and posted a picture of him and a blonde-haired girl in a dimly lit car, linking back to the second verse where Rodrigo sings “and you’re probably with that blonde girl.” Similarly, in Rodrigo’s “drivers license” video, she can also be seen in a dimly lit car.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 131
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "Can't drive past the places we used to go to",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "'Cause I still fuckin' love you, babe (Ooh, ooh-ooh, ooh, ooh-ooh)\nBut I still fuckin' love you, babe (Ooh, ooh-ooh, ooh, ooh-ooh)",
+              "range": {
+                "end": 9,
+                "start": 4
+              },
+              "annotations": [
+                {
+                  "text": "Olivia talked about writing this line with producer Dan Nigro and the decision to swear, in The New York Times series “Diary of a Song”:\n\nhttps://youtu.be/hWq_ma9ZDxk?t=425\n\nDan was like, “What if we say, ‘I still fuckin’ love you,‘” and I’m like, “That’s brilliant. Let’s do it.” […] And I think it’s actually really cool that I did swear in my first song. I guess it’s a nice, like, \"Ah, look, I’m an adult. I can say—” I’m not an adult, I’m like, seventeen, haha.\n\nIn the clean version and in certain live performances, these lines are changed to:\n\n[‘Cause/But] you know I still love you, babe",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 99
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "text": "Sidewalks we crossed",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            },
+            {
+              "id": 6,
+              "text": "I still hear your voice in the traffic, we're laughing",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            },
+            {
+              "id": 7,
+              "text": "Over all the noise",
+              "range": {
+                "end": 7,
+                "start": 7
+              }
+            },
+            {
+              "id": 8,
+              "text": "God, I'm so blue, know we're through",
+              "range": {
+                "end": 8,
+                "start": 8
+              },
+              "annotations": [
+                {
+                  "text": "“Feeling blue” is a phrase meaning to feel depressed or disappointed. The color blue is often associated with being sad, with a genre of music even being named after these emotions.\n\nThe music video for “drivers license” contains darker colors, tinting Olivia’s skin tone. In scenes within the video, she is cast in a blue shade. This is a clever nod to this line, as well as a unique rendering of her emotions throughout the song.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 180
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "I know we weren't perfect, but I've never felt this way for no one",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "And I just can't imagine how you could be so okay now that I'm gone",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": [
+                {
+                  "text": "This line is yet another confirmation of the theory that Joshua Bassett is the subject of Rodrigo’s multi-platinum debut single.\n\nAround the release of the track, rumors were swirling that Bassett and other Disney star Sabrina Carpenter were dating. Though not confirmed by either party, it would explain why Rodrigo would be upset that Bassett moved on so quickly without her.\n\nSabrina Carpenter’s song “Skin” was released in apparent response to “drivers license.” Some of the lines in the scathing track appear to be directly pointing to Bassett:\n\nYou can try\nTo get under my, under my, under my skin\nWhile he’s on mine\n\nWhile nothing is confirmed regarding who the songs are directed to, it appears to be a painful shot at Bassett for starting up a new relationship with Carpenter while Rodrigo was still getting over their relationship.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 56
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "text": "Guess you didn't mean what you wrote in that song about me",
+              "range": {
+                "end": 3,
+                "start": 3
+              },
+              "annotations": [
+                {
+                  "text": "This could be a reference to Joshua Bassett’s July 2020 song “Anyone Else.” He stated that he wrote this song in the Salt Lake City apartment he lived in while filming season one of High School Musical: The Musical: The Series, after realizing that he was “hopelessly falling in love with a close friend… who was in a relationship.”\n\nSince the production of the show began back in early 2019, Bassett could’ve been referencing Rodrigo’s then-relationship with Ethan Wacker, her former Bizaardvark co-star.\n\nThis line differs from the original version of the song teased on Instagram on July 23, 2020, in which Rodrigo sings:\n\nAnd I don’t believe you when you say I did nothing wrong",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 241
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "text": "'Cause you said forever, now I drive alone past your street",
+              "range": {
+                "end": 4,
+                "start": 4
+              },
+              "annotations": [
+                {
+                  "text": "This line alludes to breakups, the theme of the song as Rodrigo has stated, and reminiscing on memories. As the song is presumably about Joshua Bassett and Olivia promising to obtain a driver’s license, — as stated in the song bio — the line also supports her fulfilling the promise.\n\nIn addition, this specific line was heavily popularized on the social media platform, TikTok, where most most of the short videos using this audio involved relationships and melancholic settings.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 71
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "Outro",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Yeah, you said forever, now I drive alone past your street",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "This line alludes to breakups, the theme of the song as Rodrigo has stated, and reminiscing on memories. As the song is presumably about Joshua Bassett and Olivia promising to obtain a driver’s license, — as stated in the song bio — the line also supports her fulfilling the promise.\n\nIn addition, this specific line was heavily popularized on the social media platform, TikTok, where most most of the short videos using this audio involved relationships and melancholic settings.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 71
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 1
+    },
+    "content_hash": "ly_v1_f61ad3d67528d2ab",
+    "schema_version": 1,
+    "has_annotations": true
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "runId": "2026-05-31T12-13-48-869Z__dua-lipa-houdini__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:13:48.869Z",
+  "song": "Dua Lipa — Houdini",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 0
+  },
+  "byRule": {},
+  "tokens": 6084,
+  "hits": [],
+  "analysis": {
+    "image": "a disappearing act in plain sight",
+    "lens": "testing the limits",
+    "tension": "Confident Vulnerability",
+    "take": "A game begins. She tests the limits of a new connection. You must prove your worth to make her stay.",
+    "contradiction": "She wants to disappear. She wants to be caught.",
+    "arc": [
+      {
+        "label": "Intro Chorus",
+        "mood": "Elusive Challenge",
+        "scene": "She lays out the rules of the game."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Playful Invitation",
+        "scene": "She watches you closely."
+      },
+      {
+        "label": "Post Chorus",
+        "mood": "Hidden Longing",
+        "scene": "A quiet wish surfaces."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Demanding Proof",
+        "scene": "She questions your intentions."
+      },
+      {
+        "label": "Outro",
+        "mood": "Final Disappearance",
+        "scene": "She slips away."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I come and I go",
+        "insight": "Her nature is one of constant motion."
+      },
+      {
+        "line": "Catch me or I go Houdini",
+        "insight": "She presents a direct challenge."
+      },
+      {
+        "line": "Maybe you could be the one to make me stay",
+        "insight": "A deep desire for connection emerges."
+      },
+      {
+        "line": "But do you practise everything that you preach?",
+        "insight": "She demands authenticity from you."
+      }
+    ],
+    "texture": "A driving disco beat pulses with a cool confidence. A subtle synth line hints at a deeper longing."
+  }
+}

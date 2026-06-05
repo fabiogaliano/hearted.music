@@ -1,0 +1,41 @@
+{
+  "read": {
+    "image": "a san juan he is finally looking at",
+    "lens": "the photo as the only way to hold what leaves",
+    "tension": "Aching Warmth",
+    "take": "One missed photo of a girl and suddenly he understands he has been missing everything. The island, the people, the nights that ended without a record. He drinks through a San Juan night and tells his grandfather he stopped thinking about her. His people are having children now. The gold chains and the flashy years are behind them. He pulls everyone into frame right there in the song. This time he takes the photo.",
+    "contradiction": "What left taught him how to hold what remains.",
+    "arc": [
+      {
+        "label": "The Ache",
+        "mood": "Aching Nostalgia",
+        "scene": "San Juan sunsets he watched without a camera. A girl he wants to go back to, things he never said, photos he never took. He names every musician gathered for this record one by one, a roll call of people he is consciously keeping. The chorus lands: I should have taken more photos when I had you."
+      },
+      {
+        "label": "The Denial",
+        "mood": "Restless Grief",
+        "scene": "He tells his grandfather he stopped thinking about her. Then goes out to drink through a San Juan night until they throw him out. The denial doing what denial does. Then the music stops. He pulls everyone close for a photo right there inside the song."
+      },
+      {
+        "label": "The Shift",
+        "mood": "Grounded Warmth",
+        "scene": "His brother has a son. His closest collaborator a daughter. The chains and the flashy years are over. What remains is the salsa, the bomba, the plena, the people who did not move away. The regret does not leave. It becomes a vow."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Debí tirar más fotos de cuando te tuve (I should have taken more photos of when I had you)"
+      },
+      {
+        "line": "Si me pregunta si aún pienso en ti, yo le digo que no (If they ask if I still think of you, I tell them no)"
+      },
+      {
+        "line": "Ojalá que los mío' nunca se muden (I hope my people never move away)"
+      },
+      {
+        "line": "Vamo' pa' la foto, vengan pa'cá (So let's take the photo, come here)"
+      }
+    ],
+    "texture": "Puerto Rican folk percussion carries a melody that sounds like a party already turning into a memory."
+  }
+}

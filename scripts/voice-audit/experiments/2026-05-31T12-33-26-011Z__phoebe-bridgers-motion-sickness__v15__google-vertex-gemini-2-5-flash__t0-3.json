@@ -1,0 +1,131 @@
+{
+  "runId": "2026-05-31T12-33-26-011Z__phoebe-bridgers-motion-sickness__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:33:26.011Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 0,
+    "low": 5
+  },
+  "byRule": {
+    "participial-closure": 2,
+    "burstiness": 1,
+    "lexical-repetition": 2,
+    "dash": 2
+  },
+  "tokens": 7191,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", feeling sick from a relationship that ended.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[3].insight",
+      "span": ", irritating details from the past still surface.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "A toxic past becomes a persistent nausea.",
+      "severity": "low",
+      "note": "CV=0.245 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "relationship",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[2].mood",
+      "span": "Clear-Eyed",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "lines[2].insight",
+      "span": "self-destruction",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "a car window rolled down, but the air is still thick with it",
+    "lens": "toxic past as persistent nausea",
+    "tension": "Persistent Nausea",
+    "take": "A toxic past becomes a persistent nausea. You are stuck in a car, feeling sick from a relationship that ended. The air inside remains heavy even with the windows down.",
+    "contradiction": "You are out of the relationship. You are still sick from it.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Bitter Recollection",
+        "scene": "You recount the specific hurts and the attempts to escape them."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Overwhelming Nausea",
+        "scene": "The sickness rises up inside you."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Clear-Eyed Distance",
+        "scene": "You see the other person's chaos from afar."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Specific Annoyance",
+        "scene": "A small, irritating detail brings the past back."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Power Imbalance",
+        "scene": "The true nature of the relationship's beginning is revealed."
+      },
+      {
+        "label": "Outro",
+        "mood": "Weary Surrender",
+        "scene": "You wonder what happens if you stop fighting the feeling."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I hate you for what you did / And I miss you like a little kid",
+        "insight": "You hold two opposing truths about the past at once."
+      },
+      {
+        "line": "I have emotional motion sickness / Somebody roll the windows down",
+        "insight": "The emotional turmoil manifests as a physical illness."
+      },
+      {
+        "line": "You're throwing rocks around your room / And while you're bleeding on your back in the glass",
+        "insight": "You see the other person's self-destruction from a distance."
+      },
+      {
+        "line": "Hey, why do you sing with an English accent? / I guess it's too late to change it now",
+        "insight": "Small, irritating details from the past still surface."
+      },
+      {
+        "line": "You said when you met me, you were bored / And you, you were in a band when I was born",
+        "insight": "The age and power dynamic of the relationship are laid bare."
+      }
+    ],
+    "texture": "A gentle acoustic guitar drives the melody, but a low hum of unease builds underneath the soft, intimate vocals."
+  }
+}

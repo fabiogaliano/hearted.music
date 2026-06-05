@@ -1,0 +1,95 @@
+{
+  "runId": "2026-05-31T12-16-53-235Z__harry-styles-as-it-was__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:16:53.235Z",
+  "song": "Harry Styles — As It Was",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 3
+  },
+  "byRule": {
+    "lexical-repetition": 3
+  },
+  "tokens": 6011,
+  "hits": [
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "world",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "alone",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[3].scene",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a single light on in a dark house",
+    "lens": "home as a quiet cell",
+    "tension": "Driving Melancholy",
+    "take": "The song treats home as a quiet cell. You are trapped in a new reality. The world outside worries about you, but you are alone inside your own space.",
+    "contradiction": "You are surrounded by concern. You are utterly alone.",
+    "arc": [
+      {
+        "label": "Intro Verse",
+        "mood": "Innocent Longing",
+        "scene": "A child's voice calls you back to a moment. You feel gravity's pull."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Resigned Acceptance",
+        "scene": "The world has changed around you. You are alone in it."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Anxious Observation",
+        "scene": "Others see your isolation. They worry about your state."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Determined Escape",
+        "scene": "You want to leave the past behind. You refuse to dwell on it."
+      },
+      {
+        "label": "Outro",
+        "mood": "Quiet Resolution",
+        "scene": "The new reality remains. It is not the same."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Holdin' me back Gravity's holdin' me back",
+        "insight": "A physical force keeps you from moving. You feel stuck in place."
+      },
+      {
+        "line": "In this world, it's just us You know it's not the same as it was",
+        "insight": "The world shrunk to a small circle. The past is a memory."
+      },
+      {
+        "line": "Harry, you're no good alone Why are you sitting at home on the floor? What kind of pills are you on?",
+        "insight": "The outside world sees your solitude. It judges your coping."
+      },
+      {
+        "line": "I don't wanna talk about the way that it was",
+        "insight": "You actively resist looking backward. The past holds no comfort."
+      }
+    ],
+    "texture": "The synths drive a bright, propulsive beat. A deep melancholy lives just beneath the surface."
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "runId": "2026-05-31T11-50-53-044Z__drake-god-s-plan__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:50:53.044Z",
+  "song": "Drake — God's Plan",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 1,
+    "low": 0
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "participial-closure": 1
+  },
+  "tokens": 6632,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "take",
+      "span": "frames",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[3].insight",
+      "span": ", prioritizing comfort and foundational love over fleeting romance.",
+      "severity": "high"
+    }
+  ],
+  "analysis": {
+    "image": "a golden shield against the storm",
+    "lens": "Destiny as Armor",
+    "tension": "Guarded Confidence",
+    "take": "The song frames success as a divine protection. You hear the unwavering belief that external negativity cannot touch a chosen journey. This conviction becomes an impenetrable shield.",
+    "contradiction": "He seeks peace. He lives in constant conflict.",
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Looming Threat",
+        "scene": "Whispers of ill will gather in the distance."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Calm Assertion",
+        "scene": "A steady gaze meets the world, unbothered by the noise."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Rooted Conviction",
+        "scene": "A deep breath is taken, grounded in a powerful belief."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Unshakeable Resolve",
+        "scene": "The storm rages, but a central figure stands completely still."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Deep Loyalty",
+        "scene": "A circle of trusted faces surrounds him, a quiet strength."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Unshakeable Resolve",
+        "scene": "The declaration echoes, a truth that holds firm."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I don't wanna die for them to miss me",
+        "insight": "He wants recognition in life, not posthumous praise."
+      },
+      {
+        "line": "God's plan, God's plan",
+        "insight": "This phrase anchors his entire worldview, a declaration of divine guidance."
+      },
+      {
+        "line": "It's a lot of bad things that they wishin' and wishin' and wishin' and wishin', they wishin' on me",
+        "insight": "The repetition emphasizes the sheer volume of negativity he faces."
+      },
+      {
+        "line": "I only love my bed and my mama, I'm sorry",
+        "insight": "This line reveals a guarded heart, prioritizing comfort and foundational love over fleeting romance."
+      },
+      {
+        "line": "Without 40, Oli, there'd be no me",
+        "insight": "He openly acknowledges the crucial support system behind his success."
+      }
+    ],
+    "texture": "A sparse, almost melancholic synth melody floats over a heavy, thumping beat. It feels both introspective and ready for a stadium."
+  }
+}

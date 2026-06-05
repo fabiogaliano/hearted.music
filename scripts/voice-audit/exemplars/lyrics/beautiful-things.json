@@ -1,0 +1,421 @@
+{
+  "song": {
+    "id": "23089639-7c1d-4fad-9ebc-d102d2cee38a",
+    "name": "Beautiful Things",
+    "artists": [
+      "Benson Boone"
+    ],
+    "album_name": "Beautiful Things"
+  },
+  "lyrics": {
+    "source": "genius",
+    "document": {
+      "source": "genius",
+      "sections": [
+        {
+          "type": "Verse 1",
+          "lines": [
+            {
+              "id": 1,
+              "text": "For a while there, it was rough",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": []
+            },
+            {
+              "id": 2,
+              "text": "But lately, I've been doin' better",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": []
+            },
+            {
+              "id": 3,
+              "text": "Than the last four cold Decembers I recall",
+              "range": {
+                "end": 3,
+                "start": 3
+              },
+              "annotations": []
+            },
+            {
+              "id": 4,
+              "text": "And I see my family every month",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "I found a girl my parents love",
+              "range": {
+                "end": 5,
+                "start": 5
+              },
+              "annotations": [
+                {
+                  "text": "In the Genius Verified video for “Beautiful Things”, Benson Boone revealed the inspiration behind this lyric:\n\nI’ve got pretty awesome parents, and I’m very blessed for that. When they met this person, they couldn’t stop talking about how much they loved the person I was when I was around them. When the people in your life that you love welcome, with open arms, a person that you’re in love with, it’s the best feeling.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 29
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "text": "She'll come and stay the night, and I think I might have it all",
+              "range": {
+                "end": 6,
+                "start": 6
+              },
+              "annotations": []
+            },
+            {
+              "id": 7,
+              "text": "And I thank God every day",
+              "range": {
+                "end": 7,
+                "start": 7
+              },
+              "annotations": [
+                {
+                  "text": "Religion is a recurring theme in Benson Boone’s songs. Here, the singer is thanking God for the “beautiful things” He has given him.\n\nAnd I thank God every day\nFor the girl He sent my way\n\nHowever, Benson knows that life is full of ups and downs: he’s full of doubts, and he fears that this happiness won’t last.\n\nBut I know the things He gives me, He can take away\n\nThe chorus of the song seems almost like a prayer: Benson is praying God not to take the “peace and love” he’s got now.\n\nI want you, I need you, oh God\nDon’t take\nThese beautiful things that I’ve got\n\nBenson’s relationship with God has been turbulent. For example, in the song In the stars, he said that his faith had been gone:\n\nIt’s like I’ve buried my faith with you\nI’m screaming at a God, I don’t know if I believe in\"",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 14
+                }
+              ]
+            },
+            {
+              "id": 8,
+              "text": "For the girl He sent my way",
+              "range": {
+                "end": 8,
+                "start": 8
+              }
+            },
+            {
+              "id": 9,
+              "text": "But I know the things He gives me, He can take away",
+              "range": {
+                "end": 9,
+                "start": 9
+              },
+              "annotations": [
+                {
+                  "text": "This line is a  Biblical reference to Job 1:21, which reads:\n\nAnd said, Naked came I out of my mother’s womb, and naked shall I return thither: the Lord gave, and the Lord hath taken away; blessed be the name of the Lord”\n\n– Job 1:21, King James Version\n\nJob is the book in the Bible that addresses the age-old question: if a good God exists, why then do horrible things so often happen to good people? The book centers around God allowing the blessings in Job’s life, such as his health, wealth, and children, to be lost. The song is sung from a similar perspective where the singer fears that “these beautiful things that I’ve got,” including his lover, could be taken away.",
+                  "state": "accepted",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 6
+                }
+              ]
+            },
+            {
+              "id": 10,
+              "text": "And I hold you every night",
+              "range": {
+                "end": 10,
+                "start": 10
+              },
+              "annotations": []
+            },
+            {
+              "id": 11,
+              "text": "And that's a feeling I wanna get used to",
+              "range": {
+                "end": 11,
+                "start": 11
+              }
+            },
+            {
+              "id": 12,
+              "text": "But there's no man as terrified as the man who stands to lose you",
+              "range": {
+                "end": 12,
+                "start": 12
+              }
+            }
+          ]
+        },
+        {
+          "type": "Pre-Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Oh, I hope I don't losе you",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "The switch up from the verse, where Boone explores how he has found happiness in his relationship, to the pre-chorus and chorus reveals his fears of losing everything good that he has.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 13
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "Mm, please stay",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "I want you, I need you, oh God",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "Don't take",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "Thеse beautiful things that I've got",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Please stay",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "I want you, I need you, oh God",
+              "range": {
+                "end": 2,
+                "start": 2
+              },
+              "annotations": []
+            },
+            {
+              "id": 3,
+              "text": "Don't take",
+              "range": {
+                "end": 3,
+                "start": 3
+              },
+              "annotations": []
+            },
+            {
+              "id": 4,
+              "text": "These beautiful things that I've got",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            }
+          ]
+        },
+        {
+          "type": "Post-Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Oh, ooh",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": []
+            },
+            {
+              "id": 2,
+              "text": "Please don't take",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            }
+          ]
+        },
+        {
+          "type": "Verse 2",
+          "lines": [
+            {
+              "id": 1,
+              "text": "I found my mind, I'm feelin' sane",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": [
+                {
+                  "text": "I found my mind, I’m feeling sane- Benson feels at peace with where his life is, and has relaxed at this small moment that he found.\n\nIt’s been a while, but I’m finding my faith- This goes back to his religious theme, and hints at the possibility that his belief in a higher power has been challenged. But because of this peaceful time that he is in, he is starting to grow his belief.\n\nIf everything’s good and it’s great why do I sit and wait til it’s gone?- Benson illustrates that it is easy to keep faith and to maintain happiness when everything around you is going well, but it’s harder to maintain that happiness and faith when something bad happens. He knows that the only thing constant in life is change, and the change is terrifying when you sit around and wait for the next tragedy to hit. He is worried that when this tragedy hits he will go back to where he was before his relationship.",
+                  "state": "pending",
+                  "verified": false,
+                  "pinnedRole": null,
+                  "votes_total": 14
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "text": "It's been a while, but I'm finding my faith",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "If everything's good and it's great, why do I sit and wait 'til it's gone?",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "Oh, I'll tell ya, I know I've got enough",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "I've got peace and I've got love",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            },
+            {
+              "id": 6,
+              "text": "But I'm up at night thinkin' I just might lose it all",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Please stay",
+              "range": {
+                "end": 1,
+                "start": 1
+              },
+              "annotations": []
+            },
+            {
+              "id": 2,
+              "text": "I want you, I need you, oh God",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "Don't take",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "These beautiful things that I've got",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            }
+          ]
+        },
+        {
+          "type": "Post-Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Oh, ooh",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            }
+          ]
+        },
+        {
+          "type": "Outro",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Please stay",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "I want you, I need you, oh God",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "I need",
+              "range": {
+                "end": 3,
+                "start": 3
+              },
+              "annotations": []
+            },
+            {
+              "id": 4,
+              "text": "These beautiful things that I've got",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 1
+    },
+    "content_hash": "ly_v1_b29798a30c67eb1e",
+    "schema_version": 1,
+    "has_annotations": true
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "runId": "2026-05-31T11-54-39-039Z__harry-styles-as-it-was__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:54:39.039Z",
+  "song": "Harry Styles — As It Was",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 4
+  },
+  "byRule": {
+    "lexical-repetition": 4
+  },
+  "tokens": 5234,
+  "hits": [
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "world",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "voice",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[1].scene",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[2].scene",
+      "span": "new",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a neon lit street, walking away from home",
+    "lens": "Change as isolation",
+    "tension": "Driving Melancholy",
+    "take": "The world shifted. It left you standing alone in the aftermath. The song finds a strange intimacy in that solitary space.",
+    "contradiction": "It claims a world where it is just us. It also hears a voice saying you are no good alone.",
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Warm Invitation",
+        "scene": "A familiar voice calls out. It pulls you into a private moment."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Lingering Pull",
+        "scene": "A past connection holds you. You feel the weight of what is gone."
+      },
+      {
+        "label": "Chorus",
+        "mood": "New Reality",
+        "scene": "The world has changed. It is just you in this new space."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "External Concern",
+        "scene": "A voice from outside sees your solitude. It questions your state."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Forced Forward",
+        "scene": "You try to outrun the past. The future rushes in."
+      },
+      {
+        "label": "Outro",
+        "mood": "Quiet Acceptance",
+        "scene": "The new truth settles. It is not the same."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Gravity's holdin' me back",
+        "insight": "Something unseen keeps you tethered to what was."
+      },
+      {
+        "line": "In this world, it's just us",
+        "insight": "A new intimacy forms in shared isolation."
+      },
+      {
+        "line": "You know it's not the same as it was",
+        "insight": "The undeniable truth of a changed landscape lands hard."
+      },
+      {
+        "line": "Harry, you're no good alone",
+        "insight": "A caring voice breaks through the self imposed bubble."
+      },
+      {
+        "line": "I don't wanna talk about the way that it was",
+        "insight": "The past is a closed book."
+      }
+    ],
+    "texture": "A bright synthpop pulse drives the whole thing forward. It carries a deep ache underneath the surface."
+  }
+}

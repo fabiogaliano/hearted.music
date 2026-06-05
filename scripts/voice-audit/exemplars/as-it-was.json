@@ -1,0 +1,41 @@
+{
+  "read": {
+    "image": "come on, harry, we wanna say goodnight to you",
+    "lens": "silence as the grief he allows",
+    "tension": "Withheld Grief",
+    "take": "Something ended and he will not name it. His goddaughter calls every night to say goodnight, until the night he stops answering. A voice finds him on the floor and asks what pills he is on. His father, alone since the divorce, only wants to know he is well. Every one of them is reaching for him and he stays quiet. I don't wanna talk about the way that it was. As it was. As it was.",
+    "contradiction": "The one thing he will not say becomes the only thing left.",
+    "arc": [
+      {
+        "label": "The Weight",
+        "mood": "Stunned Stillness",
+        "scene": "Everything around him has already moved on. He has nothing to say and a gravity that will not let him rise to follow. He is the one who stays, because staying is all his body will allow. Whatever changed, it changed without him."
+      },
+      {
+        "label": "The Reaching",
+        "mood": "Anxious Tenderness",
+        "scene": "The ones who love him keep arriving at the edge of his quiet. His goddaughter calls to say goodnight. A frightened voice asks why he is on the floor and what he has taken, and his father, alone for years now, asks only that he be well. All of it is love, and he is the one it cannot reach."
+      },
+      {
+        "label": "The Refusal",
+        "mood": "Deliberate Avoidance",
+        "scene": "When it is finally his turn to speak, he chooses not to. He will not talk about the way that it was, or about anything the others keep reaching for. Just the same three words — as it was — again and again."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Gravity's holdin' me back"
+      },
+      {
+        "line": "In this world, it's just us"
+      },
+      {
+        "line": "Harry, you're no good alone"
+      },
+      {
+        "line": "I don't wanna talk about the way that it was"
+      }
+    ],
+    "texture": "Bright and chiming synth pop that never lets up, engineered to sound like joy and ringing hollow underneath each hook."
+  }
+}

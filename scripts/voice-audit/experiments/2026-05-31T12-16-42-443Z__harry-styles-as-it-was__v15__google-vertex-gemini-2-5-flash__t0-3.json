@@ -1,0 +1,114 @@
+{
+  "runId": "2026-05-31T12-16-42-443Z__harry-styles-as-it-was__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:16:42.443Z",
+  "song": "Harry Styles — As It Was",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 5
+  },
+  "byRule": {
+    "burstiness": 1,
+    "lexical-repetition": 2,
+    "dash": 2
+  },
+  "tokens": 5664,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song treats the past as a present echo.",
+      "severity": "low",
+      "note": "CV=0.181 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "moment",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "texture",
+      "span": "synth-pop",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[3].scene",
+      "span": "well-being",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "a dance floor, alone in the spotlight",
+    "lens": "past as a present echo",
+    "tension": "Lonely Euphoria",
+    "take": "The song treats the past as a present echo. It acknowledges that nothing is the same. The memory of \"as it was\" still shapes the current moment.",
+    "contradiction": "The beat demands movement. The words demand stillness.",
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Warm Invitation",
+        "scene": "A child's voice pulls you into a private moment."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Lingering Weight",
+        "scene": "Gravity pulls you down. Everything feels heavy."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Shared Isolation",
+        "scene": "You stand together in a world that has shifted."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "External Concern",
+        "scene": "Voices from outside ask about your well-being."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Forced Forward",
+        "scene": "You try to outrun the memories. You refuse to look back."
+      },
+      {
+        "label": "Outro",
+        "mood": "Fading Echo",
+        "scene": "The words hang in the air. The past is still present."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Gravity's holdin' me back",
+        "insight": "A physical force keeps you from moving forward."
+      },
+      {
+        "line": "You know it's not the same as it was",
+        "insight": "The fundamental truth of the moment is spoken aloud."
+      },
+      {
+        "line": "Harry, you're no good alone",
+        "insight": "A worried voice calls out your isolation."
+      },
+      {
+        "line": "I don't wanna talk about the way that it was",
+        "insight": "A deliberate choice is made to leave the past unspoken."
+      }
+    ],
+    "texture": "A bright synth-pop beat drives the whole thing forward, but a deep melancholy lives just beneath its surface."
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "runId": "2026-05-31T11-56-01-272Z__frank-ocean-thinkin-bout-you__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:56:01.272Z",
+  "song": "Frank Ocean — Thinkin Bout You",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 2,
+    "low": 4
+  },
+  "byRule": {
+    "puffery-adjective": 2,
+    "participial-closure": 2,
+    "rule-of-three": 1,
+    "lexical-repetition": 3
+  },
+  "tokens": 6789,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "lines[1].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "lines[4].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", wondering if they see it too.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", making absurd claims about your indifference.",
+      "severity": "high"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[4].scene",
+      "span": "You remember the beginning, the first time, and commit to a lifetime",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "life",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "person",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "future",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a quiet room, a sudden downpour",
+    "lens": "Future as a question",
+    "tension": "Uncertain Devotion",
+    "take": "The song builds a whole life around a single person. You hear a future imagined in vivid detail. It asks if that future is shared, or if it only exists in your mind.",
+    "contradiction": "You claim indifference. You dream of forever.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Raw Vulnerability",
+        "scene": "Your life is a mess, but it was a beautiful mess because of them."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Urgent Questioning",
+        "scene": "You ask if they think of you too, a desperate plea for connection."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Deep Uncertainty",
+        "scene": "You lay out your deepest hopes for a future, wondering if they see it too."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Playful Denial",
+        "scene": "You pretend not to care, making absurd claims about your indifference."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Cherished Memory",
+        "scene": "You remember the beginning, the first time, and commit to a lifetime together."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Enduring Hope",
+        "scene": "The question of forever hangs in the air, now tinged with a deeper, more personal history."
+      }
+    ],
+    "lines": [
+      {
+        "line": "A tornado flew around my room before you came",
+        "insight": "Your life was chaos, and this person brought a calm that now feels lost."
+      },
+      {
+        "line": "My eyes don't shed tears, but boy, they pour",
+        "insight": "You describe an emotional flood, a profound sadness that defies your usual stoicism."
+      },
+      {
+        "line": "Or do you not think so far ahead? 'Cause I been thinkin' 'bout forever, ooh",
+        "insight": "This is the central question, the chasm between your long term vision and their potential short term view."
+      },
+      {
+        "line": "No, I don't like you, I just thought you were cool enough to kick it",
+        "insight": "You hear a playful, almost defensive denial, a cover for deeper feelings."
+      },
+      {
+        "line": "You know you were my first time. A new feel. It won't ever get old, not in my soul, not in my spirit, keep it alive.",
+        "insight": "You affirm the profound, foundational impact this person had on your life."
+      }
+    ],
+    "texture": "A smooth, unhurried R&B groove floats underneath. It carries a raw, exposed vocal performance, a stark contrast to the polished production."
+  }
+}

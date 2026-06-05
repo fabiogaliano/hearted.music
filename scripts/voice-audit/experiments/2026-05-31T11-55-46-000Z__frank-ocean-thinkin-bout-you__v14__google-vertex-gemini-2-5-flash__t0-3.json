@@ -1,0 +1,132 @@
+{
+  "runId": "2026-05-31T11-55-46-000Z__frank-ocean-thinkin-bout-you__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:55:46.000Z",
+  "song": "Frank Ocean — Thinkin Bout You",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 1,
+    "low": 4
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "self-reference": 2,
+    "burstiness": 1,
+    "lexical-repetition": 3
+  },
+  "tokens": 5982,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "texture",
+      "span": "shimmering",
+      "severity": "medium"
+    },
+    {
+      "rule": "self-reference",
+      "field": "lines[3].insight",
+      "span": "The speaker",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "lines[4].insight",
+      "span": "the speaker",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song holds onto a first love.",
+      "severity": "low",
+      "note": "CV=0.196 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "quiet",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "holds",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "love",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a quiet room, after the storm",
+    "lens": "first love as forever",
+    "tension": "Vulnerable Hope",
+    "take": "The song holds onto a first love. It believes this connection is meant to last. You hear the quiet plea for that belief to be mutual.",
+    "contradiction": "He thinks about forever. The other person might not think so far ahead.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Reflective Sadness",
+        "scene": "A quiet room holds the aftermath of a storm."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Direct Longing",
+        "scene": "The question hangs in the air, unanswered."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Urgent Question",
+        "scene": "A future is imagined, but only by one person."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Defensive Posturing",
+        "scene": "A playful deflection hides deeper feelings."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Deep Affirmation",
+        "scene": "The memory of a first love is cherished and declared eternal."
+      },
+      {
+        "label": "Outro",
+        "mood": "Lingering Uncertainty",
+        "scene": "The same question echoes, still without an answer."
+      }
+    ],
+    "lines": [
+      {
+        "line": "A tornado flew around my room before you came. Excuse the mess it made.",
+        "insight": "Your presence brought order to chaos."
+      },
+      {
+        "line": "My eyes don't shed tears, but boy, they pour.",
+        "insight": "The emotion is so deep it defies natural expression."
+      },
+      {
+        "line": "Do you think about me still? Do ya, do ya?",
+        "insight": "A raw vulnerability breaks through the composure."
+      },
+      {
+        "line": "Or do you not think so far ahead? 'Cause I been thinkin' 'bout forever, ooh.",
+        "insight": "The speaker's long term vision clashes with a potential short term view."
+      },
+      {
+        "line": "You know you were my first time. It won't ever get old, not in my soul, not in my spirit, keep it alive.",
+        "insight": "This love holds a sacred, permanent place in the speaker's being."
+      }
+    ],
+    "texture": "A soft, shimmering synth pad creates a hazy atmosphere. The fragile falsetto voice floats gently above it."
+  }
+}

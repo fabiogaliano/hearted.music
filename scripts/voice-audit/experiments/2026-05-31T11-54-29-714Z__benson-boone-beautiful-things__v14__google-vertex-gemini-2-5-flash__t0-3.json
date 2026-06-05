@@ -1,0 +1,116 @@
+{
+  "runId": "2026-05-31T11-54-29-714Z__benson-boone-beautiful-things__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:54:29.714Z",
+  "song": "Benson Boone — Beautiful Things",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 5
+  },
+  "byRule": {
+    "participial-closure": 1,
+    "lexical-repetition": 5
+  },
+  "tokens": 5513,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", carrying a quiet desperation in its powerful sound.",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "plea",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "good",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "prayer",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "source",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[1].scene",
+      "span": "fear",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a tight grip on a fragile joy",
+    "lens": "Blessing as burden",
+    "tension": "Precarious Joy",
+    "take": "The song holds happiness and the terror of its loss in the same breath. Every beautiful thing becomes a potential wound. It is a constant plea to keep what is good, a prayer against the inevitable.",
+    "contradiction": "The source of all good things is also the source of all potential loss.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Found Happiness",
+        "scene": "A life comes together. A deep gratitude settles in."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Rising Dread",
+        "scene": "A quiet fear begins to surface. The joy feels fragile."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Urgent Plea",
+        "scene": "The fear breaks through. A desperate prayer rises."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Renewed Anxiety",
+        "scene": "The good things are still there. The fear of losing them intensifies."
+      },
+      {
+        "label": "Outro",
+        "mood": "Lingering Supplication",
+        "scene": "The plea hangs in the air. The fear remains unresolved."
+      }
+    ],
+    "lines": [
+      {
+        "line": "But I know the things He gives me, He can take away",
+        "insight": "This line introduces the central conflict. It names the source of the fear."
+      },
+      {
+        "line": "But there's no man as terrified as the man who stands to lose you",
+        "insight": "This personalizes the fear. It makes the stakes clear."
+      },
+      {
+        "line": "Don't take\nThese beautiful things that I've got",
+        "insight": "This is the core plea. It is a desperate prayer."
+      },
+      {
+        "line": "If everything's good and it's great, why do I sit and wait 'til it's gone?",
+        "insight": "This reveals the internal struggle. It shows the mind's inability to rest in happiness."
+      }
+    ],
+    "texture": "A piano ballad builds into a soaring pop rock anthem, carrying a quiet desperation in its powerful sound."
+  }
+}

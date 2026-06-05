@@ -1,0 +1,140 @@
+{
+  "runId": "2026-05-31T12-15-53-060Z__lorde-ribs__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:15:53.060Z",
+  "song": "Lorde — Ribs",
+  "spotifyTrackId": "2MvvoeRt8NcOXWESkxWn3g",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 2,
+    "low": 6
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "puffery-adjective": 1,
+    "burstiness": 1,
+    "lexical-repetition": 4,
+    "dash": 1
+  },
+  "tokens": 6598,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "arc[0].scene",
+      "span": "marks",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "texture",
+      "span": "shimmering",
+      "severity": "medium"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song treats innocence as a vanishing point.",
+      "severity": "low",
+      "note": "CV=0.196 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "last",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "childhood",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "friendship",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "cannot",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[1].label",
+      "span": "Pre-Chorus",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "a shared bed, the last night of childhood",
+    "lens": "innocence as a vanishing point",
+    "tension": "Wistful Dread",
+    "take": "The song treats innocence as a vanishing point. It captures the precise moment when childhood's carefree joy begins to recede. You feel the pull of a past you can no longer fully inhabit.",
+    "contradiction": "The song celebrates the bond of friendship. It knows that bond cannot stop time.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Lingering Dread",
+        "scene": "A spilled drink marks the start of a night that feels different."
+      },
+      {
+        "label": "Pre-Chorus",
+        "mood": "Fleeting Hope",
+        "scene": "Words try to build a perfect world that cannot last."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Deepening Isolation",
+        "scene": "The midnight streets feel vast and empty."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Urgent Nostalgia",
+        "scene": "A desperate plea goes out for lost minds and simpler times."
+      },
+      {
+        "label": "Refrain",
+        "mood": "Shared Solace",
+        "scene": "Friends share a bed. They laugh until their ribs ache."
+      },
+      {
+        "label": "Outro",
+        "mood": "Resigned Acceptance",
+        "scene": "The comfort of friendship cannot hold back the inevitable."
+      }
+    ],
+    "lines": [
+      {
+        "line": "It drives you crazy, getting old",
+        "insight": "The simple truth of aging hits with a sudden, sharp clarity."
+      },
+      {
+        "line": "This dream isn't feeling sweet",
+        "insight": "The imagined future has turned into a source of unease."
+      },
+      {
+        "line": "I want 'em back, I want 'em back The minds we had, the minds we had",
+        "insight": "A raw yearning emerges for the specific innocence of youth."
+      },
+      {
+        "line": "Sharing beds like little kids",
+        "insight": "The scene captures the last vestiges of childhood freedom."
+      },
+      {
+        "line": "But that will never be enough",
+        "insight": "The comfort of friendship cannot stop the passage of time."
+      }
+    ],
+    "texture": "A pulsing synth line builds a soft, expansive soundscape. It holds a quiet dread beneath its shimmering surface."
+  }
+}

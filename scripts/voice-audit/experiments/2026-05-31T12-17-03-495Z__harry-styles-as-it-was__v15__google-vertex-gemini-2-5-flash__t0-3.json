@@ -1,0 +1,100 @@
+{
+  "runId": "2026-05-31T12-17-03-495Z__harry-styles-as-it-was__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:17:03.495Z",
+  "song": "Harry Styles — As It Was",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 3
+  },
+  "byRule": {
+    "lexical-repetition": 3
+  },
+  "tokens": 6038,
+  "hits": [
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "world",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "forward",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a lonely dance floor, spinning in place",
+    "lens": "memory as anchor",
+    "tension": "Hollow Brightness",
+    "take": "The song treats memory as an anchor. It holds you in place even as the world spins forward. You know things are not the same, but the past still dictates the present.",
+    "contradiction": "The beat pushes you forward. The words pull you back.",
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "warm and distant",
+        "scene": "A child's voice calls out a name."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "heavy and resigned",
+        "scene": "Gravity holds everything back."
+      },
+      {
+        "label": "Chorus",
+        "mood": "urgent and knowing",
+        "scene": "The world is not the same now."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "concerned and isolated",
+        "scene": "Voices ask why you are alone."
+      },
+      {
+        "label": "Bridge",
+        "mood": "frantic and dismissive",
+        "scene": "You do not want to talk about what was."
+      },
+      {
+        "label": "Outro",
+        "mood": "fading and certain",
+        "scene": "The past still rings out."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Gravity's holdin' me back",
+        "insight": "A physical force keeps you from moving forward."
+      },
+      {
+        "line": "You know it's not the same as it was",
+        "insight": "This is the central truth everyone acknowledges."
+      },
+      {
+        "line": "Harry, you're no good alone",
+        "insight": "The outside world sees your isolation."
+      },
+      {
+        "line": "I don't wanna talk about the way that it was",
+        "insight": "A desperate attempt to shut down the past."
+      }
+    ],
+    "texture": "A bright synth pop beat drives the song, but a deep melancholy lives just beneath the surface."
+  }
+}

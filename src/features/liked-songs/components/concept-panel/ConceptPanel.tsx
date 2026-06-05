@@ -6,18 +6,18 @@
  *   Layer 2 — The Take (take paragraph + optional contradiction)
  *   Layer 3 — The Trace
  *     - Arc: a clickable mood spine; the open beat's detail is revealed below.
- *     - Lines: the two key quotes; an "↳ why" toggle reveals each insight.
+ *     - Lines: the key quotes, cycled one at a time.
  *     - Texture: a single line, always inline.
  *
  * Palette comes from getThemedDarkColors driven by the song's brand theme,
  * so this panel sits in the same color system as the prod SongDetailPanel.
  */
 
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { getThemedDarkColors } from "../detail/themed-dark-colors";
-import type { ConceptArcBeat, ConceptRead, ConceptSong } from "./concept-types";
+import type { ConceptRead, ConceptSong } from "./concept-types";
 
 type Palette = ReturnType<typeof getThemedDarkColors>;
 
@@ -387,42 +387,31 @@ function TakeLayer({ read, colors }: { read: ConceptRead; colors: Palette }) {
 }
 
 function TraceLayer({ read, colors }: { read: ConceptRead; colors: Palette }) {
-	const [openArcIdx, setOpenArcIdx] = useState<number | null>(null);
-
-	const onArcToggle = (idx: number) =>
-		setOpenArcIdx((cur) => (cur === idx ? null : idx));
-
 	return (
 		<section>
 			<TraceBlock label="Arc" colors={colors} isFirst>
-				<MoodSpine
-					arc={read.arc}
-					openArcIdx={openArcIdx}
-					onArcToggle={onArcToggle}
-					colors={colors}
-				/>
-				{openArcIdx !== null && (
-					<ArcDetailCard beat={read.arc[openArcIdx]} colors={colors} />
-				)}
+				<ArcSpine arc={read.arc} colors={colors} />
 			</TraceBlock>
 
 			<TraceBlock label="Lines" colors={colors}>
 				<FocusedLines lines={read.lines} colors={colors} />
 			</TraceBlock>
 
-			<TraceBlock label="Texture" colors={colors}>
-				<p
-					style={{
-						fontFamily: fonts.body,
-						fontSize: 14,
-						lineHeight: 1.6,
-						color: colors.textMuted,
-						margin: 0,
-					}}
-				>
-					{read.texture}
-				</p>
-			</TraceBlock>
+			{read.texture && (
+				<TraceBlock label="Texture" colors={colors}>
+					<p
+						style={{
+							fontFamily: fonts.body,
+							fontSize: 14,
+							lineHeight: 1.6,
+							color: colors.textMuted,
+							margin: 0,
+						}}
+					>
+						{read.texture}
+					</p>
+				</TraceBlock>
+			)}
 		</section>
 	);
 }
@@ -465,130 +454,136 @@ function TraceBlock({
 	);
 }
 
-function MoodSpine({
+// Vertical timeline: order reads top→bottom (one direction, no wrap), the
+// structural label stays visible as a wayfinding cue, and each beat's scene
+// expands at its own node instead of detached below the whole spine.
+function ArcSpine({
 	arc,
-	openArcIdx,
-	onArcToggle,
 	colors,
 }: {
 	arc: ConceptRead["arc"];
-	openArcIdx: number | null;
-	onArcToggle: (idx: number) => void;
 	colors: Palette;
 }) {
+	const [openIdx, setOpenIdx] = useState<number | null>(0);
+	const reducedMotion = usePrefersReducedMotion();
+	const toggle = (i: number) => setOpenIdx((cur) => (cur === i ? null : i));
+
 	return (
-		<div
-			style={{
-				display: "flex",
-				flexWrap: "wrap",
-				alignItems: "center",
-				gap: 10,
-			}}
-		>
-			{arc.map((beat, i) => (
-				<Fragment key={beat.label}>
-					<MoodButton
-						mood={beat.mood}
-						isOpen={openArcIdx === i}
-						onClick={() => onArcToggle(i)}
-						colors={colors}
-					/>
-					{i < arc.length - 1 && (
-						<span
-							aria-hidden
-							style={{
-								color: colors.textDim,
-								fontSize: 14,
-								fontFamily: fonts.body,
-							}}
+		<div>
+			{arc.map((beat, i) => {
+				const isLast = i === arc.length - 1;
+				const open = openIdx === i;
+				return (
+					<div key={beat.label} style={{ display: "flex", gap: 14 }}>
+						<div style={{ position: "relative", width: 10, flexShrink: 0 }}>
+							{!isLast && (
+								<div
+									aria-hidden
+									style={{
+										position: "absolute",
+										left: "50%",
+										transform: "translateX(-50%)",
+										top: 6,
+										bottom: 0,
+										width: 1,
+										background: colors.border,
+									}}
+								/>
+							)}
+							<div
+								aria-hidden
+								style={{
+									position: "relative",
+									width: 9,
+									height: 9,
+									marginTop: 2,
+									borderRadius: 5,
+									background: open ? colors.accent : colors.bg,
+									border: `1.5px solid ${open ? colors.accent : colors.textDim}`,
+									transition: "background 150ms ease, border-color 150ms ease",
+								}}
+							/>
+						</div>
+						<div
+							style={{ flex: 1, minWidth: 0, paddingBottom: isLast ? 0 : 22 }}
 						>
-							→
-						</span>
-					)}
-				</Fragment>
-			))}
-		</div>
-	);
-}
-
-function MoodButton({
-	mood,
-	isOpen,
-	onClick,
-	colors,
-}: {
-	mood: string;
-	isOpen: boolean;
-	onClick: () => void;
-	colors: Palette;
-}) {
-	const [hover, setHover] = useState(false);
-	const active = isOpen || hover;
-	return (
-		<button
-			type="button"
-			onClick={onClick}
-			onMouseEnter={() => setHover(true)}
-			onMouseLeave={() => setHover(false)}
-			style={{
-				background: "transparent",
-				border: "none",
-				padding: 0,
-				cursor: "pointer",
-				fontFamily: fonts.body,
-				fontSize: 12,
-				fontWeight: 500,
-				letterSpacing: "0.06em",
-				textTransform: "uppercase",
-				color: active ? colors.accent : colors.textMuted,
-				transition: "color 150ms ease",
-			}}
-		>
-			{mood}
-		</button>
-	);
-}
-
-function ArcDetailCard({
-	beat,
-	colors,
-}: {
-	beat: ConceptArcBeat;
-	colors: Palette;
-}) {
-	return (
-		<div style={{ marginTop: 18 }}>
-			<div
-				style={{
-					fontSize: 9,
-					letterSpacing: "0.14em",
-					color: colors.textDim,
-					textTransform: "uppercase",
-					fontWeight: 400,
-					marginBottom: 8,
-				}}
-			>
-				{beat.label}
-			</div>
-			<p
-				style={{
-					fontFamily: fonts.body,
-					fontSize: 14,
-					lineHeight: 1.55,
-					color: colors.text,
-					margin: 0,
-				}}
-			>
-				{beat.scene}
-			</p>
+							<button
+								type="button"
+								onClick={() => toggle(i)}
+								aria-expanded={open}
+								style={{
+									display: "flex",
+									alignItems: "baseline",
+									flexWrap: "wrap",
+									gap: 8,
+									width: "100%",
+									background: "transparent",
+									border: "none",
+									padding: 0,
+									cursor: "pointer",
+									textAlign: "left",
+								}}
+							>
+								<span
+									style={{
+										fontSize: 10,
+										letterSpacing: "0.14em",
+										textTransform: "uppercase",
+										fontWeight: 500,
+										color: colors.textDim,
+									}}
+								>
+									{beat.label}
+								</span>
+								<span
+									style={{
+										fontFamily: fonts.body,
+										fontSize: 13,
+										fontWeight: 500,
+										letterSpacing: "0.02em",
+										color: open ? colors.accent : colors.text,
+										transition: "color 150ms ease",
+									}}
+								>
+									{beat.mood}
+								</span>
+							</button>
+							<div
+								aria-hidden={!open}
+								style={{
+									display: "grid",
+									gridTemplateRows: open ? "1fr" : "0fr",
+									transition: reducedMotion
+										? "none"
+										: "grid-template-rows 260ms ease-out",
+								}}
+							>
+								<div style={{ overflow: "hidden", minHeight: 0 }}>
+									<p
+										style={{
+											marginTop: 8,
+											marginBottom: 0,
+											fontFamily: fonts.body,
+											fontSize: 13,
+											lineHeight: 1.6,
+											color: colors.textMuted,
+										}}
+									>
+										{beat.scene}
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				);
+			})}
 		</div>
 	);
 }
 
 /**
  * One lyric line at a time, looping every FOCUSED_LINE_INTERVAL_MS.
- * Hover/focus pauses the cycle AND reveals the insight beneath the line —
- * one gesture, two purposes: "I'm reading this" + "tell me why it matters."
+ * Hover/focus pauses the cycle so a line can be sat with instead of advancing.
  *
  * The active dash's CSS animation is the timer: its onAnimationEnd
  * triggers the advance, so pausing (animation-play-state) keeps the visible
@@ -658,33 +653,6 @@ function FocusedLines({
 				>
 					&ldquo;{current.line}&rdquo;
 				</p>
-				{/* Grid 0fr→1fr reveal: collapsed = literally 0px reserved, expanded = */}
-				{/* the insight's natural height. Smoothly pushes Texture below during open. */}
-				<div
-					aria-hidden={!paused}
-					style={{
-						display: "grid",
-						gridTemplateRows: paused ? "1fr" : "0fr",
-						transition: reducedMotion
-							? "none"
-							: "grid-template-rows 260ms ease-out",
-					}}
-				>
-					<div style={{ overflow: "hidden", minHeight: 0 }}>
-						<p
-							style={{
-								marginTop: 14,
-								marginBottom: 0,
-								fontFamily: fonts.body,
-								fontSize: 13,
-								lineHeight: 1.6,
-								color: colors.textMuted,
-							}}
-						>
-							{current.insight}
-						</p>
-					</div>
-				</div>
 			</div>
 		</div>
 	);

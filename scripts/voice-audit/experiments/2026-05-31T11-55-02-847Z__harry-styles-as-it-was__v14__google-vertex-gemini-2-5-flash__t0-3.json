@@ -1,0 +1,119 @@
+{
+  "runId": "2026-05-31T11-55-02-847Z__harry-styles-as-it-was__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:55:02.847Z",
+  "song": "Harry Styles — As It Was",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 4,
+    "medium": 0,
+    "low": 2
+  },
+  "byRule": {
+    "participial-closure": 3,
+    "self-reference": 1,
+    "lexical-repetition": 2
+  },
+  "tokens": 5967,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", transforming what was once familiar into a landscape you must now navigate.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", pulsing synths drive the rhythm forward.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", remembering someone irreplaceable.",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "take",
+      "span": "This song",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "quiet",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "once",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a quiet house, once full of life",
+    "lens": "normal into new normal",
+    "tension": "Hollow Brightness",
+    "take": "The world shifted. You feel it in your bones. This song names the quiet, persistent ache of that change, transforming what was once familiar into a landscape you must now navigate.",
+    "contradiction": "You long for what was. You must live in what is.",
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Playful Intimacy",
+        "scene": "A child's voice breaks the silence, a warm, unexpected greeting."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Lingering Loss",
+        "scene": "You feel a weight holding you down, remembering someone irreplaceable."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Resigned Acceptance",
+        "scene": "The truth hits you, a quiet understanding that things have fundamentally shifted."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Isolated Concern",
+        "scene": "Voices reach out, worried about your solitude, but the help feels far away."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Weary Avoidance",
+        "scene": "You turn away from the past, tired of rehashing what cannot be changed."
+      },
+      {
+        "label": "Outro",
+        "mood": "Fading Echo",
+        "scene": "The phrase hangs in the air, a final, gentle reminder of what once was."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Gravity's holdin' me back",
+        "insight": "A physical weight keeps you from moving forward, a resistance to change."
+      },
+      {
+        "line": "You know it's not the same as it was",
+        "insight": "This is the central, undeniable truth, spoken with a quiet certainty."
+      },
+      {
+        "line": "Harry, you're no good alone",
+        "insight": "The outside world sees your isolation, a stark contrast to the internal struggle."
+      },
+      {
+        "line": "I don't wanna talk about the way that it was",
+        "insight": "There is a deep weariness in revisiting the past, a desire to leave it behind."
+      }
+    ],
+    "texture": "Bright, pulsing synths drive the rhythm forward. A deep, melancholic bassline grounds the entire sound in a quiet sadness."
+  }
+}

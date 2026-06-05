@@ -1,0 +1,112 @@
+{
+  "runId": "2026-05-31T11-55-34-287Z__chappell-roan-pink-pony-club__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:55:34.287Z",
+  "song": "Chappell Roan — Pink Pony Club",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 4
+  },
+  "byRule": {
+    "burstiness": 1,
+    "lexical-repetition": 3
+  },
+  "tokens": 6685,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "You arrive at your true self and community.",
+      "severity": "low",
+      "note": "CV=0.216 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "new",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "dancing",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "place",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "pink neon, a new self dancing",
+    "lens": "arrival as defiance",
+    "tension": "Vibrant Longing",
+    "take": "You arrive at your true self and community. This arrival is an act of defiance against the expectations of your past. You find your place by choosing joy over approval.",
+    "contradiction": "You love the home you left behind. You will never return to the person you were there.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Restless anticipation",
+        "scene": "You dream of a place where you can truly belong."
+      },
+      {
+        "label": "Refrain Pre Chorus",
+        "mood": "Painful assertion",
+        "scene": "You feel the sting of disapproval but choose your own path."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Unabashed freedom",
+        "scene": "You are dancing, fully yourself, in West Hollywood."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Confident affirmation",
+        "scene": "This new world confirms you made the right choice."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Tender defiance",
+        "scene": "You hold both worlds in your heart, but your path is clear."
+      },
+      {
+        "label": "Outro",
+        "mood": "Resolute joy",
+        "scene": "You will keep dancing, no matter what."
+      }
+    ],
+    "lines": [
+      {
+        "line": "But I can't ignore the crazy visions of me in L.A.",
+        "insight": "The pull of a new life is undeniable."
+      },
+      {
+        "line": "Won't make my mama proud, it's gonna cause a scene",
+        "insight": "This choice comes with a personal cost."
+      },
+      {
+        "line": "On the stage in my heels, it's where I belong",
+        "insight": "This is the place where you are truly yourself."
+      },
+      {
+        "line": "Every night's another reason why I left it all",
+        "insight": "The new life validates the difficult decision."
+      },
+      {
+        "line": "Still love you and Tennessee, you're always on my mind",
+        "insight": "The past is still a part of you, even as you move forward."
+      }
+    ],
+    "texture": "Bright synths and a driving beat create an infectious dance floor energy. A wistful undertone hints at the journey taken."
+  }
+}

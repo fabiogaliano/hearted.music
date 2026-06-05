@@ -1,0 +1,151 @@
+{
+  "runId": "2026-05-31T12-32-00-927Z__phoebe-bridgers-motion-sickness__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:32:00.927Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 4,
+    "medium": 0,
+    "low": 6
+  },
+  "byRule": {
+    "participial-closure": 4,
+    "burstiness": 1,
+    "lexical-repetition": 5
+  },
+  "tokens": 6798,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", irritating details of their past behavior still echo, and you try to push them away.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[5].scene",
+      "span": ", wondering what peace might come from simply giving in to the feeling.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[1].insight",
+      "span": ", giving a name to the physical manifestation of deep emotional distress.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[3].insight",
+      "span": ", revealing the manipulative nature of the relationship's origin.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song maps the physical symptoms of motion sickness onto the emotional fallou",
+      "severity": "low",
+      "note": "CV=0.081 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "physical",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "sickness",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "emotional",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "relationship",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[1].scene",
+      "span": "relief",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "the world spinning, but you're standing still",
+    "lens": "whiplash as chronic condition",
+    "tension": "Lingering Nausea",
+    "take": "The song maps the physical symptoms of motion sickness onto the emotional fallout of a toxic relationship. It shows how the past continues to disorient you, even when you are physically free. You are caught in a cycle of conflicting feelings, unable to find solid ground.",
+    "contradiction": "You are free from the person, but the emotional sickness remains.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Raw Confession",
+        "scene": "You lay out the conflicting feelings, the hate and the longing, that still churn inside you."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Physical Disorientation",
+        "scene": "The emotional turmoil manifests as a physical sickness, a desperate need for relief."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Clear Eyed Relief",
+        "scene": "You see the damage they inflict on themselves, and you feel a quiet relief for having escaped."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Lingering Annoyance",
+        "scene": "The small, irritating details of their past behavior still echo, and you try to push them away."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Deep Seated Resentment",
+        "scene": "The power imbalance and manipulation from the start of the relationship are laid bare."
+      },
+      {
+        "label": "Outro",
+        "mood": "Weary Surrender",
+        "scene": "You consider letting go of the fight, wondering what peace might come from simply giving in to the feeling."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I hate you for what you did / And I miss you like a little kid",
+        "insight": "This line perfectly captures the core ambivalence, the simultaneous repulsion and deep, childlike longing."
+      },
+      {
+        "line": "I have emotional motion sickness",
+        "insight": "The central metaphor lands, giving a name to the physical manifestation of deep emotional distress."
+      },
+      {
+        "line": "And while you're bleeding on your back in the glass / I'll be glad that I made it out",
+        "insight": "There is a stark, almost cold relief in seeing the other person's self destruction from a safe distance."
+      },
+      {
+        "line": "You said when you met me, you were bored / You were in a band when I was born",
+        "insight": "The age gap and power dynamic are exposed, revealing the manipulative nature of the relationship's origin."
+      },
+      {
+        "line": "And I wanna know what would happen / If I surrender to the sound",
+        "insight": "You wonder if true release comes from fighting the sickness or from finally letting it wash over you."
+      }
+    ],
+    "texture": "The soft, acoustic guitar and hushed vocals create an intimate space. The lyrics deliver a sharp, unsparing truth."
+  }
+}

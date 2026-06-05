@@ -1,0 +1,44 @@
+{
+  "read": {
+    "image": "holding on tight, sure it's all on loan",
+    "lens": "blessing as a loan",
+    "tension": "Blessed Unease",
+    "take": "He's finally sane, at peace, with a girl his parents love. And that's the problem. If everything's good and it's great, why does he lie awake waiting for it to vanish? Because he knows the rule by heart: what God gives, God can take away. The more he has, the more terrified he gets. All he prays for is that none of it changes.",
+    "contradiction": "He is trying to grow used to a happiness he's already certain he'll lose.",
+    "arc": [
+      {
+        "label": "The Count",
+        "mood": "Shadowed Gratitude",
+        "scene": "He holds her every night and tries to believe it could stay. Four cold Decembers behind him. His parents love her, he sees his family again. Then the knowledge that shadows all of it: the giver can take it back. No one is as terrified as the man who finally has something to lose."
+      },
+      {
+        "label": "The Plea",
+        "mood": "Naked Desperation",
+        "scene": "The hush blows open into drums and the gratitude turns into begging. Please stay. The girl he could lose and the God who could take her have collapsed into the same word. He cannot tell anymore whether he is praying or just holding on."
+      },
+      {
+        "label": "The Vigil",
+        "mood": "Sleepless Dread",
+        "scene": "He says it plainly now: he's sane, he's at peace, his faith is coming back. None of it helps. He is still awake at the same hour, sure he is about to lose it all. The prayer rises one final time and then burns off everything but two words. I need."
+      }
+    ],
+    "lines": [
+      {
+        "line": "But I know the things He gives me, He can take away"
+      },
+      {
+        "line": "But there's no man as terrified as the man who stands to lose you"
+      },
+      {
+        "line": "I want you, I need you, oh God"
+      },
+      {
+        "line": "If everything's good and it's great, why do I sit and wait 'til it's gone?"
+      },
+      {
+        "line": "These beautiful things that I've got"
+      }
+    ],
+    "texture": "A hushed piano confession that detonates into a wall of rock, the dynamics swinging as wildly as the fear underneath them."
+  }
+}

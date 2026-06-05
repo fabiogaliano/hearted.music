@@ -1,0 +1,107 @@
+{
+  "runId": "2026-05-31T11-53-48-671Z__lorde-ribs__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:53:48.671Z",
+  "song": "Lorde — Ribs",
+  "spotifyTrackId": "2MvvoeRt8NcOXWESkxWn3g",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 3
+  },
+  "byRule": {
+    "participial-closure": 1,
+    "lexical-repetition": 3
+  },
+  "tokens": 6375,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", knowing they cannot stop time.",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "cannot",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "shared",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[1].scene",
+      "span": "desperate",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "midnight streets, a fading laugh",
+    "lens": "youth as ghost",
+    "tension": "Haunted Nostalgia",
+    "take": "You feel the past slipping away. Youth is a ghost, always present in memory but forever out of reach. It makes you cling to fleeting moments of connection, knowing they cannot stop time.",
+    "contradiction": "The shared laughter is real. It cannot fill the growing void of loneliness.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Lingering unease",
+        "scene": "A late night scene unfolds. You are caught in a moment of youthful freedom."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Fleeting hope",
+        "scene": "You conjure perfect worlds with words. There is a desperate wish for this feeling to last."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Growing dread",
+        "scene": "The fear of aging echoes louder now. The carefree night feels increasingly fragile."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Raw isolation",
+        "scene": "The dream turns sour. You feel profoundly alone even with others around."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Urgent yearning",
+        "scene": "A desperate plea rises. You yearn for a lost past, for earlier thoughts and feelings."
+      },
+      {
+        "label": "Refrain",
+        "mood": "Resigned sorrow",
+        "scene": "You find solace in a friend's presence. The shared laughter is a temporary shield."
+      }
+    ],
+    "lines": [
+      {
+        "line": "It drives you crazy, getting old",
+        "insight": "This line names the central anxiety directly."
+      },
+      {
+        "line": "And I've never felt more alone",
+        "insight": "Loneliness pierces through the shared experience."
+      },
+      {
+        "line": "I want 'em back, I want 'em back",
+        "insight": "A desperate cry for a lost state of being."
+      },
+      {
+        "line": "But that will never be enough",
+        "insight": "Even the deepest connection cannot fill the void of time passing."
+      }
+    ],
+    "texture": "Washing synths create a vast, echoing space. A driving beat pulls you forward through the melancholy."
+  }
+}

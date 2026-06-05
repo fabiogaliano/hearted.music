@@ -1,0 +1,140 @@
+{
+  "runId": "2026-05-31T12-14-51-791Z__the-rapture-no-sex-for-ben__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:14:51.791Z",
+  "song": "The Rapture — No Sex for Ben",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 0,
+    "low": 6
+  },
+  "byRule": {
+    "participial-closure": 1,
+    "book-report-opener": 1,
+    "burstiness": 2,
+    "lexical-repetition": 3,
+    "dash": 1
+  },
+  "tokens": 5407,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", cutting insults are hurled.",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "lines[2].insight",
+      "span": "This is a specific, cutting i",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song takes specific, crude accusations.",
+      "severity": "low",
+      "note": "CV=0.172 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "texture",
+      "span": "A raw, driving beat propels the whole thing.",
+      "severity": "low",
+      "note": "CV=0.141 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "public",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "shaming",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "specific",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[0].scene",
+      "span": "count-off",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "a public shaming, chanted loud",
+    "lens": "insult into anthem",
+    "tension": "Relentless Condemnation",
+    "take": "The song takes specific, crude accusations. It turns them into a repetitive, communal chant. This is a public shaming. It is set to a dance beat.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Call to action",
+        "scene": "A count-off begins the whole thing."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Initial accusation",
+        "scene": "The target is named. The first charge is laid out."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Communal verdict",
+        "scene": "The crowd delivers its judgment. It is a simple, firm declaration."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Escalating charges",
+        "scene": "More specific, cutting insults are hurled. The accusations grow more personal."
+      },
+      {
+        "label": "Verse 3",
+        "mood": "Final accusation",
+        "scene": "The most egregious charge is made. A collective call to action follows."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Communal enforcement",
+        "scene": "The chant repeats with greater intensity. The verdict is final and extended."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Ben Rymer, trash people",
+        "insight": "This is the initial, broad condemnation. It sets the tone for everything that follows."
+      },
+      {
+        "line": "No sex, no sex for Ben Rymer now",
+        "insight": "This is the core punishment. It is a social exclusion, stated plainly."
+      },
+      {
+        "line": "Lookin' like a poor man's Arthur Baker now",
+        "insight": "This is a specific, cutting insult. It diminishes the target with a cultural reference."
+      },
+      {
+        "line": "Try to snatch the kitty off his girlfriend's mother",
+        "insight": "This is the most shocking accusation. It provides a crude, specific reason for the shaming."
+      },
+      {
+        "line": "We gotta freeze them up now",
+        "insight": "This is the call for collective action. It rallies everyone to enforce the social ban."
+      }
+    ],
+    "texture": "A raw, driving beat propels the whole thing. It feels like a public square. It is also a dance floor."
+  }
+}

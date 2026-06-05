@@ -1,0 +1,130 @@
+{
+  "runId": "2026-05-31T12-15-34-217Z__bad-bunny-dtmf__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:15:34.217Z",
+  "song": "Bad Bunny — DtMF",
+  "spotifyTrackId": "3sK8wGT43QFpWrvNQsrQya",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 8
+  },
+  "byRule": {
+    "burstiness": 1,
+    "lexical-repetition": 6,
+    "dash": 1
+  },
+  "tokens": 6535,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "You live in the now, but the past is always with you.",
+      "severity": "low",
+      "note": "CV=0.129 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "san",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "juan",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "sunset",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "cannot",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "wish",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "texture",
+      "span": "low-key",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "a san juan sunset, a ghost beside you",
+    "lens": "memory as present",
+    "tension": "Joyful Longing",
+    "take": "You live in the now, but the past is always with you. Every sunset in San Juan brings back a face. The joy of friends cannot erase what you wish you had done.",
+    "contradiction": "You wish for a past you cannot change. You fully embrace a present you cannot hold.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Nostalgic Regret",
+        "scene": "A beautiful San Juan sunset unfolds. You remember a face you wish you had captured more."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Wistful Longing",
+        "scene": "You replay all the moments you should have held tighter. You hope your loved ones stay close."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Present Indulgence",
+        "scene": "You spend the day with family. You decide to drink and forget."
+      },
+      {
+        "label": "Outro",
+        "mood": "Accepting Community",
+        "scene": "Friends are growing up and having kids. You find joy in music and shared moments."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Pero queriendo volver a la última vez que a los ojos te miré",
+        "insight": "A specific moment from the past still holds power."
+      },
+      {
+        "line": "Debí tirar más fotos de cuando te tuve (I should have taken more photos of when I had you)",
+        "insight": "A simple regret becomes a recurring refrain."
+      },
+      {
+        "line": "Hoy voy a estar con abuelo to'l día, jugando dominó (Today I'm going to be with grandpa all day, playing dominoes)",
+        "insight": "The present is filled with simple, grounding joys."
+      },
+      {
+        "line": "Vamo' a disfrutar, que nunca se sabe si nos queda poco (Let's enjoy, because you never know if we have little time left)",
+        "insight": "A carpe diem attitude emerges from the melancholy."
+      },
+      {
+        "line": "Ya no estamo' pa' la movie' y las cadena' / 'Tamos pa' las cosa' que valgan la pena (We're no longer for the movie and the chains / We're for the things that are worth it)",
+        "insight": "Priorities shift with maturity."
+      }
+    ],
+    "texture": "A low-key reggaeton beat pulses with live instrumentation. It feels intimate and melancholic, yet it still makes you move."
+  }
+}

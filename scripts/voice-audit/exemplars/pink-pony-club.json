@@ -1,0 +1,41 @@
+{
+  "read": {
+    "image": "from church camp to the queer scene in west hollywood",
+    "lens": "finding your way home by leaving",
+    "tension": "Unrepentant Joy",
+    "take": "She left the Midwest for West Hollywood, where boys and girls can all be queens, and the stage in her heels is the first place she has ever fully been herself. Her mother's voice lives in her head every Saturday — God, what have you done — and she carries it not because it hurts less but because it proves she chose right. Every night on the floor is another answer to the conservative home she left behind. She still loves Tennessee. She is going to keep on dancing anyway.",
+    "contradiction": "Breaking her mother's heart was the price of finding her own.",
+    "arc": [
+      {
+        "label": "Verse",
+        "mood": "Restless Longing",
+        "scene": "The visions won't leave her alone: a special place in LA where boys and girls can all be queens, Santa Monica calling her. She calls them wicked dreams because that is what they are to everyone back home in Tennessee. Won't make her mama proud. Might make her scream."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Unrepentant Joy",
+        "scene": "Black lights, a mirrored disco ball, jaws on the floor. Every night on this floor is another reason she left it all. Her mother's voice is in her head: \"God, what have you done.\" She answers it from the dancefloor: \"I'm just having fun.\""
+      },
+      {
+        "label": "Bridge",
+        "mood": "Tender Defiance",
+        "scene": "She still loves her mama. She still loves Tennessee, always on her mind. Every Saturday the Southern drawl reaches her a thousand miles away with the same question. She gives the same answer every time. On the stage in her heels, exactly who she was always going to be, she keeps on dancing."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I'm having wicked dreams of leaving Tennessee"
+      },
+      {
+        "line": "God, what have you done?\nYou're a pink pony girl, and you dance at the club,"
+      },
+      {
+        "line": "On the stage in my heels, it's where I belong"
+      },
+      {
+        "line": "Still love you and Tennessee, you're always on my mind"
+      }
+    ],
+    "texture": "Synth pop that starts almost shy and swells into a glittering anthem, the kind built to be screamed back by a crowd."
+  }
+}

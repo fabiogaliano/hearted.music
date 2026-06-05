@@ -83,4 +83,15 @@ describe("tier2 schemas", () => {
 			}).success,
 		).toBe(true);
 	});
+
+	it("treats a flat-recap scene as a valid arc failure on its own", () => {
+		expect(
+			ArcNarrativeSchema.safeParse({
+				narrative: false,
+				disconnect_points: [],
+				recap_scenes: ["scene 2: recounts the bars without a turn"],
+				rationale: [],
+			}).success,
+		).toBe(true);
+	});
 });

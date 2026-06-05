@@ -1,0 +1,103 @@
+{
+  "runId": "2026-05-31T12-16-16-892Z__benson-boone-beautiful-things__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:16:16.892Z",
+  "song": "Benson Boone — Beautiful Things",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 4
+  },
+  "byRule": {
+    "burstiness": 1,
+    "lexical-repetition": 3
+  },
+  "tokens": 5209,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song holds a beautiful present moment.",
+      "severity": "low",
+      "note": "CV=0.220 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "holds",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "terror",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[2].scene",
+      "span": "desperate",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a perfect day, waiting for night",
+    "lens": "blessing as a threat",
+    "tension": "Joyful Dread",
+    "take": "The song holds a beautiful present moment. It also holds the absolute terror of its end. The more good things you have, the more you have to lose.",
+    "contradiction": "He has everything he wants. He lives in fear of losing it all.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "newfound peace",
+        "scene": "A quiet life settles in."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "rising fear",
+        "scene": "The fear of loss suddenly appears."
+      },
+      {
+        "label": "Chorus",
+        "mood": "urgent plea",
+        "scene": "A desperate prayer rises."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "fragile contentment",
+        "scene": "The good things are counted again."
+      },
+      {
+        "label": "Outro",
+        "mood": "raw begging",
+        "scene": "The plea becomes a final, desperate cry."
+      }
+    ],
+    "lines": [
+      {
+        "line": "But I know the things He gives me, He can take away",
+        "insight": "A blessing carries its own threat."
+      },
+      {
+        "line": "But there's no man as terrified as the man who stands to lose you",
+        "insight": "The joy of having creates the terror of loss."
+      },
+      {
+        "line": "If everything's good and it's great, why do I sit and wait 'til it's gone?",
+        "insight": "Happiness itself breeds a waiting dread."
+      },
+      {
+        "line": "I want you, I need you, oh God Don't take These beautiful things that I've got",
+        "insight": "The deepest gratitude turns into a desperate bargain."
+      }
+    ],
+    "texture": "The sound swells with a stadium rock ambition. It holds a quiet, personal terror inside."
+  }
+}

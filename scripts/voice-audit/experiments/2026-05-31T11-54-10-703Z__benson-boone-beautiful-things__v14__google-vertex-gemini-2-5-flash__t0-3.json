@@ -1,0 +1,103 @@
+{
+  "runId": "2026-05-31T11-54-10-703Z__benson-boone-beautiful-things__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:54:10.703Z",
+  "song": "Benson Boone — Beautiful Things",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 4
+  },
+  "byRule": {
+    "burstiness": 2,
+    "lexical-repetition": 2
+  },
+  "tokens": 5455,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song finds the moment of perfect happiness.",
+      "severity": "low",
+      "note": "CV=0.216 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[3].scene",
+      "span": "The good things are counted.",
+      "severity": "low",
+      "note": "CV=0.204 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[0].scene",
+      "span": "good",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[0].scene",
+      "span": "things",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a fragile glass held to the light",
+    "lens": "joy as dread",
+    "tension": "Precarious Joy",
+    "take": "The song finds the moment of perfect happiness. It immediately turns into a plea to keep it. The joy of having something beautiful becomes the dread of its potential loss.",
+    "contradiction": "He has everything he wants. He lives in terror of losing it all.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Found Happiness",
+        "scene": "A life comes together. It is filled with good things."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Rising Fear",
+        "scene": "A quiet dread begins to surface. It whispers of loss."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Desperate Plea",
+        "scene": "A prayer is sent into the air. It begs for things to stay."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Lingering Doubt",
+        "scene": "The good things are counted. The fear remains. It questions the future."
+      },
+      {
+        "label": "Outro",
+        "mood": "Urgent Begging",
+        "scene": "The prayer grows louder. It is all that is left."
+      }
+    ],
+    "lines": [
+      {
+        "line": "But I know the things He gives me, He can take away",
+        "insight": "The blessing of good fortune carries the seed of its undoing."
+      },
+      {
+        "line": "But there's no man as terrified as the man who stands to lose you",
+        "insight": "The depth of love creates an equal depth of fear."
+      },
+      {
+        "line": "Don't take / These beautiful things that I've got",
+        "insight": "The heart makes a desperate bargain with the unknown."
+      },
+      {
+        "line": "If everything's good and it's great, why do I sit and wait 'til it's gone?",
+        "insight": "Happiness itself becomes a countdown to its own end."
+      }
+    ],
+    "texture": "A gentle piano melody carries a vulnerable vocal. It explodes into a powerful, pleading anthem, where the desperation is amplified by the sheer volume."
+  }
+}

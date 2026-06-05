@@ -1,0 +1,81 @@
+{
+  "runId": "2026-05-31T11-51-29-297Z__dua-lipa-houdini__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:51:29.297Z",
+  "song": "Dua Lipa — Houdini",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 1
+  },
+  "byRule": {
+    "burstiness": 1
+  },
+  "tokens": 5831,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song sets up a game.",
+      "severity": "low",
+      "note": "CV=0.117 (threshold 0.25)"
+    }
+  ],
+  "analysis": {
+    "image": "a smoke bomb and a wink",
+    "lens": "elusiveness as test",
+    "tension": "Seductive Test",
+    "take": "The song sets up a game. You are dared to prove your worth. The disappearing act is a test of desire.",
+    "contradiction": "She promises to leave. She hopes you will make her stay.",
+    "arc": [
+      {
+        "label": "Chorus",
+        "mood": "Playful Warning",
+        "scene": "She steps into the spotlight. She announces her intention to disappear."
+      },
+      {
+        "label": "Verse",
+        "mood": "Observant Invitation",
+        "scene": "She watches you watching her. She invites you to make a move."
+      },
+      {
+        "label": "Post Chorus",
+        "mood": "Direct Challenge",
+        "scene": "She lays out the terms. She reveals the hidden door."
+      },
+      {
+        "label": "Verse",
+        "mood": "Skeptical Inquiry",
+        "scene": "She questions your sincerity. She demands proof of your words."
+      },
+      {
+        "label": "Outro",
+        "mood": "Lingering Dare",
+        "scene": "She fades from view. The challenge hangs in the air."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Catch me or I go Houdini",
+        "insight": "She throws down the gauntlet. You are dared to keep up."
+      },
+      {
+        "line": "It's your moment, baby, don't let it slip",
+        "insight": "She gives you a window of opportunity. You must seize it now."
+      },
+      {
+        "line": "Maybe you could be the one to make me stay",
+        "insight": "She admits her own vulnerability. You hold the power to change her."
+      },
+      {
+        "line": "Do you practise everything that you preach?",
+        "insight": "She calls for authenticity. Your actions must match your words."
+      }
+    ],
+    "texture": "A pulsing disco beat drives the whole thing. It feels slick and confident, but there is a playful wink in its production."
+  }
+}

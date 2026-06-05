@@ -1,0 +1,106 @@
+{
+  "runId": "2026-05-31T12-30-41-110Z__kendrick-lamar-not-like-us__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:30:41.110Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 0,
+    "low": 2
+  },
+  "byRule": {
+    "self-reference": 2,
+    "burstiness": 1,
+    "lexical-repetition": 1
+  },
+  "tokens": 10742,
+  "hits": [
+    {
+      "rule": "self-reference",
+      "field": "take",
+      "span": "This song",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "texture",
+      "span": "the track",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "This song draws a hard line.",
+      "severity": "low",
+      "note": "CV=0.204 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "line",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a clear line in the sand",
+    "lens": "Exclusion as identity",
+    "tension": "Absolute Conviction",
+    "take": "This song draws a hard line. It defines who belongs by who is cast out. You feel the collective power of a community closing ranks.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Direct Confrontation",
+        "scene": "A whisper opens it. He launches into personal attacks."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Collective Exclusion",
+        "scene": "The central declaration rings out. A clear line is drawn."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Cultural Dissection",
+        "scene": "He dissects perceived inauthenticity. The accusations broaden."
+      },
+      {
+        "label": "Verse 3",
+        "mood": "Historical Indictment",
+        "scene": "The critique deepens with historical and cultural accusations. He calls out the colonizer."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Hypnotic Taunt",
+        "scene": "Repetitive insults become a chant. You are invited to join the mockery."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Say, Drake, I hear you like 'em young",
+        "insight": "A direct, personal accusation lands with force."
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles",
+        "insight": "He redefines a brand with a devastating label."
+      },
+      {
+        "line": "They not like us, they not like us, they not like us",
+        "insight": "The collective voice asserts its boundary."
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer",
+        "insight": "The ultimate cultural accusation is delivered without hesitation."
+      },
+      {
+        "line": "He a fan, he a fan, he a fan",
+        "insight": "The opponent is reduced to a mere spectator."
+      }
+    ],
+    "texture": "A smooth, confident West Coast groove drives the track. It carries a heavy message with an almost casual swagger."
+  }
+}

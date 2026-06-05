@@ -1,0 +1,96 @@
+{
+  "runId": "2026-05-31T12-16-33-427Z__benson-boone-beautiful-things__v15__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T12:16:33.427Z",
+  "song": "Benson Boone — Beautiful Things",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "15",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 3
+  },
+  "byRule": {
+    "burstiness": 1,
+    "lexical-repetition": 2
+  },
+  "tokens": 5267,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song finds a man at peace with his life.",
+      "severity": "low",
+      "note": "CV=0.204 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "becomes",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "fear",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a whispered plea in the night",
+    "lens": "joy as a hostage",
+    "tension": "Grateful Fear",
+    "take": "The song finds a man at peace with his life. He has everything he ever wanted. This newfound joy becomes a source of immense fear.",
+    "contradiction": "He has everything he wants. He lives in constant fear of losing it all.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Grateful peace",
+        "scene": "Life has finally settled into a good rhythm."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Rising dread",
+        "scene": "A quiet voice warns that all this can disappear."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Desperate plea",
+        "scene": "A raw, urgent prayer rises from the heart."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Anxious reflection",
+        "scene": "He tries to understand why happiness feels so fragile."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Desperate plea",
+        "scene": "The plea becomes a desperate, repeated chant."
+      }
+    ],
+    "lines": [
+      {
+        "line": "But I know the things He gives me, He can take away",
+        "insight": "The blessing carries its own curse."
+      },
+      {
+        "line": "But there's no man as terrified as the man who stands to lose you",
+        "insight": "The deepest love creates the deepest fear."
+      },
+      {
+        "line": "If everything's good and it's great, why do I sit and wait 'til it's gone?",
+        "insight": "Happiness itself becomes a countdown to loss."
+      },
+      {
+        "line": "Don't take / These beautiful things that I've got",
+        "insight": "The song is a direct negotiation with fate."
+      }
+    ],
+    "texture": "A piano ballad builds into a soaring pop rock anthem. It carries a raw vulnerability in its power."
+  }
+}

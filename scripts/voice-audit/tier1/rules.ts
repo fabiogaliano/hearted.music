@@ -9,9 +9,10 @@ interface StringField {
 	value: string;
 }
 
-// Every model-authored string in the read EXCEPT the quoted lyric (lines[].line),
-// which is the artist's words, not the model's voice — penalising a hyphen inside a
-// lyric quote would be wrong. The `dashes` rule walks this full set.
+// Every model-authored string in the read. The `lines` array is excluded entirely:
+// it now carries only the artist's quoted words (the per-line insight gloss was
+// removed), and penalising a hyphen inside a lyric quote would be wrong. The
+// `dashes` rule walks this full set.
 function collectStringFields(a: ConceptRead): StringField[] {
 	const out: StringField[] = [
 		{ name: "image", value: a.image },
@@ -22,20 +23,19 @@ function collectStringFields(a: ConceptRead): StringField[] {
 	if (a.contradiction !== null) {
 		out.push({ name: "contradiction", value: a.contradiction });
 	}
-	out.push({ name: "texture", value: a.texture });
+	if (a.texture !== null) {
+		out.push({ name: "texture", value: a.texture });
+	}
 	a.arc.forEach((beat, i) => {
 		out.push({ name: `arc[${i}].label`, value: beat.label });
 		out.push({ name: `arc[${i}].mood`, value: beat.mood });
 		out.push({ name: `arc[${i}].scene`, value: beat.scene });
 	});
-	a.lines.forEach((l, i) => {
-		out.push({ name: `lines[${i}].insight`, value: l.insight });
-	});
 	return out;
 }
 
 // Full-sentence prose only. The short label fields — `tension` (two-word A+N), `lens`
-// (the 2-5 word framing phrase), and each arc beat's `label`/`mood` — are excluded the
+// (the 2-6 word framing phrase), and each arc beat's `label`/`mood` — are excluded the
 // way `compound_mood`/`.section`/`.mood` were: the AI-slop regexes are built for
 // sentences and misfire on labels. `lens` quality is graded by the lens-coherence
 // judge, not these deterministic rules.
@@ -327,7 +327,9 @@ export const burstiness = (a: ConceptRead): RuleHit[] => {
 	const hits: RuleHit[] = [];
 	const longFields: StringField[] = [
 		{ name: "take", value: a.take },
-		{ name: "texture", value: a.texture },
+		...(a.texture !== null
+			? [{ name: "texture", value: a.texture }]
+			: []),
 		...a.arc.map((beat, i) => ({
 			name: `arc[${i}].scene`,
 			value: beat.scene,
@@ -413,14 +415,12 @@ export const lexicalRepetition = (a: ConceptRead): RuleHit[] => {
 	return hits;
 };
 
-// Em dash, en dash, and prose hyphens. The brand prefers commas over em dashes, and
-// recent practitioner consensus treats the dash as an AI-writing tell, so the analysis
-// voice uses none. (This rests on brand preference + practitioner consensus, not the
-// academic survey — GPT-3.5-era text actually used *fewer* dashes than humans.)
-// Em/en dashes and a spaced hyphen (a dash in disguise) are the strong tell → medium.
-// Intra-word hyphens ("late-night") are sometimes legitimate but the brand wants them
-// rephrased → low. collectStringFields excludes lines[].line, so a hyphen inside a
-// quoted lyric is never penalised — only the model's own voice is.
+// Em dash, en dash, and prose hyphens. Trailing em dashes that end a clause abruptly
+// are the AI-writing tell → medium. Paired parenthetical em dashes (even count per field,
+// opening and closing a mid-sentence aside) are acceptable → low.
+// Intra-word hyphens ("late-night") are rephrased per brand → low.
+// collectStringFields excludes the `lines` array so a hyphen inside a quoted lyric
+// is never penalised — only the model's own voice is.
 const DASH_CHARS = /[‒–—―−]/g;
 
 function hyphenSpan(value: string, index: number): string {
@@ -438,9 +438,12 @@ export const dashes = (a: ConceptRead): RuleHit[] => {
 		let m: RegExpExecArray | null;
 
 		const dashRe = new RegExp(DASH_CHARS.source, "g");
-		while ((m = dashRe.exec(value)) !== null) {
-			hits.push({ rule: "dash", field: f.name, span: m[0], severity: "medium" });
-		}
+		const dashMatches: RegExpExecArray[] = [];
+		while ((m = dashRe.exec(value)) !== null) dashMatches.push(m);
+		const pairedCount = Math.floor(dashMatches.length / 2) * 2;
+		dashMatches.forEach((match, idx) => {
+			hits.push({ rule: "dash", field: f.name, span: match[0], severity: idx < pairedCount ? "low" : "medium" });
+		});
 
 		const hyphenRe = /-/g;
 		while ((m = hyphenRe.exec(value)) !== null) {

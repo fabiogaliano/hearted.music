@@ -1,0 +1,449 @@
+{
+  "song": {
+    "id": "4af11b64-c071-4feb-bcae-4554dccbdb7a",
+    "name": "No Sex For Ben",
+    "artists": [
+      "The Rapture"
+    ],
+    "album_name": "The Music of Grand Theft Auto IV"
+  },
+  "lyrics": {
+    "source": "genius",
+    "document": {
+      "source": "genius",
+      "sections": [
+        {
+          "type": "Intro",
+          "lines": [
+            {
+              "id": 1,
+              "text": "One, two, three, here we go",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "One, two, three, here we go",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            }
+          ]
+        },
+        {
+          "type": "Verse 1",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Ben Rymer, trash people",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "No sex, no sex for Ben Rymer now",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "Ben Rymer, trash people",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "No sex, no sex for Ben Rymer",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "Ben Rymer, he's trashed people",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            },
+            {
+              "id": 6,
+              "text": "No sex, no sex for Ben Rymer now",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            },
+            {
+              "id": 7,
+              "text": "Ben Rymer, trash people",
+              "range": {
+                "end": 7,
+                "start": 7
+              }
+            },
+            {
+              "id": 8,
+              "text": "No sex, no sex for Ben, no",
+              "range": {
+                "end": 8,
+                "start": 8
+              }
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "No-oh, no-oh",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "No sex for Ben",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "No-oh, no-oh",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            }
+          ]
+        },
+        {
+          "type": "Verse 2",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Ben Rymer, trash people",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "No sex, no sex for Ben Rymer now",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "One ladder, big liar",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "No sex, no sex for Ben Rymer",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "Fat trucker, cheap sucker",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            },
+            {
+              "id": 6,
+              "text": "No sex, no sex for Ben Rymer now",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            },
+            {
+              "id": 7,
+              "text": "Cheap faker, cheap, cheap faker",
+              "range": {
+                "end": 7,
+                "start": 7
+              }
+            },
+            {
+              "id": 8,
+              "text": "Lookin' like a poor man's Arthur Baker now",
+              "range": {
+                "end": 8,
+                "start": 8
+              }
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "No-oh, no-oh",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "No sex for Ben",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "No-oh, no-oh",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "No sex for Ben",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "No-ho",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            },
+            {
+              "id": 6,
+              "text": "No sex for Ben",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            },
+            {
+              "id": 7,
+              "text": "No-ho",
+              "range": {
+                "end": 7,
+                "start": 7
+              }
+            },
+            {
+              "id": 8,
+              "text": "No sex for Ben",
+              "range": {
+                "end": 8,
+                "start": 8
+              }
+            },
+            {
+              "id": 9,
+              "text": "No-ho",
+              "range": {
+                "end": 9,
+                "start": 9
+              }
+            },
+            {
+              "id": 10,
+              "text": "No-ho-ho-ho",
+              "range": {
+                "end": 10,
+                "start": 10
+              }
+            }
+          ]
+        },
+        {
+          "type": "Verse 3",
+          "lines": [
+            {
+              "id": 1,
+              "text": "Cheap faker, cheap, cheap faker",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "Lookin' like a poor man's Arthur Baker now",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "Ben Rymer, big-time lover",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "Try to snatch the kitty off his girlfriend's mother",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "We gotta freeze them up now",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            },
+            {
+              "id": 6,
+              "text": "We gotta freeze them up, oh, come on, let's go",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            },
+            {
+              "id": 7,
+              "text": "We gotta freeze them up",
+              "range": {
+                "end": 7,
+                "start": 7
+              }
+            },
+            {
+              "id": 8,
+              "text": "I said a one, two, three, freeze",
+              "range": {
+                "end": 8,
+                "start": 8
+              }
+            }
+          ]
+        },
+        {
+          "type": "Chorus",
+          "lines": [
+            {
+              "id": 1,
+              "text": "No-oh, no-oh",
+              "range": {
+                "end": 1,
+                "start": 1
+              }
+            },
+            {
+              "id": 2,
+              "text": "No sex for Ben",
+              "range": {
+                "end": 2,
+                "start": 2
+              }
+            },
+            {
+              "id": 3,
+              "text": "No-oh, no-oh",
+              "range": {
+                "end": 3,
+                "start": 3
+              }
+            },
+            {
+              "id": 4,
+              "text": "No sex for Ben",
+              "range": {
+                "end": 4,
+                "start": 4
+              }
+            },
+            {
+              "id": 5,
+              "text": "No-ho",
+              "range": {
+                "end": 5,
+                "start": 5
+              }
+            },
+            {
+              "id": 6,
+              "text": "No sex for Ben",
+              "range": {
+                "end": 6,
+                "start": 6
+              }
+            },
+            {
+              "id": 7,
+              "text": "No-ho",
+              "range": {
+                "end": 7,
+                "start": 7
+              }
+            },
+            {
+              "id": 8,
+              "text": "No sex for Ben",
+              "range": {
+                "end": 8,
+                "start": 8
+              }
+            },
+            {
+              "id": 9,
+              "text": "No-ho",
+              "range": {
+                "end": 9,
+                "start": 9
+              }
+            },
+            {
+              "id": 10,
+              "text": "No-ho-ho-ho",
+              "range": {
+                "end": 10,
+                "start": 10
+              }
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 1
+    },
+    "content_hash": "ly_v1_6d6475650a9c1f25",
+    "schema_version": 1,
+    "has_annotations": false
+  }
+}

@@ -9,6 +9,7 @@
  * `sonic_texture` to one contrast-ending sentence.
  */
 
+import pinkPonyClubExemplar from "../../../../../scripts/voice-audit/exemplars/pink-pony-club.json";
 import type { ConceptSong } from "./concept-types";
 
 export const CONCEPT_SONGS: ConceptSong[] = [
@@ -49,16 +50,8 @@ export const CONCEPT_SONGS: ConceptSong[] = [
 				},
 			],
 			lines: [
-				{
-					line: "I got my driver's license like I told you I would",
-					insight:
-						"A win that only counts as a loss. The accomplishment is addressed to someone who is not there to hear it.",
-				},
-				{
-					line: "And you're probably with that blonde girl",
-					insight:
-						"Heartbreak does its worst work in the imagination, casting the exact scene it dreads.",
-				},
+				{ line: "I got my driver's license like I told you I would" },
+				{ line: "And you're probably with that blonde girl" },
 			],
 			texture:
 				"A ballad that grows a spine — sparse piano swells into stacked harmonies and a pounding bridge.",
@@ -82,12 +75,6 @@ export const CONCEPT_SONGS: ConceptSong[] = [
 			contradiction: "He is reading a verdict, and you can dance to it.",
 			arc: [
 				{
-					label: "Intro",
-					mood: "Coiled",
-					scene:
-						"A whispered 'I see dead people' breaks the silence. Mustard's beat rolls in easy, almost friendly, the swing of a smile before the first punch.",
-				},
-				{
 					label: "Verse 1",
 					mood: "Pointed",
 					scene:
@@ -106,12 +93,6 @@ export const CONCEPT_SONGS: ConceptSong[] = [
 						"He does not argue. He convicts. 'You not a colleague, you a fuckin' colonizer' lands like a sentence handed down.",
 				},
 				{
-					label: "Bridge",
-					mood: "Celebratory",
-					scene:
-						"The taunts turn into a dance. The crowd is chanting it back before the next line drops.",
-				},
-				{
 					label: "Outro",
 					mood: "Settled",
 					scene:
@@ -119,26 +100,10 @@ export const CONCEPT_SONGS: ConceptSong[] = [
 				},
 			],
 			lines: [
-				{
-					line: "They not like us",
-					insight:
-						"Four words doing the work of a manifesto. The line draws a circle and leaves someone outside it.",
-				},
-				{
-					line: "Tryna strike a chord and it's probably A minor",
-					insight:
-						"The cruelest bar wears a pun, so the room laughs a half second before the meaning lands.",
-				},
-				{
-					line: "No, you not a colleague, you a fuckin' colonizer",
-					insight:
-						"The verdict in plain language. Not collaboration. Extraction.",
-				},
-				{
-					line: "Say, Drake, I hear you like 'em young",
-					insight:
-						"The line that turned the diss into something the song could not take back. Direct address, on purpose.",
-				},
+				{ line: "They not like us" },
+				{ line: "Tryna strike a chord and it's probably A minor" },
+				{ line: "No, you not a colleague, you a fuckin' colonizer" },
+				{ line: "Say, Drake, I hear you like 'em young" },
 			],
 			texture:
 				"A West Coast bounce that struts without breaking a sweat, where the menace lives entirely in how relaxed it sounds.",
@@ -182,20 +147,26 @@ export const CONCEPT_SONGS: ConceptSong[] = [
 				},
 			],
 			lines: [
-				{
-					line: "I have emotional motion sickness",
-					insight:
-						"The whole song folded into one image. Feelings as a moving car you cannot get out of.",
-				},
+				{ line: "I have emotional motion sickness" },
 				{
 					line: "I hate you for what you did and I miss you like a little kid",
-					insight:
-						"Two opposite truths in one breath, and she refuses to pick one.",
 				},
 			],
 			texture:
 				"Jangly, propulsive indie rock — the drums keep things moving even when the lyrics would rather lie down.",
 		},
+	},
+	{
+		id: "pink-pony-club",
+		spotifyTrackId: "1k2pQc5i348DCHwbn5KTdc",
+		title: "Pink Pony Club",
+		artist: "Chappell Roan",
+		album: "The Rise and Fall of a Midwest Princess",
+		year: 2023,
+		genres: ["pop", "synth pop"],
+		audioFeatures: { tempo: 123, energy: 0.82, valence: 0.71 },
+		theme: "rose",
+		read: pinkPonyClubExemplar.read,
 	},
 	{
 		id: "blinding-lights",
@@ -235,16 +206,8 @@ export const CONCEPT_SONGS: ConceptSong[] = [
 				},
 			],
 			lines: [
-				{
-					line: "I can't sleep until I feel your touch",
-					insight:
-						"Insomnia dressed up as devotion. The glamour barely covers how plainly he needs someone.",
-				},
-				{
-					line: "I'm blinded by the lights",
-					insight:
-						"The thing that thrills him is the thing keeping him from seeing clearly. The high is also the blindfold.",
-				},
+				{ line: "I can't sleep until I feel your touch" },
+				{ line: "I'm blinded by the lights" },
 			],
 			texture:
 				"Glossy retro synthwave — bright, propulsive, all chrome and cold night air.",

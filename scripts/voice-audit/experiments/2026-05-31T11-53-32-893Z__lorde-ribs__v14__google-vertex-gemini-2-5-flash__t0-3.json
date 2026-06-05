@@ -1,0 +1,126 @@
+{
+  "runId": "2026-05-31T11-53-32-893Z__lorde-ribs__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:53:32.893Z",
+  "song": "Lorde — Ribs",
+  "spotifyTrackId": "2MvvoeRt8NcOXWESkxWn3g",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 1,
+    "low": 5
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "burstiness": 1,
+    "lexical-repetition": 4
+  },
+  "tokens": 5738,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "lines[2].insight",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "Adolescence is a fading light you try to cup in your hands.",
+      "severity": "low",
+      "note": "CV=0.037 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "shared",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "time",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "comfort",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "texture",
+      "span": "night",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "shared beds, laughing until it hurts",
+    "lens": "Adolescence as fading light",
+    "tension": "Anxious Longing",
+    "take": "Adolescence is a fading light you try to cup in your hands. You want to keep the glow, but the darkness is already seeping in. It is a desperate attempt to freeze time, even as it slips away.",
+    "contradiction": "You find comfort in shared youth. That comfort cannot stop the clock.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Fleeting Comfort",
+        "scene": "A specific late night moment feels safe and endless."
+      },
+      {
+        "label": "Pre Chorus",
+        "mood": "Wishful Thinking",
+        "scene": "You try to talk a perfect world into being."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Growing Unease",
+        "scene": "The comfort of the night begins to curdle with the fear of time passing."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Isolating Fear",
+        "scene": "The midnight streets feel vast and empty."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Urgent Longing",
+        "scene": "A desperate plea for lost time and innocence."
+      },
+      {
+        "label": "Refrain",
+        "mood": "Bittersweet Acceptance",
+        "scene": "You find solace in friendship, but a quiet dread lingers."
+      }
+    ],
+    "lines": [
+      {
+        "line": "It drives you crazy, getting old",
+        "insight": "The simple truth of time's passage hits hard."
+      },
+      {
+        "line": "This dream isn't feeling sweet",
+        "insight": "The fantasy of eternal youth begins to sour."
+      },
+      {
+        "line": "And I've never felt more alone",
+        "insight": "The weight of impending adulthood brings a profound loneliness."
+      },
+      {
+        "line": "I want 'em back, I want 'em back The minds we had, the minds we had",
+        "insight": "A raw cry for the return of lost innocence and simpler thoughts."
+      },
+      {
+        "line": "Laughing till our ribs get tough But that will never be enough",
+        "insight": "Shared joy is a powerful shield, but it cannot stop the inevitable march of time."
+      }
+    ],
+    "texture": "A pulsing synth line carries a late night drive. The spacious production leaves you feeling utterly alone."
+  }
+}

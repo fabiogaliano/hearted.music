@@ -1,0 +1,103 @@
+{
+  "runId": "2026-05-30T13-17-11-674Z__harry-styles-as-it-was__v14__google-vertex-gemini-2-5-flash",
+  "timestamp": "2026-05-30T13:17:11.674Z",
+  "song": "Harry Styles — As It Was",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 2
+  },
+  "byRule": {
+    "participial-closure": 1,
+    "lexical-repetition": 1,
+    "dash": 1
+  },
+  "tokens": 5636,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "arc[4].scene",
+      "span": ", speeding into a different future.",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "world",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "lines[3].insight",
+      "span": "self-imposed",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "a hand outstretched in an empty room",
+    "lens": "past as phantom limb",
+    "tension": "Lonely Euphoria",
+    "take": "The past feels vividly present. You reach out for what was, but only feel air. The world keeps moving on a different axis.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Warm Echo",
+        "scene": "A young voice calls out from a distant memory."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Struggling Drift",
+        "scene": "Invisible hands pull you back as the world moves on."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Shared Melancholy",
+        "scene": "You meet another set of eyes in a world that feels completely new."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "External Concern",
+        "scene": "A worried voice asks why you are sitting alone on the floor."
+      },
+      {
+        "label": "Bridge",
+        "mood": "Forced Forward Motion",
+        "scene": "You try to outrun the memories, speeding into a different future."
+      },
+      {
+        "label": "Outro",
+        "mood": "Lingering Resignation",
+        "scene": "The truth settles in. Nothing will ever be the same."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Gravity's holdin' me back",
+        "insight": "Something unseen keeps you tethered to a previous place."
+      },
+      {
+        "line": "In this world, it's just us",
+        "insight": "A shared isolation builds a fragile new bond."
+      },
+      {
+        "line": "You know it's not the same as it was",
+        "insight": "The defining truth of this moment echoes through everything."
+      },
+      {
+        "line": "Harry, you're no good alone",
+        "insight": "The concern of others pulls you back from self-imposed solitude."
+      },
+      {
+        "line": "I don't wanna talk about the way that it was",
+        "insight": "Avoiding the past becomes a way to move through the present."
+      }
+    ],
+    "texture": "A bright neon shimmer lays over a driving drum beat. The propulsive energy carries a quiet sadness."
+  }
+}

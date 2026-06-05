@@ -1,0 +1,137 @@
+{
+  "runId": "2026-05-31T11-52-10-898Z__the-rapture-no-sex-for-ben__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:52:10.899Z",
+  "song": "The Rapture — No Sex for Ben",
+  "spotifyTrackId": "",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 7,
+    "medium": 0,
+    "low": 2
+  },
+  "byRule": {
+    "participial-closure": 7,
+    "burstiness": 1,
+    "lexical-repetition": 1
+  },
+  "tokens": 4901,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", making it an undeniable decree.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", preparing for the declaration.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", making the verdict unanimous.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[4].scene",
+      "span": ", calling for a final freeze.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[5].scene",
+      "span": ", sealing the fate.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[0].insight",
+      "span": ", humiliating punishment for the accused.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "lines[3].insight",
+      "span": ", ensuring the shaming is enforced.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song performs a public shaming.",
+      "severity": "low",
+      "note": "CV=0.204 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "crowd",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a crowd's finger pointed",
+    "lens": "shaming as ritual",
+    "tension": "Aggressive Absurdity",
+    "take": "The song performs a public shaming. It transforms a personal grievance into a communal chant. The repetition solidifies the exclusion, making it an undeniable decree.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "Intro",
+        "mood": "Anticipatory Call",
+        "scene": "A voice counts in the crowd, preparing for the declaration."
+      },
+      {
+        "label": "Verse 1",
+        "mood": "Direct Accusation",
+        "scene": "The target is named, and the core punishment is laid out."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Communal Chant",
+        "scene": "The crowd joins in, making the verdict unanimous."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Escalating Insults",
+        "scene": "More specific grievances and petty slights pile up against the accused."
+      },
+      {
+        "label": "Verse 3",
+        "mood": "Collective Action",
+        "scene": "The group moves to enforce the decree, calling for a final freeze."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Unanimous Verdict",
+        "scene": "The judgment rings out, final and absolute, sealing the fate."
+      }
+    ],
+    "lines": [
+      {
+        "line": "No sex, no sex for Ben Rymer now",
+        "insight": "This line states the ultimate, humiliating punishment for the accused."
+      },
+      {
+        "line": "One ladder, big liar",
+        "insight": "A sharp, concise insult cuts deep with specific accusations."
+      },
+      {
+        "line": "Lookin' like a poor man's Arthur Baker now",
+        "insight": "This line delivers a niche, cutting comparison, aiming for maximum public ridicule."
+      },
+      {
+        "line": "We gotta freeze them up now",
+        "insight": "The call to action mobilizes the collective, ensuring the shaming is enforced."
+      }
+    ],
+    "texture": "A driving, repetitive electronic beat pushes the whole thing forward, but the raw, almost shouted vocals keep it feeling like a playground chant."
+  }
+}

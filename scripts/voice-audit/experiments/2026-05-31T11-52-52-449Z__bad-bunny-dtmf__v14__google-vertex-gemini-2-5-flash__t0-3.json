@@ -1,0 +1,98 @@
+{
+  "runId": "2026-05-31T11-52-52-449Z__bad-bunny-dtmf__v14__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-05-31T11:52:52.449Z",
+  "song": "Bad Bunny — DtMF",
+  "spotifyTrackId": "3sK8wGT43QFpWrvNQsrQya",
+  "promptKind": "lyrical",
+  "promptVersion": "14",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 2
+  },
+  "byRule": {
+    "burstiness": 1,
+    "lexical-repetition": 1
+  },
+  "tokens": 5962,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The past is a constant hum beneath the surface of every good time.",
+      "severity": "low",
+      "note": "CV=0.188 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a dance floor bathed in neon and longing",
+    "lens": "Regret as rhythm",
+    "tension": "Melancholy Groove",
+    "take": "The past is a constant hum beneath the surface of every good time. You move through the present, but the beat of what was keeps time with your steps. It is a quiet ache that never fully leaves you.",
+    "contradiction": "You are fully present in the moment. You are still wishing for a different past.",
+    "arc": [
+      {
+        "label": "Verse 1",
+        "mood": "Nostalgic Regret",
+        "scene": "You are in a beautiful place. The beauty only reminds you of what you lost."
+      },
+      {
+        "label": "Chorus",
+        "mood": "Lingering Wish",
+        "scene": "The wish to relive moments hangs heavy. You replay what you could have done differently."
+      },
+      {
+        "label": "Verse 2",
+        "mood": "Forced Distraction",
+        "scene": "You try to forget with friends and drink. The denial is a loud, insistent choice."
+      },
+      {
+        "label": "Interlude",
+        "mood": "Communal Embrace",
+        "scene": "The love of your people surrounds you. Their presence is a grounding force."
+      },
+      {
+        "label": "Verse 3",
+        "mood": "Present Acceptance",
+        "scene": "Life moves forward, and priorities shift. You find value in what truly matters now."
+      },
+      {
+        "label": "Outro",
+        "mood": "Unresolved Longing",
+        "scene": "The past still echoes in your mind. A final, raw desire remains."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Debí tirar más fotos de cuando te tuve (I should have taken more photos of when I had you)",
+        "insight": "This line captures the core regret of missed opportunities."
+      },
+      {
+        "line": "Pero queriendo volver a la última vez que a los ojos te miré (But wanting to go back to the last time I looked into your eyes)",
+        "insight": "The longing for a specific, intimate moment is palpable."
+      },
+      {
+        "line": "Si me pregunta si aún pienso en ti, yo le digo que no (If he asks if I still think of you, I tell him no)",
+        "insight": "This reveals the internal conflict and the attempt to deny lingering feelings."
+      },
+      {
+        "line": "Ojalá que los mío' nunca se muden (I hope my people never move away)",
+        "insight": "This shifts focus to the importance of enduring community and family."
+      },
+      {
+        "line": "Y que tú me envíe' más nude' (And that you send me more nudes)",
+        "insight": "This raw, unexpected line brings back the personal, unresolved desire with a jolt."
+      }
+    ],
+    "texture": "A low key reggaeton beat carries a heavy heart. The rhythm is danceable, but the mood is a quiet, persistent ache."
+  }
+}

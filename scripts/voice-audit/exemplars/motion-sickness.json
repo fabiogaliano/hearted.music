@@ -1,37 +1,49 @@
 {
   "read": {
-    "image": "loving someone you would not call back",
-    "lens": "anger with receipts",
-    "tension": "Tender Resentment",
-    "take": "The specific nausea of being tangled up with someone who hurt you and still takes up room in your day. She isn't asking for closure. She is naming the dizziness of missing a person she also can't stand. Anger and longing share the same sentence and refuse to resolve.",
-    "contradiction": "She hates him for what he did and misses him anyway. Both stay true.",
+    "image": "outside the glass, watching him bleed in it",
+    "lens": "missing the person you escaped",
+    "tension": "Helpless Longing",
+    "take": "She did everything right. She saw him clearly, watched him come apart, got herself out and was glad of it. None of that is the problem. The problem is that being right about him does nothing to make her want him less. So she names it: a sickness, the kind that has you begging someone to roll the windows down. She says she is trying to stay clean. Then, almost quietly, she wonders what would happen if she just gave in.",
+    "contradiction": "She can hardly feel anything anymore, and the one thing she can still feel is the pull back toward him.",
     "arc": [
       {
-        "label": "Verse 1",
-        "mood": "Wry",
-        "scene": "She lists the damage in an almost conversational shrug, like recounting a bad trip to a friend."
+        "label": "The Reckoning",
+        "mood": "Tender Resentment",
+        "scene": "She hates him for what he did and misses him anyway, and she cannot argue herself out of either one. The two feelings do not take turns. They sit on top of each other until she can barely tell them apart."
       },
       {
-        "label": "Chorus",
-        "mood": "Restless",
-        "scene": "The motion sickness hits. The melody lifts while the stomach drops."
+        "label": "The Sickness",
+        "mood": "Lurching Nausea",
+        "scene": "She finally has a name for the feeling. It moves like motion sickness, a floor that will not hold still and a body that turns against her. She could scream until her throat gave out and still not find a word in any language big enough to get him out of her, and the sickness just keeps turning with nowhere to land."
       },
       {
-        "label": "Bridge",
-        "mood": "Exposed",
-        "scene": "The bravado thins out. For a second she just admits she has no clean way to feel about this."
+        "label": "The Way Out",
+        "mood": "Guilty Relief",
+        "scene": "From the safe side of it, she can finally see him for what he is, a man who throws rocks around his own room and lies bleeding in what is left of it. She got out, and she is glad of it. She is also, to her own surprise, sorry it came to this for him, and sorry the whole thing went down the way it did."
+      },
+      {
+        "label": "The Pull Back",
+        "mood": "Quiet Surrender",
+        "scene": "He was bored when they met, already grown and in a band the year she was born, and all of that should have been enough to keep her gone. It never quite is. The pull toward him runs under everything like a low sound she cannot tune out, and after all the leaving she has done, she still catches herself listening for it, still unwilling to promise she would not go back."
       }
     ],
     "lines": [
       {
-        "line": "I have emotional motion sickness",
-        "insight": "The whole song folded into one image. Feelings as a moving car you cannot get out of."
+        "line": "I hate you for what you did\nAnd I miss you like a little kid"
       },
       {
-        "line": "I hate you for what you did and I miss you like a little kid",
-        "insight": "Two opposite truths in one breath, and she refuses to pick one."
+        "line": "I have emotional motion sickness"
+      },
+      {
+        "line": "I'll be glad that I made it out\nAnd sorry that it all went down like it did"
+      },
+      {
+        "line": "You were in a band when I was born"
+      },
+      {
+        "line": "I wanna know what would happen\nIf I surrender to the sound"
       }
     ],
-    "texture": "Jangly, propulsive indie rock. The drums keep things moving even when the lyrics would rather lie down."
+    "texture": "Acoustic indie folk, quiet and unhurried, more danceable than its mood. The sound runs brighter than the words, an upbeat surface over everything that would rather lie down."
   }
 }
