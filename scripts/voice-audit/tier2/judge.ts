@@ -16,18 +16,24 @@ import type {
 	TokenBudget,
 	TokenUsage,
 } from "../types";
+import type { GroundingContext } from "../lyrics-context";
 import { extractAnalysis } from "../tier1/report";
+import { runGroundingJudge } from "./grounding-judge";
 import { abstractNounTrapPrompt } from "./prompts/abstract-noun-trap";
 import { arcNarrativePrompt } from "./prompts/arc-narrative";
 import { essayisticRegisterPrompt } from "./prompts/essayistic-register";
 import { lensCoherencePrompt } from "./prompts/lens-coherence";
+import { redundancyPrompt } from "./prompts/redundancy";
 import { registerSpecificityPrompt } from "./prompts/register-specificity";
+import { voiceSoftnessPrompt } from "./prompts/voice-softness";
 import {
 	AbstractNounTrapSchema,
 	ArcNarrativeSchema,
 	EssayisticRegisterSchema,
 	LensCoherenceSchema,
+	RedundancySchema,
 	RegisterSpecificitySchema,
+	VoiceSoftnessSchema,
 } from "./schemas";
 
 export const DEFAULT_TOKEN_BUDGET: TokenBudget = {
@@ -128,6 +134,26 @@ const JUDGES: JudgeRunner[] = [
 			rationale: r.rationale.join(" / "),
 		}),
 	),
+	makeJudge(
+		"redundancy",
+		RedundancySchema,
+		redundancyPrompt,
+		(r) => ({
+			passed: r.distinct,
+			evidence: r.redundant_pairs,
+			rationale: r.rationale.join(" / "),
+		}),
+	),
+	makeJudge(
+		"voice-softness",
+		VoiceSoftnessSchema,
+		voiceSoftnessPrompt,
+		(r) => ({
+			passed: r.clean,
+			evidence: [...r.kicker_hits, ...r.fragment_hits, ...r.parallelism_hits],
+			rationale: r.rationale.join(" / "),
+		}),
+	),
 ];
 
 function zeroTokens(): TokenUsage {
@@ -153,15 +179,25 @@ function wouldExceed(
 	return prompt > budget.inputLimit || completion > budget.outputLimit;
 }
 
+// Grounding needs more than the read: the lyrics + vote-gated annotations the writer could
+// have heard. Supplied here so judgeAnalysis can run the Opus grounding pass; omit it (the
+// generic file runner has no lyrics) and grounding is simply skipped.
+export interface JudgeContext {
+	grounding?: GroundingContext;
+}
+
 export async function judgeAnalysis(
 	llm: LlmService,
 	analysis: ConceptRead,
 	totals: TokenUsage,
 	budget: TokenBudget,
+	context: JudgeContext = {},
 ): Promise<{
 	findings: JudgeFinding[];
 	tokens: TokenUsage;
 	exceeded: boolean;
+	/** Opus grounding pass cost (CLI reports dollars, not tokens — kept off the token budget). */
+	groundingCostUsd?: number;
 }> {
 	const findings: JudgeFinding[] = [];
 	let runTotal = zeroTokens();
@@ -194,7 +230,34 @@ export async function judgeAnalysis(
 		findings.push({ judge: judge.name, ...finding });
 	}
 
-	return { findings, tokens: runTotal, exceeded };
+	// Priority-1 grounding pass on Opus. Runs after the Gemini judges and only when lyrics
+	// context is present. Para-textual flags ride in the rationale, never as a fail (GRD-5).
+	let groundingCostUsd: number | undefined;
+	if (context.grounding && !exceeded) {
+		const g = await runGroundingJudge(analysis, context.grounding);
+		if (Result.isError(g)) {
+			findings.push({
+				judge: "grounding",
+				passed: false,
+				evidence: [`judge-error: ${g.error.message}`],
+			});
+		} else {
+			const { output, costUsd } = g.value;
+			groundingCostUsd = costUsd;
+			const notes = [
+				...output.rationale,
+				...output.paratextual_flags.map((f) => `para-textual (review): ${f}`),
+			];
+			findings.push({
+				judge: "grounding",
+				passed: output.grounded,
+				evidence: output.ungrounded_claims,
+				rationale: notes.length ? notes.join(" / ") : undefined,
+			});
+		}
+	}
+
+	return { findings, tokens: runTotal, exceeded, groundingCostUsd };
 }
 
 export interface Tier2RunOptions {

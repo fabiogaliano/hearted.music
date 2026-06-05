@@ -3,8 +3,11 @@ import {
 	AbstractNounTrapSchema,
 	ArcNarrativeSchema,
 	EssayisticRegisterSchema,
+	GroundingSchema,
 	LensCoherenceSchema,
+	RedundancySchema,
 	RegisterSpecificitySchema,
+	VoiceSoftnessSchema,
 } from "../tier2/schemas";
 
 describe("tier2 schemas", () => {
@@ -44,6 +47,30 @@ describe("tier2 schemas", () => {
 				rationale: [],
 			}).success,
 		).toBe(false);
+		expect(
+			GroundingSchema.safeParse({
+				grounded: false,
+				ungrounded_claims: [],
+				paratextual_flags: [],
+				rationale: [],
+			}).success,
+		).toBe(false);
+		expect(
+			RedundancySchema.safeParse({
+				distinct: false,
+				redundant_pairs: [],
+				rationale: [],
+			}).success,
+		).toBe(false);
+		expect(
+			VoiceSoftnessSchema.safeParse({
+				clean: false,
+				kicker_hits: [],
+				fragment_hits: [],
+				parallelism_hits: [],
+				rationale: [],
+			}).success,
+		).toBe(false);
 	});
 
 	it("allows empty evidence arrays when a judge passes", () => {
@@ -79,6 +106,43 @@ describe("tier2 schemas", () => {
 			LensCoherenceSchema.safeParse({
 				coherent: true,
 				problems: [],
+				rationale: [],
+			}).success,
+		).toBe(true);
+		expect(
+			GroundingSchema.safeParse({
+				grounded: true,
+				ungrounded_claims: [],
+				paratextual_flags: [],
+				rationale: [],
+			}).success,
+		).toBe(true);
+		expect(
+			RedundancySchema.safeParse({
+				distinct: true,
+				redundant_pairs: [],
+				rationale: [],
+			}).success,
+		).toBe(true);
+		expect(
+			VoiceSoftnessSchema.safeParse({
+				clean: true,
+				kicker_hits: [],
+				fragment_hits: [],
+				parallelism_hits: [],
+				rationale: [],
+			}).success,
+		).toBe(true);
+	});
+
+	it("treats a paratextual flag as non-failing — grounded can stay true", () => {
+		// GRD-5: a cover-art / music-video tie is surfaced for human review, never an
+		// auto-fail, so paratextual_flags may be populated while grounded is true.
+		expect(
+			GroundingSchema.safeParse({
+				grounded: true,
+				ungrounded_claims: [],
+				paratextual_flags: ["image leans on the music video's neon palette"],
 				rationale: [],
 			}).success,
 		).toBe(true);
