@@ -83,7 +83,7 @@ describe("ensureAnnotationDistillations", () => {
 		expect(vi.mocked(upsertAnnotationDistillations)).toHaveBeenCalledTimes(1);
 		const rows = vi.mocked(upsertAnnotationDistillations).mock.calls[0][0];
 		expect(rows).toHaveLength(2);
-		expect(rows.every((r) => r.distiller_version === "v1")).toBe(true);
+		expect(rows.every((r) => r.distiller_version === "v2")).toBe(true);
 	});
 
 	it("reuses a cached distillation and only distills the miss", async () => {
