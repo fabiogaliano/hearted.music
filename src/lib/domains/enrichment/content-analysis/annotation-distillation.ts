@@ -27,7 +27,7 @@ import { hashAnnotationText } from "./annotation-hash";
 import { distillAnnotationPrompt } from "./prompts/distill";
 
 // Bump to invalidate the cache when the prompt or model below changes.
-const DISTILLER_VERSION = "v1";
+const DISTILLER_VERSION = "v2";
 const DISTILLER_PROVIDER = "google-vertex" as const;
 // Flash-Lite: most faithful budget extractor on the hallucination leaderboard, and the
 // task is faithful extraction, not generation. One-time/cached so cost is negligible.
@@ -37,22 +37,20 @@ const DISTILL_MAX_OUTPUT_TOKENS = 256;
 interface UniqueAnnotation {
 	normalized: string;
 	raw: string;
-	/** The lyric line this annotation sits on, passed to the distiller for context. */
-	lyricLine: string;
 	hash: string;
 }
 
-/** One entry per distinct annotation text, remembering a representative lyric line. */
+/** One entry per distinct annotation text. */
 function collectUnique(
 	sections: TransformedLyricsBySection[],
-): Map<string, { raw: string; lyricLine: string }> {
-	const unique = new Map<string, { raw: string; lyricLine: string }>();
+): Map<string, { raw: string }> {
+	const unique = new Map<string, { raw: string }>();
 	for (const section of sections) {
 		for (const line of section.lines) {
 			for (const annotation of line.annotations ?? []) {
 				const normalized = normalizeAnnotationText(annotation.text);
 				if (normalized.length === 0 || unique.has(normalized)) continue;
-				unique.set(normalized, { raw: annotation.text, lyricLine: line.text });
+				unique.set(normalized, { raw: annotation.text });
 			}
 		}
 	}
@@ -66,10 +64,9 @@ export async function ensureAnnotationDistillations(
 	if (unique.size === 0) return new Map();
 
 	const entries: UniqueAnnotation[] = await Promise.all(
-		[...unique].map(async ([normalized, { raw, lyricLine }]) => ({
+		[...unique].map(async ([normalized, { raw }]) => ({
 			normalized,
 			raw,
-			lyricLine,
 			hash: await hashAnnotationText(normalized),
 		})),
 	);
@@ -104,7 +101,7 @@ export async function ensureAnnotationDistillations(
 		const distilled = await Promise.all(
 			misses.map(async (entry) => {
 				const generated = await llm.generateText(
-					distillAnnotationPrompt(entry.raw, entry.lyricLine),
+					distillAnnotationPrompt(entry.raw),
 					{
 						functionId: "annotation-distill",
 						maxOutputTokens: DISTILL_MAX_OUTPUT_TOKENS,
