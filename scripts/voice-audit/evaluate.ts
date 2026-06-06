@@ -11,13 +11,21 @@
 //   bun scripts/voice-audit/evaluate.ts --version 13 --temperature 0.3
 //   bun scripts/voice-audit/evaluate.ts --version 13 --temperature 0.3 --songs fast --limit 1
 //   bun scripts/voice-audit/evaluate.ts --version 13 --dry-run        # stats + tier1 only, no judge calls/cost
+//   bun scripts/voice-audit/evaluate.ts --version 17 --out eval-artifacts/v17-base.json --pointwise   # full scorecard
 //
 // Cost: each judged pair is two Opus calls (~$0.14). Pairs judged = songs × limit.
+// --pointwise additionally runs the 8 tier-2 judges per candidate (7 Gemini + 1 Opus grounding
+// call). Grounding is the cost driver, so pointwise is opt-in — the cheap iteration loop stays
+// pairwise-only, and the scoreboard reads pointwise data only when this flag wrote it.
 
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ConceptReadSchema } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import {
+	ConceptReadSchema,
+	type ConceptRead,
+} from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import { createLlmService, type LlmService } from "@/lib/integrations/llm/service";
 import {
 	collapseOutcome,
 	EVAL_ARTIFACT_SCHEMA_VERSION,
@@ -25,11 +33,14 @@ import {
 	type EvalArtifact,
 	type EvalRunVerdict,
 	type EvalSongRecord,
+	type JudgeFindingRecord,
 	type RunOutcome,
 } from "./eval-artifact";
 import type { RunRecord } from "./experiments";
 import { loadGoldExemplars, type GoldExemplar } from "./exemplars";
+import { loadGroundingContext } from "./lyrics-context";
 import { voiceStats, type VoiceStats } from "./stats";
+import { DEFAULT_TOKEN_BUDGET, judgeAnalysis } from "./tier2/judge";
 import { judgePair, type BalancedVerdict } from "./tier2/pairwise";
 
 const EXPERIMENTS = join(dirname(fileURLToPath(import.meta.url)), "experiments");
@@ -42,11 +53,18 @@ interface Flags {
 	limit: number;
 	judgeModel: string;
 	dryRun: boolean;
+	pointwise: boolean;
 	out?: string;
 }
 
 function parseFlags(argv: string[]): Flags {
-	const out: Flags = { limit: 2, judgeModel: "opus", dryRun: false, temperatureSet: false };
+	const out: Flags = {
+		limit: 2,
+		judgeModel: "opus",
+		dryRun: false,
+		pointwise: false,
+		temperatureSet: false,
+	};
 	for (let i = 0; i < argv.length; i++) {
 		if (argv[i] === "--version") out.version = argv[++i];
 		else if (argv[i] === "--temperature" || argv[i] === "--temp") {
@@ -56,9 +74,34 @@ function parseFlags(argv: string[]): Flags {
 		else if (argv[i] === "--limit") out.limit = Math.max(1, Number(argv[++i]) || 1);
 		else if (argv[i] === "--judge-model") out.judgeModel = argv[++i];
 		else if (argv[i] === "--dry-run") out.dryRun = true;
+		else if (argv[i] === "--pointwise") out.pointwise = true;
 		else if (argv[i] === "--out") out.out = argv[++i];
 	}
 	return out;
+}
+
+const ZERO_TOKENS = { prompt: 0, completion: 0, total: 0 };
+
+// The 8 pointwise judges (7 Gemini + the Opus grounding pass) on one candidate, fed the same
+// vote-gated grounding context Phase 3 hands the prompt. Returns findings in the artifact's shape
+// plus the Opus grounding dollar cost (Gemini token cost is not metered here). Run only under
+// --pointwise: grounding is an Opus call per candidate, so it is the cost driver of the scorecard.
+async function runPointwise(
+	llm: LlmService,
+	songKey: string,
+	analysis: ConceptRead,
+): Promise<{ findings: JudgeFindingRecord[]; costUsd: number }> {
+	const grounding = loadGroundingContext(songKey);
+	const result = await judgeAnalysis(llm, analysis, ZERO_TOKENS, DEFAULT_TOKEN_BUDGET, {
+		grounding,
+	});
+	const findings: JudgeFindingRecord[] = result.findings.map((f) => ({
+		judge: f.judge,
+		passed: f.passed,
+		evidence: f.evidence,
+		rationale: f.rationale,
+	}));
+	return { findings, costUsd: result.groundingCostUsd ?? 0 };
 }
 
 function runOutcome(v: BalancedVerdict): RunOutcome {
@@ -120,6 +163,7 @@ interface SongEval {
 		tier1: { high: number; medium: number; low: number };
 		stats: VoiceStats;
 		verdict?: BalancedVerdict;
+		tier2?: JudgeFindingRecord[];
 	}[];
 }
 
@@ -152,6 +196,9 @@ async function main() {
 	let variantMeta:
 		| { promptVersion?: string; model?: string; temperature: number | null }
 		| undefined;
+	// The 7 Gemini judges go through createLlmService("google"); the grounding judge spawns Opus
+	// via the claude CLI inside judgeAnalysis. Built once and only when actually judging pointwise.
+	const llm = flags.pointwise && !flags.dryRun ? createLlmService("google") : null;
 
 	for (const [track, runs] of candidates) {
 		const g = gold.get(track) as GoldExemplar;
@@ -169,6 +216,7 @@ async function main() {
 			};
 			const stats = voiceStats(run.analysis);
 			let verdict: BalancedVerdict | undefined;
+			let tier2: JudgeFindingRecord[] | undefined;
 			if (!flags.dryRun) {
 				process.stdout.write(`  judging ${g.key} (${run.promptVersion}) ... `);
 				verdict = await judgePair(g.song, run.analysis, g.read, {
@@ -178,8 +226,17 @@ async function main() {
 				console.log(
 					`candidate ${verdict.winner === "first" ? "WINS" : verdict.winner === "second" ? "loses" : "ties"} vs gold (${verdict.confidence}${verdict.agreement ? "" : ", flipped"})`,
 				);
+				if (llm) {
+					const pointwise = await runPointwise(llm, g.key, run.analysis as ConceptRead);
+					tier2 = pointwise.findings;
+					totalCost += pointwise.costUsd;
+					const failed = tier2.filter((f) => !f.passed).map((f) => f.judge);
+					console.log(
+						`         ↳ tier2: ${failed.length ? `FAIL ${failed.join(", ")}` : "all 8 pass"}`,
+					);
+				}
 			}
-			songEval.candidates.push({ runId: run.runId, tier1, stats, verdict });
+			songEval.candidates.push({ runId: run.runId, tier1, stats, verdict, tier2 });
 		}
 		evals.push(songEval);
 	}
@@ -262,6 +319,8 @@ function buildArtifact(
 					agreement: v.agreement,
 					candidateWordCount: c.stats.wordCount,
 					tier1: c.tier1,
+					pairwiseRationales: [v.runs[0].rationale, v.runs[1].rationale],
+					...(c.tier2 ? { tier2: c.tier2 } : {}),
 				};
 			});
 		return {

@@ -17,6 +17,16 @@ export type RunOutcome = "WIN" | "LOSS" | "TIE";
 /** Song-level collapse of repeated runs. indeterminate blocks automatic keep/revert. */
 export type SongOutcome = "success" | "fail" | "indeterminate";
 
+// One pointwise tier-2 judge's call on a candidate. Structurally mirrors JudgeFinding (types.ts)
+// but is redeclared here because the artifact is a serialization CONTRACT — its on-disk shape must
+// not silently drift when an internal type changes. evaluate.ts maps JudgeFinding → this.
+export interface JudgeFindingRecord {
+	judge: string;
+	passed: boolean;
+	evidence: string[];
+	rationale?: string;
+}
+
 export interface EvalRunVerdict {
 	runId: string;
 	outcome: RunOutcome;
@@ -25,6 +35,18 @@ export interface EvalRunVerdict {
 	agreement: boolean;
 	candidateWordCount: number;
 	tier1: { high: number; medium: number; low: number };
+	/**
+	 * The two swapped pairwise-run rationales (judge prose on why it won/lost vs gold) — the raw
+	 * material for the scoreboard's "what keeps losing" digest. Optional: only the statistical
+	 * half of the eval persisted before the scorecard fusion, so legacy artifacts omit it.
+	 */
+	pairwiseRationales?: string[];
+	/**
+	 * Pointwise tier-2 findings (the 8 judges) on this candidate. Present only when evaluate.ts ran
+	 * with --pointwise (each candidate adds an Opus grounding call), so it is optional and the
+	 * scoreboard degrades gracefully when absent.
+	 */
+	tier2?: JudgeFindingRecord[];
 }
 
 export interface EvalSongRecord {

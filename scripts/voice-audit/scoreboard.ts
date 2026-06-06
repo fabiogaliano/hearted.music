@@ -18,6 +18,12 @@ import {
 	type SongOutcome,
 } from "./eval-artifact";
 import { mcnemarMidP, wilsonInterval } from "./stats";
+import {
+	hasPointwise,
+	judgePassRateDiff,
+	judgePassRates,
+	qualitativeDigest,
+} from "./tier2-aggregate";
 
 const N9_NOTE = [
 	"n=9 NOTE: 9 gold songs is the unit of generalization. Wilson bands are wide and",
@@ -250,6 +256,77 @@ function renderPaired(a: EvalArtifact, b: EvalArtifact): string {
 	return lines.join("\n");
 }
 
+function fmtRate(rate: number | null, passed: number, total: number): string {
+	return rate === null ? "n/a" : `${(rate * 100).toFixed(0)}% (${passed}/${total})`;
+}
+
+// Per-judge pass-rate — the "which dimension keeps failing" diagnostic. Descriptive counts over
+// candidates, deliberately bandless: the inferential unit at n=9 is the song-level rate above, so a
+// CI here would falsely treat repeated runs as independent n. Grounding is listed first (priority-1).
+function renderJudgePassRates(artifact: EvalArtifact): string {
+	const rates = judgePassRates(artifact);
+	const candidates = artifact.songs.reduce((a, s) => a + s.runs.length, 0);
+	const lines: string[] = [
+		`TIER-2 PASS-RATES — ${artifact.label}  (descriptive, over ${candidates} candidates; not inferential)`,
+	];
+	for (const r of rates) {
+		const flag = r.judge === "grounding" ? "  ← priority-1" : "";
+		lines.push(`  ${r.judge.padEnd(22)} ${fmtRate(r.rate, r.passed, r.total)}${flag}`);
+	}
+	return lines.join("\n");
+}
+
+// The qualitative "what keeps losing" digest the orchestrator reads to form its next hypothesis:
+// the recurring judge evidence (grouped by judge, worst first) and the pairwise rationales from runs
+// that did not beat gold. Raw aggregation, not semantic clustering — the recurring phrasing is the
+// signal.
+function renderQualitative(artifact: EvalArtifact): string {
+	const digest = qualitativeDigest(artifact);
+	const lines: string[] = [`WHAT KEEPS LOSING — ${artifact.label}`];
+	if (digest.byJudge.length === 0) {
+		lines.push("  no tier-2 failures across candidates");
+	} else {
+		lines.push("  judge failures (most frequent first):");
+		for (const j of digest.byJudge) {
+			lines.push(`    ${j.judge} ×${j.failures}`);
+			for (const e of j.evidence) lines.push(`      · ${e}`);
+		}
+	}
+	if (digest.losingRationales.length) {
+		lines.push(
+			`  non-winning pairwise rationales (${digest.losingRationales.length} shown; ${digest.totalNonWinning} non-winning run(s), two swapped-order rationales each):`,
+		);
+		for (const r of digest.losingRationales) {
+			lines.push(`    [${r.outcome}] ${r.key}: ${r.rationale}`);
+		}
+	} else {
+		lines.push(`  non-winning runs: ${digest.totalNonWinning}`);
+	}
+	return lines.join("\n");
+}
+
+function fmtDeltaPct(d: number | null): string {
+	if (d === null) return "n/a";
+	const pts = Math.round(d * 100);
+	return pts >= 0 ? `+${pts}pt` : `${pts}pt`;
+}
+
+// Per-judge pass-rate movement A→B: "did the last edit help, and on which dimension?". The paired
+// McNemar above answers it for the optimization target (pairwise vs gold); this localizes the shift
+// to specific judges so the loop can read whether a grounding/specificity edit actually landed.
+function renderJudgeDiff(a: EvalArtifact, b: EvalArtifact): string {
+	const diffs = judgePassRateDiff(a, b);
+	const lines: string[] = [
+		`TIER-2 PASS-RATE DIFF  ${a.label} → ${b.label}  (Δ = B − A, in percentage points)`,
+	];
+	for (const d of diffs) {
+		const aStr = d.a === null ? "n/a" : `${(d.a * 100).toFixed(0)}%`;
+		const bStr = d.b === null ? "n/a" : `${(d.b * 100).toFixed(0)}%`;
+		lines.push(`  ${d.judge.padEnd(22)} ${aStr.padStart(4)} → ${bStr.padStart(4)}  ${fmtDeltaPct(d.delta)}`);
+	}
+	return lines.join("\n");
+}
+
 function main() {
 	const paths = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 	if (paths.length < 1 || paths.length > 2) {
@@ -268,10 +345,26 @@ function main() {
 	console.log(`${N9_NOTE}\n`);
 
 	console.log(renderMarginal(a));
+	if (hasPointwise(a)) {
+		console.log(`\n${renderJudgePassRates(a)}`);
+		console.log(`\n${renderQualitative(a)}`);
+	}
 	if (b) {
 		console.log(`\n${renderMarginal(b)}`);
+		if (hasPointwise(b)) {
+			console.log(`\n${renderJudgePassRates(b)}`);
+			console.log(`\n${renderQualitative(b)}`);
+		}
 		console.log(`\n${"-".repeat(72)}`);
 		console.log(renderPaired(a, b));
+		if (hasPointwise(a) && hasPointwise(b)) {
+			console.log(`\n${renderJudgeDiff(a, b)}`);
+		}
+	}
+	if (!hasPointwise(a) && !(b && hasPointwise(b))) {
+		console.log(
+			"\n(no tier-2 pointwise data in these artifacts — re-run evaluate.ts with --pointwise for per-judge pass-rates and the 'what keeps losing' digest)",
+		);
 	}
 	console.log("");
 	process.exit(0);
