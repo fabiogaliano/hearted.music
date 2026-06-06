@@ -132,3 +132,60 @@ export function voiceStats(a: ConceptRead): VoiceStats {
 		wordCount: words(prose).length,
 	};
 }
+
+// --- Inferential helpers for the n=9 scoreboard ---
+//
+// At n=9 these are used as a NOISE VETO, not a keep gate: a wide Wilson interval or a
+// non-significant McNemar means "too noisy to trust", never "edit proven bad". See
+// claudedocs/06-block1-implementation-plan.md §1, WP2.
+
+// Wilson score interval for a binomial proportion. `successes` is the count of SONGS whose
+// collapsed outcome is WIN-or-TIE vs gold for one variant; that WIN-or-TIE collapse makes the
+// outcome a clean binary proportion, which is exactly the model Wilson assumes. If ties ever
+// move to 0.5 scoring this stops being a binomial proportion and the CI method must change.
+export function wilsonInterval(
+	successes: number,
+	n: number,
+	z = 1.96,
+): { lo: number; hi: number } {
+	if (n === 0) return { lo: 0, hi: 1 };
+	const p = successes / n;
+	const z2 = z * z;
+	const denom = 1 + z2 / n;
+	const center = (p + z2 / (2 * n)) / denom;
+	const margin =
+		(z / denom) * Math.sqrt((p * (1 - p)) / n + z2 / (4 * n * n));
+	return {
+		lo: Math.max(0, center - margin),
+		hi: Math.min(1, center + margin),
+	};
+}
+
+// McNemar mid-p test for a PAIRED variant-vs-variant comparison. `b` and `c` are the
+// discordant song counts: b = songs where variant A succeeds and B fails; c = songs where A
+// fails and B succeeds. Concordant songs (both succeed / both fail) carry no signal and are
+// excluded by construction. The mid-p variant is used because it is less conservative than
+// the exact binomial test at the tiny discordant counts n=9 produces, while keeping exact-test
+// validity (no normal approximation). Symmetric inputs (b===c, or b===c===0) return p=1.
+export function mcnemarMidP(
+	b: number,
+	c: number,
+): { p: number; b: number; c: number } {
+	const n = b + c;
+	if (n === 0) return { p: 1, b, c };
+	const k = Math.min(b, c);
+	// Binomial(n, 0.5) pmf computed iteratively (term_i = term_{i-1} * (n-i+1)/i) so no
+	// factorial overflows. half = pmf at i=0 = C(n,0) * 0.5^n.
+	const half = 0.5 ** n;
+	let pmf = half;
+	let cumulativeBelowK = 0; // sum_{i=0}^{k-1} P(X=i)
+	let pointK = half; // P(X=k)
+	for (let i = 0; i <= k; i++) {
+		if (i > 0) pmf = (pmf * (n - i + 1)) / i;
+		if (i < k) cumulativeBelowK += pmf;
+		else pointK = pmf;
+	}
+	// One-sided mid-p counts half the probability mass exactly at the boundary k.
+	const oneSidedMidP = cumulativeBelowK + 0.5 * pointK;
+	return { p: Math.min(1, 2 * oneSidedMidP), b, c };
+}

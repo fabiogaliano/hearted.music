@@ -58,6 +58,12 @@ export interface AnalyzeSongInput {
 	audioFeatures?: AudioFeature | null;
 	genres?: string[];
 	instrumentalness?: number;
+	// Prebuilt prompt blocks for the v17+ {example} / {annotations} slots. The service NEVER
+	// fetches golds or annotations itself (WP1 safety constraint); a caller assembles these and
+	// passes them in. Both default to "" — older prompt versions have no slot to fill, so the
+	// replace is a harmless no-op and existing callers are unaffected.
+	exampleText?: string;
+	annotationsBlock?: string;
 }
 
 export interface AnalyzeSongResult {
@@ -223,7 +229,9 @@ export class SongAnalysisService {
 			.replace(
 				"{audio_features}",
 				this.formatAudioFeatures(input.audioFeatures),
-			);
+			)
+			.replace("{example}", input.exampleText ?? "")
+			.replace("{annotations}", input.annotationsBlock ?? "");
 	}
 
 	private buildInstrumentalPrompt(input: AnalyzeSongInput): string {

@@ -20,9 +20,9 @@ Answer one question: do these beats form a connected story in which every scene 
 ARC:
 ${body}
 
-Return:
-- narrative: true only if the beats build on each other (shuffling them would clearly break the story) AND no scene is flat event-recap. False if either fails.
+Work in this order — reason first, decide last:
+- rationale: 1–2 short bullets (under 20 words each). Trace the beats in sequence and weigh connection + scene texture before judging.
 - disconnect_points: short notes like "3→4" naming transitions that don't follow, with a 1-line reason each. Empty array if the beats connect.
 - recap_scenes: short notes like "scene 2" naming scenes that recount events instead of landing a feeling or turn, with a 1-line reason each. Empty array if every scene carries feeling.
-- rationale: 1–2 short bullets (under 20 words each).`;
+- narrative: decide this LAST. true only if the beats build on each other (shuffling them would clearly break the story) AND no scene is flat event-recap. False if either fails.`;
 }

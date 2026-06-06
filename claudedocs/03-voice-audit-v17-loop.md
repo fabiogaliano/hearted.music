@@ -8,12 +8,53 @@ Two parts: **A** authors the first real candidate prompt (the centerpiece creati
 **B** builds the one-command scoreboard the orchestrator will live in. Do NOT flip
 `ACTIVE_LYRICAL_VERSION` — prod cutover is out of scope.
 
+---
+
+## Status after Block 1 (2026-06-06)
+
+`claudedocs/06-block1-implementation-plan.md` (the eval-hardening block) was executed and partly
+overtakes this handoff. What it actually built vs what this doc still asks for:
+
+**Done (some of it differently than written below):**
+- `lyrical-v17.ts` exists and is registered; `ACTIVE_LYRICAL_VERSION` stays `"13"`. **But it is v16
+  + two slots, NOT a from-the-principles rewrite** — see the gap note in Part A.
+- `{example}` and `{annotations}` are RUNTIME-injected (regen.ts), not baked into the file:
+  `{example}` = leave-one-out few-shot from the pool [not-like-us, pink-pony-club, motion-sickness]
+  via `renderExemplarBlock`; `{annotations}` = the song's own >15-vote block via the shared selector
+  (`grounding-annotations.ts` → `renderAnnotationsBlockForPrompt`). `song-analysis.ts` accepts
+  prebuilt blocks but prod (v13) does not use them yet.
+- The eval is now a **two-command** flow: `evaluate.ts --out <artifact>` persists an `EvalArtifact`
+  (per-run pairwise-vs-gold verdict + tier1 + word counts); `scoreboard.ts` reads 1–2 artifacts and
+  prints marginal Wilson CI, paired McNemar mid-p, per-song W/T/L, length deltas, and the n=9
+  caveat. Stats live in `stats.ts` (`wilsonInterval`, `mcnemarMidP`).
+- All 8 tier-2 judges now emit rationale/evidence BEFORE the verdict boolean.
+- Grounding judge is **cite-or-fail** (`supporting_evidence` required on a pass); a calibration
+  harness (`grounding-calibration.ts`) + subtle-negative fixtures (`fixtures/grounding-negatives.ts`)
+  exist (paid Opus run, not yet executed).
+- `golds` tier added to regen; `experiments/changelog.md` is the append-only variant log.
+
+**Remaining from this Phase 3 (still owed — NOT done by Block 1):**
+- [ ] **v17 from the principles.** The gap-list closure in Part A (global grounding rule GRD-1…9
+  stated in-prompt, specificity SPC-1 made loud, the editorial-only principles) was not authored.
+  Either do it here, or let the Phase-4 loop evolve v17 toward it.
+- [ ] **Re-validate the 9 golds against v17's own instructions** (Part A, final paragraph).
+- [ ] **The full one-command scorecard** (Part B): the scoreboard does pairwise-vs-gold + tier1 +
+  stats only. It does NOT run the 8 pointwise judges, per-judge pass-rates, or the aggregated
+  qualitative signal Phase 4 depends on. That fusion is unbuilt.
+- [ ] **Capture + commit the v17 baseline** (a paid run; Block 1 WP5).
+
+---
+
 ## Part A — Author `lyrical-v17.ts`
 
 Source of truth: `hearted-audit-principles.md` + the 9 golds. Use `lyrical-v16.ts` as a
 *structural reference* (it already encodes most voice mechanics) but author v17 from the
 principles — "start anew" per the user. New `prompts/lyrical-v17.ts`, registered in
 `prompts/registry.ts` (do not change `ACTIVE_LYRICAL_VERSION`).
+
+> **Block 1 status:** the registered `lyrical-v17.ts` is currently v16 + the `{example}` /
+> `{annotations}` slots only. The from-the-principles authoring and gap-list closure below are
+> still owed (or to be evolved by the Phase-4 loop).
 
 Close the v17 gap list (spec §6, priority-ordered). The high-leverage additions:
 
@@ -43,11 +84,18 @@ wrong (golds are truth) — soften it. v17 must be a prompt the golds could have
 
 ## Part B — Wire the research loop (one command)
 
+> **Block 1 status:** built the statistical half of this — `evaluate.ts --out <artifact>` then
+> `scoreboard.ts <A> [B]` (pairwise-vs-gold W/T/L, tier1, Wilson CI, paired McNemar, length deltas,
+> n=9 caveat, A-vs-B diff). NOT built: a single command, the 8 pointwise judges in the scorecard,
+> per-judge pass-rates, or the aggregated qualitative signal. Items 2–3 and 5's qualitative
+> aggregation below remain to do.
+
 Today the loop is two manual steps (`regen.ts` then `evaluate.ts`) and the new Phase-2 judges
 aren't run on candidates. Build a single orchestrator command — extend `evaluate.ts` or add
 `scripts/voice-audit/research.ts` — that, for a `--version`:
 
-1. **Generate** n=2 candidates/song across the 9 gold songs (`regen.ts --runs 2` semantics).
+1. **Generate** an **odd** number of candidates/song across the 9 gold songs so each song can
+   collapse to a majority outcome; use **n=3** for real baseline / variant comparisons.
 2. **Tier 1** — `runAllRules()` on each.
 3. **Tier 2 pointwise** — the 5 existing + 3 new judges on each candidate.
 4. **Pairwise vs gold** — `pairwise.ts`, position-swapped (already double-runs).
@@ -58,8 +106,9 @@ aren't run on candidates. Build a single orchestrator command — extend `evalua
      ("what keeps losing"). This is what the orchestrator reads to form its next hypothesis.
    - a **diff vs a named prior variant** (did the last edit help?).
 
-Keep n=2 the default (`--limit 2` already is). Plumb an n=3 escalation flag for per-song
-tie-breaks but don't make it default.
+`claudedocs/06-block1-implementation-plan.md` supersedes the older n=2 assumption here: for any
+real baseline / variant comparison, use an **odd** run count so no song becomes indeterminate.
+Treat even-run histories as legacy fallback only.
 
 Run it once on **v17** to capture the baseline scorecard. Expect v17 to still lose some pairs
 (that's the orchestrator's job) — but grounding/specificity should already be visibly better
@@ -67,12 +116,14 @@ than the v14/v15 record, or v17's grounding additions aren't landing.
 
 ## Done criteria
 
-- [ ] `lyrical-v17.ts` authored from the principles, registered (ACTIVE unchanged).
-- [ ] `{annotations}` slot live, fed by the Phase-1 utility, vote gate >15 documented in-prompt.
-- [ ] 1–2 golds embedded as worked examples.
-- [ ] All 9 golds re-validated against v17's own instructions (no instruction a gold violates).
-- [ ] One command produces the full scorecard (pairwise + tier1 + 8 judges + qualitative + diff).
-- [ ] v17 baseline scorecard captured and committed.
+Status as of Block 1 (2026-06-06): `[x]` done · `[~]` done differently / partial · `[ ]` open.
+
+- [~] `lyrical-v17.ts` registered, ACTIVE unchanged — but v16 + slots, NOT authored from the principles.
+- [~] `{annotations}` slot live, fed by the shared >15-vote selector — vote gate documented in the injected block's header, not in the template prose.
+- [x] 1–2 golds as worked examples — done as RUNTIME leave-one-out injection, not embedded in the file (avoids leakage).
+- [ ] All 9 golds re-validated against v17's own instructions — NOT done.
+- [~] Scoreboard built (pairwise + tier1 + Wilson/McNemar/length, two commands) — the 8-judge pointwise + qualitative + diff fusion is NOT built.
+- [ ] v17 baseline scorecard captured and committed — NOT done (paid; Block 1 WP5).
 
 ## Hand to Phase 4
 

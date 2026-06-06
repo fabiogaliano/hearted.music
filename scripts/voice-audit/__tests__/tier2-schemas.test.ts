@@ -112,6 +112,7 @@ describe("tier2 schemas", () => {
 		expect(
 			GroundingSchema.safeParse({
 				grounded: true,
+				supporting_evidence: ['lens ← "We gotta freeze them up"'],
 				ungrounded_claims: [],
 				paratextual_flags: [],
 				rationale: [],
@@ -141,8 +142,32 @@ describe("tier2 schemas", () => {
 		expect(
 			GroundingSchema.safeParse({
 				grounded: true,
+				supporting_evidence: ['image ← "neon" in the lyrics'],
 				ungrounded_claims: [],
 				paratextual_flags: ["image leans on the music video's neon palette"],
+				rationale: [],
+			}).success,
+		).toBe(true);
+	});
+
+	// WP4 cite-or-fail: a grounded read must show the evidence that grounds it. A pass with no
+	// supporting_evidence is rejected; the same object with a citation is accepted.
+	it("requires supporting_evidence whenever grounded is true (cite or fail)", () => {
+		expect(
+			GroundingSchema.safeParse({
+				grounded: true,
+				supporting_evidence: [],
+				ungrounded_claims: [],
+				paratextual_flags: [],
+				rationale: [],
+			}).success,
+		).toBe(false);
+		expect(
+			GroundingSchema.safeParse({
+				grounded: true,
+				supporting_evidence: ['take ← "No sex for Ben Rymer"'],
+				ungrounded_claims: [],
+				paratextual_flags: [],
 				rationale: [],
 			}).success,
 		).toBe(true);
@@ -157,5 +182,33 @@ describe("tier2 schemas", () => {
 				rationale: [],
 			}).success,
 		).toBe(true);
+	});
+
+	// WP3: every judge must reason before it decides. generateObject emits fields in schema
+	// order, and Zod's parser writes output keys in that same definition order, so asserting
+	// the parsed key order pins the contract the model actually sees. rationale leads; the
+	// verdict boolean trails.
+	it("orders every judge rationale-first, verdict-last", () => {
+		const cases: Array<{
+			name: string;
+			schema: { parse: (v: unknown) => Record<string, unknown> };
+			verdict: string;
+			// Minimal passing input; grounding needs a citation to clear cite-or-fail.
+			pass: Record<string, unknown>;
+		}> = [
+			{ name: "register-specificity", schema: RegisterSpecificitySchema, verdict: "specific", pass: { specific: true } },
+			{ name: "abstract-noun-trap", schema: AbstractNounTrapSchema, verdict: "concrete", pass: { concrete: true } },
+			{ name: "essayistic-register", schema: EssayisticRegisterSchema, verdict: "conversational", pass: { conversational: true } },
+			{ name: "arc-narrative", schema: ArcNarrativeSchema, verdict: "narrative", pass: { narrative: true } },
+			{ name: "lens-coherence", schema: LensCoherenceSchema, verdict: "coherent", pass: { coherent: true } },
+			{ name: "grounding", schema: GroundingSchema, verdict: "grounded", pass: { grounded: true, supporting_evidence: ["x"] } },
+			{ name: "redundancy", schema: RedundancySchema, verdict: "distinct", pass: { distinct: true } },
+			{ name: "voice-softness", schema: VoiceSoftnessSchema, verdict: "clean", pass: { clean: true } },
+		];
+		for (const { name, schema, verdict, pass } of cases) {
+			const keys = Object.keys(schema.parse(pass));
+			expect(keys[0], `${name} should lead with rationale`).toBe("rationale");
+			expect(keys[keys.length - 1], `${name} should decide ${verdict} last`).toBe(verdict);
+		}
 	});
 });

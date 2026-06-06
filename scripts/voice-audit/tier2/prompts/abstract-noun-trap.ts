@@ -12,8 +12,8 @@ Answer one question: does this image work via a concrete image or felt experienc
 IMAGE:
 ${a.image}
 
-Return:
-- concrete: true if the image lands on an image or felt sensation, false if its core move is an abstract summary noun.
+Work in this order — reason first, decide last:
+- rationale: 1–2 short bullets (under 20 words each). Read the image and name what its core move is before judging.
 - offending_nouns: exact abstract nouns present in the image that do the summarizing. Empty array if concrete.
-- rationale: 1–2 short bullets (under 20 words each).`;
+- concrete: decide this LAST. true if the image lands on an image or felt sensation, false if its core move is an abstract summary noun.`;
 }

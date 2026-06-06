@@ -30,6 +30,8 @@ The writer had exactly two sources, and so do you:
 
 Judge ONLY against those two sources. This is the hard part: you may personally know this song, its artist, its chart history, the music video, what a crowd did with it. **You must not use any of that.** If a claim is true in the real world but is not supported by the heard lyrics or a provided annotation, it is UNGROUNDED. Outside knowledge leaking into the read is the exact failure you are here to catch.
 
+CITE OR FAIL. A claim may only PASS if you can point to the specific heard lyric or annotation that supports it. For the read's substantive claims (lens, take, contradiction, each arc scene), name that support in supporting_evidence. If a substantive claim cannot cite a heard lyric, a fair interpretation of one, or an annotation, it is UNGROUNDED — list it and mark the read not grounded. "I can't find support" means fail, not pass.
+
 A claim IS grounded when it:
 - quotes or paraphrases a heard lyric, OR
 - is a fair interpretation of what the lyrics say or imply. The read's job is to interpret feeling and meaning, not to recite — so emotional, psychological, and thematic claims about the heard content are grounded even though they are not stated literally ("he enters already having won" reading swagger; "the more he has, the more terrified he gets" reading the lyric's dread). Interpretation is allowed; importing facts is not.
@@ -70,9 +72,10 @@ lines:
 ${lines}
 texture (CONTEXT ONLY — grounded in sound, do not flag): ${a.texture ?? "(none)"}
 
-Return a JSON object. Every array element must be a PLAIN STRING (not a nested object):
-- grounded: true if every claim (outside texture) traces to a heard lyric, a fair interpretation of one, or a provided annotation. False if any claim imports reception, biography, or atmosphere the sources do not support.
-- ungrounded_claims: array of strings. When not grounded, each string quotes one imported claim and says what it imports, e.g. 'reception: "the song everyone screamed that summer"' or 'biography: "his label dropped him" — not in lyrics or annotations'. Empty array if grounded.
+Return a JSON object, in THIS ORDER — reason first, decide last. Every array element must be a PLAIN STRING (not a nested object):
+- rationale: array of strings — 1–3 short bullets (under 20 words each). Walk the read's claims against the two sources before you judge.
+- supporting_evidence: array of strings — for the read's substantive claims (lens, take, contradiction, each arc scene), cite the heard lyric or annotation that grounds it, e.g. 'lens "freezing the creep out" ← "We gotta freeze them up"'. REQUIRED and non-empty whenever grounded is true (cite or fail). Empty array only when grounded is false.
+- ungrounded_claims: array of strings. Each string quotes one imported or uncitable claim and says what it imports, e.g. 'reception: "the song everyone screamed that summer"' or 'biography: "his label dropped him" — not in lyrics or annotations'. Empty array if every claim is grounded.
 - paratextual_flags: array of strings — any field that leans on cover art / music video, for human review. Does not affect grounded. Empty array if none.
-- rationale: array of strings — 1–3 short bullets (under 20 words each).`;
+- grounded: decide this LAST. true ONLY if every substantive claim (outside texture) cites a heard lyric, a fair interpretation of one, or a provided annotation. False if any claim imports reception, biography, or atmosphere the sources do not support, or cannot cite support at all.`;
 }

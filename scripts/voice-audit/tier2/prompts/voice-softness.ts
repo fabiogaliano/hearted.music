@@ -32,10 +32,10 @@ scenes:
 ${scenes}
 contradiction: ${a.contradiction ?? "(none)"}
 
-Return:
-- clean: true if none of the three tells is genuinely present. False if any fires.
+Work in this order — reason first, decide last:
+- rationale: 1–3 short bullets (under 20 words each). Scan the take and scenes for each of the three tells before judging.
 - kicker_hits: exact quoted phrases that are aphoristic kickers. Empty if none.
 - fragment_hits: the field(s) that are a fragmentation pile, quoted. Empty if none.
 - parallelism_hits: exact quoted mirrored "X is the Y" constructions. Empty if none.
-- rationale: 1–3 short bullets (under 20 words each).`;
+- clean: decide this LAST. true if none of the three tells is genuinely present. False if any fires.`;
 }
