@@ -4,8 +4,10 @@ import {
 	analysisProse,
 	burstinessStats,
 	functionWordRatio,
+	mcnemarMidP,
 	mtld,
 	voiceStats,
+	wilsonInterval,
 } from "../stats";
 
 const fixture: ConceptRead = {
@@ -72,5 +74,65 @@ describe("voiceStats", () => {
 		const s = voiceStats(fixture);
 		expect(s.wordCount).toBeGreaterThan(0);
 		expect(s.burstiness.sentences).toBeGreaterThanOrEqual(1);
+	});
+});
+
+describe("wilsonInterval", () => {
+	it("returns the full [0,1] band when n=0", () => {
+		expect(wilsonInterval(0, 0)).toEqual({ lo: 0, hi: 1 });
+	});
+
+	it("clamps the upper bound at 1 for a perfect proportion", () => {
+		// 9/9 at 95%: the classic Wilson band is roughly [0.701, 1.0]; the upper bound is
+		// clamped because the score interval would otherwise nudge just past 1.
+		const ci = wilsonInterval(9, 9);
+		expect(ci.lo).toBeCloseTo(0.701, 2);
+		expect(ci.hi).toBe(1);
+	});
+
+	it("brackets the point estimate symmetrically inward at n=9", () => {
+		// 5/9 = 0.556. Wilson pulls the center toward 0.5 and the band is wide at n=9.
+		const ci = wilsonInterval(5, 9);
+		expect(ci.lo).toBeCloseTo(0.267, 2);
+		expect(ci.hi).toBeCloseTo(0.811, 2);
+	});
+
+	it("floors the lower bound at 0 for a zero proportion", () => {
+		const ci = wilsonInterval(0, 9);
+		expect(ci.lo).toBe(0);
+		expect(ci.hi).toBeCloseTo(0.299, 2);
+	});
+
+	it("widens as n shrinks for the same proportion", () => {
+		const wide = wilsonInterval(1, 3);
+		const narrow = wilsonInterval(10, 30);
+		expect(wide.hi - wide.lo).toBeGreaterThan(narrow.hi - narrow.lo);
+	});
+});
+
+describe("mcnemarMidP", () => {
+	it("returns p=1 when there is no discordance", () => {
+		expect(mcnemarMidP(0, 0)).toEqual({ p: 1, b: 0, c: 0 });
+	});
+
+	it("returns p=1 for a symmetric split", () => {
+		expect(mcnemarMidP(5, 5).p).toBeCloseTo(1, 10);
+	});
+
+	it("is significant for a clean same-direction flip", () => {
+		// b=9, c=0 over 9 discordant songs: one-sided mid-p = 0.5 * 0.5^9, two-sided = 1/512.
+		const r = mcnemarMidP(9, 0);
+		expect(r.p).toBeCloseTo(1 / 512, 10);
+		expect(r.b).toBe(9);
+		expect(r.c).toBe(0);
+	});
+
+	it("matches the hand-computed mid-p for 8 vs 1", () => {
+		// mid-p two-sided = exact(0.0390625) − point mass at boundary (9/512) = 11/512.
+		expect(mcnemarMidP(8, 1).p).toBeCloseTo(11 / 512, 10);
+	});
+
+	it("is order-independent in the p-value", () => {
+		expect(mcnemarMidP(7, 2).p).toBeCloseTo(mcnemarMidP(2, 7).p, 12);
 	});
 });

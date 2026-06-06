@@ -18,6 +18,15 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConceptReadSchema } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import {
+	collapseOutcome,
+	EVAL_ARTIFACT_SCHEMA_VERSION,
+	writeEvalArtifact,
+	type EvalArtifact,
+	type EvalRunVerdict,
+	type EvalSongRecord,
+	type RunOutcome,
+} from "./eval-artifact";
 import type { RunRecord } from "./experiments";
 import { loadGoldExemplars, type GoldExemplar } from "./exemplars";
 import { voiceStats, type VoiceStats } from "./stats";
@@ -33,6 +42,7 @@ interface Flags {
 	limit: number;
 	judgeModel: string;
 	dryRun: boolean;
+	out?: string;
 }
 
 function parseFlags(argv: string[]): Flags {
@@ -46,8 +56,13 @@ function parseFlags(argv: string[]): Flags {
 		else if (argv[i] === "--limit") out.limit = Math.max(1, Number(argv[++i]) || 1);
 		else if (argv[i] === "--judge-model") out.judgeModel = argv[++i];
 		else if (argv[i] === "--dry-run") out.dryRun = true;
+		else if (argv[i] === "--out") out.out = argv[++i];
 	}
 	return out;
+}
+
+function runOutcome(v: BalancedVerdict): RunOutcome {
+	return v.winner === "first" ? "WIN" : v.winner === "second" ? "LOSS" : "TIE";
 }
 
 // Old-shape (pre-v14) runs are skipped: their stored analysis is the legacy 8-field
@@ -134,11 +149,19 @@ async function main() {
 
 	const evals: SongEval[] = [];
 	let totalCost = 0;
+	let variantMeta:
+		| { promptVersion?: string; model?: string; temperature: number | null }
+		| undefined;
 
 	for (const [track, runs] of candidates) {
 		const g = gold.get(track) as GoldExemplar;
 		const songEval: SongEval = { key: g.key, song: g.song, gold: g, candidates: [] };
 		for (const run of runs) {
+			variantMeta ??= {
+				promptVersion: run.promptVersion,
+				model: run.model,
+				temperature: run.temperature ?? null,
+			};
 			const tier1 = {
 				high: run.totals.high,
 				medium: run.totals.medium,
@@ -204,7 +227,64 @@ async function main() {
 		`Tier-1 means: ${(highSum / candidateCount).toFixed(2)} high, ${(mediumSum / candidateCount).toFixed(2)} medium  (over ${candidateCount} candidates)`,
 	);
 	if (!flags.dryRun) console.log(`Judge cost: $${totalCost.toFixed(2)}`);
+
+	if (flags.out) {
+		if (flags.dryRun) {
+			console.error("\n--out ignored: a dry-run has no verdicts to persist.");
+		} else {
+			const artifact = buildArtifact(evals, variantMeta, flags, versionLabel, tempLabel);
+			writeEvalArtifact(flags.out, artifact);
+			console.log(`\nEval artifact → ${flags.out}`);
+		}
+	}
 	process.exit(0);
+}
+
+function buildArtifact(
+	evals: SongEval[],
+	variantMeta:
+		| { promptVersion?: string; model?: string; temperature: number | null }
+		| undefined,
+	flags: Flags,
+	versionLabel: string,
+	tempLabel: string,
+): EvalArtifact {
+	const songs: EvalSongRecord[] = evals.map((e) => {
+		const goldWordCount = voiceStats(e.gold.read).wordCount;
+		const runs: EvalRunVerdict[] = e.candidates
+			.filter((c) => c.verdict)
+			.map((c) => {
+				const v = c.verdict as BalancedVerdict;
+				return {
+					runId: c.runId,
+					outcome: runOutcome(v),
+					confidence: v.confidence,
+					agreement: v.agreement,
+					candidateWordCount: c.stats.wordCount,
+					tier1: c.tier1,
+				};
+			});
+		return {
+			key: e.key,
+			song: e.song,
+			spotifyTrackId: e.gold.spotifyTrackId,
+			goldWordCount,
+			runs,
+			songOutcome: collapseOutcome(runs),
+		};
+	});
+	return {
+		schemaVersion: EVAL_ARTIFACT_SCHEMA_VERSION,
+		label: `${versionLabel}@${tempLabel}`,
+		variant: {
+			promptVersion: variantMeta?.promptVersion ?? flags.version,
+			model: variantMeta?.model,
+			temperature: variantMeta?.temperature ?? (flags.temperatureSet ? (flags.temperature ?? null) : null),
+		},
+		judgeModel: flags.judgeModel,
+		generatedAt: new Date().toISOString(),
+		songs,
+	};
 }
 
 main().catch((err) => {

@@ -25,8 +25,8 @@ Evidence is required. If you say it is generic, quote the actual sentences that 
 READ:
 ${body}
 
-Return:
-- specific: true if three or more claims are song-specific, otherwise false.
+Work in this order — reason first, decide last:
+- rationale: 1–3 short bullets (under 20 words each). Weigh the evidence before you judge.
 - generic_sentences: exact quoted sentences that read as generic. Empty array if specific.
-- rationale: 1–3 short bullets (under 20 words each) explaining the call.`;
+- specific: decide this LAST. true if three or more claims are song-specific, otherwise false.`;
 }

@@ -38,8 +38,8 @@ ${arc}
 LINES:
 ${lines}
 
-Return:
-- coherent: true if the take genuinely argues the lens AND (if the lens is descriptive/surface) the song really is thin AND the lens is a defensible claim, not slop. False otherwise.
+Work in this order — reason first, decide last:
+- rationale: 1–2 short bullets (under 20 words each). Test the take against the lens, and check for buried depth, before judging.
 - problems: when not coherent, name the issue(s) — quote the decorative lens, the depth a surface lens ignored, or the slop phrase. Empty array if coherent.
-- rationale: 1–2 short bullets (under 20 words each).`;
+- coherent: decide this LAST. true if the take genuinely argues the lens AND (if the lens is descriptive/surface) the song really is thin AND the lens is a defensible claim, not slop. False otherwise.`;
 }

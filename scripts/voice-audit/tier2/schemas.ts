@@ -1,10 +1,15 @@
 import { z } from "zod";
 
+// Field order is load-bearing: generateObject emits fields in schema order, so every judge
+// lists its reasoning (rationale) and evidence BEFORE the verdict boolean. The model examines
+// the evidence and writes it out first, then commits to the pass/fail call last — verdict-first
+// schemas let it decide before reasoning. Order is the only semantic change here; the gate
+// fields and superRefine rules are unchanged. See claudedocs/06-block1-implementation-plan.md WP3.
 export const RegisterSpecificitySchema = z
 	.object({
-		specific: z.boolean(),
-		generic_sentences: z.array(z.string()).default([]),
 		rationale: z.array(z.string()).default([]),
+		generic_sentences: z.array(z.string()).default([]),
+		specific: z.boolean(),
 	})
 	.superRefine((value, ctx) => {
 		if (!value.specific && value.generic_sentences.length === 0) {
@@ -19,9 +24,9 @@ export const RegisterSpecificitySchema = z
 
 export const AbstractNounTrapSchema = z
 	.object({
-		concrete: z.boolean(),
-		offending_nouns: z.array(z.string()).default([]),
 		rationale: z.array(z.string()).default([]),
+		offending_nouns: z.array(z.string()).default([]),
+		concrete: z.boolean(),
 	})
 	.superRefine((value, ctx) => {
 		if (!value.concrete && value.offending_nouns.length === 0) {
@@ -36,9 +41,9 @@ export const AbstractNounTrapSchema = z
 
 export const EssayisticRegisterSchema = z
 	.object({
-		conversational: z.boolean(),
-		essayistic_phrases: z.array(z.string()).default([]),
 		rationale: z.array(z.string()).default([]),
+		essayistic_phrases: z.array(z.string()).default([]),
+		conversational: z.boolean(),
 	})
 	.superRefine((value, ctx) => {
 		if (!value.conversational && value.essayistic_phrases.length === 0) {
@@ -53,10 +58,10 @@ export const EssayisticRegisterSchema = z
 
 export const ArcNarrativeSchema = z
 	.object({
-		narrative: z.boolean(),
+		rationale: z.array(z.string()).default([]),
 		disconnect_points: z.array(z.string()).default([]),
 		recap_scenes: z.array(z.string()).default([]),
-		rationale: z.array(z.string()).default([]),
+		narrative: z.boolean(),
 	})
 	.superRefine((value, ctx) => {
 		if (
@@ -80,9 +85,9 @@ export const ArcNarrativeSchema = z
 // real depth the lens ignored? Evidence is required whenever it fails.
 export const LensCoherenceSchema = z
 	.object({
-		coherent: z.boolean(),
-		problems: z.array(z.string()).default([]),
 		rationale: z.array(z.string()).default([]),
+		problems: z.array(z.string()).default([]),
+		coherent: z.boolean(),
 	})
 	.superRefine((value, ctx) => {
 		if (!value.coherent && value.problems.length === 0) {
@@ -118,14 +123,28 @@ const coercedStringArray = z.preprocess((val) => {
 // can't be traced to a heard lyric or a vote-gated annotation (> 15 votes). `grounded`
 // is the gate; `paratextual_flags` is GRD-5's human-review surface (cover art / video tie)
 // which is NOT an auto-fail, so it rides alongside without forcing `grounded: false`.
+//
+// Cite-or-fail (WP4): a PASS must show its work. `supporting_evidence` is required non-empty
+// whenever grounded is true — the judge has to cite the heard lyric or annotation that grounds
+// the read's substantive claims, not merely assert it. A claim that cannot cite support must be
+// failed. This is enforced in the contract (schema + prompt), not just prose.
 export const GroundingSchema = z
 	.object({
-		grounded: z.boolean(),
+		rationale: coercedStringArray,
+		supporting_evidence: coercedStringArray,
 		ungrounded_claims: coercedStringArray,
 		paratextual_flags: coercedStringArray,
-		rationale: coercedStringArray,
+		grounded: z.boolean(),
 	})
 	.superRefine((value, ctx) => {
+		if (value.grounded && value.supporting_evidence.length === 0) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["supporting_evidence"],
+				message:
+					"cite-or-fail: a grounded read must cite at least one heard lyric or annotation supporting its claims",
+			});
+		}
 		if (!value.grounded && value.ungrounded_claims.length === 0) {
 			ctx.addIssue({
 				code: "custom",
@@ -143,9 +162,9 @@ export const GroundingSchema = z
 // redundancy and must pass.
 export const RedundancySchema = z
 	.object({
-		distinct: z.boolean(),
-		redundant_pairs: z.array(z.string()).default([]),
 		rationale: z.array(z.string()).default([]),
+		redundant_pairs: z.array(z.string()).default([]),
+		distinct: z.boolean(),
 	})
 	.superRefine((value, ctx) => {
 		if (!value.distinct && value.redundant_pairs.length === 0) {
@@ -164,11 +183,11 @@ export const RedundancySchema = z
 // the tells, not the turn or the single landing fragment.
 export const VoiceSoftnessSchema = z
 	.object({
-		clean: z.boolean(),
+		rationale: z.array(z.string()).default([]),
 		kicker_hits: z.array(z.string()).default([]),
 		fragment_hits: z.array(z.string()).default([]),
 		parallelism_hits: z.array(z.string()).default([]),
-		rationale: z.array(z.string()).default([]),
+		clean: z.boolean(),
 	})
 	.superRefine((value, ctx) => {
 		if (

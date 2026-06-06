@@ -106,10 +106,11 @@ so a fresh session can resume mid-phase, matching the existing session-5.5 conve
 4. **The optimization target is pairwise win/tie-rate vs gold.** Tier-1 (0 high) and the
    tier-2 judges (esp. grounding) are **gates**, not the maximand. A candidate that is
    tier1-clean but loses every pair to gold has not improved.
-5. **n = 2.** Generate 2 candidates per song per variant (`regen.ts --runs 2`;
-   `evaluate.ts --limit 2`, already the default). The pairwise judge already double-runs
-   each comparison for position bias, so n=2 gives a robust median cheaply. Escalate to
-   **n=3 only per-song, as a tie-break** between two finalist variants on a contested song.
+5. **Use odd runs for real comparisons.** Historical notes in this program used `n=2`, but
+   `claudedocs/06-block1-implementation-plan.md` supersedes that for any inferential baseline or
+   variant comparison: use an **odd** number of runs per song so every song collapses to a
+   majority outcome and the full `n=9` is preserved. Treat even-run histories as legacy fallback
+   only. A practical default is `regen.ts --runs 3` with `evaluate.ts --limit 3`.
 
 ---
 
@@ -131,11 +132,11 @@ so a fresh session can resume mid-phase, matching the existing session-5.5 conve
 # tier1-only audit of a single read
 bun run voice-audit --tier 1 --file <path>
 
-# generate n=2 candidates for v17 across all 9 gold songs, score tier1, record runs
-bun scripts/voice-audit/regen.ts --version 17 --songs <gold-keys> --runs 2
+# generate n=3 candidates for v17 across all 9 gold songs, score tier1, record runs
+bun scripts/voice-audit/regen.ts --version 17 --songs <gold-keys> --runs 3
 
-# pairwise-judge stored v17 runs vs gold (n=2 already the default --limit)
-bun scripts/voice-audit/evaluate.ts --version 17 --limit 2
+# pairwise-judge stored v17 runs vs gold at an odd run count
+bun scripts/voice-audit/evaluate.ts --version 17 --limit 3
 
 # aggregate tier1 across stored runs
 bun scripts/voice-audit/report-experiments.ts

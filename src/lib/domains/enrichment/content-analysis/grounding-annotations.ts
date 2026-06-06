@@ -100,3 +100,15 @@ export function renderAnnotationsBlock(selected: SelectedAnnotation[]): string {
 function collapse(text: string): string {
 	return text.replace(/\s+/g, " ").trim();
 }
+
+// Wraps a rendered block for the v17 generation prompt's {annotations} slot: a one-line header
+// naming what the notes are and that they are trusted grounding, then the block. Empty block → ""
+// so the optional slot collapses to nothing. The selection and source are identical to what the
+// grounding judge sees (renderAnnotationsBlock above); only the framing differs — this addresses
+// the writer, the judge's prompt addresses the auditor.
+export function renderAnnotationsBlockForPrompt(block: string): string {
+	if (!block.trim()) return "";
+	return `Fan and editor annotations that cleared a vote gate (>15 votes). Treat what they state as grounding you can trust and build on, even where the lyrics do not spell it out:
+
+${block}`;
+}

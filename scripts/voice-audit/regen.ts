@@ -15,6 +15,7 @@
 //   bun scripts/voice-audit/regen.ts --model gemini-2.5-pro   # try a stronger model
 
 import { Result } from "better-result";
+import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { z } from "zod";
@@ -23,6 +24,7 @@ import {
 	ConceptReadSchema,
 	type ConceptRead,
 } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import { renderAnnotationsBlockForPrompt } from "@/lib/domains/enrichment/content-analysis/grounding-annotations";
 import {
 	ACTIVE_LYRICAL_VERSION,
 	getLyricalPrompt,
@@ -31,10 +33,43 @@ import { resolveLlmConfig } from "@/lib/integrations/llm/config";
 import { LlmService, type LlmProviderName } from "@/lib/integrations/llm/service";
 import { DataFetcher } from "../prompt-lab/data-fetcher";
 import type { TestSong } from "../prompt-lab/test-songs";
+import { loadGoldExemplars, renderExemplarBlock, type GoldExemplar } from "./exemplars";
 import { makeRunId, recordRun, tallyHits } from "./experiments";
+import { loadGroundingContext } from "./lyrics-context";
 import { runAllRules } from "./tier1/rules";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const LYRICS_DIR = join(SCRIPT_DIR, "exemplars", "lyrics");
+
+// Few-shot pool for the v17 {example} slot, in fixed priority order. All three are golds. For a
+// given song we take the first EXAMPLE_COUNT entries that are NOT that song (leave-one-out), so a
+// song never sees its own gold as an example. A non-pool target song (e.g. a non-gold harness
+// song) takes the first two pool entries unchanged. The fixed prod pair (Not Like Us + Pink Pony
+// Club) falls out of this rule for any song outside the pool. See plan WP1 "Locked decisions".
+export const EXEMPLAR_POOL_KEYS = ["not-like-us", "pink-pony-club", "motion-sickness"];
+export const EXAMPLE_COUNT = 2;
+
+export function selectExemplars(
+	currentKey: string,
+	byKey: Map<string, GoldExemplar>,
+): GoldExemplar[] {
+	const out: GoldExemplar[] = [];
+	for (const key of EXEMPLAR_POOL_KEYS) {
+		if (out.length >= EXAMPLE_COUNT) break;
+		if (key === currentKey) continue; // leave-one-out: never inject the song's own gold
+		const gold = byKey.get(key);
+		if (gold) out.push(gold);
+	}
+	return out;
+}
+
+// The current song's own vote-gated annotations — NOT leave-one-out, because a song seeing its
+// own annotations is not leakage (plan WP1.7). Only the nine golds ship a lyrics+annotations
+// file; any other harness song gets an empty block.
+function annotationsForKey(key: string): string {
+	if (!existsSync(join(LYRICS_DIR, `${key}.json`))) return "";
+	return renderAnnotationsBlockForPrompt(loadGroundingContext(key).annotationsBlock);
+}
 
 interface HarnessSong extends TestSong {
 	// Stable slug used to select songs from the CLI and to group experiment runs.
@@ -90,6 +125,9 @@ const TIERS: Record<string, string[]> = {
 	stress: ["forever", "beautiful-things", "pink-pony-club"],
 	// The full 10-song lyric-diagnostic spread (failure-mode types: hearted-read-spec.md §5).
 	diagnostic: ["gods-plan", "houdini", "forever", "no-sex-for-ben", "dtmf", "ribs", "beautiful-things", "as-it-was", "pink-pony-club", "thinkin-bout-you"],
+	// The nine promoted golds — the canonical comparison set for baselines and variant runs.
+	// Every key here is also an exemplars/index.json entry, so each one has a gold to judge against.
+	golds: ["not-like-us", "drivers-license", "blinding-lights", "motion-sickness", "dtmf", "no-sex-for-ben", "beautiful-things", "pink-pony-club", "as-it-was"],
 	final: SONGS.map((s) => s.key),
 };
 
@@ -150,13 +188,19 @@ function buildPrompt(
 	genres: string[],
 	audioFeatures: string,
 	lyrics: string,
+	exampleText: string,
+	annotations: string,
 ): string {
+	// Function replacers throughout: gold prose and annotations can contain "$", which the
+	// string form of .replace would interpret as a special replacement pattern.
 	return template
 		.replace("{artist}", () => song.artist)
 		.replace("{title}", () => song.title)
 		.replace("{genres}", () => (genres.length ? genres.join(", ") : "Unknown"))
 		.replace("{audio_features}", () => audioFeatures)
-		.replace("{lyrics}", () => lyrics);
+		.replace("{lyrics}", () => lyrics)
+		.replace("{example}", () => exampleText)
+		.replace("{annotations}", () => annotations);
 }
 
 function printAudit(
@@ -216,6 +260,15 @@ async function main() {
 		useCache: true,
 	});
 
+	// v17+ injects a leave-one-out {example} few-shot block and the song's own vote-gated
+	// {annotations}. Only build the gold lookup when the active template actually has the slots.
+	const wantsInjection =
+		prompt.template.includes("{example}") ||
+		prompt.template.includes("{annotations}");
+	const byKey = wantsInjection
+		? new Map([...loadGoldExemplars().values()].map((g) => [g.key, g]))
+		: new Map<string, GoldExemplar>();
+
 	const detailed = songs.length === 1 && flags.runs === 1;
 	const results: SongResult[] = [];
 
@@ -229,12 +282,19 @@ async function main() {
 			continue;
 		}
 
+		const exampleText = wantsInjection
+			? renderExemplarBlock(selectExemplars(song.key, byKey))
+			: "";
+		const annotations = wantsInjection ? annotationsForKey(song.key) : "";
+
 		const builtPrompt = buildPrompt(
 			song,
 			prompt.template,
 			data.genres.length ? data.genres : (song.fallbackGenres ?? []),
 			data.audioFeaturesFormatted,
 			data.lyrics,
+			exampleText,
+			annotations,
 		);
 
 		const result: SongResult = { label, high: [], medium: [], dash: [] };
@@ -312,7 +372,10 @@ async function main() {
 	process.exit(0);
 }
 
-main().catch((err) => {
-	console.error(err);
-	process.exit(2);
-});
+// Guarded so tests can import the pure selection helpers without running a generation pass.
+if (import.meta.main) {
+	main().catch((err) => {
+		console.error(err);
+		process.exit(2);
+	});
+}

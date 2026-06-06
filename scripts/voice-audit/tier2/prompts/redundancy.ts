@@ -50,8 +50,8 @@ contradiction: ${a.contradiction ?? "(none)"}
 arc:
 ${arc}
 
-Return:
-- distinct: true if each prose field earns its keep. False ONLY if two fields are the same statement at the same altitude with no new angle (dead-weight reword, not coherence or dramatization).
+Work in this order — reason first, decide last:
+- rationale: 1–3 short bullets (under 20 words each). Compare the fields and weigh coherence vs dead-weight reword before judging.
 - redundant_pairs: when not distinct, name each duplicated pair and the near-verbatim overlap, e.g. 'contradiction re-asserts take: "<phrase>"'. Empty array if distinct.
-- rationale: 1–3 short bullets (under 20 words each).`;
+- distinct: decide this LAST. true if each prose field earns its keep. False ONLY if two fields are the same statement at the same altitude with no new angle (dead-weight reword, not coherence or dramatization).`;
 }
