@@ -29,8 +29,18 @@ const AnnotationInfoSchema = z.object({
 	text: z.string(),
 	verified: z.boolean(),
 	votes_total: z.number(),
-	pinnedRole: z.string().optional(),
-	state: z.string().optional(),
+	// The worker writes an absent role/state as `undefined`, which Postgres jsonb persists as
+	// null, so the read path must accept null and normalize it back to undefined to match
+	// AnnotationInfo. The vast majority of stored annotations carry pinnedRole: null — without
+	// this the whole document fails to parse and the cache silently refetches from Genius.
+	pinnedRole: z
+		.string()
+		.nullish()
+		.transform((v) => v ?? undefined),
+	state: z
+		.string()
+		.nullish()
+		.transform((v) => v ?? undefined),
 	geniusAnnotationId: z.number().optional(),
 });
 
@@ -98,7 +108,7 @@ function toDocumentJson(document: LyricsDocument): Json {
 	};
 }
 
-function parseDocument(raw: Json): Result<LyricsDocument, DbError> {
+export function parseDocument(raw: Json): Result<LyricsDocument, DbError> {
 	const parsed = LyricsDocumentSchema.safeParse(raw);
 	if (!parsed.success) {
 		return Result.err(
