@@ -1,0 +1,148 @@
+{
+  "runId": "2026-06-07T00-14-29-596Z__phoebe-bridgers-motion-sickness__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:14:29.597Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 12
+  },
+  "byRule": {
+    "burstiness": 4,
+    "lexical-repetition": 8
+  },
+  "tokens": 13167,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "A toxic relationship leaves a lingering illness, an emotional motion sickness th",
+      "severity": "low",
+      "note": "CV=0.220 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "She hates him for what he did, yet she misses him like a little kid.",
+      "severity": "low",
+      "note": "CV=0.127 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[1].scene",
+      "span": "She sees him clearly now, on the outside looking through, as he throws rocks aro",
+      "severity": "low",
+      "note": "CV=0.208 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[2].scene",
+      "span": "He was bored when they met, a man in a band when she was born, and that age gap ",
+      "severity": "low",
+      "note": "CV=0.168 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "man",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×11 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "like",
+      "severity": "low",
+      "note": "repeated ×7 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "drown",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "tries",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "wonders",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "sound",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[0].scene",
+      "span": "now",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "nausea in a moving car, windows down",
+    "lens": "a toxic past as a chronic illness",
+    "tension": "Persistent Disorientation",
+    "take": "A toxic relationship leaves a lingering illness, an emotional motion sickness that makes her constantly nauseous. She hates the man for what he did, but she also misses him like a child. She faked her feelings throughout, yet the memory of him still haunts her, a silent abuse that no scream can drown out. He was bored when they met, a man in a band when she was born, and she tries to stay clean from him like an addiction. The windows are down, but the air still feels thick with his presence, and she wonders if she should just surrender to the sound of him again.",
+    "contradiction": "She tries to drown him out, but she wonders what would happen if she surrendered to his sound.",
+    "arc": [
+      {
+        "label": "The Lingering Nausea",
+        "mood": "Conflicted Discomfort",
+        "scene": "She hates him for what he did, yet she misses him like a little kid. She faked her feelings throughout the relationship, but now she can hardly feel anything at all. He sent her to hypnotherapy, a futile attempt to fix her for his own comfort, and she let him slide."
+      },
+      {
+        "label": "The Clear View",
+        "mood": "Bitter Clarity",
+        "scene": "She sees him clearly now, on the outside looking through, as he throws rocks around his own glass house. She is glad she made it out, even if she is sorry it all went down like it did. His silent abuse haunts her, and no scream can drown him out. She notices his affected English accent, a small detail that now irritates her."
+      },
+      {
+        "label": "The Unresolved Pull",
+        "mood": "Addictive Longing",
+        "scene": "He was bored when they met, a man in a band when she was born, and that age gap now feels like a chasm. She tries to stay clean from him, like an addiction, but the emotional motion sickness persists. She wonders what would happen if she just surrendered to his sound, the very thing she tried to escape."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I hate you for what you did / And I miss you like a little kid"
+      },
+      {
+        "line": "I have emotional motion sickness"
+      },
+      {
+        "line": "There are no words in the English language / I could scream to drown you out"
+      },
+      {
+        "line": "You, you were in a band when I was born"
+      },
+      {
+        "line": "And I wanna know what would happen / If I surrender to the sound"
+      }
+    ],
+    "texture": "An acoustic indie folk sound carries a moderate energy and a subtle, almost danceable sway. Fluctuating stereo panning and tremolo effects create a disorienting, nauseous feeling, like the song itself is rocking you gently off balance."
+  }
+}

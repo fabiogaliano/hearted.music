@@ -1,0 +1,163 @@
+{
+  "runId": "2026-06-07T00-16-33-734Z__benson-boone-beautiful-things__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:16:33.734Z",
+  "song": "Benson Boone — Beautiful Things",
+  "spotifyTrackId": "beautiful-things",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 5,
+    "medium": 3,
+    "low": 7
+  },
+  "byRule": {
+    "antithesis": 1,
+    "puffery-adjective": 1,
+    "participial-closure": 3,
+    "structural-section": 1,
+    "mood-width": 2,
+    "rule-of-three": 3,
+    "lexical-repetition": 4
+  },
+  "tokens": 9002,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "take",
+      "span": "is not a secure state but",
+      "severity": "high"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "take",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", seeing his family, and found a girl his parents love.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", feeling settled and sane, and thanks God for these gifts.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", wanting to get used to this feeling, but the man who stands to lose her is the most terrified.",
+      "severity": "high"
+    },
+    {
+      "rule": "structural-section",
+      "field": "arc[2].scene",
+      "span": "refrain",
+      "severity": "high"
+    },
+    {
+      "rule": "mood-width",
+      "field": "arc[0].mood",
+      "span": "Contentment",
+      "severity": "medium"
+    },
+    {
+      "rule": "mood-width",
+      "field": "arc[1].mood",
+      "span": "Terror",
+      "severity": "medium"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "girl his parents love, a sense of sanity, and a renewed faith",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[0].scene",
+      "span": "he has in years, seeing his family, and found a girl his",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[0].scene",
+      "span": "might have it all, feeling settled and sane, and thanks God for these",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "beautiful",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "love",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "god",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "lose",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a beautiful thing held in a trembling hand",
+    "lens": "blessing as a ticking clock",
+    "tension": "Desperate Dread",
+    "take": "He finally has everything he ever wanted: a girl his parents love, a sense of sanity, and a renewed faith. This abundance, however, does not bring peace; it brings a profound terror of loss. He thanks God for these beautiful things, but immediately fears that God can take them away. His happiness is not a secure state but a constant, anxious plea to keep what he has, because the man who stands to lose it all is the most terrified.",
+    "contradiction": "The blessing of love is also the source of his deepest fear.",
+    "arc": [
+      {
+        "label": "The Fullness",
+        "mood": "Contentment",
+        "scene": "Life finally feels right. He is doing better than he has in years, seeing his family, and found a girl his parents love. He thinks he might have it all, feeling settled and sane, and thanks God for these gifts."
+      },
+      {
+        "label": "The Trembling Hand",
+        "mood": "Terror",
+        "scene": "The thought of losing it all immediately follows the blessing. He holds her every night, wanting to get used to this feeling, but the man who stands to lose her is the most terrified. He pleads directly to God not to take these beautiful things."
+      },
+      {
+        "label": "The Anxious Wait",
+        "mood": "Persistent Dread",
+        "scene": "Even with his mind found and faith returning, the question lingers: if everything is good and great, why does he sit and wait until it is gone? He has peace and love, but he is up at night, convinced he just might lose it all. The plea becomes a constant, desperate refrain."
+      }
+    ],
+    "lines": [
+      {
+        "line": "She'll come and stay the night, and I think I might have it all"
+      },
+      {
+        "line": "But I know the things He gives me, He can take away"
+      },
+      {
+        "line": "But there's no man as terrified as the man who stands to lose you"
+      },
+      {
+        "line": "Don't take / These beautiful things that I've got"
+      },
+      {
+        "line": "If everything's good and it's great, why do I sit and wait 'til it's gone?"
+      }
+    ],
+    "texture": null
+  }
+}

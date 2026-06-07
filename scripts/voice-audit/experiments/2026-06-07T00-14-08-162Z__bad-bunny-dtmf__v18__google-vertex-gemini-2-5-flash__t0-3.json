@@ -1,0 +1,132 @@
+{
+  "runId": "2026-06-07T00-14-08-162Z__bad-bunny-dtmf__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:14:08.162Z",
+  "song": "Bad Bunny — DtMF",
+  "spotifyTrackId": "3sK8wGT43QFpWrvNQsrQya",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 0,
+    "low": 8
+  },
+  "byRule": {
+    "participial-closure": 2,
+    "rule-of-three": 1,
+    "lexical-repetition": 7
+  },
+  "tokens": 10142,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", playing dominoes with your grandfather and celebrating life with your people.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", enjoying every moment with your people.",
+      "severity": "high"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "joy in your roots, your family, and your friends",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "sunset",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "san",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "juan",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "more",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "regret",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "people",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "otro sunset bonito que veo en san juan",
+    "lens": "regret into present belonging",
+    "tension": "Wistful Belonging",
+    "take": "You see another beautiful sunset in San Juan, but your mind drifts to a past love. You wish you had taken more photos and given more affection when you had the chance. This regret for what was lost pushes you to cherish the present. You find comfort and joy in your roots, your family, and your friends, playing dominoes with your grandfather and celebrating life with your people. The lingering thought of a past relationship doesn't paralyze you; it becomes a reminder to be fully present in the moments you have now.",
+    "contradiction": "The regret for what was lost makes him appreciate what he has, but the longing for the past remains.",
+    "arc": [
+      {
+        "label": "Lingering Regret",
+        "mood": "Melancholy Reflection",
+        "scene": "You watch a beautiful sunset in San Juan, but your thoughts are on a past love. You wish you had taken more photos and given more kisses and hugs when you had the chance. The memory of her still makes you sigh."
+      },
+      {
+        "label": "Present Solace",
+        "mood": "Communal Joy",
+        "scene": "You spend the day with your grandfather, playing dominoes. You tell him you don't think of her anymore, even if it's not true. Surrounded by your friends and family, you want to drink and talk until they kick you out. You are here, now, enjoying every moment with your people."
+      },
+      {
+        "label": "Enduring Connection",
+        "mood": "Grateful Acceptance",
+        "scene": "Life moves on; your brother Bernie and Jan have children. You are no longer focused on superficial things but on what truly matters. The regret for past moments is still there, but it is framed by the enduring presence of your loved ones. You hope your people never move away."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Otro sunset bonito que veo en San Juan"
+      },
+      {
+        "line": "Debí tirar más fotos de cuando te tuve"
+      },
+      {
+        "line": "Ey, hoy voy a estar con abuelo to'l día, jugando dominó"
+      },
+      {
+        "line": "Ojalá que los mío' nunca se muden"
+      },
+      {
+        "line": "Ya Bernie tiene el nene y Jan la nena"
+      }
+    ],
+    "texture": "A danceable reggaeton beat with salsa influences moves you, but its low energy and valence carry a deep, almost mournful, undertone."
+  }
+}

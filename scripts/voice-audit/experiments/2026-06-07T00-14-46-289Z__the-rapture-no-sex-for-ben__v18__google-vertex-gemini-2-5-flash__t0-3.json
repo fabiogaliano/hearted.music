@@ -1,0 +1,137 @@
+{
+  "runId": "2026-06-07T00-14-46-289Z__the-rapture-no-sex-for-ben__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:14:46.290Z",
+  "song": "The Rapture — No Sex for Ben",
+  "spotifyTrackId": "no-sex-for-ben",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 2,
+    "low": 7
+  },
+  "byRule": {
+    "antithesis": 1,
+    "puffery-adjective": 2,
+    "participial-closure": 1,
+    "rule-of-three": 2,
+    "lexical-repetition": 3,
+    "dash": 2
+  },
+  "tokens": 7961,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "take",
+      "span": "is not just a consequence;",
+      "severity": "high"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "take",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "arc[2].scene",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", painting a picture of a 'big liar,' a 'fat trucker,' and a 'cheap faker.",
+      "severity": "high"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "a faker, a cheap sucker, and attempting to 'snatch the",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[0].scene",
+      "span": "sealed with a public, repeated, and absolute judgment",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "public",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "ben",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "rymer",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "take",
+      "span": "—",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "take",
+      "span": "—",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "a public square, chanting his name",
+    "lens": "public shaming as punishment",
+    "tension": "Relentless Condemnation",
+    "take": "The song is a public, repeated declaration of Ben Rymer's unworthiness. His name is chanted as a curse, and the specific accusations against him — being a liar, a faker, a cheap sucker, and attempting to 'snatch the kitty off his girlfriend's mother' — build a case for his social and intimate ostracization. The denial of sex is not just a consequence; it is the core of the punishment, a collective verdict enforced through relentless repetition.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "The Declaration",
+        "mood": "Aggressive Accusation",
+        "scene": "Ben Rymer is named. His fate is sealed with a public, repeated, and absolute judgment. He is 'trash people,' and the consequence is clear."
+      },
+      {
+        "label": "The Indictment",
+        "mood": "Specific Charges",
+        "scene": "The accusations pile up, painting a picture of a 'big liar,' a 'fat trucker,' and a 'cheap faker.' His character is dismantled piece by piece, each new insult adding to his public disgrace."
+      },
+      {
+        "label": "The Verdict",
+        "mood": "Collective Enforcement",
+        "scene": "The ultimate transgression is revealed, a violation so profound it demands collective action. The call to 'freeze them up' is a final, decisive act of ostracization, a communal rejection of Ben Rymer."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Ben Rymer, trash people"
+      },
+      {
+        "line": "No sex, no sex for Ben Rymer now"
+      },
+      {
+        "line": "One ladder, big liar"
+      },
+      {
+        "line": "Try to snatch the kitty off his girlfriend's mother"
+      },
+      {
+        "line": "We gotta freeze them up now"
+      }
+    ],
+    "texture": null
+  }
+}

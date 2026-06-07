@@ -1,0 +1,111 @@
+{
+  "runId": "2026-06-07T00-15-32-021Z__the-rapture-no-sex-for-ben__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:15:32.022Z",
+  "song": "The Rapture — No Sex for Ben",
+  "spotifyTrackId": "no-sex-for-ben",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 3,
+    "medium": 0,
+    "low": 4
+  },
+  "byRule": {
+    "antithesis": 1,
+    "participial-closure": 2,
+    "lexical-repetition": 4
+  },
+  "tokens": 8083,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "take",
+      "span": "isn't just a personal slight;",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", listing his offenses from being \"trash people\" to a \"big liar\" and a \"cheap faker.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", culminating in a salacious claim about his girlfriend's mother, solidifying his status as an outcast.",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "ben",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "rymer",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "cheap",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a crowd chanting one name, denying him everything",
+    "lens": "public shaming as social control",
+    "tension": "Collective Scorn",
+    "take": "The song is a public trial, a collective judgment against Ben Rymer. It names him directly and repeatedly, listing his offenses from being \"trash people\" to a \"big liar\" and a \"cheap faker.\" The community pronounces his punishment: \"No sex for Ben.\" This isn't just a personal slight; it's a social decree, enforced by the group's united voice. The accusations escalate, culminating in a salacious claim about his girlfriend's mother, solidifying his status as an outcast. The song calls for a collective action to \"freeze them up,\" ensuring the sentence is carried out.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "The Verdict",
+        "mood": "Public Condemnation",
+        "scene": "A name rings out, repeated and condemned. Ben Rymer is labeled \"trash people,\" and the sentence is delivered immediately: \"No sex for Ben.\" The judgment is swift and absolute."
+      },
+      {
+        "label": "The Indictment",
+        "mood": "Mounting Accusations",
+        "scene": "More specific charges pile up against him. He is a \"big liar,\" a \"fat trucker, cheap sucker,\" and a \"cheap faker,\" compared to a \"poor man's Arthur Baker.\" The accusations grow more personal and humiliating."
+      },
+      {
+        "label": "The Enforcement",
+        "mood": "Collective Action",
+        "scene": "The most scandalous accusation is hurled, about his girlfriend's mother. This final charge galvanizes the group. A call goes out to \"freeze them up,\" a united front to ensure Ben Rymer's social exclusion is complete."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Ben Rymer, trash people"
+      },
+      {
+        "line": "No sex, no sex for Ben Rymer now"
+      },
+      {
+        "line": "One ladder, big liar"
+      },
+      {
+        "line": "Try to snatch the kitty off his girlfriend's mother"
+      },
+      {
+        "line": "We gotta freeze them up now"
+      }
+    ],
+    "texture": null
+  }
+}

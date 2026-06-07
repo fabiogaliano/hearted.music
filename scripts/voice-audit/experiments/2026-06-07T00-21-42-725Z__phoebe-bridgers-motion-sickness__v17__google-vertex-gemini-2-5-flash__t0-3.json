@@ -1,0 +1,163 @@
+{
+  "runId": "2026-06-07T00-21-42-725Z__phoebe-bridgers-motion-sickness__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:21:42.725Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 5,
+    "medium": 0,
+    "low": 9
+  },
+  "byRule": {
+    "participial-closure": 5,
+    "burstiness": 1,
+    "rule-of-three": 1,
+    "lexical-repetition": 7
+  },
+  "tokens": 12473,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", carrying a mid-tempo beat that feels almost danceable despite the heavy subject.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", mirroring the emotional motion sickness.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", bleeding on his back.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", recognizing the self-destructive behavior that made the relationship toxic.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", attempting to drown out his presence.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The emotional motion sickness is a constant, physical-like discomfort from a dee",
+      "severity": "low",
+      "note": "CV=0.171 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "You recognize the abuse, the gaslighting, and the manipulation",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "emotional",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "motion",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "sickness",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "like",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "sound",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[0].scene",
+      "span": "things",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "somebody roll the windows down",
+    "lens": "a toxic past as a persistent illness",
+    "tension": "Lingering Sickness",
+    "take": "The emotional motion sickness is a constant, physical-like discomfort from a deeply damaging relationship. You hate what he did, but you still miss him like a child, a contradiction that leaves you constantly off-balance. This nausea makes you want to roll the windows down, even as you acknowledge you faked it every time. You recognize the abuse, the gaslighting, and the manipulation, but the experience still haunts you, a silent scream that cannot be drowned out.",
+    "contradiction": "You want to drown him out, but you also wonder what would happen if you surrendered to the sound.",
+    "arc": [
+      {
+        "label": "Conflicted Nausea",
+        "mood": "Conflicted Longing",
+        "scene": "You are caught between hating what he did and missing him like a child, a feeling that makes you fake your way through things. The emotional motion sickness has already set in, a constant internal churning."
+      },
+      {
+        "label": "Clear-Eyed Escape",
+        "mood": "Resolute Clarity",
+        "scene": "From the outside, you see him throwing rocks in his own glass house, bleeding on his back. You are glad you made it out, recognizing the self-destructive behavior that made the relationship toxic."
+      },
+      {
+        "label": "Lingering Haunting",
+        "mood": "Persistent Annoyance",
+        "scene": "His behavior still follows you everywhere. You remember the hypnotherapy he sent you to, and even his affected English accent becomes a symbol of the things that got on your nerves, things you cannot change now."
+      },
+      {
+        "label": "Unresolved Pull",
+        "mood": "Ambivalent Struggle",
+        "scene": "You try to stay clean and live without him, attempting to drown out his presence. Yet, a part of you still wonders what would happen if you just surrendered to the sound, to the pull of the past."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I hate you for what you did\nAnd I miss you like a little kid"
+      },
+      {
+        "line": "I faked it every time, but that's alright\nI can hardly feel anything"
+      },
+      {
+        "line": "I have emotional motion sickness\nSomebody roll the windows down"
+      },
+      {
+        "line": "I'm on the outside looking through\nYou're throwing rocks around your room"
+      },
+      {
+        "line": "I try to stay clean and live without\nAnd I wanna know what would happen\nIf I surrender to the sound"
+      }
+    ],
+    "texture": "The indie folk sound is acoustic and vocal-driven, carrying a mid-tempo beat that feels almost danceable despite the heavy subject. Fluctuating stereo panning and subtle speed changes create a disorienting, queasy feeling, mirroring the emotional motion sickness."
+  }
+}

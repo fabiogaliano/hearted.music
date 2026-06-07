@@ -1,0 +1,130 @@
+{
+  "runId": "2026-06-07T00-22-21-251Z__chappell-roan-pink-pony-club__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:22:21.251Z",
+  "song": "Chappell Roan — Pink Pony Club",
+  "spotifyTrackId": "pink-pony-club",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 0,
+    "low": 7
+  },
+  "byRule": {
+    "participial-closure": 2,
+    "lexical-repetition": 7
+  },
+  "tokens": 15027,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", ignoring the crazy visions of her mother's disappointment, for the wild promise of Los Angeles.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", asking what she has done.",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "stage",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "heels",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "mother",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "every",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "life",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "queer",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "dancing",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "the stage in her heels, where she belongs",
+    "lens": "defiance as a joyful homecoming",
+    "tension": "Defiant Joy",
+    "take": "She left the Midwest, ignoring the crazy visions of her mother's disappointment, for the wild promise of Los Angeles. She found a special place there, a club where boys and girls can all be queens every single day. This is a homecoming, not an escape. She dances on the stage in her heels, fully herself, surrounded by a chosen family that accepts her. Her mother's imagined scream still echoes, a distant reminder of the life she left behind, but it cannot touch the joy she finds in this new, unapologetically queer world. She keeps dancing, a defiant celebration of who she has become.",
+    "contradiction": "She finds her true self and belonging in a queer community, yet she carries her mother's disapproving voice as a constant, imagined presence.",
+    "arc": [
+      {
+        "label": "The Wicked Dream",
+        "mood": "Restless Longing",
+        "scene": "She sees crazy visions of herself in Los Angeles, a place where boys and girls can all be queens every single day. This pulls her away from the Midwest, from a life her mother wanted for her. She knows leaving will cause a scene."
+      },
+      {
+        "label": "The Pink Pony Club",
+        "mood": "Liberated Joy",
+        "scene": "She is on the stage in her heels, dancing. This is where she belongs, surrounded by lovers in the bathroom and a line outside the door. Every night proves that leaving was the right choice."
+      },
+      {
+        "label": "Mama's Scream",
+        "mood": "Persistent Defiance",
+        "scene": "Her mother's voice still calls, a southern drawl a thousand miles away, asking what she has done. She hears it, but it cannot stop her. She still loves Tennessee, but she loves her new life more."
+      },
+      {
+        "label": "The Unending Dance",
+        "mood": "Unwavering Resilience",
+        "scene": "She keeps on dancing, a defiant celebration of survival and persistence. This is her commitment to queer joy and safety, a tangible space she protects."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I can't ignore the crazy visions of me in L.A."
+      },
+      {
+        "line": "Where boys and girls can all be queens every single day"
+      },
+      {
+        "line": "She sees her baby girl, I know she's gonna scream"
+      },
+      {
+        "line": "On the stage in my heels, it's where I belong"
+      },
+      {
+        "line": "I'm gonna keep on dancing"
+      }
+    ],
+    "texture": null
+  }
+}

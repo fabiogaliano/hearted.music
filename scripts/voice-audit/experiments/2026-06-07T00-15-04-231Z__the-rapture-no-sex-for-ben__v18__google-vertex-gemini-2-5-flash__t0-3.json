@@ -1,0 +1,112 @@
+{
+  "runId": "2026-06-07T00-15-04-231Z__the-rapture-no-sex-for-ben__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:15:04.231Z",
+  "song": "The Rapture — No Sex for Ben",
+  "spotifyTrackId": "no-sex-for-ben",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 0,
+    "low": 5
+  },
+  "byRule": {
+    "participial-closure": 1,
+    "book-report-opener": 1,
+    "rule-of-three": 1,
+    "lexical-repetition": 4
+  },
+  "tokens": 8159,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", turning the chant into a command to 'freeze them up.",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "take",
+      "span": "This is a public decree, a so",
+      "severity": "high"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[1].scene",
+      "span": "It is simple, direct, and final",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "sex",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "ben",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "social",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "collective",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a crowd chanting 'no sex for ben'",
+    "lens": "a public shaming as a social execution",
+    "tension": "Public Scorn",
+    "take": "This is a public decree, a social banishment for Ben Rymer. The charges are clear: he is a 'big liar,' a 'cheap faker,' and he tried to 'snatch the kitty off his girlfriend's mother.' The verdict is delivered by a collective voice, and the sentence is absolute: 'no sex for Ben.' It is a social execution, carried out with a chant.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "The Indictment",
+        "mood": "Collective Condemnation",
+        "scene": "A collective voice points to Ben Rymer. He is a 'trash people,' a 'big liar,' and a 'cheap faker.' The charges are laid out for everyone to hear."
+      },
+      {
+        "label": "The Verdict",
+        "mood": "Absolute Banishment",
+        "scene": "The crowd delivers the sentence. It is simple, direct, and final: 'no sex for Ben.' This is the social execution, chanted repeatedly."
+      },
+      {
+        "label": "The Specific Charge",
+        "mood": "Heightened Fury",
+        "scene": "The specific, most egregious charge is revealed: he tried to 'snatch the kitty off his girlfriend's mother.' This fuels the collective anger, turning the chant into a command to 'freeze them up.'"
+      }
+    ],
+    "lines": [
+      {
+        "line": "Ben Rymer, trash people"
+      },
+      {
+        "line": "No sex, no sex for Ben Rymer now"
+      },
+      {
+        "line": "Lookin' like a poor man's Arthur Baker now"
+      },
+      {
+        "line": "Try to snatch the kitty off his girlfriend's mother"
+      },
+      {
+        "line": "We gotta freeze them up now"
+      }
+    ],
+    "texture": null
+  }
+}

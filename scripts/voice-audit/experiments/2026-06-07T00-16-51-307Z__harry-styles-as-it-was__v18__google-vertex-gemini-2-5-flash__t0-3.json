@@ -1,0 +1,143 @@
+{
+  "runId": "2026-06-07T00-16-51-307Z__harry-styles-as-it-was__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:16:51.307Z",
+  "song": "Harry Styles — As It Was",
+  "spotifyTrackId": "as-it-was",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 4,
+    "medium": 0,
+    "low": 7
+  },
+  "byRule": {
+    "antithesis": 1,
+    "participial-closure": 3,
+    "lexical-repetition": 7
+  },
+  "tokens": 12267,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "arc[1].scene",
+      "span": "is not the same as it was,",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", wanting to say goodnight.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", struggling with honesty and vulnerability, unable to let anyone in.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", asking why you are sitting on the floor.",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "closed",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "door",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "know",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "alone",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "back",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "talk",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "want",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a missed call, a closed door",
+    "lens": "vulnerability as a locked door",
+    "tension": "Wary Acceptance",
+    "take": "The world changed, and you know it. You sit alone on the floor, held back by gravity, while calls come in asking what kind of pills you are on. You know you are no good alone, but you cannot bring yourself to answer the phone or talk about the way that it was. You want a hand to hold, but you keep the door closed, stuck in the quiet of what is now.",
+    "contradiction": "You want someone to hold out the palm of their hand, but you refuse to talk about the past that keeps you isolated.",
+    "arc": [
+      {
+        "label": "The Voicemail",
+        "mood": "Distant Longing",
+        "scene": "A goddaughter's voice calls out, wanting to say goodnight. You are behind a closed door, struggling with honesty and vulnerability, unable to let anyone in."
+      },
+      {
+        "label": "The New Normal",
+        "mood": "Stagnant Reality",
+        "scene": "Gravity holds you back. Nothing to say. You know it is not the same as it was, and you cannot go backwards."
+      },
+      {
+        "label": "The Intervention",
+        "mood": "Unheard Plea",
+        "scene": "The phone rings, and a voice tells you that you are no good alone, asking why you are sitting on the floor. You ring the bell, but nobody comes to help."
+      },
+      {
+        "label": "The Refusal",
+        "mood": "Stubborn Avoidance",
+        "scene": "You do not want to talk about the way that it was. You refuse to open up about the emotions you carry, even as they cycle back around."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Come on, Harry, we wanna say goodnight to you"
+      },
+      {
+        "line": "Gravity's holdin' me back"
+      },
+      {
+        "line": "You know it's not the same as it was"
+      },
+      {
+        "line": "'Harry, you're no good alone\nWhy are you sitting at home on the floor?'"
+      },
+      {
+        "line": "I don't wanna talk about the way that it was"
+      }
+    ],
+    "texture": null
+  }
+}

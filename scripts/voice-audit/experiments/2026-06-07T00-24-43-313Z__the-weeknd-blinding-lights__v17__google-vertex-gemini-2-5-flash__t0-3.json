@@ -1,0 +1,192 @@
+{
+  "runId": "2026-06-07T00-24-43-313Z__the-weeknd-blinding-lights__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:24:43.313Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 4,
+    "medium": 0,
+    "low": 15
+  },
+  "byRule": {
+    "participial-closure": 4,
+    "burstiness": 1,
+    "rule-of-three": 2,
+    "lexical-repetition": 10,
+    "dash": 2
+  },
+  "tokens": 13304,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", speeding through the night, desperate to reach her.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", confessing a withdrawal from life itself.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", leaving him unable to see clearly without a specific touch.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", running out of time, speeding through it all.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The blinding lights of fame and the chaos of Sin City are a constant, disorienti",
+      "severity": "low",
+      "note": "CV=0.140 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "He is in withdrawal, alone, and unable to see clearly",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "touch is his anchor, his only trust, and his way to see",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "lights",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "sin",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "city",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "touch",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "unable",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "see",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "offers",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "time",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "desperate",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[1].scene",
+      "span": "—",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[1].scene",
+      "span": "—",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "the flashing lights of sin city, waiting for a touch",
+    "lens": "clarity as a desperate touch",
+    "tension": "Urgent Vulnerability",
+    "take": "The blinding lights of fame and the chaos of Sin City are a constant, disorienting force. He is in withdrawal, alone, and unable to see clearly. His past is full of drug abuse and loneliness, and the city offers no comfort. Only one person, her touch, can cut through the noise and bring him back. He runs out of time, speeding through the night, desperate to reach her. This touch is his anchor, his only trust, and his way to see.",
+    "contradiction": "The lights that blind him are the same lights that define his world.",
+    "arc": [
+      {
+        "label": "The Empty City",
+        "mood": "Lonely Vulnerability",
+        "scene": "He reaches out from a place of deep isolation, confessing a withdrawal from life itself. Sin City offers no judgment, but also no comfort, leaving him unable to see clearly without a specific touch."
+      },
+      {
+        "label": "The Blinding Rush",
+        "mood": "Disoriented Urgency",
+        "scene": "The lights of his life — flashing police cars, paparazzi, the city itself — blind him. He feels himself drowning in the night, running out of time, speeding through it all. Only one person offers an anchor."
+      },
+      {
+        "label": "The Anchor",
+        "mood": "Resolute Devotion",
+        "scene": "He makes a desperate return, unable to say what he needs over the phone. This time, he will not let her go. Her touch is the only thing that allows him to sleep, to see, to trust."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I've been tryna call"
+      },
+      {
+        "line": "I'm goin' through withdrawals"
+      },
+      {
+        "line": "Sin City's cold and empty"
+      },
+      {
+        "line": "I'm blinded by the lights"
+      },
+      {
+        "line": "No, I can't sleep until I feel your touch"
+      }
+    ],
+    "texture": "A driving synthwave beat pushes forward with high energy, but a low valence pulls it into a desperate urgency. It feels like a frantic, neon-lit chase through a city that never sleeps."
+  }
+}

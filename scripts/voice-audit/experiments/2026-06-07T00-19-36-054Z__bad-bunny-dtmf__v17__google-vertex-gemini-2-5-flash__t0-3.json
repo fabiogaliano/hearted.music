@@ -1,0 +1,180 @@
+{
+  "runId": "2026-06-07T00-19-36-054Z__bad-bunny-dtmf__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:19:36.054Z",
+  "song": "Bad Bunny — DtMF",
+  "spotifyTrackId": "3sK8wGT43QFpWrvNQsrQya",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 1,
+    "low": 14
+  },
+  "byRule": {
+    "participial-closure": 2,
+    "tension-mood-dedup": 1,
+    "burstiness": 1,
+    "rule-of-three": 3,
+    "lexical-repetition": 8,
+    "dash": 2
+  },
+  "tokens": 10287,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", playing dominoes with his abuelo, and celebrating his brother and friend becoming parents.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", playing dominoes with his abuelo, acknowledging the passage of time as his brother and creative director become parents.",
+      "severity": "high"
+    },
+    {
+      "rule": "tension-mood-dedup",
+      "field": "arc[2].mood",
+      "span": "Bittersweet Acceptance",
+      "severity": "medium",
+      "note": "duplicates tension \"Bittersweet Acceptance\""
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song finds its rhythm in the space between what was and what is.",
+      "severity": "low",
+      "note": "CV=0.223 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "past is a lesson, not a prison, and it pushes him to",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[1].scene",
+      "span": "He wants to drink, talk nonsense, and get 'loco' to push",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[2].scene",
+      "span": "wishes for more photos, more intimacy, and even more nudes",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "beautiful",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "sunset",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "san",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "juan",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "more",
+      "severity": "low",
+      "note": "repeated ×10 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "regret",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "missed",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "take",
+      "span": "—",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "take",
+      "span": "—",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "a beautiful sunset in San Juan, wishing for more pictures",
+    "lens": "regret into present living",
+    "tension": "Bittersweet Acceptance",
+    "take": "The song finds its rhythm in the space between what was and what is. Regret over missed moments with a past lover — more photos, more kisses, more hugs — fuels a deeper appreciation for the present. He sees another beautiful sunset in San Juan, surrounded by his people, playing dominoes with his abuelo, and celebrating his brother and friend becoming parents. The past is a lesson, not a prison, and it pushes him to embrace the joy of today, even if it means getting 'loco' and needing help.",
+    "contradiction": "The regret for what was missed is what makes him embrace what is now, but the missing never truly leaves.",
+    "arc": [
+      {
+        "label": "Nostalgic Regret",
+        "mood": "Lingering Sadness",
+        "scene": "He sees another beautiful sunset in San Juan, a place of deep roots and things missed by those who leave. His mind drifts to a past love. He wishes he had captured more moments, more affection, more of her."
+      },
+      {
+        "label": "Present Distraction",
+        "mood": "Urgent Escape",
+        "scene": "He is with his people, playing dominoes with his abuelo, acknowledging the passage of time as his brother and creative director become parents. He wants to drink, talk nonsense, and get 'loco' to push away the thoughts of what ended. He wants to enjoy the moment because tomorrow is not promised."
+      },
+      {
+        "label": "Enduring Connection",
+        "mood": "Bittersweet Acceptance",
+        "scene": "Despite the revelry and the passage of time, the core regret remains. He still wishes for more photos, more intimacy, and even more nudes. He acknowledges the enduring presence of his community and the need to live, but the longing for what was, and what could still be, persists."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Debí tirar más fotos de cuando te tuve"
+      },
+      {
+        "line": "Disfrutando de todas esas cosas que extrañan los que se van"
+      },
+      {
+        "line": "Ey, hoy voy a estar con abuelo to'l día, jugando dominó"
+      },
+      {
+        "line": "Ya no estamo' pa' la movie' y las cadena'\n'Tamos pa' las cosa' que valgan la pena"
+      },
+      {
+        "line": "Y que tú me envíe' más nude'"
+      }
+    ],
+    "texture": "A low-energy reggaeton groove pulls you in with its danceable rhythm. The deep bass and melancholic melody keep the mood heavy, a sad dance under a San Juan sunset."
+  }
+}

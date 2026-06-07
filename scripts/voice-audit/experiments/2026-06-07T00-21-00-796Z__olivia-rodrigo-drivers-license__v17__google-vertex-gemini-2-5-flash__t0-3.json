@@ -1,0 +1,155 @@
+{
+  "runId": "2026-06-07T00-21-00-796Z__olivia-rodrigo-drivers-license__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:21:00.796Z",
+  "song": "Olivia Rodrigo — drivers license",
+  "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 12
+  },
+  "byRule": {
+    "antithesis": 1,
+    "burstiness": 1,
+    "lexical-repetition": 11
+  },
+  "tokens": 14674,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "arc[1].scene",
+      "span": "is not just of her,",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[1].scene",
+      "span": "The car takes her past his street, and her mind fills with the blonde girl.",
+      "severity": "low",
+      "note": "CV=0.186 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "alone",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "street",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "license",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "shared",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "becomes",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "every",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "car",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "meant",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "now",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[0].scene",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "driving alone past your street",
+    "lens": "driving as a haunting",
+    "tension": "Crushing Grief",
+    "take": "The driver's license was a shared dream, a path to independence and connection, but it becomes a constant loop of painful memories. Every drive is a forced encounter with his absence and betrayal. The car, meant for freedom, becomes a vehicle for reliving the past. She sees his face in every white car and hears his voice in the traffic. She cannot outrun the ghost of what they had, especially when he has moved on so easily with someone else. The promise of \"forever\" rings hollow as she drives alone past your street.",
+    "contradiction": "The license meant to take her to his house now only takes her past his street, alone.",
+    "arc": [
+      {
+        "label": "The Broken Promise",
+        "mood": "Naive Hope",
+        "scene": "She finally gets her driver's license, a milestone they planned together, a new way to reach him. The car is a symbol of their future, a path directly to his house. She drives, full of the excitement they shared. She only finds him gone. The road meant for connection now only highlights his absence."
+      },
+      {
+        "label": "The Replacement",
+        "mood": "Crushing Insecurity",
+        "scene": "The car takes her past his street, and her mind fills with the blonde girl. She is older and everything she fears she is not. She cannot comprehend how he moved on so quickly, especially after his own song promised something more. The betrayal is not just of her, but of the shared history, the words he wrote."
+      },
+      {
+        "label": "The Haunting",
+        "mood": "Lingering Love",
+        "scene": "Every drive becomes a loop of memory. Red lights and stop signs remind her of their ending, but she sees his face in every white car, hears his voice in the traffic. The places they went together are now impossible to pass. She relives the past. Her friends are tired of hearing it, but she still loves him, a raw, undeniable truth."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I got my driver's license last week\nJust like we always talked about"
+      },
+      {
+        "line": "Crying 'cause you weren't around"
+      },
+      {
+        "line": "She's everything I'm insecure about"
+      },
+      {
+        "line": "Guess you didn't mean what you wrote in that song about me"
+      },
+      {
+        "line": "'Cause you said forever, now I drive alone past your street"
+      }
+    ],
+    "texture": "Acoustic pop carries a driving rhythm, but the low energy and valence pull it into a deep, vocal sadness. It feels like a quiet, intimate confession, even with the steady beat."
+  }
+}

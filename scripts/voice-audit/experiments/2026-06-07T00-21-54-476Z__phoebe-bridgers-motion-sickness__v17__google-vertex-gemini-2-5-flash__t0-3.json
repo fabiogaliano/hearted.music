@@ -1,0 +1,174 @@
+{
+  "runId": "2026-06-07T00-21-54-476Z__phoebe-bridgers-motion-sickness__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:21:54.476Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 3,
+    "medium": 1,
+    "low": 12
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "participial-closure": 3,
+    "burstiness": 2,
+    "lexical-repetition": 10
+  },
+  "tokens": 11842,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "texture",
+      "span": "embodies",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", begging for the windows to be rolled down, but the sickness remains.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", throwing rocks in his own glass house, bleeding on his back.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", highlighting the age and power imbalance.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song lives in the aftermath of a toxic relationship, a constant state of emo",
+      "severity": "low",
+      "note": "CV=0.197 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[1].scene",
+      "span": "From the outside, she sees him clearly, throwing rocks in his own glass house, b",
+      "severity": "low",
+      "note": "CV=0.091 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "windows",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "rolled",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "relationship",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "emotional",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "sickness",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "like",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "tries",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "drown",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "sound",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "the car sick feeling that won't leave, windows rolled down",
+    "lens": "ambivalence as a chronic condition",
+    "tension": "Lingering Nausea",
+    "take": "The song lives in the aftermath of a toxic relationship, a constant state of emotional motion sickness. She hates what he did and misses him like a child, a contradiction that leaves her feeling perpetually unwell. Even after faking her way through the relationship, the emotional fallout is real and persistent. She tries to clear her head, begging for the windows to be rolled down, but the sickness remains. His behavior haunts her, a silent abuse that no scream can drown out, and she is left wondering if she can ever truly escape its pull.",
+    "contradiction": "She tries to drown him out, but wonders if she should surrender to his sound.",
+    "arc": [
+      {
+        "label": "The Lingering Sickness",
+        "mood": "Conflicted Nausea",
+        "scene": "She is caught between hating what he did and missing him like a child. The relationship was fake, but the emotional sickness is real, a constant state of nausea that demands the windows be rolled down. She recalls his attempt to 'fix' her with hypnotherapy, a futile gesture."
+      },
+      {
+        "label": "The Clear View",
+        "mood": "Bitter Clarity",
+        "scene": "From the outside, she sees him clearly, throwing rocks in his own glass house, bleeding on his back. She is glad to have escaped his self-destructive behavior, even if she is sorry for the way it all ended. His annoying habits, like the fake English accent, now stand out as symbols of his pretense."
+      },
+      {
+        "label": "The Unresolved Pull",
+        "mood": "Persistent Ambivalence",
+        "scene": "He claimed boredom when they met, a man in a band when she was born, highlighting the age and power imbalance. She tries to 'stay clean' from the toxic relationship, like an addiction. But even as she tries to drown him out, a part of her wonders what would happen if she just surrendered to the sound, unable to fully break free."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I hate you for what you did\nAnd I miss you like a little kid"
+      },
+      {
+        "line": "I have emotional motion sickness\nSomebody roll the windows down"
+      },
+      {
+        "line": "I'm on the outside looking through\nYou're throwing rocks around your room"
+      },
+      {
+        "line": "You said when you met me, you were bored\nAnd you, you were in a band when I was born"
+      },
+      {
+        "line": "And I wanna know what would happen\nIf I surrender to the sound"
+      }
+    ],
+    "texture": "Acoustic guitars and vocals carry a moderate tempo, but fluctuating stereo panning and tremolo effects create a disorienting sensation. The sound itself embodies the emotional motion sickness, a gentle sway that never quite settles."
+  }
+}

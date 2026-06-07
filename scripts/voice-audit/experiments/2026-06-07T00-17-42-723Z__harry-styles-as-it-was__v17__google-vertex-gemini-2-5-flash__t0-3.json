@@ -1,0 +1,131 @@
+{
+  "runId": "2026-06-07T00-17-42-723Z__harry-styles-as-it-was__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:17:42.723Z",
+  "song": "Harry Styles — As It Was",
+  "spotifyTrackId": "as-it-was",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 4,
+    "medium": 0,
+    "low": 6
+  },
+  "byRule": {
+    "participial-closure": 4,
+    "burstiness": 1,
+    "lexical-repetition": 5
+  },
+  "tokens": 12100,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", keeping you from moving forward, and you find yourself with nothing left to say about the past.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", feeling unhelped and seeing your own solitude reflected in others.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", asking why you are alone and what you are taking.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", preferring to move on without processing.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[2].scene",
+      "span": "Concerned voices call, asking why you are alone and what you are taking.",
+      "severity": "low",
+      "note": "CV=0.194 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "closed",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "door",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "world",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "back",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a voice on the other side of a closed door",
+    "lens": "change as an unshared burden",
+    "tension": "Quiet Despair",
+    "take": "Change as an unshared burden defines this moment. The world has shifted, and you know it cannot be the same as it was, but this new reality feels like a weight you carry alone. Gravity holds you back, keeping you from moving forward, and you find yourself with nothing left to say about the past. You want someone to hold out a hand, but you also refuse to talk about what happened. Voices from outside try to reach you, but you remain behind a closed door, feeling unhelped and seeing your own solitude reflected in others.",
+    "contradiction": "He insists on a shared world, but experiences its changes in isolation.",
+    "arc": [
+      {
+        "label": "The Refusal",
+        "mood": "Guarded Loneliness",
+        "scene": "A voice from outside tries to reach you, but you stay behind a closed door. Gravity holds you back from moving forward. You have nothing left to say about the past, even as you desire a hand to hold."
+      },
+      {
+        "label": "The New Reality",
+        "mood": "Resigned Acceptance",
+        "scene": "The world has fundamentally changed, and you know it cannot go back to \"as it was.\" This new reality is shared by \"us,\" but the experience of it feels deeply personal and isolating."
+      },
+      {
+        "label": "The Mirror",
+        "mood": "Deepening Isolation",
+        "scene": "Concerned voices call, asking why you are alone and what you are taking. You ring for help, but no one comes. You see your own solitude mirrored in your father, who also lives by himself. You actively avoid discussing the past, preferring to move on without processing."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Come on, Harry, we wanna say goodnight to you"
+      },
+      {
+        "line": "Gravity's holdin' me back"
+      },
+      {
+        "line": "You know it's not the same as it was"
+      },
+      {
+        "line": "Harry, you're no good alone"
+      },
+      {
+        "line": "Ringin' the bell and nobody's coming to help"
+      }
+    ],
+    "texture": null
+  }
+}

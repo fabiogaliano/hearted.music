@@ -1,0 +1,197 @@
+{
+  "runId": "2026-06-07T00-16-33-895Z__harry-styles-as-it-was__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:16:33.895Z",
+  "song": "Harry Styles — As It Was",
+  "spotifyTrackId": "as-it-was",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 8,
+    "medium": 0,
+    "low": 12
+  },
+  "byRule": {
+    "participial-closure": 8,
+    "burstiness": 1,
+    "lexical-repetition": 11
+  },
+  "tokens": 12644,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", trying to reach him through a closed door, but he stays inside.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", keeping him stuck in a world that is irrevocably changed.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", questioning his state, but he rings for help and finds no one answers.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", choosing instead to inhabit this new, solitary normal.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", keeping him from moving forward, leaving him with nothing to say about a past he cannot escape.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", asking why they don't just leave it at that.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", leaving him to see his father living by himself.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", wanting to leave the past behind.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "A child's voice calls him to say goodnight, but he stays behind a closed door.",
+      "severity": "low",
+      "note": "CV=0.136 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "closed",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "door",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "alone",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "voice",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×10 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "back",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "cannot",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "knows",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "rings",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "refuses",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "behind a closed door, alone on the floor",
+    "lens": "isolation as a new normal",
+    "tension": "Resigned Loneliness",
+    "take": "A child's voice calls out, trying to reach him through a closed door, but he stays inside. Gravity holds him back, a force he cannot fight, keeping him stuck in a world that is irrevocably changed. He knows things are not the same as they were, a truth brought on by global events and personal shifts. Friends call, worried about him being alone, questioning his state, but he rings for help and finds no one answers. He sees his father living by himself, a stark image of his own potential future. He actively refuses to revisit the past, choosing instead to inhabit this new, solitary normal. He knows it's not the same.",
+    "contradiction": "He knows he is no good alone but refuses to let anyone in.",
+    "arc": [
+      {
+        "label": "The Closed Door",
+        "mood": "Quiet Isolation",
+        "scene": "A child's voice calls him to say goodnight, but he stays behind a closed door. Gravity holds him back, keeping him from moving forward, leaving him with nothing to say about a past he cannot escape. He wants a hand held out, but then pulls back, asking why they don't just leave it at that."
+      },
+      {
+        "label": "The Unanswered Call",
+        "mood": "Deepening Loneliness",
+        "scene": "The phone rings, and a voice tells him he is no good alone, asking why he sits on the floor and what pills he takes. He rings a bell for help, but nobody comes, leaving him to see his father living by himself."
+      },
+      {
+        "label": "The New Normal",
+        "mood": "Resigned Acceptance",
+        "scene": "He refuses to talk about the way it was, wanting to leave the past behind. He knows the world has changed, and he cannot go back to how it was. This is his new reality."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Come on, Harry, we wanna say goodnight to you"
+      },
+      {
+        "line": "Gravity's holdin' me back"
+      },
+      {
+        "line": "Harry, you're no good alone"
+      },
+      {
+        "line": "You know it's not the same as it was"
+      },
+      {
+        "line": "I don't wanna talk about the way that it was"
+      }
+    ],
+    "texture": null
+  }
+}

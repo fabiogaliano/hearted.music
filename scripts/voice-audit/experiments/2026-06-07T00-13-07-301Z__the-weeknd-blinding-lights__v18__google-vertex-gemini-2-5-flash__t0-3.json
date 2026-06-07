@@ -1,0 +1,139 @@
+{
+  "runId": "2026-06-07T00-13-07-301Z__the-weeknd-blinding-lights__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:13:07.301Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 3,
+    "medium": 0,
+    "low": 8
+  },
+  "byRule": {
+    "participial-closure": 3,
+    "burstiness": 2,
+    "rule-of-three": 1,
+    "lexical-repetition": 5
+  },
+  "tokens": 12636,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", going through withdrawals, unable to see clearly or sleep without her.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", going through withdrawals.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", needing to get back to her.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "He has been on his own for long enough, going through withdrawals.",
+      "severity": "low",
+      "note": "CV=0.202 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[2].scene",
+      "span": "He is running out of time as the sun lights up the sky.",
+      "severity": "low",
+      "note": "CV=0.154 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "a mix of fame, drugs, and the chaos of Sin",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "city",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "lights",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "see",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "touch",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a flashing car, the city shining on my face",
+    "lens": "the touch as the only clear sight",
+    "tension": "Urgent Dependence",
+    "take": "He is lost in a world of blinding lights, a mix of fame, drugs, and the chaos of Sin City. He has been alone long enough, going through withdrawals, unable to see clearly or sleep without her. She is the one person who can cut through the emptiness and bring him clarity. His desperate drive back to her is an attempt to escape the cold, empty city and find peace in her touch. He cannot sleep until he feels her touch.",
+    "contradiction": "The lights that blind him are the same ones that define him, and her touch is the only way he can see through them.",
+    "arc": [
+      {
+        "label": "The Empty City",
+        "mood": "Desperate Loneliness",
+        "scene": "He has been on his own for long enough, going through withdrawals. Sin City is cold and empty around him. He cannot see clearly when she is gone."
+      },
+      {
+        "label": "The Blinding Chaos",
+        "mood": "Overwhelmed Urgency",
+        "scene": "The lights blind him, a flashing car, the city shining on his face. He is drowning in the night. She is the only one he trusts when he is like this."
+      },
+      {
+        "label": "The Reckless Pursuit",
+        "mood": "Determined Resolve",
+        "scene": "He is running out of time as the sun lights up the sky. He hits the road in overdrive, needing to get back to her. He could never say it on the phone, but he will never let her go this time."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I've been on my own for long enough"
+      },
+      {
+        "line": "I'm goin' through withdrawals"
+      },
+      {
+        "line": "Sin City's cold and empty"
+      },
+      {
+        "line": "I said, ooh, I'm blinded by the lights"
+      },
+      {
+        "line": "No, I can't sleep until I feel your touch"
+      }
+    ],
+    "texture": "A driving synthwave beat pushes a high-energy pulse, but a low valence pulls it into a sad, urgent dance. It feels like a desperate chase under neon lights."
+  }
+}

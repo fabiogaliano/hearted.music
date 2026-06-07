@@ -1,0 +1,144 @@
+{
+  "runId": "2026-06-07T00-16-20-921Z__benson-boone-beautiful-things__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:16:20.921Z",
+  "song": "Benson Boone — Beautiful Things",
+  "spotifyTrackId": "beautiful-things",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 3,
+    "medium": 3,
+    "low": 6
+  },
+  "byRule": {
+    "participial-closure": 3,
+    "mood-width": 3,
+    "burstiness": 2,
+    "lexical-repetition": 4
+  },
+  "tokens": 8923,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", bringing a girl his parents love and a sense of peace he hasn't known in years.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", knowing how quickly everything can vanish.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", everything finally clicks into place.",
+      "severity": "high"
+    },
+    {
+      "rule": "mood-width",
+      "field": "arc[0].mood",
+      "span": "Contentment",
+      "severity": "medium"
+    },
+    {
+      "rule": "mood-width",
+      "field": "arc[1].mood",
+      "span": "Dread",
+      "severity": "medium"
+    },
+    {
+      "rule": "mood-width",
+      "field": "arc[2].mood",
+      "span": "Supplication",
+      "severity": "medium"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "Life has finally turned around, bringing a girl his parents love and a sense of ",
+      "severity": "low",
+      "note": "CV=0.166 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[2].scene",
+      "span": "The quiet fear becomes an open plea, a desperate bargain with God.",
+      "severity": "low",
+      "note": "CV=0.166 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "beautiful",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "god",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "things",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "terror",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a beautiful thing held tight, already slipping",
+    "lens": "a blessing as a burden",
+    "tension": "Anxious Dread",
+    "take": "Life has finally turned around, bringing a girl his parents love and a sense of peace he hasn't known in years. He thanks God for these beautiful things, but the gratitude immediately twists into a terror of loss. The very presence of such good makes him vulnerable, and he lives in constant fear that God, who gives, can also take away. He holds onto these gifts with a desperate plea, knowing how quickly everything can vanish.",
+    "contradiction": "The joy of having beautiful things is inseparable from the terror of their loss.",
+    "arc": [
+      {
+        "label": "The Turnaround",
+        "mood": "Contentment",
+        "scene": "After years of cold Decembers, everything finally clicks into place. He finds peace and love, a girl his parents adore, and a sense of sanity. He feels like he has it all."
+      },
+      {
+        "label": "The Premonition",
+        "mood": "Dread",
+        "scene": "He thanks God for these gifts, but the thought immediately follows: God can take them away. The joy of holding her close is overshadowed by the terror of losing her, a feeling he knows too well."
+      },
+      {
+        "label": "The Bargain",
+        "mood": "Supplication",
+        "scene": "The quiet fear becomes an open plea, a desperate bargain with God. He begs for these beautiful things to stay, needing them, wanting them, terrified of their absence. He cannot bear the thought of waiting until it's all gone."
+      }
+    ],
+    "lines": [
+      {
+        "line": "But lately, I've been doin' better"
+      },
+      {
+        "line": "But I know the things He gives me, He can take away"
+      },
+      {
+        "line": "But there's no man as terrified as the man who stands to lose you"
+      },
+      {
+        "line": "Don't take\nThese beautiful things that I've got"
+      },
+      {
+        "line": "If everything's good and it's great, why do I sit and wait 'til it's gone?"
+      }
+    ],
+    "texture": null
+  }
+}

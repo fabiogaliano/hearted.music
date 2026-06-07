@@ -1,0 +1,187 @@
+{
+  "runId": "2026-06-07T00-13-36-081Z__phoebe-bridgers-motion-sickness__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:13:36.081Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 6,
+    "medium": 0,
+    "low": 12
+  },
+  "byRule": {
+    "participial-closure": 4,
+    "academic-register": 1,
+    "self-reference": 1,
+    "burstiness": 1,
+    "rule-of-three": 1,
+    "lexical-repetition": 10
+  },
+  "tokens": 12212,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", throwing rocks in his own glass house, but his behavior still follows you, a phantom limb that aches.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", making the emotional motion sickness feel like a constant, almost gentle, hum beneath the surface.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", leaving you numb, and even his attempt to fix you with hypnotherapy was part of his control.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", throwing rocks in his own glass house.",
+      "severity": "high"
+    },
+    {
+      "rule": "academic-register",
+      "field": "take",
+      "span": "disorientation",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "take",
+      "span": "This song",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "This song lays bare the chronic illness of emotional motion sickness, a persiste",
+      "severity": "low",
+      "note": "CV=0.176 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[0].scene",
+      "span": "relationship was a performance, leaving you numb, and even his attempt to",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "emotional",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "motion",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "sickness",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "constant",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×9 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "like",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "try",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "drown",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "surrendered",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "sound",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "nausea in a moving car, windows rolled down",
+    "lens": "emotional motion sickness as a chronic condition",
+    "tension": "Lingering Nausea",
+    "take": "This song lays bare the chronic illness of emotional motion sickness, a persistent disorientation left by an abusive relationship. You are out of it, but the sickness remains, a constant struggle between hating what he did and missing him like a little kid. He tried to fix you with hypnotherapy, but the sickness was his all along, a gaslighting that made you feel like the attacker. You see him clearly now, throwing rocks in his own glass house, but his behavior still follows you, a phantom limb that aches. The only relief is to roll the windows down, to try and drown him out, even as a part of you wonders what would happen if you just surrendered to the sound.",
+    "contradiction": "You try to drown him out, but still wonder what would happen if you surrendered to his sound.",
+    "arc": [
+      {
+        "label": "The Lingering Sickness",
+        "mood": "Disoriented Resentment",
+        "scene": "You hate him for what he did, but you miss him like a little kid. The relationship was a performance, leaving you numb, and even his attempt to fix you with hypnotherapy was part of his control."
+      },
+      {
+        "label": "The Clear View",
+        "mood": "Bitter Clarity",
+        "scene": "Now separated, you see him clearly, throwing rocks in his own glass house. You are glad to have made it out, but the memory of his abuse still follows you, a silent scream you cannot drown out. His fake English accent, a small detail, becomes a symbol of his pretense."
+      },
+      {
+        "label": "The Unresolved Pull",
+        "mood": "Weary Struggle",
+        "scene": "The emotional motion sickness persists. You try to stay clean and live without him, but the question remains: what if you just surrendered to the sound? The fight to drown him out is constant, but the temptation to give in is still there."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I hate you for what you did\nAnd I miss you like a little kid"
+      },
+      {
+        "line": "I faked it every time, but that's alright\nI can hardly feel anything"
+      },
+      {
+        "line": "I have emotional motion sickness\nSomebody roll the windows down"
+      },
+      {
+        "line": "I'm on the outside looking through\nYou're throwing rocks around your room"
+      },
+      {
+        "line": "And I wanna know what would happen\nIf I surrender to the sound"
+      }
+    ],
+    "texture": "An acoustic indie folk sound with a moderate tempo feels almost light, but subtle shifts in panning and tremolo create a disorienting sway. The slightly positive valence belies the lyrical content, making the emotional motion sickness feel like a constant, almost gentle, hum beneath the surface."
+  }
+}

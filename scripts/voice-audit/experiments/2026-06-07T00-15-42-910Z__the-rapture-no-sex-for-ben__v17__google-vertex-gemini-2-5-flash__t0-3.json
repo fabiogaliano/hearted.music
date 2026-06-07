@@ -1,0 +1,108 @@
+{
+  "runId": "2026-06-07T00-15-42-910Z__the-rapture-no-sex-for-ben__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:15:42.910Z",
+  "song": "The Rapture — No Sex for Ben",
+  "spotifyTrackId": "no-sex-for-ben",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 5,
+    "medium": 0,
+    "low": 2
+  },
+  "byRule": {
+    "participial-closure": 5,
+    "lexical-repetition": 2
+  },
+  "tokens": 8808,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", listing his transgressions for all to hear.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", repeating the decree.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", painting a picture of a deceitful, pathetic figure.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", shocking detail to his depravity.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", cutting him off completely.",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "specific",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "freeze",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a name called out in unison, then frozen",
+    "lens": "public shaming as collective punishment",
+    "tension": "Unified Scorn",
+    "take": "The song is a public declaration against Ben Rymer, listing his transgressions for all to hear. He is a 'big liar' and a 'cheap faker,' even accused of trying to 'snatch the kitty off his girlfriend's mother.' The collective voice pronounces a specific, humiliating punishment, ensuring his complete isolation. It ends with a command to 'freeze them up,' sealing his fate.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "The Public Calling",
+        "mood": "Unified Condemnation",
+        "scene": "A name is called out, immediately followed by the specific, humiliating punishment. The crowd joins in, repeating the decree."
+      },
+      {
+        "label": "The Indictment",
+        "mood": "Mounting Scorn",
+        "scene": "More insults pile up, painting a picture of a deceitful, pathetic figure. The accusation of trying to 'snatch the kitty off his girlfriend's mother' adds a specific, shocking detail to his depravity."
+      },
+      {
+        "label": "The Freeze-Out",
+        "mood": "Absolute Ostracism",
+        "scene": "The collective decision is made to 'freeze them up.' The count of 'one, two, three, freeze' seals his fate, cutting him off completely."
+      }
+    ],
+    "lines": [
+      {
+        "line": "No sex, no sex for Ben Rymer now"
+      },
+      {
+        "line": "Ben Rymer, he's trashed people"
+      },
+      {
+        "line": "Lookin' like a poor man's Arthur Baker now"
+      },
+      {
+        "line": "Try to snatch the kitty off his girlfriend's mother"
+      },
+      {
+        "line": "We gotta freeze them up now"
+      }
+    ],
+    "texture": null
+  }
+}

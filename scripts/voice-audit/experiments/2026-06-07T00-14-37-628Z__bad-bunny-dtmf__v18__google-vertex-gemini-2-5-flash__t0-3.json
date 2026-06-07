@@ -1,0 +1,173 @@
+{
+  "runId": "2026-06-07T00-14-37-628Z__bad-bunny-dtmf__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:14:37.628Z",
+  "song": "Bad Bunny — DtMF",
+  "spotifyTrackId": "3sK8wGT43QFpWrvNQsrQya",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 0,
+    "low": 14
+  },
+  "byRule": {
+    "participial-closure": 2,
+    "burstiness": 1,
+    "rule-of-three": 3,
+    "lexical-repetition": 10
+  },
+  "tokens": 10847,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", carrying a deep melancholy beneath its sway.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", knowing that time is short.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "You watch a beautiful sunset in San Juan and wish you had taken more photos, giv",
+      "severity": "low",
+      "note": "CV=0.208 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "day with your grandfather, play dominoes, and gather with friends and",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "full of life, laughter, and a little bit of",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[2].scene",
+      "span": "family, friends, and simple pleasures",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "san",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "juan",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "sunset",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "taken",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "more",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "now",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "present",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "friends",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "family",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a san juan sunset, a photo never taken",
+    "lens": "regret as a reason to celebrate",
+    "tension": "Bittersweet Belonging",
+    "take": "You watch a beautiful sunset in San Juan and wish you had taken more photos, given more kisses, when you had the chance with someone now gone. That regret for a past love becomes a reason to lean into the present, to cherish the people around you now. You spend the day with your grandfather, play dominoes, and gather with friends and family who are starting their own families. The past is over, but the present is here, full of life, laughter, and a little bit of chaos, and you decide to enjoy it all, because \"nunca se sabe si nos queda poco.\"",
+    "contradiction": "You are fully present with your family and friends, but a part of you still wishes for a moment that is already gone.",
+    "arc": [
+      {
+        "label": "The Regretful Gaze",
+        "mood": "Nostalgic Longing",
+        "scene": "You watch a beautiful sunset in San Juan. It reminds you of a past love. You wish you had taken more photos and given more kisses when you had the chance."
+      },
+      {
+        "label": "The Present Embrace",
+        "mood": "Collective Joy",
+        "scene": "You spend the day with your grandfather, playing dominoes. You are surrounded by friends and family. You want to drink and talk nonsense, because you are enjoying the moment."
+      },
+      {
+        "label": "The Enduring Connection",
+        "mood": "Bittersweet Acceptance",
+        "scene": "The past relationship is over. Now you focus on what truly matters: family, friends, and simple pleasures. You embrace the present, knowing that time is short."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Debí tirar más fotos de cuando te tuve"
+      },
+      {
+        "line": "Ojalá que los mío' nunca se muden"
+      },
+      {
+        "line": "Hoy voy a estar con abuelo to'l día, jugando dominó"
+      },
+      {
+        "line": "Vamo' a disfrutar, que nunca se sabe si nos queda poco"
+      },
+      {
+        "line": "Ya no estamo' pa' la movie' y las cadena' / 'Tamos pa' las cosa' que valgan la pena"
+      }
+    ],
+    "texture": "A danceable reggaeton rhythm moves with a low energy, almost subdued, carrying a deep melancholy beneath its sway. It feels like a quiet party, full of movement but hushed in its joy."
+  }
+}

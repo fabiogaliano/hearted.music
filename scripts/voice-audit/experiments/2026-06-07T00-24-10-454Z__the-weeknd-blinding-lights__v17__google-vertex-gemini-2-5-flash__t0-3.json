@@ -1,0 +1,146 @@
+{
+  "runId": "2026-06-07T00-24-10-454Z__the-weeknd-blinding-lights__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:24:10.454Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 7,
+    "medium": 0,
+    "low": 5
+  },
+  "byRule": {
+    "participial-closure": 7,
+    "lexical-repetition": 5
+  },
+  "tokens": 13363,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", going through withdrawals, needing someone to show him how to love.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", running out of time, because she is the only one he trusts to bring clarity to his chaotic world.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", vowing he will never let her go this time.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", making the bright sound carry a desperate plea for connection.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", trying to call, feeling vulnerable and in withdrawals.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", clinging to the idea that just a touch could turn him on.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", running out of time, speeding through the streets because she is the only one he trusts.",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "lights",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "city",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×8 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "life",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "time",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "blinded by the lights, searching for a touch",
+    "lens": "hedonism as a desperate search for connection",
+    "tension": "Vulnerable Urgency",
+    "take": "Hedonism is a desperate search for connection. He has been on his own for too long. He navigates Sin City's cold and empty streets, going through withdrawals, needing someone to show him how to love. The blinding lights of fame and excess surround him. They also represent the police car after an overdose, a life he cannot escape. He speeds through the night, running out of time, because she is the only one he trusts to bring clarity to his chaotic world. He is coming back to her, vowing he will never let her go this time.",
+    "contradiction": "The life that blinds him is the only life he knows, and she is the only way he can see through it.",
+    "arc": [
+      {
+        "label": "The Lonely Call",
+        "mood": "Isolated Longing",
+        "scene": "He has been on his own for too long, trying to call, feeling vulnerable and in withdrawals. He needs someone to show him how to love again, clinging to the idea that just a touch could turn him on."
+      },
+      {
+        "label": "Sin City's Emptiness",
+        "mood": "Desperate Clarity",
+        "scene": "Las Vegas, the city of hedonism, feels cold and empty around him. No one is there to judge him, but he cannot see clearly when she is gone."
+      },
+      {
+        "label": "Blinding Dependence",
+        "mood": "Urgent Trust",
+        "scene": "The lights blind him, whether from fame, the city, or a police car after an overdose. He is drowning in the night, running out of time, speeding through the streets because she is the only one he trusts."
+      },
+      {
+        "label": "The Vow to Return",
+        "mood": "Resolute Commitment",
+        "scene": "He is coming back to her, unable to say it on the phone. He will never let her go this time."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I've been on my own for long enough"
+      },
+      {
+        "line": "I'm goin' through withdrawals"
+      },
+      {
+        "line": "Sin City's cold and empty"
+      },
+      {
+        "line": "I'm blinded by the lights"
+      },
+      {
+        "line": "Will never let you go this time"
+      }
+    ],
+    "texture": "The fast tempo and high energy of the synthwave production create a propulsive, danceable rhythm. Yet, the low valence reveals a deep undercurrent of sadness, making the bright sound carry a desperate plea for connection."
+  }
+}

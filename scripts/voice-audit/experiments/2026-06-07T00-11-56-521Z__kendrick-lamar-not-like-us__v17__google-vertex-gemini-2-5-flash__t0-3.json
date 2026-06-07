@@ -1,0 +1,145 @@
+{
+  "runId": "2026-06-07T00-11-56-521Z__kendrick-lamar-not-like-us__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:11:56.521Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 3,
+    "medium": 0,
+    "low": 8
+  },
+  "byRule": {
+    "participial-closure": 2,
+    "self-reference": 1,
+    "burstiness": 1,
+    "rule-of-three": 1,
+    "lexical-repetition": 6
+  },
+  "tokens": 32494,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", declaring him a free throw, an easy target.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", exposing the enemy's alleged moral failings and his appropriation of culture.",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "texture",
+      "span": "the track",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "texture",
+      "span": "A danceable hip-hop beat drives the track.",
+      "severity": "low",
+      "note": "CV=0.169 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "outsider as a colonizer, a pedophile, and a fraud",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "city",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "song",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "collective",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "ready",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "culture",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[0].scene",
+      "span": "enemy",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "the city is back up, it's a must, we outside",
+    "lens": "community as a weapon",
+    "tension": "Unwavering Certainty",
+    "take": "This is Compton's song, a collective voice rising to draw a hard line between those who belong and those who exploit. It names the outsider as a colonizer, a pedophile, and a fraud. It strips away any claim to authenticity or connection. The city stands united, ready to defend its own against anyone who tries to infiltrate or appropriate its culture. It is a declaration that the true inheritors of the culture are back outside, and they are not like us.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "The Declaration of War",
+        "mood": "Aggressive Certainty",
+        "scene": "The city announces its presence. It is ready to confront anyone who dares to challenge its authenticity. It calls out the enemy, declaring him a free throw, an easy target."
+      },
+      {
+        "label": "The Unmasking",
+        "mood": "Righteous Indignation",
+        "scene": "The accusations pile up, exposing the enemy's alleged moral failings and his appropriation of culture. Every claim builds on the last. It paints a picture of an outsider who exploits what he cannot understand."
+      },
+      {
+        "label": "The Collective Stand",
+        "mood": "Unifying Defiance",
+        "scene": "The song rallies the community. It contrasts the genuine roots of hip-hop with the enemy's calculated attempts to gain street cred. It solidifies the 'us' against the 'them,' asserting a collective identity that cannot be bought or faked."
+      },
+      {
+        "label": "The Celebration of Victory",
+        "mood": "Triumphant Liberation",
+        "scene": "The battle is won, and the city celebrates its triumph with a dance. The enemy's brand is mocked. The collective reclaims its space and moves together in a unified front."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Psst, I see dead people"
+      },
+      {
+        "line": "Just make sure you hide your lil' sister from him"
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles"
+      },
+      {
+        "line": "They not like us, they not like us, they not like us"
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer"
+      }
+    ],
+    "texture": "A danceable hip-hop beat drives the track. Its high energy and infectious rhythm invite movement. This bright, club-ready sound carries a dark, accusatory valence. It makes you dance to a song that is actively condemning."
+  }
+}

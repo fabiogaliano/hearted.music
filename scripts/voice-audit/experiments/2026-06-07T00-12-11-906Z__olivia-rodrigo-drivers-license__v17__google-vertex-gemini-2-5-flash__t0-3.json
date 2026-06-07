@@ -1,0 +1,120 @@
+{
+  "runId": "2026-06-07T00-12-11-906Z__olivia-rodrigo-drivers-license__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:12:11.906Z",
+  "song": "Olivia Rodrigo — drivers license",
+  "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 1,
+    "low": 7
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "burstiness": 3,
+    "lexical-repetition": 4
+  },
+  "tokens": 13407,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "arc[1].scene",
+      "span": "embodies",
+      "severity": "medium"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The driver's license, once a shared dream of freedom and connection, becomes a v",
+      "severity": "low",
+      "note": "CV=0.130 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "texture",
+      "span": "A pop rock ballad, built on acoustic intimacy, carries a driving tempo that feel",
+      "severity": "low",
+      "note": "CV=0.140 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[2].scene",
+      "span": "Her friends are tired of hearing it, but they never knew him the way she did.",
+      "severity": "low",
+      "note": "CV=0.051 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "license",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "every",
+      "severity": "low",
+      "note": "repeated ×7 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "drives",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[1].scene",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "driving alone past your street, seeing your face everywhere",
+    "lens": "a milestone into a monument to loss",
+    "tension": "Lingering Anguish",
+    "take": "The driver's license, once a shared dream of freedom and connection, becomes a vehicle for reliving every painful memory. She drives through the suburbs, the streets meant to lead to his house now only circling her grief. He moved on with the blonde girl, the one she always doubted, and the speed of his indifference cuts deeper than the breakup itself. Every white car, every front yard, every red light is a fresh reminder of what they had and what he so easily left behind.",
+    "contradiction": "She has the license to drive anywhere, but she only drives in circles around his memory.",
+    "arc": [
+      {
+        "label": "The Broken Promise",
+        "mood": "Crushing Disappointment",
+        "scene": "The new driver's license, a symbol of shared future, now only highlights a future that never arrived. She drives the streets they talked about, but the passenger seat is empty, and the destination is a house where he no longer waits. The freedom she earned only leads her to tears."
+      },
+      {
+        "label": "The Replaced Memory",
+        "mood": "Stinging Betrayal",
+        "scene": "His quick indifference stings, especially with the blonde girl who embodies all her insecurities. He moved on so fast, and the thought of him being so okay while she is broken is a fresh wound. He even wrote a song, but it meant nothing."
+      },
+      {
+        "label": "The Endless Loop",
+        "mood": "Persistent Anguish",
+        "scene": "Her friends are tired of hearing it, but they never knew him the way she did. Every street sign, every white car, every sound of traffic brings his face and their laughter back. She still loves him, a raw, undeniable truth that keeps her trapped in the past."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I got my driver's license last week"
+      },
+      {
+        "line": "Crying 'cause you weren't around"
+      },
+      {
+        "line": "She's everything I'm insecure about"
+      },
+      {
+        "line": "Guess you didn't mean what you wrote in that song about me"
+      },
+      {
+        "line": "'Cause I still fuckin' love you, babe"
+      }
+    ],
+    "texture": "A pop rock ballad, built on acoustic intimacy, carries a driving tempo that feels like forward motion. Its moderate danceability and high acoustic presence create a deceptively light sound. The low energy and valence, however, pull the entire track into a deep, vocal sadness."
+  }
+}

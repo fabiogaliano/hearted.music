@@ -38,7 +38,7 @@ function extractResult(stdout: string): { text: string; costUsd?: number } {
 	return { text, costUsd: typeof cost === "number" ? cost : undefined };
 }
 
-export function runClaude(
+function runClaudeOnce(
 	prompt: string,
 	options: ClaudeCliOptions = {},
 ): Promise<ClaudeCliResult> {
@@ -101,4 +101,40 @@ export function runClaude(
 		child.stdin.write(prompt);
 		child.stdin.end();
 	});
+}
+
+const RETRY_ATTEMPTS = 4;
+const RETRY_BASE_MS = 1500;
+
+function delay(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Opus via the claude CLI fails transiently more often than you'd think over a long eval: a
+// spurious `400 Output blocked by content filtering policy`, a rate-limit, a SIGKILL timeout, or a
+// truncated/unparseable result. A single such throw used to abort the whole run (judgePair → main
+// → process.exit(2)) and discard every candidate already judged, because the eval artifact is only
+// written at the very end. Retry with exponential backoff: the CLI samples its output, so a re-run
+// of the identical prompt almost always clears a spurious filter hit or a transient error. Only a
+// genuinely persistent failure exhausts the budget and rethrows.
+export async function runClaude(
+	prompt: string,
+	options: ClaudeCliOptions = {},
+): Promise<ClaudeCliResult> {
+	let lastErr: unknown;
+	for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
+		try {
+			return await runClaudeOnce(prompt, options);
+		} catch (err) {
+			lastErr = err;
+			if (attempt < RETRY_ATTEMPTS) {
+				const wait = RETRY_BASE_MS * 2 ** (attempt - 1);
+				console.error(
+					`  ⟳ claude CLI attempt ${attempt}/${RETRY_ATTEMPTS} failed (${String((err as Error)?.message ?? err).slice(0, 120)}); retrying in ${wait}ms`,
+				);
+				await delay(wait);
+			}
+		}
+	}
+	throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }

@@ -1,0 +1,226 @@
+{
+  "runId": "2026-06-07T00-14-22-532Z__bad-bunny-dtmf__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:14:22.532Z",
+  "song": "Bad Bunny — DtMF",
+  "spotifyTrackId": "3sK8wGT43QFpWrvNQsrQya",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 3,
+    "medium": 0,
+    "low": 20
+  },
+  "byRule": {
+    "participial-closure": 3,
+    "burstiness": 1,
+    "rule-of-three": 2,
+    "lexical-repetition": 15,
+    "dash": 2
+  },
+  "tokens": 10786,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", enjoying sunsets and nights that others miss, surrounded by your people.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", acknowledging the past without letting it stop the dance.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", leaning into the present indulgence to cope with the lingering past.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[1].scene",
+      "span": "The streets are alive with music and friends.",
+      "severity": "low",
+      "note": "CV=0.225 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "The party is loud, the music is live, and the drinks flow freely",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[3].scene",
+      "span": "wish for more photos, more kisses, and even more intimate moments",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "san",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "juan",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "taken",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "home",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "surrounded",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "music",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "live",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "love",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "moments",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "photos",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "kisses",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "friends",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "fully",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[0].scene",
+      "span": "more",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[2].scene",
+      "span": "—",
+      "severity": "low"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[2].scene",
+      "span": "—",
+      "severity": "low"
+    }
+  ],
+  "analysis": {
+    "image": "the sunset in san juan, a photo not taken",
+    "lens": "the present as a past-haunted celebration",
+    "tension": "Nostalgic Revelry",
+    "take": "The present is a past-haunted celebration. You are home in San Juan, enjoying sunsets and nights that others miss, surrounded by your people. The party is loud, the music is live, and the drinks flow freely. But even in this joy, a past love surfaces, a regret for moments not captured, photos not taken, kisses not given. Time moves on; friends have children, and priorities shift from superficial things to what truly matters. The revelry is a way to live fully, acknowledging the past without letting it stop the dance.",
+    "contradiction": "The desire to live fully now is fueled by the regret for what was not fully lived then.",
+    "arc": [
+      {
+        "label": "The Lingering Shadow",
+        "mood": "Sweet Regret",
+        "scene": "You watch a beautiful sunset in San Juan, surrounded by the things you love, but your mind drifts to a past love. You wish you had taken more photos, given more kisses, held onto those moments."
+      },
+      {
+        "label": "The Gathering",
+        "mood": "Warm Belonging",
+        "scene": "The streets are alive with music and friends. You play dominoes with your grandfather, surrounded by family and the sounds of home. The drinks flow, and you embrace the chaos and connection of your community."
+      },
+      {
+        "label": "The Evolving Home",
+        "mood": "Rooted Acceptance",
+        "scene": "Time has passed, and your friends are starting families. The focus shifts from superficial pursuits to what truly matters. The music of home—perreo, salsa, bomba, plena—becomes the soundtrack to this new, deeper appreciation for life and community."
+      },
+      {
+        "label": "The Echoing Desire",
+        "mood": "Playful Longing",
+        "scene": "The regrets for lost moments return, mixed with a playful, almost defiant desire for connection. You wish for more photos, more kisses, and even more intimate moments, leaning into the present indulgence to cope with the lingering past."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Otro sunset bonito que veo en San Juan"
+      },
+      {
+        "line": "Debí tirar más fotos de cuando te tuve"
+      },
+      {
+        "line": "Ey, hoy voy a estar con abuelo to'l día, jugando dominó"
+      },
+      {
+        "line": "Ya no estamo' pa' la movie' y las cadena'\n'Tamos pa' las cosa' que valgan la pena"
+      },
+      {
+        "line": "Ojalá que los mío' nunca se muden\nY que tú me envíe' más nude'"
+      }
+    ],
+    "texture": "A danceable reggaeton rhythm with salsa undertones carries a quiet, almost whispered sound. Its low energy and negative valence give the movement a melancholic feel, like a party happening in slow motion, where every step is a memory."
+  }
+}

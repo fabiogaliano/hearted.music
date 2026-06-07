@@ -1,0 +1,141 @@
+{
+  "runId": "2026-06-07T00-21-13-211Z__olivia-rodrigo-drivers-license__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:21:13.211Z",
+  "song": "Olivia Rodrigo — drivers license",
+  "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 1,
+    "low": 9
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 1,
+    "burstiness": 3,
+    "lexical-repetition": 6
+  },
+  "tokens": 13243,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "arc[0].scene",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", questioning the sincerity of his past promises.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The driver's license was supposed to be a shared milestone, a symbol of growing ",
+      "severity": "low",
+      "note": "CV=0.169 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[1].scene",
+      "span": "She drives through the familiar suburbs, a route once anticipated with joy, now ",
+      "severity": "low",
+      "note": "CV=0.112 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[2].scene",
+      "span": "Red lights and stop signs mark the end of their relationship, yet she cannot sto",
+      "severity": "low",
+      "note": "CV=0.076 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "driver",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "license",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "freedom",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "now",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[0].scene",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "driving alone past your street, seeing your face in white cars",
+    "lens": "milestone as a memorial",
+    "tension": "Lingering Grief",
+    "take": "The driver's license was supposed to be a shared milestone, a symbol of growing up and the freedom to drive to his house. Instead, it becomes a painful reminder of his absence and the future they will not share. She drives through the suburbs, a landscape once filled with their memories, now haunted by the blonde girl and the song he wrote that meant nothing. The freedom of the open road only leads her back to his street, unable to escape the past or the love she still feels.",
+    "contradiction": "The freedom of the driver's license only traps her in the past.",
+    "arc": [
+      {
+        "label": "The Tainted Milestone",
+        "mood": "Crushing Disappointment",
+        "scene": "The driver's license, a long-awaited symbol of independence, arrives. It was meant to be a shared joy, a new way to reach him, but it only highlights his absence. The excitement of a new beginning is immediately overshadowed by a profound sense of loss."
+      },
+      {
+        "label": "The Ghost Ride",
+        "mood": "Bitter Resignation",
+        "scene": "She drives through the familiar suburbs, a route once anticipated with joy, now a tour of her heartbreak. Every turn brings a memory, every thought of him is now linked to the blonde girl who is everything she fears. She cannot comprehend how he moved on so quickly, questioning the sincerity of his past promises."
+      },
+      {
+        "label": "The Unbroken Vow",
+        "mood": "Raw Devotion",
+        "scene": "Red lights and stop signs mark the end of their relationship, yet she cannot stop seeing him everywhere. White cars and front yards trigger his image, and the traffic noise brings back his laughter. Despite knowing it is over, the raw, undeniable truth is that she still loves him."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I got my driver's license last week"
+      },
+      {
+        "line": "She's everything I'm insecure about"
+      },
+      {
+        "line": "And I just can't imagine how you could be so okay now that I'm gone"
+      },
+      {
+        "line": "'Cause you said forever, now I drive alone past your street"
+      },
+      {
+        "line": "But I still fuckin' love you, babe"
+      }
+    ],
+    "texture": "A driving pop rhythm pushes forward, but the acoustic intimacy and low valence pull it into a deep, melancholic space, like a sad song on the radio during a long drive."
+  }
+}

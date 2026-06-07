@@ -213,3 +213,105 @@ Status as of Block 1 (2026-06-06): `[x]` done · `[~]` done differently / partia
 Append a "Progress so far" block: the v17 baseline numbers (pairwise W/T/L per song, tier1,
 judge pass-rates), the dominant failure mode the scorecard surfaced, the exact scoreboard
 command + its flags, and which judge's verdicts you trust least (from Phase 2).
+
+### Progress so far — v17 + v18 baselines captured (2026-06-07)
+
+Both baselines are generated, judged, and persisted (n=3/song, t0.3, all 9 golds; left
+uncommitted in the working tree per the run brief). Artifacts:
+`scripts/voice-audit/eval-artifacts/v17-base.json` and `…/v18-regrouped-base.json`
+(v18 = `lyrical-v17-regrouped.ts`, registered "18"). `ACTIVE_LYRICAL_VERSION` untouched ("13").
+
+**Headline: both lose every gold.** v17 and v18 each go **0 win / 0 tie / 27 loss** across the
+27 candidates → **0/9 songs** win-or-tie (Wilson95 [0.00, 0.30] each). Every song is
+`(LOSS,LOSS,LOSS)`. So v17's grounding/specificity rebuild did NOT translate into pairwise wins
+vs gold yet — but it did close the grounding gap that sank v14/v15 (grounding 100%, below), so
+the loss has moved to a different, nameable cause.
+
+**Per-song pairwise W/T/L vs gold (identical pattern both versions):**
+
+| song | v17 | v18 |
+|---|---|---|
+| dtmf | L,L,L | L,L,L |
+| beautiful-things | L,L,L | L,L,L |
+| drivers-license | L,L,L | L,L,L |
+| blinding-lights | L,L,L | L,L,L |
+| motion-sickness | L,L,L | L,L,L |
+| pink-pony-club | L,L,L | L,L,L |
+| no-sex-for-ben | L,L,L | L,L,L |
+| not-like-us | L,L,L | L,L,L |
+| as-it-was | L,L,L | L,L,L |
+
+**Tier-1 means (over 27 candidates):** v17 = **3.67 high / 0.85 medium**; v18 = **3.48 high /
+0.59 medium**. (Tier-1 is the guardrail, not the target — both pass it broadly yet lose every
+pair, which is the whole reason the pairwise judge is the optimization signal.)
+
+**Tier-2 pointwise pass-rates (27 candidates each):**
+
+| judge | v17 | v18 | Δ (B−A) |
+|---|---|---|---|
+| grounding (Opus, priority-1) | **100%** | **100%** | +0pt |
+| register-specificity | 93%¹ | 100% | +7pt |
+| abstract-noun-trap | 100% | 100% | +0pt |
+| **essayistic-register** | **0%** | **7%** | +7pt |
+| arc-narrative | 100% | 96% | −4pt |
+| lens-coherence | 100% | 96% | −4pt |
+| redundancy | 74% | **56%** | −19pt |
+| voice-softness | 100% | 93% | −7pt |
+
+**Dominant failure mode — essayistic / book-report register.** `essayistic-register` fails on
+**all 27** v17 candidates and **25/27** v18 candidates, and the Opus pairwise rationales say the
+same thing independently: the candidate "leans academic / book-report framing / puffery" while
+gold "reads like a friend." Recurring tells from the "what keeps losing" digest: *"The song lives
+in…", "finds its rhythm in the space between", "a defiant celebration of her survival", "the
+ghost of what he lost is always dancing beside him", "vibrant queer community"* — abstract theme-
+summary and appositive puffery instead of a person talking about a song. Gold wins on concrete,
+song-specific detail in varied spoken rhythm ("This time he takes the photo.", "One, two, three,
+freeze", "jaws on the floor"). **This is the Phase-4 target: kill the essayistic register without
+losing the grounding gains.** Secondary: **redundancy** (arc beats re-asserting the take) — and
+note v18's regrouping made redundancy *worse* (−19pt), not better.
+
+**Paired comparison (v17 vs v18), McNemar mid-p over songs determinate in both:**
+`both success 0 · both fail 9 · A>B b=0 · B>A c=0 · paired n=9 · mid-p = 1.000` → **not
+significant; the two are indistinguishable at the optimization target** (both lose everywhere, so
+there is zero discordance to test). The judge-diff shows v18's "regrouping" is a wash-to-negative:
++7pt register-specificity / +7pt essayistic (still ~0), but −19pt redundancy, −7pt voice-softness,
+−4pt arc, −4pt lens. **No reason to prefer v18 over v17.**
+
+**Exact scoreboard commands used:**
+```
+bun scripts/voice-audit/scoreboard.ts scripts/voice-audit/eval-artifacts/v17-base.json
+bun scripts/voice-audit/scoreboard.ts scripts/voice-audit/eval-artifacts/v18-regrouped-base.json
+bun scripts/voice-audit/scoreboard.ts scripts/voice-audit/eval-artifacts/v17-base.json scripts/voice-audit/eval-artifacts/v18-regrouped-base.json
+```
+(Generation: `regen.ts --version 17|18 --songs golds --runs 3 --temperature 0.3`; eval:
+`evaluate.ts --version 17|18 --temperature 0.3 --limit 3 --pointwise --out <artifact>`. Keep
+`--limit` ODD and `--temperature 0.3` on every step or runs won't match / a song collapses to
+indeterminate.)
+
+**Judge trust (Phase 2 boundary) — trust the 7 Gemini pointwise judges least.** They run on
+Gemini 2.5 Flash judging Gemini-generated reads → self-preference bias (eval-hardening doc issue
+**B2**). The verdict that decides keep/revert (pairwise vs gold) and the priority-1 grounding
+judge both run on **Opus via the `claude` CLI** (cross-family, the trustworthy signal). Here the
+pointwise `essayistic-register` happens to *agree* with the independent Opus pairwise rationales,
+which corroborates the dominant-failure call — but a future cross-family / PoLL pointwise jury
+(B2's fix) would harden the secondary judges (redundancy, voice-softness) that drove the v17→v18
+diff. Most-trusted: grounding (Opus, 100%). Least-trusted: the Gemini pointwise cohort.
+
+**Operational notes / caveats for the next run:**
+- ¹ v17 `register-specificity` 93% includes **one Gemini judge-error** (a transient "No object
+  generated: could not parse the response" on one as-it-was candidate, recorded as a fail). True
+  pass-rate is ~96%; it does not touch the pairwise verdict or grounding.
+- **Two pipeline fixes were required and are left uncommitted with the artifacts** (no methodology
+  change — same model/judges/prompts):
+  1. `evaluate.ts` pointwise judges repointed `createLlmService("google")` →
+     `"google-vertex")` — the AI Studio key path is out of prepay credits; Vertex (ADC) is the
+     billed path generation already uses. Same `gemini-2.5-flash`.
+  2. `tier2/claude-cli.ts` `runClaude` now **retries with backoff** (4 attempts) and
+     `evaluate.ts` skips a candidate that still throws, instead of aborting. The first full v17
+     run died on candidate **27/27** to a one-off `400 Output blocked by content filtering policy`
+     on an Opus pairwise call and — because the artifact writes only at the end — discarded all 26
+     prior candidates. The re-run with retry completed 27/27 + 27/27, 0 retries needed, 0 skips.
+- **Cost:** notional judge cost printed $5.52 (v17) + $6.34 (v18); the Opus CLI calls are
+  subscription-covered (notional), so real spend is only the Vertex Gemini generation + pointwise
+  (single-digit cents). The split is intentional: Gemini Flash for the 7 pointwise detectors, Opus
+  for pairwise + grounding.

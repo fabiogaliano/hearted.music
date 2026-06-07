@@ -1,0 +1,152 @@
+{
+  "runId": "2026-06-07T00-16-08-312Z__benson-boone-beautiful-things__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:16:08.312Z",
+  "song": "Benson Boone — Beautiful Things",
+  "spotifyTrackId": "beautiful-things",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 2,
+    "low": 9
+  },
+  "byRule": {
+    "copula-avoidance": 1,
+    "puffery-adjective": 1,
+    "participial-closure": 1,
+    "self-reference": 1,
+    "burstiness": 1,
+    "rule-of-three": 1,
+    "lexical-repetition": 7
+  },
+  "tokens": 9561,
+  "hits": [
+    {
+      "rule": "copula-avoidance",
+      "field": "arc[1].scene",
+      "span": "amplifies",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "take",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", everything finally aligns.",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "take",
+      "span": "This song",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "After years of cold Decembers, everything finally aligns.",
+      "severity": "low",
+      "note": "CV=0.193 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[0].scene",
+      "span": "He finds peace, family connection, and a girl his parents",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "love",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "peace",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "beautiful",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "things",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "taken",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "away",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[0].scene",
+      "span": "god",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "the man who stands to lose you, holding on tight",
+    "lens": "happiness as a fragile gift",
+    "tension": "Anxious Gratitude",
+    "take": "This song finds a man finally content, surrounded by love and peace. This very happiness breeds a profound terror: the fear that all the \"beautiful things\" can be taken away as easily as they were given. He holds onto his love, not in joy, but in a desperate prayer for permanence. The peace he found is now shadowed by the constant threat of its undoing.",
+    "contradiction": "The beautiful things he has are the very things he fears will be taken away.",
+    "arc": [
+      {
+        "label": "The Gift",
+        "mood": "Newfound Contentment",
+        "scene": "After years of cold Decembers, everything finally aligns. He finds peace, family connection, and a girl his parents love. He feels blessed, as if God has sent him all the beautiful things."
+      },
+      {
+        "label": "The Shadow",
+        "mood": "Creeping Dread",
+        "scene": "The very act of thanking God for these gifts brings a chilling realization. What God gives, God can take away. He holds her every night, but this closeness only amplifies the terror of standing to lose her."
+      },
+      {
+        "label": "The Plea",
+        "mood": "Desperate Supplication",
+        "scene": "The quiet dread erupts into a raw, repeated prayer. He begs for these beautiful things to stay, for them not to be taken. His sanity and faith depend on them remaining."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I found a girl my parents love"
+      },
+      {
+        "line": "But I know the things He gives me, He can take away"
+      },
+      {
+        "line": "And there's no man as terrified as the man who stands to lose you"
+      },
+      {
+        "line": "Don't take These beautiful things that I've got"
+      }
+    ],
+    "texture": null
+  }
+}

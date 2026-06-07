@@ -1,0 +1,142 @@
+{
+  "runId": "2026-06-07T00-17-13-987Z__chappell-roan-pink-pony-club__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:17:13.988Z",
+  "song": "Chappell Roan — Pink Pony Club",
+  "spotifyTrackId": "pink-pony-club",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 5,
+    "medium": 1,
+    "low": 5
+  },
+  "byRule": {
+    "antithesis": 1,
+    "puffery-adjective": 1,
+    "participial-closure": 4,
+    "lexical-repetition": 5
+  },
+  "tokens": 14560,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "take",
+      "span": "is not just allowed,",
+      "severity": "high"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "arc[2].scene",
+      "span": "vibrant",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", creating a space for herself and others where queer joy is not just allowed, but celebrated and fiercely protected.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", promising a freedom her hometown cannot offer.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", condemning her as a \"pink pony girl\" dancing at a club.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", finding pure fun and belonging on stage in her heels.",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "club",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "queer",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "joy",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "dancing",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "mother",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "black lights and a mirrored disco ball, a thousand miles away",
+    "lens": "queer joy as a protected space",
+    "tension": "Unapologetic Joy",
+    "take": "She leaves behind the expectations of her Midwest hometown for the \"crazy visions\" of Los Angeles. The Pink Pony Club becomes a tangible haven where \"boys and girls can all be queens every single day.\" She finds her belonging on stage in her heels, creating a space for herself and others where queer joy is not just allowed, but celebrated and fiercely protected. She knows this choice will not make her mama proud, but that does not stop her from dancing.",
+    "contradiction": "She builds a new life of queer joy while still carrying the imagined scream of her mother.",
+    "arc": [
+      {
+        "label": "The Wicked Dream",
+        "mood": "Restless Longing",
+        "scene": "She feels the pull of a special place where \"boys and girls can all be queens.\" The visions of L.A. are too strong to ignore, promising a freedom her hometown cannot offer."
+      },
+      {
+        "label": "The Mama's Scream",
+        "mood": "Defiant Joy",
+        "scene": "Her mother's voice echoes, condemning her as a \"pink pony girl\" dancing at a club. She brushes it off, finding pure fun and belonging on stage in her heels."
+      },
+      {
+        "label": "The Protected Space",
+        "mood": "Unapologetic Belonging",
+        "scene": "The club is a vibrant reality with \"lovers in the bathroom\" and \"jaws on the floor.\" It is a place she actively creates and protects, a tangible space for queer joy."
+      },
+      {
+        "label": "The Constant Drawl",
+        "mood": "Persistent Freedom",
+        "scene": "She acknowledges her past, still loving Tennessee and her mother. The imagined \"Southern drawl\" is still heard, but it only reinforces her choice to keep dancing."
+      }
+    ],
+    "lines": [
+      {
+        "line": "But I can't ignore the crazy visions of me in L.A."
+      },
+      {
+        "line": "Won't make my mama proud, it's gonna cause a scene"
+      },
+      {
+        "line": "On the stage in my heels, it's where I belong"
+      },
+      {
+        "line": "I'm up and jaws are on the floor"
+      },
+      {
+        "line": "I'm gonna keep on dancing"
+      }
+    ],
+    "texture": null
+  }
+}

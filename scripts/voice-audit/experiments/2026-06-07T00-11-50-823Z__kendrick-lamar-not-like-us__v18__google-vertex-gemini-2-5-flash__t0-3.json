@@ -1,0 +1,154 @@
+{
+  "runId": "2026-06-07T00-11-50-823Z__kendrick-lamar-not-like-us__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:11:50.823Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 8,
+    "medium": 0,
+    "low": 5
+  },
+  "byRule": {
+    "participial-closure": 7,
+    "structural-section": 1,
+    "burstiness": 2,
+    "lexical-repetition": 3
+  },
+  "tokens": 31122,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", using its streets and its people to draw a hard line against Drake.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", framing him as an outsider who exploits Black culture for profit.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", creating a sound that is both infectious and unsettling.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", warning anyone who loves him to hide their little sister.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", calling out his record label as a haven for pedophiles.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", exploiting Black culture for his own gain.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", calling Drake a 'freaky-ass nigga' and a '69 God.",
+      "severity": "high"
+    },
+    {
+      "rule": "structural-section",
+      "field": "arc[2].scene",
+      "span": "chorus",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "He sees dead people, and he knows who they are.",
+      "severity": "low",
+      "note": "CV=0.210 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[1].scene",
+      "span": "He directly accuses Drake of preying on young women, warning anyone who loves hi",
+      "severity": "low",
+      "note": "CV=0.071 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "drake",
+      "severity": "low",
+      "note": "repeated ×10 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "compton",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "drake's mansion on a sex offender map",
+    "lens": "a city as a weapon",
+    "tension": "Unapologetic Fury",
+    "take": "Kendrick Lamar turns Compton into a weapon, using its streets and its people to draw a hard line against Drake. He calls out Drake's alleged predatory behavior and cultural appropriation, framing him as an outsider who exploits Black culture for profit. This is a declaration of war, fought on the grounds of authenticity and community, where every accusation is a blow struck for what is real. He claims the city is back up, and they are outside.",
+    "contradiction": "It demands you dance even as it lays out the darkest accusations.",
+    "arc": [
+      {
+        "label": "The Opening Salvo",
+        "mood": "Cold Certainty",
+        "scene": "He sees dead people, and he knows who they are. He steps into the persona of a sociopathic bully, ready to nail his opponent to a cross. He makes it clear he will put aside his own beliefs to hurt Drake."
+      },
+      {
+        "label": "The Accusation",
+        "mood": "Righteous Indignation",
+        "scene": "He directly accuses Drake of preying on young women, warning anyone who loves him to hide their little sister. He names Drake's associates and their alleged crimes, calling out his record label as a haven for pedophiles. He sees Drake as a colonizer, not a colleague, exploiting Black culture for his own gain."
+      },
+      {
+        "label": "The Line in the Sand",
+        "mood": "Fierce Loyalty",
+        "scene": "The chorus rings out: they are not like us. This is a statement of identity, a rallying cry for Compton and for authentic hip-hop. He calls out Drake's attempts to mimic West Coast legends and his reliance on Atlanta artists for street credibility. He warns Drake not to disrespect Serena Williams, a Compton native."
+      },
+      {
+        "label": "The Call to Action",
+        "mood": "Unyielding Defiance",
+        "scene": "He doubles down on the accusations, calling Drake a 'freaky-ass nigga' and a '69 God.' He invites everyone to join the movement, to say 'OV-ho' and step this way, step that way. The city is back up, and they are outside, ready to confront him."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Psst, I see dead people"
+      },
+      {
+        "line": "Say, Drake, I hear you like 'em young"
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles"
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer"
+      },
+      {
+        "line": "They not like us, they not like us, they not like us"
+      }
+    ],
+    "texture": "A driving hip-hop beat that makes you move, even as the words cut deep and cold. It is highly danceable, but the low valence pulls against the rhythm, creating a sound that is both infectious and unsettling."
+  }
+}

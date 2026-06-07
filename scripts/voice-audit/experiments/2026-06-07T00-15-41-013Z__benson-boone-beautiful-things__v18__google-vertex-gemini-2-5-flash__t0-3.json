@@ -1,0 +1,131 @@
+{
+  "runId": "2026-06-07T00-15-41-013Z__benson-boone-beautiful-things__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:15:41.013Z",
+  "song": "Benson Boone — Beautiful Things",
+  "spotifyTrackId": "beautiful-things",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 3,
+    "medium": 0,
+    "low": 7
+  },
+  "byRule": {
+    "antithesis": 1,
+    "participial-closure": 2,
+    "rule-of-three": 2,
+    "lexical-repetition": 5
+  },
+  "tokens": 8986,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "take",
+      "span": "is not a comfort but",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", turning every moment of joy into a silent plea for it to last.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", making him feel complete.",
+      "severity": "high"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "girl his parents love, peace, and sanity",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[0].scene",
+      "span": "He sees his family, feels sane, and has found a girl",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "beautiful",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "god",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "take",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "away",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "things",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "the beautiful thing held too tightly",
+    "lens": "happiness as a premonition",
+    "tension": "Anxious Gratitude",
+    "take": "He has everything he could want: a life better than before, a girl his parents love, peace, and sanity. This perfect happiness, however, is not a comfort but a constant source of terror. He thanks God for these blessings, but immediately fears God will take them away. The more beautiful the things he has, the more he anticipates their loss, turning every moment of joy into a silent plea for it to last.",
+    "contradiction": "The very blessings he cherishes are the source of his deepest fear.",
+    "arc": [
+      {
+        "label": "The Gift",
+        "mood": "Content Joy",
+        "scene": "Life is finally good, better than it has been in years. He sees his family, feels sane, and has found a girl his parents adore, making him feel complete. He believes he has it all."
+      },
+      {
+        "label": "The Shadow",
+        "mood": "Sudden Dread",
+        "scene": "He thanks God for these perfect things, but the gratitude immediately twists into a chilling realization: what God gives, God can take away. The joy of holding her close becomes a terrifying reminder of how much he stands to lose."
+      },
+      {
+        "label": "The Plea",
+        "mood": "Desperate Supplication",
+        "scene": "The fear overwhelms him. He begs for her to stay, for God not to take away the beautiful things he has. It is a desperate, repeated prayer to hold onto the happiness he now possesses."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I found a girl my parents love"
+      },
+      {
+        "line": "But I know the things He gives me, He can take away"
+      },
+      {
+        "line": "But there's no man as terrified as the man who stands to lose you"
+      },
+      {
+        "line": "Oh, I hope I don't lose you"
+      },
+      {
+        "line": "Don't take These beautiful things that I've got"
+      }
+    ],
+    "texture": null
+  }
+}

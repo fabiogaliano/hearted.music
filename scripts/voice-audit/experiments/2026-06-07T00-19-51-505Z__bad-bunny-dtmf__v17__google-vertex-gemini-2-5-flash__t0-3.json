@@ -1,0 +1,153 @@
+{
+  "runId": "2026-06-07T00-19-51-505Z__bad-bunny-dtmf__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:19:51.505Z",
+  "song": "Bad Bunny — DtMF",
+  "spotifyTrackId": "3sK8wGT43QFpWrvNQsrQya",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 1,
+    "low": 10
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 2,
+    "burstiness": 1,
+    "rule-of-three": 2,
+    "lexical-repetition": 7
+  },
+  "tokens": 11154,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "take",
+      "span": "vibrant",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", shifting from a wistful desire for more shared moments to a raw, physical yearning for her presence.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", letting the moment consume him.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The song lives in the beautiful, vibrant present of San Juan, surrounded by frie",
+      "severity": "low",
+      "note": "CV=0.136 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "image",
+      "span": "a san juan sunset, a domino game, and a ghost of a",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[2].scene",
+      "span": "friends are growing up, having families, and he acknowledges that priorities",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "san",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "juan",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "friends",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "regret",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "more",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "lost",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a san juan sunset, a domino game, and a ghost of a past love",
+    "lens": "missing what was as living what is",
+    "tension": "Present Regret",
+    "take": "The song lives in the beautiful, vibrant present of San Juan, surrounded by friends and family, but a deep regret for a past love constantly surfaces. He tries to push it away, to immerse himself in the party and the domino game with his abuelo, even lying about his feelings. Yet, the longing persists, shifting from a wistful desire for more shared moments to a raw, physical yearning for her presence. He celebrates life as it is, but the ghost of what he lost is always dancing beside him.",
+    "contradiction": "He lives fully in the moment, but the regret for what he lost is the very thing that sharpens his present joy.",
+    "arc": [
+      {
+        "label": "The Beautiful Distraction",
+        "mood": "Lingering Nostalgia",
+        "scene": "He is in San Juan, surrounded by beauty and friends, but a specific memory of looking into her eyes pulls him back. He wishes he had more photos and kisses from that time."
+      },
+      {
+        "label": "The Present Embrace",
+        "mood": "Boisterous Escape",
+        "scene": "He tells his grandfather he doesn't think of her anymore, a lie he tells himself and others. He dives into the chaos of drinking and friends, letting the moment consume him."
+      },
+      {
+        "label": "The Shifting Landscape",
+        "mood": "Persistent Longing",
+        "scene": "His friends are growing up, having families, and he acknowledges that priorities change. The regret for lost intimacy returns, now with a raw, physical desire for her to send more 'nudes'."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Otro sunset bonito que veo en San Juan"
+      },
+      {
+        "line": "Debí tirar más fotos de cuando te tuve"
+      },
+      {
+        "line": "Si me pregunta si aún pienso en ti, yo le digo que no"
+      },
+      {
+        "line": "Ya no estamo' pa' la movie' y las cadena'\n'Tamos pa' las cosa' que valgan la pena"
+      },
+      {
+        "line": "Y que tú me envíe' más nude'"
+      }
+    ],
+    "texture": "A reggaeton beat drives it forward. The low energy and valence give it a quiet, almost mournful feel, like a party happening in slow motion, where every step carries a hidden weight."
+  }
+}

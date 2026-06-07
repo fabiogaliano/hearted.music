@@ -1,0 +1,151 @@
+{
+  "runId": "2026-06-07T00-25-11-095Z__the-weeknd-blinding-lights__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:25:11.095Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 4,
+    "medium": 1,
+    "low": 8
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 4,
+    "burstiness": 2,
+    "rule-of-three": 2,
+    "lexical-repetition": 4
+  },
+  "tokens": 12443,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "texture",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", providing clarity and trust.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", pulsing synths create an urgent, almost euphoric sound, but a low valence pulls it back into a desperate search for connection.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", trying to call someone.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", speeding through the chaos.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "He is in withdrawal, alone in Sin City, and cannot see clearly without her.",
+      "severity": "low",
+      "note": "CV=0.149 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[1].scene",
+      "span": "The lights blind him, a mix of police sirens after an overdose and the constant ",
+      "severity": "low",
+      "note": "CV=0.246 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "He is in withdrawal, alone in Sin City, and cannot see clearly without",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[1].scene",
+      "span": "drowning in the night, unable to sleep, and running out of time",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "lights",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "touch",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "chaos",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "back",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "driving through blinding lights for one touch",
+    "lens": "addiction as a search for one touch",
+    "tension": "Urgent Longing",
+    "take": "He is in withdrawal, alone in Sin City, and cannot see clearly without her. The blinding lights are the police car after an overdose and the overwhelming glare of fame. Only her touch can cut through this chaos, providing clarity and trust. He speeds through the night, risking everything, to get back to her because she is his only anchor.",
+    "contradiction": "The very lights that blind him are the ones he cannot leave.",
+    "arc": [
+      {
+        "label": "The Vulnerable Call",
+        "mood": "Desperate Loneliness",
+        "scene": "He is alone, in withdrawal, trying to call someone. He admits his vulnerability, his need to learn how to love again, and his sensitivity to just a touch. Sin City feels cold and empty without her."
+      },
+      {
+        "label": "The Blinding Chaos",
+        "mood": "Overwhelmed Urgency",
+        "scene": "The lights blind him, a mix of police sirens after an overdose and the constant glare of fame. He is drowning in the night, unable to sleep, and running out of time as the sun rises. He hits the road in overdrive, speeding through the chaos."
+      },
+      {
+        "label": "The Anchor",
+        "mood": "Singular Devotion",
+        "scene": "Amidst the chaos, she is the only one he trusts. He is coming back to her, risking everything, because he could never say it on the phone. He will never let her go this time. Her touch is the only thing that can bring clarity and peace."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I've been on my own for long enough"
+      },
+      {
+        "line": "I'm goin' through withdrawals"
+      },
+      {
+        "line": "Sin City's cold and empty"
+      },
+      {
+        "line": "I said, ooh, I'm blinded by the lights"
+      },
+      {
+        "line": "Oh, when I'm like this, you're the one I trust"
+      }
+    ],
+    "texture": "A driving synthwave beat propels the song forward at a relentless pace. Bright, pulsing synths create an urgent, almost euphoric sound, but a low valence pulls it back into a desperate search for connection."
+  }
+}
