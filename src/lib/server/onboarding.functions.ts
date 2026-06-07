@@ -30,10 +30,7 @@ import {
 	updateTheme,
 } from "@/lib/domains/library/accounts/preferences-queries";
 import { getLibraryArtistCount } from "@/lib/domains/library/artists/queries";
-import {
-	getCount as getLikedSongCount,
-	isSongOwnedByAccount,
-} from "@/lib/domains/library/liked-songs/queries";
+import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
 import {
 	getPlaylistCount,
 	getPlaylistSongCount,
@@ -728,16 +725,11 @@ export const saveDemoSongSelection = createServerFn({ method: "POST" })
 			);
 		}
 
-		const songOwned = await isSongOwnedByAccount(session.accountId, song.id);
-		if (!songOwned) {
-			throw new OnboardingError(
-				"lookup_demo_song",
-				new Error(
-					`Song ${song.id} is not an active liked song for account ${session.accountId}`,
-				),
-			);
-		}
-
+		// No ownership check: the demo songs shown in pick-demo-song are a curated
+		// landing manifest, not the user's library, so most won't be in their
+		// liked_song rows. The walkthrough preview enriches and scores any song by
+		// id (see executeWalkthroughPreview), and real ownership is enforced later
+		// where it matters — in addSongToPlaylist/dismissSong post-onboarding.
 		const { error: updateError } = await supabase
 			.from("user_preferences")
 			.update({ demo_song_id: song.id })
@@ -783,16 +775,9 @@ export const commitDemoSongAndEnterWalkthrough = createServerFn({
 			);
 		}
 
-		const songOwned = await isSongOwnedByAccount(session.accountId, song.id);
-		if (!songOwned) {
-			throw new OnboardingError(
-				"lookup_demo_song",
-				new Error(
-					`Song ${song.id} is not an active liked song for account ${session.accountId}`,
-				),
-			);
-		}
-
+		// No ownership check: see saveDemoSongSelection. Demo songs come from the
+		// curated landing manifest, not the user's library, so requiring a
+		// liked_song row would reject most valid picks.
 		const { error: updateError } = await supabase
 			.from("user_preferences")
 			.update({
