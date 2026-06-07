@@ -54,6 +54,21 @@ describe("classifyAnalysisFailure", () => {
 		expect(out.statusCode).toBe(422);
 	});
 
+	it("treats a no-object/parse failure as retryable despite no status code", () => {
+		// generateObject truncates or malforms JSON on ~10% of draws; the next draw
+		// usually parses, so this must retry rather than terminally fail the song.
+		const out = classifyAnalysisFailure(
+			new LlmProviderError({
+				provider: "google-vertex",
+				model: "gemini-2.5-flash",
+				message: "No object generated: could not parse the response.",
+			}),
+		);
+
+		expect(out.isRetryable).toBe(true);
+		expect(out.cause).toBe("llm_provider");
+	});
+
 	it("treats database errors as retryable", () => {
 		const out = classifyAnalysisFailure(
 			new DatabaseError({ code: "08006", message: "connection lost" }),
