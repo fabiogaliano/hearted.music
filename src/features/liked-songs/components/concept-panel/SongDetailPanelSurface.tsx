@@ -1,5 +1,5 @@
 /**
- * ConceptPanel — Step 0 read-coherence test for the new song-detail concept.
+ * SongDetailPanelSurface — the song-detail read surface.
  *
  * Layout:
  *   Layer 1 — The Read (lens · tension, then the image)
@@ -9,8 +9,8 @@
  *     - Lines: the key quotes, cycled one at a time.
  *     - Texture: a single line, always inline.
  *
- * Palette comes from getThemedDarkColors driven by the song's brand theme,
- * so this panel sits in the same color system as the prod SongDetailPanel.
+ * Palette comes from getThemedDarkColors driven by the song's brand theme.
+ * SongDetailPanel supplies the slide-in chrome around this surface.
  */
 
 import { useEffect, useState } from "react";
@@ -38,7 +38,7 @@ const CONCEPT_KEYFRAMES = `
 }
 `;
 
-export function ConceptPanel({ song }: { song: ConceptSong }) {
+export function SongDetailPanelSurface({ song }: { song: ConceptSong }) {
 	const themeConfig = themes[song.theme];
 	const colors = getThemedDarkColors(themeConfig);
 
@@ -67,12 +67,18 @@ export function ConceptPanel({ song }: { song: ConceptSong }) {
 					paddingBottom: 80,
 				}}
 			>
-				<SectionSeparator colors={colors} />
-				<ReadLayer read={song.read} colors={colors} />
-				<SectionSeparator colors={colors} />
-				<TakeLayer read={song.read} colors={colors} />
-				<SectionSeparator colors={colors} />
-				<TraceLayer read={song.read} colors={colors} />
+				{song.read ? (
+					<>
+						<SectionSeparator colors={colors} />
+						<ReadLayer read={song.read} colors={colors} />
+						<SectionSeparator colors={colors} />
+						<TakeLayer read={song.read} colors={colors} />
+						<SectionSeparator colors={colors} />
+						<TraceLayer read={song.read} colors={colors} />
+					</>
+				) : (
+					<UnreadState colors={colors} />
+				)}
 			</div>
 		</div>
 	);
@@ -214,7 +220,9 @@ function Hero({ song, colors }: { song: ConceptSong; colors: Palette }) {
 						{song.year != null ? `${song.album} · ${song.year}` : song.album}
 					</div>
 				</div>
-				<SonicNumbers song={song} colors={colors} />
+				{song.audioFeatures.tempo > 0 && (
+					<SonicNumbers song={song} colors={colors} />
+				)}
 			</div>
 		</div>
 	);
@@ -287,6 +295,42 @@ function SectionSeparator({ colors }: { colors: Palette }) {
 				margin: `${SECTION_GAP}px 0`,
 			}}
 		/>
+	);
+}
+
+// Stands in for the Read/Take/Trace layers when a song has no v17 read yet
+// (locked, not-yet-analyzed, or a pre-v17 row). The hero still renders above, so
+// the panel always carries the song's identity even before its read exists.
+function UnreadState({ colors }: { colors: Palette }) {
+	return (
+		<>
+			<SectionSeparator colors={colors} />
+			<section>
+				<div
+					style={{
+						fontSize: 11,
+						letterSpacing: "0.16em",
+						textTransform: "uppercase",
+						fontWeight: 500,
+						color: colors.textDim,
+						marginBottom: 12,
+					}}
+				>
+					Not analyzed yet
+				</div>
+				<p
+					style={{
+						fontFamily: fonts.body,
+						fontSize: 14,
+						lineHeight: 1.6,
+						color: colors.textMuted,
+						margin: 0,
+					}}
+				>
+					This song&rsquo;s read will appear here once it&rsquo;s been enriched.
+				</p>
+			</section>
+		</>
 	);
 }
 

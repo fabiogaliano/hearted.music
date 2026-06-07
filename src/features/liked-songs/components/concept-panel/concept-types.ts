@@ -28,5 +28,8 @@ export interface ConceptSong {
 	theme: ThemeColor;
 	albumArtUrl?: string;
 	artistImageUrl?: string;
-	read: ConceptRead;
+	// Null when the row has no v17 read yet (locked, not-yet-analyzed, or a pre-v17
+	// 8-field row). The panel still opens — it renders the hero + a minimal
+	// "not analyzed yet" state — so every selected song gets a panel.
+	read: ConceptRead | null;
 }

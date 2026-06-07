@@ -10,9 +10,14 @@
  */
 
 import pinkPonyClubExemplar from "../../../../../scripts/voice-audit/exemplars/pink-pony-club.json";
-import type { ConceptSong } from "./concept-types";
+import type { ConceptRead, ConceptSong } from "./concept-types";
 
-export const CONCEPT_SONGS: ConceptSong[] = [
+// ConceptSong.read is nullable (live rows open the panel before they're analyzed),
+// but every gold exemplar here carries a read — narrow it so the schema tests can
+// index `.read` directly.
+type GoldConceptSong = ConceptSong & { read: ConceptRead };
+
+export const CONCEPT_SONGS: GoldConceptSong[] = [
 	{
 		id: "drivers-license",
 		spotifyTrackId: "4ml4WlnHDEpOK8HRVYTCWf",
