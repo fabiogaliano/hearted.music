@@ -13,6 +13,7 @@ import {
 	judgePassRateDiff,
 	judgePassRates,
 	JUDGE_ORDER,
+	pointwiseCoverage,
 	qualitativeDigest,
 } from "../tier2-aggregate";
 
@@ -150,6 +151,32 @@ describe("qualitativeDigest", () => {
 		const d = qualitativeDigest(artifact("v17", songs), { maxRationales: 2 });
 		expect(d.losingRationales).toHaveLength(2);
 		expect(d.totalNonWinning).toBe(5); // cap never hides the real count
+	});
+});
+
+describe("pointwiseCoverage", () => {
+	it("reports full coverage when every candidate carries tier-2 findings", () => {
+		const a = artifact("v17", [
+			song("s1", [
+				run("WIN", { tier2: [pass("grounding")] }),
+				run("LOSS", { tier2: [pass("grounding")] }),
+			]),
+			song("s2", [run("WIN", { tier2: [pass("grounding")] })]),
+		]);
+		expect(pointwiseCoverage(a)).toEqual({ withTier2: 3, total: 3, complete: true });
+	});
+
+	it("flags partial coverage when some candidates lack tier-2 data", () => {
+		const a = artifact("v17", [
+			song("s1", [run("WIN", { tier2: [pass("grounding")] }), run("LOSS")]),
+			song("s2", [run("WIN")]),
+		]);
+		expect(pointwiseCoverage(a)).toMatchObject({ withTier2: 1, total: 3, complete: false });
+	});
+
+	it("is never complete for a statistical-only (legacy) artifact", () => {
+		const a = artifact("v13", [song("s1", [run("WIN"), run("LOSS")])]);
+		expect(pointwiseCoverage(a)).toMatchObject({ withTier2: 0, total: 2, complete: false });
 	});
 });
 

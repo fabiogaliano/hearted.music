@@ -22,6 +22,7 @@ import {
 	hasPointwise,
 	judgePassRateDiff,
 	judgePassRates,
+	pointwiseCoverage,
 	qualitativeDigest,
 } from "./tier2-aggregate";
 
@@ -265,10 +266,18 @@ function fmtRate(rate: number | null, passed: number, total: number): string {
 // CI here would falsely treat repeated runs as independent n. Grounding is listed first (priority-1).
 function renderJudgePassRates(artifact: EvalArtifact): string {
 	const rates = judgePassRates(artifact);
-	const candidates = artifact.songs.reduce((a, s) => a + s.runs.length, 0);
+	const cov = pointwiseCoverage(artifact);
+	const coverageLabel = cov.complete
+		? `over ${cov.total} candidates`
+		: `over ${cov.withTier2} of ${cov.total} candidates with tier-2 data`;
 	const lines: string[] = [
-		`TIER-2 PASS-RATES — ${artifact.label}  (descriptive, over ${candidates} candidates; not inferential)`,
+		`TIER-2 PASS-RATES — ${artifact.label}  (descriptive, ${coverageLabel}; not inferential)`,
 	];
+	if (!cov.complete) {
+		lines.push(
+			`  ⚠ PARTIAL coverage: ${cov.total - cov.withTier2} of ${cov.total} candidate(s) lack tier-2 data — rates below cover only the ${cov.withTier2} pointwise-judged run(s)`,
+		);
+	}
 	for (const r of rates) {
 		const flag = r.judge === "grounding" ? "  ← priority-1" : "";
 		lines.push(`  ${r.judge.padEnd(22)} ${fmtRate(r.rate, r.passed, r.total)}${flag}`);

@@ -28,6 +28,32 @@ export function hasPointwise(artifact: EvalArtifact): boolean {
 	return artifact.songs.some((s) => s.runs.some((r) => (r.tier2?.length ?? 0) > 0));
 }
 
+export interface PointwiseCoverage {
+	/** Candidates carrying ≥1 tier-2 finding. */
+	withTier2: number;
+	/** All candidates (runs) in the artifact. */
+	total: number;
+	/** Every candidate was pointwise-judged, so each pass-rate denominator is the full candidate set. */
+	complete: boolean;
+}
+
+// How many candidates actually carry pointwise findings versus the full candidate set. A --pointwise
+// run that errored on some candidates (or a hand-merged artifact) leaves PARTIAL coverage: the
+// per-judge pass-rates are then over a subset, not all candidates. The scoreboard surfaces this so a
+// partial run is never read as full-coverage. (The judge totals already track each judge's own
+// denominator; this is the candidate-level completeness the pass-rate header would otherwise imply.)
+export function pointwiseCoverage(artifact: EvalArtifact): PointwiseCoverage {
+	let withTier2 = 0;
+	let total = 0;
+	for (const song of artifact.songs) {
+		for (const run of song.runs) {
+			total++;
+			if ((run.tier2?.length ?? 0) > 0) withTier2++;
+		}
+	}
+	return { withTier2, total, complete: total > 0 && withTier2 === total };
+}
+
 export interface JudgePassRate {
 	judge: string;
 	passed: number;

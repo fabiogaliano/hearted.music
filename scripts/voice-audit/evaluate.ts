@@ -13,6 +13,12 @@
 //   bun scripts/voice-audit/evaluate.ts --version 13 --dry-run        # stats + tier1 only, no judge calls/cost
 //   bun scripts/voice-audit/evaluate.ts --version 17 --out eval-artifacts/v17-base.json --pointwise   # full scorecard
 //
+// --limit caps runs/song; it defaults to 3 and MUST stay ODD for any inferential run. An even count
+// lets a song split evenly and collapse to "indeterminate" (eval-artifact.collapseOutcome), silently
+// dropping it from the n=9 inference — so an even --limit warns (louder when --out persists it).
+// Use n=3 for baseline/variant comparisons; --limit 1 is the cheap single-song smoke. See
+// claudedocs/06-block1-implementation-plan.md WP2 §4.
+//
 // Cost: each judged pair is two Opus calls (~$0.14). Pairs judged = songs × limit.
 // --pointwise additionally runs the 8 tier-2 judges per candidate (7 Gemini + 1 Opus grounding
 // call). Grounding is the cost driver, so pointwise is opt-in — the cheap iteration loop stays
@@ -59,7 +65,7 @@ interface Flags {
 
 function parseFlags(argv: string[]): Flags {
 	const out: Flags = {
-		limit: 2,
+		limit: 3,
 		judgeModel: "opus",
 		dryRun: false,
 		pointwise: false,
@@ -177,6 +183,14 @@ function statsLine(s: VoiceStats): string {
 
 async function main() {
 	const flags = parseFlags(process.argv.slice(2));
+	// Odd-run discipline (plan WP2 §4): an even run count can split evenly and collapse to
+	// "indeterminate", dropping the song from the n=9 inference. Warn rather than block — even-run
+	// histories remain a legacy fallback — but make the cost loud, especially when --out persists it.
+	if (flags.limit % 2 === 0) {
+		console.error(
+			`⚠ --limit ${flags.limit} is EVEN: a song whose runs split evenly collapses to "indeterminate" and drops out of the n=9 inference. Use an ODD count (n=3 recommended) for any baseline/variant run.${flags.out ? " This run persists an artifact (--out), so the loss is baked into the saved scorecard." : ""}`,
+		);
+	}
 	const gold = loadGoldExemplars();
 	const candidates = selectCandidates(loadRuns(), gold, flags);
 

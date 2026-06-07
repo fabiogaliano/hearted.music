@@ -173,6 +173,25 @@ real baseline / variant comparison, use an **odd** run count so no song becomes 
 Treat even-run histories as legacy fallback only. The wrapper should bake odd n=3 + `--pointwise`
 in rather than leave them to flags a hand-run could forget — that is half its reason to exist.
 
+### Preflight before the paid baseline (cheap smoke)
+
+WP5 is paid and should not double as the first integration test. The unit tests check the
+aggregation math in isolation; they do not prove `evaluate → write → read → scoreboard` runs
+together. Before burning the baseline, run the free smoke — `scripts/voice-audit/preflight.ts` —
+which exercises the real binaries with no judge calls:
+
+```
+bun scripts/voice-audit/regen.ts --version 17 --songs golds --runs 3 --temperature 0.3   # ODD --runs; 'golds' = the 9 canonical baseline songs ('fast' = 2 of them for a cheaper wiring smoke)
+bun scripts/voice-audit/preflight.ts --version 17        # free: dry-run path + artifact write→read→scoreboard round-trip
+# preflight prints the PAID 1-song check to run last:
+bun scripts/voice-audit/evaluate.ts --version 17 --songs not-like-us --limit 1 --pointwise --out eval-artifacts/preflight-1song.json
+bun scripts/voice-audit/scoreboard.ts eval-artifacts/preflight-1song.json
+```
+
+Preflight exits non-zero if either free check fails (e.g. "no matching runs" → you forgot to
+`regen.ts` first). Only after the free checks pass **and** the 1-song `--pointwise` run writes a
+readable scorecard is the full WP5 baseline safe to burn.
+
 Capture the v17 baseline now with the current commands — `regen.ts` → `evaluate.ts --pointwise
 --out <artifact>` → `scoreboard.ts <artifact>`; the wrapper is not a prerequisite for it. Expect
 v17 to still lose some pairs (that's the loop's job) — but grounding/specificity should already be

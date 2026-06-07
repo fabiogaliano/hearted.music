@@ -68,7 +68,8 @@ Borrow only the discipline: a changelog of every variant with win-rate + CI + hy
   ~100 for confidence). → Grow toward 20–30 stratified by your own TYP-1…5 song-types + era/
   genre/language. Held-out songs need no gold to exercise tier1/pointwise/grounding.
 - **C2 — No length-bias check in pairwise.** Verbosity is the most gameable judge bias. →
-  Log wordcount-delta vs verdict (you already compute both in `stats.ts`); alert if r>0.3.
+  Log wordcount-delta vs verdict (you already compute both in `stats.ts`); alert if |r| ≥ 0.5
+  (the operational threshold `scoreboard.ts` ships — 0.3 fires on n=9 noise too often to be useful).
 - **C3 — Wordlists get gamed.** → Add 2025-era terms ("align with", "enhance", "showcasing",
   "newfound sense of", "complex interplay", "transformative"); longer-term, an embedding-
   distance-from-human-corpus soft signal that resists the regex arms race.
@@ -137,7 +138,9 @@ LLM-judge reliability / bias:
 Eval statistics / methodology:
 - Anthropic, "A Statistical Approach to Model Evaluations"
 - Hamel Husain, "Your AI Product Needs Evals" + "LLM-as-a-Judge"
-- McNemar mid-p for small paired samples; bootstrap CIs (statsforevals.com)
+- McNemar mid-p for small paired samples (adopted); bootstrap CIs (statsforevals.com) — considered
+  but NOT adopted for the simple win-rate at n=9; Wilson was chosen instead (see
+  `06-block1-implementation-plan.md` WP2). Bootstrap stays off the table for the marginal rate.
 - Goodhart / overfitting — Doug Turnbull, "LLM Judges Aren't the Shortcut You Think"
 
 Grounding / AI-slop:
