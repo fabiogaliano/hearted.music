@@ -1,0 +1,171 @@
+{
+  "runId": "2026-06-07T00-25-26-718Z__the-weeknd-blinding-lights__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:25:26.718Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 6,
+    "medium": 0,
+    "low": 10
+  },
+  "byRule": {
+    "participial-closure": 6,
+    "burstiness": 2,
+    "lexical-repetition": 8
+  },
+  "tokens": 13205,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", going through withdrawals in a cold, empty Sin City.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", making him unable to see clearly or sleep.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", running out of time, desperate to return to her.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", creating a danceable urgency that masks a deep sadness.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", running out of time.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", promising he will never let her go this time.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "He tries to call, alone and going through withdrawals.",
+      "severity": "low",
+      "note": "CV=0.059 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[1].scene",
+      "span": "The lights blind him, whether from a police car or paparazzi.",
+      "severity": "low",
+      "note": "CV=0.044 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "sin",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "city",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "cold",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "empty",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "lights",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×9 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "needs",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "time",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "sin city's cold and empty, blinded by the lights",
+    "lens": "the blinding lights as a call for touch",
+    "tension": "Urgent Longing",
+    "take": "He is alone and vulnerable, going through withdrawals in a cold, empty Sin City. The blinding lights of fame and past trauma surround him, making him unable to see clearly or sleep. He needs her touch to ground him, to show him how to love again after years of being on his own. She is the only one he trusts to pull him out of the night. He drives fast, running out of time, desperate to return to her. He will never let her go this time.",
+    "contradiction": "He needs her to escape the blinding lights, yet he embraces the life that creates them.",
+    "arc": [
+      {
+        "label": "The Empty Call",
+        "mood": "Vulnerable Longing",
+        "scene": "He tries to call, alone and going through withdrawals. Sin City is cold and empty around him. He cannot see clearly when she is gone. He needs her to show him how to love."
+      },
+      {
+        "label": "The Blinding Chaos",
+        "mood": "Disoriented Urgency",
+        "scene": "The lights blind him, whether from a police car or paparazzi. He is drowning in the night, running out of time. He hits the road in overdrive, desperate to escape the glare."
+      },
+      {
+        "label": "The Only Trust",
+        "mood": "Grounded Devotion",
+        "scene": "She is the one he trusts, the only one who can bring him peace. He cannot sleep until he feels her touch. He is coming back to her, promising he will never let her go this time."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I've been tryna call"
+      },
+      {
+        "line": "I'm goin' through withdrawals"
+      },
+      {
+        "line": "I said, ooh, I'm blinded by the lights"
+      },
+      {
+        "line": "No, I can't sleep until I feel your touch (Touch)"
+      },
+      {
+        "line": "Will never let you go this time"
+      }
+    ],
+    "texture": "A driving synthpop beat pushes forward with frantic energy. Its low valence pulls it into a melancholic space, creating a danceable urgency that masks a deep sadness."
+  }
+}

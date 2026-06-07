@@ -1,0 +1,175 @@
+{
+  "runId": "2026-06-07T00-11-21-912Z__kendrick-lamar-not-like-us__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:11:21.912Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 7,
+    "medium": 4,
+    "low": 5
+  },
+  "byRule": {
+    "antithesis": 1,
+    "participial-closure": 4,
+    "book-report-opener": 1,
+    "structural-section": 1,
+    "burstiness": 1,
+    "rule-of-three": 1,
+    "lexical-repetition": 3,
+    "dash": 4
+  },
+  "tokens": 31354,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "arc[2].scene",
+      "span": "is not a colleague,",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", naming their drug use and criminal pasts.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", exploiting Black culture.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", turning it into a slur.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", inviting everyone to step into a unified front, leaving the outsider behind.",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "take",
+      "span": "This is a line drawn in the s",
+      "severity": "high"
+    },
+    {
+      "rule": "structural-section",
+      "field": "arc[3].scene",
+      "span": "chorus",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "This is a line drawn in the sand, a full-scale assault that redefines the battle",
+      "severity": "low",
+      "note": "CV=0.166 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "asserts a clear identity, rooted in Compton, and demands that everyone else",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "texture",
+      "span": "beat",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[0].scene",
+      "span": "certified",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[1].scene",
+      "span": "target",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[0].label",
+      "span": "—",
+      "severity": "medium"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[1].label",
+      "span": "—",
+      "severity": "medium"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[2].label",
+      "span": "—",
+      "severity": "medium"
+    },
+    {
+      "rule": "dash",
+      "field": "arc[3].label",
+      "span": "—",
+      "severity": "medium"
+    }
+  ],
+  "analysis": {
+    "image": "drake's mansion on a sex offender registry map",
+    "lens": "a declaration of war as a cultural boundary",
+    "tension": "Furious Certainty",
+    "take": "This is a line drawn in the sand, a full-scale assault that redefines the battleground. It exposes a rival as a predator and a colonizer, someone who exploits Black culture for profit and then hides behind it. The song asserts a clear identity, rooted in Compton, and demands that everyone else choose a side. It is a call for the community to recognize who belongs and who does not.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "The Opening Salvo — Immediate Threat",
+        "mood": "Aggressive Confidence",
+        "scene": "A whisper announces dead people. The beat drops, and the threats begin. He is Deebo, a sociopathic bully, ready to nail an opponent to a cross. He will beat an ass and hide the Bible if God watches. He is the certified boogeyman, ready to walk someone down."
+      },
+      {
+        "label": "The Unmasking — Accusatory Exposure",
+        "mood": "Blunt Disgust",
+        "scene": "He names the target directly. He hears Drake likes them young. He warns any woman to hide her little sister. He calls out the entourage, naming their drug use and criminal pasts. Certified Lover Boy becomes Certified Pedophiles, a direct redefinition."
+      },
+      {
+        "label": "The Colonizer — Cultural Critique",
+        "mood": "Sharp Condemnation",
+        "scene": "He traces a history from chains to the present, showing how the target runs to Atlanta for money and street cred. He calls out the artists used for lingo and false authenticity. He declares the target is not a colleague, but a colonizer, exploiting Black culture."
+      },
+      {
+        "label": "The Exclusion — Definitive Boundary",
+        "mood": "Unwavering Unity",
+        "scene": "The chorus rings out: they are not like us. He warns the target to run for his life. He mocks the rival's brand, turning it into a slur. He issues dance instructions, inviting everyone to step into a unified front, leaving the outsider behind."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Psst, I see dead people"
+      },
+      {
+        "line": "Say, Drake, I hear you like 'em young"
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles"
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer"
+      },
+      {
+        "line": "They not like us, they not like us, they not like us"
+      }
+    ],
+    "texture": "A hip-hop track with a high danceability and a driving beat. It feels upbeat and energetic, but a low valence carries a dark, negative undercurrent beneath the surface."
+  }
+}

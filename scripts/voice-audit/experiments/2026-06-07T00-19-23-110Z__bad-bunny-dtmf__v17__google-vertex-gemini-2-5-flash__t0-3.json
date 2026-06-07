@@ -1,0 +1,230 @@
+{
+  "runId": "2026-06-07T00-19-23-110Z__bad-bunny-dtmf__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:19:23.110Z",
+  "song": "Bad Bunny — DtMF",
+  "spotifyTrackId": "3sK8wGT43QFpWrvNQsrQya",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 8,
+    "medium": 3,
+    "low": 13
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 8,
+    "hedging": 1,
+    "burstiness": 2,
+    "rule-of-three": 1,
+    "lexical-repetition": 10,
+    "dash": 1
+  },
+  "tokens": 11161,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "take",
+      "span": "vibrant",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", wishing he had captured more of their time together—more photos, more kisses, more hugs.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", showing the past still holds a powerful grip on his present thoughts.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", making you sway slowly through a memory.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", replaying a final look into someone's eyes.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", letting loose in the streets of Puerto Rico.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", marking time's passage.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", wishing for more photos, kisses, and hugs.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", showing the past still holds a powerful grip on his present thoughts.",
+      "severity": "high"
+    },
+    {
+      "rule": "hedging",
+      "field": "arc[1].scene",
+      "span": "perhaps",
+      "severity": "medium"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "He looks back at a past love with a deep regret, wishing he had captured more of",
+      "severity": "low",
+      "note": "CV=0.117 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[2].scene",
+      "span": "With his grandfather, playing dominoes, he claims he no longer thinks of her.",
+      "severity": "low",
+      "note": "CV=0.107 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[3].scene",
+      "span": "wishing for more photos, kisses, and hugs",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "san",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "juan",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "captured",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "back",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "more",
+      "severity": "low",
+      "note": "repeated ×9 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "photos",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "present",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "capture",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "intimacy",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "dash",
+      "field": "take",
+      "span": "—",
+      "severity": "medium"
+    }
+  ],
+  "analysis": {
+    "image": "a san juan sunset, remembering what was not captured",
+    "lens": "regret as a present-day indulgence",
+    "tension": "Indulgent Nostalgia",
+    "take": "He looks back at a past love with a deep regret, wishing he had captured more of their time together—more photos, more kisses, more hugs. This wistful longing doesn't lead to despair; instead, it fuels a present-day indulgence in the vibrant life of San Juan, surrounded by friends and family. He drinks, plays dominoes with his grandfather, and enjoys the music, living fully in the moment even as the echoes of what he lost subtly shape his experience. The desire to capture intimacy, even explicit, persists, showing the past still holds a powerful grip on his present thoughts.",
+    "contradiction": "He claims he no longer thinks of her, but every present indulgence and memory he recounts circles back to what he wishes he had captured.",
+    "arc": [
+      {
+        "label": "The Lingering Gaze",
+        "mood": "Wistful Regret",
+        "scene": "A beautiful San Juan sunset unfolds, but his mind is elsewhere, replaying a final look into someone's eyes. He wishes he could go back to capture more of that moment, more photos, more intimacy."
+      },
+      {
+        "label": "The Indulgent Escape",
+        "mood": "Wild Abandon",
+        "scene": "He throws himself into the present, surrounded by friends and music, letting loose in the streets of Puerto Rico. He drinks to forget, or perhaps to feel everything more intensely, even as the regret still surfaces."
+      },
+      {
+        "label": "The Grounded Denial",
+        "mood": "Resigned Acceptance",
+        "scene": "With his grandfather, playing dominoes, he claims he no longer thinks of her. He sees his brother and friend growing their families, marking time's passage. This present reality is full, but the past still echoes."
+      },
+      {
+        "label": "The Echoing Wish",
+        "mood": "Persistent Longing",
+        "scene": "The original regrets return, wishing for more photos, kisses, and hugs. The desire to capture intimacy, even explicit, persists, showing the past still holds a powerful grip on his present thoughts."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Otro sunset bonito que veo en San Juan"
+      },
+      {
+        "line": "queriendo volver a la última vez que a los ojos te miré"
+      },
+      {
+        "line": "Debí tirar más fotos de cuando te tuve"
+      },
+      {
+        "line": "Si me pregunta si aún pienso en ti, yo le digo que no"
+      },
+      {
+        "line": "Y que tú me envíe' más nude'"
+      }
+    ],
+    "texture": "A reggaeton rhythm with salsa touches provides a danceable groove. Its low energy and quiet production create a melancholic haze, making you sway slowly through a memory."
+  }
+}

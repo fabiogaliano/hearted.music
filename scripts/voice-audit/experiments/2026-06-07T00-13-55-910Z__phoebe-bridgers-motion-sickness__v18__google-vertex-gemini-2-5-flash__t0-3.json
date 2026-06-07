@@ -1,0 +1,141 @@
+{
+  "runId": "2026-06-07T00-13-55-910Z__phoebe-bridgers-motion-sickness__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:13:55.910Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 2,
+    "low": 7
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 2,
+    "tension-mood-dedup": 1,
+    "burstiness": 1,
+    "rule-of-three": 1,
+    "lexical-repetition": 5
+  },
+  "tokens": 12974,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "take",
+      "span": "haunting",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", throwing rocks in his own glass house, and you are glad to have made it out, even as you are sorry for the mess.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", making you feel the emotional motion sickness in the sound itself.",
+      "severity": "high"
+    },
+    {
+      "rule": "tension-mood-dedup",
+      "field": "arc[0].mood",
+      "span": "Conflicted Nausea",
+      "severity": "medium",
+      "note": "duplicates tension \"Conflicted Nausea\""
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "You hate him for what he did.",
+      "severity": "low",
+      "note": "CV=0.142 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "to scream him out, but the words fail, and the feeling persists",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "sickness",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×12 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "like",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "clean",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "sound",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "rolling the windows down, still sick to your stomach",
+    "lens": "a toxic relationship as a chronic illness",
+    "tension": "Conflicted Nausea",
+    "take": "The song lays bare the lingering sickness of a toxic relationship. You hate him for what he did, but you still miss him like a child, a contradiction that leaves you emotionally nauseous. It is a sickness that follows you, like his behavior haunting you everywhere. You try to roll down the windows, to scream him out, but the words fail, and the feeling persists. You see him clearly now, throwing rocks in his own glass house, and you are glad to have made it out, even as you are sorry for the mess. The sickness is chronic, and you wonder if you will ever truly be clean, or if you will surrender to the sound of him again.",
+    "contradiction": "She tries to stay clean and live without him, but she still wonders what would happen if she surrendered to his sound.",
+    "arc": [
+      {
+        "label": "The Disorienting Aftermath",
+        "mood": "Conflicted Nausea",
+        "scene": "You hate him for what he did. You miss him like a little kid. The relationship left you numb. You were faking it every time. Now you have emotional motion sickness. It is a constant nausea. A disorienting feeling won't leave."
+      },
+      {
+        "label": "The Outside View",
+        "mood": "Bitter Clarity",
+        "scene": "From the outside, you see him clearly. He is throwing rocks in his own glass room. You are glad you made it out, even if you are sorry for the wreckage. His old habits still annoy you. He sings with an English accent."
+      },
+      {
+        "label": "The Lingering Question",
+        "mood": "Addictive Pull",
+        "scene": "You try to stay clean and live without him. His behavior still haunts you. You want to drown him out, but there are no words strong enough. A part of you still wonders what would happen if you just surrendered to the sound of him again."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I hate you for what you did\nAnd I miss you like a little kid"
+      },
+      {
+        "line": "I have emotional motion sickness"
+      },
+      {
+        "line": "I'm on the outside looking through\nYou're throwing rocks around your room"
+      },
+      {
+        "line": "Hey, why do you sing with an English accent?"
+      },
+      {
+        "line": "And I wanna know what would happen\nIf I surrender to the sound"
+      }
+    ],
+    "texture": "An acoustic indie folk sound with a moderate tempo, it feels deceptively light and danceable. Yet, the fluctuating stereo panning and subtle shifts in speed create a disorienting effect, making you feel the emotional motion sickness in the sound itself."
+  }
+}

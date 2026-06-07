@@ -1,0 +1,127 @@
+{
+  "runId": "2026-06-07T00-17-28-310Z__harry-styles-as-it-was__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:17:28.310Z",
+  "song": "Harry Styles — As It Was",
+  "spotifyTrackId": "as-it-was",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 8
+  },
+  "byRule": {
+    "participial-closure": 1,
+    "burstiness": 2,
+    "lexical-repetition": 6
+  },
+  "tokens": 11569,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", asking for goodnight.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "A voice calls from the other side of a door, asking for goodnight.",
+      "severity": "low",
+      "note": "CV=0.094 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[1].scene",
+      "span": "The world is just you and one other, but it is not the same as it was.",
+      "severity": "low",
+      "note": "CV=0.109 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "voice",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "door",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "changed",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "alone",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "want",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "help",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a voice from outside a closed door, asking if you're well",
+    "lens": "a new normal as a closed door",
+    "tension": "Unspoken Longing",
+    "take": "The world has changed, and it is not the same as it was. You are behind a closed door, not letting anyone in, even as voices call out to you. This new normal is a self-imposed prison, a quiet isolation where you are stuck in the past. You know you are no good alone, but you cannot bring yourself to open up, even when your goddaughter and father reach out. You just want to leave it at that.",
+    "contradiction": "He rings the bell for help but refuses to open the door when help calls out to him.",
+    "arc": [
+      {
+        "label": "The Closed Door",
+        "mood": "Isolated Reflection",
+        "scene": "A voice calls from the other side of a door, asking for goodnight. You are inside, held back by an unseen force, unable to speak about what has changed. You want a hand to hold, but you leave it at that, stuck in the past."
+      },
+      {
+        "label": "The New Reality",
+        "mood": "Resigned Acceptance",
+        "scene": "The world is just you and one other, but it is not the same as it was. The passage of time has changed everything, and you cannot pretend it hasn't. You face this new reality head-on, even if it means facing your least favorite things."
+      },
+      {
+        "label": "The Unanswered Bell",
+        "mood": "Deepening Solitude",
+        "scene": "The phone rings, a voice asks why you are alone on the floor, what pills you are on. You ring a bell for help, but no one comes. Your father lives alone, just wanting to know you are well. You don't want to talk about any of it."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Come on, Harry, we wanna say goodnight to you"
+      },
+      {
+        "line": "Gravity's holdin' me back"
+      },
+      {
+        "line": "You know it's not the same as it was"
+      },
+      {
+        "line": "Harry, you're no good alone"
+      },
+      {
+        "line": "I don't wanna talk about the way that it was"
+      }
+    ],
+    "texture": null
+  }
+}

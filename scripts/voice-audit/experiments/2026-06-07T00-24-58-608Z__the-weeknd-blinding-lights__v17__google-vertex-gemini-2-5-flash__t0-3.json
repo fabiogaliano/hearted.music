@@ -1,0 +1,213 @@
+{
+  "runId": "2026-06-07T00-24-58-608Z__the-weeknd-blinding-lights__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:24:58.608Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 6,
+    "medium": 1,
+    "low": 15
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 6,
+    "burstiness": 3,
+    "lexical-repetition": 12
+  },
+  "tokens": 13051,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "texture",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", going through withdrawals from a life that has left him unable to love.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", running out of time, desperate to return to her touch before he drowns in the chaos.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", driving a desperate urgency that feels more like a frantic escape than a joyful dance.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", feeling the effects of withdrawal.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", knowing only her touch can bring him back from this state.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", remembering the flashing car and the overdose.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "He is vulnerable and alone, going through withdrawals from a life that has left ",
+      "severity": "low",
+      "note": "CV=0.107 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "He has been on his own for too long, feeling the effects of withdrawal.",
+      "severity": "low",
+      "note": "CV=0.191 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[2].scene",
+      "span": "He sees the sun light up the sky, a sign that his time is short.",
+      "severity": "low",
+      "note": "CV=0.213 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "sin",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "city",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "cold",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "empty",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×7 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "unable",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "love",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "world",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "lights",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "night",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "time",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "desperate",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "sin city's cold and empty, and no one's around to judge me",
+    "lens": "a blinding life as a desperate anchor",
+    "tension": "Urgent Dependence",
+    "take": "He is vulnerable and alone, going through withdrawals from a life that has left him unable to love. His world is \"Sin City,\" a place of crime and hedonism that feels cold and empty without her. He is blinded by the lights of fame and police cars, unable to see clearly. She is his only anchor, the one person he trusts, the only one who can bring him peace and clarity. He speeds through the night, running out of time, desperate to return to her touch before he drowns in the chaos. His love for her is a new, stronger feeling, a desperate need to escape the destructive cycle.",
+    "contradiction": "The lights that blind him are the same ones that define his world.",
+    "arc": [
+      {
+        "label": "The Plea",
+        "mood": "Desperate Vulnerability",
+        "scene": "He has been on his own for too long, feeling the effects of withdrawal. He reaches out, knowing only her touch can bring him back from this state. He needs her to show him how to love."
+      },
+      {
+        "label": "The Blinding Chaos",
+        "mood": "Chaotic Isolation",
+        "scene": "In Sin City, the world around him is cold and empty, yet full of blinding lights from fame and police cars. He is lost in the glare, remembering the flashing car and the overdose. He is drowning in the night, unable to see clearly without her."
+      },
+      {
+        "label": "The Urgent Pursuit",
+        "mood": "Driven Resolve",
+        "scene": "He sees the sun light up the sky, a sign that his time is short. He hits the road in overdrive, determined to return to the one person he trusts. He will never let her go this time, because she is the only one who can keep him from drowning in the night."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I've been tryna call"
+      },
+      {
+        "line": "I'm goin' through withdrawals"
+      },
+      {
+        "line": "Sin City's cold and empty"
+      },
+      {
+        "line": "I'm blinded by the lights"
+      },
+      {
+        "line": "No, I can't sleep until I feel your touch"
+      }
+    ],
+    "texture": "Synthwave pulses with a high-energy beat, driving a desperate urgency that feels more like a frantic escape than a joyful dance. The fast tempo and loud production create a sense of relentless motion, but a low valence pulls it into a sad, almost manic pursuit."
+  }
+}

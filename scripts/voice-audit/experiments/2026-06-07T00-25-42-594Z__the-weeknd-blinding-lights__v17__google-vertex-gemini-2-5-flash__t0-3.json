@@ -1,0 +1,166 @@
+{
+  "runId": "2026-06-07T00-25-42-594Z__the-weeknd-blinding-lights__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:25:42.594Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 5,
+    "medium": 1,
+    "low": 9
+  },
+  "byRule": {
+    "antithesis": 1,
+    "puffery-adjective": 1,
+    "participial-closure": 4,
+    "burstiness": 1,
+    "rule-of-three": 1,
+    "lexical-repetition": 7
+  },
+  "tokens": 13851,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "arc[1].scene",
+      "span": "not just the city's glow or the flashing police car from an overdose,",
+      "severity": "high"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "texture",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", speeding through the night, to return to her and commit to never letting her go, a vulnerable admission that breaks from his past.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", feeling the pangs of withdrawal.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", threatening to end the night where he feels most alive.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", speeding back to her.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "He is lost in the overwhelming glare of fame and the hedonism of Sin City, a pla",
+      "severity": "low",
+      "note": "CV=0.204 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "He experiences withdrawals, both physical and emotional, and cannot see clearly when",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "city",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "lights",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "fame",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "feels",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×7 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "time",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "night",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "the city shining on my face, blinded by the lights",
+    "lens": "obsession: a touch as the only anchor",
+    "tension": "Urgent Dependence",
+    "take": "He is lost in the overwhelming glare of fame and the hedonism of Sin City, a place that feels cold and empty without her. He experiences withdrawals, both physical and emotional, and cannot see clearly when she is gone. Her touch is the only thing that grounds him, the sole anchor in a world that constantly threatens to drown him. He races against time, speeding through the night, to return to her and commit to never letting her go, a vulnerable admission that breaks from his past.",
+    "contradiction": "The lights that promise fame also blind him to everything but her.",
+    "arc": [
+      {
+        "label": "The Empty City",
+        "mood": "Desperate Loneliness",
+        "scene": "He has been on his own for too long, feeling the pangs of withdrawal. Sin City, a place of excess, feels cold and empty without her. He looks around, but no one is there to judge him or to save him from the void. He cannot see clearly when she is gone."
+      },
+      {
+        "label": "The Blinding Truth",
+        "mood": "Overwhelming Dependence",
+        "scene": "The lights blind him, not just the city's glow or the flashing police car from an overdose, but the glare of fame itself. He is drowning in the night, unable to sleep, unable to function. She is the only one he trusts, the only touch that can cut through the overwhelming chaos and bring him peace."
+      },
+      {
+        "label": "The Urgent Return",
+        "mood": "Reckless Commitment",
+        "scene": "Time is running out as the sun begins to rise, threatening to end the night where he feels most alive. He hits the road in overdrive, speeding back to her. He needs to tell her in person, not over the phone, that he will never let her go this time."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I've been on my own for long enough"
+      },
+      {
+        "line": "I'm goin' through withdrawals"
+      },
+      {
+        "line": "I can't see clearly when you're gone"
+      },
+      {
+        "line": "I said, ooh, I'm blinded by the lights"
+      },
+      {
+        "line": "Will never let you go this time"
+      }
+    ],
+    "texture": "A driving synthwave beat propels it forward, a high-energy pulse that feels urgent and relentless. The bright, danceable sound carries a deep undercurrent of sadness, like a desperate chase under neon lights."
+  }
+}

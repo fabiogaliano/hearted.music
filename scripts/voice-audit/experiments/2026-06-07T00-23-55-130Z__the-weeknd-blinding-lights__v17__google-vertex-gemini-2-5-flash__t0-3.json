@@ -1,0 +1,179 @@
+{
+  "runId": "2026-06-07T00-23-55-130Z__the-weeknd-blinding-lights__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:23:55.130Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 3,
+    "medium": 0,
+    "low": 14
+  },
+  "byRule": {
+    "participial-closure": 3,
+    "burstiness": 1,
+    "rule-of-three": 3,
+    "lexical-repetition": 10
+  },
+  "tokens": 13892,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", allowing him to stay peacefully within this addictive lifestyle.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", trying to call.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", hitting the road in overdrive, desperate to reach her before the sun comes up.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "He is lost in Sin City, a world of crime, drugs, and promiscuity, and he feels t",
+      "severity": "low",
+      "note": "CV=0.211 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "a world of crime, drugs, and promiscuity",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "He is in withdrawal, vulnerable, and unable to see clearly",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "blinding lights of fame, the police cars, and the paparazzi are his",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "sin",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "city",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "blinding",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "lights",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "fame",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "touch",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "thing",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "love",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "desperate",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a flashing car in sin city's cold and empty night",
+    "lens": "fame as a blinding addiction",
+    "tension": "Frantic Need",
+    "take": "He is lost in Sin City, a world of crime, drugs, and promiscuity, and he feels the emptiness of it all. He is in withdrawal, vulnerable, and unable to see clearly without her. The blinding lights of fame, the police cars, and the paparazzi are his world, and he cannot stop chasing them. Her touch is the only thing that brings him clarity, the only thing he trusts, allowing him to stay peacefully within this addictive lifestyle. He confesses a love stronger than he has ever shown, a desperate plea to never let her go.",
+    "contradiction": "He is blinded by the lights of fame, and her touch is the only way he sees, yet that touch is just another kind of blinding.",
+    "arc": [
+      {
+        "label": "The Desperate Call",
+        "mood": "Desperate Longing",
+        "scene": "He is alone, in withdrawal, trying to call. He admits his vulnerability, his need for her touch, the only thing that can turn him on."
+      },
+      {
+        "label": "Lost in the Lights",
+        "mood": "Chaotic Emptiness",
+        "scene": "Sin City is cold and empty around him, and he cannot see clearly when she is gone. The blinding lights of fame and past trauma surround him, and he is drowning in the night."
+      },
+      {
+        "label": "The Urgent Confession",
+        "mood": "Frantic Devotion",
+        "scene": "He is running out of time, hitting the road in overdrive, desperate to reach her before the sun comes up. He returns to confess a love he could not say on the phone, a love that means he will never let her go this time."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I've been tryna call"
+      },
+      {
+        "line": "I'm goin' through withdrawals"
+      },
+      {
+        "line": "Sin City's cold and empty"
+      },
+      {
+        "line": "I said, ooh, I'm blinded by the lights"
+      },
+      {
+        "line": "Will never let you go this time"
+      }
+    ],
+    "texture": "A fast, high-energy synthpop beat drives the song forward, almost danceable, but the low valence pulls it back into a desperate urgency. It sounds like a frantic chase through a neon-lit city, full of motion but little joy."
+  }
+}

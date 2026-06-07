@@ -1,0 +1,130 @@
+{
+  "runId": "2026-06-07T00-24-25-733Z__the-weeknd-blinding-lights__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:24:25.733Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 4,
+    "medium": 0,
+    "low": 6
+  },
+  "byRule": {
+    "participial-closure": 4,
+    "lexical-repetition": 6
+  },
+  "tokens": 13337,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", running out of time, to return to her.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", creating a sense of urgent, almost frantic motion.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", trying to call, feeling the ache of withdrawal.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", pushing him to hit the road in overdrive.",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "city",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "high",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "time",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "never",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "let",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a flashing car, with the city shining on his face",
+    "lens": "the chase as salvation",
+    "tension": "Vulnerable Urgency",
+    "take": "He is lost in the blinding lights of fame and the emptiness of Sin City. He feels the pangs of withdrawal and the deep ache of loneliness. This person is his only anchor, the one who can cut through the chaos and offer a touch that brings clarity. He drives in a desperate, high-speed pursuit, running out of time, to return to her. He declares he will never let her go this time, because her presence is his only salvation from a life that has left him unable to sleep and drowning in the night.",
+    "contradiction": "He is running out of time to reach her, yet he promises to never let her go this time.",
+    "arc": [
+      {
+        "label": "The Cold Empty",
+        "mood": "Desperate Loneliness",
+        "scene": "He is alone, trying to call, feeling the ache of withdrawal. Sin City offers no comfort, only a cold, empty expanse where no one judges him, but also no one cares. He cannot see clearly without her."
+      },
+      {
+        "label": "The Blinding Chaos",
+        "mood": "Overwhelmed Dependence",
+        "scene": "The lights blind him, a mix of police cars and paparazzi, and he feels himself drowning in the night. He cannot sleep without her touch, and she is the only one he trusts in this state."
+      },
+      {
+        "label": "The Reckless Return",
+        "mood": "Urgent Commitment",
+        "scene": "Time is slipping away as the sun rises, pushing him to hit the road in overdrive. He is coming back to tell her in person that he will never let you go this time."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I've been on my own for long enough"
+      },
+      {
+        "line": "I'm goin' through withdrawals"
+      },
+      {
+        "line": "Sin City's cold and empty"
+      },
+      {
+        "line": "I'm blinded by the lights"
+      },
+      {
+        "line": "Will never let you go this time"
+      }
+    ],
+    "texture": "A driving synthwave beat propels it forward at a high tempo, creating a sense of urgent, almost frantic motion. This high energy carries a deep undercurrent of melancholy, a bright sound for a desperate chase."
+  }
+}

@@ -1,0 +1,175 @@
+{
+  "runId": "2026-06-07T00-11-36-426Z__kendrick-lamar-not-like-us__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:11:36.426Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 9,
+    "medium": 2,
+    "low": 5
+  },
+  "byRule": {
+    "antithesis": 2,
+    "copula-avoidance": 1,
+    "puffery-adjective": 1,
+    "participial-closure": 6,
+    "self-reference": 1,
+    "burstiness": 2,
+    "lexical-repetition": 3
+  },
+  "tokens": 31130,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "take",
+      "span": "more than just an attack;",
+      "severity": "high"
+    },
+    {
+      "rule": "antithesis",
+      "field": "arc[2].scene",
+      "span": "is not dumb,",
+      "severity": "high"
+    },
+    {
+      "rule": "copula-avoidance",
+      "field": "take",
+      "span": "represents",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "texture",
+      "span": "relentless",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", drawing a clear line between \"us\" and \"them.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", carrying a stark division and accusation through its relentless rhythm.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", questioning why they are still around.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", naming the artists used for street cred and the cities exploited for profit.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", contrasting it with the perceived outsider.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", turning the battle into a collective celebration.",
+      "severity": "high"
+    },
+    {
+      "rule": "self-reference",
+      "field": "take",
+      "span": "This song",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "He sees dead people, and the beat drops like a warning shot.",
+      "severity": "low",
+      "note": "CV=0.202 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[3].scene",
+      "span": "The accusations turn into a chant, a call-and-response against the enemy.",
+      "severity": "low",
+      "note": "CV=0.042 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "everyone",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "outside",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "dance",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "the block is hot, everyone outside, dancing on his grave",
+    "lens": "revenge as a community's rallying cry",
+    "tension": "Vindictive Celebration",
+    "take": "This is more than just an attack; it is a declaration of who belongs and who does not. He names the alleged misdeeds and the cultural appropriation, drawing a clear line between \"us\" and \"them.\" This song becomes a rallying point for his community, a celebration of their shared identity and values against an outsider. He invites everyone to the block party, where the dance steps are a unified rejection of everything the other side represents. The city is back up, and everyone is outside.",
+    "contradiction": "The most aggressive attack is also the most unifying dance party.",
+    "arc": [
+      {
+        "label": "The Call to Arms",
+        "mood": "Ominous Confrontation",
+        "scene": "He sees dead people, and the beat drops like a warning shot. He steps into the persona of a bully, ready to take down anyone who stands in his way. He will put aside his beliefs if he has to hurt someone."
+      },
+      {
+        "label": "The Exposure",
+        "mood": "Blunt Accusation",
+        "scene": "He lays out the accusations, one after another. He warns women to hide their sisters and calls out the alleged pedophilia. He names the associates and their legal troubles, questioning why they are still around. He calls out the cultural appropriation, naming the artists used for street cred and the cities exploited for profit."
+      },
+      {
+        "label": "The Rally",
+        "mood": "Unified Defiance",
+        "scene": "He draws the line: \"They not like us.\" He asserts his authenticity and connection to Black culture, contrasting it with the perceived outsider. He claims the industry can hate him, but he will not back down. He reminds everyone that the audience is not dumb, and the truth is coming out."
+      },
+      {
+        "label": "The Dance of Victory",
+        "mood": "Triumphant Celebration",
+        "scene": "The accusations turn into a chant, a call-and-response against the enemy. He gives dance instructions, turning the battle into a collective celebration. Everyone is outside, moving together, solidifying the victory on the dance floor."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Psst, I see dead people"
+      },
+      {
+        "line": "Say, Drake, I hear you like 'em young"
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer"
+      },
+      {
+        "line": "They not like us, they not like us, they not like us"
+      },
+      {
+        "line": "Then step this way, step that way"
+      }
+    ],
+    "texture": "A high-energy, danceable hip-hop beat drives a low-valence message. The sound is built for movement and collective energy, carrying a stark division and accusation through its relentless rhythm."
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "runId": "2026-06-07T00-13-46-231Z__phoebe-bridgers-motion-sickness__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:13:46.231Z",
+  "song": "Phoebe Bridgers — Motion Sickness",
+  "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 0,
+    "low": 7
+  },
+  "byRule": {
+    "participial-closure": 2,
+    "burstiness": 2,
+    "lexical-repetition": 5
+  },
+  "tokens": 11782,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", seeing him throw rocks around his room.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", trying to stay clean and live without him.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "She carries the emotional motion sickness of a past abusive relationship, a cons",
+      "severity": "low",
+      "note": "CV=0.214 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "She hates him for what he did, but she misses him like a little kid.",
+      "severity": "low",
+      "note": "CV=0.202 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "emotional",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "motion",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "sickness",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "sound",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "the car windows rolled down, still sick",
+    "lens": "abuse as a chronic condition",
+    "tension": "Lingering Nausea",
+    "take": "She carries the emotional motion sickness of a past abusive relationship, a constant internal tremor that mirrors his physical illness. He paid for her hypnotherapy, but his behavior still haunts her, a specific ache she cannot scream away. She knows she is better off without him, glad to be out, but the pull of what was, and the question of what could be, still makes her wonder.",
+    "contradiction": "She tries to drown him out, but his sound is still the only one she hears.",
+    "arc": [
+      {
+        "label": "The Aftermath's Tremor",
+        "mood": "Conflicted Disorientation",
+        "scene": "She hates him for what he did, but she misses him like a little kid. She faked it every time, but she can hardly feel anything at all. He paid for hypnotherapy, but she only went once."
+      },
+      {
+        "label": "Outside Looking In",
+        "mood": "Clear-eyed Relief",
+        "scene": "She is on the outside looking through, seeing him throw rocks around his room. He bleeds on his back in the glass, and she is glad she made it out."
+      },
+      {
+        "label": "The Persistent Echo",
+        "mood": "Irritated Resignation",
+        "scene": "His behavior follows her everywhere, like his English accent. He said he was bored when he met her, a man in a band when she was born."
+      },
+      {
+        "label": "The Unending Loop",
+        "mood": "Weary Ambivalence",
+        "scene": "She has emotional motion sickness, trying to stay clean and live without him. She wants to know what would happen if she surrendered to the sound."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I hate you for what you did\nAnd I miss you like a little kid"
+      },
+      {
+        "line": "I have emotional motion sickness"
+      },
+      {
+        "line": "I'll be glad that I made it out\nAnd sorry that it all went down like it did"
+      },
+      {
+        "line": "You said when you met me, you were bored\nAnd you, you were in a band when I was born"
+      },
+      {
+        "line": "And I wanna know what would happen\nIf I surrender to the sound"
+      }
+    ],
+    "texture": "An acoustic indie folk sound with a moderate tempo, it uses fluctuating stereo panning and tremolo effects. The sound itself creates a subtle, disorienting sway, making you feel the emotional motion sickness."
+  }
+}

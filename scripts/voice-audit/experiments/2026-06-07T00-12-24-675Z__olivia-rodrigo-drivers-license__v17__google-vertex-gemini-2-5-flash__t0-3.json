@@ -1,0 +1,127 @@
+{
+  "runId": "2026-06-07T00-12-24-675Z__olivia-rodrigo-drivers-license__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:12:24.676Z",
+  "song": "Olivia Rodrigo — drivers license",
+  "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 8
+  },
+  "byRule": {
+    "participial-closure": 1,
+    "burstiness": 2,
+    "lexical-repetition": 6
+  },
+  "tokens": 13195,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", making every familiar street a reminder of what she lost.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[1].scene",
+      "span": "He is with the blonde girl, the one who makes her doubt everything.",
+      "severity": "low",
+      "note": "CV=0.124 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[2].scene",
+      "span": "Her friends are tired of hearing it, but she still loves him.",
+      "severity": "low",
+      "note": "CV=0.197 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "driving",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "alone",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "meant",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "drives",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "every",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "driving alone past your street, still seeing your face",
+    "lens": "a milestone as a monument to loss",
+    "tension": "Lingering Anguish",
+    "take": "The driver's license, meant to be a symbol of new freedom and a shared future, becomes the instrument of her heartbreak. She drives the routes they planned, but now she is alone. The independence she earned only highlights his absence, making every familiar street a reminder of what she lost. She cannot escape the memories, even as she drives away.",
+    "contradiction": "She drives away from him, but every mile brings her closer to his memory.",
+    "arc": [
+      {
+        "label": "The Promise Broken",
+        "mood": "Shattered Expectation",
+        "scene": "She finally has her license, the one they talked about, the one that meant driving to his house. The freedom she anticipated arrives, but he is gone. The car, meant for connection, now carries only her tears."
+      },
+      {
+        "label": "The Haunting Presence",
+        "mood": "Gnawing Insecurity",
+        "scene": "He is with the blonde girl, the one who makes her doubt everything. Every white car, every front yard, every sound of traffic brings his face and voice back. She cannot escape him because he is everywhere she looks and listens."
+      },
+      {
+        "label": "The Unshakeable Love",
+        "mood": "Stubborn Devotion",
+        "scene": "Her friends are tired of hearing it, but she still loves him. The anger at his quick recovery gives way to the raw, undeniable truth of her own feelings. She drives alone, but she still pictures driving home to him."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I got my driver's license last week"
+      },
+      {
+        "line": "Crying 'cause you weren't around"
+      },
+      {
+        "line": "She's everything I'm insecure about"
+      },
+      {
+        "line": "Guess you didn't mean what you wrote in that song about me"
+      },
+      {
+        "line": "'Cause I still fuckin' love you, babe"
+      }
+    ],
+    "texture": "An acoustic-leaning pop sound carries a moderate tempo, but a low energy and valence pull it into a deep sadness. It feels like a quiet, intimate confession, even as the beat keeps a steady, almost danceable pulse."
+  }
+}

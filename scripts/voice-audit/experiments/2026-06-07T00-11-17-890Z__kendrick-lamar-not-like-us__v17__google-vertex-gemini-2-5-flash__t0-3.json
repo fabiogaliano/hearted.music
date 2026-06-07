@@ -1,0 +1,156 @@
+{
+  "runId": "2026-06-07T00-11-17-890Z__kendrick-lamar-not-like-us__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:11:17.890Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 5,
+    "medium": 0,
+    "low": 8
+  },
+  "byRule": {
+    "antithesis": 1,
+    "participial-closure": 4,
+    "burstiness": 3,
+    "rule-of-three": 2,
+    "lexical-repetition": 3
+  },
+  "tokens": 31043,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "take",
+      "span": "is not just a personal beef;",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", asserting a collective identity rooted in authenticity and moral standing.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", rallying together to dance on the grave of a perceived threat.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", detailing their alleged crimes, and renames his album \"Certified Pedophiles.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", moving together in shared defiance.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "He sees dead people, and he is coming for them.",
+      "severity": "low",
+      "note": "CV=0.216 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[2].scene",
+      "span": "He calls out the disrespect of Pac and the Bay.",
+      "severity": "low",
+      "note": "CV=0.202 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[3].scene",
+      "span": "The chant rings out: they are not like us.",
+      "severity": "low",
+      "note": "CV=0.196 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[1].scene",
+      "span": "his associates by name, detailing their alleged crimes, and renames his album",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[2].scene",
+      "span": "calls him a colonizer, not a colleague, and asserts that Drake is",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "drake",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[1].scene",
+      "span": "like",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "arc[1].scene",
+      "span": "calls",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "the city is back up, we outside",
+    "lens": "community as a weapon",
+    "tension": "Unrelenting Fury",
+    "take": "Kendrick draws a hard line, asserting a collective identity rooted in authenticity and moral standing. He uses this collective \"us\" to expose and condemn Drake as an outsider, a \"colonizer,\" and a \"pedophile.\" This is not just a personal beef; it is a community defending its values and turf, rallying together to dance on the grave of a perceived threat.",
+    "contradiction": "He claims a moral high ground while putting aside his own stated morals to fight.",
+    "arc": [
+      {
+        "label": "The Declaration of War",
+        "mood": "Aggressive Confrontation",
+        "scene": "He sees dead people, and he is coming for them. He takes on the persona of a sociopathic bully, ready to nail his opponent to a cross. He will put aside his well-established Christian beliefs and values if he has to hurt someone."
+      },
+      {
+        "label": "The Moral Indictment",
+        "mood": "Cutting Accusation",
+        "scene": "He hears you like them young. He warns any woman talking to him to hide her little sister. He calls out his associates by name, detailing their alleged crimes, and renames his album \"Certified Pedophiles.\""
+      },
+      {
+        "label": "The Cultural Expulsion",
+        "mood": "Defiant Exclusion",
+        "scene": "He calls out the disrespect of Pac and the Bay. He details how Drake runs to Atlanta to use its artists for street cred and money. He calls him a colonizer, not a colleague, and asserts that Drake is not like us."
+      },
+      {
+        "label": "The Collective Affirmation",
+        "mood": "Unified Celebration",
+        "scene": "The chant rings out: they are not like us. It is a call-and-response, a dance instruction, a unified movement. The city is back up, and everyone is outside, moving together in shared defiance."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Psst, I see dead people"
+      },
+      {
+        "line": "Just make sure you hide your lil' sister from him"
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer"
+      },
+      {
+        "line": "They not like us, they not like us, they not like us"
+      },
+      {
+        "line": "Then step this way, step that way"
+      }
+    ],
+    "texture": "A danceable hip-hop beat with a sped-up soul sample drives a track that feels physically engaging, even as its low valence carries a deep, cutting negativity."
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "runId": "2026-06-07T00-15-30-073Z__benson-boone-beautiful-things__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:15:30.074Z",
+  "song": "Benson Boone — Beautiful Things",
+  "spotifyTrackId": "beautiful-things",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 0,
+    "medium": 0,
+    "low": 8
+  },
+  "byRule": {
+    "burstiness": 2,
+    "rule-of-three": 1,
+    "lexical-repetition": 5
+  },
+  "tokens": 8859,
+  "hits": [
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "He has finally found a life filled with beautiful things: a girl his parents lov",
+      "severity": "low",
+      "note": "CV=0.240 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[2].scene",
+      "span": "The fear erupts into a direct, repeated plea to God.",
+      "severity": "low",
+      "note": "CV=0.215 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[2].scene",
+      "span": "He needs these things, he wants them, and he begs for them",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "things",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "every",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "feels",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "god",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "losing",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a tight grip on a borrowed thing",
+    "lens": "happiness as a loan",
+    "tension": "Lingering Fear",
+    "take": "He has finally found a life filled with beautiful things: a girl his parents love, a restored sense of self, and a family he sees every month. This newfound happiness, however, feels less like a permanent possession and more like a temporary loan. He thanks God for these blessings, but the gratitude is immediately overshadowed by the terrifying knowledge that what is given can also be taken away. Every moment of joy is tinged with the anxious plea for it all to simply stay.",
+    "contradiction": "The joy of having everything makes him terrified of losing it all.",
+    "arc": [
+      {
+        "label": "The Good Life",
+        "mood": "Grateful Peace",
+        "scene": "After years of cold Decembers, everything finally feels right. He has a girl his parents love, a family he sees every month, and he feels sane. He thinks he might have it all."
+      },
+      {
+        "label": "The Inevitable Threat",
+        "mood": "Anxious Dread",
+        "scene": "He thanks God for these beautiful things, but the gratitude is immediately overshadowed by the knowledge that they are not truly his to keep. He holds her every night, but the feeling is tinged with the terror of losing her."
+      },
+      {
+        "label": "The Constant Prayer",
+        "mood": "Urgent Supplication",
+        "scene": "The fear erupts into a direct, repeated plea to God. He needs these things, he wants them, and he begs for them not to be taken away. He is up at night, consumed by the thought of losing it all."
+      }
+    ],
+    "lines": [
+      {
+        "line": "But I know the things He gives me, He can take away"
+      },
+      {
+        "line": "But there's no man as terrified as the man who stands to lose you"
+      },
+      {
+        "line": "I want you, I need you, oh God"
+      },
+      {
+        "line": "Don't take\nThese beautiful things that I've got"
+      },
+      {
+        "line": "But I'm up at night thinkin' I just might lose it all"
+      }
+    ],
+    "texture": null
+  }
+}

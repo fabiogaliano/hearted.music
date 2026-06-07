@@ -1,0 +1,173 @@
+{
+  "runId": "2026-06-07T00-15-17-936Z__benson-boone-beautiful-things__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:15:17.936Z",
+  "song": "Benson Boone — Beautiful Things",
+  "spotifyTrackId": "beautiful-things",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 3,
+    "medium": 1,
+    "low": 12
+  },
+  "byRule": {
+    "puffery-adjective": 1,
+    "participial-closure": 3,
+    "burstiness": 2,
+    "rule-of-three": 2,
+    "lexical-repetition": 8
+  },
+  "tokens": 9272,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "take",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", pleading for it to stay, because the man who stands to lose you is the most terrified man of all.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "contradiction",
+      "span": ", making his happiness a constant source of dread.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", pleading for these beautiful things to stay.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "After cold Decembers, he finds himself in a good place.",
+      "severity": "low",
+      "note": "CV=0.083 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[1].scene",
+      "span": "The moment he realizes he has it all, a shadow falls.",
+      "severity": "low",
+      "note": "CV=0.148 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "girl his parents love, a family he sees, and a sense of sanity",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[2].scene",
+      "span": "He wants them, he needs them, and he begs for them",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "man",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "stands",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "lose",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "terrified",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "knows",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "god",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "away",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "more",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "the man who stands to lose you, terrified",
+    "lens": "having it all as a threat",
+    "tension": "Vulnerable Happiness",
+    "take": "He finally has everything he ever wanted: a girl his parents love, a family he sees, and a sense of sanity. This abundance, however, does not bring peace; it brings a profound terror. He knows God gives beautiful things, and he knows God can take them away. The more he has, the more he stands to lose, and the more terrified he becomes. He holds onto it all, pleading for it to stay, because the man who stands to lose you is the most terrified man of all.",
+    "contradiction": "The more he has, the more he fears losing it, making his happiness a constant source of dread.",
+    "arc": [
+      {
+        "label": "The Turnaround",
+        "mood": "Hard-won Peace",
+        "scene": "After cold Decembers, he finds himself in a good place. His family is close, and he has a girl his parents love. He feels sane again, and he thinks he might finally have everything."
+      },
+      {
+        "label": "The Weight of Having",
+        "mood": "Gnawing Fear",
+        "scene": "The moment he realizes he has it all, a shadow falls. He knows what God gives, God can take away. This newfound happiness makes him vulnerable, and he is terrified of losing her."
+      },
+      {
+        "label": "The Desperate Hold",
+        "mood": "Urgent Plea",
+        "scene": "He holds onto her every night, pleading for these beautiful things to stay. He wants them, he needs them, and he begs for them not to be taken away."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I think I might have it all"
+      },
+      {
+        "line": "But I know the things He gives me, He can take away"
+      },
+      {
+        "line": "But there's no man as terrified as the man who stands to lose you"
+      },
+      {
+        "line": "Oh, I hope I don't lose you"
+      },
+      {
+        "line": "Don't take\nThese beautiful things that I've got"
+      }
+    ],
+    "texture": null
+  }
+}

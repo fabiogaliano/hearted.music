@@ -1,0 +1,158 @@
+{
+  "runId": "2026-06-07T00-17-04-661Z__harry-styles-as-it-was__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:17:04.661Z",
+  "song": "Harry Styles — As It Was",
+  "spotifyTrackId": "as-it-was",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 4,
+    "medium": 0,
+    "low": 9
+  },
+  "byRule": {
+    "antithesis": 1,
+    "participial-closure": 3,
+    "burstiness": 1,
+    "lexical-repetition": 8
+  },
+  "tokens": 11254,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "take",
+      "span": "isn't the same,",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", telling him he's no good alone, he rings a bell for help that never comes.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", keeping the door closed to anyone who might reach him.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", ringing a bell for help, but no one comes.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The world isn't the same, and that change has left him profoundly alone.",
+      "severity": "low",
+      "note": "CV=0.201 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "closed",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "door",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "voice",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×9 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "alone",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "refuses",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "talk",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "way",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a closed door, a voice from the other side",
+    "lens": "change as isolation",
+    "tension": "Resigned Isolation",
+    "take": "The world isn't the same, and that change has left him profoundly alone. He feels gravity holding him back, stuck in a past he cannot escape. Even as loved ones call, telling him he's no good alone, he rings a bell for help that never comes. He refuses to talk about the way it was, keeping the door closed to anyone who might reach him.",
+    "contradiction": "He wants someone to hold out a palm, but he refuses to talk about the way it was.",
+    "arc": [
+      {
+        "label": "The Distant Call",
+        "mood": "Gentle Isolation",
+        "scene": "A child's voice calls to him, a reminder of connection. He hears it from behind a closed door, a barrier he put up."
+      },
+      {
+        "label": "The Unmoving Present",
+        "mood": "Heavy Stasis",
+        "scene": "Gravity holds him back, a physical weight keeping him from moving on. He knows the world has changed, and he is stuck in the 'as it was'."
+      },
+      {
+        "label": "The Exposed State",
+        "mood": "Raw Vulnerability",
+        "scene": "The phone rings, and a voice tells him he's no good alone. He sits on the floor, ringing a bell for help, but no one comes. His father lives alone, a stark mirror."
+      },
+      {
+        "label": "The Active Avoidance",
+        "mood": "Stubborn Retreat",
+        "scene": "He actively refuses to talk about the way it was. He wants to leave America, but the past still holds him."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Come on, Harry, we wanna say goodnight to you"
+      },
+      {
+        "line": "Gravity's holdin' me back"
+      },
+      {
+        "line": "You know it's not the same as it was"
+      },
+      {
+        "line": "Harry, you're no good alone"
+      },
+      {
+        "line": "I don't wanna talk about the way that it was"
+      }
+    ],
+    "texture": null
+  }
+}

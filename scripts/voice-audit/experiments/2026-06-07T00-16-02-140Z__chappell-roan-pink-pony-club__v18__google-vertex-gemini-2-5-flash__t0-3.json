@@ -1,0 +1,116 @@
+{
+  "runId": "2026-06-07T00-16-02-140Z__chappell-roan-pink-pony-club__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:16:02.140Z",
+  "song": "Chappell Roan — Pink Pony Club",
+  "spotifyTrackId": "pink-pony-club",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 0,
+    "low": 5
+  },
+  "byRule": {
+    "participial-closure": 2,
+    "lexical-repetition": 5
+  },
+  "tokens": 14123,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "contradiction",
+      "span": ", sustaining the \"scream\" she knows will come.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", finding where she belongs in West Hollywood's Pink Pony Club.",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "dancing",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "mother",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "disapproval",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "new",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "life",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "dancing under black lights, a thousand miles away from home",
+    "lens": "a queer coming-of-age as a defiant dance",
+    "tension": "Defiant Joy",
+    "take": "She leaves her Midwest home and her mother's expectations for the queer community in LA. She finds belonging and joy in dancing at the Pink Pony Club, a place where she can be herself. She acknowledges her mother's disapproval but chooses her own path. The \"wicked dreams\" become reality. The song is her defiant answer to the imagined question, \"God, what have you done?\"",
+    "contradiction": "The fantasy of her new life is complete only when her mother's imagined disapproval is present, sustaining the \"scream\" she knows will come.",
+    "arc": [
+      {
+        "label": "The Vision",
+        "mood": "Restless Longing",
+        "scene": "She sees \"crazy visions\" of LA, a \"special place\" where \"boys and girls can all be queens every single day.\" She knows this future will \"cause a scene\" and make her mama \"scream.\""
+      },
+      {
+        "label": "The Embrace",
+        "mood": "Liberated Joy",
+        "scene": "She is \"just having fun\" on the stage in her heels, finding where she belongs in West Hollywood's Pink Pony Club. This new community offers the freedom to be who she wants to be."
+      },
+      {
+        "label": "The Echo",
+        "mood": "Lingering Echo",
+        "scene": "She is \"up and jaws are on the floor,\" thriving in her new life, but her mother's voice still echoes, \"God, what have you done?\" She hears the \"Southern drawl a thousand miles away,\" a reminder of the life she left behind."
+      },
+      {
+        "label": "The Persistence",
+        "mood": "Steadfast Defiance",
+        "scene": "She thanks her \"wicked dreams\" for leading her to this reality. She will \"keep on dancing,\" a defiant celebration of her chosen path, even with the lingering disapproval."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I know you wanted me to stay"
+      },
+      {
+        "line": "Where boys and girls can all be queens every single day"
+      },
+      {
+        "line": "Won't make my mama proud, it's gonna cause a scene"
+      },
+      {
+        "line": "On the stage in my heels, it's where I belong"
+      },
+      {
+        "line": "I'm gonna keep on dancing"
+      }
+    ],
+    "texture": null
+  }
+}

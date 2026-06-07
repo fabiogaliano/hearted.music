@@ -1,0 +1,2188 @@
+{
+  "schemaVersion": 1,
+  "label": "v17@temp 0.3",
+  "variant": {
+    "promptVersion": "17",
+    "model": "google-vertex:gemini-2.5-flash",
+    "temperature": 0.3
+  },
+  "judgeModel": "opus",
+  "generatedAt": "2026-06-07T02:04:24.443Z",
+  "songs": [
+    {
+      "key": "dtmf",
+      "song": "Bad Bunny — DtMF",
+      "spotifyTrackId": "3sK8wGT43QFpWrvNQsrQya",
+      "goldWordCount": 269,
+      "runs": [
+        {
+          "runId": "2026-06-07T00-19-51-505Z__bad-bunny-dtmf__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 261,
+          "tier1": {
+            "high": 2,
+            "medium": 1,
+            "low": 10
+          },
+          "pairwiseRationales": [
+            "B's images are true to the song (\"Vamo' pa' la foto\", \"los mío' nunca se muden\", plena percussion) and land lines like \"The denial doing what denial does\" and \"What left taught him how to hold what remains.\" A leans on puffery (\"beautiful, vibrant present\", \"dancing beside him\") and shaky details (domino game, \"nudes\", \"reggaeton beat\").",
+            "A names the musicians, the bomba and plena, the gold chains, ending on \"This time he takes the photo.\" — concrete and warm. B opens book-report style (\"The song lives in...\"), reports metrics (\"low energy and valence\"), and leans on clichés (\"ghost... dancing beside him\"). B's \"reggaeton beat\" also mishears this folk-driven track."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [
+                "surrounded by friends and family",
+                "a deep regret for a past love constantly surfaces.",
+                "He tries to push it away, to immerse himself in the party",
+                "even lying about his feelings.",
+                "Yet, the longing persists, shifting from a wistful desire for more shared moments to a raw, physical yearning for her presence.",
+                "He celebrates life as it is, but the ghost of what he lost is always dancing beside him.",
+                "surrounded by beauty and friends",
+                "a specific memory of looking into her eyes pulls him back.",
+                "He wishes he had more photos and kisses from that time.",
+                "a lie he tells himself and others.",
+                "He dives into the chaos of drinking and friends, letting the moment consume him.",
+                "His friends are growing up, having families, and he acknowledges that priorities change.",
+                "The regret for lost intimacy returns"
+              ],
+              "rationale": "Mentions the specific San Juan setting. / Details a domino game with his abuelo. / Includes a very specific desire for 'nudes'."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Presents specific, tangible visuals like a sunset and a game. / The 'ghost' evokes a particular memory/feeling, not an abstract summary."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "The song lives in",
+                "constantly surfaces",
+                "shifting from a wistful desire for more shared moments to a raw, physical yearning for her presence",
+                "the ghost of what he lost is always dancing beside him"
+              ],
+              "rationale": "Uses abstract language to describe the song's theme. / Analyzes emotional shifts and character motivations."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Nostalgia emerges, then is actively suppressed by present escape. / Suppressed longing resurfaces, intensified by changing life circumstances."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently explores the interplay between the vibrant present and persistent past regret, directly embodying the lens's 'X as Y' structure. / The lens is a critical claim about how two states of being relate, not a surface-level description or a slop phrase."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Lens provides a concise thesis, while take expands on it. / Contradiction frames the core tension as a fresh, paradoxical relationship. / Arc scenes dramatize take beats with concrete, specific details not present in the take."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No abstract, self-satisfied aphoristic kickers are present. / The prose flows well with no piles of disconnected fragments. / No manufactured 'X is the Y' parallelism or mirrored constructions are used; insights are grounded."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "San Juan sunset, dominó, and regret-for-past-love all trace to lyrics + annotations. / The lie to abuelo, friends having kids, and the 'nudes' line are all heard lyrics. / No imported reception, no off-source biography, no fabricated setting."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-19-36-054Z__bad-bunny-dtmf__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 292,
+          "tier1": {
+            "high": 2,
+            "medium": 1,
+            "low": 14
+          },
+          "pairwiseRationales": [
+            "B states it plainly — \"This time he takes the photo\" — and nails this song's details (the roll call, the music stopping, plena percussion \"already turning into a memory\"). A opens with essay-speak (\"finds its rhythm in the space between\"), leans on antithesis (\"a lesson, not a prison\"), and mislabels the track as reggaeton.",
+            "A states it plainly (\"This time he takes the photo.\", \"It becomes a vow.\") with varied rhythm and a folk-percussion texture true to the song. B leans academic (\"finds its rhythm in the space between\"), uses the antithesis cliché (\"a lesson, not a prison\"), and miscalls it \"reggaeton.\""
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [
+                "The song finds its rhythm in the space between what was and what is.",
+                "Regret over missed moments with a past lover — more photos, more kisses, more hugs — fuels a deeper appreciation for the present.",
+                "The past is a lesson, not a prison, and it pushes him to embrace the joy of today, even if it means getting 'loco' and needing help.",
+                "His mind drifts to a past love.",
+                "He wishes he had captured more moments, more affection, more of her.",
+                "He wants to drink, talk nonsense, and get 'loco' to push away the thoughts of what ended.",
+                "He wants to enjoy the moment because tomorrow is not promised.",
+                "Despite the revelry and the passage of time, the core regret remains.",
+                "He acknowledges the enduring presence of his community and the need to live, but the longing for what was, and what could still be, persists."
+              ],
+              "rationale": "Mentions specific location (San Juan) and family (abuelo). / References specific life event (brother/friend becoming parents). / Includes a unique detail about 'more nudes' from a past lover."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a specific visual scene. / Expresses a clear, relatable desire."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "The song finds its rhythm in the space between what was and what is.",
+                "fuels a deeper appreciation for the present",
+                "The past is a lesson, not a prison, and it pushes him to embrace the joy of today"
+              ],
+              "rationale": "Uses abstract, analytical language to describe themes. / Explains how the song functions, not what it feels like."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The arc effectively traces a cycle of regret, attempted distraction, and the ultimate persistence of longing. / Each beat conveys a distinct emotional state and inner turn, rather than merely recounting events."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take explicitly details how past regret fuels a deeper appreciation for the present. / Supporting elements consistently demonstrate this transformation and the enduring presence of both aspects."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take previews events and themes which the arc scenes then dramatize with new concrete detail. / The contradiction articulates a paradox inherent in the take's premise, adding a layer of tension. / Shared phrases serve as spine-repetition, but each field adds substantial new content or a unique altitude."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No aphoristic kickers or detached profundity found. / No instances of fragmentation piles or disconnected prose. / No mirrored 'X is the Y' constructions for manufactured profundity."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Sunset San Juan, dominoes/abuelo, Bernie & Jan all cite lyrics plus vote-gated annotations. / 'Brother' and 'creative director' for Bernie/Jan come straight from the Verso 3 annotation. / Regret, past love, drinking-to-forget, nudes — all trace to heard lines; no reception or invented setting."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-19-23-110Z__bad-bunny-dtmf__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 305,
+          "tier1": {
+            "high": 8,
+            "medium": 3,
+            "low": 13
+          },
+          "pairwiseRationales": [
+            "B nails song-specific detail (\"names every musician...one by one\", \"This time he takes the photo\", \"brother has a son\") with varied, human rhythm. A leans essayistic and generic (\"fuels a present-day indulgence\", \"holds a powerful grip on his present thoughts\") plus a participial texture clause.",
+            "A names the gathered musicians, \"salsa, the bomba, the plena,\" the brother's son, \"Vamo' pa' la foto\"—images true only of DtMF, in varied sentences. B leans generic and academic: \"fuels a present-day indulgence,\" \"powerful grip on his present thoughts,\" plus an inaccurate \"reggaeton rhythm\" claim and participial \"creating a melancholic haze.\""
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [
+                "He looks back at a past love with a deep regret, wishing he had captured more of their time together.",
+                "This wistful longing doesn't lead to despair.",
+                "He drinks, and enjoys the music, living fully in the moment even as the echoes of what he lost subtly shape his experience.",
+                "The desire to capture intimacy persists, showing the past still holds a powerful grip on his present thoughts."
+              ],
+              "rationale": "Mentions San Juan and Puerto Rico. / Details playing dominoes with his grandfather. / References specific regrets: photos, kisses, hugs. / Notes explicit intimacy and family observations."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "It presents a specific, visual scene. / It describes a personal, internal experience of memory."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "This wistful longing doesn't lead to despair; instead, it fuels a present-day indulgence",
+                "living fully in the moment even as the echoes of what he lost subtly shape his experience",
+                "The desire to capture intimacy, even explicit, persists, showing the past still holds a powerful grip on his present thoughts"
+              ],
+              "rationale": "Analyzes emotional mechanics. / Uses formal, abstract language."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The beats depict a clear emotional journey from initial regret, through attempts to escape and deny it, to its persistent resurfacing. / Each scene successfully conveys a distinct feeling and internal struggle, rather than merely recounting events."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take explicitly describes how regret 'fuels a present-day indulgence' in San Juan life. / The lens is argumentative, avoids slop, and is clearly supported by the narrative details."
+            },
+            {
+              "judge": "redundancy",
+              "passed": false,
+              "evidence": [
+                "arc[3] duplicates take: 'wishing for more photos, kisses, and hugs. The desire to capture intimacy, even explicit, persists, showing the past still holds a powerful grip on his present thoughts.'"
+              ],
+              "rationale": "Arc[3] directly copies two substantial sentences from the take. / The new material in arc[3] is minimal and not concrete dramatization. / Arc[3] fails to add new concrete detail around shared sentences, making it dead weight."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The writing maintains a forward-moving narrative without resorting to manufactured profundity. / No instances of aphoristic kickers or mirrored 'X is the Y' constructions were found. / The prose is consistently flowing, avoiding fragmented piles that sever connective tissue."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Sunset, photos, kisses/hugs, dominoes, drinking, nudes — all trace to heard lyrics. / Brother Bernie + friend Jan growing families confirmed by Verso 3 annotation. / Denial-yet-circling-back contradiction reads 'le digo que no' against the regret chorus; no imports found."
+            }
+          ]
+        }
+      ],
+      "songOutcome": "fail"
+    },
+    {
+      "key": "beautiful-things",
+      "song": "Benson Boone — Beautiful Things",
+      "spotifyTrackId": "beautiful-things",
+      "goldWordCount": 262,
+      "runs": [
+        {
+          "runId": "2026-06-07T00-16-33-734Z__benson-boone-beautiful-things__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 244,
+          "tier1": {
+            "high": 5,
+            "medium": 3,
+            "low": 7
+          },
+          "pairwiseRationales": [
+            "B earns its read with song-true detail: \"Four cold Decembers behind him,\" the \"hushed piano confession that detonates into a wall of rock,\" and the bridge \"burns off everything but two words. I need.\" A restates lyrics and leans academic: \"profound terror of loss\" and the antithesis \"not a secure state but a constant, anxious plea.\"",
+            "A reads like a friend: \"And that's the problem,\" \"the giver can take it back,\" \"burns off everything but two words. I need.\" B leans academic and bookish—\"He finally has everything he ever wanted,\" \"This abundance, however,\" and the antithesis \"not a secure state but a constant, anxious plea.\" A's rhythm varies; B's flattens."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [
+                "This abundance, however, does not bring peace; it brings a profound terror of loss.",
+                "The man who stands to lose it all is the most terrified.",
+                "Life finally feels right.",
+                "The thought of losing it all immediately follows the blessing.",
+                "He holds her every night, wanting to get used to this feeling, but the man who stands to lose her is the most terrified.",
+                "if everything is good and great, why does he sit and wait until it is gone?",
+                "He has peace and love, but he is up at night, convinced he just might lose it all.",
+                "The plea becomes a constant, desperate refrain."
+              ],
+              "rationale": "Details a specific combination of relationship, sanity, and faith. / Focuses on a unique fear that God will take these specific blessings away. / Connects these distinct gifts to a persistent, anxious state."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a visual scene and a physical state. / Evokes a direct felt sensation of emotion or fragility."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "This abundance, however, does not bring peace",
+                "it brings a profound terror of loss",
+                "His happiness is not a secure state",
+                "a constant, anxious plea to keep what he has",
+                "the man who stands to lose it all is the most terrified"
+              ],
+              "rationale": "Uses formal, abstract language. / Analyzes internal states rather than conveying feeling."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Arc shows a clear progression from gratitude to increasing fear of loss. / Each scene vividly captures an emotional state and a significant internal shift."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take directly argues how the blessing itself initiates a fear of impending loss, embodying the 'ticking clock'. / All supporting elements (tension, image, contradiction, arc, lines) consistently reinforce the lens."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Contradiction distills the core paradox described in the take. / Arc scenes dramatize take's points with new concrete details. / Shared phrases function as spine echoes with new surrounding content."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The text maintains full sentences and cohesive prose, avoiding fragmentation. / The observations and character insights are specific, not generalized aphorisms. / The contradiction describes a specific paradox for the character, not abstract mirrored symmetry."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "take/arc map directly onto heard lyrics: sanity, faith, terror, pleas to God. / Annotation supports 'girl my parents love'; no imported reception or biography. / 'Trembling hand' renders stated dread, not an invented setting."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-16-20-921Z__benson-boone-beautiful-things__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 211,
+          "tier1": {
+            "high": 3,
+            "medium": 3,
+            "low": 6
+          },
+          "pairwiseRationales": [
+            "B reads like a friend: \"And that's the problem.\", \"the hush blows open into drums\", and a vivid texture (\"detonates into a wall of rock\"). A leans essayistic (\"The very presence of such good makes him vulnerable\"), has redundant \"Anxious Dread\", no texture, and a broken line.",
+            "A talks like a friend: \"And that's the problem,\" \"The hush blows open into drums,\" \"no one is as terrified as the man who finally has something to lose.\" B reports flatly with participial openers (\"bringing a girl\"), redundant \"Anxious Dread,\" academic \"twists into a terror of loss,\" no texture, and a broken line."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [
+                "Life has finally turned around",
+                "and a sense of peace he hasn't known in years.",
+                "He thanks God for these beautiful things,",
+                "but the gratitude immediately twists into a terror of loss.",
+                "The very presence of such good makes him vulnerable,",
+                "He holds onto these gifts with a desperate plea,",
+                "knowing how quickly everything can vanish.",
+                "After years of cold Decembers, everything finally clicks into place.",
+                "He finds peace and love,",
+                "and a sense of sanity.",
+                "He feels like he has it all.",
+                "He thanks God for these gifts,",
+                "but the thought immediately follows: God can take them away.",
+                "The joy of holding her close is overshadowed by the terror of losing her,",
+                "a feeling he knows too well.",
+                "The quiet fear becomes an open plea,",
+                "He begs for these beautiful things to stay, needing them, wanting them, terrified of their absence.",
+                "He cannot bear the thought of waiting until it's all gone."
+              ],
+              "rationale": "Mentions specific core metaphor: 'beautiful thing held tight, already slipping'. / Includes specific detail about the girl: 'his parents love/adore'. / Frames terror of loss uniquely: 'God, who gives, can also take away' and 'desperate bargain with God'."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a physical action: something held tight. / Conveys a felt sensation: the act of slipping."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "gratitude immediately twists into a terror of loss",
+                "The very presence of such good makes him vulnerable",
+                "lives in constant fear that God, who gives, can also take away",
+                "holds onto these gifts with a desperate plea, knowing how quickly everything can vanish"
+              ],
+              "rationale": "Describes emotional mechanics rather than expressing feeling. / Uses abstract language to summarize the character's internal state."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Beats demonstrate clear emotional progression from contentment to fear to desperate plea. / Each scene successfully conveys a distinct feeling and emotional turn."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take directly illustrates how the receipt of blessings morphs into a burden of fear and vulnerability. / The lens is argumentative and the read consistently uses it to frame the song's emotional arc."
+            },
+            {
+              "judge": "redundancy",
+              "passed": false,
+              "evidence": [
+                "arc[1] re-asserts take: \"He thanks God for these gifts, but the thought immediately follows: God can take them away. The joy of holding her close is overshadowed by the terror of losing her, a feeling he knows too well.\""
+              ],
+              "rationale": "Arc scene [1] merely rewords the take's description of dread. / It presents no new concrete dramatization or specific moment. / Removing it loses no new angle or detail beyond the take's summary."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No abstract, self-satisfied epigrams; all statements advance the song's narrative or character's state. / No instances of disconnected, stacked fragments; prose flows with clear connections. / No mirrored 'X is the Y' constructions; claims are causal/temporal or descriptive, not symmetrical abstractions."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Lens/take/contradiction all trace to the gratitude-vs-fear tension stated in the lyrics. / Each arc scene cites heard lines; girl-parents-love also backed by annotation. / No imported reception, biography, or invented setting found."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-16-08-312Z__benson-boone-beautiful-things__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 197,
+          "tier1": {
+            "high": 2,
+            "medium": 2,
+            "low": 9
+          },
+          "pairwiseRationales": [
+            "B reads like a friend: \"And that's the problem,\" \"burns off everything but two words. I need,\" and the dynamics \"swinging as wildly as the fear underneath them.\" A leans on puffery (\"profound terror,\" \"Desperate Supplication\") and a book-report frame (\"This song finds a man...\"). B's images and rhythm are sharper.",
+            "A reads like a friend: \"And that's the problem\", \"he knows the rule by heart\", \"two words. I need.\" Varied rhythm, song-specific images, no tells. B leans on puffery (\"profound terror\"), book-report framing (\"This song finds a man\"), and stiff academic labels (\"Desperate Supplication\")."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Specific backstory: 'years of cold Decembers' and details like 'a girl his parents love'. / Emotional paradox: holding love 'not in joy, but in a desperate prayer'. / Fear of loss rooted in specific religious realization: 'What God gives, God can take away'."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a specific action: 'holding on tight'. / Evokes a clear emotional scenario of fear and attachment."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "This song finds a man finally content",
+                "breeds a profound terror",
+                "not in joy, but in a desperate prayer for permanence",
+                "shadowed by the constant threat of its undoing"
+              ],
+              "rationale": "Uses formal, analytical language. / Describes abstract concepts rather than personal feeling."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Each beat builds directly on the previous, showing a clear emotional progression from contentment to dread to desperate prayer. / Scenes effectively capture the evolving feeling and psychological turn of the protagonist, avoiding mere event descriptions."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take, arc, and lines consistently frame happiness as a precious, conditional offering. / The lens is an interpretive claim, not descriptive, and is well-supported by all evidence."
+            },
+            {
+              "judge": "redundancy",
+              "passed": false,
+              "evidence": [
+                "contradiction re-asserts take: \"The beautiful things he has are the very things he fears will be taken away.\""
+              ],
+              "rationale": "Contradiction merely rephrases the core tension already stated in the take. / Take explicitly identifies the fear of 'beautiful things' being taken away. / No new paradoxical angle or specific 'either/or' framing is added by the contradiction."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No aphoristic kickers were found; descriptions are grounded in the song's narrative. / No fragmentation piles were found; prose flows cohesively. / No mirrored parallelism was found; statements describe genuine claims or paradoxes, not symmetry for effect."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Every claim traces to heard lyrics: peace/love, family, parents' girl, God's giving/taking, terror of loss, the plea. / No imported chart/reception, no outside biography, no fabricated setting. / Arc scenes map cleanly onto verses, pre-chorus/chorus, and Verse 2's faith/sanity lines."
+            }
+          ]
+        }
+      ],
+      "songOutcome": "fail"
+    },
+    {
+      "key": "drivers-license",
+      "song": "Olivia Rodrigo — drivers license",
+      "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf",
+      "goldWordCount": 235,
+      "runs": [
+        {
+          "runId": "2026-06-07T00-21-29-308Z__olivia-rodrigo-drivers-license__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 287,
+          "tier1": {
+            "high": 1,
+            "medium": 0,
+            "low": 14
+          },
+          "pairwiseRationales": [
+            "B inhabits the song: \"crying through the suburbs without him,\" \"his face in the white cars, his voice in the traffic,\" and a sharp \"license as eulogy\" / \"Aching Disbelief.\" A leans reporty with \"becomes a cruel mirror\" and puffery \"a deep, raw sadness,\" plus a flat \"Haunting Grief\" pairing.",
+            "A's images are lived-in and specific (\"his face in the white cars, his voice in the traffic,\" \"She still fuckin' loves him\") with varied, spoken rhythm. B leans on essayistic puffery (\"becomes a cruel mirror,\" \"a symbol of their future,\" \"raw, undeniable truth,\" \"deep, raw sadness\") and uniform arc sentences."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Mentions specific objects/people: driver's license, white car, blonde girl. / References specific events: planned milestone, first drive, his own song. / Connects driving context directly to emotional state and memories."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a specific, visual scene and a common emotional experience. / Focuses on a tangible action and a felt sensation."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "becomes a cruel mirror",
+                "It reflects every detail of a lost love",
+                "a painful loop of memory",
+                "brings his face back into view",
+                "She cannot escape the past"
+              ],
+              "rationale": "Uses literary metaphors and abstract analytical language. / Summarizes the emotional state rather than expressing it directly."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The arc builds a coherent emotional journey from initial disappointment to bitter obsession and persistent ache. / Each scene effectively captures a distinct feeling and emotional turn, avoiding mere event recounting."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently frames driving as the mechanism through which the protagonist experiences a 'loop of grief'. / The lens accurately interprets the song's core emotional experience through the act of driving."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Contradiction frames take's core idea as a fresh paradox. / Arc scenes dramatize take's summary with new concrete details. / No field is essentially a copy of another."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No aphoristic kickers detected; all observations are specific to the song's narrative. / No instances of fragmentation piles; the prose is consistently in full sentences. / No mirrored \"X is the Y\" parallelisms; claims are grounded, not symmetric for effect."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Every place/object — suburbs, white cars, front yards, red lights, stop signs, traffic — is in the heard lyrics. / No reception, chart, or TikTok import; no real-person names imported into the read. / 'Defends him to her friends' leans hard, but the 'all my friends' annotation cites 'I defended you to all my friends'."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-21-13-211Z__olivia-rodrigo-drivers-license__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 298,
+          "tier1": {
+            "high": 1,
+            "medium": 1,
+            "low": 9
+          },
+          "pairwiseRationales": [
+            "A leans essayistic and academic (\"a symbol of growing up,\" \"a profound sense of loss\") and even misattributes \"the song he wrote that meant nothing.\" B is plainer and warmer (\"his face in the white cars, his voice in the traffic\"; \"She still fuckin' loves him\"), with a sharper lens (\"license as eulogy\") and varied human rhythm.",
+            "A reads like a friend talking ('She still fuckin' love him,' 'his face in the white cars, his voice in the traffic'), varied and specific. B leans on report-speak: 'was supposed to be a shared milestone, a symbol of growing up,' 'Instead, it becomes a painful reminder,' 'low valence,' plus the invented 'song he wrote that meant nothing.'"
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [
+                "Instead, it becomes a painful reminder of his absence and the future they will not share.",
+                "The freedom of the open road only leads her back to his street, unable to escape the past or the love she still feels.",
+                "The excitement of a new beginning is immediately overshadowed by a profound sense of loss.",
+                "She drives through the familiar suburbs, a route once anticipated with joy, now a tour of her heartbreak.",
+                "Every turn brings a memory",
+                "She cannot comprehend how he moved on so quickly, questioning the sincerity of his past promises.",
+                "and the traffic noise brings back his laughter.",
+                "Despite knowing it is over, the raw, undeniable truth is that she still loves him."
+              ],
+              "rationale": "Extensively uses the driver's license motif. / References specific song elements like 'blonde girl' and 'song he wrote'. / Connects driving imagery (red lights, white cars) to the narrative."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a specific action and a visual hallucination. / Evokes a feeling through a concrete sensory detail."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "a symbol of growing up",
+                "a painful reminder of his absence and the future they will not share",
+                "a landscape once filled with their memories, now haunted by the blonde girl and the song he wrote that meant nothing",
+                "The freedom of the open road only leads her back to his street, unable to escape the past or the love she still feels"
+              ],
+              "rationale": "Employs formal, analytical language. / Interprets symbolism and thematic irony."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Beats sequentially deepen the emotional journey from initial disappointment to raw, persistent devotion. / Each scene captures distinct feelings and turns, avoiding flat event recitation."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently argues how the driver's license, a milestone, functions as a painful memorial to a lost relationship. / The lens is specific and avoids common pitfalls, effectively framing the song's core reinterpretation."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Contradiction crystallizes a key take idea into a distinct paradox. / Arc scenes expand on take previews with new concrete details and dramatization. / No field is merely a reworded copy of another without adding substantial new content."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No aphoristic kickers detected; all observations are specific to the song. / No instances of disconnected, stacked fragments were found. / No mirrored 'X is the Y' parallelism constructions are present."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Every arc beat maps to V1 milestone, V2/chorus blonde girl & broken promise, bridge devotion. / No reception, biography, or invented setting imported — suburbs, white cars, red lights, streets all heard. / Female narrator framing matches annotations (Rodrigo); 'open road' is fair render of driving, not new setting."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-21-00-796Z__olivia-rodrigo-drivers-license__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 326,
+          "tier1": {
+            "high": 1,
+            "medium": 0,
+            "low": 12
+          },
+          "pairwiseRationales": [
+            "B states it plainly and warmly ('She still fuckin' loves him', 'crying through the suburbs without him') with varied rhythm. A leans on cliché ('becomes a vehicle for reliving the past'), data jargon ('low energy and valence'), and flat essayistic lines repeated across take and arc.",
+            "A states it plainly and warmly — \"She still fuckin' loves him\", \"crying through the suburbs without him\". B leans academic and data-speak: \"a symbol of their future\", \"low energy and valence\", and the antithesis cliché \"not just of her, but of the shared history\". B's flatter, listier rhythm seals it."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [
+                "The driver's license was a shared dream, a path to independence and connection, but it becomes a constant loop of painful memories.",
+                "Every drive is a forced encounter with his absence and betrayal.",
+                "The car, meant for freedom, becomes a vehicle for reliving the past.",
+                "She cannot outrun the ghost of what they had, especially when he has moved on so easily with someone else.",
+                "She drives, full of the excitement they shared.",
+                "She only finds him gone.",
+                "The road meant for connection now only highlights his absence.",
+                "She is older and everything she fears she is not.",
+                "Every drive becomes a loop of memory.",
+                "Red lights and stop signs remind her of their ending.",
+                "The places they went together are now impossible to pass.",
+                "She relives the past.",
+                "Her friends are tired of hearing it, but she still loves him, a raw, undeniable truth."
+              ],
+              "rationale": "Mentions \"driver's license\" as a planned milestone. / References specific details like \"blonde girl\" and \"white car.\" / Crucially, it references \"his own song\" and \"words he wrote.\""
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a specific, observable action. / Evokes a clear scenario and a felt emotional experience."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "The driver's license was a shared dream, a path to independence and connection",
+                "becomes a constant loop of painful memories",
+                "Every drive is a forced encounter with his absence and betrayal",
+                "The car, meant for freedom, becomes a vehicle for reliving the past",
+                "She cannot outrun the ghost of what they had",
+                "The promise of \"forever\" rings hollow"
+              ],
+              "rationale": "Explains the song's narrative and symbolism. / Uses analytical and descriptive language."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Beats form a clear emotional progression, moving from naive hope to crushing insecurity and finally to lingering, haunting love. / Each scene effectively captures a distinct feeling and emotional turn, avoiding mere event recitation."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently argues how driving itself facilitates and embodies the protagonist's experience of being haunted by past memories. / The lens is a strong metaphorical claim that frames the act of driving as the mechanism through which the haunting occurs."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Lens provides a high-level thematic statement, distinct from the detailed argument of the take. / Contradiction crystallizes a core tension from the take into a paradoxical statement, fulfilling its specific role. / Arc scenes dramatize elements previewed in the take with new concrete details and emotional specifics."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The text avoids abstract, self-satisfied aphorisms, focusing on specific narrative turns. / The prose flows with complete sentences, with no piles of disconnected fragments. / Claims about the car/road are genuine causal turns, not manufactured symmetries."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Every arc scene maps to heard lyrics: license/promise, blonde girl/insecurity, bridge haunting. / No imported chart, sales, or biography — read never names real people or events outside the song. / Atmosphere (white cars, traffic, red lights) is all stated in the bridge, not fabricated."
+            }
+          ]
+        }
+      ],
+      "songOutcome": "fail"
+    },
+    {
+      "key": "blinding-lights",
+      "song": "The Weeknd — Blinding Lights",
+      "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+      "goldWordCount": 220,
+      "runs": [
+        {
+          "runId": "2026-06-07T00-25-42-594Z__the-weeknd-blinding-lights__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 309,
+          "tier1": {
+            "high": 5,
+            "medium": 1,
+            "low": 9
+          },
+          "pairwiseRationales": [
+            "B is specific and present: \"Sin City lit and no one in it\", \"the whole city burning at 4 a.m.\", \"blinded by everything he chose instead\", with the sharp lens \"freedom that turns out to be absence.\" A leans generic and essayistic—\"glare of fame,\" \"deep undercurrent of sadness,\" \"threatens to drown him\"—and misreads the song toward fame.",
+            "A's image \"Sin City lit and no one in it\" and \"blinded by everything he chose instead\" are specific and warm with varied rhythm. B leans on the antithesis cliche (\"not just...but the glare of fame\"), academic framing (\"a vulnerable admission that breaks from his past\"), and a participial, generic texture."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": false,
+              "evidence": [
+                "judge-error: LLM google-vertex:gemini-2.5-flash failed: No object generated: could not parse the response."
+              ]
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a direct sensory experience. / Presents a clear visual scenario."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "overwhelming glare of fame and the hedonism of Sin City",
+                "experiences withdrawals, both physical and emotional",
+                "the sole anchor in a world that constantly threatens to drown him",
+                "a vulnerable admission that breaks from his past"
+              ],
+              "rationale": "Elevated, analytical language. / Uses literary phrasing and abstract summaries."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The arc progresses logically from despair to a frantic, determined resolution. / Each beat vividly captures an emotional state and internal turn, avoiding flat event recitation."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently illustrates how her touch is the sole grounding force amid overwhelming chaos. / All elements—image, contradiction, arc, and lines—reinforce the lens's claim."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Contradiction re-frames take's insight into a distinct paradox. / Arc scenes dramatize take's summary with new concrete details. / No field is merely a reworded copy of another; each adds substance."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No abstract, self-satisfied aphorisms are present, as all statements refer to specific character experiences. / The text maintains flow with full sentences and no disconnected piles of fragments. / No mirrored 'X is the Y' constructions are used to manufacture profundity; claims are grounded and specific."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Lens/take/contradiction trace to touch/trust lyrics plus the 'lights = fame' and Sin City annotations. / Arc beats cite on-own, withdrawals, judge-me, drowning, sun/overdrive, phone lyrics; overdose/police-car from Faith annotation. / No chart/crowd/legacy imports; no invented setting — night/road/neon render stated feeling."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-25-26-718Z__the-weeknd-blinding-lights__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 252,
+          "tier1": {
+            "high": 6,
+            "medium": 0,
+            "low": 10
+          },
+          "pairwiseRationales": [
+            "B's lens \"freedom that turns out to be absence\" and \"blinded by everything he chose instead\" argue a real thesis with varied rhythm and clean images (\"all chrome and cold night air\"). A leans flat and trips the participial tell \"creating a danceable urgency that masks a deep sadness.\"",
+            "A's image \"Sin City lit and no one in it\" and \"blinded by everything he chose instead\" are specific and human, with varied rhythm. B leans on lyric-paste images and data-speak: \"low valence pulls it into a melancholic space, creating a danceable urgency that masks a deep sadness\" — a participial pile-up and report tells."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [
+                "He is alone and vulnerable, going through withdrawals.",
+                "making him unable to see clearly or sleep.",
+                "He needs her touch to ground him, to show him how to love again after years of being on his own.",
+                "She is the only one he trusts to pull him out of the night.",
+                "desperate to return to her.",
+                "He will never let her go this time.",
+                "He tries to call, alone and going through withdrawals.",
+                "He cannot see clearly when she is gone.",
+                "He needs her to show him how to love.",
+                "He is drowning in the night, desperate to escape the glare.",
+                "She is the one he trusts, the only one who can bring him peace.",
+                "He cannot sleep until he feels her touch.",
+                "He is coming back to her, promising he will never let her go this time."
+              ],
+              "rationale": "Refers to 'Sin City' as cold and empty. / Interprets 'blinding lights' as fame/trauma. / Details driving fast, in overdrive, running out of time."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a physical place and its attributes. / Uses sensory details to evoke a felt experience."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "blinding lights of fame and past trauma surround him",
+                "making him unable to see clearly or sleep",
+                "needs her touch to ground him",
+                "show him how to love again",
+                "pull him out of the night"
+              ],
+              "rationale": "Uses abstract and analytical language. / Explains song's function, not personal feeling."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Beats show a clear emotional progression from longing, through chaotic escape, to resolution in devotion. / Each scene vividly captures a distinct internal feeling or turning point, avoiding literal plot recap."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The read consistently argues how the 'blinding lights' manifest as a desperate need for 'touch'. / All elements, from the take to the arc, serve as evidence for this precise interpretive claim."
+            },
+            {
+              "judge": "redundancy",
+              "passed": false,
+              "evidence": [
+                "arc[0] echoes take's opening description: 'He is alone and vulnerable, going through withdrawals in a cold, empty Sin City...He needs her touch to ground him, to show him how to love again...'"
+              ],
+              "rationale": "arc[0] largely rephrases the take's opening description. / Only 'He tries to call' provides new concrete action. / The scene adds no substantial new detail or altitude beyond the take."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No abstract, self-satisfied aphorisms or poster-like statements are present. / The text consists of cohesive sentences; no pile of disconnected fragments was found. / No manufactured, symmetrical 'X is the Y' constructions are used to create false profundity."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "take/arc map to heard lyrics: withdrawals, Sin City cold, can't see clearly, the one I trust, overdrive, never let you go / 'lights of fame', 'police car or paparazzi', and 'embraces the life' all trace to the (269)/(187) annotations / No imported chart/reception or video/biography beyond what annotations supply"
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-25-11-095Z__the-weeknd-blinding-lights__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 251,
+          "tier1": {
+            "high": 4,
+            "medium": 1,
+            "low": 8
+          },
+          "pairwiseRationales": [
+            "B's images are song-specific and alive (\"Sin City lit and no one in it\", \"all chrome and cold night air\") with varied rhythm (\"Blinded by the lights. Drowning in the night.\"). A leans on data-speak (\"a low valence pulls it back\") and a flatter, participial texture, plus invented \"police car after an overdose\" filler.",
+            "A's \"Sin City lit and no one in it\" and \"blinded by everything he chose instead\" feel observed and warm, with varied rhythm. B reads like a report: \"low valence pulls it back,\" \"providing clarity and trust,\" and flat listy arcs betray the system voice."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Identifies specific details: overdose, police sirens. / Interprets 'blinding lights' as 'glare of fame'. / Highlights character's 'withdrawal' and communication failure."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Depicts a clear action (driving) with sensory details (blinding lights). / Expresses a specific physical desire (one touch)."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "The blinding lights are the police car after an overdose and the overwhelming glare of fame",
+                "providing clarity and trust",
+                "because she is his only anchor"
+              ],
+              "rationale": "Analyzes symbolism rather than expressing feeling. / Uses formal, explanatory language."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The arc builds a coherent emotional journey from lonely isolation to urgent flight, culminating in a focused return. / Each scene successfully conveys distinct feelings and internal states, avoiding simple event recitation."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently frames addiction and withdrawal as a desperate quest for one specific touch. / Blinding lights are interpreted as the chaos from which 'one touch' provides clarity and an anchor."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Contradiction crystallizes a paradox from the take's elements, adding new tension. / Arc scenes dramatize take's previews with new concrete details and expanded moments. / No field is a wholesale copy or reword of another without substantial new content."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No aphoristic kickers are present; the prose focuses on developing the character's internal state and journey. / The text maintains flow without disconnected fragments; sentences are complete or clearly linked. / No mirrored 'X is the Y' constructions are used to create manufactured profundity; all claims are grounded."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Withdrawal, Sin City, blinded-by-lights, touch, and overdrive all trace to lyrics or vote-gated annotations. / 'Police car after overdose' and 'glare of fame' come straight from the blinded-by-lights annotation; contradiction reflects its 'doesn't plan on stopping.' / No Bella name, no chart/reception, no invented setting — 'her' stays generic, Sin City is sourced."
+            }
+          ]
+        }
+      ],
+      "songOutcome": "fail"
+    },
+    {
+      "key": "motion-sickness",
+      "song": "Phoebe Bridgers — Motion Sickness",
+      "spotifyTrackId": "5xo8RrjJ9CVNrtRg2S3B1R",
+      "goldWordCount": 386,
+      "runs": [
+        {
+          "runId": "2026-06-07T00-22-08-421Z__phoebe-bridgers-motion-sickness__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 316,
+          "tier1": {
+            "high": 5,
+            "medium": 1,
+            "low": 5
+          },
+          "pairwiseRationales": [
+            "A leans on book-report framing (\"The past relationship feels like a persistent ailment\") and a generic, listener-instructing texture (\"making the listener feel the instability\"); its tension just repeats the lens. B opens warm and human (\"She did everything right.\"), with song-true images (\"watching him bleed in it\", \"more danceable than its mood\").",
+            "A gives the song agency with varied, lived-in lines (\"watched him come apart,\" \"throws rocks around his own room and lies bleeding\"). B opens with book-report framing (\"The past relationship feels like a persistent ailment\") and invents production claims (\"tremolo effects mimic the disorienting feeling... making the listener feel\"). B's specific lyric details keep image work even."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Details ex's hypnotherapy attempt and reaction. / Describes ex bleeding on his back in the glass. / Mentions ex's grating 'affected English accent'. / Highlights a specific age difference upon meeting."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The image presents a clear visual of a car with windows down. / It also describes a specific, felt physical state: 'still sick'."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "a persistent ailment",
+                "leaves you nauseous and disoriented",
+                "haunting your thoughts and actions",
+                "acknowledge the damage and your own conflicting feelings",
+                "a constant reminder of what you endured"
+              ],
+              "rationale": "Uses sustained metaphor and structured sentences. / Language feels literary, not like spontaneous speech."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Beats trace a clear emotional journey: from conflicted entanglement to detached clarity to an internal struggle with lingering temptation. / Each scene successfully lands a distinct feeling and emotional turn, avoiding flat event-recap."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The read consistently argues the lens, using the 'chronic illness' metaphor throughout. / All elements—take, image, contradiction, and arc—serve as evidence for the central claim."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Lens provides a concise thesis. / Take argues the lens with core plot beats. / Contradiction crystallizes a unique tension. / Arc scenes dramatize beats with new, concrete details."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The text maintains a descriptive, forward-moving voice. / No abstract aphoristic kickers or manufactured profundity were found. / The prose flows well with complete sentences; no piles of disconnected fragments."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Every arc beat quotes or paraphrases heard lyrics; illness/addiction framing traces to motion-sickness and 'stay clean' annotations. / Car/windows-down image comes straight from 'Somebody roll the windows down' — not a fabricated setting. / English-accent and 'bored / in a band when I was born' details are both in lyrics and annotation-supported."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-21-54-476Z__phoebe-bridgers-motion-sickness__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 326,
+          "tier1": {
+            "high": 3,
+            "medium": 1,
+            "low": 12
+          },
+          "pairwiseRationales": [
+            "B opens direct and human (\"She did everything right.\") with varied rhythm and song-true images (\"a word in any language big enough to get him out of her\", \"throws rocks around his own room\"). A leans essayistic and academic: \"The song lives in the aftermath\", \"create a disorienting sensation\", \"embodies the emotional motion sickness\".",
+            "A states insight plainly with varied rhythm: \"being right about him does nothing to make her want him less\" and \"a low sound she cannot tune out.\" B opens like a book report — \"The song lives in the aftermath of a toxic relationship\" — and leans academic: \"highlighting the age and power imbalance,\" \"symbols of his pretense.\""
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Mentions unique details: hypnotherapy and a fake English accent. / Describes a very specific dynamic: 'a man in a band when she was born'. / Uses distinct imagery: 'throwing rocks in his own glass house, bleeding on his back'."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a specific, visceral physical sensation. / Presents a relatable, contextual scenario."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "The song lives in the aftermath of a toxic relationship",
+                "a constant state of emotional motion sickness",
+                "a contradiction that leaves her feeling perpetually unwell",
+                "the emotional fallout is real and persistent",
+                "a silent abuse that no scream can drown out"
+              ],
+              "rationale": "Analyzes the song's themes and narrative. / Uses abstract and explanatory language."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Beats build sequentially, moving from initial emotional sickness to bitter clarity, and finally to unresolved ambivalence. / Each scene successfully conveys a distinct feeling or internal turn rather than merely recounting events."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently argues the lens, portraying ambivalence as a persistent, inescapable state. / Imagery like 'motion sickness' and phrases like 'perpetually unwell' directly support 'chronic condition'."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Contradiction crystallizes a unique tension, not merely repeating the take. / Arc scenes incorporate specific new details and dramatizations around shared themes. / Shared phrases are supported by substantial new concrete content in each field."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No abstract, self-satisfied aphoristic kickers are present. / The text maintains connective tissue and avoids piles of disconnected fragments. / No mirrored 'X is the Y' parallelism for manufactured profundity."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Every claim traces to a heard lyric or vote-gated annotation; the read never names Ryan Adams or imports outside biography. / Hypnotherapy, glass-house, English accent, age gap, and addiction framings all sit on cited annotations. / No reception, no fabricated setting — the car/windows atmosphere comes straight from the lyric and its annotation."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-21-42-725Z__phoebe-bridgers-motion-sickness__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 294,
+          "tier1": {
+            "high": 5,
+            "medium": 0,
+            "low": 9
+          },
+          "pairwiseRationales": [
+            "B reads human and accurate: \"The two feelings do not take turns,\" \"in a band the year she was born,\" \"sorry it came to this for him.\" A leans on tells—\"mirroring the emotional motion sickness,\" \"physical-like discomfort,\" \"silent scream\"—and even invents an \"affected English accent\" misreading the actual lyric. B sweeps every dimension.",
+            "A reads like a friend: \"She did everything right,\" \"a floor that will not hold still and a body that turns against her.\" B turns clinical and report-like (\"physical-like discomfort,\" \"deeply damaging relationship\") with participial pile-ups (\"create a disorienting, queasy feeling, mirroring...\"). A's rhythm varies; B lists symptoms."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [
+                "The emotional motion sickness is a constant, physical-like discomfort from a deeply damaging relationship.",
+                "You hate what he did, but you still miss him like a child, a contradiction that leaves you constantly off-balance.",
+                "You recognize the abuse, the gaslighting, and the manipulation, but the experience still haunts you, a silent scream that cannot be drowned out.",
+                "You are caught between hating what he did and missing him like a child, a feeling that makes you fake your way through things.",
+                "The emotional motion sickness has already set in, a constant internal churning.",
+                "You are glad you made it out, recognizing the self-destructive behavior that made the relationship toxic.",
+                "His behavior still follows you everywhere.",
+                "You try to stay clean and live without him, attempting to drown out his presence.",
+                "Yet, a part of you still wonders what would happen if you just surrendered to the sound, to the pull of the past."
+              ],
+              "rationale": "Mentions \"roll the windows down\" directly referencing the song image. / Includes specific narrative details like \"hypnotherapy\" and an \"affected English accent.\" / Uses a unique visual: him \"bleeding on his back\" from a \"glass house.\""
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a specific, picturable action. / Evokes a sensory experience of fresh air or wind."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "is a constant, physical-like discomfort from a deeply damaging relationship",
+                "a contradiction that leaves you constantly off-balance",
+                "You recognize the abuse, the gaslighting, and the manipulation",
+                "a silent scream that cannot be drowned out"
+              ],
+              "rationale": "Uses abstract language to define and explain emotional states. / Employs formal, analytical terms like 'contradiction', 'gaslighting', 'manipulation'."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The arc flows chronologically through the emotional stages of a breakup, building complexity from conflict to lingering struggle. / Each scene successfully conveys a distinct emotional state or internal turn, using vivid feeling-based descriptions."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently argues the toxic past manifests as a persistent, illness-like state. / The emotional motion sickness is explicitly framed as a physical symptom of the past's ongoing impact."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Lens states thesis; take elaborates whole-song argument. / Contradiction crystallizes a new either/or tension, not just repeating take. / Arc scenes dramatize take/contradiction points with new concrete actions and details."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No aphoristic kickers; observations remain grounded in the specific narrative. / No fragmentation piles; prose flows with clear sentence structures. / No mirrored 'X is the Y' constructions; claims are descriptive, not symmetrical."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Every beat traces to a heard lyric or an annotation; no chart/reception imports. / Abuse/gaslighting, glass-house, hypnotherapy, English accent all annotation-backed. / No fabricated setting; 'windows down' is a heard lyric."
+            }
+          ]
+        }
+      ],
+      "songOutcome": "fail"
+    },
+    {
+      "key": "pink-pony-club",
+      "song": "Chappell Roan — Pink Pony Club",
+      "spotifyTrackId": "pink-pony-club",
+      "goldWordCount": 285,
+      "runs": [
+        {
+          "runId": "2026-06-07T00-22-42-473Z__chappell-roan-pink-pony-club__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 306,
+          "tier1": {
+            "high": 4,
+            "medium": 1,
+            "low": 11
+          },
+          "pairwiseRationales": [
+            "A opens like a book report — \"The song charts a journey,\" \"The narrator embraces her true self\" — and its texture \"creates an energetic, danceable space.\" B states it plainly (\"Breaking her mother's heart was the price of finding her own\") with concrete images (\"Black lights, a mirrored disco ball, jaws on the floor\") and varied rhythm, despite one mild antithesis slip.",
+            "B reads like a report: \"The song charts a journey,\" \"The narrator embraces her true self,\" \"This transformation, however.\" A talks like a friend — \"She still loves Tennessee. She is going to keep on dancing anyway\" — with varied rhythm and song-specific images. B leans generic and academic throughout."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Mentions specific locations: West Hollywood, Pink Pony Club, Tennessee. / Quotes specific lyrical phrases: \"pink pony girl\", \"God, what have you done?\", \"boys and girls can all be queens\". / Details a unique character journey from a Midwest upbringing to a specific queer club scene."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a specific character and action. / Presents a clear, visual scene that can be easily pictured."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "The song charts a journey",
+                "The narrator embraces her true self",
+                "This transformation, however, comes with",
+                "imagined disapproval of her mother",
+                "finds her haven"
+              ],
+              "rationale": "Uses analytical and summarizing language. / Explains themes instead of sharing personal feeling."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The arc builds a coherent narrative from vision to new reality, with emotional layers. / Each scene successfully conveys a distinct feeling and character's internal turn."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently argues how the 'queer haven' is established in relation to the 'mother's fear' (imagined disapproval). / The lens is an arguable transformation, not a surface description or category-typical slop."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Each field captures a unique angle or altitude. / Arc scenes dramatize take summaries with new concrete details. / Contradiction crystallizes tension into a paradox with new detail."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No abstract aphoristic statements; all observations are grounded. / The text maintains flow; no disjointed piles of fragments. / No mirrored 'X is the Y' constructions for manufactured profundity."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Lens/take trace to lyrics (heels, stage, leaving Tennessee) and West-Hollywood/queer-haven annotations. / Mother's imagined disapproval grounded in 'God, what have you done?' and the refrain annotation noting she only imagines the scream. / No reception, no outside biography, no invented setting; all settings (club, stage, heels) are in-text."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-22-32-969Z__chappell-roan-pink-pony-club__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 288,
+          "tier1": {
+            "high": 4,
+            "medium": 2,
+            "low": 7
+          },
+          "pairwiseRationales": [
+            "B's call-and-response device — \"She answers it from the dancefloor: 'I'm just having fun'\" — plus punchy varied rhythm (\"Won't make her mama proud. Might make her scream.\") reads human. A leans on puffery: \"wild, welcoming embrace,\" \"living authentically,\" \"truly be herself,\" and skips texture entirely.",
+            "A reads like a friend: \"She still loves Tennessee. She is going to keep on dancing anyway.\" with varied rhythm and concrete images (\"a mirrored disco ball, jaws on the floor\"). B leans on puffery (\"vibrant reality,\" \"living authentically,\" \"wild, welcoming embrace\") and book-report framing, plus a missing texture."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [
+                "She knows this choice will not make her mother proud, but the joy of living authentically outweighs the imagined scream.",
+                "It is a crazy vision, a wicked dream that promises freedom and a truer self.",
+                "She knows leaving will cause a scene and disappoint her mother, who still sees her as a 'baby girl.'",
+                "She is up on stage, jaws on the floor, living the dream she once only imagined.",
+                "It is everything she left home for.",
+                "A year has passed, and she thanks her wicked dreams for coming true."
+              ],
+              "rationale": "Details specific locations: West Hollywood, Santa Monica, Pink Pony Club, Tennessee. / Mentions specific imagery like 'dancing in heels' and 'boys and girls can all be queens'. / Includes specific thematic elements like 'queer joy' and 'Southern drawl'."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a specific, picturable action and setting. / Evokes a concrete scene and a felt sense of physical distance."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "life of expectation",
+                "wild, welcoming embrace",
+                "vibrant reality",
+                "joy of living authentically outweighs the imagined scream"
+              ],
+              "rationale": "Uses abstract language and literary metaphors. / Summarizes the narrative rather than expressing feeling."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The arc builds a clear, connected narrative of self-discovery and defiance across all beats. / Each scene successfully conveys the protagonist's internal emotional state and transformation."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The read consistently maps to the lens, showing the transformation from a 'wicked dream' to a 'defiant home'. / Each section provides evidence for both the initial 'dream' and the resulting 'defiance' in her new home."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Contradiction crystallizes the take's tension into a fresh paradox. / Arc scenes dramatize the take's summary with new concrete details and narrative beats. / Each field presents a unique angle or altitude of the song's story."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No aphoristic kickers; all statements are specific to the character's journey and emotions. / No fragmentation piles; the prose maintains a clear narrative flow with complete sentences. / No \"X is the Y\" parallelism; claims are grounded and causal, not abstract symmetrical equations."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Every place (L.A., Santa Monica, West Hollywood, Tennessee, stage) is named in lyrics or annotations. / 'Real space,' 'protecting queer joy,' and dream-into-reality all trace to vote-gated annotations. / No chart/crowd reception, no imported biography beyond annotations, no fabricated setting."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-22-21-251Z__chappell-roan-pink-pony-club__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 281,
+          "tier1": {
+            "high": 2,
+            "medium": 0,
+            "low": 7
+          },
+          "pairwiseRationales": [
+            "B's punchy, varied rhythm and call-and-response framing ('She answers it from the dancefloor: I'm just having fun') plus a sharp contradiction ('Breaking her mother's heart was the price of finding her own') beat A's essayistic, generic flatness ('chosen family that accepts her', 'a tangible space she protects') and its antithesis ('a homecoming, not an escape'). A also leaves texture empty and misreads the 'crazy visions.'",
+            "A lands concrete images ('Black lights, a mirrored disco ball, jaws on the floor') and a friend's voice answering 'from the dancefloor.' B leans on antithesis ('a homecoming, not an escape') and abstract puffery ('defiant celebration of survival,' 'commitment to queer joy and safety'), plus flat tensions and no texture."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [
+                "This is a homecoming, not an escape.",
+                "She dances on the stage in her heels, fully herself, surrounded by a chosen family that accepts her.",
+                "She keeps dancing, a defiant celebration of who she has become.",
+                "She knows leaving will cause a scene.",
+                "She is on the stage in her heels, dancing.",
+                "This is where she belongs",
+                "Every night proves that leaving was the right choice.",
+                "She hears it, but it cannot stop her.",
+                "She keeps on dancing, a defiant celebration of survival and persistence.",
+                "This is her commitment to queer joy and safety, a tangible space she protects."
+              ],
+              "rationale": "Mentions specific locations like Midwest, Los Angeles, and Tennessee. / Describes a unique 'club where boys and girls can all be queens every single day.' / Includes vivid, particular imagery such as 'lovers in the bathroom and a line outside the door' and a 'southern drawl a thousand miles away'."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Depicts a person physically present on a stage. / Conveys a specific felt sense of belonging and rightful place."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "ignoring the crazy visions of her mother's disappointment",
+                "for the wild promise of Los Angeles",
+                "This is a homecoming, not an escape.",
+                "a distant reminder of the life she left behind",
+                "unapologetically queer world",
+                "a defiant celebration of who she has become"
+              ],
+              "rationale": "Reads like a carefully crafted narrative or summary. / Uses literary descriptions and thematic analysis."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The beats progress logically from internal longing to external defiance, forming a cohesive narrative. / Each scene effectively conveys a distinct emotional state and internal turn, avoiding event recitation."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently demonstrates how the character's defiance of societal expectations culminates in a joyful sense of belonging and finding her true home. / The narrative clearly links the act of defiance with the celebratory discovery of a 'homecoming' within a chosen community."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Contradiction crystallizes take's tension into a fresh paradox. / Arc scenes expand on take elements with new concrete details. / No field is essentially a verbatim copy of another."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No abstract epigrams or self-satisfied 'buttons' detached from the song's specifics. / Prose maintains flow, avoiding piles of disconnected sentence fragments. / No mirrored 'X is the Y' constructions used for manufactured profundity."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Every place/object — club, stage, heels, bathroom, disco ball, drawl — appears in the heard lyrics. / Midwest, chosen family, imagined scream, queer safety, 'protect it' all trace to vote-gated annotations. / No chart/crowd reception or outside biography imported; defiance/joy are fair readings of the text."
+            }
+          ]
+        }
+      ],
+      "songOutcome": "fail"
+    },
+    {
+      "key": "no-sex-for-ben",
+      "song": "The Rapture — No Sex for Ben",
+      "spotifyTrackId": "no-sex-for-ben",
+      "goldWordCount": 219,
+      "runs": [
+        {
+          "runId": "2026-06-07T00-15-55-203Z__the-rapture-no-sex-for-ben__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 197,
+          "tier1": {
+            "high": 1,
+            "medium": 0,
+            "low": 4
+          },
+          "pairwiseRationales": [
+            "A reads like an essay: \"performs a ritual of social exclusion,\" \"identity reduced to a series of failings,\" \"isolation becomes absolute.\" B sounds like a friend grinning: \"having a great time telling him so,\" \"the brighter it all sounds, the funnier the meanness gets,\" plus specific catches (girlfriend's mother, budget Arthur Baker).",
+            "A notices like a friend: \"the speed of it is the fun,\" \"a budget version of somebody else,\" plus a vivid texture and varied rhythm. B is academic and flat: \"performs a ritual of social exclusion,\" \"His isolation becomes absolute,\" the antithesis \"not just a personal slight; it is a communal act,\" and no texture."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The read quotes many specific lyrics from the song. / It names the song's unique character, 'Ben Rymer'. / It references unique details like 'poor man's Arthur Baker'."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a specific, observable scene with people performing an action. / Evokes a clear image and sound that can be readily imagined."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "performs a ritual of social exclusion",
+                "stripped of his dignity",
+                "his very identity reduced to a series of failings",
+                "The collective voice declares his punishment",
+                "solidifies this collective judgment",
+                "His isolation becomes absolute"
+              ],
+              "rationale": "Uses formal, academic language. / Analyzes the song's function rather than feelings."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Beats sequentially build from accusation to banishment, creating a clear progression. / Each scene focuses on the feeling and turn of the moment, not just literal events."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Take consistently frames the shaming as a ritualized act. / Provides evidence for collective judgment and banishment."
+            },
+            {
+              "judge": "redundancy",
+              "passed": false,
+              "evidence": [
+                "arc[2] re-asserts take: \"The collective voice takes over. ... This is not just a personal slight; it is a communal act, a public shunning that ensures his isolation.\" This mirrors the take's \"...The collective voice declares his punishment... public banishment ... solidifies this collective judgment. His isolation becomes absolute.\""
+              ],
+              "rationale": "Arc[2] largely restates the take's description of collective punishment. / The take already establishes the communal aspect and banishment. / Arc[2] introduces no new concrete details or specific actions."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The analysis remains grounded in the song's specific narrative. / No abstract aphorisms or symmetrical constructions are present. / The prose flows well without excessive fragmentation."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Every insult — 'trash people,' 'big liar,' 'fat trucker,' 'cheap faker,' 'poor man's Arthur Baker' — is verbatim from the lyrics. / Lens/take of ritual public shaming reads the repeated collective chorus and 'we gotta freeze them up' fairly; no biography imported (Arthur Baker is only cited, not explained). / Image 'crowd chanting' renders the chant-like repeated chorus and collective 'we,' not a real-world audience event."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-15-42-910Z__the-rapture-no-sex-for-ben__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 154,
+          "tier1": {
+            "high": 5,
+            "medium": 0,
+            "low": 2
+          },
+          "pairwiseRationales": [
+            "A opens like a book report (\"The song is a public declaration against Ben Rymer\") and leans on academic labels (\"Absolute Ostracism\"). B is warmer and funnier: \"the brighter it all sounds, the funnier the meanness gets\" and \"a budget version of somebody else\" catch this song's giddy meanness with varied, human rhythm.",
+            "A reads like a friend giddy at the roast: \"the speed of it is the fun,\" \"a budget version of somebody else,\" plus a real texture note. B leans on book-report framing (\"The song is a public declaration\"), cliché (\"painting a picture\"), and puffed vocabulary (\"Absolute Ostracism,\" \"sealing his fate\")."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [
+                "listing his transgressions for all to hear.",
+                "The collective voice pronounces a specific, humiliating punishment, ensuring his complete isolation.",
+                "sealing his fate.",
+                "A name is called out, immediately followed by the specific, humiliating punishment.",
+                "More insults pile up, painting a picture of a deceitful, pathetic figure.",
+                "seals his fate, cutting him off completely."
+              ],
+              "rationale": "Mentions a specific character, \"Ben Rymer.\" / Quotes unique lyrics: \"snatch the kitty off his girlfriend's mother.\" / Details specific structural elements like \"one, two, three, freeze.\""
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Depicts an auditory action followed by a visual state. / The events described can be directly imagined or felt."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "public declaration against Ben Rymer",
+                "listing his transgressions for all to hear",
+                "The collective voice pronounces a specific, humiliating punishment",
+                "ensuring his complete isolation",
+                "sealing his fate"
+              ],
+              "rationale": "Uses formal, analytical language. / Explains how the song functions, not how it feels."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Beats escalate from public shaming to specific indictment to ultimate ostracism. / Each scene conveys a strong feeling: condemnation, scorn, and finality."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently argues how the song functions as 'public shaming' and details the 'collective punishment' aspects. / The lens is an interpretive claim and not surface-level description, and the take supports its argument directly."
+            },
+            {
+              "judge": "redundancy",
+              "passed": false,
+              "evidence": [
+                "arc[1] re-asserts take: \"The accusation of trying to 'snatch the kitty off his girlfriend's mother'\""
+              ],
+              "rationale": "Arc[1] repeats the specific 'snatch the kitty' accusation from the take. / The scene primarily comments on the accusation's impact rather than dramatizing a new concrete moment. / Removing the repeated phrase leaves insufficient new concrete detail to justify its separate existence."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The read maintains a clear, narrative voice. / No abstract, self-satisfied statements or mirrored constructions are used. / The prose flows consistently without fragmentation piles."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Every claim traces to the Ben Rymer lyrics: insults, the 'snatch the kitty' line, and the freeze command. / 'Collective/unified' reading rests on the 'we gotta freeze them up' plural and chorus repetition — fair interpretation. / No imported biography, reception, or invented setting; Arthur Baker named only as the lyric uses him."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-15-32-021Z__the-rapture-no-sex-for-ben__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 207,
+          "tier1": {
+            "high": 3,
+            "medium": 0,
+            "low": 4
+          },
+          "pairwiseRationales": [
+            "A opens like a book report (\"The song is a public trial\") and leans on the antithesis cliche (\"This isn't just a personal slight; it's a social decree\") with flat essayistic rhythm. B is warm and playful—\"the speed of it is the fun,\" \"almost suspiciously upbeat for a song this mean,\" \"One, two, three, freeze\"—true to this song.",
+            "B opens book-report style (\"The song is a public trial\"), leans on antithesis cliche (\"This isn't just a personal slight; it's a social decree\") and academic puffery (\"galvanizes the group\"). A is warm and playful—\"the speed of it is the fun,\" \"One, two, three, freeze\"—with specific images and varied rhythm."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Names the unique subject, Ben Rymer. / Quotes specific offenses and punishments. / References unique plot points like 'girlfriend's mother'."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "It describes a specific, vivid scene: a chanting crowd. / The action of 'denying him everything' evokes a direct, felt experience of rejection."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "The song is a public trial, a collective judgment",
+                "listing his offenses",
+                "The community pronounces his punishment",
+                "it's a social decree, enforced by the group's united voice",
+                "The accusations escalate, culminating in a salacious claim",
+                "solidifying his status as an outcast",
+                "The song calls for a collective action",
+                "ensuring the sentence is carried out"
+              ],
+              "rationale": "Uses formal, analytical vocabulary. / Explains song's function and social dynamics."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Beats build logically from initial condemnation to escalating accusations and collective enforcement. / Each scene effectively conveys the emotional weight and specific turn of the moment."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently argues how public shaming functions as social control in the song. / The lens is a strong argumentative claim, not a descriptive summary."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Take summarizes the song's core argument and progression. / Arc scenes dramatize specific beats, adding concrete details and present-moment language. / No field is merely a rephrasing of another; each adds unique information or dramatization."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No aphoristic kickers were found; all statements directly advanced the song's narrative or interpretation. / No fragmentation piles were identified; all fields maintained clear sentence structure and flow. / No mirrored 'X is the Y' parallelism was present; claims were direct observations or interpretations."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Every offense the read lists — \"trash people,\" \"big liar,\" \"cheap faker,\" \"poor man's Arthur Baker,\" girlfriend's-mother line — is quoted directly from the heard lyrics. / Collective/\"crowd\" framing reads the chant structure (\"One, two, three, here we go,\" \"We gotta freeze them up\") fairly, not as imported reception. / No real-world biography of Arthur Baker or Ben Rymer imported; names are repeated only as the lyrics give them. No invented setting."
+            }
+          ]
+        }
+      ],
+      "songOutcome": "fail"
+    },
+    {
+      "key": "not-like-us",
+      "song": "Kendrick Lamar — Not Like Us",
+      "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+      "goldWordCount": 192,
+      "runs": [
+        {
+          "runId": "2026-06-07T00-11-56-521Z__kendrick-lamar-not-like-us__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 268,
+          "tier1": {
+            "high": 3,
+            "medium": 0,
+            "low": 8
+          },
+          "pairwiseRationales": [
+            "A is robotic: pile-up of \"It\" sentences (\"It strips away...\", \"It names...\"), academic \"dark, accusatory valence,\" and a single-feeling tension. B is specific and human—\"Atlanta trips for credibility he cannot earn at home,\" \"struts without breaking a sweat,\" \"Four words split the room and then fill one half of it.\"",
+            "A struts with specifics — \"the menace lives entirely in how relaxed it sounds,\" \"only inherited\" — varied human rhythm and a real contradiction. B reads like a report: \"This is Compton's song,\" \"It paints a picture,\" \"carries a dark, accusatory valence,\" flat uniform sentences and swappable club-beat texture."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Identifies specific accusations against the outsider. / Quotes a unique metaphor 'free throw' for the enemy. / Describes a specific celebration with a 'dance'."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a physical state of a place (city is active again). / Evokes a shared, physical experience of being outdoors."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "a collective voice rising to draw a hard line",
+                "It names the outsider as a colonizer, a pedophile, and a fraud",
+                "It strips away any claim to authenticity or connection",
+                "It is a declaration that the true inheritors of the culture are back outside"
+              ],
+              "rationale": "Uses abstract language to explain the song's mechanics/message. / Lacks personal connection or enthusiastic, spoken warmth."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The arc logically progresses from conflict declaration to a triumphant resolution, creating a connected story. / Each scene uses vivid emotional language, clearly capturing a distinct feeling and internal turn."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take directly argues how the collective identity and voice of the community function as an aggressive, defensive tool. / It demonstrates the 'community as a weapon' by showing it drawing lines, defending its own, and rejecting outsiders."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The lens provides a concise thesis. / Arc scenes dramatize beats with new actions and concrete details. / The absence of a contradiction means no redundancy there."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": ""
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Every quoted line and the image trace directly to the heard lyrics ('City is back up... we outside'). / 'Us vs them', colonizer, pedophile, false-cred, OV-ho dance mockery all cite chorus/Verse 3/Bridge annotations. / Triumphant 'battle won' framing is the song's own self-declared victory tone, not imported reception."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-11-35-383Z__kendrick-lamar-not-like-us__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 346,
+          "tier1": {
+            "high": 9,
+            "medium": 0,
+            "low": 5
+          },
+          "pairwiseRationales": [
+            "A leans essayistic with tells: \"Kendrick Lamar uses the collective voice,\" \"not just as a rival, but...,\" \"carries a low, negative valence.\" B reads like a friend: \"Four words split the room and then fill one half of it,\" \"struts without breaking a sweat,\" \"only one to read out.\" Varied rhythm, plain insight, clean of tells.",
+            "A struts with varied, image-driven lines (\"the menace lives entirely in how relaxed it sounds\") and direct reads. B reports systematically (\"The song shifts\", \"The song transforms\"), leans on antithesis (\"not just as a rival, but\") and robotic texture (\"a low, negative valence\")."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [
+                "This is a hard line drawn in the sand, a declaration of who belongs and who is cast out.",
+                "The song becomes a rallying cry, a communal rejection that defines itself by who it pushes away.",
+                "The battle is personal, and the stakes are absolute.",
+                "The song shifts to specific, damning allegations.",
+                "The song transforms from pure attack into a celebratory, unifying anthem.",
+                "It's a communal dance of triumph, cementing the 'us' against the 'them' with a shared beat and a new, defiant identity."
+              ],
+              "rationale": "Identifies Kendrick Lamar and Drake by name. / Quotes specific lyrics or album titles from the song. / Details specific accusations unique to this track."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a specific protective action. / Evokes a clear sense of urgency and danger."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "a declaration of who belongs and who is cast out",
+                "uses the collective voice of Compton and Black hip-hop culture to excommunicate",
+                "systematically dismantles Drake's claims to authenticity and belonging",
+                "turning every accusation into a reason why Drake is fundamentally \"not like us.\"",
+                "The song becomes a rallying cry, a communal rejection that defines itself by who it pushes away"
+              ],
+              "rationale": "Uses academic, analytical language. / Explains the song's function, not its feeling."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Beats build logically: from declaration of war, to specific accusations, to cultural critique, ending in collective triumph. / Each scene captures the emotional turn and felt experience rather than simply recounting lyrical content."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently argues how Kendrick's actions are a form of 'community defense' achieved through 'excommunication.' / It elaborates on how the song defines a communal 'us' by systematically rejecting and casting out 'them' (Drake)."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Lens provides a concise thesis. / Take argues the thesis from a high level. / Contradiction offers a distinct paradoxical tension. / Arc scenes dramatize beats with new concrete details."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No aphoristic kickers: All statements are grounded observations or interpretive turns specific to the song. / No fragmentation piles: All sentences are complete and maintain clear connective tissue throughout. / No mirrored parallelisms: No 'X is the Y' constructions used for abstract symmetry rather than specific claims."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Lens/take cite 'they not like us' chorus + colonizer line; annotation frames it as moral-fiber expulsion of Drake from Black culture. / Arc beats trace to heard lines: 'I see dead people', 'Deebo', 'Baka got a weird case', 'Certified pedophiles', 'colonizer', 'step this way'. / No imported reception, biography beyond annotations, or invented setting; 'dance of victory' reads the song's own chant + dance instructions."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-11-17-890Z__kendrick-lamar-not-like-us__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 272,
+          "tier1": {
+            "high": 5,
+            "medium": 0,
+            "low": 8
+          },
+          "pairwiseRationales": [
+            "A leans academic and puffy (\"rooted in authenticity and moral standing\", \"low valence\"), uses the antithesis cliche (\"not just a personal beef; it is...\"), and misnames the Mustard beat as a \"sped-up soul sample\". B is specific and alive: \"He enters already having won\", \"struts without breaking a sweat\", \"A minor\".",
+            "A states insight plainly with varied sentences and song-specific images: \"the menace lives entirely in how relaxed it sounds.\" B leans on tells: \"not just a personal beef,\" \"rooted in authenticity and moral standing,\" and the robotic \"low valence carries a deep, cutting negativity.\""
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Names Drake and specific accusations against him. / Details specific lyrical content and song structure. / Refers to Kendrick's known persona and cultural context."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a physical state of a place (city is back up). / Describes a physical location/action (we outside)."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "asserting a collective identity rooted in authenticity and moral standing",
+                "uses this collective \"us\" to expose and condemn",
+                "a community defending its values and turf, rallying together to dance on the grave of a perceived threat"
+              ],
+              "rationale": "Analytical and abstract language. / Explains mechanics, not personal feeling."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The arc escalates from personal aggression and moral indictment to collective cultural defiance. / Each beat effectively conveys a distinct emotional turn, capturing a felt experience rather than reciting events."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The read consistently argues how the collective 'us' is leveraged as an aggressive tool against Drake. / The lens accurately frames the strategic use of communal identity for condemnation and defense."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The contradiction introduces a fresh paradox about moral claims versus actions, not just reiterating the take. / Arc scenes dramatize aspects mentioned in the take with substantial new concrete details and imagery. / No field is essentially a copy of another; each adds a unique angle or altitude."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The language used is direct and specific to the song's interpretation and events. / There are no abstract aphorisms or attempts at manufactured profundity. / All sentences are complete and flow well, with no piles of disconnected fragments."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Image, lines, and most arc beats quote lyrics directly; 'colonizer','pedophiles','we outside','dead people' all heard. / Bully persona, Christian-values reversal, collective 'us' values all backed by annotations (Deebo, Bible line, chorus). / No imported reception, off-source biography, or invented setting; Atlanta/Pac/Bay claims all annotation-grounded."
+            }
+          ]
+        }
+      ],
+      "songOutcome": "fail"
+    },
+    {
+      "key": "as-it-was",
+      "song": "Harry Styles — As It Was",
+      "spotifyTrackId": "as-it-was",
+      "goldWordCount": 270,
+      "runs": [
+        {
+          "runId": "2026-06-07T00-17-52-021Z__harry-styles-as-it-was__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 274,
+          "tier1": {
+            "high": 5,
+            "medium": 2,
+            "low": 8
+          },
+          "pairwiseRationales": [
+            "A leans on a book-report line, \"The song is about the weight of what is gone,\" and an invented door metaphor. B is true to the song — \"His goddaughter calls every night,\" \"his father, alone since the divorce\" — with warm, varied rhythm and a sharp texture: \"engineered to sound like joy and ringing hollow.\"",
+            "B leans on the book-report \"The song is about...\" and an over-repeated \"closed door\" motif. A states it plainly (\"Something ended and he will not name it\"), varies rhythm, ends on \"As it was. As it was,\" and gives a specific texture: \"engineered to sound like joy and ringing hollow.\""
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The read quotes or directly paraphrases multiple unique lyrics from the song. / Specific lyrical references create a narrative distinct to this song. / Multiple claims are grounded in details only found in 'Harry, You're No Good Alone'."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The phrase directly conveys a specific personal assessment or feeling. / It describes a situation or state about Harry without using abstract summary terms."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "a profound shift he cannot reverse",
+                "He actively refuses to talk about",
+                "even as he acknowledges the world has changed",
+                "The song is about the weight of what is gone and the choice to bear it alone"
+              ],
+              "rationale": "Uses analytical language to summarize themes. / Explains the song's meaning instead of personal feeling."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The beats show a clear emotional progression from internal longing to external concern, culminating in a firm refusal to engage with the past. / Each scene describes the character's internal state and emotional turn, rather than merely recounting actions or events."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently frames Harry's actions through the metaphor of a closed door. / The refusal to talk and physical isolation directly support the lens."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The contradiction crystallizes the take's idea into a fresh either/or paradox. / Arc scenes use preview sentences from the take but add substantial new concrete details. / Each field provides a unique angle, altitude, or detail."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No aphoristic kickers: statements are descriptive or summarize the song's narrative, not abstract epigrams. / No fragmentation piles: prose consists of complete, flowing sentences, not clipped fragments. / No mirrored parallelism: no \"X is the Y\" constructions used for manufactured profundity."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Closed-door lens traces to Intro annotation: Ruby on the other side of a door Harry won't open. / Take/arc beats all map to heard lyrics — phone, floor, pills, bell, father alone, bridge — plus chorus/Verse-1 annotations. / No reception, no biography beyond annotations; 'father lives alone' and 'bell' are both annotation-backed."
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-17-42-723Z__harry-styles-as-it-was__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 244,
+          "tier1": {
+            "high": 4,
+            "medium": 0,
+            "low": 6
+          },
+          "pairwiseRationales": [
+            "B knows the song: \"His goddaughter calls every night,\" \"a frightened voice asks why he is on the floor,\" \"his father, alone for years now.\" A opens by restating its own lens (\"Change as an unshared burden defines this moment\") and runs flat, generic second-person that would fit any song.",
+            "A puts you in the room: \"His goddaughter calls every night... until the night he stops answering,\" \"asks what pills he is on.\" B opens by wearing its lens as decoration (\"Change as an unshared burden defines this moment\"), hedges in generic second-person (\"feels deeply personal and isolating\"), and flattens into clinical restatement (\"without processing\")."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": false,
+              "evidence": [
+                "Change as an unshared burden defines this moment.",
+                "The world has shifted, and you know it cannot be the same as it was, but this new reality feels like a weight you carry alone.",
+                "Gravity holds you back, keeping you from moving forward, and you find yourself with nothing left to say about the past.",
+                "You want someone to hold out a hand, but you also refuse to talk about what happened.",
+                "Voices from outside try to reach you, but you remain behind a closed door, feeling unhelped and seeing your own solitude reflected in others.",
+                "A voice from outside tries to reach you, but you stay behind a closed door.",
+                "Gravity holds you back from moving forward.",
+                "You have nothing left to say about the past, even as you desire a hand to hold.",
+                "The world has fundamentally changed, and you know it cannot go back to \"as it was.\"",
+                "This new reality is shared by \"us,\" but the experience of it feels deeply personal and isolating.",
+                "Concerned voices call, asking why you are alone and what you are taking.",
+                "You ring for help, but no one comes.",
+                "You actively avoid discussing the past, preferring to move on without processing."
+              ],
+              "rationale": "The read primarily focuses on universal themes of isolation and change. / Metaphors like 'closed door' and 'gravity' are generic. / Only one specific detail about a father is present, fewer than three."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a specific, perceivable scenario. / Evokes a clear auditory and visual experience."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "Change as an unshared burden defines this moment.",
+                "Gravity holds you back",
+                "seeing your own solitude reflected in others"
+              ],
+              "rationale": "Uses abstract, analytical phrasing. / Employs metaphorical language not common in casual speech."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Beats progressively deepen themes of isolation and avoidance of the past. / Each scene effectively captures a distinct emotional turn and feeling."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently argues that societal change becomes an isolating, personal weight. / Phrases like 'weight you carry alone' and 'remain behind a closed door' directly support the lens."
+            },
+            {
+              "judge": "redundancy",
+              "passed": false,
+              "evidence": [
+                "arc[0] re-asserts take: \"A voice from outside tries to reach you, but you stay behind a closed door. Gravity holds you back from moving forward. You have nothing left to say about the past, even as you desire a hand to hold.\"",
+                "arc[1] re-asserts take: \"The world has fundamentally changed, and you know it cannot go back to \"as it was.\" This new reality is shared by \"us,\" but the experience of it feels deeply personal and isolating.\""
+              ],
+              "rationale": "Arc[0] is a verbatim restatement of several take sentences, adding no new concrete detail or dramatization. / Arc[1] rephrases the take's description of a 'new reality' and its isolated experience without concrete scenes. / Other fields provide distinct angles and new concrete details beyond their shared core idea."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The text describes specific emotional states and situations, avoiding abstract aphorisms. / All sentences are complete and flow cohesively, without disjointed fragment piles. / No instances of mirrored \"X is the Y\" constructions or manufactured symmetry are present."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Every beat traces to a heard lyric (gravity, palm of hand, no good alone, ringing bell, daddy lives alone) or an annotation. / Closed-door image is supported by the intro annotation's 'other side of a closed door' interpretation. / No imported reception, biography, or invented setting — father living alone is annotation-backed. / para-textual (review): image \"a voice on the other side of a closed door\" — closed-door visual, supported by intro annotation but tied to the music video; for human review"
+            }
+          ]
+        },
+        {
+          "runId": "2026-06-07T00-17-28-310Z__harry-styles-as-it-was__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 256,
+          "tier1": {
+            "high": 1,
+            "medium": 0,
+            "low": 8
+          },
+          "pairwiseRationales": [
+            "B names this song's specifics — goddaughter's nightly goodnight, the floor, pills, father 'alone since the divorce' — and its 'silence as the grief he allows' lens with varied rhythm and a true texture ('engineered to sound like joy'). A leans generic and repetitive ('self-imposed prison', 'head-on', recycled 'closed door').",
+            "A's concrete details—\"alone since the divorce,\" \"finds him on the floor,\" \"chiming synth pop...ringing hollow\"—and varied rhythm beat B's generic, repeated \"new normal\"/\"new reality,\" the essayistic \"passage of time has changed everything,\" and \"self-imposed prison.\" B also leaves texture empty."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Mentions specific characters like a goddaughter and father. / Details unique plot points, e.g., 'ringing a bell for help'. / Includes concrete imagery, e.g., 'alone on the floor, what pills you are on'."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a specific auditory and situational experience. / Evokes a tangible scene and a directly felt sensation."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "The world has changed, and it is not the same as it was.",
+                "This new normal is a self-imposed prison, a quiet isolation where you are stuck in the past."
+              ],
+              "rationale": "Interprets the song's narrative and theme directly. / Uses abstract language to explain the song's meaning."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The arc depicts a clear progression of emotional decline and deepening isolation. / Each beat captures a distinct feeling and emotional turn rather than recounting events."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take consistently argues the lens, showing how the 'new normal' manifests as self-imposed isolation behind a 'closed door'. / All elements—image, contradiction, and arc—provide evidence directly supporting the central claim of the lens."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Lens provides a concise thesis, while the take expands on the core argument. / Contradiction crystallizes a paradoxical tension, distinct from the take's descriptive summary. / Arc scenes dramatize specific beats with concrete details, expanding on ideas previewed in the take."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No aphoristic kickers found; statements are grounded interpretations, not detached profundities. / No fragmentation piles; all fields maintain connected prose. / No mirrored 'X is the Y' parallelism; constructions are specific claims or metaphors, not symmetric abstractions."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Closed-door framing, goddaughter, father-alone, 'not the same' all trace to vote-gated annotations. / Arc beats quote heard lyrics directly; 'face things head-on' is in the chorus annotation. / No imported reception, biography beyond annotations, or fabricated setting found."
+            }
+          ]
+        }
+      ],
+      "songOutcome": "fail"
+    }
+  ]
+}

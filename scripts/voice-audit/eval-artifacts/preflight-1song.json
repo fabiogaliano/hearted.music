@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "label": "v17@temp 0.3",
+  "variant": {
+    "promptVersion": "17",
+    "model": "google-vertex:gemini-2.5-flash",
+    "temperature": 0.3
+  },
+  "judgeModel": "opus",
+  "generatedAt": "2026-06-07T00:31:23.748Z",
+  "songs": [
+    {
+      "key": "not-like-us",
+      "song": "Kendrick Lamar — Not Like Us",
+      "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+      "goldWordCount": 192,
+      "runs": [
+        {
+          "runId": "2026-06-07T00-11-56-521Z__kendrick-lamar-not-like-us__v17__google-vertex-gemini-2-5-flash__t0-3",
+          "outcome": "LOSS",
+          "confidence": "high",
+          "agreement": true,
+          "candidateWordCount": 268,
+          "tier1": {
+            "high": 3,
+            "medium": 0,
+            "low": 8
+          },
+          "pairwiseRationales": [
+            "B reads like a person: \"struts without breaking a sweat, where the menace lives entirely in how relaxed it sounds,\" plus a sharp lens (\"cultural eviction notice\") and real contradiction. A piles flat, uniform \"It names... It strips away...\" sentences and academic puffery (\"accusatory valence\").",
+            "A's images are specific and human (\"the menace lives entirely in how relaxed it sounds\", \"what he wanted could never be bought, only inherited\"). B opens book-report (\"This is Compton's song\"), drones uniform \"It...\" sentences, and reaches for academic puffery (\"dark, accusatory valence\"). A reads like a friend; B reports results."
+          ],
+          "tier2": [
+            {
+              "judge": "register-specificity",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Names the song as Compton's, linking to specific city. / Identifies the enemy with precise accusations (pedophile, colonizer). / References specific hip-hop culture appropriation critique."
+            },
+            {
+              "judge": "abstract-noun-trap",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Describes a visible state of a place. / Indicates a physical action or location."
+            },
+            {
+              "judge": "essayistic-register",
+              "passed": false,
+              "evidence": [
+                "a collective voice rising to draw a hard line",
+                "It strips away any claim to authenticity or connection",
+                "It is a declaration that the true inheritors of the culture are back outside"
+              ],
+              "rationale": "Uses abstract, analytical language. / Explains song's function, not personal feeling."
+            },
+            {
+              "judge": "arc-narrative",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The arc unfolds as a clear narrative of escalating conflict leading to resolution. / Each beat captures a distinct emotional turn and contributes to the evolving story."
+            },
+            {
+              "judge": "lens-coherence",
+              "passed": true,
+              "evidence": [],
+              "rationale": "The take clearly demonstrates how the community functions as a unified, aggressive defense. / The lens is an active, critical claim, not a surface description."
+            },
+            {
+              "judge": "redundancy",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Each arc scene dramatizes a beat previewed in the take, adding new concrete details. / No arc scene is merely a reworded take sentence without substantial new content. / The 'contradiction: (none)' is a distinct and valid state for that field."
+            },
+            {
+              "judge": "voice-softness",
+              "passed": true,
+              "evidence": [],
+              "rationale": "No abstract, self-satisfied aphoristic kickers were found. / The prose flows well; no piles of disconnected fragments were observed. / No mirrored 'X is the Y' constructions or manufactured symmetry were present."
+            },
+            {
+              "judge": "grounding",
+              "passed": true,
+              "evidence": [],
+              "rationale": "Every accusation (colonizer, pedophile, false cred) traces to heard lyrics + vote-gated annotations. / 'Us vs them' / Compton / 'we outside' / dance-mockery all appear verbatim in lyrics. / Victory-and-dance reading is the song's internal swagger, not imported chart/crowd reception."
+            }
+          ]
+        }
+      ],
+      "songOutcome": "fail"
+    }
+  ]
+}

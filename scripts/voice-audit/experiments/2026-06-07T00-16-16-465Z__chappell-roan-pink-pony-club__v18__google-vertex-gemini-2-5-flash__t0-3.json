@@ -1,0 +1,171 @@
+{
+  "runId": "2026-06-07T00-16-16-465Z__chappell-roan-pink-pony-club__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:16:16.465Z",
+  "song": "Chappell Roan — Pink Pony Club",
+  "spotifyTrackId": "pink-pony-club",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 3,
+    "medium": 2,
+    "low": 10
+  },
+  "byRule": {
+    "puffery-adjective": 2,
+    "participial-closure": 3,
+    "burstiness": 2,
+    "rule-of-three": 1,
+    "lexical-repetition": 7
+  },
+  "tokens": 14673,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "take",
+      "span": "vibrant",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "arc[2].scene",
+      "span": "vibrant",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", dancing on stage in her heels.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", promising freedom she cannot find in Tennessee.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", accusing her of abandoning her past.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "She sees a life beyond her hometown, a special place where everyone can be a que",
+      "severity": "low",
+      "note": "CV=0.061 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[1].scene",
+      "span": "Her mother's voice rings in her ears, accusing her of abandoning her past.",
+      "severity": "low",
+      "note": "CV=0.211 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[2].scene",
+      "span": "is surrounded by lovers, black lights, and disco balls",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "dancing",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "stage",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "heels",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "life",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "joy",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "chosen",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "mother",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "dancing on the stage in my heels under black lights and a mirrored disco ball",
+    "lens": "queer liberation as a defiant homecoming",
+    "tension": "Joyful Defiance",
+    "take": "She leaves behind a life of expectations in the Midwest for the vibrant queer community of West Hollywood. The \"crazy visions\" of LA become a reality where she finds her true self, dancing on stage in her heels. She knows this choice won't make her mama proud, and she hears the imagined \"scream\" of disapproval, but the joy and belonging she finds in the Pink Pony Club are too powerful to deny. She keeps dancing, a defiant celebration of her survival and her chosen family.",
+    "contradiction": "Her joy in her chosen life is amplified by the constant, imagined echo of her mother's disapproval.",
+    "arc": [
+      {
+        "label": "The Wicked Dream",
+        "mood": "Restless Longing",
+        "scene": "She sees a life beyond her hometown, a special place where everyone can be a queen. The vision of LA calls to her, promising freedom she cannot find in Tennessee. She knows leaving will break her mother's heart, but the pull is too strong to ignore."
+      },
+      {
+        "label": "The Mother's Scream",
+        "mood": "Defiant Joy",
+        "scene": "Her mother's voice rings in her ears, accusing her of abandoning her past. She hears the judgment, the \"God, what have you done?\" but she answers with the truth of her joy. She is dancing on stage, in her heels, exactly where she belongs."
+      },
+      {
+        "label": "The Pink Pony Club",
+        "mood": "Liberated Belonging",
+        "scene": "West Hollywood is a vibrant, accepting space. She is surrounded by lovers, black lights, and disco balls. Every night proves that leaving was the right choice, a celebration of finding her chosen family and her true self."
+      },
+      {
+        "label": "The Echoing Drawl",
+        "mood": "Persistent Love",
+        "scene": "Even in her new life, she has not forgotten where she came from. She still loves Tennessee and her mother, whose Southern drawl still reaches her across a thousand miles, a constant reminder of the life she left behind and the scene she caused."
+      }
+    ],
+    "lines": [
+      {
+        "line": "But I can't ignore the crazy visions of me in L.A."
+      },
+      {
+        "line": "Won't make my mama proud, it's gonna cause a scene"
+      },
+      {
+        "line": "\"You're a pink pony girl, and you dance at the club,\" oh mama"
+      },
+      {
+        "line": "On the stage in my heels, it's where I belong"
+      },
+      {
+        "line": "I'm gonna keep on dancing"
+      }
+    ],
+    "texture": null
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "runId": "2026-06-07T00-12-04-422Z__olivia-rodrigo-drivers-license__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:12:04.422Z",
+  "song": "Olivia Rodrigo — drivers license",
+  "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 4,
+    "medium": 0,
+    "low": 9
+  },
+  "byRule": {
+    "participial-closure": 4,
+    "burstiness": 3,
+    "lexical-repetition": 6
+  },
+  "tokens": 13453,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", taking her past his street and the places they shared.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", holding onto a promise of \"forever\" that he clearly broke.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", crying because he is not there.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", imagining him with \"that blonde girl\" who is older and everything she fears.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The driver's license, meant to be a symbol of new freedom, instead becomes a veh",
+      "severity": "low",
+      "note": "CV=0.211 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "Getting her driver's license was a shared dream, a way to drive to his house.",
+      "severity": "low",
+      "note": "CV=0.245 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[2].scene",
+      "span": "Her friends are tired of hearing about him, but she still loves him.",
+      "severity": "low",
+      "note": "CV=0.087 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "street",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "freedom",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "love",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "every",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "driving alone past your street, seeing your face in white cars",
+    "lens": "a milestone as a monument to loss",
+    "tension": "Desperate Longing",
+    "take": "The driver's license, meant to be a symbol of new freedom, instead becomes a vehicle for circling a lost love. Every drive through the suburbs is a painful loop, taking her past his street and the places they shared. She sees his new girlfriend, \"that blonde girl,\" and cannot comprehend how he moved on so easily. Her friends are tired of hearing it, but she still loves him, holding onto a promise of \"forever\" that he clearly broke. The open road only leads her deeper into her own heartbreak.",
+    "contradiction": "The freedom of the open road only traps her deeper in the memories of a lost love.",
+    "arc": [
+      {
+        "label": "The Broken Promise",
+        "mood": "Crushing Disappointment",
+        "scene": "Getting her driver's license was a shared dream, a way to drive to his house. Now she drives alone through the suburbs, crying because he is not there. The freedom she earned only highlights his absence."
+      },
+      {
+        "label": "The Other Girl",
+        "mood": "Gnawing Insecurity",
+        "scene": "She drives past his street, imagining him with \"that blonde girl\" who is older and everything she fears. She cannot understand how he could be so okay, or how he could have meant so little what he wrote in his song about her."
+      },
+      {
+        "label": "The Lingering Hold",
+        "mood": "Persistent Devotion",
+        "scene": "Her friends are tired of hearing about him, but she still loves him. Every white car, every front yard, every sound of traffic reminds her of him. She still hears his voice, still feels the love, even though she knows they are through."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I got my driver's license last week"
+      },
+      {
+        "line": "Crying 'cause you weren't around"
+      },
+      {
+        "line": "She's everything I'm insecure about"
+      },
+      {
+        "line": "Guess you didn't mean what you wrote in that song about me"
+      },
+      {
+        "line": "'Cause I still fuckin' love you, babe"
+      }
+    ],
+    "texture": "A raw, acoustic-driven pop sound carries a deep sadness. It moves with a steady, almost driving rhythm, but the low, intimate vocals keep it grounded in a private, heartbroken space."
+  }
+}

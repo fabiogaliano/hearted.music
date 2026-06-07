@@ -1,0 +1,129 @@
+{
+  "runId": "2026-06-07T00-12-18-762Z__olivia-rodrigo-drivers-license__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:12:18.762Z",
+  "song": "Olivia Rodrigo — drivers license",
+  "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 3,
+    "medium": 0,
+    "low": 6
+  },
+  "byRule": {
+    "participial-closure": 3,
+    "rule-of-three": 1,
+    "lexical-repetition": 5
+  },
+  "tokens": 13422,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", reminding her of what's lost.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", hearing his voice, and admitting she still loves him.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", laughing over all the noise, and admits she still loves him.",
+      "severity": "high"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "loop of picturing him, hearing his voice, and admitting she still loves",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "cannot",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "hearing",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "loves",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×7 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "driving alone past your street, seeing your face in white cars",
+    "lens": "a milestone as a monument to loss",
+    "tension": "Lingering Grief",
+    "take": "She finally got her driver's license, a shared dream, but now it only takes her past his house, past the places they went, reminding her of what's lost. She cannot comprehend how he moved on so fast, especially with \"that blonde girl\" who makes her insecure. Her friends are tired of hearing it, but she still loves him. Every drive is a painful loop of picturing him, hearing his voice, and admitting she still loves him.",
+    "contradiction": "The freedom of the open road only drives her deeper into the past.",
+    "arc": [
+      {
+        "label": "The Broken Promise",
+        "mood": "Crushing Disappointment",
+        "scene": "She finally got her driver's license, just like they always talked about. The excitement of driving to his house turns to tears when she realizes he is not there."
+      },
+      {
+        "label": "The Replacement",
+        "mood": "Bitter Insecurity",
+        "scene": "He is probably with the blonde girl, the one who always made her doubt herself. She cannot fathom how he moved on so quickly, or how she could ever love someone else."
+      },
+      {
+        "label": "The Endless Loop",
+        "mood": "Persistent Longing",
+        "scene": "Her friends are tired of hearing how much she misses him, but they never knew him like she did. Every drive through the suburbs becomes a painful loop of picturing him."
+      },
+      {
+        "label": "The Haunting",
+        "mood": "Raw Devotion",
+        "scene": "Red lights and stop signs cannot stop her from seeing his face in white cars and front yards. She hears his voice in the traffic, laughing over all the noise, and admits she still loves him."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I got my driver's license last week / Just like we always talked about"
+      },
+      {
+        "line": "And you're probably with that blonde girl / Who always made me doubt"
+      },
+      {
+        "line": "And I just can't imagine how you could be so okay now that I'm gone"
+      },
+      {
+        "line": "'Cause you said forever, now I drive alone past your street"
+      },
+      {
+        "line": "'Cause I still fuckin' love you, babe"
+      }
+    ],
+    "texture": "A slow, acoustic pop rock ballad that carries a deep sadness. The high acousticness and low energy wrap you in a quiet, intimate despair."
+  }
+}

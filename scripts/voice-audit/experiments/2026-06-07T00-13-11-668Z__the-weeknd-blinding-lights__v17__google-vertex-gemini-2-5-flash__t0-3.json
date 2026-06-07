@@ -1,0 +1,165 @@
+{
+  "runId": "2026-06-07T00-13-11-668Z__the-weeknd-blinding-lights__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:13:11.668Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 4,
+    "medium": 0,
+    "low": 11
+  },
+  "byRule": {
+    "participial-closure": 4,
+    "burstiness": 3,
+    "rule-of-three": 2,
+    "lexical-repetition": 6
+  },
+  "tokens": 12584,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "texture",
+      "span": ", creating a danceable urgency.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", leaving him unable to see or sleep.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", trusting only one person to guide him through this overwhelming darkness.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", speeding back to the one person who can bring him clarity.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "He has been alone for too long, experiencing withdrawals, and the city of sin fe",
+      "severity": "low",
+      "note": "CV=0.147 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[1].scene",
+      "span": "Las Vegas, the city of sin, feels desolate and cold.",
+      "severity": "low",
+      "note": "CV=0.225 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[2].scene",
+      "span": "Time is slipping away as the sun begins to rise.",
+      "severity": "low",
+      "note": "CV=0.216 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "alone for too long, experiencing withdrawals, and the city of sin",
+      "severity": "low"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "arc[0].scene",
+      "span": "He is fragile, easily touched, and completely dependent on this",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "lights",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "city",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "person",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×7 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "chaos",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "desperate",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "drowning in the night, blinded by the lights",
+    "lens": "hedonism as a desperate search for an anchor",
+    "tension": "Urgent Vulnerability",
+    "take": "He has been alone for too long, experiencing withdrawals, and the city of sin feels cold and empty without one specific person. The lights that blind him are both the allure of Las Vegas and the glare of his own fame, a chaos he navigates with difficulty. This person is the only one he trusts, the only one who can make him see clearly. He is running out of time, driving fast, desperate to get back to them because they are his only clear sight in the blinding chaos.",
+    "contradiction": "The blinding lights of his life are both the source of his chaos and the stage where he desperately seeks his only clear sight.",
+    "arc": [
+      {
+        "label": "The Desperate Call",
+        "mood": "Vulnerable Longing",
+        "scene": "He reaches out from a place of deep loneliness. He admits to withdrawals, to being on his own for too long, and to needing someone to teach him how to love again. He is fragile, easily touched, and completely dependent on this person's presence."
+      },
+      {
+        "label": "The Blinding Void",
+        "mood": "Disoriented Emptiness",
+        "scene": "Las Vegas, the city of sin, feels desolate and cold. The lights of fame and the city itself blind him, leaving him unable to see or sleep. He is drowning in the night, trusting only one person to guide him through this overwhelming darkness."
+      },
+      {
+        "label": "The Reckless Pursuit",
+        "mood": "Urgent Determination",
+        "scene": "Time is slipping away as the sun begins to rise. He hits the road in overdrive, speeding back to the one person who can bring him clarity. He is determined not to let her go again, his past mistakes fueling his desperate return."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I've been tryna call"
+      },
+      {
+        "line": "I'm goin' through withdrawals"
+      },
+      {
+        "line": "Sin City's cold and empty"
+      },
+      {
+        "line": "I'm blinded by the lights"
+      },
+      {
+        "line": "Oh, when I'm like this, you're the one I trust"
+      }
+    ],
+    "texture": "A driving synthwave beat propels it forward with high energy, creating a danceable urgency. This propulsive sound carries a deep emotional valence, a desperate plea hidden within its bright, retro sheen."
+  }
+}

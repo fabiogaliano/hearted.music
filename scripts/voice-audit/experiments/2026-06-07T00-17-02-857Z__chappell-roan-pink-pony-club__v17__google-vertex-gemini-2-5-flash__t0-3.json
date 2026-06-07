@@ -1,0 +1,149 @@
+{
+  "runId": "2026-06-07T00-17-02-857Z__chappell-roan-pink-pony-club__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:17:02.857Z",
+  "song": "Chappell Roan — Pink Pony Club",
+  "spotifyTrackId": "pink-pony-club",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 5,
+    "medium": 0,
+    "low": 7
+  },
+  "byRule": {
+    "participial-closure": 5,
+    "burstiness": 1,
+    "lexical-repetition": 6
+  },
+  "tokens": 13842,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", knowing it will disappoint her mother.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", celebrating this freedom with every dance.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", showing her a world where boys and girls can all be queens every single day.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", finding her true belonging in West Hollywood's queer spaces.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", affirming her new reality and protecting her queer joy.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "She leaves her Midwest home and its expectations behind, drawn by visions of a s",
+      "severity": "low",
+      "note": "CV=0.024 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "pink",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "pony",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "girl",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "queer",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "mother",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "contradiction",
+      "span": "new",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a pink pony girl dancing on stage in her heels",
+    "lens": "defiance as belonging",
+    "tension": "Liberated Defiance",
+    "take": "She leaves her Midwest home and its expectations behind, drawn by visions of a special place in L.A. This move is a deliberate choice to embrace a queer identity, knowing it will disappoint her mother. The \"pink pony girl\" label, once an insult from home, becomes a badge of honor in West Hollywood. She finds her true self and a chosen family in queer spaces, celebrating this freedom with every dance.",
+    "contradiction": "She finds joy and belonging in her new life, yet she still carries the imagined disapproval of her mother, a voice that she keeps alive in her mind.",
+    "arc": [
+      {
+        "label": "The Crazy Vision",
+        "mood": "Restless Longing",
+        "scene": "She feels the pull of L.A. and its promise of a special place. The visions are vivid, showing her a world where boys and girls can all be queens every single day."
+      },
+      {
+        "label": "The Mother's Scream",
+        "mood": "Painful Certainty",
+        "scene": "She knows her choices will not make her mama proud. It will cause a scene, and her mother will scream at the sight of her baby girl living this new life. This is a known cost."
+      },
+      {
+        "label": "The Pink Pony Club",
+        "mood": "Joyful Reclamation",
+        "scene": "The insult of being a \"pink pony girl\" transforms into a celebration. She dances on stage in her heels, finding her true belonging in West Hollywood's queer spaces. This is where she is meant to be."
+      },
+      {
+        "label": "The Unending Dance",
+        "mood": "Persistent Freedom",
+        "scene": "She acknowledges her past and her mother's voice, still hearing the Southern drawl a thousand miles away. Despite this echo, she chooses to keep on dancing, affirming her new reality and protecting her queer joy."
+      }
+    ],
+    "lines": [
+      {
+        "line": "But I can't ignore the crazy visions of me in L.A."
+      },
+      {
+        "line": "Won't make my mama proud, it's gonna cause a scene"
+      },
+      {
+        "line": "\"You're a pink pony girl, and you dance at the club,\" oh mama"
+      },
+      {
+        "line": "On the stage in my heels, it's where I belong"
+      },
+      {
+        "line": "I'm gonna keep on dancing"
+      }
+    ],
+    "texture": null
+  }
+}

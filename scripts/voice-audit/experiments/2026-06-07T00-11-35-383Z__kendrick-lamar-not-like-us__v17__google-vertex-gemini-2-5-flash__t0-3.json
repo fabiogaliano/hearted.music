@@ -1,0 +1,160 @@
+{
+  "runId": "2026-06-07T00-11-35-383Z__kendrick-lamar-not-like-us__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:11:35.383Z",
+  "song": "Kendrick Lamar — Not Like Us",
+  "spotifyTrackId": "6AI3ezQ4o3HUoP6Dhudph3",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 9,
+    "medium": 0,
+    "low": 5
+  },
+  "byRule": {
+    "antithesis": 1,
+    "participial-closure": 7,
+    "book-report-opener": 1,
+    "lexical-repetition": 5
+  },
+  "tokens": 31655,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "take",
+      "span": "not just as a rival,",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", turning every accusation into a reason why Drake is fundamentally \"not like us.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", seeing the 'dead people' of a battle already won.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[1].scene",
+      "span": ", warning potential lovers and exposing the alleged 'weird cases' of his associates.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", detailing how he uses Atlanta artists for 'check balance' and 'street cred.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", stripping away any claim to authentic connection to Black culture.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", asserting that 'they not like us.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", cementing the 'us' against the 'them' with a shared beat and a new, defiant identity.",
+      "severity": "high"
+    },
+    {
+      "rule": "book-report-opener",
+      "field": "take",
+      "span": "This is a hard line drawn in ",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "kendrick",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "drake",
+      "severity": "low",
+      "note": "repeated ×7 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "like",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "song",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "texture",
+      "span": "beat",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "hide your lil' sister from him",
+    "lens": "community defense as excommunication",
+    "tension": "Unwavering Condemnation",
+    "take": "This is a hard line drawn in the sand, a declaration of who belongs and who is cast out. Kendrick Lamar uses the collective voice of Compton and Black hip-hop culture to excommunicate Drake, not just as a rival, but as a predator and a colonizer. He systematically dismantles Drake's claims to authenticity and belonging, turning every accusation into a reason why Drake is fundamentally \"not like us.\" The song becomes a rallying cry, a communal rejection that defines itself by who it pushes away.",
+    "contradiction": "It claims a moral high ground by detailing the lowest accusations.",
+    "arc": [
+      {
+        "label": "The Declaration of War",
+        "mood": "Aggressive Certainty",
+        "scene": "Kendrick immediately establishes his authority, seeing the 'dead people' of a battle already won. He steps into the role of a sociopathic bully, ready to 'Deebo any rap nigga' and put aside his beliefs to 'beat your ass and hide the Bible if God watchin'.' The battle is personal, and the stakes are absolute."
+      },
+      {
+        "label": "The Indictment",
+        "mood": "Righteous Accusation",
+        "scene": "The song shifts to specific, damning allegations. Kendrick directly confronts Drake with accusations of pedophilia, warning potential lovers and exposing the alleged 'weird cases' of his associates. He rebrands 'Certified Lover Boy' as 'Certified pedophiles,' cementing the moral rot at the core of Drake's circle."
+      },
+      {
+        "label": "The Cultural Cleansing",
+        "mood": "Collective Expulsion",
+        "scene": "Kendrick broadens his attack to Drake's cultural appropriation, detailing how he uses Atlanta artists for 'check balance' and 'street cred.' He calls Drake a 'colonizer,' not a colleague, stripping away any claim to authentic connection to Black culture. The community is rallied to reject him, asserting that 'they not like us.'"
+      },
+      {
+        "label": "The Dance of Victory",
+        "mood": "Triumphant Unity",
+        "scene": "The song transforms from pure attack into a celebratory, unifying anthem. The repeated 'they not like us' becomes a chant, a shared rhythm that invites everyone to 'step this way, step that way.' It's a communal dance of triumph, cementing the 'us' against the 'them' with a shared beat and a new, defiant identity."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Psst, I see dead people"
+      },
+      {
+        "line": "Just make sure you hide your lil' sister from him"
+      },
+      {
+        "line": "Certified Lover Boy? Certified pedophiles"
+      },
+      {
+        "line": "No, you not a colleague, you a fuckin' colonizer"
+      },
+      {
+        "line": "They not like us, they not like us, they not like us"
+      }
+    ],
+    "texture": "A driving hip-hop beat, highly danceable, carries a low, negative valence. It is a diss track you can move to, even as the words cut deep."
+  }
+}

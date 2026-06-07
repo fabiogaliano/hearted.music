@@ -1,0 +1,137 @@
+{
+  "runId": "2026-06-07T00-12-43-694Z__the-weeknd-blinding-lights__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:12:43.694Z",
+  "song": "The Weeknd — Blinding Lights",
+  "spotifyTrackId": "0VjIjW4GlUZAMYd2vXMi3b",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 5,
+    "medium": 0,
+    "low": 6
+  },
+  "byRule": {
+    "participial-closure": 5,
+    "burstiness": 1,
+    "rule-of-three": 1,
+    "lexical-repetition": 4
+  },
+  "tokens": 12833,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", running out of time.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", making you trust again, even as you hit the road in overdrive to find it.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", going through withdrawals.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", trying to call someone who might show you how to love.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", seeing the sun light up the sky, so you hit the road in overdrive.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "Hedonism turns into devotion as you drive through a cold and empty Sin City, run",
+      "severity": "low",
+      "note": "CV=0.238 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "own for too long, lost in withdrawals, and the blinding lights of",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "city",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "time",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "lights",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "trust",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "the flashing car, the city shining on your face",
+    "lens": "hedonism into devotion",
+    "tension": "Urgent Devotion",
+    "take": "Hedonism turns into devotion as you drive through a cold and empty Sin City, running out of time. You have been on your own for too long, lost in withdrawals, and the blinding lights of fame and excess have left you unable to see clearly. Only one person's touch can ground you, making you trust again, even as you hit the road in overdrive to find it. This love is the only thing that keeps you peacefully inserted in this life.",
+    "contradiction": "The blinding lights that threaten to consume you are also the path that leads you back to the one you trust.",
+    "arc": [
+      {
+        "label": "The Empty City",
+        "mood": "Desperate Isolation",
+        "scene": "You are alone in a cold, empty city, going through withdrawals. You have been on your own for too long, trying to call someone who might show you how to love."
+      },
+      {
+        "label": "The Blinding Lifeline",
+        "mood": "Urgent Need",
+        "scene": "The lights blind you, whether from a police car or the paparazzi, but you cannot sleep until you feel her touch. She is the only one you trust when you are like this."
+      },
+      {
+        "label": "The Reckless Pursuit",
+        "mood": "Driven Devotion",
+        "scene": "You are running out of time, seeing the sun light up the sky, so you hit the road in overdrive. You are coming back to let her know you will never let her go this time."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I've been on my own for long enough"
+      },
+      {
+        "line": "I'm goin' through withdrawals"
+      },
+      {
+        "line": "Sin City's cold and empty"
+      },
+      {
+        "line": "I said, ooh, I'm blinded by the lights"
+      },
+      {
+        "line": "No, I can't sleep until I feel your touch"
+      }
+    ],
+    "texture": "A driving synthwave beat pushes you forward at a high tempo, full of energy. It feels like a frantic, neon-lit chase, but the low valence pulls a deep sadness through the bright, loud sound."
+  }
+}

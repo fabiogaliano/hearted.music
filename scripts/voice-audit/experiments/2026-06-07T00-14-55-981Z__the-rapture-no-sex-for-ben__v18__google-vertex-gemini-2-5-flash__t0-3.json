@@ -1,0 +1,106 @@
+{
+  "runId": "2026-06-07T00-14-55-981Z__the-rapture-no-sex-for-ben__v18__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:14:55.981Z",
+  "song": "The Rapture — No Sex for Ben",
+  "spotifyTrackId": "no-sex-for-ben",
+  "promptKind": "lyrical",
+  "promptVersion": "18",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 2,
+    "medium": 1,
+    "low": 3
+  },
+  "byRule": {
+    "antithesis": 1,
+    "participial-closure": 1,
+    "tension-mood-dedup": 1,
+    "lexical-repetition": 3
+  },
+  "tokens": 8311,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "take",
+      "span": "isn't a suggestion;",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", naming Ben Rymer and labeling him 'trash people.",
+      "severity": "high"
+    },
+    {
+      "rule": "tension-mood-dedup",
+      "field": "arc[2].mood",
+      "span": "Unanimous Condemnation",
+      "severity": "medium",
+      "note": "duplicates tension \"Unanimous Condemnation\""
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "collective",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "ben",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "rymer",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a collective finger pointed, chanting 'no sex for Ben'",
+    "lens": "collective judgment as social banishment",
+    "tension": "Unanimous Condemnation",
+    "take": "The community gathers to declare Ben Rymer an outcast. They list his specific offenses, from being a 'big liar' to trying to 'snatch the kitty off his girlfriend's mother.' The verdict is unanimous and absolute: 'no sex for Ben.' This isn't a suggestion; it's a collective decree, a social freeze-out that leaves him utterly alone.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "The Public Verdict",
+        "mood": "Collective Scorn",
+        "scene": "The crowd gathers, naming Ben Rymer and labeling him 'trash people.' The judgment is swift and absolute, a public decree that he is now beyond the pale."
+      },
+      {
+        "label": "The Indictment",
+        "mood": "Righteous Fury",
+        "scene": "The specific charges pile up, each one more damning than the last. He is a 'big liar,' a 'cheap faker,' and his worst offense is laid bare for everyone to hear."
+      },
+      {
+        "label": "The Banishment",
+        "mood": "Unanimous Condemnation",
+        "scene": "The collective voice rises, demanding action. There is no appeal, no mercy; the group moves to 'freeze them up,' ensuring Ben Rymer's social isolation is complete."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Ben Rymer, trash people"
+      },
+      {
+        "line": "No sex, no sex for Ben Rymer now"
+      },
+      {
+        "line": "One ladder, big liar"
+      },
+      {
+        "line": "Try to snatch the kitty off his girlfriend's mother"
+      },
+      {
+        "line": "We gotta freeze them up now"
+      }
+    ],
+    "texture": null
+  }
+}

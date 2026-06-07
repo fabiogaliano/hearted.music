@@ -207,12 +207,16 @@ async function main() {
 
 	const evals: SongEval[] = [];
 	let totalCost = 0;
+	let skippedCandidates = 0;
 	let variantMeta:
 		| { promptVersion?: string; model?: string; temperature: number | null }
 		| undefined;
-	// The 7 Gemini judges go through createLlmService("google"); the grounding judge spawns Opus
-	// via the claude CLI inside judgeAnalysis. Built once and only when actually judging pointwise.
-	const llm = flags.pointwise && !flags.dryRun ? createLlmService("google") : null;
+	// The 7 Gemini judges go through Vertex (ADC-billed), matching generation and the sibling
+	// checkers (check-redundancy/voice-softness); the AI Studio "google" key path is depleted and
+	// is not the billed path this pipeline runs on. Same model (gemini-2.5-flash), just the working
+	// endpoint. The grounding judge spawns Opus via the claude CLI inside judgeAnalysis. Built once
+	// and only when actually judging pointwise.
+	const llm = flags.pointwise && !flags.dryRun ? createLlmService("google-vertex") : null;
 
 	for (const [track, runs] of candidates) {
 		const g = gold.get(track) as GoldExemplar;
@@ -232,22 +236,35 @@ async function main() {
 			let verdict: BalancedVerdict | undefined;
 			let tier2: JudgeFindingRecord[] | undefined;
 			if (!flags.dryRun) {
-				process.stdout.write(`  judging ${g.key} (${run.promptVersion}) ... `);
-				verdict = await judgePair(g.song, run.analysis, g.read, {
-					model: flags.judgeModel,
-				});
-				totalCost += verdict.costUsd;
-				console.log(
-					`candidate ${verdict.winner === "first" ? "WINS" : verdict.winner === "second" ? "loses" : "ties"} vs gold (${verdict.confidence}${verdict.agreement ? "" : ", flipped"})`,
-				);
-				if (llm) {
-					const pointwise = await runPointwise(llm, g.key, run.analysis as ConceptRead);
-					tier2 = pointwise.findings;
-					totalCost += pointwise.costUsd;
-					const failed = tier2.filter((f) => !f.passed).map((f) => f.judge);
+				try {
+					process.stdout.write(`  judging ${g.key} (${run.promptVersion}) ... `);
+					verdict = await judgePair(g.song, run.analysis, g.read, {
+						model: flags.judgeModel,
+					});
+					totalCost += verdict.costUsd;
 					console.log(
-						`         ↳ tier2: ${failed.length ? `FAIL ${failed.join(", ")}` : "all 8 pass"}`,
+						`candidate ${verdict.winner === "first" ? "WINS" : verdict.winner === "second" ? "loses" : "ties"} vs gold (${verdict.confidence}${verdict.agreement ? "" : ", flipped"})`,
 					);
+					if (llm) {
+						const pointwise = await runPointwise(llm, g.key, run.analysis as ConceptRead);
+						tier2 = pointwise.findings;
+						totalCost += pointwise.costUsd;
+						const failed = tier2.filter((f) => !f.passed).map((f) => f.judge);
+						console.log(
+							`         ↳ tier2: ${failed.length ? `FAIL ${failed.join(", ")}` : "all 8 pass"}`,
+						);
+					}
+				} catch (err) {
+					// A judge that still throws after runClaude's retry budget (e.g. a persistent content
+					// filter on one candidate) must not abort the whole baseline and discard every prior
+					// candidate — the artifact is written only at the end. Skip just this run; the song may
+					// drop to an even run count and surface as indeterminate in the scoreboard, which is the
+					// honest outcome, not a silent loss.
+					skippedCandidates++;
+					console.error(
+						`\n  ⚠ judge failed for ${g.key} run ${run.runId} after retries: ${String((err as Error)?.message ?? err).slice(0, 160)} — skipping this candidate`,
+					);
+					continue;
 				}
 			}
 			songEval.candidates.push({ runId: run.runId, tier1, stats, verdict, tier2 });
@@ -298,6 +315,11 @@ async function main() {
 		`Tier-1 means: ${(highSum / candidateCount).toFixed(2)} high, ${(mediumSum / candidateCount).toFixed(2)} medium  (over ${candidateCount} candidates)`,
 	);
 	if (!flags.dryRun) console.log(`Judge cost: $${totalCost.toFixed(2)}`);
+	if (skippedCandidates > 0) {
+		console.error(
+			`⚠ ${skippedCandidates} candidate(s) skipped after exhausting the judge retry budget — affected songs may be indeterminate in the scoreboard.`,
+		);
+	}
 
 	if (flags.out) {
 		if (flags.dryRun) {

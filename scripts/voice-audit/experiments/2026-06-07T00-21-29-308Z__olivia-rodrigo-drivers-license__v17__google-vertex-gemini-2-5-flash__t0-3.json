@@ -1,0 +1,169 @@
+{
+  "runId": "2026-06-07T00-21-29-308Z__olivia-rodrigo-drivers-license__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:21:29.308Z",
+  "song": "Olivia Rodrigo — drivers license",
+  "spotifyTrackId": "4ml4WlnHDEpOK8HRVYTCWf",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 14
+  },
+  "byRule": {
+    "participial-closure": 1,
+    "burstiness": 3,
+    "rule-of-three": 1,
+    "lexical-repetition": 10
+  },
+  "tokens": 14425,
+  "hits": [
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", knowing it is over but unable to let go.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "The freedom of a new driver's license becomes a cruel mirror.",
+      "severity": "low",
+      "note": "CV=0.244 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "texture",
+      "span": "A highly acoustic pop sound carries a deep, raw sadness.",
+      "severity": "low",
+      "note": "CV=0.082 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[1].scene",
+      "span": "Every thought turns to him and the \"blonde girl\" who replaced her, someone older",
+      "severity": "low",
+      "note": "CV=0.123 (threshold 0.25)"
+    },
+    {
+      "rule": "rule-of-three",
+      "field": "take",
+      "span": "Every street, every white car, and every front yard brings",
+      "severity": "low"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "past",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "street",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "face",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "freedom",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "license",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "every",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "drives",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×5 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "car",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "cannot",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "driving alone past your street, still seeing your face",
+    "lens": "driving as a loop of grief",
+    "tension": "Haunting Grief",
+    "take": "The freedom of a new driver's license becomes a cruel mirror. It reflects every detail of a lost love. She drives through the suburbs, a route once imagined with him, now a painful loop of memory. Every street, every white car, and every front yard brings his face back into view. She cannot escape the past, even as she drives alone past his street.",
+    "contradiction": "The license grants her the freedom to go anywhere, but she only uses it to circle back to him.",
+    "arc": [
+      {
+        "label": "The Broken Promise",
+        "mood": "Crushing Disappointment",
+        "scene": "She finally gets her driver's license, a milestone they planned together, a symbol of their future. The first drive, meant for joy and connection, becomes a solitary journey through suburbs, filled with tears because he is not there. The freedom she earned only highlights his absence."
+      },
+      {
+        "label": "The Unfair Contrast",
+        "mood": "Bitter Obsession",
+        "scene": "Every thought turns to him and the \"blonde girl\" who replaced her, someone older and everything she fears becoming. She cannot fathom how he moved on so easily, especially after his own song once promised forever. She defends him to her friends, even as his new life mocks her pain."
+      },
+      {
+        "label": "The Lingering Love",
+        "mood": "Persistent Ache",
+        "scene": "Red lights and stop signs cannot halt the memories. His face appears in every white car, his laughter echoes in the traffic. She drives past the places they shared, unable to avoid them, because the love she still feels for him is a raw, undeniable truth. She is stuck in this blue, knowing it is over but unable to let go."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I got my driver's license last week\nJust like we always talked about"
+      },
+      {
+        "line": "Crying 'cause you weren't around"
+      },
+      {
+        "line": "She's everything I'm insecure about"
+      },
+      {
+        "line": "I just can't imagine how you could be so okay now that I'm gone"
+      },
+      {
+        "line": "'Cause I still fuckin' love you, babe"
+      }
+    ],
+    "texture": "A highly acoustic pop sound carries a deep, raw sadness. The vocal focus and low energy create an intimate, confessional space. It moves like a car on an empty road."
+  }
+}

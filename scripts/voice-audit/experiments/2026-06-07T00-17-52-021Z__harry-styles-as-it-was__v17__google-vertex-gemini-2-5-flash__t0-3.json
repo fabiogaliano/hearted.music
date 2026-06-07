@@ -1,0 +1,166 @@
+{
+  "runId": "2026-06-07T00-17-52-021Z__harry-styles-as-it-was__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:17:52.021Z",
+  "song": "Harry Styles — As It Was",
+  "spotifyTrackId": "as-it-was",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 5,
+    "medium": 2,
+    "low": 8
+  },
+  "byRule": {
+    "antithesis": 2,
+    "puffery-adjective": 1,
+    "participial-closure": 3,
+    "hedging": 1,
+    "burstiness": 2,
+    "lexical-repetition": 6
+  },
+  "tokens": 10930,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "take",
+      "span": "is not the same as it was,",
+      "severity": "high"
+    },
+    {
+      "rule": "antithesis",
+      "field": "arc[2].scene",
+      "span": "it's not the same as it was,",
+      "severity": "high"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "take",
+      "span": "profound",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", wanting to say goodnight, but he stays behind a closed door.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", wanting to say goodnight, but he is behind a closed door, holding back.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[0].scene",
+      "span": ", keeping him from reaching out, even as he wants a hand to hold.",
+      "severity": "high"
+    },
+    {
+      "rule": "hedging",
+      "field": "arc[1].scene",
+      "span": "might be",
+      "severity": "medium"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "A child's voice calls out, wanting to say goodnight, but he stays behind a close",
+      "severity": "low",
+      "note": "CV=0.131 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[0].scene",
+      "span": "A child's voice calls out, wanting to say goodnight, but he is behind a closed d",
+      "severity": "low",
+      "note": "CV=0.168 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "alone",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "say",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "door",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "him",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "refuses",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "way",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "harry, you're no good alone",
+    "lens": "grief as a closed door",
+    "tension": "Guarded Grief",
+    "take": "A child's voice calls out, wanting to say goodnight, but he stays behind a closed door. He is stuck in a past that \"is not the same as it was,\" a profound shift he cannot reverse. Friends and family call, worried about him \"sitting at home on the floor,\" but he keeps the door shut. He actively refuses to talk about \"the way that it was,\" even as he acknowledges the world has changed. The song is about the weight of what is gone and the choice to bear it alone, behind a door he will not open.",
+    "contradiction": "He refuses to talk about the way it was, but he cannot stop living in it.",
+    "arc": [
+      {
+        "label": "The Closed Door",
+        "mood": "Isolated Longing",
+        "scene": "A child's voice calls out, wanting to say goodnight, but he is behind a closed door, holding back. Gravity itself holds him, keeping him from reaching out, even as he wants a hand to hold. He has nothing to say about the past that keeps him stuck."
+      },
+      {
+        "label": "The Concerned Calls",
+        "mood": "Worried Isolation",
+        "scene": "The phone rings, and voices from outside ask why he is alone, \"sitting at home on the floor.\" They worry about what pills he might be on, but he rings a bell for help that no one answers. Even his father, who lives alone, just wants to know he is well, but he remains unreachable."
+      },
+      {
+        "label": "The Refusal",
+        "mood": "Stubborn Acceptance",
+        "scene": "The world moves on with \"light-speed internet\" and people leaving America, but he refuses to discuss \"the way that it was.\" He knows \"it's not the same as it was,\" and he accepts this new reality by shutting down any conversation about the old one."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Come on, Harry, we wanna say goodnight to you"
+      },
+      {
+        "line": "Gravity's holdin' me back"
+      },
+      {
+        "line": "You know it's not the same as it was"
+      },
+      {
+        "line": "Harry, you're no good alone"
+      },
+      {
+        "line": "I don't wanna talk about the way that it was"
+      }
+    ],
+    "texture": null
+  }
+}

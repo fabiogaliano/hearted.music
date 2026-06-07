@@ -1,0 +1,156 @@
+{
+  "runId": "2026-06-07T00-22-32-969Z__chappell-roan-pink-pony-club__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:22:32.969Z",
+  "song": "Chappell Roan — Pink Pony Club",
+  "spotifyTrackId": "pink-pony-club",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 4,
+    "medium": 2,
+    "low": 7
+  },
+  "byRule": {
+    "puffery-adjective": 2,
+    "participial-closure": 4,
+    "burstiness": 2,
+    "lexical-repetition": 5
+  },
+  "tokens": 14521,
+  "hits": [
+    {
+      "rule": "puffery-adjective",
+      "field": "take",
+      "span": "vibrant",
+      "severity": "medium"
+    },
+    {
+      "rule": "puffery-adjective",
+      "field": "contradiction",
+      "span": "vibrant",
+      "severity": "medium"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", trading a Midwest hometown for the wild, welcoming embrace of West Hollywood.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "take",
+      "span": ", dancing in heels, surrounded by a community that sees her as a queen.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[2].scene",
+      "span": ", living the dream she once only imagined.",
+      "severity": "high"
+    },
+    {
+      "rule": "participial-closure",
+      "field": "arc[3].scene",
+      "span": ", protecting her queer joy and community, no matter what.",
+      "severity": "high"
+    },
+    {
+      "rule": "burstiness",
+      "field": "take",
+      "span": "She leaves behind a life of expectation, trading a Midwest hometown for the wild",
+      "severity": "low",
+      "note": "CV=0.093 (threshold 0.25)"
+    },
+    {
+      "rule": "burstiness",
+      "field": "arc[3].scene",
+      "span": "A year has passed, and she thanks her wicked dreams for coming true.",
+      "severity": "low",
+      "note": "CV=0.144 (threshold 0.25)"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "dancing",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "stage",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "life",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "mother",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "imagined",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "dancing in heels on a stage, a thousand miles away",
+    "lens": "a wicked dream into a defiant home",
+    "tension": "Defiant Joy",
+    "take": "She leaves behind a life of expectation, trading a Midwest hometown for the wild, welcoming embrace of West Hollywood. What began as a crazy vision in her head becomes a vibrant reality, a place where she finds belonging and can truly be herself. She knows this choice will not make her mother proud, but the joy of living authentically outweighs the imagined scream. She finds her home on a stage, dancing in heels, surrounded by a community that sees her as a queen.",
+    "contradiction": "She builds a vibrant new life, but she still carries her mother's imagined scream.",
+    "arc": [
+      {
+        "label": "The Vision",
+        "mood": "Restless Longing",
+        "scene": "She feels the pull of a life beyond her hometown, a place in L.A. where boys and girls can all be queens. It is a crazy vision, a wicked dream that promises freedom and a truer self."
+      },
+      {
+        "label": "The Departure",
+        "mood": "Painful Choice",
+        "scene": "The call of Santa Monica is too strong to ignore. She knows leaving will cause a scene and disappoint her mother, who still sees her as a 'baby girl.' The choice is made, even with the anticipated disapproval."
+      },
+      {
+        "label": "The Arrival",
+        "mood": "Exuberant Belonging",
+        "scene": "She is up on stage, jaws on the floor, living the dream she once only imagined. The Pink Pony Club is a real space, full of lovers in the bathroom and a line outside the door, where she belongs and is having fun. It is everything she left home for."
+      },
+      {
+        "label": "The Sustained Defiance",
+        "mood": "Persistent Joy",
+        "scene": "A year has passed, and she thanks her wicked dreams for coming true. She still loves Tennessee and her mother, but the Southern drawl of disapproval is now a distant echo. She will keep on dancing, protecting her queer joy and community, no matter what."
+      }
+    ],
+    "lines": [
+      {
+        "line": "I know you wanted me to stay But I can't ignore the crazy visions of me in L.A."
+      },
+      {
+        "line": "Won't make my mama proud, it's gonna cause a scene She sees her baby girl, I know she's gonna scream"
+      },
+      {
+        "line": "I'm just having fun On the stage in my heels, it's where I belong"
+      },
+      {
+        "line": "Lovers in the bathroom and a line outside the door"
+      },
+      {
+        "line": "I'm gonna keep on dancing"
+      }
+    ],
+    "texture": null
+  }
+}

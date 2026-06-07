@@ -1,0 +1,98 @@
+{
+  "runId": "2026-06-07T00-15-55-203Z__the-rapture-no-sex-for-ben__v17__google-vertex-gemini-2-5-flash__t0-3",
+  "timestamp": "2026-06-07T00:15:55.203Z",
+  "song": "The Rapture — No Sex for Ben",
+  "spotifyTrackId": "no-sex-for-ben",
+  "promptKind": "lyrical",
+  "promptVersion": "17",
+  "model": "google-vertex:gemini-2.5-flash",
+  "temperature": 0.3,
+  "totals": {
+    "high": 1,
+    "medium": 0,
+    "low": 4
+  },
+  "byRule": {
+    "antithesis": 1,
+    "lexical-repetition": 4
+  },
+  "tokens": 9064,
+  "hits": [
+    {
+      "rule": "antithesis",
+      "field": "arc[2].scene",
+      "span": "is not just a personal slight;",
+      "severity": "high"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "sex",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "image",
+      "span": "ben",
+      "severity": "low",
+      "note": "repeated ×6 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "rymer",
+      "severity": "low",
+      "note": "repeated ×4 across prose"
+    },
+    {
+      "rule": "lexical-repetition",
+      "field": "take",
+      "span": "collective",
+      "severity": "low",
+      "note": "repeated ×3 across prose"
+    }
+  ],
+  "analysis": {
+    "image": "a crowd chanting 'no sex for ben'",
+    "lens": "a public shaming as a ritual",
+    "tension": "Mocking Contempt",
+    "take": "The song performs a ritual of social exclusion. Ben Rymer is named and shamed, stripped of his dignity with every repeated insult. He is 'trash people,' a 'big liar,' and a 'cheap faker,' his very identity reduced to a series of failings. The collective voice declares his punishment: 'no sex for Ben,' a public banishment from intimacy. The command to 'freeze them up' solidifies this collective judgment. His isolation becomes absolute.",
+    "contradiction": null,
+    "arc": [
+      {
+        "label": "The Accusation",
+        "mood": "Repetitive Condemnation",
+        "scene": "Ben Rymer is named and immediately branded 'trash people.' The sentence is handed down without explanation: 'no sex for Ben Rymer now.' It is a simple, absolute decree."
+      },
+      {
+        "label": "The Indictment",
+        "mood": "Escalating Derision",
+        "scene": "The insults pile up. They paint a picture of Ben Rymer as a 'big liar,' a 'fat trucker,' and a 'cheap faker.' He is diminished, compared to a 'poor man's Arthur Baker,' his worth stripped away with each new label."
+      },
+      {
+        "label": "The Enforcement",
+        "mood": "Collective Banishment",
+        "scene": "The collective voice takes over. It declares 'we gotta freeze them up now.' This is not just a personal slight; it is a communal act, a public shunning that ensures his isolation."
+      }
+    ],
+    "lines": [
+      {
+        "line": "Ben Rymer, trash people"
+      },
+      {
+        "line": "No sex, no sex for Ben Rymer now"
+      },
+      {
+        "line": "One ladder, big liar"
+      },
+      {
+        "line": "Lookin' like a poor man's Arthur Baker now"
+      },
+      {
+        "line": "We gotta freeze them up now"
+      }
+    ],
+    "texture": null
+  }
+}
