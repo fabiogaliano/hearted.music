@@ -67,12 +67,12 @@ const INSTRUMENTAL_PROMPTS: Record<string, PromptVersion> = {
 // The versions production ships today. Bump these to promote a new prompt; the
 // stored analysis records the active version, so output is always traceable to its prompt.
 //
-// v14 is registered (so getLyricalPrompt("14") resolves) but deliberately NOT active:
-// it emits the redesigned { read } model, while song-analysis.ts still parses against
-// the old SongAnalysisLyricalSchema and the voice-audit jury is still old-schema. The
-// generation-path + jury cutover to ConceptReadSchema is Session 5/6 work. See
-// claudedocs/session-6-prod-panel-swap.md.
-export const ACTIVE_LYRICAL_VERSION = "13";
+// v17 is active: it emits the redesigned { read } model (ConceptReadSchema). Because the
+// version is >= 14, song-analysis.ts parses generated output against ConceptReadSchema and
+// stores the read flat (see buildAnalysisData), and the production song-detail surface now
+// renders it through ConceptPanel. NOTE: flipping ACTIVE is global — embeddings/matching for
+// newly-generated rows go stale until the matching layer is rebuilt (a later task).
+export const ACTIVE_LYRICAL_VERSION = "17";
 export const ACTIVE_INSTRUMENTAL_VERSION = "3";
 
 export function getLyricalPrompt(

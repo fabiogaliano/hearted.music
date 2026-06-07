@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
 import type {
 	OnboardingSession,
@@ -9,8 +9,11 @@ import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { useIsomorphicLayoutEffect } from "@/lib/hooks/useIsomorphicLayoutEffect";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
+import { useAuthenticatedTheme } from "@/lib/theme/authenticated-theme";
 import { fonts } from "@/lib/theme/fonts";
 
+import { ConceptDetailPanel } from "./components/concept-panel/ConceptDetailPanel";
+import { likedSongToConceptSong } from "./components/concept-panel/concept-adapter";
 import { LikedSongsHeader } from "./components/LikedSongsHeader";
 import { LikedSongsList } from "./components/LikedSongsList";
 import { SongDetailPanel } from "./components/SongDetailPanel";
@@ -176,6 +179,16 @@ export function LikedSongsPage({
 		fallbackSelectedSong: selectedSongFromUrl,
 		isSelectedSlugResolved,
 	});
+
+	// The new song-detail surface reads the persisted v17 ConceptRead. Rows that
+	// don't parse as one (locked, not yet analyzed, or pre-v17 8-field) fall back
+	// to the legacy SongDetailPanel until they're re-enriched under v17.
+	const { themeColor } = useAuthenticatedTheme();
+	const conceptSong = useMemo(
+		() =>
+			selectedSong ? likedSongToConceptSong(selectedSong, themeColor) : null,
+		[selectedSong, themeColor],
+	);
 
 	const lockedSongCount = stats?.success ? stats.locked : 0;
 
@@ -359,23 +372,34 @@ export function LikedSongsPage({
 				/>
 			</div>
 
-			{selectedSong && (
-				<SongDetailPanel
-					song={selectedSong}
-					albumArtUrl={selectedSong.track.image_url ?? undefined}
-					artistImageUrl={selectedSong.track.artist_image_url ?? undefined}
-					isExpanded={isExpanded}
-					startRect={startRect}
-					hasNext={isWalkthrough ? false : hasNext}
-					hasPrevious={isWalkthrough ? false : hasPrevious}
-					onClose={handleClose}
-					onNext={handleNextSong}
-					onPrevious={handlePreviousSong}
-					isDark={isDarkMode}
-					isEnrichmentRunning={isWalkthrough ? false : isEnrichmentRunning}
-					isWalkthrough={isWalkthrough}
-				/>
-			)}
+			{selectedSong &&
+				(conceptSong ? (
+					<ConceptDetailPanel
+						song={conceptSong}
+						isExpanded={isExpanded}
+						hasNext={isWalkthrough ? false : hasNext}
+						hasPrevious={isWalkthrough ? false : hasPrevious}
+						onClose={handleClose}
+						onNext={handleNextSong}
+						onPrevious={handlePreviousSong}
+					/>
+				) : (
+					<SongDetailPanel
+						song={selectedSong}
+						albumArtUrl={selectedSong.track.image_url ?? undefined}
+						artistImageUrl={selectedSong.track.artist_image_url ?? undefined}
+						isExpanded={isExpanded}
+						startRect={startRect}
+						hasNext={isWalkthrough ? false : hasNext}
+						hasPrevious={isWalkthrough ? false : hasPrevious}
+						onClose={handleClose}
+						onNext={handleNextSong}
+						onPrevious={handlePreviousSong}
+						isDark={isDarkMode}
+						isEnrichmentRunning={isWalkthrough ? false : isEnrichmentRunning}
+						isWalkthrough={isWalkthrough}
+					/>
+				))}
 
 			{flowState.step !== "idle" && billingState && (
 				<UnlockConfirmDialog

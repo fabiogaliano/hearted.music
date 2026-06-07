@@ -119,10 +119,9 @@ export class SongAnalysisService {
 
 		// Parse-schema selection is version-aware (Session 5): from lyrical v14 on, the
 		// prompt emits the redesigned { read } model (ConceptReadSchema); v13 and earlier
-		// emit the legacy 8-field shape. While ACTIVE_LYRICAL_VERSION is "13" this branch
-		// is dormant — flipping it to "14" is the coordinated cutover that ships with the
-		// production panel swap (Session 6), since the panel + queries still read the old
-		// shape. See claudedocs/session-6-prod-panel-swap.md.
+		// emit the legacy 8-field shape. ACTIVE_LYRICAL_VERSION is now "17", so this branch
+		// is live: generated reads are validated against ConceptReadSchema and stored flat,
+		// and ConceptPanel renders them in production. See claudedocs/session-6-prod-panel-swap.md.
 		const lyricalSchema: z.ZodTypeAny =
 			Number(ACTIVE_LYRICAL_VERSION) >= 14
 				? ConceptReadSchema

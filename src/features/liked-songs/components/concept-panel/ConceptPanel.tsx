@@ -211,7 +211,7 @@ function Hero({ song, colors }: { song: ConceptSong; colors: Palette }) {
 							whiteSpace: "nowrap",
 						}}
 					>
-						{song.album} · {song.year}
+						{song.year != null ? `${song.album} · ${song.year}` : song.album}
 					</div>
 				</div>
 				<SonicNumbers song={song} colors={colors} />
