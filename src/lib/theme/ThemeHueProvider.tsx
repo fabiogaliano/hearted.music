@@ -57,14 +57,3 @@ export function useTheme(): ThemeConfig {
 	}
 	return theme;
 }
-
-/**
- * Hook for components that may optionally receive a theme override.
- * Returns the override if provided, otherwise falls back to context.
- *
- * Use this for components like SongDetailPanel that need dark mode overrides.
- */
-export function useThemeWithOverride(themeOverride?: ThemeConfig): ThemeConfig {
-	const contextTheme = useTheme();
-	return themeOverride ?? contextTheme;
-}

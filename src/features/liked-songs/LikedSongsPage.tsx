@@ -12,11 +12,10 @@ import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { useAuthenticatedTheme } from "@/lib/theme/authenticated-theme";
 import { fonts } from "@/lib/theme/fonts";
 
-import { ConceptDetailPanel } from "./components/concept-panel/ConceptDetailPanel";
 import { likedSongToConceptSong } from "./components/concept-panel/concept-adapter";
+import { SongDetailPanel } from "./components/concept-panel/SongDetailPanel";
 import { LikedSongsHeader } from "./components/LikedSongsHeader";
 import { LikedSongsList } from "./components/LikedSongsList";
-import { SongDetailPanel } from "./components/SongDetailPanel";
 import { SongSelectionBar } from "./components/SongSelectionBar";
 import { UnlockConfirmDialog } from "./components/UnlockConfirmDialog";
 import type { SearchFilter } from "./filter";
@@ -165,7 +164,6 @@ export function LikedSongsPage({
 		selectedSong,
 		selectedSongId,
 		isExpanded,
-		startRect,
 		containerRef,
 		hasNext,
 		hasPrevious,
@@ -180,9 +178,10 @@ export function LikedSongsPage({
 		isSelectedSlugResolved,
 	});
 
-	// The new song-detail surface reads the persisted v17 ConceptRead. Rows that
-	// don't parse as one (locked, not yet analyzed, or pre-v17 8-field) fall back
-	// to the legacy SongDetailPanel until they're re-enriched under v17.
+	// The song-detail panel reads the persisted v17 ConceptRead when present. The
+	// adapter always returns a ConceptSong (read=null for rows that don't parse —
+	// locked, not yet analyzed, or pre-v17 8-field), so every selected song opens:
+	// the panel renders the hero plus a minimal "not analyzed yet" state for those.
 	const { themeColor } = useAuthenticatedTheme();
 	const conceptSong = useMemo(
 		() =>
@@ -372,34 +371,17 @@ export function LikedSongsPage({
 				/>
 			</div>
 
-			{selectedSong &&
-				(conceptSong ? (
-					<ConceptDetailPanel
-						song={conceptSong}
-						isExpanded={isExpanded}
-						hasNext={isWalkthrough ? false : hasNext}
-						hasPrevious={isWalkthrough ? false : hasPrevious}
-						onClose={handleClose}
-						onNext={handleNextSong}
-						onPrevious={handlePreviousSong}
-					/>
-				) : (
-					<SongDetailPanel
-						song={selectedSong}
-						albumArtUrl={selectedSong.track.image_url ?? undefined}
-						artistImageUrl={selectedSong.track.artist_image_url ?? undefined}
-						isExpanded={isExpanded}
-						startRect={startRect}
-						hasNext={isWalkthrough ? false : hasNext}
-						hasPrevious={isWalkthrough ? false : hasPrevious}
-						onClose={handleClose}
-						onNext={handleNextSong}
-						onPrevious={handlePreviousSong}
-						isDark={isDarkMode}
-						isEnrichmentRunning={isWalkthrough ? false : isEnrichmentRunning}
-						isWalkthrough={isWalkthrough}
-					/>
-				))}
+			{conceptSong && (
+				<SongDetailPanel
+					song={conceptSong}
+					isExpanded={isExpanded}
+					hasNext={isWalkthrough ? false : hasNext}
+					hasPrevious={isWalkthrough ? false : hasPrevious}
+					onClose={handleClose}
+					onNext={handleNextSong}
+					onPrevious={handlePreviousSong}
+				/>
+			)}
 
 			{flowState.step !== "idle" && billingState && (
 				<UnlockConfirmDialog

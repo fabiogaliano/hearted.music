@@ -1,28 +1,27 @@
 /**
- * ConceptDetailPanel — the production chrome around ConceptPanel.
+ * SongDetailPanel — the production chrome around SongDetailPanelSurface.
  *
- * ConceptPanel itself is a self-contained `position: fixed` read surface with no
- * open/close, navigation, or slide animation. This wrapper supplies that chrome,
- * reusing the wiring the legacy SongDetailPanel had: the same slide-in shell, the
- * same keyboard shortcuts (escape to close, j/k + arrows to navigate), and the
- * per-song themed palette.
+ * SongDetailPanelSurface is a self-contained `position: fixed` read surface with
+ * no open/close, navigation, or slide animation. This wrapper supplies that
+ * chrome: the slide-in shell, the keyboard shortcuts (escape to close, j/k +
+ * arrows to navigate), and the per-song themed palette.
  *
- * The shell carries a `transform`, which makes it the containing block for
- * ConceptPanel's fixed root — so giving the shell the same width as ConceptPanel
- * lets `translateX` slide the panel by exactly its own width, no edits to
- * ConceptPanel required.
+ * The shell carries a `transform`, which makes it the containing block for the
+ * surface's fixed root — so giving the shell the same width as the surface lets
+ * `translateX` slide the panel by exactly its own width, no edits to the surface
+ * required.
  */
 
 import { useReducedMotion } from "framer-motion";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { themes } from "@/lib/theme/colors";
 import { getThemedDarkColors } from "../detail/themed-dark-colors";
-import { ConceptPanel } from "./ConceptPanel";
 import type { ConceptSong } from "./concept-types";
+import { SongDetailPanelSurface } from "./SongDetailPanelSurface";
 
 const PANEL_WIDTH = "clamp(440px, 50vw, 760px)";
 
-interface ConceptDetailPanelProps {
+interface SongDetailPanelProps {
 	song: ConceptSong;
 	isExpanded: boolean;
 	onClose: () => void;
@@ -32,7 +31,7 @@ interface ConceptDetailPanelProps {
 	hasPrevious: boolean;
 }
 
-export function ConceptDetailPanel({
+export function SongDetailPanel({
 	song,
 	isExpanded,
 	onClose,
@@ -40,7 +39,7 @@ export function ConceptDetailPanel({
 	onPrevious,
 	hasNext,
 	hasPrevious,
-}: ConceptDetailPanelProps) {
+}: SongDetailPanelProps) {
 	const prefersReducedMotion = useReducedMotion();
 	const colors = getThemedDarkColors(themes[song.theme]);
 
@@ -107,7 +106,7 @@ export function ConceptDetailPanel({
 					: "transform 300ms var(--ease-out-quart), opacity 300ms var(--ease-out-quart)",
 			}}
 		>
-			<ConceptPanel key={song.id} song={song} />
+			<SongDetailPanelSurface key={song.id} song={song} />
 			<button
 				type="button"
 				onClick={onClose}
