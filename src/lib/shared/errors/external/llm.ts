@@ -45,9 +45,10 @@ export class LlmRateLimitError extends TaggedError("LlmRateLimitError")<{
 export type LlmError = LlmProviderError | LlmRateLimitError;
 
 /**
- * Retryable LLM errors: rate limits and transient upstream failures (429 / 5xx).
- * Deterministic 4xx and unknown shapes are not. Owned here so the retry wrapper
- * and the analysis-stage classifier share one definition.
+ * Retryable LLM errors: rate limits, transient upstream failures (429 / 5xx),
+ * and structured-output draws that produced no parseable object. Deterministic
+ * 4xx and unknown shapes are not. Owned here so the retry wrapper and the
+ * analysis-stage classifier share one definition.
  */
 export function isRetryableLlmError(error: unknown): boolean {
 	if (error instanceof LlmRateLimitError) return true;
@@ -55,6 +56,12 @@ export function isRetryableLlmError(error: unknown): boolean {
 		const status = error.statusCode;
 		if (status === 429) return true;
 		if (status !== undefined && status >= 500) return true;
+		// generateObject failed to parse/validate the response. This is usually
+		// transient — the model occasionally truncates or malforms the JSON on one
+		// draw and returns valid output on the next — so retry rather than fail
+		// terminally. Matches the AI SDK's NoObjectGeneratedError message, which
+		// normalizeError preserves verbatim inside the wrapped message.
+		if (/no object generated/i.test(error.message)) return true;
 	}
 	return false;
 }

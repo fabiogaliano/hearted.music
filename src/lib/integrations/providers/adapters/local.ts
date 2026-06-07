@@ -41,6 +41,12 @@ import type {
 
 const HTTP_TIMEOUT_MS = 120_000;
 
+// e5-large-instruct stores its fp32 weights as ONNX external data (onnx/model.onnx_data,
+// ~2.2GB). transformers.js v4's model-loader only fetches external data when this flag is
+// set; without it ONNX init fails on the missing file. fp32 is kept (no dtype override) so
+// vectors stay compatible with rows already written under model_version mb_eb2975746bc39c26.
+const EMBEDDING_PIPELINE_OPTIONS = { use_external_data_format: true } as const;
+
 export class LocalProvider implements MLProvider {
 	private readonly metadata: ProviderMetadata;
 	private embeddingPipeline: Promise<any> | null = null;
@@ -91,6 +97,7 @@ export class LocalProvider implements MLProvider {
 					const pipe = await pipeline(
 						"feature-extraction",
 						this.metadata.embeddingModel,
+						EMBEDDING_PIPELINE_OPTIONS,
 					);
 					this.embeddingPipeline = Promise.resolve(pipe);
 					this.mode = "direct";
@@ -130,6 +137,7 @@ export class LocalProvider implements MLProvider {
 					return await pipeline(
 						"feature-extraction",
 						this.metadata.embeddingModel,
+						EMBEDDING_PIPELINE_OPTIONS,
 					);
 				} catch (error) {
 					this.embeddingPipeline = null;

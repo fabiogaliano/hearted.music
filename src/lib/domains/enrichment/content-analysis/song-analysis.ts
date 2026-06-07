@@ -135,6 +135,11 @@ export class SongAnalysisService {
 		// provider default of ~1.0. See claudedocs/voice-prompt-handoff-eval-and-optimize-phase.md.
 		const llmResult = await this.llm.generateObject(prompt, schema, {
 			temperature: 0.3,
+			// v17 reads run ~3.2k output tokens but vary draw-to-draw; ~10% exceed
+			// the 4k service default, truncate mid-JSON (finish=length), and fail to
+			// parse. 8k gives the long draws headroom. Billed on actual tokens used,
+			// so typical cost is unchanged.
+			maxOutputTokens: 8000,
 		});
 		if (Result.isError(llmResult)) {
 			return Result.err(llmResult.error);
