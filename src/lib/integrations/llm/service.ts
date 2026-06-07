@@ -16,7 +16,7 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createVertex } from "@ai-sdk/google-vertex";
 import { createOpenAI } from "@ai-sdk/openai";
-import { generateObject, generateText } from "ai";
+import { APICallError, generateObject, generateText, RetryError } from "ai";
 import { Result } from "better-result";
 import type { CredentialBody } from "google-auth-library";
 import { z } from "zod";
@@ -194,6 +194,10 @@ export class LlmService {
 						const result = await generateText({
 							model: this.languageModel(this.model),
 							prompt,
+							// We own retrying in withRetry, where Retry-After and jitter
+							// apply. Letting the SDK also retry would double-retry and bury
+							// the real 429 inside a RetryError("Failed after N attempts").
+							maxRetries: 0,
 							maxOutputTokens:
 								options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
 							experimental_telemetry: {
@@ -244,6 +248,9 @@ export class LlmService {
 							model: this.languageModel(this.model),
 							prompt,
 							schema,
+							// See generateText: withRetry owns retry/backoff so the SDK's
+							// internal retries don't wrap a 429 into a non-retryable RetryError.
+							maxRetries: 0,
 							maxOutputTokens:
 								options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
 							temperature: options?.temperature,
@@ -294,64 +301,107 @@ export class LlmService {
 	 * Normalizes various error types into our tagged error types.
 	 */
 	private normalizeError(error: unknown): LlmServiceError {
-		if (error instanceof Error) {
-			const message = error.message;
-			const statusCode = this.extractStatusCode(error);
+		return normalizeLlmError(error, this.provider, this.model);
+	}
+}
 
-			// Check for rate limiting
-			if (statusCode === 429 || message.toLowerCase().includes("rate limit")) {
-				const retryAfter = this.extractRetryAfter(error);
-				return new LlmRateLimitError({
-					provider: this.provider,
-					retryAfterMs: retryAfter,
-				});
-			}
+// ============================================================================
+// Error normalization (pure — exported for direct testing)
+// ============================================================================
 
-			return new LlmProviderError({
-				provider: this.provider,
-				model: this.model,
-				statusCode,
-				message,
+/**
+ * Maps an AI SDK failure into our tagged LLM error vocabulary.
+ *
+ * Order matters: the SDK can bury a retryable status inside a RetryError wrapper
+ * (its internal retry exhausting), whose message — "Failed after N attempts" —
+ * carries neither a status code nor the word "rate limit". Unwrap to the real
+ * call so a 429 stays a rate limit instead of being misread as a permanent
+ * provider error and classified terminal. We set maxRetries:0 so the SDK throws
+ * the raw APICallError today, but the unwrap keeps us correct regardless.
+ */
+export function normalizeLlmError(
+	error: unknown,
+	provider: string,
+	model: string,
+): LlmServiceError {
+	const cause = RetryError.isInstance(error)
+		? (error.lastError ?? error)
+		: error;
+
+	if (APICallError.isInstance(cause)) {
+		if (cause.statusCode === 429 || isRateLimitMessage(cause.message)) {
+			return new LlmRateLimitError({
+				provider,
+				retryAfterMs: retryAfterMsFrom(cause),
 			});
 		}
-
 		return new LlmProviderError({
-			provider: this.provider,
-			model: this.model,
-			message: String(error),
+			provider,
+			model,
+			statusCode: cause.statusCode,
+			retryable: cause.isRetryable,
+			message: cause.message,
 		});
 	}
 
-	/**
-	 * Extracts HTTP status code from error if available.
-	 */
-	private extractStatusCode(error: Error): number | undefined {
-		const anyError = error as unknown as Record<string, unknown>;
-		if (typeof anyError.statusCode === "number") return anyError.statusCode;
-		if (typeof anyError.status === "number") return anyError.status;
-		return undefined;
-	}
-
-	/**
-	 * Extracts retry-after time from rate limit errors.
-	 */
-	private extractRetryAfter(error: Error): number | undefined {
-		const anyError = error as unknown as Record<string, unknown>;
-
-		// Try common patterns for retry-after
-		if (typeof anyError.retryAfter === "number")
-			return anyError.retryAfter * 1000;
-		if (typeof anyError.retryDelay === "number") return anyError.retryDelay;
-
-		// Try extracting from headers
-		const headers = anyError.headers as Record<string, string> | undefined;
-		if (headers?.["retry-after"]) {
-			const seconds = Number.parseInt(headers["retry-after"], 10);
-			if (!Number.isNaN(seconds)) return seconds * 1000;
+	if (cause instanceof Error) {
+		if (isRateLimitMessage(cause.message)) {
+			return new LlmRateLimitError({
+				provider,
+				retryAfterMs: retryAfterMsFrom(cause),
+			});
 		}
-
-		return undefined;
+		return new LlmProviderError({
+			provider,
+			model,
+			statusCode: statusCodeFrom(cause),
+			message: cause.message,
+		});
 	}
+
+	return new LlmProviderError({ provider, model, message: String(cause) });
+}
+
+/**
+ * True for messages that signal a rate limit or resource exhaustion. Vertex
+ * returns "Resource has been exhausted (e.g. check quota)." / RESOURCE_EXHAUSTED
+ * rather than the words "rate limit", so match the resource-exhausted phrasing
+ * too. We match on "resource exhausted", not a bare "quota", to avoid catching
+ * permanent quota-config errors.
+ */
+function isRateLimitMessage(message: string): boolean {
+	const m = message.toLowerCase();
+	return (
+		m.includes("rate limit") ||
+		m.includes("resource_exhausted") ||
+		(m.includes("resource") && m.includes("exhausted"))
+	);
+}
+
+function statusCodeFrom(error: unknown): number | undefined {
+	if (APICallError.isInstance(error)) return error.statusCode;
+	const anyError = error as Record<string, unknown>;
+	if (typeof anyError.statusCode === "number") return anyError.statusCode;
+	if (typeof anyError.status === "number") return anyError.status;
+	return undefined;
+}
+
+function retryAfterMsFrom(error: unknown): number | undefined {
+	const anyError = error as Record<string, unknown>;
+	if (typeof anyError.retryAfter === "number")
+		return anyError.retryAfter * 1000;
+	if (typeof anyError.retryDelay === "number") return anyError.retryDelay;
+
+	const headers =
+		(APICallError.isInstance(error) ? error.responseHeaders : undefined) ??
+		(anyError.headers as Record<string, string> | undefined);
+	const retryAfter = headers?.["retry-after"];
+	if (retryAfter) {
+		const seconds = Number.parseInt(retryAfter, 10);
+		if (!Number.isNaN(seconds)) return seconds * 1000;
+	}
+
+	return undefined;
 }
 
 // ============================================================================
