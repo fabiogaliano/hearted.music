@@ -16,7 +16,9 @@ export interface ConceptSong {
 	title: string;
 	artist: string;
 	album: string;
-	year: number;
+	// Optional: live liked-song rows carry no release year (the page RPC doesn't
+	// return one), so the prod adapter omits it and the Hero hides the year.
+	year?: number;
 	genres: string[];
 	audioFeatures: {
 		tempo: number;
