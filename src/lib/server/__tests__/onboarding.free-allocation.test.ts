@@ -105,17 +105,19 @@ function makeBillingState(overrides: Partial<BillingState> = {}): BillingState {
 	};
 }
 
-describe("saveDemoSongSelection ownership", () => {
+describe("saveDemoSongSelection", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
-	it("rejects demo songs that are not liked by the authenticated account", async () => {
+	// Demo songs come from the curated landing manifest, not the user's library,
+	// so a valid pick is frequently a song the account does not like. Ownership
+	// is enforced post-onboarding (addSongToPlaylist/dismissSong), never here.
+	it("saves a demo song the account does not own", async () => {
 		const single = vi.fn().mockResolvedValue({
 			data: { id: "song-1" },
 			error: null,
 		});
-		const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
 		const updateEq = vi.fn().mockResolvedValue({ error: null });
 
 		mockCreateAdminSupabaseClient.mockReturnValue({
@@ -124,17 +126,6 @@ describe("saveDemoSongSelection ownership", () => {
 					return {
 						select: () => ({
 							eq: () => ({ single }),
-						}),
-					};
-				}
-				if (table === "liked_song") {
-					return {
-						select: () => ({
-							eq: () => ({
-								eq: () => ({
-									is: () => ({ maybeSingle }),
-								}),
-							}),
 						}),
 					};
 				}
@@ -149,8 +140,34 @@ describe("saveDemoSongSelection ownership", () => {
 
 		await expect(
 			saveDemoSongSelection({ data: { spotifyTrackId: "spotify:track:abc" } }),
+		).resolves.toEqual({ success: true });
+		expect(updateEq).toHaveBeenCalled();
+	});
+
+	it("rejects a spotify id that has no matching song row", async () => {
+		const single = vi.fn().mockResolvedValue({
+			data: null,
+			error: { message: "not found" },
+		});
+
+		mockCreateAdminSupabaseClient.mockReturnValue({
+			from: (table: string) => {
+				if (table === "song") {
+					return {
+						select: () => ({
+							eq: () => ({ single }),
+						}),
+					};
+				}
+				throw new Error(`Unexpected table: ${table}`);
+			},
+		});
+
+		await expect(
+			saveDemoSongSelection({
+				data: { spotifyTrackId: "spotify:track:missing" },
+			}),
 		).rejects.toThrow(/lookup_demo_song/);
-		expect(updateEq).not.toHaveBeenCalled();
 	});
 });
 
