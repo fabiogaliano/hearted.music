@@ -380,6 +380,7 @@ export function LikedSongsPage({
 					onClose={handleClose}
 					onNext={handleNextSong}
 					onPrevious={handlePreviousSong}
+					isWalkthrough={isWalkthrough}
 				/>
 			)}
 

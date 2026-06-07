@@ -29,6 +29,8 @@ interface SongDetailPanelProps {
 	onPrevious: () => void;
 	hasNext: boolean;
 	hasPrevious: boolean;
+	/** Walkthrough mode: append the sticky "See where this song belongs" CTA. */
+	isWalkthrough?: boolean;
 }
 
 export function SongDetailPanel({
@@ -39,6 +41,7 @@ export function SongDetailPanel({
 	onPrevious,
 	hasNext,
 	hasPrevious,
+	isWalkthrough = false,
 }: SongDetailPanelProps) {
 	const prefersReducedMotion = useReducedMotion();
 	const colors = getThemedDarkColors(themes[song.theme]);
@@ -106,7 +109,11 @@ export function SongDetailPanel({
 					: "transform 300ms var(--ease-out-quart), opacity 300ms var(--ease-out-quart)",
 			}}
 		>
-			<SongDetailPanelSurface key={song.id} song={song} />
+			<SongDetailPanelSurface
+				key={song.id}
+				song={song}
+				isWalkthrough={isWalkthrough}
+			/>
 			<button
 				type="button"
 				onClick={onClose}
