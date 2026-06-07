@@ -9,18 +9,22 @@ export class LlmProviderError extends TaggedError("LlmProviderError")<{
 	provider: string;
 	model: string;
 	statusCode?: number;
+	/** Upstream's own retryability verdict, when it supplied one. */
+	retryable?: boolean;
 	message: string;
 }>() {
 	constructor(opts: {
 		provider: string;
 		model: string;
 		statusCode?: number;
+		retryable?: boolean;
 		message: string;
 	}) {
 		super({
 			provider: opts.provider,
 			model: opts.model,
 			statusCode: opts.statusCode,
+			retryable: opts.retryable,
 			message: `LLM ${opts.provider}:${opts.model} failed${opts.statusCode ? ` (${opts.statusCode})` : ""}: ${opts.message}`,
 		});
 	}
@@ -53,6 +57,10 @@ export type LlmError = LlmProviderError | LlmRateLimitError;
 export function isRetryableLlmError(error: unknown): boolean {
 	if (error instanceof LlmRateLimitError) return true;
 	if (error instanceof LlmProviderError) {
+		// Honour the upstream's own verdict first: the AI SDK marks connection
+		// resets and other status-less transients retryable, which our status-based
+		// rules below can't see once we own retrying instead of the SDK.
+		if (error.retryable === true) return true;
 		const status = error.statusCode;
 		if (status === 429) return true;
 		if (status !== undefined && status >= 500) return true;
