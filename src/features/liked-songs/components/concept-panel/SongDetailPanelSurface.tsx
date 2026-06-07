@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { getThemedDarkColors } from "../detail/themed-dark-colors";
@@ -38,7 +39,13 @@ const CONCEPT_KEYFRAMES = `
 }
 `;
 
-export function SongDetailPanelSurface({ song }: { song: ConceptSong }) {
+export function SongDetailPanelSurface({
+	song,
+	isWalkthrough = false,
+}: {
+	song: ConceptSong;
+	isWalkthrough?: boolean;
+}) {
 	const themeConfig = themes[song.theme];
 	const colors = getThemedDarkColors(themeConfig);
 
@@ -64,7 +71,9 @@ export function SongDetailPanelSurface({ song }: { song: ConceptSong }) {
 				style={{
 					paddingLeft: PADDING_X,
 					paddingRight: PADDING_X,
-					paddingBottom: 80,
+					// In walkthrough the CTA owns the bottom spacing; otherwise leave
+					// the regular scroll runway below the last Trace block.
+					paddingBottom: isWalkthrough ? 0 : 80,
 				}}
 			>
 				{song.read ? (
@@ -79,6 +88,7 @@ export function SongDetailPanelSurface({ song }: { song: ConceptSong }) {
 				) : (
 					<UnreadState colors={colors} />
 				)}
+				{isWalkthrough && <WalkthroughCta colors={colors} />}
 			</div>
 		</div>
 	);
@@ -770,4 +780,83 @@ function usePrefersReducedMotion() {
 		return () => media.removeEventListener("change", onChange);
 	}, []);
 	return prefers;
+}
+
+// Walkthrough-only footer. The read is the demo song's payoff; this carries the
+// onboarding forward into the match step. `position: sticky` (not fixed) pins it
+// to the panel's own scroll viewport without escaping the slide-in chrome, and
+// the gradient fades the read out behind it as it scrolls past. The hook lives
+// inside this component so it only runs when the CTA is actually mounted.
+function WalkthroughCta({ colors }: { colors: Palette }) {
+	const { navigateTo, isPending } = useStepNavigation();
+	const [isNavigating, setIsNavigating] = useState(false);
+	const [hovered, setHovered] = useState(false);
+	const reducedMotion = usePrefersReducedMotion();
+
+	const disabled = isNavigating || isPending;
+
+	const handleClick = async () => {
+		if (disabled) return;
+		setIsNavigating(true);
+		try {
+			await navigateTo("match-walkthrough");
+		} finally {
+			setIsNavigating(false);
+		}
+	};
+
+	return (
+		<div
+			style={{
+				position: "sticky",
+				bottom: 0,
+				paddingTop: 24,
+				paddingBottom: 28,
+				background: `linear-gradient(to bottom, transparent, ${colors.bg} 32%)`,
+			}}
+		>
+			<button
+				type="button"
+				onClick={handleClick}
+				onMouseEnter={() => setHovered(true)}
+				onMouseLeave={() => setHovered(false)}
+				disabled={disabled}
+				aria-label="See where this song belongs"
+				style={{
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					gap: 10,
+					width: "100%",
+					padding: "15px 24px",
+					fontFamily: fonts.body,
+					fontSize: 12,
+					fontWeight: 600,
+					letterSpacing: "0.12em",
+					textTransform: "uppercase",
+					color: colors.bg,
+					background: colors.accent,
+					border: "none",
+					borderRadius: 12,
+					cursor: disabled ? "default" : "pointer",
+					opacity: disabled ? 0.55 : 1,
+					transition: "opacity 150ms ease",
+				}}
+			>
+				See where this song belongs
+				<span
+					aria-hidden
+					style={{
+						transform:
+							hovered && !disabled && !reducedMotion
+								? "translateX(3px)"
+								: "translateX(0)",
+						transition: reducedMotion ? "none" : "transform 180ms ease",
+					}}
+				>
+					&rarr;
+				</span>
+			</button>
+		</div>
+	);
 }
