@@ -17,6 +17,16 @@ import { lyricalV15 } from "./lyrical-v15";
 import { lyricalV16 } from "./lyrical-v16";
 import { lyricalV17 } from "./lyrical-v17";
 import { lyricalV17Regrouped } from "./lyrical-v17-regrouped";
+import { lyricalV19 } from "./lyrical-v19";
+import { lyricalV20 } from "./lyrical-v20";
+import { lyricalV21 } from "./lyrical-v21";
+import { lyricalV22 } from "./lyrical-v22";
+import { lyricalV23 } from "./lyrical-v23";
+import { lyricalV24 } from "./lyrical-v24";
+import { lyricalV25 } from "./lyrical-v25";
+import { lyricalV26 } from "./lyrical-v26";
+import { lyricalV27 } from "./lyrical-v27";
+import { lyricalV28 } from "./lyrical-v28";
 import type { PromptVersion } from "./types";
 
 const LYRICAL_PROMPTS: Record<string, PromptVersion> = {
@@ -37,6 +47,16 @@ const LYRICAL_PROMPTS: Record<string, PromptVersion> = {
 	"16": lyricalV16,
 	"17": lyricalV17,
 	"18": lyricalV17Regrouped,
+	"19": lyricalV19,
+	"20": lyricalV20,
+	"21": lyricalV21,
+	"22": lyricalV22,
+	"23": lyricalV23,
+	"24": lyricalV24,
+	"25": lyricalV25,
+	"26": lyricalV26,
+	"27": lyricalV27,
+	"28": lyricalV28,
 };
 
 const INSTRUMENTAL_PROMPTS: Record<string, PromptVersion> = {

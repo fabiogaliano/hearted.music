@@ -8,6 +8,126 @@ This is the final, standing prompt. Paste it to start (or resume) the research l
 
 ---
 
+## Status after Round 3b — PAID ARBITER VERDICT (2026-06-07) — SUPERSEDES everything below
+
+The deferred Opus pairwise ran. **It is decisive and it corrects the Round-3 "conditional GO" to a
+NO-GO vs the gold bar.** Full detail: `claudedocs/08` ("ROUND 3b"). Headline:
+
+- **Matched pairwise, n=3 × 9 golds (54 pairs), same v17 reads judged raw vs rewritten vs gold:**
+  v17 raw **0W/0T/27L (0%)**, v17+rewrite **0W/0T/27L (0%)**. The rewrite cleaned tier1 HIGH → 0 on
+  nearly every read and **converted zero losses.** Reproduces the established v17-raw floor (0/27).
+- **The register was never why v17 loses to gold.** Judge rationales show three gap classes, only one
+  register: (a) residual MEDIUM/ungated tells the rewrite doesn't target (puffery "profound", data-speak
+  "low energy and valence", "The song grapples with"); (b) **depth/specific-noticing the rewrite cannot
+  add** ("church camp", "one, two, three, freeze", "silence as the grief he allows"); (c) **correctness
+  errors v17 makes and the rewrite preserves** (pink-pony "Midwest" → it's the South; as-it-was invented
+  "a bell for help"; dtmf wrong "reggaeton beat"). (b)+(c) are not rewrite-addressable.
+- **Call: NO-GO vs the gold bar.** v17 prompt stays converged (do not reopen). The rewrite pass is a
+  real, content-safe artifact (cleans tier1, preserves grounding — both proven) but does NOT make v17
+  rival the golds. ACTIVE stays **13**.
+- **The ONE open, decision-relevant question this run did not test:** is v17+rewrite better than **v13
+  (current prod)**? The free ship check said yes (cleaner + more grounded than v13's clean-but-thin),
+  but the judge compared to GOLD, not v13. If the goal is "upgrade v13" (not "match gold"), the test to
+  run is **v17+rewrite vs v13 head-to-head** (≈$3–4, n=3×9) — recommended, not yet run, separate auth.
+
+Tools added Round 3b: `bun scripts/voice-audit/pairwise-rewrite.ts` (matched raw/rewrite vs gold,
+resilient to judge JSON-parse failures). Artifacts: `eval-artifacts/{v17-raw-matched,v17-rewrite-matched}.json`.
+
+---
+
+## Status after Round 3 — the rewrite pass is BUILT (2026-06-07) — see Round 3b above for the verdict
+
+The lever rounds 1–2 kept pointing at is now real. Full log: `claudedocs/08-voice-audit-phase4-changelog.md`
+("ROUND 3" + the Round-3 readiness call). Headline:
+
+- **Built `scripts/voice-audit/rewrite/rewrite-pass.ts`** — a second Flash call that takes a finished
+  v17 read, is handed the exact tier1-flagged spans + per-rule fix recipes, and recasts ONLY those
+  sentences. Surgical fidelity is enforced in code (`applySurgical` pins lens/tension/`lines`/arc
+  labels+moods from the original, takes the model's text only for flagged fields, can't fill a null
+  contradiction/texture) and unit-tested. A rewrite works where the prompt failed because it is a
+  constrained transformation, not free composition — the model doesn't re-invent the tell.
+- **It removes the tells, for free:** across the 9 golds' dirtiest v17 reads, **56 → 1** targeted HIGH
+  tells (the 1 residual is a `participial-closure` rule false-positive on "a specific, shocking
+  detail", not a real tell), mostly in one pass, ~3.2k tokens/read. Content preserved (unflagged
+  sentences byte-identical in the diffs). `bun run test scripts/voice-audit/__tests__` → **159/159**.
+- **Ship check (v13 prod vs v17 vs v17+rewrite, n=3 golds):** Σ HIGH **v13 5 / v17 15 / v17+rewrite 0**.
+  More important than the number: v13 is generic-and-thin even when clean (As It Was: tier1-clean but
+  "the past is a powerful force… universally felt," empty texture), while v17+rewrite is clean AND
+  grounded (names, quotes, real lenses). v17+rewrite **dominates v13 on both cleanliness and depth.**
+- **Call: conditional GO** to take v17 + the rewrite pass into the Session-6 cutover. Two gates remain
+  before flipping `ACTIVE_LYRICAL_VERSION` (still 13): (1) ONE user-authorized paid Opus pairwise of
+  **v17+rewrite vs gold** (the program's official arbiter; not run, cost) — does the clean grounded
+  read convert losses to ties? and (2) wire the pass into the prod path (`song-analysis.ts`) with the
+  tier1 rules + grounding judge as gates. **Do NOT reopen prompt iteration; v17 stays converged.**
+
+Tools added this round: `bun scripts/voice-audit/rewrite-demo.ts` (BEFORE/AFTER on real v17 reads),
+`bun scripts/voice-audit/ship-check.ts` (v13 vs v17 vs v17+rewrite). Artifacts in
+`scripts/voice-audit/{rewrite-artifacts,ship-check-artifacts}/`.
+
+---
+
+## Status after Round 2 register research (2026-06-07) — SUPERSEDES everything below
+
+User re-opened prompt research (web best-practices + 5–6 variants, smoke, pick best; Flash only, Pro
+dropped on cost). Ran six fresh, research-backed single-edit variants of v17 — full log + sources in
+`claudedocs/08-voice-audit-phase4-changelog.md` ("ROUND 2"). Headline:
+
+- **No variant beats v17; none eliminates the pivot.** Free smoke (Flash n=3 × 9 golds, t0.3, tier1
+  antithesis rule): v24 (copula-displacement) 0.23/c, v25 (micro-exemplars) 0.30, v28 (synthesis) 0.29,
+  v17 0.31, v27 0.31, v26 0.36, v23 (pure-affirmative) 0.44. The v17/v24/v25/v27/v28 spread is **within
+  noise** (n~30). Hand-read confirms: register gains (v24's direct protagonist reads, v25's
+  second-person "you" on As It Was) are **marginal and song-dependent**, and the essayism + residual
+  pivot are robust on **collective/non-protagonist songs** (Not Like Us, No Sex for Ben) across all
+  seven versions — the model-level default, re-confirmed.
+- **Two genuinely new findings (beyond round 1):** (1) **category-level naming is SAFE** — v27's
+  abstract "thesis-antithesis/dialectical-hedging" prohibition does NOT prime the rate the way v20's
+  concrete `Wrong:` strings did (0.31 vs 0.56); it's the better-phrased caution, an optional v17 wording
+  refinement. (2) **pure-affirmative/guardrail-removal is WORST** (v23 0.44; corroborates v22) — v17's
+  explicit caution does real work.
+- **Elimination = prompt + gate, quantified.** Gate sim on the 200 fresh candidates: regenerate-on-hit
+  lands a clean read in ~1.3 draws (v17 76% clean; **v24 80%/1.25 — cheapest to gate**), 0/9 songs
+  all-pivoted. Prompt alone can't; prompt+the-already-built-gate can.
+- **Call: NO-GO unchanged; v17 stands.** v23–v28 registered as dead-end records; ACTIVE still 13.
+  Optional prompt polish = adopt v27's category-level line. Real lever = the tier1 regenerate-on-hit
+  gate (optionally on v24). One open question the smoke can't answer, deferred to a user-authorized
+  paid Opus pairwise: does the protagonist-song register polish convert any losses to ties? (Expected
+  ≈ v17 from the qualitative read.)
+
+---
+
+## Status after Phase 4 convergence (2026-06-07) — SUPERSEDES everything below
+
+The iteration loop ran and **converged to a NO-GO**. Full log + readiness call:
+`claudedocs/08-voice-audit-phase4-changelog.md`. Headline:
+
+- **5 experiments, none clears the bar.** v18 (regroup) dead; v19 + v20 (prohibition edits) routed
+  around; v21 (demonstration re-weight) back to 0; Flash→pro swap (P1 n=1, P2 n=3) is the best
+  measured at **17% win+tie / 1-of-8 songs** but still far below the majority-of-9 bar.
+- **Converged best prompt = v17.** Nothing beat it. v18–v21 are registered dead ends; ACTIVE still 13.
+- **The one wall:** the essayistic register — concretely the **"X is not Y. It is Z" antithesis
+  pivot** + book-report framing — is a model-level Gemini-2.5 default (Flash AND pro), the dominant
+  pairwise loss cause. Grounding (100%), specificity (~100%), tier1 mechanics are all solved.
+- **Prompt-only iteration is exhausted.** Next lever must be non-prompt: a post-generation rewrite
+  pass (recommended), a broadened tier1 antithesis gate + regenerate-on-hit, accept-the-gap, or
+  fine-tune. See doc 08's "CONVERGENCE / READINESS CALL" for the full fork + the length/grounding
+  calibration caveat on pro's marginal ties.
+- **Opus 5-hour cap was hit** at the end of P2 (retries fired) — measurement is blocked until it
+  resets; the rewrite-pass demo and the tier1 gate are both buildable/verifiable WITHOUT Opus.
+  (Correction: the cap was NOT actually hit — those retries were transient CLI hiccups; budget was
+  fine. Work continued.)
+
+**Post-convergence (user-directed: kill the "X is not Y. It is Z" pivot, the most-evident AI tell):**
+- **tier1 cross-sentence antithesis rule SHIPPED + calibrated** (`tier1/rules.ts`
+  `ANTITHESIS_CROSS_SENTENCE`, HIGH; 0 hits on all 9 golds; `bun run test scripts/voice-audit/__tests__`
+  153/153). It closes the hole where the old rule's `[^.]*?` stopped at the period and missed the
+  dominant cross-sentence pivot — which is why tier1 read clean while the pairwise drowned in it.
+- **CONCLUSIVE: the pivot cannot be prompted away.** Measured free across 4 prompts (v17 0.28 / v22
+  no-mention 0.38 / v20 ban-with-examples 0.56 / v21 demo 0.63 hits/cand; pro 1.13). It is a
+  base-model default; showing the literal pivot as a "Wrong:" example makes it WORSE. The lever is
+  **non-generation**: regenerate-on-hit using the new gate (~1.3–1.4 draws at flash, ~73–77% clean)
+  or a post-generation rewrite pass. Necessary cleanup of the #1 tell, but not alone sufficient to
+  tie the golds. Production mechanism not yet built (prod-pipeline change). Full detail: doc 08.
+
 ## Status after Phase 3 baseline capture (2026-06-07) — supersedes conflicts below
 
 The v17 + v18 baselines are now captured, judged, and persisted (n=3/song, t0.3, all 9 golds;

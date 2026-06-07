@@ -1,0 +1,7 @@
+# Voice-audit research scratch — regenerable run records and eval artifacts. The durable code
+# (scripts, tier1 rules, prompts) and the changelogs in claudedocs/ are tracked; these are not.
+experiments/*.json
+.smoke-logs/
+eval-artifacts/
+rewrite-artifacts/
+ship-check-artifacts/

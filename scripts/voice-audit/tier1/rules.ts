@@ -102,9 +102,22 @@ const ANTITHESIS_FRAME =
 // huntingthemuse "no X, no Y, just Z" — staccato negation that manufactures emphasis.
 const ANTITHESIS_NEGATION_LIST = /\bno\s+[\w'-]+,\s+no\s+[\w'-]+,\s+(?:just|only)\b/gi;
 
+// The CROSS-SENTENCE thesis-pivot the single-sentence ANTITHESIS_FRAME misses (its `[^.]*?` stops
+// at the period). The dominant AI tell in the Phase-4 voice audit: a negated copular clause ends a
+// sentence, then the next sentence RE-ASSERTS with a copula — "This is not a diss track. It is
+// testifying.", "The song is not a celebration. It is a prayer." The pronoun-plus-copula
+// re-assertion ("It is…", "He's a…") is the signature: ordinary narrative continues with an action
+// verb ("She is not ready. She drives anyway.") and the golds' legitimate contrasts ("could never
+// be bought, only inherited"; "the door stays shut, not slammed") have no "is not … It is" shape,
+// so both are left alone. Verified 0 hits across all 9 golds; catches the pivot on the v17/pro
+// candidates that lose the pairwise while reading tier1-clean. HIGH, like the rest of antithesis.
+const ANTITHESIS_CROSS_SENTENCE =
+	/\b(?:(?:is|are|was|were|it'?s|he'?s|she'?s|they'?re|this is|that'?s)\s+not|isn'?t|aren'?t|wasn'?t|weren'?t)\b[^.!?]*[.!?]+\s+(?:it|this|that|he|she|they)(?:'?s|'?re)?\s+(?:is|are|was|were|a|an|the|just|simply|really)\b/gi;
+
 export const antithesis = (a: ConceptRead): RuleHit[] => [
 	...matchRegexHits(prose(a), "antithesis", "high", ANTITHESIS_FRAME),
 	...matchRegexHits(prose(a), "antithesis", "high", ANTITHESIS_NEGATION_LIST),
+	...matchRegexHits(prose(a), "antithesis", "high", ANTITHESIS_CROSS_SENTENCE),
 ];
 
 const COPULA_AVOIDANCE_TERMS = [
