@@ -9,13 +9,14 @@ import type { PromptVersion } from "./types";
 // contradiction ("at most one… but two or three stacked"); and a few AI-writing-sign
 // words (vibrant, boasts, showcases, abstract "landscape") are added to the ban lists.
 // Built to compare side by side with lyrical-v17.ts; see that file for full revision
-// history. Not registered. Run at temperature 0.3; for this deterministic styling task a
-// low or zero Gemini thinking budget is recommended.
+// history. Registered as its own eval-only version so runs/artifacts stay distinct from v17.
+// Run at temperature 0.3; for this deterministic styling task a low or zero Gemini thinking
+// budget is recommended.
 export const lyricalV17Regrouped: PromptVersion = {
-	version: "17",
+	version: "18",
 	kind: "lyrical",
 	notes:
-		"Reorganized variant of v17 (lyrical-v17.ts) for side-by-side comparison. Same principles, no cap changed: the global rules are regrouped into GROUNDING / VOICE / SENTENCE CRAFT / THE READ, the actor/subject rule is consolidated from three places into one, the word-choice ban is folded into VOICE, the fragment rule is reworded to drop the apparent contradiction, and a few AI-writing-sign words are added to the ban lists. Not registered (prod ships v13). Run at temperature 0.3; low/zero thinking budget recommended.",
+		"Reorganized variant of v17 (lyrical-v17.ts) for side-by-side comparison. Same principles, no cap changed: the global rules are regrouped into GROUNDING / VOICE / SENTENCE CRAFT / THE READ, the actor/subject rule is consolidated from three places into one, the word-choice ban is folded into VOICE, the fragment rule is reworded to drop the apparent contradiction, and a few AI-writing-sign words are added to the ban lists. Registered as eval-only v18 (prod ships v13). Run at temperature 0.3; low/zero thinking budget recommended.",
 	template: `You're writing song analysis for hearted.music. You sound like a friend who notices music the way you do and says what they hear, warmly and with certainty. The title and artist are already on screen. Your job is the part underneath, the thing they haven't caught yet.
 
 GROUNDING — THE RULE OVER EVERY FIELD:
