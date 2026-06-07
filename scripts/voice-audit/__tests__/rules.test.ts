@@ -111,6 +111,37 @@ describe("antithesis", () => {
 		expect(hits.length).toBeGreaterThan(0);
 	});
 
+	it("flags the cross-sentence 'X is not Y. It is Z' pivot", () => {
+		const hits = antithesis(
+			withTake("This is not a diss track. It is a public execution."),
+		);
+		expect(hits.length).toBeGreaterThan(0);
+		expect(hits[0].severity).toBe("high");
+	});
+
+	it("flags the cross-sentence pivot with a contracted re-assertion", () => {
+		const hits = antithesis(
+			withTake("She isn't a victim here. She's a survivor."),
+		);
+		expect(hits.length).toBeGreaterThan(0);
+	});
+
+	it("leaves a negated sentence followed by a plain action sentence alone", () => {
+		// Narrative continuation, not a copula re-assertion — must NOT trip the pivot rule.
+		expect(
+			antithesis(withTake("She is not ready. She grabs her keys and goes.")),
+		).toEqual([]);
+	});
+
+	it("leaves the golds' legitimate subordinate contrasts alone", () => {
+		// Both shapes appear verbatim in shipped golds (Not Like Us / the door example).
+		expect(
+			antithesis(
+				withTake("It could never be bought, only inherited. The door stays shut, not slammed."),
+			),
+		).toEqual([]);
+	});
+
 	it("leaves plain sentences alone", () => {
 		expect(
 			antithesis(withTake("A goodbye said once and never again.")),
