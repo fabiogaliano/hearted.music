@@ -13,8 +13,10 @@
  * SongDetailPanel supplies the slide-in chrome around this surface.
  */
 
+import { LockSimpleIcon } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
+import type { SongDisplayState } from "@/lib/domains/billing/state";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { getThemedDarkColors } from "../detail/themed-dark-colors";
@@ -22,10 +24,24 @@ import type { ConceptRead, ConceptSong } from "./concept-types";
 
 type Palette = ReturnType<typeof getThemedDarkColors>;
 
+// The locked-state action, computed by the page (which owns billing) and handed
+// in pre-resolved so this surface stays billing-agnostic and Ladle-renderable.
+export interface LockedCta {
+	label: string;
+	onClick: () => void;
+}
+
 const PADDING_X = 24;
 const ALBUM_ART_SIZE = 112;
 const ALBUM_ART_BOTTOM = 24; // album art sits fully inside the hero so the hero's borderBottom can run clean
 const SECTION_GAP = 40; // padding above + below each section separator (between Read / Take / Trace)
+const HERO_HEIGHT = 450; // tall hero when there's an artist image to fill it
+const HERO_HEIGHT_NO_IMAGE = 200; // short hero (album-art-only) — no backdrop to give height
+// How far the locked CTA is lifted above the geometric center of the space below
+// the hero. Geometric centering reads as too low (worse with the tall 450px hero,
+// which leaves the CTA stranded in the lower half), so we bias up. The content's
+// center lands at roughly (50% − LOCKED_LIFT/2) of that space. Tunable knob.
+const LOCKED_LIFT = 0.3;
 const FOCUSED_LINE_INTERVAL_MS = 7000;
 
 const CONCEPT_KEYFRAMES = `
@@ -37,17 +53,31 @@ const CONCEPT_KEYFRAMES = `
 	from { transform: scaleX(0); }
 	to   { transform: scaleX(1); }
 }
+@keyframes concept-pulse {
+	0%, 100% { opacity: 1; transform: scale(1); }
+	50%      { opacity: 0.3; transform: scale(0.7); }
+}
 `;
 
 export function SongDetailPanelSurface({
 	song,
 	isWalkthrough = false,
+	isEnrichmentRunning = false,
+	lockedCta,
 }: {
 	song: ConceptSong;
 	isWalkthrough?: boolean;
+	/** The enrichment pipeline is actively running, so an unread song is being
+	 *  analyzed right now rather than simply missing a read. */
+	isEnrichmentRunning?: boolean;
+	/** Action for the locked state (unlock or see-plans). Omitted in contexts
+	 *  without billing (Ladle, walkthrough) — the button then hides. */
+	lockedCta?: LockedCta;
 }) {
 	const themeConfig = themes[song.theme];
 	const colors = getThemedDarkColors(themeConfig);
+	const heroHeight = song.artistImageUrl ? HERO_HEIGHT : HERO_HEIGHT_NO_IMAGE;
+	const isLocked = !song.read && song.displayState === "locked";
 
 	return (
 		<div
@@ -66,14 +96,15 @@ export function SongDetailPanelSurface({
 			}}
 		>
 			<style>{CONCEPT_KEYFRAMES}</style>
-			<Hero song={song} colors={colors} />
+			<Hero song={song} colors={colors} heroHeight={heroHeight} />
 			<div
 				style={{
 					paddingLeft: PADDING_X,
 					paddingRight: PADDING_X,
-					// In walkthrough the CTA owns the bottom spacing; otherwise leave
-					// the regular scroll runway below the last Trace block.
-					paddingBottom: isWalkthrough ? 0 : 80,
+					// Locked centers its CTA in the full space below the hero, and
+					// walkthrough's CTA owns the bottom — both fill exactly, so drop the
+					// runway. Otherwise leave scroll runway below the last Trace block.
+					paddingBottom: isWalkthrough || isLocked ? 0 : 80,
 				}}
 			>
 				{song.read ? (
@@ -86,7 +117,13 @@ export function SongDetailPanelSurface({
 						<TraceLayer read={song.read} colors={colors} />
 					</>
 				) : (
-					<UnreadState colors={colors} />
+					<UnreadState
+						colors={colors}
+						displayState={song.displayState}
+						isEnrichmentRunning={isEnrichmentRunning}
+						heroHeight={heroHeight}
+						lockedCta={lockedCta}
+					/>
 				)}
 				{isWalkthrough && <WalkthroughCta colors={colors} />}
 			</div>
@@ -94,8 +131,15 @@ export function SongDetailPanelSurface({
 	);
 }
 
-function Hero({ song, colors }: { song: ConceptSong; colors: Palette }) {
-	const heroHeight = song.artistImageUrl ? 450 : 200;
+function Hero({
+	song,
+	colors,
+	heroHeight,
+}: {
+	song: ConceptSong;
+	colors: Palette;
+	heroHeight: number;
+}) {
 	const vignette = `radial-gradient(ellipse at center, transparent 20%, ${colors.bgVignette} 100%),
 		linear-gradient(to bottom, transparent 40%, ${colors.bgFade} 100%)`;
 
@@ -308,25 +352,62 @@ function SectionSeparator({ colors }: { colors: Palette }) {
 	);
 }
 
-// Stands in for the Read/Take/Trace layers when a song has no v17 read yet
-// (locked, not-yet-analyzed, or a pre-v17 row). The hero still renders above, so
-// the panel always carries the song's identity even before its read exists.
-function UnreadState({ colors }: { colors: Palette }) {
+// Stands in for the Read/Take/Trace layers when a song has no v17 read yet. The
+// hero still renders above, so the panel always carries the song's identity even
+// before its read exists. The three branches answer *why* the read is missing:
+//   - locked      → not unlocked yet; offer the unlock path.
+//   - analyzing   → queued or running (pending/analyzing) — a read is on its way.
+//   - unavailable → finished without a usable read (failed, or too thin to read).
+function UnreadState({
+	colors,
+	displayState,
+	isEnrichmentRunning = false,
+	heroHeight,
+	lockedCta,
+}: {
+	colors: Palette;
+	displayState?: SongDisplayState;
+	isEnrichmentRunning?: boolean;
+	heroHeight: number;
+	lockedCta?: LockedCta;
+}) {
+	// Locked is a terminal CTA, so it skips the section separator and centers in
+	// the space the hero leaves. Analyzing/unavailable are transient and stay
+	// inline where the read would start.
+	if (displayState === "locked") {
+		return (
+			<LockedState colors={colors} heroHeight={heroHeight} cta={lockedCta} />
+		);
+	}
+
+	// "pending" (e.g. a song just unlocked and queued) and "analyzing" both mean a
+	// read is on its way, so they show the live "Listening" state. Only a row that
+	// finished without a usable read ("analyzed" but unparseable, or "failed") falls
+	// through to the "Quiet one" couldn't-find copy.
+	const isAnalyzing =
+		isEnrichmentRunning ||
+		displayState === "analyzing" ||
+		displayState === "pending";
+
 	return (
 		<>
 			<SectionSeparator colors={colors} />
 			<section>
 				<div
 					style={{
+						display: "flex",
+						alignItems: "center",
+						gap: 8,
 						fontSize: 11,
 						letterSpacing: "0.16em",
 						textTransform: "uppercase",
 						fontWeight: 500,
-						color: colors.textDim,
+						color: isAnalyzing ? colors.accent : colors.textDim,
 						marginBottom: 12,
 					}}
 				>
-					Not analyzed yet
+					{isAnalyzing && <PulseDot color={colors.accent} />}
+					{isAnalyzing ? "Listening" : "Quiet one"}
 				</div>
 				<p
 					style={{
@@ -337,10 +418,128 @@ function UnreadState({ colors }: { colors: Palette }) {
 						margin: 0,
 					}}
 				>
-					This song&rsquo;s read will appear here once it&rsquo;s been enriched.
+					{isAnalyzing
+						? "Getting a feel for this one…"
+						: "We couldn’t find enough about this one."}
 				</p>
 			</section>
 		</>
+	);
+}
+
+function LockedState({
+	colors,
+	heroHeight,
+	cta,
+}: {
+	colors: Palette;
+	heroHeight: number;
+	cta?: LockedCta;
+}) {
+	const [hovered, setHovered] = useState(false);
+
+	return (
+		<section
+			style={{
+				display: "flex",
+				flexDirection: "column",
+				alignItems: "center",
+				justifyContent: "center",
+				textAlign: "center",
+				gap: 18,
+				// Fill the viewport height the hero leaves, then lift the CTA above the
+				// midpoint (see LOCKED_LIFT) — the extra bottom padding is what raises it.
+				// Proportional, so it tracks viewport and hero size.
+				minHeight: `calc(100vh - ${heroHeight}px)`,
+				paddingBottom: `calc((100vh - ${heroHeight}px) * ${LOCKED_LIFT})`,
+			}}
+		>
+			<div
+				style={{
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					width: 48,
+					height: 48,
+					borderRadius: 24,
+					background: `color-mix(in srgb, ${colors.accent} 14%, transparent)`,
+				}}
+			>
+				<LockSimpleIcon size={20} color={colors.accent} weight="light" />
+			</div>
+			<div>
+				<p
+					style={{
+						fontFamily: fonts.display,
+						fontWeight: 400,
+						fontSize: 22,
+						lineHeight: 1.2,
+						color: colors.text,
+						margin: 0,
+					}}
+				>
+					This song is locked
+				</p>
+				<p
+					style={{
+						fontFamily: fonts.body,
+						fontSize: 14,
+						lineHeight: 1.6,
+						color: colors.textMuted,
+						margin: "10px auto 0",
+						maxWidth: 320,
+					}}
+				>
+					Open it up to see what it's saying, how it feels, and where it fits.
+				</p>
+			</div>
+			{cta && (
+				<button
+					type="button"
+					onClick={cta.onClick}
+					onMouseEnter={() => setHovered(true)}
+					onMouseLeave={() => setHovered(false)}
+					style={{
+						marginTop: 4,
+						padding: "11px 24px",
+						fontFamily: fonts.body,
+						fontSize: 13,
+						fontWeight: 600,
+						letterSpacing: "0.02em",
+						color: colors.bg,
+						background: colors.accent,
+						border: "none",
+						borderRadius: 999,
+						cursor: "pointer",
+						opacity: hovered ? 0.9 : 1,
+						transition: "opacity 150ms ease",
+					}}
+				>
+					{cta.label}
+				</button>
+			)}
+		</section>
+	);
+}
+
+// Small breathing dot that signals the panel is waiting on a live analysis. The
+// pulse is the only motion in the empty state, so it reads as "working" without a
+// spinner. Honors reduced-motion by holding the dot steady.
+function PulseDot({ color }: { color: string }) {
+	const reducedMotion = usePrefersReducedMotion();
+	return (
+		<span
+			aria-hidden
+			style={{
+				width: 6,
+				height: 6,
+				borderRadius: 3,
+				background: color,
+				animation: reducedMotion
+					? undefined
+					: "concept-pulse 1.4s ease-in-out infinite",
+			}}
+		/>
 	);
 }
 

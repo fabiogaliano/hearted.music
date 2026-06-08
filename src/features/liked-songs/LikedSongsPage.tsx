@@ -14,6 +14,7 @@ import { fonts } from "@/lib/theme/fonts";
 
 import { likedSongToConceptSong } from "./components/concept-panel/concept-adapter";
 import { SongDetailPanel } from "./components/concept-panel/SongDetailPanel";
+import type { LockedCta } from "./components/concept-panel/SongDetailPanelSurface";
 import { LikedSongsHeader } from "./components/LikedSongsHeader";
 import { LikedSongsList } from "./components/LikedSongsList";
 import { SongSelectionBar } from "./components/SongSelectionBar";
@@ -96,6 +97,7 @@ export function LikedSongsPage({
 		flowState,
 		requestConfirmation,
 		cancelConfirmation,
+		showPaywall: openPaywall,
 		confirmUnlock,
 		dismiss: dismissFlow,
 	} = useSongUnlock(accountId);
@@ -188,6 +190,28 @@ export function LikedSongsPage({
 			selectedSong ? likedSongToConceptSong(selectedSong, themeColor) : null,
 		[selectedSong, themeColor],
 	);
+
+	// The locked panel's CTA: entitled accounts can't have a locked song open, so
+	// this only resolves for credit/free accounts — unlock straight to the confirm
+	// dialog when there's balance, otherwise route to plans. Walkthrough has no
+	// billing context, so it stays undefined and the button hides.
+	const lockedCta = useMemo<LockedCta | undefined>(() => {
+		if (isWalkthrough) return undefined;
+		if (!conceptSong || conceptSong.displayState !== "locked") return undefined;
+		if (!billingState || hasUnlimitedAccess(billingState)) return undefined;
+		return billingState.creditBalance > 0
+			? {
+					label: "Unlock this song",
+					onClick: () => requestConfirmation([conceptSong.id]),
+				}
+			: { label: "See plans", onClick: openPaywall };
+	}, [
+		isWalkthrough,
+		conceptSong,
+		billingState,
+		requestConfirmation,
+		openPaywall,
+	]);
 
 	const lockedSongCount = stats?.success ? stats.locked : 0;
 
@@ -381,6 +405,8 @@ export function LikedSongsPage({
 					onNext={handleNextSong}
 					onPrevious={handlePreviousSong}
 					isWalkthrough={isWalkthrough}
+					isEnrichmentRunning={isEnrichmentRunning}
+					lockedCta={lockedCta}
 				/>
 			)}
 
