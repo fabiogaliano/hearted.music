@@ -17,16 +17,16 @@ import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { themes } from "@/lib/theme/colors";
 import { getThemedDarkColors } from "../detail/themed-dark-colors";
-import type { ConceptSong, PlaylistsPanel } from "./concept-types";
 import {
 	type LockedCta,
 	SongDetailPanelSurface,
 } from "./SongDetailPanelSurface";
+import type { PlaylistsPanel, SongDetail } from "./song-detail-types";
 
 const PANEL_WIDTH = "clamp(440px, 50vw, 760px)";
 
 interface SongDetailPanelProps {
-	song: ConceptSong;
+	song: SongDetail;
 	isExpanded: boolean;
 	onClose: () => void;
 	onNext: () => void;

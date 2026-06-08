@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import {
 	analysisProse,
 	burstinessStats,
@@ -10,7 +10,7 @@ import {
 	wilsonInterval,
 } from "../stats";
 
-const fixture: ConceptRead = {
+const fixture: SongRead = {
 	image: "IMAGE",
 	lens: "LENS",
 	tension: "TENSION",

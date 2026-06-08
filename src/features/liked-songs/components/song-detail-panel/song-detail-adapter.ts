@@ -1,30 +1,30 @@
 /**
- * Adapter: a live `LikedSong` row -> the `ConceptSong` the song-detail panel renders.
+ * Adapter: a live `LikedSong` row -> the `SongDetail` the song-detail panel renders.
  *
- * Always returns a ConceptSong so every selected song opens the panel. The
+ * Always returns a SongDetail so every selected song opens the panel. The
  * persisted analysis is the source of truth for the read: from lyrical v17 on,
- * song-analysis.ts validates generation against ConceptReadSchema and stores the
+ * song-analysis.ts validates generation against SongReadSchema and stores the
  * read FLAT (buildAnalysisData spreads the read fields and tacks on an extra
- * `audio_features` key), so the stored JSON is `{ ...ConceptRead, audio_features }`.
- * Parsing it back through ConceptReadSchema validates it and strips the extra
- * `audio_features` key, leaving a clean ConceptRead.
+ * `audio_features` key), so the stored JSON is `{ ...SongRead, audio_features }`.
+ * Parsing it back through SongReadSchema validates it and strips the extra
+ * `audio_features` key, leaving a clean SongRead.
  *
  * `read` is null when the row has no analysis, is locked (analysis omitted), or is
- * an old 8-field row that predates v17 — none of those parse as a ConceptRead. The
+ * an old 8-field row that predates v17 — none of those parse as a SongRead. The
  * panel renders the hero + a minimal "not analyzed yet" state for those rows.
  */
 
-import { ConceptReadSchema } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import { SongReadSchema } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { ThemeColor } from "@/lib/theme/types";
 import type { LikedSong } from "../../types";
-import type { ConceptSong } from "./concept-types";
+import type { SongDetail } from "./song-detail-types";
 
-export function likedSongToConceptSong(
+export function likedSongToSongDetail(
 	song: LikedSong,
 	themeColor: ThemeColor,
-): ConceptSong {
+): SongDetail {
 	const stored = song.analysis?.analysis;
-	const parsed = stored ? ConceptReadSchema.safeParse(stored) : null;
+	const parsed = stored ? SongReadSchema.safeParse(stored) : null;
 	const read = parsed?.success ? parsed.data : null;
 
 	// Live audio features come from the track row; the read's stored copy is the

@@ -1,6 +1,6 @@
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 
-export function registerSpecificityPrompt(a: ConceptRead): string {
+export function registerSpecificityPrompt(a: SongRead): string {
 	// The per-line insight gloss used to supply the per-moment specific claims this
 	// judge samples; with it gone, the arc scenes carry that role.
 	const fields = [

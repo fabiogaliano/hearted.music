@@ -1,4 +1,4 @@
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { RuleHit, Severity } from "../types";
 import { sentenceLengthCV, splitSentences } from "./burstiness";
 
@@ -13,7 +13,7 @@ interface StringField {
 // it now carries only the artist's quoted words (the per-line insight gloss was
 // removed), and penalising a hyphen inside a lyric quote would be wrong. The
 // `dashes` rule walks this full set.
-function collectStringFields(a: ConceptRead): StringField[] {
+function collectStringFields(a: SongRead): StringField[] {
 	const out: StringField[] = [
 		{ name: "image", value: a.image },
 		{ name: "lens", value: a.lens },
@@ -39,7 +39,7 @@ function collectStringFields(a: ConceptRead): StringField[] {
 // way `compound_mood`/`.section`/`.mood` were: the AI-slop regexes are built for
 // sentences and misfire on labels. `lens` quality is graded by the lens-coherence
 // judge, not these deterministic rules.
-function prose(a: ConceptRead): StringField[] {
+function prose(a: SongRead): StringField[] {
 	return collectStringFields(a).filter(
 		(f) =>
 			f.name !== "tension" &&
@@ -114,7 +114,7 @@ const ANTITHESIS_NEGATION_LIST = /\bno\s+[\w'-]+,\s+no\s+[\w'-]+,\s+(?:just|only
 const ANTITHESIS_CROSS_SENTENCE =
 	/\b(?:(?:is|are|was|were|it'?s|he'?s|she'?s|they'?re|this is|that'?s)\s+not|isn'?t|aren'?t|wasn'?t|weren'?t)\b[^.!?]*[.!?]+\s+(?:it|this|that|he|she|they)(?:'?s|'?re)?\s+(?:is|are|was|were|a|an|the|just|simply|really)\b/gi;
 
-export const antithesis = (a: ConceptRead): RuleHit[] => [
+export const antithesis = (a: SongRead): RuleHit[] => [
 	...matchRegexHits(prose(a), "antithesis", "high", ANTITHESIS_FRAME),
 	...matchRegexHits(prose(a), "antithesis", "high", ANTITHESIS_NEGATION_LIST),
 	...matchRegexHits(prose(a), "antithesis", "high", ANTITHESIS_CROSS_SENTENCE),
@@ -135,7 +135,7 @@ const COPULA_AVOIDANCE_TERMS = [
 	"highlights the",
 ];
 
-export const copulaAvoidance = (a: ConceptRead): RuleHit[] =>
+export const copulaAvoidance = (a: SongRead): RuleHit[] =>
 	matchWordList(prose(a), "copula-avoidance", "medium", COPULA_AVOIDANCE_TERMS);
 
 const PUFFERY_ADJECTIVES = [
@@ -155,7 +155,7 @@ const PUFFERY_ADJECTIVES = [
 	"shimmering",
 ];
 
-export const pufferyAdjective = (a: ConceptRead): RuleHit[] =>
+export const pufferyAdjective = (a: SongRead): RuleHit[] =>
 	matchWordList(prose(a), "puffery-adjective", "medium", PUFFERY_ADJECTIVES);
 
 // The Wikipedia "Signs of AI writing" cluster. Kept disjoint from the puffery /
@@ -193,7 +193,7 @@ const AI_VOCABULARY = [
 
 // It is the co-occurrence of these words, not any single one, that signals AI
 // (per the Wikipedia page), so we only flag when two or more distinct ones appear.
-export const aiVocabulary = (a: ConceptRead): RuleHit[] => {
+export const aiVocabulary = (a: SongRead): RuleHit[] => {
 	const hits = matchWordList(prose(a), "ai-vocabulary", "medium", AI_VOCABULARY);
 	const distinct = new Set(hits.map((h) => h.span.toLowerCase()));
 	return distinct.size >= 2 ? hits : [];
@@ -227,7 +227,7 @@ const PARTICIPIAL_FINITE_VERBS = new Set([
 // Flags an -ing clause tacked onto a sentence end ("..., revealing the cost of pride.").
 // Skips two look-alikes that aren't the tell: a short attributive tail ("..., knocking drums.")
 // and a subject modified by an -ing adjective ("..., thumping bassline drives the rhythm.").
-export const participialClosure = (a: ConceptRead): RuleHit[] => {
+export const participialClosure = (a: SongRead): RuleHit[] => {
 	const hits: RuleHit[] = [];
 	const re = /[,;]\s+([A-Za-z][A-Za-z']*ing)\s+([^.!?]+)[.!?]/g;
 	for (const f of prose(a)) {
@@ -268,7 +268,7 @@ const HEDGING_TERMS = [
 	"it is important to note",
 ];
 
-export const hedging = (a: ConceptRead): RuleHit[] =>
+export const hedging = (a: SongRead): RuleHit[] =>
 	matchRegexHits(
 		prose(a),
 		"hedging",
@@ -287,7 +287,7 @@ const ACADEMIC_TERMS = [
 	"delves into",
 ];
 
-export const academicRegister = (a: ConceptRead): RuleHit[] =>
+export const academicRegister = (a: SongRead): RuleHit[] =>
 	matchWordList(prose(a), "academic-register", "high", ACADEMIC_TERMS);
 
 const SELF_REFERENCE_TERMS = [
@@ -301,7 +301,7 @@ const SELF_REFERENCE_TERMS = [
 	"the vocalist",
 ];
 
-export const selfReference = (a: ConceptRead): RuleHit[] =>
+export const selfReference = (a: SongRead): RuleHit[] =>
 	matchRegexHits(
 		prose(a),
 		"self-reference",
@@ -321,7 +321,7 @@ const BOOK_REPORT_OPENERS = [
 	"More than a",
 ];
 
-export const bookReportOpener = (a: ConceptRead): RuleHit[] => {
+export const bookReportOpener = (a: SongRead): RuleHit[] => {
 	const hits: RuleHit[] = [];
 	for (const f of prose(a)) {
 		const trimmed = f.value.trimStart();
@@ -356,7 +356,7 @@ const STRUCTURAL_SECTION_TERMS = [
 // is excluded — it's the sound field, where a musical term names a motif ("underneath each
 // hook"), not song structure. `lens`/`tension`/`label`/`mood`/`lines` already sit outside
 // `prose()`.
-export const structuralSection = (a: ConceptRead): RuleHit[] =>
+export const structuralSection = (a: SongRead): RuleHit[] =>
 	matchWordList(
 		prose(a).filter((f) => f.name !== "texture"),
 		"structural-section",
@@ -365,7 +365,7 @@ export const structuralSection = (a: ConceptRead): RuleHit[] =>
 	);
 
 // A `mood` is a qualified emotion (>=2 words); only the lone bare word ("Yearning") fails.
-export const moodWidth = (a: ConceptRead): RuleHit[] => {
+export const moodWidth = (a: SongRead): RuleHit[] => {
 	const hits: RuleHit[] = [];
 	a.arc.forEach((beat, i) => {
 		const words = beat.mood.trim().split(/\s+/).filter(Boolean);
@@ -383,7 +383,7 @@ export const moodWidth = (a: ConceptRead): RuleHit[] => {
 
 // A `mood` repeating `tension` verbatim means one of the two fields is dead. Exact,
 // case-insensitive — a near-miss ("Aching Warmth" vs "Aching Nostalgia") is honest variation.
-export const tensionMoodDedup = (a: ConceptRead): RuleHit[] => {
+export const tensionMoodDedup = (a: SongRead): RuleHit[] => {
 	const tension = a.tension.trim().toLowerCase();
 	const hits: RuleHit[] = [];
 	a.arc.forEach((beat, i) => {
@@ -400,7 +400,7 @@ export const tensionMoodDedup = (a: ConceptRead): RuleHit[] => {
 	return hits;
 };
 
-export const burstiness = (a: ConceptRead): RuleHit[] => {
+export const burstiness = (a: SongRead): RuleHit[] => {
 	const hits: RuleHit[] = [];
 	const longFields: StringField[] = [
 		{ name: "take", value: a.take },
@@ -433,7 +433,7 @@ export const burstiness = (a: ConceptRead): RuleHit[] => {
 // favors phrasal triplets ("a cry for help, a fist raised, and a quiet goodbye").
 const TRIPLE_SLOT = "[\\w'-]+(?:\\s+[\\w'-]+){0,3}";
 
-export const ruleOfThree = (a: ConceptRead): RuleHit[] =>
+export const ruleOfThree = (a: SongRead): RuleHit[] =>
 	matchRegexHits(
 		prose(a),
 		"rule-of-three",
@@ -466,7 +466,7 @@ export const LEXICAL_REPETITION_MIN = 3;
 // The literature's most-replicated lexical finding: AI text reuses content words
 // more than human text (Simon et al. 2023; André et al. 2023). We pool the prose,
 // drop function words, and flag any content word repeated three or more times.
-export const lexicalRepetition = (a: ConceptRead): RuleHit[] => {
+export const lexicalRepetition = (a: SongRead): RuleHit[] => {
 	const seen = new Map<string, { count: number; field: string }>();
 	for (const f of prose(a)) {
 		const words = f.value.toLowerCase().match(/[a-z]{2,}/g) ?? [];
@@ -498,7 +498,7 @@ export const lexicalRepetition = (a: ConceptRead): RuleHit[] => {
 // `collectStringFields` excludes `lines`, so a hyphen inside a quoted lyric is never flagged.
 const DASH_CHARS = /[‒–—―−]/g;
 
-export const dashes = (a: ConceptRead): RuleHit[] => {
+export const dashes = (a: SongRead): RuleHit[] => {
 	const hits: RuleHit[] = [];
 	for (const f of collectStringFields(a)) {
 		const value = f.value;
@@ -545,6 +545,6 @@ export const ALL_RULES = [
 	dashes,
 ] as const;
 
-export function runAllRules(analysis: ConceptRead): RuleHit[] {
+export function runAllRules(analysis: SongRead): RuleHit[] {
 	return ALL_RULES.flatMap((r) => r(analysis));
 }

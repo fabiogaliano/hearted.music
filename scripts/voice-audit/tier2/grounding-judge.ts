@@ -7,7 +7,7 @@
 // strong-model route in this codebase. Model choice recorded here as a calibration decision.
 
 import { Result } from "better-result";
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { GroundingContext } from "../lyrics-context";
 import { runClaude } from "./claude-cli";
 import { groundingPrompt } from "./prompts/grounding";
@@ -42,7 +42,7 @@ function extractJson(text: string): string {
 }
 
 export async function runGroundingJudge(
-	read: ConceptRead,
+	read: SongRead,
 	ctx: GroundingContext,
 	options: GroundingJudgeOptions = {},
 ): Promise<Result<GroundingJudgeResult, Error>> {

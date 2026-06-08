@@ -1,16 +1,16 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
-	ConceptReadSchema,
-	type ConceptRead,
-} from "@/lib/domains/enrichment/content-analysis/concept-schema";
+	SongReadSchema,
+	type SongRead,
+} from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type {
 	FileReport,
 	LintReport,
 	RuleHit,
 	Severity,
 } from "../types";
-import { isConceptReadShape } from "../types";
+import { isSongReadShape } from "../types";
 import { runAllRules } from "./rules";
 
 export interface SeverityBudget {
@@ -41,7 +41,7 @@ function addHits(report: LintReport, file: FileReport, hits: RuleHit[]) {
 
 export function auditAnalysis(
 	source: string,
-	read: ConceptRead,
+	read: SongRead,
 	songId?: string,
 ): { file: FileReport; hits: RuleHit[] } {
 	const file: FileReport = { source, songId, hits: [] };
@@ -56,7 +56,7 @@ export function auditAnalysis(
 // returns null so the caller can skip it — old rows re-enrich via v14.
 export function extractAnalysis(raw: unknown): {
 	songId?: string;
-	read: ConceptRead | null;
+	read: SongRead | null;
 } {
 	if (!raw || typeof raw !== "object") return { read: null };
 	const wrapper = raw as Record<string, unknown>;
@@ -70,7 +70,7 @@ export function extractAnalysis(raw: unknown): {
 			: wrapper.analysis && typeof wrapper.analysis === "object"
 				? wrapper.analysis
 				: wrapper;
-	if (!isConceptReadShape(candidate)) {
+	if (!isSongReadShape(candidate)) {
 		return { songId, read: null };
 	}
 	return { songId, read: candidate };
@@ -94,7 +94,7 @@ export function auditFile(
 		return report;
 	}
 
-	const parsed = ConceptReadSchema.safeParse(read);
+	const parsed = SongReadSchema.safeParse(read);
 	if (!parsed.success) {
 		report.files.push(file);
 		return report;

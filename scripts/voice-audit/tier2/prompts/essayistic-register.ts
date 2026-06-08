@@ -1,6 +1,6 @@
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 
-export function essayisticRegisterPrompt(a: ConceptRead): string {
+export function essayisticRegisterPrompt(a: SongRead): string {
 	return `You are auditing one song take (the interpretation paragraph).
 
 The target register is a friend talking warmly about a song they love. The failure mode is a critic writing a short review or a student writing an essay: critical distance, explanatory hedges, abstract summaries, and sentences that explain *how the song functions* rather than *what it feels like*.

@@ -12,13 +12,13 @@ import type { DbError } from "@/lib/shared/errors/database";
 import type { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
 import type { LlmError } from "@/lib/shared/errors/external/llm";
 import { getLyricsFormatLegend } from "../lyrics/utils/lyrics-formatter";
-import { type ConceptRead, ConceptReadSchema } from "./concept-schema";
 import {
 	ACTIVE_INSTRUMENTAL_VERSION,
 	ACTIVE_LYRICAL_VERSION,
 	getInstrumentalPrompt,
 	getLyricalPrompt,
 } from "./prompts/registry";
+import { type SongRead, SongReadSchema } from "./read-schema";
 
 const ThemeSchema = z.object({ name: z.string(), description: z.string() });
 const JourneyPointSchema = z.object({
@@ -47,8 +47,6 @@ export const SongAnalysisInstrumentalSchema = z.object({
 	sonic_texture: z.string(),
 });
 type SongAnalysisInstrumental = z.infer<typeof SongAnalysisInstrumentalSchema>;
-
-export type SongAnalysisResult = SongAnalysisLyrical | SongAnalysisInstrumental;
 
 export interface AnalyzeSongInput {
 	songId: string;
@@ -117,18 +115,15 @@ export class SongAnalysisService {
 			? ACTIVE_INSTRUMENTAL_VERSION
 			: ACTIVE_LYRICAL_VERSION;
 
-		// Parse-schema selection is version-aware (Session 5): from lyrical v14 on, the
-		// prompt emits the redesigned { read } model (ConceptReadSchema); v13 and earlier
-		// emit the legacy 8-field shape. ACTIVE_LYRICAL_VERSION is now "17", so this branch
-		// is live: generated reads are validated against ConceptReadSchema and stored flat,
-		// and ConceptPanel renders them in production. See claudedocs/session-6-prod-panel-swap.md.
-		const lyricalSchema: z.ZodTypeAny =
-			Number(ACTIVE_LYRICAL_VERSION) >= 14
-				? ConceptReadSchema
-				: SongAnalysisLyricalSchema;
+		// Lyrical generation is v17-only: the active prompt emits the redesigned { read }
+		// model, so output is always validated against SongReadSchema, stored flat, and
+		// rendered in production by SongDetailPanel. The legacy 8-field
+		// SongAnalysisLyricalSchema is retained only for the voice-audit harness (it adapts
+		// pre-v17 rows for v13-vs-v17 comparison) and is no longer in the prod path.
+		// Instrumental still uses its own schema. See claudedocs/session-6-prod-panel-swap.md.
 		const schema: z.ZodTypeAny = isInstrumental
 			? SongAnalysisInstrumentalSchema
-			: lyricalSchema;
+			: SongReadSchema;
 
 		// A low temperature roughly halves the rate of AI-writing tells (participial
 		// closures, framing openers) and collapses run-to-run variance, versus the
@@ -146,7 +141,7 @@ export class SongAnalysisService {
 		}
 
 		const analysisData = this.buildAnalysisData(
-			llmResult.value.output as SongAnalysisResult | ConceptRead,
+			llmResult.value.output as SongRead | SongAnalysisInstrumental,
 			input.audioFeatures,
 		);
 
@@ -272,7 +267,7 @@ Loudness: ${features.loudness ?? "unknown"} dB`;
 	}
 
 	private buildAnalysisData(
-		llmOutput: SongAnalysisResult | ConceptRead,
+		llmOutput: SongRead | SongAnalysisInstrumental,
 		audioFeatures?: AudioFeature | null,
 	): Record<string, unknown> {
 		const analysisData: Record<string, unknown> = { ...llmOutput };

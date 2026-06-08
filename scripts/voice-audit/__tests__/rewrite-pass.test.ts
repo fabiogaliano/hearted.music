@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { applySurgical } from "../rewrite/rewrite-pass";
 
 // applySurgical is the content-fidelity invariant of the rewrite pass: the model may only ever
@@ -7,7 +7,7 @@ import { applySurgical } from "../rewrite/rewrite-pass";
 // guarantee so a future prompt/loop change can't silently let the model drift content or invent a
 // contradiction/texture.
 
-const original: ConceptRead = {
+const original: SongRead = {
 	lens: "a milestone as a funeral",
 	tension: "Quiet Grief",
 	image: "driving alone past your street",
@@ -23,7 +23,7 @@ const original: ConceptRead = {
 
 // A model output that, if trusted wholesale, would corrupt the read: it rewrites every field,
 // invents a contradiction and texture, drops a line, and shuffles the arc labels/moods.
-const adversarialModelOut: ConceptRead = {
+const adversarialModelOut: SongRead = {
 	lens: "WRONG LENS",
 	tension: "WRONG TENSION",
 	image: "WRONG IMAGE",
@@ -73,14 +73,14 @@ describe("applySurgical", () => {
 	});
 
 	it("falls back to the fed-in value when the model returns an empty flagged field", () => {
-		const emptyModelOut: ConceptRead = { ...adversarialModelOut, take: "" };
+		const emptyModelOut: SongRead = { ...adversarialModelOut, take: "" };
 		const out = applySurgical(original, original, emptyModelOut, new Set(["take"]));
 		expect(out.take).toBe(original.take);
 	});
 
 	it("rewrites a fillable contradiction when it is non-null in the original and flagged", () => {
-		const withContra: ConceptRead = { ...original, contradiction: "the old, flagged contradiction" };
-		const modelOut: ConceptRead = { ...adversarialModelOut, contradiction: "a clean rewrite" };
+		const withContra: SongRead = { ...original, contradiction: "the old, flagged contradiction" };
+		const modelOut: SongRead = { ...adversarialModelOut, contradiction: "a clean rewrite" };
 		const out = applySurgical(withContra, withContra, modelOut, new Set(["contradiction"]));
 		expect(out.contradiction).toBe("a clean rewrite");
 	});

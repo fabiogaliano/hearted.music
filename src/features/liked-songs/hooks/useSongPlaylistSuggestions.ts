@@ -4,7 +4,7 @@ import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outco
 import { addToPlaylist } from "@/lib/extension/spotify-client";
 import { useSpotifyReconnectState } from "@/lib/extension/useSpotifyReconnectState";
 import { addSongToPlaylist } from "@/lib/server/matching.functions";
-import type { PlaylistsPanel } from "../components/concept-panel/concept-types";
+import type { PlaylistsPanel } from "../components/song-detail-panel/song-detail-types";
 import { songSuggestionsQueryOptions } from "../queries";
 
 interface PlaylistSuggestionSong {

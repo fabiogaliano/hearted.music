@@ -23,11 +23,11 @@ import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { getThemedDarkColors } from "../detail/themed-dark-colors";
 import type {
-	ConceptRead,
-	ConceptSong,
 	PlaylistSuggestionView,
 	PlaylistsPanel,
-} from "./concept-types";
+	SongDetail,
+	SongRead,
+} from "./song-detail-types";
 
 type Palette = ReturnType<typeof getThemedDarkColors>;
 
@@ -112,8 +112,8 @@ const CONCEPT_STYLES = `
 /* Hide the panel's own scrollbar so only the browser/list scrollbar shows — no more
    double bars. The panel still scrolls when the cursor is over it; overscrollBehaviorY
    "contain" (set on the element) keeps that scroll from chaining into the list behind. */
-.concept-panel-scroll { scrollbar-width: none; }
-.concept-panel-scroll::-webkit-scrollbar { display: none; }
+.song-detail-panel-scroll { scrollbar-width: none; }
+.song-detail-panel-scroll::-webkit-scrollbar { display: none; }
 @media (prefers-reduced-motion: reduce) {
 	.concept-rise { animation: none; }
 }
@@ -129,7 +129,7 @@ export function SongDetailPanelSurface({
 	readDeeperOpen,
 	onReadDeeperChange,
 }: {
-	song: ConceptSong;
+	song: SongDetail;
 	/** Drives the shared-element view-transition names on the hero's album / title /
 	 *  artist. While open the hero carries `song-album` / `song-title` / `song-artist`
 	 *  so the close morph (panel → clicked row) has a "from" element; the wrapper flips
@@ -167,7 +167,7 @@ export function SongDetailPanelSurface({
 
 	return (
 		<div
-			className="concept-panel-scroll"
+			className="song-detail-panel-scroll"
 			style={{
 				position: "fixed",
 				top: 0,
@@ -244,7 +244,7 @@ function Hero({
 	heroHeight,
 	isExpanded,
 }: {
-	song: ConceptSong;
+	song: SongDetail;
 	colors: Palette;
 	heroHeight: number;
 	isExpanded: boolean;
@@ -434,7 +434,7 @@ function Hero({
 // reads as absent — BPM is never legitimately 0 — while energy/valence of 0 are
 // real low-end values, so only null drops them.
 function getSonicColumns(
-	audioFeatures: ConceptSong["audioFeatures"],
+	audioFeatures: SongDetail["audioFeatures"],
 ): { value: string; label: string }[] {
 	const { tempo, energy, valence } = audioFeatures;
 	return [
@@ -457,13 +457,7 @@ function getSonicColumns(
 	].filter((column) => column !== null) as { value: string; label: string }[];
 }
 
-function SonicNumbers({
-	song,
-	colors,
-}: {
-	song: ConceptSong;
-	colors: Palette;
-}) {
+function SonicNumbers({ song, colors }: { song: SongDetail; colors: Palette }) {
 	const items = getSonicColumns(song.audioFeatures);
 
 	return (
@@ -945,7 +939,7 @@ function ReadLayer({
 	open,
 	onOpenChange,
 }: {
-	read: ConceptRead;
+	read: SongRead;
 	colors: Palette;
 	// Controlled by the chrome so open survives song-to-song navigation (starts open in walkthrough).
 	open: boolean;
@@ -1197,7 +1191,7 @@ function ReadLayer({
 	);
 }
 
-function TraceLayer({ read, colors }: { read: ConceptRead; colors: Palette }) {
+function TraceLayer({ read, colors }: { read: SongRead; colors: Palette }) {
 	return (
 		<section
 			style={{
@@ -1275,13 +1269,7 @@ function TraceBlock({
 // Vertical timeline: order reads top→bottom (one direction, no wrap), the
 // structural label stays visible as a wayfinding cue, and each beat's scene
 // expands at its own node instead of detached below the whole spine.
-function ArcSpine({
-	arc,
-	colors,
-}: {
-	arc: ConceptRead["arc"];
-	colors: Palette;
-}) {
+function ArcSpine({ arc, colors }: { arc: SongRead["arc"]; colors: Palette }) {
 	const [openIdx, setOpenIdx] = useState<number | null>(0);
 	const reducedMotion = usePrefersReducedMotion();
 	const toggle = (i: number) => setOpenIdx((cur) => (cur === i ? null : i));
@@ -1414,7 +1402,7 @@ function FocusedLines({
 	lines,
 	colors,
 }: {
-	lines: ConceptRead["lines"];
+	lines: SongRead["lines"];
 	colors: Palette;
 }) {
 	const [index, setIndex] = useState(0);

@@ -1,11 +1,11 @@
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 
 // SFT-1 / SFT-5 / SFT-7 in one judge (saves tokens). The whole difficulty is the boundary:
 // the golds are fragment-rich by design and legitimately end beats on short active turns, so
 // the judge cannot just fire on "short sentence" or "ends on a generalization". The few-shots
 // below are load-bearing — they are the actual golds (PASS) versus the named anti-patterns
 // from the principles (FAIL). Draw the line from them, not from a generic notion of "AI tell".
-export function voiceSoftnessPrompt(a: ConceptRead): string {
+export function voiceSoftnessPrompt(a: SongRead): string {
 	const scenes = a.arc
 		.map((beat, i) => `  arc[${i}]: ${beat.scene}`)
 		.join("\n");

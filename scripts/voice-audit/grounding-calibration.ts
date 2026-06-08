@@ -17,7 +17,7 @@
 //   bun scripts/voice-audit/grounding-calibration.ts --only golds
 
 import { Result } from "better-result";
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { loadGoldExemplars } from "./exemplars";
 import { GROUNDING_NEGATIVES } from "./fixtures/grounding-negatives";
 import { loadGroundingContext, type GroundingContext } from "./lyrics-context";
@@ -100,7 +100,7 @@ export function selfConsistencySummary(
 
 interface CalItem {
 	id: string;
-	read: ConceptRead;
+	read: SongRead;
 	ctx: GroundingContext;
 	/** true = should be grounded (a gold); false = a subtle negative. */
 	label: boolean;

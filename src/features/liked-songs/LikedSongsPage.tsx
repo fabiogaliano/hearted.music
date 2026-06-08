@@ -12,13 +12,12 @@ import { useIsomorphicLayoutEffect } from "@/lib/hooks/useIsomorphicLayoutEffect
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { useAuthenticatedTheme } from "@/lib/theme/authenticated-theme";
 import { fonts } from "@/lib/theme/fonts";
-
-import { likedSongToConceptSong } from "./components/concept-panel/concept-adapter";
-import { SongDetailPanel } from "./components/concept-panel/SongDetailPanel";
-import type { LockedCta } from "./components/concept-panel/SongDetailPanelSurface";
 import { LikedSongsHeader } from "./components/LikedSongsHeader";
 import { LikedSongsList } from "./components/LikedSongsList";
 import { SongSelectionBar } from "./components/SongSelectionBar";
+import { SongDetailPanel } from "./components/song-detail-panel/SongDetailPanel";
+import type { LockedCta } from "./components/song-detail-panel/SongDetailPanelSurface";
+import { likedSongToSongDetail } from "./components/song-detail-panel/song-detail-adapter";
 import { UnlockConfirmDialog } from "./components/UnlockConfirmDialog";
 import type { SearchFilter } from "./filter";
 import { toQueryFilter } from "./filter";
@@ -191,14 +190,14 @@ export function LikedSongsPage({
 		isSelectedSlugResolved,
 	});
 
-	// The song-detail panel reads the persisted v17 ConceptRead when present. The
-	// adapter always returns a ConceptSong (read=null for rows that don't parse —
+	// The song-detail panel reads the persisted v17 SongRead when present. The
+	// adapter always returns a SongDetail (read=null for rows that don't parse —
 	// locked, not yet analyzed, or pre-v17 8-field), so every selected song opens:
 	// the panel renders the hero plus a minimal "not analyzed yet" state for those.
 	const { themeColor } = useAuthenticatedTheme();
 	const conceptSong = useMemo(
 		() =>
-			selectedSong ? likedSongToConceptSong(selectedSong, themeColor) : null,
+			selectedSong ? likedSongToSongDetail(selectedSong, themeColor) : null,
 		[selectedSong, themeColor],
 	);
 

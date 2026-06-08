@@ -1,4 +1,4 @@
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 
 // XCT-1 / ARC-8 / CON-2: each prose field must earn its keep. The hard part is NOT firing on
 // coherence: a good read's lens, take, contradiction, and arc all orbit ONE central insight —
@@ -8,7 +8,7 @@ import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/conc
 // SAME altitude with no new angle or concrete content, deletable with zero loss. `lines` is
 // deliberately out of scope here — quoting the song's pivotal words echoes the take by nature
 // (LIN-8 stays an editorial taste call), and the spine-repetition device (TYP-3) is licensed.
-export function redundancyPrompt(a: ConceptRead): string {
+export function redundancyPrompt(a: SongRead): string {
 	const arc = a.arc
 		.map((beat, i) => `  arc[${i}] [${beat.label} — ${beat.mood}]: ${beat.scene}`)
 		.join("\n");

@@ -9,7 +9,7 @@
 
 import { z } from "zod";
 
-const ConceptArcBeatSchema = z.object({
+const ReadArcBeatSchema = z.object({
 	label: z.string(),
 	// May repeat: monochrome songs have beats but a flat register (diagnostic).
 	mood: z.string(),
@@ -21,11 +21,11 @@ const ConceptArcBeatSchema = z.object({
 // violations, and was never read by the matching layer. The quote itself is the
 // curation signal. Kept as an object (not a bare string) so historical reads that
 // still carry `insight` keep validating — Zod strips the unknown key.
-const ConceptLineBeatSchema = z.object({
+const ReadLineBeatSchema = z.object({
 	line: z.string(),
 });
 
-export const ConceptReadSchema = z.object({
+export const SongReadSchema = z.object({
 	image: z.string(),
 	// Free string: the three-form grammar lives in the prompt + jury, not a
 	// brittle Zod regex (concept-lens-vocabulary.md §3).
@@ -35,17 +35,17 @@ export const ConceptReadSchema = z.object({
 	take: z.string(),
 	// Required key, nullable value: forces explicit null over silent omission.
 	contradiction: z.string().nullable(),
-	arc: z.array(ConceptArcBeatSchema).min(2).max(4),
-	lines: z.array(ConceptLineBeatSchema).min(1).max(5),
+	arc: z.array(ReadArcBeatSchema).min(2).max(4),
+	lines: z.array(ReadLineBeatSchema).min(1).max(5),
 	// Required key, nullable value: texture is the one field grounded in sound,
 	// not lyrics, so it's written only when audio features exist (genre sharpens
 	// it) and null otherwise. The panel hides the block on null rather than let
 	// the model hallucinate a sound from the words.
 	texture: z.string().nullable(),
 });
-export type ConceptRead = z.infer<typeof ConceptReadSchema>;
-export type ConceptArcBeat = z.infer<typeof ConceptArcBeatSchema>;
-export type ConceptLineBeat = z.infer<typeof ConceptLineBeatSchema>;
+export type SongRead = z.infer<typeof SongReadSchema>;
+export type ReadArcBeat = z.infer<typeof ReadArcBeatSchema>;
+export type ReadLineBeat = z.infer<typeof ReadLineBeatSchema>;
 
 const LegacyThemeSchema = z.object({
 	name: z.string(),
@@ -110,8 +110,8 @@ export const SignalsSchema = z.object({
 });
 export type Signals = z.infer<typeof SignalsSchema>;
 
-export const ConceptAnalysisSchema = z.object({
-	read: ConceptReadSchema,
+export const ReadAnalysisSchema = z.object({
+	read: SongReadSchema,
 	signals: SignalsSchema.optional(),
 });
-export type ConceptAnalysis = z.infer<typeof ConceptAnalysisSchema>;
+export type ReadAnalysis = z.infer<typeof ReadAnalysisSchema>;

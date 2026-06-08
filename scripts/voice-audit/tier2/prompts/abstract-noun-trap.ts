@@ -1,6 +1,6 @@
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 
-export function abstractNounTrapPrompt(a: ConceptRead): string {
+export function abstractNounTrapPrompt(a: SongRead): string {
 	return `You are auditing one song image.
 
 A good image names a concrete image or a specific feeling the listener can picture. A bad image leans on abstract summary nouns like *journey*, *tapestry*, *exploration*, *declaration*, *reclaiming*, *statement*, *meditation*, *reflection*, *testament*, *celebration*.

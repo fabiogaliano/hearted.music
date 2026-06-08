@@ -7,9 +7,9 @@
 // on the SAME tier1 surface and prints the prose side-by-side for a human read.
 //
 // v13 emits the legacy SongAnalysisLyrical shape, which the tier1 rules can't grade directly, so it
-// is adapted onto the ConceptRead fields the rules read — interpretation→take, journey→arc scene,
+// is adapted onto the SongRead fields the rules read — interpretation→take, journey→arc scene,
 // sonic_texture→texture — the three substantive prose fields both schemas share. v13's short
-// headline/mood_description have no ConceptRead analog and are EXCLUDED from the numeric score (shown
+// headline/mood_description have no SongRead analog and are EXCLUDED from the numeric score (shown
 // in the prose dump). So the numbers compare like-for-like; the character/grounding gap that tier1
 // cannot see is left to the prose read (and a deferred paid pairwise).
 //
@@ -22,9 +22,9 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-	ConceptReadSchema,
-	type ConceptRead,
-} from "@/lib/domains/enrichment/content-analysis/concept-schema";
+	SongReadSchema,
+	type SongRead,
+} from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { renderAnnotationsBlockForPrompt } from "@/lib/domains/enrichment/content-analysis/grounding-annotations";
 import { getLyricalPrompt } from "@/lib/domains/enrichment/content-analysis/prompts/registry";
 import {
@@ -85,10 +85,10 @@ function annotationsForKey(key: string): string {
 	return renderAnnotationsBlockForPrompt(loadGroundingContext(key).annotationsBlock);
 }
 
-// Maps the legacy v13 shape onto the ConceptRead fields the tier1 rules read. Only the three shared
+// Maps the legacy v13 shape onto the SongRead fields the tier1 rules read. Only the three shared
 // substantive prose fields are populated; the rest are inert (lens/tension excluded from prose(),
 // image/contradiction empty/null) so v13 is scored on exactly the prose v17 is scored on.
-function adaptLegacy(a: SongAnalysisLyrical): ConceptRead {
+function adaptLegacy(a: SongAnalysisLyrical): SongRead {
 	return {
 		lens: "",
 		tension: a.compound_mood,
@@ -120,7 +120,7 @@ function fillTemplate(
 		.replace("{annotations}", () => annotations);
 }
 
-function profile(read: ConceptRead): { byRule: Record<string, number>; high: number; hits: RuleHit[] } {
+function profile(read: SongRead): { byRule: Record<string, number>; high: number; hits: RuleHit[] } {
 	const hits = runAllRules(read);
 	const byRule: Record<string, number> = {};
 	let high = 0;
@@ -196,7 +196,7 @@ async function main() {
 		const v17Prompt = fillTemplate(v17.template, song, genres, data.audioFeaturesFormatted, data.lyrics, exampleText, annotations);
 
 		const v13Gen = await genWithRetry(llm, v13Prompt, SongAnalysisLyricalSchema);
-		const v17Gen = await genWithRetry(llm, v17Prompt, ConceptReadSchema);
+		const v17Gen = await genWithRetry(llm, v17Prompt, SongReadSchema);
 		if (Result.isError(v13Gen)) {
 			console.error(`  v13 generation error; skipping`, v13Gen.error);
 			continue;
