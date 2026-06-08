@@ -111,6 +111,14 @@ InsufficientBalance.meta = {
 	description: "Not enough credits. Embeds PaywallCTA. Close button dismisses.",
 };
 
+export const Paywall: Story = () => (
+	<InteractiveDialog initialState={{ step: "paywall" }} />
+);
+Paywall.meta = {
+	description:
+		"Standalone paywall — opened from a locked song's 'See plans' CTA. Embeds PaywallCTA, Close dismisses.",
+};
+
 export const ErrorState: Story = () => (
 	<InteractiveDialog
 		initialState={{

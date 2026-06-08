@@ -17,7 +17,10 @@ import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { themes } from "@/lib/theme/colors";
 import { getThemedDarkColors } from "../detail/themed-dark-colors";
 import type { ConceptSong } from "./concept-types";
-import { SongDetailPanelSurface } from "./SongDetailPanelSurface";
+import {
+	type LockedCta,
+	SongDetailPanelSurface,
+} from "./SongDetailPanelSurface";
 
 const PANEL_WIDTH = "clamp(440px, 50vw, 760px)";
 
@@ -31,6 +34,10 @@ interface SongDetailPanelProps {
 	hasPrevious: boolean;
 	/** Walkthrough mode: append the sticky "See where this song belongs" CTA. */
 	isWalkthrough?: boolean;
+	/** Enrichment pipeline is running — an unread song shows the "Listening" state. */
+	isEnrichmentRunning?: boolean;
+	/** Action shown in the locked state (unlock or see-plans), resolved by the page. */
+	lockedCta?: LockedCta;
 }
 
 export function SongDetailPanel({
@@ -42,6 +49,8 @@ export function SongDetailPanel({
 	hasNext,
 	hasPrevious,
 	isWalkthrough = false,
+	isEnrichmentRunning = false,
+	lockedCta,
 }: SongDetailPanelProps) {
 	const prefersReducedMotion = useReducedMotion();
 	const colors = getThemedDarkColors(themes[song.theme]);
@@ -113,6 +122,8 @@ export function SongDetailPanel({
 				key={song.id}
 				song={song}
 				isWalkthrough={isWalkthrough}
+				isEnrichmentRunning={isEnrichmentRunning}
+				lockedCta={lockedCta}
 			/>
 			<button
 				type="button"

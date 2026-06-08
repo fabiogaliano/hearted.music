@@ -47,6 +47,7 @@ export function likedSongToConceptSong(
 		theme: themeColor,
 		albumArtUrl: song.track.image_url ?? undefined,
 		artistImageUrl: song.track.artist_image_url ?? undefined,
+		displayState: song.displayState,
 		read,
 	};
 }

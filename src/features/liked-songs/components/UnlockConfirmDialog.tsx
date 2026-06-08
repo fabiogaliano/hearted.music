@@ -36,6 +36,7 @@ export function UnlockConfirmDialog({
 	const isDismissable =
 		flowState.step === "confirming" ||
 		flowState.step === "insufficient_balance" ||
+		flowState.step === "paywall" ||
 		flowState.step === "error";
 
 	useShortcut({
@@ -146,6 +147,34 @@ export function UnlockConfirmDialog({
 					</div>
 				)}
 
+				{flowState.step === "paywall" && (
+					<div className="flex flex-col items-center gap-4 py-2">
+						<div className="text-center">
+							<p
+								className="theme-text text-base"
+								style={{ fontFamily: fonts.display }}
+							>
+								Hear every song
+							</p>
+							<p
+								className="theme-text-muted mt-1 text-xs"
+								style={{ fontFamily: fonts.body }}
+							>
+								Grab a pack to explore the ones you choose, or go unlimited.
+							</p>
+						</div>
+						<PaywallCTA billingState={billingState} compact />
+						<Button
+							variant="ghost"
+							onClick={onDismiss}
+							className="mt-2"
+							style={{ fontFamily: fonts.body }}
+						>
+							Close
+						</Button>
+					</div>
+				)}
+
 				{flowState.step === "error" && (
 					<div className="flex flex-col items-center gap-4 py-4">
 						<WarningIcon size={24} className="theme-primary" weight="regular" />
@@ -200,13 +229,13 @@ function ConfirmContent({
 						className="theme-text text-base"
 						style={{ fontFamily: fonts.display }}
 					>
-						Explore {songCount} {songCount === 1 ? "song" : "songs"}?
+						See what's inside?
 					</p>
 					<p
 						className="theme-text-muted mt-2 text-xs"
 						style={{ fontFamily: fonts.body }}
 					>
-						{balanceAfter} songs to explore remaining after unlock
+						{balanceAfter} more waiting after this
 					</p>
 				</div>
 

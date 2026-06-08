@@ -21,6 +21,9 @@ export type UnlockFlowState =
 			required: number;
 			available: number;
 	  }
+	// Paywall shown on its own (e.g. a free account opening "See plans" from a
+	// locked song), not as the consequence of a failed unlock attempt.
+	| { step: "paywall" }
 	| { step: "error"; message: string };
 
 export function useSongUnlock(accountId: string) {
@@ -33,6 +36,10 @@ export function useSongUnlock(accountId: string) {
 
 	const cancelConfirmation = useCallback(() => {
 		setFlowState({ step: "idle" });
+	}, []);
+
+	const showPaywall = useCallback(() => {
+		setFlowState({ step: "paywall" });
 	}, []);
 
 	const confirmUnlock = useCallback(async () => {
@@ -106,6 +113,7 @@ export function useSongUnlock(accountId: string) {
 		flowState,
 		requestConfirmation,
 		cancelConfirmation,
+		showPaywall,
 		confirmUnlock,
 		dismiss,
 	};
