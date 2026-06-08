@@ -21,10 +21,14 @@ export interface ConceptSong {
 	// return one), so the prod adapter omits it and the Hero hides the year.
 	year?: number;
 	genres: string[];
+	// Each metric is independently nullable, mirroring `track.audio_features`:
+	// a song may have some features and not others (and many have none at all).
+	// null means "absent" so the panel renders only the columns it has instead
+	// of gating the whole bpm/energy/valence block on one of them.
 	audioFeatures: {
-		tempo: number;
-		energy: number;
-		valence: number;
+		tempo: number | null;
+		energy: number | null;
+		valence: number | null;
 	};
 	theme: ThemeColor;
 	albumArtUrl?: string;

@@ -145,6 +145,10 @@ function Hero({
 	const vignette = `radial-gradient(ellipse at center, transparent 20%, ${colors.bgVignette} 100%),
 		linear-gradient(to bottom, transparent 40%, ${colors.bgFade} 100%)`;
 
+	// Drives both the SonicNumbers gate and where the genre cluster stacks. The
+	// block shows whenever *any* metric is present, not just tempo.
+	const hasSonicNumbers = getSonicColumns(song.audioFeatures).length > 0;
+
 	return (
 		<div
 			style={{
@@ -276,9 +280,7 @@ function Hero({
 						{song.year != null ? `${song.album} · ${song.year}` : song.album}
 					</div>
 				</div>
-				{song.audioFeatures.tempo > 0 && (
-					<SonicNumbers song={song} colors={colors} />
-				)}
+				{hasSonicNumbers && <SonicNumbers song={song} colors={colors} />}
 			</div>
 
 			{song.genres.length > 0 && (
@@ -289,10 +291,9 @@ function Hero({
 						// Sit directly above the sonic numbers (or at their baseline when
 						// there are none). Anchored to the hero — not the overflow-clipped
 						// bottom row — so the leftward fan isn't cut off.
-						bottom:
-							song.audioFeatures.tempo > 0
-								? ALBUM_ART_BOTTOM + SONIC_NUMBERS_HEIGHT + GENRE_STACK_GAP
-								: ALBUM_ART_BOTTOM,
+						bottom: hasSonicNumbers
+							? ALBUM_ART_BOTTOM + SONIC_NUMBERS_HEIGHT + GENRE_STACK_GAP
+							: ALBUM_ART_BOTTOM,
 						zIndex: 4,
 					}}
 				>
@@ -303,6 +304,34 @@ function Hero({
 	);
 }
 
+// The hero's bpm/energy/valence columns. Each metric is independent so a song
+// with partial features still shows what it has (e.g. bpm alone). tempo of 0
+// reads as absent — BPM is never legitimately 0 — while energy/valence of 0 are
+// real low-end values, so only null drops them.
+function getSonicColumns(
+	audioFeatures: ConceptSong["audioFeatures"],
+): { value: string; label: string }[] {
+	const { tempo, energy, valence } = audioFeatures;
+	return [
+		tempo != null && tempo > 0
+			? { value: String(Math.round(tempo)), label: "bpm" }
+			: null,
+		energy != null
+			? {
+					value: energy > 0.66 ? "High" : energy > 0.33 ? "Mid" : "Low",
+					label: "energy",
+				}
+			: null,
+		valence != null
+			? {
+					value:
+						valence > 0.66 ? "Bright" : valence > 0.33 ? "Neutral" : "Dark",
+					label: "valence",
+				}
+			: null,
+	].filter((column) => column !== null) as { value: string; label: string }[];
+}
+
 function SonicNumbers({
 	song,
 	colors,
@@ -310,16 +339,7 @@ function SonicNumbers({
 	song: ConceptSong;
 	colors: Palette;
 }) {
-	const { tempo, energy, valence } = song.audioFeatures;
-	const energyLabel = energy > 0.66 ? "High" : energy > 0.33 ? "Mid" : "Low";
-	const valenceLabel =
-		valence > 0.66 ? "Bright" : valence > 0.33 ? "Neutral" : "Dark";
-
-	const items: { value: string; label: string }[] = [
-		{ value: String(Math.round(tempo)), label: "bpm" },
-		{ value: energyLabel, label: "energy" },
-		{ value: valenceLabel, label: "valence" },
-	];
+	const items = getSonicColumns(song.audioFeatures);
 
 	return (
 		<div style={{ display: "flex", gap: 16, flexShrink: 0 }}>
