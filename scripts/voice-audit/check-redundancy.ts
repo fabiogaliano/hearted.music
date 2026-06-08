@@ -10,7 +10,7 @@
 //   bun scripts/voice-audit/check-redundancy.ts
 
 import { Result } from "better-result";
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { createLlmService } from "@/lib/integrations/llm/service";
 import { loadGoldExemplars } from "./exemplars";
 import { redundancyPrompt } from "./tier2/prompts/redundancy";
@@ -18,7 +18,7 @@ import { RedundancySchema } from "./tier2/schemas";
 
 interface Case {
 	label: string;
-	read: ConceptRead;
+	read: SongRead;
 	expectDistinct: boolean;
 }
 

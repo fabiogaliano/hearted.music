@@ -17,9 +17,9 @@
 
 import { Result } from "better-result";
 import {
-	ConceptReadSchema,
-	type ConceptRead,
-} from "@/lib/domains/enrichment/content-analysis/concept-schema";
+	SongReadSchema,
+	type SongRead,
+} from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import { runAllRules } from "../tier1/rules";
 import type { RuleHit } from "../types";
@@ -55,7 +55,7 @@ const RECIPES: Record<string, string> = {
 };
 
 export interface RewriteResult {
-	read: ConceptRead;
+	read: SongRead;
 	passes: number;
 	hitsBefore: RuleHit[];
 	hitsAfter: RuleHit[];
@@ -63,14 +63,14 @@ export interface RewriteResult {
 	tokens: number;
 }
 
-function targetHits(read: ConceptRead): RuleHit[] {
+function targetHits(read: SongRead): RuleHit[] {
 	return runAllRules(read).filter((h) => TARGET_RULES.has(h.rule));
 }
 
 // Renders the read field-by-field with the flagged spans inline, so the model sees exactly which
 // sentence in which field carries which tell. Unflagged fields are shown too (it needs the whole
 // read for coherence) but carry no ⚠ marks — the model is told to copy those through unchanged.
-function buildRewritePrompt(read: ConceptRead, hits: RuleHit[]): string {
+function buildRewritePrompt(read: SongRead, hits: RuleHit[]): string {
 	const byField = new Map<string, RuleHit[]>();
 	for (const h of hits) {
 		const arr = byField.get(h.field) ?? [];
@@ -136,11 +136,11 @@ Return the corrected read as structured JSON with the same fields. Keep lens, te
 // or corrupts an unflagged field (e.g. echoes "beat 1" into a clean scene), that change is discarded.
 // Exported for unit testing — this is the content-fidelity invariant the whole pass rests on.
 export function applySurgical(
-	invariant: ConceptRead,
-	fedIn: ConceptRead,
-	modelOut: ConceptRead,
+	invariant: SongRead,
+	fedIn: SongRead,
+	modelOut: SongRead,
 	flaggedFields: Set<string>,
-): ConceptRead {
+): SongRead {
 	const pick = (field: string, modelVal: string, fedInVal: string): string =>
 		flaggedFields.has(field) && modelVal ? modelVal : fedInVal;
 
@@ -178,7 +178,7 @@ export function applySurgical(
 // the cleaned read plus before/after hit lists (full rule set, so callers can see what the pass did
 // NOT touch) and the token cost. A pass that hits an LLM error returns the best read so far.
 export async function rewriteRead(
-	read: ConceptRead,
+	read: SongRead,
 	llm: LlmService,
 	opts?: { maxPasses?: number; temperature?: number },
 ): Promise<RewriteResult> {
@@ -194,7 +194,7 @@ export async function rewriteRead(
 		if (hits.length === 0) break;
 
 		const prompt = buildRewritePrompt(current, hits);
-		const gen = await llm.generateObject(prompt, ConceptReadSchema, {
+		const gen = await llm.generateObject(prompt, SongReadSchema, {
 			temperature,
 			maxOutputTokens: 4000,
 			functionId: "voice-audit-rewrite-pass",

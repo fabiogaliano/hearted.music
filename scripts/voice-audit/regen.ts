@@ -21,9 +21,9 @@ import { fileURLToPath } from "node:url";
 import type { z } from "zod";
 import { SongAnalysisLyricalSchema } from "@/lib/domains/enrichment/content-analysis/song-analysis";
 import {
-	ConceptReadSchema,
-	type ConceptRead,
-} from "@/lib/domains/enrichment/content-analysis/concept-schema";
+	SongReadSchema,
+	type SongRead,
+} from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { renderAnnotationsBlockForPrompt } from "@/lib/domains/enrichment/content-analysis/grounding-annotations";
 import {
 	ACTIVE_LYRICAL_VERSION,
@@ -205,7 +205,7 @@ function buildPrompt(
 
 function printAudit(
 	label: string,
-	analysis: ConceptRead,
+	analysis: SongRead,
 	hits: ReturnType<typeof runAllRules>,
 ): void {
 	const { totals } = tallyHits(hits);
@@ -243,7 +243,7 @@ async function main() {
 	// shape. The generation schema follows the prompt so generateObject validates the
 	// right contract; the audit step (read-only) requires the read shape.
 	const genSchema: z.ZodTypeAny =
-		Number(flags.version) >= 14 ? ConceptReadSchema : SongAnalysisLyricalSchema;
+		Number(flags.version) >= 14 ? SongReadSchema : SongAnalysisLyricalSchema;
 	const songs = resolveSongs(flags.songs);
 
 	const resolution = resolveLlmConfig(flags.provider);
@@ -315,7 +315,7 @@ async function main() {
 
 			// The experiment store and Tier-1 rules grade the read shape. A pre-v14 prompt
 			// emits the legacy model, which can't be audited or recorded under the new rules.
-			const parsed = ConceptReadSchema.safeParse(gen.value.output);
+			const parsed = SongReadSchema.safeParse(gen.value.output);
 			if (!parsed.success) {
 				console.error(
 					`v${prompt.version} emits the legacy 8-field shape; voice-audit now grades the { read } model. Use --version 14+ to audit and record.`,

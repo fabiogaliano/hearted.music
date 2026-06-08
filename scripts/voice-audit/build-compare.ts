@@ -12,9 +12,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadGoldExemplars, type GoldExemplar } from "./exemplars";
 import {
-	ConceptReadSchema,
-	type ConceptRead,
-} from "@/lib/domains/enrichment/content-analysis/concept-schema";
+	SongReadSchema,
+	type SongRead,
+} from "@/lib/domains/enrichment/content-analysis/read-schema";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const EXPERIMENTS_DIR = join(HERE, "experiments");
@@ -28,7 +28,7 @@ interface ExperimentRun {
 	spotifyTrackId: string;
 	promptVersion: string;
 	model: string;
-	analysis: ConceptRead;
+	analysis: SongRead;
 }
 
 // Picks the most recent run per spotifyTrackId. Timestamp lives in the JSON so we
@@ -41,7 +41,7 @@ function loadLatestRunPerTrack(): Map<string, ExperimentRun> {
 	for (const file of files) {
 		const raw = JSON.parse(readFileSync(join(EXPERIMENTS_DIR, file), "utf-8"));
 		if (!raw.spotifyTrackId || !raw.analysis) continue;
-		if (!ConceptReadSchema.safeParse(raw.analysis).success) continue;
+		if (!SongReadSchema.safeParse(raw.analysis).success) continue;
 		const prev = latest.get(raw.spotifyTrackId);
 		if (!prev || raw.timestamp > prev.timestamp) latest.set(raw.spotifyTrackId, raw as ExperimentRun);
 	}
@@ -53,7 +53,7 @@ type FieldMap = Map<string, string>;
 // Field order matters for the rendered page (top-to-bottom reading flow); arrays
 // are emitted up to the longer of the two sides so missing entries show as gaps,
 // which is itself useful comparison data.
-function flatten(a: ConceptRead): FieldMap {
+function flatten(a: SongRead): FieldMap {
 	const out: FieldMap = new Map();
 	out.set("image", a.image);
 	out.set("lens", a.lens);

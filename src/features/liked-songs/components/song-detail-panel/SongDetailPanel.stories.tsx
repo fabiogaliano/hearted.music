@@ -1,7 +1,7 @@
 import type { Story } from "@ladle/react";
-import { CONCEPT_SONGS } from "./concept-data";
-import type { ConceptSong, PlaylistsPanel } from "./concept-types";
 import { SongDetailPanel } from "./SongDetailPanel";
+import { GOLD_SONG_DETAILS } from "./song-detail-data";
+import type { PlaylistsPanel, SongDetail } from "./song-detail-types";
 
 const noop = () => {};
 
@@ -16,14 +16,14 @@ const ARTIST_IMAGE_URL =
 // A read-bearing fixture for the analyzed surface. The unread variants reuse its
 // identity (so the hero stays constant) and only flip displayState / read — the
 // empty state is then the only thing that changes between stories.
-const analyzed: ConceptSong = {
-	...CONCEPT_SONGS[0],
+const analyzed: SongDetail = {
+	...GOLD_SONG_DETAILS[0],
 	displayState: "analyzed",
 	albumArtUrl: ALBUM_ART_URL,
 	artistImageUrl: ARTIST_IMAGE_URL,
 };
 
-const unread = (overrides: Partial<ConceptSong>): ConceptSong => ({
+const unread = (overrides: Partial<SongDetail>): SongDetail => ({
 	...analyzed,
 	read: null,
 	...overrides,
@@ -55,7 +55,7 @@ function PanelStory({
 	lockedCta,
 	playlists,
 }: {
-	song: ConceptSong;
+	song: SongDetail;
 	isEnrichmentRunning?: boolean;
 	lockedCta?: { label: string; onClick: () => void };
 	playlists?: PlaylistsPanel;

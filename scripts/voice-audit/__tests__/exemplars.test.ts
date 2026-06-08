@@ -6,8 +6,8 @@ import { lensCoherencePrompt } from "../tier2/prompts/lens-coherence";
 describe("promoted gold exemplars", () => {
 	const golds = [...loadGoldExemplars().values()];
 
-	it("loads and validates all nine reads through ConceptReadSchema", () => {
-		// loadGoldExemplars parses each .read through ConceptReadSchema, so reaching here
+	it("loads and validates all nine reads through SongReadSchema", () => {
+		// loadGoldExemplars parses each .read through SongReadSchema, so reaching here
 		// means all nine validated. The original four were promoted in Session 5; the five
 		// variance-spanning golds (dtmf, no-sex-for-ben, beautiful-things, pink-pony-club,
 		// as-it-was) were added in Session 5.5-continued.

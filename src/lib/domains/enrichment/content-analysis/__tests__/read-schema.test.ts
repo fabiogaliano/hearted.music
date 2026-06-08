@@ -1,24 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { CONCEPT_SONGS } from "@/features/liked-songs/components/concept-panel/concept-data";
+import { GOLD_SONG_DETAILS } from "@/features/liked-songs/components/song-detail-panel/song-detail-data";
 import {
-	ConceptReadSchema,
 	SignalsSchema,
-} from "@/lib/domains/enrichment/content-analysis/concept-schema";
+	SongReadSchema,
+} from "@/lib/domains/enrichment/content-analysis/read-schema";
 
-const baseRead = CONCEPT_SONGS[0].read;
+const baseRead = GOLD_SONG_DETAILS[0].read;
 
-describe("ConceptReadSchema", () => {
-	it("validates all four gold concept-data reads unmodified", () => {
-		for (const song of CONCEPT_SONGS) {
-			const result = ConceptReadSchema.safeParse(song.read);
+describe("SongReadSchema", () => {
+	it("validates all four gold song-detail-data reads unmodified", () => {
+		for (const song of GOLD_SONG_DETAILS) {
+			const result = SongReadSchema.safeParse(song.read);
 			expect(result.success, `${song.id} should validate`).toBe(true);
 		}
 	});
 
 	it("accepts a 4-beat arc (Not Like Us, the widest gold)", () => {
-		const nlu = CONCEPT_SONGS.find((s) => s.id === "not-like-us");
+		const nlu = GOLD_SONG_DETAILS.find((s) => s.id === "not-like-us");
 		expect(nlu?.read.arc.length).toBe(4);
-		expect(ConceptReadSchema.safeParse(nlu?.read).success).toBe(true);
+		expect(SongReadSchema.safeParse(nlu?.read).success).toBe(true);
 	});
 
 	it("allows repeated mood across arc beats (monochrome songs)", () => {
@@ -29,12 +29,12 @@ describe("ConceptReadSchema", () => {
 				{ label: "Chorus", mood: "Grateful", scene: "b." },
 			],
 		};
-		expect(ConceptReadSchema.safeParse(flat).success).toBe(true);
+		expect(SongReadSchema.safeParse(flat).success).toBe(true);
 	});
 
 	it("enforces the arc envelope [2, 4]", () => {
 		const oneBeat = { ...baseRead, arc: baseRead.arc.slice(0, 1) };
-		expect(ConceptReadSchema.safeParse(oneBeat).success).toBe(false);
+		expect(SongReadSchema.safeParse(oneBeat).success).toBe(false);
 
 		const fiveBeats = {
 			...baseRead,
@@ -44,34 +44,34 @@ describe("ConceptReadSchema", () => {
 				scene: "x.",
 			})),
 		};
-		expect(ConceptReadSchema.safeParse(fiveBeats).success).toBe(false);
+		expect(SongReadSchema.safeParse(fiveBeats).success).toBe(false);
 	});
 
 	it("enforces the lines envelope [1, 5]", () => {
 		const noLines = { ...baseRead, lines: [] };
-		expect(ConceptReadSchema.safeParse(noLines).success).toBe(false);
+		expect(SongReadSchema.safeParse(noLines).success).toBe(false);
 
 		const sixLines = {
 			...baseRead,
 			lines: Array.from({ length: 6 }, () => ({ line: "l" })),
 		};
-		expect(ConceptReadSchema.safeParse(sixLines).success).toBe(false);
+		expect(SongReadSchema.safeParse(sixLines).success).toBe(false);
 	});
 
 	it("requires an explicit contradiction key (null allowed, missing rejected)", () => {
 		const withNull = { ...baseRead, contradiction: null };
-		expect(ConceptReadSchema.safeParse(withNull).success).toBe(true);
+		expect(SongReadSchema.safeParse(withNull).success).toBe(true);
 
 		const { contradiction: _omitted, ...withoutKey } = baseRead;
-		expect(ConceptReadSchema.safeParse(withoutKey).success).toBe(false);
+		expect(SongReadSchema.safeParse(withoutKey).success).toBe(false);
 	});
 
 	it("requires an explicit texture key (null allowed when audio features absent, missing rejected)", () => {
 		const withNull = { ...baseRead, texture: null };
-		expect(ConceptReadSchema.safeParse(withNull).success).toBe(true);
+		expect(SongReadSchema.safeParse(withNull).success).toBe(true);
 
 		const { texture: _omitted, ...withoutKey } = baseRead;
-		expect(ConceptReadSchema.safeParse(withoutKey).success).toBe(false);
+		expect(SongReadSchema.safeParse(withoutKey).success).toBe(false);
 	});
 });
 

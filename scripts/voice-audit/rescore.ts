@@ -10,7 +10,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ConceptReadSchema } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import { SongReadSchema } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { RunRecord } from "./experiments";
 import { tallyHits } from "./experiments";
 import { runAllRules } from "./tier1/rules";
@@ -29,7 +29,7 @@ function main() {
 	for (const file of files) {
 		const record = JSON.parse(readFileSync(join(DIR, file), "utf-8")) as RunRecord;
 		// Tier-1 rules now grade the read shape; legacy 8-field runs are skipped.
-		const parsed = ConceptReadSchema.safeParse(record.analysis);
+		const parsed = SongReadSchema.safeParse(record.analysis);
 		if (!parsed.success) continue;
 		const hits = runAllRules(parsed.data);
 		const { totals, byRule } = tallyHits(hits);

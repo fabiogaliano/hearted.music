@@ -67,10 +67,10 @@ const INSTRUMENTAL_PROMPTS: Record<string, PromptVersion> = {
 // The versions production ships today. Bump these to promote a new prompt; the
 // stored analysis records the active version, so output is always traceable to its prompt.
 //
-// v17 is active: it emits the redesigned { read } model (ConceptReadSchema). Because the
-// version is >= 14, song-analysis.ts parses generated output against ConceptReadSchema and
+// v17 is active: it emits the redesigned { read } model (SongReadSchema). Because the
+// version is >= 14, song-analysis.ts parses generated output against SongReadSchema and
 // stores the read flat (see buildAnalysisData), and the production song-detail surface now
-// renders it through ConceptPanel. NOTE: flipping ACTIVE is global — embeddings/matching for
+// renders it through SongDetailPanel. NOTE: flipping ACTIVE is global — embeddings/matching for
 // newly-generated rows go stale until the matching layer is rebuilt (a later task).
 export const ACTIVE_LYRICAL_VERSION = "17";
 export const ACTIVE_INSTRUMENTAL_VERSION = "3";

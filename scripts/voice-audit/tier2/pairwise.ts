@@ -8,7 +8,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { runClaude } from "./claude-cli";
 
 const PERSONA_FILE = join(dirname(fileURLToPath(import.meta.url)), "judge-persona.md");
@@ -36,7 +36,7 @@ export const VerdictSchema = z.object({
 
 export type Verdict = z.infer<typeof VerdictSchema>;
 
-export function renderAnalysis(a: ConceptRead): string {
+export function renderAnalysis(a: SongRead): string {
 	const lines = [
 		`image: ${a.image}`,
 		`lens: ${a.lens}`,
@@ -147,8 +147,8 @@ export function reconcile(
 
 export async function judgePair(
 	song: string,
-	first: ConceptRead,
-	second: ConceptRead,
+	first: SongRead,
+	second: SongRead,
 	options: JudgeOptions = {},
 ): Promise<BalancedVerdict> {
 	const firstText = renderAnalysis(first);

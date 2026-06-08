@@ -20,9 +20,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-	ConceptReadSchema,
-	type ConceptRead,
-} from "@/lib/domains/enrichment/content-analysis/concept-schema";
+	SongReadSchema,
+	type SongRead,
+} from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { createLlmService } from "@/lib/integrations/llm/service";
 import {
 	collapseOutcome,
@@ -67,7 +67,7 @@ function loadV17Flash(): RunRecord[] {
 				r !== null &&
 				r.promptVersion === "17" &&
 				(r.model?.includes("flash") ?? false) &&
-				ConceptReadSchema.safeParse(r.analysis).success,
+				SongReadSchema.safeParse(r.analysis).success,
 		);
 }
 
@@ -81,8 +81,8 @@ function runOutcome(v: BalancedVerdict): RunOutcome {
 // caller skips that candidate instead of aborting the run (mirrors evaluate.ts's per-candidate skip).
 async function judgePairSafe(
 	song: string,
-	first: ConceptRead,
-	second: ConceptRead,
+	first: SongRead,
+	second: SongRead,
 	attempts = 3,
 ): Promise<BalancedVerdict | null> {
 	for (let i = 0; i < attempts; i++) {
@@ -95,11 +95,11 @@ async function judgePairSafe(
 	return null;
 }
 
-function high(read: ConceptRead): number {
+function high(read: SongRead): number {
 	return runAllRules(read).filter((h) => h.severity === "high").length;
 }
 
-function verdictRecord(runId: string, read: ConceptRead, v: BalancedVerdict): EvalRunVerdict {
+function verdictRecord(runId: string, read: SongRead, v: BalancedVerdict): EvalRunVerdict {
 	const hits = runAllRules(read);
 	const t = { high: 0, medium: 0, low: 0 };
 	for (const h of hits) t[h.severity]++;

@@ -20,7 +20,7 @@ import { LlmService } from "@/lib/integrations/llm/service";
 import type { RunRecord } from "./experiments";
 import { rewriteRead, TARGET_RULES } from "./rewrite/rewrite-pass";
 import { runAllRules } from "./tier1/rules";
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { RuleHit } from "./types";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -81,7 +81,7 @@ function pickRecords(records: RunRecord[], n: number): RunRecord[] {
 		.slice(0, n);
 }
 
-function profile(read: ConceptRead): { byRule: Record<string, number>; high: number } {
+function profile(read: SongRead): { byRule: Record<string, number>; high: number } {
 	const hits = runAllRules(read);
 	const byRule: Record<string, number> = {};
 	let high = 0;
@@ -97,7 +97,7 @@ function fmtProfileRow(label: string, p: ReturnType<typeof profile>): string {
 	return `  ${label.padEnd(16)}${cells.join("")}   Σhigh=${p.high}`;
 }
 
-function printRead(read: ConceptRead): void {
+function printRead(read: SongRead): void {
 	console.log(`    lens:  ${read.lens}`);
 	console.log(`    take:  ${read.take}`);
 	if (read.contradiction) console.log(`    contra: ${read.contradiction}`);

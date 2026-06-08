@@ -14,19 +14,19 @@
 // Negatives always run; a gold filter only narrows the (expensive) positive set.
 
 import { Result } from "better-result";
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { loadGoldExemplars } from "./exemplars";
 import { loadGroundingContext, type GroundingContext } from "./lyrics-context";
 import { runGroundingJudge } from "./tier2/grounding-judge";
 
 interface Case {
 	label: string;
-	read: ConceptRead;
+	read: SongRead;
 	ctx: GroundingContext;
 	expectGrounded: boolean;
 }
 
-function spliceTake(read: ConceptRead, suffix: string): ConceptRead {
+function spliceTake(read: SongRead, suffix: string): SongRead {
 	return { ...read, take: `${read.take} ${suffix}` };
 }
 

@@ -3,16 +3,16 @@
 // how its song label is formatted.
 //
 // Migrated Session 5: the gold files now carry the redesigned { read } model
-// (ConceptReadSchema). Each file is { read: {...} }; we parse the read sub-object so
+// (SongReadSchema). Each file is { read: {...} }; we parse the read sub-object so
 // the on-disk shape can later grow a { signals } sibling without touching the loader.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-	ConceptReadSchema,
-	type ConceptRead,
-} from "@/lib/domains/enrichment/content-analysis/concept-schema";
+	SongReadSchema,
+	type SongRead,
+} from "@/lib/domains/enrichment/content-analysis/read-schema";
 
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "exemplars");
 
@@ -27,7 +27,7 @@ export interface GoldExemplar {
 	key: string;
 	song: string;
 	spotifyTrackId: string;
-	read: ConceptRead;
+	read: SongRead;
 }
 
 export function loadGoldExemplars(): Map<string, GoldExemplar> {
@@ -39,7 +39,7 @@ export function loadGoldExemplars(): Map<string, GoldExemplar> {
 		const raw = JSON.parse(readFileSync(join(DIR, entry.file), "utf-8")) as {
 			read?: unknown;
 		};
-		const read = ConceptReadSchema.parse(raw.read);
+		const read = SongReadSchema.parse(raw.read);
 		out.set(entry.spotifyTrackId, {
 			key: entry.key,
 			song: entry.song,
@@ -50,7 +50,7 @@ export function loadGoldExemplars(): Map<string, GoldExemplar> {
 	return out;
 }
 
-function renderExemplarRead(read: ConceptRead): string {
+function renderExemplarRead(read: SongRead): string {
 	const arc = read.arc
 		.map((beat) => `  - [${beat.label} — ${beat.mood}] ${beat.scene}`)
 		.join("\n");

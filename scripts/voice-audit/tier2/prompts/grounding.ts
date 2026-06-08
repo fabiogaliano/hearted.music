@@ -1,4 +1,4 @@
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 
 // The priority-1 judge (GRD-1/2/3/6, IMG-3). It closes the specificity/grounding loss that
 // beat v14/v15: a read may only say what the writer could have heard. Unlike the pairwise
@@ -10,7 +10,7 @@ import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/conc
 // `heardLyrics` is the full heard text; `annotationsBlock` is renderAnnotationsBlock() over
 // the > 15-vote selection (may be "" — many songs have none, and that is fine).
 export function groundingPrompt(
-	a: ConceptRead,
+	a: SongRead,
 	heardLyrics: string,
 	annotationsBlock: string,
 ): string {

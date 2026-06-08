@@ -3,9 +3,9 @@ import path from "node:path";
 import { Result } from "better-result";
 import { z } from "zod";
 import {
-	ConceptReadSchema,
-	type ConceptRead,
-} from "@/lib/domains/enrichment/content-analysis/concept-schema";
+	SongReadSchema,
+	type SongRead,
+} from "@/lib/domains/enrichment/content-analysis/read-schema";
 import {
 	createLlmService,
 	type LlmService,
@@ -45,7 +45,7 @@ interface JudgeRunner {
 	name: string;
 	run: (
 		llm: LlmService,
-		read: ConceptRead,
+		read: SongRead,
 	) => Promise<
 		Result<
 			{
@@ -60,7 +60,7 @@ interface JudgeRunner {
 function makeJudge<T>(
 	name: string,
 	schema: z.ZodType<T>,
-	buildPrompt: (a: ConceptRead) => string,
+	buildPrompt: (a: SongRead) => string,
 	toFinding: (result: T) => Omit<JudgeFinding, "judge">,
 ): JudgeRunner {
 	return {
@@ -188,7 +188,7 @@ export interface JudgeContext {
 
 export async function judgeAnalysis(
 	llm: LlmService,
-	analysis: ConceptRead,
+	analysis: SongRead,
 	totals: TokenUsage,
 	budget: TokenBudget,
 	context: JudgeContext = {},
@@ -289,7 +289,7 @@ export async function runTier2OnFiles(
 		const raw = JSON.parse(readFileSync(absolute, "utf-8"));
 		const { songId, read } = extractAnalysis(raw);
 		if (!read) continue;
-		const parsed = ConceptReadSchema.safeParse(read);
+		const parsed = SongReadSchema.safeParse(read);
 		if (!parsed.success) continue;
 
 		const result = await judgeAnalysis(llm, parsed.data, totals, budget);

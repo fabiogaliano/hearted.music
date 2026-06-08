@@ -1,10 +1,10 @@
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 
 // The lens is the thesis of the read; everything else is evidence for it
 // (concept-lens-vocabulary.md §0). This judge is where Analyze -> Identify -> Violate
 // becomes a grading rule: it has to catch the category-typical slop the prompt steers
 // away from, and the SURFACE-abuse inverse (a deep song lazily tagged thin).
-export function lensCoherencePrompt(a: ConceptRead): string {
+export function lensCoherencePrompt(a: SongRead): string {
 	const arc = a.arc
 		.map((beat) => `  - [${beat.label} — ${beat.mood}] ${beat.scene}`)
 		.join("\n");

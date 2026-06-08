@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-	ConceptReadSchema,
-	type ConceptRead,
-} from "@/lib/domains/enrichment/content-analysis/concept-schema";
+	SongReadSchema,
+	type SongRead,
+} from "@/lib/domains/enrichment/content-analysis/read-schema";
 import {
 	academicRegister,
 	aiVocabulary,
@@ -27,22 +27,22 @@ import {
 
 const FIXTURES = path.join(__dirname, "fixtures");
 
-function loadRead(file: string): ConceptRead {
+function loadRead(file: string): SongRead {
 	const raw = JSON.parse(readFileSync(path.join(FIXTURES, file), "utf-8"));
-	return ConceptReadSchema.parse(raw);
+	return SongReadSchema.parse(raw);
 }
 
-function base(): ConceptRead {
+function base(): SongRead {
 	return loadRead("clean.json");
 }
 
 // The rules read free-text fields; `take` is the longest prose field (was
 // `interpretation`) and `image` is the short felt-image (was `headline`).
-function withTake(text: string): ConceptRead {
+function withTake(text: string): SongRead {
 	return { ...base(), take: text };
 }
 
-function withImage(text: string): ConceptRead {
+function withImage(text: string): SongRead {
 	return { ...base(), image: text };
 }
 
@@ -55,7 +55,7 @@ describe("clean fixture is clean", () => {
 
 describe("null texture (audio features absent)", () => {
 	it("audits the remaining fields without crashing and never flags texture", () => {
-		const analysis: ConceptRead = { ...base(), texture: null };
+		const analysis: SongRead = { ...base(), texture: null };
 		expect(runAllRules(analysis)).toEqual([]);
 		expect(burstiness(analysis).some((h) => h.field === "texture")).toBe(
 			false,
@@ -317,7 +317,7 @@ describe("book-report-opener", () => {
 });
 
 describe("structural-section", () => {
-	function withScene(scene: string): ConceptRead {
+	function withScene(scene: string): SongRead {
 		const a = base();
 		a.arc[0] = { ...a.arc[0], scene };
 		return a;

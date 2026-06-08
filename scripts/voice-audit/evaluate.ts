@@ -28,9 +28,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-	ConceptReadSchema,
-	type ConceptRead,
-} from "@/lib/domains/enrichment/content-analysis/concept-schema";
+	SongReadSchema,
+	type SongRead,
+} from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { createLlmService, type LlmService } from "@/lib/integrations/llm/service";
 import {
 	collapseOutcome,
@@ -95,7 +95,7 @@ const ZERO_TOKENS = { prompt: 0, completion: 0, total: 0 };
 async function runPointwise(
 	llm: LlmService,
 	songKey: string,
-	analysis: ConceptRead,
+	analysis: SongRead,
 ): Promise<{ findings: JudgeFindingRecord[]; costUsd: number }> {
 	const grounding = loadGroundingContext(songKey);
 	const result = await judgeAnalysis(llm, analysis, ZERO_TOKENS, DEFAULT_TOKEN_BUDGET, {
@@ -115,7 +115,7 @@ function runOutcome(v: BalancedVerdict): RunOutcome {
 }
 
 // Old-shape (pre-v14) runs are skipped: their stored analysis is the legacy 8-field
-// model, which no longer validates against ConceptReadSchema. Until v14 generation
+// model, which no longer validates against SongReadSchema. Until v14 generation
 // produces new-shape runs, this returns none and the evaluator reports "no matching
 // runs" — the documented audit-blindness window of the clean cut.
 function loadRuns(): RunRecord[] {
@@ -132,7 +132,7 @@ function loadRuns(): RunRecord[] {
 			(r): r is RunRecord =>
 				r !== null &&
 				r.promptKind === "lyrical" &&
-				ConceptReadSchema.safeParse(r.analysis).success,
+				SongReadSchema.safeParse(r.analysis).success,
 		);
 }
 
@@ -246,7 +246,7 @@ async function main() {
 						`candidate ${verdict.winner === "first" ? "WINS" : verdict.winner === "second" ? "loses" : "ties"} vs gold (${verdict.confidence}${verdict.agreement ? "" : ", flipped"})`,
 					);
 					if (llm) {
-						const pointwise = await runPointwise(llm, g.key, run.analysis as ConceptRead);
+						const pointwise = await runPointwise(llm, g.key, run.analysis as SongRead);
 						tier2 = pointwise.findings;
 						totalCost += pointwise.costUsd;
 						const failed = tier2.filter((f) => !f.passed).map((f) => f.judge);

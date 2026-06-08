@@ -12,7 +12,7 @@
 // Requires an LLM provider (defaults to google, same as the Tier-2 judges).
 
 import { Result } from "better-result";
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { createLlmService } from "@/lib/integrations/llm/service";
 import { loadGoldExemplars } from "./exemplars";
 import { lensCoherencePrompt } from "./tier2/prompts/lens-coherence";
@@ -20,7 +20,7 @@ import { LensCoherenceSchema } from "./tier2/schemas";
 
 interface Case {
 	label: string;
-	read: ConceptRead;
+	read: SongRead;
 	expectCoherent: boolean;
 }
 

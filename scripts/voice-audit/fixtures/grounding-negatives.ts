@@ -1,4 +1,4 @@
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 
 // A small, checked-in set of SUBTLE grounding negatives: an otherwise-grounded gold read with
 // exactly ONE ungrounded claim spliced in. The other claims stay genuinely grounded, so each
@@ -21,12 +21,12 @@ export interface GroundingNegativeFixture {
 	/** What was injected and why it is ungrounded for the base song. */
 	note: string;
 	/** The base gold read with one ungrounded claim spliced in; everything else stays grounded. */
-	mutate: (read: ConceptRead) => ConceptRead;
+	mutate: (read: SongRead) => SongRead;
 }
 
 const appendToTake =
 	(extra: string) =>
-	(read: ConceptRead): ConceptRead => ({ ...read, take: `${read.take} ${extra}` });
+	(read: SongRead): SongRead => ({ ...read, take: `${read.take} ${extra}` });
 
 export const GROUNDING_NEGATIVES: GroundingNegativeFixture[] = [
 	{

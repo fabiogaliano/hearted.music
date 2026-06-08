@@ -1,6 +1,6 @@
-import type { ConceptRead } from "@/lib/domains/enrichment/content-analysis/concept-schema";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 
-export function arcNarrativePrompt(a: ConceptRead): string {
+export function arcNarrativePrompt(a: SongRead): string {
 	const body = a.arc
 		.map((beat, i) => `${i + 1}. [${beat.label} — ${beat.mood}] ${beat.scene}`)
 		.join("\n");
