@@ -78,12 +78,19 @@ const CONCEPT_STYLES = `
 
 export function SongDetailPanelSurface({
 	song,
+	isExpanded = true,
 	isWalkthrough = false,
 	isEnrichmentRunning = false,
 	lockedCta,
 	playlists,
 }: {
 	song: ConceptSong;
+	/** Drives the shared-element view-transition names on the hero's album / title /
+	 *  artist. While open the hero carries `song-album` / `song-title` / `song-artist`
+	 *  so the close morph (panel → clicked row) has a "from" element; the wrapper flips
+	 *  this to false inside the transition so the names hand off to the card. Defaults
+	 *  to true so a standalone render (Ladle) still shows the open hero. */
+	isExpanded?: boolean;
 	isWalkthrough?: boolean;
 	/** The enrichment pipeline is actively running, so an unread song is being
 	 *  analyzed right now rather than simply missing a read. */
@@ -119,7 +126,12 @@ export function SongDetailPanelSurface({
 			}}
 		>
 			<style>{CONCEPT_STYLES}</style>
-			<Hero song={song} colors={colors} heroHeight={heroHeight} />
+			<Hero
+				song={song}
+				colors={colors}
+				heroHeight={heroHeight}
+				isExpanded={isExpanded}
+			/>
 			<div
 				style={{
 					paddingLeft: PADDING_X,
@@ -164,10 +176,12 @@ function Hero({
 	song,
 	colors,
 	heroHeight,
+	isExpanded,
 }: {
 	song: ConceptSong;
 	colors: Palette;
 	heroHeight: number;
+	isExpanded: boolean;
 }) {
 	const vignette = `radial-gradient(ellipse at center, transparent 20%, ${colors.bgVignette} 100%),
 		linear-gradient(to bottom, transparent 40%, ${colors.bgFade} 100%)`;
@@ -220,20 +234,25 @@ function Hero({
 				<img
 					src={song.albumArtUrl}
 					alt=""
+					data-panel-album-art=""
 					style={{
 						position: "absolute",
 						left: PADDING_X,
 						bottom: ALBUM_ART_BOTTOM,
 						width: ALBUM_ART_SIZE,
 						height: ALBUM_ART_SIZE,
-						borderRadius: 4,
 						objectFit: "cover",
 						boxShadow: `0 8px 32px ${colors.bg}`,
 						zIndex: 3,
+						// Shared-element morph target for the clicked card's album art. The
+						// box-shadow above is stripped during close (styles.css, keyed off
+						// data-panel-album-art) so it isn't baked into the morph snapshot.
+						viewTransitionName: isExpanded ? "song-album" : "none",
 					}}
 				/>
 			) : (
 				<div
+					data-panel-album-art=""
 					style={{
 						position: "absolute",
 						left: PADDING_X,
@@ -242,8 +261,8 @@ function Hero({
 						height: ALBUM_ART_SIZE,
 						background: colors.surface,
 						border: `1px solid ${colors.border}`,
-						borderRadius: 4,
 						zIndex: 3,
+						viewTransitionName: isExpanded ? "song-album" : "none",
 					}}
 				/>
 			)}
@@ -272,6 +291,7 @@ function Hero({
 							overflow: "hidden",
 							textOverflow: "ellipsis",
 							whiteSpace: "nowrap",
+							viewTransitionName: isExpanded ? "song-title" : "none",
 						}}
 					>
 						{song.title}
@@ -286,6 +306,7 @@ function Hero({
 							overflow: "hidden",
 							textOverflow: "ellipsis",
 							whiteSpace: "nowrap",
+							viewTransitionName: isExpanded ? "song-artist" : "none",
 						}}
 					>
 						{song.artist}
