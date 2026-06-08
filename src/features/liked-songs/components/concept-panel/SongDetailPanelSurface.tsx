@@ -2,9 +2,10 @@
  * SongDetailPanelSurface — the song-detail read surface.
  *
  * Layout:
- *   Layer 1 — The Read (lens · tension, then the image)
- *   Layer 2 — The Take (take paragraph + optional contradiction)
- *   Layer 3 — The Trace
+ *   The Read — lens · tension, then the image. The header is the toggle (cued by
+ *     "read deeper →"); clicking reveals the take in a selectable drawer below, so the
+ *     headline lands on its own first.
+ *   The Trace
  *     - Arc: a clickable mood spine; the open beat's detail is revealed below.
  *     - Lines: the key quotes, cycled one at a time.
  *     - Texture: a single line, always inline.
@@ -14,7 +15,7 @@
  */
 
 import { LockSimpleIcon } from "@phosphor-icons/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
@@ -42,7 +43,7 @@ const ALBUM_ART_SIZE = 112;
 const ALBUM_ART_BOTTOM = 24; // album art sits fully inside the hero so the hero's borderBottom can run clean
 const SONIC_NUMBERS_HEIGHT = 38; // approx height of the bpm/energy/valence block — lets the genre cluster stack just above it in the hero
 const GENRE_STACK_GAP = 12; // vertical gap between the genre cluster and the sonic numbers below it
-const SECTION_GAP = 40; // padding above + below each section separator (between Read / Take / Trace)
+const SECTION_GAP = 40; // padding above + below each section's content, framing it between dividers
 const HERO_HEIGHT = 450; // tall hero when there's an artist image to fill it
 const HERO_HEIGHT_NO_IMAGE = 200; // short hero (album-art-only) — no backdrop to give height
 // How far the locked CTA is lifted above the geometric center of the space below
@@ -51,6 +52,10 @@ const HERO_HEIGHT_NO_IMAGE = 200; // short hero (album-art-only) — no backdrop
 // center lands at roughly (50% − LOCKED_LIFT/2) of that space. Tunable knob.
 const LOCKED_LIFT = 0.3;
 const FOCUSED_LINE_INTERVAL_MS = 7000;
+// Take-drawer reveal. Longer than the Arc's 260ms (taller block = more travel), still under
+// the 300ms ceiling. Shares the genre fan's ease-out-quint so the reveals feel of a piece.
+const READ_DEEPER_MS = 300;
+const READ_DEEPER_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 // Hover-intent grace before the genre fan collapses. Long enough to bridge a quick
 // sweep across the cluster and the sub-pixel seams between pills as they animate (so
 // the fan doesn't flap open/shut), short enough not to feel sticky on a small reveal.
@@ -136,6 +141,9 @@ export function SongDetailPanelSurface({
 				style={{
 					paddingLeft: PADDING_X,
 					paddingRight: PADDING_X,
+					// Sections draw their own divider + padding; this pads above the first so it
+					// doesn't hug the hero. Locked has no frame, so 0.
+					paddingTop: isLocked ? 0 : SECTION_GAP,
 					// Locked centers its CTA in the full space below the hero, and
 					// walkthrough's CTA owns the bottom — both fill exactly, so drop the
 					// runway. Otherwise leave scroll runway below the last Trace block.
@@ -144,17 +152,14 @@ export function SongDetailPanelSurface({
 			>
 				{song.read ? (
 					<>
-						<SectionSeparator colors={colors} />
-						<ReadLayer read={song.read} colors={colors} />
-						<SectionSeparator colors={colors} />
-						<TakeLayer read={song.read} colors={colors} />
-						<SectionSeparator colors={colors} />
+						<ReadLayer
+							read={song.read}
+							colors={colors}
+							defaultOpen={isWalkthrough}
+						/>
 						<TraceLayer read={song.read} colors={colors} />
 						{playlists && playlists.matches.length > 0 && (
-							<>
-								<SectionSeparator colors={colors} />
-								<PlaylistsLayer colors={colors} playlists={playlists} />
-							</>
+							<PlaylistsLayer colors={colors} playlists={playlists} />
 						)}
 					</>
 				) : (
@@ -428,19 +433,6 @@ function SonicNumbers({
 	);
 }
 
-function SectionSeparator({ colors }: { colors: Palette }) {
-	return (
-		<div
-			aria-hidden
-			style={{
-				height: 1,
-				background: colors.border,
-				margin: `${SECTION_GAP}px 0`,
-			}}
-		/>
-	);
-}
-
 // Stands in for the Read/Take/Trace layers when a song has no v17 read yet. The
 // hero still renders above, so the panel always carries the song's identity even
 // before its read exists. The three branches answer *why* the read is missing:
@@ -479,40 +471,42 @@ function UnreadState({
 		displayState === "pending";
 
 	return (
-		<>
-			<SectionSeparator colors={colors} />
-			<section>
-				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: 8,
-						fontSize: 11,
-						letterSpacing: "0.16em",
-						textTransform: "uppercase",
-						fontWeight: 500,
-						color: isAnalyzing ? colors.accent : colors.textDim,
-						marginBottom: 12,
-					}}
-				>
-					{isAnalyzing && <PulseDot color={colors.accent} />}
-					{isAnalyzing ? "Listening" : "Quiet one"}
-				</div>
-				<p
-					style={{
-						fontFamily: fonts.body,
-						fontSize: 14,
-						lineHeight: 1.6,
-						color: colors.textMuted,
-						margin: 0,
-					}}
-				>
-					{isAnalyzing
-						? "Getting a feel for this one…"
-						: "We couldn’t find enough about this one."}
-				</p>
-			</section>
-		</>
+		<section
+			style={{
+				borderTop: `1px solid ${colors.border}`,
+				padding: `${SECTION_GAP}px 0`,
+			}}
+		>
+			<div
+				style={{
+					display: "flex",
+					alignItems: "center",
+					gap: 8,
+					fontSize: 11,
+					letterSpacing: "0.16em",
+					textTransform: "uppercase",
+					fontWeight: 500,
+					color: isAnalyzing ? colors.accent : colors.textDim,
+					marginBottom: 12,
+				}}
+			>
+				{isAnalyzing && <PulseDot color={colors.accent} />}
+				{isAnalyzing ? "Listening" : "Quiet one"}
+			</div>
+			<p
+				style={{
+					fontFamily: fonts.body,
+					fontSize: 14,
+					lineHeight: 1.6,
+					color: colors.textMuted,
+					margin: 0,
+				}}
+			>
+				{isAnalyzing
+					? "Getting a feel for this one…"
+					: "We couldn’t find enough about this one."}
+			</p>
+		</section>
 	);
 }
 
@@ -856,105 +850,236 @@ function GenrePill({
 	);
 }
 
-function ReadLayer({ read, colors }: { read: ConceptRead; colors: Palette }) {
+function ReadLayer({
+	read,
+	colors,
+	defaultOpen = false,
+}: {
+	read: ConceptRead;
+	colors: Palette;
+	// Walkthrough opens the take by default — the read is the demo's payoff, not something to
+	// hide behind a toggle a first-timer must discover.
+	defaultOpen?: boolean;
+}) {
+	const [open, setOpen] = useState(defaultOpen);
+	const [hovered, setHovered] = useState(false);
+	const reducedMotion = usePrefersReducedMotion();
+	const takeId = useId();
+	const nudge = hovered && !reducedMotion;
+
 	return (
-		<section>
-			<div
+		// The header (lens/tension + image + cue) is the toggle — at rest the whole visible
+		// read is the button, so any pixel reveals the take. The take is the button's SIBLING:
+		// a button makes its children presentational (unselectable, no semantics), so kept
+		// outside it the prose stays selectable and clicking it won't collapse the drawer.
+		<section
+			style={{
+				borderTop: `1px solid ${colors.border}`,
+				padding: `${SECTION_GAP}px 0`,
+			}}
+		>
+			<button
+				type="button"
+				onClick={() => setOpen((value) => !value)}
+				onMouseEnter={() => setHovered(true)}
+				onMouseLeave={() => setHovered(false)}
+				aria-expanded={open}
+				aria-controls={takeId}
 				style={{
-					display: "flex",
-					flexWrap: "wrap",
-					alignItems: "center",
-					gap: 10,
-					marginBottom: 16,
+					display: "block",
+					width: "100%",
+					textAlign: "left",
+					border: "none",
+					background: "transparent",
+					padding: 0,
+					margin: 0,
+					cursor: "pointer",
+					userSelect: "none",
+					WebkitUserSelect: "none",
+					font: "inherit",
+					color: "inherit",
 				}}
 			>
 				<span
 					style={{
-						fontSize: 11,
-						letterSpacing: "0.16em",
-						textTransform: "uppercase",
-						fontWeight: 500,
-						color: colors.accent,
+						display: "flex",
+						flexWrap: "wrap",
+						alignItems: "center",
+						gap: 10,
+						marginBottom: 16,
 					}}
 				>
-					{read.lens}
-				</span>
-				<span aria-hidden style={{ color: colors.textDim, fontSize: 11 }}>
-					·
-				</span>
-				<span
-					style={{
-						fontSize: 11,
-						letterSpacing: "0.16em",
-						textTransform: "uppercase",
-						fontWeight: 500,
-						color: colors.textMuted,
-					}}
-				>
-					{read.tension}
-				</span>
-			</div>
-
-			<h1
-				style={{
-					fontFamily: fonts.display,
-					fontWeight: 400,
-					fontSize: 44,
-					lineHeight: 1.08,
-					letterSpacing: "-0.01em",
-					color: colors.text,
-					margin: 0,
-				}}
-			>
-				{read.image}
-			</h1>
-		</section>
-	);
-}
-
-function TakeLayer({ read, colors }: { read: ConceptRead; colors: Palette }) {
-	return (
-		<section>
-			<p
-				style={{
-					fontFamily: fonts.body,
-					fontSize: 16,
-					lineHeight: 1.7,
-					color: colors.text,
-					margin: 0,
-				}}
-			>
-				{read.take}
-			</p>
-			{read.contradiction && (
-				<div
-					style={{
-						marginTop: 20,
-						paddingLeft: 14,
-						borderLeft: `2px solid ${colors.accent}`,
-					}}
-				>
-					<p
+					<span
 						style={{
-							fontFamily: fonts.body,
-							fontStyle: "italic",
-							fontSize: 14,
-							lineHeight: 1.55,
-							color: colors.textMuted,
-							margin: 0,
+							fontSize: 11,
+							letterSpacing: "0.16em",
+							textTransform: "uppercase",
+							fontWeight: 500,
+							color: colors.accent,
 						}}
 					>
-						{read.contradiction}
-					</p>
+						{read.lens}
+					</span>
+					<span aria-hidden style={{ color: colors.textDim, fontSize: 11 }}>
+						·
+					</span>
+					<span
+						style={{
+							fontSize: 11,
+							letterSpacing: "0.16em",
+							textTransform: "uppercase",
+							fontWeight: 500,
+							color: colors.textMuted,
+						}}
+					>
+						{read.tension}
+					</span>
+				</span>
+
+				<span
+					style={{
+						display: "block",
+						fontFamily: fonts.display,
+						fontWeight: 400,
+						fontSize: 44,
+						lineHeight: 1.08,
+						letterSpacing: "-0.01em",
+						// Greedy wrap (no balance): the first line fills the width, only the overflow
+						// drops to a second. Balance would split it into two short lines stranded in
+						// empty space — a stark jump from one line to two.
+						color: hovered ? colors.accent : colors.text,
+						transition: reducedMotion ? "none" : "color 200ms ease",
+					}}
+				>
+					{read.image}
+				</span>
+
+				{/* Toggle cue. Brightens and nudges its arrow on hover (the WalkthroughCta idiom).
+				    "surface" is the counterpart to "read deeper" — go deep, then come back up. */}
+				<span
+					aria-hidden
+					style={{
+						display: "block",
+						marginTop: 12,
+						textAlign: "right",
+						fontFamily: fonts.body,
+						fontSize: 12,
+						letterSpacing: "0.04em",
+						color: hovered ? colors.textMuted : colors.textDim,
+						transition: reducedMotion ? "none" : "color 200ms ease",
+					}}
+				>
+					{open ? (
+						<>
+							<span
+								style={{
+									display: "inline-block",
+									transform: nudge ? "translateX(-3px)" : "translateX(0)",
+									transition: reducedMotion ? "none" : "transform 180ms ease",
+								}}
+							>
+								←
+							</span>{" "}
+							surface
+						</>
+					) : (
+						<>
+							read deeper{" "}
+							<span
+								style={{
+									display: "inline-block",
+									transform: nudge ? "translateX(3px)" : "translateX(0)",
+									transition: reducedMotion ? "none" : "transform 180ms ease",
+								}}
+							>
+								→
+							</span>
+						</>
+					)}
+				</span>
+			</button>
+
+			{/* Take drawer. Clipped by the 0fr↔1fr grid (the Arc's expand mechanic); aria-hidden
+			    tracks the collapsed state. Collapse runs ~20% faster than the reveal
+			    (exit-faster-than-entrance), matching the genre fan's 240/190 split. */}
+			<div
+				id={takeId}
+				aria-hidden={!open}
+				style={{
+					display: "grid",
+					gridTemplateRows: open ? "1fr" : "0fr",
+					transition: reducedMotion
+						? "none"
+						: `grid-template-rows ${
+								open ? READ_DEEPER_MS : Math.round(READ_DEEPER_MS * 0.8)
+							}ms ${READ_DEEPER_EASE}`,
+				}}
+			>
+				<div style={{ overflow: "hidden", minHeight: 0 }}>
+					<div
+						style={{
+							paddingTop: 16,
+							// Opacity trails the height on open so the text settles in instead of
+							// wiping in with the clip edge.
+							opacity: open ? 1 : 0,
+							transition: reducedMotion
+								? "none"
+								: `opacity ${Math.round(READ_DEEPER_MS * 0.7)}ms ease`,
+							transitionDelay: reducedMotion || !open ? "0ms" : "70ms",
+						}}
+					>
+						<p
+							style={{
+								margin: 0,
+								fontFamily: fonts.body,
+								fontSize: 16,
+								lineHeight: 1.7,
+								// Pretty: no orphan word on the last line.
+								textWrap: "pretty",
+								color: colors.text,
+							}}
+						>
+							{read.take}
+						</p>
+						{read.contradiction && (
+							<div
+								style={{
+									marginTop: 20,
+									paddingLeft: 14,
+									borderLeft: `2px solid ${colors.accent}`,
+								}}
+							>
+								<p
+									style={{
+										margin: 0,
+										fontFamily: fonts.body,
+										fontStyle: "italic",
+										fontSize: 14,
+										lineHeight: 1.55,
+										// Pretty: no trailing orphan word.
+										textWrap: "pretty",
+										color: colors.textMuted,
+									}}
+								>
+									{read.contradiction}
+								</p>
+							</div>
+						)}
+					</div>
 				</div>
-			)}
+			</div>
 		</section>
 	);
 }
 
 function TraceLayer({ read, colors }: { read: ConceptRead; colors: Palette }) {
 	return (
-		<section>
+		<section
+			style={{
+				borderTop: `1px solid ${colors.border}`,
+				padding: `${SECTION_GAP}px 0`,
+			}}
+		>
 			<TraceBlock label="Arc" colors={colors} isFirst>
 				<ArcSpine arc={read.arc} colors={colors} />
 			</TraceBlock>
@@ -1296,7 +1421,13 @@ function PlaylistsLayer({
 	playlists: PlaylistsPanel;
 }) {
 	return (
-		<section aria-label="Add to playlist">
+		<section
+			aria-label="Add to playlist"
+			style={{
+				borderTop: `1px solid ${colors.border}`,
+				padding: `${SECTION_GAP}px 0`,
+			}}
+		>
 			<div
 				style={{
 					fontSize: 10,
