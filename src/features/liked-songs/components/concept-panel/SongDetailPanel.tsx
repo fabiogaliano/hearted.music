@@ -13,7 +13,7 @@
  */
 
 import { useReducedMotion } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { type CSSProperties, useEffect, useRef } from "react";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { themes } from "@/lib/theme/colors";
 import { getThemedDarkColors } from "../detail/themed-dark-colors";
@@ -117,20 +117,33 @@ export function SongDetailPanel({
 			tabIndex={-1}
 			aria-label={`${song.title} by ${song.artist}`}
 			className="overflow-hidden"
-			style={{
-				position: "fixed",
-				top: 0,
-				right: 0,
-				zIndex: 50,
-				width: PANEL_WIDTH,
-				height: "100vh",
-				transform: isExpanded ? "translateX(0)" : "translateX(100%)",
-				opacity: isExpanded ? 1 : 0,
-				pointerEvents: isExpanded ? "auto" : "none",
-				transition: prefersReducedMotion
-					? "none"
-					: "transform 300ms var(--ease-out-quart), opacity 300ms var(--ease-out-quart)",
-			}}
+			style={
+				{
+					// Re-theme the app's focus ring to this song's accent for everything inside
+					// the panel (close button + the read's interactive bits). The global --ring
+					// is the app-wide purple and clashes with the per-song dark palette; the
+					// global :focus-visible rule reads --focus-ring-color, which inherits from here.
+					"--focus-ring-color": colors.accent,
+					position: "fixed",
+					top: 0,
+					right: 0,
+					zIndex: 50,
+					width: PANEL_WIDTH,
+					height: "100vh",
+					transform: isExpanded ? "translateX(0)" : "translateX(100%)",
+					opacity: isExpanded ? 1 : 0,
+					pointerEvents: isExpanded ? "auto" : "none",
+					// Focus lands here programmatically on open (for the Esc/j/k shortcut scope
+					// and screen-reader context), not via keyboard — so the browser's focus ring
+					// is just noise. It also escapes the shell's overflow:hidden and paints a
+					// stray line in the list to the left. tabIndex is -1, so nothing can focus
+					// this by keyboard; suppressing the outline costs no real affordance.
+					outline: "none",
+					transition: prefersReducedMotion
+						? "none"
+						: "transform 300ms var(--ease-out-quart), opacity 300ms var(--ease-out-quart)",
+				} as CSSProperties & { "--focus-ring-color": string }
+			}
 		>
 			<SongDetailPanelSurface
 				key={song.id}
