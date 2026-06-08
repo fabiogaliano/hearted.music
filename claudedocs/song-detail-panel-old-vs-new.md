@@ -31,11 +31,7 @@ Legend: ✅ done · ❌ still missing · 🔁 superseded by the v17 redesign
 
 - ✅ **Add-to-playlist.** `PlaylistsSection` (score %, sorted matches, "added" state), the suggestions query (`songSuggestionsQueryOptions`), Spotify `addToPlaylist` + reconnect handling (`SpotifyReconnectLink`), and the `addSongToPlaylist` server call. Verified: no playlist/suggestion code anywhere in `concept-panel/`. The adapter still carries `spotifyTrackId`, but nothing uses it.
 
----
-
-## ❌ Still missing — probable regressions
-
-- ❌ **Shared-element view-transition morph (card → panel).** Old `PanelHero` set `viewTransitionName: song-album / song-title / song-artist` when expanded, matching the tags `SongCard.tsx:195` still sets on click, driven by `useSongExpansion`'s `startViewTransition` with dedicated CSS (`styles.css:320`). The new surface sets **no** `viewTransitionName` (verified: none in `concept-panel/`), so the album/title/artist morph from the clicked row is silently broken — the card tags itself but has nothing to morph into.
+- ✅ **Shared-element view-transition morph (card → panel).** Old `PanelHero` set `viewTransitionName: song-album / song-title / song-artist` when expanded, matching the tags `SongCard.tsx:195` still sets on click, driven by `useSongExpansion`'s `startViewTransition` with dedicated CSS (`styles.css:320`). The new surface sets **no** `viewTransitionName` (verified: none in `concept-panel/`), so the album/title/artist morph from the clicked row is silently broken — the card tags itself but has nothing to morph into.
 
 ---
 
