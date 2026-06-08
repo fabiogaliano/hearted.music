@@ -50,11 +50,12 @@ function HookHarness({
 	fallbackSelectedSong?: LikedSong | null;
 	isSelectedSlugResolved?: boolean;
 }) {
-	const { selectedSongId, selectedSong, isExpanded } = useSongExpansion(songs, {
-		selectedSlug,
-		fallbackSelectedSong,
-		isSelectedSlugResolved,
-	});
+	const { selectedSongId, selectedSong, isExpanded, hasNext, hasPrevious } =
+		useSongExpansion(songs, {
+			selectedSlug,
+			fallbackSelectedSong,
+			isSelectedSlugResolved,
+		});
 
 	return (
 		<div>
@@ -63,6 +64,8 @@ function HookHarness({
 				{selectedSong?.track.name ?? "none"}
 			</div>
 			<div data-testid="is-expanded">{String(isExpanded)}</div>
+			<div data-testid="has-next">{String(hasNext)}</div>
+			<div data-testid="has-previous">{String(hasPrevious)}</div>
 		</div>
 	);
 }
@@ -112,6 +115,45 @@ describe("useSongExpansion", () => {
 			song.track.name,
 		);
 		expect(screen.getByTestId("is-expanded")).toHaveTextContent("true");
+	});
+
+	it("enables prev/next when the deep-linked song is present in the loaded list", () => {
+		const previous = createSong({ id: "song-prev", name: "Tennis Court" });
+		const selected = createSong({ id: "song-sel", name: "Ribs" });
+		const next = createSong({ id: "song-next", name: "Team" });
+		const slug = generateSongSlug(selected.track.artist, selected.track.name);
+
+		render(
+			<HookHarness songs={[previous, selected, next]} selectedSlug={slug} />,
+		);
+
+		expect(screen.getByTestId("selected-song-id")).toHaveTextContent(
+			selected.track.id,
+		);
+		// The song has a real index in the list, so panel navigation is live.
+		expect(screen.getByTestId("has-previous")).toHaveTextContent("true");
+		expect(screen.getByTestId("has-next")).toHaveTextContent("true");
+	});
+
+	it("disables prev/next for a fallback-only deep-linked song", () => {
+		const selected = createSong({ id: "song-sel", name: "Ribs" });
+		const slug = generateSongSlug(selected.track.artist, selected.track.name);
+
+		render(
+			<HookHarness
+				songs={[]}
+				selectedSlug={slug}
+				fallbackSelectedSong={selected}
+				isSelectedSlugResolved
+			/>,
+		);
+
+		expect(screen.getByTestId("selected-song-id")).toHaveTextContent(
+			selected.track.id,
+		);
+		// Resolved outside the list (index -1), so there is nothing to navigate to.
+		expect(screen.getByTestId("has-previous")).toHaveTextContent("false");
+		expect(screen.getByTestId("has-next")).toHaveTextContent("false");
 	});
 
 	it("opens the deep-linked song from direct lookup when it is not in loaded pages", () => {

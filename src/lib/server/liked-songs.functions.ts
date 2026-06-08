@@ -8,6 +8,7 @@ import type {
 } from "@/features/liked-songs/types";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
 import {
+	getBootstrapPagesBySlug,
 	getPageRowBySlug,
 	getPageWithDetails,
 	getStats,
@@ -40,9 +41,18 @@ const LikedSongBySlugSchema = z.object({
 	slug: z.string().min(1),
 });
 
+const LikedSongsDeepLinkBootstrapSchema = z.object({
+	slug: z.string().min(1),
+});
+
 export interface LikedSongsPageResult {
 	songs: LikedSong[];
 	nextCursor: string | null;
+}
+
+export interface LikedSongsDeepLinkBootstrapResult {
+	selectedSong: LikedSong | null;
+	pages: LikedSongsPageResult[];
 }
 
 function parseMatchingStatus(status: string | null): MatchingStatus | null {
@@ -134,6 +144,39 @@ export const getLikedSongBySlug = createServerFn({ method: "GET" })
 
 		return mapLikedSongPageRow(result.value);
 	});
+
+export const getLikedSongsDeepLinkBootstrap = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.inputValidator((data) => LikedSongsDeepLinkBootstrapSchema.parse(data))
+	.handler(
+		async ({ data, context }): Promise<LikedSongsDeepLinkBootstrapResult> => {
+			const { session } = context;
+
+			const result = await getBootstrapPagesBySlug(
+				session.accountId,
+				data.slug,
+			);
+
+			if (Result.isError(result)) {
+				// Surface the failure so the route loader falls back to the normal
+				// first-page load. Seeding an empty page here would hydrate the deep
+				// link as an empty library on any transient server/DB error.
+				throw new Error(
+					`Liked-songs deep-link bootstrap failed: ${result.error.message}`,
+				);
+			}
+
+			const { selectedRow, pages } = result.value;
+
+			return {
+				selectedSong: selectedRow ? mapLikedSongPageRow(selectedRow) : null,
+				pages: pages.map((page) => ({
+					songs: page.items.map(mapLikedSongPageRow),
+					nextCursor: page.nextCursor,
+				})),
+			};
+		},
+	);
 
 export type LikedSongsStatsResult =
 	| {

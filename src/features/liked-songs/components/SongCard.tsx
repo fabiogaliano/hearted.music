@@ -23,6 +23,7 @@ interface SongCardProps {
 	onPointerDown?: React.PointerEventHandler<HTMLElement>;
 	onFocus?: React.FocusEventHandler<HTMLElement>;
 	onBlur?: React.FocusEventHandler<HTMLElement>;
+	suppressPointerFocus?: boolean;
 	onClickSong: (songId: string, element: HTMLElement) => void;
 	isAnimatingTo?: boolean;
 	selectionMode?: boolean;
@@ -57,6 +58,7 @@ export const SongCard = memo(function SongCard({
 	onPointerDown,
 	onFocus,
 	onBlur,
+	suppressPointerFocus = false,
 	onClickSong,
 	isAnimatingTo = false,
 	selectionMode = false,
@@ -85,6 +87,16 @@ export const SongCard = memo(function SongCard({
 			onToggleSelect?.(songId);
 		},
 		[onToggleSelect, songId],
+	);
+
+	const handlePointerDown = useCallback(
+		(event: React.PointerEvent<HTMLElement>) => {
+			if (suppressPointerFocus) {
+				event.preventDefault();
+			}
+			onPointerDown?.(event);
+		},
+		[onPointerDown, suppressPointerFocus],
 	);
 
 	const buttonStyle = useMemo<React.CSSProperties>(
@@ -132,7 +144,7 @@ export const SongCard = memo(function SongCard({
 			data-focused={dataFocused}
 			data-nav-engaged={navEngaged}
 			data-tab-focused={dataTabFocused}
-			onPointerDown={onPointerDown}
+			onPointerDown={handlePointerDown}
 			onFocus={onFocus}
 			onBlur={onBlur}
 			className={`song-card -mx-3 flex w-full cursor-pointer items-center gap-4 border-0 bg-transparent px-5 py-4 text-left transition-transform duration-100 active:scale-[0.98]${isWalkthroughHighlight ? " walkthrough-highlight" : ""}`}

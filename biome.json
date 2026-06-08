@@ -18,7 +18,8 @@
 			"!**/src/routeTree.gen.ts",
 			"!**/src/styles.css",
 			"!**/src/features/liked-songs/components/variants",
-			"!**/.playwright"
+			"!**/.playwright",
+			"!**/.claude"
 		]
 	},
 	"formatter": {
