@@ -60,7 +60,7 @@ describe.skipIf(!IS_LOCAL)("subscription lifecycle freshness guards", () => {
 
 	afterEach(async () => {
 		if (!supabase || !accountId) return;
-		await supabase.from("account").delete().eq("id", accountId);
+		await supabase.from("account").delete().eq("id", accountId).throwOnError();
 		accountId = "";
 	});
 

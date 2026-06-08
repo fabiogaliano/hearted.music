@@ -95,8 +95,8 @@ async function makeFixture(): Promise<Fixture> {
 
 async function teardownFixture(f: Fixture) {
 	if (!supabase) return;
-	await supabase.from("account").delete().eq("id", f.accountId);
-	await supabase.from("song").delete().eq("id", f.songId);
+	await supabase.from("account").delete().eq("id", f.accountId).throwOnError();
+	await supabase.from("song").delete().eq("id", f.songId).throwOnError();
 }
 
 async function callSelector(accountId: string) {

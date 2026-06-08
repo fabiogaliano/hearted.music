@@ -149,8 +149,8 @@ async function teardownFixtures() {
 	if (!supabase) return;
 	// account FK cascade wipes liked_song, account_billing, unlocks; song FK
 	// cascade wipes song_analysis and song_embedding.
-	await supabase.from("account").delete().eq("id", ACCOUNT_ID);
-	await supabase.from("song").delete().in("id", ALL_SONG_IDS);
+	await supabase.from("account").delete().eq("id", ACCOUNT_ID).throwOnError();
+	await supabase.from("song").delete().in("id", ALL_SONG_IDS).throwOnError();
 }
 
 describe.skipIf(!IS_LOCAL)(

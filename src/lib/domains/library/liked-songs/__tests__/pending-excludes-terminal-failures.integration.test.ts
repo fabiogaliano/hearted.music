@@ -141,11 +141,12 @@ async function teardownFixtures() {
 	if (!supabase) return;
 	// account FK is ON DELETE CASCADE — wipes liked_song, account_billing,
 	// account_song_unlock, job (and through job → job_item_failure).
-	await supabase.from("account").delete().eq("id", ACCOUNT_ID);
+	await supabase.from("account").delete().eq("id", ACCOUNT_ID).throwOnError();
 	await supabase
 		.from("song")
 		.delete()
-		.in("id", [SONG_PENDING_ID, SONG_FAILED_ID, SONG_LOCKED_ID]);
+		.in("id", [SONG_PENDING_ID, SONG_FAILED_ID, SONG_LOCKED_ID])
+		.throwOnError();
 }
 
 describe.skipIf(!IS_LOCAL)("pending excludes terminal failures", () => {

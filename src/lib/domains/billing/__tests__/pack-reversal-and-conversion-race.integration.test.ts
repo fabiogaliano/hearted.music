@@ -71,13 +71,21 @@ async function seedSongs(count: number): Promise<string[]> {
 	return ids;
 }
 
+// Chunk the song-id delete so a growing SONG_IDS list can't exceed PostgREST's
+// URI cap — a 414 the client would otherwise swallow, leaking every seeded row.
+const CLEANUP_CHUNK = 100;
+
 async function teardownFixtures() {
 	if (!supabase) return;
 	// account CASCADE clears account_billing, pack_credit_lot,
 	// credit_transaction, account_song_unlock, and conversion rows.
-	await supabase.from("account").delete().eq("id", ACCOUNT_ID);
-	if (SONG_IDS.length > 0) {
-		await supabase.from("song").delete().in("id", SONG_IDS);
+	await supabase.from("account").delete().eq("id", ACCOUNT_ID).throwOnError();
+	for (let i = 0; i < SONG_IDS.length; i += CLEANUP_CHUNK) {
+		await supabase
+			.from("song")
+			.delete()
+			.in("id", SONG_IDS.slice(i, i + CLEANUP_CHUNK))
+			.throwOnError();
 	}
 }
 

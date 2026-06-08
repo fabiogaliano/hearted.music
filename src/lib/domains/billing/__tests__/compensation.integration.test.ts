@@ -68,8 +68,8 @@ async function seedAccount() {
 
 async function teardownFixtures() {
 	if (!supabase) return;
-	await supabase.from("account").delete().eq("id", ACCOUNT_ID);
-	await supabase.from("song").delete().eq("id", SONG_ID);
+	await supabase.from("account").delete().eq("id", ACCOUNT_ID).throwOnError();
+	await supabase.from("song").delete().eq("id", SONG_ID).throwOnError();
 }
 
 async function insertUnlock(args: {
