@@ -13,7 +13,7 @@
  */
 
 import { useReducedMotion } from "framer-motion";
-import { type CSSProperties, useEffect, useRef } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { themes } from "@/lib/theme/colors";
 import { getThemedDarkColors } from "../detail/themed-dark-colors";
@@ -59,6 +59,11 @@ export function SongDetailPanel({
 	const prefersReducedMotion = useReducedMotion();
 	const colors = getThemedDarkColors(themes[song.theme]);
 	const panelRef = useRef<HTMLElement>(null);
+	const [closeHovered, setCloseHovered] = useState(false);
+	const [closePressed, setClosePressed] = useState(false);
+	// Lives on the chrome, not the per-song surface (keyed by song.id, remounts on nav), so
+	// "read deeper" stays open as you move between songs. Seeded open in walkthrough.
+	const [readDeeperOpen, setReadDeeperOpen] = useState(isWalkthrough);
 	const focusTargetSongId = isExpanded ? song.id : null;
 
 	useEffect(() => {
@@ -153,44 +158,79 @@ export function SongDetailPanel({
 				isEnrichmentRunning={isEnrichmentRunning}
 				lockedCta={lockedCta}
 				playlists={playlists}
+				readDeeperOpen={readDeeperOpen}
+				onReadDeeperChange={setReadDeeperOpen}
 			/>
 			<button
 				type="button"
 				onClick={onClose}
+				onMouseEnter={() => setCloseHovered(true)}
+				onMouseLeave={() => {
+					setCloseHovered(false);
+					setClosePressed(false);
+				}}
+				onMouseDown={() => setClosePressed(true)}
+				onMouseUp={() => setClosePressed(false)}
 				aria-label="Close detail view"
 				title="Close (Esc)"
 				style={{
 					position: "absolute",
-					top: 16,
-					right: 16,
+					// 40×40 min tap area centered on the visible 32px disc (still at top/right:16).
+					top: 12,
+					right: 12,
 					zIndex: 10,
-					width: 32,
-					height: 32,
+					width: 40,
+					height: 40,
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "center",
-					borderRadius: 16,
-					border: `1px solid ${colors.border}`,
-					background: `color-mix(in srgb, ${colors.surface} 80%, transparent)`,
-					color: colors.textMuted,
+					padding: 0,
+					border: "none",
+					background: "transparent",
 					cursor: "pointer",
-					backdropFilter: "blur(6px)",
 				}}
 			>
-				<svg
-					width="14"
-					height="14"
-					viewBox="0 0 14 14"
-					fill="none"
-					aria-hidden="true"
+				<span
+					style={{
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+						width: 32,
+						height: 32,
+						borderRadius: 16,
+						border: `1px solid ${colors.border}`,
+						background: `color-mix(in srgb, ${colors.surface} ${
+							closeHovered ? 92 : 80
+						}%, transparent)`,
+						color: closeHovered ? colors.text : colors.textMuted,
+						backdropFilter: "blur(6px)",
+						// Layered shadow lifts the disc off the hero — reads on any backdrop, unlike the border alone.
+						boxShadow:
+							"0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.35)",
+						transform:
+							closePressed && !prefersReducedMotion
+								? "scale(0.98)"
+								: "scale(1)",
+						transition: prefersReducedMotion
+							? "none"
+							: "background 150ms ease, color 150ms ease, transform 150ms ease",
+					}}
 				>
-					<path
-						d="M1 1L13 13M13 1L1 13"
-						stroke="currentColor"
-						strokeWidth="1.5"
-						strokeLinecap="round"
-					/>
-				</svg>
+					<svg
+						width="14"
+						height="14"
+						viewBox="0 0 14 14"
+						fill="none"
+						aria-hidden="true"
+					>
+						<path
+							d="M1 1L13 13M13 1L1 13"
+							stroke="currentColor"
+							strokeWidth="1.5"
+							strokeLinecap="round"
+						/>
+					</svg>
+				</span>
 			</button>
 		</section>
 	);

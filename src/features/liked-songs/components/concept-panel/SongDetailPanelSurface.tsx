@@ -74,11 +74,49 @@ const CONCEPT_STYLES = `
 	0%, 100% { opacity: 1; transform: scale(1); }
 	50%      { opacity: 0.3; transform: scale(0.7); }
 }
+/* Staggered entrance for the read's content bands, after the shell's slide-in. Replays per
+   song (surface is keyed). transform only in from-keyframe, so no band lingers as a transformed
+   ancestor — that would become a containing block over the close morph. */
+@keyframes concept-rise-in {
+	from { opacity: 0; transform: translateY(10px); }
+	to   { opacity: 1; }
+}
+.concept-rise { animation: concept-rise-in 420ms var(--ease-out-quart) both; }
+.concept-rise-1 { animation-delay: 0ms; }
+.concept-rise-2 { animation-delay: 90ms; }
+.concept-rise-3 { animation-delay: 180ms; }
+/* Hit-area extenders: a transparent ::after grows a small control to the 40px minimum
+   without shifting layout. Host must not clip overflow, or the pseudo gets cropped. */
+.concept-hit-40 { position: relative; }
+.concept-hit-40::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 100%;
+	height: 100%;
+	min-width: 40px;
+	min-height: 40px;
+}
+.concept-line-track { position: relative; }
+.concept-line-track::after {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	/* 2px bar → ~40px target; vertical-only so it can't cross the 6px gap into a neighbour. */
+	top: -19px;
+	bottom: -19px;
+}
 /* Hide the panel's own scrollbar so only the browser/list scrollbar shows — no more
    double bars. The panel still scrolls when the cursor is over it; overscrollBehaviorY
    "contain" (set on the element) keeps that scroll from chaining into the list behind. */
 .concept-panel-scroll { scrollbar-width: none; }
 .concept-panel-scroll::-webkit-scrollbar { display: none; }
+@media (prefers-reduced-motion: reduce) {
+	.concept-rise { animation: none; }
+}
 `;
 
 export function SongDetailPanelSurface({
@@ -88,6 +126,8 @@ export function SongDetailPanelSurface({
 	isEnrichmentRunning = false,
 	lockedCta,
 	playlists,
+	readDeeperOpen,
+	onReadDeeperChange,
 }: {
 	song: ConceptSong;
 	/** Drives the shared-element view-transition names on the hero's album / title /
@@ -107,11 +147,23 @@ export function SongDetailPanelSurface({
 	 *  page. Omitted in walkthrough/Ladle or when there are no matches — the
 	 *  section then hides. */
 	playlists?: PlaylistsPanel;
+	/** "Read deeper" open state, lifted to the chrome to survive the per-song remount.
+	 *  Controlled when provided; falls back to internal state (Ladle) seeded by isWalkthrough. */
+	readDeeperOpen?: boolean;
+	onReadDeeperChange?: (open: boolean) => void;
 }) {
 	const themeConfig = themes[song.theme];
 	const colors = getThemedDarkColors(themeConfig);
 	const heroHeight = song.artistImageUrl ? HERO_HEIGHT : HERO_HEIGHT_NO_IMAGE;
 	const isLocked = !song.read && song.displayState === "locked";
+
+	// Controlled by the chrome, with a local fallback for standalone (Ladle). ?? not || so a
+	// controlled `false` is honored.
+	const [internalReadDeeperOpen, setInternalReadDeeperOpen] =
+		useState(isWalkthrough);
+	const resolvedReadDeeperOpen = readDeeperOpen ?? internalReadDeeperOpen;
+	const setResolvedReadDeeperOpen =
+		onReadDeeperChange ?? setInternalReadDeeperOpen;
 
 	return (
 		<div
@@ -152,24 +204,33 @@ export function SongDetailPanelSurface({
 			>
 				{song.read ? (
 					<>
-						<ReadLayer
-							read={song.read}
-							colors={colors}
-							defaultOpen={isWalkthrough}
-						/>
-						<TraceLayer read={song.read} colors={colors} />
+						<div className="concept-rise concept-rise-1">
+							<ReadLayer
+								read={song.read}
+								colors={colors}
+								open={resolvedReadDeeperOpen}
+								onOpenChange={setResolvedReadDeeperOpen}
+							/>
+						</div>
+						<div className="concept-rise concept-rise-2">
+							<TraceLayer read={song.read} colors={colors} />
+						</div>
 						{playlists && playlists.matches.length > 0 && (
-							<PlaylistsLayer colors={colors} playlists={playlists} />
+							<div className="concept-rise concept-rise-3">
+								<PlaylistsLayer colors={colors} playlists={playlists} />
+							</div>
 						)}
 					</>
 				) : (
-					<UnreadState
-						colors={colors}
-						displayState={song.displayState}
-						isEnrichmentRunning={isEnrichmentRunning}
-						heroHeight={heroHeight}
-						lockedCta={lockedCta}
-					/>
+					<div className="concept-rise concept-rise-1">
+						<UnreadState
+							colors={colors}
+							displayState={song.displayState}
+							isEnrichmentRunning={isEnrichmentRunning}
+							heroHeight={heroHeight}
+							lockedCta={lockedCta}
+						/>
+					</div>
 				)}
 				{isWalkthrough && <WalkthroughCta colors={colors} />}
 			</div>
@@ -247,7 +308,14 @@ function Hero({
 						width: ALBUM_ART_SIZE,
 						height: ALBUM_ART_SIZE,
 						objectFit: "cover",
-						boxShadow: `0 8px 32px ${colors.bg}`,
+						// Layered shadow (contact + ambient) reads as depth against the hero; the old
+						// single bg-coloured glow vanished into the matching dark background.
+						boxShadow:
+							"0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.45)",
+						// Crisp 1px edge: pure white, not a tinted neutral (which reads as dirt). outline,
+						// not box-shadow, so the close-morph shadow-strip can't erase it.
+						outline: "1px solid rgba(255, 255, 255, 0.1)",
+						outlineOffset: "-1px",
 						zIndex: 3,
 						// Shared-element morph target for the clicked card's album art. The
 						// box-shadow above is stripped during close (styles.css, keyed off
@@ -265,7 +333,11 @@ function Hero({
 						width: ALBUM_ART_SIZE,
 						height: ALBUM_ART_SIZE,
 						background: colors.surface,
-						border: `1px solid ${colors.border}`,
+						// Match the real art's lift + pure-white edge so the placeholder reads as the same object.
+						boxShadow:
+							"0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.45)",
+						outline: "1px solid rgba(255, 255, 255, 0.1)",
+						outlineOffset: "-1px",
 						zIndex: 3,
 						viewTransitionName: isExpanded ? "song-album" : "none",
 					}}
@@ -412,6 +484,8 @@ function SonicNumbers({
 							fontSize: 24,
 							fontWeight: 400,
 							lineHeight: 1,
+							// Tabular figures so bpm digits don't jitter the column width song to song.
+							fontVariantNumeric: "tabular-nums",
 							color: colors.text,
 						}}
 					>
@@ -498,6 +572,8 @@ function UnreadState({
 					fontFamily: fonts.body,
 					fontSize: 14,
 					lineHeight: 1.6,
+					// Pretty: no orphan word on the last line.
+					textWrap: "pretty",
 					color: colors.textMuted,
 					margin: 0,
 				}}
@@ -520,6 +596,8 @@ function LockedState({
 	cta?: LockedCta;
 }) {
 	const [hovered, setHovered] = useState(false);
+	const [pressed, setPressed] = useState(false);
+	const reducedMotion = usePrefersReducedMotion();
 
 	return (
 		<section
@@ -568,6 +646,8 @@ function LockedState({
 						fontFamily: fonts.body,
 						fontSize: 14,
 						lineHeight: 1.6,
+						// Pretty: no orphan word on the last line.
+						textWrap: "pretty",
 						color: colors.textMuted,
 						margin: "10px auto 0",
 						maxWidth: 320,
@@ -581,7 +661,12 @@ function LockedState({
 					type="button"
 					onClick={cta.onClick}
 					onMouseEnter={() => setHovered(true)}
-					onMouseLeave={() => setHovered(false)}
+					onMouseLeave={() => {
+						setHovered(false);
+						setPressed(false);
+					}}
+					onMouseDown={() => setPressed(true)}
+					onMouseUp={() => setPressed(false)}
 					style={{
 						marginTop: 4,
 						padding: "11px 24px",
@@ -595,7 +680,11 @@ function LockedState({
 						borderRadius: 999,
 						cursor: "pointer",
 						opacity: hovered ? 0.9 : 1,
-						transition: "opacity 150ms ease",
+						// Tactile press, matching Button.tsx's active:scale-[0.98].
+						transform: pressed && !reducedMotion ? "scale(0.98)" : "scale(1)",
+						transition: reducedMotion
+							? "none"
+							: "opacity 150ms ease, transform 150ms ease",
 					}}
 				>
 					{cta.label}
@@ -853,25 +942,31 @@ function GenrePill({
 function ReadLayer({
 	read,
 	colors,
-	defaultOpen = false,
+	open,
+	onOpenChange,
 }: {
 	read: ConceptRead;
 	colors: Palette;
-	// Walkthrough opens the take by default — the read is the demo's payoff, not something to
-	// hide behind a toggle a first-timer must discover.
-	defaultOpen?: boolean;
+	// Controlled by the chrome so open survives song-to-song navigation (starts open in walkthrough).
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
 }) {
-	const [open, setOpen] = useState(defaultOpen);
 	const [hovered, setHovered] = useState(false);
 	const reducedMotion = usePrefersReducedMotion();
 	const takeId = useId();
 	const nudge = hovered && !reducedMotion;
 
+	// Clicking the open take collapses it too, but the take is a sibling of the toggle so its
+	// prose stays selectable — bail when text is selected (selecting ≠ collapsing).
+	const collapseFromTake = () => {
+		if (window.getSelection()?.toString()) return;
+		onOpenChange(false);
+	};
+
 	return (
-		// The header (lens/tension + image + cue) is the toggle — at rest the whole visible
-		// read is the button, so any pixel reveals the take. The take is the button's SIBLING:
-		// a button makes its children presentational (unselectable, no semantics), so kept
-		// outside it the prose stays selectable and clicking it won't collapse the drawer.
+		// The header (lens/tension + image + cue) is the toggle. The take is the button's SIBLING
+		// so its prose stays selectable (a button makes children presentational); collapseFromTake
+		// re-adds click-to-collapse on the take without costing that.
 		<section
 			style={{
 				borderTop: `1px solid ${colors.border}`,
@@ -880,7 +975,7 @@ function ReadLayer({
 		>
 			<button
 				type="button"
-				onClick={() => setOpen((value) => !value)}
+				onClick={() => onOpenChange(!open)}
 				onMouseEnter={() => setHovered(true)}
 				onMouseLeave={() => setHovered(false)}
 				aria-expanded={open}
@@ -954,48 +1049,68 @@ function ReadLayer({
 					{read.image}
 				</span>
 
-				{/* Toggle cue. Brightens and nudges its arrow on hover (the WalkthroughCta idiom).
-				    "surface" is the counterpart to "read deeper" — go deep, then come back up. */}
+				{/* Toggle cue: both states stay mounted and cross-fade so the direction reverses as
+				    motion, not a hard swap. "read deeper" when closed, "collapse" when open. */}
 				<span
 					aria-hidden
 					style={{
+						position: "relative",
 						display: "block",
 						marginTop: 12,
-						textAlign: "right",
+						height: 16,
 						fontFamily: fonts.body,
 						fontSize: 12,
 						letterSpacing: "0.04em",
-						color: hovered ? colors.textMuted : colors.textDim,
-						transition: reducedMotion ? "none" : "color 200ms ease",
 					}}
 				>
-					{open ? (
-						<>
-							<span
-								style={{
-									display: "inline-block",
-									transform: nudge ? "translateX(-3px)" : "translateX(0)",
-									transition: reducedMotion ? "none" : "transform 180ms ease",
-								}}
-							>
-								←
-							</span>{" "}
-							surface
-						</>
-					) : (
-						<>
-							read deeper{" "}
-							<span
-								style={{
-									display: "inline-block",
-									transform: nudge ? "translateX(3px)" : "translateX(0)",
-									transition: reducedMotion ? "none" : "transform 180ms ease",
-								}}
-							>
-								→
-							</span>
-						</>
-					)}
+					<span
+						style={{
+							position: "absolute",
+							top: 0,
+							right: 0,
+							whiteSpace: "nowrap",
+							color: hovered ? colors.textMuted : colors.textDim,
+							opacity: open ? 0 : 1,
+							transition: reducedMotion
+								? "none"
+								: "opacity 200ms cubic-bezier(0.2, 0, 0, 1), color 200ms ease",
+						}}
+					>
+						read deeper{" "}
+						<span
+							style={{
+								display: "inline-block",
+								transform: nudge ? "translateX(3px)" : "translateX(0)",
+								transition: reducedMotion ? "none" : "transform 180ms ease",
+							}}
+						>
+							→
+						</span>
+					</span>
+					<span
+						style={{
+							position: "absolute",
+							top: 0,
+							right: 0,
+							whiteSpace: "nowrap",
+							color: hovered ? colors.textMuted : colors.textDim,
+							opacity: open ? 1 : 0,
+							transition: reducedMotion
+								? "none"
+								: "opacity 200ms cubic-bezier(0.2, 0, 0, 1), color 200ms ease",
+						}}
+					>
+						<span
+							style={{
+								display: "inline-block",
+								transform: nudge ? "translateX(-3px)" : "translateX(0)",
+								transition: reducedMotion ? "none" : "transform 180ms ease",
+							}}
+						>
+							←
+						</span>{" "}
+						collapse
+					</span>
 				</span>
 			</button>
 
@@ -1016,9 +1131,19 @@ function ReadLayer({
 				}}
 			>
 				<div style={{ overflow: "hidden", minHeight: 0 }}>
+					{/* biome-ignore lint/a11y/noStaticElementInteractions: pointer-only convenience. */}
+					{/* biome-ignore lint/a11y/useKeyWithClickEvents: header toggle already handles keyboard collapse; a key handler here would be redundant. */}
 					<div
+						onClick={collapseFromTake}
+						// Hovering the take drives the same `hovered` state as the header, so the whole
+						// open read brightens as one unit (cueing the take is part of the toggle).
+						onMouseEnter={() => setHovered(true)}
+						onMouseLeave={() => setHovered(false)}
 						style={{
 							paddingTop: 16,
+							// Pointer cues that the open take is clickable to collapse; prose stays
+							// selectable (collapseFromTake bails on a selection).
+							cursor: "pointer",
 							// Opacity trails the height on open so the text settles in instead of
 							// wiping in with the clip edge.
 							opacity: open ? 1 : 0,
@@ -1095,6 +1220,8 @@ function TraceLayer({ read, colors }: { read: ConceptRead; colors: Palette }) {
 							fontFamily: fonts.body,
 							fontSize: 14,
 							lineHeight: 1.6,
+							// Pretty: no orphan word on the last line.
+							textWrap: "pretty",
 							color: colors.textMuted,
 							margin: 0,
 						}}
@@ -1257,6 +1384,8 @@ function ArcSpine({
 											fontFamily: fonts.body,
 											fontSize: 13,
 											lineHeight: 1.6,
+											// Pretty: no orphan word on the last line.
+											textWrap: "pretty",
 											color: colors.textMuted,
 										}}
 									>
@@ -1376,6 +1505,9 @@ function LineProgressTrack({
 			onClick={onClick}
 			aria-label={label}
 			aria-current={filling}
+			// concept-line-track adds a ::after so the 2px bar gets a ~40px tap target. No
+			// overflow:hidden — it would crop the extender; the scaleX fill stays in bounds anyway.
+			className="concept-line-track"
 			style={{
 				position: "relative",
 				width: 28,
@@ -1384,7 +1516,6 @@ function LineProgressTrack({
 				border: "none",
 				background: filled ? colors.accent : colors.border,
 				cursor: "pointer",
-				overflow: "hidden",
 				transition: "background 220ms ease",
 			}}
 		>
@@ -1472,6 +1603,7 @@ function PlaylistRow({
 }) {
 	const [hovered, setHovered] = useState(false);
 	const [pressed, setPressed] = useState(false);
+	const reducedMotion = usePrefersReducedMotion();
 
 	return (
 		<div
@@ -1513,23 +1645,23 @@ function PlaylistRow({
 			>
 				{match.name}
 			</span>
-			<div style={{ flexShrink: 0 }}>
-				{added ? (
-					<span
-						style={{
-							fontSize: 10,
-							letterSpacing: "0.14em",
-							textTransform: "uppercase",
-							color: colors.textDim,
-						}}
-					>
-						Added
-					</span>
-				) : reconnectNeeded ? (
+			{reconnectNeeded && !added ? (
+				<div style={{ flexShrink: 0 }}>
 					<SpotifyReconnectLink label="Reconnect" />
-				) : (
+				</div>
+			) : (
+				// Add and Added are stacked and cross-faded, not hard-swapped. The Add button stays
+				// in flow (opacity 0 once added) to hold the slot width, so the row never shifts.
+				<div
+					style={{
+						flexShrink: 0,
+						position: "relative",
+						display: "inline-flex",
+					}}
+				>
 					<button
 						type="button"
+						className="concept-hit-40"
 						onClick={() => onAdd(match.playlistId)}
 						onMouseEnter={() => setHovered(true)}
 						onMouseLeave={() => {
@@ -1539,6 +1671,8 @@ function PlaylistRow({
 						onMouseDown={() => setPressed(true)}
 						onMouseUp={() => setPressed(false)}
 						aria-label={`Add to ${match.name}`}
+						aria-hidden={added}
+						tabIndex={added ? -1 : 0}
 						style={{
 							padding: "6px 14px",
 							fontFamily: fonts.body,
@@ -1564,17 +1698,42 @@ function PlaylistRow({
 							}`,
 							borderRadius: 999,
 							cursor: "pointer",
+							opacity: added ? 0 : 1,
+							pointerEvents: added ? "none" : "auto",
 							// The app-wide tactile press (Button.tsx active:scale-[0.98]); driven
 							// by state to match this file's JS-hover idiom rather than CSS :active.
-							transform: pressed ? "scale(0.98)" : "scale(1)",
-							transition:
-								"background 150ms ease, border-color 150ms ease, transform 150ms ease",
+							transform: !added && pressed ? "scale(0.98)" : "scale(1)",
+							transition: reducedMotion
+								? "background 150ms ease, border-color 150ms ease"
+								: "background 150ms ease, border-color 150ms ease, transform 150ms ease, opacity 200ms cubic-bezier(0.2, 0, 0, 1)",
 						}}
 					>
 						Add
 					</button>
-				)}
-			</div>
+					<span
+						aria-hidden={!added}
+						style={{
+							position: "absolute",
+							inset: 0,
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "flex-end",
+							whiteSpace: "nowrap",
+							fontSize: 10,
+							letterSpacing: "0.14em",
+							textTransform: "uppercase",
+							color: colors.textDim,
+							opacity: added ? 1 : 0,
+							pointerEvents: "none",
+							transition: reducedMotion
+								? "none"
+								: "opacity 200ms cubic-bezier(0.2, 0, 0, 1)",
+						}}
+					>
+						Added
+					</span>
+				</div>
+			)}
 		</div>
 	);
 }
@@ -1600,6 +1759,7 @@ function WalkthroughCta({ colors }: { colors: Palette }) {
 	const { navigateTo, isPending } = useStepNavigation();
 	const [isNavigating, setIsNavigating] = useState(false);
 	const [hovered, setHovered] = useState(false);
+	const [pressed, setPressed] = useState(false);
 	const reducedMotion = usePrefersReducedMotion();
 
 	const disabled = isNavigating || isPending;
@@ -1628,7 +1788,12 @@ function WalkthroughCta({ colors }: { colors: Palette }) {
 				type="button"
 				onClick={handleClick}
 				onMouseEnter={() => setHovered(true)}
-				onMouseLeave={() => setHovered(false)}
+				onMouseLeave={() => {
+					setHovered(false);
+					setPressed(false);
+				}}
+				onMouseDown={() => setPressed(true)}
+				onMouseUp={() => setPressed(false)}
 				disabled={disabled}
 				aria-label="See where this song belongs"
 				style={{
@@ -1649,7 +1814,12 @@ function WalkthroughCta({ colors }: { colors: Palette }) {
 					borderRadius: 12,
 					cursor: disabled ? "default" : "pointer",
 					opacity: disabled ? 0.55 : 1,
-					transition: "opacity 150ms ease",
+					// Tactile press, matching Button.tsx's active:scale-[0.98].
+					transform:
+						pressed && !disabled && !reducedMotion ? "scale(0.98)" : "scale(1)",
+					transition: reducedMotion
+						? "opacity 150ms ease"
+						: "opacity 150ms ease, transform 150ms ease",
 				}}
 			>
 				See where this song belongs
