@@ -20,7 +20,7 @@ import type { RunRecord } from "./experiments";
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "experiments");
 const EPOCH_FILE = join(dirname(fileURLToPath(import.meta.url)), ".smoke-logs", "start.epoch");
 
-const VERSIONS = ["17", "23", "24", "25", "26", "27", "28"];
+const VERSIONS = ["17", "23", "24", "25", "26", "27", "28", "29"];
 const dumpVersion = process.argv.includes("--dump")
 	? process.argv[process.argv.indexOf("--dump") + 1]
 	: null;

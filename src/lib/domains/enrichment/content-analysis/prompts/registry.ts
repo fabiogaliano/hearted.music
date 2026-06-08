@@ -27,6 +27,8 @@ import { lyricalV25 } from "./lyrical-v25";
 import { lyricalV26 } from "./lyrical-v26";
 import { lyricalV27 } from "./lyrical-v27";
 import { lyricalV28 } from "./lyrical-v28";
+import { lyricalV29 } from "./lyrical-v29";
+import { lyricalV30 } from "./lyrical-v30";
 import type { PromptVersion } from "./types";
 
 const LYRICAL_PROMPTS: Record<string, PromptVersion> = {
@@ -57,6 +59,8 @@ const LYRICAL_PROMPTS: Record<string, PromptVersion> = {
 	"26": lyricalV26,
 	"27": lyricalV27,
 	"28": lyricalV28,
+	"29": lyricalV29,
+	"30": lyricalV30,
 };
 
 const INSTRUMENTAL_PROMPTS: Record<string, PromptVersion> = {
