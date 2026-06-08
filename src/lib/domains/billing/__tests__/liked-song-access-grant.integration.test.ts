@@ -154,18 +154,40 @@ async function readGrantRow(accountId: string) {
 	return data;
 }
 
+// PostgREST encodes `.in("id", ids)` as an `id=in.(…)` query string, so a few
+// hundred UUIDs blow past the server's URI length cap (~8 KB) and the DELETE
+// comes back 414 — which supabase-js swallows without throwOnError, silently
+// leaking every seeded row. (The cap test alone seeds 501.) Chunking keeps each
+// request small; throwOnError makes any future cleanup failure loud instead of
+// letting orphan rows pile up across runs.
+const CLEANUP_CHUNK = 100;
+
+function chunk<T>(items: T[], size: number): T[][] {
+	const out: T[][] = [];
+	for (let i = 0; i < items.length; i += size) {
+		out.push(items.slice(i, i + size));
+	}
+	return out;
+}
+
 afterEach(async () => {
 	if (!supabase) return;
 	if (createdAccountIds.length > 0) {
-		await supabase.from("account").delete().in("id", createdAccountIds);
+		for (const ids of chunk(createdAccountIds, CLEANUP_CHUNK)) {
+			await supabase.from("account").delete().in("id", ids).throwOnError();
+		}
 		createdAccountIds.length = 0;
 	}
 	if (createdSongIds.length > 0) {
-		await supabase.from("song").delete().in("id", createdSongIds);
+		for (const ids of chunk(createdSongIds, CLEANUP_CHUNK)) {
+			await supabase.from("song").delete().in("id", ids).throwOnError();
+		}
 		createdSongIds.length = 0;
 	}
 	if (createdWaitlistIds.length > 0) {
-		await supabase.from("waitlist").delete().in("id", createdWaitlistIds);
+		for (const ids of chunk(createdWaitlistIds, CLEANUP_CHUNK)) {
+			await supabase.from("waitlist").delete().in("id", ids).throwOnError();
+		}
 		createdWaitlistIds.length = 0;
 	}
 });
