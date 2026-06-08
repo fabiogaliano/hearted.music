@@ -608,4 +608,165 @@ grounded reads" — but the paid arbiter is unambiguous that it does not make v1
 honest program verdict is **NO-GO on matching gold**; the live product decision (upgrade v13?) is a
 separate, cheaper head-to-head that remains open.
 
+# ROUND 4 — the user's "anti-pivot formulation" (H11–H13, 2026-06-08, user-directed)
+
+> **TL;DR (Round 4):** The user's specific anti-pivot formulation was tested in full — both halves —
+> against the gold bar. **Generation half (v29):** does not reduce the pivot (≈v17, free). **Rewrite
+> half (direct-assertion: delete A + strengthen B + `<master_prompt_override_style_guide>` XML):**
+> removes the pivot cleanly with no drift, but the paid Opus arbiter scores it **0/27 vs gold — zero
+> conversions**, reproducing the v17-raw 0/27 and Round-3b minimal-rewrite 0/54 floors. The XML wrapper
+> changed nothing measurable. **NO-GO on matching gold, consistent with Rounds 1–3b: the gap is depth +
+> correctness + ungated/MEDIUM residual register, never the HIGH antithesis pivot the idea targets.**
+> v17 stays the converged prompt. v30 (XML-on-generation) is built + shelved for a later probe. The
+> recommendation block is at the END of this round's rows.
+
+
+User handed over a specific anti-pivot formulation to try (a positive-menu generation instruction +
+a "Direct Assertion: Eliminate Dismissive Comparisons" rewrite block the author "runs all generated
+text through," with a commenter note that the block "works even better enclosed in
+`<master_prompt_override_style_guide>…</…>` XML tags"). Opus pairwise authorized. The idea has two
+halves; mapped onto this pipeline they are NOT equally novel, and one is substantially what Round 3
+already tested:
+
+- **Generation half** ≈ prior v23/v24/v27, but no prior variant handed the model the author's
+  POSITIVE MENU of constructions to reach for ("more importantly it needs better examples to
+  follow"). Built as **v29**.
+- **Rewrite half** ("Delete Statement A entirely") is substantially what the Round-3 rewrite pass
+  ALREADY does — its `antithesis` recipe literally says "drop the negated setup entirely." The one
+  untested divergence is the author's **"strengthen Statement B to stand alone powerfully"** vs the
+  existing pass's deliberate "change as little as possible," plus the **XML wrapper**. Built as the
+  rewrite-pass **`direct-assertion` mode** (delete-and-strengthen + `<master_prompt_override_style_guide>`
+  tags), constrained to grounded detail already in the read so it cannot hallucinate.
+
+**What was built (all green: typecheck clean, `bun run test scripts/voice-audit/__tests__` 163/163):**
+- `lyrical-v29.ts` — v17 + ONE edit: the anti-pivot caution replaced by the positive menu (direct
+  definition / image-embodiment / cause→effect / situational / small scene) + v27-style category-level
+  naming (no concrete pivot string → no priming) + the author's rationale. The author's hard
+  `not/but/just` token-ban was NOT copied (v20 proved it primes + would flag the golds' legit
+  contrasts); the ad-copy "benefit-oriented" framing dropped as wrong register. Registered "29".
+- `rewrite/rewrite-pass.ts` — added `mode: "minimal" | "direct-assertion"` (default `minimal` is
+  byte-identical → Round-3b validity + the 6 existing tests preserved). `direct-assertion` deletes
+  Statement A, lets B stand alone strengthened from EXISTING grounded detail, and wraps the corrective
+  guidance in the commenter's XML tags. Only diverges when an antithesis pivot is actually flagged
+  (true no-op otherwise). 4 new unit tests lock the mode→recipe wiring.
+- `lyrical-v30.ts` — **H13, the user-requested "mix":** v29's positive-menu generation × the XML
+  `<master_prompt_override_style_guide>` wrapper applied to the GENERATION side. Registered "30". Built
+  FOR A LATER ROUND — not generated/judged in this pass.
+- Harness: `pairwise-direct-assertion.ts` (matched Opus pairwise, version-parameterized),
+  `rewrite-mode-compare.ts` (free minimal-vs-direct-assertion prose/drift read). v29/v30 wired into
+  `verify-variants.ts` + `analyze-smoke.ts`.
+
+## H11 — v29: positive-menu generation. FREE smoke (flash n=3 × 9 golds, t0.3, this-session v17 control)
+
+| version | antith/c | % w/pivot | book-report/c | self-ref/c | Σhigh/c |
+|---|---|---|---|---|---|
+| v17 (control) | **0.23** | 19% | 0.00 | 0.00 | 3.00 |
+| v29 | 0.30 | 26% | 0.11 | 0.11 | 3.00 |
+
+- **Result:** v29 does NOT reduce the pivot — flat-to-slightly-WORSE (0.30 vs 0.23, within n~27 noise)
+  and adds a little book-report-opener + self-reference v17 didn't have. This reproduces the Round-2
+  META-FINDING exactly: the positive-menu generation lever lands ≈v17 on the pivot rate. The author's
+  "better examples to follow" does not lower the rate on Flash.
+- **Keep/revert:** **REVERT.** v29 in-tree as the record; ACTIVE untouched (17).
+
+## H12 — direct-assertion rewrite (delete-and-strengthen + XML). FREE mode-compare, then PAID arbiter
+
+**FREE mode-compare** (`rewrite-mode-compare.ts`, 4 dirtiest v17 reads, minimal vs direct-assertion on
+the SAME reads):
+
+| across 4 reads | antithesis | Σ HIGH | puffery | words |
+|---|---|---|---|---|
+| BEFORE (raw v17) | 7 | 24 | 2 | 1051 |
+| minimal rewrite | 0 | 0 | 1 | 1020 |
+| direct-assertion | 0 | 0 | 1 | 1022 |
+
+- **The decisive free finding:** direct-assertion removes the pivot with NO drift (puffery flat, length
+  flat, no hallucination — grounded quotes preserved), but its output is **nearly identical to the
+  minimal recast**. "Strengthen B to stand alone" never manifests as materially stronger prose: there
+  is no grounded material to strengthen *with*, so both modes just delete the `not just X` setup and
+  keep B. This is Round-3b finding (b) — a surgical rewrite cannot invent depth — made visible. The XML
+  wrapper did not change the behavior.
+- **PAID arbiter (matched, v17 base, Opus, n=3 × 9 golds):** `pairwise-direct-assertion.ts --version 17
+  --limit 3`. Same candidates judged RAW vs gold AND +direct-assertion vs gold. Reference floors:
+  v17-raw 0/27 (`v17-base.json`), v17+minimal-rewrite 0/54 (Round 3b).
+
+  **PAID RESULT (Opus, $5.30, 2026-06-08) — the author's rewrite buys ZERO conversions:**
+
+  | matched, vs gold | W/T/L | win+tie | songs success |
+  |---|---|---|---|
+  | v17 raw | **0 / 0 / 27** | **0%** | 0/9 |
+  | v17 + direct-assertion (delete+strengthen+XML) | **0 / 0 / 27** | **0%** | 0/9 |
+
+  The direct-assertion pass drove tier1 HIGH → 0 on nearly every read (lone residual: not-like-us
+  5→1, the known `participial` adjective-in-a-list false-positive) and **converted not one loss to a
+  tie**. This reproduces the v17-raw flash floor (0/27) AND Round-3b's v17+minimal-rewrite result
+  (0/54) — the author's "delete Statement A + strengthen Statement B to stand alone + XML wrapper"
+  buys nothing the minimal recast didn't, exactly as the free mode-compare predicted (its output ≈
+  minimal). Artifacts: `eval-artifacts/{v17-raw-matched,v17-direct-assertion-matched}.json`.
+
+  **Why gold still wins (Opus rationales) — the same three gap-classes as Round 3b, none is the pivot:**
+  - **(a) Residual UNGATED / MEDIUM register the pass cannot reach:** book-report framing tier1 misses
+    ("This is a public execution"), **data-speak** ("low-valence aggression"), a soft-pivot form the
+    antithesis rule doesn't catch ("should be pure joy, but instead a gnawing terror"), and **puffery**
+    ("deepest fear" — a MEDIUM). The delete-and-strengthen pass only removes what tier1 flags HIGH.
+  - **(b) Depth / specific noticing the rewrite STRUCTURALLY cannot add** — the decisive case:
+    **as-it-was scored tier1 HIGH=0 and still LOST**, because the candidate is "abstract and academic,
+    fitting any song" while gold names "his goddaughter calls every night," "father, alone since the
+    divorce." "Strengthen B" had no grounded depth to strengthen *with*.
+  - **(c) Correctness** — preserved misreads carry through unchanged (the pass recasts, never re-grounds).
+- **Keep/revert:** **REVERT** as a gold-rivaling lever. The `direct-assertion` mode stays in-tree as a
+  validated, content-safe rewrite option (cleans tier1 as well as minimal, zero drift — an equal
+  alternative to minimal, not a better one); v29 stays registered as the record. ACTIVE untouched (17).
+
+## H13 — v30: the "mix" (positive-menu generation × XML wrapper). BUILT, not run
+
+- v30 = v29 × the `<master_prompt_override_style_guide>` wrapper on the generation guidance. Registered
+  + diff-verified (+568 chars vs v17, distinct from all 7 other variants). Deferred to a later round
+  per the user; the open question it probes is purely whether the XML delimiter improves Gemini's
+  adherence at generation (v29's menu already free-smoked ≈v17, so the wrapper is the only new lever).
+
+# ROUND 4 — RECOMMENDATION
+
+**The user's anti-pivot idea is well-constructed and now fully measured; it does not move the gold bar.**
+
+1. **Prompt iteration stays converged at v17 — do not reopen it.** v29 (positive-menu generation) did
+   not reduce the pivot; v17 remains the best prompt, as it has since Round 1. v29/v30 stay in-tree as
+   the record.
+2. **The author's diagnosis is half-right, and the missing half is the whole ballgame.** The pivot IS
+   the most visible AI tell, and deleting it (the author's instinct) is correct cleanup. But the
+   antithesis pivot was never *why* v17 loses to gold — proven four times now (Round 3b minimal-rewrite
+   0/54; Round 4 direct-assertion 0/27, including a tier1-perfectly-clean read that still lost). Gold
+   wins on **specific noticing + depth + correctness**, plus residual MEDIUM/ungated register
+   (data-speak, puffery, "should-be-X-but-Y" soft-pivots) that neither rewrite targets. A surgical
+   register rewrite — minimal OR delete-and-strengthen — cannot invent the detail a draft never had.
+3. **The XML wrapper is a no-op here.** On both the free mode-compare and the paid pairwise it changed
+   nothing; it neither helped nor hurt. (It may still matter on the *generation* side — that is exactly
+   what v30 is shelved to probe — but the rewrite-side claim does not reproduce.)
+4. **What the direct-assertion mode IS good for:** it is a validated, content-safe register cleaner,
+   equal to the existing minimal pass (tier1 → 0, zero puffery/length/grounding drift). If anything,
+   prefer it as the default rewrite recipe only if a future read shows minimal leaving a framing-word
+   stub; otherwise the two are interchangeable. It is NOT a reason to revisit the gold verdict.
+5. **CORRECTION — prod already ships v17 (raw).** Rounds 1–3b repeatedly say "prod ships v13"; that is
+   STALE. `ACTIVE_LYRICAL_VERSION = "17"` and `song-analysis.ts` has no rewrite-pass call, so production
+   runs **v17 raw generation, no rewrite pass** (the Session-6 cutover landed: commits 7e7b6ae /
+   8c77cfa). The old "upgrade v13 → v17" product decision is DONE.
+6. **The genuinely open, decision-relevant questions (all OUT of this idea's scope):**
+   - **Add the rewrite pass on top of the already-live v17 (v17-raw vs v17+rewrite), head-to-head** —
+     the real remaining product decision, NOT "beat v13." The rewrite buys tier1-cleanliness + register
+     polish with no grounding loss (free ship-check, Round 3); it does NOT rival gold (0/54, 0/27). So
+     this is a "ship cleaner reads at +1 Flash call/song" call, decided on latency/cost/taste — never
+     paid-judged head-to-head vs raw v17 directly. `direct-assertion` and `minimal` are interchangeable
+     for it.
+   - **Depth/correctness at generation** — gold-dense few-shot, fine-tune, or a stronger model — the
+     only levers that can close gap-classes (b) and (c). None is a prompt edit.
+   - **v30 (XML-on-generation)** — a cheap free smoke if the user wants to close the "does the XML tag
+     help at generation" loop; v29's ≈v17 result predicts little, but it is the one untried corner.
+
+**Bottom line for the user:** your formulation was tested exactly as written (both halves, with the XML
+tags), against the program's official arbiter. It cleanly removes the pivot — but the pivot is not the
+wall. v17+direct-assertion ties zero golds, same as v17-raw and the existing rewrite. The wall is depth
+and correctness, and no prompt-or-rewrite phrasing reaches it. Honest verdict: **NO-GO on matching gold.**
+Prod already ships v17 (the converged-best prompt); the one live, separately-decided question left is
+whether to add the rewrite pass on top of it for cleaner reads — not a gold-rivaling change.
+
 <!-- next rows below -->

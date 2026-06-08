@@ -8,7 +8,7 @@
 import { getLyricalPrompt } from "@/lib/domains/enrichment/content-analysis/prompts/registry";
 
 const base = getLyricalPrompt("17").template;
-const variants = ["23", "24", "25", "26", "27", "28"];
+const variants = ["23", "24", "25", "26", "27", "28", "29", "30"];
 
 function lineDiff(a: string, b: string): { from: string[]; to: string[] } {
 	const al = a.split("\n");
@@ -52,5 +52,5 @@ for (let i = 0; i < variants.length; i++) {
 		}
 	}
 }
-console.log(allUnique ? "  all 5 variants are distinct ✓" : "  DUPLICATE VARIANTS FOUND");
+console.log(allUnique ? `  all ${variants.length} variants are distinct ✓` : "  DUPLICATE VARIANTS FOUND");
 process.exit(0);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
-import { applySurgical } from "../rewrite/rewrite-pass";
+import { applySurgical, buildRewritePrompt } from "../rewrite/rewrite-pass";
+import type { RuleHit } from "../types";
 
 // applySurgical is the content-fidelity invariant of the rewrite pass: the model may only ever
 // change a flagged prose field; everything else is pinned from the original. These tests lock that
@@ -83,5 +84,52 @@ describe("applySurgical", () => {
 		const modelOut: SongRead = { ...adversarialModelOut, contradiction: "a clean rewrite" };
 		const out = applySurgical(withContra, withContra, modelOut, new Set(["contradiction"]));
 		expect(out.contradiction).toBe("a clean rewrite");
+	});
+});
+
+// The "direct-assertion" mode (Phase-4 H12) must swap ONLY the antithesis recipe to the
+// delete-and-strengthen text; everything else, including the default "minimal" prompt, must be
+// unchanged so the round-3b-validated pass keeps its behavior.
+describe("buildRewritePrompt mode", () => {
+	const antithesisHit: RuleHit = {
+		rule: "antithesis",
+		field: "take",
+		span: "This is not a diss track. It is testifying.",
+		severity: "high",
+	};
+
+	it("minimal mode uses the recast recipe, not the delete recipe, and no style-guide tags", () => {
+		const prompt = buildRewritePrompt(original, [antithesisHit], "minimal");
+		expect(prompt).toContain("drop the negated setup entirely");
+		expect(prompt).not.toContain("DELETE the negated half entirely");
+		expect(prompt).toContain("Change as little as possible");
+		expect(prompt).not.toContain("master_prompt_override_style_guide");
+	});
+
+	it("direct-assertion mode swaps to the delete-and-strengthen recipe, wrapped in style-guide tags", () => {
+		const prompt = buildRewritePrompt(original, [antithesisHit], "direct-assertion");
+		expect(prompt).toContain("DELETE the negated half entirely");
+		expect(prompt).toContain("never invent a new fact");
+		expect(prompt).toContain("let the surviving claim stand on its own");
+		expect(prompt).toContain("<master_prompt_override_style_guide>");
+		expect(prompt).toContain("</master_prompt_override_style_guide>");
+	});
+
+	it("defaults to minimal mode when unspecified", () => {
+		expect(buildRewritePrompt(original, [antithesisHit])).toBe(
+			buildRewritePrompt(original, [antithesisHit], "minimal"),
+		);
+	});
+
+	it("direct-assertion leaves a non-antithesis recipe identical to minimal", () => {
+		const participialHit: RuleHit = {
+			rule: "participial-closure",
+			field: "take",
+			span: "reliving every memory, deepening her grief",
+			severity: "high",
+		};
+		expect(buildRewritePrompt(original, [participialHit], "direct-assertion")).toBe(
+			buildRewritePrompt(original, [participialHit], "minimal"),
+		);
 	});
 });

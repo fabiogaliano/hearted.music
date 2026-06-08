@@ -54,6 +54,19 @@ const RECIPES: Record<string, string> = {
 		'structural-section — naming the song\'s structural slot ("verse", "chorus", "bridge", "hook", "intro", "outro", "pre-chorus", "refrain") in interpretive prose. Name the emotional moment, not the slot. (Texture may keep a musical term for a sonic motif.)',
 };
 
+// "direct-assertion" mode (Phase-4 H12). The minimal antithesis recipe above recasts the pivot with
+// "change as little as possible." This mode instead applies the user-supplied "Direct Assertion:
+// Eliminate Dismissive Comparisons" rule verbatim in intent — DELETE the negated setup (Statement A)
+// entirely rather than rephrase it, then let the surviving real claim (Statement B) STAND ALONE,
+// strengthened to do so. The one hard constraint the author's marketing-copy version lacks is added
+// here: strengthen B only with grounded detail ALREADY in this read — never invent — so the
+// content-fidelity invariant (applySurgical + no-new-facts) is preserved. Only the antithesis recipe
+// differs from minimal; every other rule's recipe and the surgical apply are identical.
+export type RewriteMode = "minimal" | "direct-assertion";
+
+const ANTITHESIS_DIRECT_ASSERTION =
+	'antithesis — the "X is not Y. It is Z" / "not just X; it is Y" thesis-pivot. DELETE the negated half entirely. Do not rephrase it, do not keep "not just", "more than", "isn\'t", or "rather than" as a hinge — cut the dismissed thing out of the sentence completely. Keep only the real claim and let it stand on its own: state it directly and with conviction. If a concrete detail ALREADY present elsewhere in this read (a named person, place, lyric, or image) makes the bare claim land harder, fold that existing detail in to strengthen it — but never invent a new fact, name, or image to prop it up; if no grounded detail fits, the plain direct claim alone is enough. Example: "This is not a diss track. It is testifying." → "It testifies." A plain subordinate contrast inside one sentence is fine and should be left alone ("the door stays shut, not slammed").';
+
 export interface RewriteResult {
 	read: SongRead;
 	passes: number;
@@ -70,7 +83,17 @@ function targetHits(read: SongRead): RuleHit[] {
 // Renders the read field-by-field with the flagged spans inline, so the model sees exactly which
 // sentence in which field carries which tell. Unflagged fields are shown too (it needs the whole
 // read for coherence) but carry no ⚠ marks — the model is told to copy those through unchanged.
-function buildRewritePrompt(read: SongRead, hits: RuleHit[]): string {
+// Exported for unit testing — locks the mode→recipe wiring (direct-assertion must swap the
+// antithesis recipe to the delete-and-strengthen text; minimal must keep the recast text).
+export function buildRewritePrompt(
+	read: SongRead,
+	hits: RuleHit[],
+	mode: RewriteMode = "minimal",
+): string {
+	const recipes =
+		mode === "direct-assertion"
+			? { ...RECIPES, antithesis: ANTITHESIS_DIRECT_ASSERTION }
+			: RECIPES;
 	const byField = new Map<string, RuleHit[]>();
 	for (const h of hits) {
 		const arr = byField.get(h.field) ?? [];
@@ -88,7 +111,7 @@ function buildRewritePrompt(read: SongRead, hits: RuleHit[]): string {
 
 	const presentRules = [...new Set(hits.map((h) => h.rule))];
 	const recipeBlock = presentRules
-		.map((r, i) => `${i + 1}. ${RECIPES[r] ?? r}`)
+		.map((r, i) => `${i + 1}. ${recipes[r] ?? r}`)
 		.join("\n\n");
 
 	// Each arc beat shows label+mood as metadata (pinned in code, the model must keep them) and the
@@ -103,15 +126,27 @@ function buildRewritePrompt(read: SongRead, hits: RuleHit[]): string {
 
 	const linesBlock = read.lines.map((l) => `  - "${l.line}"`).join("\n");
 
+	// Direct-assertion mode only diverges from minimal when an antithesis pivot is actually present to
+	// delete; with no pivot flagged it is a byte-identical no-op vs minimal (only the recipes for rules
+	// that fired ever reach the prompt). When it IS active, the corrective guidance is both relaxed
+	// (strengthen the surviving claim) and wrapped in the <master_prompt_override_style_guide> tags the
+	// source idea's commenter (Sable-Keech) reported as more effective for this exact instruction.
+	const daActive = mode === "direct-assertion" && presentRules.includes("antithesis");
+	const changePolicy = daActive
+		? "Fix the construction and keep every grounded claim. For an antithesis pivot, delete the dismissed half outright and let the surviving claim stand on its own — you may make it land harder, but only with detail already in this read. For every other tell, change as little as possible."
+		: "Change as little as possible — fix the construction, keep the content.";
+	const styleGuideOpen = daActive ? "<master_prompt_override_style_guide>\n\n" : "";
+	const styleGuideClose = daActive ? "\n\n</master_prompt_override_style_guide>" : "";
+
 	return `You are editing a finished song read for hearted.music so it sounds like a person, not AI. Keep the voice exactly as it is: a friend who says what they hear, warmly and with certainty.
 
-A deterministic checker flagged specific AI-tell constructions in the prose below (marked ⚠). Your only job is to rewrite the flagged sentences so those constructions are gone, while keeping every grounded claim, named person, place, image, and the exact meaning. Change as little as possible — fix the construction, keep the content. Do NOT add any fact, detail, or claim the read does not already contain. Copy every unflagged sentence through verbatim.
+${styleGuideOpen}A deterministic checker flagged specific AI-tell constructions in the prose below (marked ⚠). Your only job is to rewrite the flagged sentences so those constructions are gone, while keeping every grounded claim, named person, place, image, and the exact meaning. ${changePolicy} Do NOT add any fact, detail, or claim the read does not already contain. Copy every unflagged sentence through verbatim.
 
 THE TELLS FLAGGED IN THIS READ, AND HOW TO FIX EACH:
 
 ${recipeBlock}
 
-After your fix, none of those constructions may remain — and do not introduce a new one (no fresh "-ing" comma clause, no new "not X, it is Y" pivot).
+After your fix, none of those constructions may remain — and do not introduce a new one (no fresh "-ing" comma clause, no new "not X, it is Y" pivot).${styleGuideClose}
 
 THE READ:
 
@@ -180,10 +215,11 @@ export function applySurgical(
 export async function rewriteRead(
 	read: SongRead,
 	llm: LlmService,
-	opts?: { maxPasses?: number; temperature?: number },
+	opts?: { maxPasses?: number; temperature?: number; mode?: RewriteMode },
 ): Promise<RewriteResult> {
 	const maxPasses = opts?.maxPasses ?? 2;
 	const temperature = opts?.temperature ?? 0.2;
+	const mode = opts?.mode ?? "minimal";
 	const hitsBefore = runAllRules(read);
 	let current = read;
 	let passes = 0;
@@ -193,7 +229,7 @@ export async function rewriteRead(
 		const hits = targetHits(current);
 		if (hits.length === 0) break;
 
-		const prompt = buildRewritePrompt(current, hits);
+		const prompt = buildRewritePrompt(current, hits, mode);
 		const gen = await llm.generateObject(prompt, SongReadSchema, {
 			temperature,
 			maxOutputTokens: 4000,
