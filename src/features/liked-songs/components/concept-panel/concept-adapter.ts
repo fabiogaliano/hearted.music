@@ -40,9 +40,9 @@ export function likedSongToConceptSong(
 		album: song.track.album ?? "",
 		genres: song.track.genres,
 		audioFeatures: {
-			tempo: trackFeatures?.tempo ?? storedFeatures?.tempo ?? 0,
-			energy: trackFeatures?.energy ?? storedFeatures?.energy ?? 0,
-			valence: trackFeatures?.valence ?? storedFeatures?.valence ?? 0,
+			tempo: trackFeatures?.tempo ?? storedFeatures?.tempo ?? null,
+			energy: trackFeatures?.energy ?? storedFeatures?.energy ?? null,
+			valence: trackFeatures?.valence ?? storedFeatures?.valence ?? null,
 		},
 		theme: themeColor,
 		albumArtUrl: song.track.image_url ?? undefined,
