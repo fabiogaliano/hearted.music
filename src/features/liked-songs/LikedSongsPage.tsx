@@ -26,6 +26,7 @@ import { useLikedSongsListController } from "./hooks/useLikedSongsListController
 import { useLikedSongsListModel } from "./hooks/useLikedSongsListModel";
 import { useLikedSongsPageData } from "./hooks/useLikedSongsPageData";
 import { useSongExpansion } from "./hooks/useSongExpansion";
+import { useSongPlaylistSuggestions } from "./hooks/useSongPlaylistSuggestions";
 import { useSongUnlock } from "./hooks/useSongUnlock";
 import { clearLikedSongsPageLive, markLikedSongsPageLive } from "./queries";
 
@@ -222,6 +223,17 @@ export function LikedSongsPage({
 		requestConfirmation,
 		openPaywall,
 	]);
+
+	// Add-to-playlist matches shown at the bottom of an analyzed read. Disabled in
+	// walkthrough (no billing/match context); the hook returns undefined when there
+	// are no matches, so the panel omits the section. spotifyTrackId drives the
+	// optimistic Spotify add before the server-side decision is recorded.
+	const playlists = useSongPlaylistSuggestions(
+		conceptSong
+			? { id: conceptSong.id, spotifyTrackId: conceptSong.spotifyTrackId }
+			: null,
+		!isWalkthrough,
+	);
 
 	const lockedSongCount = stats?.success ? stats.locked : 0;
 
@@ -422,6 +434,7 @@ export function LikedSongsPage({
 					isWalkthrough={isWalkthrough}
 					isEnrichmentRunning={isEnrichmentRunning}
 					lockedCta={lockedCta}
+					playlists={playlists}
 				/>
 			)}
 

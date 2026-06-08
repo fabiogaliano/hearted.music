@@ -17,7 +17,7 @@ import { useEffect, useRef } from "react";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { themes } from "@/lib/theme/colors";
 import { getThemedDarkColors } from "../detail/themed-dark-colors";
-import type { ConceptSong } from "./concept-types";
+import type { ConceptSong, PlaylistsPanel } from "./concept-types";
 import {
 	type LockedCta,
 	SongDetailPanelSurface,
@@ -39,6 +39,8 @@ interface SongDetailPanelProps {
 	isEnrichmentRunning?: boolean;
 	/** Action shown in the locked state (unlock or see-plans), resolved by the page. */
 	lockedCta?: LockedCta;
+	/** Add-to-playlist matches for the bottom of an analyzed read, resolved by the page. */
+	playlists?: PlaylistsPanel;
 }
 
 export function SongDetailPanel({
@@ -52,6 +54,7 @@ export function SongDetailPanel({
 	isWalkthrough = false,
 	isEnrichmentRunning = false,
 	lockedCta,
+	playlists,
 }: SongDetailPanelProps) {
 	const prefersReducedMotion = useReducedMotion();
 	const colors = getThemedDarkColors(themes[song.theme]);
@@ -135,6 +138,7 @@ export function SongDetailPanel({
 				isWalkthrough={isWalkthrough}
 				isEnrichmentRunning={isEnrichmentRunning}
 				lockedCta={lockedCta}
+				playlists={playlists}
 			/>
 			<button
 				type="button"

@@ -17,10 +17,16 @@ import { LockSimpleIcon } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
+import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { getThemedDarkColors } from "../detail/themed-dark-colors";
-import type { ConceptRead, ConceptSong } from "./concept-types";
+import type {
+	ConceptRead,
+	ConceptSong,
+	PlaylistSuggestionView,
+	PlaylistsPanel,
+} from "./concept-types";
 
 type Palette = ReturnType<typeof getThemedDarkColors>;
 
@@ -66,6 +72,7 @@ export function SongDetailPanelSurface({
 	isWalkthrough = false,
 	isEnrichmentRunning = false,
 	lockedCta,
+	playlists,
 }: {
 	song: ConceptSong;
 	isWalkthrough?: boolean;
@@ -75,6 +82,10 @@ export function SongDetailPanelSurface({
 	/** Action for the locked state (unlock or see-plans). Omitted in contexts
 	 *  without billing (Ladle, walkthrough) — the button then hides. */
 	lockedCta?: LockedCta;
+	/** Add-to-playlist matches for the bottom of an analyzed read, resolved by the
+	 *  page. Omitted in walkthrough/Ladle or when there are no matches — the
+	 *  section then hides. */
+	playlists?: PlaylistsPanel;
 }) {
 	const themeConfig = themes[song.theme];
 	const colors = getThemedDarkColors(themeConfig);
@@ -117,6 +128,12 @@ export function SongDetailPanelSurface({
 						<TakeLayer read={song.read} colors={colors} />
 						<SectionSeparator colors={colors} />
 						<TraceLayer read={song.read} colors={colors} />
+						{playlists && playlists.matches.length > 0 && (
+							<>
+								<SectionSeparator colors={colors} />
+								<PlaylistsLayer colors={colors} playlists={playlists} />
+							</>
+						)}
 					</>
 				) : (
 					<UnreadState
@@ -1149,6 +1166,172 @@ function LineProgressTrack({
 				/>
 			)}
 		</button>
+	);
+}
+
+// The read's coda: where this song fits. The only outbound action in the panel,
+// so it sits last — after the contemplative Read/Take/Trace. Pure presentation:
+// the page owns the query and the Spotify/server side-effects (see
+// useSongPlaylistSuggestions) and passes the resolved matches + onAdd in, the same
+// way lockedCta is resolved upstream. The score echoes the hero's SonicNumbers
+// (display font, tabular figures) so the panel's "numbers" read consistently.
+function PlaylistsLayer({
+	colors,
+	playlists,
+}: {
+	colors: Palette;
+	playlists: PlaylistsPanel;
+}) {
+	return (
+		<section aria-label="Add to playlist">
+			<div
+				style={{
+					fontSize: 10,
+					letterSpacing: "0.18em",
+					textTransform: "uppercase",
+					fontWeight: 500,
+					color: colors.textDim,
+					marginBottom: 18,
+				}}
+			>
+				Where it fits
+			</div>
+			{playlists.matches.map((match, i) => (
+				<PlaylistRow
+					key={match.playlistId}
+					match={match}
+					colors={colors}
+					isFirst={i === 0}
+					added={playlists.addedTo.includes(match.playlistId)}
+					reconnectNeeded={playlists.reconnectNeeded}
+					onAdd={playlists.onAdd}
+				/>
+			))}
+		</section>
+	);
+}
+
+function PlaylistRow({
+	match,
+	colors,
+	isFirst,
+	added,
+	reconnectNeeded,
+	onAdd,
+}: {
+	match: PlaylistSuggestionView;
+	colors: Palette;
+	isFirst: boolean;
+	added: boolean;
+	reconnectNeeded: boolean;
+	onAdd: (playlistId: string) => void;
+}) {
+	const [hovered, setHovered] = useState(false);
+	const [pressed, setPressed] = useState(false);
+
+	return (
+		<div
+			style={{
+				display: "flex",
+				alignItems: "center",
+				gap: 16,
+				paddingTop: isFirst ? 0 : 14,
+				paddingBottom: 14,
+				borderTop: isFirst ? "none" : `1px solid ${colors.border}`,
+			}}
+		>
+			<span
+				style={{
+					flexShrink: 0,
+					width: 44,
+					fontFamily: fonts.display,
+					fontWeight: 400,
+					fontSize: 18,
+					lineHeight: 1,
+					fontVariantNumeric: "tabular-nums",
+					color: colors.text,
+				}}
+			>
+				{Math.round(match.score * 100)}%
+			</span>
+			<span
+				title={match.name}
+				style={{
+					flex: 1,
+					minWidth: 0,
+					fontFamily: fonts.body,
+					fontSize: 14,
+					color: colors.text,
+					whiteSpace: "nowrap",
+					overflow: "hidden",
+					textOverflow: "ellipsis",
+				}}
+			>
+				{match.name}
+			</span>
+			<div style={{ flexShrink: 0 }}>
+				{added ? (
+					<span
+						style={{
+							fontSize: 10,
+							letterSpacing: "0.14em",
+							textTransform: "uppercase",
+							color: colors.textDim,
+						}}
+					>
+						Added
+					</span>
+				) : reconnectNeeded ? (
+					<SpotifyReconnectLink label="Reconnect" />
+				) : (
+					<button
+						type="button"
+						onClick={() => onAdd(match.playlistId)}
+						onMouseEnter={() => setHovered(true)}
+						onMouseLeave={() => {
+							setHovered(false);
+							setPressed(false);
+						}}
+						onMouseDown={() => setPressed(true)}
+						onMouseUp={() => setPressed(false)}
+						aria-label={`Add to ${match.name}`}
+						style={{
+							padding: "6px 14px",
+							fontFamily: fonts.body,
+							fontSize: 10,
+							fontWeight: 600,
+							// Uppercase + wide tracking matches the "Added" sibling that swaps
+							// into this slot and the app-wide button voice (Button.tsx), instead
+							// of reading as its own sentence-case outlier.
+							letterSpacing: "0.14em",
+							textTransform: "uppercase",
+							color: colors.accent,
+							// Quiet at rest — neutral border, no fill — so the action stays
+							// recessive in the read's coda; the accent wash only blooms on hover.
+							// Mirrors /match's recessive Add while keeping accent = interactive
+							// in the panel's vocabulary.
+							background: hovered
+								? `color-mix(in srgb, ${colors.accent} 12%, transparent)`
+								: "transparent",
+							border: `1px solid ${
+								hovered
+									? `color-mix(in srgb, ${colors.accent} 32%, transparent)`
+									: colors.border
+							}`,
+							borderRadius: 999,
+							cursor: "pointer",
+							// The app-wide tactile press (Button.tsx active:scale-[0.98]); driven
+							// by state to match this file's JS-hover idiom rather than CSS :active.
+							transform: pressed ? "scale(0.98)" : "scale(1)",
+							transition:
+								"background 150ms ease, border-color 150ms ease, transform 150ms ease",
+						}}
+					>
+						Add
+					</button>
+				)}
+			</div>
+		</div>
 	);
 }
 
