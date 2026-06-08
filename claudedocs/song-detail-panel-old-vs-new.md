@@ -27,12 +27,15 @@ Legend: ✅ done · ❌ still missing · 🔁 superseded by the v17 redesign
 - ✅ **No-analysis fallback copy** — old "We couldn't find enough information about this song" → new "Quiet one" / "We couldn't find enough about this one." _(commit `7f33b4c`)_
 - ✅ **Genre pills** (primary + alternates). `genres` is carried in the adapter + `ConceptSong` type but never rendered.
 
+- ✅ **Graceful partial audio features** — old `SonicNumbers` null-filtered and showed only the columns it had (e.g. bpm alone). New gates the whole block on `tempo > 0` and otherwise shows nothing.
+
+- ✅ **Add-to-playlist.** `PlaylistsSection` (score %, sorted matches, "added" state), the suggestions query (`songSuggestionsQueryOptions`), Spotify `addToPlaylist` + reconnect handling (`SpotifyReconnectLink`), and the `addSongToPlaylist` server call. Verified: no playlist/suggestion code anywhere in `concept-panel/`. The adapter still carries `spotifyTrackId`, but nothing uses it.
+
 ---
 
 ## ❌ Still missing — probable regressions
 
 - ❌ **Shared-element view-transition morph (card → panel).** Old `PanelHero` set `viewTransitionName: song-album / song-title / song-artist` when expanded, matching the tags `SongCard.tsx:195` still sets on click, driven by `useSongExpansion`'s `startViewTransition` with dedicated CSS (`styles.css:320`). The new surface sets **no** `viewTransitionName` (verified: none in `concept-panel/`), so the album/title/artist morph from the clicked row is silently broken — the card tags itself but has nothing to morph into.
-- ❌ **Add-to-playlist.** `PlaylistsSection` (score %, sorted matches, "added" state), the suggestions query (`songSuggestionsQueryOptions`), Spotify `addToPlaylist` + reconnect handling (`SpotifyReconnectLink`), and the `addSongToPlaylist` server call. Verified: no playlist/suggestion code anywhere in `concept-panel/`. The adapter still carries `spotifyTrackId`, but nothing uses it.
 
 ---
 
@@ -41,8 +44,6 @@ Legend: ✅ done · ❌ still missing · 🔁 superseded by the v17 redesign
 - ❌ **On-screen prev/next nav buttons** (old hero `Nav`). New is keyboard-only (j/k, ↑/↓) with only a close button.
 
 - ❌ **FLIP enter animation from the clicked row** (`startRect`) — removed here and from `LikedSongsPage`. Replaced by a plain slide-in.
-
-- ❌ **Graceful partial audio features** — old `SonicNumbers` null-filtered and showed only the columns it had (e.g. bpm alone). New gates the whole block on `tempo > 0` and otherwise shows nothing.
 
 ---
 

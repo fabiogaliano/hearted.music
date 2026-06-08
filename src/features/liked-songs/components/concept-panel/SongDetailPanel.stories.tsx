@@ -1,6 +1,6 @@
 import type { Story } from "@ladle/react";
 import { CONCEPT_SONGS } from "./concept-data";
-import type { ConceptSong } from "./concept-types";
+import type { ConceptSong, PlaylistsPanel } from "./concept-types";
 import { SongDetailPanel } from "./SongDetailPanel";
 
 const noop = () => {};
@@ -53,10 +53,12 @@ function PanelStory({
 	song,
 	isEnrichmentRunning = false,
 	lockedCta,
+	playlists,
 }: {
 	song: ConceptSong;
 	isEnrichmentRunning?: boolean;
 	lockedCta?: { label: string; onClick: () => void };
+	playlists?: PlaylistsPanel;
 }) {
 	return (
 		<Frame>
@@ -70,6 +72,7 @@ function PanelStory({
 				onPrevious={noop}
 				isEnrichmentRunning={isEnrichmentRunning}
 				lockedCta={lockedCta}
+				playlists={playlists}
 			/>
 		</Frame>
 	);
@@ -78,6 +81,30 @@ function PanelStory({
 export const FullRead: Story = () => <PanelStory song={analyzed} />;
 FullRead.meta = {
 	description: "Analyzed song — the full Read / Take / Trace surface.",
+};
+
+export const WithPlaylists: Story = () => (
+	<PanelStory
+		song={analyzed}
+		playlists={{
+			matches: [
+				{ playlistId: "1", name: "late night drives", score: 0.94 },
+				{ playlistId: "2", name: "heartbreak hours", score: 0.81 },
+				{
+					playlistId: "3",
+					name: "songs to cry in the car to (a deliberately long name to test truncation)",
+					score: 0.62,
+				},
+			],
+			addedTo: ["2"],
+			reconnectNeeded: false,
+			onAdd: noop,
+		}}
+	/>
+);
+WithPlaylists.meta = {
+	description:
+		"Analyzed read with the add-to-playlist coda — score + name + Add, one row already 'Added'.",
 };
 
 export const Locked: Story = () => (

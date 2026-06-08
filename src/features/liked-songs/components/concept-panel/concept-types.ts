@@ -43,3 +43,23 @@ export interface ConceptSong {
 	// state keyed off `displayState` — so every selected song gets a panel.
 	read: ConceptRead | null;
 }
+
+// The add-to-playlist matches the panel renders at the bottom of a read. The page
+// resolves these (the suggestions query + the Spotify/server side-effects) and
+// hands them in pre-resolved — mirroring LockedCta — so the surface stays pure and
+// Ladle-renderable, touching no queries or billing.
+export interface PlaylistSuggestionView {
+	playlistId: string;
+	name: string;
+	// 0..1 match score, rendered as a rounded percentage.
+	score: number;
+}
+
+export interface PlaylistsPanel {
+	matches: PlaylistSuggestionView[];
+	// Playlist IDs added this session — flips the row to its "Added" state.
+	addedTo: string[];
+	// A Spotify add failed for auth reasons; rows offer a reconnect link, not Add.
+	reconnectNeeded: boolean;
+	onAdd: (playlistId: string) => void;
+}
