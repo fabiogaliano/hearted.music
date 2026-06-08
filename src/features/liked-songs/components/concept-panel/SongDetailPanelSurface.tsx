@@ -34,6 +34,8 @@ export interface LockedCta {
 const PADDING_X = 24;
 const ALBUM_ART_SIZE = 112;
 const ALBUM_ART_BOTTOM = 24; // album art sits fully inside the hero so the hero's borderBottom can run clean
+const SONIC_NUMBERS_HEIGHT = 38; // approx height of the bpm/energy/valence block — lets the genre cluster stack just above it in the hero
+const GENRE_STACK_GAP = 12; // vertical gap between the genre cluster and the sonic numbers below it
 const SECTION_GAP = 40; // padding above + below each section separator (between Read / Take / Trace)
 const HERO_HEIGHT = 450; // tall hero when there's an artist image to fill it
 const HERO_HEIGHT_NO_IMAGE = 200; // short hero (album-art-only) — no backdrop to give height
@@ -278,6 +280,25 @@ function Hero({
 					<SonicNumbers song={song} colors={colors} />
 				)}
 			</div>
+
+			{song.genres.length > 0 && (
+				<div
+					style={{
+						position: "absolute",
+						right: PADDING_X,
+						// Sit directly above the sonic numbers (or at their baseline when
+						// there are none). Anchored to the hero — not the overflow-clipped
+						// bottom row — so the leftward fan isn't cut off.
+						bottom:
+							song.audioFeatures.tempo > 0
+								? ALBUM_ART_BOTTOM + SONIC_NUMBERS_HEIGHT + GENRE_STACK_GAP
+								: ALBUM_ART_BOTTOM,
+						zIndex: 4,
+					}}
+				>
+					<GenreCluster genres={song.genres} colors={colors} />
+				</div>
+			)}
 		</div>
 	);
 }
@@ -540,6 +561,148 @@ function PulseDot({ color }: { color: string }) {
 					: "concept-pulse 1.4s ease-in-out infinite",
 			}}
 		/>
+	);
+}
+
+// Factual track metadata, not interpretation. It's anchored in the hero as a
+// right-aligned cluster directly above the sonic numbers — pairing the two as one
+// metadata column instead of floating in dead space below the hero. Only the primary
+// genre shows at rest (a quiet "+N" hints there's more); hovering, focusing, or
+// tapping fans the alternates out to the LEFT, into the hero's open band, so the
+// reveal never runs past the right edge or reflows the title. Order is
+// [primary][+N][alternates] with the whole cluster right-anchored, so at rest the
+// "+N" sits at the right edge and on open it collapses while the alternates grow the
+// cluster leftward. Genres are capped at 3 upstream (genres.slice(0, 3)).
+function GenreCluster({
+	genres,
+	colors,
+}: {
+	genres: string[];
+	colors: Palette;
+}) {
+	const [primary, ...alternates] = genres;
+	const [hovered, setHovered] = useState(false);
+	const [focused, setFocused] = useState(false);
+	const [pinned, setPinned] = useState(false);
+	const reducedMotion = usePrefersReducedMotion();
+	const open = hovered || focused || pinned;
+
+	// One genre → nothing to reveal, so render a plain static pill (no button).
+	if (alternates.length === 0) {
+		return <GenrePill label={primary} colors={colors} primary />;
+	}
+
+	// The 0fr↔1fr grid trick (same as the Arc's expand) animates a child between
+	// zero and content width with no hard-coded max — so a genre of any length
+	// reveals without clipping. `i` staggers the fan; the collapse is unstaggered.
+	const reveal = (visible: boolean, i: number): React.CSSProperties => ({
+		display: "grid",
+		gridTemplateColumns: visible ? "1fr" : "0fr",
+		transition: reducedMotion
+			? "none"
+			: "grid-template-columns 300ms cubic-bezier(0.22, 1, 0.36, 1)",
+		transitionDelay: reducedMotion || !open ? "0ms" : `${i * 45}ms`,
+	});
+
+	return (
+		<button
+			type="button"
+			onMouseEnter={() => setHovered(true)}
+			onMouseLeave={() => setHovered(false)}
+			onFocus={() => setFocused(true)}
+			onBlur={() => setFocused(false)}
+			onClick={() => setPinned((p) => !p)}
+			aria-expanded={open}
+			aria-label={`Genres: ${genres.join(", ")}`}
+			style={{
+				display: "inline-flex",
+				alignItems: "center",
+				padding: 0,
+				background: "transparent",
+				border: "none",
+				cursor: "pointer",
+				whiteSpace: "nowrap",
+			}}
+		>
+			<GenrePill label={primary} colors={colors} primary />
+
+			<span aria-hidden style={reveal(!open, 0)}>
+				<span style={{ overflow: "hidden", minWidth: 0 }}>
+					<span
+						style={{
+							display: "inline-block",
+							paddingLeft: 8,
+							fontFamily: fonts.body,
+							fontSize: 11,
+							letterSpacing: "0.04em",
+							whiteSpace: "nowrap",
+							color: colors.textDim,
+							opacity: open ? 0 : 1,
+							transition: reducedMotion ? "none" : "opacity 160ms ease",
+						}}
+					>
+						+{alternates.length}
+					</span>
+				</span>
+			</span>
+
+			{alternates.map((genre, i) => (
+				<span key={genre} style={reveal(open, i)}>
+					<span style={{ overflow: "hidden", minWidth: 0 }}>
+						<span
+							style={{
+								display: "inline-block",
+								paddingLeft: 6,
+								opacity: open ? 1 : 0,
+								transform: open ? "translateX(0)" : "translateX(-4px)",
+								transition: reducedMotion
+									? "none"
+									: "opacity 240ms ease, transform 300ms cubic-bezier(0.22, 1, 0.36, 1)",
+								transitionDelay: reducedMotion || !open ? "0ms" : `${i * 45}ms`,
+							}}
+						>
+							<GenrePill label={genre} colors={colors} />
+						</span>
+					</span>
+				</span>
+			))}
+		</button>
+	);
+}
+
+function GenrePill({
+	label,
+	colors,
+	primary = false,
+}: {
+	label: string;
+	colors: Palette;
+	primary?: boolean;
+}) {
+	return (
+		<span
+			style={{
+				display: "inline-block",
+				padding: "5px 12px",
+				borderRadius: 999,
+				fontFamily: fonts.body,
+				fontSize: 11,
+				lineHeight: 1,
+				letterSpacing: "0.04em",
+				whiteSpace: "nowrap",
+				color: primary ? colors.accent : colors.textMuted,
+				border: `1px solid ${
+					primary
+						? `color-mix(in srgb, ${colors.accent} 32%, transparent)`
+						: colors.border
+				}`,
+				background: primary
+					? `color-mix(in srgb, ${colors.accent} 9%, transparent)`
+					: colors.bg,
+			}}
+		>
+			{label}
+		</span>
 	);
 }
 
