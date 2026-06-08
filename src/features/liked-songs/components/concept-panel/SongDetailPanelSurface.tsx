@@ -14,7 +14,7 @@
  */
 
 import { LockSimpleIcon } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
@@ -51,8 +51,12 @@ const HERO_HEIGHT_NO_IMAGE = 200; // short hero (album-art-only) — no backdrop
 // center lands at roughly (50% − LOCKED_LIFT/2) of that space. Tunable knob.
 const LOCKED_LIFT = 0.3;
 const FOCUSED_LINE_INTERVAL_MS = 7000;
+// Hover-intent grace before the genre fan collapses. Long enough to bridge a quick
+// sweep across the cluster and the sub-pixel seams between pills as they animate (so
+// the fan doesn't flap open/shut), short enough not to feel sticky on a small reveal.
+const GENRE_HOVER_CLOSE_MS = 120;
 
-const CONCEPT_KEYFRAMES = `
+const CONCEPT_STYLES = `
 @keyframes concept-line-in {
 	from { opacity: 0; transform: translateY(6px); }
 	to   { opacity: 1; transform: translateY(0); }
@@ -65,6 +69,11 @@ const CONCEPT_KEYFRAMES = `
 	0%, 100% { opacity: 1; transform: scale(1); }
 	50%      { opacity: 0.3; transform: scale(0.7); }
 }
+/* Hide the panel's own scrollbar so only the browser/list scrollbar shows — no more
+   double bars. The panel still scrolls when the cursor is over it; overscrollBehaviorY
+   "contain" (set on the element) keeps that scroll from chaining into the list behind. */
+.concept-panel-scroll { scrollbar-width: none; }
+.concept-panel-scroll::-webkit-scrollbar { display: none; }
 `;
 
 export function SongDetailPanelSurface({
@@ -94,6 +103,7 @@ export function SongDetailPanelSurface({
 
 	return (
 		<div
+			className="concept-panel-scroll"
 			style={{
 				position: "fixed",
 				top: 0,
@@ -108,7 +118,7 @@ export function SongDetailPanelSurface({
 				fontFamily: fonts.body,
 			}}
 		>
-			<style>{CONCEPT_KEYFRAMES}</style>
+			<style>{CONCEPT_STYLES}</style>
 			<Hero song={song} colors={colors} heroHeight={heroHeight} />
 			<div
 				style={{
@@ -604,9 +614,13 @@ function PulseDot({ color }: { color: string }) {
 // Factual track metadata, not interpretation. It's anchored in the hero as a
 // right-aligned cluster directly above the sonic numbers — pairing the two as one
 // metadata column instead of floating in dead space below the hero. Only the primary
-// genre shows at rest (a quiet "+N" hints there's more); hovering, focusing, or
-// tapping fans the alternates out to the LEFT, into the hero's open band, so the
-// reveal never runs past the right edge or reflows the title. Order is
+// genre shows at rest (a quiet "+N" hints there's more); hovering OR keyboard-focusing
+// fans the alternates out to the LEFT, into the hero's open band, so the reveal never
+// runs past the right edge or reflows the title. It reveals on hover/focus with no click
+// action (open = hovered || focused): an outer div owns the hover "blast radius", an
+// inner button is the Tab stop and carries the themed focus ring snug around the pills.
+// Every genre also stays in the DOM, and the button is aria-labelled with the full list
+// ("+N" is aria-hidden), so screen readers get all of it. Order is
 // [primary][+N][alternates] with the whole cluster right-anchored, so at rest the
 // "+N" sits at the right edge and on open it collapses while the alternates grow the
 // cluster leftward. Genres are capped at 3 upstream (genres.slice(0, 3)).
@@ -620,90 +634,168 @@ function GenreCluster({
 	const [primary, ...alternates] = genres;
 	const [hovered, setHovered] = useState(false);
 	const [focused, setFocused] = useState(false);
-	const [pinned, setPinned] = useState(false);
 	const reducedMotion = usePrefersReducedMotion();
-	const open = hovered || focused || pinned;
+	const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	// Hover or keyboard focus reveals the fan; focus makes it Tab-reachable.
+	const open = hovered || focused;
 
-	// One genre → nothing to reveal, so render a plain static pill (no button).
+	// Hover-intent: open at once, but defer the collapse. A quick sweep across the
+	// cluster — or the cursor hopping the sub-pixel seams between pills as they grow —
+	// would otherwise fire enter/leave in bursts and flap the fan open and shut.
+	// Re-entering within the grace window cancels the pending close, so the fan only
+	// collapses once the cursor has truly left (the nav-menu hover-intent pattern).
+	const openFan = () => {
+		if (closeTimer.current) {
+			clearTimeout(closeTimer.current);
+			closeTimer.current = null;
+		}
+		setHovered(true);
+	};
+	const closeFanSoon = () => {
+		closeTimer.current = setTimeout(
+			() => setHovered(false),
+			GENRE_HOVER_CLOSE_MS,
+		);
+	};
+	// Keyboard focus opens now and closes on blur — blur is deliberate, so no grace
+	// window. Clear any pending hover-close so tabbing in mid-collapse won't yank it shut.
+	const focusFan = () => {
+		if (closeTimer.current) {
+			clearTimeout(closeTimer.current);
+			closeTimer.current = null;
+		}
+		setFocused(true);
+	};
+	const blurFan = () => setFocused(false);
+	useEffect(
+		() => () => {
+			if (closeTimer.current) clearTimeout(closeTimer.current);
+		},
+		[],
+	);
+
+	// One genre → nothing to reveal, so render a plain static pill.
 	if (alternates.length === 0) {
 		return <GenrePill label={primary} colors={colors} primary />;
 	}
 
+	// ease-out-quint: fast start, soft settle — the curve for elements that
+	// enter/exit (animations.dev). Shared by the grid reveal and the pill slide so
+	// the two read as one motion.
+	const ease = "cubic-bezier(0.22, 1, 0.36, 1)";
+
 	// The 0fr↔1fr grid trick (same as the Arc's expand) animates a child between
 	// zero and content width with no hard-coded max — so a genre of any length
-	// reveals without clipping. `i` staggers the fan; the collapse is unstaggered.
+	// reveals without clipping. It drives grid-template-columns (a layout prop, not
+	// transform), against the animate-transform-only rule — but it's two pills moved
+	// occasionally, so the off-GPU cost is negligible and it's the only way to reach
+	// content width with no magic max. Pills are small over a short distance, so the
+	// reveal is quick (240ms) and the collapse runs ~20% faster (190ms) per the
+	// skill's exit-faster-than-entrance rule. `i` staggers the entering fan; the
+	// collapse moves as one (no stagger).
 	const reveal = (visible: boolean, i: number): React.CSSProperties => ({
 		display: "grid",
 		gridTemplateColumns: visible ? "1fr" : "0fr",
 		transition: reducedMotion
 			? "none"
-			: "grid-template-columns 300ms cubic-bezier(0.22, 1, 0.36, 1)",
-		transitionDelay: reducedMotion || !open ? "0ms" : `${i * 45}ms`,
+			: `grid-template-columns ${visible ? 240 : 190}ms ${ease}`,
+		transitionDelay: reducedMotion || !visible ? "0ms" : `${i * 40}ms`,
 	});
 
 	return (
-		<button
-			type="button"
-			onMouseEnter={() => setHovered(true)}
-			onMouseLeave={() => setHovered(false)}
-			onFocus={() => setFocused(true)}
-			onBlur={() => setFocused(false)}
-			onClick={() => setPinned((p) => !p)}
-			aria-expanded={open}
-			aria-label={`Genres: ${genres.join(", ")}`}
+		// Outer layer: the forgiving hover "blast radius". Not focusable, default cursor,
+		// no text selection. The padding extends the hover zone past the pills so the reveal
+		// triggers across the whole cluster; the matching negative margin pulls the layout
+		// back so the pills don't move.
+		// biome-ignore lint/a11y/noStaticElementInteractions: passive hover-reveal wrapper, no activation.
+		<div
+			onMouseEnter={openFan}
+			onMouseLeave={closeFanSoon}
 			style={{
 				display: "inline-flex",
 				alignItems: "center",
-				padding: 0,
-				background: "transparent",
-				border: "none",
-				cursor: "pointer",
-				whiteSpace: "nowrap",
+				cursor: "default",
+				userSelect: "none",
+				WebkitUserSelect: "none",
+				padding: "10px 14px",
+				margin: "-10px -14px",
 			}}
 		>
-			<GenrePill label={primary} colors={colors} primary />
+			{/* Inner layer: the keyboard Tab stop. Focus opens the fan exactly like hover
+			    (open = hovered || focused), and the themed focus ring hugs these pills rather
+			    than the wide hit area. It's a <button> only to be natively focusable — there's
+			    no onClick, the cursor stays default, and mousedown is prevented so a pointer
+			    click never focuses it (pointer = hover-only, keyboard = focus-only). aria-label
+			    names the stop and reads the whole list in one announcement. */}
+			<button
+				type="button"
+				aria-label={`Genres: ${genres.join(", ")}`}
+				onFocus={focusFan}
+				onBlur={blurFan}
+				onMouseDown={(e) => e.preventDefault()}
+				style={{
+					display: "inline-flex",
+					alignItems: "center",
+					whiteSpace: "nowrap",
+					padding: 0,
+					margin: 0,
+					border: "none",
+					borderRadius: 10,
+					background: "transparent",
+					font: "inherit",
+					color: "inherit",
+					cursor: "default",
+				}}
+			>
+				<GenrePill label={primary} colors={colors} primary />
 
-			<span aria-hidden style={reveal(!open, 0)}>
-				<span style={{ overflow: "hidden", minWidth: 0 }}>
-					<span
-						style={{
-							display: "inline-block",
-							paddingLeft: 8,
-							fontFamily: fonts.body,
-							fontSize: 11,
-							letterSpacing: "0.04em",
-							whiteSpace: "nowrap",
-							color: colors.textDim,
-							opacity: open ? 0 : 1,
-							transition: reducedMotion ? "none" : "opacity 160ms ease",
-						}}
-					>
-						+{alternates.length}
-					</span>
-				</span>
-			</span>
-
-			{alternates.map((genre, i) => (
-				<span key={genre} style={reveal(open, i)}>
+				<span aria-hidden style={reveal(!open, 0)}>
 					<span style={{ overflow: "hidden", minWidth: 0 }}>
 						<span
 							style={{
 								display: "inline-block",
-								paddingLeft: 6,
-								opacity: open ? 1 : 0,
-								transform: open ? "translateX(0)" : "translateX(-4px)",
-								transition: reducedMotion
-									? "none"
-									: "opacity 240ms ease, transform 300ms cubic-bezier(0.22, 1, 0.36, 1)",
-								transitionDelay: reducedMotion || !open ? "0ms" : `${i * 45}ms`,
+								paddingLeft: 8,
+								fontFamily: fonts.body,
+								fontSize: 11,
+								letterSpacing: "0.04em",
+								whiteSpace: "nowrap",
+								color: colors.textDim,
+								opacity: open ? 0 : 1,
+								transition: reducedMotion ? "none" : "opacity 160ms ease",
 							}}
 						>
-							<GenrePill label={genre} colors={colors} />
+							+{alternates.length}
 						</span>
 					</span>
 				</span>
-			))}
-		</button>
+
+				{alternates.map((genre, i) => (
+					<span key={genre} style={reveal(open, i)}>
+						<span style={{ overflow: "hidden", minWidth: 0 }}>
+							<span
+								style={{
+									display: "inline-block",
+									paddingLeft: 6,
+									opacity: open ? 1 : 0,
+									transform: open ? "translateX(0)" : "translateX(-4px)",
+									// Slide matched to the grid reveal (paired-elements rule); opacity
+									// leads slightly so the pill is seen as it settles. Exit ~20% faster.
+									transition: reducedMotion
+										? "none"
+										: open
+											? `opacity 180ms ease, transform 240ms ${ease}`
+											: `opacity 140ms ease, transform 190ms ${ease}`,
+									transitionDelay:
+										reducedMotion || !open ? "0ms" : `${i * 40}ms`,
+								}}
+							>
+								<GenrePill label={genre} colors={colors} />
+							</span>
+						</span>
+					</span>
+				))}
+			</button>
+		</div>
 	);
 }
 
