@@ -148,6 +148,7 @@ export function SongDetailPanel({
 			<SongDetailPanelSurface
 				key={song.id}
 				song={song}
+				isExpanded={isExpanded}
 				isWalkthrough={isWalkthrough}
 				isEnrichmentRunning={isEnrichmentRunning}
 				lockedCta={lockedCta}
