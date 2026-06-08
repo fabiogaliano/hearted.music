@@ -21,6 +21,9 @@ const liveTestExcludes = [
 
 const sharedTestExcludes = [
 	"**/node_modules/**",
+	// Agent worktree isolation checks out full repo copies under .claude/worktrees;
+	// scanning them double-runs every test and collides on shared local-DB fixtures.
+	"**/.claude/**",
 	"**/old_app/**",
 	// Sibling Hono service mounted via symlink; runs from its own root.
 	"**/v1_hearted_brand/**",

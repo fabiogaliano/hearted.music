@@ -19,6 +19,7 @@ interface UseLikedSongsListControllerOptions {
 	navIndexBySongId: ReadonlyMap<string, number>;
 	selectedSongId: string | null;
 	selectedSongIdFromUrl: string | null;
+	shouldSyncInitialUrlSelection: boolean;
 	isExpanded: boolean;
 	selectionMode: boolean;
 	showSelectionUI: boolean;
@@ -41,6 +42,7 @@ export function useLikedSongsListController({
 	navIndexBySongId,
 	selectedSongId,
 	selectedSongIdFromUrl,
+	shouldSyncInitialUrlSelection,
 	isExpanded,
 	selectionMode,
 	showSelectionUI,
@@ -159,6 +161,7 @@ export function useLikedSongsListController({
 	}, [clearSelectionMode, interactionMode, queueSelectionFocus]);
 
 	const prevUrlSelectedSongIdRef = useRef<string | null>(null);
+	const hasSyncedInitialUrlSelectionRef = useRef(false);
 	useEffect(() => {
 		if (!selectedSongIdFromUrl) {
 			prevUrlSelectedSongIdRef.current = null;
@@ -173,16 +176,30 @@ export function useLikedSongsListController({
 			return;
 		}
 
+		if (
+			hasSyncedInitialUrlSelectionRef.current ||
+			!shouldSyncInitialUrlSelection
+		) {
+			prevUrlSelectedSongIdRef.current = selectedSongIdFromUrl;
+			return;
+		}
+
 		const index = navIndexBySongId.get(selectedSongIdFromUrl);
 		if (index == null) return;
 
 		prevUrlSelectedSongIdRef.current = selectedSongIdFromUrl;
+		hasSyncedInitialUrlSelectionRef.current = true;
 
 		syncFocusedIndex(index, {
 			focus: false,
 			source: "url",
 		});
-	}, [navIndexBySongId, selectedSongIdFromUrl, syncFocusedIndex]);
+	}, [
+		navIndexBySongId,
+		selectedSongIdFromUrl,
+		shouldSyncInitialUrlSelection,
+		syncFocusedIndex,
+	]);
 
 	const lastScrolledCursorSequenceRef = useRef<number | null>(null);
 	useIsomorphicLayoutEffect(() => {
@@ -205,11 +222,18 @@ export function useLikedSongsListController({
 			return;
 		}
 
+		if (
+			isExpanded &&
+			(change.source === "pointer" || change.source === "panel-nav")
+		) {
+			return;
+		}
+
 		scrollListElementIntoView(
 			element,
 			change.source === "pointer" ? "nearest" : "center",
 		);
-	}, [getElementAtIndex, lastCursorChange]);
+	}, [getElementAtIndex, isExpanded, lastCursorChange]);
 
 	const prevSelectedSongIdRef = useRef<string | null>(null);
 	useEffect(() => {

@@ -13,6 +13,7 @@
  */
 
 import { useReducedMotion } from "framer-motion";
+import { useEffect, useRef } from "react";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { themes } from "@/lib/theme/colors";
 import { getThemedDarkColors } from "../detail/themed-dark-colors";
@@ -54,6 +55,13 @@ export function SongDetailPanel({
 }: SongDetailPanelProps) {
 	const prefersReducedMotion = useReducedMotion();
 	const colors = getThemedDarkColors(themes[song.theme]);
+	const panelRef = useRef<HTMLElement>(null);
+	const focusTargetSongId = isExpanded ? song.id : null;
+
+	useEffect(() => {
+		if (focusTargetSongId === null) return;
+		panelRef.current?.focus({ preventScroll: true });
+	}, [focusTargetSongId]);
 
 	useShortcut({
 		key: "escape",
@@ -101,7 +109,10 @@ export function SongDetailPanel({
 	});
 
 	return (
-		<div
+		<section
+			ref={panelRef}
+			tabIndex={-1}
+			aria-label={`${song.title} by ${song.artist}`}
 			className="overflow-hidden"
 			style={{
 				position: "fixed",
@@ -163,6 +174,6 @@ export function SongDetailPanel({
 					/>
 				</svg>
 			</button>
-		</div>
+		</section>
 	);
 }

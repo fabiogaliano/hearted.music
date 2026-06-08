@@ -187,6 +187,7 @@ export function LikedSongsList({
 							navEngaged={itemProps?.["data-nav-engaged"] ?? false}
 							dataTabFocused={itemProps?.["data-tab-focused"] ?? false}
 							onPointerDown={itemProps?.onPointerDown}
+							suppressPointerFocus={navigation.isExpanded}
 							onFocus={itemProps?.onFocus}
 							onBlur={itemProps?.onBlur}
 							onClickSong={navigation.onCardClick}

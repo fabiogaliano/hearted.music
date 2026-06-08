@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
 import type {
@@ -26,6 +27,7 @@ import { useLikedSongsListModel } from "./hooks/useLikedSongsListModel";
 import { useLikedSongsPageData } from "./hooks/useLikedSongsPageData";
 import { useSongExpansion } from "./hooks/useSongExpansion";
 import { useSongUnlock } from "./hooks/useSongUnlock";
+import { clearLikedSongsPageLive, markLikedSongsPageLive } from "./queries";
 
 const LIST_TOP_GAP_PX = 24;
 const SEARCH_DEBOUNCE_MS = 250;
@@ -47,6 +49,7 @@ export function LikedSongsPage({
 	billingState,
 	onboardingSession,
 }: LikedSongsPageProps) {
+	const queryClient = useQueryClient();
 	const { isEnrichmentRunning } = useActiveJobs(accountId);
 	const [isDarkMode, setIsDarkMode] = useState(true);
 	const walkthroughSong: WalkthroughSong | null =
@@ -75,6 +78,13 @@ export function LikedSongsPage({
 	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 	const selectionBarRef = useRef<HTMLDivElement | null>(null);
 	const [selectionBarHeight, setSelectionBarHeight] = useState<number>(0);
+
+	useEffect(() => {
+		markLikedSongsPageLive(queryClient);
+		return () => {
+			clearLikedSongsPageLive(queryClient);
+		};
+	}, [queryClient]);
 
 	const toggleSongSelection = useCallback((songId: string) => {
 		setSelectedSongIds((prev) => {
@@ -236,6 +246,10 @@ export function LikedSongsPage({
 		activeFilter: filter,
 	});
 
+	const initialSelectedSlugRef = useRef(selectedSlug ?? null);
+	const shouldSyncInitialUrlSelection =
+		initialSelectedSlugRef.current !== null &&
+		selectedSlug === initialSelectedSlugRef.current;
 	const isSearching = debouncedSearchQuery.length > 0;
 
 	useIsomorphicLayoutEffect(() => {
@@ -287,6 +301,7 @@ export function LikedSongsPage({
 		navIndexBySongId,
 		selectedSongId,
 		selectedSongIdFromUrl,
+		shouldSyncInitialUrlSelection,
 		isExpanded,
 		selectionMode,
 		showSelectionUI,

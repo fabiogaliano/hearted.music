@@ -15,6 +15,11 @@ import {
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import { generateSongSlug } from "@/lib/utils/slug";
+import {
+	LIKED_SONGS_BOOTSTRAP_FETCH_SIZE,
+	LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS,
+	LIKED_SONGS_PAGE_SIZE,
+} from "./constants";
 
 /** Liked song row type */
 export type LikedSong = Tables<"liked_song">;
@@ -53,8 +58,6 @@ export type LikedSongFilter =
 	| "acted"
 	| "no_suggestions"
 	| "analyzed";
-
-const SLUG_LOOKUP_PAGE_SIZE = 100;
 
 /**
  * Gets all liked songs for an account.
@@ -219,19 +222,15 @@ export async function getPageRowBySlug(
 		const pageResult = await getPageWithDetails(accountId, {
 			cursor,
 			filter: "all",
-			limit: SLUG_LOOKUP_PAGE_SIZE,
+			limit: LIKED_SONGS_BOOTSTRAP_FETCH_SIZE,
 		});
 
 		if (Result.isError(pageResult)) {
 			return Result.err(pageResult.error);
 		}
 
-		const matchingRow = pageResult.value.items.find(
-			(row) =>
-				generateSongSlug(
-					row.song_artists[0] ?? "Unknown Artist",
-					row.song_name,
-				) === slug,
+		const matchingRow = pageResult.value.items.find((row) =>
+			pageRowMatchesSlug(row, slug),
 		);
 
 		if (matchingRow) {
@@ -243,6 +242,181 @@ export async function getPageRowBySlug(
 		}
 
 		cursor = pageResult.value.nextCursor;
+	}
+}
+
+/** Single source of truth for the deep-link slug a page row resolves to. */
+function pageRowMatchesSlug(row: LikedSongPageRow, slug: string): boolean {
+	return (
+		generateSongSlug(row.song_artists[0] ?? "Unknown Artist", row.song_name) ===
+		slug
+	);
+}
+
+/** A list page shaped exactly like the client's infinite-query page. */
+export interface LikedSongsBootstrapPage {
+	items: LikedSongPageRow[];
+	nextCursor: string | null;
+}
+
+export interface LikedSongsBootstrapPages {
+	selectedRow: LikedSongPageRow | null;
+	pages: LikedSongsBootstrapPage[];
+}
+
+/**
+ * Rechunks a contiguous (newest-first) run of rows into client-sized pages,
+ * deriving each page's cursor the same way `getPageWithDetails` does: the
+ * `liked_at` of the page's last row. Only the final page can terminate the
+ * sequence (`nextCursor: null`), and only when no rows follow it in the library.
+ */
+function chunkBootstrapRows(
+	rows: LikedSongPageRow[],
+	hasMoreAfterLast: boolean,
+): LikedSongsBootstrapPage[] {
+	if (rows.length === 0) {
+		return [{ items: [], nextCursor: null }];
+	}
+
+	const chunks = chunkArray(rows, LIKED_SONGS_PAGE_SIZE);
+	return chunks.map((items, index) => {
+		const isLast = index === chunks.length - 1;
+		const lastCursor = items[items.length - 1].liked_at;
+		return {
+			items,
+			nextCursor: isLast ? (hasMoreAfterLast ? lastCursor : null) : lastCursor,
+		};
+	});
+}
+
+/**
+ * Gathers up to `LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS` older rows after a slug
+ * match so the selection isn't the last loaded row. `afterMatch` is the
+ * post-selection slice of the matching chunk; further chunks are fetched only
+ * when it falls short. Returns the rows plus whether the library holds more past
+ * the tail (drives the final page's `nextCursor`).
+ */
+async function collectTrailingRows(
+	accountId: string,
+	afterMatch: LikedSongPageRow[],
+	chunkNextCursor: string | null,
+): Promise<
+	Result<{ trailing: LikedSongPageRow[]; hasMoreAfterLast: boolean }, DbError>
+> {
+	const trailing: LikedSongPageRow[] = [];
+	let remaining = LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS;
+	let chunk = afterMatch;
+	let nextCursor = chunkNextCursor;
+
+	for (;;) {
+		const take = chunk.slice(0, remaining);
+		trailing.push(...take);
+		remaining -= take.length;
+
+		// Filled before the chunk ran out: rows still follow the tail.
+		if (take.length < chunk.length) {
+			return Result.ok({ trailing, hasMoreAfterLast: true });
+		}
+		// Filled exactly at the boundary: defer to the chunk's cursor.
+		if (remaining === 0) {
+			return Result.ok({ trailing, hasMoreAfterLast: nextCursor !== null });
+		}
+		// Library ended before the buffer filled.
+		if (nextCursor === null) {
+			return Result.ok({ trailing, hasMoreAfterLast: false });
+		}
+
+		const pageResult = await getPageWithDetails(accountId, {
+			cursor: nextCursor,
+			filter: "all",
+			limit: LIKED_SONGS_BOOTSTRAP_FETCH_SIZE,
+		});
+		if (Result.isError(pageResult)) {
+			return Result.err(pageResult.error);
+		}
+		chunk = pageResult.value.items;
+		nextCursor = pageResult.value.nextCursor;
+	}
+}
+
+/**
+ * Builds the deep-link bootstrap for a slug in a single newest-first walk:
+ *
+ * - Valid slug: returns the contiguous prefix from the newest liked song through
+ *   the selected one, plus up to `LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS` older rows
+ *   so the selection isn't the last loaded row, rechunked to the client page
+ *   size. The final page keeps a non-null cursor when older songs remain.
+ * - Missing / bogus slug: returns `selectedRow: null` and only the canonical
+ *   first page, byte-identical to a normal `limit = LIKED_SONGS_PAGE_SIZE`
+ *   fetch, so the list still renders and the panel stays closed.
+ *
+ * This intentionally does the bootstrap in one walk. Without a database-level,
+ * indexed slug lookup, a preflight existence guard would just scan once to find
+ * the row (or prove it missing) and then force a second walk to build the
+ * prefix, which is strictly worse for valid deep links.
+ *
+ * Phase 1 still walks the library page-by-page; for very deep deep-links or
+ * bogus slugs this can be several round-trips. A dedicated SQL/RPC returning
+ * the prefix in one shot is the documented Phase 2 optimization.
+ */
+export async function getBootstrapPagesBySlug(
+	accountId: string,
+	slug: string,
+): Promise<Result<LikedSongsBootstrapPages, DbError>> {
+	const flattened: LikedSongPageRow[] = [];
+	let cursor: string | undefined;
+	let firstPageRows: LikedSongPageRow[] | null = null;
+	let firstPageHasMore = false;
+
+	for (;;) {
+		const pageResult = await getPageWithDetails(accountId, {
+			cursor,
+			filter: "all",
+			limit: LIKED_SONGS_BOOTSTRAP_FETCH_SIZE,
+		});
+
+		if (Result.isError(pageResult)) {
+			return Result.err(pageResult.error);
+		}
+
+		const { items, nextCursor } = pageResult.value;
+		if (firstPageRows === null) {
+			firstPageRows = items.slice(0, LIKED_SONGS_PAGE_SIZE);
+			firstPageHasMore =
+				items.length > LIKED_SONGS_PAGE_SIZE || nextCursor !== null;
+		}
+		const matchIndex = items.findIndex((row) => pageRowMatchesSlug(row, slug));
+
+		if (matchIndex !== -1) {
+			flattened.push(...items.slice(0, matchIndex + 1));
+			const trailingResult = await collectTrailingRows(
+				accountId,
+				items.slice(matchIndex + 1),
+				nextCursor,
+			);
+			if (Result.isError(trailingResult)) {
+				return Result.err(trailingResult.error);
+			}
+			flattened.push(...trailingResult.value.trailing);
+			return Result.ok({
+				selectedRow: items[matchIndex],
+				pages: chunkBootstrapRows(
+					flattened,
+					trailingResult.value.hasMoreAfterLast,
+				),
+			});
+		}
+
+		flattened.push(...items);
+
+		if (nextCursor === null) {
+			return Result.ok({
+				selectedRow: null,
+				pages: chunkBootstrapRows(firstPageRows ?? [], firstPageHasMore),
+			});
+		}
+
+		cursor = nextCursor;
 	}
 }
 
