@@ -42,11 +42,21 @@ const DEFAULT_AUDIO_FEATURE_WEIGHTS: AudioFeatureWeights = {
 export const DEFAULT_MATCHING_CONFIG: MatchingConfig = {
 	weights: DEFAULT_MATCHING_WEIGHTS,
 	audioWeights: DEFAULT_AUDIO_FEATURE_WEIGHTS,
-	minScoreThreshold: 0.3,
+	// Threshold is now in normalized-fused units (signals z-scored to [0,1],
+	// median ≈ 0.5). 0.35 keeps everything but the clearly-below-average tail —
+	// a permissive, recall-leaning placeholder until the offline replay harness
+	// (matching-system-roadmap #2) can tune it against the match_decision log.
+	// The fallback path's legacy stretch keeps its scores roughly on the old raw
+	// scale (where the threshold was 0.3), so one permissive value serves both.
+	minScoreThreshold: 0.35,
 	maxResultsPerSong: 10,
 	skipVectorScoring: false,
-	vetoThreshold: 0.2,
-	similarityBaseline: 0.5,
+	normalization: {
+		enabled: true,
+		method: "zscore",
+		minSamples: 8,
+		fallbackSimilarityBaseline: 0.5,
+	},
 };
 
 /**

@@ -40,6 +40,7 @@ function makeMatch(
 		score,
 		rank,
 		factors: { embedding: score, audio: 0, genre: 0 },
+		normalizedFactors: { embedding: score, audio: 0, genre: 0 },
 		confidence: 1,
 		fromCache: false,
 	};

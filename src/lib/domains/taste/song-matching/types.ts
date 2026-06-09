@@ -6,6 +6,7 @@
 
 import { TaggedError } from "better-result";
 import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
+import type { NormalizationMethod } from "./normalization";
 
 export interface ScoreFactors {
 	readonly embedding: number;
@@ -19,12 +20,14 @@ export interface MatchResult {
 	readonly songId: string;
 	/** Playlist's internal UUID */
 	readonly playlistId: string;
-	/** Final weighted score (0-1) */
+	/** Final weighted score (0-1), fused from the normalized factors */
 	readonly score: number;
 	/** Rank within match results (1-based) */
 	readonly rank: number;
-	/** Individual factor scores */
+	/** Raw per-signal factor scores, before candidate-set normalization */
 	readonly factors: ScoreFactors;
+	/** Normalized factor scores actually fused into `score` (the weighted-sum inputs) */
+	readonly normalizedFactors: ScoreFactors;
 	/** Cross-encoder reranked score, if reranking was applied */
 	readonly rerankedScore?: number;
 	/** Confidence in the match (based on data availability) */
@@ -72,22 +75,41 @@ export interface AudioFeatureWeights {
 	readonly loudness: number;
 }
 
+/** Per-signal normalization applied across the candidate set before fusion */
+export interface NormalizationConfig {
+	/** When false, every signal takes the fallback path below */
+	readonly enabled: boolean;
+	/** Normalization method: z-score (DBSF-style) or min-max */
+	readonly method: NormalizationMethod;
+	/**
+	 * Minimum available samples for a signal before its distribution is trusted.
+	 * Below this, that signal takes the fallback path instead of being
+	 * normalized — guards the small single-song candidate sets from unstable
+	 * stats. The batch path is always well above this floor.
+	 */
+	readonly minSamples: number;
+	/**
+	 * Baseline for the legacy embedding stretch (baseline→0, 1.0→1.0) applied
+	 * on the fallback path. Audio/genre already span 0–1 and pass through raw
+	 * there.
+	 */
+	readonly fallbackSimilarityBaseline: number;
+}
+
 /** Full matching configuration */
 export interface MatchingConfig {
 	/** Score factor weights */
 	readonly weights: MatchingWeights;
 	/** Audio feature weights */
 	readonly audioWeights: AudioFeatureWeights;
-	/** Minimum score to include in results */
+	/** Minimum fused (normalized) score to include in results */
 	readonly minScoreThreshold: number;
 	/** Maximum results per song */
 	readonly maxResultsPerSong: number;
 	/** Skip vector scoring (for testing) */
 	readonly skipVectorScoring: boolean;
-	/** Veto threshold - scores below this are considered poor matches */
-	readonly vetoThreshold: number;
-	/** Baseline similarity below which vector scores map to 0 (stretches compressed range) */
-	readonly similarityBaseline: number;
+	/** Per-signal candidate-set normalization before fusion */
+	readonly normalization: NormalizationConfig;
 }
 
 /** Missing required data for matching */

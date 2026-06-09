@@ -24,14 +24,17 @@ import { computeMatchSnapshotMetadata } from "../cache";
 import { DEFAULT_MATCHING_CONFIG } from "../config";
 
 describe("hashMatchingConfig", () => {
-	it("changing similarityBaseline changes the hash", async () => {
+	it("changing normalization method changes the hash", async () => {
 		const baseline = await hashMatchingConfig(
 			DEFAULT_MATCHING_CONFIG as unknown as Record<string, unknown>,
 		);
 
 		const tweaked = await hashMatchingConfig({
 			...DEFAULT_MATCHING_CONFIG,
-			similarityBaseline: DEFAULT_MATCHING_CONFIG.similarityBaseline + 0.1,
+			normalization: {
+				...DEFAULT_MATCHING_CONFIG.normalization,
+				method: "minmax",
+			},
 		} as unknown as Record<string, unknown>);
 
 		expect(tweaked).not.toBe(baseline);
@@ -50,14 +53,19 @@ describe("hashMatchingConfig", () => {
 		expect(tweaked).not.toBe(baseline);
 	});
 
-	it("changing vetoThreshold changes the hash", async () => {
+	it("changing fallbackSimilarityBaseline changes the hash", async () => {
 		const baseline = await hashMatchingConfig(
 			DEFAULT_MATCHING_CONFIG as unknown as Record<string, unknown>,
 		);
 
 		const tweaked = await hashMatchingConfig({
 			...DEFAULT_MATCHING_CONFIG,
-			vetoThreshold: DEFAULT_MATCHING_CONFIG.vetoThreshold + 0.05,
+			normalization: {
+				...DEFAULT_MATCHING_CONFIG.normalization,
+				fallbackSimilarityBaseline:
+					DEFAULT_MATCHING_CONFIG.normalization.fallbackSimilarityBaseline +
+					0.05,
+			},
 		} as unknown as Record<string, unknown>);
 
 		expect(tweaked).not.toBe(baseline);

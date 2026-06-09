@@ -1,7 +1,7 @@
 # Matching System — Consolidated Research & Roadmap
 
 **Date:** 2026-06-10 (consolidates research passes from 2026-06-06 and 2026-06-09)
-**Status:** Research findings + prioritized plan. Nothing implemented yet.
+**Status:** Research findings + prioritized plan. **Pre-prod #1 (fusion normalization) implemented 2026-06-10** — see the finding below and `score-normalization-direction.md`; the rest is unimplemented.
 **Scope:** Cheap, modern (2025–2026) improvements to the song→playlist matching pipeline, plus the genre-pills feature. Hard constraint: no self-hosted GPU infra, no expensive per-request LLM calls.
 
 This document supersedes `matching-system-improvements.md` (2026-06-06) and
@@ -26,9 +26,12 @@ and corrected one stale priority. Where the two disagreed, the code-verified fin
    (`computeIntentWeight`: base 0.35, ×1.5 with description, floor 0.3/0.15); plus an averaged
    audio-feature centroid + genre distribution (raw counts).
 5. **Fusion** — linear weighted: embedding cosine `0.50` + audio similarity `0.30` +
-   genre overlap `0.20`. Cosine stretched via `(sim − 0.5) / 0.5`. Min threshold `0.3`,
-   top-K `10`. Missing signals redistribute weight adaptively.
-   (`src/lib/domains/taste/song-matching/config.ts`)
+   genre overlap `0.20`. ~~Cosine stretched via `(sim − 0.5) / 0.5`.~~ **As of 2026-06-10**
+   each signal is z-score-normalized (3σ-clipped, DBSF-style) across the whole batch matrix
+   *before* the weighted sum — the 0.5 stretch is gone, raw cosine is forwarded, missing
+   signals are excluded from each signal's stats. Top-K `10`. `minScoreThreshold` is now in
+   normalized-fused units (`0.35`, provisional — see #2). Missing signals still redistribute
+   weight adaptively. (`song-matching/{normalization,service,config}.ts`)
 6. **Caching** — content hash on embeddings, profiles, and match snapshots.
 7. **Reranking** — top-50 reranked by `Qwen/Qwen3-Reranker-0.6B` (DeepInfra), blended 70/30
    with the original score. Reranker document is only `"{name} by {artists}. Genres: {g}."`.
@@ -51,13 +54,13 @@ exist but are never queried by matching.
 
 | # | Item | Cost | Why this order |
 |---|---|---|---|
-| 1 | **Per-candidate-set score normalization before fusion** (min-max or z-score per signal; drop the 0.5-baseline stretch) | ~½ day | Biggest mis-scaling in the system; pure code; makes the weights mean what they say. Re-tune `minScoreThreshold` (it's in fused-score units). |
+| 1 | ✅ **Batch-matrix score normalization before fusion** (z-score per signal, 3σ-clipped; dropped the 0.5-baseline stretch) — **done 2026-06-10** | ~½ day | Biggest mis-scaling in the system; pure code; makes the weights mean what they say. `minScoreThreshold` now in normalized units (`0.35`) — re-tune via #2. |
 | 2 | **Offline replay harness** over `match_decision` (recall@k, MRR; temporal split; segment by playlist size) | 1–2 days | Turns every later change from "plausible" into "measured". Extend `scripts/matching-lab/`. |
 | 3 | **One combined re-embed:** correct E5/Qwen instruct format (`Instruct: …\nQuery: …` on queries, **no prefix** on documents) + swap to `Qwen3-Embedding-0.6B`, eval 1024 vs 512 Matryoshka dims via #2 | 1 day + re-embed | The prefix fix alone forces a full re-embed; never re-embed twice. Branch on the existing `isInstructionTuned` flag properly. |
 | 4 | **Reranker fixes:** feed analysis text as the document; verify yes/no-logit scoring on DeepInfra; A/B full-rerank vs 70/30 blend via #2 | ~1 day | The 30% blend currently rides on a name+genre string while the rich analysis sits unused. |
 | 5 | **Genre pills** (design below) | 2–4 days | Strongest cold-start evidence; product-visible; independent of #1–4. |
 | 6 | **Decision-log enrichment:** store rank, factor scores, snapshot id at decision time; optionally ~5% rank jitter for future debiasing | hours | Free now, impossible to backfill later. |
-| 7 | **Hygiene:** delete or implement `vetoThreshold`; fix genre substring matching (canonical exact match + similarity expansion); remove dead fields | hours | Bundle with adjacent work. |
+| 7 | **Hygiene:** ~~delete or implement `vetoThreshold`~~ (deleted 2026-06-10 with #1); fix genre substring matching (canonical exact match + similarity expansion); remove dead fields | hours | Bundle with adjacent work. |
 
 ### Post-prod (gated on real usage data)
 
@@ -87,20 +90,38 @@ folds into the re-embed step; the fusion mis-scaling affects every match served 
 
 ## Confirmed findings
 
-### 1. Score fusion is mis-scaled — the 0.50 embedding weight is largely fictional
+### 1. Score fusion was mis-scaled — the 0.50 embedding weight was largely fictional ✅ FIXED 2026-06-10
 
 E5-family cosine scores cluster in a ~0.75–0.90 band (anisotropy from low-temperature
-InfoNCE training). The code stretches with `(sim − 0.5) / 0.5`
-(`song-matching/service.ts`, `similarityBaseline: 0.5`), which still leaves an effective
-range of roughly 0.5–0.8 while audio and genre scores span the full 0–1. The
-nominally-dominant embedding signal has far less *differential* influence than its weight
-implies — audio and genre are quietly steering rankings.
+InfoNCE training). The code stretched with `(sim − 0.5) / 0.5`
+(`song-matching/service.ts`, `similarityBaseline: 0.5`), which still left an effective
+range of roughly 0.5–0.8 while audio and genre scores spanned the full 0–1. The
+nominally-dominant embedding signal had far less *differential* influence than its weight
+implied — audio and genre were quietly steering rankings.
 
 Industry consensus (Elastic linear retriever, Weaviate `relativeScoreFusion` — default since
-v1.24, Qdrant DBSF): **normalize each signal per candidate set (min-max or z-score) before
-the weighted sum**. RRF is the rank-only fallback if normalization can't be trusted, but it
-discards the calibration in audio features. This is a ~30-line change and likely worth more
-than any model swap.
+v1.24, Qdrant DBSF): **z-score-normalize each signal across the whole batch matrix (not
+per-song — that corrupts the per-playlist reranker), 3σ-clipped, before the weighted sum**.
+RRF is the rank-only fallback if normalization can't be trusted, but it discards the
+calibration in audio features.
+
+**What shipped:**
+
+- **Dropped the stretch.** `similarityBaseline` deleted; raw cosine forwarded.
+- **z-score, 3σ-clipped (DBSF-style)** over min-max — min-max is brittle on the narrow-band
+  embedding. Degenerate sets (σ≈0) emit neutral `0.5`. `method` configurable.
+- **Normalized across the full song×playlist matrix**, not per-song. Per-song would break
+  `rerankMatches` (it regroups by playlist, so row-normalized scores aren't comparable there)
+  and is statistically unstable on a user's handful of playlists. Stats recomputed per batch.
+- **Missing signals excluded** from each signal's stats; weights still redistribute adaptively.
+- **Single-song `matchSong`** (walkthrough/lab) falls back to the legacy stretch below
+  `minSamples` — no batch matrix, doesn't rerank.
+- **`minScoreThreshold` now in normalized units** (`0.35`, permissive placeholder — re-tune
+  via #2).
+- **`MatchResult`** keeps raw `factors` + new `normalizedFactors` (the fusion inputs).
+
+`song-matching/{normalization,service,config,types}.ts`; 73 tests pass, `tsgo` clean. Full
+rationale + sources in `docs/architecture/score-normalization-direction.md`.
 
 ### 2. The E5 instruct prefix is wrong on both sides — fold into the re-embed (vote 3-0)
 
@@ -217,7 +238,8 @@ the free-text description.
 
 ## Code-level findings (from the codebase sweep)
 
-- `vetoThreshold: 0.2` configured (`song-matching/config.ts`) but never branched on — dead.
+- ~~`vetoThreshold: 0.2` configured (`song-matching/config.ts`) but never branched on — dead.~~
+  Removed 2026-06-10 alongside the normalization change.
 - `MatchingPlaylistProfile.method`, `ProfileKind.context_v1` — declared, never written/read.
 - `emotion_distribution` always persisted as `{}` — dead column (`emotionEnabled: false`).
 - Genre scoring uses bidirectional **substring** matching (`song-matching/service.ts`):

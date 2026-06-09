@@ -12,6 +12,12 @@ import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/servi
 import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { JobProgress } from "@/lib/platform/jobs/repository";
 import { computeAdaptiveWeights, DEFAULT_MATCHING_CONFIG } from "./config";
+import {
+	computeSignalStats,
+	normalizeSignal,
+	type SignalStats,
+	stretchFromBaseline,
+} from "./normalization";
 import { computeAudioFeatureScore } from "./scoring";
 import { cosineSimilarity } from "./semantic";
 import type {
@@ -21,7 +27,6 @@ import type {
 	MatchingError,
 	MatchingPlaylistProfile,
 	MatchingSong,
-	MatchingWeights,
 	MatchResult,
 	ScoreFactors,
 } from "./types";
@@ -31,6 +36,25 @@ interface BatchMatchOptions {
 	onProgress?: (progress: JobProgress) => void;
 	/** Song:playlist pairs to skip (format: "songId:playlistId") */
 	exclusionSet?: Set<string>;
+}
+
+/** A (song, profile) pair scored with raw factors, before normalization/fusion. */
+interface RawScored {
+	readonly song: MatchingSong;
+	readonly profile: MatchingPlaylistProfile;
+	readonly factors: ScoreFactors;
+	readonly availability: DataAvailability;
+}
+
+/** Per-signal candidate-set distributions, computed over available pairs only. */
+interface FactorStats {
+	readonly embedding: SignalStats;
+	readonly audio: SignalStats;
+	readonly genre: SignalStats;
+}
+
+function clamp01(value: number): number {
+	return Math.max(0, Math.min(1, value));
 }
 
 class MatchingService {
@@ -50,6 +74,12 @@ class MatchingService {
 	/**
 	 * Match a single song to multiple playlists.
 	 * Returns ranked results sorted by score descending.
+	 *
+	 * The candidate set here is just this song's profiles, so per-signal stats
+	 * come from that (often small) set. With few playlists the stats are
+	 * unreliable, so signals below `normalization.minSamples` take the legacy
+	 * fallback scaling — see `matchBatch` for the well-sampled batch-global path
+	 * used in production.
 	 */
 	matchSong(
 		song: MatchingSong,
@@ -60,21 +90,13 @@ class MatchingService {
 			return Result.ok([]);
 		}
 
-		const scoreResults = profiles.map((profile) =>
-			this.scoreSongToPlaylist(song, profile, songEmbedding ?? null),
+		const scored = profiles.map((profile) =>
+			this.computeRawScored(song, profile, songEmbedding ?? null),
 		);
-		const results = scoreResults.flatMap((scoreResult) =>
-			Result.isOk(scoreResult) ? [scoreResult.value] : [],
-		);
+		const stats = this.computeFactorStats(scored);
+		const results = scored.map((s) => this.fuse(s, stats));
 
-		// Assign ranks and filter by threshold
-		const ranked = results
-			.toSorted((a, b) => b.score - a.score)
-			.filter((r) => r.score >= this.config.minScoreThreshold)
-			.slice(0, this.config.maxResultsPerSong)
-			.map((r, i) => ({ ...r, rank: i + 1 }));
-
-		return Result.ok(ranked);
+		return Result.ok(this.rankAndFilter(results));
 	}
 
 	/**
@@ -122,10 +144,14 @@ class MatchingService {
 			failed: 0,
 		};
 
-		for (let i = 0; i < songs.length; i++) {
-			const song = songs[i];
+		// Pass A: raw factor scores for every eligible (song, profile) pair across
+		// the whole candidate matrix. Normalization stats are computed once over
+		// this full set so scores stay comparable along both axes — per song (the
+		// served ranking) and per playlist (the reranker's grouping).
+		const perSong = new Map<string, RawScored[]>();
+		const allScored: RawScored[] = [];
 
-			// Filter out excluded playlists for this song
+		for (const song of songs) {
 			const eligibleProfiles = exclusionSet
 				? profiles.filter(
 						(p) => !exclusionSet.has(`${song.id}:${p.playlistId}`),
@@ -134,16 +160,34 @@ class MatchingService {
 
 			if (eligibleProfiles.length === 0) {
 				excluded.push(song.id);
+				continue;
+			}
+
+			const embedding = songEmbeddings?.get(song.id) ?? null;
+			const scored = eligibleProfiles.map((profile) =>
+				this.computeRawScored(song, profile, embedding),
+			);
+			perSong.set(song.id, scored);
+			for (const s of scored) allScored.push(s);
+		}
+
+		const stats = this.computeFactorStats(allScored);
+
+		// Pass B: normalize, fuse, rank — per song.
+		for (const song of songs) {
+			const scored = perSong.get(song.id);
+			if (!scored) {
+				// Excluded: every playlist was filtered out for this song.
 				progress.done++;
 				onProgress?.(progress);
 				continue;
 			}
 
-			const embedding = songEmbeddings?.get(song.id) ?? null;
-			const result = this.matchSong(song, eligibleProfiles, embedding);
+			const results = scored.map((s) => this.fuse(s, stats));
+			const ranked = this.rankAndFilter(results);
 
-			if (Result.isOk(result) && result.value.length > 0) {
-				matches.set(song.id, result.value);
+			if (ranked.length > 0) {
+				matches.set(song.id, ranked);
 				computed++;
 				progress.succeeded++;
 			} else {
@@ -152,7 +196,6 @@ class MatchingService {
 			}
 
 			progress.done++;
-
 			onProgress?.(progress);
 		}
 
@@ -172,13 +215,14 @@ class MatchingService {
 	}
 
 	/**
-	 * Score a song against a playlist profile.
+	 * Compute raw (un-normalized) factor scores for one (song, profile) pair.
+	 * Fusion is deferred until candidate-set stats are known.
 	 */
-	private scoreSongToPlaylist(
+	private computeRawScored(
 		song: MatchingSong,
 		profile: MatchingPlaylistProfile,
 		songEmbedding: number[] | null,
-	): Result<MatchResult, MatchingError> {
+	): RawScored {
 		const availability: DataAvailability = {
 			hasEmbedding: !!songEmbedding && !!profile.embedding,
 			hasGenres: !!song.genres && song.genres.length > 0,
@@ -186,63 +230,132 @@ class MatchingService {
 				!!song.audioFeatures && Object.keys(profile.audioCentroid).length > 0,
 		};
 
-		const weights = computeAdaptiveWeights(availability, this.config.weights);
-
-		const embeddingScore = this.computeVectorScore(
-			songEmbedding,
-			profile.embedding,
-		);
-		const audioScore =
-			availability.hasAudioFeatures && song.audioFeatures
-				? computeAudioFeatureScore(
-						song.audioFeatures,
-						profile.audioCentroid,
-						this.config.audioWeights,
-					)
-				: 0;
-		const genreScore = this.computeGenreScore(
-			song.genres,
-			profile.genreDistribution,
-		);
-
 		const factors: ScoreFactors = {
-			embedding: embeddingScore,
-			audio: audioScore,
-			genre: genreScore,
+			embedding: this.computeVectorScore(songEmbedding, profile.embedding),
+			audio:
+				availability.hasAudioFeatures && song.audioFeatures
+					? computeAudioFeatureScore(
+							song.audioFeatures,
+							profile.audioCentroid,
+							this.config.audioWeights,
+						)
+					: 0,
+			genre: this.computeGenreScore(song.genres, profile.genreDistribution),
 		};
 
-		const finalScore = this.computeFinalScore(factors, weights);
+		return { song, profile, factors, availability };
+	}
+
+	/**
+	 * Compute per-signal distributions across a candidate set.
+	 * Only pairs where a signal is available contribute to that signal's stats —
+	 * a missing signal's implicit 0 must not drag the distribution.
+	 */
+	private computeFactorStats(scored: RawScored[]): FactorStats {
+		const embedding: number[] = [];
+		const audio: number[] = [];
+		const genre: number[] = [];
+
+		for (const s of scored) {
+			if (s.availability.hasEmbedding) embedding.push(s.factors.embedding);
+			if (s.availability.hasAudioFeatures) audio.push(s.factors.audio);
+			if (s.availability.hasGenres) genre.push(s.factors.genre);
+		}
+
+		return {
+			embedding: computeSignalStats(embedding),
+			audio: computeSignalStats(audio),
+			genre: computeSignalStats(genre),
+		};
+	}
+
+	/**
+	 * Normalize and fuse one pair's raw factors into a ranked MatchResult.
+	 */
+	private fuse(scored: RawScored, stats: FactorStats): MatchResult {
+		const { song, profile, factors, availability } = scored;
+		const weights = computeAdaptiveWeights(availability, this.config.weights);
+
+		const normalizedFactors: ScoreFactors = {
+			embedding: this.normalizeFactor(
+				factors.embedding,
+				availability.hasEmbedding,
+				stats.embedding,
+				(v) =>
+					stretchFromBaseline(
+						v,
+						this.config.normalization.fallbackSimilarityBaseline,
+					),
+			),
+			audio: this.normalizeFactor(
+				factors.audio,
+				availability.hasAudioFeatures,
+				stats.audio,
+			),
+			genre: this.normalizeFactor(
+				factors.genre,
+				availability.hasGenres,
+				stats.genre,
+			),
+		};
+
+		const finalScore =
+			normalizedFactors.embedding * weights.embedding +
+			normalizedFactors.audio * weights.audio +
+			normalizedFactors.genre * weights.genre;
 
 		const availableCount = Object.values(availability).filter(Boolean).length;
-		const confidence = availableCount / 3;
 
-		return Result.ok({
+		return {
 			songId: song.id,
 			playlistId: profile.playlistId,
-			score: Math.max(0, Math.min(1, finalScore)),
+			score: clamp01(finalScore),
 			rank: 0,
 			factors,
-			confidence,
+			normalizedFactors,
+			confidence: availableCount / 3,
 			fromCache: false,
-		});
+		};
 	}
 
 	/**
-	 * Compute final weighted score from factors.
+	 * Normalize a single factor against its candidate-set distribution.
+	 * Unavailable signals contribute 0 (their weight is already redistributed).
+	 * When normalization can't be trusted (disabled, or under-sampled so the
+	 * stats would be noise), the signal takes `fallback` instead — the legacy
+	 * scaling for signals whose raw range is compressed — or passes through raw.
 	 */
-	private computeFinalScore(
-		factors: ScoreFactors,
-		weights: MatchingWeights,
+	private normalizeFactor(
+		value: number,
+		available: boolean,
+		stats: SignalStats,
+		fallback?: (value: number) => number,
 	): number {
-		return (
-			factors.embedding * weights.embedding +
-			factors.audio * weights.audio +
-			factors.genre * weights.genre
-		);
+		if (!available) return 0;
+		const { enabled, method, minSamples } = this.config.normalization;
+		if (!enabled || stats.n < minSamples) {
+			return fallback ? fallback(value) : clamp01(value);
+		}
+		return normalizeSignal(value, stats, method);
 	}
 
 	/**
-	 * Compute vector similarity score.
+	 * Sort by score, drop sub-threshold matches, cap to top-K, assign ranks.
+	 */
+	private rankAndFilter(results: MatchResult[]): MatchResult[] {
+		return results
+			.toSorted((a, b) => b.score - a.score)
+			.filter((r) => r.score >= this.config.minScoreThreshold)
+			.slice(0, this.config.maxResultsPerSong)
+			.map((r, i) => ({ ...r, rank: i + 1 }));
+	}
+
+	/**
+	 * Compute raw vector similarity score (cosine, clamped to [0,1]).
+	 * No baseline stretch here — candidate-set normalization restores the
+	 * embedding signal's differential influence at fusion time, and stats must
+	 * be computed over raw cosines. The legacy stretch survives only as the
+	 * fallback inside `normalizeFactor`.
 	 */
 	private computeVectorScore(
 		songEmbedding: number[] | null,
@@ -251,11 +364,7 @@ class MatchingService {
 		if (!songEmbedding || !playlistEmbedding) return 0;
 		if (this.config.skipVectorScoring) return 0;
 
-		const similarity = cosineSimilarity(songEmbedding, playlistEmbedding);
-		const baseline = this.config.similarityBaseline;
-
-		// Stretch the naturally compressed cosine range: baseline→0, 1.0→1.0
-		return Math.max(0, Math.min(1, (similarity - baseline) / (1 - baseline)));
+		return clamp01(cosineSimilarity(songEmbedding, playlistEmbedding));
 	}
 
 	/**
