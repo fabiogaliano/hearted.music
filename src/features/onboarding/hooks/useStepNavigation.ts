@@ -4,12 +4,11 @@ import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { resolveSession } from "@/features/onboarding/step-resolver";
 import type { SaveableOnboardingStep } from "@/lib/domains/library/accounts/onboarding-steps";
+import { ONBOARDING_SESSION_QUERY_KEY } from "@/lib/platform/auth/query-keys";
 import {
 	getOnboardingSession,
 	saveOnboardingStep,
 } from "@/lib/server/onboarding.functions";
-
-const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
 
 export function useStepNavigation() {
 	const queryClient = useQueryClient();

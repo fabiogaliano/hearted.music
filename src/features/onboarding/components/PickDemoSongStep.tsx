@@ -16,6 +16,7 @@ import type { LandingSongManifest } from "@/lib/content/landing/landing-songs";
 import type { OnboardingAuthPayload } from "@/lib/domains/library/accounts/onboarding-session";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
+import { ONBOARDING_SESSION_QUERY_KEY } from "@/lib/platform/auth/query-keys";
 import { commitDemoSongAndEnterWalkthrough } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useFlagPlaylistsScroll } from "../hooks/useFlagPlaylistsScroll";
@@ -23,8 +24,6 @@ import { useFlagPlaylistsScroll } from "../hooks/useFlagPlaylistsScroll";
 interface PickDemoSongStepProps {
 	songs: LandingSongManifest[];
 }
-
-const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
 
 export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 	const queryClient = useQueryClient();

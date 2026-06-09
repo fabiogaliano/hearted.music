@@ -36,6 +36,10 @@ import { sessionMode } from "@/lib/domains/library/accounts/onboarding-session";
 import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import { sendVerificationEmail } from "@/lib/platform/auth/auth-client";
+import {
+	AUTH_SESSION_QUERY_KEY,
+	ONBOARDING_SESSION_QUERY_KEY,
+} from "@/lib/platform/auth/query-keys";
 import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getBillingState } from "@/lib/server/billing.functions";
 import { getInitialConsentState } from "@/lib/server/consent.functions";
@@ -55,15 +59,12 @@ const DevWorkflowPanel = shouldLoadDevWorkflowPanel
 		)
 	: null;
 
-const authQueryKey = ["auth", "session"] as const;
-const onboardingSessionQueryKey = ["auth", "onboarding-session"] as const;
-
 export const Route = createFileRoute("/_authenticated")({
 	beforeLoad: async ({ location, context }) => {
 		const { queryClient } = context;
 
 		const { session, account, identity } = await queryClient.ensureQueryData({
-			queryKey: authQueryKey,
+			queryKey: AUTH_SESSION_QUERY_KEY,
 			queryFn: () => requireAuthSession(),
 			staleTime: 5 * 60 * 1000,
 		});
@@ -75,7 +76,7 @@ export const Route = createFileRoute("/_authenticated")({
 		// parallel, but onboarding still resolves first so redirects are not
 		// blocked by billing latency or failures.
 		const onboardingSessionPromise = queryClient.ensureQueryData({
-			queryKey: onboardingSessionQueryKey,
+			queryKey: ONBOARDING_SESSION_QUERY_KEY,
 			queryFn: () => getOnboardingSession(),
 			staleTime: 0,
 		});

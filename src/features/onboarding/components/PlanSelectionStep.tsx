@@ -28,6 +28,7 @@ import {
 import { parseStripeCheckoutUrl } from "@/lib/domains/billing/stripe-redirects";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
+import { ONBOARDING_SESSION_QUERY_KEY } from "@/lib/platform/auth/query-keys";
 import {
 	createCheckoutSession,
 	getBillingState,
@@ -55,8 +56,6 @@ type ConfigState =
 	| { status: "error" };
 
 type PlanState = "initial" | "polling" | "retry" | "success";
-
-const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
 
 const FALLBACK_MESSAGE = "Just a moment. Setting things up for you.";
 
