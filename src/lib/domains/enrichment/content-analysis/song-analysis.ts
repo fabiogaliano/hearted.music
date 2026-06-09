@@ -290,22 +290,20 @@ export class SongAnalysisService {
 	}
 
 	private detectInstrumental(input: AnalyzeSongInput): boolean {
-		if (!input.lyrics || input.lyrics.trim().length === 0) {
+		// Decide purely on the lyrics we actually have, never on Spotify's
+		// instrumentalness score. That score is unreliable for vocal tracks — it
+		// tagged Lorde's "Ribs" at 0.61 and Hot Chip's "Need You Now" at 0.70,
+		// which sent fully-lyrical songs down the instrumental path and produced a
+		// read the panel can't render ("Quiet one"). A song we hold real lyrics for
+		// gets the lyrical read; only genuinely word-less (or near-word-less) songs
+		// fall through to the instrumental read.
+		const lyrics = input.lyrics?.trim() ?? "";
+		if (lyrics.length === 0) {
 			return true;
 		}
 
-		const instrumentalness =
-			input.instrumentalness ?? input.audioFeatures?.instrumentalness;
-		if (instrumentalness != null && instrumentalness > 0.5) {
-			return true;
-		}
-
-		const wordCount = input.lyrics.trim().split(/\s+/).length;
-		if (wordCount < INSTRUMENTAL_WORD_THRESHOLD) {
-			return true;
-		}
-
-		return false;
+		const wordCount = lyrics.split(/\s+/).length;
+		return wordCount < INSTRUMENTAL_WORD_THRESHOLD;
 	}
 
 	private buildPrompt(input: AnalyzeSongInput): string {

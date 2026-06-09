@@ -41,19 +41,23 @@ describe("detectInstrumental", () => {
 		expect(detect({ lyrics: "   " })).toBe(true);
 	});
 
-	it("returns true when instrumentalness > 0.5", () => {
+	// Regression: a song we hold real lyrics for must be analyzed lyrically even
+	// when Spotify reports a high instrumentalness. The old order trusted that
+	// score first and misrouted vocal songs (Lorde's "Ribs" at 0.61, Hot Chip's
+	// "Need You Now" at 0.70) to the instrumental read the panel can't render.
+	it("stays lyrical with full lyrics despite a high instrumentalness score", () => {
 		expect(detect({ lyrics: "word ".repeat(60), instrumentalness: 0.8 })).toBe(
-			true,
+			false,
 		);
 	});
 
-	it("returns true when audioFeatures.instrumentalness > 0.5 (fallback)", () => {
+	it("stays lyrical with full lyrics despite high audioFeatures.instrumentalness", () => {
 		expect(
 			detect({
 				lyrics: "word ".repeat(60),
 				audioFeatures: { instrumentalness: 0.7 } as any,
 			}),
-		).toBe(true);
+		).toBe(false);
 	});
 
 	it("returns true when lyrics have fewer than 50 words", () => {
@@ -62,12 +66,6 @@ describe("detectInstrumental", () => {
 
 	it("returns false for lyrical song with sufficient words", () => {
 		expect(detect({ lyrics: "word ".repeat(60), instrumentalness: 0.1 })).toBe(
-			false,
-		);
-	});
-
-	it("returns false when instrumentalness is exactly 0.5", () => {
-		expect(detect({ lyrics: "word ".repeat(60), instrumentalness: 0.5 })).toBe(
 			false,
 		);
 	});
