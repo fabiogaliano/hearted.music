@@ -28,6 +28,11 @@ import {
 	isReservedHandle,
 	validateHandleFormatInput,
 } from "@/lib/domains/library/accounts/handle-rules";
+import type { OnboardingAuthPayload } from "@/lib/domains/library/accounts/onboarding-session";
+import {
+	AUTH_SESSION_QUERY_KEY,
+	ONBOARDING_SESSION_QUERY_KEY,
+} from "@/lib/platform/auth/query-keys";
 import {
 	checkHandleAvailability,
 	claimHandleAndAdvance,
@@ -178,7 +183,12 @@ export function ClaimHandleStep({
 
 	// Only the debounced value that is ALSO format-valid, not locally reserved,
 	// not owned-seed, and not submit-in-flight should trigger a query.
-	const debouncedFormatResult = validateHandleFormatInput(debouncedValue);
+	// Once the debounce settles the two values are identical, so reuse the live
+	// result instead of validating the same string twice per render.
+	const debouncedFormatResult =
+		debouncedValue === value
+			? formatResult
+			: validateHandleFormatInput(debouncedValue);
 	const debouncedIsFormatValid = debouncedFormatResult.status === "valid";
 	const debouncedNormalized =
 		debouncedFormatResult.status === "valid"
@@ -194,12 +204,17 @@ export function ClaimHandleStep({
 	//   • debounced value is format-valid
 	//   • debounced value is not locally reserved
 	//   • submit is not in flight (to avoid late responses overwriting submit UI)
+	//   • no active submit-time unavailable verdict — §8.4: don't re-fire the same
+	//     unchanged value after a submit-time unavailable. Re-arming the stale query
+	//     here would refetch and flicker "taken → Checking… → taken". handleChange
+	//     clears it on edit, so edit-then-recheck still fires for the new value.
 	const queryEnabled =
 		claimHandleSeed.kind !== "owned" &&
 		debouncedIsFormatValid &&
 		!debouncedIsLocallyReserved &&
 		debouncedValue.length > 0 &&
-		!submitInFlight;
+		!submitInFlight &&
+		submitTimeUnavailable === null;
 
 	// Query key includes ownedHandleSnapshot so that if the account later claims
 	// a handle and the same-session session cache is updated, the key changes and
@@ -306,6 +321,43 @@ export function ClaimHandleStep({
 		return () => clearTimeout(id);
 	}, [isChecking]);
 
+	// ── Authoritative server-result application ──────────────────────────────
+
+	// Every server result that resolves this step the same way: patch the
+	// onboarding-session cache, patch the session cache's handle when the server
+	// confirmed one, then navigate wherever the authoritative session says.
+	// One helper so the four call sites (availability-time already_owned plus
+	// the three submit branches) can never drift apart.
+	const applyAuthoritativeOnboarding = useCallback(
+		(onboarding: OnboardingAuthPayload, ownedHandle?: string) => {
+			queryClient.setQueryData(ONBOARDING_SESSION_QUERY_KEY, onboarding);
+			if (ownedHandle !== undefined) {
+				queryClient.setQueryData(AUTH_SESSION_QUERY_KEY, (prev: unknown) => {
+					if (!prev || typeof prev !== "object") return prev;
+					const p = prev as { account?: Record<string, unknown> };
+					return {
+						...p,
+						account: {
+							...p.account,
+							handle: ownedHandle,
+						},
+					};
+				});
+			}
+
+			const { allowedPath } = resolveSession(onboarding.session);
+			if (allowedPath === "/onboarding") {
+				router.navigate({
+					to: "/onboarding",
+					search: { step: onboarding.session.status },
+				});
+			} else {
+				router.navigate({ to: allowedPath });
+			}
+		},
+		[queryClient, router],
+	);
+
 	// ── Handle availability-time already_owned as immediate recovery ──────────
 
 	useEffect(() => {
@@ -315,29 +367,8 @@ export function ClaimHandleStep({
 
 		// Availability returned already_owned — patch both caches and navigate.
 		// This is authoritative stale-state correction, not a validation error.
-		queryClient.setQueryData(["auth", "onboarding-session"], data.onboarding);
-		queryClient.setQueryData(["auth", "session"], (prev: unknown) => {
-			if (!prev || typeof prev !== "object") return prev;
-			const p = prev as { account?: Record<string, unknown> };
-			return {
-				...p,
-				account: {
-					...p.account,
-					handle: data.ownedHandle,
-				},
-			};
-		});
-
-		const { allowedPath } = resolveSession(data.onboarding.session);
-		if (allowedPath === "/onboarding") {
-			router.navigate({
-				to: "/onboarding",
-				search: { step: data.onboarding.session.status },
-			});
-		} else {
-			router.navigate({ to: allowedPath });
-		}
-	}, [availabilityQuery.data, queryClient, router]);
+		applyAuthoritativeOnboarding(data.onboarding, data.ownedHandle);
+	}, [availabilityQuery.data, applyAuthoritativeOnboarding]);
 
 	// ── CTA gating ────────────────────────────────────────────────────────────
 
@@ -431,80 +462,21 @@ export function ClaimHandleStep({
 			// Handle each result branch.
 
 			if (result.status === "not_ready") {
-				// Out-of-order stale-client path. Patch onboarding-session only.
-				queryClient.setQueryData(
-					["auth", "onboarding-session"],
-					result.onboarding,
-				);
-				const { allowedPath } = resolveSession(result.onboarding.session);
-				if (allowedPath === "/onboarding") {
-					router.navigate({
-						to: "/onboarding",
-						search: { step: result.onboarding.session.status },
-					});
-				} else {
-					router.navigate({ to: allowedPath });
-				}
+				// Out-of-order stale-client path. Patch onboarding-session only —
+				// the server confirmed no handle, so the session cache stays as-is.
+				applyAuthoritativeOnboarding(result.onboarding);
 				return;
 			}
 
 			if (result.status === "already_owned") {
 				// Stale-tab submit for a different already-owned handle.
-				// Patch both caches with the authoritative owned handle.
-				queryClient.setQueryData(
-					["auth", "onboarding-session"],
-					result.onboarding,
-				);
-				queryClient.setQueryData(["auth", "session"], (prev: unknown) => {
-					if (!prev || typeof prev !== "object") return prev;
-					const p = prev as { account?: Record<string, unknown> };
-					return {
-						...p,
-						account: {
-							...p.account,
-							handle: result.ownedHandle,
-						},
-					};
-				});
-				const { allowedPath } = resolveSession(result.onboarding.session);
-				if (allowedPath === "/onboarding") {
-					router.navigate({
-						to: "/onboarding",
-						search: { step: result.onboarding.session.status },
-					});
-				} else {
-					router.navigate({ to: allowedPath });
-				}
+				applyAuthoritativeOnboarding(result.onboarding, result.ownedHandle);
 				return;
 			}
 
 			if (result.status === "claimed") {
-				// Successful claim — patch both caches.
-				queryClient.setQueryData(
-					["auth", "onboarding-session"],
-					result.onboarding,
-				);
-				// Preserve session + identity; replace only account.handle.
-				queryClient.setQueryData(["auth", "session"], (prev: unknown) => {
-					if (!prev || typeof prev !== "object") return prev;
-					const p = prev as { account?: Record<string, unknown> };
-					return {
-						...p,
-						account: {
-							...p.account,
-							handle: result.ownedHandle,
-						},
-					};
-				});
-				const { allowedPath } = resolveSession(result.onboarding.session);
-				if (allowedPath === "/onboarding") {
-					router.navigate({
-						to: "/onboarding",
-						search: { step: result.onboarding.session.status },
-					});
-				} else {
-					router.navigate({ to: allowedPath });
-				}
+				// Successful claim.
+				applyAuthoritativeOnboarding(result.onboarding, result.ownedHandle);
 				return;
 			}
 
@@ -531,8 +503,7 @@ export function ClaimHandleStep({
 			isLocallyReserved,
 			currentVerdict,
 			isChecking,
-			queryClient,
-			router,
+			applyAuthoritativeOnboarding,
 		],
 	);
 
