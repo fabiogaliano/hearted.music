@@ -1,6 +1,10 @@
 import type { Story } from "@ladle/react";
 import { PlanSelectionStep } from "./PlanSelectionStep";
 
+export default {
+	title: "Onboarding/PlanSelectionStep",
+};
+
 /**
  * PlanSelectionStep fetches plan config (quarterly flag) on mount.
  * In Ladle (no server), it shows an error state.

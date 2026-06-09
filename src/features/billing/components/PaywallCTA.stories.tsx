@@ -2,6 +2,10 @@ import type { Story } from "@ladle/react";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { PaywallCTA } from "./PaywallCTA";
 
+export default {
+	title: "Billing/PaywallCTA",
+};
+
 function makeFreeBillingState(creditBalance = 0): BillingState {
 	return {
 		plan: "free",

@@ -3,6 +3,10 @@ import { SongDetailPanel } from "./SongDetailPanel";
 import { GOLD_SONG_DETAILS } from "./song-detail-data";
 import type { PlaylistsPanel, SongDetail } from "./song-detail-types";
 
+export default {
+	title: "Liked Songs/SongDetailPanel",
+};
+
 const noop = () => {};
 
 // Real Spotify CDN art for the showcase song (drivers license / Olivia Rodrigo).

@@ -5,6 +5,10 @@ import type { ExtensionSyncState } from "@/lib/extension/detect";
 import { fonts } from "@/lib/theme/fonts";
 import { DashboardSyncControl } from "./DashboardSyncControl";
 
+export default {
+	title: "Dashboard/SyncControl",
+};
+
 const noop = () => {};
 
 // Mirror DashboardHeader's right-hand metadata cluster so each state is judged

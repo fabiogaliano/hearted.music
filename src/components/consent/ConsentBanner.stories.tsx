@@ -10,7 +10,7 @@ import { fonts } from "@/lib/theme/fonts";
 import { ConsentBanner } from "./ConsentBanner";
 
 export default {
-	title: "Consent/ConsentBanner",
+	title: "App Shell/ConsentBanner",
 };
 
 // Drives the banner through a controlled context rather than the real

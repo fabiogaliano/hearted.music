@@ -4,6 +4,10 @@ import { allLikedSongs, simulateEnrichment } from "@/stories/fixtures";
 import { SongCard } from "./components/SongCard";
 import type { LikedSong } from "./types";
 
+export default {
+	title: "Liked Songs/Page",
+};
+
 const noopClick = () => {};
 const noopRef = () => {};
 

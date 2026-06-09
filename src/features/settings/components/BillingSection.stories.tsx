@@ -2,6 +2,10 @@ import type { Story } from "@ladle/react";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { BillingSection } from "./BillingSection";
 
+export default {
+	title: "Settings/BillingSection",
+};
+
 function Wrapper({ children }: { children: React.ReactNode }) {
 	return (
 		<div style={{ maxWidth: 560, margin: "40px auto", padding: "0 24px" }}>

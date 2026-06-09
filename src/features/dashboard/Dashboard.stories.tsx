@@ -5,6 +5,10 @@ import type { ActiveJobs } from "@/lib/server/jobs.functions";
 import { allLikedSongs, simulateDashboard } from "@/stories/fixtures";
 import { Dashboard } from "./Dashboard";
 
+export default {
+	title: "Dashboard/Page",
+};
+
 const TOTAL_LIKED_SONGS = allLikedSongs.length;
 
 export const FullyEnriched: Story = () => (

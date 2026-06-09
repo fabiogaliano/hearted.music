@@ -3,6 +3,10 @@ import { useEffect, useState } from "react";
 import { sidebarData } from "@/stories/fixtures";
 import { Sidebar } from "./Sidebar";
 
+export default {
+	title: "App Shell/Sidebar",
+};
+
 export const Default: Story = () => (
 	<Sidebar
 		unsortedCount={sidebarData.unsortedCount}

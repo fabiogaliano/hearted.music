@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
+export default {
+	title: "Foundations/Buttons",
+};
+
 function Row({
 	label,
 	note,
