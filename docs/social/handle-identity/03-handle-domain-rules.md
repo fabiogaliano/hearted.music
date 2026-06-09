@@ -1,6 +1,6 @@
 # Task 03 — Handle domain rules & modules
 
-**Plan:** §5 (§5.1–§5.7) · **Recommended order:** step 5 · **Status:** [ ]
+**Plan:** §5 (§5.1–§5.7) · **Recommended order:** step 5 · **Status:** [x]
 
 ## Goal
 
