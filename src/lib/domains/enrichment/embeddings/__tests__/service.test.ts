@@ -63,4 +63,40 @@ describe("buildEmbeddingText", () => {
 		const text = buildText({ headline: "Test", themes: [] });
 		expect(text).toBe("Test");
 	});
+
+	// Regression: the active v17 SongRead schema (image/lens/tension/take/arc/lines/
+	// texture) shares no field names with the pre-v17 builder, so a v17 row used to
+	// compose an empty string. Empty text yields no embedding row, and since
+	// readiness is decided purely on row existence, the song was re-selected every
+	// batch — busy-looping the enrichment reconciler. The builder must read v17
+	// fields and never return empty.
+	it("builds non-empty text from a v17 SongRead row", () => {
+		const text = buildText({
+			image: "a dark empty road",
+			lens: "a goodbye as a homecoming",
+			tension: "Quiet Dread",
+			take: "The night ends and she is alone.",
+			contradiction: "She leaves to feel held",
+			arc: [
+				{ label: "The Start", mood: "tense", scene: "She waits by the door." },
+				{ label: "The End", mood: "calm", scene: "She walks into the cold." },
+			],
+			lines: [{ line: "I'm still here" }],
+			texture: "Warm synths over a brittle drum machine",
+		});
+
+		expect(text).not.toBe("Song analysis for track");
+		expect(text).toContain("a dark empty road");
+		expect(text).toContain("a goodbye as a homecoming");
+		expect(text).toContain("The night ends and she is alone.");
+		expect(text).toContain("She waits by the door.");
+		expect(text).toContain("I'm still here");
+		expect(text).toContain("Warm synths");
+		expect(text).not.toContain("undefined");
+	});
+
+	it("never returns empty text for an unrecognized shape", () => {
+		const text = buildText({ some_future_field: "value" });
+		expect(text).toBe("Song analysis for track");
+	});
 });
