@@ -1,20 +1,4 @@
-import { instrumentalV2 } from "./instrumental-v2";
 import { instrumentalV3 } from "./instrumental-v3";
-import { lyricalV2 } from "./lyrical-v2";
-import { lyricalV3 } from "./lyrical-v3";
-import { lyricalV4 } from "./lyrical-v4";
-import { lyricalV5 } from "./lyrical-v5";
-import { lyricalV6 } from "./lyrical-v6";
-import { lyricalV7 } from "./lyrical-v7";
-import { lyricalV8 } from "./lyrical-v8";
-import { lyricalV9 } from "./lyrical-v9";
-import { lyricalV10 } from "./lyrical-v10";
-import { lyricalV11 } from "./lyrical-v11";
-import { lyricalV12 } from "./lyrical-v12";
-import { lyricalV13 } from "./lyrical-v13";
-import { lyricalV14 } from "./lyrical-v14";
-import { lyricalV15 } from "./lyrical-v15";
-import { lyricalV16 } from "./lyrical-v16";
 import { lyricalV17 } from "./lyrical-v17";
 import { lyricalV17Regrouped } from "./lyrical-v17-regrouped";
 import { lyricalV19 } from "./lyrical-v19";
@@ -32,21 +16,6 @@ import { lyricalV30 } from "./lyrical-v30";
 import type { PromptVersion } from "./types";
 
 const LYRICAL_PROMPTS: Record<string, PromptVersion> = {
-	"2": lyricalV2,
-	"3": lyricalV3,
-	"4": lyricalV4,
-	"5": lyricalV5,
-	"6": lyricalV6,
-	"7": lyricalV7,
-	"8": lyricalV8,
-	"9": lyricalV9,
-	"10": lyricalV10,
-	"11": lyricalV11,
-	"12": lyricalV12,
-	"13": lyricalV13,
-	"14": lyricalV14,
-	"15": lyricalV15,
-	"16": lyricalV16,
 	"17": lyricalV17,
 	"18": lyricalV17Regrouped,
 	"19": lyricalV19,
@@ -64,7 +33,6 @@ const LYRICAL_PROMPTS: Record<string, PromptVersion> = {
 };
 
 const INSTRUMENTAL_PROMPTS: Record<string, PromptVersion> = {
-	"2": instrumentalV2,
 	"3": instrumentalV3,
 };
 
