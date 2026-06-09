@@ -1,6 +1,6 @@
 # Task 02 — Schema & migrations
 
-**Plan:** §4 (§4.1–§4.3) · **Recommended order:** steps 2–4 · **Status:** [ ]
+**Plan:** §4 (§4.1–§4.3) · **Recommended order:** steps 2–4 · **Status:** [x]
 
 ## Goal
 

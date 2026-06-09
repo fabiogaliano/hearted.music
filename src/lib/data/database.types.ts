@@ -40,6 +40,7 @@ export type Database = {
 					created_at: string;
 					display_name: string | null;
 					email: string | null;
+					handle: string | null;
 					id: string;
 					image_url: string | null;
 					spotify_id: string | null;
@@ -50,6 +51,7 @@ export type Database = {
 					created_at?: string;
 					display_name?: string | null;
 					email?: string | null;
+					handle?: string | null;
 					id?: string;
 					image_url?: string | null;
 					spotify_id?: string | null;
@@ -60,6 +62,7 @@ export type Database = {
 					created_at?: string;
 					display_name?: string | null;
 					email?: string | null;
+					handle?: string | null;
 					id?: string;
 					image_url?: string | null;
 					spotify_id?: string | null;
@@ -2049,6 +2052,13 @@ export type Database = {
 			claim_billing_webhook_event: {
 				Args: { p_lease_ms: number; p_stripe_event_id: string };
 				Returns: string;
+			};
+			claim_handle: {
+				Args: { p_account_id: string; p_handle: string };
+				Returns: {
+					owned_handle: string;
+					status: string;
+				}[];
 			};
 			claim_pending_library_processing_job: {
 				Args: never;
