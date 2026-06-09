@@ -123,3 +123,20 @@ on disagreement; §15 is the decision index.
 - `[task 08+10 | implement] SyncingStep transitionFailed state gates auto-retry on remount not refresh` — useEffectEvent fires once per effect invocation; guarding with a local boolean prevents the timer from re-firing if the component re-renders while the toast is still visible. The comment says "until refresh/remount" per the spec; the state resets on remount naturally since useState re-initializes.
 - `[task 08+10 | review->patch] BLOCKER fix applied directly by orchestrator: added SAVEABLE_ONBOARDING_STEPS to the preferences-queries mock in onboarding.demo-matches.test.ts` — onboarding.functions.ts now imports SAVEABLE_ONBOARDING_STEPS at module-eval time (to build saveableStepInputSchema), so every test mocking preferences-queries must provide it. The implementer fixed free-allocation.test.ts but missed demo-matches.test.ts; only the FULL `bun run test` surfaced it. One-line parity fix (mirrors ONBOARDING_STEPS stub). Verified: tsgo+tsc exit 0, full suite 1403 passed / 8 skipped.
 - `[task 08+10 | review->patch] DECLINED the MINOR (unused readyCopyVariant in PlanSelectionStep SuccessView)` — git show HEAD confirms it was already unused before this task (same line numbers in HEAD and working); pre-existing dead code unrelated to handle identity. Not a regression; fixing it is out of scope ("build only what's asked"). Left as-is.
+
+---
+
+## Task 09
+
+- `[task 09 | implement] 23505 detected on rpcResult.error.code after .single()` — supabase-js propagates the PostgreSQL error code directly in the PostgREST error object; checking rpcResult.error.code === "23505" before inspecting data is the established repo pattern (see waitlist.functions.ts, billing/bridge-handlers.ts). Any other rpcResult.error throws so it surfaces as a server-side toast.
+- `[task 09 | implement] rpcResult.data cast to unknown before z.parse` — the generated type for claim_handle Returns declares owned_handle as string (non-null) in all branches, but the not_ready branch returns NULL at runtime. Casting to unknown forces TypeScript to defer to the zod schema's z.null() check, which matches the real runtime value. A one-line comment in the module explains why.
+- `[task 09 | implement] isProfaneHandle used as the profanity function name` — matches the export name in handle-profanity.ts (task 03 decision: "isProfaneHandle(normalizedHandle): boolean").
+- `[task 09 | implement] claimHandleRpcRowSchema defined as a module-level const (not inside handler)` — schema construction is pure and allocation-free; module-level placement avoids re-creating the zod union on every RPC call.
+- `[task 09 | implement] checkHandleAvailability DB lookup uses .neq("id", accountId)` — plain equality on handle column plus NOT-self exclusion matches §6.2 spec ("excluding the caller's own account id; plain equality check on handle"). maybeSingle() returns null (not error) when no match, so the available/taken branch is a data-null check rather than an error check.
+- `[task 09 | implement] not_ready gate in claimHandleAndAdvance guards currentStep !== "complete"` — session.status can be "complete" only if onboarding_completed_at is set; isOnboardingStepBefore("complete", "claim-handle") would return false (correct, don't block), so the explicit guard is belt-and-suspenders ensuring a bizarre already-completed account with null handle still reaches the RPC rather than being gated out.
+
+---
+
+## Task 09
+
+- `[task 09 | review->patch] MINOR fix applied directly: strengthened the already_owned RPC-row test to assert loadOnboardingSession was last-called with the RPC-returned owned_handle` — the test was order-based only and couldn't distinguish a correct impl from one passing null; added the toHaveBeenLastCalledWith assertion mirroring the claimed test. Impl itself was already correct. 24/24 pass, tsgo green.
