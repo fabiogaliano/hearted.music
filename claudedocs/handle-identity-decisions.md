@@ -86,3 +86,15 @@ on disagreement; §15 is the decision index.
 - `[task 05 | implement] step-resolver.test.ts updated: imports sessionMode/WalkthroughSong from domain module; complete test updated to /dashboard; claim-handle added to steps test matrix` — the test was previously a direct consumer of step-resolver for types now moved; keeping it co-located with the route-resolver tests but updated imports.
 - `[task 05 | orchestrator] harness LSP (tsc) new-diagnostics can be STALE/intermediate vs the final file state` — mid-run LSP flagged claim-handle assignability errors in DevWorkflowPanel/route.tsx that the implementer's later ONBOARDING_STEP_VALUES edit resolved. Verified final state clean under BOTH `bun run typecheck` (tsgo) and `bun run typecheck:legacy` (tsc), exit 0. Lesson: confirm at the gate with a real run; don't act on stale LSP snapshots. Keeping tsc in the final gate since tsgo can in principle miss errors.
 - `[task 05 | orchestrator->task 06] FOLLOW-UP: onboarding.functions.ts still defines+exports its own local OnboardingAuthPayload (internal-only, no external consumer)` — violates the "onboarding-session.ts is the only source" rule but is explicitly deferred. Task 06 must remove the local definition and import OnboardingAuthPayload from the domain module.
+
+---
+
+## Task 06
+
+- `[task 06 | implement] "claim-handle or later" expressed via ONBOARDING_STEP_VALUES.indexOf comparison` — avoids hard-coding a set that would drift when steps are reordered; single source of truth is the array; comment notes Task 08 may replace with isOnboardingStepBefore.
+- `[task 06 | implement] UserPreferences imported from @/lib/domains/library/accounts/preferences-queries` — that module owns the Tables<"user_preferences"> alias; consistent with all other callers.
+- `[task 06 | implement] AdminSupabaseClient imported from @/lib/data/client` — that module defines it as ReturnType<typeof createAdminSupabaseClient>; typing the supabase arg explicitly lets callers construct their own client without an extra import.
+- `[task 06 | implement] accountHandle threaded from context.account.handle in both getOnboardingSession and getOnboardingData` — avoids an extra account query; context.account is injected by authMiddleware which already fetched the account row.
+- `[task 06 | implement] loadOnboardingData signature extended with accountHandle: string | null parameter` — preferred threading-from-context approach (no extra DB query) over fetching the account row inside loadOnboardingData.
+- `[task 06 | implement] commitDemoSongAndEnterWalkthrough updated to pass accountHandle to loadOnboardingSession` — was calling old positional loadOnboardingSession(accountId); updated to new args shape so it also routes through handle-aware derivation.
+- `[task 06 | implement] Removed unused imports after function deletion: AnalysisContent, OnboardingSession, WalkthroughSong, OnboardingStep, UserPreferences, ThemeColor, generateSongSlug` — biome/tsgo flag unused imports; removed to keep compile clean.

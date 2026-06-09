@@ -36,7 +36,7 @@ onboarding-machine work split so each task stays reviewable).
 | 03 | [Handle domain rules & modules](./03-handle-domain-rules.md) | [x] | §5 |
 | 04 | [Relocate `AnalysisContent` type](./04-analysis-content-relocation.md) | [x] | §6.0 |
 | 05 | [Onboarding session contracts](./05-onboarding-session-contracts.md) | [x] | §6.0, §7.2 |
-| 06 | [Onboarding session server primitives](./06-onboarding-session-server.md) | [ ] | §6.0, §7.2 |
+| 06 | [Onboarding session server primitives](./06-onboarding-session-server.md) | [x] | §6.0, §7.2 |
 | 07 | [Onboarding loader + claim-handle seed](./07-onboarding-loader-and-seed.md) | [ ] | §7.3 |
 | 08 | [Onboarding step machine + wiring](./08-onboarding-step-machine.md) | [ ] | §7.1, §7.2 |
 | 09 | [Handle server contracts](./09-handle-server-contracts.md) | [ ] | §6.0–§6.3 |

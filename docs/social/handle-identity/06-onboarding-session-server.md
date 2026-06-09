@@ -1,6 +1,6 @@
 # Task 06 — Onboarding session server primitives
 
-**Plan:** §6.0, §7.2 item 16 · **Recommended order:** step 8 · **Status:** [ ]
+**Plan:** §6.0, §7.2 item 16 · **Recommended order:** step 8 · **Status:** [x]
 
 ## Goal
 
