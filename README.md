@@ -300,6 +300,9 @@ RESEND_API_KEY=           # waitlist confirmation emails
 
 # Extension
 VITE_CHROME_EXTENSION_ID=ohaaafmgbbfohhjhogonolonpjhhfohk # Chrome extension ID for externally_connectable messaging
+
+# Public origin — canonical base URL for handle pages and externally surfaced public links
+VITE_PUBLIC_APP_ORIGIN=http://127.0.0.1:5173  # use https://hearted.music in production
 ```
 
 ### Database
