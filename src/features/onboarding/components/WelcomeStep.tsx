@@ -1,5 +1,6 @@
 import { ArrowRightIcon } from "@phosphor-icons/react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/kbd";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
@@ -13,10 +14,10 @@ export function WelcomeStep() {
 	const handleContinue = async () => {
 		if (isNavigating) return;
 		setIsNavigating(true);
-		try {
-			await goToStep("pick-color");
-		} catch {
+		const result = await goToStep("pick-color");
+		if (result.status === "transition_failed") {
 			setIsNavigating(false);
+			toast.error("Couldn't continue. Please try again.");
 		}
 	};
 

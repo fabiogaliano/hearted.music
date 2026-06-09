@@ -3,7 +3,7 @@ import { useRouter } from "@tanstack/react-router";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { resolveSession } from "@/features/onboarding/step-resolver";
-import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
+import type { SaveableOnboardingStep } from "@/lib/domains/library/accounts/onboarding-steps";
 import {
 	getOnboardingSession,
 	saveOnboardingStep,
@@ -21,7 +21,7 @@ export function useStepNavigation() {
 	const [isPending, setIsPending] = useState(false);
 
 	const navigateTo = useCallback(
-		async (nextStep: OnboardingStep) => {
+		async (nextStep: SaveableOnboardingStep) => {
 			if (pendingRef.current) return;
 			pendingRef.current = true;
 			setIsPending(true);

@@ -51,6 +51,7 @@ vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
 	completeOnboarding: vi.fn(),
 	isOnboardingComplete: vi.fn(),
 	ONBOARDING_STEPS: { safeParse: vi.fn() },
+	SAVEABLE_ONBOARDING_STEPS: { safeParse: vi.fn() },
 	updateOnboardingStep: vi.fn(),
 	updateTheme: vi.fn(),
 	clearPhaseJobIds: vi.fn(),

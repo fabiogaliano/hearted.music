@@ -50,11 +50,19 @@ export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
 		setIsSaving(true);
 		try {
 			await saveThemePreference({ data: { theme: currentTheme } });
-			await goToStep("install-extension");
 		} catch (error) {
 			console.error("Failed to save theme:", error);
 			toast.error("Failed to save your theme preference. Please try again.");
 			setIsSaving(false);
+			return;
+		}
+		const result = await goToStep("install-extension");
+		if (result.status === "transition_failed") {
+			// Theme is already saved — preserve it, but stay on this step.
+			setIsSaving(false);
+			toast.error(
+				"Your theme was saved, but we couldn't continue. Please try again.",
+			);
 		}
 	};
 

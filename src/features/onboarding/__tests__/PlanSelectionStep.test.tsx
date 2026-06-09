@@ -44,6 +44,7 @@ vi.mock("@/lib/server/onboarding.functions", () => ({
 
 vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => vi.fn(),
+	useRouter: () => ({ navigate: vi.fn().mockResolvedValue(undefined) }),
 }));
 
 vi.mock("../hooks/useCheckoutPolling", () => ({

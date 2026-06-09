@@ -60,9 +60,7 @@ vi.mock("../components/OnboardingDescriptionDialog", () => ({
 
 vi.mock("@tanstack/react-router", () => ({
 	useLocation: () => ({
-		state: {
-			syncStats: { songs: 100, playlists: 5, playlistSongs: 20, artists: 50 },
-		},
+		state: {},
 	}),
 }));
 
@@ -99,7 +97,7 @@ describe("FlagPlaylistsStep", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockSavePlaylistTargets.mockResolvedValue(undefined);
-		mockGoToStep.mockResolvedValue(undefined);
+		mockGoToStep.mockResolvedValue({ status: "transitioned" });
 		vi.stubGlobal("localStorage", createInMemoryStorage());
 		// Most tests assume the user has already seen the description dialog
 		// so it doesn't interfere with selection assertions. Tests that exercise
@@ -155,9 +153,7 @@ describe("FlagPlaylistsStep", () => {
 		});
 
 		await waitFor(() => {
-			expect(mockGoToStep).toHaveBeenCalledWith("pick-demo-song", {
-				syncStats: { songs: 100, playlists: 5, playlistSongs: 20, artists: 50 },
-			});
+			expect(mockGoToStep).toHaveBeenCalledWith("pick-demo-song");
 		});
 	});
 
@@ -351,9 +347,7 @@ describe("FlagPlaylistsStep", () => {
 		});
 
 		await waitFor(() => {
-			expect(mockGoToStep).toHaveBeenCalledWith("pick-demo-song", {
-				syncStats: { songs: 100, playlists: 5, playlistSongs: 20, artists: 50 },
-			});
+			expect(mockGoToStep).toHaveBeenCalledWith("pick-demo-song");
 		});
 	});
 });

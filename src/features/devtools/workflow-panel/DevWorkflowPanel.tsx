@@ -13,11 +13,14 @@ import { PaneRoot, PaneSlot, PaneStore, usePane } from "@/integrations/uipane";
 import type { OnboardingAuthPayload } from "@/lib/domains/library/accounts/onboarding-session";
 import {
 	DEFAULT_ONBOARDING_STEP,
+	getNextOnboardingStep,
+	getPreviousOnboardingStep,
 	ONBOARDING_STEP_VALUES,
 	type OnboardingStep,
 } from "@/lib/domains/library/accounts/onboarding-steps";
 import {
 	getOnboardingSession,
+	markOnboardingComplete,
 	saveOnboardingStep,
 } from "@/lib/server/onboarding.functions";
 import { errorMessage } from "@/lib/shared/errors/error-message";
@@ -67,62 +70,65 @@ export function DevWorkflowPanel() {
 				cached?.session.status === "complete"
 					? "complete"
 					: (cached?.session.status ?? DEFAULT_ONBOARDING_STEP);
-			const currentIdx = ONBOARDING_STEP_VALUES.indexOf(currentStep);
 
 			let nextStep: OnboardingStep;
 			if (target === "prev") {
-				if (currentIdx <= 0) {
+				const prev = getPreviousOnboardingStep(currentStep);
+				if (!prev) {
 					setLastAction(`Already at first step (${currentStep})`);
 					isRunningRef.current = false;
 					return;
 				}
-				const previousStep = ONBOARDING_STEP_VALUES[currentIdx - 1];
-				if (!previousStep) {
-					setLastAction(`Could not resolve previous step from ${currentStep}`);
-					isRunningRef.current = false;
-					return;
-				}
-				nextStep = previousStep;
+				nextStep = prev;
 			} else if (target === "next") {
-				if (currentIdx >= ONBOARDING_STEP_VALUES.length - 1) {
+				const next = getNextOnboardingStep(currentStep);
+				if (!next) {
 					setLastAction(`Already at last step (${currentStep})`);
 					isRunningRef.current = false;
 					return;
 				}
-				const followingStep = ONBOARDING_STEP_VALUES[currentIdx + 1];
-				if (!followingStep) {
-					setLastAction(`Could not resolve next step from ${currentStep}`);
-					isRunningRef.current = false;
-					return;
-				}
-				nextStep = followingStep;
+				nextStep = next;
 			} else {
 				nextStep = target;
 			}
 
 			try {
 				setLastAction(`Setting step → ${nextStep}…`);
-				await saveOnboardingStep({ data: { step: nextStep } });
 
-				// Fetch the authoritative session so the resolver can make routing
-				// decisions against it — jumping into a walkthrough step without a
-				// demo song trips the dev invariant loudly, which is what we want.
-				const nextSession = await queryClient.fetchQuery({
-					queryKey: ONBOARDING_SESSION_QUERY_KEY,
-					queryFn: () => getOnboardingSession(),
-				});
-
-				const resolved = resolveSession(nextSession.session);
-				if (resolved.allowedPath === "/onboarding") {
-					await router.navigate({
-						to: "/onboarding",
-						search: { step: nextStep },
-					});
-				} else {
+				if (nextStep === "complete") {
+					// Completion must go through the structured gate — not saveOnboardingStep.
+					const result = await markOnboardingComplete();
+					// Patch cache with authoritative payload, then navigate via resolver.
+					queryClient.setQueryData(
+						ONBOARDING_SESSION_QUERY_KEY,
+						result.onboarding,
+					);
+					const resolved = resolveSession(result.onboarding.session);
 					await router.navigate({ to: resolved.allowedPath });
-				}
+					setLastAction(`${currentStep} → complete (${result.status})`);
+				} else {
+					await saveOnboardingStep({ data: { step: nextStep } });
 
-				setLastAction(`${currentStep} → ${nextStep}`);
+					// Fetch the authoritative session so the resolver can make routing
+					// decisions against it — jumping into a walkthrough step without a
+					// demo song trips the dev invariant loudly, which is what we want.
+					const nextSession = await queryClient.fetchQuery({
+						queryKey: ONBOARDING_SESSION_QUERY_KEY,
+						queryFn: () => getOnboardingSession(),
+					});
+
+					const resolved = resolveSession(nextSession.session);
+					if (resolved.allowedPath === "/onboarding") {
+						await router.navigate({
+							to: "/onboarding",
+							search: { step: nextStep },
+						});
+					} else {
+						await router.navigate({ to: resolved.allowedPath });
+					}
+
+					setLastAction(`${currentStep} → ${nextStep}`);
+				}
 			} catch (e) {
 				setLastAction(`Step error: ${errorMessage(e)}`);
 			} finally {

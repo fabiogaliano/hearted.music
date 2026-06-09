@@ -1,6 +1,6 @@
 # Task 10 — Onboarding completion gate
 
-**Plan:** §6.4, §7.2 item 22 · **Recommended order:** after step 11 (no distinct §13.2 step; sits between Tasks 09 and 11 — see index) · **Status:** [ ]
+**Plan:** §6.4, §7.2 item 22 · **Recommended order:** after step 11 (no distinct §13.2 step; sits between Tasks 09 and 11 — see index) · **Status:** [x]
 
 ## Goal
 

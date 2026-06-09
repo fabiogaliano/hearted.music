@@ -7,7 +7,6 @@
  */
 
 import { ArrowRightIcon } from "@phosphor-icons/react";
-import { useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
@@ -22,7 +21,6 @@ import { fonts } from "@/lib/theme/fonts";
 import { useFlagPlaylistsScroll } from "../hooks/useFlagPlaylistsScroll";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import { OnboardingDescriptionDialog } from "./OnboardingDescriptionDialog";
-import "../types"; // Ensure HistoryState augmentation is loaded
 
 const DESCRIPTION_DIALOG_SEEN_KEY =
 	"hearted:has-seen-onboarding-description-dialog";
@@ -52,20 +50,10 @@ interface FlagPlaylistsStepProps {
 	playlists: OnboardingPlaylist[];
 }
 
-/** Fallback for syncStats when navigation state is lost (e.g., page refresh) */
-const EMPTY_SYNC_STATS = {
-	songs: 0,
-	playlists: 0,
-	playlistSongs: 0,
-	artists: 0,
-} as const;
-
 export function FlagPlaylistsStep({
 	playlists: initialPlaylists,
 }: FlagPlaylistsStepProps) {
 	const { goToStep } = useOnboardingNavigation();
-	const location = useLocation();
-	const syncStats = location.state?.syncStats ?? EMPTY_SYNC_STATS;
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(
 		() => new Set(initialPlaylists.filter((p) => p.isTarget).map((p) => p.id)),
 	);
@@ -173,11 +161,18 @@ export function FlagPlaylistsStep({
 				data: { playlistIds: Array.from(selectedIds) },
 			});
 			markDescriptionDialogSeen();
-			await goToStep("pick-demo-song", { syncStats });
 		} catch (error) {
 			console.error("Failed to save playlist targets:", error);
 			toast.error("Failed to save playlist selections. Please try again.");
 			setIsSaving(false);
+			return;
+		}
+		const result = await goToStep("pick-demo-song");
+		if (result.status === "transition_failed") {
+			setIsSaving(false);
+			toast.error(
+				"Your playlist preferences were saved, but we couldn't continue. Please try again.",
+			);
 		}
 	};
 
@@ -187,11 +182,18 @@ export function FlagPlaylistsStep({
 			// Skip: save empty selection so user can configure later
 			await savePlaylistTargets({ data: { playlistIds: [] } });
 			markDescriptionDialogSeen();
-			await goToStep("pick-demo-song", { syncStats });
 		} catch (error) {
 			console.error("Failed to skip playlists:", error);
 			toast.error("Failed to skip playlists. Please try again.");
 			setIsSaving(false);
+			return;
+		}
+		const result = await goToStep("pick-demo-song");
+		if (result.status === "transition_failed") {
+			setIsSaving(false);
+			toast.error(
+				"Your playlist preferences were saved, but we couldn't continue. Please try again.",
+			);
 		}
 	};
 
