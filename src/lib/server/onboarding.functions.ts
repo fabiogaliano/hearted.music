@@ -14,6 +14,10 @@ import { getLandingSongsManifest } from "@/lib/content/landing/landing-songs.ser
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { readBillingState } from "@/lib/domains/billing/queries";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
+import {
+	type ClaimHandleSeed,
+	deriveClaimHandleSeed,
+} from "@/lib/domains/library/accounts/claim-handle-seed";
 import { completeOnboardingWithAllocations } from "@/lib/domains/library/accounts/onboarding-allocation";
 import type { OnboardingAuthPayload } from "@/lib/domains/library/accounts/onboarding-session";
 import {
@@ -23,6 +27,7 @@ import {
 	updateOnboardingStep,
 	updateTheme,
 } from "@/lib/domains/library/accounts/preferences-queries";
+import type { Account } from "@/lib/domains/library/accounts/queries";
 import { getLibraryArtistCount } from "@/lib/domains/library/artists/queries";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
 import {
@@ -84,6 +89,8 @@ export type ReadyCopyVariant = "free" | "pack" | "unlimited";
  * should read the narrower `OnboardingAuthPayload` from the session query.
  */
 export interface OnboardingData extends OnboardingAuthPayload {
+	accountId: string;
+	claimHandleSeed: ClaimHandleSeed;
 	playlists: OnboardingPlaylist[];
 	/** Active phase job IDs for refresh resilience (null if no active sync) */
 	phaseJobIds: PhaseJobIds | null;
@@ -159,16 +166,22 @@ function fireAndForgetWalkthroughPreviewEnsure(args: {
  * Full page-data loader used by the `/onboarding` route. Supersets the
  * guard payload with playlists, landing songs, sync stats, and the copy
  * variant derived from billing. Pure projection — no DB writes.
+ *
+ * Takes the full account row so both the auth payload and claim-handle seed
+ * can be derived without an extra DB lookup.
  */
-async function loadOnboardingData(
-	accountId: string,
-	accountHandle: string | null,
-): Promise<OnboardingData> {
+async function loadOnboardingData({
+	accountId,
+	account,
+}: {
+	accountId: string;
+	account: Account;
+}): Promise<OnboardingData> {
 	const supabase = createAdminSupabaseClient();
 
 	// Single prefs fetch shared with authPayload derivation. Walkthrough song
 	// (inside authPayloadPromise) runs concurrently with the other queries.
-	// accountHandle is threaded from context so we avoid an extra account query.
+	// account row is threaded from context so we avoid any extra lookups.
 	const prefsPromise = getOrCreatePreferences(accountId);
 	const authPayloadPromise = (async () => {
 		const prefsResult = await prefsPromise;
@@ -177,7 +190,7 @@ async function loadOnboardingData(
 		}
 		return deriveAuthPayloadFromPrefs({
 			accountId,
-			accountHandle,
+			accountHandle: account.handle,
 			prefs: prefsResult.value,
 			supabase,
 		});
@@ -252,8 +265,17 @@ async function loadOnboardingData(
 		prefsResult.value.phase_job_ids,
 	);
 
+	// Derived from the explicit account row — same source used for authPayload,
+	// so the seed's "owned" branch is consistent with the session's handle state.
+	const claimHandleSeed = deriveClaimHandleSeed({
+		accountHandle: account.handle,
+		displayName: account.display_name,
+	});
+
 	return {
 		...authPayload,
+		accountId,
+		claimHandleSeed,
 		playlists,
 		phaseJobIds: phaseJobIdsParse.success ? phaseJobIdsParse.data : null,
 		syncStats: {
@@ -277,7 +299,10 @@ export const getOnboardingData = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.handler(
 		({ context }): Promise<OnboardingData> =>
-			loadOnboardingData(context.session.accountId, context.account.handle),
+			loadOnboardingData({
+				accountId: context.session.accountId,
+				account: context.account,
+			}),
 	);
 
 /**

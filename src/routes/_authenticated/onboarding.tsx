@@ -115,7 +115,9 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 
 function OnboardingPage() {
 	const { step } = Route.useSearch();
-	const { onboardingData } = Route.useRouteContext();
+	// accountId is threaded explicitly so ClaimHandleStep can build its React
+	// Query key without reading from the auth cache or guessing via route imports.
+	const { accountId, onboardingData } = Route.useRouteContext();
 
-	return <Onboarding step={step} data={onboardingData} />;
+	return <Onboarding step={step} data={onboardingData} accountId={accountId} />;
 }

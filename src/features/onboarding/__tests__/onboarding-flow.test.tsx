@@ -61,6 +61,8 @@ const testPlaylists = [
 const createMockOnboardingData = (
 	overrides?: Partial<OnboardingData>,
 ): OnboardingData => ({
+	accountId: "test-account-id",
+	claimHandleSeed: { kind: "blank" },
 	theme: "rose",
 	playlists: testPlaylists,
 	session: { status: "welcome" },
@@ -77,7 +79,7 @@ function renderOnboarding(
 ) {
 	return render(
 		<AuthenticatedThemeProvider initialThemeColor={data.theme ?? "rose"}>
-			<Onboarding step={step} data={data} />
+			<Onboarding step={step} data={data} accountId={data.accountId} />
 		</AuthenticatedThemeProvider>,
 	);
 }

@@ -1,6 +1,6 @@
 # Task 07 — Onboarding loader + claim-handle seed
 
-**Plan:** §7.3 · **Recommended order:** step 9 · **Status:** [ ]
+**Plan:** §7.3 · **Recommended order:** step 9 · **Status:** [x]
 
 ## Goal
 

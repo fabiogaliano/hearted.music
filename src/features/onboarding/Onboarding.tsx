@@ -6,6 +6,7 @@
 import { useLocation } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { LandingSongManifest } from "@/lib/content/landing/landing-songs";
+import type { ClaimHandleSeed } from "@/lib/domains/library/accounts/claim-handle-seed";
 import {
 	ONBOARDING_STEP_VALUES,
 	type OnboardingStep,
@@ -32,9 +33,12 @@ import "./types"; // Import to ensure HistoryState augmentation is loaded
 interface OnboardingProps {
 	step: OnboardingStep;
 	data: OnboardingData;
+	accountId: string;
 }
 
 interface StepContext {
+	accountId: string;
+	claimHandleSeed: ClaimHandleSeed;
 	localTheme: ThemeColor;
 	setLocalTheme: (theme: ThemeColor) => void;
 	phaseJobIds: PhaseJobIds | null;
@@ -108,7 +112,7 @@ const INDICATOR_STEPS = ONBOARDING_STEP_VALUES.filter(
 	(s) => !STEP_CONFIG[s].hideIndicator,
 );
 
-export function Onboarding({ step, data }: OnboardingProps) {
+export function Onboarding({ step, data, accountId }: OnboardingProps) {
 	const location = useLocation();
 	const { themeColor, setThemeColor } = useAuthenticatedTheme();
 
@@ -117,6 +121,8 @@ export function Onboarding({ step, data }: OnboardingProps) {
 		locationPhaseJobIds !== undefined ? locationPhaseJobIds : data.phaseJobIds;
 
 	const stepContext: StepContext = {
+		accountId,
+		claimHandleSeed: data.claimHandleSeed,
 		localTheme: themeColor,
 		setLocalTheme: setThemeColor,
 		phaseJobIds,
