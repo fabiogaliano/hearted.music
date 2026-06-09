@@ -443,9 +443,38 @@ code {
   from { opacity: 0; transform: scale(0.97); }
   to { opacity: 1; transform: scale(1); }
 }
+
+/* Exit: content settles down a few px while fading — softer than the scale-in
+   arrival, so dismissal reads as gentler than appearance. Driven by data-state
+   so the more-specific selector overrides the enter animation above. */
+.dialog-backdrop[data-state="closing"] {
+  animation: dialog-backdrop-in 150ms var(--ease-out-quart) reverse both;
+}
+.dialog-content[data-state="closing"] {
+  animation: dialog-content-out 160ms var(--ease-out-quart) both;
+}
+@keyframes dialog-content-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(6px); }
+}
+
+/* Staggered reveal for a dialog's inner sections — each block fades up just
+   after the container settles, so the dialog reads as composed in sequence
+   rather than dropped in all at once. Per-section delay is set inline. */
+.dialog-section {
+  animation: dialog-section-in 320ms var(--ease-out-quart) both;
+}
+@keyframes dialog-section-in {
+  from { opacity: 0; transform: translateY(6px); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dialog-backdrop,
-  .dialog-content {
+  .dialog-content,
+  .dialog-backdrop[data-state="closing"],
+  .dialog-content[data-state="closing"],
+  .dialog-section {
     animation: none;
   }
 }
