@@ -23,14 +23,23 @@ export const DESCRIPTION_EXAMPLES = [
 // Shared between the /playlists (!) dialog and the onboarding first-pick dialog.
 // Same words on both surfaces so the user recognises the concept on return.
 
-export function DescriptionTeachingHeadline({ id }: { id: string }) {
+export function DescriptionTeachingHeadline({
+	id,
+	italic = true,
+}: {
+	id: string;
+	// Onboarding renders this plain (no italic emphasis); /playlists keeps the
+	// italicised "home". Same words on both so the concept is recognisable on return.
+	italic?: boolean;
+}) {
 	return (
 		<h3
 			id={id}
-			className="theme-text mb-6 text-2xl leading-snug font-light tracking-tight"
+			className="theme-text mb-6 text-2xl leading-snug font-light tracking-tight text-balance"
 			style={{ fontFamily: fonts.display }}
 		>
-			How songs find their way <em style={{ fontStyle: "italic" }}>home</em>
+			How songs find their way{" "}
+			{italic ? <em style={{ fontStyle: "italic" }}>home</em> : "home"}
 		</h3>
 	);
 }
@@ -63,18 +72,18 @@ export function DescriptionExamplesCarousel() {
 					type="button"
 					onClick={goPrev}
 					aria-label="Previous example"
-					className="theme-text-muted theme-border-color flex w-8 cursor-pointer items-center justify-center border transition-colors duration-150 hover:text-(--t-text)"
+					className="theme-text-muted theme-border-color theme-hover-surface flex w-8 cursor-pointer items-center justify-center border transition-[color,background-color,transform] duration-150 hover:text-(--t-text) active:scale-[0.96]"
 				>
 					<CaretLeftIcon size={14} weight="regular" />
 				</button>
 
 				<div
-					className="theme-surface-dim-bg theme-border-color flex min-h-12 flex-1 items-center justify-center border px-4 py-3"
+					className="theme-border-color flex min-h-12 flex-1 items-center justify-center border px-4 py-3"
 					aria-live="polite"
 				>
 					<p
 						key={index}
-						className="theme-text text-center text-sm leading-snug"
+						className="theme-text text-center text-sm leading-snug text-pretty"
 						style={{ fontFamily: fonts.body }}
 					>
 						{DESCRIPTION_EXAMPLES[index]}
@@ -85,7 +94,7 @@ export function DescriptionExamplesCarousel() {
 					type="button"
 					onClick={goNext}
 					aria-label="Next example"
-					className="theme-text-muted theme-border-color flex w-8 cursor-pointer items-center justify-center border transition-colors duration-150 hover:text-(--t-text)"
+					className="theme-text-muted theme-border-color theme-hover-surface flex w-8 cursor-pointer items-center justify-center border transition-[color,background-color,transform] duration-150 hover:text-(--t-text) active:scale-[0.96]"
 				>
 					<CaretRightIcon size={14} weight="regular" />
 				</button>
