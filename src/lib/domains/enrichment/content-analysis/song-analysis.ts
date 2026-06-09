@@ -26,26 +26,6 @@ import {
 	TARGET_RULES,
 } from "./voice/rewrite-pass";
 
-const ThemeSchema = z.object({ name: z.string(), description: z.string() });
-const JourneyPointSchema = z.object({
-	section: z.string(),
-	mood: z.string(),
-	description: z.string(),
-});
-const KeyLineSchema = z.object({ line: z.string(), insight: z.string() });
-
-export const SongAnalysisLyricalSchema = z.object({
-	headline: z.string(),
-	compound_mood: z.string(),
-	mood_description: z.string(),
-	interpretation: z.string(),
-	themes: z.array(ThemeSchema),
-	journey: z.array(JourneyPointSchema),
-	key_lines: z.array(KeyLineSchema),
-	sonic_texture: z.string(),
-});
-export type SongAnalysisLyrical = z.infer<typeof SongAnalysisLyricalSchema>;
-
 export const SongAnalysisInstrumentalSchema = z.object({
 	headline: z.string(),
 	compound_mood: z.string(),
@@ -121,12 +101,9 @@ export class SongAnalysisService {
 			? ACTIVE_INSTRUMENTAL_VERSION
 			: ACTIVE_LYRICAL_VERSION;
 
-		// Lyrical generation is v17-only: the active prompt emits the redesigned { read }
-		// model, so output is always validated against SongReadSchema, stored flat, and
-		// rendered in production by SongDetailPanel. The legacy 8-field
-		// SongAnalysisLyricalSchema is retained only for the voice-audit harness (it adapts
-		// pre-v17 rows for v13-vs-v17 comparison) and is no longer in the prod path.
-		// Instrumental still uses its own schema. See claudedocs/session-6-prod-panel-swap.md.
+		// Lyrical generation is v17: the active prompt emits the redesigned { read }
+		// model, so output is validated against SongReadSchema, stored flat, and rendered
+		// in production by SongDetailPanel. Instrumental uses its own schema.
 		const schema: z.ZodTypeAny = isInstrumental
 			? SongAnalysisInstrumentalSchema
 			: SongReadSchema;
