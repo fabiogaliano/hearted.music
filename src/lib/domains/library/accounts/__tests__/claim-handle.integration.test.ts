@@ -53,7 +53,7 @@ async function seedAccount(
 	const client = db();
 	const step = opts.step ?? "claim-handle";
 
-	await client`INSERT INTO account(id, spotify_id) VALUES (${id}, ${"sp-" + id})`;
+	await client`INSERT INTO account(id, spotify_id) VALUES (${id}, ${`sp-${id}`})`;
 
 	if (opts.handle !== undefined && opts.handle !== null) {
 		await client`UPDATE account SET handle = ${opts.handle} WHERE id = ${id}`;
@@ -435,7 +435,7 @@ describeLocal("claim_handle RPC — §14.5 integration", () => {
 	it("case 13: missing user_preferences row → RPC raises, account.handle stays null", async () => {
 		const id = crypto.randomUUID();
 		// Insert account but NO user_preferences row
-		await db()`INSERT INTO account(id, spotify_id) VALUES (${id}, ${"sp-" + id})`;
+		await db()`INSERT INTO account(id, spotify_id) VALUES (${id}, ${`sp-${id}`})`;
 
 		try {
 			await expect(callRpc(id, "noprefshandle")).rejects.toThrow(/not found/);

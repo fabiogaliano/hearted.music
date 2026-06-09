@@ -75,7 +75,7 @@ describe("getPublicHandleIdentityByHandle", () => {
 		if (Result.isOk(result) && result.value !== null) {
 			expect(result.value.imageUrl).toBe("https://img.example.com/photo.png");
 			expect(
-				(result.value as unknown as Record<string, unknown>)["image_url"],
+				(result.value as unknown as Record<string, unknown>).image_url,
 			).toBeUndefined();
 		}
 	});

@@ -164,7 +164,7 @@ describe("ClaimHandleStep", () => {
 		await user.clear(input);
 		await user.type(input, "other");
 
-		const form = input.closest("form")!;
+		const form = input.closest("form") as HTMLFormElement;
 		// Submit the form directly to simulate Enter press.
 		form.dispatchEvent(
 			new Event("submit", { bubbles: true, cancelable: true }),
@@ -983,7 +983,7 @@ describe("ClaimHandleStep", () => {
 		await user.type(input, "fabio");
 
 		// Submit while still in the debounce/checking gap.
-		const form = input.closest("form")!;
+		const form = input.closest("form") as HTMLFormElement;
 		form.dispatchEvent(
 			new Event("submit", { bubbles: true, cancelable: true }),
 		);
@@ -1149,7 +1149,7 @@ describe("ClaimHandleStep", () => {
 		expect(mockCheckHandleAvailability).toHaveBeenCalledTimes(1);
 
 		// Submit while checking — should be a no-op.
-		const form = input.closest("form")!;
+		const form = input.closest("form") as HTMLFormElement;
 		form.dispatchEvent(
 			new Event("submit", { bubbles: true, cancelable: true }),
 		);
