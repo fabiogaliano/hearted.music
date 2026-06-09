@@ -39,14 +39,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 import type { SaveableOnboardingStep } from "@/lib/domains/library/accounts/onboarding-steps";
+import { ONBOARDING_SESSION_QUERY_KEY } from "@/lib/platform/auth/query-keys";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import {
 	getOnboardingSession,
 	saveOnboardingStep,
 } from "@/lib/server/onboarding.functions";
 import "../types"; // Import to ensure HistoryState augmentation is loaded
-
-const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
 
 export type OnboardingStepTransitionResult =
 	| { status: "transitioned" }

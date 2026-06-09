@@ -18,6 +18,7 @@ import {
 	ONBOARDING_STEP_VALUES,
 	type OnboardingStep,
 } from "@/lib/domains/library/accounts/onboarding-steps";
+import { ONBOARDING_SESSION_QUERY_KEY } from "@/lib/platform/auth/query-keys";
 import {
 	getOnboardingSession,
 	markOnboardingComplete,
@@ -25,7 +26,6 @@ import {
 } from "@/lib/server/onboarding.functions";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 
-const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
 const ONBOARDING_PANE_NAME = "Onboarding";
 
 export function DevWorkflowPanel() {
