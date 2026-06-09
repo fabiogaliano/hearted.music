@@ -23,7 +23,11 @@ export const getPublicHandleIdentity = createServerFn({ method: "GET" })
 		);
 
 		if (Result.isError(result)) {
-			throw result.error;
+			// Unauthenticated endpoint: keep the operational detail in server logs
+			// and throw a generic error so DB internals (table/constraint names)
+			// never reach an anonymous caller.
+			console.error("[getPublicHandleIdentity] lookup failed:", result.error);
+			throw new Error("Failed to load profile");
 		}
 
 		return result.value;

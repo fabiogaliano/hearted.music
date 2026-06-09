@@ -40,7 +40,7 @@ export const Route = createFileRoute("/@{$handle}")({
 						title: `@${loaderData.identity.handle} — Public profile coming soon • hearted.`,
 					},
 				]
-			: [],
+			: [{ title: "Profile not found • hearted." }],
 	}),
 	component: HandlePage,
 });

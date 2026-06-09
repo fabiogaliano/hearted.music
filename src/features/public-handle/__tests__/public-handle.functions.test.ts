@@ -59,13 +59,22 @@ describe("getPublicHandleIdentity server function", () => {
 		expect(result).toEqual(identity);
 	});
 
-	it("throws when the domain query returns an error (not swallowed as null)", async () => {
-		const dbError = new Error("DB connection refused");
+	it("throws a generic error when the domain query fails — DB detail stays out of the response", async () => {
+		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const dbError = new Error(
+			"DB connection refused: constraint account_handle_key",
+		);
 		mockGetPublicHandleIdentityByHandle.mockResolvedValue(
 			Result.err(dbError as never),
 		);
 
-		await expect(handler({ data: { handle: "failme" } })).rejects.toThrow();
+		// Generic message only — the raw DbError must never be rethrown to an
+		// unauthenticated caller (this is the one public endpoint).
+		await expect(handler({ data: { handle: "failme" } })).rejects.toThrow(
+			"Failed to load profile",
+		);
+		expect(consoleSpy).toHaveBeenCalled();
+		consoleSpy.mockRestore();
 	});
 
 	it("lowercases the handle before calling the domain query", async () => {
