@@ -14,7 +14,7 @@ import type { PromptVersion } from "./types";
 // Caveat to check in the manual read: a low antithesis count here could be rule-dodging (fewer copulas
 // → fewer "It is" re-assertions for the regex to catch) rather than genuinely more direct prose — so
 // the winner's candidates get hand-read, not trusted on the count alone. Everything else byte-identical
-// to v17. ACTIVE stays v13. Run at temperature 0.3. See claudedocs/08 (H6).
+// to v17. ACTIVE stays v13. Run at temperature 0.3. See scripts/voice-audit/experiments/changelog.md (H6).
 
 const ANTI_PIVOT_LINE = `Say what something is. Don't say what it "isn't" and then pivot to what it is. A plain subordinate contrast inside a sentence is not that move and is fine: "the door stays shut, not slammed."`;
 

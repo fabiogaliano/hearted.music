@@ -27,3 +27,6 @@ v1_hearted_brand
 !.playwright/cli.config.json
 .playwright-cli/*
 .claude/worktrees/
+
+# Transient script scratch output (was claudedocs/; see build-compare.ts, fetch-raw-genius-referents.ts)
+.scratch/

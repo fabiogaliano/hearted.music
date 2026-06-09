@@ -15,7 +15,7 @@ import type { PromptVersion } from "./types";
 // the scene") the way v17 already guards the worked examples, to keep the model from lifting them as
 // content. Measured FREE via the tier1 antithesis rule; the winner's candidates get a grounding spot-
 // check since invented sentences carry a (small) lift risk. Everything else byte-identical to v17.
-// ACTIVE stays v13. Run at temperature 0.3. See claudedocs/08 (H7).
+// ACTIVE stays v13. Run at temperature 0.3. See scripts/voice-audit/experiments/changelog.md (H7).
 
 const PERSONA_TAIL = `Your job is the part underneath, the thing they haven't caught yet.`;
 

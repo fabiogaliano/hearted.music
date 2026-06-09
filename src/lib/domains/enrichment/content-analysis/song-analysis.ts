@@ -110,7 +110,7 @@ export class SongAnalysisService {
 
 		// A low temperature roughly halves the rate of AI-writing tells (participial
 		// closures, framing openers) and collapses run-to-run variance, versus the
-		// provider default of ~1.0. See claudedocs/voice-prompt-handoff-eval-and-optimize-phase.md.
+		// provider default of ~1.0.
 		const llmResult = await this.llm.generateObject(prompt, schema, {
 			temperature: 0.3,
 			// v17 reads run ~3.2k output tokens but vary draw-to-draw; ~10% exceed
@@ -132,8 +132,8 @@ export class SongAnalysisService {
 		// tells/read (96% removed), 90% of reads fully clean, prose length −0.4% (no gutting). It does
 		// NOT close the depth/correctness gap to the hand-written golds — it cleans how the writing
 		// sounds, not how deep it is. Generation-side few-shot examples were measured and REJECTED as a
-		// wash on the real population (−0.07/read). See claudedocs/08-voice-audit-phase4-changelog.md
-		// Rounds 5 + 5b. On any rewrite/LLM error rewriteRead returns the original read unchanged, so
+		// wash on the real population (−0.07/read). See
+		// scripts/voice-audit/experiments/changelog.md (Phase 4, Rounds 5 + 5b). On any rewrite/LLM error rewriteRead returns the original read unchanged, so
 		// the cleanup can never block, fail, or corrupt an analysis — it only ever improves or no-ops.
 		let generatedOutput = llmResult.value.output as
 			| SongRead

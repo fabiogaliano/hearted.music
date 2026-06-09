@@ -7,7 +7,7 @@
 // its verdict agree with a checked-in label on the 9 golds (should pass) and the subtle negatives
 // (should fail)? It reports BOTH raw agreement and the binary Cohen's κ, and never collapses them
 // into one number, because at this fixture size κ is jumpy and must be read alongside raw
-// agreement and self-consistency. See claudedocs/06-block1-implementation-plan.md WP4.
+// agreement and self-consistency.
 //
 // This makes real Opus calls (one per judge run): items × repeats. The default 13 items × 3
 // repeats = 39 Opus calls. Treat it as a deliberate paid run, not part of every edit loop.

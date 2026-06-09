@@ -6,7 +6,7 @@
 // like a human friend" signal), the descriptive statistical tells next to gold's own
 // numbers, and the existing Tier-1 tallies. Tier-1 is a fast necessary guardrail; the
 // judge win-rate is what we actually optimize. See
-// claudedocs/voice-eval-design-decision-2026-05-27.md.
+// docs/analysis/hearted-read.md §M.
 //
 //   bun scripts/voice-audit/evaluate.ts --version 13 --temperature 0.3
 //   bun scripts/voice-audit/evaluate.ts --version 13 --temperature 0.3 --songs fast --limit 1
@@ -17,7 +17,7 @@
 // lets a song split evenly and collapse to "indeterminate" (eval-artifact.collapseOutcome), silently
 // dropping it from the n=9 inference — so an even --limit warns (louder when --out persists it).
 // Use n=3 for baseline/variant comparisons; --limit 1 is the cheap single-song smoke. See
-// claudedocs/06-block1-implementation-plan.md WP2 §4.
+// scripts/voice-audit/experiments/changelog.md.
 //
 // Cost: each judged pair is two Opus calls (~$0.14). Pairs judged = songs × limit.
 // --pointwise additionally runs the 8 tier-2 judges per candidate (7 Gemini + 1 Opus grounding

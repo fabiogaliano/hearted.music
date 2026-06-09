@@ -2,7 +2,7 @@
 // Binoculars, GPTZero) leans on "low perplexity + low burstiness = AI", which is
 // largely obsolete for frontier models that now produce high-perplexity, high-burstiness
 // text. So these metrics are reported as context next to the pairwise judge verdict, not
-// optimized against. See claudedocs/voice-eval-design-decision-2026-05-27.md.
+// optimized against. See docs/analysis/hearted-read.md §M.
 
 import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { splitSentences } from "@/lib/domains/enrichment/content-analysis/voice/burstiness";
@@ -137,7 +137,7 @@ export function voiceStats(a: SongRead): VoiceStats {
 //
 // At n=9 these are used as a NOISE VETO, not a keep gate: a wide Wilson interval or a
 // non-significant McNemar means "too noisy to trust", never "edit proven bad". See
-// claudedocs/06-block1-implementation-plan.md §1, WP2.
+// scripts/voice-audit/experiments/changelog.md.
 
 // Wilson score interval for a binomial proportion. `successes` is the count of SONGS whose
 // collapsed outcome is WIN-or-TIE vs gold for one variant; that WIN-or-TIE collapse makes the

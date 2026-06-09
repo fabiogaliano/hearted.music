@@ -1,9 +1,11 @@
 # Lens Vocabulary — Hearted Song Analysis
 
-**Date:** 2026-05-29 (Session 2)
-**Status:** Ideas-layer artifact (Step 1 of the concept redesign). The grammar is locked by Session 1; this file is the vocabulary itself.
-**Feeds:** prompt v14 (generation-time anchor) and the matching layer (retrieval-time facet). Eventually the `lens-coherence` voice-audit judge (Step 4).
-**Reads alongside:** `concept-redesign-handoff-2026-05-28.md` §2, §7, §8.2; `schema-overprescription-lyric-diagnostic.md`.
+**What this is:** the controlled vocabulary for the `lens` field — the locked three-form grammar plus
+the 11 emotional families and their seed lenses. The grammar is fixed; the seeds are a starting palette.
+**Feeds:** the production prompt (`content-analysis/prompts/lyrical-v*.ts`) as a generation-time anchor,
+the matching layer as a retrieval-time facet, and the `lens-coherence` voice-audit judge.
+**Reads alongside:** `hearted-read.md` (the full read spec — the lens field rules live in its §E, and the
+gold's actual read outranks any seed here).
 
 ---
 

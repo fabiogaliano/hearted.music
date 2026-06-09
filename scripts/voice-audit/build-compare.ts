@@ -5,7 +5,7 @@
 // parses back into paired notes per field.
 //
 // Run: bun run scripts/voice-audit/build-compare.ts
-// Out: claudedocs/voice-compare/compare.html
+// Out: scripts/voice-audit/.scratch/voice-compare/compare.html
 
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -18,7 +18,7 @@ import {
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const EXPERIMENTS_DIR = join(HERE, "experiments");
-const OUT_DIR = join(HERE, "..", "..", "claudedocs", "voice-compare");
+const OUT_DIR = join(HERE, ".scratch", "voice-compare");
 const OUT_FILE = join(OUT_DIR, "compare.html");
 
 interface ExperimentRun {

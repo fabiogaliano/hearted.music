@@ -15,7 +15,7 @@ import type { PromptVersion } from "./types";
 // target, concrete strings → primed): if v27's rate sits below v20's, abstract-category naming beats
 // phrase-banning for this model — a genuinely new finding for the project. Measured FREE via the tier1
 // antithesis rule. Everything else byte-identical to v17. ACTIVE stays v13. Run at temperature 0.3.
-// See claudedocs/08 (H9).
+// See scripts/voice-audit/experiments/changelog.md (H9).
 
 const ANTI_PIVOT_LINE = `Say what something is. Don't say what it "isn't" and then pivot to what it is. A plain subordinate contrast inside a sentence is not that move and is fine: "the door stays shut, not slammed."`;
 

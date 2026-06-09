@@ -14,7 +14,7 @@ import type { PromptVersion } from "./types";
 // Y" when two things are true — with ZERO negation words and ZERO bad-string examples, so there is
 // nothing to prime against. Measured FREE via the tier1 cross-sentence antithesis rule (runAllRules);
 // Opus spent only if the rate drops below v17's 0.28. Everything else byte-identical to v17. ACTIVE
-// stays v13. Run at temperature 0.3. See claudedocs/08-voice-audit-phase4-changelog.md (H5).
+// stays v13. Run at temperature 0.3. See scripts/voice-audit/experiments/changelog.md (H5).
 //
 // Derived from lyricalV17.template by a single guarded replace: if the anchor line is absent the module
 // throws rather than silently shipping a clone of v17 (which would burn generation budget on a no-op).

@@ -11,7 +11,7 @@ import type { PromptVersion } from "./types";
 //
 // ---- Everything below is inherited verbatim from lyrical-v17.ts ----
 //
-// v17 is the first prompt authored straight from claudedocs/hearted-audit-principles.md (rather than
+// v17 is the first prompt authored straight from docs/analysis/hearted-read.md (rather than
 // carried over from v16). It makes the global grounding rule (GRD-1…9) the #1 gate over every field,
 // documents the >15-vote annotation gate, makes specificity (SPC-1) loud, and folds the editorial-only
 // principles that have no deterministic judge into the field specs.
@@ -51,7 +51,7 @@ import type { PromptVersion } from "./types";
 // Gemini thinking budget is recommended, and field-level style rules would adhere better in a responseSchema
 // `description` than re-stated in prompt prose — a pipeline change, not made in this file.
 //
-// 2026-06-06 gold re-validation — documented in claudedocs/07-v17-gold-revalidation.md. All nine
+// 2026-06-06 gold re-validation — documented in scripts/voice-audit/experiments/changelog.md. All nine
 // golds were read rule-by-rule against this prompt; the caps held, and the non-cap rules the golds
 // broke were softened (golds are truth): the one-fragment-per-field cap now allows deliberate
 // stacked fragments (and the arc-scene spec matches) and exempts quoted-lyric fragments; the image
