@@ -112,18 +112,6 @@ export function LikedSongsPage({
 		dismiss: dismissFlow,
 	} = useSongUnlock(accountId);
 
-	const handleUnlockConfirm = useCallback(() => {
-		if (selectedSongIds.size === 0) return;
-		requestConfirmation(Array.from(selectedSongIds));
-	}, [selectedSongIds, requestConfirmation]);
-
-	const handleFlowDismiss = useCallback(() => {
-		dismissFlow();
-		if (flowState.step === "success") {
-			clearSelectionMode();
-		}
-	}, [clearSelectionMode, dismissFlow, flowState.step]);
-
 	useShortcut({
 		key: "mod+d",
 		handler: () => setIsDarkMode((prev) => !prev),
@@ -172,6 +160,22 @@ export function LikedSongsPage({
 		isEnrichmentRunning,
 	});
 
+	// The song whose panel opens once an unlock succeeds. Derived fresh each
+	// confirm from canonical state (sort order + selection), so it never drifts;
+	// the null default is what makes the lockedCta path skip the reveal.
+	const revealTargetIdRef = useRef<string | null>(null);
+
+	const handleUnlockConfirm = useCallback(() => {
+		if (selectedSongIds.size === 0) return;
+		const ids = Array.from(selectedSongIds);
+		// Reveal the selected song highest in the current sort order — the one the
+		// user sees as "the top". Independent of the order rows were clicked.
+		revealTargetIdRef.current =
+			displayedSongs.find((song) => selectedSongIds.has(song.track.id))?.track
+				.id ?? null;
+		requestConfirmation(ids);
+	}, [selectedSongIds, displayedSongs, requestConfirmation]);
+
 	const {
 		selectedSong,
 		selectedSongId,
@@ -180,6 +184,7 @@ export function LikedSongsPage({
 		hasNext,
 		hasPrevious,
 		handleExpand,
+		openSong,
 		handleNext,
 		handlePrevious,
 		handleClose,
@@ -305,6 +310,7 @@ export function LikedSongsPage({
 		handleNextSong,
 		handlePreviousSong,
 		getItemProps,
+		centerSongInList,
 	} = useLikedSongsListController({
 		displayedSongs,
 		displayedSongIndexById,
@@ -327,6 +333,36 @@ export function LikedSongsPage({
 		handleLoadMore,
 		hasMore,
 	});
+
+	// On a successful unlock, reveal the song captured at confirm (topmost of the
+	// selection by sort order): open its panel (deep-link style, no FLIP) and
+	// center it in the list. Runs on dismiss, so the panel is already open and
+	// centered behind the success card before it fades. The lockedCta path already
+	// has the song's panel open, so it skips this (its targetId stays null).
+	const handleFlowDismiss = useCallback(() => {
+		const wasSuccess = flowState.step === "success";
+		const targetId = revealTargetIdRef.current;
+		revealTargetIdRef.current = null;
+
+		dismissFlow();
+		if (!wasSuccess) return;
+
+		clearSelectionMode();
+
+		if (!targetId) return;
+		const song = displayedSongs.find((s) => s.track.id === targetId);
+		if (!song) return;
+
+		openSong(song);
+		centerSongInList(targetId);
+	}, [
+		flowState.step,
+		dismissFlow,
+		clearSelectionMode,
+		displayedSongs,
+		openSong,
+		centerSongInList,
+	]);
 
 	useShortcut({
 		key: "enter",
