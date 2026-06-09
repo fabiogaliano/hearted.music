@@ -1,6 +1,6 @@
 # Task 15 — Tests & verification
 
-**Plan:** §14 (§14.1–§14.8), §13.2 steps 16–17 · **Status:** [ ]
+**Plan:** §14 (§14.1–§14.8), §13.2 steps 16–17 · **Status:** [x]
 
 ## Goal
 
