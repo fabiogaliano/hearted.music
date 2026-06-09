@@ -21,8 +21,8 @@ import { resolveLlmConfig } from "@/lib/integrations/llm/config";
 import { LlmService } from "@/lib/integrations/llm/service";
 import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { RunRecord } from "./experiments";
-import { rewriteRead } from "./rewrite/rewrite-pass";
-import { runAllRules } from "./tier1/rules";
+import { rewriteRead } from "@/lib/domains/enrichment/content-analysis/voice/rewrite-pass";
+import { runAllRules } from "@/lib/domains/enrichment/content-analysis/voice/tier1-rules";
 import { voiceStats } from "./stats";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));

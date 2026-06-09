@@ -11,7 +11,7 @@
 
 import postgres from "postgres";
 import { SongReadSchema } from "@/lib/domains/enrichment/content-analysis/read-schema";
-import { runAllRules } from "./tier1/rules";
+import { runAllRules } from "@/lib/domains/enrichment/content-analysis/voice/tier1-rules";
 
 const argv = process.argv.slice(2);
 const get = (f: string) => (argv.includes(f) ? argv[argv.indexOf(f) + 1] : undefined);

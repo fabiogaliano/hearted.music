@@ -34,33 +34,6 @@ export type Database = {
 	};
 	public: {
 		Tables: {
-			annotation_distillation: {
-				Row: {
-					content_hash: string;
-					created_at: string;
-					distilled_text: string;
-					distiller_version: string;
-					model: string;
-					raw_text: string;
-				};
-				Insert: {
-					content_hash: string;
-					created_at?: string;
-					distilled_text: string;
-					distiller_version: string;
-					model: string;
-					raw_text: string;
-				};
-				Update: {
-					content_hash?: string;
-					created_at?: string;
-					distilled_text?: string;
-					distiller_version?: string;
-					model?: string;
-					raw_text?: string;
-				};
-				Relationships: [];
-			};
 			account: {
 				Row: {
 					better_auth_user_id: string | null;
@@ -287,6 +260,33 @@ export type Database = {
 						referencedColumns: ["id"];
 					},
 				];
+			};
+			annotation_distillation: {
+				Row: {
+					content_hash: string;
+					created_at: string;
+					distilled_text: string;
+					distiller_version: string;
+					model: string;
+					raw_text: string;
+				};
+				Insert: {
+					content_hash: string;
+					created_at?: string;
+					distilled_text: string;
+					distiller_version: string;
+					model: string;
+					raw_text: string;
+				};
+				Update: {
+					content_hash?: string;
+					created_at?: string;
+					distilled_text?: string;
+					distiller_version?: string;
+					model?: string;
+					raw_text?: string;
+				};
+				Relationships: [];
 			};
 			artist: {
 				Row: {
@@ -1386,6 +1386,10 @@ export type Database = {
 			song_analysis: {
 				Row: {
 					analysis: Json;
+					cleanup_error: string | null;
+					cleanup_passes: number | null;
+					cleanup_tells_after: number | null;
+					cleanup_tells_before: number | null;
 					cost_cents: number | null;
 					cost_usd: number | null;
 					created_at: string;
@@ -1401,6 +1405,10 @@ export type Database = {
 				};
 				Insert: {
 					analysis: Json;
+					cleanup_error?: string | null;
+					cleanup_passes?: number | null;
+					cleanup_tells_after?: number | null;
+					cleanup_tells_before?: number | null;
 					cost_cents?: number | null;
 					cost_usd?: number | null;
 					created_at?: string;
@@ -1416,6 +1424,10 @@ export type Database = {
 				};
 				Update: {
 					analysis?: Json;
+					cleanup_error?: string | null;
+					cleanup_passes?: number | null;
+					cleanup_tells_after?: number | null;
+					cleanup_tells_before?: number | null;
 					cost_cents?: number | null;
 					cost_usd?: number | null;
 					created_at?: string;
@@ -2495,6 +2507,7 @@ export type Database = {
 				};
 				Returns: undefined;
 			};
+			uuidv7: { Args: never; Returns: string };
 		};
 		Enums: {
 			item_type: "song" | "playlist";

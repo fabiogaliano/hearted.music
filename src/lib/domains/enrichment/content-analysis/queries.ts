@@ -30,6 +30,10 @@ export type InsertData = Pick<
 	| "prompt_version"
 	| "tokens_used"
 	| "cost_cents"
+	| "cleanup_passes"
+	| "cleanup_tells_before"
+	| "cleanup_tells_after"
+	| "cleanup_error"
 >;
 
 // ============================================================================
@@ -111,6 +115,10 @@ export function insert(
 				prompt_version: data.prompt_version ?? null,
 				tokens_used: data.tokens_used ?? null,
 				cost_cents: data.cost_cents ?? null,
+				cleanup_passes: data.cleanup_passes ?? null,
+				cleanup_tells_before: data.cleanup_tells_before ?? null,
+				cleanup_tells_after: data.cleanup_tells_after ?? null,
+				cleanup_error: data.cleanup_error ?? null,
 			})
 			.select()
 			.single(),

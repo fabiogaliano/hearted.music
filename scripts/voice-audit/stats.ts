@@ -5,7 +5,7 @@
 // optimized against. See claudedocs/voice-eval-design-decision-2026-05-27.md.
 
 import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
-import { splitSentences } from "./tier1/burstiness";
+import { splitSentences } from "@/lib/domains/enrichment/content-analysis/voice/burstiness";
 
 // Closed-class function words. A healthy human-prose ratio sits roughly 0.40-0.55;
 // very low suggests dense, nominalized writing.

@@ -1,6 +1,6 @@
 import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
-import type { RuleHit, Severity } from "../types";
 import { sentenceLengthCV, splitSentences } from "./burstiness";
+import type { RuleHit, Severity } from "./rules-types";
 
 export const BURSTINESS_CV_THRESHOLD = 0.25;
 
@@ -57,9 +57,11 @@ function matchRegexHits(
 ): RuleHit[] {
 	const hits: RuleHit[] = [];
 	for (const f of fields) {
-		const re = new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
-		let m: RegExpExecArray | null;
-		while ((m = re.exec(f.value)) !== null) {
+		const re = new RegExp(
+			pattern.source,
+			pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`,
+		);
+		for (let m = re.exec(f.value); m !== null; m = re.exec(f.value)) {
 			hits.push({
 				rule,
 				field: f.name,
@@ -83,8 +85,7 @@ function matchWordList(
 	const re = new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
 	for (const f of fields) {
 		const copy = new RegExp(re.source, re.flags);
-		let m: RegExpExecArray | null;
-		while ((m = copy.exec(f.value)) !== null) {
+		for (let m = copy.exec(f.value); m !== null; m = copy.exec(f.value)) {
 			hits.push({
 				rule,
 				field: f.name,
@@ -100,7 +101,8 @@ const ANTITHESIS_FRAME =
 	/(it'?s not |isn'?t |is not |not just |not only |doesn'?t just |more than just |far from being |not merely |not simply )[^.]*?(,|;|—| but | it'?s | it is )/gi;
 
 // huntingthemuse "no X, no Y, just Z" — staccato negation that manufactures emphasis.
-const ANTITHESIS_NEGATION_LIST = /\bno\s+[\w'-]+,\s+no\s+[\w'-]+,\s+(?:just|only)\b/gi;
+const ANTITHESIS_NEGATION_LIST =
+	/\bno\s+[\w'-]+,\s+no\s+[\w'-]+,\s+(?:just|only)\b/gi;
 
 // The CROSS-SENTENCE thesis-pivot the single-sentence ANTITHESIS_FRAME misses (its `[^.]*?` stops
 // at the period). The dominant AI tell in the Phase-4 voice audit: a negated copular clause ends a
@@ -194,7 +196,12 @@ const AI_VOCABULARY = [
 // It is the co-occurrence of these words, not any single one, that signals AI
 // (per the Wikipedia page), so we only flag when two or more distinct ones appear.
 export const aiVocabulary = (a: SongRead): RuleHit[] => {
-	const hits = matchWordList(prose(a), "ai-vocabulary", "medium", AI_VOCABULARY);
+	const hits = matchWordList(
+		prose(a),
+		"ai-vocabulary",
+		"medium",
+		AI_VOCABULARY,
+	);
 	const distinct = new Set(hits.map((h) => h.span.toLowerCase()));
 	return distinct.size >= 2 ? hits : [];
 };
@@ -202,26 +209,118 @@ export const aiVocabulary = (a: SongRead): RuleHit[] => {
 // Words that, immediately after the -ing token, mark it as a VERB taking a complement
 // — i.e. a genuine tacked-on participial clause ("rallying a collective", "hinting at danger").
 const PARTICIPIAL_VERBAL_HEADWORDS = new Set([
-	"a", "an", "the", "this", "that", "these", "those", "its", "his", "her",
-	"their", "your", "my", "our", "it", "them", "everyone", "anyone",
-	"everything", "nothing", "no", "all", "into", "to", "of", "at", "with",
-	"for", "on", "against", "through", "over", "as", "away", "down", "up",
-	"out", "in", "upon", "toward", "towards", "like",
+	"a",
+	"an",
+	"the",
+	"this",
+	"that",
+	"these",
+	"those",
+	"its",
+	"his",
+	"her",
+	"their",
+	"your",
+	"my",
+	"our",
+	"it",
+	"them",
+	"everyone",
+	"anyone",
+	"everything",
+	"nothing",
+	"no",
+	"all",
+	"into",
+	"to",
+	"of",
+	"at",
+	"with",
+	"for",
+	"on",
+	"against",
+	"through",
+	"over",
+	"as",
+	"away",
+	"down",
+	"up",
+	"out",
+	"in",
+	"upon",
+	"toward",
+	"towards",
+	"like",
 ]);
 
 // Present-tense finite verbs that, following a bare noun, reveal the comma clause is
 // actually a main clause whose subject carries an -ing ADJECTIVE ("thumping bassline drives ...").
 const PARTICIPIAL_FINITE_VERBS = new Set([
-	"drives", "gives", "pulls", "sets", "makes", "takes", "builds", "creates",
-	"turns", "brings", "leaves", "hangs", "swells", "kicks", "cuts", "pushes",
-	"carries", "fills", "floats", "echoes", "becomes", "feels", "sounds",
-	"moves", "runs", "hits", "lands", "breaks", "holds", "keeps", "begins",
-	"emerges", "appears", "rises", "falls", "grows", "fades", "shifts",
-	"returns", "follows", "continues", "signals", "confirms", "opens",
-	"closes", "drops", "explodes", "sits", "comes", "goes", "stays",
-	"remains", "plays", "anchors", "underpins", "propels", "powers",
-	"pulses", "throbs", "thumps", "pounds", "provides", "provide",
-	"adds", "add",
+	"drives",
+	"gives",
+	"pulls",
+	"sets",
+	"makes",
+	"takes",
+	"builds",
+	"creates",
+	"turns",
+	"brings",
+	"leaves",
+	"hangs",
+	"swells",
+	"kicks",
+	"cuts",
+	"pushes",
+	"carries",
+	"fills",
+	"floats",
+	"echoes",
+	"becomes",
+	"feels",
+	"sounds",
+	"moves",
+	"runs",
+	"hits",
+	"lands",
+	"breaks",
+	"holds",
+	"keeps",
+	"begins",
+	"emerges",
+	"appears",
+	"rises",
+	"falls",
+	"grows",
+	"fades",
+	"shifts",
+	"returns",
+	"follows",
+	"continues",
+	"signals",
+	"confirms",
+	"opens",
+	"closes",
+	"drops",
+	"explodes",
+	"sits",
+	"comes",
+	"goes",
+	"stays",
+	"remains",
+	"plays",
+	"anchors",
+	"underpins",
+	"propels",
+	"powers",
+	"pulses",
+	"throbs",
+	"thumps",
+	"pounds",
+	"provides",
+	"provide",
+	"adds",
+	"add",
 ]);
 
 // Flags an -ing clause tacked onto a sentence end ("..., revealing the cost of pride.").
@@ -231,8 +330,7 @@ export const participialClosure = (a: SongRead): RuleHit[] => {
 	const hits: RuleHit[] = [];
 	const re = /[,;]\s+([A-Za-z][A-Za-z']*ing)\s+([^.!?]+)[.!?]/g;
 	for (const f of prose(a)) {
-		let m: RegExpExecArray | null;
-		while ((m = re.exec(f.value)) !== null) {
+		for (let m = re.exec(f.value); m !== null; m = re.exec(f.value)) {
 			const rest = m[2];
 			const segment = rest.split(",")[0].trim();
 			const tokens = segment.split(/\s+/).filter(Boolean);
@@ -404,9 +502,7 @@ export const burstiness = (a: SongRead): RuleHit[] => {
 	const hits: RuleHit[] = [];
 	const longFields: StringField[] = [
 		{ name: "take", value: a.take },
-		...(a.texture !== null
-			? [{ name: "texture", value: a.texture }]
-			: []),
+		...(a.texture !== null ? [{ name: "texture", value: a.texture }] : []),
 		...a.arc.map((beat, i) => ({
 			name: `arc[${i}].scene`,
 			value: beat.scene,
@@ -438,27 +534,143 @@ export const ruleOfThree = (a: SongRead): RuleHit[] =>
 		prose(a),
 		"rule-of-three",
 		"low",
-		new RegExp(`\\b${TRIPLE_SLOT},\\s+${TRIPLE_SLOT},\\s+and\\s+${TRIPLE_SLOT}\\b`, "gi"),
+		new RegExp(
+			`\\b${TRIPLE_SLOT},\\s+${TRIPLE_SLOT},\\s+and\\s+${TRIPLE_SLOT}\\b`,
+			"gi",
+		),
 	);
 
 // Function words whose repetition is normal — only content-word repetition is the
 // tell. Tokens under three letters are dropped too, so "us", "go", contraction
 // remnants ("it's" → "it" + dropped "s") never count.
 const LEXICAL_STOPWORDS = new Set([
-	"the", "a", "an", "this", "that", "these", "those", "it", "its", "he", "she",
-	"they", "them", "his", "her", "their", "your", "our", "we", "you", "and",
-	"or", "but", "nor", "so", "then", "than", "too", "very", "just", "only",
-	"also", "even", "still", "yet", "of", "to", "in", "on", "at", "by", "for",
-	"with", "from", "into", "over", "under", "up", "down", "out", "off", "as",
-	"is", "are", "was", "were", "be", "been", "being", "am", "do", "does", "did",
-	"have", "has", "had", "will", "would", "can", "could", "may", "might", "must",
-	"should", "not", "no", "all", "any", "each", "both", "some", "such", "same",
-	"who", "whom", "whose", "which", "what", "when", "where", "why", "how",
-	"there", "here", "one", "about", "after", "before", "through", "between",
-	"against", "beyond", "within", "without", "around", "across", "toward",
-	"towards", "upon", "behind", "beside", "among", "throughout", "during",
-	"despite", "because", "although", "though", "however", "whether", "while",
-	"since", "until", "unless", "rather", "onto", "amid",
+	"the",
+	"a",
+	"an",
+	"this",
+	"that",
+	"these",
+	"those",
+	"it",
+	"its",
+	"he",
+	"she",
+	"they",
+	"them",
+	"his",
+	"her",
+	"their",
+	"your",
+	"our",
+	"we",
+	"you",
+	"and",
+	"or",
+	"but",
+	"nor",
+	"so",
+	"then",
+	"than",
+	"too",
+	"very",
+	"just",
+	"only",
+	"also",
+	"even",
+	"still",
+	"yet",
+	"of",
+	"to",
+	"in",
+	"on",
+	"at",
+	"by",
+	"for",
+	"with",
+	"from",
+	"into",
+	"over",
+	"under",
+	"up",
+	"down",
+	"out",
+	"off",
+	"as",
+	"is",
+	"are",
+	"was",
+	"were",
+	"be",
+	"been",
+	"being",
+	"am",
+	"do",
+	"does",
+	"did",
+	"have",
+	"has",
+	"had",
+	"will",
+	"would",
+	"can",
+	"could",
+	"may",
+	"might",
+	"must",
+	"should",
+	"not",
+	"no",
+	"all",
+	"any",
+	"each",
+	"both",
+	"some",
+	"such",
+	"same",
+	"who",
+	"whom",
+	"whose",
+	"which",
+	"what",
+	"when",
+	"where",
+	"why",
+	"how",
+	"there",
+	"here",
+	"one",
+	"about",
+	"after",
+	"before",
+	"through",
+	"between",
+	"against",
+	"beyond",
+	"within",
+	"without",
+	"around",
+	"across",
+	"toward",
+	"towards",
+	"upon",
+	"behind",
+	"beside",
+	"among",
+	"throughout",
+	"during",
+	"despite",
+	"because",
+	"although",
+	"though",
+	"however",
+	"whether",
+	"while",
+	"since",
+	"until",
+	"unless",
+	"rather",
+	"onto",
+	"amid",
 ]);
 
 export const LEXICAL_REPETITION_MIN = 3;
@@ -502,21 +714,27 @@ export const dashes = (a: SongRead): RuleHit[] => {
 	const hits: RuleHit[] = [];
 	for (const f of collectStringFields(a)) {
 		const value = f.value;
-		let m: RegExpExecArray | null;
 
 		const dashRe = new RegExp(DASH_CHARS.source, "g");
 		const dashMatches: RegExpExecArray[] = [];
-		while ((m = dashRe.exec(value)) !== null) dashMatches.push(m);
+		for (let m = dashRe.exec(value); m !== null; m = dashRe.exec(value))
+			dashMatches.push(m);
 		const pairedCount = Math.floor(dashMatches.length / 2) * 2;
 		dashMatches.forEach((match, idx) => {
-			hits.push({ rule: "dash", field: f.name, span: match[0], severity: idx < pairedCount ? "low" : "medium" });
+			hits.push({
+				rule: "dash",
+				field: f.name,
+				span: match[0],
+				severity: idx < pairedCount ? "low" : "medium",
+			});
 		});
 
 		const hyphenRe = /-/g;
-		while ((m = hyphenRe.exec(value)) !== null) {
+		for (let m = hyphenRe.exec(value); m !== null; m = hyphenRe.exec(value)) {
 			const i = m.index;
 			const intraWord =
-				/[A-Za-z0-9]/.test(value[i - 1] ?? "") && /[A-Za-z0-9]/.test(value[i + 1] ?? "");
+				/[A-Za-z0-9]/.test(value[i - 1] ?? "") &&
+				/[A-Za-z0-9]/.test(value[i + 1] ?? "");
 			// Intra-word hyphens ("late-night") are allowed; only a spaced hyphen standing
 			// in for a dash ("first - then") is the tell.
 			if (intraWord) continue;

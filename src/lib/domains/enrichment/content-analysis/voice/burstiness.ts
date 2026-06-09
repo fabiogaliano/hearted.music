@@ -10,8 +10,7 @@ export function coefficientOfVariation(lengths: number[]): number | null {
 	const n = lengths.length;
 	const mean = lengths.reduce((a, b) => a + b, 0) / n;
 	if (mean === 0) return null;
-	const variance =
-		lengths.reduce((acc, l) => acc + (l - mean) ** 2, 0) / n;
+	const variance = lengths.reduce((acc, l) => acc + (l - mean) ** 2, 0) / n;
 	return Math.sqrt(variance) / mean;
 }
 

@@ -41,9 +41,9 @@ import {
 	type GoldExemplar,
 } from "./exemplars";
 import { EXAMPLE_COUNT, EXEMPLAR_POOL_KEYS } from "./regen";
-import { rewriteRead, TARGET_RULES } from "./rewrite/rewrite-pass";
+import { rewriteRead, TARGET_RULES } from "@/lib/domains/enrichment/content-analysis/voice/rewrite-pass";
 import { loadGroundingContext } from "./lyrics-context";
-import { runAllRules } from "./tier1/rules";
+import { runAllRules } from "@/lib/domains/enrichment/content-analysis/voice/tier1-rules";
 import type { RuleHit } from "./types";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));

@@ -3,7 +3,7 @@ import {
 	coefficientOfVariation,
 	sentenceLengthCV,
 	splitSentences,
-} from "../tier1/burstiness";
+} from "@/lib/domains/enrichment/content-analysis/voice/burstiness";
 
 describe("splitSentences", () => {
 	it("splits on terminator + whitespace", () => {

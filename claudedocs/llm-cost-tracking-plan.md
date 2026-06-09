@@ -9,8 +9,17 @@ later-added `song_analysis` columns (`provider`, `input_tokens`, `output_tokens`
 `cost_usd`) exist in the schema but have **no write path** — every row leaves them
 null. Distillation captures no tokens at all.
 
+Worse, `song_analysis.tokens_used` is only the **generation** call. Every lyrical
+song also runs a **post-generation voice rewrite pass** (`voice/rewrite-pass.ts`,
+1–2 additional Flash calls) whose tokens are **entirely uncaptured** — `rewriteRead`
+sums them into its returned `tokens` and `analyzeSong` discards that. So for a
+lyrical song the persisted token count understates the real spend by roughly the
+rewrite's share (often a 1.5–2× output-token multiplier). Instrumental songs skip
+the rewrite, so they're unaffected.
+
 We want the **best per-call cost estimate obtainable from token usage**, for every
-production LLM call: song analysis, playlist analysis, and annotation distillation.
+production LLM call: song analysis (**generation _and_ the voice rewrite pass**),
+playlist analysis, and annotation distillation.
 A real per-call dollar amount is not available from Vertex or GCP billing (billing
 only aggregates per SKU × day × project), so a token × price estimate is the
 ceiling — and that's what this plan builds. Intended outcome: query "what did this
@@ -18,7 +27,8 @@ song/playlist/model/day cost" directly from our own DB.
 
 ### Decisions (confirmed with user)
 
-- **Track all three** call sites: song, playlist, distillation.
+- **Track every call site**: song generation, the song voice rewrite pass, playlist
+  analysis, distillation. (The rewrite emits its own ledger row(s) — see below.)
 - **Store the token split**, including cache-read and thinking (reasoning) tokens.
 - **Pricing from a free, regularly-updated source** rather than hand-maintained
   numbers → use LiteLLM's `model_prices_and_context_window.json`.
@@ -71,8 +81,14 @@ distinguishable from "genuinely free."
 - `getCurrentModel()` returns the combined `"${provider}:${model}"`; the bare
   `provider`/`model` are private fields (`service.ts:131-132`), not surfaced.
 - Write sites pass `cost_cents: null` and the combined model string:
-  - `src/lib/domains/enrichment/content-analysis/song-analysis.ts:149`
+  - `src/lib/domains/enrichment/content-analysis/song-analysis.ts` (the `insertSongAnalysis` call)
   - `src/lib/domains/enrichment/content-analysis/playlist-analysis.ts:261`
+- The voice rewrite pass (`voice/rewrite-pass.ts`, `rewriteRead`) runs 1–2 `generateObject`
+  calls (`functionId: "voice-audit-rewrite-pass"`) and returns a **summed** `tokens`
+  total — but **no** per-call token split, provider, or model. `analyzeSong` discards
+  even that summed total today. To ledger the rewrite, `rewriteRead` must surface
+  per-pass usage (or at minimum one aggregated usage record) the way the generation call
+  already exposes `tokens`.
 - Inserts only forward 6 columns (`queries.ts:100`, `playlist-queries.ts`); the 4
   billing columns on `song_analysis` are never written.
 - Distillation (`annotation-distillation.ts`): `google-vertex` /
@@ -191,7 +207,13 @@ a database) — it only *computes* cost; the *domain* layer persists.
 - **`llm-usage-queries.ts`** (new, in the content-analysis domain dir):
   `recordLlmUsage(data): Promise<Result<void, DbError>>` inserting one ledger row.
 - **Call sites** invoke `recordLlmUsage` after a successful generation:
-  - `song-analysis.ts` → `{ song_id, function_id: 'song-analysis', ... }`
+  - `song-analysis.ts` → `{ song_id, function_id: 'song-analysis', ... }` for the
+    generation call, **plus a row for the rewrite pass** (`function_id:
+    'song-rewrite'`, same `song_id`) on lyrical songs. Two paths: emit one row per
+    rewrite pass (truest to "one row per actual call"), or one aggregated rewrite row
+    from `rewriteRead`'s summed usage — the former needs `rewriteRead` to return
+    per-pass usage. Lyrical songs therefore produce 2–3 `llm_usage` rows;
+    instrumentals produce 1 (no rewrite).
   - `playlist-analysis.ts` → `{ playlist_id, function_id: 'playlist-analysis', ... }`
   - `annotation-distillation.ts` → one row per **generated** entry (cache hits make
     no call → no row), `{ content_hash, function_id: 'annotation-distillation', ... }`.
@@ -213,8 +235,10 @@ must not fail the song/playlist/distillation.
    `provider`/`modelId`/`costUsd` on the two result types (`service.ts`).
 4. **Migration**: create `llm_usage`; regenerate `database.types.ts`.
 5. **Query helper**: add `llm-usage-queries.ts` with `recordLlmUsage`.
-6. **Wire call sites**: `song-analysis.ts`, `playlist-analysis.ts`,
-   `annotation-distillation.ts` (capture tokens — it currently discards them).
+6. **Wire call sites**: `song-analysis.ts` (generation **and** the rewrite pass —
+   widen `rewriteRead` to surface per-pass usage so its tokens are no longer summed-
+   then-discarded), `playlist-analysis.ts`, `annotation-distillation.ts` (capture
+   tokens — it currently discards them).
 7. **Tests**: pricing math, service mapping, and call-site `recordLlmUsage`
    assertions (see below).
 

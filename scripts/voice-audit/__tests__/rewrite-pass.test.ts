@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
-import { applySurgical, buildRewritePrompt } from "../rewrite/rewrite-pass";
+import { applySurgical, buildRewritePrompt } from "@/lib/domains/enrichment/content-analysis/voice/rewrite-pass";
 import type { RuleHit } from "../types";
 
 // applySurgical is the content-fidelity invariant of the rewrite pass: the model may only ever

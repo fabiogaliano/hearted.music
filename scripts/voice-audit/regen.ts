@@ -36,7 +36,7 @@ import type { TestSong } from "../prompt-lab/test-songs";
 import { loadGoldExemplars, renderExemplarBlock, type GoldExemplar } from "./exemplars";
 import { makeRunId, recordRun, tallyHits } from "./experiments";
 import { loadGroundingContext } from "./lyrics-context";
-import { runAllRules } from "./tier1/rules";
+import { runAllRules } from "@/lib/domains/enrichment/content-analysis/voice/tier1-rules";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const LYRICS_DIR = join(SCRIPT_DIR, "exemplars", "lyrics");
@@ -158,6 +158,10 @@ interface Flags {
 	runs: number;
 	songs: string;
 	temperature?: number;
+	// Suppress both runtime-injected slots ({example} + {annotations}) even when the template
+	// has them. Lets the harness reproduce TODAY'S prod path (v17 with empty slots) so a WITH-vs-
+	// WITHOUT run isolates the few-shot lever. Default off = the eval's normal injected behaviour.
+	noInjection: boolean;
 }
 
 function parseFlags(argv: string[]): Flags {
@@ -169,6 +173,7 @@ function parseFlags(argv: string[]): Flags {
 		provider: "google-vertex",
 		runs: 1,
 		songs: "not-like-us",
+		noInjection: false,
 	};
 	for (let i = 0; i < argv.length; i++) {
 		if (argv[i] === "--version") out.version = argv[++i];
@@ -178,6 +183,7 @@ function parseFlags(argv: string[]): Flags {
 		else if (argv[i] === "--songs") out.songs = argv[++i];
 		else if (argv[i] === "--temperature" || argv[i] === "--temp")
 			out.temperature = Number(argv[++i]);
+		else if (argv[i] === "--no-injection") out.noInjection = true;
 	}
 	return out;
 }
@@ -269,6 +275,13 @@ async function main() {
 		? new Map([...loadGoldExemplars().values()].map((g) => [g.key, g]))
 		: new Map<string, GoldExemplar>();
 
+	const injectionLabel = !wantsInjection
+		? "template has no {example}/{annotations} slots"
+		: flags.noInjection
+			? "INJECTION OFF — empty {example}+{annotations} (simulates TODAY'S prod)"
+			: "INJECTION ON — fixed-pool {example} + per-song {annotations} (eval / planned prod)";
+	console.log(`\nslots: ${injectionLabel}`);
+
 	const detailed = songs.length === 1 && flags.runs === 1;
 	const results: SongResult[] = [];
 
@@ -282,10 +295,11 @@ async function main() {
 			continue;
 		}
 
-		const exampleText = wantsInjection
+		const inject = wantsInjection && !flags.noInjection;
+		const exampleText = inject
 			? renderExemplarBlock(selectExemplars(song.key, byKey))
 			: "";
-		const annotations = wantsInjection ? annotationsForKey(song.key) : "";
+		const annotations = inject ? annotationsForKey(song.key) : "";
 
 		const builtPrompt = buildPrompt(
 			song,
