@@ -10,15 +10,18 @@ export function deriveClaimHandleSeed({
 	displayName,
 }: {
 	accountHandle: string | null;
-	displayName: string;
+	// Nullable because the account row's display_name column is nullable.
+	displayName: string | null;
 }): ClaimHandleSeed {
 	if (accountHandle !== null) {
 		return { kind: "owned", handle: accountHandle };
 	}
 
-	const suggested = derivePassiveHandlePrefill(displayName);
-	if (suggested !== "") {
-		return { kind: "suggested", handle: suggested };
+	if (displayName !== null) {
+		const suggested = derivePassiveHandlePrefill(displayName);
+		if (suggested !== "") {
+			return { kind: "suggested", handle: suggested };
+		}
 	}
 
 	return { kind: "blank" };

@@ -98,3 +98,13 @@ on disagreement; §15 is the decision index.
 - `[task 06 | implement] loadOnboardingData signature extended with accountHandle: string | null parameter` — preferred threading-from-context approach (no extra DB query) over fetching the account row inside loadOnboardingData.
 - `[task 06 | implement] commitDemoSongAndEnterWalkthrough updated to pass accountHandle to loadOnboardingSession` — was calling old positional loadOnboardingSession(accountId); updated to new args shape so it also routes through handle-aware derivation.
 - `[task 06 | implement] Removed unused imports after function deletion: AnalysisContent, OnboardingSession, WalkthroughSong, OnboardingStep, UserPreferences, ThemeColor, generateSongSlug` — biome/tsgo flag unused imports; removed to keep compile clean.
+
+---
+
+## Task 07
+
+- `[task 07 | implement] account param type is Account (= Tables<"account">) from @/lib/domains/library/accounts/queries` — that module owns the DB row alias; auth-types.ts already uses it for AuthContext.account, so the same type flows from authMiddleware → getOnboardingData handler → loadOnboardingData without any new type surface.
+- `[task 07 | implement] deriveClaimHandleSeed displayName param widened to string | null` — account.display_name is nullable in the DB schema (string | null); the prior string-only signature would have caused a type error when passed account.display_name directly; the null branch produces { kind: "blank" } which is the correct fallback.
+- `[task 07 | implement] accountId threaded route → Onboarding prop → StepContext` — OnboardingPage reads accountId from route context (already set in beforeLoad) and passes it as explicit prop; Onboarding spreads it into StepContext so ClaimHandleStep can build its React Query key without touching the auth cache.
+- `[task 07 | implement] No second authPayloadPromise path remains` — loadOnboardingData uses a single prefsPromise and authPayloadPromise that both reference account.handle; the old (accountId, accountHandle) positional signature is gone; OnboardingData.session is now guaranteed equal to what getOnboardingSession() returns for the same row state.
+- `[task 07 | implement] Test fixture updated with accountId + claimHandleSeed` — onboarding-flow.test.tsx createMockOnboardingData now includes accountId: "test-account-id" and claimHandleSeed: { kind: "blank" }; renderOnboarding passes accountId={data.accountId} to Onboarding to satisfy the new required prop.
