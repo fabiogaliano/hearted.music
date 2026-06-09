@@ -12,6 +12,7 @@ import type { DbError } from "@/lib/shared/errors/database";
 import type { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
 import type { LlmError } from "@/lib/shared/errors/external/llm";
 import { getLyricsFormatLegend } from "../lyrics/utils/lyrics-formatter";
+import { type RecordLlmUsageInput, recordLlmUsage } from "./llm-usage-queries";
 import {
 	ACTIVE_INSTRUMENTAL_VERSION,
 	ACTIVE_LYRICAL_VERSION,
@@ -19,7 +20,11 @@ import {
 	getLyricalPrompt,
 } from "./prompts/registry";
 import { type SongRead, SongReadSchema } from "./read-schema";
-import { rewriteRead, TARGET_RULES } from "./voice/rewrite-pass";
+import {
+	type RewritePassUsage,
+	rewriteRead,
+	TARGET_RULES,
+} from "./voice/rewrite-pass";
 
 const ThemeSchema = z.object({ name: z.string(), description: z.string() });
 const JourneyPointSchema = z.object({
@@ -167,9 +172,13 @@ export class SongAnalysisService {
 			cleanup_tells_after: number;
 			cleanup_error: string | null;
 		} | null = null;
+		// Per-pass rewrite spend, captured for the ledger (each pass is a real Flash call
+		// whose tokens were previously summed-then-discarded). Empty for instrumentals.
+		let rewriteUsages: RewritePassUsage[] = [];
 		if (!isInstrumental) {
 			const cleaned = await rewriteRead(generatedOutput as SongRead, this.llm);
 			generatedOutput = cleaned.read;
+			rewriteUsages = cleaned.usages;
 			cleanupMeta = {
 				cleanup_passes: cleaned.passes,
 				cleanup_tells_before: cleaned.hitsBefore.filter((h) =>
@@ -180,6 +189,31 @@ export class SongAnalysisService {
 				).length,
 				cleanup_error: cleaned.error ?? null,
 			};
+		}
+
+		// Ledger real call-time spend right after the calls happen — the generation, plus
+		// one row per voice-rewrite pass on lyrical songs (instrumentals skip the rewrite, so
+		// rewriteUsages is empty). Recorded before the analysis insert so a storage failure
+		// still leaves an accurate record of tokens actually billed.
+		await this.recordUsage({
+			functionId: "song-analysis",
+			songId,
+			provider: llmResult.value.provider,
+			model: llmResult.value.modelId,
+			tokens: llmResult.value.tokens,
+			costUsd: llmResult.value.costUsd,
+			promptVersion,
+		});
+		for (const usage of rewriteUsages) {
+			await this.recordUsage({
+				functionId: "song-rewrite",
+				songId,
+				provider: usage.provider,
+				model: usage.model,
+				tokens: usage.tokens,
+				costUsd: usage.costUsd,
+				promptVersion,
+			});
 		}
 
 		const analysisData = this.buildAnalysisData(
@@ -210,6 +244,17 @@ export class SongAnalysisService {
 			tokensUsed: llmResult.value.tokens?.total,
 			cached: false,
 		});
+	}
+
+	// Best-effort ledger write: a failed cost insert is logged, never propagated, so
+	// cost tracking can never fail an analysis. See llm-usage-queries.ts.
+	private async recordUsage(input: RecordLlmUsageInput): Promise<void> {
+		const recorded = await recordLlmUsage(input);
+		if (Result.isError(recorded)) {
+			console.warn(
+				`[llm-usage] failed to record ${input.functionId} for song ${input.songId}: ${recorded.error.message}`,
+			);
+		}
 	}
 
 	async analyzeBatch(

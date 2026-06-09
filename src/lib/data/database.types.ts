@@ -806,6 +806,75 @@ export type Database = {
 					},
 				];
 			};
+			llm_usage: {
+				Row: {
+					cache_read_tokens: number;
+					content_hash: string | null;
+					cost_usd: number | null;
+					created_at: string;
+					function_id: string;
+					id: string;
+					input_tokens: number;
+					model: string;
+					output_tokens: number;
+					playlist_id: string | null;
+					price_version: string | null;
+					prompt_version: string | null;
+					provider: string;
+					reasoning_tokens: number;
+					song_id: string | null;
+				};
+				Insert: {
+					cache_read_tokens?: number;
+					content_hash?: string | null;
+					cost_usd?: number | null;
+					created_at?: string;
+					function_id: string;
+					id?: string;
+					input_tokens: number;
+					model: string;
+					output_tokens: number;
+					playlist_id?: string | null;
+					price_version?: string | null;
+					prompt_version?: string | null;
+					provider: string;
+					reasoning_tokens?: number;
+					song_id?: string | null;
+				};
+				Update: {
+					cache_read_tokens?: number;
+					content_hash?: string | null;
+					cost_usd?: number | null;
+					created_at?: string;
+					function_id?: string;
+					id?: string;
+					input_tokens?: number;
+					model?: string;
+					output_tokens?: number;
+					playlist_id?: string | null;
+					price_version?: string | null;
+					prompt_version?: string | null;
+					provider?: string;
+					reasoning_tokens?: number;
+					song_id?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "llm_usage_playlist_id_fkey";
+						columns: ["playlist_id"];
+						isOneToOne: false;
+						referencedRelation: "playlist";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "llm_usage_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			match_decision: {
 				Row: {
 					account_id: string;

@@ -4,6 +4,8 @@ import {
 	get as getSongAnalysis,
 	insert as insertSongAnalysis,
 } from "@/lib/domains/enrichment/content-analysis/queries";
+import { DatabaseError } from "@/lib/shared/errors/database";
+import { recordLlmUsage } from "../llm-usage-queries";
 import type { SongRead } from "../read-schema";
 import type { AnalyzeSongInput } from "../song-analysis";
 import { SongAnalysisService } from "../song-analysis";
@@ -12,6 +14,9 @@ import { runAllRules } from "../voice/tier1-rules";
 vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
 	get: vi.fn(),
 	insert: vi.fn(),
+}));
+vi.mock("../llm-usage-queries", () => ({
+	recordLlmUsage: vi.fn(),
 }));
 
 const service = new SongAnalysisService({} as any);
@@ -94,10 +99,29 @@ describe("analyzeSong cleanup pass", () => {
 		take: "The night ends and she is alone.",
 	};
 
+	// A service generation/rewrite result carries the bare modelId, provider, the full
+	// token split, and the cost estimate — what the ledger rows are built from.
+	const genResult = (output: unknown, total: number) =>
+		Result.ok({
+			output,
+			model: "google-vertex:gemini-2.5-flash",
+			modelId: "gemini-2.5-flash",
+			provider: "google-vertex",
+			tokens: {
+				prompt: total - 100,
+				completion: 100,
+				total,
+				cacheReadTokens: 0,
+				reasoningTokens: 0,
+			},
+			costUsd: 0.0005,
+		});
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.mocked(getSongAnalysis).mockResolvedValue(Result.ok(null) as any);
 		vi.mocked(insertSongAnalysis).mockResolvedValue(Result.ok({} as any));
+		vi.mocked(recordLlmUsage).mockResolvedValue(Result.ok(undefined));
 	});
 
 	it("runs the rewrite on a lyrical read and stores the cleaned version", async () => {
@@ -107,12 +131,8 @@ describe("analyzeSong cleanup pass", () => {
 
 		const generateObject = vi
 			.fn()
-			.mockResolvedValueOnce(
-				Result.ok({ output: dirtyRead, model: "test", tokens: { total: 100 } }),
-			)
-			.mockResolvedValue(
-				Result.ok({ output: cleanRead, model: "test", tokens: { total: 50 } }),
-			);
+			.mockResolvedValueOnce(genResult(dirtyRead, 1000))
+			.mockResolvedValue(genResult(cleanRead, 800));
 		const svc = new SongAnalysisService({ generateObject } as any);
 
 		const res = await svc.analyzeSong({
@@ -139,6 +159,25 @@ describe("analyzeSong cleanup pass", () => {
 		expect(insertArg.cleanup_tells_after).toBe(0);
 		expect(insertArg.cleanup_passes).toBeGreaterThanOrEqual(1);
 		expect(insertArg.cleanup_error).toBeNull();
+
+		// Ledger: one generation row + one rewrite row, both for this song, with the
+		// bare model id and provider (so the rewrite tokens are no longer discarded).
+		const usageCalls = vi.mocked(recordLlmUsage).mock.calls.map((c) => c[0]);
+		expect(usageCalls).toHaveLength(2);
+		expect(
+			usageCalls.find((u) => u.functionId === "song-analysis"),
+		).toMatchObject({
+			songId: "s1",
+			model: "gemini-2.5-flash",
+			provider: "google-vertex",
+		});
+		expect(
+			usageCalls.find((u) => u.functionId === "song-rewrite"),
+		).toMatchObject({
+			songId: "s1",
+			model: "gemini-2.5-flash",
+			provider: "google-vertex",
+		});
 	});
 
 	it("does not run the rewrite for an instrumental analysis", async () => {
@@ -148,13 +187,9 @@ describe("analyzeSong cleanup pass", () => {
 			mood_description: "d",
 			sonic_texture: "s",
 		};
-		const generateObject = vi.fn().mockResolvedValue(
-			Result.ok({
-				output: instrumental,
-				model: "test",
-				tokens: { total: 100 },
-			}),
-		);
+		const generateObject = vi
+			.fn()
+			.mockResolvedValue(genResult(instrumental, 100));
 		const svc = new SongAnalysisService({ generateObject } as any);
 
 		const res = await svc.analyzeSong({
@@ -174,5 +209,36 @@ describe("analyzeSong cleanup pass", () => {
 		expect(insertArg.cleanup_tells_before).toBeNull();
 		expect(insertArg.cleanup_tells_after).toBeNull();
 		expect(insertArg.cleanup_error).toBeNull();
+
+		// Exactly one ledger row (the generation), no song-rewrite row.
+		const usageCalls = vi.mocked(recordLlmUsage).mock.calls.map((c) => c[0]);
+		expect(usageCalls).toHaveLength(1);
+		expect(usageCalls[0]).toMatchObject({
+			functionId: "song-analysis",
+			songId: "s2",
+		});
+	});
+
+	it("does not fail the analysis when a ledger insert fails", async () => {
+		// Real failure mode: recordLlmUsage returns Result.err (e.g. the insert was
+		// rejected). The generation + rewrite rows both fail, yet the analysis succeeds.
+		vi.mocked(recordLlmUsage).mockResolvedValue(
+			Result.err(new DatabaseError({ code: "x", message: "ledger down" })),
+		);
+		const generateObject = vi.fn().mockResolvedValue(genResult(dirtyRead, 900));
+		const svc = new SongAnalysisService({ generateObject } as any);
+
+		const res = await svc.analyzeSong({
+			songId: "s3",
+			artist: "A",
+			title: "T",
+			lyrics: "word ".repeat(60),
+			instrumentalness: 0.1,
+		});
+
+		expect(Result.isOk(res)).toBe(true);
+		expect(vi.mocked(recordLlmUsage).mock.calls.length).toBeGreaterThanOrEqual(
+			1,
+		);
 	});
 });
