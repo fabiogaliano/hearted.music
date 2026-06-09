@@ -23,7 +23,6 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function DashboardHome() {
 	const { account, session } = Route.useRouteContext();
-	const displayName = account?.display_name ?? account?.email ?? null;
 
 	const { data: stats } = useSuspenseQuery(
 		dashboardStatsQueryOptions(session.accountId),
@@ -42,7 +41,7 @@ function DashboardHome() {
 	return (
 		<Dashboard
 			accountId={session.accountId}
-			displayName={displayName}
+			handle={account?.handle ?? null}
 			stats={{
 				totalSongs: stats.totalSongs,
 				analyzedPercent: stats.analyzedPercent,

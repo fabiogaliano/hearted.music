@@ -128,7 +128,7 @@ const recentActivity = likedSongs.slice(0, 5).map((s: any, i: number) => ({
 }));
 
 const dashboard = {
-	displayName: account?.display_name ?? "User",
+	handle: account?.handle ?? null,
 	stats: dashboardStats,
 	recentActivity,
 	matchPreviews: [],
@@ -139,7 +139,7 @@ const dashboard = {
 // Build sidebar props
 const sidebar = {
 	unsortedCount: dashboardStats.reviewCount,
-	userName: account?.display_name ?? null,
+	handle: account?.handle ?? null,
 	userPlan: "Free Plan",
 };
 

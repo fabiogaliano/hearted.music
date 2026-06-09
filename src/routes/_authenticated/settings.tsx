@@ -12,7 +12,7 @@ function SettingsRoute() {
 
 	return (
 		<SettingsPage
-			displayName={account?.display_name ?? null}
+			handle={account?.handle ?? null}
 			email={account?.email ?? null}
 			imageUrl={account?.image_url ?? null}
 			currentTheme={themeColor}

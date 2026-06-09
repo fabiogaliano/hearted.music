@@ -10,14 +10,14 @@ import type { DashboardStats } from "../types";
 interface DashboardHeaderProps {
 	accountId: string;
 	stats: DashboardStats;
-	displayName: string | null;
+	handle: string | null;
 	lastSyncText: string;
 }
 
 export function DashboardHeader({
 	accountId,
 	stats,
-	displayName,
+	handle,
 	lastSyncText,
 }: DashboardHeaderProps) {
 	const { isEnrichmentRunning, enrichmentProgress } = useActiveJobs(accountId);
@@ -39,12 +39,12 @@ export function DashboardHeader({
 				>
 					Welcome back
 				</p>
-				{displayName && (
+				{handle && (
 					<h2
 						className="theme-text mt-3 text-page-title font-extralight tracking-tight text-balance"
 						style={{ fontFamily: fonts.display }}
 					>
-						{displayName}
+						@{handle}
 					</h2>
 				)}
 			</div>

@@ -10,7 +10,7 @@ import type { DashboardProps } from "./types";
 
 export function Dashboard({
 	accountId,
-	displayName,
+	handle,
 	recentActivity,
 	matchPreviews,
 	stats,
@@ -25,7 +25,7 @@ export function Dashboard({
 			<DashboardHeader
 				accountId={accountId}
 				stats={stats}
-				displayName={displayName}
+				handle={handle}
 				lastSyncText={lastSyncText}
 			/>
 

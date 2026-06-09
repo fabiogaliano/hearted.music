@@ -1,6 +1,6 @@
 # Task 12 — Settings & authenticated read surfaces
 
-**Plan:** §9.1, §9.2, §9.4 · **Recommended order:** step 14 · **Status:** [ ]
+**Plan:** §9.1, §9.2, §9.4 · **Recommended order:** step 14 · **Status:** [x]
 
 ## Goal
 

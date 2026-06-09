@@ -185,3 +185,13 @@ on disagreement; §15 is the decision index.
 - `[task 11 | patch] Local blank-submit empty path deemed defensive/unreachable — canContinue gate requires owned-equal or availability==="available"; a blank field never satisfies either so Continue stays disabled. Server-returned "empty" from checkHandleAvailability is the exercised path (test 1 covers it).`
 - `[task 11 | patch] Stale-result isolation test resolves the first promise after the second query has already returned "available" and the key has changed — React Query silently discards the resolve for the stale key; the UI retains the current key's verdict.`
 - `[task 11 | patch] Late availability during submit (test 5) uses owned seed to get immediately-actionable Continue — this sidesteps the availability query entirely (queryEnabled=false for owned), letting us verify that the submit-time readOnly state holds across an async tick without needing to set up a concurrent availability race.`
+
+## Task 12
+
+- [task 12 | implement] SettingsPage: when handle is null, email line has no top margin (`mt-1` applied only when handle exists) — avoids orphan spacing in null-handle layout without a separate conditional wrapper
+- [task 12 | implement] removed `displayName` local var in `dashboard.tsx` entirely (nothing else consumed it) — reduces scope, matches plan guidance
+- [task 12 | implement] fixtures.json `dashboard.handle` set to `"ghr"` (same as the existing `userName`/`displayName` value) — preserves Ladle story visual parity; `sidebar.handle` likewise set to `"ghr"`
+- [task 12 | implement] §9.4 verified: `ClaimHandleStep` patches `["auth","onboarding-session"]` and `["auth","session"]` (only `account.handle`) on `claimed`, availability-time `already_owned`, and submit-time `already_owned`; no change made to Task 11's file
+
+## Task 12
+- [task 12 | review] APPROVE — no findings. Both typecheckers exit 0; 37 scoped tests green. Prop interfaces match §9.2 exactly; null-handle omits identity line with no display_name/email fallback on every surface; Settings adds no edit/copy/rename UI; ClaimHandleStep (Task 11) untouched; §9.4 cache patch satisfies the read path (no settings-only fetch).
