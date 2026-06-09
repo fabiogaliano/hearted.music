@@ -731,6 +731,15 @@ describe("ClaimHandleStep", () => {
 		expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
 		// No toast.
 		expect(mockToastError).not.toHaveBeenCalled();
+
+		// §8.4: a submit-time unavailable verdict must NOT auto-fire a follow-up
+		// availability request for the same unchanged value. Give any spurious
+		// refetch a tick to fire, then assert the check stayed at its single
+		// pre-submit call (the initial debounced lookup for "fabio").
+		await act(async () => {
+			await new Promise((r) => setTimeout(r, 20));
+		});
+		expect(mockCheckHandleAvailability).toHaveBeenCalledTimes(1);
 	});
 
 	it("submit-time unavailable: restores input editability and focus", async () => {
