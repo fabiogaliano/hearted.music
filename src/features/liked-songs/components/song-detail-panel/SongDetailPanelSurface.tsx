@@ -1772,6 +1772,12 @@ function WalkthroughCta({ colors }: { colors: Palette }) {
 				background: `linear-gradient(to bottom, transparent, ${colors.bg} 32%)`,
 			}}
 		>
+			<style>{`
+				@keyframes walkthrough-cta-arrow-nudge {
+					0%, 100% { transform: translateX(0); }
+					50% { transform: translateX(3px); }
+				}
+			`}</style>
 			<button
 				type="button"
 				onClick={handleClick}
@@ -1802,18 +1808,31 @@ function WalkthroughCta({ colors }: { colors: Palette }) {
 					borderRadius: 12,
 					cursor: disabled ? "default" : "pointer",
 					opacity: disabled ? 0.55 : 1,
-					// Tactile press, matching Button.tsx's active:scale-[0.98].
+					// Tactile press, matching Button.tsx's active:scale-[0.98]. Hover
+					// lifts brightness slightly so the CTA still acknowledges the pointer
+					// now that the arrow's idle nudge is what draws the eye.
 					transform:
 						pressed && !disabled && !reducedMotion ? "scale(0.98)" : "scale(1)",
+					filter: hovered && !disabled ? "brightness(1.06)" : "none",
 					transition: reducedMotion
-						? "opacity 150ms ease"
-						: "opacity 150ms ease, transform 150ms ease",
+						? "opacity 150ms ease, filter 150ms ease"
+						: "opacity 150ms ease, transform 150ms ease, filter 150ms ease",
 				}}
 			>
 				See where this song belongs
 				<span
 					aria-hidden
 					style={{
+						display: "inline-block",
+						// Continuous idle nudge ported from the SongCard "See what's
+						// inside →" hint, so the CTA advertises itself instead of waiting
+						// for hover. Hover holds the arrow forward; disabled stops it.
+						animation:
+							reducedMotion || disabled
+								? "none"
+								: hovered
+									? "none"
+									: "walkthrough-cta-arrow-nudge 2s ease-in-out infinite",
 						transform:
 							hovered && !disabled && !reducedMotion
 								? "translateX(3px)"
