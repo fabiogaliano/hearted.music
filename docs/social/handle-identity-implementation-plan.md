@@ -33,7 +33,7 @@ This is identity infrastructure, not a standalone social feature.
 - **`OnboardingData` has no handle-specific payload yet.** `src/lib/server/onboarding.functions.ts` currently returns `playlists`, `phaseJobIds`, `syncStats`, `readyCopyVariant`, and `landingSongs`, but no claim-handle seed payload or public-origin preview data.
 - **`syncStats` are currently duplicated between server-loaded onboarding data and router state.** `src/features/onboarding/components/FlagPlaylistsStep.tsx` reads `location.state?.syncStats ?? EMPTY_SYNC_STATS` and forwards that value through `goToStep(...)`, even though `src/lib/server/onboarding.functions.ts` already returns canonical DB-derived `OnboardingData.syncStats` and `PlanSelectionStep` already consumes that server-backed value.
 - **`useOnboardingNavigation()` currently swallows transition failures while several callers behave as if it rejects.** `src/features/onboarding/hooks/useOnboardingNavigation.ts` catches save/fetch/navigate failures, toasts internally, and does not rethrow. But `WelcomeStep`, `PickColorStep`, `InstallExtensionStep`, and `FlagPlaylistsStep` each wrap `goToStep(...)` inside local `try/catch` flows. In particular, `WelcomeStep` only resets `isNavigating` inside `catch`, so a swallowed navigation failure can leave the CTA disabled until refresh.
-- **Onboarding completion is currently a blind server write.** `src/lib/server/onboarding.functions.ts`'s `markOnboardingComplete()` currently just calls `completeOnboardingWithAllocations(...)`, and `src/lib/domains/library/accounts/onboarding-allocation.ts` does not re-check `account.handle` or the authoritative current onboarding session before stamping `onboarding_completed_at`. `src/features/onboarding/components/PlanSelectionStep.tsx` then assumes success and navigates to `/dashboard` once that call resolves.
+- **Onboarding completion is currently an unconditional server write.** `src/lib/server/onboarding.functions.ts`'s `markOnboardingComplete()` currently calls `completeOnboardingWithAllocations(...)` and returns `{ success: true }`; it does error-check the allocation result and throw on failure, but it does **not** re-validate the caller's authoritative session, and `src/lib/domains/library/accounts/onboarding-allocation.ts` does not re-check `account.handle` or the authoritative current onboarding session before stamping `onboarding_completed_at`. `src/features/onboarding/components/PlanSelectionStep.tsx` then assumes success and navigates to `/dashboard` once that call resolves.
 - **The best passive prefill source is `account.display_name`.** In `src/routes/api/extension/sync.tsx`, extension sync updates `account.display_name` from the Spotify profile display name. There is no separate stored Spotify-username column to prefer instead.
 - **Authenticated server functions already receive the account row.** `src/lib/platform/auth/auth.middleware.ts` injects both `context.session` and `context.account`, so handle-aware onboarding functions can read the caller's current handle without an extra auth lookup.
 - **Settings currently show identity without a handle.** `src/routes/_authenticated/settings.tsx` passes `displayName`, `email`, and `imageUrl` into `src/features/settings/SettingsPage.tsx`, whose Account section renders avatar + display name + email only.
@@ -152,17 +152,14 @@ BEGIN
 
   IF v_existing_handle IS NULL
      AND v_onboarding_completed_at IS NULL
-     AND (
-       v_existing_step IN ('welcome', 'pick-color', 'install-extension', 'syncing')
-       OR v_existing_step NOT IN (
-         'claim-handle',
-         'flag-playlists',
-         'pick-demo-song',
-         'song-walkthrough',
-         'match-walkthrough',
-         'plan-selection',
-         'complete'
-       )
+     AND v_existing_step NOT IN (
+       'claim-handle',
+       'flag-playlists',
+       'pick-demo-song',
+       'song-walkthrough',
+       'match-walkthrough',
+       'plan-selection',
+       'complete'
      ) THEN
     RETURN QUERY SELECT 'not_ready'::TEXT, NULL::TEXT;
     RETURN;
@@ -222,9 +219,17 @@ Why this shape:
 - Concurrent submissions from two tabs on the same account are serialized by the `FOR UPDATE` locks on the `account` and `user_preferences` rows.
 - The caller should treat `claim_handle` as an exact one-row contract and invoke it with `.single()` (plus response-shape validation) rather than depending on raw `data` arrays.
 
-### 4.3 Types and env follow-up
+### 4.3 Apply, types, and env follow-up
 
-After migrations:
+Create each migration on demand with the Supabase CLI (`supabase migration new
+<name>`) as you implement its sub-task — one at a time, **not** both scaffolded
+upfront — so each gets the next `YYYYMMDDHHMMSS_*.sql` name, and apply it to the
+local database with incremental, non-destructive `supabase migration up --local` —
+**not** `supabase db reset` (wipes local data + re-seeds), **not** `supabase db push`
+(promotes to the linked remote), and **not** ad-hoc `supabase db query` DDL (schema
+must live in migration files). Use the `supabase-local` skill for any DB inspection.
+
+After both migrations are applied:
 
 - run `bun run gen:types`
 - update env files for the new public-origin config described in §10
@@ -513,22 +518,10 @@ Do **not** add these contracts to `src/lib/server/onboarding.functions.ts`. Hand
 Before wiring those handle server functions, do one foundational type split so the new shared/server modules do **not** depend on `src/features/...`:
 
 - new file: `src/lib/domains/enrichment/content-analysis/analysis-content.ts`
-  - move the shared analysis payload read-path contract here and make it runtime-backed, not type-only:
-
-```ts
-export const analysisContentSchema = ...;
-export type AnalysisContent = z.infer<typeof analysisContentSchema>;
-
-export function parseAnalysisContent(
-  value: unknown,
-): AnalysisContent | null;
-```
-
-  - `parseAnalysisContent(...)` is the only boundary parser for `song_analysis.analysis` JSON in v0; callers should stop using unchecked `as AnalysisContent` casts on DB JSON
-  - `analysis-content.ts` is a thin read-path seam over the existing content-analysis domain schemas, not a third independent schema authority invented by this handle plan
-  - malformed analysis JSON should be logged at the boundary and treated as `null` analysis, not thrown; liked-song/detail/onboarding surfaces already tolerate missing analysis better than they tolerate page-breaking exceptions
-  - when parsing returns `null`, callers should collapse the **outer** analysis wrapper to `null` (for example `WalkthroughSong.analysis = null`) rather than introducing partial objects with `content: null`
+  - relocate the shared `AnalysisContent` interface here verbatim from `src/features/liked-songs/types.ts` so the new `lib` session module can reference it without importing from `src/features/...`
+  - this is a type-only relocation: move the interface, repoint its existing importers, and leave the existing `as AnalysisContent` read-path casts unchanged
   - `src/features/liked-songs/types.ts` should import this type from the lib module instead of owning it
+  - the runtime `analysisContentSchema` + `parseAnalysisContent(...)` boundary parser that would replace those casts is a separate read-path hardening, out of scope for this change
 
 - new file: `src/lib/domains/library/accounts/onboarding-session.ts`
   - move the core onboarding session contracts here
@@ -817,7 +810,7 @@ const rpcResult = await supabase
 }
 ```
 
-   Do **not** derive the success session from stale `context.account.handle`; middleware auth context was loaded before the RPC wrote the handle. Also do **not** rely on `normalizedHandle` alone when the RPC already returned the authoritative stored handle. The returned `ownedHandle` is the client-cache authority, and the returned `onboarding.session` is the navigation authority. On a **first** successful claim for an unfinished onboarding row (`onboarding_completed_at IS NULL`), that session must be `flag-playlists` (subject to the existing no-playlists route skip afterward), even if a premature later `onboarding_step` — including the inconsistent `complete`-without-timestamp case — had been saved before the claim. If the row was already completion-stamped but still missing a handle, the successful first claim must instead preserve that completed state and return `session.status = "complete"`; do **not** rewind a completion-stamped row to `flag-playlists`. A stale tab that resubmits the same already-claimed handle after the user has progressed to `pick-demo-song` or later must receive that later session back; the client must not assume `flag-playlists`.
+   Do **not** derive the success session from stale `context.account.handle`; middleware auth context was loaded before the RPC wrote the handle. Also do **not** rely on `normalizedHandle` alone when the RPC already returned the authoritative stored handle. The returned `ownedHandle` is the client-cache authority, and the returned `onboarding.session` is the navigation authority. On a **first** successful claim for an unfinished onboarding row (`onboarding_completed_at IS NULL`), that session is `flag-playlists` (subject to the existing no-playlists route skip afterward), even if a premature later `onboarding_step` — including the inconsistent `complete`-without-timestamp case — had been saved before the claim. A stale tab that resubmits the same already-claimed handle after the user has progressed to `pick-demo-song` or later must receive that later session back; the client must not assume `flag-playlists`.
 
 11. if the parsed row is `{ status: "already_owned", owned_handle }`, recover the authoritative already-owned state instead of collapsing to a generic inline error:
 
@@ -852,7 +845,7 @@ This owned-exact-match bypass is intentional. In v0, an already-owned immutable 
 
 ### 6.4 `markOnboardingComplete`
 
-Keep `markOnboardingComplete` in `src/lib/server/onboarding.functions.ts`, but change it from a fire-and-forget `{ success: true }` mutation into an authoritative completion gate.
+Keep `markOnboardingComplete` in `src/lib/server/onboarding.functions.ts`, but change it from an unconditional `{ success: true }` mutation — which today only error-checks the allocation write, not the caller's session state — into an authoritative completion gate.
 
 Contract:
 
@@ -1024,13 +1017,9 @@ Update all existing onboarding machine touchpoints:
    - re-export `type SaveableOnboardingStep`
    - narrow `updateOnboardingStep(accountId, step)` to `step: SaveableOnboardingStep`
 3. `src/lib/domains/enrichment/content-analysis/analysis-content.ts` (new)
-   - move the shared `AnalysisContent` read-path contract here from `src/features/liked-songs/types.ts`
-   - define `analysisContentSchema`, `type AnalysisContent = z.infer<typeof analysisContentSchema>`, and `parseAnalysisContent(value: unknown): AnalysisContent | null`
-   - this module is a thin read-path seam over the existing content-analysis schema family already owned in `song-analysis.ts` / `concept-schema.ts`; do **not** invent a third unrelated schema authority here
-   - `parseAnalysisContent(...)` must log malformed JSON and return `null`; do **not** throw for invalid stored analysis rows in this change
-   - update `src/features/liked-songs/types.ts` and the new onboarding-session domain module to import this shared type from the lib path
-   - any touched server/UI boundary in this change that currently does `as AnalysisContent` on raw DB JSON should switch to `parseAnalysisContent(...)` instead of preserving unchecked casts
-   - if parsing returns `null`, keep existing wrapper contracts unchanged and collapse the outer analysis wrapper to `null`; do **not** widen `WalkthroughSongAnalysis.content` or other wrapper contracts to `AnalysisContent | null`
+   - relocate the shared `AnalysisContent` interface here verbatim from `src/features/liked-songs/types.ts`
+   - repoint its existing importers to the lib path: `src/features/liked-songs/types.ts`, the landing/detail components, `step-resolver.ts` → the new onboarding-session domain module, and the two server functions (`onboarding.functions.ts`, `liked-songs.functions.ts`)
+   - this is a type-only relocation; leave the existing `as AnalysisContent` read-path casts unchanged. The runtime `analysisContentSchema` + `parseAnalysisContent(...)` boundary parser that would replace them is a separate read-path hardening, out of scope for this change
 4. `src/lib/domains/library/accounts/onboarding-session.ts` (new)
    - move `WalkthroughSongAnalysis`, `WalkthroughSong`, `OnboardingSession`, `OnboardingAuthPayload`, and `sessionMode(...)` here
    - add `| { status: "claim-handle" }` to `OnboardingSession`
@@ -1048,7 +1037,7 @@ export interface OnboardingAuthPayload {
    - stop defining/exporting `OnboardingSession` and `WalkthroughSong`
    - stop exporting `sessionMode(...)`
    - import `OnboardingSession` from `src/lib/domains/library/accounts/onboarding-session.ts`
-   - expand `AllowedPath` to include `"/dashboard"`
+   - widen the currently-private `AllowedPath` type to include `"/dashboard"` and export it
    - keep unfinished non-walkthrough steps, including `claim-handle`, resolving to `/onboarding`
    - change `resolveSession({ status: "complete" })` to return `{ allowedPath: "/dashboard" }`
    - keep this file focused on route/path resolution only; after the split, other modules should not import session-domain types or `sessionMode(...)` from here
@@ -1109,14 +1098,14 @@ function deriveSession(
 ): OnboardingSession
 ```
 
-   - before the normal completion / step switch logic, enforce the handle prerequisite authoritatively:
+   - keep the existing completion check first: a non-null `onboardingCompletedAt` resolves to `{ status: "complete" }` regardless of handle, unchanged from today
+   - then, for unfinished onboarding only, enforce the handle prerequisite:
      - if `accountHandle` is null
-     - and either:
-       - `onboardingCompletedAt` is non-null
-       - or the persisted `onboardingStep` is `"claim-handle"` or any later step token, including the inconsistent `"complete"`-without-timestamp case
+     - and `onboardingCompletedAt` is null
+     - and the persisted `onboardingStep` is `"claim-handle"` or any later step token (including the inconsistent `"complete"`-without-timestamp case)
      - return `{ status: "claim-handle" }`
 
-   This makes missing-handle state authoritative over both later saved step tokens **and** completion-stamped rows. A stale or manually-repaired row with `onboarding_completed_at IS NOT NULL` but `account.handle IS NULL` must still route to `claim-handle`; after the user successfully claims a handle, the same persisted completion timestamp then lets the authoritative session resolve back to `complete` without replaying onboarding.
+   Missing-handle is authoritative over later saved step tokens for unfinished onboarding only; the completion timestamp stays the top authority, so a completed row resolves to `complete` regardless of handle. A completed row with a null handle is only producible by pre-feature data or manual SQL; it omits the handle on read surfaces and is returned to a true first-claim via the §13.3 reset path, not by being dragged back to `claim-handle`.
 17. `src/lib/server/onboarding.functions.ts`
    - import `OnboardingAuthPayload`, `OnboardingSession`, and `WalkthroughSong` from `src/lib/domains/library/accounts/onboarding-session.ts`, not from `src/features/onboarding/step-resolver.ts`
    - import `deriveAuthPayloadFromPrefs(...)` and `loadOnboardingSession(...)` from `src/lib/server/onboarding-session.ts`
@@ -1137,7 +1126,7 @@ const saveableStepInputSchema = z.object({
    - generic `saveOnboardingStep({ step: "match-walkthrough" })` remains valid in v0 because the existing flow can only reach it after `demo_song_id` was already established; no separate match-walkthrough RPC is needed in this plan
    - thread `context.account.handle` through `getOnboardingSession()`
    - keep `getOnboardingSession()` as the onboarding-facing wrapper over the shared session loader
-   - replace `markOnboardingComplete()`'s current fire-and-forget `{ success: true }` contract with the structured completion contract from §6.4; it must load the authoritative handle-aware session before completing, return `{ status: "not_ready", onboarding }` for stale/early calls, return `{ status: "completed_now", onboarding }` when this request actually completes onboarding, and return `{ status: "already_complete", onboarding }` for idempotent re-entry
+   - replace `markOnboardingComplete()`'s current unconditional `{ success: true }` contract (which today only error-checks the allocation write) with the structured completion contract from §6.4; it must load the authoritative handle-aware session before completing, return `{ status: "not_ready", onboarding }` for stale/early calls, return `{ status: "completed_now", onboarding }` when this request actually completes onboarding, and return `{ status: "already_complete", onboarding }` for idempotent re-entry
 - after the completion write, its returned `onboarding` payload must be derived from freshly re-read account state, not from stale middleware `context.account.handle`
    - make `loadOnboardingData(...)` reuse `deriveAuthPayloadFromPrefs({ accountId, accountHandle: account.handle, prefs, supabase })` for `OnboardingData.session`; the account row is required for authoritative session derivation there, not only for `claimHandleSeed`
    - `getOnboardingData()` and `getOnboardingSession()` must therefore return the same `session.status` for the same persisted rows, including handle-less rows whose saved `onboarding_step` is later than `claim-handle`
@@ -1216,7 +1205,7 @@ export type OnboardingStepTransitionResult =
      - keep the existing playlist-save failure branches for `savePlaylistTargets(...)`
      - if playlist save succeeds but `goToStep("pick-demo-song")` returns `{ status: "transition_failed" }`, set `isSaving` back to `false`, keep the current selection state, keep the user on Flag Playlists, and show toast copy `Your playlist preferences were saved, but we couldn't continue. Please try again.`
 22. `src/features/onboarding/components/PlanSelectionStep.tsx`
-   - change the `Start Exploring` submit path to use the structured `markOnboardingComplete()` contract from §6.4, not a fire-and-forget mutation
+   - change the `Start Exploring` submit path to use the structured `markOnboardingComplete()` contract from §6.4, not a success-assumed mutation that hardcodes navigation to `/dashboard`
    - on `{ status: "completed_now", onboarding }`, patch `queryKey = ["auth", "onboarding-session"]` with the returned payload, fire `analytics.capture("onboarding_completed", ...)`, and navigate from `resolveSession(onboarding.session)`; do **not** hardcode `/dashboard`
    - on `{ status: "already_complete", onboarding }`, patch `queryKey = ["auth", "onboarding-session"]` with the returned payload and navigate from `resolveSession(onboarding.session)`, but do **not** fire completion analytics again
    - on `{ status: "not_ready", onboarding }`, patch `queryKey = ["auth", "onboarding-session"]` with the returned payload, navigate from `resolveSession(onboarding.session)`, and do **not** toast; this is authoritative stale/out-of-order recovery
@@ -1331,13 +1320,13 @@ Why:
 
 - `/_authenticated/route.tsx` already redirects unfinished sessions to `/onboarding?step=<status>`
 - `/onboarding` already blocks skip-ahead based on `ONBOARDING_STEP_VALUES`
-- once `deriveSession()` returns `{ status: "claim-handle" }` whenever `account.handle` is still null, the existing guards automatically pin the user to the right step
-- this is not in tension with the completion-stamped recovery path: before claim, missing handle outranks a non-null `onboarding_completed_at`; after successful claim, that preserved completion timestamp lets the same row resolve back to `complete`
+- once `deriveSession()` returns `{ status: "claim-handle" }` for an unfinished account whose `account.handle` is still null, the existing guards automatically pin the user to the right step
+- the completion timestamp stays the top authority, so a completed account resolves to `complete` regardless of handle; missing-handle only pins unfinished onboarding to `claim-handle`
 
 So the enforcement layer is:
 
 1. `SyncingStep` navigates to `claim-handle`
-2. `deriveSession()` treats missing `account.handle` as authoritative and collapses any later saved onboarding step back to `claim-handle`
+2. `deriveSession()` treats missing `account.handle` as authoritative for unfinished onboarding and collapses any later saved pre-completion step back to `claim-handle`
 3. the existing route guards simply follow that authoritative session
 
 The existing `flag-playlists → pick-demo-song` no-playlists skip stays unchanged after a successful claim.
@@ -1755,7 +1744,7 @@ Create:
 
 - `src/routes/@{$handle}.tsx`
   - `createFileRoute('/@{$handle}')`
-  - this route shape is intentional and valid TanStack Router syntax for a static `@` prefix plus an in-segment dynamic param; no virtual-route workaround or catch-all parser is needed here
+  - this is TanStack Router's prefix path-param convention: the literal `@` sits outside the braces and `{$handle}` is the in-segment param, so the file `src/routes/@{$handle}.tsx` maps to `/@{$handle}` and `/@fabio` resolves to `params.handle = "fabio"`; no virtual-route workaround or catch-all parser is needed
 - `src/features/public-handle/PublicHandleComingSoonPage.tsx`
 - `src/lib/server/public-handle.functions.ts`
   - add the public server contract the route loader calls:
@@ -1897,8 +1886,8 @@ Update:
 
 Source-of-truth contract:
 
-- `src/env.public.ts` should expose `VITE_PUBLIC_APP_ORIGIN` as a **required validated** public env value, not an optional best-effort string
-- `src/lib/config/public-app-origin.ts` should read this variable from `src/env.public.ts`, not from `src/env.ts`
+- `src/env.public.ts` should expose `VITE_PUBLIC_APP_ORIGIN` as a **required validated** public env value, not an optional best-effort string. That module already validates a single `clientEnv` object today, so add `VITE_PUBLIC_APP_ORIGIN` to that existing schema/object rather than introducing a new export shape.
+- `src/lib/config/public-app-origin.ts` should read this variable from `src/env.public.ts` (as `clientEnv.VITE_PUBLIC_APP_ORIGIN`), not from `src/env.ts`
 - `src/env.ts` may still include the variable in broader env validation/wiring if needed by repo conventions, but the cross-runtime public-link helper should depend on the public env module so client imports do not reach through the server env layer
 
 ### 10.2 Canonicalization
@@ -1917,7 +1906,7 @@ buildPublicHandleUrl(handle: string): string
 Contract for that module:
 
 - it must be importable from both client code (`ClaimHandleStep`) and server code (`src/lib/email/waitlist-confirmation.ts`)
-- it should import `VITE_PUBLIC_APP_ORIGIN` from `src/env.public.ts`, not `src/env.ts`
+- it should read `VITE_PUBLIC_APP_ORIGIN` from `src/env.public.ts` (via the validated `clientEnv` object), not `src/env.ts`
 - `getPublicAppOrigin()` should return the validated public origin with exactly one canonicalization step applied: trim a trailing slash if present
 - `buildPublicHandleUrl(handle: string)` should compose from that canonical origin plus `/@${handle}` and assume the caller passes a canonical bare handle
 - it owns origin trimming and `/@` concatenation so onboarding and future sharing surfaces do not duplicate URL assembly rules
@@ -1929,6 +1918,7 @@ Current consumers in this change / repo:
 
 - `ClaimHandleStep` live preview — import `buildPublicHandleUrl(...)` from `src/lib/config/public-app-origin.ts`
 - `src/lib/email/waitlist-confirmation.ts` footer link — replace the hardcoded `https://hearted.music` by importing the same shared helper module
+- `src/lib/email/welcome.ts` body CTA and footer links — replace the hardcoded `https://hearted.music` by importing the same shared helper module
 
 Future consumers:
 
@@ -1988,16 +1978,7 @@ This env is the canonical source for externally surfaced public links, not a uni
 9. if persisted step is already later than `claim-handle` (for example `pick-demo-song`), the RPC leaves it unchanged
 10. the server returns the fresh authoritative session, and the client navigates to that returned state instead of forcing `flag-playlists`
 
-### 11.5 Self-healing completion-stamped row missing a handle
-
-1. a stale/manual row exists with `onboarding_completed_at IS NOT NULL` but `account.handle IS NULL`
-2. authoritative session derivation still returns `claim-handle`
-3. user claims a handle successfully
-4. `claim_handle(...)` writes only `account.handle`; it does **not** rewind the row to `flag-playlists` because onboarding is already completion-stamped
-5. server reloads the authoritative session with the new handle and returns `session.status = "complete"`
-6. client patches caches and navigates to `/dashboard` via `resolveSession()`
-
-### 11.6 Plan-selection completion
+### 11.5 Plan-selection completion
 
 1. user clicks `Start Exploring`
 2. client calls `markOnboardingComplete()`
@@ -2027,7 +2008,7 @@ This env is the canonical source for externally surfaced public links, not a uni
 | first claim happens after a buggy/stale client had already saved a later onboarding step | RPC still canonicalizes the first post-claim step to `flag-playlists` |
 | current account already has the same handle | self-check returns `available` immediately without reserved/profanity/taken checks; submit is allowed and idempotent; if the user already advanced later, the RPC must not rewind `onboarding_step` |
 | current account already has a different handle | availability returns `status: "already_owned"` with `ownedHandle` + authoritative `OnboardingAuthPayload`, patches caches, and navigates immediately; submit uses the same authoritative recovery shape if a stale client somehow reaches it |
-| row is completion-stamped (`onboarding_completed_at IS NOT NULL`) but `account.handle` is still null | authoritative session derivation still returns `claim-handle`; successful claim preserves the completion timestamp and returns `session.status = "complete"` instead of rewinding to `flag-playlists` |
+| row is completion-stamped (`onboarding_completed_at IS NOT NULL`) but `account.handle` is still null | the completion timestamp stays authoritative, so session derivation returns `complete` and read surfaces omit the handle; such rows are only producible by pre-feature data or manual SQL and are returned to a true first-claim via the §13.3 reset path |
 | stale/buggy completion submit happens before the account has actually reached `plan-selection` (including handle-less later-step rows collapsed to `claim-handle`) | `markOnboardingComplete` returns `status: "not_ready"` with the authoritative current `OnboardingAuthPayload`; the client patches `queryKey = ["auth", "onboarding-session"]`, navigates from the returned session, and does not toast |
 | stale tab clicks `Start Exploring` after onboarding already completed | `markOnboardingComplete` returns `status: "already_complete"` with the authoritative complete session and does not rerun completion side effects or fire completion analytics again; the client patches `queryKey = ["auth", "onboarding-session"]` and lands on `/dashboard` via `resolveSession()` |
 | availability check operational failure | return `status: "error"`; show `Couldn't check that handle — try again.` plus inline action `Check again`; Continue stays disabled until a successful retry returns `available`. If this happens on the immediate mount-time check for a suggested seed, keep the suggested value visible and focused, show the error state immediately, hide the preview, and let the user recover by editing or retrying. After a retry settles and the step remains mounted, focus returns to the input with the caret at the end. |
@@ -2058,11 +2039,11 @@ This env is the canonical source for externally surfaced public links, not a uni
 ### 13.2 Recommended order
 
 1. add `VITE_PUBLIC_APP_ORIGIN` to env/public config files
-2. create migration for `account.handle` + unique handle index + format check constraint
-3. create migration for `claim_handle(UUID, TEXT)` RPC
+2. create **and apply** the `account.handle` migration (unique handle index + format check constraint): `supabase migration new` → author → `supabase migration up --local`
+3. create **and apply** the `claim_handle(UUID, TEXT)` RPC migration the same way — on demand, after step 2 lands, **not** batched with it
 4. run `bun run gen:types`
 5. add handle domain modules (`handle-rules`, `handle-prefill`, `claim-handle-seed`, `handle-profanity`)
-6. extract shared `AnalysisContent` into `src/lib/domains/enrichment/content-analysis/analysis-content.ts`, add `analysisContentSchema` + `parseAnalysisContent(...)`, and repoint existing imports/boundary parsing to that module
+6. relocate the shared `AnalysisContent` type into `src/lib/domains/enrichment/content-analysis/analysis-content.ts` and repoint its existing imports to that module
 7. extract core onboarding session contracts into `src/lib/domains/library/accounts/onboarding-session.ts`
 8. extract shared onboarding-session server primitives into `src/lib/server/onboarding-session.ts`
 9. extend onboarding loader data with `claimHandleSeed`
@@ -2143,7 +2124,7 @@ Add focused tests for:
 - onboarding-session domain behavior in `src/lib/domains/library/accounts/onboarding-session.ts`:
   - `sessionMode(...)`
   - `claim-handle` is categorized as `"steps"`
-  - missing handle outranks a non-null `onboarding_completed_at` and still resolves to `claim-handle`
+  - missing handle collapses pre-completion later-step tokens to `claim-handle`, but a non-null `onboarding_completed_at` stays authoritative and resolves to `complete`
 - route-mapping behavior in `src/features/onboarding/step-resolver.ts`:
   - unfinished steps resolve to `/onboarding`
   - `song-walkthrough` resolves to `/liked-songs`
@@ -2161,18 +2142,7 @@ Test:
 - empty-after-normalization → blank
 - existing `account.handle` wins over display-name-derived prefill
 
-### 14.3 Analysis-content boundary tests
-
-Test `src/lib/domains/enrichment/content-analysis/analysis-content.ts` for:
-
-- valid stored analysis JSON parses into `AnalysisContent`
-- malformed/non-object JSON logs and returns `null`
-- callers keep existing wrapper contracts and collapse invalid parsed content to `analysis = null` instead of producing partial objects with `content: null`
-- wrong-shaped nested fields log and return `null`
-- callers touched by this change no longer rely on unchecked `as AnalysisContent` casts for raw DB JSON
-- onboarding walkthrough/session loading degrades invalid analysis rows to `analysis: null` instead of throwing
-
-### 14.4 Profanity tests
+### 14.3 Profanity tests
 
 Test server profanity handling for:
 
@@ -2180,7 +2150,7 @@ Test server profanity handling for:
 - separator-obfuscated forms using `.` and `_`
 - default non-profane examples that should pass under the library's built-in behavior
 
-### 14.5 Server contract tests
+### 14.4 Server contract tests
 
 Test `checkHandleAvailability`:
 
@@ -2203,7 +2173,6 @@ Test `claimHandleAndAdvance`:
 - `isReservedHandle(normalizedHandle)` runs only after format validation and blocks first-claim attempts without blocking the self-owned exact-match grandfather path
 - `empty` returns `{ status: "unavailable", reason: "empty" }`
 - first claim attempt from an earlier step returns `status: "not_ready"` with the authoritative pre-claim `OnboardingAuthPayload`
-- first claim on a completion-stamped but handle-less row returns `status: "claimed"` with an authoritative post-claim `OnboardingAuthPayload` whose `session.status` is `complete`, not `flag-playlists`
 - first claim canonicalizes a prematurely saved later valid step — including the inconsistent `complete`-without-timestamp case — back to `flag-playlists` and clears `phase_job_ids`
 - first claim from an invalid/unknown unfinished step token returns `status: "not_ready"` rather than being treated as later-step-allowed
 - same-handle idempotent re-entry from `claim-handle` advances to `flag-playlists`
@@ -2221,12 +2190,12 @@ Test `markOnboardingComplete`:
 
 - `plan-selection` with an existing handle returns `{ status: "completed_now", onboarding }` and the returned `OnboardingAuthPayload.session.status` is `complete`
 - a stale/earlier authoritative session returns `{ status: "not_ready", onboarding }` and does **not** complete
-- a handle-less later-step or completion-stamped row that the shared session loader collapses to `claim-handle` returns `status: "not_ready"` rather than completing
+- a handle-less later-step row (pre-completion) that the shared session loader collapses to `claim-handle` returns `status: "not_ready"` rather than completing
 - already-complete re-entry returns `{ status: "already_complete", onboarding }` without rerunning completion side effects
 - operational failures still throw
 - as with `claimHandleAndAdvance`, post-mutation session reconstruction must not reuse stale middleware account-handle state
 
-### 14.6 RPC / DB integration tests
+### 14.5 RPC / DB integration tests
 
 Test:
 
@@ -2245,7 +2214,7 @@ Test:
 - forced missing `user_preferences` row causes the RPC to raise and rollback
 - forced missing `account` row causes the RPC to raise and rollback
 
-### 14.7 Component tests
+### 14.6 Component tests
 
 Test `ClaimHandleStep` behavior for:
 
@@ -2284,7 +2253,7 @@ Test `ClaimHandleStep` behavior for:
 - accessibility wiring (`form`, `label`, `aria-describedby`, static helper id, dynamic status id, `aria-live` only on the dynamic status region)
 - Enter in the focused handle input submits via native form behavior; no `useShortcut("enter")` dependency
 
-### 14.8 Guard, navigation-hook, and settings tests
+### 14.7 Guard, navigation-hook, and settings tests
 
 Test:
 
@@ -2297,8 +2266,8 @@ Test:
 - sync completion navigates to `claim-handle`, not `flag-playlists`, and does not depend on passing `syncStats` through router state
 - `SyncingStep` shows `Sync finished, but we couldn't continue. Refresh to keep going.` if the post-sync transition fails, and it does not repeatedly auto-retry on a steady completed sync state
 - `FlagPlaylistsStep` no longer depends on `location.state?.syncStats`
-- handle-less user is pinned to `claim-handle` even if `user_preferences.onboarding_step` was manually set to `flag-playlists`, `pick-demo-song`, `complete`-without-timestamp, another later step, or the row already has `onboarding_completed_at`
-- `getOnboardingSession()` and `getOnboardingData()` return the same authoritative `session.status` for handle-less later-step or completion-stamped rows; the full onboarding payload must not lag behind the guard session
+- handle-less user is pinned to `claim-handle` even if `user_preferences.onboarding_step` was manually set to `flag-playlists`, `pick-demo-song`, `complete`-without-timestamp, or another later step; a completion-stamped row stays `complete` and is not pulled back to `claim-handle`
+- `getOnboardingSession()` and `getOnboardingData()` return the same authoritative `session.status` for handle-less later-step rows; the full onboarding payload must not lag behind the guard session
 - `/onboarding` skip-ahead checks use the shared step-order helper semantics rather than ad-hoc index math
 - dev workflow prev/next navigation follows the shared helper-derived step order after inserting `claim-handle`
 - `saveOnboardingStep` rejects `step: "complete"` at its transport boundary; completion must go through `markOnboardingComplete()`
@@ -2317,7 +2286,7 @@ Test:
 - Settings Account section treats `@handle` as the primary displayed identity and does not render `account.display_name` as the displayed name in v0
 - Sidebar and Dashboard header also treat `@handle` as the displayed identity and do not fall back to `account.display_name` or `account.email` in v0
 
-### 14.9 Public `@handle` route tests
+### 14.8 Public `@handle` route tests
 
 Test:
 
@@ -2336,77 +2305,64 @@ Test:
 
 ## 15. Resolved decisions
 
-- handle lives on `account`
-- DB enforces trimmed lowercase storage plus the basic syntax subset via `account_handle_format_check`
-- syntax follows Instagram-like username rules
-- allowed chars: letters, numbers, periods, underscores
-- disallowed: hyphens, spaces, other symbols
-- periods cannot lead, trail, or repeat as `..`
-- underscores may lead, trail, repeat, and sit next to periods
-- all-digit handles are allowed
-- app-language, policy, auth, and official-sounding names remain reserved even when they would not technically collide with the current `/@handle` router namespace
-- handle claim is a required onboarding step after `syncing`
-- shared `AnalysisContent` lives in `src/lib/domains/enrichment/content-analysis/analysis-content.ts`, not under `src/features/liked-songs/`
-- `analysis-content.ts` owns the read-path runtime schema (`analysisContentSchema`) and boundary parser (`parseAnalysisContent(value): AnalysisContent | null`), but it is explicitly a seam over the existing content-analysis schema family rather than a third unrelated schema authority; malformed stored analysis JSON is logged and degraded to `null`, not trusted via unchecked casts or surfaced as a page-breaking exception
-- that degradation happens at the outer wrapper level (`analysis = null`), not by widening walkthrough-specific or liked-song analysis wrapper fields to nullable `content`
-- core onboarding session contracts (`WalkthroughSongAnalysis`, `WalkthroughSong`, `OnboardingSession`, `OnboardingAuthPayload`, `sessionMode`) live in `src/lib/domains/library/accounts/onboarding-session.ts`
-- `src/features/onboarding/step-resolver.ts` is a thin route-mapping module over those shared session contracts; new server/shared modules must not import session types from `src/features/...`
-- app-side onboarding order helpers live in `src/lib/domains/library/accounts/onboarding-steps.ts`; route guards, devtools navigation, and sync-cleanup branching read those helpers instead of reimplementing step order
-- first-claim submits from earlier onboarding steps are rejected server-side as `status: "not_ready"`; route/UI guards are not the only enforcement layer
-- the DB-side `claim_handle` RPC mirrors the same pre-claim ordering rule in SQL, returns structured status rows for expected outcomes (`claimed`, `already_owned`, `not_ready`), and is locked by integration tests
-- onboarding gating is authoritative on `account.handle`, not only on the saved `onboarding_step` token
-- guard-critical and full onboarding loaders reuse the same handle-aware session derivation helper; `getOnboardingSession()` and `getOnboardingData()` must not disagree about `session.status`
-- when `account.handle` is null, that prerequisite outranks later step tokens **and** even an existing non-null `onboarding_completed_at`; the user is still pinned to `claim-handle` until the handle exists
-- onboarding officially ends after plan-selection success marks `session.status = "complete"`
-- `markOnboardingComplete()` is a structured server contract that returns `{ status: "completed_now" | "already_complete" | "not_ready", onboarding: OnboardingAuthPayload }`; it may only complete from the authoritative `plan-selection` session, and already-complete re-entry is idempotent
-- stale or premature completion attempts recover by navigating from the returned authoritative onboarding session instead of forcing `/dashboard` or toasting
-- the canonical destination for `session.status = "complete"` is `/dashboard`, and `resolveSession()` is the single authority for that mapping
-- `complete` remains part of helper-visible onboarding order for prev/next reasoning, but `SAVEABLE_ONBOARDING_STEP_VALUES` / `SaveableOnboardingStep` intentionally exclude it; completion itself is only entered via `markOnboardingComplete()`, and neither `updateOnboardingStep(...)` nor `saveOnboardingStep(...)` may accept `"complete"`
-- walkthrough steps remain in `SAVEABLE_ONBOARDING_STEP_VALUES` for re-entry only; `saveOnboardingStep(...)` may not write `"song-walkthrough"` or `"match-walkthrough"` unless `demo_song_id` already exists
-- `commitDemoSongAndEnterWalkthrough({ spotifyTrackId: string })` remains the only valid first-entry mutation from `pick-demo-song` into `song-walkthrough`
-- successful claim must patch both onboarding-session and auth-session client caches so same-session Settings reads show the newly owned handle immediately
-- authoritative availability-time `status: "already_owned"` recovery must patch those same caches with `ownedHandle` + returned onboarding state before navigation
-- authoritative submit-time `status: "already_owned"` recovery must patch those same caches with `ownedHandle` + returned onboarding state before navigation
-- v0 includes a minimal public `/@handle` coming-soon route without exposing sharing data yet
-- TanStack Router's mixed static+dynamic segment syntax is valid here, so the public route intentionally uses `src/routes/@{$handle}.tsx` with `createFileRoute('/@{$handle}')`
-- on read surfaces introduced or updated by this change — Settings, the authenticated shell sidebar, the Dashboard header, and the public `/@handle` page — the handle is the displayed identity; `account.display_name` remains a passive prefill/input source, not the public-facing name
-- the previewed `Public URL` in onboarding is display-only, not clickable
-- the public `/@handle` route distinguishes missing-handle not-found from operational lookup failure; only the former becomes `notFound()`
-- the canonical public handle URL is lowercase; mixed-case requests redirect to the lowercase route before lookup
-- public-route canonicalization is case-only; malformed lowercase inputs are not repaired and simply fall through to `notFound()`
-- the public `/@handle` coming-soon page goes live only after onboarding completion
-- v0 has **no generated suggestion system**
-- claim step receives `ClaimHandleSeed` so the client can distinguish owned, suggested, and blank states without guessing
-- terminology is explicit: `owned` means this account already owns the handle, `claimed` is reserved for successful claim mutation results, and `taken` remains the user-correctable “another account already has this handle” reason
-- the shared `ClaimHandleSeed` contract and `deriveClaimHandleSeed({ accountHandle, displayName })` helper live in `src/lib/domains/library/accounts/claim-handle-seed.ts`; `src/lib/server/onboarding.functions.ts` consumes them but does not own them
-- handle rules intentionally split shared format validation from reserved-word policy: `validateHandleFormatInput(raw)` owns lowercase/no-trim format checks, and `isReservedHandle(normalizedHandle)` owns namespace blocking after format validation
-- live input transformation is lowercase-only; whitespace, overlength input, and other invalid characters stay visible and are handled by validation, not silent stripping or truncation
-- step may passively prefill from normalized `account.display_name`
-- passive prefill uses `_` between normalized word chunks
-- if passive prefill is taken, keep it visible and show unavailable state on mount
-- local validation gates the button before availability does
-- availability checks debounce at 250ms, run immediately on valid prefill mount, and use an account-scoped React Query key (`accountId` + `ownedHandleSnapshot` + `debouncedHandle`) plus no-result-reuse query settings so edit-away/edit-back flows force a fresh live check without cross-account or pre-claim/post-claim cache bleed
-- expected failures are shown inline, not via toast
-- operational availability failures block Continue and expose an inline retry action for the same value
-- ordinary unavailable availability and submit failures reuse the same reason enum; authoritative `already_owned` recovery is a separate status branch
-- first successful claim canonicalizes the next persisted onboarding step to `flag-playlists` only for unfinished onboarding rows; completion-stamped handle-less rows instead preserve completion and resolve back to `complete` after claim
-- same-handle stale re-entry must not rewind onboarding; the server preserves any later step and the client navigates from the returned authoritative session
-- self-owned exact-match checks are grandfathered in v0: after local format validation passes, they bypass reserved-word and profanity policy checks so immutable existing handles do not strand users
-- availability-time stale recovery for a different already-owned handle uses a dedicated authoritative `status: "already_owned"` branch with `ownedHandle` + `OnboardingAuthPayload`, patches caches, and navigates immediately rather than disabling Continue on an inline unavailable error
-- submit-time stale recovery for a different already-owned handle uses the same dedicated authoritative `status: "already_owned"` branch if a stale client somehow reaches submit
-- both handle server functions share one transport-only `handleInputSchema = z.object({ handle: z.string() })`; semantic rules like `empty` and `too_long` stay in the format validator, and reserved-word blocking stays in `isReservedHandle(normalizedHandle)`, not the Zod transport schema
-- sync `phase_job_ids` are cleared on entry to `claim-handle`, preserving the old “clear once you leave syncing” behavior, and the `claim_handle` success path defensively clears them again whenever it canonicalizes unfinished onboarding forward to `flag-playlists`
-- `syncStats` stay DB-derived in `OnboardingData`; do not duplicate them through router state once `claim-handle` is inserted
-- `useOnboardingNavigation()` returns structured `{ status: "transitioned" | "transition_failed" }` results and does not toast internally; onboarding step components own state reset and the exact user-facing failure copy
-- `useStepNavigation()` keeps its existing async/pending/toast behavior, but its target type narrows to `SaveableOnboardingStep`; only `/onboarding`-scoped step navigation adopts the new result-returning contract
-- read-only settings display is included in v0
-- the default `bun run reset:onboarding <email>` replay path must clear `account.handle` so local onboarding replay still covers first-claim behavior
-- self-serve renames are out of scope in v0
-- operator/manual correction remains allowed as a DB-only escape hatch, but still passes through the DB normalization/syntax constraints
-- no feature flag
-- no dedicated handle-specific rate limiting in v0
-- no handle-specific analytics in v0
-- canonical public-link origin comes from env-backed `VITE_PUBLIC_APP_ORIGIN`
-- public-link construction lives in one shared cross-runtime module: `src/lib/config/public-app-origin.ts`, which reads `VITE_PUBLIC_APP_ORIGIN` from `src/env.public.ts`
-- public `@handle` route loaders go through `src/lib/server/public-handle.functions.ts`; route files must not import admin-client account queries directly
-- production public origin is `https://hearted.music`
+This is a scannable index of decisions specified normatively in §3–§14, grouped by area. It is **not** a second source of truth: where this index and a normative section disagree, the normative section wins.
+
+**Identity model & syntax**
+
+- Handle lives on `account`; the DB enforces trimmed-lowercase storage plus the syntax subset via `account_handle_format_check`.
+- Instagram-like syntax: letters, numbers, periods, underscores only — no hyphens, spaces, or other symbols; periods can't lead, trail, or repeat (`..`); underscores may lead, trail, repeat, and sit next to periods; all-digit handles allowed.
+- Handle is immutable in v0 (no self-serve rename); operator SQL correction is the only escape hatch and still passes the DB normalization/syntax constraints.
+- App-language, policy, auth, and official-sounding names stay reserved even when they wouldn't collide with the `/@handle` router namespace.
+
+**Onboarding gating**
+
+- `claim-handle` is a required step after `syncing` and a first-class visible progress-indicator milestone.
+- Gating is authoritative on `account.handle`, not the saved `onboarding_step` token: for unfinished onboarding a null handle outranks later step tokens (pins to `claim-handle`). The completion timestamp stays the top authority, so a completed row resolves to `complete` regardless of handle.
+- Guard-critical and full onboarding loaders share one handle-aware derivation helper; `getOnboardingSession()` and `getOnboardingData()` must agree on `session.status`.
+- First-claim from an earlier/invalid step is rejected server-side as `not_ready`; the `claim_handle` RPC mirrors the same pre-claim rule in SQL (returning structured `claimed | already_owned | not_ready` rows) and is locked by integration tests.
+- First claim canonicalizes unfinished rows to `flag-playlists` and clears `phase_job_ids`. Same-handle re-entry never rewinds a later step.
+
+**Completion & the step-mutation boundary**
+
+- Onboarding ends when plan-selection success marks `session.status = "complete"`. `complete` resolves to `/dashboard`, and `resolveSession()` is the single navigation authority (removing the old `complete → /liked-songs` split).
+- `markOnboardingComplete()` is a structured gate returning `completed_now | already_complete | not_ready`; it completes only from the authoritative `plan-selection` session, is idempotent on re-entry, and rebuilds its returned session from fresh account state. Stale/premature attempts recover by navigating from the returned session, not by forcing `/dashboard` or toasting.
+- `complete` stays in helper-visible order for prev/next reasoning but is excluded from `SAVEABLE_ONBOARDING_STEP_VALUES`/`SaveableOnboardingStep`; neither `updateOnboardingStep(...)` nor `saveOnboardingStep(...)` may accept it — completion is entered only via `markOnboardingComplete()`.
+- Walkthrough steps stay saveable for re-entry only, gated on an existing `demo_song_id`; `commitDemoSongAndEnterWalkthrough({ spotifyTrackId })` is the only valid first entry into `song-walkthrough`.
+
+**Handle validation**
+
+- `validateHandleFormatInput(raw)` owns shared lowercase/no-trim format checks (client + server); `isReservedHandle(normalizedHandle)` owns reserved blocking after format validation; profanity is server-only via `obscenity`.
+- Self-owned exact-match is grandfathered: after format validation it bypasses reserved/profanity so immutable handles can't strand users.
+- Both server functions share a transport-only `handleInputSchema = z.object({ handle: z.string() })`; semantics like `empty`/`too_long` live in the format validator, not in Zod.
+- Live input transform is lowercase-only; whitespace, overlength, and other invalid characters stay visible and are handled by validation, never silent stripping/truncation.
+
+**Seed, prefill & terminology**
+
+- No generated-suggestion system. The step receives `ClaimHandleSeed` (`owned | suggested | blank`) so the client never guesses ownership state; the contract and `deriveClaimHandleSeed({ accountHandle, displayName })` live in `claim-handle-seed.ts` (the onboarding server module consumes, doesn't own them).
+- Passive prefill derives from normalized `display_name` with `_` between word chunks; a taken prefill stays visible and shows unavailable on mount.
+- Terminology: `owned` = this account already owns it; `claimed` = a successful claim result; `taken` = another account holds it (user-correctable).
+
+**Availability & stale-state recovery**
+
+- Availability debounces 250ms, runs immediately on valid prefill mount, and uses an account-scoped React Query key (`accountId` + `ownedHandleSnapshot` + `debouncedHandle`) with no-result-reuse settings so edit-away/edit-back forces a fresh live check with no cross-account or pre/post-claim cache bleed.
+- Local validation gates Continue before availability does. Expected failures (including submit-time) show inline via the shared reason enum, never toast; operational availability failure blocks Continue and exposes inline retry for the same value.
+- `already_owned` (availability- and submit-time) is a separate authoritative recovery branch, not an inline error: patch both `["auth", "onboarding-session"]` and `["auth", "session"]` (with `ownedHandle` + onboarding) and navigate immediately. A successful claim patches the same two caches so same-session Settings, sidebar, and Dashboard show the new handle without a reload.
+
+**Module ownership**
+
+- Core onboarding session contracts (`WalkthroughSongAnalysis`, `WalkthroughSong`, `OnboardingSession`, `OnboardingAuthPayload`, `sessionMode`) live in `onboarding-session.ts`; `step-resolver.ts` is route-mapping only; new server/shared modules never import session types from `src/features/...`. App-side order helpers live in `onboarding-steps.ts` and are read by route guards, devtools, and sync-cleanup branching.
+- Shared `AnalysisContent` is relocated (type-only) to `content-analysis/analysis-content.ts` so `lib` session contracts can reference it without importing from `src/features/...`; the existing `as AnalysisContent` casts stay, and the runtime schema + boundary parser that would replace them is a separate read-path hardening out of scope here.
+
+**Public route & read surfaces**
+
+- v0 ships a minimal public `/@handle` coming-soon route (`src/routes/@{$handle}.tsx`, `createFileRoute('/@{$handle}')` — valid mixed static+dynamic syntax), live only after onboarding completion, with loaders going through `public-handle.functions.ts` (route files never import admin-client account queries directly).
+- The handle is the displayed identity on every surface touched here (Settings, sidebar, Dashboard header, public page); `account.display_name` stays a passive prefill/input source. The onboarding `Public URL` preview is display-only, not clickable.
+- Public URLs are lowercase-canonical (mixed-case redirects before lookup; malformed-lowercase is not repaired and falls through to `notFound()`); missing-handle `notFound()` is distinguished from operational lookup failure.
+
+**Config, navigation hooks & ops**
+
+- Canonical public-link origin is env-backed `VITE_PUBLIC_APP_ORIGIN` (prod `https://hearted.music`), read from the validated `clientEnv` in `src/env.public.ts`; all public-link assembly lives in one cross-runtime module, `src/lib/config/public-app-origin.ts`.
+- `useOnboardingNavigation()` returns `{ status: "transitioned" | "transition_failed" }` and never toasts internally — step components own state reset and failure copy; `useStepNavigation()` keeps its async/toast behavior but narrows its target to `SaveableOnboardingStep`.
+- `syncStats` stay DB-derived in `OnboardingData` (no router-state duplicate). `phase_job_ids` clear on entry to `claim-handle` (preserving the old "clear once you leave syncing" behavior), with the RPC defensively re-clearing on forward canonicalization.
+- `bun run reset:onboarding <email>` must also clear `account.handle` so local replay still covers first-claim. Read-only Settings handle display is in v0.
+- Out of scope in v0: feature flag, handle-specific rate limiting, handle-specific analytics, self-serve rename.
