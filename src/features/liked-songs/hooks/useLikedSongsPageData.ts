@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { WalkthroughSong } from "@/features/onboarding/step-resolver";
+import type { WalkthroughSong } from "@/lib/domains/library/accounts/onboarding-session";
 import { type FilterOption, likedSongsStatsQueryOptions } from "../queries";
 import { useLikedSongsCollection } from "./useLikedSongsCollection";
 import { useSelectedLikedSongBySlug } from "./useSelectedLikedSongBySlug";

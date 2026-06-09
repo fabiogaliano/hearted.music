@@ -69,6 +69,10 @@ const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 		render: (ctx) => <SyncingStep phaseJobIds={ctx.phaseJobIds} />,
 		hideIndicator: true,
 	},
+	// UI component wired in Task 11
+	"claim-handle": {
+		render: () => null,
+	},
 	"flag-playlists": {
 		render: (ctx) => <FlagPlaylistsStep playlists={ctx.playlists} />,
 		fullBleed: true,

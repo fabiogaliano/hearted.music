@@ -1,12 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
+import type { BillingState } from "@/lib/domains/billing/state";
+import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import type {
 	OnboardingSession,
 	WalkthroughSong,
-} from "@/features/onboarding/step-resolver";
-import type { BillingState } from "@/lib/domains/billing/state";
-import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
+} from "@/lib/domains/library/accounts/onboarding-session";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { useIsomorphicLayoutEffect } from "@/lib/hooks/useIsomorphicLayoutEffect";
 import { useShortcut } from "@/lib/keyboard/useShortcut";

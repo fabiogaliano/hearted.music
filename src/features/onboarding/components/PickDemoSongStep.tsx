@@ -13,12 +13,10 @@ import { Button } from "@/components/ui/Button";
 import { CDCase } from "@/components/ui/CDCase";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import type { LandingSongManifest } from "@/lib/content/landing/landing-songs";
+import type { OnboardingAuthPayload } from "@/lib/domains/library/accounts/onboarding-session";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
-import {
-	commitDemoSongAndEnterWalkthrough,
-	type OnboardingAuthPayload,
-} from "@/lib/server/onboarding.functions";
+import { commitDemoSongAndEnterWalkthrough } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { useFlagPlaylistsScroll } from "../hooks/useFlagPlaylistsScroll";
 

@@ -27,12 +27,12 @@ import { matchingSessionQueryOptions } from "@/features/matching/queries";
 import {
 	isPathAllowed,
 	resolveSession,
-	sessionMode,
 } from "@/features/onboarding/step-resolver";
 import { ConsentProvider } from "@/lib/consent/ConsentProvider";
 import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
+import { sessionMode } from "@/lib/domains/library/accounts/onboarding-session";
 import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import { sendVerificationEmail } from "@/lib/platform/auth/auth-client";

@@ -1,6 +1,6 @@
 # Task 05 — Onboarding session contracts (domain module)
 
-**Plan:** §6.0, §7.2 items 4–5 & 8–15 (type imports) · **Recommended order:** step 7 · **Status:** [ ]
+**Plan:** §6.0, §7.2 items 4–5 & 8–15 (type imports) · **Recommended order:** step 7 · **Status:** [x]
 
 ## Goal
 
