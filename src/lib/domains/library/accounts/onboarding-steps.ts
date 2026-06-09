@@ -1,3 +1,8 @@
+// The claim_handle RPC (supabase/migrations/*_create_claim_handle_rpc.sql)
+// hardcodes the "claim-handle and later" subset of this tuple in its not_ready
+// gate. SQL can't import this module, so when adding/renaming/reordering steps
+// you must ship a migration that re-creates the RPC with the updated list —
+// onboarding-steps.test.ts has a tripwire that fails when the two drift.
 export const ONBOARDING_STEP_VALUES = [
 	"welcome",
 	"pick-color",

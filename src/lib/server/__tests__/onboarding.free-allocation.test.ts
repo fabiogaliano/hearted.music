@@ -189,35 +189,15 @@ describe("markOnboardingComplete — free allocation", () => {
 	// Onboarding now reads account_liked_song_access_grant to skip the free
 	// allocation when the larger benefit owns the account; default to no grant
 	// row so these free-plan cases still allocate.
-	//
-	// fakeClient handles:
-	//   - account_liked_song_access_grant (maybeSingle → no grant)
-	//   - account handle re-read after write (single → test-handle)
 	const fakeClient = {
 		id: "admin-client",
-		from: (table: string) => {
-			if (table === "account") {
-				return {
-					select: () => ({
-						eq: () => ({
-							single: () =>
-								Promise.resolve({
-									data: { handle: "test-handle" },
-									error: null,
-								}),
-						}),
-					}),
-				};
-			}
-			// account_liked_song_access_grant and everything else
-			return {
-				select: () => ({
-					eq: () => ({
-						maybeSingle: () => Promise.resolve({ data: null, error: null }),
-					}),
+		from: () => ({
+			select: () => ({
+				eq: () => ({
+					maybeSingle: () => Promise.resolve({ data: null, error: null }),
 				}),
-			};
-		},
+			}),
+		}),
 	};
 
 	// plan-selection payload returned as the gate check — allows completion.
@@ -233,7 +213,10 @@ describe("markOnboardingComplete — free allocation", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockCompleteOnboarding.mockResolvedValue(Result.ok(undefined));
+		// ok(prefs row) = this call won the compare-and-set completion write.
+		mockCompleteOnboarding.mockResolvedValue(
+			Result.ok({ account_id: "acct-free-1" }),
+		);
 		mockCreateAdminSupabaseClient.mockReturnValue(fakeClient);
 		// First call: gate check (plan-selection). Second call: post-write verify (complete).
 		mockLoadOnboardingSession
@@ -349,6 +332,23 @@ describe("markOnboardingComplete — free allocation", () => {
 		expect(consoleSpy).toHaveBeenCalled();
 
 		consoleSpy.mockRestore();
+	});
+
+	it("returns already_complete when the compare-and-set write is lost to a concurrent call", async () => {
+		// Gate sees plan-selection, but completeOnboarding reports ok(null):
+		// another request flipped onboarding_completed_at between the read and
+		// the write. The post-write session reload shows complete.
+		mockCompleteOnboarding.mockResolvedValue(Result.ok(null));
+
+		const result = await (markOnboardingComplete as () => Promise<unknown>)();
+
+		expect(result).toEqual({
+			status: "already_complete",
+			onboarding: completePayload,
+		});
+		// The losing call must not have run any allocation side effects.
+		expect(mockReadBillingState).not.toHaveBeenCalled();
+		expect(mockGrantFreeAllocation).not.toHaveBeenCalled();
 	});
 
 	it("returns already_complete without re-running allocations when already done", async () => {

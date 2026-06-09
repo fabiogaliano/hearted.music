@@ -473,8 +473,14 @@ export type MarkOnboardingCompleteResult = {
  *   Does NOT re-run completeOnboardingWithAllocations (no duplicate side-effects).
  * - `not_ready`: session is not at plan-selection (covers earlier steps and
  *   handle-less rows collapsed to claim-handle). Returns authoritative payload.
- * - `completed_now`: session was at plan-selection; completion written, free
- *   allocation granted, payload rebuilt from freshly re-read account state.
+ * - `completed_now`: session was at plan-selection AND this call won the
+ *   compare-and-set completion write; free allocation granted.
+ *
+ * The pre-read gate below is a UX courtesy (it produces the not_ready payload
+ * and short-circuits the obvious already-complete case); the safety mechanism
+ * against concurrent completes is completeOnboarding's compare-and-set write —
+ * `ok(null)` means another call won the race, so this one reports
+ * `already_complete` without having run any side effects.
  *
  * The returned onboarding payload is always authoritative — callers must patch
  * their cache and navigate via resolveSession, never hardcode a destination.
@@ -511,18 +517,14 @@ export const markOnboardingComplete = createServerFn({
 			throw new OnboardingError("complete_onboarding", result.error);
 		}
 
-		// Re-read account state after the write so the returned handle is fresh
-		// (not the stale value from before the allocation). The post-write session
-		// must be complete — if it isn't, something went wrong at the DB level.
-		const { data: freshAccount } = await supabase
-			.from("account")
-			.select("handle")
-			.eq("id", accountId)
-			.single();
-
+		// account.handle comes fresh from the DB on every server call (auth
+		// middleware refetches the row), and the plan-selection gate above
+		// guarantees it is non-null — a handle-less row would have been pinned
+		// to claim-handle and returned not_ready. Handles are immutable in v0,
+		// so no post-write re-read is needed.
 		const freshOnboarding = await loadOnboardingSession({
 			accountId,
-			accountHandle: freshAccount?.handle ?? account.handle,
+			accountHandle: account.handle,
 		});
 
 		if (freshOnboarding.session.status !== "complete") {
@@ -534,7 +536,12 @@ export const markOnboardingComplete = createServerFn({
 			);
 		}
 
-		return { status: "completed_now", onboarding: freshOnboarding };
+		return {
+			// ok(null) = a concurrent call won the compare-and-set; completion
+			// happened either way, but only the winner ran the allocation.
+			status: result.value === null ? "already_complete" : "completed_now",
+			onboarding: freshOnboarding,
+		};
 	});
 
 /**

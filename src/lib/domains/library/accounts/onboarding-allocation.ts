@@ -49,6 +49,10 @@ async function hasLikedSongAccessGrant(
  * the grant lived in the server-function handler, any other caller of
  * completeOnboarding silently skipped it.
  *
+ * `ok(null)` propagates completeOnboarding's lost-race signal: another call
+ * already completed onboarding, so this one must not run the allocation —
+ * the winning call owns the side effects.
+ *
  * The allocation is best-effort: a failed billing read or grant is logged but
  * never fails the operation, mirroring the prior handler behavior. Only the
  * completeOnboarding step's error is surfaced in the Result.
@@ -56,9 +60,12 @@ async function hasLikedSongAccessGrant(
 export async function completeOnboardingWithAllocations(
 	supabase: AdminSupabaseClient,
 	accountId: string,
-): Promise<Result<UserPreferences, DbError>> {
+): Promise<Result<UserPreferences | null, DbError>> {
 	const result = await completeOnboarding(accountId);
 	if (Result.isError(result)) {
+		return result;
+	}
+	if (result.value === null) {
 		return result;
 	}
 
