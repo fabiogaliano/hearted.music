@@ -18,8 +18,8 @@ import { fileURLToPath } from "node:url";
 import { resolveLlmConfig } from "@/lib/integrations/llm/config";
 import { LlmService } from "@/lib/integrations/llm/service";
 import type { RunRecord } from "./experiments";
-import { rewriteRead, TARGET_RULES } from "./rewrite/rewrite-pass";
-import { runAllRules } from "./tier1/rules";
+import { rewriteRead, TARGET_RULES } from "@/lib/domains/enrichment/content-analysis/voice/rewrite-pass";
+import { runAllRules } from "@/lib/domains/enrichment/content-analysis/voice/tier1-rules";
 import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { RuleHit } from "./types";
 

@@ -23,7 +23,7 @@ import {
 	selfReference,
 	structuralSection,
 	tensionMoodDedup,
-} from "../tier1/rules";
+} from "@/lib/domains/enrichment/content-analysis/voice/tier1-rules";
 
 const FIXTURES = path.join(__dirname, "fixtures");
 

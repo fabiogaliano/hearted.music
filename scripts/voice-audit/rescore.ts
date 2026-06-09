@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 import { SongReadSchema } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { RunRecord } from "./experiments";
 import { tallyHits } from "./experiments";
-import { runAllRules } from "./tier1/rules";
+import { runAllRules } from "@/lib/domains/enrichment/content-analysis/voice/tier1-rules";
 
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "experiments");
 

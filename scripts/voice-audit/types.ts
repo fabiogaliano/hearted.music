@@ -1,14 +1,14 @@
 import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
+import type {
+	RuleHit,
+	Severity,
+} from "@/lib/domains/enrichment/content-analysis/voice/rules-types";
 
-export type Severity = "low" | "medium" | "high";
-
-export interface RuleHit {
-	rule: string;
-	field: string;
-	span: string;
-	severity: Severity;
-	note?: string;
-}
+// RuleHit/Severity were promoted into the prod voice module (voice/rules-types.ts) when the rewrite
+// pass was wired into the production pipeline. Re-exported here (type-only — erased at compile time,
+// no bundle cost) so the harness's existing `from "../types"` importers keep resolving them, with the
+// single source of truth living in prod.
+export type { RuleHit, Severity };
 
 // Tier-1 rules grade the redesigned read model (Session 5 migration). The audit
 // pipeline no longer touches the legacy 8-field shape; old rows re-enrich via v14.

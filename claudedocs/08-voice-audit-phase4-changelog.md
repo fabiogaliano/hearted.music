@@ -769,4 +769,184 @@ and correctness, and no prompt-or-rewrite phrasing reaches it. Honest verdict: *
 Prod already ships v17 (the converged-best prompt); the one live, separately-decided question left is
 whether to add the rewrite pass on top of it for cleaner reads — not a gold-rivaling change.
 
+# ROUND 5 — the eval/prod few-shot DISSONANCE, measured (H14, 2026-06-08)
+
+> **TL;DR (Round 5):** The prior handoff's headline claim — "prod ships v17 with EMPTY `{example}`/`{annotations}`
+> while the eval fills them, and injecting the fixed prod pair will pull prod's 5.28 HIGH/read toward the
+> eval's ~3.0" — was tested for free (Flash, t0.3) by isolating the `{example}` lever WITH vs WITHOUT on
+> the SAME songs. **Half of it is true; the consequential half is FALSE.** TRUE: prod really does run v17
+> with both slots empty (verified in source; an incomplete Session-6 cutover, not a token decision). FALSE:
+> the example block is NOT why prod looks dirty. On the real prod song population the lever is **−0.07
+> HIGH/read (2%, pure noise)** — half the songs improve, half get worse. The handoff's "2.3 gap" was a
+> **song-set artifact** (it compared arbitrary user songs against 9 clean golds). **NO-GO on wiring examples
+> into prod:** ~940 extra input tokens/call for ~0 tell reduction + occasional severe over-writing (one WITH
+> draw hit 15 HIGH). The dissonance is real but the fix is to align the EVAL to prod, not prod to the eval.
+
+## The dissonance — verified in source (not the doc)
+
+- Prod (`content-analysis/pipeline.ts:361-369`) builds `AnalyzeSongInput` with only
+  `songId/artist/title/lyrics/audioFeatures/genres/instrumentalness`; it never sets `exampleText`/
+  `annotationsBlock`. `grep -rn "exampleText:\|annotationsBlock:" src` → 0 hits. `song-analysis.ts:232-233`
+  resolves both v17 slots to `""`. Same template, same temp (0.3). **Prod runs v17 with NO worked example
+  and NO annotations.** The harness (`regen.ts:285`) DOES fill them. Confirmed.
+- **Intentional or oversight? OVERSIGHT (incomplete Session-6 cutover).** Four convergent proofs:
+  (1) `06-block1-implementation-plan.md:168` WP1 "Locked decisions" names a *"Fixed prod pair: Not Like Us
+  + Pink Pony Club"* and line 162 says "so eval **and prod** both see … annotations"; (2) the v17 prompt
+  body (`lyrical-v17.ts:65`) tells the model "Any worked examples below are other songs … take none of their
+  facts" — authored ASSUMING an example is present, so prod's empty slot leaves that instruction dangling;
+  (3) the service was purpose-built with optional slots + `?? ""` for a caller to fill (WP1 line 187: "accept
+  prebuilt … without changing existing callers"); (4) no doc records a "run raw to save tokens" decision. WP1
+  deliberately built the capability while keeping `ACTIVE=13`; the cutover that flipped `ACTIVE=17` (commits
+  7e7b6ae/8c77cfa) swapped the panel + version but never added the planned prod-side assembly.
+
+## H14 — the `{example}` lever, isolated WITH vs WITHOUT (Flash, t0.3, n=3, same songs)
+
+New tools (in-tree): `regen.ts --no-injection` (forces empty `{example}`+`{annotations}` to reproduce
+TODAY'S prod), and `db-lever-compare.ts` (samples real DB songs, re-gens each WITHOUT vs WITH the fixed
+prod pair, holds lyrics/audio/genres identical between arms; prints stored-prod tier1 as reference). Both at
+prod settings (8k out for the DB tool; regen's historical 4k for the harness). The eval/regen default is
+WITH examples; prod is WITHOUT — so "WITHOUT" is the prod-faithful arm.
+
+**Arm 1 — 5 clean non-gold harness songs** (`regen --songs ribs,forever,gods-plan,houdini,thinkin-bout-you`):
+
+| arm | overall HIGH/read |
+|---|---|
+| WITH (fixed pair NLU+PPC) | **2.33** |
+| WITHOUT (today's prod) | **3.67** |
+
+→ lever **−1.34 HIGH/read (−37%)**, 4 of 5 songs improve. On clean mainstream tracks examples DO help.
+
+**Arm 2 — 10 songs sampled from the REAL prod population** (`db-lever-compare --n 10 --runs 3`):
+
+| arm | HIGH/read |
+|---|---|
+| stored prod reads (n=1/song, literal live output) | 4.80 |
+| re-gen WITHOUT examples (reproduces today's prod) | **3.97** |
+| re-gen WITH fixed-pair examples (planned prod) | **3.90** |
+
+→ lever **−0.07 HIGH/read (2%, noise)**. Per-song split: Feid −3.3, Beautiful Things −2.0, How Do I Breathe
+−1.0, Blinding Lights −0.3, Under The Influence 0.0, Let Me Love You +0.3, Thinkin Bout You +0.6, Manchild
++1.0, Gracie Abrams +1.3, Too Sweet +2.7 (one WITH draw = **15 HIGH** — examples can trigger severe
+over-writing, mimicking the rich gold prose). Per-rule WITHOUT→WITH: participial-closure 3.33→2.93 (small
+help), but self-reference 0.50→0.67 and antithesis 0.10→0.27 (worse) — a wash. Cross-check: Thinkin Bout
+You appears in both tools and both agree (WITH ~3.3), validating the implementation.
+
+## Why the handoff was wrong about the consequence
+
+The "~2.3 gap" was **DB-population (5.28) vs 9-clean-golds-WITH-examples (3.0)** — two DIFFERENT song sets.
+That gap is the song set (real user songs include remixes, features, Spanish-language, thin pop), not the
+example block. When you isolate the lever on the SAME songs it nearly vanishes on the population. Secondary
+note: the prod-faithful WITHOUT re-gen (3.97, n=3) sits below the single-draw baseline (5.28, n=1/song),
+i.e. prod's expected per-song tell rate is ~4, with the 5.28 inflated by unlucky single draws.
+
+## Keep/revert
+
+- **REVERT (do not ship): wiring `{example}` into the prod pipeline.** −0.07 HIGH/read on the population is
+  not worth ~940 input tokens/call + added variance/outlier risk; and Round 4 already showed examples don't
+  rival gold either. ACTIVE untouched (17); prod path UNEDITED (no approval sought — the data says don't).
+- **KEEP (in-tree tools):** `db-lever-compare.ts`, `regen.ts --no-injection`. The `--no-injection` arm is
+  now the **prod-faithful** way to read tier1 numbers.
+
+## Recommendation
+
+1. **Examples → prod: NO-GO.** No measurable tell benefit on the real population; recurring token/latency
+   cost; occasional 15-HIGH blow-ups. Do not wire it.
+2. **Resolve the dissonance by aligning the EVAL to prod, not prod to the eval.** The eval's default
+   `regen`/tier1 numbers are WITH examples and run ~1 HIGH/read optimistic vs prod on clean songs (≈equal on
+   the population). For prod-representative tier1, use `regen --no-injection`. The Round-4 NO-GO-vs-gold
+   verdict stands regardless — it was measured WITH examples and still lost 0/27; WITHOUT is not better.
+   (Any future PAID pairwise that wants to describe prod must run the WITHOUT arm.)
+3. **`{annotations}` is a SEPARATE, unmeasured lever** (grounding, the program's GRD #1 gate — the frontier
+   Round 4 says gold wins on). Not tested here (empty in both arms). Feasible in prod (`grounding-annotations.ts`
+   + `ensureAnnotationDistillations` exist) but a larger change, and gated by sparse >15-vote Genius
+   annotation coverage on real songs. Measure it on its own before considering wiring.
+4. **If the goal is "ship cleaner prod reads," the lever is the REWRITE PASS, not examples** (see Round 5b).
+
+# ROUND 5b — the REWRITE PASS on the real prod population (H15, 2026-06-08)
+
+> **TL;DR (Round 5b):** With examples ruled out (Round 5), the rewrite pass is the sole proven tier1
+> cleaner — so it was measured on the REAL population for the first time (prior rounds only ran it on
+> golds/dirtiest reads). New tool `db-rewrite-compare.ts` runs `rewriteRead()` (Flash, minimal mode)
+> over all 58 stored v17 reads. Result: **5.28 → 0.19 HIGH tells/read (96% removed), 0/58 → 52/58 reads
+> fully clean (90%), prose length drift −0.4% (faithful), avg 1.12 passes, ~3.4k tokens/read.** The 6
+> non-clean are 3 transient LLM errors (retryable) + the known participial false-positive. This is the
+> free half of the story (tells removed + mechanical fidelity); the paid half (does NOT rival gold —
+> 0/54, 0/27) is unchanged from Rounds 3b/4. **The rewrite makes prod reads sound human; it does not make
+> them gold.** Whether to ship it (+1 Flash call/song) is a product cost/taste decision — PROD change,
+> needs approval; ACTIVE/prod path untouched here.
+
+## H15 — `db-rewrite-compare.ts --n 58` (minimal mode, Flash, all stored v17 reads)
+
+| metric | before | after |
+|---|---|---|
+| HIGH tells/read | 5.28 | **0.19** (−5.09, 96% removed) |
+| reads fully HIGH-clean | 0/58 | **52/58 (90%)** |
+| prose length drift | — | **−0.4%** (≈0 = faithful recast, content invariants pinned in code) |
+| passes used (avg) | — | 1.12 / 2 max |
+| rewrite cost | — | ~3,434 tokens/read (the +1-call cost) |
+
+Per-HIGH-rule before→after: participial-closure 3.91→0.16, self-reference 1.07→0.03, antithesis 0.22→0.00,
+book-report-opener 0.03→0.00, structural-section 0.03→0.00. Residual 0.19 is the known participial
+adjective-in-a-list false-positive (e.g. "a single, exhilarating night") + the 3 errored reads.
+
+## The two levers, both measured on the real population (the honest comparison)
+
+| lever | effect on prod tells | cost | verdict |
+|---|---|---|---|
+| `{example}` few-shot (Round 5) | −0.07 HIGH/read (noise) | ~940 tok/call, +variance | **NO-GO** |
+| rewrite pass (Round 5b) | −5.09 HIGH/read (96%) | ~3.4k tok/call (+1 Flash call) | **the real lever** |
+
+## Keep/revert
+
+- **KEEP (in-tree tool):** `db-rewrite-compare.ts`. The free, prod-population way to measure the rewrite.
+- **OPEN PRODUCT DECISION (needs approval): add the rewrite pass to the prod pipeline.** It cleans 96% of
+  surface tells with no content loss for one cheap call/song. It does NOT close the depth/correctness gap
+  to gold (Rounds 3b/4, paid) — it changes how the writing SOUNDS, not how deep/correct it is. So this is
+  a "ship more human-sounding reads" call decided on cost/latency/taste, not a gold-rivaling change.
+  ACTIVE untouched (17); prod path UNEDITED.
+
+# ROUND 5c — the rewrite pass WIRED INTO PROD (H16, 2026-06-08, user-approved)
+
+> **TL;DR (Round 5c):** The Round-5b open product decision was approved. The post-generation cleanup
+> pass (minimal mode) is now wired into the production pipeline. The tier1 rules engine + rewrite pass
+> were promoted out of the harness into a prod module (`content-analysis/voice/`) — prod must not import
+> `scripts/` — and `song-analysis.ts` now runs the rewrite on every lyrical read before storing it.
+> `ACTIVE_LYRICAL_VERSION` stays "17" (this is a PIPELINE change, not a prompt-version change). Existing
+> stored rows are untouched until re-enriched; only newly-generated reads get cleaned. Typecheck clean;
+> 226/226 tests green (prod content-analysis + harness).
+
+## What changed
+
+- **Promoted to prod** (`src/lib/domains/enrichment/content-analysis/voice/`): `tier1-rules.ts` (was
+  `scripts/voice-audit/tier1/rules.ts`), `burstiness.ts`, `rules-types.ts` (new — `RuleHit`/`Severity`,
+  the shared rules-engine types), `rewrite-pass.ts` (was `scripts/voice-audit/rewrite/`). The voice-audit
+  harness now imports all four from prod (correct dependency direction: harness → prod; scripts already
+  import `@/...` everywhere). `scripts/voice-audit/types.ts` re-exports `RuleHit`/`Severity` from prod
+  (type-only — erased at compile time, no bundle cost), so the harness's many `from "../types"` importers
+  are unchanged.
+- **Wired into the pipeline** (`song-analysis.ts`, `analyzeSong`): after lyrical generation and before
+  store, `rewriteRead(read, this.llm)` recasts the flagged AI-tell sentences. Instrumental analyses skip
+  it (they aren't `SongRead`s). On any rewrite/LLM error `rewriteRead` returns the original read, so the
+  cleanup can never block, fail, or corrupt an analysis — it only ever improves or no-ops.
+- **Rewrite `maxOutputTokens` 4000 → 8000** (`voice/rewrite-pass.ts`), parity with generation: a rewrite
+  returns a full read and had the same ~10%-of-long-reads-truncate risk that caused the 3 transient
+  errors in the Round-5b run. So prod's expected cleanup ≥ the measured 96% removed / 90% fully-clean.
+- **Regression tests** (`song-analysis.test.ts`): a lyrical read carrying one tell is stored clean (the
+  rewrite ran and its output was used); an instrumental analysis calls generation once and skips the
+  rewrite. Locks the wiring against silent removal.
+
+## Cost / scope / caveat
+
+- **Cost:** +1 Flash call (~3.4k tokens) per lyrical song at enrichment time. No schema change.
+- **Scope:** newly-generated reads only; existing rows unaffected until re-enriched. No `ACTIVE` flip.
+- **Caveat (unchanged from 3b/4):** this cleans how the writing SOUNDS (tier1 surface tells −96%); it
+  does NOT close the depth/correctness gap to the hand-written golds. That remains a separate, harder
+  generation-side problem (gold-dense few-shot / fine-tune / stronger model), not a rewrite or prompt edit.
+
+## Keep/revert
+
+- **KEEP (shipped):** rewrite pass live in prod (minimal mode). Round 5b's "OPEN PRODUCT DECISION" is now
+  resolved GO. `direct-assertion` mode stays available as an interchangeable alternative recipe.
+- Examples-into-prod remains **REVERTED** (Round 5): not wired, no benefit on the population.
+
 <!-- next rows below -->

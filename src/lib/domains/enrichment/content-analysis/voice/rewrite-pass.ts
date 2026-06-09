@@ -17,12 +17,12 @@
 
 import { Result } from "better-result";
 import {
-	SongReadSchema,
 	type SongRead,
+	SongReadSchema,
 } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { LlmService } from "@/lib/integrations/llm/service";
-import { runAllRules } from "../tier1/rules";
-import type { RuleHit } from "../types";
+import type { RuleHit } from "./rules-types";
+import { runAllRules } from "./tier1-rules";
 
 // The HIGH-severity register tells a surgical edit can remove without changing what the read
 // claims. Kept narrower than "all HIGH rules" on purpose: mood-width/tension-dedup are structural,
@@ -104,9 +104,7 @@ export function buildRewritePrompt(
 	const flagsFor = (field: string): string => {
 		const fh = byField.get(field);
 		if (!fh) return "";
-		return fh
-			.map((h) => `\n    ⚠ ${h.rule} — "${h.span}"`)
-			.join("");
+		return fh.map((h) => `\n    ⚠ ${h.rule} — "${h.span}"`).join("");
 	};
 
 	const presentRules = [...new Set(hits.map((h) => h.rule))];
@@ -131,12 +129,17 @@ export function buildRewritePrompt(
 	// that fired ever reach the prompt). When it IS active, the corrective guidance is both relaxed
 	// (strengthen the surviving claim) and wrapped in the <master_prompt_override_style_guide> tags the
 	// source idea's commenter (Sable-Keech) reported as more effective for this exact instruction.
-	const daActive = mode === "direct-assertion" && presentRules.includes("antithesis");
+	const daActive =
+		mode === "direct-assertion" && presentRules.includes("antithesis");
 	const changePolicy = daActive
 		? "Fix the construction and keep every grounded claim. For an antithesis pivot, delete the dismissed half outright and let the surviving claim stand on its own — you may make it land harder, but only with detail already in this read. For every other tell, change as little as possible."
 		: "Change as little as possible — fix the construction, keep the content.";
-	const styleGuideOpen = daActive ? "<master_prompt_override_style_guide>\n\n" : "";
-	const styleGuideClose = daActive ? "\n\n</master_prompt_override_style_guide>" : "";
+	const styleGuideOpen = daActive
+		? "<master_prompt_override_style_guide>\n\n"
+		: "";
+	const styleGuideClose = daActive
+		? "\n\n</master_prompt_override_style_guide>"
+		: "";
 
 	return `You are editing a finished song read for hearted.music so it sounds like a person, not AI. Keep the voice exactly as it is: a friend who says what they hear, warmly and with certainty.
 
@@ -232,7 +235,10 @@ export async function rewriteRead(
 		const prompt = buildRewritePrompt(current, hits, mode);
 		const gen = await llm.generateObject(prompt, SongReadSchema, {
 			temperature,
-			maxOutputTokens: 4000,
+			// A rewrite returns the full read, so it has the same ~10%-of-draws-truncate-at-4k risk the
+			// generation call addresses with 8k (see song-analysis.ts). At 4k a long read truncates
+			// mid-JSON, fails to parse, and the pass keeps the original (uncleaned) read; 8k removes that.
+			maxOutputTokens: 8000,
 			functionId: "voice-audit-rewrite-pass",
 		});
 		if (Result.isError(gen)) {

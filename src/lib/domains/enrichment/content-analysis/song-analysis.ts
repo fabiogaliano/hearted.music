@@ -19,6 +19,7 @@ import {
 	getLyricalPrompt,
 } from "./prompts/registry";
 import { type SongRead, SongReadSchema } from "./read-schema";
+import { rewriteRead, TARGET_RULES } from "./voice/rewrite-pass";
 
 const ThemeSchema = z.object({ name: z.string(), description: z.string() });
 const JourneyPointSchema = z.object({
@@ -140,8 +141,49 @@ export class SongAnalysisService {
 			return Result.err(llmResult.error);
 		}
 
+		// Post-generation cleanup pass (lyrical only). A second, surgical Flash call recasts the
+		// HIGH-severity AI-tell constructions the tier1 checker flags (participial closures,
+		// self-reference, the "not X, it's Y" pivot) while preserving every grounded claim — lens,
+		// tension, and the verbatim lyric lines are pinned in code (voice/rewrite-pass.ts applySurgical),
+		// so the pass can recast a flagged sentence but can never drift the content, invent a fact, or
+		// fill a null field. Measured over the real production population (n=58): 5.28 → 0.19 HIGH
+		// tells/read (96% removed), 90% of reads fully clean, prose length −0.4% (no gutting). It does
+		// NOT close the depth/correctness gap to the hand-written golds — it cleans how the writing
+		// sounds, not how deep it is. Generation-side few-shot examples were measured and REJECTED as a
+		// wash on the real population (−0.07/read). See claudedocs/08-voice-audit-phase4-changelog.md
+		// Rounds 5 + 5b. On any rewrite/LLM error rewriteRead returns the original read unchanged, so
+		// the cleanup can never block, fail, or corrupt an analysis — it only ever improves or no-ops.
+		let generatedOutput = llmResult.value.output as
+			| SongRead
+			| SongAnalysisInstrumental;
+		// Capture the cleanup outcome so prod efficacy is queryable instead of re-derived
+		// offline (the rewrite otherwise discards it). Counts are filtered to the rules the
+		// pass actually targets — residual structural HIGH rules it never touches would
+		// misattribute as "cleanup left a tell". Stays null for instrumentals (no rewrite),
+		// keeping "not applicable" distinct from 0 ("ran, nothing left").
+		let cleanupMeta: {
+			cleanup_passes: number;
+			cleanup_tells_before: number;
+			cleanup_tells_after: number;
+			cleanup_error: string | null;
+		} | null = null;
+		if (!isInstrumental) {
+			const cleaned = await rewriteRead(generatedOutput as SongRead, this.llm);
+			generatedOutput = cleaned.read;
+			cleanupMeta = {
+				cleanup_passes: cleaned.passes,
+				cleanup_tells_before: cleaned.hitsBefore.filter((h) =>
+					TARGET_RULES.has(h.rule),
+				).length,
+				cleanup_tells_after: cleaned.hitsAfter.filter((h) =>
+					TARGET_RULES.has(h.rule),
+				).length,
+				cleanup_error: cleaned.error ?? null,
+			};
+		}
+
 		const analysisData = this.buildAnalysisData(
-			llmResult.value.output as SongRead | SongAnalysisInstrumental,
+			generatedOutput,
 			input.audioFeatures,
 		);
 
@@ -152,6 +194,10 @@ export class SongAnalysisService {
 			prompt_version: promptVersion,
 			tokens_used: llmResult.value.tokens?.total ?? null,
 			cost_cents: null,
+			cleanup_passes: cleanupMeta?.cleanup_passes ?? null,
+			cleanup_tells_before: cleanupMeta?.cleanup_tells_before ?? null,
+			cleanup_tells_after: cleanupMeta?.cleanup_tells_after ?? null,
+			cleanup_error: cleanupMeta?.cleanup_error ?? null,
 		});
 
 		if (Result.isError(storeResult)) {

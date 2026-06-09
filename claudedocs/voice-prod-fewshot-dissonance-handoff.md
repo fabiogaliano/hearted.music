@@ -32,7 +32,7 @@ them DIFFERENTLY:
   `grep -rn "exampleText:\|annotationsBlock:" src` → zero hits. Same template, same temperature (0.3,
   `song-analysis.ts:137`).
 - **Eval/harness** (`scripts/voice-audit/regen.ts:~285`): sets `exampleText =
-  renderExemplarBlock(selectExemplars(...))` — 2 leave-one-out golds — plus the song's vote-gated
+renderExemplarBlock(selectExemplars(...))` — 2 leave-one-out golds — plus the song's vote-gated
   `{annotations}`. **The eval runs v17 WITH a clean few-shot voice anchor prod never sends.**
 
 The service was deliberately built to NOT fetch golds itself (`song-analysis.ts:61` "the service NEVER
@@ -100,9 +100,3 @@ stored v17 reads in the local Supabase DB (`song_analysis.analysis`). Last run (
 - Round-4 verdict: **NO-GO on matching gold** via the anti-pivot idea; the gap to gold is depth +
   correctness, never the pivot. v17 stays the converged-best prompt. The few-shot dissonance above is the
   higher-leverage, separate thread.
-
-## Env note
-
-This worktree has a symlinked `.env` → the main repo's `.env` (gitignored) so the harness can run Vertex
-generation; ADC creds are global. The Opus pairwise shells out to the `claude` CLI (not the Anthropic
-API). If generation errors with "Vertex AI is not configured," the symlink is missing — re-create it.

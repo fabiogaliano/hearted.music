@@ -37,9 +37,9 @@ import {
 } from "./eval-artifact";
 import type { RunRecord } from "./experiments";
 import { loadGoldExemplars } from "./exemplars";
-import { rewriteRead } from "./rewrite/rewrite-pass";
+import { rewriteRead } from "@/lib/domains/enrichment/content-analysis/voice/rewrite-pass";
 import { voiceStats } from "./stats";
-import { runAllRules } from "./tier1/rules";
+import { runAllRules } from "@/lib/domains/enrichment/content-analysis/voice/tier1-rules";
 import { judgePair, type BalancedVerdict } from "./tier2/pairwise";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));

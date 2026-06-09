@@ -11,7 +11,7 @@ import type {
 	Severity,
 } from "../types";
 import { isSongReadShape } from "../types";
-import { runAllRules } from "./rules";
+import { runAllRules } from "@/lib/domains/enrichment/content-analysis/voice/tier1-rules";
 
 export interface SeverityBudget {
 	maxHigh: number;
