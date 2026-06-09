@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
 	type OnboardingSession,
-	resolveSession,
 	sessionMode,
 	type WalkthroughSong,
-} from "../step-resolver";
+} from "@/lib/domains/library/accounts/onboarding-session";
+import { resolveSession } from "../step-resolver";
 
 const SAMPLE_SONG: WalkthroughSong = {
 	id: "song-uuid",
@@ -33,9 +33,9 @@ describe("resolveSession", () => {
 		).toEqual({ allowedPath: "/match" });
 	});
 
-	it("maps complete to /liked-songs", () => {
+	it("maps complete to /dashboard", () => {
 		expect(resolveSession({ status: "complete" })).toEqual({
-			allowedPath: "/liked-songs",
+			allowedPath: "/dashboard",
 		});
 	});
 
@@ -44,6 +44,7 @@ describe("resolveSession", () => {
 		"pick-color",
 		"install-extension",
 		"syncing",
+		"claim-handle",
 		"flag-playlists",
 		"pick-demo-song",
 		"plan-selection",
@@ -68,8 +69,9 @@ describe("sessionMode", () => {
 		expect(sessionMode({ status: "complete" })).toBe("complete");
 	});
 
-	it("returns 'steps' for all other variants", () => {
+	it("returns 'steps' for all other variants including claim-handle", () => {
 		expect(sessionMode({ status: "welcome" })).toBe("steps");
 		expect(sessionMode({ status: "pick-demo-song" })).toBe("steps");
+		expect(sessionMode({ status: "claim-handle" })).toBe("steps");
 	});
 });

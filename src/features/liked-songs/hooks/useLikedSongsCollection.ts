@@ -1,7 +1,7 @@
 import { type InfiniteData, useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import type { WalkthroughSong } from "@/features/onboarding/step-resolver";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
+import type { WalkthroughSong } from "@/lib/domains/library/accounts/onboarding-session";
 import type { LikedSongsPageResult } from "@/lib/server/liked-songs.functions";
 import { type FilterOption, likedSongsInfiniteQueryOptions } from "../queries";
 import type { LikedSong } from "../types";

@@ -7,9 +7,9 @@ import {
 	useSyncExternalStore,
 } from "react";
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
-import type { WalkthroughSong } from "@/features/onboarding/step-resolver";
 import { PaneStore } from "@/integrations/uipane";
 import { getDemoMatchesForSong } from "@/lib/content/landing/demo-matches";
+import type { WalkthroughSong } from "@/lib/domains/library/accounts/onboarding-session";
 import {
 	type DemoMatchPlaylist,
 	getDemoSongMatches,

@@ -3,6 +3,7 @@ export const ONBOARDING_STEP_VALUES = [
 	"pick-color",
 	"install-extension",
 	"syncing",
+	"claim-handle",
 	"flag-playlists",
 	"pick-demo-song",
 	"song-walkthrough",

@@ -15,7 +15,7 @@ import type {
 	SongForMatching,
 } from "@/features/matching/types";
 import { WalkthroughMatchContent } from "@/features/matching/WalkthroughMatchContent";
-import { sessionMode } from "@/features/onboarding/step-resolver";
+import { sessionMode } from "@/lib/domains/library/accounts/onboarding-session";
 import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
 import { addToPlaylist } from "@/lib/extension/spotify-client";
 import { useSpotifyReconnectState } from "@/lib/extension/useSpotifyReconnectState";

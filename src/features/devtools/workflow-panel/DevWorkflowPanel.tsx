@@ -10,12 +10,12 @@ import {
 } from "react";
 import { resolveSession } from "@/features/onboarding/step-resolver";
 import { PaneRoot, PaneSlot, PaneStore, usePane } from "@/integrations/uipane";
+import type { OnboardingAuthPayload } from "@/lib/domains/library/accounts/onboarding-session";
 import {
 	DEFAULT_ONBOARDING_STEP,
 	ONBOARDING_STEP_VALUES,
 	type OnboardingStep,
 } from "@/lib/domains/library/accounts/onboarding-steps";
-import type { OnboardingAuthPayload } from "@/lib/server/onboarding.functions";
 import {
 	getOnboardingSession,
 	saveOnboardingStep,

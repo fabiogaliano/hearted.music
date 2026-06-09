@@ -6,9 +6,10 @@
  */
 
 import type {
+	OnboardingAuthPayload,
 	OnboardingSession,
 	WalkthroughSong,
-} from "@/features/onboarding/step-resolver";
+} from "@/lib/domains/library/accounts/onboarding-session";
 import type { ThemeColor } from "@/lib/theme/types";
 
 // ── Types (re-exported as-is) ──────────────────────────────────────────
@@ -30,11 +31,6 @@ export interface SyncStats {
 }
 
 export type ReadyCopyVariant = "free" | "pack" | "unlimited";
-
-export interface OnboardingAuthPayload {
-	session: OnboardingSession;
-	theme: ThemeColor | null;
-}
 
 export interface OnboardingData extends OnboardingAuthPayload {
 	playlists: OnboardingPlaylist[];
@@ -68,10 +64,9 @@ export type DemoMatchResult =
 	| { status: "pending" }
 	| { status: "unavailable" };
 
-// Re-export the shared types so downstream ladle stories don't need to
-// import from step-resolver directly when they're already consuming the
-// onboarding stub.
-export type { OnboardingSession, WalkthroughSong };
+// Re-export shared session types so downstream ladle stories can consume
+// them through this stub without knowing the domain module path.
+export type { OnboardingAuthPayload, OnboardingSession, WalkthroughSong };
 
 // ── Stub callables ─────────────────────────────────────────────────────
 

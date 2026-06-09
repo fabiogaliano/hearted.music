@@ -8,10 +8,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
-import type {
-	OnboardingSession,
-	WalkthroughSong,
-} from "@/features/onboarding/step-resolver";
 import { getDemoMatchesForSong } from "@/lib/content/landing/demo-matches";
 import type { LandingSongManifest } from "@/lib/content/landing/landing-songs";
 import { getLandingSongsManifest } from "@/lib/content/landing/landing-songs.server";
@@ -20,6 +16,10 @@ import { readBillingState } from "@/lib/domains/billing/queries";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import type { AnalysisContent } from "@/lib/domains/enrichment/content-analysis/analysis-content";
 import { completeOnboardingWithAllocations } from "@/lib/domains/library/accounts/onboarding-allocation";
+import type {
+	OnboardingSession,
+	WalkthroughSong,
+} from "@/lib/domains/library/accounts/onboarding-session";
 import {
 	clearPhaseJobIds,
 	getOrCreatePreferences,
@@ -244,6 +244,7 @@ function deriveSession(
 		case "pick-color":
 		case "install-extension":
 		case "syncing":
+		case "claim-handle":
 		case "flag-playlists":
 		case "pick-demo-song":
 		case "plan-selection":
