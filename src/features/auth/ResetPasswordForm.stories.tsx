@@ -2,7 +2,7 @@ import type { Story } from "@ladle/react";
 import { ResetPasswordForm } from "@/features/auth/ResetPasswordForm";
 
 export default {
-	title: "Email/Pass/ResetPasswordForm",
+	title: "Auth/ResetPasswordForm",
 };
 
 const noop = async () => {};

@@ -4,6 +4,10 @@ import { matchingSongs } from "@/stories/fixtures";
 import { Matching } from "./Matching";
 import type { CompletionStats } from "./types";
 
+export default {
+	title: "Match/Page",
+};
+
 const defaultCompletionStats: CompletionStats = {
 	totalSongs: matchingSongs.length,
 	songsMatched: 0,

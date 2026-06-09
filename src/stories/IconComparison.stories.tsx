@@ -10,6 +10,10 @@ import { ExtensionSetupTrail } from "@/features/onboarding/components/ExtensionS
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
+export default {
+	title: "Foundations/Icons",
+};
+
 function Section({
 	title,
 	children,

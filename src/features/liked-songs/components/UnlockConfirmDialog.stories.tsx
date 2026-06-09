@@ -4,6 +4,10 @@ import type { BillingState } from "@/lib/domains/billing/state";
 import type { UnlockFlowState } from "../hooks/useSongUnlock";
 import { UnlockConfirmDialog } from "./UnlockConfirmDialog";
 
+export default {
+	title: "Liked Songs/UnlockConfirmDialog",
+};
+
 const freeBillingState: BillingState = {
 	plan: "free",
 	creditBalance: 0,

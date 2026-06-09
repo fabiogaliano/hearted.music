@@ -2,7 +2,7 @@ import type { Story } from "@ladle/react";
 import { ForgotPasswordForm } from "@/features/auth/ForgotPasswordForm";
 
 export default {
-	title: "Email/Pass/ForgotPasswordForm",
+	title: "Auth/ForgotPasswordForm",
 };
 
 const noop = async () => {};

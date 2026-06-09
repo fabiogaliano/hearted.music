@@ -2,7 +2,7 @@ import type { Story } from "@ladle/react";
 import { VerifyEmailPanel } from "@/features/auth/VerifyEmailPanel";
 
 export default {
-	title: "Email/Pass/VerifyEmailPanel",
+	title: "Auth/VerifyEmailPanel",
 };
 
 const noop = async () => {};

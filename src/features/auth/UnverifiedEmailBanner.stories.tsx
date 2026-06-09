@@ -2,7 +2,7 @@ import type { Story } from "@ladle/react";
 import { UnverifiedEmailBanner } from "@/features/auth/UnverifiedEmailBanner";
 
 export default {
-	title: "Email/Pass/UnverifiedEmailBanner",
+	title: "Auth/UnverifiedEmailBanner",
 };
 
 const noopAsync = async () => {};

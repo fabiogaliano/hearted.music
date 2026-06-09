@@ -1,6 +1,10 @@
 import type { Story } from "@ladle/react";
 import { SongSelectionBar } from "./SongSelectionBar";
 
+export default {
+	title: "Liked Songs/SongSelectionBar",
+};
+
 const noop = () => {};
 
 export const NoneSelected: Story = () => (

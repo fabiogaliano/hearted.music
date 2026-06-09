@@ -2,6 +2,10 @@ import type { Story } from "@ladle/react";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
+export default {
+	title: "Foundations/Hardcoded Colors",
+};
+
 function SideBySide({
 	label,
 	file,

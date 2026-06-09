@@ -3,6 +3,10 @@ import { CheckIcon, LockSimpleIcon, XIcon } from "@phosphor-icons/react";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
 
+export default {
+	title: "Foundations/Border Radius",
+};
+
 function Section({
 	title,
 	children,
