@@ -45,12 +45,11 @@ function TrailRow({ isDone, doneLabel, waitingLabel }: TrailRowProps) {
 				/>
 			</div>
 			<span
-				className="text-[12px]"
+				className="text-xs"
 				style={{
 					fontFamily: fonts.body,
 					color: isDone ? "var(--t-text)" : "var(--t-text-muted)",
-					opacity: isDone ? 0.7 : 0.4,
-					transition: "opacity 150ms ease-out, color 150ms ease-out",
+					transition: "color 150ms ease-out",
 				}}
 			>
 				{isDone ? doneLabel : waitingLabel}
