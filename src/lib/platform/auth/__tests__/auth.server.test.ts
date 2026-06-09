@@ -64,6 +64,7 @@ describe("getAuthSession", () => {
 			created_at: "2026-05-25T00:00:00.000Z",
 			display_name: "Hearted",
 			email: "hello@hearted.music",
+			handle: null,
 			id: "acct-1",
 			image_url: null,
 			spotify_id: null,
