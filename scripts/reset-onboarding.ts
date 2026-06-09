@@ -47,6 +47,7 @@ ${colors.cyan}Default reset:${colors.reset}
   - onboarding_completed_at -> NULL
   - phase_job_ids -> NULL
   - theme -> NULL
+  - account.handle -> NULL
   - playlist.is_target -> false
   - clear account-scoped workflow outputs: jobs, account_item_newness, match data, match decisions,
     library_processing_state
@@ -536,6 +537,22 @@ async function resetUserPreferences(
 	}
 }
 
+// Clears the claimed handle so the next onboarding run sees a true first-claim
+// path (claimHandleSeed = suggested|blank) rather than the owned-handle branch.
+async function clearAccountHandle(
+	supabase: ReturnType<typeof createAdminSupabaseClient>,
+	accountId: string,
+): Promise<void> {
+	const { error: updateError } = await supabase
+		.from("account")
+		.update({ handle: null })
+		.eq("id", accountId);
+
+	if (updateError) {
+		throw new Error(`Failed to clear account handle: ${updateError.message}`);
+	}
+}
+
 async function resetOnboarding(
 	supabase: ReturnType<typeof createAdminSupabaseClient>,
 	accountId: string,
@@ -578,6 +595,7 @@ async function resetOnboarding(
 	}
 
 	await resetUserPreferences(supabase, accountId);
+	await clearAccountHandle(supabase, accountId);
 	return counts;
 }
 
@@ -652,6 +670,7 @@ async function main(): Promise<void> {
 	console.log("     - onboarding_step -> 'welcome'");
 	console.log("     - onboarding_completed_at -> NULL");
 	console.log("     - phase_job_ids -> NULL");
+	console.log("     - account.handle -> NULL");
 	console.log("     - billing state -> defaults (plan=free, balance=0)");
 	if (!options.wipeLibrary) {
 		console.log("     - playlist.is_target -> false");
