@@ -14,18 +14,12 @@ import { getLandingSongsManifest } from "@/lib/content/landing/landing-songs.ser
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { readBillingState } from "@/lib/domains/billing/queries";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
-import type { AnalysisContent } from "@/lib/domains/enrichment/content-analysis/analysis-content";
 import { completeOnboardingWithAllocations } from "@/lib/domains/library/accounts/onboarding-allocation";
-import type {
-	OnboardingSession,
-	WalkthroughSong,
-} from "@/lib/domains/library/accounts/onboarding-session";
+import type { OnboardingAuthPayload } from "@/lib/domains/library/accounts/onboarding-session";
 import {
 	clearPhaseJobIds,
 	getOrCreatePreferences,
 	ONBOARDING_STEPS,
-	type OnboardingStep,
-	type UserPreferences,
 	updateOnboardingStep,
 	updateTheme,
 } from "@/lib/domains/library/accounts/preferences-queries";
@@ -42,10 +36,13 @@ import {
 	type PhaseJobIds,
 	PhaseJobIdsSchema,
 } from "@/lib/platform/jobs/progress/types";
+import {
+	deriveAuthPayloadFromPrefs,
+	loadOnboardingSession,
+} from "@/lib/server/onboarding-session";
 import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
 import { errorMessage } from "@/lib/shared/errors/error-message";
-import { type ThemeColor, themeSchema } from "@/lib/theme/types";
-import { generateSongSlug } from "@/lib/utils/slug";
+import { themeSchema } from "@/lib/theme/types";
 import { OnboardingChanges } from "@/lib/workflows/library-processing/changes/onboarding";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 import {
@@ -79,18 +76,6 @@ export interface SyncStats {
 
 /** Copy variant for the plan selection success state, derived from billing state */
 export type ReadyCopyVariant = "free" | "pack" | "unlimited";
-
-/**
- * Guard-critical payload. Tiny, canonical, always refetched fresh so route
- * `beforeLoad` reads a fully-consistent session. Loaded via
- * `getOnboardingSession` on the auth layout.
- */
-export interface OnboardingAuthPayload {
-	/** Canonical lifecycle state. Walkthrough variants carry their song inline. */
-	session: OnboardingSession;
-	/** User's theme preference (null = hasn't chosen yet) */
-	theme: ThemeColor | null;
-}
 
 /**
  * Full onboarding payload loaded by the `/onboarding` page. Extends the auth
@@ -171,225 +156,31 @@ function fireAndForgetWalkthroughPreviewEnsure(args: {
 }
 
 /**
- * Project a persisted `(onboarding_step, demo_song_id)` pair into the
- * canonical `OnboardingSession` discriminated union.
- *
- * Pure — never writes to the DB. If the persisted step implies a precondition
- * that isn't satisfied (e.g. `song-walkthrough` without a resolved song), we
- * throw loudly in dev (catches the class of bug early during local testing)
- * and fall back to `pick-demo-song` in prod so users don't get stuck in a
- * redirect loop. Historical bad rows are cleaned by the corresponding
- * migration; new bad rows can't be produced because
- * `commitDemoSongAndEnterWalkthrough` writes both columns atomically.
- */
-function deriveSession(
-	accountId: string,
-	onboardingStep: OnboardingStep,
-	onboardingCompletedAt: string | null,
-	walkthroughSong: WalkthroughSong | null,
-): OnboardingSession {
-	// `session.status === "complete"` is ONLY producible from a non-null
-	// completion timestamp. The persisted step column is advisory; the
-	// timestamp is the authority so partial writes can't fabricate a
-	// ghost-complete session.
-	if (onboardingCompletedAt !== null) {
-		return { status: "complete" };
-	}
-
-	// Inconsistent row: step="complete" without a timestamp. Loud in dev so
-	// the offending write path gets fixed; safe fallback in prod to the final
-	// pre-complete step so the user doesn't get stuck in a bogus complete
-	// state that skips `markOnboardingComplete`'s side effects.
-	if (onboardingStep === "complete") {
-		const message =
-			`[onboarding invariant] step="complete" for account ${accountId} ` +
-			`has no onboarding_completed_at. Falling back to "plan-selection".`;
-		if (import.meta.env.DEV) {
-			throw new Error(message);
-		}
-		console.error(message);
-		return { status: "plan-selection" };
-	}
-
-	const needsDemoSong =
-		onboardingStep === "song-walkthrough" ||
-		onboardingStep === "match-walkthrough";
-
-	if (needsDemoSong && walkthroughSong === null) {
-		const message =
-			`[onboarding invariant] step=${onboardingStep} for account ${accountId} ` +
-			`has no demo_song_id. Atomic transitions should make this impossible.`;
-		if (import.meta.env.DEV) {
-			// Loud: surface the invariant violation immediately during local
-			// development. If this fires, fix the code path that produced it
-			// instead of relying on the prod fallback below.
-			throw new Error(message);
-		}
-		console.error(message);
-		return { status: "pick-demo-song" };
-	}
-
-	if (onboardingStep === "song-walkthrough" && walkthroughSong) {
-		return { status: "song-walkthrough", song: walkthroughSong };
-	}
-	if (onboardingStep === "match-walkthrough" && walkthroughSong) {
-		return { status: "match-walkthrough", song: walkthroughSong };
-	}
-
-	// Exhaustive projection for the remaining non-complete, non-walkthrough
-	// steps. Replaces the previous unsafe `as OnboardingSession` cast —
-	// TypeScript now verifies every `OnboardingStep` value is handled.
-	switch (onboardingStep) {
-		case "welcome":
-		case "pick-color":
-		case "install-extension":
-		case "syncing":
-		case "claim-handle":
-		case "flag-playlists":
-		case "pick-demo-song":
-		case "plan-selection":
-			return { status: onboardingStep };
-		case "song-walkthrough":
-		case "match-walkthrough":
-			// Unreachable: walkthrough-with-song returns above; walkthrough
-			// without song is coerced by the invariant branch. Kept so the
-			// compiler treats the switch as exhaustive without a `never`
-			// assertion on `onboardingStep`.
-			return { status: "pick-demo-song" };
-	}
-}
-
-/**
- * Derives an `OnboardingAuthPayload` from already-fetched preferences so
- * callers that need both session + additional page data can share a single
- * prefs fetch. Resolves the walkthrough song lazily (only when `demo_song_id`
- * is set) so the no-walkthrough path stays one round-trip.
- */
-async function deriveAuthPayloadFromPrefs(
-	accountId: string,
-	prefs: UserPreferences,
-	supabase: ReturnType<typeof createAdminSupabaseClient>,
-): Promise<OnboardingAuthPayload> {
-	const stepParse = ONBOARDING_STEPS.safeParse(prefs.onboarding_step);
-	const onboardingStep: OnboardingStep = stepParse.success
-		? stepParse.data
-		: "welcome";
-
-	const walkthroughSong = await loadWalkthroughSong(
-		supabase,
-		prefs.demo_song_id,
-	);
-
-	const session = deriveSession(
-		accountId,
-		onboardingStep,
-		prefs.onboarding_completed_at,
-		walkthroughSong,
-	);
-
-	return { session, theme: prefs.theme };
-}
-
-/**
- * Guard-critical loader. Fetches only prefs + (optionally) the demo song.
- * Used by `getOnboardingSession`, which the auth layout polls on every
- * navigation with `staleTime: 0`. Small object, cheap refetch.
- */
-async function loadOnboardingSession(
-	accountId: string,
-): Promise<OnboardingAuthPayload> {
-	const supabase = createAdminSupabaseClient();
-	const prefsResult = await getOrCreatePreferences(accountId);
-	if (Result.isError(prefsResult)) {
-		throw new OnboardingError("load_preferences", prefsResult.error);
-	}
-
-	return deriveAuthPayloadFromPrefs(accountId, prefsResult.value, supabase);
-}
-
-/**
- * Loads the persisted demo song (if any) as a `WalkthroughSong`. Returns
- * `null` if no demo song is selected, or if the join fails — callers are
- * expected to handle the null case (and `deriveSession` encodes what that
- * null means for the session variant).
- */
-async function loadWalkthroughSong(
-	supabase: ReturnType<typeof createAdminSupabaseClient>,
-	demoSongId: string | null,
-): Promise<WalkthroughSong | null> {
-	if (!demoSongId) return null;
-
-	const [{ data: song }, { data: analysisRow }] = await Promise.all([
-		supabase
-			.from("song")
-			.select(
-				"id, spotify_id, name, artists, artist_ids, genres, album_name, image_url",
-			)
-			.eq("id", demoSongId)
-			.single(),
-		supabase
-			.from("song_analysis")
-			.select("id, analysis, model, created_at")
-			.eq("song_id", demoSongId)
-			.order("created_at", { ascending: false })
-			.limit(1)
-			.maybeSingle(),
-	]);
-
-	if (!song) return null;
-
-	const artist = song.artists[0] ?? "Unknown Artist";
-	const artistSpotifyId = song.artist_ids?.[0] ?? null;
-
-	let artistImageUrl: string | null = null;
-	if (artistSpotifyId) {
-		const { data: artistRow } = await supabase
-			.from("artist")
-			.select("image_url")
-			.eq("spotify_id", artistSpotifyId)
-			.maybeSingle();
-		artistImageUrl = artistRow?.image_url ?? null;
-	}
-
-	return {
-		id: song.id,
-		spotifyTrackId: song.spotify_id,
-		slug: generateSongSlug(artist, song.name),
-		name: song.name,
-		artist,
-		artistId: artistSpotifyId,
-		artistImageUrl,
-		album: song.album_name,
-		albumArtUrl: song.image_url,
-		genres: song.genres ?? [],
-		analysis: analysisRow
-			? {
-					id: analysisRow.id,
-					content: analysisRow.analysis as AnalysisContent,
-					model: analysisRow.model,
-					createdAt: analysisRow.created_at,
-				}
-			: null,
-	};
-}
-
-/**
  * Full page-data loader used by the `/onboarding` route. Supersets the
  * guard payload with playlists, landing songs, sync stats, and the copy
  * variant derived from billing. Pure projection — no DB writes.
  */
-async function loadOnboardingData(accountId: string): Promise<OnboardingData> {
+async function loadOnboardingData(
+	accountId: string,
+	accountHandle: string | null,
+): Promise<OnboardingData> {
 	const supabase = createAdminSupabaseClient();
 
 	// Single prefs fetch shared with authPayload derivation. Walkthrough song
 	// (inside authPayloadPromise) runs concurrently with the other queries.
+	// accountHandle is threaded from context so we avoid an extra account query.
 	const prefsPromise = getOrCreatePreferences(accountId);
 	const authPayloadPromise = (async () => {
 		const prefsResult = await prefsPromise;
 		if (Result.isError(prefsResult)) {
 			throw new OnboardingError("load_preferences", prefsResult.error);
 		}
-		return deriveAuthPayloadFromPrefs(accountId, prefsResult.value, supabase);
+		return deriveAuthPayloadFromPrefs({
+			accountId,
+			accountHandle,
+			prefs: prefsResult.value,
+			supabase,
+		});
 	})();
 
 	const [
@@ -486,7 +277,7 @@ export const getOnboardingData = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.handler(
 		({ context }): Promise<OnboardingData> =>
-			loadOnboardingData(context.session.accountId),
+			loadOnboardingData(context.session.accountId, context.account.handle),
 	);
 
 /**
@@ -499,7 +290,10 @@ export const getOnboardingSession = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.handler(
 		({ context }): Promise<OnboardingAuthPayload> =>
-			loadOnboardingSession(context.session.accountId),
+			loadOnboardingSession({
+				accountId: context.session.accountId,
+				accountHandle: context.account.handle,
+			}),
 	);
 
 /**
@@ -804,7 +598,10 @@ export const commitDemoSongAndEnterWalkthrough = createServerFn({
 			source: "commit_demo_song",
 		});
 
-		return loadOnboardingSession(session.accountId);
+		return loadOnboardingSession({
+			accountId: session.accountId,
+			accountHandle: context.account.handle,
+		});
 	});
 
 /** Match result for a single playlist in the demo song showcase */
