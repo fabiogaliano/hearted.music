@@ -23,7 +23,7 @@ import { ConsentSection } from "./components/ConsentSection";
 import { ExtensionStatusRow } from "./components/ExtensionStatusRow";
 
 interface SettingsPageProps {
-	displayName: string | null;
+	handle: string | null;
 	email: string | null;
 	imageUrl: string | null;
 	currentTheme: ThemeColor;
@@ -32,7 +32,7 @@ interface SettingsPageProps {
 }
 
 export function SettingsPage({
-	displayName,
+	handle,
 	email,
 	imageUrl,
 	currentTheme,
@@ -110,16 +110,18 @@ export function SettingsPage({
 				description="Your identity on Hearted."
 			>
 				<div className="flex items-center gap-4">
-					<UserAvatar name={displayName} imageUrl={imageUrl} size="md" />
+					<UserAvatar name={handle} imageUrl={imageUrl} size="md" />
 					<div className="min-w-0">
+						{handle && (
+							<p
+								className="theme-text truncate text-xl font-light"
+								style={{ fontFamily: fonts.display }}
+							>
+								@{handle}
+							</p>
+						)}
 						<p
-							className="theme-text truncate text-xl font-light"
-							style={{ fontFamily: fonts.display }}
-						>
-							{displayName ?? "—"}
-						</p>
-						<p
-							className="theme-text-muted mt-1 truncate text-sm"
+							className={`theme-text-muted truncate text-sm ${handle ? "mt-1" : ""}`}
 							style={{ fontFamily: fonts.body }}
 						>
 							{email ?? "—"}

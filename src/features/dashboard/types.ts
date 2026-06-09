@@ -46,7 +46,7 @@ export interface MatchPreview {
 
 export interface DashboardProps {
 	accountId: string;
-	displayName: string | null;
+	handle: string | null;
 	recentActivity: ActivityItem[];
 	matchPreviews: MatchPreview[];
 	stats: DashboardStats;

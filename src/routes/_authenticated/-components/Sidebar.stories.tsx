@@ -6,17 +6,17 @@ import { Sidebar } from "./Sidebar";
 export const Default: Story = () => (
 	<Sidebar
 		unsortedCount={sidebarData.unsortedCount}
-		userName={sidebarData.userName}
+		handle={sidebarData.handle}
 		userPlan="Free Plan"
 	/>
 );
 
 export const WithBadge: Story = () => (
-	<Sidebar unsortedCount={12} userName="ghr" userPlan="Free Plan" />
+	<Sidebar unsortedCount={12} handle="ghr" userPlan="Free Plan" />
 );
 
 export const NoBadge: Story = () => (
-	<Sidebar unsortedCount={0} userName="ghr" userPlan="Free Plan" />
+	<Sidebar unsortedCount={0} handle="ghr" userPlan="Free Plan" />
 );
 
 export const MatchCountUpdating: Story = () => {
@@ -27,7 +27,7 @@ export const MatchCountUpdating: Story = () => {
 		return () => clearInterval(id);
 	}, []);
 
-	return <Sidebar unsortedCount={count} userName="ghr" userPlan="Free Plan" />;
+	return <Sidebar unsortedCount={count} handle="ghr" userPlan="Free Plan" />;
 };
 MatchCountUpdating.meta = {
 	description: "Watch the match badge count increment as new matches arrive",

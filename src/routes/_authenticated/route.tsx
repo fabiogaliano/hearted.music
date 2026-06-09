@@ -287,7 +287,7 @@ function AuthenticatedShell({
 				{showSidebar && (
 					<Sidebar
 						unsortedCount={pendingSuggestions}
-						userName={account?.display_name ?? account?.email ?? null}
+						handle={account?.handle ?? null}
 						userPlan={getPlanLabel(billingState)}
 						userBalance={getDisplayBalance(billingState)}
 						userImageUrl={account?.image_url}

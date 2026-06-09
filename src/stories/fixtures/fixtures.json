@@ -3417,7 +3417,7 @@
 		}
 	],
 	"dashboard": {
-		"displayName": "ghr",
+		"handle": "ghr",
 		"stats": {
 			"totalSongs": 25,
 			"analyzedPercent": 100,
@@ -3483,7 +3483,7 @@
 	},
 	"sidebar": {
 		"unsortedCount": 5,
-		"userName": "ghr",
+		"handle": "ghr",
 		"userPlan": "Free Plan"
 	},
 	"playlists": [

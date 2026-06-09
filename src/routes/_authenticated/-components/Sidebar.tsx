@@ -14,7 +14,7 @@ const displayFontStyle = { fontFamily: fonts.display } as const;
 
 interface SidebarProps {
 	unsortedCount: number;
-	userName: string | null;
+	handle: string | null;
 	userPlan: string;
 	userBalance?: number | null;
 	userImageUrl?: string | null;
@@ -36,7 +36,7 @@ const NAV_ITEMS: NavItemConfig[] = [
 
 export function Sidebar({
 	unsortedCount,
-	userName,
+	handle,
 	userPlan,
 	userBalance,
 	userImageUrl,
@@ -92,9 +92,9 @@ export function Sidebar({
 				data-active={isSettingsActive || undefined}
 				className="theme-border-color group relative -mx-6 -mb-8 mt-6 flex items-center gap-3 border-t px-6 pt-6 pb-8 transition-colors duration-150 ease motion-reduce:transition-none hover:bg-[color-mix(in_oklch,var(--t-text)_5%,transparent)] data-[active]:bg-[color-mix(in_oklch,var(--t-text)_7%,transparent)]"
 			>
-				<UserAvatar name={userName} imageUrl={userImageUrl} />
+				<UserAvatar name={handle} imageUrl={userImageUrl} />
 				<div className="min-w-0 flex-1">
-					{userName && (
+					{handle && (
 						<p
 							className={`truncate text-sm transition-colors duration-150 ease motion-reduce:transition-none ${
 								isSettingsActive
@@ -103,7 +103,7 @@ export function Sidebar({
 							}`}
 							style={bodyFontStyle}
 						>
-							{userName}
+							@{handle}
 						</p>
 					)}
 					<p
