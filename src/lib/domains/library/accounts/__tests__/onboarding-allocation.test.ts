@@ -96,6 +96,22 @@ describe("completeOnboardingWithAllocations", () => {
 		expect(mockedGrantFree).not.toHaveBeenCalled();
 	});
 
+	it("skips allocations entirely when the completion race was lost (ok(null))", async () => {
+		mockedCompleteOnboarding.mockResolvedValue(Result.ok(null));
+		const { client, from } = makeSupabase(null);
+
+		const result = await completeOnboardingWithAllocations(client, "a1");
+
+		expect(Result.isOk(result)).toBe(true);
+		if (Result.isOk(result)) {
+			expect(result.value).toBeNull();
+		}
+		// The winning call owns the side effects — the loser must not even read billing.
+		expect(mockedReadBilling).not.toHaveBeenCalled();
+		expect(from).not.toHaveBeenCalled();
+		expect(mockedGrantFree).not.toHaveBeenCalled();
+	});
+
 	it("returns the completeOnboarding error without allocating", async () => {
 		mockedCompleteOnboarding.mockResolvedValue(
 			Result.err({ code: "X", message: "onboarding boom" } as never),

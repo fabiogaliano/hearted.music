@@ -153,24 +153,31 @@ export function updateOnboardingStep(
 	);
 }
 
+/**
+ * Compare-and-set completion write: only the call that flips a NULL
+ * `onboarding_completed_at` to a timestamp "wins". `ok(null)` means zero rows
+ * matched — onboarding was already complete — so concurrent completes can
+ * never double-run downstream side effects (free allocation) or overwrite the
+ * original completion timestamp.
+ *
+ * Update-only by design: the prefs row is guaranteed by getOrCreatePreferences
+ * on every session load, so a missing row here is indistinguishable from
+ * already-complete only in theory, never on a real call path.
+ */
 export function completeOnboarding(
 	accountId: string,
-): Promise<Result<UserPreferences, DbError>> {
+): Promise<Result<UserPreferences | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	const now = new Date().toISOString();
 
-	return fromSupabaseSingle(
+	return fromSupabaseMaybe(
 		supabase
 			.from("user_preferences")
-			.upsert(
-				{
-					account_id: accountId,
-					onboarding_completed_at: now,
-				},
-				{ onConflict: "account_id" },
-			)
+			.update({ onboarding_completed_at: now })
+			.eq("account_id", accountId)
+			.is("onboarding_completed_at", null)
 			.select()
-			.single(),
+			.maybeSingle(),
 	);
 }
 
