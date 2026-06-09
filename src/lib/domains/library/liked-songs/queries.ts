@@ -165,9 +165,40 @@ export async function getRecentWithDetails(
 }
 
 /**
+ * Pagination cursor encoding. Many rows can share a `liked_at` (a bulk import
+ * stamped 76 songs with one timestamp), so a `liked_at`-only cursor compared with
+ * a strict `<` skips every tied row past a page boundary — deep songs vanish from
+ * the walk. The cursor is therefore the composite key `liked_at|id`, matching the
+ * function's `(liked_at DESC, id DESC)` order and its `(liked_at, id)` tuple
+ * comparison. The `|` separator is safe: neither a timestamp nor a uuid contains
+ * it. A separator-less value decodes as a legacy `liked_at`-only cursor (id null),
+ * so any cursor already in flight keeps working.
+ */
+function encodeCursor(likedAt: string, id: string): string {
+	return `${likedAt}|${id}`;
+}
+
+function decodeCursor(cursor: string | undefined): {
+	likedAt: string | undefined;
+	id: string | undefined;
+} {
+	if (!cursor) {
+		return { likedAt: undefined, id: undefined };
+	}
+	const separator = cursor.indexOf("|");
+	if (separator === -1) {
+		return { likedAt: cursor, id: undefined };
+	}
+	return {
+		likedAt: cursor.slice(0, separator),
+		id: cursor.slice(separator + 1),
+	};
+}
+
+/**
  * Gets a page of liked songs with full details (song + analysis) for the UI.
  * Uses RPC function for efficient single-query fetch with JOINs.
- * Cursor-based pagination using liked_at timestamp.
+ * Cursor-based pagination using the composite `liked_at|id` key (see encodeCursor).
  */
 export async function getPageWithDetails(
 	accountId: string,
@@ -186,9 +217,12 @@ export async function getPageWithDetails(
 	const search =
 		trimmedSearch && trimmedSearch.length > 0 ? trimmedSearch : undefined;
 
+	const { likedAt: cursorLikedAt, id: cursorId } = decodeCursor(options.cursor);
+
 	const { data, error } = await supabase.rpc("get_liked_songs_page", {
 		p_account_id: accountId,
-		p_cursor: options.cursor,
+		p_cursor: cursorLikedAt,
+		p_cursor_id: cursorId,
 		p_limit: limit,
 		p_filter: options.filter ?? "all",
 		p_search: search,
@@ -203,7 +237,10 @@ export async function getPageWithDetails(
 	const rows = (data ?? []) as LikedSongPageRow[];
 	const hasMore = rows.length > limit;
 	const items = hasMore ? rows.slice(0, limit) : rows;
-	const nextCursor = hasMore ? items[items.length - 1].liked_at : null;
+	const lastItem = items[items.length - 1];
+	const nextCursor = hasMore
+		? encodeCursor(lastItem.liked_at, lastItem.id)
+		: null;
 
 	return Result.ok({ items, nextCursor });
 }
@@ -267,8 +304,9 @@ export interface LikedSongsBootstrapPages {
 /**
  * Rechunks a contiguous (newest-first) run of rows into client-sized pages,
  * deriving each page's cursor the same way `getPageWithDetails` does: the
- * `liked_at` of the page's last row. Only the final page can terminate the
- * sequence (`nextCursor: null`), and only when no rows follow it in the library.
+ * composite `liked_at|id` of the page's last row. Only the final page can
+ * terminate the sequence (`nextCursor: null`), and only when no rows follow it in
+ * the library.
  */
 function chunkBootstrapRows(
 	rows: LikedSongPageRow[],
@@ -281,7 +319,8 @@ function chunkBootstrapRows(
 	const chunks = chunkArray(rows, LIKED_SONGS_PAGE_SIZE);
 	return chunks.map((items, index) => {
 		const isLast = index === chunks.length - 1;
-		const lastCursor = items[items.length - 1].liked_at;
+		const lastItem = items[items.length - 1];
+		const lastCursor = encodeCursor(lastItem.liked_at, lastItem.id);
 		return {
 			items,
 			nextCursor: isLast ? (hasMoreAfterLast ? lastCursor : null) : lastCursor,
