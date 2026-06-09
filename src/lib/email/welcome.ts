@@ -8,6 +8,7 @@
 
 import { Resend } from "resend";
 import { env } from "@/env";
+import { getPublicAppOrigin } from "@/lib/config/public-app-origin";
 
 const FROM_EMAIL = "hi@hearted.music";
 const FROM_NAME = "hearted.";
@@ -32,7 +33,8 @@ export async function sendWelcomeEmail(email: string) {
 }
 
 function welcomePlainText() {
-	return `When you joined the waitlist, I promised you'd be first to hear them. The stories inside your Liked Songs are ready now: https://hearted.music
+	const origin = getPublicAppOrigin();
+	return `When you joined the waitlist, I promised you'd be first to hear them. The stories inside your Liked Songs are ready now: ${origin}
 
 Before anything else: thank you. You raised your hand for this before there was anything to show for it, and that means more than you know.
 
@@ -48,11 +50,12 @@ Signed up with a different email than you'll log in with? Reply and I'll make su
 
 hearted. is free and open source, if you ever want to look or run your own.
 
-— ♡ https://hearted.music
+— ♡ ${origin}
 `;
 }
 
 function welcomeHtml() {
+	const origin = getPublicAppOrigin();
 	return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
@@ -64,7 +67,7 @@ function welcomeHtml() {
           <span style="font-size:24px;font-weight:200;letter-spacing:-0.5px;color:hsl(340,28%,22%);">hearted.</span>
         </td></tr>
         <tr><td style="font-size:18px;line-height:1.8;color:hsl(340,28%,22%);">
-          <p style="margin:0 0 24px;">When you joined the waitlist, I promised you'd be first to hear them. <a href="https://hearted.music" style="color:hsl(340,28%,22%);text-decoration:underline;">The stories inside your <em>Liked Songs</em> are ready now.</a></p>
+          <p style="margin:0 0 24px;">When you joined the waitlist, I promised you'd be first to hear them. <a href="${origin}" style="color:hsl(340,28%,22%);text-decoration:underline;">The stories inside your <em>Liked Songs</em> are ready now.</a></p>
           <p style="margin:0 0 24px;">Before anything else: thank you. You raised your hand for this before there was anything to show for it, and that means more than you know.</p>
           <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;"><tr><td style="background:hsl(340,42%,91%);border-radius:8px;padding:18px 22px;font-size:18px;line-height:1.8;color:hsl(340,28%,22%);">So I've left a welcome bonus on your account, already applied to the email you signed up with. It's yours at least through the end of June.</td></tr></table>
           <p style="margin:0 0 24px;">Countless late nights, a lot of learning, and it's still not perfect. So if something feels off, or something sings, tell me. Hearing from you would mean the world.</p>
@@ -73,7 +76,7 @@ function welcomeHtml() {
         <tr><td style="padding-top:24px;border-top:1px solid hsl(340,20%,75%);font-size:13px;color:hsl(340,20%,45%);">
           <p style="margin:0 0 12px;">Signed up with a different email than you'll log in with? Reply and I'll make sure your bonus finds you.</p>
           <p style="margin:0 0 12px;">hearted. is free and open source, if you ever want to look or run your own.</p>
-          <p style="margin:0;">— ♡ <a href="https://hearted.music" style="color:hsl(340,20%,45%);text-decoration:none;">hearted.music</a></p>
+          <p style="margin:0;">— ♡ <a href="${origin}" style="color:hsl(340,20%,45%);text-decoration:none;">hearted.music</a></p>
         </td></tr>
       </table>
     </td></tr>

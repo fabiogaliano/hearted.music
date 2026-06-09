@@ -1,6 +1,6 @@
 # Task 01 — Public app-origin config
 
-**Plan:** §10 (incl. §10.1–§10.4) · **Recommended order:** step 1 · **Status:** [ ]
+**Plan:** §10 (incl. §10.1–§10.4) · **Recommended order:** step 1 · **Status:** [x]
 
 ## Goal
 

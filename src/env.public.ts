@@ -2,7 +2,23 @@ function readOptionalClientEnv(value: unknown): string | undefined {
 	return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
+function readRequiredUrlClientEnv(value: unknown, name: string): string {
+	if (typeof value !== "string" || value.length === 0) {
+		throw new Error(`Missing required env var: ${name}`);
+	}
+	try {
+		new URL(value);
+	} catch {
+		throw new Error(`Invalid URL for env var ${name}: ${value}`);
+	}
+	return value;
+}
+
 export const clientEnv = {
+	VITE_PUBLIC_APP_ORIGIN: readRequiredUrlClientEnv(
+		import.meta.env.VITE_PUBLIC_APP_ORIGIN,
+		"VITE_PUBLIC_APP_ORIGIN",
+	),
 	VITE_APP_TITLE: readOptionalClientEnv(import.meta.env.VITE_APP_TITLE),
 	VITE_CHROME_EXTENSION_ID: readOptionalClientEnv(
 		import.meta.env.VITE_CHROME_EXTENSION_ID,

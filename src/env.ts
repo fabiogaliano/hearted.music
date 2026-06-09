@@ -58,6 +58,7 @@ export const env = createEnv({
 	clientPrefix: "VITE_",
 
 	client: {
+		VITE_PUBLIC_APP_ORIGIN: z.url(),
 		VITE_APP_TITLE: z.string().min(1).optional(),
 		VITE_CHROME_EXTENSION_ID: z.string().min(1).optional(),
 		VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: z.string().min(1).optional(),
@@ -109,6 +110,7 @@ export const env = createEnv({
 		BILLING_SERVICE_URL: serverEnv.BILLING_SERVICE_URL,
 		BILLING_SHARED_SECRET: serverEnv.BILLING_SHARED_SECRET,
 		QUARTERLY_PLAN_ENABLED: serverEnv.QUARTERLY_PLAN_ENABLED,
+		VITE_PUBLIC_APP_ORIGIN: import.meta.env.VITE_PUBLIC_APP_ORIGIN,
 		VITE_APP_TITLE: import.meta.env.VITE_APP_TITLE,
 		VITE_CHROME_EXTENSION_ID: import.meta.env.VITE_CHROME_EXTENSION_ID,
 		VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: import.meta.env

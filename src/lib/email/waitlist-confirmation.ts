@@ -6,6 +6,7 @@
 
 import { Resend } from "resend";
 import { env } from "@/env";
+import { getPublicAppOrigin } from "@/lib/config/public-app-origin";
 
 const FROM_EMAIL = "hi@hearted.music";
 const FROM_NAME = "hearted.";
@@ -28,17 +29,19 @@ export async function sendWaitlistConfirmation(email: string) {
 }
 
 function waitlistPlainText() {
+	const origin = getPublicAppOrigin();
 	return `You're on the waitlist.
 
 Every song you've hearted has been waiting to be noticed. Their moment is coming!
 
 More soon.
 
-— ♡ https://hearted.music
+— ♡ ${origin}
 `;
 }
 
 function waitlistHtml() {
+	const origin = getPublicAppOrigin();
 	return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
@@ -55,7 +58,7 @@ function waitlistHtml() {
           <p style="margin:0 0 32px;color:hsl(340,20%,45%);font-style:italic;font-size:16px;">More soon.</p>
         </td></tr>
         <tr><td style="padding-top:24px;border-top:1px solid hsl(340,20%,75%);font-size:13px;color:hsl(340,20%,45%);">
-          <p style="margin:0;">— ♡ <a href="https://hearted.music" style="color:hsl(340,20%,45%);text-decoration:none;">hearted.music</a></p>
+          <p style="margin:0;">— ♡ <a href="${origin}" style="color:hsl(340,20%,45%);text-decoration:none;">hearted.music</a></p>
         </td></tr>
       </table>
     </td></tr>
