@@ -1,6 +1,6 @@
 # Task 13 — Public `/@handle` route
 
-**Plan:** §9.3 · **Recommended order:** step 13 · **Status:** [ ]
+**Plan:** §9.3 · **Recommended order:** step 13 · **Status:** [x]
 
 ## Goal
 

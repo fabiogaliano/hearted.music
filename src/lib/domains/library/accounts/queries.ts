@@ -16,6 +16,12 @@ import {
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
 
+/** Public identity shape for the /@handle route. Only handle + avatar. */
+export interface PublicHandleIdentity {
+	handle: string;
+	imageUrl: string | null;
+}
+
 /** Account row type */
 export type Account = Tables<"account">;
 
@@ -159,4 +165,52 @@ export async function createAccountForBetterAuthUser(
 	}
 
 	return Result.ok(account);
+}
+
+/**
+ * Looks up a public handle identity for the /@handle route.
+ *
+ * Inner-joins user_preferences so that accounts whose onboarding is not yet
+ * complete (onboarding_completed_at IS NULL) are excluded at the query level —
+ * no row is returned for them, meaning the route correctly shows notFound.
+ *
+ * Returns null when no live public handle exists (not an error). Returns
+ * Result.err for multiplicity violations or other DB failures — these must not
+ * be silently collapsed to null because they indicate unexpected data state.
+ */
+export async function getPublicHandleIdentityByHandle(
+	handle: string,
+): Promise<Result<PublicHandleIdentity | null, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const canonicalHandle = handle.toLowerCase();
+
+	// Select handle + image_url from account, inner-joining user_preferences
+	// so rows without a completed onboarding_completed_at are filtered out.
+	// maybeSingle() enforces the 0-or-1 cardinality contract: handle is unique
+	// per DB constraint, and each account has at most one user_preferences row.
+	const result = await fromSupabaseMaybe(
+		supabase
+			.from("account")
+			.select(
+				"handle, image_url, user_preferences!inner(onboarding_completed_at)",
+			)
+			.eq("handle", canonicalHandle)
+			.not("user_preferences.onboarding_completed_at", "is", null)
+			.maybeSingle(),
+	);
+
+	if (Result.isError(result)) {
+		return result;
+	}
+
+	if (result.value === null) {
+		return Result.ok(null);
+	}
+
+	// handle is guaranteed non-null because we filter eq("handle", canonicalHandle).
+	// The DB column is nullable by schema but our eq filter ensures a match.
+	return Result.ok({
+		handle: result.value.handle ?? canonicalHandle,
+		imageUrl: result.value.image_url,
+	});
 }
