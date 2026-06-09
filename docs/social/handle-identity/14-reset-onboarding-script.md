@@ -1,6 +1,6 @@
 # Task 14 — `reset-onboarding` script
 
-**Plan:** §13.3 · **Recommended order:** step 15 · **Status:** [ ]
+**Plan:** §13.3 · **Recommended order:** step 15 · **Status:** [x]
 
 ## Goal
 

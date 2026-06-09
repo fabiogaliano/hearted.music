@@ -140,3 +140,11 @@ on disagreement; §15 is the decision index.
 ## Task 09
 
 - `[task 09 | review->patch] MINOR fix applied directly: strengthened the already_owned RPC-row test to assert loadOnboardingSession was last-called with the RPC-returned owned_handle` — the test was order-based only and couldn't distinguish a correct impl from one passing null; added the toHaveBeenLastCalledWith assertion mirroring the claimed test. Impl itself was already correct. 24/24 pass, tsgo green.
+
+---
+
+## Task 14
+
+- `[task 14 | implement] clearAccountHandle placed after resetUserPreferences in resetOnboarding` — both are unconditional default-path operations; ordering them last (after all row deletions) keeps the mutation footprint together and avoids any risk of a half-reset state being read before account fields are cleared.
+- `[task 14 | implement] clearAccountHandle uses .update({ handle: null }).eq("id", accountId)` — straightforward single-row UPDATE; no upsert needed since the row is guaranteed to exist (findAccount already verified it). Error pattern matches the existing throw-on-error convention throughout the file.
+- `[task 14 | implement] Live replay NOT run` — no local test account with a claimed handle was available in the current DB state; correctness verified by code-path reasoning: after the reset, account.handle is NULL, so deriveClaimHandleSeed receives null for accountHandle → falls into the "suggest from display_name or blank" branch → yields { kind: "suggested" | "blank" }, not { kind: "owned" }.
