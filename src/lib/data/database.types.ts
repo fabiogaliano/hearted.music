@@ -2189,6 +2189,7 @@ export type Database = {
 				Args: {
 					p_account_id: string;
 					p_cursor?: string;
+					p_cursor_id?: string;
 					p_filter?: string;
 					p_limit?: number;
 					p_search?: string;
