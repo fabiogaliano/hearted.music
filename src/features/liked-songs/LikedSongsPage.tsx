@@ -408,6 +408,7 @@ export function LikedSongsPage({
 					onEnterSelectionMode={enterSelectionMode}
 					searchQuery={searchQuery}
 					onSearchChange={setSearchQuery}
+					isWalkthrough={isWalkthrough}
 				/>
 
 				{selectionMode && showSelectionUI && billingState && (

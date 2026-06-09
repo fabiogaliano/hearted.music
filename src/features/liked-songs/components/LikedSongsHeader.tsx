@@ -18,6 +18,7 @@ interface LikedSongsHeaderProps {
 	onEnterSelectionMode: () => void;
 	searchQuery: string;
 	onSearchChange: (value: string) => void;
+	isWalkthrough: boolean;
 }
 
 const FILTER_LABELS: Record<SearchFilter, string> = {
@@ -37,6 +38,7 @@ export function LikedSongsHeader({
 	onEnterSelectionMode,
 	searchQuery,
 	onSearchChange,
+	isWalkthrough,
 }: LikedSongsHeaderProps) {
 	const statsReady = stats?.success === true;
 	const total = statsReady ? stats.total : null;
@@ -77,15 +79,21 @@ export function LikedSongsHeader({
 					className="theme-text flex items-baseline gap-4 font-extralight tracking-tight leading-[0.95]"
 					style={{ fontFamily: fonts.display }}
 					aria-label={
-						total != null ? `Liked Songs, ${total} total` : "Liked Songs"
+						isWalkthrough
+							? "Liked Songs, preview"
+							: total != null
+								? `Liked Songs, ${total} total`
+								: "Liked Songs"
 					}
 				>
 					<span className="text-page-title">Liked Songs</span>
 					<span
 						aria-hidden="true"
-						className="theme-text-muted text-3xl tabular-nums opacity-60"
+						className={`theme-text-muted text-3xl opacity-60 ${
+							isWalkthrough ? "" : "tabular-nums"
+						}`}
 					>
-						{total ?? "—"}
+						{isWalkthrough ? "preview" : (total ?? "—")}
 					</span>
 				</h1>
 
@@ -101,80 +109,82 @@ export function LikedSongsHeader({
 				)}
 			</div>
 
-			<div className="theme-border-color mt-10 flex items-end gap-6 border-b">
-				<nav aria-label="Filter liked songs" className="flex items-end gap-6">
-					{visibleFilters.map((value) => {
-						const isActive = value === activeFilter;
-						const count = counts[value];
-						return (
-							<button
-								key={value}
-								type="button"
-								onClick={() => onFilterChange(value)}
-								aria-pressed={isActive}
-								className={`relative -mb-px cursor-pointer border-b px-2 py-1.5 text-center transition-[color,border-color] duration-150 @[700px]:min-w-[6rem] ${
-									isActive
-										? "theme-text border-(--t-primary)"
-										: "theme-text-muted border-transparent hover:text-(--t-text)"
-								}`}
-								style={{ fontFamily: fonts.body }}
-							>
-								<span className="text-sm tracking-wide">
-									{FILTER_LABELS[value]}
-								</span>
-								{value !== "all" && (
-									<span
-										className={`ml-1.5 text-xs tabular-nums ${
-											isActive ? "theme-text-muted" : "opacity-60"
-										}`}
-									>
-										{count ?? "—"}
+			{!isWalkthrough && (
+				<div className="theme-border-color mt-10 flex items-end gap-6 border-b">
+					<nav aria-label="Filter liked songs" className="flex items-end gap-6">
+						{visibleFilters.map((value) => {
+							const isActive = value === activeFilter;
+							const count = counts[value];
+							return (
+								<button
+									key={value}
+									type="button"
+									onClick={() => onFilterChange(value)}
+									aria-pressed={isActive}
+									className={`relative -mb-px cursor-pointer border-b px-2 py-1.5 text-center transition-[color,border-color] duration-150 @[700px]:min-w-[6rem] ${
+										isActive
+											? "theme-text border-(--t-primary)"
+											: "theme-text-muted border-transparent hover:text-(--t-text)"
+									}`}
+									style={{ fontFamily: fonts.body }}
+								>
+									<span className="text-sm tracking-wide">
+										{FILTER_LABELS[value]}
 									</span>
-								)}
-							</button>
-						);
-					})}
-				</nav>
+									{value !== "all" && (
+										<span
+											className={`ml-1.5 text-xs tabular-nums ${
+												isActive ? "theme-text-muted" : "opacity-60"
+											}`}
+										>
+											{count ?? "—"}
+										</span>
+									)}
+								</button>
+							);
+						})}
+					</nav>
 
-				<label className="relative ml-auto hidden items-center gap-2 pb-2.5 @[900px]:flex">
-					<input
-						ref={searchInputRef}
-						type="search"
-						value={searchQuery}
-						onChange={(event) => onSearchChange(event.target.value)}
-						placeholder="Search"
-						aria-label="Search liked songs"
-						className="peer theme-text w-32 border-0 bg-transparent pl-2 text-sm tracking-wide outline-none transition-[width] duration-200 placeholder:text-(--t-text-muted) placeholder:opacity-70 placeholder:transition-opacity placeholder:duration-200 focus:w-48 focus:placeholder:opacity-100 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
-						style={{ fontFamily: fonts.body }}
-					/>
-					<button
-						type="button"
-						onClick={() => {
-							onSearchChange("");
-							searchInputRef.current?.focus();
-						}}
-						aria-label="Clear search"
-						aria-hidden={searchQuery.length === 0}
-						tabIndex={searchQuery.length === 0 ? -1 : 0}
-						className={`theme-text-muted shrink-0 transition-opacity duration-150 ${
-							searchQuery.length > 0
-								? "cursor-pointer opacity-70 hover:opacity-100"
-								: "pointer-events-none opacity-0"
-						}`}
-					>
-						<XIcon size={12} weight="regular" />
-					</button>
-					<MagnifyingGlassIcon
-						size={13}
-						weight="regular"
-						className="theme-text-muted shrink-0 transition-[color,transform] duration-200 peer-focus:scale-110 peer-focus:text-(--t-text)"
-					/>
-					<span
-						aria-hidden="true"
-						className="theme-primary-bg pointer-events-none absolute inset-x-0 -bottom-px h-px opacity-0 transition-opacity duration-200 peer-focus:opacity-100"
-					/>
-				</label>
-			</div>
+					<label className="relative ml-auto hidden items-center gap-2 pb-2.5 @[900px]:flex">
+						<input
+							ref={searchInputRef}
+							type="search"
+							value={searchQuery}
+							onChange={(event) => onSearchChange(event.target.value)}
+							placeholder="Search"
+							aria-label="Search liked songs"
+							className="peer theme-text w-32 border-0 bg-transparent pl-2 text-sm tracking-wide outline-none transition-[width] duration-200 placeholder:text-(--t-text-muted) placeholder:opacity-70 placeholder:transition-opacity placeholder:duration-200 focus:w-48 focus:placeholder:opacity-100 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
+							style={{ fontFamily: fonts.body }}
+						/>
+						<button
+							type="button"
+							onClick={() => {
+								onSearchChange("");
+								searchInputRef.current?.focus();
+							}}
+							aria-label="Clear search"
+							aria-hidden={searchQuery.length === 0}
+							tabIndex={searchQuery.length === 0 ? -1 : 0}
+							className={`theme-text-muted shrink-0 transition-opacity duration-150 ${
+								searchQuery.length > 0
+									? "cursor-pointer opacity-70 hover:opacity-100"
+									: "pointer-events-none opacity-0"
+							}`}
+						>
+							<XIcon size={12} weight="regular" />
+						</button>
+						<MagnifyingGlassIcon
+							size={13}
+							weight="regular"
+							className="theme-text-muted shrink-0 transition-[color,transform] duration-200 peer-focus:scale-110 peer-focus:text-(--t-text)"
+						/>
+						<span
+							aria-hidden="true"
+							className="theme-primary-bg pointer-events-none absolute inset-x-0 -bottom-px h-px opacity-0 transition-opacity duration-200 peer-focus:opacity-100"
+						/>
+					</label>
+				</div>
+			)}
 		</header>
 	);
 }
