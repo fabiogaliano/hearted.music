@@ -129,6 +129,7 @@ export default defineConfig(({ command }) => {
 						BETTER_AUTH_URL: "http://localhost:3000",
 						DATABASE_URL:
 							"postgresql://placeholder:placeholder@db.placeholder.test:5432/placeholder",
+						VITE_PUBLIC_APP_ORIGIN: "https://hearted.music",
 						...loadEnv("test", process.cwd(), ""),
 					}
 				: {},
