@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useIsomorphicLayoutEffect } from "@/lib/hooks/useIsomorphicLayoutEffect";
 import { scrollListElementIntoView } from "@/lib/keyboard/listScroll";
 import type {
@@ -291,6 +291,38 @@ export function useLikedSongsListController({
 		syncFocusedIndex,
 	]);
 
+	const [pendingCenterSongId, setPendingCenterSongId] = useState<string | null>(
+		null,
+	);
+
+	const centerSongInList = useCallback((songId: string) => {
+		setPendingCenterSongId(songId);
+	}, []);
+
+	// Center a song the way a deep link does: a "url"-sourced cursor sync feeds the
+	// shared scroll effect above, which centers any non-pointer change even while
+	// the panel is expanded. Waits until the song exists in the nav index, so a
+	// just-unlocked song settles into the middle as its panel opens.
+	useIsomorphicLayoutEffect(() => {
+		if (!pendingCenterSongId) return;
+		const index = navIndexBySongId.get(pendingCenterSongId);
+		if (index == null) return;
+
+		setPendingCenterSongId(null);
+
+		const change = syncFocusedIndex(index, { focus: false, source: "url" });
+		if (change) return;
+
+		// Already the focused row (sync no-ops) — scroll it into the middle anyway.
+		const element = getElementAtIndex(index);
+		if (element) scrollListElementIntoView(element, "center");
+	}, [
+		getElementAtIndex,
+		navIndexBySongId,
+		pendingCenterSongId,
+		syncFocusedIndex,
+	]);
+
 	const handleNextSong = useCallback(() => {
 		if (!selectedSongId) return;
 		const selectedIndex = displayedSongIndexById.get(selectedSongId);
@@ -347,5 +379,6 @@ export function useLikedSongsListController({
 		exitSelectionMode,
 		handleNextSong,
 		handlePreviousSong,
+		centerSongInList,
 	};
 }

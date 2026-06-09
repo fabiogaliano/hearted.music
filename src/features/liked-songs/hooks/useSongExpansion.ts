@@ -239,6 +239,26 @@ export function useSongExpansion(
 		[updateUrl],
 	);
 
+	// Open a song's panel without a card rect — no FLIP, mirroring the deep-link
+	// path (where startRect is null and the panel simply appears). Used after an
+	// unlock completes to reveal the song that was just paid for; the list centers
+	// it separately (see useLikedSongsListController.centerSongInList).
+	const openSong = useCallback(
+		(song: LikedSong) => {
+			const slug = generateSongSlug(song.track.artist, song.track.name);
+			pendingRouteSelectionRef.current = { type: "song", slug };
+
+			setStartRect(null);
+			setSelectedSongId(song.track.id);
+			updateUrl(slug);
+
+			requestAnimationFrame(() => {
+				setIsExpanded(true);
+			});
+		},
+		[updateUrl],
+	);
+
 	// Navigate to next song (maintains expansion)
 	const handleNext = useCallback(() => {
 		if (hasNext && selectedIndex >= 0) {
@@ -302,6 +322,7 @@ export function useSongExpansion(
 		hasNext,
 		hasPrevious,
 		handleExpand,
+		openSong,
 		handleNext,
 		handlePrevious,
 		handleClose,
