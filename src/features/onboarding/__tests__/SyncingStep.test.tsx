@@ -42,7 +42,7 @@ describe("SyncingStep", () => {
 	beforeEach(() => {
 		vi.useRealTimers();
 		vi.clearAllMocks();
-		mockGoToStep.mockResolvedValue(undefined);
+		mockGoToStep.mockResolvedValue({ status: "transitioned" });
 		mockGetExtensionStatus.mockResolvedValue({
 			hasToken: true,
 			tokenExpiresAtMs: null,
@@ -90,7 +90,7 @@ describe("SyncingStep", () => {
 		});
 	});
 
-	it("auto-advances to flag-playlists after sync completion", async () => {
+	it("auto-advances to claim-handle after sync completion", async () => {
 		mockGetExtensionStatus.mockResolvedValue({
 			hasToken: true,
 			tokenExpiresAtMs: null,
@@ -112,14 +112,8 @@ describe("SyncingStep", () => {
 
 		await waitFor(
 			() => {
-				expect(mockGoToStep).toHaveBeenCalledWith("flag-playlists", {
-					syncStats: {
-						songs: 500,
-						playlists: 10,
-						playlistSongs: 1000,
-						artists: 240,
-					},
-				});
+				// syncStats no longer threaded through router state — only step target
+				expect(mockGoToStep).toHaveBeenCalledWith("claim-handle");
 			},
 			{ timeout: 3_000 },
 		);

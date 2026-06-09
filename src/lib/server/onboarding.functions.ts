@@ -20,10 +20,11 @@ import {
 } from "@/lib/domains/library/accounts/claim-handle-seed";
 import { completeOnboardingWithAllocations } from "@/lib/domains/library/accounts/onboarding-allocation";
 import type { OnboardingAuthPayload } from "@/lib/domains/library/accounts/onboarding-session";
+import { clearsSyncPhaseJobIds } from "@/lib/domains/library/accounts/onboarding-steps";
 import {
 	clearPhaseJobIds,
 	getOrCreatePreferences,
-	ONBOARDING_STEPS,
+	SAVEABLE_ONBOARDING_STEPS,
 	updateOnboardingStep,
 	updateTheme,
 } from "@/lib/domains/library/accounts/preferences-queries";
@@ -106,8 +107,11 @@ const themeInputSchema = z.object({
 	theme: themeSchema,
 });
 
-const stepInputSchema = z.object({
-	step: ONBOARDING_STEPS,
+// `complete` is intentionally absent — completion is written via
+// markOnboardingComplete (which stamps onboarding_completed_at), never by
+// directly setting the step column.
+const saveableStepInputSchema = z.object({
+	step: SAVEABLE_ONBOARDING_STEPS,
 });
 
 const playlistIdsInputSchema = z.object({
@@ -409,14 +413,36 @@ export const resetSyncJobs = createServerFn({ method: "POST" })
 
 /**
  * Saves the current onboarding step for resumability.
- * Clears phaseJobIds when transitioning past syncing step.
+ * Clears phaseJobIds when the step is claim-handle or later (post-sync).
  * Updates the DB every time the user navigates to a new step.
+ *
+ * Rejects `complete` at the schema boundary — completion must go through
+ * markOnboardingComplete, which stamps onboarding_completed_at.
+ *
+ * Rejects song/match walkthrough if demo_song_id is null to prevent the
+ * impossible state where step="song-walkthrough" with no demo song.
  */
 export const saveOnboardingStep = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator(stepInputSchema)
+	.inputValidator(saveableStepInputSchema)
 	.handler(async ({ data, context }): Promise<{ success: true }> => {
 		const { session } = context;
+
+		// Walkthrough steps require a demo song to already exist — atomicity is
+		// guaranteed by commitDemoSongAndEnterWalkthrough; anything else landing
+		// here with no song is a buggy caller.
+		if (data.step === "song-walkthrough" || data.step === "match-walkthrough") {
+			const prefsResult = await getOrCreatePreferences(session.accountId);
+			if (Result.isError(prefsResult)) {
+				throw new OnboardingError("load_preferences", prefsResult.error);
+			}
+			if (prefsResult.value.demo_song_id === null) {
+				throw new OnboardingError(
+					"save_onboarding_step",
+					new Error(`Cannot advance to ${data.step} without a demo_song_id`),
+				);
+			}
+		}
 
 		const result = await updateOnboardingStep(session.accountId, data.step);
 
@@ -424,17 +450,10 @@ export const saveOnboardingStep = createServerFn({ method: "POST" })
 			throw new OnboardingError("save_onboarding_step", result.error);
 		}
 
-		// Clear phase job IDs when transitioning past syncing step
-		if (
-			data.step === "flag-playlists" ||
-			data.step === "pick-demo-song" ||
-			data.step === "song-walkthrough" ||
-			data.step === "match-walkthrough" ||
-			data.step === "plan-selection"
-		) {
+		if (clearsSyncPhaseJobIds(data.step)) {
 			const clearResult = await clearPhaseJobIds(session.accountId);
 			if (Result.isError(clearResult)) {
-				// Log but don't fail - cleanup is not critical
+				// Non-critical cleanup — log but don't fail the step save.
 				console.warn("Failed to clear phase job IDs:", clearResult.error);
 			}
 		}
@@ -442,29 +461,80 @@ export const saveOnboardingStep = createServerFn({ method: "POST" })
 		return { success: true };
 	});
 
+export type MarkOnboardingCompleteResult = {
+	status: "completed_now" | "already_complete" | "not_ready";
+	onboarding: OnboardingAuthPayload;
+};
+
 /**
- * Marks onboarding as complete.
- * Sets onboarding_completed_at timestamp in the database.
- * For free-plan users, grants up to 10 most-recent liked songs as free allocation.
+ * Structured completion gate for the onboarding flow.
+ *
+ * - `already_complete`: session is already complete; returns current payload.
+ *   Does NOT re-run completeOnboardingWithAllocations (no duplicate side-effects).
+ * - `not_ready`: session is not at plan-selection (covers earlier steps and
+ *   handle-less rows collapsed to claim-handle). Returns authoritative payload.
+ * - `completed_now`: session was at plan-selection; completion written, free
+ *   allocation granted, payload rebuilt from freshly re-read account state.
+ *
+ * The returned onboarding payload is always authoritative — callers must patch
+ * their cache and navigate via resolveSession, never hardcode a destination.
  */
 export const markOnboardingComplete = createServerFn({
 	method: "POST",
 })
 	.middleware([authMiddleware])
-	.handler(async ({ context }): Promise<{ success: true }> => {
-		const { session } = context;
+	.handler(async ({ context }): Promise<MarkOnboardingCompleteResult> => {
+		const { session: authSession, account } = context;
+		const accountId = authSession.accountId;
 
+		// Load authoritative session before deciding anything.
+		const currentOnboarding = await loadOnboardingSession({
+			accountId,
+			accountHandle: account.handle,
+		});
+
+		if (currentOnboarding.session.status === "complete") {
+			return { status: "already_complete", onboarding: currentOnboarding };
+		}
+
+		if (currentOnboarding.session.status !== "plan-selection") {
+			// Covers steps before plan-selection and handle-less rows pinned to
+			// claim-handle. Return authoritative state so the client can recover.
+			return { status: "not_ready", onboarding: currentOnboarding };
+		}
+
+		// Only here when authoritative session is exactly plan-selection.
 		const supabase = createAdminSupabaseClient();
-		const result = await completeOnboardingWithAllocations(
-			supabase,
-			session.accountId,
-		);
+		const result = await completeOnboardingWithAllocations(supabase, accountId);
 
 		if (Result.isError(result)) {
 			throw new OnboardingError("complete_onboarding", result.error);
 		}
 
-		return { success: true };
+		// Re-read account state after the write so the returned handle is fresh
+		// (not the stale value from before the allocation). The post-write session
+		// must be complete — if it isn't, something went wrong at the DB level.
+		const { data: freshAccount } = await supabase
+			.from("account")
+			.select("handle")
+			.eq("id", accountId)
+			.single();
+
+		const freshOnboarding = await loadOnboardingSession({
+			accountId,
+			accountHandle: freshAccount?.handle ?? account.handle,
+		});
+
+		if (freshOnboarding.session.status !== "complete") {
+			throw new OnboardingError(
+				"complete_onboarding",
+				new Error(
+					`[onboarding invariant] post-write session is ${freshOnboarding.session.status}, expected "complete"`,
+				),
+			);
+		}
+
+		return { status: "completed_now", onboarding: freshOnboarding };
 	});
 
 /**

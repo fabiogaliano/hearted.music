@@ -8,13 +8,14 @@
 
 import { ArrowRightIcon } from "@phosphor-icons/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/kbd";
 import { checkoutErrorMessage } from "@/features/billing/error-copy";
 import { billingKeys } from "@/features/billing/query-keys";
+import { resolveSession } from "@/features/onboarding/step-resolver";
 import {
 	SONG_PACK_500,
 	UNLIMITED_QUARTERLY,
@@ -34,7 +35,6 @@ import {
 	type PlanSelectionConfig,
 } from "@/lib/server/billing.functions";
 import {
-	getOnboardingSession,
 	markOnboardingComplete,
 	type ReadyCopyVariant,
 	type SyncStats,
@@ -417,28 +417,31 @@ function SuccessView({
 	syncStats: SyncStats;
 	readyCopyVariant: ReadyCopyVariant;
 }) {
-	const navigate = useNavigate();
+	const router = useRouter();
 	const queryClient = useQueryClient();
 	const analytics = useAnalytics();
 	const [isCompleting, setIsCompleting] = useState(false);
 
 	const handleStart = async () => {
 		setIsCompleting(true);
-		analytics.capture("onboarding_completed", {
-			songs: syncStats.songs,
-			playlists: syncStats.playlists,
-		});
 		try {
-			await markOnboardingComplete();
-			// Refetch the authoritative session so `/_authenticated`'s
-			// beforeLoad reads `session.status === "complete"` on the next
-			// navigation — replaces the legacy mutation of a no-longer-read
-			// `["auth", "onboarding"]` / `isComplete` cache shape.
-			await queryClient.fetchQuery({
-				queryKey: ONBOARDING_SESSION_QUERY_KEY,
-				queryFn: () => getOnboardingSession(),
-			});
-			await navigate({ to: "/dashboard" });
+			const result = await markOnboardingComplete();
+
+			// Patch the query cache with the authoritative session from the server
+			// response so route guards read fresh state on the next navigation.
+			queryClient.setQueryData(ONBOARDING_SESSION_QUERY_KEY, result.onboarding);
+
+			if (result.status === "completed_now") {
+				analytics.capture("onboarding_completed", {
+					songs: syncStats.songs,
+					playlists: syncStats.playlists,
+				});
+			}
+			// already_complete and not_ready: patch cache + navigate via resolver,
+			// no analytics (user already completed or not yet ready).
+
+			const { allowedPath } = resolveSession(result.onboarding.session);
+			await router.navigate({ to: allowedPath });
 		} catch (error) {
 			console.error("Failed to complete onboarding:", error);
 			toast.error("Failed to complete onboarding. Please try again.");

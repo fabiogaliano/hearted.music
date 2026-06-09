@@ -18,6 +18,8 @@ import {
 	DEFAULT_ONBOARDING_STEP,
 	ONBOARDING_STEP_VALUES,
 	type OnboardingStep,
+	SAVEABLE_ONBOARDING_STEP_VALUES,
+	type SaveableOnboardingStep,
 } from "@/lib/domains/library/accounts/onboarding-steps";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type { DbError } from "@/lib/shared/errors/database";
@@ -29,7 +31,10 @@ import {
 export type UserPreferences = Tables<"user_preferences">;
 
 export const ONBOARDING_STEPS = z.enum(ONBOARDING_STEP_VALUES);
-export type { OnboardingStep };
+export const SAVEABLE_ONBOARDING_STEPS = z.enum(
+	SAVEABLE_ONBOARDING_STEP_VALUES,
+);
+export type { OnboardingStep, SaveableOnboardingStep };
 
 /**
  * Gets preferences for an account.
@@ -129,7 +134,7 @@ export function updateTheme(
 
 export function updateOnboardingStep(
 	accountId: string,
-	step: OnboardingStep,
+	step: SaveableOnboardingStep,
 ): Promise<Result<UserPreferences, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(

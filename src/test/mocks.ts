@@ -1,7 +1,10 @@
 import { vi } from "vitest";
 import type { ThemeConfig } from "@/lib/theme/types";
 
-export const mockGoToStep = vi.fn();
+// Default: successful transition. Tests that need transition_failed override per-case.
+export const mockGoToStep = vi
+	.fn()
+	.mockResolvedValue({ status: "transitioned" });
 
 export const mockTheme: ThemeConfig = {
 	name: "Test Theme",

@@ -202,12 +202,20 @@ export function InstallExtensionStep() {
 			// and the Spotify token (from content script). Without this, nothing bridges
 			// "ready" to "syncing" and the user stalls on "Waiting for Spotify".
 			triggerExtensionSync();
-
-			await goToStep("syncing", { phaseJobIds: null });
 		} catch (err) {
 			console.error("[hearted.] handleAccept failed:", err);
 			toast.error("Couldn't connect the extension. Please try again.");
 			setIsAdvancing(false);
+			return;
+		}
+
+		const result = await goToStep("syncing", { phaseJobIds: null });
+		if (result.status === "transition_failed") {
+			// Sync was already started — can't undo. Stay here so the user can refresh.
+			setIsAdvancing(false);
+			toast.error(
+				"Sync started, but we couldn't continue. Refresh to keep going.",
+			);
 		}
 	}, [goToStep]);
 

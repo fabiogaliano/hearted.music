@@ -14,9 +14,9 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Onboarding } from "@/features/onboarding/Onboarding";
 import {
+	compareOnboardingSteps,
 	DEFAULT_ONBOARDING_STEP,
 	isOnboardingStep,
-	ONBOARDING_STEP_VALUES,
 	type OnboardingStep,
 } from "@/lib/domains/library/accounts/onboarding-steps";
 import { getOnboardingData } from "@/lib/server/onboarding.functions";
@@ -66,22 +66,21 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 		// Step progression validation
 		// Prevents users from manually navigating ahead of their saved progress
 		const savedStep = data.session.status;
-		const stepOrder = ONBOARDING_STEP_VALUES;
-		const urlStepIndex = stepOrder.indexOf(search.step);
-		const savedStepIndex = stepOrder.indexOf(savedStep);
 
-		// Special case: auto-skip flag-playlists → pick-demo-song when user has no playlists
-		// This is a valid forward jump that should bypass the guard
+		// Special case: auto-skip flag-playlists → pick-demo-song when user has no playlists.
+		// This is a valid forward jump that must bypass the generic order guard — keep it
+		// as a separate explicit branch so the no-playlists business rule is visible.
 		const isAutoSkipFlagPlaylists =
 			search.step === "pick-demo-song" &&
 			savedStep === "flag-playlists" &&
 			data.playlists.length === 0;
 
-		const isAutoSkip = isAutoSkipFlagPlaylists;
-
 		// Guard: If URL step is ahead of saved step, redirect back to saved step
-		// (unless it's the valid auto-skip case)
-		if (urlStepIndex > savedStepIndex && !isAutoSkip) {
+		// (unless it's the valid auto-skip case above)
+		if (
+			compareOnboardingSteps(search.step, savedStep) > 0 &&
+			!isAutoSkipFlagPlaylists
+		) {
 			throw redirect({
 				to: "/onboarding",
 				search: { step: savedStep },

@@ -1,10 +1,11 @@
 /**
  * Syncing step - shows real-time progress from the extension during onboarding.
- * Auto-advances to flag-playlists when the extension reports a completed sync.
+ * Auto-advances to claim-handle when the extension reports a completed sync.
  */
 
 import { ArrowRightIcon } from "@phosphor-icons/react";
-import { useEffect, useEffectEvent, useMemo } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import type { ExtensionSyncState } from "@/lib/extension/detect";
 import { useExtensionSyncStatus } from "@/lib/extension/useExtensionSyncStatus";
@@ -153,6 +154,8 @@ interface SyncingStepProps {
 export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
 	const { goToStep } = useOnboardingNavigation();
 	const { sync: syncState } = useExtensionSyncStatus({ autoTrigger: true });
+	// Locked after a transition_failed to prevent auto-retry until refresh/remount.
+	const [transitionFailed, setTransitionFailed] = useState(false);
 
 	const { phaseCounts, counters } = useMemo(() => {
 		const counts = {
@@ -180,15 +183,16 @@ export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
 	const syncProgress = useSmoothProgress(percent, allComplete);
 	const error = syncState?.error ?? null;
 
-	const onSyncComplete = useEffectEvent(() => {
-		goToStep("flag-playlists", {
-			syncStats: {
-				songs: phaseCounts.songs.count,
-				playlists: phaseCounts.playlists.count,
-				playlistSongs: phaseCounts.playlistTracks.count,
-				artists: phaseCounts.artistImages.count,
-			},
-		});
+	const onSyncComplete = useEffectEvent(async () => {
+		// Don't auto-retry if a previous transition attempt already failed.
+		if (transitionFailed) return;
+		const result = await goToStep("claim-handle");
+		if (result.status === "transition_failed") {
+			setTransitionFailed(true);
+			toast.error(
+				"Sync finished, but we couldn't continue. Refresh to keep going.",
+			);
+		}
 	});
 
 	useEffect(() => {

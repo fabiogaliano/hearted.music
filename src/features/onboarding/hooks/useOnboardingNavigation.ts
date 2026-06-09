@@ -4,8 +4,8 @@
  *
  * ## State Management Pattern: Navigation State + DB Fallback
  *
- * We pass ephemeral data (phaseJobIds, syncStats) through TanStack Router's
- * navigation state for instant UX, with DB fallback for page refresh.
+ * We pass ephemeral data (phaseJobIds) through TanStack Router's navigation
+ * state for instant UX, with DB fallback for page refresh.
  *
  * ### Why This Pattern?
  * - **0 API calls** during normal flow (maximum speed)
@@ -38,9 +38,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
-import { toast } from "sonner";
-import type { SyncStats } from "@/features/onboarding/types";
-import type { OnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
+import type { SaveableOnboardingStep } from "@/lib/domains/library/accounts/onboarding-steps";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import {
 	getOnboardingSession,
@@ -50,18 +48,21 @@ import "../types"; // Import to ensure HistoryState augmentation is loaded
 
 const ONBOARDING_SESSION_QUERY_KEY = ["auth", "onboarding-session"] as const;
 
+export type OnboardingStepTransitionResult =
+	| { status: "transitioned" }
+	| { status: "transition_failed" };
+
 export function useOnboardingNavigation() {
 	const queryClient = useQueryClient();
 	const navigate = useNavigate({ from: "/onboarding" });
 
 	const goToStep = useCallback(
 		async (
-			step: OnboardingStep,
+			step: SaveableOnboardingStep,
 			options?: {
 				phaseJobIds?: PhaseJobIds | null;
-				syncStats?: SyncStats;
 			},
-		) => {
+		): Promise<OnboardingStepTransitionResult> => {
 			try {
 				// Save step to DB for resumability
 				await saveOnboardingStep({ data: { step } });
@@ -87,15 +88,15 @@ export function useOnboardingNavigation() {
 						...(options?.phaseJobIds !== undefined && {
 							phaseJobIds: options.phaseJobIds,
 						}),
-						...(options?.syncStats !== undefined && {
-							syncStats: options.syncStats,
-						}),
 					}),
 				});
+
+				return { status: "transitioned" };
 			} catch (error) {
 				console.error("Failed to save onboarding step:", error);
-				toast.error("Something went wrong. Please try again.");
-				// Don't navigate if save fails - prevents state mismatch
+				// Return failure rather than throw — callers branch on status,
+				// show their own context-appropriate toast, and reset their own state.
+				return { status: "transition_failed" };
 			}
 		},
 		[navigate, queryClient],

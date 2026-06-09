@@ -1,6 +1,6 @@
 # Task 08 — Onboarding step machine + wiring
 
-**Plan:** §7.1, §7.2 (items 1–2, 6–7, 17, 19–21), §7.4 · **Recommended order:** step 11 (runs **before** Task 09 despite the higher §13.2 number — see index dependency notes) · **Status:** [ ]
+**Plan:** §7.1, §7.2 (items 1–2, 6–7, 17, 19–21), §7.4 · **Recommended order:** step 11 (runs **before** Task 09 despite the higher §13.2 number — see index dependency notes) · **Status:** [x]
 
 ## Goal
 
