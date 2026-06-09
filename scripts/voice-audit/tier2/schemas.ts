@@ -4,7 +4,7 @@ import { z } from "zod";
 // lists its reasoning (rationale) and evidence BEFORE the verdict boolean. The model examines
 // the evidence and writes it out first, then commits to the pass/fail call last — verdict-first
 // schemas let it decide before reasoning. Order is the only semantic change here; the gate
-// fields and superRefine rules are unchanged. See claudedocs/06-block1-implementation-plan.md WP3.
+// fields and superRefine rules are unchanged.
 export const RegisterSpecificitySchema = z
 	.object({
 		rationale: z.array(z.string()).default([]),

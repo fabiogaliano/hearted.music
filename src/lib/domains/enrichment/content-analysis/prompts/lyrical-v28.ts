@@ -16,7 +16,7 @@ import type { PromptVersion } from "./types";
 // it is Y". v28 is the best PROMPT we can ship for register; full elimination still needs the tier1
 // regenerate-on-hit gate (already built) on the residual pivot. Measured FREE via runAllRules; a paid
 // pairwise vs gold is the real readiness test. Both edits guarded — a missing anchor throws rather than
-// silently shipping a clone. ACTIVE stays v13. Run at temperature 0.3. See claudedocs/08 (H10).
+// silently shipping a clone. ACTIVE stays v13. Run at temperature 0.3. See scripts/voice-audit/experiments/changelog.md (H10).
 
 const PERSONA_TAIL = `Your job is the part underneath, the thing they haven't caught yet.`;
 const VOICE_BLOCK = `Your job is the part underneath, the thing they haven't caught yet.

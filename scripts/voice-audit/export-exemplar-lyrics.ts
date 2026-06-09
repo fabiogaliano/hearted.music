@@ -5,7 +5,7 @@
  *
  * All exemplars already have a song_lyrics row in the local DB (source=genius),
  * so this reads straight from Postgres — no Genius round-trip. The on-disk shape
- * mirrors the original claudedocs/pink-pony-club-db-export.json envelope:
+ * mirrors the original Genius DB-export envelope shape:
  *
  *   { song: { id, name, artists, album_name },
  *     lyrics: { source, document, content_hash, schema_version, has_annotations } }

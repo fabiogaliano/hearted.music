@@ -5,7 +5,7 @@
  *   e.g. bun run scripts/fetch-raw-genius-referents.ts "Kendrick Lamar" "Money Trees"
  */
 
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 const TOKEN = process.env.GENIUS_CLIENT_TOKEN ?? Bun.env.GENIUS_CLIENT_TOKEN;
@@ -54,6 +54,8 @@ const output = {
 };
 
 const slug = `${artist}-${song}`.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-const outPath = join(import.meta.dir, `../claudedocs/genius-referents-${slug}-raw.json`);
+const outDir = join(import.meta.dir, ".scratch");
+mkdirSync(outDir, { recursive: true });
+const outPath = join(outDir, `genius-referents-${slug}-raw.json`);
 writeFileSync(outPath, JSON.stringify(output, null, 2));
 console.log(`Written to: ${outPath}`);

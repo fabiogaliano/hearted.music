@@ -4,7 +4,7 @@
 // The shape is deliberately additive and self-describing: every run's candidate-vs-gold
 // verdict is stored RAW, and the scoreboard re-derives the song-level outcome from those raw
 // runs (collapseOutcome below) rather than trusting a stored verdict. songOutcome is kept on
-// disk only as a human-readable convenience. See claudedocs/06-block1-implementation-plan.md WP2.
+// disk only as a human-readable convenience.
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";

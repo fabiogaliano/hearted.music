@@ -1,7 +1,7 @@
 import type { PromptVersion } from "./types";
 
 // v20 = lyrical-v17.ts + ONE targeted register edit (Phase-4 iteration H2). Branches from v17, NOT from the
-// dead v19 (whose phrase-blocklist approach was routed around — see claudedocs/08). The pro probe (P1) and
+// dead v19 (whose phrase-blocklist approach was routed around — see scripts/voice-audit/experiments/changelog.md). The pro probe (P1) and
 // the v17/v19 Flash baselines all converge on one tell as the single most-cited essayistic-register failure,
 // on BOTH gemini-2.5-flash and gemini-2.5-pro: the antithesis thesis-pivot — "This is not a diss track. It is
 // testifying.", "He is not rapping. He is testifying.", "not a rival but a predator." v17 already had one weak
@@ -14,7 +14,7 @@ import type { PromptVersion } from "./types";
 //
 // ---- Everything below is inherited verbatim from lyrical-v17.ts (see that file's history) ----
 //
-// v17 is the first prompt authored straight from claudedocs/hearted-audit-principles.md (rather than
+// v17 is the first prompt authored straight from docs/analysis/hearted-read.md (rather than
 // carried over from v16). It makes the global grounding rule (GRD-1…9) the #1 gate over every field,
 // documents the >15-vote annotation gate, makes specificity (SPC-1) loud, and folds the editorial-only
 // principles that have no deterministic judge into the field specs.

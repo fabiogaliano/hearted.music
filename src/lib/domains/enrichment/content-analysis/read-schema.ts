@@ -1,6 +1,6 @@
 /**
  * Zod schema for the redesigned analysis model. See
- * claudedocs/session-3-zod-migration-notes.md for the full rationale.
+ * docs/analysis/hearted-read.md §0 for the full rationale.
  *
  * Cardinality: Zod is the permissive envelope, the prompt is the narrower
  * target. Floors are looser than the prompt so coherent output is never
@@ -28,7 +28,7 @@ const ReadLineBeatSchema = z.object({
 export const SongReadSchema = z.object({
 	image: z.string(),
 	// Free string: the three-form grammar lives in the prompt + jury, not a
-	// brittle Zod regex (concept-lens-vocabulary.md §3).
+	// brittle Zod regex (docs/analysis/lens-vocabulary.md §3).
 	lens: z.string(),
 	// Qualified emotion, not a paradox; the paradox is `contradiction`'s job.
 	tension: z.string(),

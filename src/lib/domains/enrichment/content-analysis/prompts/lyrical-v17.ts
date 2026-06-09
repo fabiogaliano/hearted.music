@@ -1,6 +1,6 @@
 import type { PromptVersion } from "./types";
 
-// v17 is the first prompt authored straight from claudedocs/hearted-audit-principles.md (rather than
+// v17 is the first prompt authored straight from docs/analysis/hearted-read.md (rather than
 // carried over from v16). It makes the global grounding rule (GRD-1…9) the #1 gate over every field,
 // documents the >15-vote annotation gate, makes specificity (SPC-1) loud, and folds the editorial-only
 // principles that have no deterministic judge into the field specs.
@@ -40,7 +40,7 @@ import type { PromptVersion } from "./types";
 // Gemini thinking budget is recommended, and field-level style rules would adhere better in a responseSchema
 // `description` than re-stated in prompt prose — a pipeline change, not made in this file.
 //
-// 2026-06-06 gold re-validation — documented in claudedocs/07-v17-gold-revalidation.md. All nine
+// 2026-06-06 gold re-validation — documented in scripts/voice-audit/experiments/changelog.md. All nine
 // golds were read rule-by-rule against this prompt; the caps held, and the non-cap rules the golds
 // broke were softened (golds are truth): the one-fragment-per-field cap now allows deliberate
 // stacked fragments (and the arc-scene spec matches) and exempts quoted-lyric fragments; the image
@@ -54,7 +54,7 @@ export const lyricalV17: PromptVersion = {
 	version: "17",
 	kind: "lyrical",
 	notes:
-		"From-the-principles authoring (hearted-audit-principles.md): grounding GRD-1…9 as the #1 gate, the >15-vote annotation gate in-prompt, SPC-1 made loud, editorial-only principles folded into the field specs. 2026-06-06 revision: re-grounded against the voice-audit tier1 rules + tier2 judges and researched for Gemini 2.5 Flash — named-prohibition lists aligned to what tier1 gates (hedging/academic-register/ai-vocabulary), the grounding gate restated next to the input per Gemini long-context guidance, the song fenced from the worked examples, the most-enforced rules led with the positive action, the mislabeled fragment examples corrected, the lens self-test de-'this song'-ed, and verbose passages tightened. No principle dropped. All illustrative examples invented (no gold baked in); {example} and {annotations} are runtime-injected and empty-safe. Registered but NOT active (prod ships v13). Run at temperature 0.3; low/zero thinking budget recommended for this styling task.",
+		"From-the-principles authoring (hearted-read.md): grounding GRD-1…9 as the #1 gate, the >15-vote annotation gate in-prompt, SPC-1 made loud, editorial-only principles folded into the field specs. 2026-06-06 revision: re-grounded against the voice-audit tier1 rules + tier2 judges and researched for Gemini 2.5 Flash — named-prohibition lists aligned to what tier1 gates (hedging/academic-register/ai-vocabulary), the grounding gate restated next to the input per Gemini long-context guidance, the song fenced from the worked examples, the most-enforced rules led with the positive action, the mislabeled fragment examples corrected, the lens self-test de-'this song'-ed, and verbose passages tightened. No principle dropped. All illustrative examples invented (no gold baked in); {example} and {annotations} are runtime-injected and empty-safe. Registered but NOT active (prod ships v13). Run at temperature 0.3; low/zero thinking budget recommended for this styling task.",
 	template: `You're writing song analysis for hearted.music. You sound like a friend who notices music the way you do and says what they hear, warmly and with certainty. The title and artist are already on screen. Your job is the part underneath, the thing they haven't caught yet.
 
 GROUNDING — THE RULE OVER EVERY FIELD:

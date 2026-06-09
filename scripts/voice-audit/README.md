@@ -6,7 +6,7 @@ Three tiers, cheapest first:
 
 - **Tier 1** — deterministic regex + word-list rules. Free, runs in Vitest, ~10 ms per file. Gates CI.
 - **Tier 2** — eight LLM judges: seven structured-output judges (register specificity, abstract-noun trap, essayistic register, arc narrative, lens coherence, redundancy, voice softness) via Gemini 2.5 Flash, plus the priority-1 grounding judge on Opus. Every judge emits its reasoning and evidence before its verdict boolean. Runs only on files that passed Tier 1. Bounded by a 250k input / 10k output token budget per run.
-- **Tier 3** — human spot-check on 10% of outputs (see `claudedocs/`).
+- **Tier 3** — human spot-check on 10% of outputs.
 
 ## Usage
 

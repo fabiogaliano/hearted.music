@@ -4,8 +4,7 @@
  * Reads the vendored, pinned price snapshot (model-prices.generated.json, produced
  * by scripts/sync-model-prices.ts) so there is no runtime network dependency and
  * pricing is deterministic and testable. This is a list-price × token ESTIMATE, not
- * the GCP invoice — see claudedocs/llm-cost-tracking-plan.md for what it does and
- * doesn't model.
+ * the GCP invoice.
  */
 
 import prices from "./model-prices.generated.json";

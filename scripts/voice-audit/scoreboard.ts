@@ -5,7 +5,8 @@
 // Multiple runs of one song are repeated measures, NOT extra n: they collapse to one song-level
 // outcome (eval-artifact.collapseOutcome) before any inference runs. The scoreboard reports, per
 // variant, its marginal WIN-or-TIE rate with a Wilson band; and for a paired A-vs-B comparison,
-// the discordant song counts fed to a McNemar mid-p test. See claudedocs/06-block1-implementation-plan.md WP2.
+// the discordant song counts fed to a McNemar mid-p test. Method notes:
+// scripts/voice-audit/experiments/changelog.md.
 //
 //   bun scripts/voice-audit/scoreboard.ts eval-artifacts/v17-base.json
 //   bun scripts/voice-audit/scoreboard.ts eval-artifacts/v17-base.json eval-artifacts/v18-cand.json

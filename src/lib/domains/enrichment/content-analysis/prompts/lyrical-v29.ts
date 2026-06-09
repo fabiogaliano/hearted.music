@@ -18,7 +18,7 @@ import type { PromptVersion } from "./types";
 // legit subordinate contrasts the golds use ("could never be bought, only inherited"); so the v17
 // carve-out is kept. The author's ad-copy framing ("Benefit-Oriented, value to the reader") is dropped
 // as wrong-register for the house voice. Measured FREE via the tier1 cross-sentence antithesis rule;
-// everything else byte-identical to v17. ACTIVE stays v17. Run at temperature 0.3. See claudedocs/08 (H11).
+// everything else byte-identical to v17. ACTIVE stays v17. Run at temperature 0.3. See scripts/voice-audit/experiments/changelog.md (H11).
 
 const ANTI_PIVOT_LINE = `Say what something is. Don't say what it "isn't" and then pivot to what it is. A plain subordinate contrast inside a sentence is not that move and is fine: "the door stays shut, not slammed."`;
 

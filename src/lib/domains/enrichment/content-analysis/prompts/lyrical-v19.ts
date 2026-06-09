@@ -15,7 +15,7 @@ import type { PromptVersion } from "./types";
 //
 // ---- Everything below is inherited verbatim from lyrical-v17.ts (see that file's history) ----
 //
-// v17 is the first prompt authored straight from claudedocs/hearted-audit-principles.md (rather than
+// v17 is the first prompt authored straight from docs/analysis/hearted-read.md (rather than
 // carried over from v16). It makes the global grounding rule (GRD-1…9) the #1 gate over every field,
 // documents the >15-vote annotation gate, makes specificity (SPC-1) loud, and folds the editorial-only
 // principles that have no deterministic judge into the field specs.

@@ -15,7 +15,7 @@ import type { PromptVersion } from "./types";
 // priming evidence, and gutting it would confound the test. Each removal is guarded — if an anchor is
 // absent the module throws rather than silently shipping a clone of v17. Measured FREE via runAllRules
 // (antithesis + book-report-opener counts). Everything else byte-identical to v17. ACTIVE stays v13.
-// Run at temperature 0.3. See claudedocs/08 (H8).
+// Run at temperature 0.3. See scripts/voice-audit/experiments/changelog.md (H8).
 
 const FRAMING_VERB_BLOCK = `Open every field on the noun or the image itself, never on a framing verb ("This is," "It is," "This song is").
   Wrong: "This is a declaration of war."

@@ -2,7 +2,7 @@
 // signal the prompt loop reads: which judge keeps failing (pass-rates), WHAT keeps losing (the
 // recurring judge evidence + pairwise rationales), and whether a named prior variant moved each
 // judge (the diff). This is the qualitative half of the scorecard that the statistical scoreboard
-// (Wilson/McNemar) deliberately left unbuilt — see claudedocs/03-voice-audit-v17-loop.md Part B §5.
+// (Wilson/McNemar) deliberately left unbuilt.
 //
 // Everything here is pure and LLM-free: it reads only what evaluate.ts --pointwise already wrote.
 // Pass-rates are DESCRIPTIVE counts over candidates (repeated measures), NOT inferential
