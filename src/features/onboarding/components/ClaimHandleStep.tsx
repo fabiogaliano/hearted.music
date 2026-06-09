@@ -19,6 +19,7 @@ import { useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
+import { Kbd } from "@/components/ui/kbd";
 import { resolveSession } from "@/features/onboarding/step-resolver";
 import { getPublicAppOrigin } from "@/lib/config/public-app-origin";
 import type { ClaimHandleSeed } from "@/lib/domains/library/accounts/claim-handle-seed";
@@ -32,6 +33,17 @@ import {
 	claimHandleAndAdvance,
 } from "@/lib/server/account-handle.functions";
 import { fonts } from "@/lib/theme/fonts";
+import { StaggeredContent } from "./StaggeredContent";
+
+// Loader-delay pattern (see github.com/smeijer/spin-delay): two thresholds keep
+// the transient "Checking…" message from flashing.
+//   • SHOW_DELAY — don't surface it until a lookup has been pending this long.
+//     Quick checks resolve under it and go straight to the result.
+//   • MIN_VISIBLE — once shown, hold it at least this long even if the result
+//     lands immediately after, so a check that resolves just past SHOW_DELAY
+//     can't flash the message on and instantly off.
+const CHECKING_SHOW_DELAY_MS = 300;
+const CHECKING_MIN_VISIBLE_MS = 500;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -69,7 +81,7 @@ function reasonCopy(reason: HandleValidationReason): string {
 		case "profanity":
 			return "That handle isn’t allowed.";
 		case "taken":
-			return "That handle is taken.";
+			return "Someone got there first.";
 	}
 }
 
@@ -118,6 +130,14 @@ export function ClaimHandleStep({
 	// authoritative current-value verdict once returned by claimHandleAndAdvance.
 	const [submitTimeUnavailable, setSubmitTimeUnavailable] =
 		useState<HandleValidationReason | null>(null);
+
+	// Delayed mirror of isChecking — gates only the *display* of the checking
+	// message so fast lookups don't flash it. Submit gating still uses isChecking.
+	// Refs let the driving effect depend solely on isChecking transitions without
+	// re-running (and rescheduling its timers) when showChecking itself flips.
+	const [showChecking, setShowChecking] = useState(false);
+	const showCheckingRef = useRef(false);
+	const checkingShownAtRef = useRef(0);
 
 	// ── Owned-handle logic ────────────────────────────────────────────────────
 
@@ -250,6 +270,41 @@ export function ClaimHandleStep({
 		!isInDebouncedGap &&
 		queryEnabled &&
 		(availabilityQuery.isFetching || availabilityQuery.isLoading);
+
+	// Drive showChecking through the two thresholds. While a lookup is pending,
+	// arm a SHOW_DELAY timer to reveal the message; if the lookup resolves first,
+	// the cleanup clears it and the message is never shown. Once it *is* shown,
+	// defer hiding until MIN_VISIBLE has elapsed so it can't flash off instantly.
+	useEffect(() => {
+		if (isChecking) {
+			if (showCheckingRef.current) return;
+			const id = setTimeout(() => {
+				showCheckingRef.current = true;
+				checkingShownAtRef.current = performance.now();
+				setShowChecking(true);
+			}, CHECKING_SHOW_DELAY_MS);
+			return () => clearTimeout(id);
+		}
+
+		if (!showCheckingRef.current) {
+			setShowChecking(false);
+			return;
+		}
+
+		const remaining =
+			CHECKING_MIN_VISIBLE_MS -
+			(performance.now() - checkingShownAtRef.current);
+		if (remaining <= 0) {
+			showCheckingRef.current = false;
+			setShowChecking(false);
+			return;
+		}
+		const id = setTimeout(() => {
+			showCheckingRef.current = false;
+			setShowChecking(false);
+		}, remaining);
+		return () => clearTimeout(id);
+	}, [isChecking]);
 
 	// ── Handle availability-time already_owned as immediate recovery ──────────
 
@@ -530,10 +585,12 @@ export function ClaimHandleStep({
 			return { text: "", showRetry: false, showReset: false };
 		}
 
-		// Checking.
-		if (isChecking) {
+		// Checking — only surfaced once the lookup outlasts the display threshold.
+		// The trailing dots are animated in via .hearted-ellipsis, so the text
+		// itself omits them (a static "…" returns under reduced motion).
+		if (showChecking) {
 			return {
-				text: "Checking availability…",
+				text: "Checking availability",
 				showRetry: false,
 				showReset: false,
 			};
@@ -556,7 +613,7 @@ export function ClaimHandleStep({
 		// Error.
 		if (currentVerdict?.status === "error") {
 			return {
-				text: "Couldn’t check that handle — try again.",
+				text: "Couldn’t check that one. Give it another go.",
 				showRetry: true,
 				showReset: false,
 			};
@@ -565,172 +622,173 @@ export function ClaimHandleStep({
 		return { text: "", showRetry: false, showReset: false };
 	})();
 
-	// ── Live preview ──────────────────────────────────────────────────────────
+	// One feedback line below the field: the live status takes over from the
+	// static helper whenever the field has something to report, so guidance and
+	// validation never stack as two near-identical lines.
+	const hasStatus = dynamicStatus.text !== "";
 
-	// Show only for actionable values: owned-equal or availability-confirmed available.
-	const showPreview =
-		isOwnedHandleState || currentVerdict?.status === "available";
+	// Success leans on the accent; problems use full-strength text so they register
+	// against the pastel background (the palette has no red); transient and neutral
+	// states stay muted.
+	const statusToneClass =
+		currentVerdict?.status === "available"
+			? "theme-primary"
+			: showChecking || isOwnedHandleState || dynamicStatus.showReset
+				? "theme-text-muted"
+				: "theme-text";
+
+	// ── Address prefix ──────────────────────────────────────────────────────────
 
 	const publicAppOrigin = getPublicAppOrigin();
-	const previewHandle = isOwnedHandleState
-		? claimHandleSeed.kind === "owned"
-			? claimHandleSeed.handle
-			: value
-		: (normalizedHandle ?? value);
-	const previewUrl = `${publicAppOrigin}/@${previewHandle}`;
+	// Bare domain (no scheme) so the field reads like an address rather than a
+	// raw URL — "hearted.music/@you", not "http://127.0.0.1:5173/@you".
+	const previewDomain = publicAppOrigin.replace(/^https?:\/\//, "");
 
 	// ── Render ────────────────────────────────────────────────────────────────
 
 	return (
-		<div className="text-center">
-			<h2
-				className="theme-text text-4xl leading-tight font-extralight"
-				style={{ fontFamily: fonts.display }}
-			>
-				Claim your <em className="font-normal">@handle</em>
-			</h2>
-
-			<form
-				onSubmit={handleSubmit}
-				noValidate
-				className="mt-12 mx-auto max-w-sm text-left"
-			>
-				{/* Label */}
-				<label
-					htmlFor="claim-handle-input"
-					className="theme-text-muted block text-xs tracking-widest uppercase mb-2"
-					style={{ fontFamily: fonts.body }}
+		<>
+			<StaggeredContent>
+				<h2
+					className="theme-text text-6xl leading-tight font-extralight"
+					style={{ fontFamily: fonts.display }}
 				>
-					Handle
-				</label>
+					Your
+					<br />
+					<em className="font-normal">hearted.</em> handle
+				</h2>
 
-				{/* Input */}
-				<input
-					id="claim-handle-input"
-					ref={inputRef}
-					type="text"
-					value={value}
-					onChange={handleChange}
-					readOnly={submitInFlight}
-					// biome-ignore lint/a11y/noAutofocus: §8.3 mandates autoFocus on mount — dedicated single-field onboarding step; intentional expected.
-					autoFocus
-					autoCapitalize="none"
-					autoCorrect="off"
-					spellCheck={false}
-					autoComplete="off"
-					placeholder="fabio"
-					aria-describedby="claim-handle-helper claim-handle-status"
-					className={[
-						"theme-text theme-bg theme-border-color w-full border-b py-2",
-						"text-base bg-transparent outline-none",
-						"focus-visible:border-[color:var(--t-primary)]",
-						"transition-[border-color] duration-150 ease-out",
-						submitInFlight ? "opacity-70" : "",
-					]
-						.filter(Boolean)
-						.join(" ")}
-					style={{ fontFamily: fonts.body }}
-				/>
-
-				{/* Static helper — always visible, not a live region */}
-				<p
-					id="claim-handle-helper"
-					className="theme-text-muted mt-3 text-xs leading-relaxed"
-					style={{ fontFamily: fonts.body }}
+				<form
+					onSubmit={handleSubmit}
+					noValidate
+					className="mt-16 max-w-md text-left"
 				>
-					Enter just the name — we’ll add the @ in your public URL. Use letters,
-					numbers, periods, or underscores. Periods can’t start, end, or appear
-					twice in a row.
-				</p>
-
-				{/* Dynamic status region — the single source of truth for feedback */}
-				<div
-					id="claim-handle-status"
-					aria-live="polite"
-					className="mt-2 min-h-[1.5rem] text-xs"
-					style={{ fontFamily: fonts.body }}
-				>
-					{dynamicStatus.text && (
+					{/* The field renders the live address: a muted, non-editable
+					    {domain}/@ prefix sits flush against the input so the value the
+					    user types reads as their real URL — the prefix is never part of
+					    the typed value. */}
+					<div
+						className={[
+							"theme-border-color flex items-baseline border-b",
+							"transition-[border-color] duration-150 ease-out",
+							"focus-within:border-[color:var(--t-primary)]",
+							submitInFlight ? "opacity-70" : "",
+						]
+							.filter(Boolean)
+							.join(" ")}
+					>
 						<span
-							className={
-								dynamicStatus.showRetry || dynamicStatus.showReset
-									? "theme-text-muted"
-									: currentVerdict?.status === "available" || isOwnedHandleState
-										? "theme-text-muted"
-										: "theme-primary"
-							}
+							aria-hidden="true"
+							className="theme-text-muted shrink-0 select-none py-2 text-lg whitespace-nowrap"
+							style={{ fontFamily: fonts.body }}
 						>
-							{dynamicStatus.text}
+							{previewDomain}/@
 						</span>
-					)}
-
-					{/* Reset action for owned-edited-away */}
-					{dynamicStatus.showReset && claimHandleSeed.kind === "owned" && (
-						<>
-							{" "}
-							<button
-								type="button"
-								onClick={handleReset}
-								className="theme-primary underline cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)]"
-								style={{ fontFamily: fonts.body }}
-							>
-								Use @{claimHandleSeed.handle}
-							</button>
-						</>
-					)}
-
-					{/* Retry action for availability error */}
-					{dynamicStatus.showRetry && (
-						<>
-							{" "}
-							<button
-								type="button"
-								onClick={handleRetry}
-								className="theme-primary underline cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)]"
-								style={{ fontFamily: fonts.body }}
-							>
-								Check again
-							</button>
-						</>
-					)}
-				</div>
-
-				{/* Live preview — display-only, no anchor or interaction */}
-				{showPreview && (
-					<div className="mt-4" aria-hidden="true">
-						<p
-							className="theme-text-muted text-xs tracking-widest uppercase"
+						<input
+							id="claim-handle-input"
+							ref={inputRef}
+							type="text"
+							value={value}
+							onChange={handleChange}
+							readOnly={submitInFlight}
+							// biome-ignore lint/a11y/noAutofocus: §8.3 mandates autoFocus on mount — dedicated single-field onboarding step; intentional expected.
+							autoFocus
+							autoCapitalize="none"
+							autoCorrect="off"
+							spellCheck={false}
+							autoComplete="off"
+							placeholder="fabio"
+							aria-label="Handle"
+							aria-describedby="claim-handle-helper claim-handle-status"
+							className="theme-text min-w-0 flex-1 bg-transparent py-2 text-lg outline-none"
 							style={{ fontFamily: fonts.body }}
-						>
-							Public URL
-						</p>
-						<p
-							className="theme-text-muted mt-1 text-xs"
-							style={{ fontFamily: fonts.body }}
-						>
-							{previewUrl}
-						</p>
+						/>
 					</div>
-				)}
 
-				{/* Submit button */}
-				<div className="mt-8 flex justify-center">
+					{/* Feedback — guidance by default; the live status takes over the
+					    line whenever the field has something to report. Both stay in the
+					    DOM for aria-describedby, but only one is ever visible. */}
+					<div className="mt-3 min-h-5 text-sm">
+						<p
+							id="claim-handle-helper"
+							hidden={hasStatus}
+							className="theme-text-muted"
+							style={{ fontFamily: fonts.body }}
+						>
+							Letters, numbers, periods, and underscores.
+						</p>
+
+						<div
+							id="claim-handle-status"
+							aria-live="polite"
+							style={{ fontFamily: fonts.body }}
+						>
+							{dynamicStatus.text && (
+								<span className={statusToneClass}>
+									{dynamicStatus.text}
+									{showChecking && (
+										<span className="hearted-ellipsis" aria-hidden="true" />
+									)}
+								</span>
+							)}
+
+							{/* Reset action for owned-edited-away */}
+							{dynamicStatus.showReset && claimHandleSeed.kind === "owned" && (
+								<>
+									{" "}
+									<button
+										type="button"
+										onClick={handleReset}
+										className="theme-primary underline cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)]"
+										style={{ fontFamily: fonts.body }}
+									>
+										Use @{claimHandleSeed.handle}
+									</button>
+								</>
+							)}
+
+							{/* Retry action for availability error */}
+							{dynamicStatus.showRetry && (
+								<>
+									{" "}
+									<button
+										type="button"
+										onClick={handleRetry}
+										className="theme-primary underline cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)]"
+										style={{ fontFamily: fonts.body }}
+									>
+										Check again
+									</button>
+								</>
+							)}
+						</div>
+					</div>
+
+					{/* Submit button */}
 					<Button
 						type="submit"
 						variant="link"
 						disabled={!canContinue}
+						className="mt-12"
 						style={{ fontFamily: fonts.body }}
 					>
 						<span className="text-lg font-medium tracking-wide">
-							{isSubmitting ? "Saving..." : "Continue"}
+							{isSubmitting ? "Saving…" : "Continue"}
 						</span>
 						<ArrowRightIcon
 							size={16}
 							className="theme-text-muted inline-block transition-transform group-hover:translate-x-1"
 						/>
 					</Button>
+				</form>
+			</StaggeredContent>
+
+			<div className="theme-kbd-scope fixed right-0 bottom-6 left-0 flex items-center justify-center gap-6 opacity-60">
+				<div className="flex items-center gap-1.5">
+					<Kbd>⏎</Kbd>
+					<span className="text-xs">to continue</span>
 				</div>
-			</form>
-		</div>
+			</div>
+		</>
 	);
 }

@@ -458,3 +458,26 @@ code {
   }
 }
 
+/* ── Animated checking ellipsis ───────────────────────────────────────── */
+/* Cycles the trailing dots . / .. / ... / (blank) so a pending lookup reads
+   as actively working. The dots live in ::after, so they never enter the DOM
+   or the a11y tree — the text node stays stable for the aria-live region.
+   step-end holds each value for its full quarter, then snaps to the next. */
+.hearted-ellipsis::after {
+  content: "…";
+  animation: hearted-ellipsis 1.4s step-end infinite;
+}
+@keyframes hearted-ellipsis {
+  0% { content: "."; }
+  25% { content: ".."; }
+  50% { content: "..."; }
+  75% { content: ""; }
+  100% { content: "."; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hearted-ellipsis::after {
+    content: "…";
+    animation: none;
+  }
+}
+

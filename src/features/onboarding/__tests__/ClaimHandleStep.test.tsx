@@ -93,7 +93,9 @@ describe("ClaimHandleStep", () => {
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
-		expect(screen.getByText(/Enter just the name/i)).toBeInTheDocument();
+		expect(
+			screen.getByText("Letters, numbers, periods, and underscores."),
+		).toBeInTheDocument();
 
 		const btn = screen.getByRole("button", { name: /continue/i });
 		expect(btn).toBeDisabled();
@@ -347,7 +349,7 @@ describe("ClaimHandleStep", () => {
 		await user.type(screen.getByRole("textbox", { name: /handle/i }), "fabio");
 
 		await waitFor(() => {
-			expect(screen.getByText("Checking availability…")).toBeInTheDocument();
+			expect(screen.getByText("Checking availability")).toBeInTheDocument();
 		});
 		expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
 
@@ -355,7 +357,7 @@ describe("ClaimHandleStep", () => {
 		resolveCheck({ status: "available" });
 	});
 
-	it("taken: shows 'That handle is taken.' and Continue stays disabled", async () => {
+	it("taken: shows 'Someone got there first.' and Continue stays disabled", async () => {
 		mockCheckHandleAvailability.mockResolvedValue({
 			status: "unavailable",
 			reason: "taken",
@@ -368,7 +370,7 @@ describe("ClaimHandleStep", () => {
 		await user.type(screen.getByRole("textbox", { name: /handle/i }), "fabio");
 
 		await waitFor(() => {
-			expect(screen.getByText("That handle is taken.")).toBeInTheDocument();
+			expect(screen.getByText("Someone got there first.")).toBeInTheDocument();
 		});
 		expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
 	});
@@ -384,7 +386,7 @@ describe("ClaimHandleStep", () => {
 
 		await waitFor(() => {
 			expect(
-				screen.getByText(/Couldn’t check that handle — try again\./),
+				screen.getByText(/Couldn’t check that one\. Give it another go\./),
 			).toBeInTheDocument();
 		});
 		expect(
@@ -410,7 +412,7 @@ describe("ClaimHandleStep", () => {
 		});
 	});
 
-	it("suggested seed mount-time error: shows error state, hides preview, allows edit recovery", async () => {
+	it("suggested seed mount-time error: shows error state, keeps address visible, allows edit recovery", async () => {
 		mockCheckHandleAvailability.mockResolvedValue({ status: "error" });
 
 		const { user } = renderStep(
@@ -422,41 +424,41 @@ describe("ClaimHandleStep", () => {
 
 		await waitFor(() => {
 			expect(
-				screen.getByText(/Couldn’t check that handle — try again\./),
+				screen.getByText(/Couldn’t check that one\. Give it another go\./),
 			).toBeInTheDocument();
 		});
-		// Preview must be hidden in error state.
-		expect(screen.queryByText("Public URL")).not.toBeInTheDocument();
+		// The address prefix is part of the field, so it stays visible in error too.
+		expect(screen.getByText("hearted.music/@")).toBeInTheDocument();
 
 		// Now edit the field — should clear to neutral debounce-gap state.
 		const input = screen.getByRole("textbox", { name: /handle/i });
 		await user.type(input, "x");
 		// Error copy should be gone immediately.
 		expect(
-			screen.queryByText(/Couldn’t check that handle/),
+			screen.queryByText(/Couldn’t check that one/),
 		).not.toBeInTheDocument();
 	});
 
-	// ── Live preview ──────────────────────────────────────────────────────────
+	// ── Inline address ─────────────────────────────────────────────────────────
 
-	it("shows public URL preview for available handle", async () => {
+	it("renders the address prefix and the typed handle as the field value", async () => {
 		mockCheckHandleAvailability.mockResolvedValue({ status: "available" });
 
 		const { user } = renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
-		await user.type(screen.getByRole("textbox", { name: /handle/i }), "fabio");
+		const input = screen.getByRole("textbox", { name: /handle/i });
+		await user.type(input, "fabio");
 
 		await waitFor(() => {
-			expect(screen.getByText("Public URL")).toBeInTheDocument();
+			expect(screen.getByText("Available.")).toBeInTheDocument();
 		});
-		expect(
-			screen.getByText("https://hearted.music/@fabio"),
-		).toBeInTheDocument();
+		expect(screen.getByText("hearted.music/@")).toBeInTheDocument();
+		expect(input).toHaveValue("fabio");
 	});
 
-	it("shows public URL preview for owned-equal handle", () => {
+	it("renders the address prefix for an owned-equal handle", () => {
 		renderStep(
 			<ClaimHandleStep
 				{...BASE_PROPS}
@@ -464,13 +466,13 @@ describe("ClaimHandleStep", () => {
 			/>,
 		);
 
-		expect(screen.getByText("Public URL")).toBeInTheDocument();
-		expect(
-			screen.getByText("https://hearted.music/@fabio"),
-		).toBeInTheDocument();
+		expect(screen.getByText("hearted.music/@")).toBeInTheDocument();
+		expect(screen.getByRole("textbox", { name: /handle/i })).toHaveValue(
+			"fabio",
+		);
 	});
 
-	it("hides preview for unavailable (taken) handle", async () => {
+	it("keeps the address prefix visible for an unavailable (taken) handle", async () => {
 		mockCheckHandleAvailability.mockResolvedValue({
 			status: "unavailable",
 			reason: "taken",
@@ -483,12 +485,12 @@ describe("ClaimHandleStep", () => {
 		await user.type(screen.getByRole("textbox", { name: /handle/i }), "fabio");
 
 		await waitFor(() => {
-			expect(screen.getByText("That handle is taken.")).toBeInTheDocument();
+			expect(screen.getByText("Someone got there first.")).toBeInTheDocument();
 		});
-		expect(screen.queryByText("Public URL")).not.toBeInTheDocument();
+		expect(screen.getByText("hearted.music/@")).toBeInTheDocument();
 	});
 
-	it("hides preview for edited-away owned state", async () => {
+	it("keeps the address prefix visible for edited-away owned state", async () => {
 		const { user } = renderStep(
 			<ClaimHandleStep
 				{...BASE_PROPS}
@@ -500,7 +502,8 @@ describe("ClaimHandleStep", () => {
 		await user.clear(input);
 		await user.type(input, "other");
 
-		expect(screen.queryByText("Public URL")).not.toBeInTheDocument();
+		expect(screen.getByText("hearted.music/@")).toBeInTheDocument();
+		expect(input).toHaveValue("other");
 	});
 
 	// ── Submit: not_ready branch ──────────────────────────────────────────────
@@ -702,7 +705,7 @@ describe("ClaimHandleStep", () => {
 
 	// ── Submit: unavailable (submit-time) ─────────────────────────────────────
 
-	it("submit-time unavailable: shows inline error, hides preview, Continue stays disabled", async () => {
+	it("submit-time unavailable: shows inline error, keeps address visible, Continue stays disabled", async () => {
 		mockCheckHandleAvailability.mockResolvedValue({ status: "available" });
 		mockClaimHandleAndAdvance.mockResolvedValue({
 			status: "unavailable",
@@ -721,10 +724,10 @@ describe("ClaimHandleStep", () => {
 		await user.click(screen.getByRole("button", { name: /continue/i }));
 
 		await waitFor(() => {
-			expect(screen.getByText("That handle is taken.")).toBeInTheDocument();
+			expect(screen.getByText("Someone got there first.")).toBeInTheDocument();
 		});
-		// Preview hidden.
-		expect(screen.queryByText("Public URL")).not.toBeInTheDocument();
+		// The address prefix is part of the field — it stays visible.
+		expect(screen.getByText("hearted.music/@")).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
 		// No toast.
 		expect(mockToastError).not.toHaveBeenCalled();
@@ -860,7 +863,7 @@ describe("ClaimHandleStep", () => {
 		expect(input.closest("form")).toBeTruthy();
 	});
 
-	it("a11y: visible <label> 'Handle' associated with the input", () => {
+	it("a11y: input exposes a 'Handle' accessible name", () => {
 		renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
@@ -1131,7 +1134,7 @@ describe("ClaimHandleStep", () => {
 		// Wait for the checking state to appear (request is in-flight).
 		await waitFor(
 			() =>
-				expect(screen.getByText("Checking availability…")).toBeInTheDocument(),
+				expect(screen.getByText("Checking availability")).toBeInTheDocument(),
 			{ timeout: 2000 },
 		);
 		expect(mockCheckHandleAvailability).toHaveBeenCalledTimes(1);
@@ -1194,7 +1197,9 @@ describe("ClaimHandleStep", () => {
 		const input = screen.getByRole("textbox", { name: /handle/i });
 		expect(input).toHaveAttribute("readonly");
 		// Owned-handle status message is still present (submit-time copy is preserved).
-		expect(screen.queryByText("That handle is taken.")).not.toBeInTheDocument();
+		expect(
+			screen.queryByText("Someone got there first."),
+		).not.toBeInTheDocument();
 
 		// Clean up pending claim.
 		resolveClaim({
