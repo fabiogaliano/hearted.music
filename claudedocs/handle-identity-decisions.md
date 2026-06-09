@@ -63,3 +63,13 @@ on disagreement; §15 is the decision index.
 - `[task 03 | implement] matcher instance created once at module load` — obscenity's RegExpMatcher compiles patterns at construction time; module-level singleton avoids repeated compilation on every call.
 - `[task 03 | review→patch] Applied 2 MINOR review fixes directly (orchestrator), no patch subagent` — (1) swapped HANDLE_FORMAT_VALIDATION_REASONS tuple order to match plan §5.3 literal (`trailing_period` before `consecutive_periods`); runtime precedence is an explicit if-chain independent of the tuple, so the swap is behavior-safe (verified by reading the function). (2) added the 4 hyphenated protected reserved words (liked-songs, forgot-password, reset-password, verify-email) to the isReservedHandle test loop. typecheck green, 63 tests pass.
 - `[task 03 | orchestrator] Policy: MINOR-only review verdicts are patched directly by the orchestrator; BLOCKER/MAJOR or non-trivial change-sets get a fresh patch+commit subagent` — keeps the independent-patch discipline where it matters while not spending an agent on 2-line mechanical edits.
+
+---
+
+## Task 04
+
+- `[task 04 | implement] AnalysisContent has no feature-local type dependencies` — the interface body uses only primitive and anonymous object types; no external type imports needed in the new lib module. Safe to move verbatim.
+- `[task 04 | implement] types.ts retains an import of AnalysisContent from the lib module` — the private SongAnalysis interface (used by LikedSong.analysis) still references AnalysisContent; the import is genuine, not a pass-through re-export.
+- `[task 04 | implement] All 6 downstream importers repointed directly to the lib path` — LandingPanel.tsx, LandingPanelContent.tsx, PanelHero.tsx (relative import rewritten to @/ alias), step-resolver.ts, onboarding.functions.ts, liked-songs.functions.ts; no barrel/pass-through re-export created.
+- `[task 04 | implement] PanelHero.tsx used a relative ../../types import; switched to @/ alias style` — consistent with the rest of the codebase's lib imports; relative path would have also worked but @/ is the repo convention for lib modules.
+- `[task 04 | implement] Import alias confirmed as @/lib/domains/enrichment/content-analysis/analysis-content` — matches the pattern used by neighbouring enrichment domain modules (e.g. @/lib/domains/enrichment/audio-features/queries in song-analysis.ts).

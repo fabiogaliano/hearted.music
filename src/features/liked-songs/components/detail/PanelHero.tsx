@@ -1,6 +1,7 @@
+import type { AnalysisContent } from "@/lib/domains/enrichment/content-analysis/analysis-content";
 import { fonts } from "@/lib/theme/fonts";
 import type { ThemeConfig } from "@/lib/theme/types";
-import type { AnalysisContent, LikedSong } from "../../types";
+import type { LikedSong } from "../../types";
 import { Nav } from "./Nav";
 import { LAYOUT } from "./panel-constants";
 import type { ColorProps, PanelColors } from "./types";
