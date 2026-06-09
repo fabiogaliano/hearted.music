@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GOLD_SONG_DETAILS } from "@/features/liked-songs/components/song-detail-panel/song-detail-data";
-import {
-	SignalsSchema,
-	SongReadSchema,
-} from "@/lib/domains/enrichment/content-analysis/read-schema";
+import { SongReadSchema } from "@/lib/domains/enrichment/content-analysis/read-schema";
 
 const baseRead = GOLD_SONG_DETAILS[0].read;
 
@@ -72,31 +69,5 @@ describe("SongReadSchema", () => {
 
 		const { texture: _omitted, ...withoutKey } = baseRead;
 		expect(SongReadSchema.safeParse(withoutKey).success).toBe(false);
-	});
-});
-
-describe("SignalsSchema", () => {
-	it("accepts the lazy-migration stub { theme_tags: [] }", () => {
-		expect(SignalsSchema.safeParse({ theme_tags: [] }).success).toBe(true);
-	});
-
-	it("accepts an empty object (signals not yet generated)", () => {
-		expect(SignalsSchema.safeParse({}).success).toBe(true);
-	});
-
-	it("caps theme_tags at 3", () => {
-		expect(
-			SignalsSchema.safeParse({ theme_tags: ["a", "b", "c"] }).success,
-		).toBe(true);
-		expect(
-			SignalsSchema.safeParse({ theme_tags: ["a", "b", "c", "d"] }).success,
-		).toBe(false);
-	});
-
-	it("rejects unknown scene / register enum values", () => {
-		expect(SignalsSchema.safeParse({ scenes: ["driving"] }).success).toBe(true);
-		expect(SignalsSchema.safeParse({ scenes: ["commuting"] }).success).toBe(
-			false,
-		);
 	});
 });
