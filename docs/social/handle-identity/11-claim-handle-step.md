@@ -1,6 +1,6 @@
 # Task 11 — `ClaimHandleStep` UX, state machine & copy
 
-**Plan:** §8 (§8.1–§8.9) · **Recommended order:** step 12 · **Status:** [ ]
+**Plan:** §8 (§8.1–§8.9) · **Recommended order:** step 12 · **Status:** [x]
 
 ## Goal
 

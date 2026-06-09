@@ -41,7 +41,7 @@ onboarding-machine work split so each task stays reviewable).
 | 08 | [Onboarding step machine + wiring](./08-onboarding-step-machine.md) | [x] | §7.1, §7.2 |
 | 09 | [Handle server contracts](./09-handle-server-contracts.md) | [ ] | §6.0–§6.3 |
 | 10 | [Onboarding completion gate](./10-onboarding-completion-gate.md) | [x] | §6.4, §7.2 |
-| 11 | [`ClaimHandleStep` UI](./11-claim-handle-step.md) | [ ] | §8 |
+| 11 | [`ClaimHandleStep` UI](./11-claim-handle-step.md) | [x] | §8 |
 | 12 | [Settings & authenticated read surfaces](./12-settings-and-read-surfaces.md) | [ ] | §9.1, §9.2, §9.4 |
 | 13 | [Public `/@handle` route](./13-public-handle-route.md) | [x] | §9.3 |
 | 14 | [`reset-onboarding` script](./14-reset-onboarding-script.md) | [x] | §13.3 |

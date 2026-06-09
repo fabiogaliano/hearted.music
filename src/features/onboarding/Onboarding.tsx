@@ -19,6 +19,7 @@ import type {
 import { useAuthenticatedTheme } from "@/lib/theme/authenticated-theme";
 import type { ThemeColor } from "@/lib/theme/types";
 import { AnimatedStep } from "./components/AnimatedStep";
+import { ClaimHandleStep } from "./components/ClaimHandleStep";
 import { FlagPlaylistsStep } from "./components/FlagPlaylistsStep";
 import { InstallExtensionStep } from "./components/InstallExtensionStep";
 import { PickColorStep } from "./components/PickColorStep";
@@ -73,9 +74,13 @@ const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 		render: (ctx) => <SyncingStep phaseJobIds={ctx.phaseJobIds} />,
 		hideIndicator: true,
 	},
-	// UI component wired in Task 11
 	"claim-handle": {
-		render: () => null,
+		render: (ctx) => (
+			<ClaimHandleStep
+				accountId={ctx.accountId}
+				claimHandleSeed={ctx.claimHandleSeed}
+			/>
+		),
 	},
 	"flag-playlists": {
 		render: (ctx) => <FlagPlaylistsStep playlists={ctx.playlists} />,
