@@ -62,8 +62,9 @@ export function SongDetailPanel({
 	const [closeHovered, setCloseHovered] = useState(false);
 	const [closePressed, setClosePressed] = useState(false);
 	// Lives on the chrome, not the per-song surface (keyed by song.id, remounts on nav), so
-	// "read deeper" stays open as you move between songs. Seeded open in walkthrough.
-	const [readDeeperOpen, setReadDeeperOpen] = useState(isWalkthrough);
+	// "read deeper" stays open as you move between songs. Starts collapsed everywhere
+	// (walkthrough included) — the headline lands first, then the user opens the take.
+	const [readDeeperOpen, setReadDeeperOpen] = useState(false);
 	const focusTargetSongId = isExpanded ? song.id : null;
 
 	useEffect(() => {

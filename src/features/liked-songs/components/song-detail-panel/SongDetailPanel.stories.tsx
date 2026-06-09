@@ -58,11 +58,13 @@ function PanelStory({
 	isEnrichmentRunning = false,
 	lockedCta,
 	playlists,
+	isWalkthrough = false,
 }: {
 	song: SongDetail;
 	isEnrichmentRunning?: boolean;
 	lockedCta?: { label: string; onClick: () => void };
 	playlists?: PlaylistsPanel;
+	isWalkthrough?: boolean;
 }) {
 	return (
 		<Frame>
@@ -77,6 +79,7 @@ function PanelStory({
 				isEnrichmentRunning={isEnrichmentRunning}
 				lockedCta={lockedCta}
 				playlists={playlists}
+				isWalkthrough={isWalkthrough}
 			/>
 		</Frame>
 	);
@@ -155,4 +158,16 @@ export const Unavailable: Story = () => (
 Unavailable.meta = {
 	description:
 		"No read and nothing running — 'Quiet one' / 'We couldn’t find enough about this one.'",
+};
+
+// Walkthrough mode — the analyzed read under a darkness scrim with the "See where
+// this song belongs" CTA spotlit on top. The scrim and the raised button now live
+// in the real surface (WalkthroughCta), so this just renders the panel in
+// walkthrough mode and reflects exactly what ships.
+export const WalkthroughCta: Story = () => (
+	<PanelStory song={analyzed} isWalkthrough />
+);
+WalkthroughCta.meta = {
+	description:
+		"Walkthrough mode — the read darkens behind a 60% scrim while the 'See where this song belongs' CTA (arrow nudge + raised above the scrim) is spotlit on top. The close button stays bright in the chrome above.",
 };
