@@ -57,8 +57,8 @@ function ActionContent({
 		return (
 			<>
 				<p
-					className="theme-text-muted text-xs uppercase tracking-[0.12em]"
-					style={{ fontFamily: fonts.body, opacity: 0.45 }}
+					className="theme-text-muted text-xs uppercase tracking-widest"
+					style={{ fontFamily: fonts.body }}
 				>
 					here's what hearted can see.
 				</p>
@@ -76,12 +76,12 @@ function ActionContent({
 										height: 4,
 										borderRadius: "100%",
 										flexShrink: 0,
-										opacity: 0.35,
+										opacity: 0.6,
 									}}
 								/>
 								<span
-									className="theme-text-muted text-[13px]"
-									style={{ fontFamily: fonts.body, opacity: 0.65 }}
+									className="theme-text-muted text-sm"
+									style={{ fontFamily: fonts.body }}
 								>
 									{item}
 								</span>
@@ -106,14 +106,14 @@ function ActionContent({
 			<>
 				<div>
 					<p
-						className="theme-text text-[15px] font-light"
-						style={{ fontFamily: fonts.body, opacity: 0.7 }}
+						className="theme-text text-base font-light"
+						style={{ fontFamily: fonts.body }}
 					>
 						the sync starts here.
 					</p>
 					<p
-						className="theme-text-muted mt-1 text-[13px] leading-relaxed"
-						style={{ fontFamily: fonts.body, opacity: 0.5 }}
+						className="theme-text-muted mt-1 text-sm leading-relaxed"
+						style={{ fontFamily: fonts.body }}
 					>
 						reads your liked songs. never your login.
 					</p>
@@ -126,9 +126,7 @@ function ActionContent({
 					style={{ fontFamily: fonts.body }}
 				>
 					add to Chrome
-					<span className="text-xs" style={{ opacity: 0.45 }}>
-						↗
-					</span>
+					<span className="theme-text-muted text-xs">↗</span>
 				</a>
 			</>
 		);
@@ -139,14 +137,14 @@ function ActionContent({
 		<>
 			<div>
 				<p
-					className="theme-text text-[15px] font-light"
-					style={{ fontFamily: fonts.body, opacity: 0.7 }}
+					className="theme-text text-base font-light"
+					style={{ fontFamily: fonts.body }}
 				>
 					one more thing.
 				</p>
 				<p
-					className="theme-text-muted mt-1 text-[13px] leading-relaxed"
-					style={{ fontFamily: fonts.body, opacity: 0.5 }}
+					className="theme-text-muted mt-1 text-sm leading-relaxed"
+					style={{ fontFamily: fonts.body }}
 				>
 					the sync only works when you're logged into Spotify.
 				</p>
@@ -161,9 +159,7 @@ function ActionContent({
 				style={{ fontFamily: fonts.body }}
 			>
 				log in to Spotify
-				<span className="text-xs" style={{ opacity: 0.45 }}>
-					↗
-				</span>
+				<span className="theme-text-muted text-xs">↗</span>
 			</a>
 		</>
 	);
@@ -279,10 +275,9 @@ export function InstallExtensionStep() {
 					{/* Left column: supporting text + trail */}
 					<div className="shrink-0 md:w-[220px]">
 						<p
-							className="theme-text-muted text-[14px] leading-relaxed"
+							className="theme-text-muted text-sm leading-relaxed"
 							style={{
 								fontFamily: fonts.body,
-								opacity: 0.55,
 								maxWidth: "26ch",
 							}}
 						>

@@ -112,6 +112,12 @@ export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
 								aria-pressed={isSelected}
 								aria-label={`Select ${COLOR_LABELS[colorId]} theme`}
 								className="group flex min-h-11 cursor-pointer items-center gap-4 text-left"
+								style={{
+									...(isFocused && {
+										outline: "1px dashed var(--t-text-muted)",
+										outlineOffset: "2px",
+									}),
+								}}
 							>
 								<div className="relative h-11 w-11 shrink-0 sm:h-12 sm:w-12">
 									<div
@@ -127,15 +133,6 @@ export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
 												: `${THEME_TRANSITION_MS}ms`,
 										}}
 									/>
-									{isFocused && (
-										<div
-											className="absolute -inset-1 rounded-full"
-											style={{
-												border: "2px dashed var(--t-text-muted)",
-												opacity: 0.7,
-											}}
-										/>
-									)}
 									<div
 										className="h-full w-full rounded-full"
 										style={{
