@@ -33,7 +33,7 @@ onboarding-machine work split so each task stays reviewable).
 |---|------|--------|---------|
 | 01 | [Public app-origin config](./01-public-app-origin-config.md) | [x] | §10 |
 | 02 | [Schema & migrations](./02-schema-and-migrations.md) | [x] | §4 |
-| 03 | [Handle domain rules & modules](./03-handle-domain-rules.md) | [ ] | §5 |
+| 03 | [Handle domain rules & modules](./03-handle-domain-rules.md) | [x] | §5 |
 | 04 | [Relocate `AnalysisContent` type](./04-analysis-content-relocation.md) | [ ] | §6.0 |
 | 05 | [Onboarding session contracts](./05-onboarding-session-contracts.md) | [ ] | §6.0, §7.2 |
 | 06 | [Onboarding session server primitives](./06-onboarding-session-server.md) | [ ] | §6.0, §7.2 |
