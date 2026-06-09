@@ -24,6 +24,7 @@ import {
 	upsertAnnotationDistillations,
 } from "./annotation-distillation-queries";
 import { hashAnnotationText } from "./annotation-hash";
+import { recordLlmUsage } from "./llm-usage-queries";
 import { distillAnnotationPrompt } from "./prompts/distill";
 
 // Bump to invalidate the cache when the prompt or model below changes.
@@ -110,7 +111,15 @@ export async function ensureAnnotationDistillations(
 				if (Result.isError(generated)) return null;
 				const text = generated.value.text.trim();
 				if (text.length === 0) return null;
-				return { entry, text, model: generated.value.model };
+				return {
+					entry,
+					text,
+					model: generated.value.model,
+					modelId: generated.value.modelId,
+					provider: generated.value.provider,
+					tokens: generated.value.tokens,
+					costUsd: generated.value.costUsd,
+				};
 			}),
 		);
 
@@ -134,6 +143,29 @@ export async function ensureAnnotationDistillations(
 				);
 			}
 		}
+
+		// Ledger spend: one row per freshly distilled annotation (cache hits made no call,
+		// so they get no row — keyed by content_hash, not song). Best-effort, like the cache
+		// write above; a failed ledger insert is logged and never throws.
+		await Promise.all(
+			distilled.map(async (item) => {
+				if (!item) return;
+				const recorded = await recordLlmUsage({
+					functionId: "annotation-distillation",
+					contentHash: item.entry.hash,
+					provider: item.provider,
+					model: item.modelId,
+					tokens: item.tokens,
+					costUsd: item.costUsd,
+					promptVersion: DISTILLER_VERSION,
+				});
+				if (Result.isError(recorded)) {
+					console.warn(
+						`[llm-usage] failed to record annotation-distillation for ${item.entry.hash}: ${recorded.error.message}`,
+					);
+				}
+			}),
+		);
 	} catch (error) {
 		console.warn(
 			`[AnnotationDistillation] distillation step failed: ${error instanceof Error ? error.message : String(error)}`,

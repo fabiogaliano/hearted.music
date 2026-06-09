@@ -24,6 +24,7 @@ import type { LlmService } from "@/lib/integrations/llm/service";
 import type { DbError } from "@/lib/shared/errors/database";
 import { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
 import type { LlmError } from "@/lib/shared/errors/external/llm";
+import { recordLlmUsage } from "./llm-usage-queries";
 
 /** Core theme in a playlist */
 const CoreThemeSchema = z.object({
@@ -241,6 +242,24 @@ export class PlaylistAnalysisService {
 		);
 		if (Result.isError(llmResult)) {
 			return Result.err(llmResult.error);
+		}
+
+		// Ledger the call's spend before validation/store, so a malformed response or a
+		// storage failure still records the tokens actually billed. Best-effort: a failed
+		// ledger insert is logged, never propagated (cost tracking must not fail analysis).
+		const recorded = await recordLlmUsage({
+			functionId: "playlist-analysis",
+			playlistId,
+			provider: llmResult.value.provider,
+			model: llmResult.value.modelId,
+			tokens: llmResult.value.tokens,
+			costUsd: llmResult.value.costUsd,
+			promptVersion: "1",
+		});
+		if (Result.isError(recorded)) {
+			console.warn(
+				`[llm-usage] failed to record playlist-analysis for playlist ${playlistId}: ${recorded.error.message}`,
+			);
 		}
 
 		const output = llmResult.value.output;

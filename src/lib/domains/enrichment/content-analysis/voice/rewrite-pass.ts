@@ -20,7 +20,7 @@ import {
 	type SongRead,
 	SongReadSchema,
 } from "@/lib/domains/enrichment/content-analysis/read-schema";
-import type { LlmService } from "@/lib/integrations/llm/service";
+import type { LlmService, TokenUsage } from "@/lib/integrations/llm/service";
 import type { RuleHit } from "./rules-types";
 import { runAllRules } from "./tier1-rules";
 
@@ -67,6 +67,15 @@ export type RewriteMode = "minimal" | "direct-assertion";
 const ANTITHESIS_DIRECT_ASSERTION =
 	'antithesis — the "X is not Y. It is Z" / "not just X; it is Y" thesis-pivot. DELETE the negated half entirely. Do not rephrase it, do not keep "not just", "more than", "isn\'t", or "rather than" as a hinge — cut the dismissed thing out of the sentence completely. Keep only the real claim and let it stand on its own: state it directly and with conviction. If a concrete detail ALREADY present elsewhere in this read (a named person, place, lyric, or image) makes the bare claim land harder, fold that existing detail in to strengthen it — but never invent a new fact, name, or image to prop it up; if no grounded detail fits, the plain direct claim alone is enough. Example: "This is not a diss track. It is testifying." → "It testifies." A plain subordinate contrast inside one sentence is fine and should be left alone ("the door stays shut, not slammed").';
 
+// Per-pass spend, surfaced so each rewrite call can get its own llm_usage ledger row.
+// A lyrical read runs 0–2 passes, so this is 0–2 entries.
+export interface RewritePassUsage {
+	provider: string;
+	model: string;
+	tokens: TokenUsage | undefined;
+	costUsd: number | null;
+}
+
 export interface RewriteResult {
 	read: SongRead;
 	passes: number;
@@ -74,6 +83,7 @@ export interface RewriteResult {
 	hitsAfter: RuleHit[];
 	error?: string;
 	tokens: number;
+	usages: RewritePassUsage[];
 }
 
 function targetHits(read: SongRead): RuleHit[] {
@@ -227,6 +237,7 @@ export async function rewriteRead(
 	let current = read;
 	let passes = 0;
 	let tokens = 0;
+	const usages: RewritePassUsage[] = [];
 
 	for (let p = 0; p < maxPasses; p++) {
 		const hits = targetHits(current);
@@ -249,10 +260,17 @@ export async function rewriteRead(
 				hitsAfter: runAllRules(current),
 				error: String(gen.error),
 				tokens,
+				usages,
 			};
 		}
 		passes++;
 		tokens += gen.value.tokens?.total ?? 0;
+		usages.push({
+			provider: gen.value.provider,
+			model: gen.value.modelId,
+			tokens: gen.value.tokens,
+			costUsd: gen.value.costUsd,
+		});
 		const flaggedFields = new Set(hits.map((h) => h.field));
 		current = applySurgical(read, current, gen.value.output, flaggedFields);
 	}
@@ -263,5 +281,6 @@ export async function rewriteRead(
 		hitsBefore,
 		hitsAfter: runAllRules(current),
 		tokens,
+		usages,
 	};
 }

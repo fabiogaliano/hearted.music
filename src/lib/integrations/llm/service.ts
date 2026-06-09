@@ -30,6 +30,7 @@ import {
 import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
 import { withRetry } from "@/lib/shared/utils/result-wrappers/generic";
 import { DEFAULT_LLM_PROVIDER, resolveLlmConfig } from "./config";
+import { computeCostUsd } from "./pricing";
 
 // ============================================================================
 // Zod Schemas (single source of truth)
@@ -69,19 +70,33 @@ const ApiKeyConfigSchema = z.object({
 const LlmConfigSchema = z.union([VertexConfigSchema, ApiKeyConfigSchema]);
 export type LlmConfig = z.infer<typeof LlmConfigSchema>;
 
-/** Token usage information */
+/**
+ * Token usage information. `prompt` includes cached input and `completion`
+ * includes thinking (Gemini folds both into the totals); `cacheReadTokens` and
+ * `reasoningTokens` carry the splits the cost formula and ledger need. The
+ * prompt/completion/total names are kept so existing `tokens?.total` readers and
+ * the voice-audit harness are unaffected.
+ */
 const TokenUsageSchema = z.object({
 	prompt: z.number(),
 	completion: z.number(),
 	total: z.number(),
+	cacheReadTokens: z.number(),
+	reasoningTokens: z.number(),
 });
-type TokenUsage = z.infer<typeof TokenUsageSchema>;
+export type TokenUsage = z.infer<typeof TokenUsageSchema>;
 
 /** Result of a text generation */
 const TextGenerationResultSchema = z.object({
 	text: z.string(),
+	/** Combined "provider:model" id — kept for the song_analysis.model column. */
 	model: z.string(),
+	/** Bare model id, e.g. "gemini-2.5-flash" — what the ledger and pricing key on. */
+	modelId: z.string(),
+	provider: LlmProviderNameSchema,
 	tokens: TokenUsageSchema.optional(),
+	/** Token × list-price estimate; null when the model is unpriced. */
+	costUsd: z.number().nullable(),
 });
 type TextGenerationResult = z.infer<typeof TextGenerationResultSchema>;
 
@@ -89,7 +104,10 @@ type TextGenerationResult = z.infer<typeof TextGenerationResultSchema>;
 interface ObjectGenerationResult<T> {
 	output: T;
 	model: string;
+	modelId: string;
+	provider: LlmProviderName;
 	tokens?: TokenUsage;
+	costUsd: number | null;
 }
 
 // ============================================================================
@@ -214,7 +232,10 @@ export class LlmService {
 						return Result.ok({
 							text: result.text,
 							model: this.getCurrentModel(),
+							modelId: this.model,
+							provider: this.provider,
 							tokens,
+							costUsd: this.costFor(tokens),
 						});
 					} catch (error) {
 						return Result.err(this.normalizeError(error));
@@ -268,7 +289,10 @@ export class LlmService {
 						return Result.ok({
 							output: result.object as T,
 							model: this.getCurrentModel(),
+							modelId: this.model,
+							provider: this.provider,
 							tokens,
+							costUsd: this.costFor(tokens),
 						});
 					} catch (error) {
 						return Result.err(this.normalizeError(error));
@@ -279,18 +303,46 @@ export class LlmService {
 	}
 
 	/**
-	 * Extracts token usage from AI SDK response.
+	 * Extracts token usage from an AI SDK response. Reads the cache-read and
+	 * reasoning splits the cost formula needs; for Gemini/Vertex `inputTokens`
+	 * already includes the cached subset and `outputTokens` already includes
+	 * thinking, so the splits are diagnostic carve-outs of the totals, not addends.
 	 */
 	private extractTokenUsage(
 		usage:
-			| { inputTokens?: number; outputTokens?: number; totalTokens?: number }
+			| {
+					inputTokens?: number;
+					outputTokens?: number;
+					totalTokens?: number;
+					inputTokenDetails?: { cacheReadTokens?: number };
+					outputTokenDetails?: { reasoningTokens?: number };
+			  }
 			| undefined,
 	): TokenUsage | undefined {
 		if (!usage) return undefined;
 		const prompt = usage.inputTokens ?? 0;
 		const completion = usage.outputTokens ?? 0;
 		const total = usage.totalTokens ?? prompt + completion;
-		return { prompt, completion, total };
+		const cacheReadTokens = usage.inputTokenDetails?.cacheReadTokens ?? 0;
+		const reasoningTokens = usage.outputTokenDetails?.reasoningTokens ?? 0;
+		return { prompt, completion, total, cacheReadTokens, reasoningTokens };
+	}
+
+	/**
+	 * Token × list-price cost estimate for one call, or null when this model is
+	 * unpriced. Stays pure (no DB) so script callers can use the service without one.
+	 */
+	private costFor(tokens: TokenUsage | undefined): number | null {
+		if (!tokens) return null;
+		return computeCostUsd(
+			{
+				inputTokens: tokens.prompt,
+				cacheReadTokens: tokens.cacheReadTokens,
+				outputTokens: tokens.completion,
+			},
+			this.provider,
+			this.model,
+		);
 	}
 
 	// ============================================================================
