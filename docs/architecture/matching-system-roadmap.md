@@ -1,0 +1,290 @@
+# Matching System — Consolidated Research & Roadmap
+
+**Date:** 2026-06-10 (consolidates research passes from 2026-06-06 and 2026-06-09)
+**Status:** Research findings + prioritized plan. Nothing implemented yet.
+**Scope:** Cheap, modern (2025–2026) improvements to the song→playlist matching pipeline, plus the genre-pills feature. Hard constraint: no self-hosted GPU infra, no expensive per-request LLM calls.
+
+This document supersedes `matching-system-improvements.md` (2026-06-06) and
+`matching-deep-analysis-2026-06.md` (2026-06-09). The first was a fan-out web-research pass
+with 3-vote adversarial verification (115 claims extracted, most refuted — the kill list is
+preserved below). The second re-verified it against the actual code, added fresh research
+(fusion practice, embedding/reranker landscape, genre conditioning, cold-start elicitation),
+and corrected one stale priority. Where the two disagreed, the code-verified finding wins.
+
+---
+
+## The pipeline today (for reference)
+
+1. **LLM analysis** — Gemini 2.5 Flash (Vertex) → structured JSON "read" of each song
+   (lyrical schema v17: image/lens/tension/take/arc/lines/texture; instrumental v3).
+2. **Genre enrichment** — Last.fm tags → ~430-genre whitelist, top 3, canonicalized
+   (`integrations/lastfm/whitelist.ts`).
+3. **Embedding** — analysis fields concatenated → `intfloat/multilingual-e5-large-instruct`
+   (DeepInfra, 1024-dim), stored in pgvector with HNSW index.
+4. **Playlist profiling** — single **mean centroid** of member embeddings, blended with a
+   name+description ("intent") embedding whose weight decays with song count
+   (`computeIntentWeight`: base 0.35, ×1.5 with description, floor 0.3/0.15); plus an averaged
+   audio-feature centroid + genre distribution (raw counts).
+5. **Fusion** — linear weighted: embedding cosine `0.50` + audio similarity `0.30` +
+   genre overlap `0.20`. Cosine stretched via `(sim − 0.5) / 0.5`. Min threshold `0.3`,
+   top-K `10`. Missing signals redistribute weight adaptively.
+   (`src/lib/domains/taste/song-matching/config.ts`)
+6. **Caching** — content hash on embeddings, profiles, and match snapshots.
+7. **Reranking** — top-50 reranked by `Qwen/Qwen3-Reranker-0.6B` (DeepInfra), blended 70/30
+   with the original score. Reranker document is only `"{name} by {artists}. Genres: {g}."`.
+
+**Audio features:** sourced from **ReccoBeats** (free Spotify-parity API), *not* Spotify —
+the deprecation migration already happened. Adaptive weights degrade gracefully when missing.
+**Cold-start:** empty playlists use a HyDE-style imagined prototype song (Gemini), including
+`expected_genres` and a synthetic audio profile.
+**Underused data:** per-`(song, playlist)` `added`/`dismissed` decisions (`match_decision`) —
+currently only used for exclusion, never for evaluation or learning; Genius annotations with
+vote counts.
+**Scoring path:** brute-force O(songs × playlists) in TypeScript; the pgvector HNSW indexes
+exist but are never queried by matching.
+
+---
+
+## TL;DR — prioritized plan
+
+### Pre-prod (before real users — cheap, compounding)
+
+| # | Item | Cost | Why this order |
+|---|---|---|---|
+| 1 | **Per-candidate-set score normalization before fusion** (min-max or z-score per signal; drop the 0.5-baseline stretch) | ~½ day | Biggest mis-scaling in the system; pure code; makes the weights mean what they say. Re-tune `minScoreThreshold` (it's in fused-score units). |
+| 2 | **Offline replay harness** over `match_decision` (recall@k, MRR; temporal split; segment by playlist size) | 1–2 days | Turns every later change from "plausible" into "measured". Extend `scripts/matching-lab/`. |
+| 3 | **One combined re-embed:** correct E5/Qwen instruct format (`Instruct: …\nQuery: …` on queries, **no prefix** on documents) + swap to `Qwen3-Embedding-0.6B`, eval 1024 vs 512 Matryoshka dims via #2 | 1 day + re-embed | The prefix fix alone forces a full re-embed; never re-embed twice. Branch on the existing `isInstructionTuned` flag properly. |
+| 4 | **Reranker fixes:** feed analysis text as the document; verify yes/no-logit scoring on DeepInfra; A/B full-rerank vs 70/30 blend via #2 | ~1 day | The 30% blend currently rides on a name+genre string while the rich analysis sits unused. |
+| 5 | **Genre pills** (design below) | 2–4 days | Strongest cold-start evidence; product-visible; independent of #1–4. |
+| 6 | **Decision-log enrichment:** store rank, factor scores, snapshot id at decision time; optionally ~5% rank jitter for future debiasing | hours | Free now, impossible to backfill later. |
+| 7 | **Hygiene:** delete or implement `vetoThreshold`; fix genre substring matching (canonical exact match + similarity expansion); remove dead fields | hours | Bundle with adjacent work. |
+
+### Post-prod (gated on real usage data)
+
+1. **Learned fusion weights** — pairwise logistic regression on normalized factor scores once
+   ~300–500 accept/reject pairs exist; LambdaMART only past ~1–5k pairs. Needs #6's logged
+   features. (Dismissed tracks as hard negatives is structurally sound — vote 2-1 — but the
+   quantified 9–74% HR@1 lift claim was refuted; contrastive fine-tuning only if logistic
+   regression plateaus, gated behind the harness.)
+2. **Eval discipline** — segment metrics by popularity tier and playlist size (Simpson's
+   paradox); treat offline metrics as a filter, not a predictor of online behavior.
+3. **ReccoBeats contingency** — free, no SLA, undisclosed rate limits. Watch failure rates;
+   fallback ladder: adaptive weight redistribution (already works) → Essentia self-hosted if
+   preview audio is available → fold audio character into the Gemini prompt.
+   (AcousticBrainz is dead — frozen July 2022, no post-2022 tracks.)
+4. **Multi-centroid profiles** — only if the harness shows multi-mood playlists underperform
+   (check intra-playlist embedding variance first). 2–3 medoids + max-sim is the cheap
+   version (PinnerSage pattern; ComiRec shows +2–8% recall, but only for genuinely
+   multi-modal profiles).
+5. **pgvector ANN path** — when O(S×P) in-process scoring hurts; the indexes already exist.
+6. **Reranker shootout** — zerank-1-small ($0.025/MTok) / voyage-rerank-2.5-lite vs Qwen3,
+   measured via #2.
+
+The throughline: **normalize the fusion, then build the harness.** The prefix fix is real but
+folds into the re-embed step; the fusion mis-scaling affects every match served today.
+
+---
+
+## Confirmed findings
+
+### 1. Score fusion is mis-scaled — the 0.50 embedding weight is largely fictional
+
+E5-family cosine scores cluster in a ~0.75–0.90 band (anisotropy from low-temperature
+InfoNCE training). The code stretches with `(sim − 0.5) / 0.5`
+(`song-matching/service.ts`, `similarityBaseline: 0.5`), which still leaves an effective
+range of roughly 0.5–0.8 while audio and genre scores span the full 0–1. The
+nominally-dominant embedding signal has far less *differential* influence than its weight
+implies — audio and genre are quietly steering rankings.
+
+Industry consensus (Elastic linear retriever, Weaviate `relativeScoreFusion` — default since
+v1.24, Qdrant DBSF): **normalize each signal per candidate set (min-max or z-score) before
+the weighted sum**. RRF is the rank-only fallback if normalization can't be trusted, but it
+discards the calibration in audio features. This is a ~30-line change and likely worth more
+than any model swap.
+
+### 2. The E5 instruct prefix is wrong on both sides — fold into the re-embed (vote 3-0)
+
+We run the **instruct** variant but prefix with the **non-instruct** convention. The model
+card is explicit: queries must be `Instruct: {task_description}\nQuery: {text}` (not
+`query:`), and documents must have **no prefix at all** (not `passage:`). Every embedding in
+the system has been computed in a format the model wasn't trained for.
+
+**Where it lives in code (verified):**
+- `src/lib/integrations/deepinfra/service.ts:67` — `EmbedPrefixSchema` only allows `query:`/`passage:`.
+- `src/lib/integrations/deepinfra/service.ts:170` — passage default applied to all texts.
+- `src/lib/domains/enrichment/embeddings/service.ts:152,277` — songs + playlist profiles forced to `passage:`.
+- `src/lib/domains/taste/playlist-profiling/intent-expansion.ts:174` — HyDE text uses `passage:`; intent text uses `query:` (`playlist-profiling/service.ts:229`).
+- `src/lib/domains/enrichment/embeddings/model-bundle.ts` — `isInstructionTuned` flag exists ("affects query prefixing") but nothing branches on it.
+
+**Source:** <https://huggingface.co/intfloat/multilingual-e5-large-instruct>
+
+### 3. `Qwen3-Embedding-0.6B` is a real drop-in upgrade (vote 3-0)
+
+Same parameter size as our E5, modestly better on MTEB Multilingual (~64.3 vs ~62–63 —
+"meaningful but not dramatic"), and it supports **Matryoshka Representation Learning**
+(dims 32–1024) so we can truncate to **512 dims** and roughly halve vector storage + ANN cost
+with little quality loss. **MRL truncation is NOT valid on the current E5 model** — its 1024
+dims are not nested.
+
+Same vendor we already use (DeepInfra hosts the Qwen3-Embedding family; we already call it
+for the reranker). Same API, same billing; swap the model string (confirm per-token price).
+Uses the same instruct convention as finding #2.
+
+**Caveats:** the exact benchmark delta had a contradictory verifier vote, and there is no
+music-domain embedding benchmark for either model — the real gain on our analysis text is
+unknown until measured by the harness. Running Qwen3 without a task instruction degrades
+quality (~1–5%).
+
+**Sources:** <https://huggingface.co/Qwen/Qwen3-Embedding-0.6B> · <https://arxiv.org/html/2506.05176v1>
+
+### 4. The reranker is starved
+
+The cross-encoder document is just `"{song.name} by {artists}. Genres: {genres}."`
+(`enrichment-pipeline/reranking.ts:60-68`). All the Gemini analysis (lens, take, arc, lines,
+texture) sits in the DB unused at rerank time — the reranker can't outperform retrieval when
+it sees less information than the embedding did. Feed it the analysis text (truncated).
+
+Also: Qwen3-Reranker is a **generative yes/no-logit reranker** (extract logits for "yes"
+token 9693 / "no" token 2152 at the final position, softmax → P(yes)), not a plain
+cross-encoder. Verify the DeepInfra integration actually returns calibrated scores;
+`tomaarsen/Qwen3-Reranker-0.6B-seq-cls` is a pre-converted sequence-classification version
+with simpler integration. Standard practice is **full reranking** of the top-N, not a 70/30
+blend, unless reranker scores are demonstrably uncalibrated — A/B both via the harness.
+
+### 5. Audio: already migrated to ReccoBeats; audio *embeddings* remain a dead end (vote 2-1)
+
+The 2026-06-06 doc flagged "plan the Spotify audio-features replacement" — that migration is
+**already done**: the code sources features from ReccoBeats
+(`src/lib/integrations/reccobeats/service.ts`, free, full Spotify schema parity). The live
+risk is ReccoBeats durability (no SLA), handled post-prod (see roadmap).
+
+On audio *embeddings*: across nine pretrained audio models (MusicFM, MERT, MuQ, Jukebox,
+MusiCNN, MULE, EncodecMAE, Music2Vec, MuQ-MuLan), **none beat a basic collaborative-filtering
+baseline** on recommendation, and MIR benchmark rank does not predict recommendation rank.
+Not cheap, not reliably better — table this axis.
+
+**Sources:** <https://arxiv.org/abs/2604.23077> · <https://arxiv.org/abs/2409.08987>
+
+### 6. The single highest-leverage gap: we can't measure any of this
+
+Every recommendation here is a guess until scored offline against the `match_decision` log.
+We're sitting on labeled data (`added` = positive, `dismissed` = negative per song/playlist)
+and using it only for exclusion. An **offline replay harness** — replay logged decisions,
+compute recall@k / MRR under a candidate config, temporal split — is cheap and converts every
+other idea from "plausible" to "verified +X%". `scripts/matching-lab/` is a visual lab today,
+not a metric harness; extend it.
+
+---
+
+## Genre pills — verdict: build it, as a soft signal
+
+User-selected genres at playlist creation/edit time, conditioning matching directly alongside
+the free-text description.
+
+**Why it works (evidence):**
+- Spotify production ablation: removing onboarding-declared genre/artist signals costs
+  **13.8%** on cold-start clusters (Spotify Research, Sept 2025).
+- Attribute elicitation (genres) beats item-rating elicitation below ~13 interactions —
+  exactly the empty-playlist regime where the HyDE guess currently carries everything.
+- TTMR++: appending genre/metadata text to the embedded query is **additive** with keeping a
+  separate structured genre score (+105% R@10 from enrichment layers, gains complementary —
+  double-counting risk is small).
+
+**Design (fits the existing architecture):**
+
+1. **Never a hard filter.** Filtered-HNSW/recall literature: hard genre gates collapse recall
+   for narrow genres (genre boundaries are fuzzy). Pills = soft boost.
+2. **Feed pills into three existing channels:**
+   - Append to intent text before embedding: `"{name} — {description}. Genres: indie rock, dream pop"`.
+   - Seed `genre_distribution` with pseudo-counts (decaying as real members accumulate,
+     mirroring `computeIntentWeight`'s decay) — makes the genre signal live from song #0 and
+     replaces guessing in the HyDE path (`expected_genres` becomes user-declared).
+   - Optionally bump genre weight from 0.20 to ~0.30 when pills are explicitly set
+     (user-declared > inferred), with embedding/audio renormalized.
+3. **Match pills exactly (canonical), expand softly.** Build a one-off genre-similarity table
+   over the ~430-entry whitelist (embed genre names with the existing embedding model, or use
+   the frozen Dec-2023 everynoise snapshot); boost adjacent genres at a discount (~0.5–0.6×).
+   This also replaces the buggy substring matching (see code findings).
+4. **UX:** the whitelist is unbrowsable as a flat list. Typeahead (≤8–10 suggestions,
+   200–300ms debounce) + 8–12 contextual quick-pick pills + removable chips, cap ~5
+   selections, always optional (Baymard filter/autocomplete guidelines). Surfaces:
+   `OnboardingDescriptionDialog` and the playlist edit panel next to `PlaylistDescription`.
+   Display-only `GenrePills` components already exist to crib styling from.
+5. **Storage:** pills are app-local data (Spotify has no genre field on playlists) — new
+   column/table on playlist, included in the profile content hash so profiles rebuild on change.
+
+---
+
+## Code-level findings (from the codebase sweep)
+
+- `vetoThreshold: 0.2` configured (`song-matching/config.ts`) but never branched on — dead.
+- `MatchingPlaylistProfile.method`, `ProfileKind.context_v1` — declared, never written/read.
+- `emotion_distribution` always persisted as `{}` — dead column (`emotionEnabled: false`).
+- Genre scoring uses bidirectional **substring** matching (`song-matching/service.ts`):
+  "rock" matches "post-rock"/"hard rock" (over-broad) while "electro" ≠ "electronic"
+  (under-broad). Replace with canonical exact match + the genre-similarity expansion table.
+- Genre distribution is raw counts, never normalized — fine for the ratio computed today,
+  a footgun for any future use.
+- Matching is brute-force O(songs × playlists) in TypeScript; HNSW indexes on
+  `song_embedding`/`playlist_profile` are never queried. Fine now, a scaling cliff later.
+- `match_decision` stores only (account, song, playlist, decision, timestamp) — not the
+  rank/score/snapshot at decision time. Joinable via `match_result` but fragile; log them
+  directly going forward so the harness and learned weights have clean features.
+
+---
+
+## Do not build (refuted under 3-vote adversarial verification)
+
+Preserved from the 2026-06-06 pass so we don't chase these speculatively. The 2026-06-09
+pass found nothing that rehabilitates them.
+
+| Claim | Vote | Note |
+|---|---|---|
+| Learned/multi-vector pooling beats mean-pooling by 22–33% NDCG | 0-3 | The headline case for multi-centroid / late-interaction playlist profiles did not hold. Might still help multi-mood playlists, but unproven — gate behind the harness (see post-prod #4). |
+| IPS-weighted BPR debiasing improves generalization | 0-3 | Fancy unbiased-LTR machinery not validated enough to build. Cheap alternative: log rank + a little jitter now (pre-prod #6). |
+| ColBERT token-pooling storage savings (50%/66% w/ ~no loss) | 1-2 / 0-3 | — |
+| HTCL contrastive audio fine-tuning, ~3.7× lift | 0-3 | — |
+| CLAP beats hand-crafted audio features | 0-3 | — |
+| Skip-negative quantified lift (9–74% HR@1) | 1-2 | The structural point (dismissals as hard negatives) survived; the magnitude did not. |
+| Semantic IDs / generative retrieval (Spotify Research 2025) | — | Real but requires training a generative model; not deployable at this budget. |
+
+---
+
+## Open questions
+
+1. Quality of `Qwen3-Embedding-0.6B` at reduced Matryoshka dims (256/512) **on music-analysis
+   text specifically** — answered by the harness during the combined re-embed (pre-prod #3).
+2. DeepInfra per-token price for `Qwen3-Embedding-0.6B` vs current E5 — confirm cost-neutral
+   or cheaper (reranker-0.6B is confirmed $0.010/MTok; embedding price not on the public page).
+3. Minimum viable `(song, playlist, decision)` volume before learned weights beat static
+   fusion — practitioner guideline ~300–500 pairs for pairwise logistic regression, but
+   measure via the harness.
+4. ReccoBeats production durability — rate limits and terms are undisclosed; verify before
+   scale, keep the fallback ladder ready.
+5. Whether the 70/30 reranker blend ever beats full reranking once the reranker sees the
+   analysis text — A/B via the harness.
+
+---
+
+## Key sources
+
+- **Fusion/normalization:** Elastic linear retriever (min-max before weighted fusion), Weaviate fusion algorithms (`relativeScoreFusion`), Qdrant DBSF, OpenSearch RRF.
+- **E5 anisotropy / prefix:** intfloat/multilingual-e5-large-instruct model card; practitioner write-ups on narrow-band cosine.
+- **Qwen3-Embedding/Reranker:** arXiv 2506.05176; HF model cards; vLLM yes/no-logit docs; tomaarsen seq-cls conversion.
+- **Genre conditioning:** TTMR++ (arXiv 2410.03264), TalkPlay (arXiv 2502.13713), filtered-HNSW recall (Elastic Labs / TDS), Qdrant formula rescoring, multilingual genre embeddings (arXiv 2009.07755).
+- **Cold-start elicitation:** Spotify Research "Generalized User Representations" (Sept 2025, 13.8% ablation); attribute-aware preference elicitation (arXiv 2510.27342).
+- **UX:** Baymard filter/autocomplete guidelines.
+- **Learned weights / eval:** BPR (arXiv 1205.2618), Eugene Yan on position bias, offline-vs-online correlation (arXiv 2011.07931), Simpson's paradox in offline eval (arXiv 2104.08912), skip-negatives (arXiv 2409.07367).
+- **Audio:** audio-embedding recommendation benchmark (arXiv 2604.23077, 2409.08987), ReccoBeats docs, Essentia docs, AcousticBrainz freeze notice.
+
+---
+
+## Method note
+
+The 2026-06-06 findings came from a fan-out research harness (multi-angle web search → source
+fetch → falsifiable-claim extraction → 3-vote adversarial verification requiring 2/3 to
+refute → synthesis). Votes (e.g. "3-0", "2-1") are that verification outcome. The 2026-06-09
+pass added a full codebase sweep (file:line verification of every code claim) and three fresh
+research tracks (fusion practice, model landscape, genre conditioning/UX). Treat all
+model-benchmark numbers as directional until validated by our own offline replay — there is
+no music-domain benchmark for our specific inputs.
