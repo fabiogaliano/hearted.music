@@ -1,4 +1,4 @@
-import type { AnalysisContent } from "@/features/liked-songs/types";
+import type { AnalysisContent } from "@/lib/domains/enrichment/content-analysis/analysis-content";
 
 type WalkthroughSongAnalysis = {
 	id: string;

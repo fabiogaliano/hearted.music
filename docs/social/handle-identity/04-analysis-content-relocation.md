@@ -1,6 +1,6 @@
 # Task 04 — Relocate the `AnalysisContent` type
 
-**Plan:** §6.0 (first bullet), §7.2 item 3 · **Recommended order:** step 6 · **Status:** [ ]
+**Plan:** §6.0 (first bullet), §7.2 item 3 · **Recommended order:** step 6 · **Status:** [x]
 
 ## Goal
 

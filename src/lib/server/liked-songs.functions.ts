@@ -1,12 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
-import type {
-	AnalysisContent,
-	LikedSong,
-	MatchingStatus,
-} from "@/features/liked-songs/types";
+import type { LikedSong, MatchingStatus } from "@/features/liked-songs/types";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
+import type { AnalysisContent } from "@/lib/domains/enrichment/content-analysis/analysis-content";
 import {
 	getBootstrapPagesBySlug,
 	getPageRowBySlug,

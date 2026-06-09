@@ -5,6 +5,7 @@
  */
 
 import type { SongDisplayState } from "@/lib/domains/billing/state";
+import type { AnalysisContent } from "@/lib/domains/enrichment/content-analysis/analysis-content";
 
 // Re-export the API types for convenience
 export type MatchingStatus =
@@ -43,39 +44,6 @@ interface SongAnalysis {
 	model_name: string;
 	version: number;
 	created_at: string | null;
-}
-
-export interface AnalysisContent {
-	headline?: string;
-	compound_mood?: string;
-	mood_description?: string;
-	interpretation?: string;
-	themes?: Array<{
-		name: string;
-		confidence?: number;
-		description: string;
-	}>;
-	journey?: Array<{
-		section: string;
-		mood: string;
-		description: string;
-	}>;
-	key_lines?: Array<{
-		line: string;
-		insight: string;
-	}>;
-	sonic_texture?: string;
-	audio_features?: {
-		tempo?: number;
-		energy?: number;
-		valence?: number;
-		liveness?: number;
-		loudness?: number;
-		speechiness?: number;
-		acousticness?: number;
-		danceability?: number;
-		instrumentalness?: number;
-	};
 }
 
 // Helper to check if a song is "new" (liked in last 7 days)

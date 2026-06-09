@@ -8,7 +8,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
-import type { AnalysisContent } from "@/features/liked-songs/types";
 import type {
 	OnboardingSession,
 	WalkthroughSong,
@@ -19,6 +18,7 @@ import { getLandingSongsManifest } from "@/lib/content/landing/landing-songs.ser
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { readBillingState } from "@/lib/domains/billing/queries";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
+import type { AnalysisContent } from "@/lib/domains/enrichment/content-analysis/analysis-content";
 import { completeOnboardingWithAllocations } from "@/lib/domains/library/accounts/onboarding-allocation";
 import {
 	clearPhaseJobIds,

@@ -9,7 +9,8 @@ import type {
 	ColorProps,
 	PanelColors,
 } from "@/features/liked-songs/components/detail/types";
-import type { AnalysisContent, LikedSong } from "@/features/liked-songs/types";
+import type { LikedSong } from "@/features/liked-songs/types";
+import type { AnalysisContent } from "@/lib/domains/enrichment/content-analysis/analysis-content";
 import { fonts } from "@/lib/theme/fonts";
 
 function AnalysisToggle({
