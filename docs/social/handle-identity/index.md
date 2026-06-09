@@ -45,7 +45,7 @@ onboarding-machine work split so each task stays reviewable).
 | 12 | [Settings & authenticated read surfaces](./12-settings-and-read-surfaces.md) | [x] | §9.1, §9.2, §9.4 |
 | 13 | [Public `/@handle` route](./13-public-handle-route.md) | [x] | §9.3 |
 | 14 | [`reset-onboarding` script](./14-reset-onboarding-script.md) | [x] | §13.3 |
-| 15 | [Tests & verification](./15-tests-and-verification.md) | [ ] | §14, §13.2 |
+| 15 | [Tests & verification](./15-tests-and-verification.md) | [x] | §14, §13.2 |
 
 ## Dependency notes
 
