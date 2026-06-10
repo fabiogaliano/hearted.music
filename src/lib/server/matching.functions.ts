@@ -14,6 +14,7 @@ import {
 	getLatestMatchSnapshot,
 	getMatchResults,
 	getMatchResultsForSong,
+	getServedRanksForSong,
 } from "@/lib/domains/taste/song-matching/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 
@@ -88,6 +89,39 @@ async function doesSnapshotBelongToAccount(
 	}
 
 	return snapshotResult.value.id === snapshotId;
+}
+
+/**
+ * Resolves the served-ranking context for a song's decision(s): the snapshot the
+ * user actually saw and the rank each playlist held in it. The client supplies
+ * only the snapshot id (a correlation id — never any score); the server reads the
+ * authoritative ranks from match_result. Any snapshot the account owns is
+ * accepted — not just the latest — because a decision may land after a refresh
+ * superseded the snapshot the user was looking at.
+ *
+ * Best-effort by design — logging context must never block the user's add/dismiss:
+ * when the snapshot can't be resolved (no id, stale/forged id, lookup failure)
+ * the linkage degrades to null, which also keeps the FK from rejecting a bogus
+ * id. A playlist absent from `rankByPlaylist` means it was never surfaced in
+ * that snapshot → served_rank null → an implicit (vs. surfaced) negative.
+ */
+async function resolveServedContext(
+	accountId: string,
+	songId: string,
+	snapshotId: string | undefined,
+): Promise<{ snapshotId: string | null; rankByPlaylist: Map<string, number> }> {
+	if (!snapshotId) return { snapshotId: null, rankByPlaylist: new Map() };
+
+	const served = await getServedRanksForSong(snapshotId, accountId, songId);
+	if (Result.isError(served) || served.value === null) {
+		return { snapshotId: null, rankByPlaylist: new Map() };
+	}
+
+	const rankByPlaylist = new Map<string, number>();
+	for (const mr of served.value) {
+		if (mr.rank !== null) rankByPlaylist.set(mr.playlist_id, mr.rank);
+	}
+	return { snapshotId, rankByPlaylist };
 }
 
 async function doPlaylistsBelongToAccount(
@@ -475,11 +509,15 @@ export const getSongMatches = createServerFn({ method: "GET" })
 const AddToPlaylistSchema = z.object({
 	songId: z.uuid(),
 	playlistId: z.uuid(),
+	// The snapshot whose ranking the user acted on. Optional so a missing
+	// correlation degrades to an unlinked decision rather than a hard rejection.
+	snapshotId: z.uuid().optional(),
 });
 
 export interface AddToPlaylistParams {
 	songId: string;
 	playlistId: string;
+	snapshotId?: string;
 }
 
 export interface AddToPlaylistResult {
@@ -491,9 +529,12 @@ export const addSongToPlaylist = createServerFn({ method: "POST" })
 	.inputValidator((data) => AddToPlaylistSchema.parse(data))
 	.handler(async ({ data, context }): Promise<AddToPlaylistResult> => {
 		const { session } = context;
-		const [songOwned, playlistOwned] = await Promise.all([
+		// Served-context resolution is best-effort and independent of the ownership
+		// checks, so it rides the same Promise.all instead of adding a serial wait.
+		const [songOwned, playlistOwned, served] = await Promise.all([
 			isSongOwnedByAccount(session.accountId, data.songId),
 			doPlaylistsBelongToAccount([data.playlistId], session.accountId),
+			resolveServedContext(session.accountId, data.songId, data.snapshotId),
 		]);
 		if (!songOwned || !playlistOwned) {
 			return { success: false };
@@ -504,6 +545,10 @@ export const addSongToPlaylist = createServerFn({ method: "POST" })
 			data.songId,
 			data.playlistId,
 			"added",
+			{
+				snapshotId: served.snapshotId,
+				servedRank: served.rankByPlaylist.get(data.playlistId) ?? null,
+			},
 		);
 		return { success: Result.isOk(result) };
 	});
@@ -516,11 +561,14 @@ const MAX_DISMISS_PLAYLISTS = 500;
 const DismissSongSchema = z.object({
 	songId: z.uuid(),
 	playlistIds: z.array(z.uuid()).min(1).max(MAX_DISMISS_PLAYLISTS),
+	// The snapshot whose ranking the user acted on (see AddToPlaylistSchema).
+	snapshotId: z.uuid().optional(),
 });
 
 export interface DismissSongParams {
 	songId: string;
 	playlistIds: string[];
+	snapshotId?: string;
 }
 
 export const dismissSong = createServerFn({ method: "POST" })
@@ -528,19 +576,26 @@ export const dismissSong = createServerFn({ method: "POST" })
 	.inputValidator((data) => DismissSongSchema.parse(data))
 	.handler(async ({ data, context }) => {
 		const { session } = context;
-		const [songOwned, playlistsOwned] = await Promise.all([
+		// Served-context resolution is best-effort and independent of the ownership
+		// checks, so it rides the same Promise.all instead of adding a serial wait.
+		const [songOwned, playlistsOwned, served] = await Promise.all([
 			isSongOwnedByAccount(session.accountId, data.songId),
 			doPlaylistsBelongToAccount(data.playlistIds, session.accountId),
+			resolveServedContext(session.accountId, data.songId, data.snapshotId),
 		]);
 		if (!songOwned || !playlistsOwned) {
 			return { success: false };
 		}
 
+		// One snapshot, many playlists: surfaced pairs carry their served_rank;
+		// the rest get null (implicit negatives) — both land in the same upsert.
 		const decisions = data.playlistIds.map((playlistId) => ({
 			accountId: session.accountId,
 			songId: data.songId,
 			playlistId,
 			decision: "dismissed" as const,
+			snapshotId: served.snapshotId,
+			servedRank: served.rankByPlaylist.get(playlistId) ?? null,
 		}));
 		const result = await upsertMatchDecisions(decisions);
 		return { success: Result.isOk(result) };

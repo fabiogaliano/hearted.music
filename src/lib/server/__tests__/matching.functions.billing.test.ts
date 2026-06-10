@@ -13,6 +13,7 @@ const {
 	mockGetLatestMatchSnapshot,
 	mockGetMatchResults,
 	mockGetMatchResultsForSong,
+	mockGetServedRanksForSong,
 	mockGetMatchDecisionsForSongs,
 	mockGetNewItemIds,
 	mockUpsertMatchDecision,
@@ -33,6 +34,7 @@ const {
 		mockGetLatestMatchSnapshot: vi.fn(),
 		mockGetMatchResults: vi.fn(),
 		mockGetMatchResultsForSong: vi.fn(),
+		mockGetServedRanksForSong: vi.fn(),
 		mockGetMatchDecisionsForSongs: vi.fn(),
 		mockGetNewItemIds: vi.fn(),
 		mockUpsertMatchDecision: vi.fn(),
@@ -83,6 +85,8 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 	getMatchResults: (...args: unknown[]) => mockGetMatchResults(...args),
 	getMatchResultsForSong: (...args: unknown[]) =>
 		mockGetMatchResultsForSong(...args),
+	getServedRanksForSong: (...args: unknown[]) =>
+		mockGetServedRanksForSong(...args),
 }));
 
 vi.mock("@/lib/domains/taste/song-matching/decision-queries", () => ({
@@ -539,5 +543,198 @@ describe("match decision ownership checks", () => {
 
 		expect(result).toEqual({ success: false });
 		expect(mockUpsertMatchDecisions).not.toHaveBeenCalled();
+	});
+});
+
+describe("match decision served-context logging", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockUpsertMatchDecision.mockResolvedValue(Result.ok({ id: "dec-1" }));
+		mockUpsertMatchDecisions.mockResolvedValue(Result.ok([{ id: "dec-1" }]));
+	});
+
+	// Wires the ownership reads the handlers run before they log a decision:
+	// liked_song (song owned), playlist (playlists owned). Snapshot ownership is
+	// resolved inside getServedRanksForSong, mocked per test.
+	function mockOwnership(
+		opts: { songOwned?: boolean; ownedPlaylistIds?: string[] } = {},
+	) {
+		const { songOwned = true, ownedPlaylistIds = ["pl-1"] } = opts;
+		mockFrom.mockImplementation((table: string) => {
+			if (table === "liked_song") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								is: vi.fn().mockReturnValue({
+									maybeSingle: vi.fn().mockResolvedValue({
+										data: songOwned ? { song_id: "song-1" } : null,
+										error: null,
+									}),
+								}),
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "playlist") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							in: vi.fn().mockResolvedValue({
+								data: ownedPlaylistIds.map((id) => ({ id })),
+								error: null,
+							}),
+						}),
+					}),
+				};
+			}
+			return { select: vi.fn() };
+		});
+	}
+
+	it("logs snapshot_id and served_rank for a surfaced add", async () => {
+		mockOwnership();
+		mockGetServedRanksForSong.mockResolvedValue(
+			Result.ok([{ playlist_id: "pl-1", rank: 3 }]),
+		);
+
+		const result = await addSongToPlaylist({
+			data: { songId: "song-1", playlistId: "pl-1", snapshotId: "snap-1" },
+		});
+
+		expect(result).toEqual({ success: true });
+		expect(mockGetServedRanksForSong).toHaveBeenCalledWith(
+			"snap-1",
+			"acct-1",
+			"song-1",
+		);
+		expect(mockUpsertMatchDecision).toHaveBeenCalledWith(
+			"acct-1",
+			"song-1",
+			"pl-1",
+			"added",
+			{ snapshotId: "snap-1", servedRank: 3 },
+		);
+	});
+
+	it("logs a null snapshot when no snapshotId is supplied", async () => {
+		mockOwnership();
+
+		await addSongToPlaylist({ data: { songId: "song-1", playlistId: "pl-1" } });
+
+		// No correlation id → no served-ranks lookup, decision logged unlinked.
+		expect(mockGetServedRanksForSong).not.toHaveBeenCalled();
+		expect(mockUpsertMatchDecision).toHaveBeenCalledWith(
+			"acct-1",
+			"song-1",
+			"pl-1",
+			"added",
+			{ snapshotId: null, servedRank: null },
+		);
+	});
+
+	it("degrades to a null snapshot when the snapshot is not owned by the account", async () => {
+		mockOwnership();
+		// getServedRanksForSong resolves null for a missing/foreign snapshot.
+		mockGetServedRanksForSong.mockResolvedValue(Result.ok(null));
+
+		const result = await addSongToPlaylist({
+			data: {
+				songId: "song-1",
+				playlistId: "pl-1",
+				snapshotId: "snap-foreign",
+			},
+		});
+
+		// A stale/forged snapshot id is dropped (FK-safe), never blocks the add.
+		expect(result).toEqual({ success: true });
+		expect(mockUpsertMatchDecision).toHaveBeenCalledWith(
+			"acct-1",
+			"song-1",
+			"pl-1",
+			"added",
+			{ snapshotId: null, servedRank: null },
+		);
+	});
+
+	it("logs a null served_rank when the song was surfaced but not for this playlist", async () => {
+		mockOwnership({ ownedPlaylistIds: ["pl-2"] });
+		// The song is in the snapshot, but only for pl-9 — pl-2 was never top-K.
+		mockGetServedRanksForSong.mockResolvedValue(
+			Result.ok([{ playlist_id: "pl-9", rank: 1 }]),
+		);
+
+		await addSongToPlaylist({
+			data: { songId: "song-1", playlistId: "pl-2", snapshotId: "snap-1" },
+		});
+
+		expect(mockUpsertMatchDecision).toHaveBeenCalledWith(
+			"acct-1",
+			"song-1",
+			"pl-2",
+			"added",
+			{ snapshotId: "snap-1", servedRank: null },
+		);
+	});
+
+	it("dismiss keeps surfaced and implicit negatives distinct in one snapshot", async () => {
+		mockOwnership({ ownedPlaylistIds: ["pl-surfaced", "pl-implicit"] });
+		// Only pl-surfaced has a match_result row in the snapshot.
+		mockGetServedRanksForSong.mockResolvedValue(
+			Result.ok([{ playlist_id: "pl-surfaced", rank: 2 }]),
+		);
+
+		await dismissSong({
+			data: {
+				songId: "song-1",
+				playlistIds: ["pl-surfaced", "pl-implicit"],
+				snapshotId: "snap-1",
+			},
+		});
+
+		expect(mockUpsertMatchDecisions).toHaveBeenCalledWith([
+			{
+				accountId: "acct-1",
+				songId: "song-1",
+				playlistId: "pl-surfaced",
+				decision: "dismissed",
+				snapshotId: "snap-1",
+				servedRank: 2,
+			},
+			{
+				accountId: "acct-1",
+				songId: "song-1",
+				playlistId: "pl-implicit",
+				decision: "dismissed",
+				snapshotId: "snap-1",
+				servedRank: null,
+			},
+		]);
+	});
+
+	it("dismiss degrades to a null snapshot when the lookup fails", async () => {
+		mockOwnership({ ownedPlaylistIds: ["pl-1"] });
+		// Ownership and ranks resolve in ONE query now, so a lookup failure means
+		// ownership is unverified too — the linkage degrades to null rather than
+		// asserting a false "owned but never surfaced" (implicit negative).
+		mockGetServedRanksForSong.mockResolvedValue(
+			Result.err(new Error("lookup failed")),
+		);
+
+		await dismissSong({
+			data: { songId: "song-1", playlistIds: ["pl-1"], snapshotId: "snap-1" },
+		});
+
+		expect(mockUpsertMatchDecisions).toHaveBeenCalledWith([
+			{
+				accountId: "acct-1",
+				songId: "song-1",
+				playlistId: "pl-1",
+				decision: "dismissed",
+				snapshotId: null,
+				servedRank: null,
+			},
+		]);
 	});
 });

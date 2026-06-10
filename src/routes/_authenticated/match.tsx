@@ -306,6 +306,7 @@ function MatchingPageContent({
 				data: {
 					songId: currentSong.id,
 					playlistId,
+					snapshotId,
 				},
 			});
 			analytics.capture("song_added_to_playlist", {
@@ -324,7 +325,14 @@ function MatchingPageContent({
 				};
 			});
 		},
-		[currentSong, currentMatches, addPresented, setReconnectNeeded, analytics],
+		[
+			currentSong,
+			currentMatches,
+			addPresented,
+			setReconnectNeeded,
+			analytics,
+			snapshotId,
+		],
 	);
 
 	const recordCurrentSong = useCallback(() => {
@@ -350,7 +358,9 @@ function MatchingPageContent({
 			analytics.capture("song_dismissed", { song_id: currentSong.id });
 			const playlistIds = currentMatches.map((m) => m.id);
 			if (playlistIds.length > 0) {
-				await dismissSong({ data: { songId: currentSong.id, playlistIds } });
+				await dismissSong({
+					data: { songId: currentSong.id, playlistIds, snapshotId },
+				});
 			}
 			setSessionStats((prev) => ({
 				...prev,
@@ -370,6 +380,7 @@ function MatchingPageContent({
 		lockNavigation,
 		releaseNavigation,
 		analytics,
+		snapshotId,
 	]);
 
 	const handleNext = useCallback(() => {

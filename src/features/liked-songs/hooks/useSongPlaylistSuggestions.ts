@@ -66,7 +66,9 @@ export function useSongPlaylistSuggestions(
 			}
 			if (outcome.status === "error") return;
 		}
-		await addSongToPlaylist({ data: { songId: song.id, playlistId } });
+		await addSongToPlaylist({
+			data: { songId: song.id, playlistId, snapshotId: data.snapshotId },
+		});
 		setAdded((prev) =>
 			prev.key === song.id
 				? { key: song.id, ids: [...prev.ids, playlistId] }

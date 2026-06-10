@@ -86,6 +86,7 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 	getLatestMatchSnapshot: vi.fn(),
 	getMatchResultsForSong: vi.fn(),
+	getServedRanksForSong: vi.fn(),
 }));
 
 vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({

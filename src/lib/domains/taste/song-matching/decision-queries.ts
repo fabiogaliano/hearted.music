@@ -20,12 +20,19 @@ type DecisionType = "added" | "dismissed";
 /**
  * Upserts a single match decision.
  * On conflict (same account + song + playlist), updates the decision and decided_at.
+ *
+ * `served` records the ranking the user acted on (matching roadmap #6). Both
+ * fields are nullable: the server resolves them best-effort and passes null when
+ * the served snapshot can't be tied to a match_result — never blocking the
+ * decision. A null `servedRank` under a non-null `snapshotId` is the signal
+ * that the (song, playlist) pair was never surfaced in that snapshot.
  */
 export function upsertMatchDecision(
 	accountId: string,
 	songId: string,
 	playlistId: string,
 	decision: DecisionType,
+	served?: { snapshotId?: string | null; servedRank?: number | null },
 ): Promise<Result<MatchDecision, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
@@ -38,6 +45,8 @@ export function upsertMatchDecision(
 					playlist_id: playlistId,
 					decision,
 					decided_at: new Date().toISOString(),
+					snapshot_id: served?.snapshotId ?? null,
+					served_rank: served?.servedRank ?? null,
 				},
 				{ onConflict: "account_id,song_id,playlist_id" },
 			)
@@ -49,6 +58,11 @@ export function upsertMatchDecision(
 /**
  * Batch upserts match decisions.
  * On conflict (same account + song + playlist), updates the decision and decided_at.
+ *
+ * Per-decision `snapshotId` / `servedRank` carry the served-ranking context (see
+ * `upsertMatchDecision`). A dismiss spans many playlists in one snapshot: those
+ * with a match_result carry `servedRank` (surfaced negatives), the rest null it
+ * (implicit negatives) — both kept distinct in the same batch.
  */
 export function upsertMatchDecisions(
 	decisions: {
@@ -56,6 +70,8 @@ export function upsertMatchDecisions(
 		songId: string;
 		playlistId: string;
 		decision: DecisionType;
+		snapshotId?: string | null;
+		servedRank?: number | null;
 	}[],
 ): Promise<Result<MatchDecision[], DbError>> {
 	if (decisions.length === 0) {
@@ -73,6 +89,8 @@ export function upsertMatchDecisions(
 					playlist_id: d.playlistId,
 					decision: d.decision,
 					decided_at: new Date().toISOString(),
+					snapshot_id: d.snapshotId ?? null,
+					served_rank: d.servedRank ?? null,
 				})),
 				{ onConflict: "account_id,song_id,playlist_id" },
 			)
