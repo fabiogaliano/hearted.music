@@ -1,7 +1,7 @@
 # Matching System — Consolidated Research & Roadmap
 
 **Date:** 2026-06-10 (consolidates research passes from 2026-06-06 and 2026-06-09; priorities revised same day after a data audit)
-**Status:** Research findings + prioritized plan. **Pre-prod #1 (fusion normalization) and #3 (Qwen3 re-embed + instruct-format fix) implemented 2026-06-10** — see the findings below; the rest is unimplemented. **Priorities revised 2026-06-10:** a data audit found `match_decision` holds **10 decisions on 1 playlist from 1 account** — far below what recall@k/MRR/temporal-split can use. So #6 (decision-log enrichment, the time-sensitive item) moves to the front, #2 is slimmed to a config-diff replay runner, and the full metrics harness is deferred to post-prod, gated on decision volume (see finding #6).
+**Status:** Research findings + prioritized plan. **Pre-prod #1 (fusion normalization), #3 (Qwen3 re-embed + instruct-format fix), and #6 (decision-log enrichment) implemented 2026-06-10** — see the findings below; the rest is unimplemented. **Priorities revised 2026-06-10:** a data audit found `match_decision` holds **10 decisions on 1 playlist from 1 account** — far below what recall@k/MRR/temporal-split can use. So #6 (decision-log enrichment, the time-sensitive item) was pulled to the front (now shipped), #2 is slimmed to a config-diff replay runner, and the full metrics harness is deferred to post-prod, gated on decision volume (see finding #6).
 **Scope:** Cheap, modern (2025–2026) improvements to the song→playlist matching pipeline, plus the genre-pills feature. Hard constraint: no self-hosted GPU infra, no expensive per-request LLM calls.
 
 This document supersedes `matching-system-improvements.md` (2026-06-06) and
@@ -62,7 +62,7 @@ older references and the completed-work notes still resolve.
 |---|---|---|---|
 | 1 | ✅ **Batch-matrix score normalization before fusion** (z-score per signal, 3σ-clipped; dropped the 0.5-baseline stretch) — **done 2026-06-10** | ~½ day | Biggest mis-scaling in the system; pure code; makes the weights mean what they say. `minScoreThreshold` now in normalized units (`0.35`) — re-tune via #2. |
 | 3 | ✅ **One combined re-embed:** correct instruct format (`Instruct: …\nQuery: …` queries, no prefix documents) + swap to `Qwen3-Embedding-0.6B` at **512-dim** — **done 2026-06-10** | 1 day + re-embed | Prefix fix + model swap done in one pass. Shipped 512 outright (preprod — dropped 1024, no bakeoff) since #2 doesn't exist yet to measure it; 512 stays a free re-decision later via re-truncation. |
-| 6 | **Decision-log enrichment:** store rank, factor scores, snapshot id at decision time; optionally ~5% rank jitter for future debiasing | hours | **Pulled ahead of #2 (2026-06-10).** The harness is blocked on data volume; this is what makes the accruing data good. Every decision logged without rank/factor features is permanently degraded eval + training data — impossible to backfill later. |
+| 6 | ✅ **Decision-log enrichment:** FK each decision to the immutable `match_snapshot` it was served from + denormalized `served_rank`; completed `match_result` as the served record (`fused_score` + `normalized_factors`) — **done 2026-06-10** | hours | Every decision now reconstructs exactly what the user saw vs. chose. Surfaced (rank set) vs. implicit (rank NULL) negatives are queryable; per-decision factor features resolve via the `match_result` join — nothing is copied onto the decision row. ~5% rank jitter deferred (zero signal pre-traffic; `served_rank` is the future-enabling half). |
 | 2 | **Slim offline replay runner** over `match_decision`: run the *real* pipeline (fusion + normalization + threshold + reranker, not raw cosine) under a candidate config, diff config A vs B by ranks of added/dismissed | ~½ day | The data-volume-independent core of the harness: a config *regression* tool, not a measurement tool. Re-tunes `minScoreThreshold`, A/Bs #4. Explicitly excludes recall@k/MRR/temporal split/segmentation — at n=10 those produce numbers that look like measurements but aren't (deferred to post-prod #1). Extend `scripts/matching-lab/` from `eval-embedding-sanity.ts`. |
 | 4 | **Reranker fixes:** feed analysis text as the document; verify yes/no-logit scoring on DeepInfra; A/B full-rerank vs 70/30 blend via #2 (directional only at current n) | ~1 day | The 30% blend currently rides on a name+genre string while the rich analysis sits unused. |
 | 5 | **Genre pills** (design below) | 2–4 days | Strongest cold-start evidence; product-visible; independent of #1–4. |
@@ -77,8 +77,9 @@ older references and the completed-work notes still resolve.
    incremental extension of the slim runner, not a rewrite; it's also what finally settles
    the 1024-vs-512 question and the reranker A/Bs properly.
 2. **Learned fusion weights** — pairwise logistic regression on normalized factor scores once
-   ~300–500 accept/reject pairs exist; LambdaMART only past ~1–5k pairs. Needs #6's logged
-   features. (Dismissed tracks as hard negatives is structurally sound — vote 2-1 — but the
+   ~300–500 accept/reject pairs exist; LambdaMART only past ~1–5k pairs. Consumes #6's logged
+   features (shipped 2026-06-10) — the served `normalized_factors` per decision, joined via
+   `snapshot_id`, plus surfaced dismissals (`served_rank` set) as hard negatives. (Dismissed tracks as hard negatives is structurally sound — vote 2-1 — but the
    quantified 9–74% HR@1 lift claim was refuted; contrastive fine-tuning only if logistic
    regression plateaus, gated behind the harness.)
 3. **Eval discipline** — segment metrics by popularity tier and playlist size (Simpson's
@@ -103,10 +104,10 @@ older references and the completed-work notes still resolve.
    representation must never exist in that space again.
 
 The throughline (revised 2026-06-10): **make the data good before building the measurement.**
-Fusion is normalized; next is logging decision-time features (#6) so every decision from here
-on is usable, then the slim replay runner (#2) as a config regression tool. The full metrics
-harness waits for decision volume — building it today would produce fake measurements, not
-real ones.
+Fusion is normalized and decision-time features now log (#6 shipped — every decision from here
+on FKs to the snapshot it was served from), so the next step is the slim replay runner (#2) as
+a config regression tool. The full metrics harness waits for decision volume — building it
+today would produce fake measurements, not real ones.
 
 ---
 
@@ -250,9 +251,11 @@ is noise — the sanity replay's inconclusive −0.02 separation already demonst
 full harness built now would produce numbers that *look* like measurements but aren't, which
 is worse than knowing you're unmeasured. So the remedy splits in three:
 
-1. **Decision-log enrichment first (pre-prod #6)** — the only time-sensitive piece. The
-   harness gains nothing from existing today, but every decision logged without rank/factor
-   features is permanently degraded data.
+1. **Decision-log enrichment first (pre-prod #6) — ✅ shipped 2026-06-10.** Decisions FK to the
+   immutable `match_snapshot` they were served from + carry `served_rank` (NULL = never surfaced
+   → implicit negative); `match_result` completed with `normalized_factors` + `fused_score` (the
+   pre-rerank weighted sum, kept because the 70/30 rerank blend replaces `score`). The replay
+   runner (#2) consumes this; it doesn't exist yet.
 2. **Slim replay runner (pre-prod #2, ~½ day)** — the data-volume-independent core: run the
    real pipeline (fusion + normalization + threshold + reranker) over the decision log under
    config A vs config B and diff the ranks of added/dismissed songs.
@@ -318,10 +321,12 @@ the free-text description.
   a footgun for any future use.
 - Matching is brute-force O(songs × playlists) in TypeScript; HNSW indexes on
   `song_embedding`/`playlist_profile` are never queried. Fine now, a scaling cliff later.
-- `match_decision` stores only (account, song, playlist, decision, timestamp) — not the
-  rank/score/snapshot at decision time. Joinable via `match_result` but fragile; log them
-  directly going forward so the harness and learned weights have clean features. This is
-  pre-prod #6 — now first in line (see finding #6's revision).
+- ~~`match_decision` stores only (account, song, playlist, decision, timestamp) — not the
+  rank/score/snapshot at decision time. Joinable via `match_result` but fragile.~~ **Fixed
+  2026-06-10 (pre-prod #6):** now carries `snapshot_id` (FK → the immutable `match_snapshot`
+  served) + `served_rank`; factor features resolve via the `match_result` join (which now also
+  stores `fused_score` + `normalized_factors`), not duplicated onto the decision. Surfaced
+  (`served_rank` set) vs. implicit (NULL) negatives stay distinct.
 
 ---
 
