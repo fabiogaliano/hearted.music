@@ -9,6 +9,10 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Database, Tables, TablesInsert } from "@/lib/data/database.types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import {
+	chunkedWrite,
+	DB_IN_FILTER_CHUNK_SIZE,
+} from "@/lib/shared/utils/chunked-write";
 import { chunkArray, mapWithConcurrency } from "@/lib/shared/utils/concurrency";
 import {
 	fromSupabaseMany,
@@ -563,19 +567,21 @@ export function upsert(
 		return Promise.resolve(Result.ok<LikedSong[], DbError>([]));
 	}
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("liked_song")
-			.upsert(
-				data.map((ls) => ({
-					account_id: accountId,
-					song_id: ls.song_id,
-					liked_at: ls.liked_at,
-					unliked_at: null,
-				})),
-				{ onConflict: "account_id,song_id" },
-			)
-			.select(),
+	return chunkedWrite(data, (chunk) =>
+		fromSupabaseMany(
+			supabase
+				.from("liked_song")
+				.upsert(
+					chunk.map((ls) => ({
+						account_id: accountId,
+						song_id: ls.song_id,
+						liked_at: ls.liked_at,
+						unliked_at: null,
+					})),
+					{ onConflict: "account_id,song_id" },
+				)
+				.select(),
+		),
 	);
 }
 
@@ -612,12 +618,20 @@ export function softDeleteBatch(
 		return Promise.resolve(Result.ok<LikedSong[], DbError>([]));
 	}
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("liked_song")
-			.update({ unliked_at: new Date().toISOString() })
-			.eq("account_id", accountId)
-			.in("song_id", songIds)
-			.select(),
+	// Stamp every chunk with one timestamp so a mass-unlike doesn't smear
+	// unliked_at across the rows just because they spanned chunk boundaries.
+	const unlikedAt = new Date().toISOString();
+	return chunkedWrite(
+		songIds,
+		(chunk) =>
+			fromSupabaseMany(
+				supabase
+					.from("liked_song")
+					.update({ unliked_at: unlikedAt })
+					.eq("account_id", accountId)
+					.in("song_id", chunk)
+					.select(),
+			),
+		{ chunkSize: DB_IN_FILTER_CHUNK_SIZE, concurrency: 4 },
 	);
 }

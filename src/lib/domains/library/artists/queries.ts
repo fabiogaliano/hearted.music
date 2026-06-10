@@ -9,6 +9,7 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Tables } from "@/lib/data/database.types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import { chunkedWrite } from "@/lib/shared/utils/chunked-write";
 import { chunkArray, mapWithConcurrency } from "@/lib/shared/utils/concurrency";
 import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
 
@@ -106,18 +107,20 @@ export function upsert(
 		return Promise.resolve(Result.ok<Artist[], DbError>([]));
 	}
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("artist")
-			.upsert(
-				data.map((a) => ({
-					spotify_id: a.spotify_id,
-					name: a.name,
-					image_url: a.image_url,
-					...(a.bio != null ? { bio: a.bio } : {}),
-				})),
-				{ onConflict: "spotify_id" },
-			)
-			.select(),
+	return chunkedWrite(data, (chunk) =>
+		fromSupabaseMany(
+			supabase
+				.from("artist")
+				.upsert(
+					chunk.map((a) => ({
+						spotify_id: a.spotify_id,
+						name: a.name,
+						image_url: a.image_url,
+						...(a.bio != null ? { bio: a.bio } : {}),
+					})),
+					{ onConflict: "spotify_id" },
+				)
+				.select(),
+		),
 	);
 }

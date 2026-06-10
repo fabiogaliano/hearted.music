@@ -9,6 +9,7 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Enums, Tables } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
+import { chunkedWrite } from "@/lib/shared/utils/chunked-write";
 import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
 
 // ============================================================================
@@ -68,18 +69,20 @@ export function markItemsNew(
 	}
 
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("account_item_newness")
-			.upsert(
-				itemIds.map((itemId) => ({
-					account_id: accountId,
-					item_id: itemId,
-					item_type: itemType,
-					is_new: true,
-				})),
-				{ onConflict: "account_id,item_id,item_type" },
-			)
-			.select(),
+	return chunkedWrite(itemIds, (chunk) =>
+		fromSupabaseMany(
+			supabase
+				.from("account_item_newness")
+				.upsert(
+					chunk.map((itemId) => ({
+						account_id: accountId,
+						item_id: itemId,
+						item_type: itemType,
+						is_new: true,
+					})),
+					{ onConflict: "account_id,item_id,item_type" },
+				)
+				.select(),
+		),
 	);
 }

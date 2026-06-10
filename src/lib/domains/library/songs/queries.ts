@@ -9,6 +9,7 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Tables, TablesInsert } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
+import { chunkedWrite } from "@/lib/shared/utils/chunked-write";
 import { chunkArray, mapWithConcurrency } from "@/lib/shared/utils/concurrency";
 import {
 	fromSupabaseMany,
@@ -130,23 +131,25 @@ export function upsert(data: UpsertData[]): Promise<Result<Song[], DbError>> {
 		return Promise.resolve(Result.ok<Song[], DbError>([]));
 	}
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("song")
-			.upsert(
-				data.map((song) => ({
-					spotify_id: song.spotify_id,
-					name: song.name,
-					album_id: song.album_id,
-					album_name: song.album_name,
-					image_url: song.image_url,
-					artists: song.artists,
-					duration_ms: song.duration_ms,
-					genres: song.genres,
-				})),
-				{ onConflict: "spotify_id" },
-			)
-			.select(),
+	return chunkedWrite(data, (chunk) =>
+		fromSupabaseMany(
+			supabase
+				.from("song")
+				.upsert(
+					chunk.map((song) => ({
+						spotify_id: song.spotify_id,
+						name: song.name,
+						album_id: song.album_id,
+						album_name: song.album_name,
+						image_url: song.image_url,
+						artists: song.artists,
+						duration_ms: song.duration_ms,
+						genres: song.genres,
+					})),
+					{ onConflict: "spotify_id" },
+				)
+				.select(),
+		),
 	);
 }
 
@@ -162,23 +165,25 @@ export function upsertCatalog(
 		return Promise.resolve(Result.ok<Song[], DbError>([]));
 	}
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("song")
-			.upsert(
-				data.map((song) => ({
-					spotify_id: song.spotify_id,
-					name: song.name,
-					album_id: song.album_id,
-					album_name: song.album_name,
-					image_url: song.image_url,
-					artists: song.artists,
-					artist_ids: song.artist_ids,
-					duration_ms: song.duration_ms,
-				})),
-				{ onConflict: "spotify_id" },
-			)
-			.select(),
+	return chunkedWrite(data, (chunk) =>
+		fromSupabaseMany(
+			supabase
+				.from("song")
+				.upsert(
+					chunk.map((song) => ({
+						spotify_id: song.spotify_id,
+						name: song.name,
+						album_id: song.album_id,
+						album_name: song.album_name,
+						image_url: song.image_url,
+						artists: song.artists,
+						artist_ids: song.artist_ids,
+						duration_ms: song.duration_ms,
+					})),
+					{ onConflict: "spotify_id" },
+				)
+				.select(),
+		),
 	);
 }
 

@@ -14,6 +14,10 @@ import type {
 } from "@/lib/data/database.types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
+	chunkedWrite,
+	DB_IN_FILTER_CHUNK_SIZE,
+} from "@/lib/shared/utils/chunked-write";
+import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
@@ -184,24 +188,26 @@ export function upsertPlaylists(
 		return Promise.resolve(Result.ok<Playlist[], DbError>([]));
 	}
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("playlist")
-			.upsert(
-				playlists.map((playlist) => ({
-					account_id: accountId,
-					spotify_id: playlist.spotify_id,
-					name: playlist.name,
-					description: playlist.description,
-					snapshot_id: playlist.snapshot_id,
-					is_public: playlist.is_public,
-					song_count: playlist.song_count,
-					is_target: playlist.is_target,
-					image_url: playlist.image_url,
-				})),
-				{ onConflict: "account_id,spotify_id" },
-			)
-			.select(),
+	return chunkedWrite(playlists, (chunk) =>
+		fromSupabaseMany(
+			supabase
+				.from("playlist")
+				.upsert(
+					chunk.map((playlist) => ({
+						account_id: accountId,
+						spotify_id: playlist.spotify_id,
+						name: playlist.name,
+						description: playlist.description,
+						snapshot_id: playlist.snapshot_id,
+						is_public: playlist.is_public,
+						song_count: playlist.song_count,
+						is_target: playlist.is_target,
+						image_url: playlist.image_url,
+					})),
+					{ onConflict: "account_id,spotify_id" },
+				)
+				.select(),
+		),
 	);
 }
 
@@ -231,13 +237,18 @@ export async function deletePlaylists(
 		return Result.ok(null);
 	}
 	const supabase = createAdminSupabaseClient();
-	const result = await fromSupabaseMany(
-		supabase
-			.from("playlist")
-			.delete()
-			.eq("account_id", accountId)
-			.in("id", ids)
-			.select(),
+	const result = await chunkedWrite(
+		ids,
+		(chunk) =>
+			fromSupabaseMany(
+				supabase
+					.from("playlist")
+					.delete()
+					.eq("account_id", accountId)
+					.in("id", chunk)
+					.select(),
+			),
+		{ chunkSize: DB_IN_FILTER_CHUNK_SIZE, concurrency: 4 },
 	);
 	if (Result.isError(result)) {
 		return Result.err(result.error);
@@ -443,19 +454,21 @@ export function upsertPlaylistSongs(
 		return Promise.resolve(Result.ok<PlaylistSong[], DbError>([]));
 	}
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("playlist_song")
-			.upsert(
-				songs.map((song) => ({
-					playlist_id: playlistId,
-					song_id: song.song_id,
-					position: song.position,
-					added_at: song.added_at,
-				})),
-				{ onConflict: "playlist_id,song_id" },
-			)
-			.select(),
+	return chunkedWrite(songs, (chunk) =>
+		fromSupabaseMany(
+			supabase
+				.from("playlist_song")
+				.upsert(
+					chunk.map((song) => ({
+						playlist_id: playlistId,
+						song_id: song.song_id,
+						position: song.position,
+						added_at: song.added_at,
+					})),
+					{ onConflict: "playlist_id,song_id" },
+				)
+				.select(),
+		),
 	);
 }
 
@@ -471,13 +484,18 @@ export async function removePlaylistSongs(
 		return Result.ok(null);
 	}
 	const supabase = createAdminSupabaseClient();
-	const result = await fromSupabaseMany(
-		supabase
-			.from("playlist_song")
-			.delete()
-			.eq("playlist_id", playlistId)
-			.in("song_id", songIds)
-			.select(),
+	const result = await chunkedWrite(
+		songIds,
+		(chunk) =>
+			fromSupabaseMany(
+				supabase
+					.from("playlist_song")
+					.delete()
+					.eq("playlist_id", playlistId)
+					.in("song_id", chunk)
+					.select(),
+			),
+		{ chunkSize: DB_IN_FILTER_CHUNK_SIZE, concurrency: 4 },
 	);
 	if (Result.isError(result)) {
 		return Result.err(result.error);
