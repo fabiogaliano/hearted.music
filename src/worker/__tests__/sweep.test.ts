@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Job } from "@/lib/platform/jobs/repository";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import type {
@@ -10,7 +10,7 @@ import type {
 	LibraryProcessingApplyOutcome,
 	LibraryProcessingState,
 } from "@/lib/workflows/library-processing/types";
-import { runSweepTick, type SweepDeps } from "../sweep";
+import { runSweepTick, type SweepDeps, startSweep } from "../sweep";
 
 vi.mock("../logger", () => ({
 	log: {
@@ -19,6 +19,11 @@ vi.mock("../logger", () => ({
 		error: vi.fn(),
 		debug: vi.fn(),
 	},
+}));
+
+const captureException = vi.fn();
+vi.mock("@sentry/bun", () => ({
+	captureException: (...args: unknown[]) => captureException(...args),
 }));
 
 function makeJob(overrides: Partial<Job> = {}): Job {
@@ -467,5 +472,91 @@ describe("runSweepTick", () => {
 				error: applyError,
 			},
 		);
+	});
+
+	it("does not reject when a recovery step throws unexpectedly", async () => {
+		const deps = makeDeps({
+			markDeadLibraryProcessingJobs: vi
+				.fn()
+				.mockResolvedValue(Result.ok([makeJob({ id: "d-1" })])),
+			recoverDeadLetteredLibraryProcessingJobs: vi
+				.fn()
+				.mockRejectedValue(new Error("recovery exploded")),
+		});
+
+		await expect(runSweepTick(deps)).resolves.toBeUndefined();
+
+		expect(logMod.log.error).toHaveBeenCalledWith("sweep-step-threw", {
+			step: "recover-dead-letters",
+			error: "recovery exploded",
+		});
+		expect(captureException).toHaveBeenCalledTimes(1);
+	});
+
+	it("runs later steps even when an earlier step throws", async () => {
+		const deps = makeDeps({
+			recoverTerminalLibraryProcessingRefs: vi
+				.fn()
+				.mockRejectedValue(new Error("terminal recovery exploded")),
+		});
+
+		await runSweepTick(deps);
+
+		expect(deps.sweepStaleWalkthroughPreviewJobs).toHaveBeenCalledWith(
+			"5 minutes",
+		);
+		expect(deps.markDeadWalkthroughPreviewJobs).toHaveBeenCalledWith(
+			"5 minutes",
+		);
+	});
+});
+
+describe("startSweep", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it("does not start the next tick until the current one settles", async () => {
+		let resolveTick = () => {};
+		const deps = makeDeps({
+			sweepStaleLibraryProcessingJobs: vi.fn().mockImplementation(
+				() =>
+					new Promise((resolve) => {
+						resolveTick = () => resolve(Result.ok([]));
+					}),
+			),
+		});
+
+		const { stop } = startSweep(deps, 1000);
+
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(deps.sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(1);
+
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(deps.sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(1);
+
+		resolveTick();
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(deps.sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(2);
+
+		stop();
+	});
+
+	it("stops scheduling further ticks after stop()", async () => {
+		const deps = makeDeps();
+		const { stop } = startSweep(deps, 1000);
+
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(deps.sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(1);
+
+		stop();
+
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(deps.sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(1);
 	});
 });

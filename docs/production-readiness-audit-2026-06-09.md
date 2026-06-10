@@ -308,7 +308,17 @@ Not blocking, but each has real production impact. Ordered by priority.
   ```
   Treat 23505 as "sync already running".
 
-### 14. [ ] One unexpected throw in the sweep tick kills the whole worker
+### 14. [x] One unexpected throw in the sweep tick kills the whole worker
+
+> **Done (2026-06-10)** — Fixed deeper than the original one-line `.catch()`.
+> Each of the five sweep steps now runs inside a `runStep` wrapper (log
+> `sweep-step-threw` + `Sentry.captureException`), making `runSweepTick` total —
+> it can no longer reject, and one failing step no longer aborts the others.
+> `startSweep` also switched from `setInterval` to a self-scheduling `setTimeout`
+> loop that queues the next tick only after the current one settles, closing the
+> overlap window where a slow tick could double-process the same rows (the
+> non-atomic terminal-ref path). New tests cover step isolation and no-overlap;
+> suite + typecheck clean.
 
 - **Area:** Reliability
 - **Where:** `src/worker/sweep.ts:148` — `setInterval(() => runSweepTick(deps), intervalMs)`
