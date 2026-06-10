@@ -164,7 +164,14 @@ Fix all of these before going live.
   either way add it explicitly to the `env:` block so the dependency is
   visible. Two-minute check.
 
-### 7. [ ] `billing_admin_task.stripe_event_id` is not UNIQUE
+### 7. [x] `billing_admin_task.stripe_event_id` is not UNIQUE
+
+> **Done (2026-06-10)** — added migration
+> `20260610020000_billing_admin_task_stripe_event_id_unique.sql` with the
+> UNIQUE constraint and applied it locally via `supabase migration up`.
+> Follow-up lives in the billing-service repo: its insert should use
+> `ON CONFLICT (stripe_event_id) DO NOTHING` (or tolerate 23505) so a
+> webhook re-delivery is a no-op instead of an error.
 
 - **Area:** Database / Billing
 - **Where:** `supabase/migrations/20260406000000_billing_admin_task.sql`
