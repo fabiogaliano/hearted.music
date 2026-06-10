@@ -169,9 +169,17 @@ Fix all of these before going live.
 > **Done (2026-06-10)** — added migration
 > `20260610020000_billing_admin_task_stripe_event_id_unique.sql` with the
 > UNIQUE constraint and applied it locally via `supabase migration up`.
-> Follow-up lives in the billing-service repo: its insert should use
-> `ON CONFLICT (stripe_event_id) DO NOTHING` (or tolerate 23505) so a
-> webhook re-delivery is a no-op instead of an error.
+> Follow-up **resolved** in the billing-service repo (`v1_hearted_brand`,
+> `src/handlers/refund.ts` `createAdminTask`): bare `ON CONFLICT DO NOTHING`
+> was insufficient. The handler also marked the event `failed`
+> **unconditionally**, so every successfully-filed ambiguous dispute returned
+> 500 and Stripe re-delivered the same event for its full ~3-day window —
+> tripping Stripe's "endpoint is failing" warnings and risking auto-disable.
+> Fix: insert via `upsert(..., { ignoreDuplicates: true })` (swallows the
+> 23505, so a returned error means a genuine failure to file), then mark the
+> event `processed` once the task is filed-or-already-exists (the task IS the
+> resolution; stop retrying) and reserve `failed` for a real "couldn't file it"
+> error that should retry.
 
 - **Area:** Database / Billing
 - **Where:** `supabase/migrations/20260406000000_billing_admin_task.sql`
