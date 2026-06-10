@@ -16,13 +16,26 @@ several with evidence of deliberate hardening.
 Issues are numbered by overall priority (1 = most urgent) and grouped by
 release impact.
 
+**Progress (updated 2026-06-10):** Blockers **#1** (re-liked data loss,
+`c0dae1b`) and **#2** (billing bridge swallowing fulfillment failures,
+`164ca79`) — the two findings that silently lose user data or paid
+fulfillment — are now fixed. Addendum brand-service fixes 1–4 plus the
+lower-priority pass are done (including the `pack_credit_lot` checkout-session
+correlation migration in this repo). Blocker **#3** (email verification now
+required) is fixed. Blocker **#6** (`VITE_PUBLIC_APP_ORIGIN` in CI) is fixed.
+Blocker **#4** (sync writes now chunked) is fixed — large-library staging run
+still owed. Blocker **#5** (`.max()` bounds on validated inputs) is fixed.
+Remaining Group 1 gate: **#7–#9**.
+
 ---
 
 ## Group 1 — NO-GO: release blockers
 
 Fix all of these before going live.
 
-### 1. Re-liked songs are permanently stuck as "unliked" (data loss)
+### 1. [x] Re-liked songs are permanently stuck as "unliked" (data loss)
+
+> **Done** — `c0dae1b fix(spotify-sync): restore re-liked songs lost by soft-delete diff`
 
 - **Area:** Reliability / Correctness
 - **Where:** `src/lib/workflows/spotify-sync/sync-helpers.ts:172-178`,
@@ -44,7 +57,9 @@ Fix all of these before going live.
      upsert path is self-healing.
   3. Add a regression test for like → sync → unlike → sync → re-like → sync.
 
-### 2. Billing bridge marks paid events "processed" even when fulfillment fails
+### 2. [x] Billing bridge marks paid events "processed" even when fulfillment fails
+
+> **Done** — `164ca79 fix(billing): propagate library-processing apply failures in bridge handlers`
 
 - **Area:** Reliability / Billing
 - **Where:** `src/lib/domains/billing/bridge-handlers.ts` (all five handlers:
@@ -84,7 +99,14 @@ Fix all of these before going live.
   Not quite one-line: the signup flow assumed `autoSignIn` issued a session,
   so it needed the sign-in-mode + notice handoff above.
 
-### 4. Initial-sync upserts are not chunked
+### 4. [x] Initial-sync upserts are not chunked
+
+> **Done (2026-06-10)** — Shared `chunkedWrite` helper
+> (`src/lib/shared/utils/chunked-write.ts`) now wraps every bulk sync write
+> (catalog/liked-song/artist/playlist upserts, `markItemsNew`, and the `.in()`
+> deletes). Real risk was silent `.select()` truncation at `max_rows=1000`, not
+> request size: chunk 500 (upserts) / 100 (`.in()`), low concurrency. Tests +
+> typecheck + biome clean. **Still owed:** the few-thousand-song staging sync.
 
 - **Area:** Performance / Reliability
 - **Where:** `src/lib/workflows/spotify-sync/sync-helpers.ts:48-50`
@@ -100,7 +122,13 @@ Fix all of these before going live.
   both upserts. Then test a real sync with a few-thousand-song library before
   launch.
 
-### 5. Unbounded arrays/strings in validated inputs
+### 5. [x] Unbounded arrays/strings in validated inputs
+
+> **Done (2026-06-10)** — `.max()` bounds at all five sites: `songIds.max(10_000)`
+> (client slices to a shared const — it accumulates across a session, so 200 would
+> drop flushes), `playlistIds.max(500)`, handles `.max(100)`, playlist
+> `name.max(500)` / `description.max(5000)` on both update **and** create schemas.
+> typecheck + tests + biome clean.
 
 - **Area:** Correctness / Abuse resistance
 - **Where:**
@@ -117,7 +145,13 @@ Fix all of these before going live.
   handles `.max(100)`, playlist `name.max(500)` / `description.max(5000)`.
   ~30 minutes of work.
 
-### 6. `VITE_PUBLIC_APP_ORIGIN` may be missing from the CI build env (verify)
+### 6. [x] `VITE_PUBLIC_APP_ORIGIN` may be missing from the CI build env (verify)
+
+> **Done (2026-06-10)** — verified it was genuinely missing: the
+> `production-app` GitHub environment had no such variable, and environment
+> vars are never auto-injected into job env anyway. Created
+> `VITE_PUBLIC_APP_ORIGIN=https://hearted.music` in the environment via
+> `gh api` and added it explicitly to the deploy-app `env:` block.
 
 - **Area:** Ops
 - **Where:** `src/env.ts:61` (required `z.url()`);
@@ -130,7 +164,7 @@ Fix all of these before going live.
   either way add it explicitly to the `env:` block so the dependency is
   visible. Two-minute check.
 
-### 7. `billing_admin_task.stripe_event_id` is not UNIQUE
+### 7. [ ] `billing_admin_task.stripe_event_id` is not UNIQUE
 
 - **Area:** Database / Billing
 - **Where:** `supabase/migrations/20260406000000_billing_admin_task.sql`
@@ -144,7 +178,7 @@ Fix all of these before going live.
     ADD CONSTRAINT billing_admin_task_stripe_event_id_key UNIQUE (stripe_event_id);
   ```
 
-### 8. `oauth_account` lacks `UNIQUE(user_id, provider_id)`
+### 8. [ ] `oauth_account` lacks `UNIQUE(user_id, provider_id)`
 
 - **Area:** Database / Auth
 - **Where:** `supabase/migrations/20260303154135_add_better_auth_tables.sql:29`
@@ -158,7 +192,7 @@ Fix all of these before going live.
     ON oauth_account (user_id, provider_id);
   ```
 
-### 9. Test suite is not green (repo health gate)
+### 9. [ ] Test suite is not green (repo health gate)
 
 - **Area:** Repo health (carried over from `mvp-release-findings.md`, re-verified 2026-06-09)
 - **Where:** `src/lib/domains/billing/__tests__/liked-song-access-grant.integration.test.ts:265`
@@ -182,7 +216,7 @@ Fix all of these before going live.
 
 Not blocking, but each has real production impact. Ordered by priority.
 
-### 10. Worker drain timeout (30s) is shorter than a job
+### 10. [ ] Worker drain timeout (30s) is shorter than a job
 
 - **Area:** Ops
 - **Where:** `src/worker/config.ts:24` (`WORKER_DRAIN_TIMEOUT_MS` default
@@ -196,7 +230,7 @@ Not blocking, but each has real production impact. Ordered by priority.
   the Coolify container stop grace period above it. Add
   `await Sentry.flush(2000)` before `process.exit(0)`.
 
-### 11. Full-library reads on hot paths
+### 11. [ ] Full-library reads on hot paths
 
 - **Area:** Performance
 - **Where:** `src/routes/api/extension/sync.tsx:430` → `getAll` (no LIMIT, no
@@ -212,7 +246,7 @@ Not blocking, but each has real production impact. Ordered by priority.
   `getMatchResultsForSong` for the per-song path. Add
   `CREATE INDEX ON match_result(snapshot_id, song_id);`
 
-### 12. `prod-secrets.json` survives on disk if the deploy fails
+### 12. [ ] `prod-secrets.json` survives on disk if the deploy fails
 
 - **Area:** Ops / Security
 - **Where:** `package.json:40` — `... && wrangler secret bulk < prod-secrets.json && rm prod-secrets.json`
@@ -221,7 +255,7 @@ Not blocking, but each has real production impact. Ordered by priority.
 - **Fix:** Pipe directly (`bun scripts/env-to-secrets.ts ... | wrangler secret bulk`)
   so no temp file exists at all.
 
-### 13. Concurrent extension syncs for one account aren't atomically gated
+### 13. [ ] Concurrent extension syncs for one account aren't atomically gated
 
 - **Area:** Reliability
 - **Where:** `src/routes/api/extension/sync.tsx:205-243` — plain SELECT gate
@@ -237,7 +271,7 @@ Not blocking, but each has real production impact. Ordered by priority.
   ```
   Treat 23505 as "sync already running".
 
-### 14. One unexpected throw in the sweep tick kills the whole worker
+### 14. [ ] One unexpected throw in the sweep tick kills the whole worker
 
 - **Area:** Reliability
 - **Where:** `src/worker/sweep.ts:148` — `setInterval(() => runSweepTick(deps), intervalMs)`
@@ -247,7 +281,7 @@ Not blocking, but each has real production impact. Ordered by priority.
 - **Fix:** `.catch()` inside the interval callback: log +
   `Sentry.captureException`, don't die.
 
-### 15. PostHog tunnel has no rate limiting
+### 15. [ ] PostHog tunnel has no rate limiting
 
 - **Area:** Security / Cost
 - **Where:** `src/routes/api/posthog/$.ts:116-123` (host allowlisting is solid;
@@ -257,7 +291,7 @@ Not blocking, but each has real production impact. Ordered by priority.
 - **Fix:** Apply the same `withinRateLimit` pattern as the Sentry tunnel; add a
   namespace in `wrangler.jsonc`.
 
-### 16. Per-request TCP connection for every auth check
+### 16. [ ] Per-request TCP connection for every auth check
 
 - **Area:** Performance
 - **Where:** `src/lib/platform/auth/auth-request-state.server.ts:43-48` — new
@@ -276,18 +310,18 @@ Not blocking, but each has real production impact. Ordered by priority.
 
 ### Security
 
-17. **Live Spotify `sp_dc` session cookie on disk** —
+17. [ ] **Live Spotify `sp_dc` session cookie on disk** —
     `.playwright/spotify-auth.json:95`, `.playwright/debug-state.json`
     (gitignored but real, valid until 2027). Delete both, rotate the Spotify
     session, consider a gitleaks pre-commit hook.
-18. **Supabase local demo service-role JWT hardcoded in tracked scripts** —
+18. [ ] **Supabase local demo service-role JWT hardcoded in tracked scripts** —
     `scripts/matching-lab/diagnose-embeddings.ts:5`,
     `backfill-playlist-songs.ts:22`, `server.ts:40`, `reprofile-playlists.ts:20`.
     Read from `SUPABASE_SERVICE_ROLE_KEY` env instead.
-19. **Extension CORS reflects `Access-Control-Request-Headers`** —
+19. [ ] **Extension CORS reflects `Access-Control-Request-Headers`** —
     `src/lib/server/extension-cors.ts:22-23`. Hardcode
     `"Authorization, Content-Type"`.
-20. **Sync body-size guard is a no-op without a Content-Length header** —
+20. [ ] **Sync body-size guard is a no-op without a Content-Length header** —
     `src/routes/api/extension/sync.tsx:271-280`: `Number(null)` is `0`, which
     passes; chunked bodies are fully buffered. Authenticated-only and CF caps
     bodies at ~100MB, so abuse-resistance only. Treat a missing header as
@@ -295,29 +329,29 @@ Not blocking, but each has real production impact. Ordered by priority.
 
 ### Performance
 
-21. **Slug deep-links walk the library page-by-page** —
+21. [ ] **Slug deep-links walk the library page-by-page** —
     `src/lib/domains/library/liked-songs/queries.ts:252-284, 401-459`. O(n/100)
     round-trips for old songs. Add a slug column or cursor-returning RPC
     (already noted as "Phase 2" in code).
-22. **`getPending` two-phase scan + missing composite index** —
+22. [ ] **`getPending` two-phase scan + missing composite index** —
     `queries.ts:488-546`; `account_item_newness` indexed on
     `(item_type, item_id)` without `account_id`. Add
     `(account_id, item_type, item_id)` index and replace with a single anti-join.
-23. **GSAP + framer-motion in the initial bundle** —
+23. [ ] **GSAP + framer-motion in the initial bundle** —
     `src/features/landing/components/useHeroAnimation.ts:18` etc.; ~100KB gzip
     on every page for landing/onboarding-only libraries. Route-level code
     splitting.
 
 ### Correctness
 
-24. **Stale credit balance returned after unlock** —
+24. [ ] **Stale credit balance returned after unlock** —
     `src/lib/domains/billing/unlocks.ts:137` computes the displayed balance
     from the pre-RPC snapshot; concurrent unlocks briefly show a wrong number
     (DB stays correct). Return the post-mutation count from the RPC.
 
 ### Ops
 
-25. **Shared library code logs unstructured while the worker logs JSON** —
+25. [ ] **Shared library code logs unstructured while the worker logs JSON** —
     `src/lib/workflows/library-processing/runner.ts`,
     `src/lib/workflows/enrichment-pipeline/orchestrator.ts`,
     `src/lib/server/billing.functions.ts`, etc.: bare `console.*` without
@@ -325,32 +359,32 @@ Not blocking, but each has real production impact. Ordered by priority.
     stuck-job incident gets debugged by eyeball. Inject the worker logger into
     the shared layer. Note: CF Workers Logs retention is ~3 days — pairs with
     issue #2 (failures must land in the DB, not only logs).
-26. **No staging target** — `wrangler.jsonc` has a single production route;
+26. [ ] **No staging target** — `wrangler.jsonc` has a single production route;
     every deploy goes straight to `hearted.music`. Add an `env.staging` worker
     even without a custom domain.
-27. **Worker health server binds 127.0.0.1** — `src/worker/health.ts:16`. Works
+27. [ ] **Worker health server binds 127.0.0.1** — `src/worker/health.ts:16`. Works
     for the in-container Docker HEALTHCHECK, brittle for any external Coolify
     health URL. Bind `0.0.0.0`.
-28. **Worker PostHog OTEL reads `VITE_`-prefixed vars at runtime** —
+28. [ ] **Worker PostHog OTEL reads `VITE_`-prefixed vars at runtime** —
     `src/worker/posthog-otel.ts:6-7`. If unset on the container, LLM cost
     tracking silently disables. Rename to non-VITE names for the worker and
     document as required container env.
 
 ### Database
 
-29. **`account` + `account_billing` created non-atomically** —
+29. [ ] **`account` + `account_billing` created non-atomically** —
     `src/lib/domains/library/accounts/queries.ts:122`. Failure between inserts
     leaves an account without billing state (mostly self-healing, but
     self-hosted `unlimited_access_source` would be lost). Single RPC or DB
     trigger.
-30. **`match_result.score` is `REAL` while inserts cast to double** —
+30. [ ] **`match_result.score` is `REAL` while inserts cast to double** —
     `supabase/migrations/20260117000009_create_match_result.sql:8`.
     Non-deterministic ordering for near-tied scores.
     `ALTER TABLE match_result ALTER COLUMN score TYPE DOUBLE PRECISION;`
-31. **No normalized-email index on `account` for the waitlist-grant join** —
+31. [ ] **No normalized-email index on `account` for the waitlist-grant join** —
     `supabase/migrations/20260601154816_create_waitlist_grant_eligibility_fn.sql:20`.
     `CREATE INDEX idx_account_email_normalized ON account (lower(btrim(email))) WHERE email IS NOT NULL;`
-32. **`llm_usage` lacks a `(function_id, created_at)` index** —
+32. [ ] **`llm_usage` lacks a `(function_id, created_at)` index** —
     `supabase/migrations/20260609003846_create_llm_usage.sql`; one row per LLM
     call, grows fast.
     `CREATE INDEX llm_usage_function_created_idx ON llm_usage (function_id, created_at DESC);`
@@ -466,7 +500,7 @@ sides. Tests (62) and typecheck pass after the changes below.
 Code-level correctness bugs, resolved in `v1_hearted_brand` (plus one migration
 in this repo):
 
-1. **Refund attributed to the wrong customer (subscription path).**
+1. [x] **Refund attributed to the wrong customer (subscription path).**
    `src/handlers/refund.ts` fallback listed the 10 most-recent invoices
    account-wide and took the first subscription match, so a subscription
    refund/chargeback could resolve to a *different* customer's subscription.
@@ -479,7 +513,7 @@ in this repo):
    `subscription_cycle` and skip the upgrade-conversion reversal; both branches
    now resolve the invoice through the refunded charge's own payment_intent
    (shared `findInvoiceForPaymentIntent` helper).
-2. **Pack refund reversed the wrong lot.** `reverse_pack_entitlement` was
+2. [x] **Pack refund reversed the wrong lot.** `reverse_pack_entitlement` was
    handed the account's most-recently-created `pack_credit_lot`
    (`ORDER BY created_at DESC LIMIT 1`), so refunding an older pack on a
    multi-pack account reversed the newest lot. Added a `checkout_session_id`
@@ -490,12 +524,12 @@ in this repo):
    `session.id`, and the refund path matches on it. A miss now files an admin
    task instead of guessing; a DB error throws so the webhook retries (no
    duplicate admin task).
-3. **`checkout.session.completed` with an unhandled `mode` looped forever.**
+3. [x] **`checkout.session.completed` with an unhandled `mode` looped forever.**
    `src/handlers/checkout-completed.ts` handled only `payment`/`subscription`;
    a `setup`-mode session fell through without `markWebhookEvent`, leaving the
    row `processing` → route 500 → infinite Stripe retry. Now acknowledged as a
    logged no-op.
-4. **Swallowed Supabase errors.** `markWebhookEvent`
+4. [x] **Swallowed Supabase errors.** `markWebhookEvent`
    (`src/lib/webhook-event.ts`) now throws instead of only `console.error`-ing a
    failed status write (and the webhook route's catch is hardened so a throw
    during failure-marking still returns a clean 500). The discarded `error` on
@@ -525,7 +559,7 @@ Lower-priority items fixed in the same pass:
 These were intentionally left alone per scope. None are code-correctness bugs;
 all are ops/packaging hardening for the brand service.
 
-#### B1. Dockerfile pins a different Bun than the lockfile
+#### B1. [ ] Dockerfile pins a different Bun than the lockfile
 
 - **Where:** `v1_hearted_brand/Dockerfile:1` (`FROM oven/bun:1.2-alpine`) vs
   `package.json` (`"packageManager": "bun@1.3.14"`); `bun.lock` generated by
@@ -534,7 +568,7 @@ all are ops/packaging hardening for the brand service.
   minor inside the image; `1.2` is also a floating tag.
 - **Fix:** pin `oven/bun:1.3.14-alpine` (ideally by digest).
 
-#### B2. No graceful shutdown
+#### B2. [ ] No graceful shutdown
 
 - **Where:** `v1_hearted_brand/src/index.ts:40` — `Bun.serve(...)` with no
   `SIGTERM`/`SIGINT` handler.
@@ -544,13 +578,13 @@ all are ops/packaging hardening for the brand service.
 - **Fix:** `process.on("SIGTERM", () => server.stop())` to drain in-flight
   requests; set the container stop grace period above the longest handler.
 
-#### B3. No Dockerfile `HEALTHCHECK`
+#### B3. [ ] No Dockerfile `HEALTHCHECK`
 
 - **Where:** `v1_hearted_brand/Dockerfile` (none). `coolify.json` polls `/health`
   externally, but Docker-level health gating for the restart policy is absent.
 - **Fix:** `HEALTHCHECK ... CMD wget -qO- http://localhost:3100/health || exit 1`.
 
-#### B4. Self-declared Phase 7 launch gates unmet
+#### B4. [ ] Self-declared Phase 7 launch gates unmet
 
 - **Where:** `v1_hearted_brand/docs/MONETIZATION.md:198-204` — "Phase 7 launch
   hardening — not built": no billing E2E suites (free / pack / unlimited /
