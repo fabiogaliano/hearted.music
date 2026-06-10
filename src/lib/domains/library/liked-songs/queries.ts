@@ -13,14 +13,13 @@ import {
 	chunkedWrite,
 	DB_IN_FILTER_CHUNK_SIZE,
 } from "@/lib/shared/utils/chunked-write";
-import { chunkArray, mapWithConcurrency } from "@/lib/shared/utils/concurrency";
+import { chunkArray } from "@/lib/shared/utils/concurrency";
 import {
 	fromSupabaseMany,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import { generateSongSlug } from "@/lib/utils/slug";
 import {
-	LIKED_SONGS_BOOTSTRAP_FETCH_SIZE,
 	LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS,
 	LIKED_SONGS_PAGE_SIZE,
 } from "./constants";
@@ -259,40 +258,32 @@ export async function getPageWithDetails(
 }
 
 /**
- * Finds a liked song row by its deep-link slug.
- * Reuses the paginated RPC so the lookup returns the exact same row shape as the list.
+ * Finds a liked song row by its deep-link slug in a single indexed lookup.
+ *
+ * `get_liked_song_by_slug` resolves the slug at the database level via the
+ * `idx_song_slug` expression index — the SQL `song_slug()` mirrors
+ * `generateSongSlug` — and returns the newest active match in the exact row
+ * shape the list uses. No library walk: O(1) round-trips regardless of how deep
+ * the song sits, and a missing slug is one query, not a full scan.
  */
 export async function getPageRowBySlug(
 	accountId: string,
 	slug: string,
 ): Promise<Result<LikedSongPageRow | null, DbError>> {
-	let cursor: string | undefined;
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase.rpc("get_liked_song_by_slug", {
+		p_account_id: accountId,
+		p_slug: slug,
+	});
 
-	for (;;) {
-		const pageResult = await getPageWithDetails(accountId, {
-			cursor,
-			filter: "all",
-			limit: LIKED_SONGS_BOOTSTRAP_FETCH_SIZE,
-		});
-
-		if (Result.isError(pageResult)) {
-			return Result.err(pageResult.error);
-		}
-
-		const matchingRow = pageResult.value.items.find((row) =>
-			pageRowMatchesSlug(row, slug),
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
 		);
-
-		if (matchingRow) {
-			return Result.ok(matchingRow);
-		}
-
-		if (pageResult.value.nextCursor === null) {
-			return Result.ok(null);
-		}
-
-		cursor = pageResult.value.nextCursor;
 	}
+
+	const rows = (data ?? []) as LikedSongPageRow[];
+	return Result.ok(rows[0] ?? null);
 }
 
 /** Single source of truth for the deep-link slug a page row resolves to. */
@@ -342,134 +333,90 @@ function chunkBootstrapRows(
 }
 
 /**
- * Gathers up to `LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS` older rows after a slug
- * match so the selection isn't the last loaded row. `afterMatch` is the
- * post-selection slice of the matching chunk; further chunks are fetched only
- * when it falls short. Returns the rows plus whether the library holds more past
- * the tail (drives the final page's `nextCursor`).
- */
-async function collectTrailingRows(
-	accountId: string,
-	afterMatch: LikedSongPageRow[],
-	chunkNextCursor: string | null,
-): Promise<
-	Result<{ trailing: LikedSongPageRow[]; hasMoreAfterLast: boolean }, DbError>
-> {
-	const trailing: LikedSongPageRow[] = [];
-	let remaining = LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS;
-	let chunk = afterMatch;
-	let nextCursor = chunkNextCursor;
-
-	for (;;) {
-		const take = chunk.slice(0, remaining);
-		trailing.push(...take);
-		remaining -= take.length;
-
-		// Filled before the chunk ran out: rows still follow the tail.
-		if (take.length < chunk.length) {
-			return Result.ok({ trailing, hasMoreAfterLast: true });
-		}
-		// Filled exactly at the boundary: defer to the chunk's cursor.
-		if (remaining === 0) {
-			return Result.ok({ trailing, hasMoreAfterLast: nextCursor !== null });
-		}
-		// Library ended before the buffer filled.
-		if (nextCursor === null) {
-			return Result.ok({ trailing, hasMoreAfterLast: false });
-		}
-
-		const pageResult = await getPageWithDetails(accountId, {
-			cursor: nextCursor,
-			filter: "all",
-			limit: LIKED_SONGS_BOOTSTRAP_FETCH_SIZE,
-		});
-		if (Result.isError(pageResult)) {
-			return Result.err(pageResult.error);
-		}
-		chunk = pageResult.value.items;
-		nextCursor = pageResult.value.nextCursor;
-	}
-}
-
-/**
- * Builds the deep-link bootstrap for a slug in a single newest-first walk:
+ * Builds the deep-link bootstrap for a slug in a single query.
  *
- * - Valid slug: returns the contiguous prefix from the newest liked song through
- *   the selected one, plus up to `LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS` older rows
- *   so the selection isn't the last loaded row, rechunked to the client page
- *   size. The final page keeps a non-null cursor when older songs remain.
- * - Missing / bogus slug: returns `selectedRow: null` and only the canonical
- *   first page, byte-identical to a normal `limit = LIKED_SONGS_PAGE_SIZE`
- *   fetch, so the list still renders and the panel stays closed.
+ * `get_liked_songs_bootstrap_by_slug` resolves the slug to its anchor (the newest
+ * active match, via the `idx_song_slug` index) and returns, newest-first, the
+ * contiguous prefix from the newest liked song through the selected one followed
+ * by up to `LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS + 1` older rows. The `+ 1` is a
+ * sentinel: more trailing rows than the buffer means older songs still follow the
+ * seeded tail, so the final page keeps a non-null cursor. The rows are rechunked
+ * into client-sized pages with cursors derived exactly as `getPageWithDetails`
+ * does, so seeding the infinite query with them is byte-identical to having
+ * paginated there from the top.
  *
- * This intentionally does the bootstrap in one walk. Without a database-level,
- * indexed slug lookup, a preflight existence guard would just scan once to find
- * the row (or prove it missing) and then force a second walk to build the
- * prefix, which is strictly worse for valid deep links.
+ * Missing / bogus slug: the RPC returns no rows, indistinguishable from an empty
+ * library and treated the same — fall back to the canonical first page with
+ * `selectedRow: null`, so the list still renders and the panel stays closed.
  *
- * Phase 1 still walks the library page-by-page; for very deep deep-links or
- * bogus slugs this can be several round-trips. A dedicated SQL/RPC returning
- * the prefix in one shot is the documented Phase 2 optimization.
+ * The anchor is the only slug match in the prefix (it is the *newest* match), so
+ * `pageRowMatchesSlug` locates the selection by the same slug the caller passed.
  */
 export async function getBootstrapPagesBySlug(
 	accountId: string,
 	slug: string,
 ): Promise<Result<LikedSongsBootstrapPages, DbError>> {
-	const flattened: LikedSongPageRow[] = [];
-	let cursor: string | undefined;
-	let firstPageRows: LikedSongPageRow[] | null = null;
-	let firstPageHasMore = false;
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase.rpc(
+		"get_liked_songs_bootstrap_by_slug",
+		{
+			p_account_id: accountId,
+			p_slug: slug,
+			p_trailing_limit: LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS,
+		},
+	);
 
-	for (;;) {
-		const pageResult = await getPageWithDetails(accountId, {
-			cursor,
-			filter: "all",
-			limit: LIKED_SONGS_BOOTSTRAP_FETCH_SIZE,
-		});
-
-		if (Result.isError(pageResult)) {
-			return Result.err(pageResult.error);
-		}
-
-		const { items, nextCursor } = pageResult.value;
-		if (firstPageRows === null) {
-			firstPageRows = items.slice(0, LIKED_SONGS_PAGE_SIZE);
-			firstPageHasMore =
-				items.length > LIKED_SONGS_PAGE_SIZE || nextCursor !== null;
-		}
-		const matchIndex = items.findIndex((row) => pageRowMatchesSlug(row, slug));
-
-		if (matchIndex !== -1) {
-			flattened.push(...items.slice(0, matchIndex + 1));
-			const trailingResult = await collectTrailingRows(
-				accountId,
-				items.slice(matchIndex + 1),
-				nextCursor,
-			);
-			if (Result.isError(trailingResult)) {
-				return Result.err(trailingResult.error);
-			}
-			flattened.push(...trailingResult.value.trailing);
-			return Result.ok({
-				selectedRow: items[matchIndex],
-				pages: chunkBootstrapRows(
-					flattened,
-					trailingResult.value.hasMoreAfterLast,
-				),
-			});
-		}
-
-		flattened.push(...items);
-
-		if (nextCursor === null) {
-			return Result.ok({
-				selectedRow: null,
-				pages: chunkBootstrapRows(firstPageRows ?? [], firstPageHasMore),
-			});
-		}
-
-		cursor = nextCursor;
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
 	}
+
+	const rows = (data ?? []) as LikedSongPageRow[];
+	const matchIndex = rows.findIndex((row) => pageRowMatchesSlug(row, slug));
+
+	if (matchIndex === -1) {
+		return buildCanonicalFirstPage(accountId);
+	}
+
+	const prefixThroughMatch = rows.slice(0, matchIndex + 1);
+	const trailing = rows.slice(matchIndex + 1);
+	const hasMoreAfterLast =
+		trailing.length > LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS;
+	const seededTrailing = hasMoreAfterLast
+		? trailing.slice(0, LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS)
+		: trailing;
+
+	return Result.ok({
+		selectedRow: rows[matchIndex],
+		pages: chunkBootstrapRows(
+			[...prefixThroughMatch, ...seededTrailing],
+			hasMoreAfterLast,
+		),
+	});
+}
+
+/**
+ * The fallback when a slug resolves to nothing: the canonical first page, shaped
+ * exactly like a normal `limit = LIKED_SONGS_PAGE_SIZE` infinite-query page so
+ * the list renders normally with no selection.
+ */
+async function buildCanonicalFirstPage(
+	accountId: string,
+): Promise<Result<LikedSongsBootstrapPages, DbError>> {
+	const firstPageResult = await getPageWithDetails(accountId, {
+		filter: "all",
+		limit: LIKED_SONGS_PAGE_SIZE,
+	});
+	if (Result.isError(firstPageResult)) {
+		return Result.err(firstPageResult.error);
+	}
+
+	const { items, nextCursor } = firstPageResult.value;
+	return Result.ok({
+		selectedRow: null,
+		pages: chunkBootstrapRows(items, nextCursor !== null),
+	});
 }
 
 /**
@@ -492,70 +439,6 @@ export async function getStats(
 	}
 
 	return Result.ok(data);
-}
-
-/**
- * Gets liked songs that haven't been processed yet (no account_item_newness record).
- * These are songs waiting for user action (add to playlist, dismiss, etc.).
- */
-export async function getPending(
-	accountId: string,
-): Promise<Result<LikedSong[], DbError>> {
-	const supabase = createAdminSupabaseClient();
-
-	// Get all liked song IDs for this account
-	const likedResult = await fromSupabaseMany(
-		supabase
-			.from("liked_song")
-			.select("*")
-			.eq("account_id", accountId)
-			.is("unliked_at", null),
-	);
-
-	if (Result.isError(likedResult)) {
-		return likedResult;
-	}
-
-	const likedSongs = likedResult.value;
-	if (likedSongs.length === 0) {
-		return Result.ok<LikedSong[], DbError>([]);
-	}
-
-	// Get song IDs that have account_item_newness records (chunked to avoid URI-too-long)
-	const songIds = likedSongs.map((ls: LikedSong) => ls.song_id);
-	const CHUNK_SIZE = 50;
-	const CHUNK_CONCURRENCY = 4;
-	const chunks = chunkArray(songIds, CHUNK_SIZE);
-
-	const statusResults = await mapWithConcurrency(
-		chunks,
-		CHUNK_CONCURRENCY,
-		(chunk) =>
-			fromSupabaseMany<{ item_id: string }>(
-				supabase
-					.from("account_item_newness")
-					.select("item_id")
-					.eq("account_id", accountId)
-					.eq("item_type", "song")
-					.in("item_id", chunk),
-			),
-	);
-
-	const processedIds = new Set<string>();
-	for (const statusResult of statusResults) {
-		if (Result.isError(statusResult)) {
-			return Result.err(statusResult.error);
-		}
-
-		for (const status of statusResult.value) {
-			processedIds.add(status.item_id);
-		}
-	}
-	const pending = likedSongs.filter(
-		(ls: LikedSong) => !processedIds.has(ls.song_id),
-	);
-
-	return Result.ok(pending);
 }
 
 /**

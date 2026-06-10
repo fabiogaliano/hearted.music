@@ -1,14 +1,21 @@
 /**
  * Unit tests for the deep-link bootstrap builder.
  *
- * Mocks the Supabase admin client with an in-memory implementation of the
- * `get_liked_songs_page` RPC that mirrors the real function: it orders by
- * `(liked_at DESC, id DESC)` and filters with the composite-cursor tuple
- * comparison `liked_at < cursor OR (liked_at = cursor AND id < cursor_id)`,
- * returning up to `p_limit + 1` rows — exactly the contract `getPageWithDetails`
- * relies on to detect "has more". This exercises the walk, truncation,
- * rechunking, and cursor-termination logic — including ties on `liked_at` — without
- * a live DB.
+ * Mocks the Supabase admin client with in-memory implementations of the two RPCs
+ * the builder uses:
+ *   - `get_liked_songs_bootstrap_by_slug` — resolves the slug to its anchor (the
+ *     newest match in `(liked_at DESC, id DESC)` order) and returns the prefix
+ *     from the newest row through the anchor plus up to `p_trailing_limit + 1`
+ *     older rows. The `+ 1` is the sentinel the builder reads to decide whether
+ *     more songs follow the seeded tail.
+ *   - `get_liked_songs_page` — the canonical first page used as the missing-slug
+ *     fallback; mirrors the real composite-cursor contract (`p_limit + 1` rows).
+ *
+ * The SQL-level concerns the old page-walk had to handle in TS — chunk
+ * boundaries, stepping a cursor into a block of tied `liked_at`s — now live in
+ * the RPC and are covered by slug-resolution.integration.test.ts. These tests
+ * exercise the TS layer: anchor location, prefix/trailing slicing, the sentinel,
+ * rechunking, and the missing-slug fallback.
  */
 
 import { Result } from "better-result";
@@ -18,6 +25,14 @@ import {
 	LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS,
 	LIKED_SONGS_PAGE_SIZE,
 } from "../constants";
+
+type Row = {
+	id: string;
+	song_id: string;
+	song_name: string;
+	song_artists: string[];
+	liked_at: string;
+};
 
 const state = vi.hoisted(() => ({
 	rows: [] as Array<{
@@ -32,20 +47,56 @@ const state = vi.hoisted(() => ({
 	rpcCalls: 0,
 }));
 
+function slugOf(row: { song_artists: string[]; song_name: string }): string {
+	return generateSongSlug(
+		row.song_artists[0] ?? "Unknown Artist",
+		row.song_name,
+	);
+}
+
+function sortNewestFirst(rows: Row[]): Row[] {
+	return [...rows].sort((a, b) => {
+		if (a.liked_at !== b.liked_at) return a.liked_at < b.liked_at ? 1 : -1;
+		return a.id < b.id ? 1 : -1;
+	});
+}
+
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: () => ({
 		rpc: (
-			_fn: string,
-			params: { p_cursor?: string; p_cursor_id?: string; p_limit: number },
+			fn: string,
+			params: {
+				p_slug?: string;
+				p_trailing_limit?: number;
+				p_cursor?: string;
+				p_cursor_id?: string;
+				p_limit?: number;
+			},
 		) => {
 			state.rpcCalls += 1;
 			if (state.error) {
 				return Promise.resolve({ data: null, error: state.error });
 			}
-			const sorted = [...state.rows].sort((a, b) => {
-				if (a.liked_at !== b.liked_at) return a.liked_at < b.liked_at ? 1 : -1;
-				return a.id < b.id ? 1 : -1;
-			});
+
+			const sorted = sortNewestFirst(state.rows);
+
+			if (fn === "get_liked_songs_bootstrap_by_slug") {
+				const anchorIndex = sorted.findIndex(
+					(row) => slugOf(row) === params.p_slug,
+				);
+				if (anchorIndex === -1) {
+					return Promise.resolve({ data: [], error: null });
+				}
+				const prefix = sorted.slice(0, anchorIndex + 1);
+				// The +1 sentinel: one extra trailing row beyond the requested buffer.
+				const trailing = sorted.slice(
+					anchorIndex + 1,
+					anchorIndex + 1 + (params.p_trailing_limit ?? 0) + 1,
+				);
+				return Promise.resolve({ data: [...prefix, ...trailing], error: null });
+			}
+
+			// get_liked_songs_page — canonical first-page fallback.
 			const cursor = params.p_cursor;
 			const cursorId = params.p_cursor_id;
 			const visible =
@@ -58,7 +109,7 @@ vi.mock("@/lib/data/client", () => ({
 									cursorId != null &&
 									row.id < cursorId),
 						);
-			const data = visible.slice(0, params.p_limit + 1);
+			const data = visible.slice(0, (params.p_limit ?? 0) + 1);
 			return Promise.resolve({ data, error: null });
 		},
 	}),
@@ -122,6 +173,8 @@ describe("getBootstrapPagesBySlug", () => {
 		expect(pages[pages.length - 1].nextCursor).toBe(
 			cursorOf(state.rows[2 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS]),
 		);
+		// One query — no library walk.
+		expect(state.rpcCalls).toBe(1);
 	});
 
 	it("returns prefix + trailing across multiple client pages for a deep match", async () => {
@@ -155,9 +208,11 @@ describe("getBootstrapPagesBySlug", () => {
 		expect(pages[pages.length - 1].nextCursor).toBe(
 			cursorOf(state.rows[110 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS]),
 		);
+		// Still a single RPC even for a deep match — the prefix arrives in one shot.
+		expect(state.rpcCalls).toBe(1);
 	});
 
-	it("fetches an extra chunk to fill the trailing buffer near a chunk boundary", async () => {
+	it("fills the trailing buffer from the single RPC result, no extra round-trips", async () => {
 		state.rows = makeRows(300);
 
 		const result = await getBootstrapPagesBySlug("account-1", slugFor(95));
@@ -168,13 +223,13 @@ describe("getBootstrapPagesBySlug", () => {
 		expect(selectedRow?.song_id).toBe("song-95");
 
 		const ids = flatIds(pages);
-		// Only 4 trailing rows live in the first 100-row chunk (song-96..song-99),
-		// so the walk fetches a second chunk to complete the buffer.
 		expect(ids).toHaveLength(96 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS);
 		expect(ids[ids.length - 1]).toBe(
 			`song-${95 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS}`,
 		);
-		expect(state.rpcCalls).toBe(2);
+		// The old page-walk needed a second fetch to cross a 100-row chunk boundary
+		// here; the RPC returns prefix + trailing together, so it is always one call.
+		expect(state.rpcCalls).toBe(1);
 		expect(pages[pages.length - 1].nextCursor).toBe(
 			cursorOf(state.rows[95 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS]),
 		);
@@ -199,6 +254,40 @@ describe("getBootstrapPagesBySlug", () => {
 		expect(pages[pages.length - 1].nextCursor).toBeNull();
 	});
 
+	it("terminates the final page when trailing rows exactly fill the buffer", async () => {
+		// Exactly LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS older rows follow the match,
+		// so the RPC's +1 sentinel never materializes: the tail is the library end.
+		state.rows = makeRows(1 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS);
+
+		const result = await getBootstrapPagesBySlug("account-1", slugFor(0));
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+
+		const { selectedRow, pages } = result.value;
+		expect(selectedRow?.song_id).toBe("song-0");
+
+		const ids = flatIds(pages);
+		expect(ids).toHaveLength(1 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS);
+		expect(pages[pages.length - 1].nextCursor).toBeNull();
+	});
+
+	it("keeps a cursor when one more row exists past the buffer (the +1 sentinel)", async () => {
+		// One extra row beyond the buffer: the sentinel fires, so the seeded tail is
+		// trimmed to the buffer and the final page keeps a non-null cursor.
+		state.rows = makeRows(2 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS);
+
+		const result = await getBootstrapPagesBySlug("account-1", slugFor(0));
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+
+		const { pages } = result.value;
+		const ids = flatIds(pages);
+		expect(ids).toHaveLength(1 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS);
+		expect(pages[pages.length - 1].nextCursor).toBe(
+			cursorOf(state.rows[LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS]),
+		);
+	});
+
 	it("returns only the first page and a null selection for a missing slug", async () => {
 		state.rows = makeRows(30);
 
@@ -214,6 +303,8 @@ describe("getBootstrapPagesBySlug", () => {
 		expect(pages[0].nextCursor).toBe(
 			cursorOf(state.rows[LIKED_SONGS_PAGE_SIZE - 1]),
 		);
+		// One bootstrap probe (empty) + one canonical-page fallback fetch.
+		expect(state.rpcCalls).toBe(2);
 	});
 
 	it("terminates the final page with a null cursor when the slug is the oldest song", async () => {
@@ -230,18 +321,15 @@ describe("getBootstrapPagesBySlug", () => {
 		expect(pages[pages.length - 1].nextCursor).toBeNull();
 	});
 
-	it("walks past a block of rows sharing one liked_at without dropping the match", async () => {
+	it("resolves a deep match inside a block of rows sharing one liked_at", async () => {
 		// Regression for the production bug: a bulk import stamped 76 songs with a
-		// single liked_at. With a liked_at-only cursor and a strict `<`, once a page
-		// boundary landed inside that block the next page excluded every remaining
-		// tied row, so deep songs (e.g. Daft Punk "Veridis Quo") vanished from the
-		// walk and never resolved. Here 150 rows share one timestamp and the match
-		// sits at sorted position 130 — past the first 100-row fetch — so resolving
-		// it requires a cursor that steps INTO the tied block via the id tiebreak.
+		// single liked_at. The fix is the composite (liked_at, id) ordering, which
+		// now lives in the RPC. Here 150 rows share one timestamp and the match sits
+		// at sorted position 130; the builder must still seed the prefix through it.
 		const TIED_AT = new Date(BASE).toISOString();
 		state.rows = Array.from({ length: 150 }, (_, i) => ({
 			// Descending ids so song-0 sorts first within the tie, matching the
-			// function's (liked_at DESC, id DESC) order; every row shares liked_at.
+			// (liked_at DESC, id DESC) order; every row shares liked_at.
 			id: `ls-${String(150 - i).padStart(4, "0")}`,
 			song_id: `song-${i}`,
 			song_name: `Song ${i}`,
@@ -259,8 +347,7 @@ describe("getBootstrapPagesBySlug", () => {
 		const ids = flatIds(pages);
 		expect(ids[0]).toBe("song-0");
 		expect(ids).toContain("song-130");
-		// Two fetches: the first 100-row chunk, then a cursor into the tied block.
-		expect(state.rpcCalls).toBe(2);
+		expect(state.rpcCalls).toBe(1);
 	});
 
 	it("propagates a DB error instead of degrading to an empty/first page", async () => {
@@ -272,23 +359,5 @@ describe("getBootstrapPagesBySlug", () => {
 		// The server fn turns this error into a throw so the route loader can fall
 		// back to the normal first-page load — never an empty-library hydration.
 		expect(Result.isError(result)).toBe(true);
-	});
-
-	it("stops at the match without a second bootstrap walk", async () => {
-		state.rows = makeRows(500);
-
-		const result = await getBootstrapPagesBySlug("account-1", slugFor(3));
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
-
-		expect(result.value.selectedRow?.song_id).toBe("song-3");
-		const ids = flatIds(result.value.pages);
-		// Prefix song-0..song-3 plus the trailing buffer, all inside the first
-		// 100-row fetch — so still a single RPC, no separate guard walk.
-		expect(ids).toHaveLength(4 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS);
-		expect(ids[ids.length - 1]).toBe(
-			`song-${3 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS}`,
-		);
-		expect(state.rpcCalls).toBe(1);
 	});
 });

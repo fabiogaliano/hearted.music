@@ -384,14 +384,24 @@ Not blocking, but each has real production impact. Ordered by priority.
 
 ### Performance
 
-21. [ ] **Slug deep-links walk the library page-by-page** —
+21. [x] **Slug deep-links walk the library page-by-page** —
         `src/lib/domains/library/liked-songs/queries.ts:252-284, 401-459`. O(n/100)
         round-trips for old songs. Add a slug column or cursor-returning RPC
-        (already noted as "Phase 2" in code).
-22. [ ] **`getPending` two-phase scan + missing composite index** —
-        `queries.ts:488-546`; `account_item_newness` indexed on
-        `(item_type, item_id)` without `account_id`. Add
-        `(account_id, item_type, item_id)` index and replace with a single anti-join.
+        (already noted as "Phase 2" in code). **Done (2026-06-10)** — migration
+        `20260610160200_liked_songs_slug_resolution.sql`: indexed `song_slug()`
+        expression (mirrors `generateSongSlug`) + a `liked_song_decorated` view
+        backing the rewritten `get_liked_songs_page` and two new RPCs
+        (`get_liked_song_by_slug`, `get_liked_songs_bootstrap_by_slug`). Both slug
+        paths now resolve in one indexed query; the view also replaces the
+        per-page whole-library entitlement scan. Tests + typecheck + biome clean.
+22. [x] **`getPending` two-phase scan + missing composite index** —
+        `queries.ts:488-546`. **Done (2026-06-10)** — premise was stale on both
+        counts: the `(account_id, item_type, item_id)` index already exists (it
+        backs the table's `UNIQUE` constraint), and the single anti-join already
+        lives in the used path, `get_liked_songs_page(p_filter => 'pending')`
+        (`LEFT JOIN account_item_newness ... WHERE ain.id IS NULL`). `getPending`
+        itself had zero callers, so it was deleted (plus its now-orphaned
+        `mapWithConcurrency` import) rather than optimized. No migration.
 23. [ ] **GSAP + framer-motion in the initial bundle** —
         `src/features/landing/components/useHeroAnimation.ts:18` etc.; ~100KB gzip
         on every page for landing/onboarding-only libraries. Route-level code
@@ -407,7 +417,7 @@ Not blocking, but each has real production impact. Ordered by priority.
 
 ### Ops
 
-25. [ ] **Shared library code logs unstructured while the worker logs JSON** —
+25. [x] **Shared library code logs unstructured while the worker logs JSON** —
         `src/lib/workflows/library-processing/runner.ts`,
         `src/lib/workflows/enrichment-pipeline/orchestrator.ts`,
         `src/lib/server/billing.functions.ts`, etc.: bare `console.*` without
@@ -415,12 +425,23 @@ Not blocking, but each has real production impact. Ordered by priority.
         stuck-job incident gets debugged by eyeball. Inject the worker logger into
         the shared layer. Note: CF Workers Logs retention is ~3 days — pairs with
         issue #2 (failures must land in the DB, not only logs).
+        **Done (2026-06-10)** — worker logger promoted to a shared module
+        (`src/lib/observability/logger.ts`); worker-only `console.*` in `runner.ts`,
+        `orchestrator.ts`, and `lifecycle.ts` converted to structured `log.*` with
+        `jobId`/`accountId`. The DB-persistence half of the note was already
+        satisfied (`markJobFailed` writes `job.error`; per-item failures land in
+        `job_item_failure`) — the one gap, settlement failures that occur _after_
+        the job is marked completed (no DB trace), now also `captureException` to
+        Sentry. `billing.functions.ts` is request-handler code, not worker; its
+        server-side logging is deferred to a separate pass.
 26. [ ] **No staging target** — `wrangler.jsonc` has a single production route;
         every deploy goes straight to `hearted.music`. Add an `env.staging` worker
         even without a custom domain.
-27. [ ] **Worker health server binds 127.0.0.1** — `src/worker/health.ts:16`. Works
+27. [x] **Worker health server binds 127.0.0.1** — `src/worker/health.ts:16`. Works
         for the in-container Docker HEALTHCHECK, brittle for any external Coolify
-        health URL. Bind `0.0.0.0`.
+        health URL. Bind `0.0.0.0`. **Done (2026-06-10)** — now binds `0.0.0.0`;
+        the in-container HEALTHCHECK still hits `127.0.0.1`, which a wildcard bind
+        accepts.
 28. [ ] **Worker PostHog OTEL reads `VITE_`-prefixed vars at runtime** —
         `src/worker/posthog-otel.ts:6-7`. If unset on the container, LLM cost
         tracking silently disables. Rename to non-VITE names for the worker and
@@ -428,21 +449,37 @@ Not blocking, but each has real production impact. Ordered by priority.
 
 ### Database
 
-29. [ ] **`account` + `account_billing` created non-atomically** —
-        `src/lib/domains/library/accounts/queries.ts:122`. Failure between inserts
-        leaves an account without billing state (mostly self-healing, but
-        self-hosted `unlimited_access_source` would be lost). Single RPC or DB
-        trigger.
-30. [ ] **`match_result.score` is `REAL` while inserts cast to double** —
-        `supabase/migrations/20260117000009_create_match_result.sql:8`.
-        Non-deterministic ordering for near-tied scores.
-        `ALTER TABLE match_result ALTER COLUMN score TYPE DOUBLE PRECISION;`
-31. [ ] **No normalized-email index on `account` for the waitlist-grant join** —
+29. [x] **`account` + `account_billing` created non-atomically** —
+        `src/lib/domains/library/accounts/queries.ts:122`. **Done (2026-06-10)** —
+        new `create_account_with_billing` RPC (migration
+        `20260610160000_create_account_with_billing_rpc.sql`) inserts both rows in
+        one transaction and returns the account row; `createAccountForBetterAuthUser`
+        calls it instead of two sequential inserts. `unlimited_access_source` is an
+        RPC arg because the `self_hosted` decision is app-side (`BILLING_ENABLED`),
+        which a plain trigger can't see — so self-hosted unlimited access is no
+        longer lost on a mid-call failure. Tests + typecheck clean.
+30. [x] **`match_result.score` is `REAL` while inserts cast to double** —
+        `supabase/migrations/20260117000009_create_match_result.sql:8`. **Done
+        (2026-06-10)** — migration
+        `20260610160100_match_result_score_double_precision.sql` widens `score` and
+        `fused_score` to `DOUBLE PRECISION`, so the existing `::DOUBLE PRECISION`
+        insert casts are no longer silently narrowed back to single precision on
+        write. Added a `playlist_id` tiebreaker to the three score-ordered reads in
+        `taste/song-matching/queries.ts` (the two per-song reads had none), making
+        ordering deterministic on ties.
+31. [x] **No normalized-email index on `account` for the waitlist-grant join** —
         `supabase/migrations/20260601154816_create_waitlist_grant_eligibility_fn.sql:20`.
-        `CREATE INDEX idx_account_email_normalized ON account (lower(btrim(email))) WHERE email IS NOT NULL;`
+        **Not applicable (2026-06-10)** — the proposed `account` index would never
+        be used: the function pins `account` by primary key to a single row, and the
+        join's expensive side (`waitlist`) is already covered by the
+        `waitlist_email_normalized_key` functional unique index from
+        `20260601154230`. No change.
 32. [ ] **`llm_usage` lacks a `(function_id, created_at)` index** —
         `supabase/migrations/20260609003846_create_llm_usage.sql`; one row per LLM
-        call, grows fast.
+        call, grows fast. **Deferred (2026-06-10)** — `llm_usage` is insert-only in
+        code today (nothing reads it by `function_id`), so the index would add write
+        overhead to a hot table with no current consumer. Add it alongside the first
+        analytics query that needs it.
         `CREATE INDEX llm_usage_function_created_idx ON llm_usage (function_id, created_at DESC);`
 
 ---
