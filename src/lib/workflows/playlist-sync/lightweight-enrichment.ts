@@ -4,19 +4,19 @@
  * Runs cheap/free enrichment steps only:
  * 1. Audio features (ReccoBeats — free)
  * 2. Genre tagging (Last.fm — free)
- * 3. Lyrics-based embeddings (Genius + ML provider)
  *
- * No LLM analysis, no reranking, no paid steps.
+ * No LLM analysis, no embeddings, no reranking, no paid steps. Embeddings come
+ * only from the analysis-prose pipeline (one representation per embedding space);
+ * cheap-path members contribute audio + genre, and the matcher's adaptive weights
+ * redistribute around their missing embedding factor.
  * Called by the target-playlist refresh orchestrator.
  */
 
 import { Result } from "better-result";
-import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import {
 	createGenreEnrichmentService,
 	type GenreEnrichmentInput,
 } from "@/lib/domains/enrichment/genre-tagging/service";
-import { createLyricsService } from "@/lib/domains/enrichment/lyrics/service";
 import {
 	getPlaylistSongs,
 	getTargetPlaylists,
@@ -49,7 +49,6 @@ interface LightweightEnrichmentStats {
 	songsScanned: number;
 	audio: { filled: number; skipped: number; failed: number };
 	genres: { filled: number; skipped: number; failed: number };
-	lyricsEmbeddings: { stored: number; skipped: number; failed: number };
 	affectedSongIds: string[];
 	affectedPlaylistIds: string[];
 }
@@ -172,7 +171,6 @@ export async function runLightweightEnrichment(
 		songsScanned: 0,
 		audio: { filled: 0, skipped: 0, failed: 0 },
 		genres: { filled: 0, skipped: 0, failed: 0 },
-		lyricsEmbeddings: { stored: 0, skipped: 0, failed: 0 },
 		affectedSongIds: [],
 		affectedPlaylistIds: [],
 	};
@@ -201,10 +199,6 @@ export async function runLightweightEnrichment(
 	// 3. Backfill genres
 	const genreStats = await backfillGenres(candidateSongs);
 	stats.genres = genreStats;
-
-	// 4. Fetch lyrics and store embeddings
-	const lyricsStats = await backfillLyricsEmbeddings(candidateSongs);
-	stats.lyricsEmbeddings = lyricsStats;
 
 	return stats;
 }
@@ -279,75 +273,4 @@ async function backfillGenres(
 		console.warn("Genre backfill failed:", err);
 		return { filled: 0, skipped: 0, failed: inputs.length };
 	}
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Stage: Lyrics-based embeddings
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function backfillLyricsEmbeddings(
-	candidateSongs: Song[],
-): Promise<{ stored: number; skipped: number; failed: number }> {
-	// Create services — both are optional/best-effort
-	const lyricsResult = createLyricsService();
-	if (Result.isError(lyricsResult)) {
-		console.warn(
-			"Lyrics service unavailable, skipping lyrics embeddings:",
-			lyricsResult.error.message,
-		);
-		return { stored: 0, skipped: candidateSongs.length, failed: 0 };
-	}
-	const lyricsService = lyricsResult.value;
-
-	const embeddingResult = EmbeddingService.create();
-	if (Result.isError(embeddingResult)) {
-		console.warn("Embedding service unavailable, skipping lyrics embeddings");
-		return { stored: 0, skipped: candidateSongs.length, failed: 0 };
-	}
-	const embeddingService = embeddingResult.value;
-
-	// Check which songs already have embeddings
-	const songIds = candidateSongs.map((s) => s.id);
-	const existingResult = await embeddingService.getEmbeddings(songIds);
-	const existingIds = Result.isOk(existingResult)
-		? new Set(existingResult.value.keys())
-		: new Set<string>();
-
-	const outcomes = await mapWithConcurrency(
-		candidateSongs,
-		3,
-		async (song): Promise<"stored" | "skipped" | "failed"> => {
-			if (existingIds.has(song.id)) {
-				return "skipped";
-			}
-
-			const artist = song.artists[0] ?? "";
-			if (!artist) {
-				return "skipped";
-			}
-
-			const textResult = await lyricsService.fetchAndStoreLyrics(
-				song.id,
-				artist,
-				song.name,
-			);
-			if (Result.isError(textResult)) {
-				return "failed";
-			}
-
-			const storeResult = await embeddingService.embedAndStoreText(
-				song.id,
-				textResult.value,
-				{ role: "passage" },
-			);
-
-			return Result.isOk(storeResult) ? "stored" : "failed";
-		},
-	);
-
-	return {
-		stored: outcomes.filter((outcome) => outcome === "stored").length,
-		skipped: outcomes.filter((outcome) => outcome === "skipped").length,
-		failed: outcomes.filter((outcome) => outcome === "failed").length,
-	};
 }

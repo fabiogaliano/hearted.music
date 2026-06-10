@@ -114,10 +114,12 @@ export async function executeWalkthroughPreview(
 		llmService,
 	);
 
-	// Prep the demo song so the matcher has something useful to score against.
-	// `runLightweightEnrichment` accepts an explicit songIds list, which lets
-	// us reuse the existing audio + genre + lyrics-embedding pipeline without
-	// pulling the song into the production candidate pool.
+	// Backfill the demo song's audio + genre so the matcher has those factors.
+	// Its analysis-derived embedding is prefilled offline (demo songs are
+	// pre-analyzed via the regular pipeline/scripts), so the runtime preview
+	// never runs LLM analysis here. If the embedding is somehow absent, matching
+	// proceeds on the remaining factors — the matcher's adaptive weights
+	// redistribute around it, so this must not hard-fail.
 	try {
 		await runLightweightEnrichment({
 			accountId,

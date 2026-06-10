@@ -94,6 +94,13 @@ older references and the completed-work notes still resolve.
 6. **pgvector ANN path** — when O(S×P) in-process scoring hurts; the indexes already exist.
 7. **Reranker shootout** — zerank-1-small ($0.025/MTok) / voyage-rerank-2.5-lite vs Qwen3,
    measured via the full harness (post-prod #1).
+8. **Dedicated lyrics embedding as a separate fusion channel** — a lyrics vector with its
+   own `kind` and its own fusion weight (never sharing the analysis embedding space) is a
+   harness-gated experiment, only worth it if the full metrics (post-prod #1) measure a lift;
+   `song_lyrics` stays cached + content-hashed so the backfill is cheap if it's ever taken.
+   Raw lyrics sharing the analysis embedding space was the bug removed 2026-06-10 (register
+   mismatch + latest-wins footgun) — one representation per space; lyrics as a second
+   representation must never exist in that space again.
 
 The throughline (revised 2026-06-10): **make the data good before building the measurement.**
 Fusion is normalized; next is logging decision-time features (#6) so every decision from here
