@@ -110,6 +110,14 @@ async function main() {
 		matchResults = count ?? 0;
 	}
 
+	// Decisions reference snapshots via a non-cascading FK (snapshots a user acted
+	// on must stay immutable), so they must be cleared before the snapshots they
+	// point at — otherwise the snapshot delete hits a foreign-key violation.
+	const { count: matchDecisions } = await supabase
+		.from("match_decision")
+		.delete({ count: "exact" })
+		.eq("account_id", accountId);
+
 	const { count: matchSnapshots } = await supabase
 		.from("match_snapshot")
 		.delete({ count: "exact" })
@@ -191,6 +199,7 @@ async function main() {
 
 	console.log(`   ${colors.dim}Deleted:${colors.reset}`);
 	deleted("match results", matchResults);
+	deleted("match decisions", matchDecisions ?? 0);
 	deleted("match snapshots", matchSnapshots ?? 0);
 	deleted("job failures", jobFailures);
 	deleted("jobs", jobCount ?? 0);

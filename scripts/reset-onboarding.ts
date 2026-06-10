@@ -292,12 +292,15 @@ async function clearMatchData(
 		matchResults = count ?? 0;
 	}
 
-	const matchSnapshots = await deleteCount(supabase, "match_snapshot", accountId);
+	// Decisions reference snapshots via a non-cascading FK (snapshots a user acted
+	// on must stay immutable), so they must be cleared before the snapshots they
+	// point at — otherwise the snapshot delete hits a foreign-key violation.
 	const matchDecisions = await deleteCount(
 		supabase,
 		"match_decision",
 		accountId,
 	);
+	const matchSnapshots = await deleteCount(supabase, "match_snapshot", accountId);
 
 	return { matchResults, matchSnapshots, matchDecisions };
 }
