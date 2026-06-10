@@ -164,7 +164,7 @@ export type Database = {
 				};
 				Relationships: [
 					{
-						foreignKeyName: "item_status_account_id_fkey";
+						foreignKeyName: "account_item_newness_account_id_fkey";
 						columns: ["account_id"];
 						isOneToOne: false;
 						referencedRelation: "account";
@@ -254,6 +254,13 @@ export type Database = {
 						isOneToOne: false;
 						referencedRelation: "account";
 						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "account_song_unlock_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
 					},
 					{
 						foreignKeyName: "account_song_unlock_song_id_fkey";
@@ -523,7 +530,7 @@ export type Database = {
 				};
 				Relationships: [
 					{
-						foreignKeyName: "api_token_account_id_fkey";
+						foreignKeyName: "extension_api_token_account_id_fkey";
 						columns: ["account_id"];
 						isOneToOne: false;
 						referencedRelation: "account";
@@ -695,7 +702,7 @@ export type Database = {
 				};
 				Relationships: [
 					{
-						foreignKeyName: "job_failure_job_id_fkey";
+						foreignKeyName: "job_item_failure_job_id_fkey";
 						columns: ["job_id"];
 						isOneToOne: false;
 						referencedRelation: "job";
@@ -804,6 +811,13 @@ export type Database = {
 						foreignKeyName: "liked_song_song_id_fkey";
 						columns: ["song_id"];
 						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "liked_song_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
 						referencedRelation: "song";
 						referencedColumns: ["id"];
 					},
@@ -868,6 +882,13 @@ export type Database = {
 						isOneToOne: false;
 						referencedRelation: "playlist";
 						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "llm_usage_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
 					},
 					{
 						foreignKeyName: "llm_usage_song_id_fkey";
@@ -938,6 +959,13 @@ export type Database = {
 						foreignKeyName: "match_decision_song_id_fkey";
 						columns: ["song_id"];
 						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "match_decision_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
 						referencedRelation: "song";
 						referencedColumns: ["id"];
 					},
@@ -994,6 +1022,13 @@ export type Database = {
 						isOneToOne: false;
 						referencedRelation: "match_snapshot";
 						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_result_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
 					},
 					{
 						foreignKeyName: "match_result_song_id_fkey";
@@ -1125,6 +1160,7 @@ export type Database = {
 			pack_credit_lot: {
 				Row: {
 					account_id: string;
+					checkout_session_id: string | null;
 					created_at: string;
 					id: string;
 					offer_id: string;
@@ -1136,6 +1172,7 @@ export type Database = {
 				};
 				Insert: {
 					account_id: string;
+					checkout_session_id?: string | null;
 					created_at?: string;
 					id?: string;
 					offer_id: string;
@@ -1147,6 +1184,7 @@ export type Database = {
 				};
 				Update: {
 					account_id?: string;
+					checkout_session_id?: string | null;
 					created_at?: string;
 					id?: string;
 					offer_id?: string;
@@ -1362,6 +1400,13 @@ export type Database = {
 						foreignKeyName: "playlist_song_song_id_fkey";
 						columns: ["song_id"];
 						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "playlist_song_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
 						referencedRelation: "song";
 						referencedColumns: ["id"];
 					},
@@ -1537,6 +1582,13 @@ export type Database = {
 						foreignKeyName: "song_analysis_song_id_fkey";
 						columns: ["song_id"];
 						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "song_analysis_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
 						referencedRelation: "song";
 						referencedColumns: ["id"];
 					},
@@ -1602,6 +1654,13 @@ export type Database = {
 						foreignKeyName: "song_audio_feature_song_id_fkey";
 						columns: ["song_id"];
 						isOneToOne: true;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "song_audio_feature_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: true;
 						referencedRelation: "song";
 						referencedColumns: ["id"];
 					},
@@ -1649,6 +1708,13 @@ export type Database = {
 						foreignKeyName: "song_embedding_song_id_fkey";
 						columns: ["song_id"];
 						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "song_embedding_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
 						referencedRelation: "song";
 						referencedColumns: ["id"];
 					},
@@ -1686,6 +1752,13 @@ export type Database = {
 						isOneToOne: false;
 						referencedRelation: "account";
 						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "song_failure_compensation_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
 					},
 					{
 						foreignKeyName: "song_failure_compensation_song_id_fkey";
@@ -1731,6 +1804,13 @@ export type Database = {
 					updated_at?: string;
 				};
 				Relationships: [
+					{
+						foreignKeyName: "song_lyrics_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
 					{
 						foreignKeyName: "song_lyrics_song_id_fkey";
 						columns: ["song_id"];
@@ -1914,6 +1994,13 @@ export type Database = {
 						foreignKeyName: "user_preferences_demo_song_id_fkey";
 						columns: ["demo_song_id"];
 						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "user_preferences_demo_song_id_fkey";
+						columns: ["demo_song_id"];
+						isOneToOne: false;
 						referencedRelation: "song";
 						referencedColumns: ["id"];
 					},
@@ -2013,6 +2100,13 @@ export type Database = {
 						foreignKeyName: "walkthrough_match_preview_demo_song_id_fkey";
 						columns: ["demo_song_id"];
 						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "walkthrough_match_preview_demo_song_id_fkey";
+						columns: ["demo_song_id"];
+						isOneToOne: false;
 						referencedRelation: "song";
 						referencedColumns: ["id"];
 					},
@@ -2027,7 +2121,49 @@ export type Database = {
 			};
 		};
 		Views: {
-			[_ in never]: never;
+			liked_song_decorated: {
+				Row: {
+					account_id: string | null;
+					analysis_content: Json | null;
+					analysis_created_at: string | null;
+					analysis_id: string | null;
+					analysis_model: string | null;
+					artist_image_url: string | null;
+					artists_joined: string | null;
+					audio_energy: number | null;
+					audio_tempo: number | null;
+					audio_valence: number | null;
+					display_state: string | null;
+					has_analysis: boolean | null;
+					has_newness: boolean | null;
+					has_terminal_failure: boolean | null;
+					id: string | null;
+					is_entitled: boolean | null;
+					liked_at: string | null;
+					matching_status: string | null;
+					slug: string | null;
+					song_album_name: string | null;
+					song_artist_ids: string[] | null;
+					song_artists: string[] | null;
+					song_genres: string[] | null;
+					song_id: string | null;
+					song_image_url: string | null;
+					song_name: string | null;
+					song_spotify_id: string | null;
+					total_results: number | null;
+					undecided_count: number | null;
+					unliked_at: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "liked_song_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 		};
 		Functions: {
 			activate_subscription: {
@@ -2196,6 +2332,31 @@ export type Database = {
 				};
 				Returns: number;
 			};
+			create_account_with_billing: {
+				Args: {
+					p_better_auth_user_id: string;
+					p_display_name: string;
+					p_email: string;
+					p_unlimited_access_source?: string;
+				};
+				Returns: {
+					better_auth_user_id: string | null;
+					created_at: string;
+					display_name: string | null;
+					email: string | null;
+					handle: string | null;
+					id: string;
+					image_url: string | null;
+					spotify_id: string | null;
+					updated_at: string;
+				};
+				SetofOptions: {
+					from: "*";
+					to: "account";
+					isOneToOne: true;
+					isSetofReturn: false;
+				};
+			};
 			deactivate_subscription: {
 				Args: { p_account_id: string; p_stripe_event_created_at: string };
 				Returns: undefined;
@@ -2214,6 +2375,60 @@ export type Database = {
 			get_library_artist_count: {
 				Args: { p_account_id: string };
 				Returns: number;
+			};
+			get_liked_song_by_slug: {
+				Args: { p_account_id: string; p_slug: string };
+				Returns: {
+					analysis_content: Json;
+					analysis_created_at: string;
+					analysis_id: string;
+					analysis_model: string;
+					artist_image_url: string;
+					audio_energy: number;
+					audio_tempo: number;
+					audio_valence: number;
+					display_state: string;
+					id: string;
+					liked_at: string;
+					matching_status: string;
+					song_album_name: string;
+					song_artist_ids: string[];
+					song_artists: string[];
+					song_genres: string[];
+					song_id: string;
+					song_image_url: string;
+					song_name: string;
+					song_spotify_id: string;
+				}[];
+			};
+			get_liked_songs_bootstrap_by_slug: {
+				Args: {
+					p_account_id: string;
+					p_slug: string;
+					p_trailing_limit?: number;
+				};
+				Returns: {
+					analysis_content: Json;
+					analysis_created_at: string;
+					analysis_id: string;
+					analysis_model: string;
+					artist_image_url: string;
+					audio_energy: number;
+					audio_tempo: number;
+					audio_valence: number;
+					display_state: string;
+					id: string;
+					liked_at: string;
+					matching_status: string;
+					song_album_name: string;
+					song_artist_ids: string[];
+					song_artists: string[];
+					song_genres: string[];
+					song_id: string;
+					song_image_url: string;
+					song_name: string;
+					song_spotify_id: string;
+				}[];
 			};
 			get_liked_songs_page: {
 				Args: {
@@ -2515,6 +2730,10 @@ export type Database = {
 				}[];
 			};
 			song_artists_joined: { Args: { p_artists: string[] }; Returns: string };
+			song_slug: {
+				Args: { p_artists: string[]; p_name: string };
+				Returns: string;
+			};
 			sweep_stale_library_processing_jobs: {
 				Args: { stale_threshold: string };
 				Returns: {

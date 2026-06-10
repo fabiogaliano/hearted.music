@@ -10,7 +10,6 @@ import { env } from "@/env";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Tables, TablesInsert } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
-import { DatabaseError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
@@ -119,44 +118,24 @@ export async function createAccountForBetterAuthUser(
 ): Promise<Result<Account, DbError>> {
 	const supabase = createAdminSupabaseClient();
 
+	// account + account_billing are provisioned in one transaction by the RPC.
+	// Two app-side inserts could leave an account without a billing row on a
+	// mid-call failure: reads self-heal to free tier, but a self-hosted
+	// unlimited_access_source would be silently lost.
 	const accountResult = await fromSupabaseSingle(
-		supabase
-			.from("account")
-			.insert({
-				better_auth_user_id: data.better_auth_user_id,
-				email: data.email,
-				display_name: data.display_name,
-			})
-			.select()
-			.single(),
+		supabase.rpc("create_account_with_billing", {
+			p_better_auth_user_id: data.better_auth_user_id,
+			p_email: data.email,
+			p_display_name: data.display_name,
+			...(env.BILLING_ENABLED
+				? {}
+				: { p_unlimited_access_source: "self_hosted" as const }),
+		}),
 	);
 
 	if (Result.isError(accountResult)) return accountResult;
 
 	const account = accountResult.value;
-
-	const billingInsert: Pick<
-		TablesInsert<"account_billing">,
-		"account_id" | "unlimited_access_source"
-	> = {
-		account_id: account.id,
-		...(env.BILLING_ENABLED
-			? {}
-			: { unlimited_access_source: "self_hosted" as const }),
-	};
-
-	const { error: billingError } = await supabase
-		.from("account_billing")
-		.insert(billingInsert);
-
-	if (billingError && billingError.code !== "23505") {
-		return Result.err(
-			new DatabaseError({
-				code: billingError.code,
-				message: `Failed to provision account_billing for account ${account.id}: ${billingError.message}`,
-			}),
-		);
-	}
 
 	if (!env.BILLING_ENABLED) {
 		await supabase.rpc("reprioritize_pending_jobs_for_account", {

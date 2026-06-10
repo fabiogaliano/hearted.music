@@ -90,6 +90,23 @@ const mockRpc = vi.fn((fn: string, params: Record<string, unknown> = {}) => {
 		return { data: null, error: null };
 	}
 
+	if (fn === "create_account_with_billing") {
+		return {
+			data: {
+				id: "test-account-id",
+				better_auth_user_id: params.p_better_auth_user_id ?? null,
+				email: params.p_email ?? null,
+				display_name: params.p_display_name ?? null,
+				spotify_id: null,
+				handle: null,
+				image_url: null,
+				created_at: "2026-04-06T00:00:00Z",
+				updated_at: "2026-04-06T00:00:00Z",
+			},
+			error: null,
+		};
+	}
+
 	return { data: null, error: null };
 });
 
@@ -492,7 +509,7 @@ beforeEach(() => {
 
 describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 	describe("1. Account provisioning with BILLING_ENABLED=false", () => {
-		it("creates account_billing with unlimited_access_source='self_hosted'", async () => {
+		it("provisions account_billing with unlimited_access_source='self_hosted'", async () => {
 			const result = await createAccountForBetterAuthUser({
 				better_auth_user_id: "ba-user-1",
 				email: "test@example.com",
@@ -504,13 +521,15 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 
 			expect(result.value.id).toBe(ACCOUNT_ID);
 
-			const billingInsert = supabaseInteractions.inserts.find(
-				(i) => i.table === "account_billing",
+			const provisionCall = supabaseInteractions.rpcs.find(
+				(r) => r.fn === "create_account_with_billing",
 			);
-			expect(billingInsert).toBeDefined();
-			expect(billingInsert?.data).toEqual({
-				account_id: ACCOUNT_ID,
-				unlimited_access_source: "self_hosted",
+			expect(provisionCall).toBeDefined();
+			expect(provisionCall?.params).toEqual({
+				p_better_auth_user_id: "ba-user-1",
+				p_email: "test@example.com",
+				p_display_name: "Test User",
+				p_unlimited_access_source: "self_hosted",
 			});
 		});
 
@@ -539,11 +558,13 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 				display_name: "Test User 3",
 			});
 
-			const billingInsert = supabaseInteractions.inserts.find(
-				(i) => i.table === "account_billing",
+			const provisionCall = supabaseInteractions.rpcs.find(
+				(r) => r.fn === "create_account_with_billing",
 			);
-			expect(billingInsert?.data).toEqual({
-				account_id: ACCOUNT_ID,
+			expect(provisionCall?.params).toEqual({
+				p_better_auth_user_id: "ba-user-3",
+				p_email: "test3@example.com",
+				p_display_name: "Test User 3",
 			});
 
 			const reprioritizeCall = supabaseInteractions.rpcs.find(
