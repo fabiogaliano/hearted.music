@@ -172,6 +172,27 @@ describe("LoginForm", () => {
 			expect(screen.getByRole("alert")).toHaveTextContent(/don't match/i);
 		});
 
+		it("renders the post-signup verification notice with status role", () => {
+			renderForm({
+				initialPanel: "credentials",
+				notice:
+					"One step left. We sent a verification link to reader@hearted.music. If it's not in your inbox, check spam.",
+			});
+			expect(screen.getByRole("status")).toHaveTextContent(
+				/verification link/i,
+			);
+		});
+
+		it("suppresses the notice while an error is present", () => {
+			renderForm({
+				initialPanel: "credentials",
+				error: "That email and password don't match.",
+				notice: "One step left. We sent a verification link.",
+			});
+			expect(screen.queryByText(/verification link/i)).not.toBeInTheDocument();
+			expect(screen.getByRole("alert")).toHaveTextContent(/don't match/i);
+		});
+
 		it("disables every interactive control while loading", () => {
 			renderForm({ initialPanel: "credentials", loading: "credentials" });
 			const buttons = screen.getAllByRole("button");

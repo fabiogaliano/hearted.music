@@ -64,3 +64,12 @@ export const CredentialsSignInWithNotice: Story = makeStory({
 	initialPanel: "credentials",
 	notice: "Check your inbox to verify this email first.",
 });
+
+// The state the user lands on right after creating an account: switched to
+// sign-in mode with the verification notice. Matches login.tsx's signup branch.
+export const CredentialsPostSignupVerification: Story = makeStory({
+	initialPanel: "credentials",
+	mode: "signin",
+	notice:
+		"One step left. We sent a verification link to reader@hearted.music. If it's not in your inbox, check spam.",
+});

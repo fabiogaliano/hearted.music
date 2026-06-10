@@ -63,7 +63,14 @@ Fix all of these before going live.
   block calls `mark_billing_bridge_event_failed` and the upstream retries. The
   idempotency claim (`claim_billing_bridge_event`) already makes retries safe.
 
-### 3. Email verification is not required for account access
+### 3. [x] Email verification is not required for account access
+
+> **Done** — `requireEmailVerification: true`. The signup branch in
+> `login.tsx` no longer relies on `autoSignIn` (which is suppressed when
+> verification is required); it switches to sign-in mode with a "check your
+> inbox / spam" notice instead of navigating to `/dashboard` with no session.
+> The sign-in path already humanized `EMAIL_NOT_VERIFIED`. Notice-rendering
+> guards added to `LoginForm.test.tsx`.
 
 - **Area:** Security
 - **Where:** `src/lib/platform/auth/auth-request-state.server.ts:110` —
@@ -74,7 +81,8 @@ Fix all of these before going live.
   owner signs up later.
 - **Fix:** Set `requireEmailVerification: true`. Infrastructure is already
   wired (`sendOnSignUp: true`, verification emails, `UnverifiedEmailBanner`).
-  One-line change plus a quick test of the verify flow.
+  Not quite one-line: the signup flow assumed `autoSignIn` issued a session,
+  so it needed the sign-in-mode + notice handoff above.
 
 ### 4. Initial-sync upserts are not chunked
 

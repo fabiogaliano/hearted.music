@@ -87,10 +87,16 @@ function LoginPage() {
 				setLoading(null);
 				return;
 			}
-			// `autoSignIn: true` issues a session. Land on /dashboard and let
-			// the _authenticated guard redirect into the onboarding flow with
-			// the correct step search param.
-			navigate({ to: "/dashboard" });
+			// requireEmailVerification means sign-up creates the account but
+			// issues no session — the user must click the verification link
+			// before they can sign in. Switch to the sign-in form with a notice
+			// rather than navigating into the authenticated area, which would
+			// just bounce back to /login with no explanation.
+			setMode("signin");
+			setNotice(
+				`One step left. We sent a verification link to ${email}. If it's not in your inbox, check spam.`,
+			);
+			setLoading(null);
 			return;
 		}
 

@@ -107,7 +107,7 @@ function createBetterAuth(sql: AuthSqlClient) {
 		},
 		emailAndPassword: {
 			enabled: true,
-			requireEmailVerification: false,
+			requireEmailVerification: true,
 			autoSignIn: true,
 			minPasswordLength: 8,
 			maxPasswordLength: 128,
