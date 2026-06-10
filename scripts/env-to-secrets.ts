@@ -9,7 +9,8 @@
  *   bun scripts/env-to-secrets.ts .env.cloud                # custom env file
  *   bun scripts/env-to-secrets.ts .env -o out.json          # custom output path
  *
- * Then: wrangler secret bulk < prod-secrets.json && rm prod-secrets.json
+ * Then: wrangler secret bulk < prod-secrets.json
+ * (the file is gitignored and kept on disk so secrets can be re-pushed.)
  */
 
 import { parseArgs } from "node:util";
@@ -100,4 +101,4 @@ console.log(`Wrote ${Object.keys(secrets).length} secrets to ${outputFile}`);
 if (skipped.length > 0) {
 	console.log(`Skipped ${skipped.length}: ${skipped.join(", ")}`);
 }
-console.log(`\nNext: wrangler secret bulk < ${outputFile} && rm ${outputFile}`);
+console.log(`\nNext: wrangler secret bulk < ${outputFile}`);

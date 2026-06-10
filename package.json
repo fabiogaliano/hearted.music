@@ -37,7 +37,7 @@
 		"ladle": "ladle serve",
 		"ladle:build": "ladle build",
 		"deploy": "RELEASE=true bun run build && wrangler deploy",
-		"deploy:secrets": "bun scripts/env-to-secrets.ts .env.cloud --mode released && wrangler secret bulk < prod-secrets.json && rm prod-secrets.json"
+		"deploy:secrets": "bun scripts/env-to-secrets.ts .env.cloud --mode released && wrangler secret bulk < prod-secrets.json"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^3.0.47",

@@ -267,14 +267,23 @@ Not blocking, but each has real production impact. Ordered by priority.
   `getMatchResultsForSong` for the per-song path. Add
   `CREATE INDEX ON match_result(snapshot_id, song_id);`
 
-### 12. [ ] `prod-secrets.json` survives on disk if the deploy fails
+### 12. [x] `prod-secrets.json` survives on disk if the deploy fails
+
+> **Done (2026-06-10)** — Resolved by decision, not by the originally-proposed
+> pipe. Dropped `&& rm prod-secrets.json` from `deploy:secrets` and now keep the
+> file on disk intentionally (gitignored at `.gitignore:12`, so it never enters
+> the repo) so secrets can be re-pushed without regenerating. This **accepts**
+> the plaintext-secrets-on-local-disk exposure rather than eliminating it — the
+> "survives a failed deploy" race is moot once the file is never deleted.
+> Residual risk is bounded to the operator's local machine.
 
 - **Area:** Ops / Security
-- **Where:** `package.json:40` — `... && wrangler secret bulk < prod-secrets.json && rm prod-secrets.json`
+- **Where:** `package.json:40` — now `... && wrangler secret bulk < prod-secrets.json`
+  (no trailing `rm`)
 - **Problem:** The `rm` never runs if wrangler fails, leaving a plaintext file
   with every production secret in the project directory.
-- **Fix:** Pipe directly (`bun scripts/env-to-secrets.ts ... | wrangler secret bulk`)
-  so no temp file exists at all.
+- **Resolution:** Pipe-direct was rejected in favor of keeping the gitignored
+  file for re-push convenience; the exposure is accepted as local-only.
 
 ### 13. [x] Concurrent extension syncs for one account aren't atomically gated
 
