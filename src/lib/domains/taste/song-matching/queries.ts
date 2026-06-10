@@ -59,7 +59,8 @@ export type MatchResultRow = Pick<
 
 /**
  * Gets all match results for a snapshot.
- * Results are ordered by score descending, with song_id tiebreaker for determinism.
+ * Ordered by score descending, with (song_id, playlist_id) tiebreakers so the
+ * order is fully deterministic even when scores tie.
  *
  * Selects only the columns the undecided derivation consumes. `select("*")` drags
  * the per-row `factors` / `normalized_factors` JSONB along for no reader — at
@@ -75,13 +76,14 @@ export function getMatchResults(
 			.select("song_id, playlist_id, score")
 			.eq("snapshot_id", snapshotId)
 			.order("score", { ascending: false })
-			.order("song_id", { ascending: true }),
+			.order("song_id", { ascending: true })
+			.order("playlist_id", { ascending: true }),
 	);
 }
 
 /**
  * Gets match results for a specific song in a snapshot.
- * Results are ordered by score descending.
+ * Ordered by score descending, with a playlist_id tiebreaker for determinism.
  *
  * Selects only the columns callers consume — the full row drags the factors /
  * normalized_factors JSONB along for no reader.
@@ -102,7 +104,8 @@ export function getMatchResultsForSong(
 			.select("song_id, playlist_id, score, rank")
 			.eq("snapshot_id", snapshotId)
 			.eq("song_id", songId)
-			.order("score", { ascending: false }),
+			.order("score", { ascending: false })
+			.order("playlist_id", { ascending: true }),
 	);
 }
 
@@ -128,7 +131,8 @@ export function getMatchResultDetailsForSong(
 			.select("playlist_id, score, rank, factors")
 			.eq("snapshot_id", snapshotId)
 			.eq("song_id", songId)
-			.order("score", { ascending: false }),
+			.order("score", { ascending: false })
+			.order("playlist_id", { ascending: true }),
 	);
 }
 
