@@ -63,18 +63,27 @@ export type LikedSongFilter =
 	| "no_suggestions"
 	| "analyzed";
 
+/** The liked-song fields the diff/analysis sweeps read — never the full row. */
+export type LikedSongRef = Pick<LikedSong, "song_id" | "unliked_at">;
+
 /**
- * Gets all liked songs for an account.
+ * Gets all liked-song refs for an account, newest first.
  * Returns empty array if none found.
+ *
+ * Projects to `song_id` + `unliked_at` only: this feeds whole-library sweeps (sync
+ * diff, analysis backfill), where `select("*")` would haul every column for
+ * thousands of rows when callers only key off the id and soft-delete flag.
+ * Soft-deleted rows are intentionally kept — the sync diff needs them to detect
+ * re-likes (see incrementalSync).
  */
 export function getAll(
 	accountId: string,
-): Promise<Result<LikedSong[], DbError>> {
+): Promise<Result<LikedSongRef[], DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseMany(
 		supabase
 			.from("liked_song")
-			.select("*")
+			.select("song_id, unliked_at")
 			.eq("account_id", accountId)
 			.order("liked_at", { ascending: false }),
 	);

@@ -241,7 +241,17 @@ Not blocking, but each has real production impact. Ordered by priority.
   (`index.ts`). Ops follow-up: set Coolify stop grace period above the drain
   timeout (code change is inert until then).
 
-### 11. [ ] Full-library reads on hot paths
+### 11. [x] Full-library reads on hot paths
+
+> **Done (2026-06-10)** — Column-narrowing, no schema change. `getMatchResults`
+> now selects `song_id, playlist_id, score` (drops the per-row `factors` JSONB —
+> the bulk of the transfer); the per-song detail path uses a new bounded
+> `getMatchResultDetailsForSong` so factors load only for the displayed song.
+> `getAll` (sync diff + analysis sweep) selects `song_id, unliked_at` only,
+> keeping soft-deleted rows so the re-like diff (#1) stays correct. The suggested
+> `(snapshot_id, song_id)` index was already covered by the unique constraint /
+> `idx_n_snapshot_rank` prefixes; the RPC rewrite was deferred (residual cost is a
+> cheap 3-column in-memory pass once the JSONB is gone). typecheck + tests clean.
 
 - **Area:** Performance
 - **Where:** `src/routes/api/extension/sync.tsx:430` → `getAll` (no LIMIT, no

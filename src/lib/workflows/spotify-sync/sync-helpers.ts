@@ -7,7 +7,7 @@ import {
 	type ArtistUpsertData,
 	upsert as upsertArtists,
 } from "@/lib/domains/library/artists/queries";
-import type { LikedSong } from "@/lib/domains/library/liked-songs/queries";
+import type { LikedSongRef } from "@/lib/domains/library/liked-songs/queries";
 import {
 	softDeleteBatch as softDeleteLikedSongs,
 	upsert as upsertLikedSongs,
@@ -155,12 +155,14 @@ export async function incrementalSync(
 	accountId: string,
 	data: {
 		likedSongs: SpotifyTrackDTO[];
-		existingLikedSongs: LikedSong[];
+		existingLikedSongs: LikedSongRef[];
 		likedSongsIds: Set<string>;
 	},
 ): Promise<Result<LikedSongsSyncResult, SyncOperationError>> {
 	const { likedSongs, existingLikedSongs, likedSongsIds } = data;
-	const existingSongIds = existingLikedSongs.map((ls: LikedSong) => ls.song_id);
+	const existingSongIds = existingLikedSongs.map(
+		(ls: LikedSongRef) => ls.song_id,
+	);
 	const songsResult = await getByIds(
 		existingSongIds.filter((id: string) => id.length > 0),
 	);
@@ -180,8 +182,8 @@ export async function incrementalSync(
 	);
 	const activeSpotifyIds = new Set(
 		existingLikedSongs
-			.filter((ls: LikedSong) => ls.unliked_at === null)
-			.map((ls: LikedSong) => songIdToSpotifyId.get(ls.song_id))
+			.filter((ls: LikedSongRef) => ls.unliked_at === null)
+			.map((ls: LikedSongRef) => songIdToSpotifyId.get(ls.song_id))
 			.filter((id): id is string => id !== undefined),
 	);
 

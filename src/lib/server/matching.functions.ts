@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Json, Tables } from "@/lib/data/database.types";
+import type { Json } from "@/lib/data/database.types";
 import { isSongOwnedByAccount } from "@/lib/domains/library/liked-songs/queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
 import {
@@ -12,9 +12,11 @@ import {
 } from "@/lib/domains/taste/song-matching/decision-queries";
 import {
 	getLatestMatchSnapshot,
+	getMatchResultDetailsForSong,
 	getMatchResults,
 	getMatchResultsForSong,
 	getServedRanksForSong,
+	type MatchResultRow,
 } from "@/lib/domains/taste/song-matching/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 
@@ -76,7 +78,6 @@ export interface SongMatchesResult {
 // Internal helpers
 // ============================================================================
 
-type MatchResult = Tables<"match_result">;
 type MatchDecision = { song_id: string; playlist_id: string };
 
 async function doesSnapshotBelongToAccount(
@@ -144,7 +145,10 @@ async function doPlaylistsBelongToAccount(
 async function getMatchSnapshotData(
 	snapshotId: string,
 	accountId: string,
-): Promise<{ matchResults: MatchResult[]; decisions: MatchDecision[] } | null> {
+): Promise<{
+	matchResults: MatchResultRow[];
+	decisions: MatchDecision[];
+} | null> {
 	const matchResultsResult = await getMatchResults(snapshotId);
 	if (Result.isError(matchResultsResult)) return null;
 
@@ -164,7 +168,7 @@ async function getMatchSnapshotData(
 
 /** Pure derivation: song IDs with at least one undecided match, plus ordering info. */
 function deriveUndecidedSongs(
-	matchResults: MatchResult[],
+	matchResults: MatchResultRow[],
 	decisions: MatchDecision[],
 ): Array<{ songId: string; maxScore: number }> {
 	const decidedPairs = new Set(
@@ -448,10 +452,17 @@ export const getSongMatches = createServerFn({ method: "GET" })
 			decisions.map((d) => `${d.song_id}:${d.playlist_id}`),
 		);
 
-		const songMatchResults = matchResults.filter(
-			(mr) =>
-				mr.song_id === targetSongId &&
-				!decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`),
+		// Fetch the factors/rank JSONB for the single displayed song only — the
+		// snapshot-wide `matchResults` carries just score/ids (see getMatchResults),
+		// so the heavy per-row factors never load for songs we don't render.
+		const songDetailsResult = await getMatchResultDetailsForSong(
+			data.snapshotId,
+			targetSongId,
+		);
+		if (Result.isError(songDetailsResult)) return null;
+
+		const songMatchResults = songDetailsResult.value.filter(
+			(mr) => !decidedPairs.has(`${targetSongId}:${mr.playlist_id}`),
 		);
 
 		const playlistIds = songMatchResults.map((mr) => mr.playlist_id);

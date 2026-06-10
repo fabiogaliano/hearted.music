@@ -12,6 +12,7 @@ const {
 	mockAuthContext,
 	mockGetLatestMatchSnapshot,
 	mockGetMatchResults,
+	mockGetMatchResultDetailsForSong,
 	mockGetMatchResultsForSong,
 	mockGetServedRanksForSong,
 	mockGetMatchDecisionsForSongs,
@@ -33,6 +34,7 @@ const {
 		},
 		mockGetLatestMatchSnapshot: vi.fn(),
 		mockGetMatchResults: vi.fn(),
+		mockGetMatchResultDetailsForSong: vi.fn(),
 		mockGetMatchResultsForSong: vi.fn(),
 		mockGetServedRanksForSong: vi.fn(),
 		mockGetMatchDecisionsForSongs: vi.fn(),
@@ -83,6 +85,8 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 	getLatestMatchSnapshot: (...args: unknown[]) =>
 		mockGetLatestMatchSnapshot(...args),
 	getMatchResults: (...args: unknown[]) => mockGetMatchResults(...args),
+	getMatchResultDetailsForSong: (...args: unknown[]) =>
+		mockGetMatchResultDetailsForSong(...args),
 	getMatchResultsForSong: (...args: unknown[]) =>
 		mockGetMatchResultsForSong(...args),
 	getServedRanksForSong: (...args: unknown[]) =>
@@ -294,6 +298,11 @@ describe("getSongMatches (billing-aware)", () => {
 	}
 
 	function setupSongDetailMocks(songId: string) {
+		// Per-song detail path: factors/rank are fetched only for the displayed song.
+		mockGetMatchResultDetailsForSong.mockResolvedValue(
+			Result.ok([{ playlist_id: "pl-1", score: 90, rank: 1, factors: {} }]),
+		);
+
 		// Chain for supabase.from("song").select("*").eq("id", songId).single()
 		const eqSingle = vi.fn().mockResolvedValue({
 			data: {

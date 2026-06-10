@@ -51,18 +51,28 @@ export function getLatestMatchSnapshot(
 // Match Result Operations
 // ============================================================================
 
+/** The columns the undecided-derivation reads — never the factors JSONB blobs. */
+export type MatchResultRow = Pick<
+	MatchResult,
+	"song_id" | "playlist_id" | "score"
+>;
+
 /**
  * Gets all match results for a snapshot.
  * Results are ordered by score descending, with song_id tiebreaker for determinism.
+ *
+ * Selects only the columns the undecided derivation consumes. `select("*")` drags
+ * the per-row `factors` / `normalized_factors` JSONB along for no reader — at
+ * thousands of rows per snapshot that JSONB is the bulk of the transfer.
  */
 export function getMatchResults(
 	snapshotId: string,
-): Promise<Result<MatchResult[], DbError>> {
+): Promise<Result<MatchResultRow[], DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseMany(
 		supabase
 			.from("match_result")
-			.select("*")
+			.select("song_id, playlist_id, score")
 			.eq("snapshot_id", snapshotId)
 			.order("score", { ascending: false })
 			.order("song_id", { ascending: true }),
@@ -90,6 +100,32 @@ export function getMatchResultsForSong(
 		supabase
 			.from("match_result")
 			.select("song_id, playlist_id, score, rank")
+			.eq("snapshot_id", snapshotId)
+			.eq("song_id", songId)
+			.order("score", { ascending: false }),
+	);
+}
+
+/**
+ * Per-playlist match details for a single song in a snapshot, including the
+ * `factors` JSONB the detail view renders. Bounded to one song so the heavy
+ * JSONB is fetched only for the row actually displayed — never the whole
+ * snapshot. Ordered by score descending.
+ */
+export function getMatchResultDetailsForSong(
+	snapshotId: string,
+	songId: string,
+): Promise<
+	Result<
+		Pick<MatchResult, "playlist_id" | "score" | "rank" | "factors">[],
+		DbError
+	>
+> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMany(
+		supabase
+			.from("match_result")
+			.select("playlist_id, score, rank, factors")
 			.eq("snapshot_id", snapshotId)
 			.eq("song_id", songId)
 			.order("score", { ascending: false }),
