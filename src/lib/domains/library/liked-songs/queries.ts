@@ -549,6 +549,11 @@ export async function getPending(
  * Creates or updates liked songs for an account.
  * Uses (account_id, song_id) as the conflict target.
  * Returns all upserted liked songs.
+ *
+ * `unliked_at: null` is written on every row so the upsert is self-healing: a
+ * previously unliked song that gets re-liked has its soft-delete cleared instead
+ * of being silently left out of the library. Omitting it would make
+ * `ON CONFLICT DO UPDATE` leave a stale `unliked_at` in place.
  */
 export function upsert(
 	accountId: string,
@@ -566,6 +571,7 @@ export function upsert(
 					account_id: accountId,
 					song_id: ls.song_id,
 					liked_at: ls.liked_at,
+					unliked_at: null,
 				})),
 				{ onConflict: "account_id,song_id" },
 			)
