@@ -1,3 +1,4 @@
+import { browser } from "../shared/browser";
 import {
 	addToPlaylist,
 	removeFromPlaylist,
@@ -161,7 +162,7 @@ export async function handleSpotifyCommand(
 	tokenProvider: TokenProvider,
 ): Promise<CommandResponse> {
 	if (!tokenProvider.getCachedToken()) {
-		const { spotifyToken } = await chrome.storage.local.get("spotifyToken");
+		const { spotifyToken } = await browser.storage.local.get("spotifyToken");
 		if (spotifyToken)
 			tokenProvider.setCachedToken(spotifyToken as SpotifyTokenPayload);
 	}

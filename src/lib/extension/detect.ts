@@ -1,6 +1,10 @@
 /**
- * Extension detection via externally_connectable messaging.
- * Uses PING/PONG pattern to check if the hearted. Chrome extension is installed.
+ * Extension detection + command helpers.
+ *
+ * The transport is abstracted behind transport.ts — Chrome talks over
+ * externally_connectable, Firefox over the app-bridge postMessage channel.
+ * These helpers only shape the request and interpret the response, so they are
+ * transport-agnostic and their public signatures are unchanged across browsers.
  */
 
 import type {
@@ -8,23 +12,7 @@ import type {
 	ExtensionSyncBackendFailureCode,
 	ExtensionSyncRequestResult,
 } from "../../../shared/extension-sync-contract";
-
-declare const chrome: {
-	runtime?: {
-		sendMessage: (
-			extensionId: string,
-			message: unknown,
-			callback: (response: { type?: string } | undefined) => void,
-		) => void;
-		lastError?: { message?: string };
-	};
-};
-
-const EXTENSION_ID =
-	typeof import.meta.env.VITE_CHROME_EXTENSION_ID === "string" &&
-	import.meta.env.VITE_CHROME_EXTENSION_ID.length > 0
-		? import.meta.env.VITE_CHROME_EXTENSION_ID
-		: "";
+import { sendExtensionCommand } from "./transport";
 
 type ExtensionSyncCounter = {
 	fetched: number;
@@ -58,57 +46,16 @@ export type ExtensionStatusResponse = {
 
 export type { ExtensionSyncBackendFailure, ExtensionSyncBackendFailureCode };
 
-export async function sendExtensionCommand<T = unknown>(
-	message: Record<string, unknown>,
-): Promise<T | null> {
-	if (
-		!EXTENSION_ID ||
-		typeof chrome === "undefined" ||
-		!chrome.runtime?.sendMessage
-	) {
-		return null;
-	}
-	const runtime = chrome.runtime;
-	return new Promise<T | null>((resolve) => {
-		runtime.sendMessage(EXTENSION_ID, message, (response) => {
-			if (runtime.lastError) {
-				console.warn(
-					"[hearted.] Extension command error:",
-					runtime.lastError.message,
-				);
-				resolve(null);
-				return;
-			}
-			resolve((response ?? null) as T | null);
-		});
-	}).catch(() => null);
-}
+// Re-exported so existing callers (e.g. spotify-client.ts) keep importing it
+// from here; the implementation now lives in transport.ts.
+export { sendExtensionCommand };
 
 export async function getSpotifyConnectionStatus(): Promise<boolean> {
-	if (
-		!EXTENSION_ID ||
-		typeof chrome === "undefined" ||
-		!chrome.runtime?.sendMessage
-	) {
-		return false;
-	}
-	const runtime = chrome.runtime;
-	return new Promise<boolean>((resolve) => {
-		runtime.sendMessage(
-			EXTENSION_ID,
-			{ type: "SPOTIFY_STATUS" },
-			(response) => {
-				if (runtime.lastError) {
-					resolve(false);
-					return;
-				}
-				resolve(
-					response?.type === "SPOTIFY_STATUS" &&
-						(response as unknown as { hasToken: boolean }).hasToken === true,
-				);
-			},
-		);
-	}).catch(() => false);
+	const response = await sendExtensionCommand<{
+		type?: string;
+		hasToken?: boolean;
+	}>({ type: "SPOTIFY_STATUS" });
+	return response?.type === "SPOTIFY_STATUS" && response.hasToken === true;
 }
 
 export async function getExtensionStatus(): Promise<ExtensionStatusResponse | null> {
@@ -127,50 +74,17 @@ export async function connectExtension(
 	token: string,
 	backendUrl: string,
 ): Promise<boolean> {
-	if (
-		!EXTENSION_ID ||
-		typeof chrome === "undefined" ||
-		!chrome.runtime?.sendMessage
-	) {
-		return false;
-	}
-	const runtime = chrome.runtime;
-	return new Promise<boolean>((resolve) => {
-		runtime.sendMessage(
-			EXTENSION_ID,
-			{ type: "CONNECT", token, backendUrl },
-			(response) => {
-				if (runtime.lastError) {
-					resolve(false);
-					return;
-				}
-				resolve(response?.type === "CONNECTED");
-			},
-		);
-	}).catch(() => false);
+	const response = await sendExtensionCommand<{ type?: string }>({
+		type: "CONNECT",
+		token,
+		backendUrl,
+	});
+	return response?.type === "CONNECTED";
 }
 
 export function triggerExtensionSync(): void {
-	if (
-		!EXTENSION_ID ||
-		typeof chrome === "undefined" ||
-		!chrome.runtime?.sendMessage
-	) {
-		return;
-	}
-	const runtime = chrome.runtime;
-	try {
-		runtime.sendMessage(EXTENSION_ID, { type: "TRIGGER_SYNC" }, () => {
-			if (runtime.lastError) {
-				console.warn(
-					"[hearted.] triggerExtensionSync:",
-					runtime.lastError.message,
-				);
-			}
-		});
-	} catch {
-		// fire-and-forget — sync call doesn't return a promise
-	}
+	// Fire-and-forget — onboarding's retry loop doesn't await the outcome.
+	void sendExtensionCommand({ type: "TRIGGER_SYNC" });
 }
 
 /** Awaited outcome of a TRIGGER_SYNC command (mirrors the service worker reply). */
@@ -189,45 +103,8 @@ export async function requestExtensionSync(): Promise<ExtensionSyncRequestResult
 }
 
 export async function isExtensionInstalled(): Promise<boolean> {
-	if (!EXTENSION_ID) {
-		console.warn(
-			"[hearted.detect] EXTENSION_ID is empty — check VITE_CHROME_EXTENSION_ID in .env",
-		);
-		return false;
-	}
-	if (typeof chrome === "undefined") {
-		console.warn(
-			"[hearted.detect] chrome global is undefined — not running in Chrome?",
-		);
-		return false;
-	}
-	if (!chrome.runtime?.sendMessage) {
-		console.warn(
-			"[hearted.detect] chrome.runtime.sendMessage unavailable — extension not installed or externally_connectable mismatch",
-			{
-				hasRuntime: !!chrome.runtime,
-				origin: window.location.origin,
-				extensionId: EXTENSION_ID,
-			},
-		);
-		return false;
-	}
-	const runtime = chrome.runtime;
-	return new Promise<boolean>((resolve) => {
-		runtime.sendMessage(EXTENSION_ID, { type: "PING" }, (response) => {
-			if (runtime.lastError) {
-				console.warn(
-					"[hearted.detect] PING failed:",
-					runtime.lastError.message,
-				);
-				resolve(false);
-				return;
-			}
-			const detected = response?.type === "PONG";
-			if (!detected) {
-				console.warn("[hearted.detect] Unexpected PING response:", response);
-			}
-			resolve(detected);
-		});
-	}).catch(() => false);
+	const response = await sendExtensionCommand<{ type?: string }>({
+		type: "PING",
+	});
+	return response?.type === "PONG";
 }

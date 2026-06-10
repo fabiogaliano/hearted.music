@@ -1,0 +1,68 @@
+{
+	"manifest_version": 3,
+	"name": "everything you ever hearted.",
+	"version": "0.1.0",
+	"description": "reads your library from Spotify. sends them to hearted. nothing else.",
+	"permissions": ["storage", "cookies", "scripting"],
+	"host_permissions": [
+		"https://*.spotify.com/*",
+		"http://localhost/*",
+		"http://127.0.0.1/*",
+		"https://hearted.music/*",
+		"https://*.hearted.music/*"
+	],
+	"browser_specific_settings": {
+		"gecko": {
+			"id": "hearted@hearted.music",
+			"strict_min_version": "140.0",
+			"data_collection_permissions": {
+				"required": ["authenticationInfo", "websiteContent"]
+			}
+		}
+	},
+	"background": {
+		"scripts": ["background/service-worker.js"],
+		"type": "module"
+	},
+	"content_scripts": [
+		{
+			"matches": ["https://open.spotify.com/*"],
+			"js": ["content/intercept-token.js"],
+			"world": "MAIN",
+			"run_at": "document_start"
+		},
+		{
+			"matches": ["https://open.spotify.com/*"],
+			"js": ["content/spotify-token.js"],
+			"run_at": "document_start"
+		},
+		{
+			"matches": ["https://open.spotify.com/*"],
+			"js": ["content/return-banner.js"],
+			"run_at": "document_start"
+		},
+		{
+			"matches": [
+				"https://hearted.music/*",
+				"https://*.hearted.music/*",
+				"http://localhost/*",
+				"http://127.0.0.1/*"
+			],
+			"js": ["content/app-bridge.js"],
+			"run_at": "document_start"
+		}
+	],
+	"action": {
+		"default_popup": "popup/index.html",
+		"default_icon": {
+			"16": "icons/icon-16.png",
+			"48": "icons/icon-48.png",
+			"128": "icons/icon-128.png"
+		}
+	},
+	"icons": {
+		"16": "icons/icon-16.png",
+		"48": "icons/icon-48.png",
+		"128": "icons/icon-128.png"
+	}
+}

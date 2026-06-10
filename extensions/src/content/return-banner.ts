@@ -10,6 +10,8 @@
  * (src/lib/theme/colors.ts) so it reads as continuous with the onboarding UI.
  */
 
+import { browser } from "../shared/browser";
+
 const HOST_ID = "hearted-return-banner-host";
 
 // Rose / "Warm" pastel theme — values copied from src/lib/theme/colors.ts.
@@ -215,7 +217,7 @@ function createBanner(): void {
 
 	returnBtn.addEventListener("click", () => {
 		try {
-			chrome.runtime.sendMessage({ type: "CLOSE_AND_FOCUS_HEARTED" });
+			browser.runtime.sendMessage({ type: "CLOSE_AND_FOCUS_HEARTED" });
 		} catch {
 			// extension context invalidated (e.g. extension reloaded) — just hide
 			removeBanner(host, wrap);
@@ -233,7 +235,7 @@ function createBanner(): void {
 	document.documentElement.appendChild(host);
 }
 
-chrome.runtime.onMessage.addListener((message: BannerMessage) => {
+browser.runtime.onMessage.addListener((message: BannerMessage) => {
 	if (isShowBannerMessage(message)) {
 		createBanner();
 	}

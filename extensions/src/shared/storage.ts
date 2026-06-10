@@ -1,3 +1,5 @@
+import { browser } from "./browser";
+
 export type SyncStatus = "idle" | "syncing" | "done" | "error";
 
 export type SyncPhase =
@@ -47,7 +49,7 @@ const DEFAULT_STATE: SyncState = {
 const STORAGE_KEY = "syncState";
 
 export async function getSyncState(): Promise<SyncState> {
-	const result = await chrome.storage.local.get(STORAGE_KEY);
+	const result = await browser.storage.local.get(STORAGE_KEY);
 	return result[STORAGE_KEY] ?? DEFAULT_STATE;
 }
 
@@ -56,6 +58,6 @@ export async function setSyncState(
 ): Promise<SyncState> {
 	const current = await getSyncState();
 	const next = { ...current, ...update };
-	await chrome.storage.local.set({ [STORAGE_KEY]: next });
+	await browser.storage.local.set({ [STORAGE_KEY]: next });
 	return next;
 }

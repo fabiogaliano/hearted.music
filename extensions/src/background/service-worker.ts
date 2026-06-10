@@ -1,3 +1,8 @@
+import {
+	type BridgeEnvelope,
+	isAllowedBridgeOrigin,
+	isBridgeEnvelope,
+} from "../../../shared/extension-bridge-protocol";
 import type {
 	ExtensionSyncBackendFailureCode,
 	ExtensionSyncRequestResult,
@@ -9,6 +14,7 @@ import {
 	EXTENSION_SYNC_UNKNOWN_FAILURE,
 } from "../../../shared/extension-sync-contract";
 import { parseSpotifyCommand } from "../../../shared/spotify-command-protocol";
+import { browser } from "../shared/browser";
 import { DEFAULT_BACKEND_URL } from "../shared/constants";
 import { updateHash } from "../shared/hash-registry";
 import {
@@ -75,7 +81,7 @@ function isValidBackendUrl(value: unknown): value is string {
 }
 
 async function getBackendUrl(): Promise<string> {
-	const { backendUrl } = await chrome.storage.local.get("backendUrl");
+	const { backendUrl } = await browser.storage.local.get("backendUrl");
 	if (isValidBackendUrl(backendUrl)) {
 		return normalizeBackendUrl(backendUrl);
 	}
@@ -85,12 +91,12 @@ async function getBackendUrl(): Promise<string> {
 function clearSpotifyTokenCache(): void {
 	cachedToken = null;
 	cachedProfile = null;
-	chrome.storage.local.remove("spotifyToken");
+	browser.storage.local.remove("spotifyToken");
 }
 
 async function hasSpotifySession(): Promise<boolean> {
 	try {
-		const cookie = await chrome.cookies.get({
+		const cookie = await browser.cookies.get({
 			url: SPOTIFY_COOKIE_URL,
 			name: "sp_dc",
 		});
@@ -123,14 +129,14 @@ async function resolveHeartedTabId(): Promise<number | null> {
 		Date.now() - heartedTabLastSeenAt < HEARTED_TAB_FRESHNESS_MS
 	) {
 		try {
-			await chrome.tabs.get(heartedTabId);
+			await browser.tabs.get(heartedTabId);
 			return heartedTabId;
 		} catch {
 			heartedTabId = null;
 		}
 	}
 	try {
-		const tabs = await chrome.tabs.query({ url: HEARTED_TAB_URL_MATCHES });
+		const tabs = await browser.tabs.query({ url: HEARTED_TAB_URL_MATCHES });
 		const first = tabs.find((t) => typeof t.id === "number");
 		return first?.id ?? null;
 	} catch {
@@ -140,7 +146,9 @@ async function resolveHeartedTabId(): Promise<number | null> {
 
 async function sendShowReturnBannerToTab(spotifyTabId: number): Promise<void> {
 	try {
-		await chrome.tabs.sendMessage(spotifyTabId, { type: "SHOW_RETURN_BANNER" });
+		await browser.tabs.sendMessage(spotifyTabId, {
+			type: "SHOW_RETURN_BANNER",
+		});
 	} catch (err) {
 		// With document_start injection this should usually succeed. Failures here
 		// are more likely extension reload / tab close / tab race conditions, so
@@ -154,7 +162,7 @@ async function sendShowReturnBannerToTab(spotifyTabId: number): Promise<void> {
 
 // In-memory ring buffer of recent tab creations. Used at arm time to back-scan
 // for tabs that opened *just before* the EXPECT_LOGIN_RETURN message arrived
-// (the fire-and-forget arming race). Not persisted: chrome.tabs.onCreated
+// (the fire-and-forget arming race). Not persisted: browser.tabs.onCreated
 // itself keeps the SW alive long enough for typical click→message latency.
 const RECENT_TAB_CREATIONS_MAX = 16;
 const RECENT_TAB_CREATIONS_MAX_AGE_MS = 10_000;
@@ -246,7 +254,7 @@ function logNavigationUpdateResult(
 
 async function reconcileCandidateTabNavigation(tabId: number): Promise<void> {
 	try {
-		const tab = await chrome.tabs.get(tabId);
+		const tab = await browser.tabs.get(tabId);
 		const existingCandidate = findMostRecentCreationByTabId(tabId);
 		if (existingCandidate) {
 			existingCandidate.url = tab.url;
@@ -276,7 +284,7 @@ async function reconcileCandidateTabNavigation(tabId: number): Promise<void> {
 // `dbg.showReturnBanner` for visual tweaking; never on the production path.
 async function debugBroadcastShowReturnBanner(): Promise<void> {
 	try {
-		const tabs = await chrome.tabs.query({ url: SPOTIFY_TAB_URL_MATCH });
+		const tabs = await browser.tabs.query({ url: SPOTIFY_TAB_URL_MATCH });
 		const tabIds = tabs.flatMap((tab) =>
 			typeof tab.id === "number" ? [tab.id] : [],
 		);
@@ -287,7 +295,7 @@ async function debugBroadcastShowReturnBanner(): Promise<void> {
 }
 
 async function getApiToken(): Promise<string> {
-	const { apiToken } = await chrome.storage.local.get("apiToken");
+	const { apiToken } = await browser.storage.local.get("apiToken");
 	if (!apiToken) {
 		throw new Error("No API token - extension not connected");
 	}
@@ -620,7 +628,7 @@ dbg.fetchPlaylistTracks = async (playlistUri: string) => {
 // touch the sp_dc cookie — the browser stays signed in.
 dbg.resetSpotify = async () => {
 	clearSpotifyTokenCache();
-	await chrome.storage.local.remove("spotifyToken");
+	await browser.storage.local.remove("spotifyToken");
 	console.log(
 		"[hearted.] Spotify token cache cleared — reload the Spotify tab to re-trigger login detection.",
 	);
@@ -643,28 +651,30 @@ const tokenProvider = {
 	clearCachedToken: clearSpotifyTokenCache,
 };
 
-chrome.runtime.onInstalled.addListener(async (details) => {
+browser.runtime.onInstalled.addListener(async (details) => {
 	console.log("[hearted.] Extension installed:", details.reason);
 
 	// Re-inject content scripts into existing Spotify tabs so token
 	// interception resumes without requiring a manual page refresh.
 	try {
-		const tabs = await chrome.tabs.query({ url: "https://open.spotify.com/*" });
+		const tabs = await browser.tabs.query({
+			url: "https://open.spotify.com/*",
+		});
 		const tabIds = tabs.flatMap((tab) =>
 			typeof tab.id === "number" ? [tab.id] : [],
 		);
 		await Promise.all(
 			tabIds.map(async (tabId) => {
-				await chrome.scripting.executeScript({
+				await browser.scripting.executeScript({
 					target: { tabId },
 					files: ["content/intercept-token.js"],
 					world: "MAIN",
 				});
-				await chrome.scripting.executeScript({
+				await browser.scripting.executeScript({
 					target: { tabId },
 					files: ["content/spotify-token.js"],
 				});
-				await chrome.scripting.executeScript({
+				await browser.scripting.executeScript({
 					target: { tabId },
 					files: ["content/return-banner.js"],
 				});
@@ -676,197 +686,219 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 	}
 });
 
-chrome.runtime.onMessageExternal.addListener(
-	(message, _sender, sendResponse) => {
-		rememberHeartedSender(_sender);
+// Shared dispatcher for the seven web-app → extension commands. On Chrome they
+// arrive through runtime.onMessageExternal (externally_connectable); on Firefox,
+// which has no externally_connectable, the app-bridge content script relays them
+// via runtime.onMessage wrapped in a namespaced envelope. Both front doors
+// funnel here so behaviour is identical. Returns the response payload to send
+// back, or undefined when the message isn't a recognized external command.
+type ExternalCommandMessage = {
+	type?: string;
+	token?: string;
+	backendUrl?: unknown;
+	armToken?: unknown;
+	[key: string]: unknown;
+};
 
-		if (message.type === "PING") {
-			sendResponse({ type: "PONG" });
-			return true;
+async function handleExternalCommand(
+	message: ExternalCommandMessage,
+	sender: chrome.runtime.MessageSender,
+): Promise<unknown> {
+	rememberHeartedSender(sender);
+
+	if (message.type === "PING") {
+		return { type: "PONG" };
+	}
+
+	if (message.type === "CONNECT") {
+		const storagePayload: Record<string, string> = {
+			apiToken: message.token as string,
+		};
+		if (isValidBackendUrl(message.backendUrl)) {
+			storagePayload.backendUrl = normalizeBackendUrl(message.backendUrl);
+		}
+		await browser.storage.local.set(storagePayload);
+		console.log(
+			`[hearted.] Connected with API token from web app (${storagePayload.backendUrl ?? DEFAULT_BACKEND_URL})`,
+		);
+
+		// Re-hydrate Spotify token if SW was restarted
+		if (!cachedToken) {
+			const { spotifyToken } = await browser.storage.local.get("spotifyToken");
+			if (spotifyToken) cachedToken = spotifyToken as SpotifyTokenPayload;
 		}
 
-		if (message.type === "CONNECT") {
-			(async () => {
-				const storagePayload: Record<string, string> = {
-					apiToken: message.token,
-				};
-				if (isValidBackendUrl(message.backendUrl)) {
-					storagePayload.backendUrl = normalizeBackendUrl(message.backendUrl);
-				}
-				await new Promise<void>((resolve) =>
-					chrome.storage.local.set(storagePayload, resolve),
-				);
-				console.log(
-					`[hearted.] Connected with API token from web app (${storagePayload.backendUrl ?? DEFAULT_BACKEND_URL})`,
-				);
+		return { type: "CONNECTED" };
+	}
 
-				// Re-hydrate Spotify token if SW was restarted
-				if (!cachedToken) {
-					const { spotifyToken } =
-						await chrome.storage.local.get("spotifyToken");
-					if (spotifyToken) cachedToken = spotifyToken as SpotifyTokenPayload;
-				}
-
-				sendResponse({ type: "CONNECTED" });
-			})();
-			return true;
+	if (message.type === "TRIGGER_SYNC") {
+		// Re-hydrate in-memory token if SW was restarted between polling check and click
+		if (!cachedToken) {
+			const { spotifyToken } = await browser.storage.local.get("spotifyToken");
+			if (spotifyToken) cachedToken = spotifyToken as SpotifyTokenPayload;
 		}
-
-		if (message.type === "TRIGGER_SYNC") {
-			(async () => {
-				// Re-hydrate in-memory token if SW was restarted between polling check and click
-				if (!cachedToken) {
-					const { spotifyToken } =
-						await chrome.storage.local.get("spotifyToken");
-					if (spotifyToken) cachedToken = spotifyToken as SpotifyTokenPayload;
-				}
-				try {
-					const result = await performSync();
-					sendResponse({ ok: true, ...result });
-				} catch (err) {
-					const error = err instanceof Error ? err.message : "Unknown error";
-					sendResponse({ ok: false, error });
-				}
-			})();
-			return true;
+		try {
+			const result = await performSync();
+			return { ok: true, ...result };
+		} catch (err) {
+			const error = err instanceof Error ? err.message : "Unknown error";
+			return { ok: false, error };
 		}
+	}
 
-		if (message.type === "EXPECT_LOGIN_RETURN") {
-			(async () => {
-				const originTabId = _sender.tab?.id;
-				const originWindowId = _sender.tab?.windowId;
-				const armToken =
-					typeof message.armToken === "string" ? message.armToken : "";
+	if (message.type === "EXPECT_LOGIN_RETURN") {
+		const originTabId = sender.tab?.id;
+		const originWindowId = sender.tab?.windowId;
+		const armToken =
+			typeof message.armToken === "string" ? message.armToken : "";
+		if (typeof originTabId !== "number" || typeof originWindowId !== "number") {
+			// External arming must come from a hearted tab — without tab+window
+			// ids we cannot scope binding to that window, so refuse to arm.
+			return { ok: false, error: "no sender tab/window" };
+		}
+		if (armToken.length === 0) {
+			// Without an arm token we can't dual-match the eventual fragment
+			// reported by the Spotify tab. Refuse rather than arm a flow that
+			// could not be safely consumed.
+			return { ok: false, error: "missing armToken" };
+		}
+		const armedAtMs = Date.now();
+		await setPendingLoginReturnAwaitingCreatedTab({
+			originTabId,
+			originWindowId,
+			armToken,
+			armedAtMs,
+		});
+
+		// Race fix: the new tab may have been created before this fire-and-
+		// forget message reached the SW. Back-scan the recent-creations buffer
+		// and adopt the most recent qualifying candidate. This only advances
+		// to awaitingSpotifyNavigation — final binding still requires
+		// browser.tabs.onUpdated to confirm the candidate reaches Spotify.
+		const pending = await getPendingLoginReturn();
+		if (pending && pending.kind === "awaitingCreatedTab") {
+			for (let i = recentTabCreations.length - 1; i >= 0; i -= 1) {
+				const candidate = recentTabCreations[i];
+				if (candidate.windowId !== originWindowId) continue;
 				if (
-					typeof originTabId !== "number" ||
-					typeof originWindowId !== "number"
+					candidate.openerTabId !== undefined &&
+					candidate.openerTabId !== originTabId
 				) {
-					// External arming must come from a hearted tab — without tab+window
-					// ids we cannot scope binding to that window, so refuse to arm.
-					sendResponse({ ok: false, error: "no sender tab/window" });
-					return;
+					continue;
 				}
-				if (armToken.length === 0) {
-					// Without an arm token we can't dual-match the eventual fragment
-					// reported by the Spotify tab. Refuse rather than arm a flow that
-					// could not be safely consumed.
-					sendResponse({ ok: false, error: "missing armToken" });
-					return;
-				}
-				const armedAtMs = Date.now();
-				await setPendingLoginReturnAwaitingCreatedTab({
-					originTabId,
-					originWindowId,
-					armToken,
-					armedAtMs,
-				});
-
-				// Race fix: the new tab may have been created before this fire-and-
-				// forget message reached the SW. Back-scan the recent-creations buffer
-				// and adopt the most recent qualifying candidate. This only advances
-				// to awaitingSpotifyNavigation — final binding still requires
-				// chrome.tabs.onUpdated to confirm the candidate reaches Spotify.
-				const pending = await getPendingLoginReturn();
-				if (pending && pending.kind === "awaitingCreatedTab") {
-					for (let i = recentTabCreations.length - 1; i >= 0; i -= 1) {
-						const candidate = recentTabCreations[i];
-						if (candidate.windowId !== originWindowId) continue;
-						if (
-							candidate.openerTabId !== undefined &&
-							candidate.openerTabId !== originTabId
-						) {
-							continue;
-						}
-						await reconcileCandidateTabNavigation(candidate.tabId);
-						const after = await getPendingLoginReturn();
-						if (after?.kind !== "awaitingCreatedTab") break;
-					}
-				}
-				sendResponse({ ok: true });
-			})();
-			return true;
-		}
-
-		if (message.type === "SPOTIFY_STATUS") {
-			(async () => {
-				const hasSession = await hasSpotifySession();
-				if (!hasSession) {
-					clearSpotifyTokenCache();
-					sendResponse({ type: "SPOTIFY_STATUS", hasToken: false });
-					return;
-				}
-
-				// Re-hydrate in-memory cache if SW was terminated and restarted
-				if (!cachedToken) {
-					const { spotifyToken } =
-						await chrome.storage.local.get("spotifyToken");
-					if (spotifyToken) cachedToken = spotifyToken as SpotifyTokenPayload;
-				}
-
-				const hasUsableToken =
-					cachedToken !== null && isTokenValid() && !cachedToken.isAnonymous;
-				if (!hasUsableToken && cachedToken) {
-					clearSpotifyTokenCache();
-				}
-
-				sendResponse({
-					type: "SPOTIFY_STATUS",
-					hasToken: hasUsableToken,
-					hasSession: true,
-				});
-			})();
-			return true;
-		}
-
-		if (message.type === "GET_STATUS") {
-			(async () => {
-				if (!cachedToken) {
-					const { spotifyToken } =
-						await chrome.storage.local.get("spotifyToken");
-					if (spotifyToken) cachedToken = spotifyToken as SpotifyTokenPayload;
-				}
-				const state = await getSyncState();
-				sendResponse({
-					hasToken: isTokenValid(),
-					tokenExpiresAtMs: cachedToken?.expiresAtMs ?? null,
-					sync: state,
-				});
-			})();
-			return true;
-		}
-
-		if (message.type === "SPOTIFY_COMMAND") {
-			const parsed = parseSpotifyCommand(message);
-			if (!parsed.ok) {
-				const raw = message as { commandId?: unknown };
-				const commandId =
-					typeof raw.commandId === "string" ? raw.commandId : "invalid-command";
-				sendResponse({
-					ok: false,
-					errorCode: "INVALID_PARAMS",
-					message: parsed.error,
-					retryable: false,
-					commandId,
-				});
-				return true;
+				await reconcileCandidateTabNavigation(candidate.tabId);
+				const after = await getPendingLoginReturn();
+				if (after?.kind !== "awaitingCreatedTab") break;
 			}
+		}
+		return { ok: true };
+	}
 
-			(async () => {
-				const response = await handleSpotifyCommand(
-					parsed.value,
-					tokenProvider,
-				);
-				sendResponse(response);
-			})();
-			return true;
+	if (message.type === "SPOTIFY_STATUS") {
+		const hasSession = await hasSpotifySession();
+		if (!hasSession) {
+			clearSpotifyTokenCache();
+			return { type: "SPOTIFY_STATUS", hasToken: false };
 		}
 
-		return false;
-	},
-);
+		// Re-hydrate in-memory cache if SW was terminated and restarted
+		if (!cachedToken) {
+			const { spotifyToken } = await browser.storage.local.get("spotifyToken");
+			if (spotifyToken) cachedToken = spotifyToken as SpotifyTokenPayload;
+		}
 
-chrome.runtime.onMessage.addListener(
-	(message: ExtensionMessage, _sender, sendResponse) => {
+		const hasUsableToken =
+			cachedToken !== null && isTokenValid() && !cachedToken.isAnonymous;
+		if (!hasUsableToken && cachedToken) {
+			clearSpotifyTokenCache();
+		}
+
+		return {
+			type: "SPOTIFY_STATUS",
+			hasToken: hasUsableToken,
+			hasSession: true,
+		};
+	}
+
+	if (message.type === "GET_STATUS") {
+		if (!cachedToken) {
+			const { spotifyToken } = await browser.storage.local.get("spotifyToken");
+			if (spotifyToken) cachedToken = spotifyToken as SpotifyTokenPayload;
+		}
+		const state = await getSyncState();
+		return {
+			hasToken: isTokenValid(),
+			tokenExpiresAtMs: cachedToken?.expiresAtMs ?? null,
+			sync: state,
+		};
+	}
+
+	if (message.type === "SPOTIFY_COMMAND") {
+		const parsed = parseSpotifyCommand(message);
+		if (!parsed.ok) {
+			const raw = message as { commandId?: unknown };
+			const commandId =
+				typeof raw.commandId === "string" ? raw.commandId : "invalid-command";
+			return {
+				ok: false,
+				errorCode: "INVALID_PARAMS",
+				message: parsed.error,
+				retryable: false,
+				commandId,
+			};
+		}
+		return handleSpotifyCommand(parsed.value, tokenProvider);
+	}
+
+	return undefined;
+}
+
+// Chrome front door. Note: Firefox also exposes onMessageExternal (for
+// extension→extension messaging; only the web-page direction is unimplemented,
+// bug 1319168), so this listener registers there too. Chrome restricts callers
+// to the externally_connectable matches for free; Firefox has no such filter,
+// so vet the sender ourselves — a hearted web page carries an allow-listed
+// origin and no extension id, while another extension would carry an id. The
+// web app routes through the bridge envelope in the onMessage listener below.
+if (browser.runtime.onMessageExternal) {
+	browser.runtime.onMessageExternal.addListener(
+		(message, sender, sendResponse) => {
+			if (
+				sender.id !== undefined ||
+				!sender.origin ||
+				!isAllowedBridgeOrigin(sender.origin)
+			) {
+				return false;
+			}
+			handleExternalCommand(message, sender)
+				// Always respond, even for unknown types (undefined) or handler
+				// failures — leaving the channel open would hang the page's callback
+				// until the worker is torn down.
+				.then((response) => sendResponse(response))
+				.catch((err: unknown) => {
+					sendResponse({
+						ok: false,
+						error: err instanceof Error ? err.message : String(err),
+					});
+				});
+			return true;
+		},
+	);
+}
+
+browser.runtime.onMessage.addListener(
+	(message: ExtensionMessage | BridgeEnvelope, _sender, sendResponse) => {
+		// Firefox front door: web-app commands relayed by the app-bridge content
+		// script. Returning the promise makes browser.* deliver the resolved value
+		// back to the bridge, which posts it to the page. (This branch never fires
+		// on Chrome — the bridge content script is Firefox-only.)
+		if (isBridgeEnvelope(message)) {
+			return handleExternalCommand(
+				message.payload as ExternalCommandMessage,
+				_sender,
+			);
+		}
+
 		switch (message.type) {
 			case "SPOTIFY_TOKEN": {
 				(async () => {
@@ -875,7 +907,7 @@ chrome.runtime.onMessage.addListener(
 					let prevUsable = isUsableToken(cachedToken);
 					if (!prevUsable) {
 						const { spotifyToken } =
-							await chrome.storage.local.get("spotifyToken");
+							await browser.storage.local.get("spotifyToken");
 						prevUsable = isUsableToken(
 							(spotifyToken ?? null) as SpotifyTokenPayload | null,
 						);
@@ -884,7 +916,7 @@ chrome.runtime.onMessage.addListener(
 
 					cachedToken = message.payload;
 					cachedProfile = null;
-					await chrome.storage.local.set({ spotifyToken: message.payload });
+					await browser.storage.local.set({ spotifyToken: message.payload });
 					const expiresIn = Math.round(
 						(message.payload.expiresAtMs - Date.now()) / 1000,
 					);
@@ -893,7 +925,7 @@ chrome.runtime.onMessage.addListener(
 					if (!prevUsable && nextUsable) {
 						const spotifyTabId = _sender.tab?.id;
 						if (typeof spotifyTabId === "number") {
-							// Race fix: token can arrive before chrome.tabs.onUpdated has had
+							// Race fix: token can arrive before browser.tabs.onUpdated has had
 							// a chance to confirm this same tab reached open.spotify.com. Run
 							// the candidate-navigation reconciliation here so pending state
 							// advances awaitingSpotifyNavigation → awaitingToken, and only
@@ -984,7 +1016,7 @@ chrome.runtime.onMessage.addListener(
 				(async () => {
 					if (!cachedToken) {
 						const { spotifyToken } =
-							await chrome.storage.local.get("spotifyToken");
+							await browser.storage.local.get("spotifyToken");
 						if (spotifyToken) cachedToken = spotifyToken as SpotifyTokenPayload;
 					}
 					const state = await getSyncState();
@@ -1036,16 +1068,16 @@ chrome.runtime.onMessage.addListener(
 					const targetId = await resolveHeartedTabId();
 					try {
 						if (targetId !== null) {
-							const tab = await chrome.tabs.get(targetId);
-							await chrome.tabs.update(targetId, { active: true });
+							const tab = await browser.tabs.get(targetId);
+							await browser.tabs.update(targetId, { active: true });
 							if (typeof tab.windowId === "number") {
-								await chrome.windows.update(tab.windowId, { focused: true });
+								await browser.windows.update(tab.windowId, { focused: true });
 							}
 						}
 						// Remove Spotify tab AFTER focusing hearted so Chrome doesn't
 						// briefly activate an adjacent tab during the transition.
 						if (typeof spotifyTabId === "number") {
-							await chrome.tabs.remove(spotifyTabId);
+							await browser.tabs.remove(spotifyTabId);
 						}
 						sendResponse({ ok: true });
 					} catch (err) {
@@ -1066,7 +1098,7 @@ chrome.runtime.onMessage.addListener(
 // EXPECT_LOGIN_RETURN can still find this tab) and, if pending state is
 // awaitingCreatedTab, try to *adopt* the candidate. Adoption only advances
 // to awaitingSpotifyNavigation — final binding requires onUpdated below.
-chrome.tabs.onCreated.addListener((tab) => {
+browser.tabs.onCreated.addListener((tab) => {
 	const candidate = tabToCandidate(tab, Date.now());
 	if (!candidate) return;
 	recordRecentTabCreation(candidate);
@@ -1082,7 +1114,7 @@ chrome.tabs.onCreated.addListener((tab) => {
 // pending state is awaitingSpotifyNavigation, and only for the candidate
 // tab id. Spotify destination → awaitingToken; clearly-non-Spotify → drop
 // pending; about:blank / accounts.spotify.com → keep waiting.
-chrome.tabs.onUpdated.addListener((tabId, _changeInfo, tab) => {
+browser.tabs.onUpdated.addListener((tabId, _changeInfo, tab) => {
 	(async () => {
 		const update = {
 			tabId,
@@ -1125,7 +1157,7 @@ chrome.tabs.onUpdated.addListener((tabId, _changeInfo, tab) => {
 
 // If the candidate or bound Spotify tab is closed before the flow completes,
 // drop pending state so a future token from another tab can't claim it.
-chrome.tabs.onRemoved.addListener((closedTabId) => {
+browser.tabs.onRemoved.addListener((closedTabId) => {
 	forgetReportedArmToken(closedTabId);
 	clearPendingLoginReturnIfTabClosed(closedTabId).catch((err) => {
 		console.warn("[hearted.] tabs.onRemoved cleanup failed:", err);
@@ -1133,7 +1165,7 @@ chrome.tabs.onRemoved.addListener((closedTabId) => {
 });
 
 // Real-time logout detection via sp_dc cookie; polling still reconciles within 3s.
-chrome.cookies.onChanged.addListener((changeInfo) => {
+browser.cookies.onChanged.addListener((changeInfo) => {
 	if (
 		changeInfo.cookie.domain !== ".spotify.com" ||
 		changeInfo.cookie.name !== "sp_dc"

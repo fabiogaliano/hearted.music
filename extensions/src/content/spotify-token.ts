@@ -1,3 +1,5 @@
+import { browser } from "../shared/browser";
+
 const TOKEN_EVENT = "__hearted_token";
 const HASH_EVENT = "__hearted_hash";
 // MUST stay in sync with src/lib/extension/reconnect-link.ts.
@@ -14,7 +16,7 @@ window.addEventListener(TOKEN_EVENT, ((event: CustomEvent) => {
 	};
 
 	try {
-		chrome.runtime.sendMessage({ type: "SPOTIFY_TOKEN", payload });
+		browser.runtime.sendMessage({ type: "SPOTIFY_TOKEN", payload });
 		console.log("[hearted.] Token captured and sent to background");
 	} catch {
 		// Extension context invalidated
@@ -26,7 +28,7 @@ window.addEventListener(HASH_EVENT, ((event: CustomEvent) => {
 	if (!operationName || !sha256Hash) return;
 
 	try {
-		chrome.runtime.sendMessage({
+		browser.runtime.sendMessage({
 			type: "PATHFINDER_HASH",
 			payload: { operationName, sha256Hash },
 		});
@@ -56,7 +58,7 @@ function reportArmTokenIfPresent(): void {
 	const token = readArmTokenFromHash(window.location.hash);
 	if (token === null) return;
 	try {
-		chrome.runtime.sendMessage({ type: "ARM_TOKEN_PRESENT", token });
+		browser.runtime.sendMessage({ type: "ARM_TOKEN_PRESENT", token });
 	} catch {
 		// Extension context invalidated
 	}

@@ -43,6 +43,7 @@ const domTestFiles = [
 	"src/lib/consent/__tests__/consent-storage.test.ts",
 	"src/lib/extension/__tests__/useSpotifyReconnectState.test.ts",
 	"src/features/playlists/__tests__/usePlaylistVoices.test.ts",
+	"src/lib/extension/__tests__/transport.test.ts",
 ];
 
 function embeddingSidecarPlugin(): Plugin {

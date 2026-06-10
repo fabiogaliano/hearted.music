@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { browser } from "../shared/browser";
 
 // Rose / "Warm" pastel theme — mirrored from src/lib/theme/colors.ts.
 // Inlined for the same reason as return-banner.ts: no cross-build import.
@@ -17,10 +18,22 @@ export function App() {
 	const [hasSpotifyToken, setHasSpotifyToken] = useState<boolean | null>(null);
 
 	useEffect(() => {
-		chrome.runtime.sendMessage({ type: "GET_STATUS" }, (response) => {
-			if (chrome.runtime.lastError) return;
-			setHasSpotifyToken(response?.hasToken ?? false);
-		});
+		let cancelled = false;
+		// Promise-style sendMessage works on both Chrome MV3 (promise-native) and
+		// Firefox's browser.* — the Chrome callback signature the popup used before
+		// is silently ignored by Firefox, so it would never resolve there.
+		browser.runtime
+			.sendMessage({ type: "GET_STATUS" })
+			.then((response: { hasToken?: boolean } | undefined) => {
+				if (cancelled) return;
+				setHasSpotifyToken(response?.hasToken ?? false);
+			})
+			.catch(() => {
+				if (!cancelled) setHasSpotifyToken(false);
+			});
+		return () => {
+			cancelled = true;
+		};
 	}, []);
 
 	const isLoading = hasSpotifyToken === null;

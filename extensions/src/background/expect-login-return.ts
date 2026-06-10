@@ -18,9 +18,11 @@
 // The bound `spotifyTabId` is the only tab whose token transition can
 // consume the pending state and trigger the banner.
 //
-// Pending state lives in chrome.storage.session so it survives MV3 SW
+// Pending state lives in browser.storage.session so it survives MV3 SW
 // restarts. The recent-tab-creation buffer used to absorb the arm-vs-open
 // race is in-memory in the service worker.
+
+import { browser } from "../shared/browser";
 
 export const PENDING_LOGIN_RETURN_KEY = "pendingLoginReturn";
 
@@ -93,17 +95,17 @@ function isPending(value: unknown): value is PendingLoginReturn {
 }
 
 async function readRaw(): Promise<PendingLoginReturn | null> {
-	const stored = await chrome.storage.session.get(PENDING_LOGIN_RETURN_KEY);
+	const stored = await browser.storage.session.get(PENDING_LOGIN_RETURN_KEY);
 	const raw = stored[PENDING_LOGIN_RETURN_KEY];
 	return isPending(raw) ? raw : null;
 }
 
 async function writeRaw(value: PendingLoginReturn): Promise<void> {
-	await chrome.storage.session.set({ [PENDING_LOGIN_RETURN_KEY]: value });
+	await browser.storage.session.set({ [PENDING_LOGIN_RETURN_KEY]: value });
 }
 
 export async function clearPendingLoginReturn(): Promise<void> {
-	await chrome.storage.session.remove(PENDING_LOGIN_RETURN_KEY);
+	await browser.storage.session.remove(PENDING_LOGIN_RETURN_KEY);
 }
 
 // Returns null when nothing is stored OR when the stored entry has expired.

@@ -1,3 +1,5 @@
+import { browser } from "./browser";
+
 export const DEFAULT_HASHES: Record<string, string> = {
 	fetchLibraryTracks:
 		"087278b20b743578a6262c2b0b4bcd20d879c503cc359a2285baf083ef944240",
@@ -26,7 +28,7 @@ let loaded = false;
 
 async function loadFromStorage(): Promise<void> {
 	if (loaded) return;
-	const result = await chrome.storage.local.get(STORAGE_KEY);
+	const result = await browser.storage.local.get(STORAGE_KEY);
 	const stored: Record<string, string> | undefined = result[STORAGE_KEY];
 	if (stored) {
 		for (const [key, value] of Object.entries(stored)) {
@@ -68,8 +70,8 @@ export async function updateHash(
 		);
 	}
 
-	const result = await chrome.storage.local.get(STORAGE_KEY);
+	const result = await browser.storage.local.get(STORAGE_KEY);
 	const stored: Record<string, string> = result[STORAGE_KEY] ?? {};
 	stored[operationName] = hash;
-	await chrome.storage.local.set({ [STORAGE_KEY]: stored });
+	await browser.storage.local.set({ [STORAGE_KEY]: stored });
 }

@@ -1,6 +1,6 @@
 {
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["old_app", "node_modules", "extension", "v1_hearted_brand", "src/worker", "src/routes/dev-*"],
+  "exclude": ["old_app", "node_modules", "extensions", "v1_hearted_brand", "src/worker", "src/routes/dev-*"],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",
