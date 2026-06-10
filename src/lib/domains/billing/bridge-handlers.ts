@@ -2,6 +2,21 @@ import { Result } from "better-result";
 import type { AdminSupabaseClient } from "@/lib/data/client";
 import { BillingChanges } from "@/lib/workflows/library-processing/changes/billing";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
+import type { LibraryProcessingChange } from "@/lib/workflows/library-processing/types";
+
+// Throws on apply failure so the bridge route marks the event failed and the
+// upstream retries it. applyLibraryProcessingChange is reconciler-based, so
+// re-running it on retry is idempotent.
+async function applyChangeOrThrow(
+	change: LibraryProcessingChange,
+): Promise<void> {
+	const applyResult = await applyLibraryProcessingChange(change);
+	if (Result.isError(applyResult)) {
+		throw new Error(
+			`[bridge-handlers] library-processing apply failed (${applyResult.error.kind}): ${JSON.stringify(applyResult.error)}`,
+		);
+	}
+}
 
 interface PackFulfilledParams {
 	accountId: string;
@@ -33,17 +48,9 @@ export async function handlePackFulfilled(
 		return;
 	}
 
-	const change = BillingChanges.songsUnlocked(
-		params.accountId,
-		params.bonusUnlockedSongIds,
+	await applyChangeOrThrow(
+		BillingChanges.songsUnlocked(params.accountId, params.bonusUnlockedSongIds),
 	);
-	const applyResult = await applyLibraryProcessingChange(change);
-	if (Result.isError(applyResult)) {
-		console.error(
-			"[bridge-handlers] library-processing apply failed:",
-			applyResult.error,
-		);
-	}
 }
 
 export async function handleUnlimitedActivated(
@@ -58,24 +65,18 @@ export async function handleUnlimitedActivated(
 		stripe_event_id: params.stripeEventId,
 	});
 
-	if (error) {
-		// UNIQUE constraint violation — duplicate activation for same period
-		if (error.code === "23505") {
-			return;
-		}
+	// UNIQUE constraint violation (23505) means the activation marker already
+	// exists — likely a retry after a partial failure. Fall through and
+	// re-apply the library-processing change anyway: the reconciler is
+	// idempotent, and skipping it here would leave a retry that failed after
+	// the insert with no way to ever drive the downstream effects.
+	if (error && error.code !== "23505") {
 		throw new Error(
 			`[bridge-handlers] Failed to insert billing_activation: ${error.message}`,
 		);
 	}
 
-	const change = BillingChanges.unlimitedActivated(params.accountId);
-	const applyResult = await applyLibraryProcessingChange(change);
-	if (Result.isError(applyResult)) {
-		console.error(
-			"[bridge-handlers] library-processing apply failed:",
-			applyResult.error,
-		);
-	}
+	await applyChangeOrThrow(BillingChanges.unlimitedActivated(params.accountId));
 }
 
 export async function handlePackReversed(
@@ -85,14 +86,9 @@ export async function handlePackReversed(
 		return;
 	}
 
-	const change = BillingChanges.candidateAccessRevoked(params.accountId);
-	const applyResult = await applyLibraryProcessingChange(change);
-	if (Result.isError(applyResult)) {
-		console.error(
-			"[bridge-handlers] library-processing apply failed:",
-			applyResult.error,
-		);
-	}
+	await applyChangeOrThrow(
+		BillingChanges.candidateAccessRevoked(params.accountId),
+	);
 }
 
 export async function handleUnlimitedPeriodReversed(
@@ -102,14 +98,9 @@ export async function handleUnlimitedPeriodReversed(
 		return;
 	}
 
-	const change = BillingChanges.candidateAccessRevoked(params.accountId);
-	const applyResult = await applyLibraryProcessingChange(change);
-	if (Result.isError(applyResult)) {
-		console.error(
-			"[bridge-handlers] library-processing apply failed:",
-			applyResult.error,
-		);
-	}
+	await applyChangeOrThrow(
+		BillingChanges.candidateAccessRevoked(params.accountId),
+	);
 }
 
 export async function handleSubscriptionDeactivated(
@@ -117,12 +108,5 @@ export async function handleSubscriptionDeactivated(
 ): Promise<void> {
 	// Subscription deactivation means unlimited access is no longer available,
 	// which changes the candidate access profile for match snapshots.
-	const change = BillingChanges.candidateAccessRevoked(accountId);
-	const applyResult = await applyLibraryProcessingChange(change);
-	if (Result.isError(applyResult)) {
-		console.error(
-			"[bridge-handlers] library-processing apply failed:",
-			applyResult.error,
-		);
-	}
+	await applyChangeOrThrow(BillingChanges.candidateAccessRevoked(accountId));
 }

@@ -113,7 +113,7 @@ describe("handleUnlimitedActivated", () => {
 		});
 	});
 
-	it("does not re-emit on duplicate activation (UNIQUE constraint violation)", async () => {
+	it("still emits on duplicate activation so retries re-drive the apply", async () => {
 		const insertMock = vi.fn().mockResolvedValue({
 			data: null,
 			error: { code: "23505", message: "duplicate key" },
@@ -128,7 +128,11 @@ describe("handleUnlimitedActivated", () => {
 			stripeEventId: "evt_2",
 		});
 
-		expect(mockedApplyChange).not.toHaveBeenCalled();
+		expect(mockedApplyChange).toHaveBeenCalledOnce();
+		expect(mockedApplyChange).toHaveBeenCalledWith({
+			kind: "unlimited_activated",
+			accountId: "acc-1",
+		});
 	});
 
 	it("throws on non-duplicate database errors", async () => {
@@ -207,5 +211,57 @@ describe("handleSubscriptionDeactivated", () => {
 			kind: "candidate_access_revoked",
 			accountId: "acc-1",
 		});
+	});
+});
+
+describe("apply failure propagation", () => {
+	beforeEach(() => {
+		mockedApplyChange.mockResolvedValue(
+			Result.err({
+				kind: "persist_state",
+				cause: { message: "db down", code: "XX000" },
+			} as never),
+		);
+	});
+
+	it("handlePackFulfilled throws when apply fails", async () => {
+		await expect(
+			handlePackFulfilled(makeSupabase(), {
+				accountId: "acc-1",
+				bonusUnlockedSongIds: ["song-1"],
+			}),
+		).rejects.toThrow("library-processing apply failed (persist_state)");
+	});
+
+	it("handleUnlimitedActivated throws when apply fails", async () => {
+		await expect(
+			handleUnlimitedActivated(makeSupabase(), {
+				accountId: "acc-1",
+				stripeSubscriptionId: "sub_123",
+				subscriptionPeriodEnd: "2026-05-01T00:00:00Z",
+				stripeEventId: "evt_4",
+			}),
+		).rejects.toThrow("library-processing apply failed (persist_state)");
+	});
+
+	it("handlePackReversed throws when apply fails", async () => {
+		await expect(
+			handlePackReversed({ accountId: "acc-1", accessRemoved: true }),
+		).rejects.toThrow("library-processing apply failed (persist_state)");
+	});
+
+	it("handleUnlimitedPeriodReversed throws when apply fails", async () => {
+		await expect(
+			handleUnlimitedPeriodReversed({
+				accountId: "acc-1",
+				accessRemoved: true,
+			}),
+		).rejects.toThrow("library-processing apply failed (persist_state)");
+	});
+
+	it("handleSubscriptionDeactivated throws when apply fails", async () => {
+		await expect(handleSubscriptionDeactivated("acc-1")).rejects.toThrow(
+			"library-processing apply failed (persist_state)",
+		);
 	});
 });
