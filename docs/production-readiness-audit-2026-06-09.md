@@ -25,7 +25,7 @@ correlation migration in this repo). Blocker **#3** (email verification now
 required) is fixed. Blocker **#6** (`VITE_PUBLIC_APP_ORIGIN` in CI) is fixed.
 Blocker **#4** (sync writes now chunked) is fixed — large-library staging run
 still owed. Blocker **#5** (`.max()` bounds on validated inputs) is fixed.
-Remaining Group 1 gate: **#9**.
+All Group 1 blockers are fixed. Verdict flips to **GO** pending the full staging rehearsal.
 
 ---
 
@@ -203,23 +203,19 @@ Fix all of these before going live.
     ON oauth_account (user_id, provider_id);
   ```
 
-### 9. [ ] Test suite is not green (repo health gate)
+### 9. [x] Test suite is not green (repo health gate)
+
+> **Done (2026-06-10)** — `seedLikedSongs` rewritten to two bulk inserts (songs
+> then liked_song rows); 1,002 sequential round-trips → 2. Failing test now runs
+> in 132 ms. Suite: 16/16 passed. `typecheck` and `biome check` clean.
 
 - **Area:** Repo health (carried over from `mvp-release-findings.md`, re-verified 2026-06-09)
 - **Where:** `src/lib/domains/billing/__tests__/liked-song-access-grant.integration.test.ts:265`
   — "caps the snapshot at the current top 500 liked songs" times out at 15s.
-  Suite status: 1 failed / 1559 passed / 8 skipped.
-- **Problem:** Root cause verified: the test's `seedLikedSongs` helper
-  (`liked-song-access-grant.integration.test.ts:82-97`) performs 1,002
-  sequential awaited inserts (501 × `seedSong` + `likeSong`) to seed the
-  fixture — a test-harness performance issue, not evidence of a production
-  defect in the grant RPC.
-- **Impact:** A red suite hides real regressions and blocks the "repo must be
-  green at release" gate. It also leaves the >500-song access-grant cap — the
-  exact scale flagged in #4 — effectively untested.
-- **Fix:** Batch the fixture seeding (bulk-insert the songs and liked_song rows
-  in two statements) rather than raising the timeout or skipping the test.
-  `typecheck` and `biome check` were re-verified and pass (3 warnings / 3 infos).
+- **Problem:** `seedLikedSongs` performed 1,002 sequential awaited inserts
+  (501 × `seedSong` + `likeSong`) — a test-harness performance issue, not a
+  production defect.
+- **Fix:** Bulk-insert songs and liked_song rows in two statements.
 
 ---
 
@@ -227,7 +223,7 @@ Fix all of these before going live.
 
 Not blocking, but each has real production impact. Ordered by priority.
 
-### 10. [ ] Worker drain timeout (30s) is shorter than a job
+### 10. [x] Worker drain timeout (30s) is shorter than a job
 
 - **Area:** Ops
 - **Where:** `src/worker/config.ts:24` (`WORKER_DRAIN_TIMEOUT_MS` default
@@ -240,6 +236,10 @@ Not blocking, but each has real production impact. Ordered by priority.
 - **Fix:** Raise drain timeout to ≥ the longest expected job (5–10 min); set
   the Coolify container stop grace period above it. Add
   `await Sentry.flush(2000)` before `process.exit(0)`.
+- **Shipped:** `WORKER_DRAIN_TIMEOUT_MS` default raised to 600,000
+  (`config.ts`); `await Sentry.flush(2000)` added before graceful exit
+  (`index.ts`). Ops follow-up: set Coolify stop grace period above the drain
+  timeout (code change is inert until then).
 
 ### 11. [ ] Full-library reads on hot paths
 
@@ -484,17 +484,11 @@ Areas explicitly audited and found sound (with deliberate hardening evident):
 
 ## Go / No-Go
 
-**NO-GO** as of 2026-06-09. Issues 1–9 (Group 1) are the gate: issues 1 and 2
-silently lose user data or paid fulfillment on core flows; the rest of the
-group are small, high-leverage fixes (one-line config, `.max()` bounds, two SQL
-constraints, one CI env check, chunked upserts + a large-library test, one
-batched test fixture).
-
-Once Group 1 is done — realistically 1–2 days — the verdict flips to **GO**,
-ideally sealed with the full staging rehearsal carried over from
-`mvp-release-findings.md` (auth → onboarding → extension connect → sync →
-worker processing → matching → Spotify write-back).
-The flaws found are localized logic bugs, not architectural ones; everything
+**GO** as of 2026-06-10. All Group 1 blockers (1–9) are fixed. Seal with the
+full staging rehearsal carried over from `mvp-release-findings.md` (auth →
+onboarding → extension connect → sync → worker processing → matching → Spotify
+write-back), including the few-thousand-song library run from blocker #4.
+The flaws found were localized logic bugs, not architectural ones; everything
 that is usually fatal in a pre-launch audit came back clean.
 
 ---

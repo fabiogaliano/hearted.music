@@ -21,6 +21,11 @@ export const workerConfig = {
 	),
 	staleThreshold: process.env.WORKER_STALE_THRESHOLD ?? "5 minutes",
 	sweepIntervalMs: Number(process.env.WORKER_SWEEP_INTERVAL_MS ?? 60_000),
-	drainTimeoutMs: Number(process.env.WORKER_DRAIN_TIMEOUT_MS ?? 30_000),
+	// Must exceed the longest expected job (enrichment runs embeddings + LLM
+	// analysis for minutes) so a deploy can drain in-flight work instead of
+	// killing it and stranding the row in `processing` until the 5-minute stale
+	// sweep. Pair with a Coolify container stop grace period above this value —
+	// the orchestrator SIGKILLs after the grace period regardless of this timeout.
+	drainTimeoutMs: Number(process.env.WORKER_DRAIN_TIMEOUT_MS ?? 600_000),
 	healthPort: Number(process.env.WORKER_HEALTH_PORT ?? 3_002),
 };

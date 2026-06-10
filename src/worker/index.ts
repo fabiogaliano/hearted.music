@@ -73,6 +73,9 @@ async function main() {
 
 		healthServer.stop();
 		await shutdownPostHogOtel();
+		// Flush queued events (e.g. exceptions from jobs interrupted mid-drain)
+		// before exit, matching the fatal-path flush in main().catch.
+		await Sentry.flush(2000);
 		log.info("worker-stopped");
 		process.exit(0);
 	};
