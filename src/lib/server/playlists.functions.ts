@@ -213,9 +213,13 @@ export const setPlaylistTargetMutation = createServerFn({ method: "POST" })
 // Create acknowledgement
 // ============================================================================
 
+// name/description are written verbatim to playlist (TEXT, unconstrained, ~1GB
+// max), so bound them at the boundary. Spotify caps names ~100 / descriptions
+// ~300; 500/5000 give legit acknowledgements headroom while stopping an authed
+// client from bloating its own rows (and the public profile that renders them).
 const AcknowledgeCreateSchema = z.object({
 	uri: z.string().regex(SPOTIFY_PLAYLIST_URI_RE),
-	name: z.string().min(1),
+	name: z.string().min(1).max(500),
 });
 
 export const acknowledgePlaylistCreate = createServerFn({ method: "POST" })
@@ -254,8 +258,8 @@ export const acknowledgePlaylistCreate = createServerFn({ method: "POST" })
 
 const AcknowledgeUpdateSchema = z.object({
 	spotifyId: z.string().min(1),
-	name: z.string().min(1).optional(),
-	description: z.string().nullable().optional(),
+	name: z.string().min(1).max(500).optional(),
+	description: z.string().max(5000).nullable().optional(),
 	songCount: z.number().int().nonnegative().optional(),
 	imageUrl: z.string().nullable().optional(),
 });

@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
-import { markSeenSongs } from "@/lib/server/matching.functions";
+import {
+	MAX_MARK_SEEN_SONGS,
+	markSeenSongs,
+} from "@/lib/server/matching.functions";
 
 export function useMatchingSession(accountId: string) {
 	const presentedIdsRef = useRef<Set<string>>(new Set());
@@ -13,7 +16,10 @@ export function useMatchingSession(accountId: string) {
 		const ids = presentedIdsRef.current;
 
 		const flush = () => {
-			const songIds = [...ids];
+			// Slice to the server cap so a marathon session's flush degrades to
+			// marking the first N seen rather than failing validation outright —
+			// newness is cosmetic, so dropping the overflow is acceptable.
+			const songIds = [...ids].slice(0, MAX_MARK_SEEN_SONGS);
 			if (songIds.length === 0) return;
 			void markSeenSongs({ data: { songIds } });
 		};

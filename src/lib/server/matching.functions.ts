@@ -508,9 +508,14 @@ export const addSongToPlaylist = createServerFn({ method: "POST" })
 		return { success: Result.isOk(result) };
 	});
 
+// Each id is ownership-checked below, but bound the array first so a giant
+// payload can't blow up the ownership IN() query. 500 sits well above the number
+// of playlists a single song realistically matches.
+const MAX_DISMISS_PLAYLISTS = 500;
+
 const DismissSongSchema = z.object({
 	songId: z.uuid(),
-	playlistIds: z.array(z.uuid()).min(1),
+	playlistIds: z.array(z.uuid()).min(1).max(MAX_DISMISS_PLAYLISTS),
 });
 
 export interface DismissSongParams {
@@ -545,8 +550,15 @@ export const dismissSong = createServerFn({ method: "POST" })
 // markSeen server function (for session lifecycle)
 // ============================================================================
 
+// songIds accumulates across a whole matching session, so the cap is generous —
+// above any realistic session — to never drop a legitimate flush. It exists to
+// stop a single call forcing a multi-million-row upsert into account_item_newness.
+// The client (useMatchingSession) slices to this same cap so real flushes never
+// trip it; anything larger is definitionally not our client.
+export const MAX_MARK_SEEN_SONGS = 10_000;
+
 const MarkSeenSchema = z.object({
-	songIds: z.array(z.uuid()),
+	songIds: z.array(z.uuid()).max(MAX_MARK_SEEN_SONGS),
 });
 
 export const markSeenSongs = createServerFn({ method: "POST" })

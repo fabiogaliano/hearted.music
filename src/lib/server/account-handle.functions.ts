@@ -25,8 +25,11 @@ import { loadOnboardingSession } from "@/lib/server/onboarding-session";
 // Transport-only shape — no business validation here.
 // Format rules, reserved-word checks, and profanity belong in the domain layer
 // so the server can return typed reason values rather than schema errors.
+// .max() bounds the payload before the domain validator runs. The format check
+// already rejects anything over 30 chars (and the DB enforces 1–30), so 100 is
+// defense-in-depth headroom that no real handle reaches.
 const handleInputSchema = z.object({
-	handle: z.string(),
+	handle: z.string().max(100),
 });
 
 // The generated claim_handle Returns type declares owned_handle as string
