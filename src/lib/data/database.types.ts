@@ -886,6 +886,8 @@ export type Database = {
 					decision: string;
 					id: string;
 					playlist_id: string;
+					served_rank: number | null;
+					snapshot_id: string | null;
 					song_id: string;
 				};
 				Insert: {
@@ -895,6 +897,8 @@ export type Database = {
 					decision: string;
 					id?: string;
 					playlist_id: string;
+					served_rank?: number | null;
+					snapshot_id?: string | null;
 					song_id: string;
 				};
 				Update: {
@@ -904,6 +908,8 @@ export type Database = {
 					decision?: string;
 					id?: string;
 					playlist_id?: string;
+					served_rank?: number | null;
+					snapshot_id?: string | null;
 					song_id?: string;
 				};
 				Relationships: [
@@ -922,6 +928,13 @@ export type Database = {
 						referencedColumns: ["id"];
 					},
 					{
+						foreignKeyName: "match_decision_snapshot_id_fkey";
+						columns: ["snapshot_id"];
+						isOneToOne: false;
+						referencedRelation: "match_snapshot";
+						referencedColumns: ["id"];
+					},
+					{
 						foreignKeyName: "match_decision_song_id_fkey";
 						columns: ["song_id"];
 						isOneToOne: false;
@@ -934,7 +947,9 @@ export type Database = {
 				Row: {
 					created_at: string;
 					factors: Json;
+					fused_score: number | null;
 					id: string;
+					normalized_factors: Json;
 					playlist_id: string;
 					rank: number | null;
 					score: number;
@@ -944,7 +959,9 @@ export type Database = {
 				Insert: {
 					created_at?: string;
 					factors?: Json;
+					fused_score?: number | null;
 					id?: string;
+					normalized_factors?: Json;
 					playlist_id: string;
 					rank?: number | null;
 					score: number;
@@ -954,7 +971,9 @@ export type Database = {
 				Update: {
 					created_at?: string;
 					factors?: Json;
+					fused_score?: number | null;
 					id?: string;
+					normalized_factors?: Json;
 					playlist_id?: string;
 					rank?: number | null;
 					score?: number;
