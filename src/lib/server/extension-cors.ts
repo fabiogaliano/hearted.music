@@ -14,15 +14,12 @@ function isExtensionOrigin(origin: string | null): origin is string {
 
 function getCorsHeaders(request: Request): Record<string, string> {
 	const origin = request.headers.get("Origin");
-	const requestedHeaders = request.headers.get(
-		"Access-Control-Request-Headers",
-	);
 
 	const headers: Record<string, string> = {
 		"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-		"Access-Control-Allow-Headers": requestedHeaders ?? DEFAULT_ALLOWED_HEADERS,
+		"Access-Control-Allow-Headers": DEFAULT_ALLOWED_HEADERS,
 		"Access-Control-Max-Age": "86400",
-		Vary: "Origin, Access-Control-Request-Headers, Access-Control-Request-Method",
+		Vary: "Origin, Access-Control-Request-Method",
 	};
 
 	if (isExtensionOrigin(origin)) {

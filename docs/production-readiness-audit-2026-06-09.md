@@ -72,7 +72,7 @@ Fix all of these before going live.
 - **Impact:** A transient DB error during fulfillment means a customer pays,
   the event is consumed forever, and the library-processing effects (queuing
   songs for enrichment) never happen — no retry path, only an unstructured log
-  line. Reverse direction is worse: a failed *revocation* means access is never
+  line. Reverse direction is worse: a failed _revocation_ means access is never
   revoked.
 - **Fix:** Throw when `applyLibraryProcessingChange` fails so the route's catch
   block calls `mark_billing_bridge_event_failed` and the upstream retries. The
@@ -276,7 +276,14 @@ Not blocking, but each has real production impact. Ordered by priority.
 - **Fix:** Pipe directly (`bun scripts/env-to-secrets.ts ... | wrangler secret bulk`)
   so no temp file exists at all.
 
-### 13. [ ] Concurrent extension syncs for one account aren't atomically gated
+### 13. [x] Concurrent extension syncs for one account aren't atomically gated
+
+> **Done (2026-06-10)** — Migration
+> `20260610140000_add_unique_active_sync_constraint.sql` adds the partial unique
+> index (one active `sync_liked_songs` per account). The sync route now acquires
+> that sentinel first and alone; a losing race surfaces as a `ConstraintError`
+> mapped to the existing 429 (no sibling jobs created, winner's lock not failed).
+> Tests + typecheck clean; index enforcement verified live against the local DB.
 
 - **Area:** Reliability
 - **Where:** `src/routes/api/extension/sync.tsx:205-243` — plain SELECT gate
@@ -331,84 +338,86 @@ Not blocking, but each has real production impact. Ordered by priority.
 
 ### Security
 
-17. [ ] **Live Spotify `sp_dc` session cookie on disk** —
-    `.playwright/spotify-auth.json:95`, `.playwright/debug-state.json`
-    (gitignored but real, valid until 2027). Delete both, rotate the Spotify
-    session, consider a gitleaks pre-commit hook.
+17. [x] **Live Spotify `sp_dc` session cookie on disk** —
+        `.playwright/spotify-auth.json:95`, `.playwright/debug-state.json`
+        (gitignored but real, valid until 2027). Delete both, rotate the Spotify
+        session, consider a gitleaks pre-commit hook.
 18. [ ] **Supabase local demo service-role JWT hardcoded in tracked scripts** —
-    `scripts/matching-lab/diagnose-embeddings.ts:5`,
-    `backfill-playlist-songs.ts:22`, `server.ts:40`, `reprofile-playlists.ts:20`.
-    Read from `SUPABASE_SERVICE_ROLE_KEY` env instead.
-19. [ ] **Extension CORS reflects `Access-Control-Request-Headers`** —
-    `src/lib/server/extension-cors.ts:22-23`. Hardcode
-    `"Authorization, Content-Type"`.
+        `scripts/matching-lab/diagnose-embeddings.ts:5`,
+        `backfill-playlist-songs.ts:22`, `server.ts:40`, `reprofile-playlists.ts:20`.
+        Read from `SUPABASE_SERVICE_ROLE_KEY` env instead.
+19. [x] **Extension CORS reflects `Access-Control-Request-Headers`** —
+        `src/lib/server/extension-cors.ts`. **Done (2026-06-10)** — `Allow-Headers`
+        now hardcoded to `"Authorization, Content-Type"` (the only headers the
+        extension client sends); dropped the reflected read and the matching
+        `Vary` entry.
 20. [ ] **Sync body-size guard is a no-op without a Content-Length header** —
-    `src/routes/api/extension/sync.tsx:271-280`: `Number(null)` is `0`, which
-    passes; chunked bodies are fully buffered. Authenticated-only and CF caps
-    bodies at ~100MB, so abuse-resistance only. Treat a missing header as
-    suspect or check byte length after reading.
+        `src/routes/api/extension/sync.tsx:271-280`: `Number(null)` is `0`, which
+        passes; chunked bodies are fully buffered. Authenticated-only and CF caps
+        bodies at ~100MB, so abuse-resistance only. Treat a missing header as
+        suspect or check byte length after reading.
 
 ### Performance
 
 21. [ ] **Slug deep-links walk the library page-by-page** —
-    `src/lib/domains/library/liked-songs/queries.ts:252-284, 401-459`. O(n/100)
-    round-trips for old songs. Add a slug column or cursor-returning RPC
-    (already noted as "Phase 2" in code).
+        `src/lib/domains/library/liked-songs/queries.ts:252-284, 401-459`. O(n/100)
+        round-trips for old songs. Add a slug column or cursor-returning RPC
+        (already noted as "Phase 2" in code).
 22. [ ] **`getPending` two-phase scan + missing composite index** —
-    `queries.ts:488-546`; `account_item_newness` indexed on
-    `(item_type, item_id)` without `account_id`. Add
-    `(account_id, item_type, item_id)` index and replace with a single anti-join.
+        `queries.ts:488-546`; `account_item_newness` indexed on
+        `(item_type, item_id)` without `account_id`. Add
+        `(account_id, item_type, item_id)` index and replace with a single anti-join.
 23. [ ] **GSAP + framer-motion in the initial bundle** —
-    `src/features/landing/components/useHeroAnimation.ts:18` etc.; ~100KB gzip
-    on every page for landing/onboarding-only libraries. Route-level code
-    splitting.
+        `src/features/landing/components/useHeroAnimation.ts:18` etc.; ~100KB gzip
+        on every page for landing/onboarding-only libraries. Route-level code
+        splitting.
 
 ### Correctness
 
 24. [ ] **Stale credit balance returned after unlock** —
-    `src/lib/domains/billing/unlocks.ts:137` computes the displayed balance
-    from the pre-RPC snapshot; concurrent unlocks briefly show a wrong number
-    (DB stays correct). Return the post-mutation count from the RPC.
+        `src/lib/domains/billing/unlocks.ts:137` computes the displayed balance
+        from the pre-RPC snapshot; concurrent unlocks briefly show a wrong number
+        (DB stays correct). Return the post-mutation count from the RPC.
 
 ### Ops
 
 25. [ ] **Shared library code logs unstructured while the worker logs JSON** —
-    `src/lib/workflows/library-processing/runner.ts`,
-    `src/lib/workflows/enrichment-pipeline/orchestrator.ts`,
-    `src/lib/server/billing.functions.ts`, etc.: bare `console.*` without
-    `jobId`/`accountId`, interleaved with structured worker JSON. First
-    stuck-job incident gets debugged by eyeball. Inject the worker logger into
-    the shared layer. Note: CF Workers Logs retention is ~3 days — pairs with
-    issue #2 (failures must land in the DB, not only logs).
+        `src/lib/workflows/library-processing/runner.ts`,
+        `src/lib/workflows/enrichment-pipeline/orchestrator.ts`,
+        `src/lib/server/billing.functions.ts`, etc.: bare `console.*` without
+        `jobId`/`accountId`, interleaved with structured worker JSON. First
+        stuck-job incident gets debugged by eyeball. Inject the worker logger into
+        the shared layer. Note: CF Workers Logs retention is ~3 days — pairs with
+        issue #2 (failures must land in the DB, not only logs).
 26. [ ] **No staging target** — `wrangler.jsonc` has a single production route;
-    every deploy goes straight to `hearted.music`. Add an `env.staging` worker
-    even without a custom domain.
+        every deploy goes straight to `hearted.music`. Add an `env.staging` worker
+        even without a custom domain.
 27. [ ] **Worker health server binds 127.0.0.1** — `src/worker/health.ts:16`. Works
-    for the in-container Docker HEALTHCHECK, brittle for any external Coolify
-    health URL. Bind `0.0.0.0`.
+        for the in-container Docker HEALTHCHECK, brittle for any external Coolify
+        health URL. Bind `0.0.0.0`.
 28. [ ] **Worker PostHog OTEL reads `VITE_`-prefixed vars at runtime** —
-    `src/worker/posthog-otel.ts:6-7`. If unset on the container, LLM cost
-    tracking silently disables. Rename to non-VITE names for the worker and
-    document as required container env.
+        `src/worker/posthog-otel.ts:6-7`. If unset on the container, LLM cost
+        tracking silently disables. Rename to non-VITE names for the worker and
+        document as required container env.
 
 ### Database
 
 29. [ ] **`account` + `account_billing` created non-atomically** —
-    `src/lib/domains/library/accounts/queries.ts:122`. Failure between inserts
-    leaves an account without billing state (mostly self-healing, but
-    self-hosted `unlimited_access_source` would be lost). Single RPC or DB
-    trigger.
+        `src/lib/domains/library/accounts/queries.ts:122`. Failure between inserts
+        leaves an account without billing state (mostly self-healing, but
+        self-hosted `unlimited_access_source` would be lost). Single RPC or DB
+        trigger.
 30. [ ] **`match_result.score` is `REAL` while inserts cast to double** —
-    `supabase/migrations/20260117000009_create_match_result.sql:8`.
-    Non-deterministic ordering for near-tied scores.
-    `ALTER TABLE match_result ALTER COLUMN score TYPE DOUBLE PRECISION;`
+        `supabase/migrations/20260117000009_create_match_result.sql:8`.
+        Non-deterministic ordering for near-tied scores.
+        `ALTER TABLE match_result ALTER COLUMN score TYPE DOUBLE PRECISION;`
 31. [ ] **No normalized-email index on `account` for the waitlist-grant join** —
-    `supabase/migrations/20260601154816_create_waitlist_grant_eligibility_fn.sql:20`.
-    `CREATE INDEX idx_account_email_normalized ON account (lower(btrim(email))) WHERE email IS NOT NULL;`
+        `supabase/migrations/20260601154816_create_waitlist_grant_eligibility_fn.sql:20`.
+        `CREATE INDEX idx_account_email_normalized ON account (lower(btrim(email))) WHERE email IS NOT NULL;`
 32. [ ] **`llm_usage` lacks a `(function_id, created_at)` index** —
-    `supabase/migrations/20260609003846_create_llm_usage.sql`; one row per LLM
-    call, grows fast.
-    `CREATE INDEX llm_usage_function_created_idx ON llm_usage (function_id, created_at DESC);`
+        `supabase/migrations/20260609003846_create_llm_usage.sql`; one row per LLM
+        call, grows fast.
+        `CREATE INDEX llm_usage_function_created_idx ON llm_usage (function_id, created_at DESC);`
 
 ---
 
@@ -429,7 +438,7 @@ Reconciliation against the earlier release-findings doc, re-verified on
 - **Free-first launch option** (billing disabled at launch, paid flipped on
   after the billing path is staging-proven) — still a valid risk mitigation
   that shrinks the blast radius of blocker #2. Note it does not replace fixing
-  #2: the bridge also handles *revocations*, which must work whenever billing
+  #2: the bridge also handles _revocations_, which must work whenever billing
   is eventually enabled.
 - **UI/UX priorities** (onboarding/extension flow copy and retry states,
   signed-in navigation targets, empty/loading states, responsive pass,
@@ -516,39 +525,39 @@ Code-level correctness bugs, resolved in `v1_hearted_brand` (plus one migration
 in this repo):
 
 1. [x] **Refund attributed to the wrong customer (subscription path).**
-   `src/handlers/refund.ts` fallback listed the 10 most-recent invoices
-   account-wide and took the first subscription match, so a subscription
-   refund/chargeback could resolve to a *different* customer's subscription.
-   Now resolved through `stripe.invoicePayments.list({ payment: { payment_intent } })`
-   — the invoice payment tied to *this* charge. (`Charge.invoice` no longer
-   exists in Stripe API 18.5.0, so the payment_intent → invoice-payment → invoice
-   path is used.) The session-matched subscription branch had a milder cousin of
-   the same bug — it read `billing_reason` from the subscription's *latest*
-   invoice, so refunding an initial charge after a renewal would see
-   `subscription_cycle` and skip the upgrade-conversion reversal; both branches
-   now resolve the invoice through the refunded charge's own payment_intent
-   (shared `findInvoiceForPaymentIntent` helper).
+       `src/handlers/refund.ts` fallback listed the 10 most-recent invoices
+       account-wide and took the first subscription match, so a subscription
+       refund/chargeback could resolve to a _different_ customer's subscription.
+       Now resolved through `stripe.invoicePayments.list({ payment: { payment_intent } })`
+       — the invoice payment tied to _this_ charge. (`Charge.invoice` no longer
+       exists in Stripe API 18.5.0, so the payment_intent → invoice-payment → invoice
+       path is used.) The session-matched subscription branch had a milder cousin of
+       the same bug — it read `billing_reason` from the subscription's _latest_
+       invoice, so refunding an initial charge after a renewal would see
+       `subscription_cycle` and skip the upgrade-conversion reversal; both branches
+       now resolve the invoice through the refunded charge's own payment_intent
+       (shared `findInvoiceForPaymentIntent` helper).
 2. [x] **Pack refund reversed the wrong lot.** `reverse_pack_entitlement` was
-   handed the account's most-recently-created `pack_credit_lot`
-   (`ORDER BY created_at DESC LIMIT 1`), so refunding an older pack on a
-   multi-pack account reversed the newest lot. Added a `checkout_session_id`
-   correlation key: migration
-   `supabase/migrations/20260610010000_pack_credit_lot_checkout_session_correlation.sql`
-   (new column + partial unique index + `fulfill_pack_purchase` 6-arg signature
-   storing it; EXECUTE re-granted to `service_role`), fulfillment passes
-   `session.id`, and the refund path matches on it. A miss now files an admin
-   task instead of guessing; a DB error throws so the webhook retries (no
-   duplicate admin task).
+       handed the account's most-recently-created `pack_credit_lot`
+       (`ORDER BY created_at DESC LIMIT 1`), so refunding an older pack on a
+       multi-pack account reversed the newest lot. Added a `checkout_session_id`
+       correlation key: migration
+       `supabase/migrations/20260610010000_pack_credit_lot_checkout_session_correlation.sql`
+       (new column + partial unique index + `fulfill_pack_purchase` 6-arg signature
+       storing it; EXECUTE re-granted to `service_role`), fulfillment passes
+       `session.id`, and the refund path matches on it. A miss now files an admin
+       task instead of guessing; a DB error throws so the webhook retries (no
+       duplicate admin task).
 3. [x] **`checkout.session.completed` with an unhandled `mode` looped forever.**
-   `src/handlers/checkout-completed.ts` handled only `payment`/`subscription`;
-   a `setup`-mode session fell through without `markWebhookEvent`, leaving the
-   row `processing` → route 500 → infinite Stripe retry. Now acknowledged as a
-   logged no-op.
+       `src/handlers/checkout-completed.ts` handled only `payment`/`subscription`;
+       a `setup`-mode session fell through without `markWebhookEvent`, leaving the
+       row `processing` → route 500 → infinite Stripe retry. Now acknowledged as a
+       logged no-op.
 4. [x] **Swallowed Supabase errors.** `markWebhookEvent`
-   (`src/lib/webhook-event.ts`) now throws instead of only `console.error`-ing a
-   failed status write (and the webhook route's catch is hardened so a throw
-   during failure-marking still returns a clean 500). The discarded `error` on
-   the `maybeSingle` lookups in `expiry.ts` and `refund.ts` is now checked.
+       (`src/lib/webhook-event.ts`) now throws instead of only `console.error`-ing a
+       failed status write (and the webhook route's catch is hardened so a throw
+       during failure-marking still returns a clean 500). The discarded `error` on
+       the `maybeSingle` lookups in `expiry.ts` and `refund.ts` is now checked.
 
 Lower-priority items fixed in the same pass:
 
