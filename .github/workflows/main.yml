@@ -35,7 +35,7 @@ jobs:
               - 'scripts/**'
               - 'shared/**'
               - 'supabase/**'
-              - 'extension/**'
+              - 'extensions/**'
               - '.github/workflows/**'
               - 'package.json'
               - 'bun.lock'

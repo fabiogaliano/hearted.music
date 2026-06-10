@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
 import { expectLoginReturn } from "./detect";
 
-// MUST stay in sync with extension/src/content/spotify-token.ts.
+// MUST stay in sync with extensions/src/content/spotify-token.ts.
 export const ARM_TOKEN_FRAGMENT_PARAM = "hearted-arm";
 
 /**

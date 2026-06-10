@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 const SESSION = "spotify-hash-sync";
 const HASH_REGISTRY_PATH = resolve(
 	import.meta.dirname,
-	"../../extension/src/shared/hash-registry.ts",
+	"../../extensions/src/shared/hash-registry.ts",
 );
 const PROFILE_DIR = resolve(import.meta.dirname, "../../.playwright/profile");
 const AUTH_STATE_PATH = resolve(
