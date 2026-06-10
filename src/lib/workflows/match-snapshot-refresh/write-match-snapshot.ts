@@ -20,8 +20,10 @@ interface MatchResultEntry {
 	song_id: string;
 	playlist_id: string;
 	score: number;
+	fused_score: number;
 	rank: number | null;
 	factors: Json;
+	normalized_factors: Json;
 }
 
 function toResultsJson(entries: MatchResultEntry[]): Json {
@@ -29,8 +31,10 @@ function toResultsJson(entries: MatchResultEntry[]): Json {
 		song_id: entry.song_id,
 		playlist_id: entry.playlist_id,
 		score: entry.score,
+		fused_score: entry.fused_score,
 		rank: entry.rank,
 		factors: entry.factors,
+		normalized_factors: entry.normalized_factors,
 	}));
 }
 

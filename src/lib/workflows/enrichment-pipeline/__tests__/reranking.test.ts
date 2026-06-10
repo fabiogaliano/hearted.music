@@ -41,6 +41,7 @@ function makeMatch(
 		rank,
 		factors: { embedding: score, audio: 0, genre: 0 },
 		normalizedFactors: { embedding: score, audio: 0, genre: 0 },
+		fusedScore: score,
 		confidence: 1,
 		fromCache: false,
 	};
@@ -87,11 +88,15 @@ describe("rerankMatches", () => {
 		const s1Results = matches.get("s1");
 		assert(s1Results !== undefined);
 		expect(s1Results[0].score).toBe(0.3);
+		// fusedScore is the pre-rerank retrieval score and must survive the overwrite.
+		expect(s1Results[0].fusedScore).toBe(0.8);
+		expect(s1Results[0].rerankedScore).toBe(0.3);
 
 		// s2's score should be updated too
 		const s2Results = matches.get("s2");
 		assert(s2Results !== undefined);
 		expect(s2Results[0].score).toBe(0.95);
+		expect(s2Results[0].fusedScore).toBe(0.6);
 	});
 
 	it("gracefully handles reranker failure", async () => {

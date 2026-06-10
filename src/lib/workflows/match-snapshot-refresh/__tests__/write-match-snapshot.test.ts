@@ -64,7 +64,15 @@ describe("writeMatchSnapshot", () => {
 			songs: [makeSong("s1"), makeSong("s2")],
 			profiles: [makeProfile("p1")],
 			results: [
-				{ song_id: "s1", playlist_id: "p1", score: 0.8, rank: 1, factors: {} },
+				{
+					song_id: "s1",
+					playlist_id: "p1",
+					score: 0.8,
+					fused_score: 0.72,
+					rank: 1,
+					factors: { embedding: 0.9, audio: 0.5, genre: 0.3 },
+					normalized_factors: { embedding: 0.81, audio: 0.44, genre: 0.27 },
+				},
 			],
 			matchedSongIds: ["s1"],
 		});
@@ -76,6 +84,21 @@ describe("writeMatchSnapshot", () => {
 		expect(result.playlistCount).toBe(1);
 		expect(result.noOp).toBe(false);
 		expect(mockMarkItemsNew).toHaveBeenCalledWith("acc-1", "song", ["s1"]);
+
+		// The served record carries both the pre-rerank fused score and the
+		// normalized fusion inputs through to the publish RPC.
+		expect(mockRpc).toHaveBeenCalledWith(
+			"publish_match_snapshot",
+			expect.objectContaining({
+				p_results: [
+					expect.objectContaining({
+						score: 0.8,
+						fused_score: 0.72,
+						normalized_factors: { embedding: 0.81, audio: 0.44, genre: 0.27 },
+					}),
+				],
+			}),
+		);
 	});
 
 	it("returns no-op when snapshotHash matches latest (RPC returns null)", async () => {

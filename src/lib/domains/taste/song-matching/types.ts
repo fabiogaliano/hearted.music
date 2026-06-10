@@ -20,7 +20,10 @@ export interface MatchResult {
 	readonly songId: string;
 	/** Playlist's internal UUID */
 	readonly playlistId: string;
-	/** Final weighted score (0-1), fused from the normalized factors */
+	/**
+	 * Score used for ranking and shown to the user. Equals `fusedScore` until the
+	 * reranker runs, which overwrites it with the reranked score (see `rerankedScore`).
+	 */
 	readonly score: number;
 	/** Rank within match results (1-based) */
 	readonly rank: number;
@@ -28,6 +31,12 @@ export interface MatchResult {
 	readonly factors: ScoreFactors;
 	/** Normalized factor scores actually fused into `score` (the weighted-sum inputs) */
 	readonly normalizedFactors: ScoreFactors;
+	/**
+	 * Pre-rerank weighted-sum of the normalized factors. Set once at fusion time
+	 * and never overwritten by the reranker, so the retrieval score survives even
+	 * when `score` is replaced by the reranked value — the served record keeps both.
+	 */
+	readonly fusedScore: number;
 	/** Cross-encoder reranked score, if reranking was applied */
 	readonly rerankedScore?: number;
 	/** Confidence in the match (based on data availability) */

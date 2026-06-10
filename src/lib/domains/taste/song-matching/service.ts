@@ -305,14 +305,17 @@ class MatchingService {
 			normalizedFactors.genre * weights.genre;
 
 		const availableCount = Object.values(availability).filter(Boolean).length;
+		const fusedScore = clamp01(finalScore);
 
 		return {
 			songId: song.id,
 			playlistId: profile.playlistId,
-			score: clamp01(finalScore),
+			score: fusedScore,
 			rank: 0,
 			factors,
 			normalizedFactors,
+			// Captured here so it survives the reranker overwriting `score`.
+			fusedScore,
 			confidence: availableCount / 3,
 			fromCache: false,
 		};

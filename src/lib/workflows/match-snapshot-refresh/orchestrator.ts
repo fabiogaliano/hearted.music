@@ -330,8 +330,10 @@ export async function executeMatchSnapshotRefresh(
 		song_id: string;
 		playlist_id: string;
 		score: number;
+		fused_score: number;
 		rank: number | null;
 		factors: Json;
+		normalized_factors: Json;
 	}> = [];
 
 	for (const [songId, results] of matchResult.value.matches) {
@@ -339,12 +341,20 @@ export async function executeMatchSnapshotRefresh(
 			resultEntries.push({
 				song_id: songId,
 				playlist_id: result.playlistId,
+				// score is post-rerank (if the reranker ran); fused_score is the
+				// pre-rerank retrieval score the reranker can't overwrite.
 				score: result.score,
+				fused_score: result.fusedScore,
 				rank: result.rank,
 				factors: {
 					embedding: result.factors.embedding,
 					audio: result.factors.audio,
 					genre: result.factors.genre,
+				},
+				normalized_factors: {
+					embedding: result.normalizedFactors.embedding,
+					audio: result.normalizedFactors.audio,
+					genre: result.normalizedFactors.genre,
 				},
 			});
 		}
