@@ -338,7 +338,13 @@ Not blocking, but each has real production impact. Ordered by priority.
 - **Fix:** Apply the same `withinRateLimit` pattern as the Sentry tunnel; add a
   namespace in `wrangler.jsonc`.
 
-### 16. [ ] Per-request TCP connection for every auth check
+### 16. [x] Per-request TCP connection for every auth check
+
+> **Done (2026-06-10)** — Enabled better-auth `session.cookieCache` (5 min). The
+> per-request socket is forced by Workers and `postgres.js` connects lazily, so a
+> cookie-cache hit opens no socket — the handshake leaves the hot path. Tradeoff:
+> revocations lag ≤ maxAge. Hyperdrive deferred to a separate infra ticket (needs
+> direct connection + `prepare: true` + caching off); no longer urgent for auth.
 
 - **Area:** Performance
 - **Where:** `src/lib/platform/auth/auth-request-state.server.ts:43-48` — new

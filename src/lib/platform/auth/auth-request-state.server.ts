@@ -84,6 +84,17 @@ function createBetterAuth(sql: AuthSqlClient) {
 	return betterAuth({
 		baseURL: env.BETTER_AUTH_URL,
 		secret: env.BETTER_AUTH_SECRET,
+		// On Workers a TCP socket can't outlive the request that opened it, so each
+		// session read would otherwise pay a fresh TCP+TLS handshake to Postgres.
+		// The cookie cache serves the session from a signed cookie, so the DB (and
+		// thus the connection) is only touched when the cache expires. Tradeoff:
+		// server-side revocations lag by up to maxAge on already-issued cookies.
+		session: {
+			cookieCache: {
+				enabled: true,
+				maxAge: 5 * 60,
+			},
+		},
 		database: drizzleAdapter(db, {
 			provider: "pg",
 			schema: {
