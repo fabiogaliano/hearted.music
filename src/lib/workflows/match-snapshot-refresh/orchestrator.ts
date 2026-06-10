@@ -1,6 +1,8 @@
 import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
 import { getBatch } from "@/lib/domains/enrichment/audio-features/queries";
+import { get as getSongAnalyses } from "@/lib/domains/enrichment/content-analysis/queries";
+import { flattenAnalysisText } from "@/lib/domains/enrichment/embeddings/analysis-text";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { getByIds } from "@/lib/domains/library/songs/queries";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
@@ -149,6 +151,7 @@ export async function executeMatchSnapshotRefresh(
 
 	let rerankerService: RerankerService | undefined;
 	try {
+		// Default config carries the canonical rerank instruction.
 		rerankerService = new RerankerService();
 	} catch {
 		// Reranker unavailable.
@@ -312,12 +315,33 @@ export async function executeMatchSnapshotRefresh(
 		throw new Error("[target-refresh] Matching failed");
 	}
 
+	// Recorded into the snapshot hash so it reflects the documents actually
+	// sent to the reranker, not the intended mode.
+	let rerankDocumentMode: "analysis" | "metadata" = "metadata";
+
 	if (rerankerService && matchResult.value.matches.size > 0) {
+		// Fetch analyses only for songs that actually have matches — not the full
+		// candidate set — to avoid unnecessary DB load.
+		const matchedSongIdsForRerank = [...matchResult.value.matches.keys()];
+		const analysesResult = await getSongAnalyses(matchedSongIdsForRerank);
+		const analysisTextMap = new Map<string, string>();
+		if (Result.isOk(analysesResult)) {
+			for (const [songId, analysis] of analysesResult.value) {
+				analysisTextMap.set(songId, flattenAnalysisText(analysis));
+			}
+		} else {
+			console.error(
+				`[target-refresh] Failed to load song analyses for reranker documents — degrading to metadata-only docs: ${analysesResult.error.message}`,
+			);
+		}
+		rerankDocumentMode = analysisTextMap.size > 0 ? "analysis" : "metadata";
+
 		await rerankMatches(
 			matchResult.value.matches,
 			matchingSongs,
 			playlists,
 			rerankerService,
+			analysisTextMap,
 		);
 	}
 
@@ -371,6 +395,7 @@ export async function executeMatchSnapshotRefresh(
 				results: resultEntries,
 				matchedSongIds,
 				exclusionSet,
+				rerankDocumentMode,
 			}),
 	});
 }

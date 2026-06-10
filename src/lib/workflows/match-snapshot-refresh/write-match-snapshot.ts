@@ -49,6 +49,8 @@ export async function writeMatchSnapshot(opts: {
 	results: MatchResultEntry[];
 	matchedSongIds: string[];
 	exclusionSet?: Set<string>;
+	/** Document mode actually used for reranking (defaults to "metadata" — no rerank ran) */
+	rerankDocumentMode?: "analysis" | "metadata";
 }): Promise<MatchSnapshotRefreshResult> {
 	const { accountId, songs, profiles, results, matchedSongIds } = opts;
 
@@ -58,6 +60,7 @@ export async function writeMatchSnapshot(opts: {
 		profiles,
 		{},
 		opts.exclusionSet,
+		opts.rerankDocumentMode ?? "metadata",
 	);
 
 	const supabase = createAdminSupabaseClient();

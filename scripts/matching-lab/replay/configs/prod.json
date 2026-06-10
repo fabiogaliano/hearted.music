@@ -1,0 +1,9 @@
+{
+  "label": "prod",
+  "documentMode": "analysis",
+  "reranker": {
+    "blendWeight": 0.3,
+    "topN": 50,
+    "minScoreThreshold": 0.2
+  }
+}

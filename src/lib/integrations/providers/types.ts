@@ -73,6 +73,20 @@ export type EmbeddingResult = z.infer<typeof EmbeddingResultSchema>;
 // ============================================================================
 
 /**
+ * Canonical reranker task instruction — the single source of truth.
+ *
+ * Placed in the Qwen3-Reranker <Instruct> slot (local ONNX path) and sent as
+ * DeepInfra's `instruction` body field. Defined here (not in the reranker
+ * service or a workflow) because both provider adapters need it and importing
+ * from the reranker service would create a cycle via the provider factory.
+ *
+ * Changing this wording changes model behavior — it participates in the
+ * snapshot cache hash via DEFAULT_RERANKER_CONFIG.
+ */
+export const DEFAULT_RERANK_INSTRUCTION =
+	"Given a playlist's mood and theme, judge if this song belongs in it.";
+
+/**
  * Options for reranking operations.
  */
 const RerankOptionsSchema = z.object({
@@ -80,6 +94,10 @@ const RerankOptionsSchema = z.object({
 	topK: z.number().nonnegative().optional(),
 	/** Timeout in milliseconds */
 	timeoutMs: z.number().positive().optional(),
+	/** Task-specific instruction forwarded to the model */
+	instruction: z.string().optional(),
+	/** Reranker model id override */
+	model: z.string().optional(),
 });
 export type RerankOptions = z.infer<typeof RerankOptionsSchema>;
 

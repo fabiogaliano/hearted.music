@@ -17,6 +17,7 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import { getMlProvider } from "@/lib/integrations/providers/factory";
+import { DEFAULT_RERANK_INSTRUCTION } from "@/lib/integrations/providers/types";
 import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
 
 // ============================================================================
@@ -31,6 +32,10 @@ const RerankerConfigSchema = z.object({
 	blendWeight: z.number().min(0).max(1).default(0.3),
 	/** Minimum original score to consider for reranking (default: 0.2) */
 	minScoreThreshold: z.number().min(0).max(1).default(0.2),
+	/** Reranker model id override — undefined means provider default */
+	model: z.string().optional(),
+	/** Task-specific instruction forwarded to the provider */
+	instruction: z.string().default(DEFAULT_RERANK_INSTRUCTION),
 });
 type RerankerConfig = z.infer<typeof RerankerConfigSchema>;
 
@@ -39,6 +44,7 @@ export const DEFAULT_RERANKER_CONFIG: RerankerConfig = {
 	topN: 50,
 	blendWeight: 0.3,
 	minScoreThreshold: 0.2,
+	instruction: DEFAULT_RERANK_INSTRUCTION,
 };
 
 /** A match candidate with score */
@@ -129,15 +135,25 @@ export class RerankerService {
 		// Get ML provider
 		const providerResult = getMlProvider();
 		if (Result.isError(providerResult)) {
-			// Provider unavailable: graceful degradation - return original order
+			// Provider unavailable: graceful degradation - return original order.
+			// Logged because silent degradation previously hid a dead reranker.
+			console.warn(
+				`[reranker] ML provider unavailable — returning original order: ${providerResult.error.message}`,
+			);
 			return Result.ok(this.createSkippedResult(candidates));
 		}
 
-		// Call provider reranker
-		const rerankResult = await providerResult.value.rerank(query, documents);
+		// Call provider reranker — thread config fields so they reach the model
+		const rerankResult = await providerResult.value.rerank(query, documents, {
+			instruction: this.config.instruction,
+			model: this.config.model,
+		});
 
 		if (Result.isError(rerankResult)) {
-			// Graceful degradation: return original order
+			// Graceful degradation: return original order — but never silently.
+			console.warn(
+				`[reranker] provider rerank failed — returning original order: ${rerankResult.error.message}`,
+			);
 			return Result.ok(this.createSkippedResult(candidates));
 		}
 

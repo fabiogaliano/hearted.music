@@ -16,6 +16,7 @@ import {
 	formatEmbeddingInput,
 	truncateAndNormalize,
 } from "@/lib/integrations/embedding/format";
+import { DEFAULT_RERANK_INSTRUCTION } from "@/lib/integrations/providers/types";
 import {
 	DeepInfraApiError,
 	type DeepInfraError,
@@ -29,7 +30,6 @@ import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
 
 const EMBEDDING_URL = "https://api.deepinfra.com/v1/openai/embeddings";
 const RERANKER_MODEL = "Qwen/Qwen3-Reranker-0.6B";
-const RERANKER_URL = `https://api.deepinfra.com/v1/inference/${RERANKER_MODEL}`;
 const EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-0.6B";
 // Qwen3-Embedding is instruction-tuned: queries take the Instruct/Query
 // wrapper, documents none. See @/lib/integrations/embedding/format.
@@ -92,6 +92,10 @@ export const RerankOptionsSchema = z.object({
 	topK: z.number().nonnegative().optional(),
 	/** Timeout in milliseconds */
 	timeoutMs: z.number().positive().optional(),
+	/** Task-specific instruction forwarded to the model */
+	instruction: z.string().optional(),
+	/** Reranker model id — defaults to RERANKER_MODEL */
+	model: z.string().optional(),
 });
 export type RerankOptions = z.infer<typeof RerankOptionsSchema>;
 
@@ -118,14 +122,21 @@ const EmbeddingApiResponseSchema = z.object({
 	}),
 });
 
-/** DeepInfra reranker API response */
+/** DeepInfra reranker API response — Shape B (Qwen3-Reranker contract) */
 const RerankApiResponseSchema = z.object({
-	results: z.array(
-		z.object({
-			index: z.number(),
-			relevance_score: z.number(),
-		}),
-	),
+	scores: z.array(z.number()),
+	input_tokens: z.number().optional(),
+	request_id: z.string().nullable().optional(),
+	inference_status: z
+		.looseObject({
+			status: z.string().optional(),
+			runtime_ms: z.number().optional(),
+			cost: z.number().optional(),
+			tokens_generated: z.number().optional(),
+			tokens_input: z.number().optional(),
+			output_length: z.number().optional(),
+		})
+		.optional(),
 });
 
 // ============================================================================
@@ -263,25 +274,34 @@ export async function rerank(
 	documents: string[],
 	options: RerankOptions = {},
 ): Promise<Result<RerankResult, DeepInfraServiceError>> {
+	const model = options.model ?? RERANKER_MODEL;
+
 	if (documents.length === 0) {
-		return Result.ok({ scores: [], model: RERANKER_MODEL });
+		return Result.ok({ scores: [], model });
 	}
 
-	const { topK = 0, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
+	// Canonical fallback so direct callers (bypassing RerankerService) score
+	// with the same instruction as production. The field is in DeepInfra's
+	// documented input schema; acceptance still needs the live smoke test.
+	const {
+		timeoutMs = DEFAULT_TIMEOUT_MS,
+		instruction = DEFAULT_RERANK_INSTRUCTION,
+	} = options;
+
+	const rerankerUrl = `https://api.deepinfra.com/v1/inference/${model}`;
 
 	return sharedLimiter.run(async () => {
 		try {
-			const response = await fetch(RERANKER_URL, {
+			const response = await fetch(rerankerUrl, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
 					Authorization: `Bearer ${getApiKey()}`,
 				},
 				body: JSON.stringify({
-					query,
+					queries: Array(documents.length).fill(query),
 					documents,
-					return_documents: false,
-					...(topK > 0 && { top_n: topK }),
+					instruction,
 				}),
 				signal: AbortSignal.timeout(timeoutMs),
 			});
@@ -303,14 +323,15 @@ export async function rerank(
 			}
 			const data = parseResult.data;
 
-			const scores: RerankScore[] = data.results.map((item) => ({
-				index: item.index,
-				score: item.relevance_score,
+			// scores[i] is positional — index is the document's original position
+			const scores: RerankScore[] = data.scores.map((score, index) => ({
+				index,
+				score,
 			}));
 
 			return Result.ok({
 				scores: scores.toSorted((a, b) => b.score - a.score),
-				model: RERANKER_MODEL,
+				model,
 			});
 		} catch (error) {
 			if (error instanceof Error && error.name === "TimeoutError") {

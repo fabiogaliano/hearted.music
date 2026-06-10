@@ -7,6 +7,9 @@ import type {
 import type { RerankerService } from "@/lib/integrations/reranker/service";
 import { rerankMatches } from "../reranking";
 
+// Character cap from reranking.ts — tests should match the real constant.
+const ANALYSIS_TAIL_MAX_CHARS = 1600;
+
 const songs: MatchingSong[] = [
 	{
 		id: "s1",
@@ -170,5 +173,140 @@ describe("rerankMatches", () => {
 		await rerankMatches(matches, songs, playlists, inspectingReranker);
 
 		expect(inspectingReranker.rerank).toHaveBeenCalledOnce();
+	});
+
+	describe("document construction", () => {
+		function captureDocuments(scoreMap: Map<string, number>) {
+			let capturedCandidates: Array<{ id: string; document: string }> = [];
+			const reranker = {
+				rerank: vi.fn().mockImplementation(async (_query, candidates) => {
+					capturedCandidates = candidates;
+					return Result.ok({
+						candidates: Array.from(scoreMap.entries()).map(([id, score]) => ({
+							id,
+							score,
+							document: "",
+						})),
+						reranked: true,
+						rerankedCount: scoreMap.size,
+						stats: {
+							originalTopScore: 0.8,
+							rerankTopScore: 0.9,
+							scoreShift: 0.1,
+						},
+					});
+				}),
+			} as unknown as RerankerService;
+			return { reranker, getCandidates: () => capturedCandidates };
+		}
+
+		it("builds metadata-only document when analysisText map is empty", async () => {
+			const matches = new Map<string, MatchResult[]>();
+			matches.set("s1", [makeMatch("s1", "pl1", 0.8, 1)]);
+
+			const scoreMap = new Map([["s1", 0.9]]);
+			const { reranker, getCandidates } = captureDocuments(scoreMap);
+
+			await rerankMatches(matches, songs, playlists, reranker, new Map());
+
+			const docs = getCandidates();
+			expect(docs[0].document).toBe("Alpha Song by Artist A. Genres: pop.");
+			// No analysis block appended
+			expect(docs[0].document).not.toContain("\n\n");
+		});
+
+		it("appends analysis text when analysisText map has an entry for the song", async () => {
+			const matches = new Map<string, MatchResult[]>();
+			matches.set("s1", [makeMatch("s1", "pl1", 0.8, 1)]);
+
+			const scoreMap = new Map([["s1", 0.9]]);
+			const { reranker, getCandidates } = captureDocuments(scoreMap);
+			const analysisText = new Map([["s1", "Dreamy pop with layered synths"]]);
+
+			await rerankMatches(matches, songs, playlists, reranker, analysisText);
+
+			const docs = getCandidates();
+			expect(docs[0].document).toBe(
+				"Alpha Song by Artist A. Genres: pop.\n\nDreamy pop with layered synths",
+			);
+		});
+
+		it("falls back to metadata-only for songs missing from the analysisText map", async () => {
+			const matches = new Map<string, MatchResult[]>();
+			matches.set("s1", [makeMatch("s1", "pl1", 0.8, 1)]);
+			matches.set("s2", [makeMatch("s2", "pl1", 0.6, 2)]);
+
+			const scoreMap = new Map([
+				["s1", 0.9],
+				["s2", 0.7],
+			]);
+			const { reranker, getCandidates } = captureDocuments(scoreMap);
+			// Only s1 has analysis
+			const analysisText = new Map([["s1", "Bright pop energy"]]);
+
+			await rerankMatches(matches, songs, playlists, reranker, analysisText);
+
+			const docs = getCandidates();
+			const s1Doc = docs.find((c) => c.id === "s1");
+			const s2Doc = docs.find((c) => c.id === "s2");
+
+			expect(s1Doc?.document).toContain("\n\nBright pop energy");
+			// s2 falls back to metadata only
+			expect(s2Doc?.document).toBe("Beta Song by Artist B. Genres: rock.");
+			expect(s2Doc?.document).not.toContain("\n\n");
+		});
+
+		it("truncates analysis tail at a word boundary when it exceeds the char cap", async () => {
+			const matches = new Map<string, MatchResult[]>();
+			matches.set("s1", [makeMatch("s1", "pl1", 0.8, 1)]);
+
+			const scoreMap = new Map([["s1", 0.9]]);
+			const { reranker, getCandidates } = captureDocuments(scoreMap);
+
+			// Build a long analysis string that exceeds ANALYSIS_TAIL_MAX_CHARS
+			const wordCount = Math.ceil(ANALYSIS_TAIL_MAX_CHARS / 5) + 50;
+			const longAnalysis = Array.from(
+				{ length: wordCount },
+				(_, i) => `word${i}`,
+			).join(" ");
+			expect(longAnalysis.length).toBeGreaterThan(ANALYSIS_TAIL_MAX_CHARS);
+
+			const analysisText = new Map([["s1", longAnalysis]]);
+
+			await rerankMatches(matches, songs, playlists, reranker, analysisText);
+
+			const docs = getCandidates();
+			const [prefix, tail] = docs[0].document.split("\n\n");
+
+			// Prefix (metadata) is never truncated
+			expect(prefix).toBe("Alpha Song by Artist A. Genres: pop.");
+
+			// Tail must be within the cap
+			expect(tail.length).toBeLessThanOrEqual(ANALYSIS_TAIL_MAX_CHARS);
+
+			// Tail must end on a word boundary: the last "word" in the tail must be
+			// a complete "wordN" token (not a partial slice like "word2"). Since all
+			// words in the fixture are "wordN", any partial slice would look like a
+			// substring of a number. We verify by checking that re-joining the words in
+			// the original source always finds the last tail-word as a whole token.
+			const tailWords = tail.split(" ");
+			const lastWord = tailWords[tailWords.length - 1];
+			// lastWord must appear as a complete word in the original long analysis
+			expect(longAnalysis.split(" ")).toContain(lastWord);
+		});
+
+		it("defaults to metadata-only documents when the analysisText argument is omitted", async () => {
+			const matches = new Map<string, MatchResult[]>();
+			matches.set("s1", [makeMatch("s1", "pl1", 0.8, 1)]);
+
+			const scoreMap = new Map([["s1", 0.9]]);
+			const { reranker, getCandidates } = captureDocuments(scoreMap);
+
+			// Call without the 5th argument
+			await rerankMatches(matches, songs, playlists, reranker);
+
+			const docs = getCandidates();
+			expect(docs[0].document).toBe("Alpha Song by Artist A. Genres: pop.");
+		});
 	});
 });

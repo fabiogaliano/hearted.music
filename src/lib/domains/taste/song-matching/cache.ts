@@ -30,6 +30,7 @@ export async function computeMatchSnapshotMetadata(
 	profiles: MatchingPlaylistProfile[],
 	matchingConfig: Partial<MatchingConfig> = {},
 	exclusionSet?: Set<string>,
+	rerankDocumentMode: "analysis" | "metadata" = "metadata",
 ): Promise<{
 	snapshotHash: string;
 	candidateSetHash: string;
@@ -76,7 +77,13 @@ export async function computeMatchSnapshotMetadata(
 		provider: Result.isOk(providerResult)
 			? providerResult.value.getMetadata().name
 			: null,
+		// config carries the canonical instruction — changing its wording busts
+		// the snapshot cache via this hash.
 		config: DEFAULT_RERANKER_CONFIG,
+		// documentMode is not a RerankerConfig field; the caller passes the mode
+		// the documents were ACTUALLY built with (analysis fetch can degrade to
+		// metadata), so the hash never claims a richer document than was sent.
+		documentMode: rerankDocumentMode,
 	});
 
 	const modelBundleHashResult = await getModelBundleHash();

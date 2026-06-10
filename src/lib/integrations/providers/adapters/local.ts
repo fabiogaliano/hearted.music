@@ -11,11 +11,19 @@
  * Models:
  * - Embedding: Qwen/Qwen3-Embedding-0.6B via the onnx-community ONNX export
  *   (last-token pooling, fp32, MRL-truncated to 512 dims)
- * - Reranking: Xenova/bge-reranker-base (~100MB download, first run only)
+ * - Reranking: Qwen/Qwen3-Reranker-0.6B via the zhiqing ONNX export
+ *   (decoder-only LM, yes/no logit scoring at last token position)
  *
- * NOTE: production embeds via DeepInfra; this in-process path is for local dev.
- * The fp32 Qwen3 weights are a ~2.4GB first-time download (then cached). Vectors
- * are truncated + renormalized to 512 dims to match the pgvector column.
+ * NOTE: production embeds/reranks via DeepInfra; this in-process path is for
+ * local dev. The fp32 Qwen3-Embedding weights are a ~2.4GB first-time download.
+ * The reranker ONNX (fp32) is ~1.2GB. Both are cached after first download.
+ *
+ * Reranker scoring (Qwen3-Reranker, decoder-only LM):
+ *   For each (query, document) pair, build the chat-template prompt with the
+ *   model's system instruction + user message (<Instruct>/<Query>/<Document>).
+ *   Run a forward pass, extract logits at the LAST token position, read the
+ *   "yes" and "no" token ids, compute softmax over [no_logit, yes_logit],
+ *   take P("yes") as the relevance score in [0, 1].
  *
  * Runtime modes:
  * - "direct": ONNX loaded in-process (Bun scripts, Node)
@@ -40,19 +48,21 @@ import {
 	MLUnsupportedOperationError,
 } from "@/lib/shared/errors/domain/ml";
 import type { MLProvider } from "../ports";
-import type {
-	EmbeddingResult,
-	EmbedOptions,
-	ProviderMetadata,
-	RerankOptions,
-	RerankResult,
+import {
+	DEFAULT_RERANK_INSTRUCTION,
+	type EmbeddingResult,
+	type EmbedOptions,
+	type ProviderMetadata,
+	type RerankOptions,
+	type RerankResult,
 } from "../types";
 
 const HTTP_TIMEOUT_MS = 120_000;
 
-// The official Qwen repo ships no ONNX export, so transformers.js loads the
-// community conversion. Vectors are stored under the canonical model name
-// (metadata.embeddingModel) so they share a cache key with the DeepInfra path.
+// The official Qwen repos ship no ONNX export, so transformers.js loads
+// community conversions. Vectors/scores are stored under canonical model names
+// (metadata.embeddingModel / metadata.rerankerModel) to share cache keys with
+// the DeepInfra path even though the ONNX weights come from a different HF repo.
 const EMBEDDING_ONNX_REPO = "onnx-community/Qwen3-Embedding-0.6B-ONNX";
 // fp32 matches the hosted model most closely; the ~2.4GB fp32 weights are
 // external ONNX data, which transformers.js only fetches when this flag is set.
@@ -60,6 +70,20 @@ const EMBEDDING_PIPELINE_OPTIONS = {
 	dtype: "fp32",
 	use_external_data_format: true,
 } as const;
+
+// zhiqing's ONNX export ships model.onnx at the repo root (not under onnx/).
+// We override subfolder="" so transformers.js resolves model.onnx correctly.
+// dtype "fp32" + suffix "" → model.onnx (the only file in this repo).
+// The download is ~1.2 GB (single-file fp32, first run only).
+const RERANKER_ONNX_REPO = "zhiqing/Qwen3-Reranker-0.6B-ONNX";
+const RERANKER_MODEL_OPTIONS = {
+	dtype: "fp32",
+	subfolder: "",
+} as const;
+
+// System prompt from the Qwen3-Reranker model card — must not be altered.
+const RERANKER_SYSTEM_PROMPT =
+	'Judge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".';
 
 // Qwen3-Embedding is instruction-tuned (see @/lib/integrations/embedding/format)
 // and pools the final token's hidden state — NOT mean pooling (that was E5).
@@ -70,7 +94,16 @@ const EMBEDDING_DIMS = 512;
 export class LocalProvider implements MLProvider {
 	private readonly metadata: ProviderMetadata;
 	private embeddingPipeline: Promise<any> | null = null;
-	private rerankerPipeline: Promise<any> | null = null;
+	// Lazy-loaded reranker: model+tokenizer pair, resolved yes/no token ids,
+	// and pre-tokenized suffix appended after the user message (forces the
+	// last input token to the yes/no decision position).
+	private rerankerState: Promise<{
+		model: any;
+		tokenizer: any;
+		yesTokenId: number;
+		noTokenId: number;
+		suffixIds: number[];
+	}> | null = null;
 	private mode: "direct" | "http" | "unknown" = "unknown";
 	private readonly serverBaseUrl: string;
 	private resolveModePromise: Promise<void> | null = null;
@@ -81,7 +114,9 @@ export class LocalProvider implements MLProvider {
 			embeddingModel: "Qwen/Qwen3-Embedding-0.6B",
 			embeddingDims: EMBEDDING_DIMS,
 			embeddingInstructionTuned: EMBEDDING_INSTRUCTION_TUNED,
-			rerankerModel: "Xenova/bge-reranker-base",
+			// Canonical model id used for cache-key provenance — same as DeepInfra.
+			// The actual ONNX weights are loaded from RERANKER_ONNX_REPO.
+			rerankerModel: "Qwen/Qwen3-Reranker-0.6B",
 		};
 		// biome-ignore lint/style/noProcessEnv: dev-only local embedding sidecar port, intentionally not part of validated env
 		const port = process.env.EMBEDDING_SERVER_PORT || "9847";
@@ -172,34 +207,80 @@ export class LocalProvider implements MLProvider {
 	}
 
 	/**
-	 * Lazy-loads the reranker pipeline (direct mode only).
+	 * Lazy-loads the Qwen3-Reranker model + tokenizer (direct mode only).
 	 *
-	 * Note: First load will download ~100MB model. Subsequent calls use cached model.
+	 * Resolves yes/no token ids and pre-tokenizes the suffix tokens once on
+	 * load so each rerank call avoids repeated work. Logged for auditability.
+	 *
+	 * Note: First load downloads ~1.2 GB. Subsequent calls use cached weights.
 	 */
-	private async getRerankerPipeline(): Promise<any> {
+	private async getRerankerState(): Promise<{
+		model: any;
+		tokenizer: any;
+		yesTokenId: number;
+		noTokenId: number;
+		suffixIds: number[];
+	}> {
 		await this.resolveMode();
-		if (this.mode === "http") return null;
+		if (this.mode === "http") return null as any;
 
-		if (!this.rerankerPipeline) {
-			this.rerankerPipeline = (async () => {
+		if (!this.rerankerState) {
+			this.rerankerState = (async () => {
 				try {
-					const { pipeline } = await import("@huggingface/transformers");
+					const { AutoModelForCausalLM, AutoTokenizer } = await import(
+						"@huggingface/transformers"
+					);
 					console.log(
-						`[Local Provider] Loading reranker model: ${this.metadata.rerankerModel} (~100MB, first time only)`,
+						`[Local Provider] Loading reranker: ${RERANKER_ONNX_REPO} (~1.2GB fp32, first time only)`,
 					);
-					return await pipeline(
-						"text-classification",
-						this.metadata.rerankerModel,
+					const [model, tokenizer] = await Promise.all([
+						AutoModelForCausalLM.from_pretrained(
+							RERANKER_ONNX_REPO,
+							RERANKER_MODEL_OPTIONS,
+						),
+						AutoTokenizer.from_pretrained(RERANKER_ONNX_REPO),
+					]);
+
+					// Resolve yes/no token ids from the tokenizer vocabulary.
+					// The model card uses lowercase "yes"/"no"; encode without
+					// special tokens and take the first resulting id.
+					const yesIds = tokenizer.encode("yes", {
+						add_special_tokens: false,
+					}) as number[];
+					const noIds = tokenizer.encode("no", {
+						add_special_tokens: false,
+					}) as number[];
+					const yesTokenId = yesIds[0];
+					const noTokenId = noIds[0];
+					console.log(
+						`[Local Provider] Reranker yes-token id=${yesTokenId}, no-token id=${noTokenId}`,
 					);
+
+					// Pre-tokenize the assistant suffix that the model card appends
+					// after the user message. This positions the last token at the
+					// yes/no decision point. The suffix is per the Qwen3-Reranker
+					// model card and the chat_template.jinja in the ONNX repo:
+					//   <|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n
+					const suffixStr =
+						"<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n";
+					const suffixIds = tokenizer.encode(suffixStr, {
+						add_special_tokens: false,
+					}) as number[];
+					console.log(
+						`[Local Provider] Reranker suffix tokens (${suffixIds.length}): ${JSON.stringify(suffixIds)}`,
+					);
+
+					console.log("[Local Provider] Reranker ready.");
+					return { model, tokenizer, yesTokenId, noTokenId, suffixIds };
 				} catch (error) {
-					this.rerankerPipeline = null;
+					this.rerankerState = null;
 					throw new Error(
 						`Failed to load reranker model: ${error instanceof Error ? error.message : "Unknown error"}`,
 					);
 				}
 			})();
 		}
-		return this.rerankerPipeline;
+		return this.rerankerState;
 	}
 
 	async embed(
@@ -293,26 +374,94 @@ export class LocalProvider implements MLProvider {
 		}
 
 		try {
-			const pipe = await this.getRerankerPipeline();
+			// Resolve mode first; http path short-circuits before model load.
+			await this.resolveMode();
 
 			if (this.mode === "http") {
 				return this.rerankViaHttp(query, documents, options);
 			}
 
-			const pairs = documents.map((doc) => `${query} ${doc}`);
-			const results = await pipe(pairs);
+			const {
+				model: lm,
+				tokenizer,
+				yesTokenId,
+				noTokenId,
+				suffixIds,
+			} = await this.getRerankerState();
 
-			const scores = (Array.isArray(results) ? results : [results]).map(
-				(result: any, index: number) => ({
-					index,
-					score: Array.isArray(result)
-						? (result[0]?.score ?? 0)
-						: (result.score ?? 0),
-				}),
-			);
+			// Canonical fallback so direct provider calls (bypassing RerankerService)
+			// still score with the same <Instruct> slot as production.
+			const instruction = options?.instruction ?? DEFAULT_RERANK_INSTRUCTION;
 
+			// Score each document sequentially (≤50 docs for a local playlist
+			// refresh). Batching would require padding + careful attention-mask
+			// handling; sequential is simpler and fast enough for this workload.
+			const rawScores: number[] = [];
+			for (const doc of documents) {
+				// Build the prompt manually using the Qwen3 chatml format.
+				// The zhiqing tokenizer_config.json does not include chat_template,
+				// so apply_chat_template() fails without passing the template
+				// string explicitly. Manual construction is more robust and matches
+				// the Qwen3-Reranker model card exactly.
+				//
+				// Full input structure:
+				//   <|im_start|>system\n{system}<|im_end|>\n
+				//   <|im_start|>user\n{user}<|im_end|>\n
+				//   <|im_start|>assistant\n<think>\n\n</think>\n\n
+				//
+				// The assistant suffix with the empty <think> block is appended
+				// after the user turn (per the model card). This positions the
+				// last input token at the yes/no decision point.
+				const promptStr =
+					`<|im_start|>system\n${RERANKER_SYSTEM_PROMPT}<|im_end|>\n` +
+					`<|im_start|>user\n<Instruct>: ${instruction}\n\n<Query>: ${query}\n\n<Document>: ${doc}`;
+
+				// Tokenize the base prompt (system + partial user turn, no <|im_end|>
+				// yet — the suffix already includes <|im_end|> at its start).
+				const promptIds = tokenizer.encode(promptStr, {
+					add_special_tokens: false,
+				}) as number[];
+
+				// Concatenate base prompt ids + pre-tokenized suffix ids.
+				// suffixIds = "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+				const inputIds = [...promptIds, ...suffixIds];
+
+				// Wrap in a 2-D int64 tensor [1, seq_len] as required by the model.
+				const { Tensor } = await import("@huggingface/transformers");
+				const inputTensor = new Tensor(
+					"int64",
+					BigInt64Array.from(inputIds.map(BigInt)),
+					[1, inputIds.length],
+				);
+				const attentionMask = new Tensor(
+					"int64",
+					BigInt64Array.from(new Array(inputIds.length).fill(BigInt(1))),
+					[1, inputIds.length],
+				);
+
+				// Forward pass. outputs.logits shape: [batch=1, seq_len, vocab_size].
+				const outputs = await lm({
+					input_ids: inputTensor,
+					attention_mask: attentionMask,
+				});
+				const logits = outputs.logits; // Tensor [1, seq_len, vocab_size]
+
+				// Last-position logits: logits[0][seq_len - 1] → Tensor [vocab_size].
+				const seqLen: number = logits.dims[1];
+				const lastLogits = logits[0][seqLen - 1]; // Tensor [vocab_size]
+				const logitData = lastLogits.data as Float32Array;
+
+				// Softmax over [no_logit, yes_logit] → P("yes").
+				const yesLogit = logitData[yesTokenId];
+				const noLogit = logitData[noTokenId];
+				const maxLogit = Math.max(yesLogit, noLogit);
+				const expYes = Math.exp(yesLogit - maxLogit);
+				const expNo = Math.exp(noLogit - maxLogit);
+				rawScores.push(expYes / (expYes + expNo));
+			}
+
+			const scores = rawScores.map((score, index) => ({ index, score }));
 			const sorted = scores.toSorted((a, b) => b.score - a.score);
-
 			const topK = options?.topK ?? 0;
 			const finalScores = topK > 0 ? sorted.slice(0, topK) : sorted;
 
