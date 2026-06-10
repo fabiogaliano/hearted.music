@@ -1,5 +1,6 @@
 import { Result } from "better-result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ConstraintError, DatabaseError } from "@/lib/shared/errors/database";
 import type {
 	SpotifyPlaylistDTO,
 	SpotifyTrackDTO,
@@ -283,6 +284,58 @@ describe("/api/extension/sync", () => {
 				"A library sync is already running for this account. Wait for it to finish before trying again.",
 		});
 		expect(mockCreateJob).not.toHaveBeenCalled();
+	});
+
+	it("returns 429 when the lock insert loses the race to the unique index", async () => {
+		// Two requests pass the racy getActiveSync gate together; the partial
+		// unique index lets only one insert the sync_liked_songs lock, so the
+		// loser's createJob comes back as a unique ConstraintError. The route must
+		// treat that as "already running" and — critically — must NOT create or
+		// fail any jobs, since the only existing rows belong to the winner.
+		mockCreateJob.mockImplementation((_accountId: string, type: string) =>
+			type === SONGS_JOB
+				? Promise.resolve(
+						Result.err(new ConstraintError("unique", "duplicate")),
+					)
+				: Promise.resolve(Result.ok({ id: type })),
+		);
+
+		const response = await route.server.handlers.POST({
+			request: syncRequest({ likedSongs: [aTrack("t1")], playlists: [] }),
+		});
+
+		expect(response.status).toBe(429);
+		expect(await response.json()).toEqual({
+			code: EXTENSION_SYNC_ALREADY_RUNNING,
+			error:
+				"A library sync is already running for this account. Wait for it to finish before trying again.",
+		});
+		// Only the lock insert is attempted; siblings are never created, so there
+		// is nothing to orphan and nothing to fail.
+		expect(mockCreateJob).toHaveBeenCalledTimes(1);
+		expect(mockCreateJob).toHaveBeenCalledWith(ACCOUNT_ID, SONGS_JOB);
+		expect(mockFailJob).not.toHaveBeenCalled();
+	});
+
+	it("returns 500 when the lock insert fails for a non-constraint reason", async () => {
+		mockCreateJob.mockImplementation((_accountId: string, type: string) =>
+			type === SONGS_JOB
+				? Promise.resolve(
+						Result.err(new DatabaseError({ code: "08006", message: "down" })),
+					)
+				: Promise.resolve(Result.ok({ id: type })),
+		);
+
+		const response = await route.server.handlers.POST({
+			request: syncRequest({ likedSongs: [aTrack("t1")], playlists: [] }),
+		});
+
+		expect(response.status).toBe(500);
+		expect(await response.json()).toEqual({
+			error: "Failed to create sync jobs",
+		});
+		expect(mockCreateJob).toHaveBeenCalledTimes(1);
+		expect(mockFailJob).not.toHaveBeenCalled();
 	});
 
 	it("returns 429 with retry-after when the last completed sync is too recent", async () => {

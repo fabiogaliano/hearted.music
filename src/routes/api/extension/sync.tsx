@@ -359,21 +359,47 @@ export const Route = createFileRoute("/api/extension/sync")({
 				const extensionPlaylists: SpotifyPlaylistDTO[] = payload.playlists;
 				const incomingPlaylistTracks = payload.playlistTracks ?? [];
 
-				// Create job records for progress tracking
-				const [songsJobResult, playlistsJobResult, tracksJobResult] =
-					await Promise.all([
-						createJob(accountId, "sync_liked_songs"),
-						createJob(accountId, "sync_playlists"),
-						createJob(accountId, "sync_playlist_tracks"),
-					]);
+				// Acquire the per-account sync lock atomically. sync_liked_songs is the
+				// lock sentinel, guarded by a partial unique index (one active
+				// sync_liked_songs per account) — the DB is the single source of truth
+				// here; the getActiveSync gate above is only a fast-path that spares us
+				// parsing the body in the common case. Creating the sentinel first and
+				// alone means a losing concurrent request creates no sibling rows to
+				// orphan: the index rejects its insert as a unique ConstraintError,
+				// which we map to the same "already running" 429 as the gate. Crucially
+				// we do NOT fail this job on that path — the row belongs to the request
+				// that won the race, and failing it would release its lock.
+				const songsJobResult = await createJob(accountId, "sync_liked_songs");
+				if (Result.isError(songsJobResult)) {
+					if (songsJobResult.error._tag === "ConstraintError") {
+						return Response.json(
+							{
+								code: EXTENSION_SYNC_ALREADY_RUNNING,
+								error:
+									"A library sync is already running for this account. Wait for it to finish before trying again.",
+							},
+							{ status: 429, headers: corsHeaders },
+						);
+					}
+					return Response.json(
+						{ error: "Failed to create sync jobs" },
+						{ status: 500, headers: corsHeaders },
+					);
+				}
+
+				// Lock held. Create the sibling phase jobs for progress tracking.
+				const [playlistsJobResult, tracksJobResult] = await Promise.all([
+					createJob(accountId, "sync_playlists"),
+					createJob(accountId, "sync_playlist_tracks"),
+				]);
 
 				if (
-					Result.isError(songsJobResult) ||
 					Result.isError(playlistsJobResult) ||
 					Result.isError(tracksJobResult)
 				) {
-					// A partial batch leaves the created siblings pending; fail them so
-					// they don't lock the next attempt out via the active-sync gate.
+					// A partial batch leaves the created jobs (including the lock) pending;
+					// fail them so they don't lock the next attempt out via the index and
+					// the active-sync gate.
 					const createdJobIds = [
 						songsJobResult,
 						playlistsJobResult,
