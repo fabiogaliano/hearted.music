@@ -10,8 +10,8 @@ import {
 } from "node:fs/promises";
 import { join } from "node:path";
 import * as Sentry from "@sentry/bun";
+import { log } from "@/lib/observability/logger";
 import { errorMessage } from "@/lib/shared/errors/error-message";
-import { log } from "./logger";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_BACKUP_DIRECTORY = "/backups";

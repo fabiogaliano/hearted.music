@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/bun";
 import { Result } from "better-result";
+import { log } from "@/lib/observability/logger";
 import {
 	markDeadLibraryProcessingJobs,
 	sweepStaleLibraryProcessingJobs,
@@ -18,7 +19,6 @@ import {
 	type TerminalRefRecoveryResult,
 } from "@/lib/workflows/library-processing/terminal-recovery";
 import { workerConfig } from "./config";
-import { log } from "./logger";
 
 export type SweepRpc = (
 	staleThreshold: string,

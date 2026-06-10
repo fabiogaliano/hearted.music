@@ -67,7 +67,12 @@
 			}
 		},
 		{
-			"includes": ["**/src/env.ts", "**/src/worker/**", "**/vite.config.ts"],
+			"includes": [
+				"**/src/env.ts",
+				"**/src/worker/**",
+				"**/src/lib/observability/logger.ts",
+				"**/vite.config.ts"
+			],
 			"linter": {
 				"rules": {
 					"style": {

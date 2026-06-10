@@ -8,13 +8,11 @@
  */
 
 import { Result } from "better-result";
-
+import { log } from "@/lib/observability/logger";
 import { claimWalkthroughPreviewJob } from "@/lib/platform/jobs/walkthrough-preview-queue";
 import { runWalkthroughPreviewJob } from "@/lib/workflows/walkthrough-match-preview/runner";
-
 import { workerConfig } from "./config";
 import { startHeartbeat } from "./execute";
-import { log } from "./logger";
 
 let shouldPoll = true;
 const activeJobs = new Set<string>();

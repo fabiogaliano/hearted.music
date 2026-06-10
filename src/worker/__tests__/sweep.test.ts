@@ -12,7 +12,7 @@ import type {
 } from "@/lib/workflows/library-processing/types";
 import { runSweepTick, type SweepDeps, startSweep } from "../sweep";
 
-vi.mock("../logger", () => ({
+vi.mock("@/lib/observability/logger", () => ({
 	log: {
 		info: vi.fn(),
 		warn: vi.fn(),
@@ -87,11 +87,11 @@ function makeApplyOutcome(
 }
 
 describe("runSweepTick", () => {
-	let logMod: typeof import("../logger");
+	let logMod: typeof import("@/lib/observability/logger");
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
-		logMod = await import("../logger");
+		logMod = await import("@/lib/observability/logger");
 	});
 
 	it("calls all four RPCs with the stale threshold", async () => {

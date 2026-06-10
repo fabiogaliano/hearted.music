@@ -1,5 +1,7 @@
+import { captureException } from "@sentry/bun";
 import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
+import { log } from "@/lib/observability/logger";
 import { recordJobExecutionMeasurement } from "@/lib/platform/jobs/execution-measurements";
 import {
 	type Job,
@@ -64,9 +66,11 @@ async function runEnrichmentJob(job: Job): Promise<RunJobOutcome> {
 
 		const completedResult = await markJobCompleted(job.id);
 		if (Result.isError(completedResult)) {
-			console.error(
-				`[runner] mark-completed-failed job=${job.id}: ${completedResult.error.message}`,
-			);
+			log.error("mark-completed-failed", {
+				jobId: job.id,
+				accountId: job.account_id,
+				error: completedResult.error.message,
+			});
 			throw new Error(completedResult.error.message);
 		}
 
@@ -135,9 +139,11 @@ async function runMatchSnapshotRefreshJob(job: Job): Promise<RunJobOutcome> {
 
 		const completedResult = await markJobCompleted(job.id);
 		if (Result.isError(completedResult)) {
-			console.error(
-				`[runner] mark-completed-failed job=${job.id}: ${completedResult.error.message}`,
-			);
+			log.error("mark-completed-failed", {
+				jobId: job.id,
+				accountId: job.account_id,
+				error: completedResult.error.message,
+			});
 			throw new Error(completedResult.error.message);
 		}
 
@@ -226,17 +232,36 @@ async function settleLibraryProcessing(
 			SETTLEMENT_RETRY_OPTIONS,
 		);
 		if (Result.isError(settleResult)) {
-			console.error("[runner] library-processing-settlement-failed", {
+			log.error("library-processing-settlement-failed", {
 				...context,
 				error: settleResult.error,
+			});
+			// The job is already marked completed by this point, so a failed
+			// settlement leaves no failure trace in the DB. Capture to Sentry so
+			// it survives the worker log's short retention window.
+			captureException(settleResult.error, {
+				tags: { workflow: context.workflow, phase: "settlement" },
+				extra: {
+					jobId: context.jobId,
+					accountId: context.accountId,
+					changeKind: context.changeKind,
+				},
 			});
 			return "settlement_failed";
 		}
 		return "settled";
 	} catch (error) {
-		console.error("[runner] library-processing-settlement-threw", {
+		log.error("library-processing-settlement-threw", {
 			...context,
 			error: errorMessage(error),
+		});
+		captureException(error, {
+			tags: { workflow: context.workflow, phase: "settlement" },
+			extra: {
+				jobId: context.jobId,
+				accountId: context.accountId,
+				changeKind: context.changeKind,
+			},
 		});
 		return "settlement_failed";
 	}
@@ -263,15 +288,18 @@ async function writeMeasurement(
 			details,
 		});
 		if (Result.isError(result)) {
-			console.warn(
-				`[runner] measurement-write-failed job=${job.id}: ${result.error.message}`,
-			);
+			log.warn("measurement-write-failed", {
+				jobId: job.id,
+				accountId: job.account_id,
+				error: result.error.message,
+			});
 		}
 	} catch (err) {
-		console.warn(
-			`[runner] measurement-write-error job=${job.id}:`,
-			errorMessage(err),
-		);
+		log.warn("measurement-write-error", {
+			jobId: job.id,
+			accountId: job.account_id,
+			error: errorMessage(err),
+		});
 	}
 }
 
@@ -279,14 +307,17 @@ async function markJobFailedSafe(job: Job, message: string): Promise<void> {
 	try {
 		const failResult = await markJobFailed(job.id, message);
 		if (Result.isError(failResult)) {
-			console.error(
-				`[runner] mark-failed-error job=${job.id}: ${failResult.error.message}`,
-			);
+			log.error("mark-failed-error", {
+				jobId: job.id,
+				accountId: job.account_id,
+				error: failResult.error.message,
+			});
 		}
 	} catch (markError) {
-		console.error(
-			`[runner] mark-failed-error job=${job.id}:`,
-			errorMessage(markError),
-		);
+		log.error("mark-failed-error", {
+			jobId: job.id,
+			accountId: job.account_id,
+			error: errorMessage(markError),
+		});
 	}
 }

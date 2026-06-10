@@ -5,6 +5,7 @@ import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
+import { log } from "@/lib/observability/logger";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
 import { updateJobProgress } from "@/lib/platform/jobs/repository";
 import {
@@ -80,9 +81,10 @@ async function persistProgress(
 ): Promise<void> {
 	const result = await updateJobProgress(jobId, progress);
 	if (Result.isError(result)) {
-		console.error(
-			`[worker-chunk] Failed to persist progress for job ${jobId}: ${result.error.message}`,
-		);
+		log.error("persist-progress-failed", {
+			jobId,
+			error: result.error.message,
+		});
 	}
 }
 
@@ -203,7 +205,7 @@ async function enrichSongs(
 	]);
 
 	if (Result.isError(audioAccountingResult)) {
-		console.error("[worker-chunk] Stage accounting failed", {
+		log.error("stage-accounting-failed", {
 			stage: "audio_features",
 			jobId,
 			accountId: ctx.accountId,
@@ -213,7 +215,7 @@ async function enrichSongs(
 	}
 
 	if (Result.isError(genreAccountingResult)) {
-		console.error("[worker-chunk] Stage accounting failed", {
+		log.error("stage-accounting-failed", {
 			stage: "genre_tagging",
 			jobId,
 			accountId: ctx.accountId,
@@ -273,7 +275,7 @@ async function enrichSongs(
 			: await emptyAccounting;
 
 	if (Result.isError(analysisAccountingResult)) {
-		console.error("[worker-chunk] Stage accounting failed", {
+		log.error("stage-accounting-failed", {
 			stage: "song_analysis",
 			jobId,
 			accountId: ctx.accountId,
@@ -319,7 +321,7 @@ async function enrichSongs(
 			: await emptyAccounting;
 
 	if (Result.isError(embeddingAccountingResult)) {
-		console.error("[worker-chunk] Stage accounting failed", {
+		log.error("stage-accounting-failed", {
 			stage: "song_embedding",
 			jobId,
 			accountId: ctx.accountId,
@@ -357,7 +359,7 @@ async function enrichSongs(
 			: await emptyAccounting;
 
 	if (Result.isError(activationAccountingResult)) {
-		console.error("[worker-chunk] Stage accounting failed", {
+		log.error("stage-accounting-failed", {
 			stage: "content_activation",
 			jobId,
 			accountId: ctx.accountId,

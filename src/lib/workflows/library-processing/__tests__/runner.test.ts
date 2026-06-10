@@ -335,14 +335,15 @@ describe("runClaimedJob", () => {
 			// 1 initial + 3 retries = 4 total attempts
 			expect(applyLibraryProcessingChangeMock).toHaveBeenCalledTimes(4);
 
-			expect(consoleSpy).toHaveBeenCalledWith(
-				expect.stringContaining("settlement-failed"),
+			expect(captureException).toHaveBeenCalledWith(
+				error,
 				expect.objectContaining({
-					jobId: "job-1",
-					accountId: "acct-1",
-					workflow: "enrichment",
-					changeKind: "enrichment_completed",
-					error: expect.objectContaining({ kind: "persist_state" }),
+					tags: { workflow: "enrichment", phase: "settlement" },
+					extra: expect.objectContaining({
+						jobId: "job-1",
+						accountId: "acct-1",
+						changeKind: "enrichment_completed",
+					}),
 				}),
 			);
 
@@ -357,8 +358,9 @@ describe("runClaimedJob", () => {
 				Result.ok(makeJob({ status: "failed" })),
 			);
 
+			const settlementError = makePersistStateError();
 			applyLibraryProcessingChangeMock.mockResolvedValue(
-				Result.err(makePersistStateError()),
+				Result.err(settlementError),
 			);
 
 			const consoleSpy = vi
@@ -372,13 +374,15 @@ describe("runClaimedJob", () => {
 			expect(outcome.status).toBe("failed");
 			expect(outcome.settlement).toBe("settlement_failed");
 
-			expect(consoleSpy).toHaveBeenCalledWith(
-				expect.stringContaining("settlement-failed"),
+			expect(captureException).toHaveBeenCalledWith(
+				settlementError,
 				expect.objectContaining({
-					jobId: "job-1",
-					accountId: "acct-1",
-					workflow: "enrichment",
-					changeKind: "enrichment_stopped",
+					tags: { workflow: "enrichment", phase: "settlement" },
+					extra: expect.objectContaining({
+						jobId: "job-1",
+						accountId: "acct-1",
+						changeKind: "enrichment_stopped",
+					}),
 				}),
 			);
 

@@ -1,5 +1,5 @@
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { log } from "./logger";
+import { log } from "@/lib/observability/logger";
 
 const KEEP_ALIVE_INTERVAL_MS = 4 * 24 * 60 * 60 * 1000; // 4 days
 

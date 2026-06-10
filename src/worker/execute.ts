@@ -1,4 +1,5 @@
 import { Result } from "better-result";
+import { log } from "@/lib/observability/logger";
 import {
 	type EnrichmentChunkProgress,
 	EnrichmentChunkProgressSchema,
@@ -13,7 +14,6 @@ import {
 	type MatchSnapshotRefreshResult,
 } from "@/lib/workflows/match-snapshot-refresh/types";
 import { workerConfig } from "./config";
-import { log } from "./logger";
 
 export interface EnrichmentExecuteResult {
 	accountId: string;

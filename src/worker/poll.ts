@@ -1,9 +1,9 @@
 import { Result } from "better-result";
+import { log } from "@/lib/observability/logger";
 import { claimLibraryProcessingJob } from "@/lib/platform/jobs/library-processing-queue";
 import { runClaimedJob } from "@/lib/workflows/library-processing/runner";
 import { workerConfig } from "./config";
 import { startHeartbeat } from "./execute";
-import { log } from "./logger";
 
 let shouldPoll = true;
 const activeJobs = new Set<string>();

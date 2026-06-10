@@ -13,7 +13,10 @@ export function setUnhealthy() {
 
 export function startHealthServer() {
 	return Bun.serve({
-		hostname: "127.0.0.1",
+		// Bind all interfaces so Coolify's proxy-level health check can reach the
+		// container, not just the in-container Docker HEALTHCHECK (which hits
+		// 127.0.0.1). The endpoint only exposes liveness status, no sensitive data.
+		hostname: "0.0.0.0",
 		port: workerConfig.healthPort,
 		fetch(req) {
 			const url = new URL(req.url);

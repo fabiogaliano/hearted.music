@@ -1,10 +1,10 @@
 import * as Sentry from "@sentry/bun";
+import { log } from "@/lib/observability/logger";
 import { workerConfig } from "./config";
 import { startDatabaseBackupScheduler } from "./db-backup";
 import { setWorkerFatalObserver } from "./fatal-handlers";
 import { setShuttingDown, setUnhealthy, startHealthServer } from "./health";
 import { startKeepAlive } from "./keep-alive";
-import { log } from "./logger";
 import { getActiveJobCount, startPolling, stopPolling } from "./poll";
 import {
 	getActiveWalkthroughPreviewJobCount,

@@ -10,6 +10,7 @@
  */
 
 import { Result } from "better-result";
+import { log } from "@/lib/observability/logger";
 import {
 	type Job,
 	type JobProgress,
@@ -44,9 +45,10 @@ export async function startJob(jobId: string): Promise<Result<Job, DbError>> {
 	}
 
 	// Running failed - attempt cleanup to prevent orphaned pending job
-	console.error(
-		`[job-lifecycle] Failed to start job ${jobId}: ${runningResult.error.message}`,
-	);
+	log.error("job-start-failed", {
+		jobId,
+		error: runningResult.error.message,
+	});
 
 	const cleanupResult = await failJob(
 		jobId,
@@ -54,9 +56,10 @@ export async function startJob(jobId: string): Promise<Result<Job, DbError>> {
 	);
 
 	if (Result.isError(cleanupResult)) {
-		console.error(
-			`[job-lifecycle] Cleanup failed for orphaned job ${jobId}: ${cleanupResult.error.message}`,
-		);
+		log.error("job-start-cleanup-failed", {
+			jobId,
+			error: cleanupResult.error.message,
+		});
 	}
 
 	return runningResult;
