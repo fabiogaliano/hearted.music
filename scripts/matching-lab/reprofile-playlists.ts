@@ -8,17 +8,14 @@
  * Usage: bun run scripts/matching-lab/reprofile-playlists.ts
  */
 
-import { createClient } from "@supabase/supabase-js";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import * as songData from "@/lib/domains/library/songs/queries";
 import { Result } from "better-result";
+import { createLocalLabClient } from "./shared";
 
-const supabase = createClient(
-	"http://127.0.0.1:54321",
-	"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU",
-);
+const supabase = createLocalLabClient();
 
 async function main() {
 	console.log("\n🔄 Re-profiling playlists with HyDE expansion...\n");

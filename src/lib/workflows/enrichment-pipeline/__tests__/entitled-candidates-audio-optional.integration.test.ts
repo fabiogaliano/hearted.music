@@ -37,8 +37,8 @@ const SONG_AUDIOLESS_READY_ID = crypto.randomUUID();
 const SONG_MISSING_EMBEDDING_ID = crypto.randomUUID();
 
 // pgvector accepts a string literal of the form "[v1,v2,...]". Match the
-// declared dimension on song_embedding (1024).
-const ZERO_VECTOR = `[${new Array(1024).fill(0).join(",")}]`;
+// declared dimension on song_embedding (512).
+const ZERO_VECTOR = `[${new Array(512).fill(0).join(",")}]`;
 
 async function setupFixtures() {
 	if (!supabase) throw new Error("supabase client not initialised");
@@ -136,7 +136,7 @@ async function setupFixtures() {
 			song_id: SONG_AUDIOLESS_READY_ID,
 			kind: "song_semantic",
 			model: "test-embed-model",
-			dims: 1024,
+			dims: 512,
 			content_hash: `hash-${SONG_AUDIOLESS_READY_ID}`,
 			embedding: ZERO_VECTOR,
 		})

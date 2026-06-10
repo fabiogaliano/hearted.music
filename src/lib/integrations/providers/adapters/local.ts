@@ -9,8 +9,13 @@
  * include this adapter to avoid bundle size bloat.
  *
  * Models:
- * - Embedding: intfloat/multilingual-e5-large-instruct (1024 dims, ~1.2GB download)
+ * - Embedding: Qwen/Qwen3-Embedding-0.6B via the onnx-community ONNX export
+ *   (last-token pooling, fp32, MRL-truncated to 512 dims)
  * - Reranking: Xenova/bge-reranker-base (~100MB download, first run only)
+ *
+ * NOTE: production embeds via DeepInfra; this in-process path is for local dev.
+ * The fp32 Qwen3 weights are a ~2.4GB first-time download (then cached). Vectors
+ * are truncated + renormalized to 512 dims to match the pgvector column.
  *
  * Runtime modes:
  * - "direct": ONNX loaded in-process (Bun scripts, Node)
@@ -22,6 +27,10 @@
 
 import { Result } from "better-result";
 import { env } from "@/env";
+import {
+	formatEmbeddingInput,
+	truncateAndNormalize,
+} from "@/lib/integrations/embedding/format";
 import {
 	MLApiError,
 	MLConfigError,
@@ -41,11 +50,22 @@ import type {
 
 const HTTP_TIMEOUT_MS = 120_000;
 
-// e5-large-instruct stores its fp32 weights as ONNX external data (onnx/model.onnx_data,
-// ~2.2GB). transformers.js v4's model-loader only fetches external data when this flag is
-// set; without it ONNX init fails on the missing file. fp32 is kept (no dtype override) so
-// vectors stay compatible with rows already written under model_version mb_eb2975746bc39c26.
-const EMBEDDING_PIPELINE_OPTIONS = { use_external_data_format: true } as const;
+// The official Qwen repo ships no ONNX export, so transformers.js loads the
+// community conversion. Vectors are stored under the canonical model name
+// (metadata.embeddingModel) so they share a cache key with the DeepInfra path.
+const EMBEDDING_ONNX_REPO = "onnx-community/Qwen3-Embedding-0.6B-ONNX";
+// fp32 matches the hosted model most closely; the ~2.4GB fp32 weights are
+// external ONNX data, which transformers.js only fetches when this flag is set.
+const EMBEDDING_PIPELINE_OPTIONS = {
+	dtype: "fp32",
+	use_external_data_format: true,
+} as const;
+
+// Qwen3-Embedding is instruction-tuned (see @/lib/integrations/embedding/format)
+// and pools the final token's hidden state — NOT mean pooling (that was E5).
+const EMBEDDING_INSTRUCTION_TUNED = true;
+const EMBEDDING_POOLING = "last_token" as const;
+const EMBEDDING_DIMS = 512;
 
 export class LocalProvider implements MLProvider {
 	private readonly metadata: ProviderMetadata;
@@ -58,8 +78,9 @@ export class LocalProvider implements MLProvider {
 	constructor(options?: { forceDirect?: boolean }) {
 		this.metadata = {
 			name: "local",
-			embeddingModel: "intfloat/multilingual-e5-large-instruct",
-			embeddingDims: 1024,
+			embeddingModel: "Qwen/Qwen3-Embedding-0.6B",
+			embeddingDims: EMBEDDING_DIMS,
+			embeddingInstructionTuned: EMBEDDING_INSTRUCTION_TUNED,
 			rerankerModel: "Xenova/bge-reranker-base",
 		};
 		// biome-ignore lint/style/noProcessEnv: dev-only local embedding sidecar port, intentionally not part of validated env
@@ -92,11 +113,11 @@ export class LocalProvider implements MLProvider {
 				try {
 					const { pipeline } = await import("@huggingface/transformers");
 					console.log(
-						`[Local Provider] Loading embedding model: ${this.metadata.embeddingModel}`,
+						`[Local Provider] Loading embedding model: ${EMBEDDING_ONNX_REPO}`,
 					);
 					const pipe = await pipeline(
 						"feature-extraction",
-						this.metadata.embeddingModel,
+						EMBEDDING_ONNX_REPO,
 						EMBEDDING_PIPELINE_OPTIONS,
 					);
 					this.embeddingPipeline = Promise.resolve(pipe);
@@ -132,11 +153,11 @@ export class LocalProvider implements MLProvider {
 				try {
 					const { pipeline } = await import("@huggingface/transformers");
 					console.log(
-						`[Local Provider] Loading embedding model: ${this.metadata.embeddingModel}`,
+						`[Local Provider] Loading embedding model: ${EMBEDDING_ONNX_REPO}`,
 					);
 					return await pipeline(
 						"feature-extraction",
-						this.metadata.embeddingModel,
+						EMBEDDING_ONNX_REPO,
 						EMBEDDING_PIPELINE_OPTIONS,
 					);
 				} catch (error) {
@@ -192,13 +213,20 @@ export class LocalProvider implements MLProvider {
 				return this.embedViaHttp(text, options);
 			}
 
-			const input = options?.prefix ? `${options.prefix} ${text}` : text;
+			const input = formatEmbeddingInput(
+				text,
+				options?.role ?? "passage",
+				EMBEDDING_INSTRUCTION_TUNED,
+			);
 			const output = await pipe(input, {
-				pooling: "mean",
+				pooling: EMBEDDING_POOLING,
 				normalize: true,
 			});
 
-			const embedding = Array.from(output.data as Float32Array);
+			const embedding = truncateAndNormalize(
+				Array.from(output.data as Float32Array),
+				EMBEDDING_DIMS,
+			);
 
 			return Result.ok({
 				embedding,
@@ -221,18 +249,22 @@ export class LocalProvider implements MLProvider {
 				return this.embedBatchViaHttp(texts, options);
 			}
 
-			const inputs = options?.prefix
-				? texts.map((t) => `${options.prefix} ${t}`)
-				: texts;
+			const role = options?.role ?? "passage";
+			const inputs = texts.map((t) =>
+				formatEmbeddingInput(t, role, EMBEDDING_INSTRUCTION_TUNED),
+			);
 
 			const output = await pipe(inputs, {
-				pooling: "mean",
+				pooling: EMBEDDING_POOLING,
 				normalize: true,
 			});
 
 			const results: EmbeddingResult[] = [];
 			for (let i = 0; i < texts.length; i++) {
-				const embedding = Array.from(output[i].data as Float32Array);
+				const embedding = truncateAndNormalize(
+					Array.from(output[i].data as Float32Array),
+					EMBEDDING_DIMS,
+				);
 				results.push({
 					embedding,
 					model: this.metadata.embeddingModel,

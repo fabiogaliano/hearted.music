@@ -7,10 +7,11 @@ import type { ModelBundle } from "@/lib/domains/enrichment/embeddings/model-bund
 
 const baseBundle: ModelBundle = {
 	embedding: {
-		model: "intfloat/multilingual-e5-large-instruct",
-		dims: 1024,
+		model: "Qwen/Qwen3-Embedding-0.6B",
+		dims: 512,
 		provider: "deepinfra",
 		isInstructionTuned: true,
+		queryTask: "Given a playlist's mood and theme, retrieve songs that fit it",
 	},
 	algorithms: {
 		extractor: 1,
@@ -71,6 +72,31 @@ describe("playlist profile cache invalidation", () => {
 					usesHydeColdStart: false,
 				},
 			},
+		});
+
+		expect(changed).not.toBe(original);
+	});
+
+	it("rewording the query task instruction changes modelBundleHash", async () => {
+		const original = await hashModelBundle(baseBundle);
+
+		const changed = await hashModelBundle({
+			...baseBundle,
+			embedding: {
+				...baseBundle.embedding,
+				queryTask: "Given a song description, retrieve similar songs",
+			},
+		});
+
+		expect(changed).not.toBe(original);
+	});
+
+	it("toggling isInstructionTuned changes modelBundleHash", async () => {
+		const original = await hashModelBundle(baseBundle);
+
+		const changed = await hashModelBundle({
+			...baseBundle,
+			embedding: { ...baseBundle.embedding, isInstructionTuned: false },
 		});
 
 		expect(changed).not.toBe(original);

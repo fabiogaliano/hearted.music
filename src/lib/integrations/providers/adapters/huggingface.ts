@@ -53,15 +53,17 @@ class HuggingFaceProvider implements MLProvider {
 			name: "huggingface",
 			embeddingModel: getEmbeddingModel(),
 			embeddingDims: getEmbeddingDims(),
+			embeddingInstructionTuned: false, // MiniLM is symmetric
 			rerankerModel: undefined, // No reranking support
 		};
 	}
 
 	async embed(
 		text: string,
-		options?: EmbedOptions,
+		_options?: EmbedOptions,
 	): Promise<Result<EmbeddingResult, MLProviderError>> {
-		const result = await embedText(text, options);
+		// MiniLM is symmetric (no instruct prefix), so the retrieval role is moot.
+		const result = await embedText(text);
 
 		if (Result.isError(result)) {
 			return Result.err(this.mapError(result.error, "embed"));
@@ -77,9 +79,10 @@ class HuggingFaceProvider implements MLProvider {
 
 	async embedBatch(
 		texts: string[],
-		options?: EmbedOptions,
+		_options?: EmbedOptions,
 	): Promise<Result<EmbeddingResult[], MLProviderError>> {
-		const result = await embedBatch(texts, options);
+		// MiniLM is symmetric (no instruct prefix), so the retrieval role is moot.
+		const result = await embedBatch(texts);
 
 		if (Result.isError(result)) {
 			return Result.err(this.mapError(result.error, "embedBatch"));

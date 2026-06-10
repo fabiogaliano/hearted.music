@@ -213,6 +213,10 @@ export async function hashModelBundle(bundle: ModelBundle): Promise<string> {
 			model: bundle.embedding.model,
 			dims: bundle.embedding.dims,
 			provider: bundle.embedding.provider,
+			// The instruct format changes the bytes of every query-side vector,
+			// so format identity must invalidate caches like a model change does.
+			isInstructionTuned: bundle.embedding.isInstructionTuned,
+			queryTask: bundle.embedding.queryTask,
 		},
 		reranker: bundle.reranker
 			? {

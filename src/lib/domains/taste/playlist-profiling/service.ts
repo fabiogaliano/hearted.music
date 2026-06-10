@@ -170,10 +170,10 @@ export class PlaylistProfilingService {
 				const expansion = expansionResult.value;
 				const hydeText = buildColdStartEmbeddingText(expansion);
 
-				// HyDE: expanded text IS document-length, so use passage prefix
+				// HyDE: expanded text IS document-length, so embed it as a passage
 				const hydeEmbeddingResult = await this.embeddingService.embedText(
 					hydeText,
-					{ prefix: "passage:" },
+					{ role: "passage" },
 				);
 				const hydeEmbedding = Result.isOk(hydeEmbeddingResult)
 					? hydeEmbeddingResult.value
@@ -226,7 +226,7 @@ export class PlaylistProfilingService {
 		if (intentText) {
 			// Short name/description text is a query seeking similar songs
 			const intentResult = await this.embeddingService.embedText(intentText, {
-				prefix: "query:",
+				role: "query",
 			});
 			if (Result.isOk(intentResult)) {
 				intentEmbedding = intentResult.value;

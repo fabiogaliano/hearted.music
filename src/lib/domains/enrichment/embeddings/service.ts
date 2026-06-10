@@ -149,7 +149,7 @@ export class EmbeddingService {
 
 		// 5. Generate embedding via ML provider
 		const embedResult = await this.provider.embed(text, {
-			prefix: "passage:",
+			role: "passage",
 		});
 		if (Result.isError(embedResult)) {
 			return Result.err(embedResult.error);
@@ -274,7 +274,7 @@ export class EmbeddingService {
 		// 3. Batch embed via ML provider
 		const texts = toEmbed.map((item) => item.text);
 		const batchResult = await this.provider.embedBatch(texts, {
-			prefix: "passage:",
+			role: "passage",
 		});
 
 		if (Result.isError(batchResult)) {
@@ -362,17 +362,17 @@ export class EmbeddingService {
 	 * Used for semantic similarity matching and query embedding.
 	 *
 	 * @param text - Text to embed
-	 * @param options - Optional prefix (default: "query:" for instruction-tuned models)
+	 * @param options - Optional role (default: "query" — this is the search side)
 	 * @returns Result with embedding array or error
 	 */
 	async embedText(
 		text: string,
-		options?: { prefix?: "query:" | "passage:" },
+		options?: { role?: "query" | "passage" },
 	): Promise<Result<number[], MLProviderError | DimensionMismatchError>> {
-		const prefix = options?.prefix ?? "query:";
+		const role = options?.role ?? "query";
 
 		// Generate embedding
-		const embedResult = await this.provider.embed(text, { prefix });
+		const embedResult = await this.provider.embed(text, { role });
 		if (Result.isError(embedResult)) {
 			return Result.err(embedResult.error);
 		}
@@ -395,9 +395,9 @@ export class EmbeddingService {
 	async embedAndStoreText(
 		songId: string,
 		text: string,
-		options?: { prefix?: "query:" | "passage:" },
+		options?: { role?: "query" | "passage" },
 	): Promise<Result<EmbedSongResult, EmbeddingServiceError>> {
-		const prefix = options?.prefix ?? "passage:";
+		const role = options?.role ?? "passage";
 		const contentHash = await this.hashContent(text);
 
 		// Check cache by content hash
@@ -414,7 +414,7 @@ export class EmbeddingService {
 		}
 
 		// Generate embedding
-		const embedResult = await this.provider.embed(text, { prefix });
+		const embedResult = await this.provider.embed(text, { role });
 		if (Result.isError(embedResult)) {
 			return Result.err(embedResult.error);
 		}

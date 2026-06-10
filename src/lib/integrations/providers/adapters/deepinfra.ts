@@ -5,7 +5,7 @@
  * Maps DeepInfra-specific errors to domain ML errors.
  *
  * Models:
- * - Embedding: intfloat/multilingual-e5-large-instruct (1024 dims)
+ * - Embedding: Qwen/Qwen3-Embedding-0.6B (Matryoshka-truncated to 512 dims)
  * - Reranking: Qwen/Qwen3-Reranker-0.6B
  */
 
@@ -15,6 +15,7 @@ import {
 	embedBatch,
 	embedText,
 	getEmbeddingDims,
+	getEmbeddingInstructionTuned,
 	getEmbeddingModel,
 	getRerankerModel,
 	isAvailable,
@@ -52,6 +53,7 @@ class DeepInfraProvider implements MLProvider {
 			name: "deepinfra",
 			embeddingModel: getEmbeddingModel(),
 			embeddingDims: getEmbeddingDims(),
+			embeddingInstructionTuned: getEmbeddingInstructionTuned(),
 			rerankerModel: getRerankerModel(),
 		};
 	}

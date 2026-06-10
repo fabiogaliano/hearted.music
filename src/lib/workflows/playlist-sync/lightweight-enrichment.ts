@@ -338,7 +338,7 @@ async function backfillLyricsEmbeddings(
 			const storeResult = await embeddingService.embedAndStoreText(
 				song.id,
 				textResult.value,
-				{ prefix: "passage:" },
+				{ role: "passage" },
 			);
 
 			return Result.isOk(storeResult) ? "stored" : "failed";

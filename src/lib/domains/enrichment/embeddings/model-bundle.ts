@@ -10,6 +10,7 @@
  */
 
 import { Result } from "better-result";
+import { EMBEDDING_TASK_DESCRIPTION } from "@/lib/integrations/embedding/format";
 import { getMlProvider } from "@/lib/integrations/providers/factory";
 import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
 import {
@@ -24,7 +25,7 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface EmbeddingModelConfig {
-	/** Model identifier (e.g., "intfloat/multilingual-e5-large-instruct") */
+	/** Model identifier (e.g., "Qwen/Qwen3-Embedding-0.6B") */
 	model: string;
 	/** Embedding dimensions */
 	dims: number;
@@ -32,6 +33,8 @@ interface EmbeddingModelConfig {
 	provider: "deepinfra" | "huggingface" | "local";
 	/** Whether the model is instruction-tuned (affects query prefixing) */
 	isInstructionTuned: boolean;
+	/** Task instruction baked into query-side vectors (instruction-tuned models) */
+	queryTask: string;
 }
 
 interface RerankerModelConfig {
@@ -110,7 +113,12 @@ export function getActiveModelBundle(): Result<ModelBundle, MLProviderError> {
 			model: metadata.embeddingModel,
 			dims: metadata.embeddingDims,
 			provider: metadata.name,
-			isInstructionTuned: true, // e5-large-instruct is instruction-tuned
+			isInstructionTuned: metadata.embeddingInstructionTuned,
+			// Part of every query-side vector's bytes, so it participates in the
+			// bundle hash — rewording it invalidates cached profiles/embeddings.
+			queryTask: metadata.embeddingInstructionTuned
+				? EMBEDDING_TASK_DESCRIPTION
+				: "",
 		},
 		algorithms: {
 			extractor: EXTRACTOR_VERSION,

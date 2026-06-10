@@ -41,8 +41,8 @@ const SONG_LOCKED_READY_ID = crypto.randomUUID();
 const SONG_REVOKED_READY_ID = crypto.randomUUID();
 
 // pgvector accepts a string literal of the form "[v1,v2,...]". Match the
-// declared dimension on song_embedding (1024).
-const ZERO_VECTOR = `[${new Array(1024).fill(0).join(",")}]`;
+// declared dimension on song_embedding (512).
+const ZERO_VECTOR = `[${new Array(512).fill(0).join(",")}]`;
 
 const ALL_SONG_IDS = [
 	SONG_ENTITLED_READY_ID,
@@ -116,7 +116,7 @@ async function setupFixtures() {
 				song_id,
 				kind: "song_semantic" as const,
 				model: "test-embed-model",
-				dims: 1024,
+				dims: 512,
 				content_hash: `hash-${song_id}`,
 				embedding: ZERO_VECTOR,
 			})),

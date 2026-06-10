@@ -2,7 +2,7 @@
  * DeepInfra Service - Embeddings and Reranking via DeepInfra API.
  *
  * Replaces the Python vectorization service with hosted models:
- * - Embeddings: intfloat/multilingual-e5-large-instruct (1024 dims)
+ * - Embeddings: Qwen/Qwen3-Embedding-0.6B (Matryoshka-truncated to 512 dims)
  * - Reranking: Qwen/Qwen3-Reranker-0.6B
  *
  * Uses Result-based error handling for composable error flows.
@@ -11,6 +11,11 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import { env } from "@/env";
+import {
+	EMBEDDING_ROLES,
+	formatEmbeddingInput,
+	truncateAndNormalize,
+} from "@/lib/integrations/embedding/format";
 import {
 	DeepInfraApiError,
 	type DeepInfraError,
@@ -25,8 +30,14 @@ import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
 const EMBEDDING_URL = "https://api.deepinfra.com/v1/openai/embeddings";
 const RERANKER_MODEL = "Qwen/Qwen3-Reranker-0.6B";
 const RERANKER_URL = `https://api.deepinfra.com/v1/inference/${RERANKER_MODEL}`;
-const EMBEDDING_MODEL = "intfloat/multilingual-e5-large-instruct";
-const EMBEDDING_DIMS = 1024;
+const EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-0.6B";
+// Qwen3-Embedding is instruction-tuned: queries take the Instruct/Query
+// wrapper, documents none. See @/lib/integrations/embedding/format.
+const EMBEDDING_INSTRUCTION_TUNED = true;
+// MRL target. The model returns up to 1024 dims; we truncate + renormalize
+// client-side to 512 (cost-identical — embeddings are priced per input token,
+// not per output dim) and store 512 in pgvector.
+const EMBEDDING_DIMS = 512;
 
 /** Max texts per batch for embeddings (DeepInfra limit) */
 const MAX_BATCH_SIZE = 96;
@@ -63,14 +74,13 @@ export const RerankResultSchema = z.object({
 });
 export type RerankResult = z.infer<typeof RerankResultSchema>;
 
-/** E5 model prefix for optimal results */
-export const EmbedPrefixSchema = z.enum(["query:", "passage:"]);
-export type EmbedPrefix = z.infer<typeof EmbedPrefixSchema>;
+/** Retrieval role — selects the instruct format applied to the input */
+const EmbedRoleSchema = z.enum(EMBEDDING_ROLES);
 
 /** Options for embedding operations */
 export const EmbedOptionsSchema = z.object({
-	/** Prefix for optimal results: "query:" for search, "passage:" for documents */
-	prefix: EmbedPrefixSchema.optional(),
+	/** Retrieval role: "query" for search intent, "passage" for documents */
+	role: EmbedRoleSchema.optional(),
 	/** Timeout in milliseconds */
 	timeoutMs: z.number().positive().optional(),
 });
@@ -167,15 +177,16 @@ export async function embedBatch(
 		return Result.ok([]);
 	}
 
-	const { prefix = "passage:", timeoutMs = DEFAULT_TIMEOUT_MS } = options;
+	const { role = "passage", timeoutMs = DEFAULT_TIMEOUT_MS } = options;
 
 	// Process in chunks if exceeding max batch size
 	if (texts.length > MAX_BATCH_SIZE) {
 		return processBatchChunks(texts, options);
 	}
 
-	// Apply prefix for optimal results with E5 models
-	const prefixedTexts = texts.map((t) => `${prefix} ${t}`);
+	const formattedTexts = texts.map((t) =>
+		formatEmbeddingInput(t, role, EMBEDDING_INSTRUCTION_TUNED),
+	);
 
 	return sharedLimiter.run(async () => {
 		try {
@@ -186,7 +197,7 @@ export async function embedBatch(
 					Authorization: `Bearer ${getApiKey()}`,
 				},
 				body: JSON.stringify({
-					input: prefixedTexts,
+					input: formattedTexts,
 					model: EMBEDDING_MODEL,
 					encoding_format: "float",
 				}),
@@ -212,11 +223,14 @@ export async function embedBatch(
 
 			const sortedData = data.data.toSorted((a, b) => a.index - b.index);
 
-			const results: EmbeddingResult[] = sortedData.map((item) => ({
-				embedding: item.embedding,
-				model: data.model,
-				dims: item.embedding.length,
-			}));
+			const results: EmbeddingResult[] = sortedData.map((item) => {
+				const embedding = truncateAndNormalize(item.embedding, EMBEDDING_DIMS);
+				return {
+					embedding,
+					model: data.model,
+					dims: embedding.length,
+				};
+			});
 
 			return Result.ok(results);
 		} catch (error) {
@@ -350,6 +364,15 @@ export function getEmbeddingModel(): string {
  */
 export function getRerankerModel(): string {
 	return RERANKER_MODEL;
+}
+
+/**
+ * Whether the embedding model is instruction-tuned (queries get the
+ * Instruct/Query wrapper). Surfaced so provider metadata — and through it the
+ * model-bundle cache hash — reflects the format actually applied here.
+ */
+export function getEmbeddingInstructionTuned(): boolean {
+	return EMBEDDING_INSTRUCTION_TUNED;
 }
 
 // ============================================================================

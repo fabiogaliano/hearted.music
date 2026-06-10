@@ -1,33 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
+import { cosineSim, createLocalLabClient, parseEmbedding } from "./shared";
 
-const supabase = createClient(
-	"http://127.0.0.1:54321",
-	"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU",
-);
-
-function cosineSim(a: number[], b: number[]): number {
-	if (a.length !== b.length) return 0;
-	let dot = 0,
-		normA = 0,
-		normB = 0;
-	for (let i = 0; i < a.length; i++) {
-		dot += a[i] * b[i];
-		normA += a[i] * a[i];
-		normB += b[i] * b[i];
-	}
-	const denom = Math.sqrt(normA) * Math.sqrt(normB);
-	return denom === 0 ? 0 : dot / denom;
-}
-
-function parseEmbedding(raw: string | number[] | null): number[] | null {
-	if (!raw) return null;
-	if (Array.isArray(raw)) return raw;
-	try {
-		return JSON.parse(raw) as number[];
-	} catch {
-		return null;
-	}
-}
+const supabase = createLocalLabClient();
 
 function percentile(sorted: number[], p: number): number {
 	const idx = (p / 100) * (sorted.length - 1);

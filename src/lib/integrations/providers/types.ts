@@ -6,6 +6,7 @@
  */
 
 import { z } from "zod";
+import { EMBEDDING_ROLES } from "@/lib/integrations/embedding/format";
 
 // ============================================================================
 // Provider Metadata
@@ -27,6 +28,8 @@ const ProviderMetadataSchema = z.object({
 	embeddingModel: z.string(),
 	/** Embedding dimensions */
 	embeddingDims: z.number(),
+	/** Whether the embedding model expects the Instruct/Query wrapper on queries */
+	embeddingInstructionTuned: z.boolean(),
 	/** Reranker model identifier (optional) */
 	rerankerModel: z.string().optional(),
 });
@@ -37,16 +40,16 @@ export type ProviderMetadata = z.infer<typeof ProviderMetadataSchema>;
 // ============================================================================
 
 /**
- * Prefix for instruction-tuned embedding models.
+ * Retrieval role — selects the instruct format applied to the input.
  */
-const EmbedPrefixSchema = z.enum(["query:", "passage:"]);
+const EmbedRoleSchema = z.enum(EMBEDDING_ROLES);
 
 /**
  * Options for embedding operations.
  */
 const EmbedOptionsSchema = z.object({
-	/** Prefix for optimal results: "query:" for search, "passage:" for documents */
-	prefix: EmbedPrefixSchema.optional(),
+	/** Retrieval role: "query" for search intent, "passage" for documents */
+	role: EmbedRoleSchema.optional(),
 	/** Timeout in milliseconds */
 	timeoutMs: z.number().positive().optional(),
 });
