@@ -36,6 +36,7 @@ type UnlockRpcPayload =
 			status: "ok";
 			newly_unlocked_song_ids: string[];
 			already_unlocked_song_ids: string[];
+			credit_balance: number;
 	  }
 	| {
 			status: "insufficient_balance";
@@ -53,12 +54,14 @@ function parseUnlockRpcPayload(value: unknown): UnlockRpcPayload | null {
 	if (obj.status === "ok") {
 		if (
 			isStringArray(obj.newly_unlocked_song_ids) &&
-			isStringArray(obj.already_unlocked_song_ids)
+			isStringArray(obj.already_unlocked_song_ids) &&
+			typeof obj.credit_balance === "number"
 		) {
 			return {
 				status: "ok",
 				newly_unlocked_song_ids: obj.newly_unlocked_song_ids,
 				already_unlocked_song_ids: obj.already_unlocked_song_ids,
+				credit_balance: obj.credit_balance,
 			};
 		}
 		return null;
@@ -134,7 +137,7 @@ export async function requestSongUnlock(
 
 	const newlyUnlockedIds = payload.newly_unlocked_song_ids;
 	const alreadyUnlockedIds = payload.already_unlocked_song_ids;
-	const remainingBalance = billingState.creditBalance - newlyUnlockedIds.length;
+	const remainingBalance = payload.credit_balance;
 
 	if (newlyUnlockedIds.length > 0) {
 		const applyResult = await applyLibraryProcessingChange(

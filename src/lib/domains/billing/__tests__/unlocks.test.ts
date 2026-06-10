@@ -105,6 +105,7 @@ describe("requestSongUnlock", () => {
 					status: "ok",
 					newly_unlocked_song_ids: ["s1", "s2"],
 					already_unlocked_song_ids: ["s3"],
+					credit_balance: 3,
 				},
 				error: null,
 			},
@@ -135,6 +136,62 @@ describe("requestSongUnlock", () => {
 			accountId: "acc-1",
 			songIds: ["s1", "s2"],
 		});
+	});
+
+	it("returns the RPC's post-mutation balance, not the pre-RPC snapshot", async () => {
+		// Snapshot reads 5; a concurrent unlock charged between the read and this
+		// RPC, so the committed balance after charging 2 here is 1, not 5 - 2 = 3.
+		// The displayed balance must reflect the RPC's authoritative value.
+		mockedReadBillingState.mockResolvedValue(
+			Result.ok(makeBillingState({ creditBalance: 5 })),
+		);
+
+		const rpcFn = mockRpc({
+			unlock_songs_for_account: {
+				data: {
+					status: "ok",
+					newly_unlocked_song_ids: ["s1", "s2"],
+					already_unlocked_song_ids: [],
+					credit_balance: 1,
+				},
+				error: null,
+			},
+		});
+
+		const client = { rpc: rpcFn } as unknown as AdminSupabaseClient;
+
+		const result = await requestSongUnlock(client, "acc-1", ["s1", "s2"]);
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+
+		expect(result.value.remainingBalance).toBe(1);
+	});
+
+	it("returns db_error when RPC ok payload omits credit_balance", async () => {
+		mockedReadBillingState.mockResolvedValue(
+			Result.ok(makeBillingState({ creditBalance: 5 })),
+		);
+
+		const rpcFn = mockRpc({
+			unlock_songs_for_account: {
+				data: {
+					status: "ok",
+					newly_unlocked_song_ids: ["s1"],
+					already_unlocked_song_ids: [],
+				},
+				error: null,
+			},
+		});
+
+		const client = { rpc: rpcFn } as unknown as AdminSupabaseClient;
+
+		const result = await requestSongUnlock(client, "acc-1", ["s1"]);
+
+		expect(Result.isError(result)).toBe(true);
+		if (!Result.isError(result)) return;
+
+		expect(result.error.kind).toBe("db_error");
 	});
 
 	it("returns insufficient_balance error from structured RPC payload", async () => {
@@ -249,6 +306,7 @@ describe("requestSongUnlock", () => {
 					status: "ok",
 					newly_unlocked_song_ids: [],
 					already_unlocked_song_ids: ["s1", "s2"],
+					credit_balance: 5,
 				},
 				error: null,
 			},

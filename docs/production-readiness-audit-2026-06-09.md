@@ -399,10 +399,11 @@ Not blocking, but each has real production impact. Ordered by priority.
 
 ### Correctness
 
-24. [ ] **Stale credit balance returned after unlock** —
-        `src/lib/domains/billing/unlocks.ts:137` computes the displayed balance
-        from the pre-RPC snapshot; concurrent unlocks briefly show a wrong number
-        (DB stays correct). Return the post-mutation count from the RPC.
+24. [x] **Stale credit balance returned after unlock** —
+        `src/lib/domains/billing/unlocks.ts:137`. **Done (2026-06-10)** —
+        `unlock_songs_for_account` now returns the authoritative `credit_balance`
+        (migration `20260610150000`); orchestration uses it instead of the
+        pre-RPC snapshot. Regression test added.
 
 ### Ops
 
