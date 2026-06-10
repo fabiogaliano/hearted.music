@@ -371,6 +371,12 @@ Not blocking, but each has real production impact. Ordered by priority.
         `scripts/matching-lab/diagnose-embeddings.ts:5`,
         `backfill-playlist-songs.ts:22`, `server.ts:40`, `reprofile-playlists.ts:20`.
         Read from `SUPABASE_SERVICE_ROLE_KEY` env instead.
+        **Backlog (2026-06-10) — false alarm, not a prod risk.** Re-verified in
+        `scripts/matching-lab/shared.ts:12-15`: this is the well-known
+        `supabase-demo` *public default* service-role key that ships with
+        `supabase start`, hardcoded only in local-lab scripts pinned to
+        `127.0.0.1:54321`. It is not a production secret and never touches prod.
+        Env-ifying it is cosmetic hygiene; deferred to backlog.
 19. [x] **Extension CORS reflects `Access-Control-Request-Headers`** —
         `src/lib/server/extension-cors.ts`. **Done (2026-06-10)** — `Allow-Headers`
         now hardcoded to `"Authorization, Content-Type"` (the only headers the
@@ -381,6 +387,9 @@ Not blocking, but each has real production impact. Ordered by priority.
         passes; chunked bodies are fully buffered. Authenticated-only and CF caps
         bodies at ~100MB, so abuse-resistance only. Treat a missing header as
         suspect or check byte length after reading.
+        **Backlog (2026-06-10).** Re-confirmed at `sync.tsx:271`. Authenticated-only
+        + the CF ~100MB ceiling means this is abuse-resistance, not a hole — not
+        launch-blocking. Deferred to backlog.
 
 ### Performance
 
@@ -405,7 +414,7 @@ Not blocking, but each has real production impact. Ordered by priority.
 23. [ ] **GSAP + framer-motion in the initial bundle** —
         `src/features/landing/components/useHeroAnimation.ts:18` etc.; ~100KB gzip
         on every page for landing/onboarding-only libraries. Route-level code
-        splitting.
+        splitting. **Backlog (2026-06-10)** — perf polish, post-launch.
 
 ### Correctness
 
@@ -434,18 +443,31 @@ Not blocking, but each has real production impact. Ordered by priority.
         the job is marked completed (no DB trace), now also `captureException` to
         Sentry. `billing.functions.ts` is request-handler code, not worker; its
         server-side logging is deferred to a separate pass.
-26. [ ] **No staging target** — `wrangler.jsonc` has a single production route;
+26. [x] **No staging target** — `wrangler.jsonc` has a single production route;
         every deploy goes straight to `hearted.music`. Add an `env.staging` worker
         even without a custom domain.
+        **Won't do (2026-06-10) — accepted by decision.** Solo dev, small surface;
+        the cost of maintaining a staging worker isn't justified. Deploys go
+        straight to prod intentionally. The "staging rehearsal" is replaced by a
+        controlled first-run prod smoke test (see Go / No-Go) — the only part that
+        materially mattered was exercising the unproven large-library sync once
+        before real users hit it, which can be done in prod with the owner's own
+        account before any onboarding.
 27. [x] **Worker health server binds 127.0.0.1** — `src/worker/health.ts:16`. Works
         for the in-container Docker HEALTHCHECK, brittle for any external Coolify
         health URL. Bind `0.0.0.0`. **Done (2026-06-10)** — now binds `0.0.0.0`;
         the in-container HEALTHCHECK still hits `127.0.0.1`, which a wildcard bind
         accepts.
-28. [ ] **Worker PostHog OTEL reads `VITE_`-prefixed vars at runtime** —
+28. [x] **Worker PostHog OTEL reads `VITE_`-prefixed vars at runtime** —
         `src/worker/posthog-otel.ts:6-7`. If unset on the container, LLM cost
         tracking silently disables. Rename to non-VITE names for the worker and
-        document as required container env.
+        document as required container env. **Done (2026-06-10)** — the worker now
+        reads plain `POSTHOG_PROJECT_TOKEN` / `POSTHOG_HOST` (matching its other
+        `process.env` config), falling back to the legacy `VITE_PUBLIC_*` names so
+        an already-configured container doesn't regress. Documented as a required
+        Coolify worker container env in `.env.example`. typecheck + biome clean.
+        **Ops follow-up:** set `POSTHOG_PROJECT_TOKEN` (+ `POSTHOG_HOST`) on the
+        Coolify worker container, or LLM cost tracking stays dark.
 
 ### Database
 
@@ -566,12 +588,18 @@ Areas explicitly audited and found sound (with deliberate hardening evident):
 
 ## Go / No-Go
 
-**GO** as of 2026-06-10. All Group 1 blockers (1–9) are fixed. Seal with the
-full staging rehearsal carried over from `mvp-release-findings.md` (auth →
-onboarding → extension connect → sync → worker processing → matching → Spotify
-write-back), including the few-thousand-song library run from blocker #4.
-The flaws found were localized logic bugs, not architectural ones; everything
-that is usually fatal in a pre-launch audit came back clean.
+**GO** as of 2026-06-10. All Group 1 blockers (1–9) are fixed. The flaws found
+were localized logic bugs, not architectural ones; everything that is usually
+fatal in a pre-launch audit came back clean.
+
+**Staging dropped by decision (2026-06-10, see #26):** solo dev, small surface
+— no staging worker, deploys go straight to prod. The full staging rehearsal is
+replaced by a **controlled first-run prod smoke test**: after deploy and before
+pointing any real users at it, run the full flow (auth → onboarding → extension
+connect → sync → worker → matching → Spotify write-back) with the owner's own
+account, and crucially with a **few-thousand-song library** to exercise the
+unproven chunked-sync fix from blocker #4. That single large-library run is the
+one piece of the old rehearsal that materially mattered.
 
 ---
 
@@ -655,15 +683,19 @@ all are ops/packaging hardening for the brand service.
   minor inside the image; `1.2` is also a floating tag.
 - **Fix:** pin `oven/bun:1.3.14-alpine` (ideally by digest).
 
-#### B2. [ ] No graceful shutdown
+#### B2. [x] No graceful shutdown
 
-- **Where:** `v1_hearted_brand/src/index.ts:40` — `Bun.serve(...)` with no
-  `SIGTERM`/`SIGINT` handler.
-- **Impact:** a Coolify/Docker redeploy hard-kills in-flight webhook handlers
-  mid-transaction (e.g. fulfilled in DB but `markWebhookEvent("processed")`
-  never runs → stuck `processing` until the 5-min lease expires).
-- **Fix:** `process.on("SIGTERM", () => server.stop())` to drain in-flight
-  requests; set the container stop grace period above the longest handler.
+> **Done (2026-06-10)** — `src/index.ts` now installs SIGTERM/SIGINT handlers
+> that `await server.stop()` (Bun drains in-flight requests, refuses new ones),
+> then `Sentry.flush(2000)` and `process.exit(0)`, guarded by a `draining` flag
+> against double-fire — matching the worker's shutdown convention. The webhook
+> handlers are sub-second DB writes, so they finish well inside Docker's default
+> ~10s stop grace; the existing claim-lease + Stripe-retry path still backstops
+> the rare handler that outlives the grace period, so the container stop grace
+> was deliberately **not** widened (it just slows every deploy). The worker
+> (`src/worker/index.ts`) already had full graceful shutdown — this closes the
+> last gap, which was brand-only. Health-flip-to-draining and grace-period
+> widening were considered and declined as not worth it pre-prod.
 
 #### B3. [ ] No Dockerfile `HEALTHCHECK`
 
