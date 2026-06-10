@@ -25,7 +25,7 @@ correlation migration in this repo). Blocker **#3** (email verification now
 required) is fixed. Blocker **#6** (`VITE_PUBLIC_APP_ORIGIN` in CI) is fixed.
 Blocker **#4** (sync writes now chunked) is fixed — large-library staging run
 still owed. Blocker **#5** (`.max()` bounds on validated inputs) is fixed.
-Remaining Group 1 gate: **#7–#9**.
+Remaining Group 1 gate: **#9**.
 
 ---
 
@@ -185,7 +185,11 @@ Fix all of these before going live.
     ADD CONSTRAINT billing_admin_task_stripe_event_id_key UNIQUE (stripe_event_id);
   ```
 
-### 8. [ ] `oauth_account` lacks `UNIQUE(user_id, provider_id)`
+### 8. [x] `oauth_account` lacks `UNIQUE(user_id, provider_id)`
+
+> **Done (2026-06-10)** — migration
+> `20260610132645_add_oauth_account_unique_user_provider.sql` adds the unique
+> index and was applied locally.
 
 - **Area:** Database / Auth
 - **Where:** `supabase/migrations/20260303154135_add_better_auth_tables.sql:29`

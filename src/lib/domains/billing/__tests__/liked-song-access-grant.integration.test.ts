@@ -58,41 +58,31 @@ async function seedAccount(opts: {
 	return id;
 }
 
-async function seedSong(): Promise<string> {
-	const id = crypto.randomUUID();
-	await db()
-		.from("song")
-		.insert({ id, spotify_id: `sp-${id}`, name: `Song ${id}` })
-		.throwOnError();
-	createdSongIds.push(id);
-	return id;
-}
-
-async function likeSong(
-	accountId: string,
-	songId: string,
-	likedAt: string,
-): Promise<void> {
-	await db()
-		.from("liked_song")
-		.insert({ account_id: accountId, song_id: songId, liked_at: likedAt })
-		.throwOnError();
-}
-
 async function seedLikedSongs(
 	accountId: string,
 	count: number,
 ): Promise<string[]> {
-	const songIds: string[] = [];
-	for (let i = 0; i < count; i++) {
-		const songId = await seedSong();
-		await likeSong(
-			accountId,
-			songId,
-			new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
-		);
-		songIds.push(songId);
-	}
+	const songIds = Array.from({ length: count }, () => crypto.randomUUID());
+
+	await db()
+		.from("song")
+		.insert(
+			songIds.map((id) => ({ id, spotify_id: `sp-${id}`, name: `Song ${id}` })),
+		)
+		.throwOnError();
+	createdSongIds.push(...songIds);
+
+	await db()
+		.from("liked_song")
+		.insert(
+			songIds.map((songId, i) => ({
+				account_id: accountId,
+				song_id: songId,
+				liked_at: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+			})),
+		)
+		.throwOnError();
+
 	return songIds;
 }
 
