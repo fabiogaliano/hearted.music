@@ -638,7 +638,7 @@ describe("blendGenreDistribution", () => {
 	it("pills + 0 songs → pills only (equal split, sums to 1)", () => {
 		const result = blendGenreDistribution({}, ["hip-hop", "pop"]);
 		expect(result["hip-hop"]).toBeCloseTo(0.5);
-		expect(result["pop"]).toBeCloseTo(0.5);
+		expect(result.pop).toBeCloseTo(0.5);
 		const total = Object.values(result).reduce((s, v) => s + v, 0);
 		expect(total).toBeCloseTo(1);
 	});
@@ -648,7 +648,7 @@ describe("blendGenreDistribution", () => {
 		// 2 songs: rock+rock → rock=1, so observed fraction rock=1 * 0.5 = 0.5
 		const result = blendGenreDistribution({ rock: 2 }, ["hip-hop"]);
 		expect(result["hip-hop"]).toBeCloseTo(0.5);
-		expect(result["rock"]).toBeCloseTo(0.5);
+		expect(result.rock).toBeCloseTo(0.5);
 		const total = Object.values(result).reduce((s, v) => s + v, 0);
 		expect(total).toBeCloseTo(1);
 	});
@@ -660,10 +660,10 @@ describe("blendGenreDistribution", () => {
 		]);
 		// Declared: each pill gets 0.5/2 = 0.25
 		expect(result["hip-hop"]).toBeCloseTo(0.25);
-		expect(result["jazz"]).toBeCloseTo(0.25);
+		expect(result.jazz).toBeCloseTo(0.25);
 		// Observed: each genre gets (1/2)*0.5 = 0.25
-		expect(result["rock"]).toBeCloseTo(0.25);
-		expect(result["pop"]).toBeCloseTo(0.25);
+		expect(result.rock).toBeCloseTo(0.25);
+		expect(result.pop).toBeCloseTo(0.25);
 		const total = Object.values(result).reduce((s, v) => s + v, 0);
 		expect(total).toBeCloseTo(1);
 	});
@@ -672,14 +672,14 @@ describe("blendGenreDistribution", () => {
 		const result = blendGenreDistribution({}, ["hip-hop", "", "pop"]);
 		expect(Object.keys(result)).not.toContain("");
 		expect(result["hip-hop"]).toBeCloseTo(0.5);
-		expect(result["pop"]).toBeCloseTo(0.5);
+		expect(result.pop).toBeCloseTo(0.5);
 	});
 
 	it("pills that overlap with observed genres merge correctly, sums to 1", () => {
 		// pill = rock (0.5 from declared side)
 		// observed = rock (1 song, 100% observed → 0.5 from observed side)
 		const result = blendGenreDistribution({ rock: 1 }, ["rock"]);
-		expect(result["rock"]).toBeCloseTo(1.0);
+		expect(result.rock).toBeCloseTo(1.0);
 		const total = Object.values(result).reduce((s, v) => s + v, 0);
 		expect(total).toBeCloseTo(1);
 	});

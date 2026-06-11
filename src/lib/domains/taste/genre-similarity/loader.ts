@@ -26,7 +26,7 @@ import type { SimilarityTable } from "./types";
 const table = rawTable as unknown as SimilarityTable;
 
 // Read the artifact version for cache-invalidation wiring downstream.
-const rawMeta = (rawTable as Record<string, unknown>)["_meta"] as
+const rawMeta = (rawTable as Record<string, unknown>)._meta as
 	| Record<string, unknown>
 	| undefined;
 export const GENRE_TABLE_VERSION: string =
