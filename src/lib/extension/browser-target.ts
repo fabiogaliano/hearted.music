@@ -32,6 +32,57 @@ export function getExtensionStoreUrl(target: BrowserTarget): string {
 }
 
 /**
+ * Can this browser EVER run one of our builds? A third state `getBrowserTarget`
+ * can't express: it assumes a capable engine and only picks a store. This is the
+ * signal that distinguishes "Safari, never capable" from "Chrome, just not
+ * installed yet" — a `false` PING alone can't tell those apart, and they need
+ * different handoffs.
+ *
+ * Engine family alone is insufficient on Android: Chrome for Android is Chromium
+ * but has never supported extensions, while Firefox for Android does. So the
+ * classification keys off platform AND engine.
+ */
+export type EngineSupport = "chromium" | "firefox" | "unsupported";
+
+export function getEngineSupport(): EngineSupport {
+	// SSR: match getBrowserTarget's optimistic Chromium default so the server and
+	// first client paint agree; the real value is re-read after mount.
+	if (typeof navigator === "undefined") return "chromium";
+	const ua = navigator.userAgent;
+
+	// iOS forbids third-party extension engines, and every iOS browser ("Chrome"
+	// = CriOS, Firefox = FxiOS) is WebKit underneath. iPadOS 13+ reports a Mac UA,
+	// so a touch-capable "Macintosh" is really an iPad.
+	const isIOS =
+		/iphone|ipad|ipod/i.test(ua) ||
+		(/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+	if (isIOS) return "unsupported";
+
+	// Firefox (Gecko) — desktop and Android both run our Firefox build. Firefox
+	// Android is "capable" here; its small screen is the viewport gate's problem.
+	if (/firefox\//i.test(ua)) return "firefox";
+
+	// Android + anything-but-Firefox (Chrome, Samsung Internet, DeX) can't load
+	// extensions despite the Chromium engine.
+	if (/android/i.test(ua)) return "unsupported";
+
+	// Samsung Internet can't install our Chrome Web Store build on any platform
+	// (it has its own closed add-on gallery), and in DeX desktop mode its UA
+	// drops "Android" (reports X11; Linux) — so the platform check above misses
+	// it and its Chrome/ token would otherwise classify it as capable.
+	if (/samsungbrowser\//i.test(ua)) return "unsupported";
+
+	// Desktop Safari is WebKit with a Safari/ token and no Chromium brand. Every
+	// Chromium browser also carries "Safari" in its UA, so exclude them first.
+	// Deliberately no crios/ token: iOS Chrome is caught by the iOS branch, and
+	// keeping it out means a CriOS UA can never classify as capable.
+	const isChromium = /chrome\/|chromium\/|edg\/|opr\//i.test(ua);
+	if (!isChromium) return "unsupported";
+
+	return "chromium";
+}
+
+/**
  * Synchronous name from the UA string alone — safe at first paint. Covers the
  * brands that keep an identifying token; everything else (including Brave, Arc,
  * Dia, Helium) reads as "Chrome" here and may get upgraded by refineBrowserName.
