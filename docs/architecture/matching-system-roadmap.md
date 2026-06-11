@@ -1,7 +1,7 @@
 # Matching System — Consolidated Research & Roadmap
 
 **Date:** 2026-06-10 (consolidates research passes from 2026-06-06 and 2026-06-09; priorities revised same day after a data audit)
-**Status:** Research findings + prioritized plan. **Pre-prod #1 (fusion normalization), #3 (Qwen3 re-embed + instruct-format fix), #6 (decision-log enrichment), #2 (slim replay runner), and #4 (reranker fixes) implemented 2026-06-10** — see the findings below and `reranker-replay-runner.md`; #5 (genre pills) and #7 (hygiene leftovers) remain. **Priorities revised 2026-06-10:** a data audit found `match_decision` holds **10 decisions on 1 playlist from 1 account** — far below what recall@k/MRR/temporal-split can use. So #6 (decision-log enrichment, the time-sensitive item) was pulled to the front (now shipped), #2 is slimmed to a config-diff replay runner, and the full metrics harness is deferred to post-prod, gated on decision volume (see finding #6).
+**Status:** Research findings + prioritized plan. **Pre-prod #1 (fusion normalization), #3 (Qwen3 re-embed + instruct-format fix), #6 (decision-log enrichment), #2 (slim replay runner), and #4 (reranker fixes) implemented 2026-06-10** — see the findings below and `reranker-replay-runner.md`. **#5 Phase 1 (genre-pills backend/matching) + #7's genre-substring fix implemented 2026-06-11** (plan: `claudedocs/genre-pills-implementation-plan.md`, execution record: `claudedocs/genre-pills-phase1/`); the pills UI (Phase 2) and #7's dead-field cleanup remain. **Priorities revised 2026-06-10:** a data audit found `match_decision` holds **10 decisions on 1 playlist from 1 account** — far below what recall@k/MRR/temporal-split can use. So #6 (decision-log enrichment, the time-sensitive item) was pulled to the front (now shipped), #2 is slimmed to a config-diff replay runner, and the full metrics harness is deferred to post-prod, gated on decision volume (see finding #6).
 **Scope:** Cheap, modern (2025–2026) improvements to the song→playlist matching pipeline, plus the genre-pills feature. Hard constraint: no self-hosted GPU infra, no expensive per-request LLM calls.
 
 This document supersedes `matching-system-improvements.md` (2026-06-06) and
@@ -27,14 +27,19 @@ and corrected one stale priority. Where the two disagreed, the code-verified fin
 4. **Playlist profiling** — single **mean centroid** of member embeddings, blended with a
    name+description ("intent") embedding whose weight decays with song count
    (`computeIntentWeight`: base 0.35, ×1.5 with description, floor 0.3/0.15); plus an averaged
-   audio-feature centroid + genre distribution (raw counts).
+   audio-feature centroid + genre distribution (**normalized fractions as of 2026-06-11**;
+   user-declared genre pills, when set, hold a fixed 50% of the mass and seed the cold-start
+   distribution instead of the HyDE guess).
 5. **Fusion** — linear weighted: embedding cosine `0.50` + audio similarity `0.30` +
    genre overlap `0.20`. ~~Cosine stretched via `(sim − 0.5) / 0.5`.~~ **As of 2026-06-10**
    each signal is z-score-normalized (3σ-clipped, DBSF-style) across the whole batch matrix
    *before* the weighted sum — the 0.5 stretch is gone, raw cosine is forwarded, missing
    signals are excluded from each signal's stats. Top-K `10`. `minScoreThreshold` is now in
    normalized-fused units (`0.35`, provisional — see #2). Missing signals still redistribute
-   weight adaptively. (`song-matching/{normalization,service,config}.ts`)
+   weight adaptively. **As of 2026-06-11** playlists with declared genre pills switch base
+   weights to `{embedding 0.35, audio 0.25, genre 0.40}`, and genre overlap is scored via
+   canonical exact match + a curated directed genre-similarity table (see #5/#7).
+   (`song-matching/{normalization,service,config}.ts`)
 6. **Caching** — content hash on embeddings, profiles, and match snapshots.
 7. **Reranking** — top-50 reranked by `Qwen/Qwen3-Reranker-0.6B` (DeepInfra), blended 70/30
    with the original score. Reranker document is only `"{name} by {artists}. Genres: {g}."`.
@@ -65,8 +70,8 @@ older references and the completed-work notes still resolve.
 | 6 | ✅ **Decision-log enrichment:** FK each decision to the immutable `match_snapshot` it was served from + denormalized `served_rank`; completed `match_result` as the served record (`fused_score` + `normalized_factors`) — **done 2026-06-10** | hours | Every decision now reconstructs exactly what the user saw vs. chose. Surfaced (rank set) vs. implicit (rank NULL) negatives are queryable; per-decision factor features resolve via the `match_result` join — nothing is copied onto the decision row. ~5% rank jitter deferred (zero signal pre-traffic; `served_rank` is the future-enabling half). |
 | 2 | ✅ **Slim offline replay runner** over `match_decision`: run the *real* pipeline (fusion + normalization + threshold + reranker, not raw cosine) under a candidate config, diff config A vs B by ranks of added/dismissed — **done 2026-06-10** (see `reranker-replay-runner.md`) | ~½ day | The data-volume-independent core of the harness: a config *regression* tool, not a measurement tool. Lives in `scripts/matching-lab/replay/`. Deviation from the original "exclude MRR" framing: per-variant MRR/nDCG@10 *are* reported as directional secondaries (small-n IR practice), with an explicit directional-only warning in both console and JSON output below 200 trials; temporal split + segmentation stay excluded (post-prod #1). |
 | 4 | ✅ **Reranker fixes:** feed analysis text as the document; verify yes/no-logit scoring; A/B full-rerank vs 70/30 blend via #2 — **done 2026-06-10** (see `reranker-replay-runner.md`) | ~1 day | Found the reranker was **silently dead in prod** (wrong DeepInfra body shape → response validation failed → rerank skipped every call). Contract fixed + pinned by unit tests; document is now flattened analysis prose (shared with embedding text); canonical instruction threaded everywhere; local ONNX Qwen3-Reranker for keyless dev. A/B at n=16 was directional-only — no config promoted; pre-prod blocker: live DeepInfra smoke test (needs key). |
-| 5 | **Genre pills** (design below) | 2–4 days | Strongest cold-start evidence; product-visible; independent of #1–4. |
-| 7 | **Hygiene:** ~~delete or implement `vetoThreshold`~~ (deleted 2026-06-10 with #1); fix genre substring matching (canonical exact match + similarity expansion); remove dead fields | hours | Bundle with adjacent work. |
+| 5 | 🔶 **Genre pills** (design below) — **Phase 1 (backend/matching) done 2026-06-11**; UI (Phase 2) remains | 2–4 days | Strongest cold-start evidence; product-visible; independent of #1–4. |
+| 7 | **Hygiene:** ~~delete or implement `vetoThreshold`~~ (deleted 2026-06-10 with #1); ~~fix genre substring matching~~ (✅ 2026-06-11 with #5 — canonical exact match + curated directed adjacency table); remove dead fields | hours | Bundle with adjacent work. |
 
 ### Post-prod (gated on real usage data)
 
@@ -286,6 +291,26 @@ is worse than knowing you're unmeasured. So the remedy splits in three:
 User-selected genres at playlist creation/edit time, conditioning matching directly alongside
 the free-text description.
 
+**Phase 1 (backend/matching) shipped 2026-06-11** — plan in
+`claudedocs/genre-pills-implementation-plan.md`, per-task deviation logs in
+`claudedocs/genre-pills-phase1/`. Three design points below were revised in flight:
+
+- **Pills are persistent, not decaying** (product decision): they hold a fixed 50% of the
+  genre distribution until the user edits them, instead of pseudo-counts decaying like
+  `computeIntentWeight` (design point 2 below is superseded on this).
+- **The similarity table is NOT EveryNoise/embeddings** (design point 3 below is superseded).
+  That table was built first and failed review: Euclidean proximity in the EveryNoise 2D map
+  encodes sonic texture, not genre relatedness (rock↔hard rock scored 0 while
+  rock↔martial industrial scored 0.6). Replaced the same day by a hand-curated typed genre
+  graph in a standalone MIT repo (`/Users/f/Core/dev/clones/genresgraph-mit`): curators author
+  relations (subgenre/related/fusion), a compiler resolves them to a **directed** table
+  (parent→child 0.6, child→parent & siblings 0.45, related/fusion 0.5, two-hop ×0.75,
+  floor 0.3) and syncs the artifact into `src/lib/domains/taste/genre-similarity/table.json`.
+  A golden-pairs test gate in hearted's `loader.test.ts` makes a bad sync unlandable, and the
+  table version feeds the model-bundle hash so every sync auto-invalidates profiles/snapshots.
+- **Genre weight with pills landed at 0.40**, not the ~0.30 suggested in design point 2
+  ("strong steer" product decision; `MATCHING_ALGO_VERSION` bumped to v4).
+
 **Why it works (evidence):**
 - Spotify production ablation: removing onboarding-declared genre/artist signals costs
   **13.8%** on cold-start clusters (Spotify Research, Sept 2025).
@@ -326,11 +351,13 @@ the free-text description.
   Removed 2026-06-10 alongside the normalization change.
 - `MatchingPlaylistProfile.method`, `ProfileKind.context_v1` — declared, never written/read.
 - `emotion_distribution` always persisted as `{}` — dead column (`emotionEnabled: false`).
-- Genre scoring uses bidirectional **substring** matching (`song-matching/service.ts`):
+- ~~Genre scoring uses bidirectional **substring** matching (`song-matching/service.ts`):
   "rock" matches "post-rock"/"hard rock" (over-broad) while "electro" ≠ "electronic"
-  (under-broad). Replace with canonical exact match + the genre-similarity expansion table.
-- Genre distribution is raw counts, never normalized — fine for the ratio computed today,
-  a footgun for any future use.
+  (under-broad).~~ **Fixed 2026-06-11 (#5 Phase 1):** canonical exact match + the curated
+  directed adjacency table from the genresgraph repo.
+- ~~Genre distribution is raw counts, never normalized — fine for the ratio computed today,
+  a footgun for any future use.~~ **Fixed 2026-06-11:** stored as normalized fractions
+  (with the 50% pill blend when pills are set).
 - Matching is brute-force O(songs × playlists) in TypeScript; HNSW indexes on
   `song_embedding`/`playlist_profile` are never queried. Fine now, a scaling cliff later.
 - ~~`match_decision` stores only (account, song, playlist, decision, timestamp) — not the
