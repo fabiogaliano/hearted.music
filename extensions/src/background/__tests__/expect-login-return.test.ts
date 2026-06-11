@@ -103,6 +103,18 @@ describe("expect-login-return — 3-stage flow", () => {
 			).toBe("wait");
 		});
 
+		it("classifies challenge.spotify.com (OTP/verification) as wait, not abort", () => {
+			// Regression: on Firefox there is no tab.pendingUrl safety net, so a
+			// verification-code hop through challenge.spotify.com used to abort the
+			// armed flow before the token arrived, killing the return banner.
+			expect(
+				classifyCandidateNavigation("https://challenge.spotify.com/c/abc"),
+			).toBe("wait");
+			expect(classifyCandidateNavigation("https://www.spotify.com/")).toBe(
+				"wait",
+			);
+		});
+
 		it("classifies '' and about:blank as wait", () => {
 			expect(classifyCandidateNavigation("")).toBe("wait");
 			expect(classifyCandidateNavigation("about:blank")).toBe("wait");
@@ -504,6 +516,21 @@ describe("expect-login-return — 3-stage flow", () => {
 			const result = await applyNavigationUpdate({
 				tabId: 200,
 				url: "https://accounts.spotify.com/login",
+				pendingUrl: undefined,
+			});
+			expect(result).toBeNull();
+			expect((await getPendingLoginReturn())?.kind).toBe(
+				"awaitingSpotifyNavigation",
+			);
+		});
+
+		it("Firefox: challenge.spotify.com (verification code) with no pendingUrl keeps awaitingSpotifyNavigation, does not clear", async () => {
+			// Reproduces the Firefox return-banner failure: tab.pendingUrl is always
+			// undefined, so the OTP hop through challenge.spotify.com previously
+			// classified as abort and discarded the armed flow before the token.
+			const result = await applyNavigationUpdate({
+				tabId: 200,
+				url: "https://challenge.spotify.com/c/abc",
 				pendingUrl: undefined,
 			});
 			expect(result).toBeNull();

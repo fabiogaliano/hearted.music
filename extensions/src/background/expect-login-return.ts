@@ -39,7 +39,22 @@ export const ARM_BACK_SCAN_TOLERANCE_MS = 5_000;
 export const ARM_FORWARD_CLAIM_WINDOW_MS = 3_000;
 
 const SPOTIFY_OPEN_URL_PREFIX = "https://open.spotify.com/";
-const SPOTIFY_ACCOUNTS_URL_PREFIX = "https://accounts.spotify.com/";
+
+// Any spotify.com host (accounts, challenge, www, login, …) is part of the
+// login journey, not a navigation away from it. Firefox exposes no
+// tab.pendingUrl, so the multi-hop login redirect — notably
+// challenge.spotify.com during OTP/verification-code entry — must classify as
+// an intermediate "wait", never an "abort" that discards the armed flow before
+// the token lands. Matched on hostname suffix so look-alikes like
+// spotify.example.com are not treated as Spotify.
+function isSpotifyComHost(rawUrl: string): boolean {
+	try {
+		const { hostname } = new URL(rawUrl);
+		return hostname === "spotify.com" || hostname.endsWith(".spotify.com");
+	} catch {
+		return false;
+	}
+}
 
 export type PendingLoginReturn =
 	| {
@@ -146,7 +161,7 @@ export type NavigationDecision = "confirm" | "wait" | "abort";
 export function classifyCandidateNavigation(url: string): NavigationDecision {
 	if (url === "" || url === "about:blank") return "wait";
 	if (url.startsWith(SPOTIFY_OPEN_URL_PREFIX)) return "confirm";
-	if (url.startsWith(SPOTIFY_ACCOUNTS_URL_PREFIX)) return "wait";
+	if (isSpotifyComHost(url)) return "wait";
 	return "abort";
 }
 
@@ -209,20 +224,10 @@ function hasVisibleSpotifyUrlHint(candidate: {
 	url: string | undefined;
 	pendingUrl: string | undefined;
 }): boolean {
-	const pendingUrl = candidate.pendingUrl;
-	if (
-		typeof pendingUrl === "string" &&
-		(pendingUrl.startsWith(SPOTIFY_OPEN_URL_PREFIX) ||
-			pendingUrl.startsWith(SPOTIFY_ACCOUNTS_URL_PREFIX))
-	) {
-		return true;
-	}
-
-	const url = candidate.url;
 	return (
-		typeof url === "string" &&
-		(url.startsWith(SPOTIFY_OPEN_URL_PREFIX) ||
-			url.startsWith(SPOTIFY_ACCOUNTS_URL_PREFIX))
+		(typeof candidate.pendingUrl === "string" &&
+			isSpotifyComHost(candidate.pendingUrl)) ||
+		(typeof candidate.url === "string" && isSpotifyComHost(candidate.url))
 	);
 }
 

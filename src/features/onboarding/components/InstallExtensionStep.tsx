@@ -15,6 +15,13 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/kbd";
+import {
+	type BrowserTarget,
+	getBrowserName,
+	getBrowserTarget,
+	getExtensionStoreUrl,
+	refineBrowserName,
+} from "@/lib/extension/browser-target";
 import { pairExtension } from "@/lib/extension/connect";
 import {
 	getSpotifyConnectionStatus,
@@ -29,8 +36,6 @@ import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import { ExtensionSetupTrail } from "./ExtensionSetupTrail";
 import { StaggeredContent } from "./StaggeredContent";
 
-const EXTENSION_STORE_URL =
-	"https://chromewebstore.google.com/detail/everything-you-ever-heart/ohaaafmgbbfohhjhogonolonpjhhfohk";
 const SPOTIFY_LOGIN_URL =
 	"https://accounts.spotify.com/en-GB/login?continue=https%3A%2F%2Fopen.spotify.com%2F";
 
@@ -42,6 +47,8 @@ function ActionContent({
 	onAccept,
 	onSpotifyLoginClick,
 	spotifyLoginHref,
+	storeUrl,
+	browserLabel,
 	isAdvancing,
 }: {
 	isExtensionDetected: boolean;
@@ -49,6 +56,8 @@ function ActionContent({
 	onAccept: () => void;
 	onSpotifyLoginClick: (event: MouseEvent<HTMLAnchorElement>) => void;
 	spotifyLoginHref: string;
+	storeUrl: string;
+	browserLabel: string;
 	isAdvancing: boolean;
 }) {
 	const isReadyToSync = isExtensionDetected && isSpotifyConnected;
@@ -119,13 +128,13 @@ function ActionContent({
 					</p>
 				</div>
 				<a
-					href={EXTENSION_STORE_URL}
+					href={storeUrl}
 					target="_blank"
 					rel="noopener noreferrer"
 					className="hover-border-brighten self-start inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2 text-sm font-medium uppercase tracking-widest active:scale-[0.98]"
 					style={{ fontFamily: fonts.body }}
 				>
-					add to Chrome
+					add to {browserLabel}
 					<span className="theme-text-muted text-xs">↗</span>
 				</a>
 			</>
@@ -172,6 +181,31 @@ export function InstallExtensionStep() {
 	const [isExtensionDetected, setIsExtensionDetected] = useState(false);
 	const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
 	const [isAdvancing, setIsAdvancing] = useState(false);
+
+	// Seeded to the SSR-safe Chromium defaults so server and first client render
+	// agree; the real browser is detected after mount (Brave/Arc need async or
+	// post-load checks), then the label and store URL upgrade in place.
+	const [browserTarget, setBrowserTarget] = useState<BrowserTarget>("chromium");
+	const [browserLabel, setBrowserLabel] = useState("Chrome");
+	const storeUrl = getExtensionStoreUrl(browserTarget);
+
+	useEffect(() => {
+		let cancelled = false;
+		const detect = async () => {
+			const target = getBrowserTarget();
+			const label = await refineBrowserName(getBrowserName());
+			if (cancelled) return;
+			setBrowserTarget(target);
+			setBrowserLabel(label);
+		};
+		detect();
+		// Arc only injects its palette vars after load — re-check once shortly after.
+		const arcRecheck = setTimeout(detect, 1_200);
+		return () => {
+			cancelled = true;
+			clearTimeout(arcRecheck);
+		};
+	}, []);
 
 	const spotifyLoginHref = SPOTIFY_LOGIN_URL;
 	const handleSpotifyLoginClick = useMemo(
@@ -281,7 +315,8 @@ export function InstallExtensionStep() {
 								maxWidth: "26ch",
 							}}
 						>
-							a small Chrome extension reads your library and sends it here.
+							a small {browserLabel} extension reads your library and sends it
+							here.
 						</p>
 
 						<div className="mt-6">
@@ -303,6 +338,8 @@ export function InstallExtensionStep() {
 							onAccept={handleAccept}
 							onSpotifyLoginClick={handleSpotifyLoginClick}
 							spotifyLoginHref={spotifyLoginHref}
+							storeUrl={storeUrl}
+							browserLabel={browserLabel}
 							isAdvancing={isAdvancing}
 						/>
 					</div>
