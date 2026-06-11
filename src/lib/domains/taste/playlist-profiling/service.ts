@@ -234,7 +234,6 @@ export class PlaylistProfilingService {
 						embedding: hydeEmbedding ? JSON.stringify(hydeEmbedding) : null,
 						audio_centroid: coldStartAudioCentroid as Json,
 						genre_distribution: coldStartGenres as Json,
-						emotion_distribution: {} as Json,
 						song_count: 0,
 						song_ids: [],
 					});
@@ -291,7 +290,6 @@ export class PlaylistProfilingService {
 				embedding: profile.embedding ? JSON.stringify(profile.embedding) : null,
 				audio_centroid: profile.audioCentroid as Json,
 				genre_distribution: profile.genreDistribution as Json,
-				emotion_distribution: {} as Json,
 				song_count: profile.songCount,
 				song_ids: profile.songIds,
 			});

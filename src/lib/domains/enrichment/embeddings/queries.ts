@@ -48,7 +48,6 @@ export type UpsertPlaylistProfile = Pick<
 	| "embedding"
 	| "audio_centroid"
 	| "genre_distribution"
-	| "emotion_distribution"
 	| "song_count"
 	| "song_ids"
 >;
@@ -233,7 +232,6 @@ export function upsertPlaylistProfile(
 					embedding: data.embedding ?? null,
 					audio_centroid: (data.audio_centroid as Json) ?? null,
 					genre_distribution: (data.genre_distribution as Json) ?? null,
-					emotion_distribution: (data.emotion_distribution as Json) ?? null,
 					song_count: data.song_count ?? 0,
 					song_ids: data.song_ids ?? null,
 				},

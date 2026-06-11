@@ -191,7 +191,6 @@ export interface MatchingPlaylistProfile {
 	readonly embedding: number[] | null;
 	readonly audioCentroid: Record<string, number>;
 	readonly genreDistribution: Record<string, number>;
-	readonly method?: "learned_from_songs" | "from_description";
 	/**
 	 * True when the user has declared at least one genre pill for this playlist.
 	 * The matcher uses this to select a higher genre weight (0.40 vs 0.20).

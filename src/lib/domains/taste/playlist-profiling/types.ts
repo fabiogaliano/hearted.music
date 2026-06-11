@@ -6,7 +6,7 @@ import type { DbError } from "@/lib/shared/errors/database";
 import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
 
 /** Profile computation method */
-export type ProfileKind = "content_v1" | "context_v1";
+export type ProfileKind = "content_v1";
 
 /** Aggregated audio features centroid */
 export interface AudioCentroid {

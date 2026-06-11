@@ -22,7 +22,6 @@ const baseBundle: ModelBundle = {
 	},
 	enrichment: {
 		genreSource: "lastfm",
-		emotionEnabled: false,
 		playlistProfiling: {
 			strategy: "hyde_v1",
 			usesIntentQueryEmbedding: true,

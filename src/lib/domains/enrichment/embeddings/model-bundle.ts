@@ -72,8 +72,6 @@ interface PlaylistProfilingConfig {
 interface EnrichmentConfig {
 	/** Primary genre source */
 	genreSource: "lastfm" | "spotify" | "combined";
-	/** Whether emotion analysis is enabled */
-	emotionEnabled: boolean;
 	/** Playlist profiling strategy — changes here auto-invalidate cached profiles */
 	playlistProfiling: PlaylistProfilingConfig;
 }
@@ -134,7 +132,6 @@ export function getActiveModelBundle(): Result<ModelBundle, MLProviderError> {
 		},
 		enrichment: {
 			genreSource: "lastfm",
-			emotionEnabled: false,
 			playlistProfiling: {
 				strategy: "hyde_v1",
 				usesIntentQueryEmbedding: true,

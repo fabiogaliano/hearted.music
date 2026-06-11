@@ -1,7 +1,7 @@
 # Matching System — Consolidated Research & Roadmap
 
 **Date:** 2026-06-10 (consolidates research passes from 2026-06-06 and 2026-06-09; priorities revised same day after a data audit)
-**Status:** Research findings + prioritized plan. **Pre-prod #1 (fusion normalization), #3 (Qwen3 re-embed + instruct-format fix), #6 (decision-log enrichment), #2 (slim replay runner), and #4 (reranker fixes) implemented 2026-06-10** — see the findings below and `reranker-replay-runner.md`. **#5 Phase 1 (genre-pills backend/matching) + #7's genre-substring fix implemented 2026-06-11** (plan: `claudedocs/genre-pills-implementation-plan.md`, execution record: `claudedocs/genre-pills-phase1/`); the pills UI (Phase 2) and #7's dead-field cleanup remain. **Priorities revised 2026-06-10:** a data audit found `match_decision` holds **10 decisions on 1 playlist from 1 account** — far below what recall@k/MRR/temporal-split can use. So #6 (decision-log enrichment, the time-sensitive item) was pulled to the front (now shipped), #2 is slimmed to a config-diff replay runner, and the full metrics harness is deferred to post-prod, gated on decision volume (see finding #6).
+**Status:** Research findings + prioritized plan. **Pre-prod #1 (fusion normalization), #3 (Qwen3 re-embed + instruct-format fix), #6 (decision-log enrichment), #2 (slim replay runner), and #4 (reranker fixes) implemented 2026-06-10** — see the findings below and `reranker-replay-runner.md`. **#5 Phase 1 (genre-pills backend/matching) + #7's genre-substring fix implemented 2026-06-11** (plan: `claudedocs/genre-pills-implementation-plan.md`, execution record: `claudedocs/genre-pills-phase1/`). **#7's dead-field cleanup implemented 2026-06-11** (dropped the `emotion_distribution` column + `emotionEnabled` flag, `MatchingPlaylistProfile.method`, and the unused `ProfileKind.context_v1` variant). The pills UI (Phase 2) remains. **Priorities revised 2026-06-10:** a data audit found `match_decision` holds **10 decisions on 1 playlist from 1 account** — far below what recall@k/MRR/temporal-split can use. So #6 (decision-log enrichment, the time-sensitive item) was pulled to the front (now shipped), #2 is slimmed to a config-diff replay runner, and the full metrics harness is deferred to post-prod, gated on decision volume (see finding #6).
 **Scope:** Cheap, modern (2025–2026) improvements to the song→playlist matching pipeline, plus the genre-pills feature. Hard constraint: no self-hosted GPU infra, no expensive per-request LLM calls.
 
 This document supersedes `matching-system-improvements.md` (2026-06-06) and
@@ -71,7 +71,7 @@ older references and the completed-work notes still resolve.
 | 2 | ✅ **Slim offline replay runner** over `match_decision`: run the *real* pipeline (fusion + normalization + threshold + reranker, not raw cosine) under a candidate config, diff config A vs B by ranks of added/dismissed — **done 2026-06-10** (see `reranker-replay-runner.md`) | ~½ day | The data-volume-independent core of the harness: a config *regression* tool, not a measurement tool. Lives in `scripts/matching-lab/replay/`. Deviation from the original "exclude MRR" framing: per-variant MRR/nDCG@10 *are* reported as directional secondaries (small-n IR practice), with an explicit directional-only warning in both console and JSON output below 200 trials; temporal split + segmentation stay excluded (post-prod #1). |
 | 4 | ✅ **Reranker fixes:** feed analysis text as the document; verify yes/no-logit scoring; A/B full-rerank vs 70/30 blend via #2 — **done 2026-06-10** (see `reranker-replay-runner.md`) | ~1 day | Found the reranker was **silently dead in prod** (wrong DeepInfra body shape → response validation failed → rerank skipped every call). Contract fixed + pinned by unit tests; document is now flattened analysis prose (shared with embedding text); canonical instruction threaded everywhere; local ONNX Qwen3-Reranker for keyless dev. A/B at n=16 was directional-only — no config promoted; pre-prod blocker: live DeepInfra smoke test (needs key). |
 | 5 | 🔶 **Genre pills** (design below) — **Phase 1 (backend/matching) done 2026-06-11**; UI (Phase 2) remains | 2–4 days | Strongest cold-start evidence; product-visible; independent of #1–4. |
-| 7 | **Hygiene:** ~~delete or implement `vetoThreshold`~~ (deleted 2026-06-10 with #1); ~~fix genre substring matching~~ (✅ 2026-06-11 with #5 — canonical exact match + curated directed adjacency table); remove dead fields | hours | Bundle with adjacent work. |
+| 7 | ✅ **Hygiene:** ~~delete or implement `vetoThreshold`~~ (deleted 2026-06-10 with #1); ~~fix genre substring matching~~ (✅ 2026-06-11 with #5 — canonical exact match + curated directed adjacency table); ~~remove dead fields~~ (✅ 2026-06-11 — `emotion_distribution` column + `emotionEnabled` flag, `MatchingPlaylistProfile.method`, `ProfileKind.context_v1`) | hours | Done. |
 
 ### Post-prod (gated on real usage data)
 
@@ -349,8 +349,12 @@ the free-text description.
 
 - ~~`vetoThreshold: 0.2` configured (`song-matching/config.ts`) but never branched on — dead.~~
   Removed 2026-06-10 alongside the normalization change.
-- `MatchingPlaylistProfile.method`, `ProfileKind.context_v1` — declared, never written/read.
-- `emotion_distribution` always persisted as `{}` — dead column (`emotionEnabled: false`).
+- ~~`MatchingPlaylistProfile.method`, `ProfileKind.context_v1` — declared, never written/read.~~
+  **Removed 2026-06-11 (#7):** the `method` field and the unused `context_v1` variant deleted.
+- ~~`emotion_distribution` always persisted as `{}` — dead column (`emotionEnabled: false`).~~
+  **Removed 2026-06-11 (#7):** column dropped (migration `20260611120000`), `emotionEnabled`
+  flag deleted from the model bundle, write sites removed. The bundle-hash change re-invalidates
+  cached profiles/snapshots (harmless pre-prod — they recompute on next access).
 - ~~Genre scoring uses bidirectional **substring** matching (`song-matching/service.ts`):
   "rock" matches "post-rock"/"hard rock" (over-broad) while "electro" ≠ "electronic"
   (under-broad).~~ **Fixed 2026-06-11 (#5 Phase 1):** canonical exact match + the curated

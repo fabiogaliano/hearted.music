@@ -1311,7 +1311,6 @@ export type Database = {
 					created_at: string;
 					dims: number;
 					embedding: string | null;
-					emotion_distribution: Json | null;
 					genre_distribution: Json | null;
 					id: string;
 					kind: string;
@@ -1327,7 +1326,6 @@ export type Database = {
 					created_at?: string;
 					dims: number;
 					embedding?: string | null;
-					emotion_distribution?: Json | null;
 					genre_distribution?: Json | null;
 					id?: string;
 					kind: string;
@@ -1343,7 +1341,6 @@ export type Database = {
 					created_at?: string;
 					dims?: number;
 					embedding?: string | null;
-					emotion_distribution?: Json | null;
 					genre_distribution?: Json | null;
 					id?: string;
 					kind?: string;
