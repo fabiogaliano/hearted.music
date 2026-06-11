@@ -10,11 +10,25 @@ const mockIsExtensionInstalled = vi.fn();
 const mockTriggerExtensionSync = vi.fn();
 const mockResetSyncJobs = vi.fn();
 const mockArmLoginReturn = vi.fn();
+const mockUseOnboardingCapability = vi.fn();
+
+const CAPABLE = {
+	engine: "chromium" as const,
+	engineSupported: true,
+	bigScreen: true,
+	canOnboardHere: true,
+};
 
 vi.mock("@/lib/keyboard/useShortcut", () => setupShortcutMock());
 vi.mock("../hooks/useOnboardingNavigation", () =>
 	setupOnboardingNavigationMock(),
 );
+// The install flow assumes a capable device; jsdom's UA reads as unsupported and
+// the stubbed matchMedia reads as small, so without this the gate would render
+// the handoff. Tests that care about the gate override the return value.
+vi.mock("../hooks/useOnboardingCapability", () => ({
+	useOnboardingCapability: () => mockUseOnboardingCapability(),
+}));
 vi.mock("@/lib/server/onboarding.functions", () => ({
 	resetSyncJobs: () => mockResetSyncJobs(),
 }));
@@ -38,6 +52,25 @@ describe("InstallExtensionStep", () => {
 		mockIsExtensionInstalled.mockResolvedValue(true);
 		mockGetSpotifyConnectionStatus.mockResolvedValue(false);
 		mockArmLoginReturn.mockResolvedValue(true);
+		mockUseOnboardingCapability.mockReturnValue(CAPABLE);
+	});
+
+	it("renders the finish-on-a-computer handoff when the device can't onboard here", async () => {
+		mockUseOnboardingCapability.mockReturnValue({
+			engine: "unsupported",
+			engineSupported: false,
+			bigScreen: false,
+			canOnboardHere: false,
+		});
+
+		render(<InstallExtensionStep />);
+
+		expect(await screen.findByText(/finish setting up/i)).toBeInTheDocument();
+		// The install CTA must be gone — that dead-end is exactly what the gate fixes.
+		expect(
+			screen.queryByRole("link", { name: /log in to spotify/i }),
+		).toBeNull();
+		expect(mockIsExtensionInstalled).not.toHaveBeenCalled();
 	});
 
 	it("renders a stable login href and arms a tokenized continue destination on click", async () => {

@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MatchesSection } from "@/features/matching/components/MatchesSection";
 import { SongSection } from "@/features/matching/components/SongSection";
+import { SetupOnComputerNoticeGate } from "@/features/onboarding/components/SetupOnComputerNotice";
 import { getDemoMatchesForSong } from "@/lib/content/landing/demo-matches";
 import {
 	type LandingSongDetail,
@@ -221,6 +222,7 @@ export function Landing({
 				<div className="mt-10 flex justify-center">
 					{isReleased ? <SpotifyLoginButton /> : <WaitlistInput />}
 				</div>
+				{isReleased && <SetupOnComputerNoticeGate className="mt-6 max-w-sm" />}
 			</section>
 
 			<footer className="theme-border-color theme-text-muted border-t px-8 py-8 text-center text-sm lg:px-16">

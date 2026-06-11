@@ -36,6 +36,8 @@ type LoginFormProps = {
 	notice: string | null;
 	loading: LoadingState;
 	initialPanel?: Panel;
+	/** Optional slot below the CTA — the capability pre-warning on mobile/Safari. */
+	banner?: React.ReactNode;
 };
 
 // Bar movement = on-screen element relocating → ease-in-out (skill rule).
@@ -66,6 +68,7 @@ export function LoginForm({
 	notice,
 	loading,
 	initialPanel = "choice",
+	banner,
 }: LoginFormProps) {
 	const [panel, setPanel] = useState<Panel>(initialPanel);
 	const isBusy = loading !== null;
@@ -172,6 +175,8 @@ export function LoginForm({
 						</motion.div>
 					)}
 				</AnimatePresence>
+
+				{banner}
 			</div>
 		</AuthPage>
 	);

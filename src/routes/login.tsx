@@ -14,6 +14,7 @@ import {
 	type LoginMode,
 	type SubmitHandler,
 } from "@/features/auth/LoginForm";
+import { SetupOnComputerNoticeGate } from "@/features/onboarding/components/SetupOnComputerNotice";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import { signIn, signUp } from "@/lib/platform/auth/auth-client";
 import { getAuthSession } from "@/lib/server/auth.functions";
@@ -135,6 +136,7 @@ function LoginPage() {
 			error={error}
 			notice={notice}
 			loading={loading}
+			banner={<SetupOnComputerNoticeGate />}
 		/>
 	);
 }

@@ -32,8 +32,10 @@ import { armReconnectOnActivation } from "@/lib/extension/reconnect-link";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { resetSyncJobs } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
+import { useOnboardingCapability } from "../hooks/useOnboardingCapability";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import { ExtensionSetupTrail } from "./ExtensionSetupTrail";
+import { OnboardingHandoff } from "./OnboardingHandoff";
 import { StaggeredContent } from "./StaggeredContent";
 
 const SPOTIFY_LOGIN_URL =
@@ -178,6 +180,7 @@ function ActionContent({
 
 export function InstallExtensionStep() {
 	const { goToStep } = useOnboardingNavigation();
+	const capability = useOnboardingCapability();
 	const [isExtensionDetected, setIsExtensionDetected] = useState(false);
 	const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
 	const [isAdvancing, setIsAdvancing] = useState(false);
@@ -252,6 +255,10 @@ export function InstallExtensionStep() {
 	// Extension polling (2s). Once detected, switches to Spotify polling (3s).
 	// The Spotify branch also re-checks the extension so disabling mid-flow resets state.
 	useEffect(() => {
+		// No point pinging from a device that can't finish the sync here — it
+		// renders the handoff instead of the install flow.
+		if (!capability.canOnboardHere) return;
+
 		if (!isExtensionDetected) {
 			let cancelled = false;
 			const check = async () => {
@@ -283,7 +290,7 @@ export function InstallExtensionStep() {
 			cancelled = true;
 			clearInterval(intervalId);
 		};
-	}, [isExtensionDetected]);
+	}, [isExtensionDetected, capability.canOnboardHere]);
 
 	useShortcut({
 		key: "enter",
@@ -292,6 +299,14 @@ export function InstallExtensionStep() {
 		scope: "onboarding-extension",
 		enabled: isExtensionDetected && isSpotifyConnected && !isAdvancing,
 	});
+
+	// SSR and hydration render optimistically capable; useSyncExternalStore
+	// re-syncs the real capability before paint, so neither branch flashes. An
+	// unsupported engine or a too-small screen gets the "finish on a computer"
+	// handoff instead of the perpetual "Add to <browser>" dead-end.
+	if (!capability.canOnboardHere) {
+		return <OnboardingHandoff />;
+	}
 
 	return (
 		<>
