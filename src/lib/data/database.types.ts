@@ -1209,6 +1209,7 @@ export type Database = {
 					account_id: string;
 					created_at: string;
 					description: string | null;
+					genre_pills: string[];
 					id: string;
 					image_url: string | null;
 					is_public: boolean | null;
@@ -1223,6 +1224,7 @@ export type Database = {
 					account_id: string;
 					created_at?: string;
 					description?: string | null;
+					genre_pills?: string[];
 					id?: string;
 					image_url?: string | null;
 					is_public?: boolean | null;
@@ -1237,6 +1239,7 @@ export type Database = {
 					account_id?: string;
 					created_at?: string;
 					description?: string | null;
+					genre_pills?: string[];
 					id?: string;
 					image_url?: string | null;
 					is_public?: boolean | null;

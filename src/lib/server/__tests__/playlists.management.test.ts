@@ -9,6 +9,7 @@ import {
 	flushPlaylistManagementSession,
 	getPlaylistManagementData,
 	getPlaylistTracksPage,
+	savePlaylistGenrePills,
 	setPlaylistTargetMutation,
 } from "../playlists.functions";
 
@@ -21,6 +22,7 @@ const {
 	mockGetSongsByIds,
 	mockSetPlaylistTarget,
 	mockApplyLibraryProcessingChange,
+	mockUpdatePlaylistGenrePills,
 } = vi.hoisted(() => ({
 	mockAuthContext: {
 		session: { accountId: "acct-1" },
@@ -33,6 +35,7 @@ const {
 	mockGetSongsByIds: vi.fn(),
 	mockSetPlaylistTarget: vi.fn(),
 	mockApplyLibraryProcessingChange: vi.fn(),
+	mockUpdatePlaylistGenrePills: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", () => {
@@ -69,6 +72,8 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	deletePlaylist: vi.fn(),
 	setPlaylistTarget: (...args: unknown[]) => mockSetPlaylistTarget(...args),
 	updatePlaylistMetadata: vi.fn(),
+	updatePlaylistGenrePills: (...args: unknown[]) =>
+		mockUpdatePlaylistGenrePills(...args),
 }));
 
 vi.mock("@/lib/domains/library/songs/queries", () => ({
@@ -92,6 +97,7 @@ function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
 		song_count: 0,
 		is_target: false,
 		image_url: null,
+		genre_pills: [],
 		created_at: "2026-03-28T00:00:00Z",
 		updated_at: "2026-03-28T00:00:00Z",
 		...overrides,
@@ -517,5 +523,132 @@ describe("flushPlaylistManagementSession", () => {
 
 		expect(result.flushed).toBe(false);
 		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+	});
+});
+
+describe("savePlaylistGenrePills", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockGetPlaylistById.mockResolvedValue(
+			Result.ok(makePlaylist({ account_id: "acct-1" })),
+		);
+		mockUpdatePlaylistGenrePills.mockResolvedValue(
+			Result.ok(makePlaylist({ genre_pills: ["rock", "pop"] })),
+		);
+		mockApplyLibraryProcessingChange.mockResolvedValue(
+			Result.ok(makeApplyOutcome()),
+		);
+	});
+
+	it("sanitizes input genres before writing", async () => {
+		// "hip hop" canonicalizes to "hip-hop"; "happy" is not in the whitelist
+		await savePlaylistGenrePills({
+			data: { playlistId: "uuid-1", genres: ["hip hop", "happy", "rock"] },
+		});
+
+		expect(mockUpdatePlaylistGenrePills).toHaveBeenCalledWith(
+			"acct-1",
+			"uuid-1",
+			["hip-hop", "rock"],
+		);
+	});
+
+	it("caps sanitized output at 5 genres", async () => {
+		const sixValid = ["rock", "pop", "jazz", "metal", "folk", "electronic"];
+		await savePlaylistGenrePills({
+			data: { playlistId: "uuid-1", genres: sixValid },
+		});
+
+		const [, , pills] = mockUpdatePlaylistGenrePills.mock.calls[0] as [
+			string,
+			string,
+			string[],
+		];
+		expect(pills).toHaveLength(5);
+	});
+
+	it("returns success with the sanitized pills", async () => {
+		mockUpdatePlaylistGenrePills.mockResolvedValue(
+			Result.ok(makePlaylist({ genre_pills: ["rock"] })),
+		);
+
+		const result = await savePlaylistGenrePills({
+			data: { playlistId: "uuid-1", genres: ["rock"] },
+		});
+
+		expect(result).toEqual({ success: true, pills: ["rock"] });
+	});
+
+	it("throws when the playlist is not found", async () => {
+		mockGetPlaylistById.mockResolvedValue(Result.ok(null));
+
+		await expect(
+			savePlaylistGenrePills({
+				data: { playlistId: "uuid-1", genres: ["rock"] },
+			}),
+		).rejects.toThrow("Playlist not found");
+	});
+
+	it("throws when the playlist belongs to another account", async () => {
+		mockGetPlaylistById.mockResolvedValue(
+			Result.ok(makePlaylist({ account_id: "acct-other" })),
+		);
+
+		await expect(
+			savePlaylistGenrePills({
+				data: { playlistId: "uuid-1", genres: ["rock"] },
+			}),
+		).rejects.toThrow("Playlist not found");
+
+		expect(mockUpdatePlaylistGenrePills).not.toHaveBeenCalled();
+	});
+
+	it("throws when the DB write fails", async () => {
+		mockUpdatePlaylistGenrePills.mockResolvedValue(
+			Result.err(new DatabaseError({ code: "42000", message: "db error" })),
+		);
+
+		await expect(
+			savePlaylistGenrePills({
+				data: { playlistId: "uuid-1", genres: ["rock"] },
+			}),
+		).rejects.toThrow("Failed to save genre pills");
+	});
+
+	it("fires a metadata-changed session-flushed change to advance matchSnapshotRefresh", async () => {
+		await savePlaylistGenrePills({
+			data: { playlistId: "uuid-1", genres: ["rock"] },
+		});
+
+		expect(mockApplyLibraryProcessingChange).toHaveBeenCalledWith(
+			PlaylistManagementChanges.sessionFlushed({
+				accountId: "acct-1",
+				targetMembershipChanged: false,
+				targetMetadataChanged: true,
+			}),
+		);
+	});
+
+	it("succeeds even when snapshot invalidation fails (non-fatal)", async () => {
+		mockApplyLibraryProcessingChange.mockResolvedValue(
+			Result.err({
+				kind: "load_state",
+				cause: new DatabaseError({ code: "42000", message: "state error" }),
+			}),
+		);
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		const result = await savePlaylistGenrePills({
+			data: { playlistId: "uuid-1", genres: ["rock"] },
+		});
+
+		expect(result.success).toBe(true);
+		expect(errorSpy).toHaveBeenCalledWith(
+			expect.stringContaining(
+				"genre pills saved but snapshot invalidation failed",
+			),
+			expect.anything(),
+		);
+		errorSpy.mockRestore();
 	});
 });

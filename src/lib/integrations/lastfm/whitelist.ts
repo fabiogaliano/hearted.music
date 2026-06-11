@@ -487,3 +487,34 @@ export function canonicalizeGenre(tag: string): string {
 	const lower = tag.toLowerCase();
 	return CANON_MAP.get(lower) ?? lower;
 }
+
+/**
+ * Flat array of every entry in the whitelist, for client-side filtering UIs.
+ * The whitelist intentionally contains both canonical forms and their variants
+ * (e.g. "hip-hop" AND "hip hop", "rnb" AND "r&b") — Phase 2 UI should dedupe
+ * these via canonicalizeGenre before display.
+ */
+export const GENRE_LIST: readonly string[] = Array.from(GENRE_WHITELIST);
+
+/**
+ * Sanitize user-supplied genre pills before persistence.
+ * Order: trim whitespace → canonicalize variants → filter to whitelist →
+ * deduplicate → cap at 5. Canonicalize runs before membership check so
+ * variants (e.g. "hip hop") map to their canonical form ("hip-hop") and
+ * still pass the whitelist filter.
+ */
+export function sanitizeGenrePills(input: string[]): string[] {
+	const seen = new Set<string>();
+	const result: string[] = [];
+	for (const raw of input) {
+		const trimmed = raw.trim();
+		if (!trimmed) continue;
+		const canonical = canonicalizeGenre(trimmed);
+		if (!isGenre(canonical)) continue;
+		if (seen.has(canonical)) continue;
+		seen.add(canonical);
+		result.push(canonical);
+		if (result.length === 5) break;
+	}
+	return result;
+}

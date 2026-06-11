@@ -367,6 +367,28 @@ export function updatePlaylistMetadata(
 	);
 }
 
+/**
+ * Writes sanitized genre_pills for a playlist identified by (account_id, id).
+ * Ownership is enforced via account_id in the WHERE clause — the service-role
+ * client bypasses RLS, so the account_id filter is the authorization boundary.
+ */
+export function updatePlaylistGenrePills(
+	accountId: string,
+	playlistId: string,
+	pills: string[],
+): Promise<Result<Playlist, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("playlist")
+			.update({ genre_pills: pills })
+			.eq("id", playlistId)
+			.eq("account_id", accountId)
+			.select()
+			.single(),
+	);
+}
+
 export function updatePlaylistSongCount(
 	accountId: string,
 	playlistId: string,

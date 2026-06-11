@@ -28,6 +28,7 @@ function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
 		snapshot_id: null,
 		song_count: 10,
 		spotify_id: "spotify-playlist-1",
+		genre_pills: [],
 		updated_at: "2026-03-27T00:00:00Z",
 		...overrides,
 	};

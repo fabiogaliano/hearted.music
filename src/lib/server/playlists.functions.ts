@@ -9,10 +9,12 @@ import {
 	getPlaylists,
 	getTargetPlaylists,
 	setPlaylistTarget,
+	updatePlaylistGenrePills,
 	updatePlaylistMetadata,
 	upsertPlaylists,
 } from "@/lib/domains/library/playlists/queries";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
+import { sanitizeGenrePills } from "@/lib/integrations/lastfm/whitelist";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
@@ -334,6 +336,73 @@ export const acknowledgePlaylistDelete = createServerFn({ method: "POST" })
 		}
 
 		return { success: true, alreadyAbsent: false };
+	});
+
+// ============================================================================
+// Genre pills save
+// ============================================================================
+
+const SaveGenrePillsSchema = z.object({
+	playlistId: z.string().uuid(),
+	genres: z.array(z.string()),
+});
+
+export const savePlaylistGenrePills = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
+	.inputValidator((data) => SaveGenrePillsSchema.parse(data))
+	.handler(async ({ data, context }) => {
+		const { session } = context;
+
+		// Explicit pre-check mirrors setPlaylistTargetMutation: the service-role
+		// client bypasses RLS, so we must verify ownership before writing.
+		const playlistResult = await getPlaylistById(
+			session.accountId,
+			data.playlistId,
+		);
+		if (
+			Result.isError(playlistResult) ||
+			!playlistResult.value ||
+			playlistResult.value.account_id !== session.accountId
+		) {
+			throw new Error("Playlist not found");
+		}
+
+		const pills = sanitizeGenrePills(data.genres);
+
+		const updateResult = await updatePlaylistGenrePills(
+			session.accountId,
+			data.playlistId,
+			pills,
+		);
+		if (Result.isError(updateResult)) {
+			throw new Error(
+				`Failed to save genre pills: ${updateResult.error.message}`,
+			);
+		}
+
+		// Pills change the profile hash (genre_pills is an explicit hash input in
+		// 1.4) and alter the genre distribution + fusion weights, so the next match
+		// snapshot must recompute. We emit the same signal as a metadata change so
+		// the reconciler advances matchSnapshotRefresh unconditionally — the
+		// onboarding dialog has no session-flush path, so we cannot rely on flush.
+		const applyResult = await applyLibraryProcessingChange(
+			PlaylistManagementChanges.sessionFlushed({
+				accountId: session.accountId,
+				targetMembershipChanged: false,
+				targetMetadataChanged: true,
+			}),
+		);
+		if (Result.isError(applyResult)) {
+			// Non-fatal: pills are written; invalidation failure is logged but does
+			// not roll back the save. The snapshot will recompute on the next
+			// organic trigger (library sync, enrichment, etc.).
+			console.error(
+				"[playlists] genre pills saved but snapshot invalidation failed:",
+				applyResult.error,
+			);
+		}
+
+		return { success: true, pills };
 	});
 
 // ============================================================================
