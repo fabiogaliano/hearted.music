@@ -102,18 +102,19 @@ instance of the hearted. backend. Not active in normal use. (Stripped from
 store builds via `ext:store:firefox`.)
 
 ## Notes to reviewer
-The extension's content script runs in MAIN world to observe the Spotify
-web player's own internal fetch() calls. This is necessary because
-Spotify does not expose a public API for reading a user's full liked-songs
-library. The script reads one token field from outgoing requests, used to
-authenticate calls that fetch and manage the user's saved tracks and
-playlists. No credentials, payment data, or private information are
-accessed. The token is used solely to make calls to Spotify's own API
-endpoints on behalf of the signed-in user, and to transmit library data
-to the user's own authenticated hearted. account.
 
-Using Spotify's private/Pathfinder API with the user's own session is
-disclosed here deliberately (policy §6.1 / §6.2.2.1 — "no surprises"); the
-add-on is single-purpose and its data use is self-evident from the name and
-description. Reproducible build instructions and the source-submission
-package are in `AMO-SUBMISSION.md`.
+MAIN-world content script: reads one auth token field from the Spotify web
+player's own outgoing fetch() calls. Required because Spotify has no public API
+for a user's full liked-songs library. The token only calls Spotify's own API
+for the signed-in user; no credentials, payment, or private data are touched.
+
+Spotify private/Pathfinder API: used with the user's own session, disclosed
+deliberately (Section 1 "No Surprises"; §6.2.2.2 "Implicit Consent for
+Self-Evident, Single-Use Extension"). Single-purpose; data use self-evident
+from the name and description.
+
+Consent: before any transmission, the hearted. web app shows a disclosure
+("here's what hearted can see": profile, liked songs, playlists) and an explicit
+"allow sync" button. Nothing leaves Spotify until the user clicks it.
+
+Build instructions and source package: see `AMO-SUBMISSION.md`.

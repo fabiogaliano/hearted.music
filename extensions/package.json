@@ -5,6 +5,8 @@
 	"scripts": {
 		"build": "bun run scripts/build.ts",
 		"dev": "bun run scripts/build.ts --watch",
+		"ext:store:firefox": "bun run scripts/build.ts --target=firefox --store",
+		"ext:lint:firefox": "web-ext lint --source-dir=dist/firefox",
 		"test": "vitest run",
 		"test:live": "vitest run -c vitest.live.config.ts",
 		"test:watch": "vitest"
@@ -19,6 +21,7 @@
 		"@types/react-dom": "^19.0.0",
 		"esbuild": "^0.25.0",
 		"typescript": "^5.7.0",
-		"vitest": "^4.0.18"
+		"vitest": "^4.0.18",
+		"web-ext": "^10.3.0"
 	}
 }

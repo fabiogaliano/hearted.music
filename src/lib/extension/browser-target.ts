@@ -18,8 +18,9 @@ export type BrowserTarget = "firefox" | "chromium";
 
 const CHROME_STORE_URL =
 	"https://chromewebstore.google.com/detail/everything-you-ever-heart/ohaaafmgbbfohhjhogonolonpjhhfohk";
-// TODO: replace with the live addons.mozilla.org listing URL once published.
-const FIREFOX_STORE_URL = "https://addons.mozilla.org/firefox/addon/hearted/";
+// Live AMO listing slug (reserved; public once approved).
+const FIREFOX_STORE_URL =
+	"https://addons.mozilla.org/firefox/addon/everything-you-ever-hearted/";
 
 export function getBrowserTarget(): BrowserTarget {
 	if (typeof navigator === "undefined") return "chromium";
