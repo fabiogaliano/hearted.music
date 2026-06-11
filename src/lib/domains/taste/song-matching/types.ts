@@ -107,8 +107,14 @@ export interface NormalizationConfig {
 
 /** Full matching configuration */
 export interface MatchingConfig {
-	/** Score factor weights */
+	/** Score factor weights (used when the playlist has no declared genre pills) */
 	readonly weights: MatchingWeights;
+	/**
+	 * Weights used when the playlist has declared genre pills.
+	 * Genre is boosted from 0.20 → 0.40 (strong-steer decision) while embedding
+	 * and audio are trimmed proportionally. Provisional; replay-tunable.
+	 */
+	readonly weightsWithDeclaredGenres: MatchingWeights;
 	/** Audio feature weights */
 	readonly audioWeights: AudioFeatureWeights;
 	/** Minimum fused (normalized) score to include in results */
@@ -186,4 +192,13 @@ export interface MatchingPlaylistProfile {
 	readonly audioCentroid: Record<string, number>;
 	readonly genreDistribution: Record<string, number>;
 	readonly method?: "learned_from_songs" | "from_description";
+	/**
+	 * True when the user has declared at least one genre pill for this playlist.
+	 * The matcher uses this to select a higher genre weight (0.40 vs 0.20).
+	 * A boolean is sufficient here — the matcher only needs presence/absence to
+	 * pick the base weight set; the actual pill list already lives in the profile's
+	 * genreDistribution blend (Task 1.4) and intent text (Task 1.4), so carrying
+	 * it again on this interface would be redundant.
+	 */
+	readonly hasGenrePills: boolean;
 }

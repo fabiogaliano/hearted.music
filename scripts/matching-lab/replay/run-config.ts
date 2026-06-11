@@ -158,6 +158,9 @@ function toMatchingProfile(
     embedding,
     audioCentroid: (profile.audio_centroid as Record<string, number>) ?? {},
     genreDistribution: (profile.genre_distribution as Record<string, number>) ?? {},
+    // Replay data predates genre pills; treat all historical profiles as pill-less
+    // so the replay uses the same default weights as when those decisions were made.
+    hasGenrePills: false,
   };
 }
 

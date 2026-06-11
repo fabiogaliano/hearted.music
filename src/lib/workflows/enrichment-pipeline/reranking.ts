@@ -11,6 +11,7 @@
  */
 
 import { Result } from "better-result";
+import { buildIntentText } from "@/lib/domains/taste/playlist-profiling/calculations";
 import type {
 	MatchingSong,
 	MatchResult,
@@ -32,6 +33,9 @@ interface PlaylistInfo {
 	readonly id: string;
 	readonly name: string;
 	readonly description: string | null;
+	/** Declared genre pills — when present, appended to the query as ". Genres: …"
+	 *  so the reranker query stays byte-identical to the profiling intent text. */
+	readonly genre_pills?: readonly string[] | null;
 }
 
 /**
@@ -84,9 +88,14 @@ export async function rerankMatches(
 			(a, b) => b.result.score - a.result.score,
 		);
 
-		const query = [playlist.name, playlist.description]
-			.filter(Boolean)
-			.join(" — ");
+		// buildIntentText produces the same string as the profiling embedding query,
+		// keeping the reranker query byte-identical to what was embedded.
+		const query =
+			buildIntentText(
+				playlist.name,
+				playlist.description ?? undefined,
+				playlist.genre_pills ?? [],
+			) ?? playlist.name;
 
 		const candidates: MatchCandidate[] = rankedEntries.map((e) => {
 			const song = songMap.get(e.songId);

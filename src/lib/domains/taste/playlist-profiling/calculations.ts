@@ -125,6 +125,28 @@ export function blendEmbeddings(
 }
 
 /**
+ * Build the canonical intent text shared by the embedding query and the reranker query.
+ *
+ * Keeping both byte-identical prevents the reranker from scoring against a different
+ * string than the one that produced the retrieval embedding.
+ *
+ * Returns undefined when every component is empty — callers use this to skip
+ * embedding / HyDE paths entirely.
+ */
+export function buildIntentText(
+	name?: string,
+	description?: string,
+	pills?: readonly string[],
+): string | undefined {
+	const base = [name, description].filter(Boolean).join(" — ").trim();
+	const activePills = pills?.filter((p) => p.length > 0) ?? [];
+	const pillSuffix =
+		activePills.length > 0 ? `. Genres: ${activePills.join(", ")}` : "";
+	const result = `${base}${pillSuffix}`.trim();
+	return result.length > 0 ? result : undefined;
+}
+
+/**
  * Compute how much the intent embedding (name + description) should
  * influence the final profile embedding.
  *
@@ -162,4 +184,72 @@ export function computeGenreDistribution(songs: Song[]): GenreDistribution {
 		}
 	}
 	return counts;
+}
+
+/**
+ * Fixed share that declared genre pills hold in the blended distribution.
+ * Pills are a standing declaration, so the share never decays with song count.
+ */
+export const PILL_SHARE = 0.5;
+
+/**
+ * Blend observed song-genre counts with declared genre pills into a normalized
+ * fraction distribution summing to 1.
+ *
+ * Rules:
+ * - No pills → observed counts normalized to fractions (sums to 1; empty stays {}).
+ * - Pills + songs → PILL_SHARE for declared (split equally) + (1-PILL_SHARE) for observed.
+ * - Pills + 0 songs → declared only, each pill gets 1/pillCount.
+ *
+ * Storing fractions (not raw counts) clears the raw-counts footgun: computeGenreScore
+ * already consumes ratios, so this is transparent to the matching side.
+ */
+export function blendGenreDistribution(
+	observedCounts: GenreDistribution,
+	pills: readonly string[],
+): GenreDistribution {
+	// Drop empty-string pills defensively
+	const activePills = pills.filter((p) => p.length > 0);
+
+	const totalObserved = Object.values(observedCounts).reduce(
+		(sum, c) => sum + c,
+		0,
+	);
+	const hasSongs = totalObserved > 0;
+
+	if (activePills.length === 0) {
+		// No pills — return observed fractions (empty stays empty)
+		if (totalObserved === 0) return {};
+		const result: Record<string, number> = {};
+		for (const [genre, count] of Object.entries(observedCounts)) {
+			result[genre] = count / totalObserved;
+		}
+		return result;
+	}
+
+	const pillFraction = PILL_SHARE / activePills.length;
+
+	if (!hasSongs) {
+		// No members — pills are 100% of the signal
+		const result: Record<string, number> = {};
+		for (const pill of activePills) {
+			result[pill] = (result[pill] ?? 0) + 1 / activePills.length;
+		}
+		return result;
+	}
+
+	// Both pills and songs — blend PILL_SHARE declared + (1-PILL_SHARE) observed
+	const result: Record<string, number> = {};
+
+	for (const pill of activePills) {
+		result[pill] = (result[pill] ?? 0) + pillFraction;
+	}
+
+	const observedShare = 1 - PILL_SHARE;
+	for (const [genre, count] of Object.entries(observedCounts)) {
+		const fraction = (count / totalObserved) * observedShare;
+		result[genre] = (result[genre] ?? 0) + fraction;
+	}
+
+	return result;
 }

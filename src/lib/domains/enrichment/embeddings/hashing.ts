@@ -76,6 +76,8 @@ export async function hashPlaylistProfile(params: {
 	embeddingCentroid?: number[];
 	audioCentroid?: Record<string, number>;
 	genreDistribution?: Record<string, number>;
+	/** Declared genre pills — sorted so order doesn't affect the hash. */
+	genrePills?: readonly string[];
 }): Promise<string> {
 	const roundedEmbedding = params.embeddingCentroid
 		? params.embeddingCentroid.map((value) => Math.round(value * 10000) / 10000)
@@ -100,6 +102,9 @@ export async function hashPlaylistProfile(params: {
 			)
 		: {};
 
+	// Sort pills so pill-order changes don't produce spurious hash misses
+	const sortedPills = params.genrePills ? [...params.genrePills].sort() : [];
+
 	const content = stableStringify({
 		playlistId: params.playlistId,
 		songIds: params.songIds.toSorted(),
@@ -107,6 +112,7 @@ export async function hashPlaylistProfile(params: {
 		embeddingCentroid: roundedEmbedding,
 		audioCentroid: roundedCentroid,
 		genreDistribution: roundedGenreDistribution,
+		genrePills: sortedPills,
 	});
 
 	const hash = await shortHash(content);

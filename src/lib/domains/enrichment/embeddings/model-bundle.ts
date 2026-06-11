@@ -10,6 +10,7 @@
  */
 
 import { Result } from "better-result";
+import { GENRE_TABLE_VERSION } from "@/lib/domains/taste/genre-similarity/loader";
 import { EMBEDDING_TASK_DESCRIPTION } from "@/lib/integrations/embedding/format";
 import { getMlProvider } from "@/lib/integrations/providers/factory";
 import type { MLProviderError } from "@/lib/shared/errors/domain/ml";
@@ -55,6 +56,8 @@ interface AlgorithmVersions {
 	profile: number;
 	/** Matching algorithm version */
 	matching: string;
+	/** Genre similarity table version — changes on every genresgraph sync */
+	genreTable: string;
 }
 
 interface PlaylistProfilingConfig {
@@ -125,6 +128,9 @@ export function getActiveModelBundle(): Result<ModelBundle, MLProviderError> {
 			schema: EMBEDDING_SCHEMA_VERSION,
 			profile: PLAYLIST_PROFILE_VERSION,
 			matching: MATCHING_ALGO_VERSION,
+			// Every genresgraph sync changes the table version, which changes this
+			// bundle's hash and auto-invalidates all profile + snapshot caches.
+			genreTable: GENRE_TABLE_VERSION,
 		},
 		enrichment: {
 			genreSource: "lastfm",

@@ -48,6 +48,13 @@ export interface ProfilingOptions {
 	readonly name?: string;
 	/** Playlist description (may be empty) */
 	readonly description?: string;
+	/**
+	 * User-declared genre pills (up to 5 canonical genres).
+	 * These hold a fixed PILL_SHARE of the genre distribution regardless of song count.
+	 * Pills append a ". Genres: ..." suffix to the intent text but do NOT affect
+	 * hasDescription — they must not trigger the ×1.5 intent-weight boost.
+	 */
+	readonly genrePills?: readonly string[];
 }
 
 /** All profiling-related errors */

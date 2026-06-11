@@ -18,6 +18,7 @@ const baseBundle: ModelBundle = {
 		schema: 1,
 		profile: 3,
 		matching: "matching_v2",
+		genreTable: "0.0.0",
 	},
 	enrichment: {
 		genreSource: "lastfm",

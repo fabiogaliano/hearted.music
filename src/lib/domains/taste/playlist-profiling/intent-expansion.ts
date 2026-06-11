@@ -39,17 +39,28 @@ export type ColdStartProfile = z.infer<typeof ColdStartProfileSchema>;
 
 /**
  * Expand a playlist name/description into a rich song-analysis-style profile.
+ *
+ * @param declaredGenres - User-declared genre pills; when present, the LLM is
+ *   told these genres are on-target so the imagined prototype song stays on-genre.
+ *   They will override `expected_genres` as the cold-start seed in the caller,
+ *   so the LLM's own guess is only used when no pills exist.
  */
 export async function expandPlaylistIntent(
 	llm: LlmService,
 	name: string,
 	description?: string,
+	declaredGenres?: readonly string[],
 ): Promise<Result<ColdStartProfile, LlmError>> {
 	const descPart = description ? `\nDescription: "${description}"` : "";
+	const activeDeclared = declaredGenres?.filter((g) => g.length > 0) ?? [];
+	const declaredPart =
+		activeDeclared.length > 0
+			? `\nDeclared genres: ${activeDeclared.join(", ")}`
+			: "";
 
 	const prompt = `You are a music analyst. Given a playlist name (and optional description), imagine the PROTOTYPICAL song that belongs in this playlist. Describe it as if you were writing a song analysis.
 
-Playlist: "${name}"${descPart}
+Playlist: "${name}"${descPart}${declaredPart}
 
 Write in present tense, conversational tone. No academic vocabulary. Be specific to the musical style this playlist name evokes.
 

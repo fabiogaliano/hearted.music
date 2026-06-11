@@ -43,6 +43,7 @@ function profile(
 		embedding,
 		audioCentroid: centroidEnergy === null ? {} : { energy: centroidEnergy },
 		genreDistribution: {},
+		hasGenrePills: false,
 	};
 }
 

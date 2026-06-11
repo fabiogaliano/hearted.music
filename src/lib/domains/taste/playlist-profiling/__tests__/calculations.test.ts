@@ -8,6 +8,8 @@ import { hashPlaylistProfile } from "@/lib/domains/enrichment/embeddings/hashing
 import type { Song } from "@/lib/domains/library/songs/queries";
 import {
 	blendEmbeddings,
+	blendGenreDistribution,
+	buildIntentText,
 	calculateAudioCentroid,
 	calculateCentroid,
 	computeGenreDistribution,
@@ -555,5 +557,211 @@ describe("hashPlaylistProfile intent text", () => {
 			embeddingCentroid: baseCentroid,
 		});
 		expect(hash1).toBe(hash2);
+	});
+});
+
+// ============================================================================
+// buildIntentText
+// ============================================================================
+
+describe("buildIntentText", () => {
+	it("returns undefined when all inputs are empty/undefined", () => {
+		expect(buildIntentText()).toBeUndefined();
+		expect(buildIntentText(undefined, undefined, [])).toBeUndefined();
+		expect(buildIntentText("", "", [])).toBeUndefined();
+	});
+
+	it("name only → returns name", () => {
+		expect(buildIntentText("Morning Beats")).toBe("Morning Beats");
+	});
+
+	it("name + description → joined with em-dash", () => {
+		expect(buildIntentText("Morning Beats", "chill vibes")).toBe(
+			"Morning Beats — chill vibes",
+		);
+	});
+
+	it("description only (no name) → returns description", () => {
+		expect(buildIntentText(undefined, "chill vibes")).toBe("chill vibes");
+	});
+
+	it("pills only (no name, no description) → non-empty string starting with genres suffix", () => {
+		// In practice name is always present; this guards the HyDE trigger path:
+		// pills alone produce a non-empty result so the cold-start path fires.
+		const result = buildIntentText(undefined, undefined, ["hip-hop", "pop"]);
+		expect(result).toBeDefined();
+		expect(result).toContain("hip-hop");
+		expect(result).toContain("pop");
+	});
+
+	it("name + pills (no description) → name with genres suffix", () => {
+		expect(buildIntentText("Happy Rap", undefined, ["hip-hop"])).toBe(
+			"Happy Rap. Genres: hip-hop",
+		);
+	});
+
+	it("name + description + pills → full string", () => {
+		expect(
+			buildIntentText("Happy Rap", "upbeat mood", ["hip-hop", "pop"]),
+		).toBe("Happy Rap — upbeat mood. Genres: hip-hop, pop");
+	});
+
+	it("empty-string pills are filtered out", () => {
+		expect(buildIntentText("Test", undefined, ["", "hip-hop", ""])).toBe(
+			"Test. Genres: hip-hop",
+		);
+	});
+
+	it("all-empty pills still produce no genres suffix", () => {
+		expect(buildIntentText("Test", undefined, ["", ""])).toBe("Test");
+	});
+});
+
+// ============================================================================
+// blendGenreDistribution
+// ============================================================================
+
+describe("blendGenreDistribution", () => {
+	it("no pills + no songs → empty distribution", () => {
+		expect(blendGenreDistribution({}, [])).toEqual({});
+	});
+
+	it("no pills + songs → observed fractions summing to 1", () => {
+		const observed = { rock: 2, pop: 2 };
+		const result = blendGenreDistribution(observed, []);
+		expect(result.rock).toBeCloseTo(0.5);
+		expect(result.pop).toBeCloseTo(0.5);
+		const total = Object.values(result).reduce((s, v) => s + v, 0);
+		expect(total).toBeCloseTo(1);
+	});
+
+	it("pills + 0 songs → pills only (equal split, sums to 1)", () => {
+		const result = blendGenreDistribution({}, ["hip-hop", "pop"]);
+		expect(result["hip-hop"]).toBeCloseTo(0.5);
+		expect(result["pop"]).toBeCloseTo(0.5);
+		const total = Object.values(result).reduce((s, v) => s + v, 0);
+		expect(total).toBeCloseTo(1);
+	});
+
+	it("pills + songs → PILL_SHARE=0.5 declared + 0.5 observed, sums to 1", () => {
+		// 1 pill = 0.5 for "hip-hop" from declared side
+		// 2 songs: rock+rock → rock=1, so observed fraction rock=1 * 0.5 = 0.5
+		const result = blendGenreDistribution({ rock: 2 }, ["hip-hop"]);
+		expect(result["hip-hop"]).toBeCloseTo(0.5);
+		expect(result["rock"]).toBeCloseTo(0.5);
+		const total = Object.values(result).reduce((s, v) => s + v, 0);
+		expect(total).toBeCloseTo(1);
+	});
+
+	it("pills + mixed songs → pill genres and song genres coexist, sums to 1", () => {
+		const result = blendGenreDistribution({ rock: 1, pop: 1 }, [
+			"hip-hop",
+			"jazz",
+		]);
+		// Declared: each pill gets 0.5/2 = 0.25
+		expect(result["hip-hop"]).toBeCloseTo(0.25);
+		expect(result["jazz"]).toBeCloseTo(0.25);
+		// Observed: each genre gets (1/2)*0.5 = 0.25
+		expect(result["rock"]).toBeCloseTo(0.25);
+		expect(result["pop"]).toBeCloseTo(0.25);
+		const total = Object.values(result).reduce((s, v) => s + v, 0);
+		expect(total).toBeCloseTo(1);
+	});
+
+	it("empty-string pills are filtered out before blending", () => {
+		const result = blendGenreDistribution({}, ["hip-hop", "", "pop"]);
+		expect(Object.keys(result)).not.toContain("");
+		expect(result["hip-hop"]).toBeCloseTo(0.5);
+		expect(result["pop"]).toBeCloseTo(0.5);
+	});
+
+	it("pills that overlap with observed genres merge correctly, sums to 1", () => {
+		// pill = rock (0.5 from declared side)
+		// observed = rock (1 song, 100% observed → 0.5 from observed side)
+		const result = blendGenreDistribution({ rock: 1 }, ["rock"]);
+		expect(result["rock"]).toBeCloseTo(1.0);
+		const total = Object.values(result).reduce((s, v) => s + v, 0);
+		expect(total).toBeCloseTo(1);
+	});
+});
+
+// ============================================================================
+// hasDescription independence from pills
+// ============================================================================
+
+describe("hasDescription independence from pills", () => {
+	it("computeIntentWeight with hasDescription=false is not boosted even when pills exist", () => {
+		// Pills must not trigger the ×1.5 description boost.
+		// The correct call is computeIntentWeight(count, !!description) — pills are excluded.
+		const withPillsNoDesc = computeIntentWeight(5, false);
+		const withPillsAndDesc = computeIntentWeight(5, true);
+		// Name-only floor at 5 songs is lower than description floor
+		expect(withPillsNoDesc).toBeLessThan(withPillsAndDesc);
+		// Specifically: no-desc floor is 0.15, desc floor is 0.30
+		expect(withPillsNoDesc).toBeCloseTo(
+			Math.max(0.15, 0.35 * 1.0 * Math.max(0, 1 - 5 / 30)),
+		);
+	});
+});
+
+// ============================================================================
+// hashPlaylistProfile — genrePills v4
+// ============================================================================
+
+describe("hashPlaylistProfile genrePills", () => {
+	const base = {
+		playlistId: "pl-1",
+		songIds: ["s1", "s2"],
+		descriptionText: "chill vibes",
+	};
+
+	it("hash prefixed with pp_v4 after version bump", async () => {
+		const hash = await hashPlaylistProfile(base);
+		expect(hash).toMatch(/^pp_v4_/);
+	});
+
+	it("adding pills to a pill-less profile changes the hash", async () => {
+		const noPills = await hashPlaylistProfile(base);
+		const withPills = await hashPlaylistProfile({
+			...base,
+			genrePills: ["hip-hop"],
+		});
+		expect(noPills).not.toBe(withPills);
+	});
+
+	it("changing pills changes the hash", async () => {
+		const h1 = await hashPlaylistProfile({ ...base, genrePills: ["hip-hop"] });
+		const h2 = await hashPlaylistProfile({ ...base, genrePills: ["pop"] });
+		expect(h1).not.toBe(h2);
+	});
+
+	it("pill order does not affect the hash (stable under reordering)", async () => {
+		const h1 = await hashPlaylistProfile({
+			...base,
+			genrePills: ["hip-hop", "pop", "r&b"],
+		});
+		const h2 = await hashPlaylistProfile({
+			...base,
+			genrePills: ["pop", "r&b", "hip-hop"],
+		});
+		expect(h1).toBe(h2);
+	});
+
+	it("empty pills array and omitted pills produce the same hash", async () => {
+		const noPills = await hashPlaylistProfile(base);
+		const emptyPills = await hashPlaylistProfile({ ...base, genrePills: [] });
+		expect(noPills).toBe(emptyPills);
+	});
+
+	it("descriptionText is pills-independent — pills are a separate hash input", async () => {
+		// descriptionText should not change when pills are added
+		// (they're separate fields in the hash payload)
+		const hashNoPills = await hashPlaylistProfile({
+			...base,
+			genrePills: [],
+		});
+		// Same hash as the base (no pills at all)
+		const hashBase = await hashPlaylistProfile(base);
+		expect(hashNoPills).toBe(hashBase);
 	});
 });

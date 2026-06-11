@@ -420,6 +420,9 @@ function toMatchingProfile(
 		audioCentroid: (profile.audio_centroid as Record<string, number>) ?? {},
 		genreDistribution:
 			(profile.genre_distribution as Record<string, number>) ?? {},
+		// Lab server reads profiles from the DB without a genre_pills join;
+		// treat as pill-less so replay scores use the baseline weight set.
+		hasGenrePills: false,
 	};
 }
 

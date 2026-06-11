@@ -219,6 +219,9 @@ async function main(): Promise<void> {
 			: null,
 		audioCentroid: profileRow.audio_centroid ?? {},
 		genreDistribution: profileRow.genre_distribution ?? {},
+		// E2E verification reads profiles without a genre_pills join;
+		// treat as pill-less so scores match the baseline weight set.
+		hasGenrePills: false,
 	};
 
 	const exclusionSet = await loadExclusionSet(accountId);

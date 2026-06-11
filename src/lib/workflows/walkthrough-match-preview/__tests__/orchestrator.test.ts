@@ -130,12 +130,14 @@ describe("executeWalkthroughPreview", () => {
 					embedding: [0.1],
 					audioCentroid: {},
 					genreDistribution: {},
+					hasGenrePills: false,
 				},
 				{
 					playlistId: "p2",
 					embedding: [0.2],
 					audioCentroid: {},
 					genreDistribution: {},
+					hasGenrePills: false,
 				},
 			],
 		});
@@ -187,6 +189,7 @@ describe("executeWalkthroughPreview", () => {
 					embedding: [0.1],
 					audioCentroid: {},
 					genreDistribution: {},
+					hasGenrePills: false,
 				},
 			],
 		});
@@ -236,12 +239,14 @@ describe("executeWalkthroughPreview", () => {
 					embedding: [0.1],
 					audioCentroid: {},
 					genreDistribution: {},
+					hasGenrePills: false,
 				},
 				{
 					playlistId: "p2",
 					embedding: [0.2],
 					audioCentroid: {},
 					genreDistribution: {},
+					hasGenrePills: false,
 				},
 			],
 		});
@@ -288,12 +293,14 @@ describe("executeWalkthroughPreview", () => {
 					embedding: [0.1],
 					audioCentroid: {},
 					genreDistribution: {},
+					hasGenrePills: false,
 				},
 				{
 					playlistId: "p2",
 					embedding: [0.2],
 					audioCentroid: {},
 					genreDistribution: {},
+					hasGenrePills: false,
 				},
 			],
 		});

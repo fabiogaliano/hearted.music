@@ -48,6 +48,7 @@ function makeProfile(playlistId: string): MatchingPlaylistProfile {
 		embedding: [0.1, 0.2],
 		audioCentroid: { energy: 0.5 },
 		genreDistribution: { pop: 1.0 },
+		hasGenrePills: false,
 	};
 }
 

@@ -19,6 +19,8 @@ import type { Song } from "@/lib/domains/library/songs/queries";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import {
 	blendEmbeddings,
+	blendGenreDistribution,
+	buildIntentText,
 	calculateAudioCentroid,
 	calculateCentroid,
 	computeGenreDistribution,
@@ -95,9 +97,18 @@ export class PlaylistProfilingService {
 		options: ProfilingOptions = {},
 	): Promise<Result<ComputedPlaylistProfile, ProfilingError>> {
 		const songIds = songs.map((s) => s.id);
-		const intentText =
-			[options.name, options.description].filter(Boolean).join(" — ").trim() ||
-			undefined;
+
+		// Normalise pills: filter empties, default to []
+		const pills = (options.genrePills ?? []).filter((p) => p.length > 0);
+
+		// One shared builder so the embedding query and the reranker query stay identical.
+		// hasDescription is keyed ONLY on options.description — pills must not trigger
+		// the ×1.5 intent-weight boost.
+		const intentText = buildIntentText(
+			options.name,
+			options.description,
+			pills,
+		);
 		const hasDescription = !!options.description;
 
 		// Get model bundle hash for cache invalidation
@@ -128,10 +139,14 @@ export class PlaylistProfilingService {
 			Array.from(audioResult.value.values()),
 		);
 
-		// Compute genre distribution from song.genres
-		const genreDistribution = computeGenreDistribution(songs);
+		// Blend observed genre counts with declared pills into normalized fractions.
+		// blendGenreDistribution handles all three cases:
+		//   no pills → observed fractions; pills+songs → 50/50 blend; pills+no songs → pills 100%
+		const observedCounts = computeGenreDistribution(songs);
+		const genreDistribution = blendGenreDistribution(observedCounts, pills);
 
-		// Compute content hash — always include intent text so name changes invalidate
+		// Compute content hash — always include intent text so name/pill changes invalidate.
+		// genrePills is an explicit hash input so changing pills alone causes a miss.
 		const contentHash = await hashPlaylistProfile({
 			playlistId,
 			songIds: [...songIds],
@@ -139,6 +154,7 @@ export class PlaylistProfilingService {
 			embeddingCentroid: songCentroid.length > 0 ? songCentroid : undefined,
 			audioCentroid: toAudioCentroidRecord(audioCentroid),
 			genreDistribution,
+			genrePills: pills,
 		});
 		const expectsIntentBlend = !!intentText;
 
@@ -158,12 +174,14 @@ export class PlaylistProfilingService {
 			}
 		}
 
-		// Cold-start HyDE expansion: when 0 songs, use LLM to generate rich profile
+		// Cold-start HyDE expansion: intentText now includes the pills suffix, so a
+		// pills-only playlist (no description, no songs) correctly enters this path.
 		if (songs.length === 0 && this.llmService && intentText) {
 			const expansionResult = await expandPlaylistIntent(
 				this.llmService,
 				options.name ?? intentText,
 				options.description,
+				pills,
 			);
 
 			if (Result.isOk(expansionResult)) {
@@ -180,9 +198,18 @@ export class PlaylistProfilingService {
 					: null;
 
 				const coldStartAudioCentroid: AudioCentroid = expansion.audio_profile;
-				const coldStartGenres: GenreDistribution = Object.fromEntries(
-					expansion.expected_genres.map((g) => [g, 1]),
-				);
+
+				// When pills exist they ARE the distribution seed — the LLM's genre guess
+				// is only used pill-less to avoid the LLM overriding the user's declaration.
+				const coldStartGenres: GenreDistribution =
+					pills.length > 0
+						? blendGenreDistribution({}, pills)
+						: Object.fromEntries(
+								expansion.expected_genres.map((g) => [
+									g,
+									1 / expansion.expected_genres.length,
+								]),
+							);
 
 				const profile: ComputedPlaylistProfile = {
 					playlistId,
@@ -221,7 +248,7 @@ export class PlaylistProfilingService {
 			// LLM failed — fall through to raw name embedding below
 		}
 
-		// Embed intent text (name + description) for blending into profile
+		// Embed intent text (name + description + pills suffix) for blending into profile
 		let intentEmbedding: number[] | null = null;
 		if (intentText) {
 			// Short name/description text is a query seeking similar songs

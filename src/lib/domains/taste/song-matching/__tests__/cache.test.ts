@@ -116,6 +116,7 @@ describe("hashMatchingConfig", () => {
 				embedding: [0.1, 0.2],
 				audioCentroid: { energy: 0.5 },
 				genreDistribution: { pop: 1 },
+				hasGenrePills: false,
 			},
 		];
 
@@ -202,6 +203,7 @@ describe("rerankerConfigHash busting", () => {
 				embedding: [0.1, 0.2],
 				audioCentroid: { energy: 0.5 },
 				genreDistribution: { pop: 1 },
+				hasGenrePills: false,
 			},
 		];
 

@@ -100,6 +100,10 @@ export async function loadTargetPlaylistProfiles(
 				{
 					name: playlist.name,
 					description: playlist.description ?? undefined,
+					// Thread pills so the embedding, blend, HyDE path, and hash all reflect
+					// the user's declared genres — without this the pills only reach the
+					// reranker query but are silently absent from the profile itself.
+					genrePills: playlist.genre_pills ?? [],
 				},
 			);
 
@@ -115,6 +119,12 @@ export async function loadTargetPlaylistProfiles(
 				embedding: p.embedding,
 				audioCentroid: toAudioCentroidRecord(p.audioCentroid),
 				genreDistribution: p.genreDistribution,
+				// getTargetPlaylists uses select("*"), so genre_pills is always
+				// present on the row. The boolean is all the matcher needs to
+				// select the right base weights — the actual pill list is already
+				// baked into genreDistribution and the intent embedding by
+				// computeProfile (Task 1.4).
+				hasGenrePills: (playlist.genre_pills?.length ?? 0) > 0,
 			};
 		},
 	);

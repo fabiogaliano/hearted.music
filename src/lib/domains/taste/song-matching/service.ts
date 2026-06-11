@@ -9,9 +9,16 @@
 
 import { Result } from "better-result";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import { genreSimilarity } from "@/lib/domains/taste/genre-similarity/loader";
 import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { JobProgress } from "@/lib/platform/jobs/repository";
-import { computeAdaptiveWeights, DEFAULT_MATCHING_CONFIG } from "./config";
+import {
+	ADJACENT_FLOOR,
+	ADJACENT_MAX,
+	computeAdaptiveWeights,
+	DEFAULT_MATCHING_CONFIG,
+	selectBaseWeights,
+} from "./config";
 import {
 	computeSignalStats,
 	normalizeSignal,
@@ -55,6 +62,58 @@ interface FactorStats {
 
 function clamp01(value: number): number {
 	return Math.max(0, Math.min(1, value));
+}
+
+/**
+ * Map a raw similarity value from the genre table to a credit in [0, 1].
+ *
+ * Exact match (r === 1) → full credit 1.0.
+ * Adjacent (r ∈ [ADJACENT_FLOOR, 1)) → capped at ADJACENT_MAX so adjacent
+ *   genres (e.g. related edges at 0.5, subgenre edges at 0.6) yield partial
+ *   credit, never the full 1.0 reserved for exact matches.
+ * Below floor → 0 (unrelated; avoids signal from low-confidence entries).
+ */
+export function bandedCredit(r: number): number {
+	if (r >= 1) return 1;
+	if (r < ADJACENT_FLOOR) return 0;
+	return Math.min(r, ADJACENT_MAX);
+}
+
+/**
+ * Pure genre overlap score in [0, 1].
+ *
+ * For each playlist genre weighted by its distribution mass, the credit is the
+ * best similarity any song genre achieves after banding. Score is the
+ * mass-weighted average credit across all playlist genres. Scale-invariant, so
+ * it is transparent to whether playlistDistribution holds raw counts or
+ * fractions (Task 1.4 will switch to fractions).
+ *
+ * Exported for unit tests — the private method on MatchingService delegates
+ * here so the pure logic is directly testable.
+ */
+export function scoreGenres(
+	songGenres: string[],
+	playlistDistribution: Record<string, number>,
+): number {
+	const playlistGenres = Object.keys(playlistDistribution);
+	if (playlistGenres.length === 0) return 0;
+
+	let weightedCredit = 0;
+	let totalWeight = 0;
+
+	for (const [g, w] of Object.entries(playlistDistribution)) {
+		totalWeight += w;
+		// Best credit this playlist genre gets from any song genre.
+		let best = 0;
+		for (const s of songGenres) {
+			const credit = bandedCredit(genreSimilarity(g, s));
+			if (credit > best) best = credit;
+		}
+		weightedCredit += w * best;
+	}
+
+	if (totalWeight === 0) return 0;
+	return weightedCredit / totalWeight;
 }
 
 class MatchingService {
@@ -271,10 +330,16 @@ class MatchingService {
 
 	/**
 	 * Normalize and fuse one pair's raw factors into a ranked MatchResult.
+	 *
+	 * Per-playlist base weights are selected here — after z-score stats are
+	 * already computed over the whole candidate matrix — so pill-based weight
+	 * selection never changes how the signal distributions are measured, only
+	 * which multipliers are applied to the already-normalized factors.
 	 */
 	private fuse(scored: RawScored, stats: FactorStats): MatchResult {
 		const { song, profile, factors, availability } = scored;
-		const weights = computeAdaptiveWeights(availability, this.config.weights);
+		const baseWeights = selectBaseWeights(this.config, profile.hasGenrePills);
+		const weights = computeAdaptiveWeights(availability, baseWeights);
 
 		const normalizedFactors: ScoreFactors = {
 			embedding: this.normalizeFactor(
@@ -371,45 +436,21 @@ class MatchingService {
 	}
 
 	/**
-	 * Compute genre overlap score.
+	 * Compute genre overlap score via similarity-table banding.
+	 * Delegates to the exported pure helper `scoreGenres` so it's unit-testable.
+	 *
+	 * The early return 0 for empty/null song genres is a harmless no-op:
+	 * `computeRawScored` sets `availability.hasGenres = false` when genres is
+	 * empty, so `computeFactorStats` never includes this value in its genre
+	 * distribution, and `computeAdaptiveWeights` redistributes the genre weight
+	 * away entirely. The 0 is never fused as a real signal.
 	 */
 	private computeGenreScore(
 		songGenres: string[] | null,
 		playlistDistribution: Record<string, number>,
 	): number {
 		if (!songGenres || songGenres.length === 0) return 0;
-
-		const playlistGenres = Object.keys(playlistDistribution);
-		if (playlistGenres.length === 0) return 0;
-
-		// Normalize song genres for comparison
-		const normalizedSongGenres = songGenres.map((g) => g.toLowerCase().trim());
-
-		// Calculate overlap with weighting by playlist distribution
-		let weightedMatch = 0;
-		let totalWeight = 0;
-
-		for (const [genre, count] of Object.entries(playlistDistribution)) {
-			totalWeight += count;
-			const normalizedGenre = genre.toLowerCase().trim();
-
-			// Check for exact match or partial match
-			const hasMatch = normalizedSongGenres.some(
-				(sg) =>
-					sg === normalizedGenre ||
-					sg.includes(normalizedGenre) ||
-					normalizedGenre.includes(sg),
-			);
-
-			if (hasMatch) {
-				weightedMatch += count;
-			}
-		}
-
-		if (totalWeight === 0) return 0;
-
-		// Normalize to 0-1
-		return weightedMatch / totalWeight;
+		return scoreGenres(songGenres, playlistDistribution);
 	}
 }
 

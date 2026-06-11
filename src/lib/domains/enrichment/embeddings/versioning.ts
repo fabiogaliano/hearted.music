@@ -12,10 +12,10 @@ export const EXTRACTOR_VERSION = 1;
 export const EMBEDDING_SCHEMA_VERSION = 1;
 
 /** Version of playlist profile computation — bump when profiling logic changes */
-export const PLAYLIST_PROFILE_VERSION = 3;
+export const PLAYLIST_PROFILE_VERSION = 4;
 
 /** Version of matching algorithm — bump when scoring/ranking logic changes */
-export const MATCHING_ALGO_VERSION = "matching_v3";
+export const MATCHING_ALGO_VERSION = "matching_v4";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Model Bundle Hash (Dynamic)
