@@ -28,6 +28,12 @@ const NoInputSchema = z.undefined();
 
 export interface MatchingSessionResult {
 	snapshotId: string;
+	// The frozen walk order: ordered, entitled, undecided song ids. The client
+	// indexes its `offset` into this array so a recorded decision can never shift
+	// which song slot N points to (the positional-offset bug this replaces).
+	songIds: string[];
+	// === songIds.length. Kept so the sidebar badge and empty-state guards that
+	// read `totalSongs` need no changes.
 	totalSongs: number;
 }
 
@@ -210,6 +216,52 @@ export async function getUndecidedSongs(
 	);
 }
 
+/**
+ * Single ordering authority for a match session: the ordered, entitled,
+ * undecided song ids for a snapshot. Owns undecided derivation, the entitlement
+ * filter, newness, and the 3-key sort (isNew desc, maxScore desc, songId asc).
+ *
+ * Both surfaces that must agree on "which songs, in what order" call this:
+ * `getMatchingSession` (the frozen walk) and the dashboard's match previews
+ * (top-3). Collapsing the two formerly-duplicated comparators here makes
+ * "dashboard top-3 === match first-3" true by construction.
+ */
+export async function getOrderedUndecidedSongIds(
+	snapshotId: string,
+	accountId: string,
+): Promise<string[]> {
+	const supabase = createAdminSupabaseClient();
+
+	const [undecided, newSongIds, entitledResult] = await Promise.all([
+		getUndecidedSongs(snapshotId, accountId),
+		getNewItemIds(accountId, "song"),
+		supabase.rpc("select_entitled_data_enriched_liked_song_ids", {
+			p_account_id: accountId,
+		}),
+	]);
+
+	if (Result.isError(newSongIds)) return [];
+
+	const entitledSet = new Set(
+		(!entitledResult.error && entitledResult.data
+			? entitledResult.data
+			: []
+		).map((r: { song_id: string }) => r.song_id),
+	);
+
+	const newSet = new Set(newSongIds.value);
+	return undecided
+		.filter((s) => entitledSet.has(s.songId))
+		.toSorted((a, b) => {
+			const aNew = newSet.has(a.songId) ? 1 : 0;
+			const bNew = newSet.has(b.songId) ? 1 : 0;
+			if (aNew !== bNew) return bNew - aNew;
+			if (b.maxScore !== a.maxScore) return b.maxScore - a.maxScore;
+			return a.songId.localeCompare(b.songId);
+		})
+		.map((s) => s.songId);
+}
+
 // ============================================================================
 // Server functions
 // ============================================================================
@@ -219,34 +271,23 @@ export const getMatchingSession = createServerFn({ method: "GET" })
 	.inputValidator((data: undefined) => NoInputSchema.parse(data))
 	.handler(async ({ context }): Promise<MatchingSessionResult | null> => {
 		const { session } = context;
-		const supabase = createAdminSupabaseClient();
 
 		const snapshotResult = await getLatestMatchSnapshot(session.accountId);
 		if (Result.isError(snapshotResult) || !snapshotResult.value) return null;
 
 		const matchSnapshot = snapshotResult.value;
 
-		const [undecided, entitledResult] = await Promise.all([
-			getUndecidedSongs(matchSnapshot.id, session.accountId),
-			supabase.rpc("select_entitled_data_enriched_liked_song_ids", {
-				p_account_id: session.accountId,
-			}),
-		]);
-
-		const entitledSet = new Set(
-			(!entitledResult.error && entitledResult.data
-				? entitledResult.data
-				: []
-			).map((r: { song_id: string }) => r.song_id),
-		);
-
-		const entitledUndecided = undecided.filter((s) =>
-			entitledSet.has(s.songId),
+		// The session now carries the *order*, not just the count — the client
+		// freezes this list and indexes its walk into it.
+		const songIds = await getOrderedUndecidedSongIds(
+			matchSnapshot.id,
+			session.accountId,
 		);
 
 		return {
 			snapshotId: matchSnapshot.id,
-			totalSongs: entitledUndecided.length,
+			songIds,
+			totalSongs: songIds.length,
 		};
 	});
 
@@ -341,12 +382,12 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 
 const GetSongMatchesSchema = z.object({
 	snapshotId: z.uuid(),
-	offset: z.number().int().min(0),
+	songId: z.uuid(),
 });
 
 export interface GetSongMatchesParams {
 	snapshotId: string;
-	offset: number;
+	songId: string;
 }
 
 export const getSongMatches = createServerFn({ method: "GET" })
@@ -362,71 +403,40 @@ export const getSongMatches = createServerFn({ method: "GET" })
 		);
 		if (!ownsSnapshot) return null;
 
-		const snapshotDataPromise = getMatchSnapshotData(
-			data.snapshotId,
-			session.accountId,
-		);
-		const newSongIdsPromise = getNewItemIds(session.accountId, "song");
-		const entitledSongsPromise = supabase.rpc(
-			"select_entitled_data_enriched_liked_song_ids",
-			{
-				p_account_id: session.accountId,
-			},
-		);
+		// `songId` is now client-supplied (it used to be derived server-side from a
+		// positional offset), so the per-song entitlement check is mandatory — it's
+		// the one piece of server validation that must survive the simplification.
+		// Cheaper than the old whole-set RPC, too: one row vs. the entitled set.
+		const entitledCheck = await supabase.rpc("is_account_song_entitled", {
+			p_account_id: session.accountId,
+			p_song_id: data.songId,
+		});
+		if (entitledCheck.error || !entitledCheck.data) return null;
 
-		const snapshotData = await snapshotDataPromise;
-		if (!snapshotData) return null;
-
-		const { matchResults, decisions } = snapshotData;
-
-		const [newSongIds, entitledResult] = await Promise.all([
-			newSongIdsPromise,
-			entitledSongsPromise,
-		]);
-
-		if (Result.isError(newSongIds)) return null;
-
-		const undecided = deriveUndecidedSongs(matchResults, decisions);
-
-		const entitledSet = new Set(
-			(!entitledResult.error && entitledResult.data
-				? entitledResult.data
-				: []
-			).map((r: { song_id: string }) => r.song_id),
-		);
-
-		const newSet = new Set(newSongIds.value);
-		const sorted = undecided
-			.filter((s) => entitledSet.has(s.songId))
-			.toSorted((a, b) => {
-				const aNew = newSet.has(a.songId) ? 1 : 0;
-				const bNew = newSet.has(b.songId) ? 1 : 0;
-				if (aNew !== bNew) return bNew - aNew;
-				if (b.maxScore !== a.maxScore) return b.maxScore - a.maxScore;
-				return a.songId.localeCompare(b.songId);
-			});
-
-		if (data.offset >= sorted.length) return null;
-
-		const targetSongId = sorted[data.offset].songId;
-
-		const [songRow, analysisRow, audioRow] = await Promise.all([
-			supabase.from("song").select("*").eq("id", targetSongId).single(),
-			supabase
-				.from("song_analysis")
-				.select("analysis")
-				.eq("song_id", targetSongId)
-				.order("created_at", { ascending: false })
-				.limit(1)
-				.maybeSingle(),
-			supabase
-				.from("song_audio_feature")
-				.select("tempo, energy, valence")
-				.eq("song_id", targetSongId)
-				.maybeSingle(),
-		]);
+		// One per-song fetch — never the whole snapshot. `getMatchResultDetailsForSong`
+		// carries the heavy factors/rank JSONB for this song alone.
+		const [songRow, analysisRow, audioRow, songDetailsResult, decisionsResult] =
+			await Promise.all([
+				supabase.from("song").select("*").eq("id", data.songId).single(),
+				supabase
+					.from("song_analysis")
+					.select("analysis")
+					.eq("song_id", data.songId)
+					.order("created_at", { ascending: false })
+					.limit(1)
+					.maybeSingle(),
+				supabase
+					.from("song_audio_feature")
+					.select("tempo, energy, valence")
+					.eq("song_id", data.songId)
+					.maybeSingle(),
+				getMatchResultDetailsForSong(data.snapshotId, data.songId),
+				getMatchDecisionsForSongs(session.accountId, [data.songId]),
+			]);
 
 		if (songRow.error || !songRow.data) return null;
+		if (Result.isError(songDetailsResult) || Result.isError(decisionsResult))
+			return null;
 
 		const song = songRow.data;
 		const analysis = analysisRow.data?.analysis as
@@ -448,22 +458,34 @@ export const getSongMatches = createServerFn({ method: "GET" })
 			| undefined;
 		const audio = audioRow.data;
 
-		const decidedPairs = new Set(
-			decisions.map((d) => `${d.song_id}:${d.playlist_id}`),
-		);
+		const builtSong: MatchingSong = {
+			id: song.id,
+			spotifyId: song.spotify_id,
+			name: song.name,
+			artist: song.artists[0] ?? "Unknown Artist",
+			album: song.album_name,
+			albumArtUrl: song.image_url,
+			genres: song.genres,
+			audioFeatures: audio
+				? { tempo: audio.tempo, energy: audio.energy, valence: audio.valence }
+				: null,
+			analysis: analysis ?? null,
+		};
 
-		// Fetch the factors/rank JSONB for the single displayed song only — the
-		// snapshot-wide `matchResults` carries just score/ids (see getMatchResults),
-		// so the heavy per-row factors never load for songs we don't render.
-		const songDetailsResult = await getMatchResultDetailsForSong(
-			data.snapshotId,
-			targetSongId,
+		const decidedPairs = new Set(
+			decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
 		);
-		if (Result.isError(songDetailsResult)) return null;
 
 		const songMatchResults = songDetailsResult.value.filter(
-			(mr) => !decidedPairs.has(`${targetSongId}:${mr.playlist_id}`),
+			(mr) => !decidedPairs.has(`${data.songId}:${mr.playlist_id}`),
 		);
+
+		// With the frozen list, Previous revisits already-decided songs — return the
+		// song with empty matches rather than null, so a revisit never hits the
+		// blank-page path. The UI guards its dismiss write behind `matches.length > 0`.
+		if (songMatchResults.length === 0) {
+			return { song: builtSong, matches: [] };
+		}
 
 		const playlistIds = songMatchResults.map((mr) => mr.playlist_id);
 		const { data: playlistRows, error: playlistError } = await supabase
@@ -495,22 +517,7 @@ export const getSongMatches = createServerFn({ method: "GET" })
 			.filter((m): m is MatchingPlaylistMatch => m !== null)
 			.toSorted((a, b) => b.score - a.score);
 
-		return {
-			song: {
-				id: song.id,
-				spotifyId: song.spotify_id,
-				name: song.name,
-				artist: song.artists[0] ?? "Unknown Artist",
-				album: song.album_name,
-				albumArtUrl: song.image_url,
-				genres: song.genres,
-				audioFeatures: audio
-					? { tempo: audio.tempo, energy: audio.energy, valence: audio.valence }
-					: null,
-				analysis: analysis ?? null,
-			},
-			matches,
-		};
+		return { song: builtSong, matches };
 	});
 
 // ============================================================================

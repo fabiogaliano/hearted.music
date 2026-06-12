@@ -1,4 +1,5 @@
 import { type ChildProcess, spawn } from "node:child_process";
+import os from "node:os";
 import { fileURLToPath, URL } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { sentryTanstackStart } from "@sentry/tanstackstart-react/vite";
@@ -10,6 +11,15 @@ import { defineConfig, loadEnv, type Plugin } from "vite";
 
 const isTest = process.env.VITEST === "true";
 const isLiveTest = process.env.VITEST_LIVE === "true";
+
+// Vitest defaults to roughly one worker per core; with `pool: "threads"` every
+// worker transforms and runs in parallel, which spikes CPU to 100% at startup.
+// Cap at half the cores so local `bun run test` stays responsive. Override with
+// VITEST_MAX_WORKERS (e.g. CI can pass the full core count for raw speed).
+const availableCores = os.availableParallelism?.() ?? os.cpus().length;
+const testMaxWorkers = process.env.VITEST_MAX_WORKERS
+	? Math.max(1, Number(process.env.VITEST_MAX_WORKERS))
+	: Math.max(1, Math.floor(availableCores / 2));
 const isRelease = process.env.RELEASE === "true";
 const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
 
@@ -138,6 +148,10 @@ export default defineConfig(({ command }) => {
 			// no fork-only needs (no process.exit, no native addons requiring process
 			// isolation); verified stable across repeated runs.
 			pool: "threads",
+			// Cap concurrency so the run doesn't saturate every core at once. See
+			// testMaxWorkers above for the rationale and the CI override.
+			maxWorkers: testMaxWorkers,
+			minWorkers: 1,
 			// Two projects split by environment cost: jsdom is initialized per file
 			// and dominates total runtime, so only the ~25 files that touch a DOM pay
 			// for it. The other ~90 run in the much cheaper node environment.

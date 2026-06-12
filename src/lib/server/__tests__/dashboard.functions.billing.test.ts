@@ -10,7 +10,7 @@ const {
 	mockGetLikedSongStats,
 	mockGetPlaylistCount,
 	mockGetLatestMatchSnapshot,
-	mockGetUndecidedSongs,
+	mockGetOrderedUndecidedSongIds,
 	mockGetNewItemIds,
 	mockRpc,
 	mockIn,
@@ -29,7 +29,7 @@ const {
 		mockGetLikedSongStats: vi.fn(),
 		mockGetPlaylistCount: vi.fn(),
 		mockGetLatestMatchSnapshot: vi.fn(),
-		mockGetUndecidedSongs: vi.fn(),
+		mockGetOrderedUndecidedSongIds: vi.fn(),
 		mockGetNewItemIds: vi.fn(),
 		mockRpc: vi.fn(),
 		mockIn,
@@ -105,7 +105,8 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 }));
 
 vi.mock("@/lib/server/matching.functions", () => ({
-	getUndecidedSongs: (...args: unknown[]) => mockGetUndecidedSongs(...args),
+	getOrderedUndecidedSongIds: (...args: unknown[]) =>
+		mockGetOrderedUndecidedSongIds(...args),
 }));
 
 describe("getDashboardStats (billing-aware)", () => {
@@ -159,20 +160,12 @@ describe("getMatchPreviews (billing-aware)", () => {
 		vi.clearAllMocks();
 	});
 
-	it("filters undecided songs to only entitled songs", async () => {
+	// Ordering + entitlement filtering now live in getOrderedUndecidedSongIds
+	// (mocked here, tested directly in matching.functions.billing.test.ts). These
+	// tests cover the dashboard's slice-3 + image-mapping contract on top of it.
+	it("builds previews from the first 3 ordered, entitled song ids", async () => {
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
-		mockGetUndecidedSongs.mockResolvedValue([
-			{ songId: "song-1", maxScore: 90 },
-			{ songId: "song-2", maxScore: 80 },
-			{ songId: "song-3", maxScore: 70 },
-		]);
-		mockGetNewItemIds.mockResolvedValue(Result.ok([]));
-
-		// Only song-1 and song-3 are entitled
-		mockRpc.mockResolvedValue({
-			data: [{ song_id: "song-1" }, { song_id: "song-3" }],
-			error: null,
-		});
+		mockGetOrderedUndecidedSongIds.mockResolvedValue(["song-1", "song-3"]);
 
 		mockIn.mockResolvedValue({
 			data: [
@@ -184,32 +177,49 @@ describe("getMatchPreviews (billing-aware)", () => {
 
 		const previews = await getMatchPreviews();
 
-		expect(mockRpc).toHaveBeenCalledWith(
-			"select_entitled_data_enriched_liked_song_ids",
-			{ p_account_id: "acct-1" },
+		expect(mockGetOrderedUndecidedSongIds).toHaveBeenCalledWith(
+			"snap-1",
+			"acct-1",
 		);
-
-		// song-2 should be excluded (not entitled)
 		expect(previews).toHaveLength(2);
 		expect(previews[0]).toEqual({ id: 1, image: "img1.jpg" });
 		expect(previews[1]).toEqual({ id: 2, image: "img3.jpg" });
 	});
 
-	it("returns empty when no undecided songs are entitled", async () => {
+	it("caps previews at the first 3 ids", async () => {
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
-		mockGetUndecidedSongs.mockResolvedValue([
-			{ songId: "song-1", maxScore: 90 },
+		mockGetOrderedUndecidedSongIds.mockResolvedValue([
+			"song-1",
+			"song-2",
+			"song-3",
+			"song-4",
+			"song-5",
 		]);
-		mockGetNewItemIds.mockResolvedValue(Result.ok([]));
 
-		// No entitled songs
-		mockRpc.mockResolvedValue({ data: [], error: null });
+		mockIn.mockResolvedValue({
+			data: [
+				{ id: "song-1", image_url: "img1.jpg" },
+				{ id: "song-2", image_url: "img2.jpg" },
+				{ id: "song-3", image_url: "img3.jpg" },
+			],
+			error: null,
+		});
 
-		mockIn.mockResolvedValue({ data: [], error: null });
+		const previews = await getMatchPreviews();
+
+		expect(mockIn).toHaveBeenCalledWith("id", ["song-1", "song-2", "song-3"]);
+		expect(previews).toHaveLength(3);
+	});
+
+	it("returns empty when no songs are undecided/entitled", async () => {
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
+		mockGetOrderedUndecidedSongIds.mockResolvedValue([]);
 
 		const previews = await getMatchPreviews();
 
 		expect(previews).toHaveLength(0);
+		// No ids → no image lookup.
+		expect(mockIn).not.toHaveBeenCalled();
 	});
 
 	it("returns empty when no snapshot exists", async () => {
@@ -218,24 +228,6 @@ describe("getMatchPreviews (billing-aware)", () => {
 		const previews = await getMatchPreviews();
 
 		expect(previews).toHaveLength(0);
-	});
-
-	it("handles entitlement RPC error gracefully (filters all out)", async () => {
-		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
-		mockGetUndecidedSongs.mockResolvedValue([
-			{ songId: "song-1", maxScore: 90 },
-		]);
-		mockGetNewItemIds.mockResolvedValue(Result.ok([]));
-
-		mockRpc.mockResolvedValue({
-			data: null,
-			error: { code: "500", message: "rpc error" },
-		});
-
-		mockIn.mockResolvedValue({ data: [], error: null });
-
-		const previews = await getMatchPreviews();
-
-		expect(previews).toHaveLength(0);
+		expect(mockGetOrderedUndecidedSongIds).not.toHaveBeenCalled();
 	});
 });

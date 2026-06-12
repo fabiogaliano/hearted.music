@@ -7,8 +7,8 @@ import {
 export const matchingKeys = {
 	all: ["matching"] as const,
 	session: (accountId: string) => ["matching", "session", accountId] as const,
-	song: (snapshotId: string, offset: number) =>
-		["matching", "song", snapshotId, offset] as const,
+	song: (snapshotId: string, songId: string) =>
+		["matching", "song", snapshotId, songId] as const,
 };
 
 export function matchingSessionQueryOptions(accountId: string) {
@@ -19,10 +19,10 @@ export function matchingSessionQueryOptions(accountId: string) {
 	});
 }
 
-export function songMatchesQueryOptions(snapshotId: string, offset: number) {
+export function songMatchesQueryOptions(snapshotId: string, songId: string) {
 	return queryOptions({
-		queryKey: matchingKeys.song(snapshotId, offset),
-		queryFn: () => getSongMatches({ data: { snapshotId, offset } }),
+		queryKey: matchingKeys.song(snapshotId, songId),
+		queryFn: () => getSongMatches({ data: { snapshotId, songId } }),
 		staleTime: 30 * 60_000,
 	});
 }

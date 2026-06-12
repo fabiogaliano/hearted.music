@@ -2,10 +2,12 @@ import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { dashboardKeys } from "@/features/dashboard/queries";
 import { MatchingEmptyState } from "@/features/matching/components/MatchingEmptyState";
 import { useMatchingSession } from "@/features/matching/hooks/useMatchingSession";
 import { Matching } from "@/features/matching/Matching";
 import {
+	matchingKeys,
 	matchingSessionQueryOptions,
 	songMatchesQueryOptions,
 } from "@/features/matching/queries";
@@ -36,9 +38,12 @@ export const Route = createFileRoute("/_authenticated/match")({
 		const matchingSession = await queryClient.ensureQueryData(
 			matchingSessionQueryOptions(session.accountId),
 		);
-		if (matchingSession && matchingSession.totalSongs > 0) {
+		if (matchingSession && matchingSession.songIds.length > 0) {
 			await queryClient.ensureQueryData(
-				songMatchesQueryOptions(matchingSession.snapshotId, 0),
+				songMatchesQueryOptions(
+					matchingSession.snapshotId,
+					matchingSession.songIds[0],
+				),
 			);
 		}
 	},
@@ -48,6 +53,7 @@ export const Route = createFileRoute("/_authenticated/match")({
 
 interface DisplayedSession {
 	snapshotId: string;
+	songIds: string[];
 	totalSongs: number;
 }
 
@@ -86,6 +92,7 @@ function NormalMatchPage() {
 			latestSession && latestSession.totalSongs > 0
 				? {
 						snapshotId: latestSession.snapshotId,
+						songIds: latestSession.songIds,
 						totalSongs: latestSession.totalSongs,
 					}
 				: null,
@@ -102,13 +109,16 @@ function NormalMatchPage() {
 
 	const handleExit = useCallback(() => navigate({ to: "/" }), [navigate]);
 
+	// Swap in the new frozen list only on explicit Refresh — mid-session new
+	// snapshots never silently reorder the active walk.
 	const handleRefresh = useCallback(() => {
-		if (!latestSnapshotId || latestTotalSongs === 0) return;
+		if (!latestSession || latestSession.totalSongs === 0) return;
 		setDisplayedSession({
-			snapshotId: latestSnapshotId,
-			totalSongs: latestTotalSongs,
+			snapshotId: latestSession.snapshotId,
+			songIds: latestSession.songIds,
+			totalSongs: latestSession.totalSongs,
 		});
-	}, [latestSnapshotId, latestTotalSongs]);
+	}, [latestSession]);
 
 	// No session at all and never had one
 	if (!displayedSession && (!latestSnapshotId || latestTotalSongs === 0)) {
@@ -154,6 +164,7 @@ function NormalMatchPage() {
 			<MatchingPageContent
 				key={displayedSession.snapshotId}
 				snapshotId={displayedSession.snapshotId}
+				songIds={displayedSession.songIds}
 				totalSongs={displayedSession.totalSongs}
 				accountId={session.accountId}
 				onExit={handleExit}
@@ -165,6 +176,7 @@ function NormalMatchPage() {
 
 interface MatchingPageContentProps {
 	snapshotId: string;
+	songIds: string[];
 	totalSongs: number;
 	accountId: string;
 	onExit: () => void;
@@ -173,6 +185,7 @@ interface MatchingPageContentProps {
 
 function MatchingPageContent({
 	snapshotId,
+	songIds,
 	totalSongs,
 	accountId,
 	onExit,
@@ -198,7 +211,19 @@ function MatchingPageContent({
 
 	const { addPresented } = useMatchingSession(accountId);
 
-	const isComplete = offset >= totalSongs;
+	// Numerically identical to the old `offset >= totalSongs` (totalSongs ===
+	// songIds.length), but indexing against the frozen list is the whole point:
+	// a recorded decision can no longer shift which song slot N points to.
+	const isComplete = offset >= songIds.length;
+
+	// Refreshing both query families at the session boundary fixes the stale
+	// sidebar badge and dashboard fan-spread. Safe mid-walk: the active session
+	// reads the frozen `songIds`, not the live query, so a refetch never disturbs
+	// the in-progress walk.
+	const invalidateSessionBoundary = useCallback(() => {
+		queryClient.invalidateQueries({ queryKey: matchingKeys.all });
+		queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+	}, [queryClient]);
 
 	const completionCapturedRef = useRef(false);
 	useEffect(() => {
@@ -207,10 +232,27 @@ function MatchingPageContent({
 		analytics.capture("matching_session_completed", {
 			total_songs: totalSongs,
 		});
-	}, [isComplete, totalSongs, analytics]);
+		// Refresh the badge while the user is still on the CompletionScreen.
+		invalidateSessionBoundary();
+	}, [isComplete, totalSongs, analytics, invalidateSessionBoundary]);
 
+	// Covers every departure path: CompletionScreen "Back to Home", mid-session
+	// sidebar navigation (which onExit never sees), and the Refresh remount.
+	useEffect(
+		() => () => {
+			invalidateSessionBoundary();
+		},
+		[invalidateSessionBoundary],
+	);
+
+	// Clamp is mandatory, not stylistic: useSuspenseQuery has no `enabled` and
+	// hooks can't be conditional. When offset === songIds.length the clamped id is
+	// the song the user just decided — already cached, never re-rendered because
+	// `Matching` receives currentSong only while !isComplete. songIds.length >= 1
+	// is guaranteed (displayedSession is set only when totalSongs > 0).
+	const currentSongId = songIds[Math.min(offset, songIds.length - 1)];
 	const { data: songData } = useSuspenseQuery(
-		songMatchesQueryOptions(snapshotId, offset),
+		songMatchesQueryOptions(snapshotId, currentSongId),
 	);
 	const currentSong: SongForMatching | null = songData?.song ?? null;
 
@@ -241,9 +283,15 @@ function MatchingPageContent({
 
 	useEffect(() => {
 		if (!songData) return;
-		queryClient.prefetchQuery(songMatchesQueryOptions(snapshotId, offset + 1));
-		queryClient.prefetchQuery(songMatchesQueryOptions(snapshotId, offset + 2));
-	}, [queryClient, snapshotId, offset, songData]);
+		const next1 = songIds[offset + 1];
+		const next2 = songIds[offset + 2];
+		if (next1) {
+			queryClient.prefetchQuery(songMatchesQueryOptions(snapshotId, next1));
+		}
+		if (next2) {
+			queryClient.prefetchQuery(songMatchesQueryOptions(snapshotId, next2));
+		}
+	}, [queryClient, snapshotId, offset, songData, songIds]);
 
 	const recentSongs = useMemo(() => {
 		if (!songData || pastSongs.some((s) => s.id === songData.song.id))

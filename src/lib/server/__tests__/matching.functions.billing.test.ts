@@ -4,6 +4,7 @@ import {
 	addSongToPlaylist,
 	dismissSong,
 	getMatchingSession,
+	getOrderedUndecidedSongIds,
 	getSongMatches,
 	getSongSuggestions,
 } from "../matching.functions";
@@ -108,9 +109,12 @@ vi.mock("@/lib/domains/library/liked-songs/status-queries", () => ({
 describe("getMatchingSession (billing-aware)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// The session now carries the ordered ids (via getOrderedUndecidedSongIds),
+		// which fetches newness — default it so each test only sets what it asserts.
+		mockGetNewItemIds.mockResolvedValue(Result.ok([]));
 	});
 
-	it("counts only entitled songs in totalSongs", async () => {
+	it("returns only entitled songs in songIds (ordered) with matching totalSongs", async () => {
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 		mockGetMatchResults.mockResolvedValue(
 			Result.ok([
@@ -128,14 +132,19 @@ describe("getMatchingSession (billing-aware)", () => {
 
 		const result = await getMatchingSession();
 
-		expect(result).toEqual({ snapshotId: "snap-1", totalSongs: 2 });
+		// song-2 filtered out (not entitled); song-1 (score 90) before song-3 (70).
+		expect(result).toEqual({
+			snapshotId: "snap-1",
+			songIds: ["song-1", "song-3"],
+			totalSongs: 2,
+		});
 		expect(mockRpc).toHaveBeenCalledWith(
 			"select_entitled_data_enriched_liked_song_ids",
 			{ p_account_id: "acct-1" },
 		);
 	});
 
-	it("excludes revoked songs from count", async () => {
+	it("excludes revoked songs from songIds/count", async () => {
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 		mockGetMatchResults.mockResolvedValue(
 			Result.ok([
@@ -150,7 +159,11 @@ describe("getMatchingSession (billing-aware)", () => {
 
 		const result = await getMatchingSession();
 
-		expect(result).toEqual({ snapshotId: "snap-1", totalSongs: 0 });
+		expect(result).toEqual({
+			snapshotId: "snap-1",
+			songIds: [],
+			totalSongs: 0,
+		});
 	});
 
 	it("defaults to empty entitled set on RPC error", async () => {
@@ -167,7 +180,11 @@ describe("getMatchingSession (billing-aware)", () => {
 
 		const result = await getMatchingSession();
 
-		expect(result).toEqual({ snapshotId: "snap-1", totalSongs: 0 });
+		expect(result).toEqual({
+			snapshotId: "snap-1",
+			songIds: [],
+			totalSongs: 0,
+		});
 	});
 
 	it("returns null when no snapshot exists", async () => {
@@ -279,34 +296,35 @@ describe("getSongMatches (billing-aware)", () => {
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 	});
 
-	function setupEntitledSongMatches(entitledSongIds: string[]) {
-		mockGetMatchResults.mockResolvedValue(
-			Result.ok([
-				{ song_id: "song-1", playlist_id: "pl-1", score: 90 },
-				{ song_id: "song-2", playlist_id: "pl-1", score: 80 },
-				{ song_id: "song-3", playlist_id: "pl-1", score: 70 },
-			]),
-		);
-		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
-		mockGetNewItemIds.mockResolvedValue(Result.ok([]));
-
-		// Entitlement RPC (called via select_entitled_data_enriched_liked_song_ids)
-		mockRpc.mockResolvedValue({
-			data: entitledSongIds.map((id) => ({ song_id: id })),
-			error: null,
-		});
-	}
-
-	function setupSongDetailMocks(songId: string) {
-		// Per-song detail path: factors/rank are fetched only for the displayed song.
+	// `songId` is now client-supplied, so the handler fetches details for that one
+	// song (factors/rank + decisions) instead of indexing a positional offset.
+	function setupSongFetch(
+		songId: string,
+		opts: {
+			detailRows?: Array<{
+				playlist_id: string;
+				score: number;
+				rank: number | null;
+				factors: unknown;
+			}>;
+			decisions?: Array<{ song_id: string; playlist_id: string }>;
+		} = {},
+	) {
 		mockGetMatchResultDetailsForSong.mockResolvedValue(
-			Result.ok([{ playlist_id: "pl-1", score: 90, rank: 1, factors: {} }]),
+			Result.ok(
+				opts.detailRows ?? [
+					{ playlist_id: "pl-1", score: 90, rank: 1, factors: {} },
+				],
+			),
+		);
+		mockGetMatchDecisionsForSongs.mockResolvedValue(
+			Result.ok(opts.decisions ?? []),
 		);
 
-		// Chain for supabase.from("song").select("*").eq("id", songId).single()
 		const eqSingle = vi.fn().mockResolvedValue({
 			data: {
 				id: songId,
+				spotify_id: "sp-song-1",
 				name: "Test Song",
 				artists: ["Test Artist"],
 				album_name: "Test Album",
@@ -336,7 +354,7 @@ describe("getSongMatches (billing-aware)", () => {
 				{
 					id: "pl-1",
 					name: "Playlist 1",
-					description: "desc",
+					match_intent: "intent",
 					song_count: 10,
 					spotify_id: "sp-pl-1",
 				},
@@ -375,94 +393,159 @@ describe("getSongMatches (billing-aware)", () => {
 		);
 
 		const result = await getSongMatches({
-			data: { snapshotId: "snap-1", offset: 0 },
+			data: { snapshotId: "snap-1", songId: "song-1" },
 		});
 
 		expect(result).toBeNull();
-		expect(mockGetMatchResults).not.toHaveBeenCalled();
+		// Bails before any per-song fetch or entitlement check.
+		expect(mockGetMatchResultDetailsForSong).not.toHaveBeenCalled();
+		expect(mockRpc).not.toHaveBeenCalled();
 	});
 
-	it("filters undecided songs to only entitled ones", async () => {
-		setupEntitledSongMatches(["song-1", "song-3"]);
-		setupSongDetailMocks("song-1");
+	it("returns null for a song the account is not entitled to", async () => {
+		// Owns the snapshot, but the per-song entitlement gate fails.
+		mockRpc.mockResolvedValue({ data: false, error: null });
 
 		const result = await getSongMatches({
-			data: { snapshotId: "snap-1", offset: 0 },
-		});
-
-		expect(result).not.toBeNull();
-		expect(result?.song.id).toBe("song-1");
-		expect(mockRpc).toHaveBeenCalledWith(
-			"select_entitled_data_enriched_liked_song_ids",
-			{ p_account_id: "acct-1" },
-		);
-	});
-
-	it("skips revoked song at offset 0 and selects next entitled song", async () => {
-		// song-1 has highest score but is NOT entitled
-		setupEntitledSongMatches(["song-2", "song-3"]);
-		setupSongDetailMocks("song-2");
-
-		const result = await getSongMatches({
-			data: { snapshotId: "snap-1", offset: 0 },
-		});
-
-		expect(result).not.toBeNull();
-		// song-2 should be at offset 0 since song-1 is filtered out
-		expect(result?.song.id).toBe("song-2");
-	});
-
-	it("returns null when offset exceeds entitled song count", async () => {
-		setupEntitledSongMatches(["song-1"]);
-
-		const result = await getSongMatches({
-			data: { snapshotId: "snap-1", offset: 1 },
+			data: { snapshotId: "snap-1", songId: "song-1" },
 		});
 
 		expect(result).toBeNull();
+		expect(mockRpc).toHaveBeenCalledWith("is_account_song_entitled", {
+			p_account_id: "acct-1",
+			p_song_id: "song-1",
+		});
+		expect(mockGetMatchResultDetailsForSong).not.toHaveBeenCalled();
 	});
 
-	it("returns null when no songs are entitled (RPC error)", async () => {
-		mockGetMatchResults.mockResolvedValue(
-			Result.ok([{ song_id: "song-1", playlist_id: "pl-1", score: 90 }]),
-		);
-		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
-		mockGetNewItemIds.mockResolvedValue(Result.ok([]));
-
+	it("returns null when the entitlement RPC errors", async () => {
 		mockRpc.mockResolvedValue({
 			data: null,
 			error: { code: "500", message: "rpc error" },
 		});
 
 		const result = await getSongMatches({
-			data: { snapshotId: "snap-1", offset: 0 },
+			data: { snapshotId: "snap-1", songId: "song-1" },
 		});
 
 		expect(result).toBeNull();
 	});
 
-	it("self-hosted user sees all matches when all songs entitled", async () => {
-		setupEntitledSongMatches(["song-1", "song-2", "song-3"]);
-		setupSongDetailMocks("song-1");
+	it("returns the song with empty matches when every pair is already decided", async () => {
+		// Previous can revisit a song whose only pair is decided — it must return
+		// the song with matches: [], never null (which would blank the page).
+		mockRpc.mockResolvedValue({ data: true, error: null });
+		setupSongFetch("song-1", {
+			detailRows: [{ playlist_id: "pl-1", score: 90, rank: 1, factors: {} }],
+			decisions: [{ song_id: "song-1", playlist_id: "pl-1" }],
+		});
 
 		const result = await getSongMatches({
-			data: { snapshotId: "snap-1", offset: 0 },
+			data: { snapshotId: "snap-1", songId: "song-1" },
 		});
 
 		expect(result).not.toBeNull();
 		expect(result?.song.id).toBe("song-1");
+		expect(result?.matches).toEqual([]);
+	});
+
+	it("returns matches for an entitled song", async () => {
+		mockRpc.mockResolvedValue({ data: true, error: null });
+		setupSongFetch("song-1");
+
+		const result = await getSongMatches({
+			data: { snapshotId: "snap-1", songId: "song-1" },
+		});
+
+		expect(result).not.toBeNull();
+		expect(result?.song.id).toBe("song-1");
+		expect(result?.matches).toHaveLength(1);
+		expect(result?.matches[0].playlist.id).toBe("pl-1");
+		// match_intent is mapped onto the response's `description` field.
+		expect(result?.matches[0].playlist.description).toBe("intent");
 	});
 
 	it("returns analysis for entitled songs", async () => {
-		setupEntitledSongMatches(["song-1"]);
-		setupSongDetailMocks("song-1");
+		mockRpc.mockResolvedValue({ data: true, error: null });
+		setupSongFetch("song-1");
 
 		const result = await getSongMatches({
-			data: { snapshotId: "snap-1", offset: 0 },
+			data: { snapshotId: "snap-1", songId: "song-1" },
 		});
 
 		expect(result).not.toBeNull();
 		expect(result?.song.analysis).toEqual({ headline: "Great song" });
+	});
+});
+
+describe("getOrderedUndecidedSongIds", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("orders by isNew desc, then maxScore desc, then songId asc — and filters to entitled", async () => {
+		mockGetMatchResults.mockResolvedValue(
+			Result.ok([
+				{ song_id: "song-z", playlist_id: "pl-1", score: 90 },
+				{ song_id: "song-a", playlist_id: "pl-1", score: 90 },
+				{ song_id: "song-m", playlist_id: "pl-1", score: 90 },
+				{ song_id: "song-low", playlist_id: "pl-1", score: 10 },
+				{ song_id: "song-locked", playlist_id: "pl-1", score: 99 },
+			]),
+		);
+		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
+		// song-m is "new" → sorts ahead of equally-scored song-a/song-z.
+		mockGetNewItemIds.mockResolvedValue(Result.ok(["song-m"]));
+		mockRpc.mockResolvedValue({
+			data: [
+				{ song_id: "song-z" },
+				{ song_id: "song-a" },
+				{ song_id: "song-m" },
+				{ song_id: "song-low" },
+			],
+			error: null,
+		});
+
+		const ids = await getOrderedUndecidedSongIds("snap-1", "acct-1");
+
+		// song-locked excluded (not entitled); song-m first (new); then the two
+		// score-90 songs by songId asc (song-a < song-z); then song-low (score 10).
+		expect(ids).toEqual(["song-m", "song-a", "song-z", "song-low"]);
+	});
+
+	it("returns empty when the newness lookup fails", async () => {
+		mockGetMatchResults.mockResolvedValue(
+			Result.ok([{ song_id: "song-a", playlist_id: "pl-1", score: 50 }]),
+		);
+		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
+		mockGetNewItemIds.mockResolvedValue(Result.err(new Error("boom")));
+		mockRpc.mockResolvedValue({ data: [{ song_id: "song-a" }], error: null });
+
+		const ids = await getOrderedUndecidedSongIds("snap-1", "acct-1");
+
+		expect(ids).toEqual([]);
+	});
+
+	it("excludes songs whose every pair is already decided", async () => {
+		mockGetMatchResults.mockResolvedValue(
+			Result.ok([
+				{ song_id: "song-a", playlist_id: "pl-1", score: 50 },
+				{ song_id: "song-b", playlist_id: "pl-1", score: 90 },
+			]),
+		);
+		// song-a's only pair is decided → drops out; song-b stays.
+		mockGetMatchDecisionsForSongs.mockResolvedValue(
+			Result.ok([{ song_id: "song-a", playlist_id: "pl-1" }]),
+		);
+		mockGetNewItemIds.mockResolvedValue(Result.ok([]));
+		mockRpc.mockResolvedValue({
+			data: [{ song_id: "song-a" }, { song_id: "song-b" }],
+			error: null,
+		});
+
+		const ids = await getOrderedUndecidedSongIds("snap-1", "acct-1");
+
+		expect(ids).toEqual(["song-b"]);
 	});
 });
 
