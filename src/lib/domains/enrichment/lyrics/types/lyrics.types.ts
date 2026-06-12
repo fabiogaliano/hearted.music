@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 // Application-specific types for lyrics processing
 export interface AnnotationInfo {
 	text: string;
@@ -17,3 +19,24 @@ export interface LyricsSection {
 		[url: string]: number[];
 	};
 }
+
+// Discriminated union describing every terminal result a lyrics fetch can produce.
+// "lyrics" carries the resolved text, "instrumental" records which signal decided,
+// and "not_found" means all providers returned no record for the track.
+export const LyricsOutcomeSchema = z.discriminatedUnion("kind", [
+	z.object({
+		kind: z.literal("lyrics"),
+		text: z.string(),
+		source: z.enum(["lrclib", "genius"]),
+		confidence: z.number(),
+	}),
+	z.object({
+		kind: z.literal("instrumental"),
+		source: z.enum(["lrclib", "genius_page"]),
+	}),
+	z.object({
+		kind: z.literal("not_found"),
+	}),
+]);
+
+export type LyricsOutcome = z.infer<typeof LyricsOutcomeSchema>;

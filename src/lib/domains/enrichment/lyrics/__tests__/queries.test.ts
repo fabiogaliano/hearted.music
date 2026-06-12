@@ -1,7 +1,7 @@
 import { Result } from "better-result";
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import type { Json } from "@/lib/data/database.types";
-import { parseDocument } from "../queries";
+import { parseDocument, type StoredFetchOutcome } from "../queries";
 
 // The worker writes an absent role as undefined; Postgres jsonb stores it as null. The read
 // path must accept that and normalize back to undefined — otherwise every cached document with
@@ -48,5 +48,39 @@ describe("parseDocument", () => {
 			schemaVersion: 99,
 		} as Json);
 		expect(Result.isError(result)).toBe(true);
+	});
+});
+
+// Type-level tests for fetch-outcome persistence (Decision 5).
+// Behavioral coverage (actual DB round-trips) lands in Phase 6 integration tests,
+// since these functions require a live song_lyrics row. The types below verify
+// that callers can distinguish null (no attempt) from a recorded not_found row,
+// which is the core contract getSongFetchOutcome provides.
+describe("StoredFetchOutcome type contract", () => {
+	it("null and StoredFetchOutcome are distinct (type-level)", () => {
+		// The return type must allow null (never attempted) separately from a row.
+		expectTypeOf<StoredFetchOutcome | null>().not.toEqualTypeOf<StoredFetchOutcome>();
+		expectTypeOf<null>().not.toEqualTypeOf<StoredFetchOutcome>();
+	});
+
+	it("fetchStatus covers exactly the three persisted states", () => {
+		// All three CHECK-constrained values must be assignable to the field type.
+		const lyrics = {
+			fetchStatus: "lyrics",
+			fetchSource: "genius",
+		} satisfies StoredFetchOutcome;
+		const instrumental = {
+			fetchStatus: "instrumental",
+			fetchSource: "lrclib",
+		} satisfies StoredFetchOutcome;
+		const notFound = {
+			fetchStatus: "not_found",
+			fetchSource: null,
+		} satisfies StoredFetchOutcome;
+
+		expect(lyrics.fetchStatus).toBe("lyrics");
+		expect(instrumental.fetchStatus).toBe("instrumental");
+		expect(notFound.fetchStatus).toBe("not_found");
+		expect(notFound.fetchSource).toBeNull();
 	});
 });
