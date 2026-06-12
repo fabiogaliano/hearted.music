@@ -76,6 +76,7 @@ export function landingSongToSongDetail(
 		artistImageUrl: overrides?.artistImageUrl ?? song.artistImageUrl,
 		displayState: detail ? "analyzed" : "pending",
 		read: getLandingRead(song),
+		instrumentalRead: null,
 	};
 }
 

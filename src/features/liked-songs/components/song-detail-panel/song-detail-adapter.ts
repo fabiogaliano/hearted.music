@@ -7,14 +7,18 @@
  * read FLAT (buildAnalysisData spreads the read fields and tacks on an extra
  * `audio_features` key), so the stored JSON is `{ ...SongRead, audio_features }`.
  * Parsing it back through SongReadSchema validates it and strips the extra
- * `audio_features` key, leaving a clean SongRead.
+ * `audio_features` key, leaving a clean SongRead. Instrumental analysis rows
+ * follow the same flat-spread convention with { headline, compound_mood,
+ * sonic_texture, mood_description, audio_features? } — parsed via
+ * SongAnalysisInstrumentalSchema.
  *
  * `read` is null when the row has no analysis, is locked (analysis omitted), or is
- * an old 8-field row that predates v17 — none of those parse as a SongRead. The
- * panel renders the hero + a minimal "not analyzed yet" state for those rows.
+ * an old 8-field row that predates v17. `instrumentalRead` is non-null only for
+ * confirmed-instrumental rows. Both null = unresolved or pre-v17.
  */
 
 import { SongReadSchema } from "@/lib/domains/enrichment/content-analysis/read-schema";
+import { SongAnalysisInstrumentalSchema } from "@/lib/domains/enrichment/content-analysis/song-analysis";
 import type { ThemeColor } from "@/lib/theme/types";
 import type { LikedSong } from "../../types";
 import type { SongDetail } from "./song-detail-types";
@@ -24,8 +28,21 @@ export function likedSongToSongDetail(
 	themeColor: ThemeColor,
 ): SongDetail {
 	const stored = song.analysis?.analysis;
-	const parsed = stored ? SongReadSchema.safeParse(stored) : null;
-	const read = parsed?.success ? parsed.data : null;
+
+	// Both parses run against the same stored blob. SongReadSchema requires the
+	// lyrical fields (image/lens/tension/take/arc/lines); SongAnalysisInstrumental
+	// requires the instrumental fields (headline/compound_mood/sonic_texture/
+	// mood_description). The two shapes are mutually exclusive in practice, so
+	// exactly one will succeed for a valid analysis row.
+	const lyricalParsed = stored ? SongReadSchema.safeParse(stored) : null;
+	const instrumentalParsed = stored
+		? SongAnalysisInstrumentalSchema.safeParse(stored)
+		: null;
+
+	const read = lyricalParsed?.success ? lyricalParsed.data : null;
+	const instrumentalRead = instrumentalParsed?.success
+		? instrumentalParsed.data
+		: null;
 
 	// Live audio features come from the track row; the read's stored copy is the
 	// fallback for rows whose track features weren't joined.
@@ -48,6 +65,8 @@ export function likedSongToSongDetail(
 		albumArtUrl: song.track.image_url ?? undefined,
 		artistImageUrl: song.track.artist_image_url ?? undefined,
 		displayState: song.displayState,
+		contentFetchStatus: song.contentFetchStatus ?? null,
 		read,
+		instrumentalRead,
 	};
 }

@@ -1,15 +1,20 @@
 // The read shape is owned by the Zod schema (read-schema.ts) so the UI can't
 // drift from what the prompt generates. SongDetail is UI-only and stays here.
 
+import type { z } from "zod";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
 import type {
 	ReadArcBeat,
 	ReadLineBeat,
 	SongRead,
 } from "@/lib/domains/enrichment/content-analysis/read-schema";
+import type { SongAnalysisInstrumentalSchema } from "@/lib/domains/enrichment/content-analysis/song-analysis";
 import type { ThemeColor } from "@/lib/theme/types";
 
 export type { ReadArcBeat, ReadLineBeat, SongRead };
+export type SongInstrumentalRead = z.infer<
+	typeof SongAnalysisInstrumentalSchema
+>;
 
 export interface SongDetail {
 	id: string;
@@ -38,10 +43,19 @@ export interface SongDetail {
 	// because the gold fixtures in song-detail-data.ts always carry a read, where this
 	// is never consulted; the live adapter always sets it. Defaults to "analyzed".
 	displayState?: SongDisplayState;
+	// Latest lyrics-fetch outcome for this song; null when no fetch attempt has been
+	// recorded. Drives "No words yet" vs "Listening": a song with not_found and no
+	// read is resolved-unknown (show the unavailable state), not in-flight.
+	contentFetchStatus?: "lyrics" | "instrumental" | "not_found" | null;
 	// Null when the row has no v17 read yet (locked, not-yet-analyzed, or a pre-v17
 	// 8-field row). The panel still opens — it renders the hero + a minimal empty
 	// state keyed off `displayState` — so every selected song gets a panel.
 	read: SongRead | null;
+	// Non-null only when the stored analysis parsed as an instrumental read
+	// (headline / compound_mood / sonic_texture / mood_description). Mutually
+	// exclusive with `read`: a lyrical row sets `read`, an instrumental row sets
+	// `instrumentalRead`, an unresolved/pre-v17 row leaves both null.
+	instrumentalRead: SongInstrumentalRead | null;
 }
 
 // The add-to-playlist matches the panel renders at the bottom of a read. The page

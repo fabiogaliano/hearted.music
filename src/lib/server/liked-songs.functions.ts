@@ -97,6 +97,12 @@ function mapLikedSongPageRow(row: LikedSongPageRow): LikedSong {
 					}
 				: null,
 		displayState,
+		contentFetchStatus:
+			(row.content_fetch_status as
+				| "lyrics"
+				| "instrumental"
+				| "not_found"
+				| null) ?? null,
 	};
 }
 

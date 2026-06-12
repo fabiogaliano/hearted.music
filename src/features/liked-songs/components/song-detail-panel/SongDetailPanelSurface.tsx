@@ -27,6 +27,7 @@ import type {
 	PlaylistSuggestionView,
 	PlaylistsPanel,
 	SongDetail,
+	SongInstrumentalRead,
 	SongRead,
 } from "./song-detail-types";
 
@@ -171,7 +172,8 @@ export function SongDetailPanelSurface({
 			? getThemedLightColors(themeConfig)
 			: getThemedDarkColors(themeConfig);
 	const heroHeight = song.artistImageUrl ? HERO_HEIGHT : HERO_HEIGHT_NO_IMAGE;
-	const isLocked = !song.read && song.displayState === "locked";
+	const isLocked =
+		!song.read && !song.instrumentalRead && song.displayState === "locked";
 
 	// Controlled by the chrome, with a local fallback for standalone (Ladle). ?? not || so a
 	// controlled `false` is honored. Starts collapsed — the headline lands first.
@@ -242,11 +244,19 @@ export function SongDetailPanelSurface({
 							</div>
 						)}
 					</>
+				) : song.instrumentalRead ? (
+					<div className="concept-rise concept-rise-1">
+						<InstrumentalReadLayer
+							read={song.instrumentalRead}
+							colors={colors}
+						/>
+					</div>
 				) : (
 					<div className="concept-rise concept-rise-1">
 						<UnreadState
 							colors={colors}
 							displayState={song.displayState}
+							contentFetchStatus={song.contentFetchStatus}
 							isEnrichmentRunning={isEnrichmentRunning}
 							heroHeight={heroHeight}
 							lockedCta={lockedCta}
@@ -522,42 +532,71 @@ function SonicNumbers({ song, colors }: { song: SongDetail; colors: Palette }) {
 	);
 }
 
-// Stands in for the Read/Take/Trace layers when a song has no v17 read yet. The
-// hero still renders above, so the panel always carries the song's identity even
-// before its read exists. The three branches answer *why* the read is missing:
-//   - locked      → not unlocked yet; offer the unlock path.
-//   - analyzing   → queued or running (pending/analyzing) — a read is on its way.
-//   - unavailable → finished without a usable read (failed, or too thin to read).
+// Stands in for the Read/Instrumental/Trace layers when a song has no read yet.
+// The hero still renders above — every selected song opens the panel. Four branches
+// answer *why* the content is missing:
+//   - locked      → not unlocked yet; offer the unlock path (terminal CTA, no divider).
+//   - analyzing   → genuinely in-flight: no settled fetch outcome yet, or the fetch
+//                   found lyrics but the read hasn’t been generated yet.
+//   - unavailable → lyrics-fetch has settled to a no-read outcome (not_found or
+//                   instrumental without a read), or the analysis ran and produced no
+//                   parseable output. Distinct from analyzing: honest "No words yet".
+//
+// Resolved-unknown fix: a song that cleanly resolves to "unknown" (retry candidate:
+// lyrics fetch returned not_found, no song_analysis row written) used to show
+// "Listening" forever because display_state stays ‘pending’ with no analysis row.
+// contentFetchStatus = ‘not_found’ is the settled signal that breaks the loop:
+// no read + not_found → "No words yet", not "Listening".
+//
+// instrumental without a read: fetch settled to ‘instrumental’ but no analysis row
+// parsed successfully — treated as "No words yet" (the read is unavailable, not in-
+// flight). This matches the resolved-unknown treatment: a settled fetch with no read.
+//
+// isEnrichmentRunning still matters for the genuinely in-flight case (e.g. a song
+// just unlocked with no fetch outcome yet), but it is NOT allowed to override a
+// settled not_found — a song whose fetch is done is not "Listening" regardless of
+// whether the pipeline is running for other songs.
 function UnreadState({
 	colors,
 	displayState,
+	contentFetchStatus,
 	isEnrichmentRunning = false,
 	heroHeight,
 	lockedCta,
 }: {
 	colors: Palette;
 	displayState?: SongDisplayState;
+	contentFetchStatus?: "lyrics" | "instrumental" | "not_found" | null;
 	isEnrichmentRunning?: boolean;
 	heroHeight: number;
 	lockedCta?: LockedCta;
 }) {
-	// Locked is a terminal CTA, so it skips the section separator and centers in
-	// the space the hero leaves. Analyzing/unavailable are transient and stay
-	// inline where the read would start.
+	// Locked is a terminal CTA, centered in the hero-free viewport space.
 	if (displayState === "locked") {
 		return (
 			<LockedState colors={colors} heroHeight={heroHeight} cta={lockedCta} />
 		);
 	}
 
-	// "pending" (e.g. a song just unlocked and queued) and "analyzing" both mean a
-	// read is on its way, so they show the live "Listening" state. Only a row that
-	// finished without a usable read ("analyzed" but unparseable, or "failed") falls
-	// through to the "Quiet one" couldn't-find copy.
+	// A settled fetch outcome with no read means the song is resolved-unknown or
+	// resolved-instrumental-without-read — show "No words yet", not "Listening".
+	// not_found: the lyrics fetch confirmed no lyrics exist for this song.
+	// instrumental without a read: the fetch found it’s instrumental but no analysis
+	// row parsed successfully yet — still "unavailable", not in-flight.
+	const fetchSettledWithNoRead =
+		contentFetchStatus === "not_found" || contentFetchStatus === "instrumental";
+
+	// "Listening" only when genuinely pre-resolution:
+	// - the fetch has not settled yet (null) AND the song is in-flight per
+	//   display_state or the pipeline is actively running;
+	// - OR the fetch returned lyrics but the read hasn’t arrived yet.
+	// A settled not_found always overrides isEnrichmentRunning.
 	const isAnalyzing =
-		isEnrichmentRunning ||
-		displayState === "analyzing" ||
-		displayState === "pending";
+		!fetchSettledWithNoRead &&
+		(isEnrichmentRunning ||
+			displayState === "analyzing" ||
+			displayState === "pending" ||
+			contentFetchStatus === "lyrics");
 
 	return (
 		<section
@@ -580,7 +619,7 @@ function UnreadState({
 				}}
 			>
 				{isAnalyzing && <PulseDot color={colors.accent} />}
-				{isAnalyzing ? "Listening" : "Quiet one"}
+				{isAnalyzing ? "Listening" : "No words yet"}
 			</div>
 			<p
 				style={{
@@ -595,7 +634,97 @@ function UnreadState({
 			>
 				{isAnalyzing
 					? "Getting a feel for this one…"
-					: "We couldn’t find enough about this one."}
+					: "We don’t have the words for this one yet."}
+			</p>
+		</section>
+	);
+}
+
+// Renders a confirmed-instrumental analysis: sound-first, brand-voiced. Follows
+// the ReadLayer section idiom (border-top divider, SECTION_GAP padding) so it
+// reads as the same visual family as the lyrical read without inventing a new
+// language. The compound_mood/sonic_texture pair mirrors lens/tension’s role as
+// the overture before the headline lands, and mood_description is the "take"
+// equivalent — the evocative paragraph that earns the headline.
+function InstrumentalReadLayer({
+	read,
+	colors,
+}: {
+	read: SongInstrumentalRead;
+	colors: Palette;
+}) {
+	return (
+		<section
+			style={{
+				borderTop: `1px solid ${colors.border}`,
+				padding: `${SECTION_GAP}px 0`,
+			}}
+		>
+			{/* compound_mood · sonic_texture — the overture, mirrors lens · tension */}
+			<div
+				style={{
+					display: "flex",
+					flexWrap: "wrap",
+					alignItems: "center",
+					gap: 10,
+					marginBottom: 16,
+				}}
+			>
+				<span
+					style={{
+						fontSize: 11,
+						letterSpacing: "0.16em",
+						textTransform: "uppercase",
+						fontWeight: 500,
+						color: colors.accent,
+					}}
+				>
+					{read.compound_mood}
+				</span>
+				<span aria-hidden style={{ color: colors.textDim, fontSize: 11 }}>
+					·
+				</span>
+				<span
+					style={{
+						fontSize: 11,
+						letterSpacing: "0.16em",
+						textTransform: "uppercase",
+						fontWeight: 500,
+						color: colors.textMuted,
+					}}
+				>
+					{read.sonic_texture}
+				</span>
+			</div>
+
+			{/* headline — the image-scale lead, mirrors `read.image` */}
+			<p
+				style={{
+					fontFamily: fonts.display,
+					fontWeight: 400,
+					fontSize: 44,
+					lineHeight: 1.08,
+					letterSpacing: "-0.01em",
+					color: colors.text,
+					margin: "0 0 20px",
+				}}
+			>
+				{read.headline}
+			</p>
+
+			{/* mood_description — the evocative paragraph, mirrors `read.take` */}
+			<p
+				style={{
+					fontFamily: fonts.body,
+					fontSize: 16,
+					lineHeight: 1.7,
+					// Pretty: no orphan word on the last line.
+					textWrap: "pretty",
+					color: colors.text,
+					margin: 0,
+				}}
+			>
+				{read.mood_description}
 			</p>
 		</section>
 	);

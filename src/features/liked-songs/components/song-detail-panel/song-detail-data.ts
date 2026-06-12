@@ -14,8 +14,8 @@ import type { SongDetail, SongRead } from "./song-detail-types";
 
 // SongDetail.read is nullable (live rows open the panel before they're analyzed),
 // but every gold exemplar here carries a read — narrow it so the schema tests can
-// index `.read` directly.
-type GoldSongDetail = SongDetail & { read: SongRead };
+// index `.read` directly. Gold fixtures are lyrical so instrumentalRead is null.
+type GoldSongDetail = SongDetail & { read: SongRead; instrumentalRead: null };
 
 export const GOLD_SONG_DETAILS: GoldSongDetail[] = [
 	{
@@ -28,6 +28,7 @@ export const GOLD_SONG_DETAILS: GoldSongDetail[] = [
 		genres: ["pop", "bedroom pop"],
 		audioFeatures: { tempo: 144, energy: 0.44, valence: 0.13 },
 		theme: "rose",
+		instrumentalRead: null,
 		read: {
 			image: "the long way home, alone this time",
 			lens: "license as eulogy",
@@ -72,6 +73,7 @@ export const GOLD_SONG_DETAILS: GoldSongDetail[] = [
 		genres: ["hip hop", "west coast rap"],
 		audioFeatures: { tempo: 101, energy: 0.78, valence: 0.21 },
 		theme: "blue",
+		instrumentalRead: null,
 		read: {
 			image: "the block party draws the line",
 			lens: "diss as block party",
@@ -124,6 +126,7 @@ export const GOLD_SONG_DETAILS: GoldSongDetail[] = [
 		genres: ["indie rock", "indie folk"],
 		audioFeatures: { tempo: 138, energy: 0.62, valence: 0.34 },
 		theme: "green",
+		instrumentalRead: null,
 		read: {
 			image: "loving someone you would not call back",
 			lens: "anger with receipts",
@@ -171,6 +174,7 @@ export const GOLD_SONG_DETAILS: GoldSongDetail[] = [
 		genres: ["pop", "synth pop"],
 		audioFeatures: { tempo: 123, energy: 0.82, valence: 0.71 },
 		theme: "rose",
+		instrumentalRead: null,
 		read: pinkPonyClubExemplar.read,
 	},
 	{
@@ -183,6 +187,7 @@ export const GOLD_SONG_DETAILS: GoldSongDetail[] = [
 		genres: ["synthwave", "pop"],
 		audioFeatures: { tempo: 171, energy: 0.73, valence: 0.33 },
 		theme: "lavender",
+		instrumentalRead: null,
 		read: {
 			image: "neon, and no one to call",
 			lens: "speed as avoidance",

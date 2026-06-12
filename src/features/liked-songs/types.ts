@@ -34,6 +34,11 @@ export interface LikedSong {
 	};
 	analysis: SongAnalysis | null;
 	displayState: SongDisplayState;
+	// Latest song_lyrics.fetch_status for this song; null/undefined when no fetch
+	// has been recorded yet (never attempted). Drives the "No words yet" vs
+	// "Listening" distinction: a settled not_found without a read is
+	// resolved-unknown (show the unavailable state), not in-flight.
+	contentFetchStatus?: "lyrics" | "instrumental" | "not_found" | null;
 }
 
 // Full analysis structure from the database
