@@ -42,13 +42,16 @@ const ACCOUNT_ID = "acct-1";
 const SONG_ID = "song-x";
 const SPOTIFY_ID = "spotify-x";
 
-function makeTrack(addedAt: string): SpotifyTrackDTO {
+function makeTrack(
+	addedAt: string,
+	artistOverrides?: Partial<SpotifyTrackDTO["track"]["artists"][number]>,
+): SpotifyTrackDTO {
 	return {
 		added_at: addedAt,
 		track: {
 			id: SPOTIFY_ID,
 			name: "Song X",
-			artists: [{ id: "artist-1", name: "Artist X" }],
+			artists: [{ id: "artist-1", name: "Artist X", ...artistOverrides }],
 			album: {
 				id: "album-1",
 				name: "Album X",
@@ -178,6 +181,24 @@ describe("incrementalSync", () => {
 		expect(result.value.removed).toBe(0);
 		expect(mockUpsertLikedSongs).not.toHaveBeenCalled();
 		expect(mockSoftDeleteBatch).not.toHaveBeenCalled();
+	});
+
+	it("omits null artist metadata so cached images and bios are preserved", async () => {
+		const track = makeTrack("2026-03-02T00:00:00.000Z", {
+			imageUrl: null,
+			bio: null,
+		});
+
+		const result = await incrementalSync(ACCOUNT_ID, {
+			likedSongs: [track],
+			existingLikedSongs: [],
+			likedSongsIds: new Set([SPOTIFY_ID]),
+		});
+
+		expect(Result.isOk(result)).toBe(true);
+		expect(mockUpsertArtists).toHaveBeenCalledWith([
+			{ spotify_id: "artist-1", name: "Artist X" },
+		]);
 	});
 
 	it("soft-deletes a song the account actively liked but is no longer present", async () => {

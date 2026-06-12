@@ -14,8 +14,11 @@ const isLiveTest = process.env.VITEST_LIVE === "true";
 
 // Vitest defaults to roughly one worker per core; with `pool: "threads"` every
 // worker transforms and runs in parallel, which spikes CPU to 100% at startup.
-// Cap at half the cores so local `bun run test` stays responsive. Override with
-// VITEST_MAX_WORKERS (e.g. CI can pass the full core count for raw speed).
+// Half the cores is the measured sweet spot: on an 8-core machine, going above
+// half buys ~nothing (6 vs 4 workers was within 4%) while dropping below it is
+// costly (3 workers +28%, 2 workers +84%). Override with VITEST_MAX_WORKERS —
+// CI passes the full core count for raw speed, and `bun run test:quiet` pins it
+// to 2 for a responsive machine when you don't need the throughput.
 const availableCores = os.availableParallelism?.() ?? os.cpus().length;
 const testMaxWorkers = process.env.VITEST_MAX_WORKERS
 	? Math.max(1, Number(process.env.VITEST_MAX_WORKERS))

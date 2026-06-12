@@ -39,7 +39,7 @@ routes/
 │   │   └── $.ts                  ← /api/auth/* — Better Auth catch-all handler
 │   └── extension/
 │       ├── sync.tsx              ← POST /api/extension/sync
-│       ├── status.tsx            ← GET  /api/extension/status
+│       ├── status.tsx            ← GET / POST /api/extension/status
 │       └── token.tsx             ← POST /DELETE /api/extension/token
 │
 └── auth/
@@ -199,6 +199,7 @@ The web app communicates with the extension via `chrome.runtime.sendMessage` (re
 | ----------------------------- | ----------------------------- | ---------------------------------------------- |
 | `POST /api/extension/sync`    | Session cookie or Bearer token | Receive full library snapshot, enqueue jobs    |
 | `GET  /api/extension/status`  | Bearer token                  | Account auth state, liked song & playlist counts |
+| `POST /api/extension/status`  | Bearer token                  | Persist privacy-light sync diagnostics for operator analysis |
 | `POST /api/extension/token`   | Session cookie (required)     | Generate a new API token                       |
 | `DELETE /api/extension/token` | Session cookie (required)     | Revoke all tokens for account                  |
 

@@ -66,7 +66,8 @@ export async function importSpotifyTracks(
 
 /**
  * Extracts unique artist metadata from extension-provided track payloads.
- * Prefers the first non-null image URL when the same artist appears multiple times.
+ * Prefers the first non-null image URL/bio when the same artist appears multiple times.
+ * Omits null metadata so syncs without hydration never erase stored artist data.
  */
 function collectArtistUpsertData(
 	tracks: SpotifyTrackDTO[],
@@ -80,8 +81,8 @@ function collectArtistUpsertData(
 				uniqueArtists.set(a.id, {
 					spotify_id: a.id,
 					name: a.name,
-					image_url: a.imageUrl ?? null,
-					bio: a.bio ?? null,
+					...(a.imageUrl != null ? { image_url: a.imageUrl } : {}),
+					...(a.bio != null ? { bio: a.bio } : {}),
 				});
 				continue;
 			}

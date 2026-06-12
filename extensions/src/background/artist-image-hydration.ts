@@ -2,7 +2,7 @@ import { queryArtistOverview } from "../shared/spotify-client/reads";
 import { setSyncState } from "../shared/storage";
 import type { SpotifyTrackDTO } from "../shared/types";
 
-const ARTIST_OVERVIEW_CONCURRENCY = 8;
+const ARTIST_OVERVIEW_CONCURRENCY = 4;
 
 type ArtistImageRecord = {
 	spotify_id: string;

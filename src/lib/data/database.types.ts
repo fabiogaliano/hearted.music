@@ -538,6 +538,83 @@ export type Database = {
 					},
 				];
 			};
+			extension_sync_diagnostic: {
+				Row: {
+					account_id: string;
+					backend_failure_code: string | null;
+					backend_status: number | null;
+					client_created_at: string;
+					created_at: string;
+					duration_ms: number;
+					error_message: string | null;
+					extension_version: string;
+					failed_playlist_track_fetch_count: number;
+					id: string;
+					liked_songs_count: number;
+					outcome: string;
+					phase: string;
+					playlist_count: number;
+					playlist_tracks_count: number;
+					playlists_with_tracks_count: number;
+					request_policy: Json;
+					request_stats: Json;
+					retry_after_seconds: number | null;
+					skipped_empty_playlists_count: number;
+				};
+				Insert: {
+					account_id: string;
+					backend_failure_code?: string | null;
+					backend_status?: number | null;
+					client_created_at: string;
+					created_at?: string;
+					duration_ms: number;
+					error_message?: string | null;
+					extension_version: string;
+					failed_playlist_track_fetch_count?: number;
+					id: string;
+					liked_songs_count?: number;
+					outcome: string;
+					phase: string;
+					playlist_count?: number;
+					playlist_tracks_count?: number;
+					playlists_with_tracks_count?: number;
+					request_policy: Json;
+					request_stats: Json;
+					retry_after_seconds?: number | null;
+					skipped_empty_playlists_count?: number;
+				};
+				Update: {
+					account_id?: string;
+					backend_failure_code?: string | null;
+					backend_status?: number | null;
+					client_created_at?: string;
+					created_at?: string;
+					duration_ms?: number;
+					error_message?: string | null;
+					extension_version?: string;
+					failed_playlist_track_fetch_count?: number;
+					id?: string;
+					liked_songs_count?: number;
+					outcome?: string;
+					phase?: string;
+					playlist_count?: number;
+					playlist_tracks_count?: number;
+					playlists_with_tracks_count?: number;
+					request_policy?: Json;
+					request_stats?: Json;
+					retry_after_seconds?: number | null;
+					skipped_empty_playlists_count?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "extension_sync_diagnostic_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			job: {
 				Row: {
 					account_id: string;

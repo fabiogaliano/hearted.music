@@ -37,8 +37,8 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedPlaylistsPlaylistRefRouteImport } from './routes/_authenticated/playlists.$playlistRef'
 import { Route as AuthenticatedCheckoutSuccessRouteImport } from './routes/_authenticated/checkout/success'
 import { Route as AuthenticatedCheckoutCancelRouteImport } from './routes/_authenticated/checkout/cancel'
-import { Route as ApiExtensionArtistsCheckRouteImport } from './routes/api/extension/artists/check'
 import { Route as ApiExtensionSyncStatusRouteImport } from './routes/api/extension/sync/status'
+import { Route as ApiExtensionArtistsCheckRouteImport } from './routes/api/extension/artists/check'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
@@ -182,17 +182,17 @@ const AuthenticatedCheckoutCancelRoute =
     path: '/checkout/cancel',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiExtensionSyncStatusRoute = ApiExtensionSyncStatusRouteImport.update({
+  id: '/status',
+  path: '/status',
+  getParentRoute: () => ApiExtensionSyncRoute,
+} as any)
 const ApiExtensionArtistsCheckRoute =
   ApiExtensionArtistsCheckRouteImport.update({
     id: '/api/extension/artists/check',
     path: '/api/extension/artists/check',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiExtensionSyncStatusRoute = ApiExtensionSyncStatusRouteImport.update({
-  id: '/api/extension/sync/status',
-  path: '/api/extension/sync/status',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -219,7 +219,7 @@ export interface FileRoutesByFullPath {
   '/playlists/$playlistRef': typeof AuthenticatedPlaylistsPlaylistRefRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
-  '/api/extension/sync': typeof ApiExtensionSyncRoute
+  '/api/extension/sync': typeof ApiExtensionSyncRouteWithChildren
   '/api/extension/token': typeof ApiExtensionTokenRoute
   '/api/posthog/$': typeof ApiPosthogSplatRoute
   '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
@@ -250,7 +250,7 @@ export interface FileRoutesByTo {
   '/playlists/$playlistRef': typeof AuthenticatedPlaylistsPlaylistRefRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
-  '/api/extension/sync': typeof ApiExtensionSyncRoute
+  '/api/extension/sync': typeof ApiExtensionSyncRouteWithChildren
   '/api/extension/token': typeof ApiExtensionTokenRoute
   '/api/posthog/$': typeof ApiPosthogSplatRoute
   '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
@@ -283,7 +283,7 @@ export interface FileRoutesById {
   '/_authenticated/playlists/$playlistRef': typeof AuthenticatedPlaylistsPlaylistRefRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
-  '/api/extension/sync': typeof ApiExtensionSyncRoute
+  '/api/extension/sync': typeof ApiExtensionSyncRouteWithChildren
   '/api/extension/token': typeof ApiExtensionTokenRoute
   '/api/posthog/$': typeof ApiPosthogSplatRoute
   '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
@@ -403,11 +403,10 @@ export interface RootRouteChildren {
   AuthLogoutRoute: typeof AuthLogoutRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiExtensionStatusRoute: typeof ApiExtensionStatusRoute
-  ApiExtensionSyncRoute: typeof ApiExtensionSyncRoute
+  ApiExtensionSyncRoute: typeof ApiExtensionSyncRouteWithChildren
   ApiExtensionTokenRoute: typeof ApiExtensionTokenRoute
   ApiPosthogSplatRoute: typeof ApiPosthogSplatRoute
   ApiExtensionArtistsCheckRoute: typeof ApiExtensionArtistsCheckRoute
-  ApiExtensionSyncStatusRoute: typeof ApiExtensionSyncStatusRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -608,18 +607,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCheckoutCancelRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/extension/sync/status': {
+      id: '/api/extension/sync/status'
+      path: '/status'
+      fullPath: '/api/extension/sync/status'
+      preLoaderRoute: typeof ApiExtensionSyncStatusRouteImport
+      parentRoute: typeof ApiExtensionSyncRoute
+    }
     '/api/extension/artists/check': {
       id: '/api/extension/artists/check'
       path: '/api/extension/artists/check'
       fullPath: '/api/extension/artists/check'
       preLoaderRoute: typeof ApiExtensionArtistsCheckRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/extension/sync/status': {
-      id: '/api/extension/sync/status'
-      path: '/api/extension/sync/status'
-      fullPath: '/api/extension/sync/status'
-      preLoaderRoute: typeof ApiExtensionSyncStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -665,6 +664,17 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ApiExtensionSyncRouteChildren {
+  ApiExtensionSyncStatusRoute: typeof ApiExtensionSyncStatusRoute
+}
+
+const ApiExtensionSyncRouteChildren: ApiExtensionSyncRouteChildren = {
+  ApiExtensionSyncStatusRoute: ApiExtensionSyncStatusRoute,
+}
+
+const ApiExtensionSyncRouteWithChildren =
+  ApiExtensionSyncRoute._addFileChildren(ApiExtensionSyncRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -682,11 +692,10 @@ const rootRouteChildren: RootRouteChildren = {
   AuthLogoutRoute: AuthLogoutRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiExtensionStatusRoute: ApiExtensionStatusRoute,
-  ApiExtensionSyncRoute: ApiExtensionSyncRoute,
+  ApiExtensionSyncRoute: ApiExtensionSyncRouteWithChildren,
   ApiExtensionTokenRoute: ApiExtensionTokenRoute,
   ApiPosthogSplatRoute: ApiPosthogSplatRoute,
   ApiExtensionArtistsCheckRoute: ApiExtensionArtistsCheckRoute,
-  ApiExtensionSyncStatusRoute: ApiExtensionSyncStatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

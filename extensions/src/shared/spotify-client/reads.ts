@@ -117,10 +117,6 @@ export async function fetchAllLikedTracks(
 
 		onProgress?.(allTracks.length, total);
 		console.log(`[hearted.] Fetched ${allTracks.length}/${total} liked tracks`);
-
-		if (offset < total) {
-			await new Promise((r) => setTimeout(r, 200));
-		}
 	}
 
 	return allTracks;
@@ -174,10 +170,6 @@ export async function fetchUserPlaylists(
 		console.log(
 			`[hearted.] Fetched ${allPlaylists.length} owned playlists (scanned ${offset}/${total})`,
 		);
-
-		if (offset < total) {
-			await new Promise((r) => setTimeout(r, 200));
-		}
 	}
 
 	return allPlaylists;
@@ -212,10 +204,6 @@ export async function fetchPlaylistTracks(
 		onProgress?.(allTracks.length, total);
 
 		console.log(`[hearted.] Playlist tracks: ${allTracks.length}/${total}`);
-
-		if (offset < total) {
-			await new Promise((r) => setTimeout(r, 200));
-		}
 	}
 
 	return allTracks;

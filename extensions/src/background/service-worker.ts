@@ -13,7 +13,13 @@ import {
 	EXTENSION_SYNC_COOLDOWN,
 	EXTENSION_SYNC_UNKNOWN_FAILURE,
 } from "../../../shared/extension-sync-contract";
+import type {
+	ExtensionSyncDiagnosticOutcome,
+	ExtensionSyncDiagnosticPhase,
+	ExtensionSyncDiagnosticSummary,
+} from "../../../shared/extension-sync-diagnostics";
 import { parseSpotifyCommand } from "../../../shared/spotify-command-protocol";
+import { mapWithConcurrency } from "../../../src/lib/shared/utils/concurrency";
 import { browser } from "../shared/browser";
 import { DEFAULT_BACKEND_URL } from "../shared/constants";
 import { updateHash } from "../shared/hash-registry";
@@ -23,17 +29,22 @@ import {
 	getCurrentUserProfile as fetchProfile,
 	fetchUserPlaylists,
 } from "../shared/spotify-client/reads";
+import {
+	getSpotifyRequestPolicy,
+	resetSpotifyRequestStats,
+	snapshotSpotifyRequestStats,
+} from "../shared/spotify-request-policy";
 import { getSyncState, setSyncState } from "../shared/storage";
+import {
+	enqueueSyncDiagnostic,
+	flushPendingSyncDiagnostics,
+} from "../shared/sync-diagnostics";
 import type {
 	ExtensionMessage,
 	SpotifyTokenPayload,
 	StatusResponse,
 	UserProfile,
 } from "../shared/types";
-import {
-	attachArtistDataToTracks,
-	fetchArtistData,
-} from "./artist-image-hydration";
 import { handleSpotifyCommand } from "./command-handler";
 import {
 	acceptCreatedCandidate,
@@ -57,6 +68,7 @@ const HEARTED_TAB_FRESHNESS_MS = 60_000;
 
 const SPOTIFY_COOKIE_URL = "https://open.spotify.com/";
 const SPOTIFY_TAB_URL_MATCH = "https://open.spotify.com/*";
+const PLAYLIST_TRACK_FETCH_CONCURRENCY = 2;
 // Kept in sync with manifest.externally_connectable.matches so we can fall
 // back to querying by URL when the cached tab id is stale.
 const HEARTED_TAB_URL_MATCHES = [
@@ -318,6 +330,21 @@ async function postToBackend(
 	});
 }
 
+function truncateDiagnosticError(message: string | null): string | null {
+	if (message === null) return null;
+	return message.length > 500 ? `${message.slice(0, 500)}…` : message;
+}
+
+async function sendSyncDiagnostic(
+	diagnostic: ExtensionSyncDiagnosticSummary,
+): Promise<Response> {
+	return postToBackend("/api/extension/status", {
+		...diagnostic,
+		requestStats: { ...diagnostic.requestStats },
+		requestPolicy: { ...diagnostic.requestPolicy },
+	});
+}
+
 type SyncResult =
 	| {
 			kind: "success";
@@ -387,6 +414,28 @@ async function performSync(): Promise<SyncResult> {
 	}
 	isSyncing = true;
 	const token = (cachedToken as SpotifyTokenPayload).accessToken;
+	const syncStartedAtMs = Date.now();
+	const extensionVersion = browser.runtime.getManifest().version;
+	const diagnosticId = crypto.randomUUID();
+	const clientCreatedAt = new Date(syncStartedAtMs).toISOString();
+	let diagnosticOutcome: ExtensionSyncDiagnosticOutcome = "extension_failure";
+	let diagnosticPhase: ExtensionSyncDiagnosticPhase = "likedSongs";
+	let diagnosticErrorMessage: string | null = null;
+	let diagnosticBackendStatus: number | null = null;
+	let diagnosticBackendFailureCode: ExtensionSyncBackendFailureCode | null =
+		null;
+	let diagnosticRetryAfterSeconds: number | null = null;
+	let likedSongsCount = 0;
+	let playlistCount = 0;
+	let playlistsWithTracksCount = 0;
+	let playlistTracksCount = 0;
+	let failedPlaylistTrackFetchCount = 0;
+	let skippedEmptyPlaylistsCount = 0;
+	resetSpotifyRequestStats();
+	console.log(
+		"[hearted.] Starting sync with conservative Spotify request policy:",
+		getSpotifyRequestPolicy(),
+	);
 	await setSyncState({
 		status: "syncing",
 		phase: "likedSongs",
@@ -406,6 +455,7 @@ async function performSync(): Promise<SyncResult> {
 		// local ref survives cachedProfile being nulled by incoming SPOTIFY_TOKEN messages
 		const profile = cachedProfile;
 
+		diagnosticPhase = "likedSongs";
 		const likedSongs = await fetchAllLikedTracks(
 			token,
 			async (fetched, total) => {
@@ -417,7 +467,9 @@ async function performSync(): Promise<SyncResult> {
 				});
 			},
 		);
+		likedSongsCount = likedSongs.length;
 
+		diagnosticPhase = "playlists";
 		const userUri = `spotify:user:${profile.spotifyId}`;
 		const playlists = await fetchUserPlaylists(
 			token,
@@ -437,8 +489,27 @@ async function performSync(): Promise<SyncResult> {
 			total: playlists.length,
 			playlists: { fetched: playlists.length, total: playlists.length },
 		});
+		playlistCount = playlists.length;
 		const userProfile = profile;
-		const playlistTracksTotal = playlists.reduce(
+		// Only skip the network read for playlists we *know* are empty. A null
+		// track_count means "unknown", so those are still fetched — collapsing
+		// unknown into empty would silently never sync them.
+		const playlistsToFetchTracks = playlists.filter(
+			(playlist) => playlist.track_count == null || playlist.track_count > 0,
+		);
+		const knownEmptyPlaylists = playlists.filter(
+			(playlist) => playlist.track_count === 0,
+		);
+		playlistsWithTracksCount = playlistsToFetchTracks.length;
+		const skippedEmptyPlaylists = knownEmptyPlaylists.length;
+		skippedEmptyPlaylistsCount = skippedEmptyPlaylists;
+		if (skippedEmptyPlaylists > 0) {
+			console.log(
+				`[hearted.] Skipping track reads for ${skippedEmptyPlaylists} empty playlists`,
+			);
+		}
+		diagnosticPhase = "playlistTracks";
+		const playlistTracksTotal = playlistsToFetchTracks.reduce(
 			(sum, playlist) => sum + (playlist.track_count ?? 0),
 			0,
 		);
@@ -453,73 +524,75 @@ async function performSync(): Promise<SyncResult> {
 			},
 		});
 
-		// Fetch tracks for all owned playlists
-		const playlistTracks: Array<{
-			playlistSpotifyId: string;
-			tracks: Awaited<ReturnType<typeof fetchPlaylistTracks>>;
-		}> = [];
-		for (const pl of playlists) {
-			try {
-				let currentPlaylistTrackCount = 0;
-				const tracks = await fetchPlaylistTracks(
-					token,
-					`spotify:playlist:${pl.id}`,
-					async (playlistFetched) => {
-						fetchedPlaylistTracks +=
-							playlistFetched - currentPlaylistTrackCount;
-						currentPlaylistTrackCount = playlistFetched;
-						await setSyncState({
-							phase: "playlistTracks",
-							fetched: fetchedPlaylistTracks,
-							total: playlistTracksTotal,
-							playlistTracks: {
+		const playlistTrackEntries = await mapWithConcurrency(
+			playlistsToFetchTracks,
+			PLAYLIST_TRACK_FETCH_CONCURRENCY,
+			async (playlist) => {
+				try {
+					let currentPlaylistTrackCount = 0;
+					const tracks = await fetchPlaylistTracks(
+						token,
+						`spotify:playlist:${playlist.id}`,
+						async (playlistFetched) => {
+							fetchedPlaylistTracks +=
+								playlistFetched - currentPlaylistTrackCount;
+							currentPlaylistTrackCount = playlistFetched;
+							await setSyncState({
+								phase: "playlistTracks",
 								fetched: fetchedPlaylistTracks,
 								total: playlistTracksTotal,
-							},
-						});
-					},
-				);
-				playlistTracks.push({ playlistSpotifyId: pl.id, tracks });
-			} catch (err) {
-				console.warn(`[hearted.] Failed to fetch tracks for ${pl.name}:`, err);
-			}
-		}
+								playlistTracks: {
+									fetched: fetchedPlaylistTracks,
+									total: playlistTracksTotal,
+								},
+							});
+						},
+					);
+					return { playlistSpotifyId: playlist.id, tracks };
+				} catch (err) {
+					failedPlaylistTrackFetchCount += 1;
+					console.warn(
+						`[hearted.] Failed to fetch tracks for ${playlist.name}:`,
+						err,
+					);
+					return null;
+				}
+			},
+		);
+		// Known-empty playlists get an explicit empty entry rather than being
+		// omitted: the worker only reconciles playlists present in this list, so
+		// a missing entry would leave previously-synced tracks orphaned when a
+		// playlist is emptied between syncs.
+		const playlistTracks = [
+			...playlistTrackEntries.flatMap((entry) => (entry ? [entry] : [])),
+			...knownEmptyPlaylists.map((playlist) => ({
+				playlistSpotifyId: playlist.id,
+				tracks: [] as Awaited<ReturnType<typeof fetchPlaylistTracks>>,
+			})),
+		];
 
 		const totalTracks = playlistTracks.reduce(
 			(sum, pt) => sum + pt.tracks.length,
 			0,
 		);
+		playlistTracksCount = totalTracks;
 		console.log(
-			`[hearted.] Sync complete: ${likedSongs.length} liked songs, ${playlists.length} playlists, ${totalTracks} playlist tracks`,
+			`[hearted.] Sync fetch complete: ${likedSongs.length} liked songs, ${playlists.length} playlists, ${totalTracks} playlist tracks`,
 		);
 
-		const artistResults = await fetchArtistData({
-			token,
-			tracks: [
-				...likedSongs,
-				...playlistTracks.flatMap((entry) => entry.tracks),
-			],
-			postToBackend,
-		});
-		const hydratedLikedSongs = attachArtistDataToTracks(
-			likedSongs,
-			artistResults,
-		);
-		const hydratedPlaylistTracks = playlistTracks.map((entry) => ({
-			...entry,
-			tracks: attachArtistDataToTracks(entry.tracks, artistResults),
-		}));
+		diagnosticPhase = "uploading";
 		await setSyncState({ phase: "uploading" });
 
 		try {
 			const res = await postToBackend("/api/extension/sync", {
-				likedSongs: hydratedLikedSongs,
+				likedSongs,
 				playlists,
-				playlistTracks: hydratedPlaylistTracks,
+				playlistTracks,
 				userProfile,
 			});
 			if (res.ok) {
 				const result = await res.json();
+				diagnosticOutcome = "success";
 				await setSyncState({
 					status: "done",
 					phase: "idle",
@@ -542,6 +615,13 @@ async function performSync(): Promise<SyncResult> {
 				payload = null;
 			}
 			const failure = parseBackendFailure(res.status, payload, res);
+			diagnosticOutcome = "backend_failure";
+			diagnosticBackendStatus = failure.status;
+			diagnosticBackendFailureCode = failure.code;
+			diagnosticRetryAfterSeconds = failure.retryAfterSeconds;
+			diagnosticErrorMessage = truncateDiagnosticError(
+				failure.message ?? `Backend HTTP ${res.status}`,
+			);
 			await setSyncState({
 				status: "error",
 				error: failure.message ?? `Backend HTTP ${res.status}`,
@@ -549,16 +629,61 @@ async function performSync(): Promise<SyncResult> {
 			console.warn("[hearted.] Backend sync failed:", failure);
 			return { kind: "backend-failure", count: likedSongs.length, failure };
 		} catch {
+			diagnosticOutcome = "backend_failure";
+			diagnosticErrorMessage = "Backend unreachable";
 			await setSyncState({ status: "error", error: "Backend unreachable" });
 			console.warn("[hearted.] Backend unreachable");
 			throw new Error("Backend unreachable");
 		}
 	} catch (err) {
 		const error = err instanceof Error ? err.message : "Unknown error";
+		// TS narrows diagnosticOutcome to its initializer here, but the "Backend
+		// unreachable" path can already have set "backend_failure" before
+		// re-throwing — preserve that classification instead of clobbering it.
+		if (
+			(diagnosticOutcome as ExtensionSyncDiagnosticOutcome) !==
+			"backend_failure"
+		) {
+			diagnosticOutcome = "extension_failure";
+		}
+		diagnosticErrorMessage ??= truncateDiagnosticError(error);
 		await setSyncState({ status: "error", error });
 		console.error("[hearted.] Sync failed:", error);
 		throw err;
 	} finally {
+		const spotifyRequestStats = snapshotSpotifyRequestStats();
+		const diagnostic: ExtensionSyncDiagnosticSummary = {
+			id: diagnosticId,
+			clientCreatedAt,
+			extensionVersion,
+			outcome: diagnosticOutcome,
+			phase: diagnosticPhase,
+			backendStatus: diagnosticBackendStatus,
+			backendFailureCode: diagnosticBackendFailureCode,
+			retryAfterSeconds: diagnosticRetryAfterSeconds,
+			errorMessage: truncateDiagnosticError(diagnosticErrorMessage),
+			durationMs: Date.now() - syncStartedAtMs,
+			likedSongsCount,
+			playlistCount,
+			playlistsWithTracksCount,
+			playlistTracksCount,
+			failedPlaylistTrackFetchCount,
+			skippedEmptyPlaylistsCount,
+			requestStats: spotifyRequestStats,
+			requestPolicy: getSpotifyRequestPolicy(),
+		};
+		console.log("[hearted.] Spotify request stats:", {
+			...spotifyRequestStats,
+			wallTimeMs: diagnostic.durationMs,
+		});
+		try {
+			await enqueueSyncDiagnostic(diagnostic);
+			void flushPendingSyncDiagnostics(sendSyncDiagnostic).catch((error) => {
+				console.warn("[hearted.] Failed to flush sync diagnostics:", error);
+			});
+		} catch (error) {
+			console.warn("[hearted.] Failed to persist sync diagnostic:", error);
+		}
 		isSyncing = false;
 	}
 }
@@ -727,6 +852,13 @@ async function handleExternalCommand(
 			const { spotifyToken } = await browser.storage.local.get("spotifyToken");
 			if (spotifyToken) cachedToken = spotifyToken as SpotifyTokenPayload;
 		}
+
+		void flushPendingSyncDiagnostics(sendSyncDiagnostic).catch((error) => {
+			console.warn(
+				"[hearted.] Failed to flush pending sync diagnostics:",
+				error,
+			);
+		});
 
 		return { type: "CONNECTED" };
 	}

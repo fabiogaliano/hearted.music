@@ -1,3 +1,7 @@
+import {
+	recordSpotifyRateLimit,
+	runSpotifyRequest,
+} from "../spotify-request-policy";
 import type {
 	PlaylistV2ChangesResponse,
 	PlaylistV2CreateResponse,
@@ -10,17 +14,24 @@ import type {
 
 const PRIMARY_HOST = "spclient.wg.spotify.com";
 const FALLBACK_HOST = "gew4-spclient.spotify.com";
+const DEFAULT_RETRY_AFTER_SECONDS = 5;
 
 let resolvedHost: string | null = null;
 let resolvedAt = 0;
 const HOST_TTL_MS = 5 * 60 * 1000;
+
+function delay(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function resolveSpClientHost(): Promise<string> {
 	if (resolvedHost && Date.now() - resolvedAt < HOST_TTL_MS)
 		return resolvedHost;
 
 	try {
-		const res = await fetch(`https://${PRIMARY_HOST}/`, { method: "HEAD" });
+		const res = await runSpotifyRequest(() =>
+			fetch(`https://${PRIMARY_HOST}/`, { method: "HEAD" }),
+		);
 		void res.body?.cancel();
 		resolvedHost = PRIMARY_HOST;
 		resolvedAt = Date.now();
@@ -30,7 +41,9 @@ async function resolveSpClientHost(): Promise<string> {
 	}
 
 	try {
-		const res = await fetch(`https://${FALLBACK_HOST}/`, { method: "HEAD" });
+		const res = await runSpotifyRequest(() =>
+			fetch(`https://${FALLBACK_HOST}/`, { method: "HEAD" }),
+		);
 		void res.body?.cancel();
 		resolvedHost = FALLBACK_HOST;
 		resolvedAt = Date.now();
@@ -54,15 +67,17 @@ async function playlistV2Fetch<T>(
 
 	let res: Response;
 	try {
-		res = await fetch(url, {
-			method: "POST",
-			headers: {
-				Authorization: `Bearer ${token}`,
-				"Content-Type": "application/json",
-				Accept: "application/json",
-			},
-			body: JSON.stringify(body),
-		});
+		res = await runSpotifyRequest(() =>
+			fetch(url, {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+					Accept: "application/json",
+				},
+				body: JSON.stringify(body),
+			}),
+		);
 	} catch (err) {
 		if (host === PRIMARY_HOST) {
 			console.log(`[hearted.] Primary spclient failed, trying fallback`);
@@ -73,12 +88,17 @@ async function playlistV2Fetch<T>(
 	}
 
 	if (res.status === 429) {
+		const retryAfter = Number(res.headers.get("Retry-After"));
+		const retryAfterSeconds =
+			Number.isFinite(retryAfter) && retryAfter > 0
+				? retryAfter
+				: DEFAULT_RETRY_AFTER_SECONDS;
+		recordSpotifyRateLimit(retryAfterSeconds);
 		if (retries <= 0) {
 			throw new Error(`Spotify rate limit: max retries exceeded for ${path}`);
 		}
-		const retryAfter = Number(res.headers.get("Retry-After")) || 5;
-		console.log(`[hearted.] Rate limited, retrying in ${retryAfter}s`);
-		await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+		console.log(`[hearted.] Rate limited, retrying in ${retryAfterSeconds}s`);
+		await delay(retryAfterSeconds * 1000);
 		return playlistV2Fetch<T>(token, path, body, retries - 1);
 	}
 

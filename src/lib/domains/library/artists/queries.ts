@@ -22,7 +22,7 @@ export type ArtistWithImage = {
 export interface ArtistUpsertData {
 	spotify_id: string;
 	name: string;
-	image_url: string | null;
+	image_url?: string | null;
 	bio?: string | null;
 }
 
@@ -98,7 +98,7 @@ export async function getWithImagesBySpotifyIds(
 
 /**
  * Upserts artists by Spotify ID.
- * Updates name and image_url on conflict.
+ * Updates name and only the non-null metadata provided on conflict.
  */
 export function upsert(
 	data: ArtistUpsertData[],
@@ -107,20 +107,49 @@ export function upsert(
 		return Promise.resolve(Result.ok<Artist[], DbError>([]));
 	}
 	const supabase = createAdminSupabaseClient();
-	return chunkedWrite(data, (chunk) =>
-		fromSupabaseMany(
-			supabase
-				.from("artist")
-				.upsert(
-					chunk.map((a) => ({
-						spotify_id: a.spotify_id,
-						name: a.name,
-						image_url: a.image_url,
-						...(a.bio != null ? { bio: a.bio } : {}),
-					})),
-					{ onConflict: "spotify_id" },
-				)
-				.select(),
-		),
-	);
+	return chunkedWrite(data, async (chunk) => {
+		const metadataRows = chunk
+			.filter((artist) => artist.image_url != null || artist.bio != null)
+			.map((artist) => ({
+				spotify_id: artist.spotify_id,
+				name: artist.name,
+				...(artist.image_url != null ? { image_url: artist.image_url } : {}),
+				...(artist.bio != null ? { bio: artist.bio } : {}),
+			}));
+		const nameOnlyRows = chunk
+			.filter((artist) => artist.image_url == null && artist.bio == null)
+			.map((artist) => ({
+				spotify_id: artist.spotify_id,
+				name: artist.name,
+			}));
+
+		const results = await Promise.all([
+			metadataRows.length > 0
+				? fromSupabaseMany(
+						supabase
+							.from("artist")
+							.upsert(metadataRows, { onConflict: "spotify_id" })
+							.select(),
+					)
+				: Promise.resolve(Result.ok<Artist[], DbError>([])),
+			nameOnlyRows.length > 0
+				? fromSupabaseMany(
+						supabase
+							.from("artist")
+							.upsert(nameOnlyRows, { onConflict: "spotify_id" })
+							.select(),
+					)
+				: Promise.resolve(Result.ok<Artist[], DbError>([])),
+		]);
+
+		const aggregated: Artist[] = [];
+		for (const result of results) {
+			if (Result.isError(result)) {
+				return Result.err(result.error);
+			}
+			aggregated.push(...result.value);
+		}
+
+		return Result.ok(aggregated);
+	});
 }

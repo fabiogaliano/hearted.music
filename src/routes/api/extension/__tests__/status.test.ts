@@ -5,6 +5,7 @@ type StatusRoute = {
 	server: {
 		handlers: {
 			GET: () => Promise<Response>;
+			POST: (args: { request: Request }) => Promise<Response>;
 		};
 	};
 };
@@ -34,6 +35,7 @@ const {
 	mockGetCount,
 	mockGetPlaylistCount,
 	mockSingle,
+	mockUpsert,
 } = vi.hoisted(() => ({
 	mockGetRequest: vi.fn<() => Request>(),
 	mockValidateApiToken: vi.fn(),
@@ -41,6 +43,7 @@ const {
 	mockGetCount: vi.fn(),
 	mockGetPlaylistCount: vi.fn(),
 	mockSingle: vi.fn(),
+	mockUpsert: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -89,12 +92,18 @@ describe("/api/extension/status", () => {
 			eq: vi.fn(() => accountQuery),
 			single: (...args: unknown[]) => mockSingle(...args),
 		};
+		const diagnosticQuery = {
+			upsert: (...args: unknown[]) => mockUpsert(...args),
+		};
 
 		mockSingle.mockResolvedValue({
 			data: { display_name: "Hearted", email: "hello@hearted.test" },
 		});
+		mockUpsert.mockResolvedValue({ error: null });
 		mockCreateAdminSupabaseClient.mockReturnValue({
-			from: vi.fn(() => accountQuery),
+			from: vi.fn((table: string) =>
+				table === "extension_sync_diagnostic" ? diagnosticQuery : accountQuery,
+			),
 		});
 	});
 
@@ -167,5 +176,87 @@ describe("/api/extension/status", () => {
 			likedSongCount: 12,
 			playlistCount: 3,
 		});
+	});
+
+	it("stores a sync diagnostic summary for valid bearer tokens", async () => {
+		mockValidateApiToken.mockResolvedValue(Result.ok("acct-1"));
+
+		const response = await route.server.handlers.POST({
+			request: new Request("https://hearted.test/api/extension/status", {
+				method: "POST",
+				headers: {
+					Authorization: "Bearer good-token",
+					Origin: "chrome-extension://test-extension-id",
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					id: "11111111-1111-4111-8111-111111111111",
+					clientCreatedAt: "2026-06-12T21:00:00.000Z",
+					extensionVersion: "0.1.1",
+					outcome: "backend_failure",
+					phase: "uploading",
+					backendStatus: 429,
+					backendFailureCode: "sync_cooldown",
+					retryAfterSeconds: 42,
+					errorMessage: "Cooldown active",
+					durationMs: 12345,
+					likedSongsCount: 15000,
+					playlistCount: 300,
+					playlistsWithTracksCount: 280,
+					playlistTracksCount: 15000,
+					failedPlaylistTrackFetchCount: 2,
+					skippedEmptyPlaylistsCount: 20,
+					requestStats: {
+						started: 410,
+						succeeded: 409,
+						failed: 1,
+						rateLimitedResponses: 1,
+						retryAttempts: 1,
+						retryAfterSecondsTotal: 42,
+						wallTimeMs: 95000,
+					},
+					requestPolicy: {
+						maxConcurrentRequests: 2,
+						minRequestIntervalMs: 200,
+						maxRequestIntervalMs: 300,
+					},
+				}),
+			}),
+		});
+
+		expect(response.status).toBe(200);
+		expect(mockUpsert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				account_id: "acct-1",
+				backend_failure_code: "sync_cooldown",
+				failed_playlist_track_fetch_count: 2,
+				request_policy: {
+					maxConcurrentRequests: 2,
+					minRequestIntervalMs: 200,
+					maxRequestIntervalMs: 300,
+				},
+			}),
+			{ onConflict: "id" },
+		);
+		expect(await response.json()).toEqual({ ok: true });
+	});
+
+	it("rejects invalid diagnostic payloads", async () => {
+		mockValidateApiToken.mockResolvedValue(Result.ok("acct-1"));
+
+		const response = await route.server.handlers.POST({
+			request: new Request("https://hearted.test/api/extension/status", {
+				method: "POST",
+				headers: {
+					Authorization: "Bearer good-token",
+					Origin: "chrome-extension://test-extension-id",
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ outcome: "success" }),
+			}),
+		});
+
+		expect(response.status).toBe(400);
+		expect(mockUpsert).not.toHaveBeenCalled();
 	});
 });
