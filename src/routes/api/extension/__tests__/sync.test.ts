@@ -203,14 +203,20 @@ function aPlaylist(id: string): SpotifyPlaylistDTO {
 	};
 }
 
+// In-memory Request objects don't carry a Content-Length the way a real fetch
+// over the wire does, so set it explicitly to mirror production — browsers
+// always attach an accurate Content-Length for the extension's string body, and
+// the route's Layer 1 guard now requires it.
 function syncRequest(body: unknown): Request {
+	const serialized = JSON.stringify(body);
 	return new Request("https://hearted.test/api/extension/sync", {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
+			"Content-Length": String(new TextEncoder().encode(serialized).length),
 			Origin: "chrome-extension://test-extension-id",
 		},
-		body: JSON.stringify(body),
+		body: serialized,
 	});
 }
 
@@ -362,6 +368,65 @@ describe("/api/extension/sync", () => {
 				"Library sync was run too recently for this account. Wait before trying again.",
 			retryAfterSeconds: 45,
 		});
+		expect(mockCreateJob).not.toHaveBeenCalled();
+	});
+
+	it("returns 411 when Content-Length is absent", async () => {
+		// Mirrors a chunked/streamed body that arrives without a length
+		// declaration; the route must refuse it before reading the body.
+		const response = await route.server.handlers.POST({
+			request: new Request("https://hearted.test/api/extension/sync", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Origin: "chrome-extension://test-extension-id",
+				},
+				body: JSON.stringify({ likedSongs: [], playlists: [] }),
+			}),
+		});
+
+		expect(response.status).toBe(411);
+		expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+			"chrome-extension://test-extension-id",
+		);
+		expect(await response.json()).toEqual({ error: "Content-Length required" });
+		expect(mockCreateJob).not.toHaveBeenCalled();
+	});
+
+	it("returns 411 when Content-Length is malformed", async () => {
+		const response = await route.server.handlers.POST({
+			request: new Request("https://hearted.test/api/extension/sync", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"Content-Length": "not-a-number",
+					Origin: "chrome-extension://test-extension-id",
+				},
+				body: JSON.stringify({ likedSongs: [], playlists: [] }),
+			}),
+		});
+
+		expect(response.status).toBe(411);
+		expect(await response.json()).toEqual({ error: "Content-Length required" });
+		expect(mockCreateJob).not.toHaveBeenCalled();
+	});
+
+	it("returns 413 when Content-Length exceeds the body cap", async () => {
+		const oversized = 20 * 1024 * 1024 + 1;
+		const response = await route.server.handlers.POST({
+			request: new Request("https://hearted.test/api/extension/sync", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"Content-Length": String(oversized),
+					Origin: "chrome-extension://test-extension-id",
+				},
+				body: JSON.stringify({ likedSongs: [], playlists: [] }),
+			}),
+		});
+
+		expect(response.status).toBe(413);
+		expect(await response.json()).toEqual({ error: "Payload too large" });
 		expect(mockCreateJob).not.toHaveBeenCalled();
 	});
 

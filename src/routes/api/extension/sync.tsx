@@ -40,6 +40,7 @@ import {
 	extensionCorsPreflightResponse,
 	getExtensionCorsHeaders,
 } from "@/lib/server/extension-cors";
+import { readBodyWithByteCap } from "@/lib/server/request-body";
 import { mapWithConcurrency } from "@/lib/shared/utils/concurrency";
 import { SyncChanges } from "@/lib/workflows/library-processing/changes/sync";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
@@ -129,9 +130,12 @@ const SpotifyPlaylistDTOSchema = z.object({
 });
 
 // Spotify-aligned ceilings: above any real library, below "this is an attack".
-// Caps bound post-validation work (DB writes + per-row job enqueues); the
-// MAX_SYNC_BODY_BYTES guard below bounds pre-validation memory since
-// request.json() buffers the whole body before Zod runs.
+// Caps bound post-validation work (DB writes + per-row job enqueues). Body size
+// is bounded separately by MAX_SYNC_BODY_BYTES, enforced in two layers below: a
+// required+strict Content-Length check rejects oversized/missing/malformed
+// declarations up front, and readBodyWithByteCap streams the body with a hard
+// byte cap so memory stays bounded *during* the read instead of buffering the
+// whole payload (which could OOM the 128 MB Worker isolate) before Zod runs.
 const MAX_LIKED_SONGS = 50_000;
 const MAX_PLAYLISTS = 11_000;
 const MAX_TRACKS_PER_PLAYLIST = 10_000;
@@ -268,11 +272,41 @@ export const Route = createFileRoute("/api/extension/sync")({
 					}
 				}
 
-				const declaredLength = Number(request.headers.get("content-length"));
-				if (
-					Number.isFinite(declaredLength) &&
-					declaredLength > MAX_SYNC_BODY_BYTES
-				) {
+				// Layer 1: require and strictly parse Content-Length. The protocol
+				// guarantees a present header is honest (HTTP/2+ resets streams whose
+				// declared length mismatches the body), so an absent or non-numeric
+				// header is the only practical way to smuggle an oversized body past a
+				// size check. Browsers always attach an accurate Content-Length for the
+				// extension's JSON.stringify string body, so this can't reject a
+				// legitimate caller. 411 for the missing/malformed declaration, 413 for
+				// an honest-but-oversized one.
+				const lengthHeader = request.headers.get("content-length");
+				if (lengthHeader === null || !/^\d+$/.test(lengthHeader)) {
+					return Response.json(
+						{ error: "Content-Length required" },
+						{ status: 411, headers: corsHeaders },
+					);
+				}
+				if (Number(lengthHeader) > MAX_SYNC_BODY_BYTES) {
+					return Response.json(
+						{ error: "Payload too large" },
+						{ status: 413, headers: corsHeaders },
+					);
+				}
+
+				// Layer 2 (defense-in-depth): stream the body with a hard byte cap so
+				// memory is bounded during the read even if an intermediary let a
+				// mismatched length through. null means the cap was exceeded → 413.
+				let rawBody: string | null;
+				try {
+					rawBody = await readBodyWithByteCap(request, MAX_SYNC_BODY_BYTES);
+				} catch {
+					return Response.json(
+						{ error: "Invalid payload" },
+						{ status: 400, headers: corsHeaders },
+					);
+				}
+				if (rawBody === null) {
 					return Response.json(
 						{ error: "Payload too large" },
 						{ status: 413, headers: corsHeaders },
@@ -281,8 +315,7 @@ export const Route = createFileRoute("/api/extension/sync")({
 
 				let payload: z.infer<typeof SyncPayloadSchema>;
 				try {
-					const body = await request.json();
-					payload = SyncPayloadSchema.parse(body);
+					payload = SyncPayloadSchema.parse(JSON.parse(rawBody));
 				} catch {
 					return Response.json(
 						{ error: "Invalid payload" },
