@@ -7,6 +7,8 @@ import {
 	getPlaylistSongs,
 	getTargetPlaylists,
 } from "@/lib/domains/library/playlists/queries";
+import { resolveAccountLabel } from "@/lib/observability/account-label";
+import { log } from "@/lib/observability/logger";
 import {
 	ensureEnrichmentJob,
 	ensureMatchSnapshotRefreshJob,
@@ -30,6 +32,32 @@ import type {
 export interface JobOutcomeMetadata {
 	satisfiedMarker: string | null;
 	batchSequence: number | null;
+}
+
+/** Plain-language reason a job is being queued, for the trigger banner. */
+export function describeTrigger(
+	changeKind: LibraryProcessingChange["kind"],
+): string {
+	switch (changeKind) {
+		case "onboarding_target_selection_confirmed":
+			return "starter playlists picked";
+		case "library_synced":
+			return "Spotify library synced";
+		case "enrichment_completed":
+			return "songs finished enriching";
+		case "playlist_management_session_flushed":
+			return "matching playlists changed";
+		case "songs_unlocked":
+			return "songs unlocked";
+		case "unlimited_activated":
+			return "unlimited activated";
+		case "candidate_access_revoked":
+			return "access revoked";
+		case "match_snapshot_published":
+			return "previous match published";
+		default:
+			return changeKind;
+	}
 }
 
 function toUnexpectedApplyCause(
@@ -180,6 +208,7 @@ export async function executeEffect(
 				? "priority"
 				: billingBand;
 		const queuePriority = bandToNumeric(band);
+		const actor = await resolveAccountLabel(effect.accountId);
 
 		if (effect.kind === "ensure_enrichment_job") {
 			const countResult = await getLikedSongCount(effect.accountId);
@@ -200,6 +229,14 @@ export async function executeEffect(
 			if (Result.isError(result)) {
 				return Result.err(toEffectEnsureFailedError(effect.kind, result.error));
 			}
+			log.info("▶ ENRICH QUEUED", {
+				actor,
+				by: describeTrigger(change.kind),
+				batch: nextSequence,
+				songs: total,
+				priority: band,
+				jobId: result.value.id,
+			});
 			return Result.ok({
 				state: {
 					...state,
@@ -226,6 +263,13 @@ export async function executeEffect(
 		if (Result.isError(result)) {
 			return Result.err(toEffectEnsureFailedError(effect.kind, result.error));
 		}
+		log.info("▶ MATCH QUEUED", {
+			actor,
+			by: describeTrigger(change.kind),
+			needsTargetEnrichment: needsTargetSongEnrichment,
+			priority: band,
+			jobId: result.value.id,
+		});
 		return Result.ok({
 			state: {
 				...state,

@@ -14,6 +14,8 @@ import type {
 import type { LlmService } from "@/lib/integrations/llm/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
 import { RerankerService } from "@/lib/integrations/reranker/service";
+import { resolveAccountLabel } from "@/lib/observability/account-label";
+import { isDebugEnabled, log } from "@/lib/observability/logger";
 import {
 	createInitialMatchSnapshotRefreshProgress,
 	MATCH_REFRESH_STAGE_NAMES,
@@ -42,9 +44,84 @@ async function persistRefreshProgress(
 
 	const result = await updateJobProgress(jobId, progress);
 	if (Result.isError(result)) {
-		console.error(
-			`[match-refresh] Failed to persist progress for job ${jobId}: ${result.error.message}`,
-		);
+		log.error("match:progress-persist-failed", {
+			jobId,
+			error: result.error.message,
+		});
+	}
+}
+
+/** Compact, scannable name list for a log line — full names up to `max`. */
+function previewNames(names: string[], max = 8): string {
+	if (names.length <= max) {
+		return names.join(", ");
+	}
+	return `${names.slice(0, max).join(", ")} +${names.length - max} more`;
+}
+
+/**
+ * One info line with per-playlist match counts (by name), plus — when
+ * WORKER_DEBUG is on — the matched songs themselves in batches of 10, so you
+ * can watch exactly what landed where at any instant.
+ */
+function logMatchOutcome(
+	actor: string,
+	matches: ReadonlyMap<
+		string,
+		ReadonlyArray<{ playlistId: string; score: number }>
+	>,
+	songs: MatchingSong[],
+	playlists: Array<{ id: string; name: string }>,
+): void {
+	const nameById = new Map(playlists.map((p) => [p.id, p.name]));
+
+	const countByPlaylist = new Map<string, number>();
+	for (const results of matches.values()) {
+		for (const r of results) {
+			countByPlaylist.set(
+				r.playlistId,
+				(countByPlaylist.get(r.playlistId) ?? 0) + 1,
+			);
+		}
+	}
+
+	const breakdown = [...countByPlaylist.entries()]
+		.sort((a, b) => b[1] - a[1])
+		.map(([id, n]) => `${nameById.get(id) ?? id.slice(0, 8)}: ${n}`)
+		.join(", ");
+
+	log.info("match:results", {
+		actor,
+		matched: matches.size,
+		byPlaylist: breakdown || "none",
+	});
+
+	if (!isDebugEnabled()) {
+		return;
+	}
+
+	const songById = new Map(songs.map((s) => [s.id, s]));
+	const matchedIds = [...matches.keys()];
+	const BATCH = 10;
+	for (let i = 0; i < matchedIds.length; i += BATCH) {
+		const items = matchedIds
+			.slice(i, i + BATCH)
+			.map((songId) => {
+				const song = songById.get(songId);
+				const label = song
+					? `${song.name} — ${song.artists[0] ?? "?"}`
+					: songId.slice(0, 8);
+				const targets = (matches.get(songId) ?? [])
+					.map((r) => nameById.get(r.playlistId) ?? r.playlistId.slice(0, 8))
+					.join(" / ");
+				return `${label} → ${targets}`;
+			})
+			.join(" | ");
+		log.debug("match:songs", {
+			actor,
+			range: `${i + 1}-${Math.min(i + BATCH, matchedIds.length)}/${matchedIds.length}`,
+			items,
+		});
 	}
 }
 
@@ -132,7 +209,11 @@ export async function executeMatchSnapshotRefresh(
 	accountId: string,
 	plan: MatchSnapshotRefreshPlan,
 	jobId?: string,
+	actor?: string,
 ): Promise<MatchSnapshotRefreshResult> {
+	// Resolve a label when the caller didn't pass one (e.g. matching-lab replays)
+	// so every step log still names the account.
+	const who = actor ?? (await resolveAccountLabel(accountId));
 	const progress = createInitialMatchSnapshotRefreshProgress(plan);
 	const embeddingResult = EmbeddingService.create();
 	if (Result.isError(embeddingResult)) {
@@ -169,10 +250,10 @@ export async function executeMatchSnapshotRefresh(
 			await runLightweightEnrichment({ accountId });
 			finishStage(progress, "target_song_enrichment", 1, 0);
 		} catch (err) {
-			console.warn(
-				"[target-refresh] Target-playlist-song enrichment failed, continuing:",
-				err,
-			);
+			log.warn("match:target-enrichment-failed", {
+				actor: who,
+				error: err instanceof Error ? err.message : String(err),
+			});
 			finishStage(progress, "target_song_enrichment", 0, 1);
 		}
 		await persistRefreshProgress(jobId, progress);
@@ -192,6 +273,12 @@ export async function executeMatchSnapshotRefresh(
 	finishStage(progress, "playlist_profiling", playlists.length, 0);
 	progress.playlistCount = playlists.length;
 	await persistRefreshProgress(jobId, progress);
+
+	log.info("match:playlists-profiled", {
+		actor: who,
+		playlists: playlists.length,
+		names: previewNames(playlists.map((p) => p.name)),
+	});
 
 	if (playlists.length === 0) {
 		progress.candidateCount = 0;
@@ -216,6 +303,12 @@ export async function executeMatchSnapshotRefresh(
 	finishStage(progress, "candidate_loading", songIds.length, 0);
 	progress.candidateCount = songIds.length;
 	await persistRefreshProgress(jobId, progress);
+
+	log.info("match:candidates-loaded", {
+		actor: who,
+		songs: songIds.length,
+		playlists: playlists.length,
+	});
 
 	if (songIds.length === 0) {
 		progress.matchedSongCount = 0;
@@ -275,7 +368,7 @@ export async function executeMatchSnapshotRefresh(
 	try {
 		exclusionSet = await loadExclusionSet(accountId);
 	} catch {
-		console.warn("[target-refresh] Failed to load exclusion set");
+		log.warn("match:exclusion-set-failed", { actor: who });
 	}
 
 	const embeddingsResult = await embeddingService.getEmbeddings(songIds);
@@ -298,6 +391,12 @@ export async function executeMatchSnapshotRefresh(
 	startStage(progress, "matching");
 	await persistRefreshProgress(jobId, progress);
 
+	log.info("match:scoring", {
+		actor: who,
+		songs: matchingSongs.length,
+		playlists: profiles.length,
+	});
+
 	const matchingService = createMatchingService(
 		embeddingService,
 		profilingService,
@@ -312,6 +411,7 @@ export async function executeMatchSnapshotRefresh(
 	if (Result.isError(matchResult)) {
 		finishStage(progress, "matching", 0, 1);
 		await persistRefreshProgress(jobId, progress);
+		log.error("match:scoring-failed", { actor: who });
 		throw new Error("[target-refresh] Matching failed");
 	}
 
@@ -330,9 +430,10 @@ export async function executeMatchSnapshotRefresh(
 				analysisTextMap.set(songId, flattenAnalysisText(analysis));
 			}
 		} else {
-			console.error(
-				`[target-refresh] Failed to load song analyses for reranker documents — degrading to metadata-only docs: ${analysesResult.error.message}`,
-			);
+			log.error("match:analyses-degraded", {
+				actor: who,
+				error: analysesResult.error.message,
+			});
 		}
 		rerankDocumentMode = analysisTextMap.size > 0 ? "analysis" : "metadata";
 
@@ -349,6 +450,8 @@ export async function executeMatchSnapshotRefresh(
 	finishStage(progress, "matching", matchedSongIds.length, 0);
 	progress.matchedSongCount = matchedSongIds.length;
 	await persistRefreshProgress(jobId, progress);
+
+	logMatchOutcome(who, matchResult.value.matches, matchingSongs, playlists);
 
 	const resultEntries: Array<{
 		song_id: string;

@@ -51,22 +51,29 @@ export type RunJobOutcome =
 			settlement: SettlementStatus;
 	  };
 
-export async function runClaimedJob(job: Job): Promise<RunJobOutcome> {
+export async function runClaimedJob(
+	job: Job,
+	actor: string,
+): Promise<RunJobOutcome> {
 	if (job.type === "match_snapshot_refresh") {
-		return runMatchSnapshotRefreshJob(job);
+		return runMatchSnapshotRefreshJob(job, actor);
 	}
 
-	return runEnrichmentJob(job);
+	return runEnrichmentJob(job, actor);
 }
 
-async function runEnrichmentJob(job: Job): Promise<RunJobOutcome> {
+async function runEnrichmentJob(
+	job: Job,
+	actor: string,
+): Promise<RunJobOutcome> {
 	const startedAt = job.started_at ?? new Date().toISOString();
 	try {
-		const result = await executeEnrichmentJob(job);
+		const result = await executeEnrichmentJob(job, actor);
 
 		const completedResult = await markJobCompleted(job.id);
 		if (Result.isError(completedResult)) {
 			log.error("mark-completed-failed", {
+				actor,
 				jobId: job.id,
 				accountId: job.account_id,
 				error: completedResult.error.message,
@@ -76,7 +83,7 @@ async function runEnrichmentJob(job: Job): Promise<RunJobOutcome> {
 
 		const requestSatisfied = !result.hasMoreSongs;
 
-		await writeMeasurement(job, "enrichment", startedAt, "completed", {
+		await writeMeasurement(job, actor, "enrichment", startedAt, "completed", {
 			requestSatisfied,
 			newCandidatesAvailable: result.newCandidatesAvailable,
 			batchSequence: result.batchSequence,
@@ -93,6 +100,7 @@ async function runEnrichmentJob(job: Job): Promise<RunJobOutcome> {
 			newCandidatesAvailable: result.newCandidatesAvailable,
 		});
 		const settlement = await settleLibraryProcessing(change, {
+			actor,
 			jobId: job.id,
 			accountId: result.accountId,
 			workflow: "enrichment",
@@ -108,8 +116,8 @@ async function runEnrichmentJob(job: Job): Promise<RunJobOutcome> {
 			jobId: job.id,
 			accountId: job.account_id,
 		});
-		await markJobFailedSafe(job, message);
-		await writeMeasurement(job, "enrichment", startedAt, "error");
+		await markJobFailedSafe(job, actor, message);
+		await writeMeasurement(job, actor, "enrichment", startedAt, "error");
 
 		const change = EnrichmentChanges.stopped({
 			accountId: job.account_id,
@@ -117,6 +125,7 @@ async function runEnrichmentJob(job: Job): Promise<RunJobOutcome> {
 			reason: "error",
 		});
 		const settlement = await settleLibraryProcessing(change, {
+			actor,
 			jobId: job.id,
 			accountId: job.account_id,
 			workflow: "enrichment",
@@ -132,14 +141,18 @@ async function runEnrichmentJob(job: Job): Promise<RunJobOutcome> {
 	}
 }
 
-async function runMatchSnapshotRefreshJob(job: Job): Promise<RunJobOutcome> {
+async function runMatchSnapshotRefreshJob(
+	job: Job,
+	actor: string,
+): Promise<RunJobOutcome> {
 	const startedAt = job.started_at ?? new Date().toISOString();
 	try {
-		const result = await executeMatchSnapshotRefreshJob(job);
+		const result = await executeMatchSnapshotRefreshJob(job, actor);
 
 		const completedResult = await markJobCompleted(job.id);
 		if (Result.isError(completedResult)) {
 			log.error("mark-completed-failed", {
+				actor,
 				jobId: job.id,
 				accountId: job.account_id,
 				error: completedResult.error.message,
@@ -149,6 +162,7 @@ async function runMatchSnapshotRefreshJob(job: Job): Promise<RunJobOutcome> {
 
 		await writeMeasurement(
 			job,
+			actor,
 			"match_snapshot_refresh",
 			startedAt,
 			"completed",
@@ -160,6 +174,7 @@ async function runMatchSnapshotRefreshJob(job: Job): Promise<RunJobOutcome> {
 			jobId: result.jobId,
 		});
 		const settlement = await settleLibraryProcessing(change, {
+			actor,
 			jobId: job.id,
 			accountId: result.accountId,
 			workflow: "match_snapshot_refresh",
@@ -179,14 +194,21 @@ async function runMatchSnapshotRefreshJob(job: Job): Promise<RunJobOutcome> {
 			jobId: job.id,
 			accountId: job.account_id,
 		});
-		await markJobFailedSafe(job, message);
-		await writeMeasurement(job, "match_snapshot_refresh", startedAt, "error");
+		await markJobFailedSafe(job, actor, message);
+		await writeMeasurement(
+			job,
+			actor,
+			"match_snapshot_refresh",
+			startedAt,
+			"error",
+		);
 
 		const change = MatchSnapshotChanges.failed({
 			accountId: job.account_id,
 			jobId: job.id,
 		});
 		const settlement = await settleLibraryProcessing(change, {
+			actor,
 			jobId: job.id,
 			accountId: job.account_id,
 			workflow: "match_snapshot_refresh",
@@ -203,6 +225,7 @@ async function runMatchSnapshotRefreshJob(job: Job): Promise<RunJobOutcome> {
 }
 
 interface SettlementLogContext {
+	actor: string;
 	jobId: string;
 	accountId: string;
 	workflow: "enrichment" | "match_snapshot_refresh";
@@ -269,6 +292,7 @@ async function settleLibraryProcessing(
 
 async function writeMeasurement(
 	job: Job,
+	actor: string,
 	workflow: "enrichment" | "match_snapshot_refresh",
 	startedAt: string,
 	outcome: string,
@@ -289,6 +313,7 @@ async function writeMeasurement(
 		});
 		if (Result.isError(result)) {
 			log.warn("measurement-write-failed", {
+				actor,
 				jobId: job.id,
 				accountId: job.account_id,
 				error: result.error.message,
@@ -296,6 +321,7 @@ async function writeMeasurement(
 		}
 	} catch (err) {
 		log.warn("measurement-write-error", {
+			actor,
 			jobId: job.id,
 			accountId: job.account_id,
 			error: errorMessage(err),
@@ -303,11 +329,16 @@ async function writeMeasurement(
 	}
 }
 
-async function markJobFailedSafe(job: Job, message: string): Promise<void> {
+async function markJobFailedSafe(
+	job: Job,
+	actor: string,
+	message: string,
+): Promise<void> {
 	try {
 		const failResult = await markJobFailed(job.id, message);
 		if (Result.isError(failResult)) {
 			log.error("mark-failed-error", {
+				actor,
 				jobId: job.id,
 				accountId: job.account_id,
 				error: failResult.error.message,
@@ -315,6 +346,7 @@ async function markJobFailedSafe(job: Job, message: string): Promise<void> {
 		}
 	} catch (markError) {
 		log.error("mark-failed-error", {
+			actor,
 			jobId: job.id,
 			accountId: job.account_id,
 			error: errorMessage(markError),

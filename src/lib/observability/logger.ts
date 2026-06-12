@@ -76,6 +76,16 @@ const useJson =
 	process.env.WORKER_LOG_FORMAT === "json";
 const fmt = useJson ? formatJson : formatPretty;
 
+/**
+ * Whether verbose per-item debug logging is on. Callers guard expensive log
+ * payloads (e.g. building per-song batch strings) with this so the work is
+ * skipped entirely when WORKER_DEBUG is off — `log.debug` alone would still
+ * build the payload before discarding it.
+ */
+export function isDebugEnabled(): boolean {
+	return process.env.WORKER_DEBUG === "true";
+}
+
 export const log = {
 	info: (event: string, data?: Record<string, unknown>) =>
 		console.log(fmt("info", event, data)),

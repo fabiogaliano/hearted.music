@@ -46,6 +46,7 @@ export function startHeartbeat(jobId: string): { stop: () => void } {
 
 export async function executeEnrichmentJob(
 	job: Job,
+	actor: string,
 ): Promise<EnrichmentExecuteResult> {
 	const accountId = job.account_id;
 	const progressResult = EnrichmentChunkProgressSchema.partial().safeParse(
@@ -55,11 +56,15 @@ export async function executeEnrichmentJob(
 		? progressResult.data
 		: {};
 
-	log.info("job-start", {
+	// First batch of a run is the "new process" moment; later batches are
+	// continuations, so keep them lower-key.
+	const isFirstBatch = (progress.batchSequence ?? 0) === 0;
+	log.info(isFirstBatch ? "▶ ENRICH RUN" : "enrich:batch", {
+		actor,
+		batch: progress.batchSequence,
+		batchSize: progress.batchSize,
 		jobId: job.id,
 		accountId,
-		batchSize: progress.batchSize,
-		sequence: progress.batchSequence,
 	});
 
 	const result: ChunkResult = await executeWorkerChunk(
@@ -84,6 +89,7 @@ export async function executeEnrichmentJob(
 
 export async function executeMatchSnapshotRefreshJob(
 	job: Job,
+	actor: string,
 ): Promise<MatchSnapshotRefreshExecuteResult> {
 	const accountId = job.account_id;
 	const initialProgress =
@@ -97,23 +103,25 @@ export async function executeMatchSnapshotRefreshJob(
 		? planResult.data
 		: { needsTargetSongEnrichment: false };
 
-	log.info("match-snapshot-refresh-start", { jobId: job.id, accountId });
+	log.info("▶ MATCH RUN", { actor, jobId: job.id, accountId });
 
 	const result: MatchSnapshotRefreshResult = await executeMatchSnapshotRefresh(
 		accountId,
 		plan,
 		job.id,
+		actor,
 	);
 
-	log.info("match-snapshot-refresh-complete", {
-		jobId: job.id,
-		accountId,
-		published: result.published,
+	log.info("■ MATCH DONE", {
+		actor,
 		matched: result.matchedSongCount,
 		candidates: result.candidateCount,
 		playlists: result.playlistCount,
+		published: result.published,
 		noOp: result.noOp,
 		isEmpty: result.isEmpty,
+		jobId: job.id,
+		accountId,
 	});
 
 	return {

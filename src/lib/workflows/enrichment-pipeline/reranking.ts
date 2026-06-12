@@ -20,6 +20,7 @@ import type {
 	MatchCandidate,
 	RerankerService,
 } from "@/lib/integrations/reranker/service";
+import { log } from "@/lib/observability/logger";
 
 /**
  * Maximum character budget for the analysis tail portion of a document.
@@ -127,9 +128,10 @@ export async function rerankMatches(
 
 		const rerankResult = await rerankerService.rerank(query, candidates);
 		if (Result.isError(rerankResult)) {
-			console.warn(
-				`[rerank] playlist ${playlistId}: rerank errored, keeping original order: ${rerankResult.error.message}`,
-			);
+			log.warn("rerank:playlist-failed", {
+				playlist: playlist.name,
+				error: rerankResult.error.message,
+			});
 			playlistsSkipped++;
 			continue;
 		}
@@ -163,8 +165,9 @@ export async function rerankMatches(
 		}
 	}
 
-	console.log(
-		`[rerank] reranked ${docsReranked} docs across ${playlistsReranked}/${byPlaylist.size} playlists` +
-			(playlistsSkipped > 0 ? ` (${playlistsSkipped} skipped/degraded)` : ""),
-	);
+	log.info("rerank:done", {
+		docs: docsReranked,
+		playlists: `${playlistsReranked}/${byPlaylist.size}`,
+		skipped: playlistsSkipped,
+	});
 }

@@ -1,4 +1,5 @@
 import { Result } from "better-result";
+import { resolveAccountLabel } from "@/lib/observability/account-label";
 import { log } from "@/lib/observability/logger";
 import { claimLibraryProcessingJob } from "@/lib/platform/jobs/library-processing-queue";
 import { runClaimedJob } from "@/lib/workflows/library-processing/runner";
@@ -7,6 +8,17 @@ import { startHeartbeat } from "./execute";
 
 let shouldPoll = true;
 const activeJobs = new Set<string>();
+
+function describeWork(type: string): string {
+	switch (type) {
+		case "enrichment":
+			return "enriching library";
+		case "match_snapshot_refresh":
+			return "re-matching songs";
+		default:
+			return type;
+	}
+}
 
 export function stopPolling() {
 	shouldPoll = false;
@@ -43,20 +55,23 @@ export async function startPolling(): Promise<void> {
 		}
 
 		activeJobs.add(job.id);
+		const actor = await resolveAccountLabel(job.account_id);
 		log.info("job-claimed", {
+			actor,
+			work: describeWork(job.type),
 			jobId: job.id,
-			type: job.type,
 			accountId: job.account_id,
 		});
 
 		(async () => {
 			const heartbeat = startHeartbeat(job.id);
 			try {
-				const outcome = await runClaimedJob(job);
+				const outcome = await runClaimedJob(job, actor);
 				if (outcome.status === "completed") {
 					log.info("job-complete", {
+						actor,
+						work: describeWork(job.type),
 						jobId: job.id,
-						workflow: outcome.workflow,
 						accountId: job.account_id,
 					});
 				}

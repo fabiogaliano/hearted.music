@@ -1,11 +1,17 @@
 import { Result } from "better-result";
 import { getTargetPlaylists } from "@/lib/domains/library/playlists/queries";
+import { resolveAccountLabel } from "@/lib/observability/account-label";
+import { log } from "@/lib/observability/logger";
 import {
 	getOrCreateLibraryProcessingState,
 	persistLibraryProcessingState,
 } from "./queries";
 import { reconcileLibraryProcessing } from "./reconciler";
-import { executeEffect, loadJobOutcomeMetadata } from "./scheduler";
+import {
+	describeTrigger,
+	executeEffect,
+	loadJobOutcomeMetadata,
+} from "./scheduler";
 import type {
 	LibraryProcessingApplyError,
 	LibraryProcessingApplyOutcome,
@@ -67,9 +73,15 @@ export async function applyLibraryProcessingChange(
 		});
 	}
 
-	console.log(
-		`[library-processing] change=${change.kind} effects=[${effects.map((e) => e.kind).join(", ")}]`,
-	);
+	const actor = await resolveAccountLabel(change.accountId);
+	log.info("library-processing", {
+		actor,
+		by: describeTrigger(change.kind),
+		change: change.kind,
+		effects:
+			effects.length > 0 ? effects.map((e) => e.kind).join(", ") : "none",
+		accountId: change.accountId,
+	});
 
 	let currentState = persistResult.value;
 	const effectResults: LibraryProcessingEffectResult[] = [];

@@ -1,4 +1,6 @@
 import { Result } from "better-result";
+import { resolveAccountLabel } from "@/lib/observability/account-label";
+import { log } from "@/lib/observability/logger";
 import {
 	getLatestJobExecutionMeasurement,
 	type JobExecutionMeasurement,
@@ -218,10 +220,9 @@ export async function recoverTerminalLibraryProcessingRefs(): Promise<
 > {
 	const refsResult = await findTerminalActiveRefs();
 	if (Result.isError(refsResult)) {
-		console.error(
-			"[terminal-recovery] find-terminal-refs-failed",
-			refsResult.error.message,
-		);
+		log.error("terminal-recovery:find-refs-failed", {
+			error: refsResult.error.message,
+		});
 		return [];
 	}
 
@@ -232,6 +233,14 @@ export async function recoverTerminalLibraryProcessingRefs(): Promise<
 			const { change, strategy } = await buildTerminalRefChange(ref);
 			const outcome = await applyLibraryProcessingChange(change);
 
+			log.info("terminal-recovery:recovered", {
+				actor: await resolveAccountLabel(ref.job.account_id),
+				workflow: ref.workflow,
+				strategy,
+				jobStatus: ref.job.status,
+				jobId: ref.job.id,
+			});
+
 			results.push({
 				jobId: ref.job.id,
 				accountId: ref.job.account_id,
@@ -241,10 +250,11 @@ export async function recoverTerminalLibraryProcessingRefs(): Promise<
 				outcome,
 			});
 		} catch (error) {
-			console.error("[terminal-recovery] unexpected-error", {
+			log.error("terminal-recovery:unexpected-error", {
+				actor: await resolveAccountLabel(ref.job.account_id),
+				workflow: ref.workflow,
 				jobId: ref.job.id,
 				accountId: ref.job.account_id,
-				workflow: ref.workflow,
 				error: errorMessage(error),
 			});
 		}

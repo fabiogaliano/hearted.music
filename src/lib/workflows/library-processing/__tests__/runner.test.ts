@@ -121,7 +121,7 @@ describe("runClaimedJob", () => {
 			Result.ok(makeJob({ status: "completed" })),
 		);
 
-		const outcome = await runClaimedJob(makeJob());
+		const outcome = await runClaimedJob(makeJob(), "@test");
 
 		expect(outcome.status).toBe("completed");
 		expect(outcome.workflow).toBe("enrichment");
@@ -143,6 +143,7 @@ describe("runClaimedJob", () => {
 
 		const outcome = await runClaimedJob(
 			makeJob({ id: "job-2", type: "match_snapshot_refresh" }),
+			"@test",
 		);
 
 		expect(outcome.status).toBe("completed");
@@ -158,7 +159,7 @@ describe("runClaimedJob", () => {
 			Result.ok(makeJob({ status: "failed" })),
 		);
 
-		const outcome = await runClaimedJob(makeJob());
+		const outcome = await runClaimedJob(makeJob(), "@test");
 
 		expect(outcome.status).toBe("failed");
 		if (outcome.status === "failed") {
@@ -183,6 +184,7 @@ describe("runClaimedJob", () => {
 
 		const outcome = await runClaimedJob(
 			makeJob({ id: "job-2", type: "match_snapshot_refresh" }),
+			"@test",
 		);
 
 		expect(outcome.status).toBe("failed");
@@ -201,7 +203,7 @@ describe("runClaimedJob", () => {
 			Result.ok(makeJob({ status: "completed" })),
 		);
 
-		const outcome = await runClaimedJob(makeJob());
+		const outcome = await runClaimedJob(makeJob(), "@test");
 
 		expect(outcome.status).toBe("completed");
 		if (outcome.status === "completed" && outcome.workflow === "enrichment") {
@@ -226,7 +228,7 @@ describe("runClaimedJob", () => {
 				Result.ok(makeJob({ status: "completed" })),
 			);
 
-			await runClaimedJob(makeJob());
+			await runClaimedJob(makeJob(), "@test");
 
 			expect(callOrder).toEqual(["measurement", "apply"]);
 		});
@@ -249,7 +251,7 @@ describe("runClaimedJob", () => {
 				Result.ok(makeJob({ status: "failed" })),
 			);
 
-			await runClaimedJob(makeJob());
+			await runClaimedJob(makeJob(), "@test");
 
 			expect(callOrder).toEqual(["measurement", "apply"]);
 		});
@@ -277,6 +279,7 @@ describe("runClaimedJob", () => {
 
 			await runClaimedJob(
 				makeJob({ id: "job-2", type: "match_snapshot_refresh" }),
+				"@test",
 			);
 
 			expect(callOrder).toEqual(["measurement", "apply"]);
@@ -290,7 +293,7 @@ describe("runClaimedJob", () => {
 				Result.ok(makeJob({ status: "completed" })),
 			);
 
-			const outcome = await runClaimedJob(makeJob());
+			const outcome = await runClaimedJob(makeJob(), "@test");
 
 			expect(outcome.settlement).toBe("settled");
 			expect(applyLibraryProcessingChangeMock).toHaveBeenCalledTimes(1);
@@ -306,7 +309,7 @@ describe("runClaimedJob", () => {
 				.mockResolvedValueOnce(Result.err(makePersistStateError()))
 				.mockResolvedValueOnce(APPLY_OK_RESULT);
 
-			const promise = runClaimedJob(makeJob());
+			const promise = runClaimedJob(makeJob(), "@test");
 			await vi.advanceTimersByTimeAsync(60_000);
 			const outcome = await promise;
 
@@ -327,7 +330,7 @@ describe("runClaimedJob", () => {
 				.spyOn(console, "error")
 				.mockImplementation(() => {});
 
-			const promise = runClaimedJob(makeJob());
+			const promise = runClaimedJob(makeJob(), "@test");
 			await vi.advanceTimersByTimeAsync(60_000);
 			const outcome = await promise;
 
@@ -367,7 +370,7 @@ describe("runClaimedJob", () => {
 				.spyOn(console, "error")
 				.mockImplementation(() => {});
 
-			const promise = runClaimedJob(makeJob());
+			const promise = runClaimedJob(makeJob(), "@test");
 			await vi.advanceTimersByTimeAsync(60_000);
 			const outcome = await promise;
 
@@ -403,6 +406,7 @@ describe("runClaimedJob", () => {
 
 			const outcome = await runClaimedJob(
 				makeJob({ id: "job-2", type: "match_snapshot_refresh" }),
+				"@test",
 			);
 
 			expect(outcome.settlement).toBe("settled");
@@ -427,7 +431,7 @@ describe("runClaimedJob", () => {
 				.spyOn(console, "error")
 				.mockImplementation(() => {});
 
-			const promise = runClaimedJob(makeJob());
+			const promise = runClaimedJob(makeJob(), "@test");
 			await vi.advanceTimersByTimeAsync(60_000);
 			const outcome = await promise;
 
