@@ -252,6 +252,17 @@ export function PlanSelectionStep({
 				>
 					Waiting for {offerLabel} to activate.
 				</p>
+				<div className="mt-8 flex justify-center">
+					<Button
+						variant="link"
+						size="sm"
+						onClick={handleRetryPolling}
+						className="theme-text-muted text-sm tracking-wide"
+						style={{ fontFamily: fonts.body }}
+					>
+						Cancel and choose a different plan
+					</Button>
+				</div>
 			</div>
 		);
 	}
