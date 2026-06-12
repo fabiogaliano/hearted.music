@@ -79,6 +79,8 @@ function emptyBatchOutcome() {
 		skippedUnconfirmedLyrics: [],
 		skippedUnconfirmedAudio: [],
 		skippedUnconfirmedBoth: [],
+		retryCandidateSongIds: [],
+		blockedSkipErrors: new Map<string, unknown>(),
 	};
 }
 

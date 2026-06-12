@@ -13,7 +13,7 @@ export const EnrichmentChanges = {
 	stopped(opts: {
 		accountId: string;
 		jobId: string;
-		reason: "local_limit" | "error";
+		reason: "local_limit" | "error" | "blocked";
 	}): Extract<LibraryProcessingChange, { kind: "enrichment_stopped" }> {
 		return { kind: "enrichment_stopped", ...opts };
 	},

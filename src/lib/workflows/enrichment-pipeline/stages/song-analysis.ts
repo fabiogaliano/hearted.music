@@ -5,13 +5,51 @@ import {
 	type BatchAnalysisOutcome,
 	type BatchSong,
 	createSongBatchAnalyzerDeps,
+	type LyricsPrefetchError,
 } from "@/lib/domains/enrichment/content-analysis/song-batch-analysis";
+import {
+	GeniusFetchError,
+	GeniusParseError,
+} from "@/lib/shared/errors/external/genius";
 import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";
 import type { StageFailure, StageOutcome } from "../stage-outcomes";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
 const STAGE = "song_analysis" as const;
+
+/**
+ * Extract observable error detail from a lyrics prefetch error so blocked-skip
+ * failure rows carry the real cause (error class, HTTP status, URL) instead of
+ * a canned provider-unavailable message (§7.1).
+ */
+function blockedSkipErrorDetail(
+	error: LyricsPrefetchError | undefined,
+	fallbackMessage: string,
+): Pick<StageFailure, "message" | "provider" | "statusCode" | "causeTag"> {
+	if (!error) return { message: fallbackMessage };
+
+	if (error instanceof GeniusParseError) {
+		return {
+			message: `GeniusParseError: ${error.reason} — ${error.url}`,
+			provider: "genius",
+			causeTag: "parse_error",
+		};
+	}
+
+	if (error instanceof GeniusFetchError) {
+		return {
+			message: `GeniusFetchError: ${error.message} — ${error.url}`,
+			provider: "genius",
+			statusCode: error.statusCode,
+			causeTag: "fetch_error",
+		};
+	}
+
+	// GeniusConfigError, GeniusNotFoundError, NoLyricsAvailableError,
+	// PipelineConfigError, or LrclibError wrapped in PipelineConfigError.
+	return { message: error.message };
+}
 
 /**
  * Map a batch failure onto a stage failure, preserving retry metadata
@@ -101,6 +139,12 @@ export async function runSongAnalysis(
 			artist: song?.artists[0] ?? "Unknown Artist",
 			title: song?.name ?? "Unknown",
 			lyrics: "",
+			albumName: song?.album_name ?? undefined,
+			// Convert ms to seconds for the LRCLIB ±2s duration matching window.
+			durationSec:
+				song?.duration_ms != null
+					? Math.round(song.duration_ms / 1000)
+					: undefined,
 		};
 	});
 
@@ -112,13 +156,29 @@ export async function runSongAnalysis(
 		skippedUnconfirmedLyrics,
 		skippedUnconfirmedAudio,
 		skippedUnconfirmedBoth,
+		retryCandidateSongIds,
+		blockedSkipErrors,
 	} = batchOutcome;
+
+	// Retry candidates are songs whose classifier found no authoritative signal
+	// (unknown). They are NOT failures: no analysis row was written, and the song
+	// remains selectable once better data arrives (§5.3 / §6.2). Log them so the
+	// worker run is observable without recording a failure row.
+	if (retryCandidateSongIds.length > 0) {
+		console.info(
+			`[SongAnalysis] ${retryCandidateSongIds.length} song(s) classified unknown (retry candidates): ${retryCandidateSongIds.join(", ")}`,
+		);
+	}
 
 	const skippedSet = new Set<string>([
 		...skippedConfirmedInputsMissing,
 		...skippedUnconfirmedLyrics,
 		...skippedUnconfirmedAudio,
 		...skippedUnconfirmedBoth,
+		// Retry candidates are excluded from failure accounting; they are also
+		// excluded from succeededSongIds (post-run check handles that naturally
+		// since no analysis row was written).
+		...retryCandidateSongIds,
 	]);
 
 	let failures: StageFailure[] = [];
@@ -132,11 +192,14 @@ export async function runSongAnalysis(
 	}
 
 	for (const songId of skippedUnconfirmedLyrics) {
+		const errorDetail = blockedSkipErrorDetail(
+			blockedSkipErrors.get(songId),
+			"Analysis skipped: audio confirmed missing, lyrics provider unavailable",
+		);
 		failures.push({
 			songId,
 			failureCode: FAILURE_CODES.ANALYSIS_BLOCKED_LYRICS_UNAVAILABLE,
-			message:
-				"Analysis skipped: audio confirmed missing, lyrics provider unavailable",
+			...errorDetail,
 		});
 	}
 
@@ -144,16 +207,22 @@ export async function runSongAnalysis(
 		failures.push({
 			songId,
 			failureCode: FAILURE_CODES.ANALYSIS_BLOCKED_AUDIO_UNAVAILABLE,
+			// Audio unavailability is a pipeline-level condition — no per-song
+			// provider error is available, only the canned message.
 			message:
 				"Analysis skipped: lyrics confirmed missing, audio provider unavailable",
 		});
 	}
 
 	for (const songId of skippedUnconfirmedBoth) {
+		const errorDetail = blockedSkipErrorDetail(
+			blockedSkipErrors.get(songId),
+			"Analysis skipped: lyrics and audio providers both unavailable",
+		);
 		failures.push({
 			songId,
 			failureCode: FAILURE_CODES.ANALYSIS_BLOCKED_BOTH_UNAVAILABLE,
-			message: "Analysis skipped: lyrics and audio providers both unavailable",
+			...errorDetail,
 		});
 	}
 

@@ -441,4 +441,152 @@ describe("runClaimedJob", () => {
 			consoleSpy.mockRestore();
 		});
 	});
+
+	describe("blocked chunk detection", () => {
+		// A chunk that attempts zero songs while work is still owed is blocked.
+		// It must stop instead of completing-unsatisfied to avoid a hot loop.
+		const BLOCKED_EXEC_RESULT = {
+			accountId: "acct-1",
+			jobId: "job-1",
+			batchSequence: 0,
+			hasMoreSongs: true,
+			newCandidatesAvailable: false,
+			readyCount: 1,
+			doneCount: 0,
+			succeededCount: 0,
+			failedCount: 0,
+		};
+
+		const PARTIAL_EXEC_RESULT = {
+			accountId: "acct-1",
+			jobId: "job-1",
+			batchSequence: 0,
+			hasMoreSongs: true,
+			newCandidatesAvailable: false,
+			readyCount: 3,
+			doneCount: 2,
+			succeededCount: 1,
+			failedCount: 1,
+		};
+
+		it("applies enrichment_stopped(blocked) when zero songs attempted and work remains", async () => {
+			vi.mocked(executeEnrichmentJob).mockResolvedValue(BLOCKED_EXEC_RESULT);
+			vi.mocked(markJobCompleted).mockResolvedValue(
+				Result.ok(makeJob({ status: "completed" })),
+			);
+
+			await runClaimedJob(makeJob(), "@test");
+
+			expect(applyLibraryProcessingChangeMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					kind: "enrichment_stopped",
+					reason: "blocked",
+					accountId: "acct-1",
+					jobId: "job-1",
+				}),
+			);
+		});
+
+		it("does not apply enrichment_completed for a blocked chunk", async () => {
+			vi.mocked(executeEnrichmentJob).mockResolvedValue(BLOCKED_EXEC_RESULT);
+			vi.mocked(markJobCompleted).mockResolvedValue(
+				Result.ok(makeJob({ status: "completed" })),
+			);
+
+			await runClaimedJob(makeJob(), "@test");
+
+			const call = applyLibraryProcessingChangeMock.mock.calls[0]?.[0];
+			expect(call?.kind).not.toBe("enrichment_completed");
+		});
+
+		it("leaves workflow stale without re-ensuring a job for a blocked chunk", async () => {
+			// The reconciler only emits ensure_* effects when isFailureChange is false.
+			// enrichment_stopped always sets isFailureChange = true, so no effects are
+			// produced and no re-ensure fires in the same apply cycle.
+			vi.mocked(executeEnrichmentJob).mockResolvedValue(BLOCKED_EXEC_RESULT);
+			vi.mocked(markJobCompleted).mockResolvedValue(
+				Result.ok(makeJob({ status: "completed" })),
+			);
+
+			const staleWithoutJobState = {
+				accountId: "acct-1",
+				enrichment: {
+					requestedAt: "2026-03-27T12:00:00Z",
+					settledAt: null,
+					activeJobId: null,
+				},
+				matchSnapshotRefresh: {
+					requestedAt: null,
+					settledAt: null,
+					activeJobId: null,
+				},
+				createdAt: "2026-01-01T00:00:00.000Z",
+				updatedAt: "2026-01-01T00:00:00.000Z",
+			};
+
+			applyLibraryProcessingChangeMock.mockResolvedValue(
+				Result.ok({
+					accountId: "acct-1",
+					changeKind: "enrichment_stopped" as const,
+					state: staleWithoutJobState,
+					effects: [],
+					effectResults: [],
+				}),
+			);
+
+			const outcome = await runClaimedJob(makeJob(), "@test");
+
+			expect(outcome.status).toBe("completed");
+			// The apply was called with enrichment_stopped (not enrichment_completed),
+			// and the returned effects list is empty — no re-ensure was triggered.
+			const callArg = applyLibraryProcessingChangeMock.mock.calls[0]?.[0];
+			expect(callArg?.kind).toBe("enrichment_stopped");
+			expect(callArg?.reason).toBe("blocked");
+		});
+
+		it("applies enrichment_completed(requestSatisfied:false) for a normal partial chunk", async () => {
+			vi.mocked(executeEnrichmentJob).mockResolvedValue(PARTIAL_EXEC_RESULT);
+			vi.mocked(markJobCompleted).mockResolvedValue(
+				Result.ok(makeJob({ status: "completed" })),
+			);
+
+			await runClaimedJob(makeJob(), "@test");
+
+			expect(applyLibraryProcessingChangeMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					kind: "enrichment_completed",
+					requestSatisfied: false,
+				}),
+			);
+		});
+
+		it("does not treat a completed chunk (doneCount > 0, hasMoreSongs true) as blocked", async () => {
+			vi.mocked(executeEnrichmentJob).mockResolvedValue(PARTIAL_EXEC_RESULT);
+			vi.mocked(markJobCompleted).mockResolvedValue(
+				Result.ok(makeJob({ status: "completed" })),
+			);
+
+			await runClaimedJob(makeJob(), "@test");
+
+			const call = applyLibraryProcessingChangeMock.mock.calls[0]?.[0];
+			expect(call?.kind).not.toBe("enrichment_stopped");
+		});
+
+		it("does not treat a zero-done chunk as blocked when no work remains", async () => {
+			// doneCount=0 + hasMoreSongs=false means nothing left to do — normal completion
+			vi.mocked(executeEnrichmentJob).mockResolvedValue({
+				...BLOCKED_EXEC_RESULT,
+				hasMoreSongs: false,
+			});
+			vi.mocked(markJobCompleted).mockResolvedValue(
+				Result.ok(makeJob({ status: "completed" })),
+			);
+
+			await runClaimedJob(makeJob(), "@test");
+
+			const call = applyLibraryProcessingChangeMock.mock.calls[0]?.[0];
+			expect(call?.kind).toBe("enrichment_completed");
+			expect(call?.requestSatisfied).toBe(true);
+		});
+	});
 });

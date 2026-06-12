@@ -30,11 +30,34 @@ export const FAILURE_CODES = {
 export const BACKOFF_CODES: ReadonlySet<string> = new Set<string>([
 	FAILURE_CODES.PROVIDER_TRANSIENT,
 	FAILURE_CODES.ANALYSIS_POSTRUN_LOOKUP_UNAVAILABLE,
+	// Blocked codes participate so the escalation ladder can query the count and
+	// terminalize a song once it has failed identically too many times (§7.2).
+	FAILURE_CODES.ANALYSIS_BLOCKED_LYRICS_UNAVAILABLE,
+	FAILURE_CODES.ANALYSIS_BLOCKED_AUDIO_UNAVAILABLE,
+	FAILURE_CODES.ANALYSIS_BLOCKED_BOTH_UNAVAILABLE,
 ]);
+
+/**
+ * Number of prior identical unresolved blocked failures required before the
+ * next attempt is recorded as terminal with analysis_inputs_missing semantics.
+ * Default 4 ≈ one day at the 6h retry cadence — long enough to weather a
+ * real provider outage, short enough that a song cannot stay in purgatory for
+ * weeks (§7.2 / Decision 8 in design.md).
+ *
+ * Adjustable here without any schema change.
+ */
+export const BLOCKED_ESCALATION_THRESHOLD = 4;
 
 interface FailurePolicyOutcome {
 	isTerminal: boolean;
 	suppressUntil: Date | null;
+	/**
+	 * True when a blocked code escalated to terminal because the prior unresolved
+	 * count reached BLOCKED_ESCALATION_THRESHOLD. The caller should rewrite the
+	 * failure code to ANALYSIS_INPUTS_MISSING and trigger replacement-credit
+	 * compensation (§7.2).
+	 */
+	escalatedToInputsMissing?: boolean;
 }
 
 interface FailurePolicyInput {
@@ -116,11 +139,24 @@ export function applyFailurePolicy(
 
 		case FAILURE_CODES.ANALYSIS_BLOCKED_LYRICS_UNAVAILABLE:
 		case FAILURE_CODES.ANALYSIS_BLOCKED_AUDIO_UNAVAILABLE:
-		case FAILURE_CODES.ANALYSIS_BLOCKED_BOTH_UNAVAILABLE:
+		case FAILURE_CODES.ANALYSIS_BLOCKED_BOTH_UNAVAILABLE: {
+			// Escalate to terminal once the song has failed identically enough times
+			// that it is unlikely to recover without manual intervention (§7.2 /
+			// Decision 8). BACKOFF_CODES membership guarantees the prior count was
+			// queried before this call.
+			const count = input.priorUnresolvedCount ?? 0;
+			if (count >= BLOCKED_ESCALATION_THRESHOLD) {
+				return {
+					isTerminal: true,
+					suppressUntil: null,
+					escalatedToInputsMissing: true,
+				};
+			}
 			return {
 				isTerminal: false,
 				suppressUntil: new Date(now.getTime() + ANALYSIS_BLOCKED_SUPPRESS_MS),
 			};
+		}
 
 		case FAILURE_CODES.CONTENT_ACTIVATION_FAILED:
 			return {

@@ -81,6 +81,40 @@ async function runEnrichmentJob(
 			throw new Error(completedResult.error.message);
 		}
 
+		// A chunk that attempted zero songs while work is still owed is blocked —
+		// report stopped(blocked) so the reconciler leaves the workflow stale
+		// without immediately re-ensuring another job, preventing a no-progress
+		// hot loop.
+		const isBlocked = result.doneCount === 0 && result.hasMoreSongs;
+
+		if (isBlocked) {
+			await writeMeasurement(job, actor, "enrichment", startedAt, "blocked", {
+				batchSequence: result.batchSequence,
+				readyCount: result.readyCount,
+				doneCount: result.doneCount,
+			});
+
+			const change = EnrichmentChanges.stopped({
+				accountId: result.accountId,
+				jobId: result.jobId,
+				reason: "blocked",
+			});
+			const settlement = await settleLibraryProcessing(change, {
+				actor,
+				jobId: job.id,
+				accountId: result.accountId,
+				workflow: "enrichment",
+				changeKind: change.kind,
+			});
+
+			return {
+				status: "completed",
+				workflow: "enrichment",
+				result,
+				settlement,
+			};
+		}
+
 		const requestSatisfied = !result.hasMoreSongs;
 
 		await writeMeasurement(job, actor, "enrichment", startedAt, "completed", {

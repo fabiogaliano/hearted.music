@@ -45,7 +45,7 @@ export type LibraryProcessingChange =
 			kind: "enrichment_stopped";
 			accountId: string;
 			jobId: string;
-			reason: "local_limit" | "error";
+			reason: "local_limit" | "error" | "blocked";
 	  }
 	| {
 			kind: "match_snapshot_published";
