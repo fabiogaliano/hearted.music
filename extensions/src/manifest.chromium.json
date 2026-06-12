@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "everything you ever hearted.",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "reads your library from Spotify. sends them to hearted. nothing else.",
 	"permissions": ["storage", "cookies", "scripting"],
 	"host_permissions": [
