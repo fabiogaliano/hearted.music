@@ -229,7 +229,6 @@ export function LandingHero({
 									style={{
 										fontFamily: fonts.display,
 										color: "var(--t-text-on-primary)",
-										willChange: "transform",
 									}}
 								>
 									<span

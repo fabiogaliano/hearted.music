@@ -54,12 +54,12 @@ export const heroStyles = `
 	   PERFORMANCE HINTS
 	   GPU acceleration for animated elements
 	   ───────────────────────────────────────────────────────────────── */
-	.hero-logo,
-	.hero-headline {
-		will-change: transform;
-		backface-visibility: hidden;
-	}
-
+	/* Logo/headline intentionally have NO static will-change: GSAP's
+	   force3D:"auto" promotes them to a GPU layer only while the morph is
+	   actively tweening and demotes them at rest, letting the browser
+	   re-rasterize the scaled text at its displayed resolution. A permanent
+	   will-change:transform pins the layer at base (nav) resolution and makes
+	   the upscaled hero text render blurry. */
 	.hero-background {
 		will-change: clip-path;
 	}
