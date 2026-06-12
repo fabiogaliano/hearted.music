@@ -80,7 +80,7 @@ export interface AccountInputs {
   matchingSongs: MatchingSong[];
   matchingProfiles: MatchingPlaylistProfile[];
   embeddingMap: Map<string, number[]>;
-  playlistInfo: { id: string; name: string; description: string | null }[];
+  playlistInfo: { id: string; name: string; match_intent: string | null }[];
   decidedSongIds: Set<string>;
 }
 
@@ -318,7 +318,9 @@ export async function loadAccountInputs(
   const playlistInfo = accountProfiles.map((p) => ({
     id: p.playlist_id,
     name: playlistMeta.get(p.playlist_id)?.name ?? "Unknown",
-    description: playlistMeta.get(p.playlist_id)?.description ?? null,
+    // The reranker query field renamed to match_intent; the replay still feeds
+    // the historical playlist description so past runs reproduce byte-for-byte.
+    match_intent: playlistMeta.get(p.playlist_id)?.description ?? null,
   }));
 
   return {

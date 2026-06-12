@@ -20,6 +20,7 @@ function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
 		account_id: "acct-1",
 		created_at: "2026-03-27T00:00:00Z",
 		description: "old description",
+		match_intent: null,
 		id: "playlist-1",
 		image_url: "https://img.example/old.jpg",
 		is_public: true,
@@ -165,5 +166,32 @@ describe("syncPlaylists", () => {
 			]);
 			expect(result.value.updatedTargetProfileTextPlaylistIds).toEqual([]);
 		}
+	});
+
+	it("does not flag description-only target updates as profile text changes", async () => {
+		// description no longer feeds matching (match_intent does) — a Spotify
+		// description edit must not retrigger re-profiling, but the column still stores
+		// the latest value from Spotify
+		mockGetPlaylists.mockResolvedValue(Result.ok([makePlaylist()]));
+
+		const result = await syncPlaylists("acct-1", [
+			makeSpotifyPlaylist({ description: "new description from Spotify" }),
+		]);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.updatedTargetMetadataPlaylistIds).toEqual([
+				"playlist-1",
+			]);
+			expect(result.value.updatedTargetProfileTextPlaylistIds).toEqual([]);
+		}
+		expect(mockUpsertPlaylists).toHaveBeenCalledWith(
+			"acct-1",
+			expect.arrayContaining([
+				expect.objectContaining({
+					description: "new description from Spotify",
+				}),
+			]),
+		);
 	});
 });

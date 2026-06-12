@@ -441,6 +441,43 @@ export async function getStats(
 	return Result.ok(data);
 }
 
+/** One genre tag and how often it appears across the account's liked songs. */
+export interface AccountTopGenre {
+	genre: string;
+	occurrences: number;
+}
+
+/**
+ * Top genre tags across an account's still-liked songs, most frequent first.
+ * Backs the genre-pills picker's quick-picks so every suggestion is a genre the
+ * user actually owns. Returns raw (non-canonicalized) tags — the caller
+ * canonicalizes + dedupes, since the whitelist ships both spellings.
+ */
+export async function getAccountTopGenres(
+	accountId: string,
+	limit = 12,
+): Promise<Result<AccountTopGenre[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase.rpc("get_account_top_genres", {
+		p_account_id: accountId,
+		p_limit: limit,
+	});
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok(
+		(data ?? []).map((row) => ({
+			genre: row.genre,
+			occurrences: Number(row.occurrences),
+		})),
+	);
+}
+
 /**
  * Creates or updates liked songs for an account.
  * Uses (account_id, song_id) as the conflict target.

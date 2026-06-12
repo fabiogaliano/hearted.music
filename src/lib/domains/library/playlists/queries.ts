@@ -389,6 +389,29 @@ export function updatePlaylistGenrePills(
 	);
 }
 
+/**
+ * Writes match_intent (our own, Spotify-decoupled intent text) for a playlist
+ * identified by (account_id, id). Ownership is enforced via account_id in the
+ * WHERE clause — the service-role client bypasses RLS, so the account_id filter
+ * is the authorization boundary.
+ */
+export function updatePlaylistMatchIntent(
+	accountId: string,
+	playlistId: string,
+	value: string | null,
+): Promise<Result<Playlist, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("playlist")
+			.update({ match_intent: value })
+			.eq("id", playlistId)
+			.eq("account_id", accountId)
+			.select()
+			.single(),
+	);
+}
+
 export function updatePlaylistSongCount(
 	accountId: string,
 	playlistId: string,

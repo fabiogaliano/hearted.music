@@ -1214,6 +1214,7 @@ export type Database = {
 					image_url: string | null;
 					is_public: boolean | null;
 					is_target: boolean | null;
+					match_intent: string | null;
 					name: string;
 					snapshot_id: string | null;
 					song_count: number | null;
@@ -1229,6 +1230,7 @@ export type Database = {
 					image_url?: string | null;
 					is_public?: boolean | null;
 					is_target?: boolean | null;
+					match_intent?: string | null;
 					name: string;
 					snapshot_id?: string | null;
 					song_count?: number | null;
@@ -1244,6 +1246,7 @@ export type Database = {
 					image_url?: string | null;
 					is_public?: boolean | null;
 					is_target?: boolean | null;
+					match_intent?: string | null;
 					name?: string;
 					snapshot_id?: string | null;
 					song_count?: number | null;
@@ -2371,6 +2374,13 @@ export type Database = {
 					p_stripe_event_id: string;
 				};
 				Returns: Json;
+			};
+			get_account_top_genres: {
+				Args: { p_account_id: string; p_limit?: number };
+				Returns: {
+					genre: string;
+					occurrences: number;
+				}[];
 			};
 			get_library_artist_count: {
 				Args: { p_account_id: string };

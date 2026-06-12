@@ -472,7 +472,7 @@ async function runMatching(req: MatchRequest) {
 	const playlistInfo = profiles.map((p) => ({
 		id: p.playlist_id,
 		name: p.name,
-		description: p.description,
+		match_intent: p.description,
 	}));
 	const profileMeta = new Map(
 		profiles.map((p) => [
@@ -941,7 +941,7 @@ async function getPlaylistSuggestions(
 				{
 					id: targetProfile.playlist_id,
 					name: targetProfile.name,
-					description: targetProfile.description,
+					match_intent: targetProfile.description,
 				},
 			],
 			rerankerService,

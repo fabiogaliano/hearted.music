@@ -66,10 +66,11 @@ export interface OnboardingPlaylist {
 	id: string;
 	spotifyId: string;
 	name: string;
-	description: string | null;
+	matchIntent: string | null;
 	imageUrl: string | null;
 	songCount: number | null;
 	isTarget: boolean;
+	genrePills: string[];
 }
 
 /** Sync statistics for the ready step */
@@ -249,10 +250,11 @@ async function loadOnboardingData({
 		id: p.id,
 		spotifyId: p.spotify_id,
 		name: p.name,
-		description: p.description,
+		matchIntent: p.match_intent,
 		imageUrl: p.image_url,
 		songCount: p.song_count,
 		isTarget: p.is_target ?? false,
+		genrePills: p.genre_pills ?? [],
 	}));
 
 	let readyCopyVariant: ReadyCopyVariant = "free";
@@ -828,7 +830,7 @@ export const getDemoSongMatches = createServerFn({ method: "GET" })
 		const supabase = createAdminSupabaseClient();
 		const { data: playlistRows, error: playlistError } = await supabase
 			.from("playlist")
-			.select("id, name, description, song_count")
+			.select("id, name, match_intent, song_count")
 			.in("id", playlistIds);
 
 		if (playlistError || !playlistRows) {
@@ -844,7 +846,7 @@ export const getDemoSongMatches = createServerFn({ method: "GET" })
 				return {
 					id: playlist.id,
 					name: playlist.name,
-					description: playlist.description,
+					description: playlist.match_intent,
 					songCount: playlist.song_count,
 					score: m.score,
 				};

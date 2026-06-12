@@ -468,7 +468,7 @@ export const getSongMatches = createServerFn({ method: "GET" })
 		const playlistIds = songMatchResults.map((mr) => mr.playlist_id);
 		const { data: playlistRows, error: playlistError } = await supabase
 			.from("playlist")
-			.select("id, name, description, song_count, spotify_id")
+			.select("id, name, match_intent, song_count, spotify_id")
 			.in("id", playlistIds);
 
 		if (playlistError || !playlistRows) return null;
@@ -483,7 +483,7 @@ export const getSongMatches = createServerFn({ method: "GET" })
 					playlist: {
 						id: playlist.id,
 						name: playlist.name,
-						description: playlist.description,
+						description: playlist.match_intent,
 						trackCount: playlist.song_count,
 						spotifyId: playlist.spotify_id,
 					},

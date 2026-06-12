@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
+import { getAccountTopGenres as queryAccountTopGenres } from "@/lib/domains/library/liked-songs/queries";
 import {
 	deletePlaylist,
 	getPlaylistById,
@@ -10,11 +11,16 @@ import {
 	getTargetPlaylists,
 	setPlaylistTarget,
 	updatePlaylistGenrePills,
+	updatePlaylistMatchIntent,
 	updatePlaylistMetadata,
 	upsertPlaylists,
 } from "@/lib/domains/library/playlists/queries";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
-import { sanitizeGenrePills } from "@/lib/integrations/lastfm/whitelist";
+import {
+	canonicalizeGenre,
+	isGenre,
+	sanitizeGenrePills,
+} from "@/lib/integrations/lastfm/whitelist";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
@@ -403,6 +409,137 @@ export const savePlaylistGenrePills = createServerFn({ method: "POST" })
 		}
 
 		return { success: true, pills };
+	});
+
+// ============================================================================
+// Match intent save
+// ============================================================================
+
+// match_intent is written verbatim to the playlist row (TEXT, capped at 5000 by
+// a DB CHECK). Bound the raw input here so an authed client can't push past the
+// constraint into a DB error; the handler then trims and collapses empty → null.
+const SaveMatchIntentSchema = z.object({
+	playlistId: z.string().uuid(),
+	matchIntent: z.string().max(5000).nullable(),
+});
+
+export const savePlaylistMatchIntent = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
+	.inputValidator((data) => SaveMatchIntentSchema.parse(data))
+	.handler(async ({ data, context }) => {
+		const { session } = context;
+
+		// Explicit pre-check mirrors savePlaylistGenrePills: the service-role
+		// client bypasses RLS, so we must verify ownership before writing.
+		const playlistResult = await getPlaylistById(
+			session.accountId,
+			data.playlistId,
+		);
+		if (
+			Result.isError(playlistResult) ||
+			!playlistResult.value ||
+			playlistResult.value.account_id !== session.accountId
+		) {
+			throw new Error("Playlist not found");
+		}
+
+		const trimmed = data.matchIntent?.trim() ?? "";
+		const matchIntent = trimmed.length > 0 ? trimmed : null;
+
+		const updateResult = await updatePlaylistMatchIntent(
+			session.accountId,
+			data.playlistId,
+			matchIntent,
+		);
+		if (Result.isError(updateResult)) {
+			throw new Error(
+				`Failed to save match intent: ${updateResult.error.message}`,
+			);
+		}
+
+		// match_intent feeds the playlist profile (intent text → embedding,
+		// computeIntentWeight), so the next match snapshot must recompute. We emit
+		// the same signal as a metadata change so the reconciler advances
+		// matchSnapshotRefresh unconditionally — both edit surfaces (onboarding
+		// dialog, library detail view) lack a session-flush path, so we cannot rely
+		// on flush.
+		const applyResult = await applyLibraryProcessingChange(
+			PlaylistManagementChanges.sessionFlushed({
+				accountId: session.accountId,
+				targetMembershipChanged: false,
+				targetMetadataChanged: true,
+			}),
+		);
+		if (Result.isError(applyResult)) {
+			// Non-fatal: the intent is written; invalidation failure is logged but
+			// does not roll back the save. The snapshot will recompute on the next
+			// organic trigger (library sync, enrichment, etc.).
+			console.error(
+				"[playlists] match intent saved but snapshot invalidation failed:",
+				applyResult.error,
+			);
+		}
+
+		return { success: true, matchIntent };
+	});
+
+// ============================================================================
+// Genre pills quick-picks
+// ============================================================================
+
+const TOP_GENRES_LIMIT = 12;
+
+// Broad, universally-recognizable genres shown while the library is still
+// syncing (or a lookup fails) so the picker always has actionable suggestions.
+// Every entry is a canonical whitelist form.
+const STATIC_TOP_GENRES: readonly string[] = [
+	"rock",
+	"pop",
+	"hip-hop",
+	"electronic",
+	"rnb",
+	"jazz",
+	"indie",
+	"folk",
+	"metal",
+	"classical",
+];
+
+/**
+ * Top genres across the account's liked songs, canonicalized + deduped, for the
+ * genre-pills picker quick-picks. Over-fetches raw tags then collapses variant
+ * spellings (e.g. "hip hop" + "hip-hop" → "hip-hop") so the canonical count is
+ * what the cap targets. Falls back to a static broad-genre seed when the library
+ * is empty/syncing or the lookup fails — the picker is never left without picks.
+ */
+export const getAccountTopGenres = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.inputValidator((data: undefined) => NoInputSchema.parse(data))
+	.handler(async ({ context }): Promise<{ genres: string[] }> => {
+		const { session } = context;
+
+		const result = await queryAccountTopGenres(
+			session.accountId,
+			TOP_GENRES_LIMIT * 2,
+		);
+		if (Result.isError(result)) {
+			console.error("[playlists] top genres lookup failed:", result.error);
+			return { genres: [...STATIC_TOP_GENRES] };
+		}
+
+		const canonical: string[] = [];
+		const seen = new Set<string>();
+		for (const { genre } of result.value) {
+			const form = canonicalizeGenre(genre);
+			if (!isGenre(form) || seen.has(form)) continue;
+			seen.add(form);
+			canonical.push(form);
+			if (canonical.length === TOP_GENRES_LIMIT) break;
+		}
+
+		return {
+			genres: canonical.length > 0 ? canonical : [...STATIC_TOP_GENRES],
+		};
 	});
 
 // ============================================================================

@@ -88,14 +88,16 @@ export interface SyncPlaylistsOptions {
 	onTotalDiscovered?: (total: number) => void;
 }
 
+// Name-only now that match_intent (our own, app-local intent text) is what the
+// matcher reads — the Spotify `description` no longer feeds profiling, so a
+// description-only change must not retrigger re-profiling. The stored
+// `description` column still updates on a Spotify edit; that update is driven by
+// the explicit description comparison in playlistNeedsUpdate, not this helper.
 function playlistProfileTextChanged(
 	existing: Playlist,
 	spotify: SpotifyPlaylistDTO,
 ): boolean {
-	return (
-		existing.name !== spotify.name ||
-		existing.description !== spotify.description
-	);
+	return existing.name !== spotify.name;
 }
 
 function playlistNeedsUpdate(
@@ -104,6 +106,7 @@ function playlistNeedsUpdate(
 ): boolean {
 	return (
 		playlistProfileTextChanged(existing, spotify) ||
+		existing.description !== spotify.description ||
 		(spotify.track_count !== null &&
 			existing.song_count !== spotify.track_count) ||
 		existing.image_url !== spotify.image_url

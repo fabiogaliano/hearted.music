@@ -164,10 +164,11 @@ export interface OnboardingPlaylist {
 	id: string;
 	spotifyId: string;
 	name: string;
-	description: string | null;
+	matchIntent: string | null;
 	imageUrl: string | null;
 	songCount: number | null;
 	isTarget: boolean;
+	genrePills: string[];
 }
 
 type PlaylistFixture = (typeof PLAYLISTS)[keyof typeof PLAYLISTS];
@@ -180,10 +181,11 @@ export function toOnboardingPlaylist(
 		id: playlist.id,
 		spotifyId: playlist.spotify_id,
 		name: playlist.name,
-		description: playlist.description || null,
+		matchIntent: playlist.description || null,
 		imageUrl: playlist.image_url,
 		songCount: playlist.song_count,
 		isTarget: playlist.is_target,
+		genrePills: [],
 		...overrides,
 	};
 }

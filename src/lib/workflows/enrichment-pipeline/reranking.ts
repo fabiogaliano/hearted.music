@@ -32,7 +32,7 @@ const ANALYSIS_TAIL_MAX_CHARS = 1600;
 interface PlaylistInfo {
 	readonly id: string;
 	readonly name: string;
-	readonly description: string | null;
+	readonly match_intent: string | null;
 	/** Declared genre pills — when present, appended to the query as ". Genres: …"
 	 *  so the reranker query stays byte-identical to the profiling intent text. */
 	readonly genre_pills?: readonly string[] | null;
@@ -93,7 +93,7 @@ export async function rerankMatches(
 		const query =
 			buildIntentText(
 				playlist.name,
-				playlist.description ?? undefined,
+				playlist.match_intent ?? undefined,
 				playlist.genre_pills ?? [],
 			) ?? playlist.name;
 

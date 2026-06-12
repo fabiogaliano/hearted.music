@@ -28,7 +28,7 @@ const songs: MatchingSong[] = [
 ];
 
 const playlists = [
-	{ id: "pl1", name: "Chill Vibes", description: "relaxing music" },
+	{ id: "pl1", name: "Chill Vibes", match_intent: "relaxing music" },
 ];
 
 function makeMatch(

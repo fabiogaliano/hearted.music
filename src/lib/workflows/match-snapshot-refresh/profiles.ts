@@ -99,7 +99,7 @@ export async function loadTargetPlaylistProfiles(
 				songs,
 				{
 					name: playlist.name,
-					description: playlist.description ?? undefined,
+					description: playlist.match_intent ?? undefined,
 					// Thread pills so the embedding, blend, HyDE path, and hash all reflect
 					// the user's declared genres — without this the pills only reach the
 					// reranker query but are silently absent from the profile itself.
