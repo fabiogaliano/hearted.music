@@ -5,7 +5,7 @@ import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
 import { LazyHeartRippleBackground } from "@/components/ui/LazyHeartRippleBackground";
 import {
 	type LandingSongForUI,
-	toLikedSong,
+	landingSongToSongDetail,
 } from "@/lib/content/landing/landing-songs";
 import { fonts } from "@/lib/theme/fonts";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
@@ -36,7 +36,10 @@ export function LandingHero({
 	isReleased = true,
 }: LandingHeroProps) {
 	const theme = useTheme();
-	const likedSong = toLikedSong(featuredSong);
+	const songDetail = landingSongToSongDetail(featuredSong, {
+		albumArtUrl,
+		artistImageUrl,
+	});
 	const [isBackgroundReady, setIsBackgroundReady] = useState(false);
 	const [isHeroVisualReady, setIsHeroVisualReady] = useState(false);
 	const [hasRevealed, setHasRevealed] = useState(false);
@@ -47,8 +50,6 @@ export function LandingHero({
 	const logoRef = useRef<HTMLHeadingElement>(null);
 	const headlineRef = useRef<HTMLHeadingElement>(null);
 	const backgroundRef = useRef<HTMLDivElement>(null);
-	const panelRef = useRef<HTMLDivElement>(null);
-	const panelCurtainRef = useRef<HTMLDivElement>(null);
 	const ctaRef = useRef<HTMLDivElement>(null);
 	const subtextRef = useRef<HTMLParagraphElement>(null);
 	const heartRef = useRef<HTMLSpanElement>(null);
@@ -65,8 +66,6 @@ export function LandingHero({
 			logoRef,
 			headlineRef,
 			backgroundRef,
-			panelRef,
-			panelCurtainRef,
 			ctaRef,
 			subtextRef,
 			heartRef,
@@ -186,10 +185,23 @@ export function LandingHero({
 						</div>
 					</div>
 
-					{/* Background container - clip-path crops from full to left 50% */}
+					{/* Desktop: the production read panel, opaque and static in the right half,
+					    UNDER the background. Absolute (not a grid column) so its content height
+					    can't inflate the hero row — the layer is exactly viewport-height and the
+					    surface scrolls internally. Pointer-inert until the reveal lands so wheel
+					    events keep driving the page scroll mid-animation. */}
+					<div
+						className="hero-panel absolute inset-y-0 right-0 z-0 hidden w-1/2 xl:block"
+						style={{ pointerEvents: hasRevealed ? "auto" : "none" }}
+					>
+						<LandingPanel song={songDetail} onPrev={onPrev} onNext={onNext} />
+					</div>
+
+					{/* Background - sits ABOVE the panel and clips from full width to the left
+					    50%, so the moving clip edge is the curtain that unveils the panel. */}
 					<div
 						ref={backgroundRef}
-						className="hero-background absolute inset-0 z-0 overflow-hidden"
+						className="hero-background absolute inset-0 z-10 overflow-hidden"
 					>
 						<div className="absolute inset-0 z-0">
 							<HeartRipplePlaceholder />
@@ -204,7 +216,7 @@ export function LandingHero({
 						</div>
 					</div>
 
-					<div className="pointer-events-none relative z-10 grid min-h-screen xl:grid-cols-2">
+					<div className="pointer-events-none relative z-20 grid min-h-screen xl:grid-cols-2">
 						{/* Left: Copy column - elements morph from center to here */}
 						<div
 							className={`hero-initial-fade ${isHeroVisualReady ? "is-ready" : ""} pointer-events-none relative flex min-h-screen flex-col justify-center overflow-visible px-6 py-16 sm:px-8 md:px-10 xl:min-h-0 xl:px-16`}
@@ -302,43 +314,16 @@ export function LandingHero({
 							</div>
 						</div>
 
-						{/* Right: Full-height analysis panel - reveals with curtain wipe */}
-						<div
-							ref={panelRef}
-							className="hero-panel pointer-events-auto relative hidden overflow-hidden xl:block"
-							style={{ opacity: 0 }}
-						>
-							{/* Curtain wipe overlay (slides right to reveal) */}
-							<div
-								ref={panelCurtainRef}
-								className="theme-bg hero-panel-curtain pointer-events-none absolute inset-0 z-20"
-							/>
-
-							<LandingPanel
-								song={likedSong}
-								albumArtUrl={albumArtUrl}
-								artistImageUrl={artistImageUrl}
-								onPrev={onPrev}
-								onNext={onNext}
-							/>
-						</div>
-
 						{/* Mobile: Panel (no scroll animation on mobile) */}
 						<div className="pointer-events-auto relative min-h-screen xl:hidden">
-							<LandingPanel
-								song={likedSong}
-								albumArtUrl={albumArtUrl}
-								artistImageUrl={artistImageUrl}
-								onPrev={onPrev}
-								onNext={onNext}
-							/>
+							<LandingPanel song={songDetail} onPrev={onPrev} onNext={onNext} />
 						</div>
 					</div>
 
 					{/* Scroll indicator - fades out on first scroll */}
 					<div
 						ref={scrollIndicatorRef}
-						className={`pointer-events-none absolute bottom-8 left-1/2 z-20 -translate-x-1/2 transition-opacity duration-1000 ${isHeroVisualReady ? "opacity-100" : "opacity-0"}`}
+						className={`pointer-events-none absolute bottom-8 left-1/2 z-30 -translate-x-1/2 transition-opacity duration-1000 ${isHeroVisualReady ? "opacity-100" : "opacity-0"}`}
 					>
 						<div className="theme-text-on-primary scroll-indicator flex flex-col items-center gap-2">
 							<span className="text-sm tracking-widest uppercase opacity-80">

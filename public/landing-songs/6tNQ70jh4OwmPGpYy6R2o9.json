@@ -16,75 +16,51 @@
     "energy": 0.471,
     "valence": 0.219
   },
-  "analysis": {
-    "headline": "The joyful terror of finally having everything you ever wanted.",
-    "compound_mood": "Precarious Joy",
-    "mood_description": "A warm embrace that tightens into a desperate grip. The comfort of love is constantly shadowed by the chilling thought of its disappearance.",
-    "interpretation": "The profound fear that accompanies genuine happiness. It's the human tendency to brace for impact even when everything is going right, convinced that good fortune is merely borrowed, and every beautiful thing is a ticking clock.",
-    "themes": [
+  "read": {
+    "image": "her asleep in his arms while he lies awake in the dark",
+    "lens": "a blessing as a loan that comes due",
+    "tension": "Grateful Dread",
+    "take": "Every good thing he names is a thing he's already afraid of losing. He starts by counting how far he's come — better than the last four cold Decembers, a girl his parents love, family every month, peace, love, faith coming back. Then the Job line lands and undoes all of it: the things God gives, God can take away. So the gratitude curdles in the same breath it's spoken. Holding her every night is a feeling he wants to get used to, and the wanting is the problem, because there's no man as terrified as the man who stands to lose you. He even hears himself doing it — if everything's good and it's great, why does he sit and wait 'til it's gone? He can't answer, so he just keeps up the prayer. Please stay. Don't take these beautiful things that I've got.",
+    "contradiction": "He thanks God for the girl He sent and begs God not to take her back, and it's the same prayer either way.",
+    "arc": [
       {
-        "name": "fragile happiness",
-        "description": "Finding contentment only to be overwhelmed by the fear of losing it all."
+        "label": "The Good Years",
+        "mood": "warm relief",
+        "scene": "After a rough stretch, the floor finally feels solid. He's doing better than four cold Decembers ago, he sees his family, and he found a girl his parents took to. For a second he lets himself think he might have it all."
       },
       {
-        "name": "anticipatory grief",
-        "description": "Living in the present while already mourning a potential future loss."
+        "label": "The Flinch",
+        "mood": "dawning dread",
+        "scene": "The same God he thanks for her is the God who can take her away. That thought turns holding her at night from comfort into stakes. Nobody is more terrified than the man with everything to lose, and now that's him."
       },
       {
-        "name": "divine uncertainty",
-        "description": "Acknowledging blessings from a higher power while fearing their arbitrary withdrawal."
+        "label": "The Question",
+        "mood": "anxious self-awareness",
+        "scene": "He catches himself doing it. He's got peace, he's got love, his faith is coming back — and still he sits up waiting for it to vanish. If everything's good, why does he keep bracing for the end? He has no answer."
       },
       {
-        "name": "desperate dependence",
-        "description": "Clinging to a person or feeling as the only source of sanity and peace."
+        "label": "The Prayer",
+        "mood": "open begging",
+        "scene": "All of it collapses into one plea, repeated until it's the whole song. Please stay. I want you, I need you, oh God, don't take. The need outlasts the gratitude, and the last word he leaves you on is don't take."
       }
     ],
-    "journey": [
+    "lines": [
       {
-        "section": "Verse 1",
-        "mood": "Warm gratitude",
-        "description": "Settling into a life of unexpected peace, counting blessings and feeling a rare sense of completeness."
+        "line": "But I know the things He gives me, He can take away"
       },
       {
-        "section": "Pre-Chorus",
-        "mood": "Rising dread",
-        "description": "A quiet tremor of fear begins to surface, a whisper of 'don't lose this' that interrupts the contentment."
+        "line": "But there's no man as terrified as the man who stands to lose you"
       },
       {
-        "section": "Chorus",
-        "mood": "Desperate plea",
-        "description": "The fear breaks through, an urgent, almost panicked begging for things to stay just as they are."
+        "line": "I want you, I need you, oh God\nDon't take\nThese beautiful things that I've got"
       },
       {
-        "section": "Verse 2",
-        "mood": "Lingering anxiety",
-        "description": "Even in sanity and renewed faith, the worry persists, a constant shadow over the discovered happiness."
+        "line": "If everything's good and it's great, why do I sit and wait 'til it's gone?"
       },
       {
-        "section": "Chorus (Reprise)",
-        "mood": "Intensified longing",
-        "description": "The plea returns, louder, more fervent, a desperate grip on what feels precious and fragile."
-      },
-      {
-        "section": "Outro",
-        "mood": "Unresolved yearning",
-        "description": "The plea softens but doesn't resolve, fading with the heavy weight of an unanswered prayer, leaving the uncertainty hanging."
+        "line": "I've got peace and I've got love\nBut I'm up at night thinkin' I just might lose it all"
       }
     ],
-    "key_lines": [
-      {
-        "line": "But I know the things He gives me, He can take away",
-        "insight": "The unsettling vulnerability that comes with divine blessings, knowing they are not guaranteed."
-      },
-      {
-        "line": "But there's no man as terrified as the man who stands to lose you",
-        "insight": "The heaviest burden isn't absence, it's the constant threat of it when you have everything to lose."
-      },
-      {
-        "line": "If everything's good and it's great, why do I sit and wait 'til it's gone?",
-        "insight": "The self-sabotage of happiness, always anticipating its end instead of living in the present joy."
-      }
-    ],
-    "sonic_texture": "A surging pop-rock anthem that builds from heartfelt confession to a soaring, pleading cry. The sound is big and open, driven by strong vocals and a steady, building rhythm, but carries an undercurrent of tension beneath its power."
+    "texture": "It opens low and close, then lifts into a big power-pop swell with that high, cracking belt at the top of his range, the kind of release built to read as triumph. Every word underneath it is bracing for the loss."
   }
 }

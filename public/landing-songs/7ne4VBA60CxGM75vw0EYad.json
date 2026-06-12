@@ -17,78 +17,43 @@
     "energy": 0.808,
     "valence": 0.372
   },
-  "analysis": {
-    "headline": "The messy, tangled knot of jealousy and self-awareness after an old flame moves on.",
-    "compound_mood": "Sardonic Resentment",
-    "mood_description": "The quick pace keeps the anger moving, but there's a dull ache underneath all the sharp edges.",
-    "interpretation": "The bewildering experience of watching an ex move on, where old wounds resurface, and the messy tangle of jealousy, fascination, and self-awareness creates a whirlwind of feelings. It's a battle to seem cool and indifferent when every move is felt, analyzed, and sometimes even oddly admired.",
-    "themes": [
+  "read": {
+    "image": "saying you're fine from inside the coffin",
+    "lens": "contempt as a coffin",
+    "tension": "Spiteful Longing",
+    "take": "Every insult here is a place to lie down and play dead. She calls him an idiot, calls him \"just another dude,\" and the cooler she sounds the more you hear what it costs. The cruelty is real and so is the wound under it — \"I died when you started walking\" isn't a metaphor she's hiding, it's the thing the contempt was built to cover. She watches him with the new girl and can't decide whether she likes her or hates her, lands on \"I'm not that evolved, I'm sorry,\" and means both halves. The worst part is the recognition. \"Wait, I think I've been there too.\" She was once the cool girl on his couch making eyes across the room, so trashing the new one is trashing the version of herself he already replaced. Smiling through it all, yeah, that's her life. The smile and the coffin are the same gesture.",
+    "contradiction": "She swears it isn't her business and warns the new girl off him anyway, twice.",
+    "arc": [
       {
-        "name": "vicarious observation",
-        "description": "Peering into a past life, almost inhabiting the new relationship from a distance."
+        "label": "The Cold Read",
+        "mood": "spiteful, fixated",
+        "scene": "She knows him too well to need words. She can read his mind, picture his dumb face whenever she wants, and she hates that she can. So she sharpens it into a verdict. \"You're an idiot, now I'm sure.\" Calling him stupid is easier than admitting he still lives behind her eyes, in a glass house she's stuck looking into from outside."
       },
       {
-        "name": "unresolved feelings",
-        "description": "The lingering impact of a past relationship, proving it's not truly over."
+        "label": "The Catch",
+        "mood": "jealous, self-aware",
+        "scene": "Then she watches the new girl kick back on his couch and take her hair down, and the knife slips. \"Wait, I think I've been there too.\" She was the one making eyes across that room once, so every jab at the new girl lands on her own replaced self. She can't even hold a position. She likes her, hates her, says \"I'm not that evolved, I'm sorry,\" and the apology is half to the girl and half to herself."
       },
       {
-        "name": "performative indifference",
-        "description": "The struggle to project nonchalance while battling intense internal emotions."
-      },
-      {
-        "name": "relational echo",
-        "description": "Seeing a new relationship mirror the old one, making it harder to move on."
+        "label": "The Coffin",
+        "mood": "raw grief, bravado",
+        "scene": "The act drops all at once. \"Said that I was fine, said it from my coffin.\" Every cool line all night was spoken by someone playing dead so he wouldn't see the body. Then she sits up, takes out her earrings for a fight she won't win, and reaches for the armor again. \"You're just another dude.\" That's so true, and she almost believes it."
       }
     ],
-    "journey": [
+    "lines": [
       {
-        "section": "Watching from the outside",
-        "mood": "Obsessive curiosity",
-        "description": "Peering into a past life, replaying old hurts while analyzing the new setup with a detached, yet deeply invested, gaze."
+        "line": "Smiling through it all, yeah, that's my life"
       },
       {
-        "section": "The warning sign",
-        "mood": "Conflicted advice",
-        "description": "A sharp realization about the ex's character turns into a sudden urge to warn the new person, quickly followed by the unsettling recognition of a shared, familiar scene."
+        "line": "But I think I like her, she's so fun\nWait, I think I hate her, I'm not that evolved, I'm sorry"
       },
       {
-        "section": "Internal battlefield",
-        "mood": "Flickering emotions",
-        "description": "A chaotic swirl of emotions erupts, bouncing between jealous comparison, reluctant admiration for the new person, and a desperate struggle to maintain some sense of self, culminating in a blunt confession of hate."
+        "line": "She's missing it, sad, sad boy"
       },
       {
-        "section": "Reckoning with ghosts",
-        "mood": "Defiant haunting",
-        "description": "The past floods back, a vivid memory of heartbreak and feeling utterly lost, now channeling into a fierce, almost vengeful declaration of lingering presence and a fight that isn't quite over."
-      },
-      {
-        "section": "Bitter acceptance",
-        "mood": "Weary dismissal",
-        "description": "Returning to the core truth: the ex is just another ordinary guy, and the drama isn't worth the emotional energy, settling into a resigned, almost bored dismissal."
+        "line": "And she'll spend the night, catch me on your ceiling"
       }
     ],
-    "key_lines": [
-      {
-        "line": "Living in your glass house, I'm outside, uh",
-        "insight": "The vulnerable feeling of being exposed while simultaneously being the outsider looking in on a situation."
-      },
-      {
-        "line": "Smiling through it all, yeah, that's my life",
-        "insight": "The forced performance of happiness despite deep internal pain and heartbreak."
-      },
-      {
-        "line": "But I think I like her, she's so fun Wait, I think I hate her, I'm not that evolved, I'm sorry",
-        "insight": "The raw, honest contradiction of human feelings, where empathy and resentment clash within a single thought."
-      },
-      {
-        "line": "Remember how I died when you started walking?",
-        "insight": "The profound, visceral impact of being left behind, a feeling of annihilation and complete loss."
-      },
-      {
-        "line": "But I know what I know and you're just another dude",
-        "insight": "The ultimate dismissal, shrinking the ex from a world-shattering figure to someone utterly ordinary and unremarkable."
-      }
-    ],
-    "sonic_texture": "A brisk, driving rhythm section forms the backbone, with sharp, clear vocals cutting through the mix. The production is clean and energetic, feeling almost like a pop-punk track filtered through an indie-pop lens, all while maintaining a slight edge of raw, unpolished feeling."
+    "texture": "A bright, loud pop bounce at a brisk clip, more momentum than melancholy on the surface. The mood underneath runs darker than the beat lets on, so you catch yourself singing along to the cruelty."
   }
 }

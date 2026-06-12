@@ -17,78 +17,43 @@
     "energy": 0.685,
     "valence": 0.811
   },
-  "analysis": {
-    "headline": "A sharp, witty takedown of perpetual immaturity, disguised as a dancefloor anthem. It's the frustration of codependency wrapped in glitter and sarcasm.",
-    "compound_mood": "Sarcastic Exasperation",
-    "mood_description": "A shimmering dance-pop groove that pulls you onto the floor, while a cutting wit delivers punch after punch. It feels like rolling your eyes in slow motion while a beat drops.",
-    "interpretation": "The underlying truth here is the exhausting burden of consistently being the mature one in a relationship, especially when attracted to charming incompetence. There's a deep-seated frustration with emotional labor, and a self-aware acknowledgement of a pattern in choosing partners who require constant care, even while actively rejecting it. The bright, energetic sound provides a stark, almost ironic, contrast to the lyrical exhaustion.",
-    "themes": [
+  "read": {
+    "image": "won't you let an innocent woman be",
+    "lens": "a takedown as self-portrait",
+    "tension": "Mocking Exasperation",
+    "take": "She spends the whole thing roasting him and barely breaks a sweat doing it. The phone that wasn't broken, just uncharged. The outfit she prays is ironic. \"Did you just say you're finished? Didn't know we started.\" Each line is a clean hit, and she keeps posing as the put-upon innocent woman who never signed up for any of this. Then the bridge turns the knife on her own hand. She likes her men incompetent. She likes her boys playing hard to get. And right after admitting it, she swears \"they choose me, I'm not choosing them\" — the denial too quick to believe. The portrait she's been drawing of him turns out to be a mirror, and \"amen, hey, men\" is half blessing, half surrender to the type she keeps going back to.",
+    "contradiction": "She calls herself an innocent woman dragged into this and admits in the same breath that incompetent is exactly her type.",
+    "arc": [
       {
-        "name": "emotional labor",
-        "description": "Always having to pick up the pieces and provide emotional support for someone who refuses to grow up."
+        "label": "The Roast",
+        "mood": "sharp, amused",
+        "scene": "She's got the receipts and she's enjoying them. The dead phone, the outfit, the boy who announced he was finished before anything began. She names what's wrong with him and barely raises her voice, because there's a cuter word for it and she already knows what it is."
       },
       {
-        "name": "sarcastic independence",
-        "description": "Asserting a need for freedom and self-care while playfully blaming the other person's upbringing."
+        "label": "The Innocent Act",
+        "mood": "mock-weary, theatrical",
+        "scene": "Now she plays the martyr. Why does he always come running to her, this grown man with no concept of self-care and half a brain gone missing? She asks to be let be like a woman who had no part in it, and the halo she puts on is purely for show."
       },
       {
-        "name": "attractive incompetence",
-        "description": "Grappling with the paradox of being drawn to someone who is undeniably charming but profoundly immature."
-      },
-      {
-        "name": "patterned choices",
-        "description": "Acknowledging a recurring habit of choosing partners who play \"hard to get\" by being perpetually childlike and needing care."
+        "label": "The Tell",
+        "mood": "knowing, exposed",
+        "scene": "The bridge flips the whole song. She likes her boys hard to get, likes her men incompetent, and says so out loud. \"I swear they choose me, I'm not choosing them\" is the line that gives her away. The innocent woman wanted this all along, and she almost laughs admitting it."
       }
     ],
-    "journey": [
+    "lines": [
       {
-        "section": "Intro/Verse 1",
-        "mood": "Playful exasperation",
-        "description": "A light \"Oh boy\" sets a comedic, eye-rolling tone. Sharp observations on a partner's childish excuses and questionable style begin to build a picture of attractive incompetence."
+        "line": "You said your phone was broken, just forgot to charge it"
       },
       {
-        "section": "Pre-Chorus/Chorus",
-        "mood": "Biting frustration",
-        "description": "The energy swells with a driving beat as the \"man-child\" label drops, cementing the central complaint. It's a danceable plea for relief from constant emotional demands, infused with sharp humor."
+        "line": "Did you just say you're finished? Didn't know we started"
       },
       {
-        "section": "Verse 2",
-        "mood": "Sharp critique",
-        "description": "The playful mockery continues with even more pointed questions, wondering how such immaturity survives. Blaming the mother adds another layer of comedic dismissal to the situation."
+        "line": "Half your brain just ain't there"
       },
       {
-        "section": "Bridge",
-        "mood": "Self-aware irony",
-        "description": "A brief pause for self-reflection, confessing a pattern of being drawn to \"hard to get\" and \"incompetent\" men. The \"Amen, hey, men\" is a sardonic blessing and a general call-out."
-      },
-      {
-        "section": "Outro",
-        "mood": "Resigned sarcasm",
-        "description": "The initial playful exasperation returns, now mixed with a hint of acceptance about the recurring relationship patterns, as the final thoughts on incompetent men echo and fade."
+        "line": "And I like my men all incompetent\nAnd I swear they choose me, I'm not choosing them"
       }
     ],
-    "key_lines": [
-      {
-        "line": "Did you just say you're finished? Didn't know we started",
-        "insight": "The swift, almost dismissive end to something that was barely given a chance to begin."
-      },
-      {
-        "line": "Why so sexy if so dumb?",
-        "insight": "A bewildered question at the heart of an undeniable, yet frustrating, attraction."
-      },
-      {
-        "line": "Never heard of self-care Half your brain just ain't there",
-        "insight": "The blunt assessment of a partner's arrested emotional development and the emotional toll it takes."
-      },
-      {
-        "line": "I choose to blame your mom",
-        "insight": "Shifting responsibility for adult immaturity with a comedic, almost childlike, deflection."
-      },
-      {
-        "line": "And I like my men all incompetent",
-        "insight": "A wry, self-aware admission of a problematic attraction pattern."
-      }
-    ],
-    "sonic_texture": "A vibrant, glossy pop production driven by a thumping bassline and crisp, propulsive drums. Bright, layered synths shimmer through the melody, providing a slick, danceable foundation for confident, close-mic'd vocals."
+    "texture": "A sunny, mid-tempo pop strut you can dance to, bright and major-key all the way through. The melody's so cheerful the insults slide down like a wink."
   }
 }

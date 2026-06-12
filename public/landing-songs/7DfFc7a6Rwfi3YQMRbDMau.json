@@ -17,78 +17,51 @@
     "energy": 0.339,
     "valence": 0.2
   },
-  "analysis": {
-    "headline": "A tender ache for a future that might never be, wrapped in the smooth pull of a memory.",
-    "compound_mood": "Wistful Yearning",
-    "mood_description": "A warm, pulsing beat carries a profound sadness. It feels like dancing slowly in a dimly lit room, lost in thoughts of someone far away.",
-    "interpretation": "The agonizing struggle between hoping for a shared future and the gnawing fear that the other person doesn't feel the same. This isn't just about a breakup; it's about the emotional toll of carrying a relationship's future alone, haunted by the profound impact of a pivotal first love. The smooth, almost danceable production creates a stark contrast with the raw, vulnerable plea in the lyrics, embodying the disconnect between outward composure and internal turmoil.",
-    "themes": [
+  "read": {
+    "image": "rain indoors in a place it never rains",
+    "lens": "denial into confession",
+    "tension": "Masked Longing",
+    "take": "He keeps insisting he doesn't love you, and every line around the denial proves it false. \"No, I don't like you.\" \"Since you think I don't love you.\" The brags pile up absurd — a beach house in Idaho, a fighter jet he never gets to fly — because deflection is easier than the question underneath: do you think about me still. The tears he won't call tears pour anyway. Then the act drops. Yes, of course he remembers. You were his first time, a new feel that won't get old in his soul. Forever is the word he can't stop circling, and he still doesn't know if you've thought that far ahead.",
+    "contradiction": "He swears he never loved you and in the same breath needs you to remember you were his first.",
+    "arc": [
       {
-        "name": "unshared horizons",
-        "description": "One person dreams of forever, while the other seems content with the present, revealing a painful mismatch in long-term vision."
+        "label": "The Flood He Won't Name",
+        "mood": "Grief, denied",
+        "scene": "A tornado wrecked the room before you came, and now he's asking you to excuse the mess. It doesn't rain in Southern California. His eyes don't shed tears either. They pour anyway."
       },
       {
-        "name": "first love's imprint",
-        "description": "The indelible mark left by a significant first connection, shaping all subsequent feelings and memories."
+        "label": "Reaching For Forever",
+        "mood": "Aching hope",
+        "scene": "Thinking about you is all he does, and he wants to know if it runs both ways. Do you think about me still. He's already landed on forever. He has no idea if you've thought past tonight."
       },
       {
-        "name": "vulnerable pretense",
-        "description": "Putting on a facade of indifference or casualness to protect a deeply wounded heart, even when it's transparent."
+        "label": "Playing It Cool",
+        "mood": "Guarded deflection",
+        "scene": "Now he plays it cool. No, he doesn't like you, he just thought you were cute enough to kiss. The lies get bigger to sell it — a beach house, a fighter jet — and not one of them covers the want underneath."
       },
       {
-        "name": "emotional downpour",
-        "description": "The overwhelming and uncontrollable rush of sadness that breaks through any attempt at composure."
+        "label": "The Mask Off",
+        "mood": "Tender confession",
+        "scene": "The act finally drops. Yes, of course he remembers how you felt. You were his first time, his first love, a new feel he swears won't ever get old. He'll ride this road with you until it turns from color to black and white."
       }
     ],
-    "journey": [
+    "lines": [
       {
-        "section": "Verse 1",
-        "mood": "Quiet chaos",
-        "description": "A life turned upside down by a love that brought peace, now shattered by its absence. Tears fall like unexpected rain, acknowledging the mess left behind."
+        "line": "A tornado flew around my room before you came"
       },
       {
-        "section": "Pre-Chorus & Chorus",
-        "mood": "Anxious longing",
-        "description": "The heart of the song's plea emerges, a desperate question echoing into an uncertain space. Thinking of forever, wondering if the other person ever thinks so far ahead, feeling the weight of that unasked question."
+        "line": "My eyes don't shed tears, but boy, they pour"
       },
       {
-        "section": "Verse 2",
-        "mood": "Defensive casualness",
-        "description": "A sudden, clumsy attempt to retreat, feigning indifference. Pretending the love wasn't real, masking deep feelings with flippant remarks, trying to regain control of a raw situation."
+        "line": "'Cause I been thinkin' 'bout forever, ooh"
       },
       {
-        "section": "Bridge",
-        "mood": "Intimate memory",
-        "description": "Dropping the facade completely, a direct address. Recalling the shared past, acknowledging the profound significance of a first love, solidifying its place as something that will never fade."
+        "line": "No, I don't like you, I just thought you were cool enough to kick it"
       },
       {
-        "section": "Outro Chorus",
-        "mood": "Lingering uncertainty",
-        "description": "The cycle returns to the central, unanswered question. Still thinking about forever, still wondering if the other person ever does, caught in the loop of persistent longing."
+        "line": "You know you were my first time"
       }
     ],
-    "key_lines": [
-      {
-        "line": "A tornado flew around my room before you came",
-        "insight": "Life before that person was chaotic and messy, and their arrival brought a momentary calm that's now shattered again."
-      },
-      {
-        "line": "My eyes don't shed tears, but boy, they pour",
-        "insight": "Despite a tough exterior, the emotional pain is so overwhelming it breaks through, an unstoppable flood."
-      },
-      {
-        "line": "Or do you not think so far ahead? 'Cause I been thinkin' 'bout forever, ooh",
-        "insight": "The painful realization that future hopes and long-term commitment might be entirely one-sided."
-      },
-      {
-        "line": "No, I don't like you, I just thought you were cool enough to kick it",
-        "insight": "A desperate, transparent attempt to downplay profound feelings and protect a vulnerable heart."
-      },
-      {
-        "line": "You know you were my first time",
-        "insight": "The indelible significance of that specific connection, a foundational experience that continues to resonate."
-      }
-    ],
-    "sonic_texture": "Smooth, syrupy synths glide over a steady, unhurried R&B rhythm. The vocals are upfront and intimate, bathed in a warm, slightly hazy atmosphere, creating a feeling of floating through a melancholic dream."
+    "texture": "Hushed and sparse, the vocal sitting right up front with almost nothing behind it. There's a soft groove your body wants to follow, but the low light and lower mood keep it sunk in blue."
   }
 }

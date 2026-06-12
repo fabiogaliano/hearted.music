@@ -17,78 +17,46 @@
     "energy": 0.38,
     "valence": null
   },
-  "analysis": {
-    "headline": "A devastating first heartbreak, navigating newfound freedom through a landscape of ghost memories and hollow promises.",
-    "compound_mood": "Angsty Longing",
-    "mood_description": "The sting of first heartbreak washes over you, cruising familiar streets that now feel utterly empty. Every memory plays on a loop, a stark contrast to the quiet car.",
-    "interpretation": "The agonizing collision of newfound freedom with crushing heartbreak. The open road, once a symbol of shared dreams, becomes a stark canvas for solitude and the painful realization that someone promised forever and then simply disappeared. It's a raw dive into the unfairness of one person moving on while the other is still deeply stuck in the past.",
-    "themes": [
+  "read": {
+    "image": "crying through the suburbs, driving home to a house that isn't yours anymore",
+    "lens": "the open road as a dead end",
+    "tension": "Disbelieving Grief",
+    "take": "The license was supposed to be the two of you. He taught her to drive, he was excited for her, the whole point was the day she'd finally pull up to his house. So she gets the keys, the freedom to go anywhere, and the only place anywhere leads is past his street. That's the cruelty of it. The milestone they planned together arrives and he isn't there for it, and now every road just loops her back toward him. She can't square it. She felt this for no one, ever, and somehow he's fine, blonde girl and all, so okay now that she's gone. He even wrote her a forever into a song and didn't mean a word. By the bridge the freedom is just a car she sits in alone, seeing his face in every white one, still loving him out loud past the place they're through.",
+    "contradiction": "She finally has the keys to drive anywhere, and the only place she ever ends up is alone outside the house of someone who's perfectly fine without her.",
+    "arc": [
       {
-        "name": "first heartbreak",
-        "description": "The overwhelming pain and intense emotions that accompany the end of a very first significant love."
+        "label": "The Earned Milestone",
+        "mood": "Hollow Ache",
+        "scene": "She got the license they always talked about, the one he was so excited for, the one that was supposed to end at his front door. Instead she's driving the suburbs alone and crying, because the day finally came and he isn't in it."
       },
       {
-        "name": "unequal healing",
-        "description": "The stark reality that one person moves on from a breakup far more easily and quickly than the other, leaving a profound sense of injustice."
+        "label": "He's Okay, She Isn't",
+        "mood": "Disbelieving Hurt",
+        "scene": "There's a blonde girl now, older, everything she's insecure about. What guts her isn't the girl. It's how easily he moved on, how he could be so okay now that she's gone, while she can't imagine ever loving anyone else."
       },
       {
-        "name": "betrayed promises",
-        "description": "The bitter realization that words of eternal commitment were meaningless, leaving behind a deep sense of broken trust."
-      },
-      {
-        "name": "suburban melancholy",
-        "description": "Finding familiar places and routines transformed into painful reminders of what was lost, amplifying feelings of loneliness."
+        "label": "The Breakdown",
+        "mood": "Raw Longing",
+        "scene": "Red lights, stop signs, his face in every white car and front yard. She can't drive past the old places. The composure drops and she just says it, twice, swearing through tears that she still loves him even knowing they're through."
       }
     ],
-    "journey": [
+    "lines": [
       {
-        "section": "Verse 1",
-        "mood": "Nostalgic ache",
-        "description": "A personal milestone, once imagined as a shared triumph, instantly turns into a crushing reminder of a profound absence. The joy of independence is overshadowed by searing memories."
+        "line": "I got my driver's license last week\nJust like we always talked about"
       },
       {
-        "section": "Verse 2",
-        "mood": "Bitter insecurity",
-        "description": "The sting of a suspected new relationship brings up all the hidden self-doubt, zeroing in on a rival who seems to embody every insecurity."
+        "line": "She's so much older than me\nShe's everything I'm insecure about"
       },
       {
-        "section": "Chorus",
-        "mood": "Raw disbelief",
-        "description": "The shock of how someone could move on so easily feels like a personal betrayal, questioning every past promise. The road, once for two, is now a lonely stretch."
+        "line": "And I just can't imagine how you could be so okay now that I'm gone"
       },
       {
-        "section": "Bridge",
-        "mood": "Crushing nostalgia",
-        "description": "Every street corner, every landmark, floods with memories, making it impossible to escape the ghost of the relationship. The love is still there, sharp and undeniable."
+        "line": "'Cause I still fuckin' love you, babe"
       },
       {
-        "section": "Outro",
-        "mood": "Quiet resignation",
-        "description": "The final, fading thought: the broken promise of 'forever' and the inescapable reality of driving alone, the pain settling into a quiet hum."
+        "line": "'Cause you said forever, now I drive alone past your street"
       }
     ],
-    "key_lines": [
-      {
-        "line": "But today, I drove through the suburbsCrying 'cause you weren't around",
-        "insight": "The stark contrast between a personal triumph and the immediate, overwhelming void left by a missing person."
-      },
-      {
-        "line": "And you're probably with that blonde girlWho always made me doubtShe's so much older than meShe's everything I'm insecure about",
-        "insight": "The painful, specific targeting of self-doubt, fueled by a perceived replacement."
-      },
-      {
-        "line": "Guess you didn't mean what you wrote in that song about me'Cause you said forever, now I drive alone past your street",
-        "insight": "The brutal clarity that words of devotion were empty, leaving behind a solitary future."
-      },
-      {
-        "line": "Can't drive past the places we used to go to'Cause I still fuckin' love you, babe",
-        "insight": "The raw, undeniable persistence of love, making every familiar place a fresh wound."
-      },
-      {
-        "line": "God, I'm so blue, know we're through",
-        "insight": "The heavy, all-encompassing weight of a realized ending, a deep sadness settling in."
-      }
-    ],
-    "sonic_texture": "Starts as a hushed, piano-led ballad, mirroring a whispered diary entry. It slowly swells with dramatic string arrangements and subtle percussion, building to an anthemic, almost explosive chorus. The bridge strips back, letting a raw, slightly strained vocal carry the full weight of emotion, before a final, powerful surge of sound."
+    "texture": null
   }
 }

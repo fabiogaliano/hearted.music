@@ -17,78 +17,51 @@
     "energy": 0.131,
     "valence": 0.032
   },
-  "analysis": {
-    "headline": "A hazy recollection of lost love, where regret dances alongside a yearning for home and fleeting escape.",
-    "compound_mood": "Muted Nostalgia",
-    "mood_description": "A low-key, hypnotic groove carries a deep ache. You're swaying, almost dancing, but a heavy sadness pulls at the edges, making every memory feel bittersweet and out of reach.",
-    "interpretation": "It's about the frustrating battle between trying to live fully in the present and being constantly pulled back by the ghost of a past connection. There's a longing for simpler times, for missed opportunities in love, and for the unwavering comfort of home and friends. Even amidst attempts at carefree partying, a current of regret runs deep, suggesting that some feelings are impossible to truly outrun.",
-    "themes": [
+  "read": {
+    "image": "another pretty sunset over San Juan, and the ones who left",
+    "lens": "a homecoming as a goodbye",
+    "tension": "Aching Joy",
+    "take": "Home looks like everything he wanted. Another sunset over San Juan, dominó with his grandfather, the whole corillo wrecking the street. But every good thing here arrives already mourned. The hook is pure retroactive regret: he should have taken more photos of when he had her, given more kisses and hugs while he had the chance. So now he pulls everyone in for the photo before the next person leaves, and the prayer underneath it is small and scared — ojalá que los míos nunca se muden, please don't let my people move away. He swears to his grandfather he doesn't think about her, and the whole night calls him a liar. The drinking isn't a party so much as a way to stand inside the joy without it cutting him. Enjoy tonight, because nunca se sabe si nos queda poco.",
+    "contradiction": "He tells his grandfather over dominó that he doesn't think about her anymore, and every photo he wishes he'd taken says he still does.",
+    "arc": [
       {
-        "name": "unfulfilled longing",
-        "description": "A persistent ache for what was lost or never fully appreciated, replaying moments that could have been different."
+        "label": "The Pretty Ache",
+        "mood": "wistful, longing",
+        "scene": "He watches another sunset over San Juan and enjoys all the things the ones who leave end up missing. Even here, home and content, he wants to go back to the last time he looked her in the eyes, to tell her the things he never told her and take the photos he never took."
       },
       {
-        "name": "roots and belonging",
-        "description": "Finding solace in the familiar sights, sounds, and people of home, a grounding force against personal turmoil."
+        "label": "The Regret",
+        "mood": "aching, raw",
+        "scene": "It lands as a confession he keeps repeating to himself. He should have taken more photos of when he had her. He should have given more kisses and hugs the times he could. Then the prayer slips out, bigger than her now — that his people never move away, and if he gets drunk tonight, that someone helps him."
       },
       {
-        "name": "escapist revelry",
-        "description": "Turning to drink and chaotic partying as a way to momentarily drown out or distract from deeper emotional pain."
+        "label": "The Party as Defense",
+        "mood": "drunk, willed joy",
+        "scene": "He spends the day with his grandfather, and when the old man asks if he still thinks about her, he lies and says no. Then it's off to Santurce to drink until they throw him out. He calls the whole crew in for one photo, métase to'l mundo, because you never know if little is left."
       },
       {
-        "name": "the passage of time",
-        "description": "Acknowledging personal growth and the evolution of life circumstances, even as old feelings linger."
+        "label": "What's Left",
+        "mood": "tender, grown",
+        "scene": "His brother Bernie has a son now and Jan has a daughter, and the movies and the chains stopped mattering. What's left is the stuff worth the trouble — el perreo, la salsa, la bomba y la plena. He ends right back at the same regret, only now he's asking Beno to help him through it."
       }
     ],
-    "journey": [
+    "lines": [
       {
-        "section": "Intro/Verse 1",
-        "mood": "Fading Memory",
-        "description": "A quiet opening sets a scene of serene San Juan, quickly shifting to a specific, almost painful memory of a last look and a list of all the things left unsaid and undone with someone important. There's a physical ache described, a heart 'kicking'."
+        "line": "Disfrutando de todas esas cosas que extrañan los que se van"
       },
       {
-        "section": "Chorus",
-        "mood": "Echoing Regret",
-        "description": "The central regret arrives, a repeated wish to have captured more moments, given more affection. This longing is intertwined with a powerful desire for friends and family to stay close, a plea for support when the emotional weight becomes too much."
+        "line": "Debí tirar más fotos de cuando te tuve"
       },
       {
-        "section": "Verse 2",
-        "mood": "Forced Detachment",
-        "description": "An attempt to move forward, spending time with family and denying the lingering thoughts of the past. But this resolve quickly crumbles, leading to a desperate dive into wild partying and drinking, a frantic effort to feel something else or nothing at all."
+        "line": "Si me pregunta si aún pienso en ti, yo le digo que no"
       },
       {
-        "section": "Interlude/Verse 3",
-        "mood": "Heartfelt Connection",
-        "description": "A moment of genuine, raw affection for friends and community breaks through, emphasizing the importance of shared presence. This transitions to a reflective acceptance of adulthood and simpler pleasures, valuing what truly matters over superficial pursuits."
+        "line": "Vamo' a disfrutar, que nunca se sabe si nos queda poco"
       },
       {
-        "section": "Outro",
-        "mood": "Lingering Longing",
-        "description": "The main theme of regret returns, the wish for more photos and kisses. It's a slightly altered reprise, ending with a playful, yet still yearning, twist, hinting that the emotional journey isn't quite over."
+        "line": "'Tamos pa' las cosa' que valgan la pena"
       }
     ],
-    "key_lines": [
-      {
-        "line": "Pero queriendo volver a la última vez que a los ojos te miré",
-        "insight": "The specific, haunting image of a final glance, a moment replayed endlessly in memory."
-      },
-      {
-        "line": "El corazón dándome patá'",
-        "insight": "The visceral, physical manifestation of emotional pain, a heart literally kicking in protest."
-      },
-      {
-        "line": "Debí tirar más fotos de cuando te tuve",
-        "insight": "The core regret of missed opportunities to capture and cherish fleeting moments, now lost forever."
-      },
-      {
-        "line": "Si me pregunta si aún pienso en ti, yo le digo que no",
-        "insight": "The painful self-deception and outward denial, trying to convince oneself and others that the past is truly gone."
-      },
-      {
-        "line": "Vamo' a disfrutar, que nunca se sabe si nos queda poco",
-        "insight": "A desperate embrace of the present, a carpe diem plea born from an underlying awareness of fragility and impermanence."
-      }
-    ],
-    "sonic_texture": "A low-slung, melancholic reggaeton rhythm underpins layers of live, traditional Puerto Rican instrumentation. It feels like a late-night street party winding down, with muted horns, subtle percussion like güiro and batá, and a vocal delivery that's more conversational and wistful than energetic, creating a hazy, introspective atmosphere."
+    "texture": "A reggaeton and salsa pulse built to move a whole street, except it sits down low and almost colorless, the saddest valence riding a beat you can still dance to. The most danceable kind of heavy."
   }
 }

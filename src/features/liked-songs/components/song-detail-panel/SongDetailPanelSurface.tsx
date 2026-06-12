@@ -22,6 +22,7 @@ import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { getThemedDarkColors } from "../detail/themed-dark-colors";
+import { getThemedLightColors } from "../detail/themed-light-colors";
 import type {
 	PlaylistSuggestionView,
 	PlaylistsPanel,
@@ -130,8 +131,18 @@ export function SongDetailPanelSurface({
 	playlists,
 	readDeeperOpen,
 	onReadDeeperChange,
+	variant = "fixed",
+	colorMode = "dark",
 }: {
 	song: SongDetail;
+	/** "fixed" (default) is the app's slide-in panel pinned to the viewport's right
+	 *  edge. "embedded" drops the fixed positioning so the surface fills its parent
+	 *  box instead — used by the landing hero, which mounts the read inside its own
+	 *  layer rather than over the viewport. */
+	variant?: "fixed" | "embedded";
+	/** The app panel stays on the dark palette by default. Landing can opt into a
+	 *  light palette while still rendering the same production surface. */
+	colorMode?: "dark" | "light";
 	/** Drives the shared-element view-transition names on the hero's album / title /
 	 *  artist. While open the hero carries `song-album` / `song-title` / `song-artist`
 	 *  so the close morph (panel → clicked row) has a "from" element; the wrapper flips
@@ -155,7 +166,10 @@ export function SongDetailPanelSurface({
 	onReadDeeperChange?: (open: boolean) => void;
 }) {
 	const themeConfig = themes[song.theme];
-	const colors = getThemedDarkColors(themeConfig);
+	const colors =
+		colorMode === "light"
+			? getThemedLightColors(themeConfig)
+			: getThemedDarkColors(themeConfig);
 	const heroHeight = song.artistImageUrl ? HERO_HEIGHT : HERO_HEIGHT_NO_IMAGE;
 	const isLocked = !song.read && song.displayState === "locked";
 
@@ -170,15 +184,21 @@ export function SongDetailPanelSurface({
 		<div
 			className="song-detail-panel-scroll"
 			style={{
-				position: "fixed",
-				top: 0,
-				right: 0,
-				width: PANEL_WIDTH,
-				height: "100vh",
+				...(variant === "embedded"
+					? { position: "relative", width: "100%", height: "100%" }
+					: {
+							position: "fixed",
+							top: 0,
+							right: 0,
+							width: PANEL_WIDTH,
+							height: "100vh",
+							borderLeft: `1px solid ${colors.border}`,
+						}),
 				background: colors.bg,
-				borderLeft: `1px solid ${colors.border}`,
 				overflowY: "auto",
-				overscrollBehaviorY: "contain",
+				// The app panel contains overscroll so the list behind never moves; embedded
+				// (landing) chains it so the page keeps scrolling once the read bottoms out.
+				overscrollBehaviorY: variant === "embedded" ? "auto" : "contain",
 				color: colors.text,
 				fontFamily: fonts.body,
 			}}

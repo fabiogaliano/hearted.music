@@ -17,74 +17,51 @@
     "energy": 0.507,
     "valence": 0.438
   },
-  "analysis": {
-    "headline": "A desperate promise of eternal love, fighting against self-doubt and the fleeting nature of forever.",
-    "compound_mood": "Insistent Devotion",
-    "mood_description": "A bright, pulsing rhythm carries a voice caught between declarations of forever and the quiet anxieties that whisper 'might not be long'. You're dancing, but the weight of absolute commitment presses down.",
-    "interpretation": "Love's most absolute promises are made against the backdrop of its inherent fragility. It's a plea for unwavering commitment, not just from one person to another, but also an internal battle to accept such profound connection after a history of independence. The intensity of feeling is almost overwhelming, revealing the vulnerability hidden within such fierce devotion, especially when one partner struggles to see their own worth.",
-    "themes": [
+  "read": {
+    "image": "'til the light leaves my eyes",
+    "lens": "measuring love against the grave",
+    "tension": "Tender Ache",
+    "take": "Every measure of how big this love is comes back as a measure of death. She can't say it plainly, so she says it in graves: stay till I rot, till I'm in the casket you carry, till the light leaves my eyes. The forever is real and the doubt is real at the same moment. Might not be forever, but if it's forever, it's even better. Then it turns outward toward someone who can't believe any of it, whose mind is polluted with reasons they aren't worth loving, and she gets blunt about it. You're so full of shit, don't be stupid, don't you dare quit. By the end she's reaching back before this life even started. I knew you in another life. I love you, don't act so surprised.",
+    "contradiction": "She swears she'll love you until the light leaves her eyes and admits in the same breath that it might not last.",
+    "arc": [
       {
-        "name": "eternal devotion",
-        "description": "An unyielding vow to love until death, despite any obstacles."
+        "label": "The Grave Clause",
+        "mood": "clinging, tender",
+        "scene": "She asks you to stay, then keeps stretching the ask past anything reasonable. Till the grave. Till the casket you carry. If you go, she's going too. The voice stays gentle, but the size of what she's asking is total."
       },
       {
-        "name": "overcoming self-doubt",
-        "description": "One person's struggle to accept their beloved's adoration, convinced they aren't worthy."
+        "label": "If It's Forever",
+        "mood": "hopeful surrender",
+        "scene": "Here she lets the doubt in and loves anyway. She can't change the weather and it might not last, so she stops fighting that. She just adds that if it does last, even better. The surrender comes out sounding like contentment."
       },
       {
-        "name": "surrendering independence",
-        "description": "Acknowledging that past beliefs about being better alone have been shattered by this profound connection."
+        "label": "Don't Be Stupid",
+        "mood": "loving frustration",
+        "scene": "The whole thing swings toward you, the one who won't keep a single compliment and keeps calling it a bit. Your mind is polluted with every reason you can't be loved. She refuses all of it flat. You're full of shit, don't be stupid, don't quit on this."
       },
       {
-        "name": "the fragility of forever",
-        "description": "The acceptance that even the deepest love can't control fate or guarantee endless time, yet committing anyway."
+        "label": "Another Life",
+        "mood": "certain, settled",
+        "scene": "She places the love before this life even began. The same look in your eyes from somewhere she half-remembers. I love you, don't act so surprised, and the whole song folds down into the one plain thing it kept circling."
       }
     ],
-    "journey": [
+    "lines": [
       {
-        "section": "Intro/Verse 1",
-        "mood": "Desperate Vow",
-        "description": "A quiet, almost hesitant start bursts into a fiercely personal promise of love, pledging devotion 'til the grave. The conviction is absolute, even if a little frightening in its intensity."
+        "line": "I want you to stay\n'Til I'm in the grave"
       },
       {
-        "section": "Refrain/Pre-Chorus/Chorus",
-        "mood": "Unshakeable Truth",
-        "description": "The melody swells with a newfound certainty, proclaiming an unbreakable bond. It's a defiant rejection of past solitude, acknowledging the unpredictability of time but doubling down on an 'even better' forever."
+        "line": "And if I'm turnin' blue, please don't save me"
       },
       {
-        "section": "Verse 2",
-        "mood": "Tender Frustration",
-        "description": "A shift in focus, revealing the loved one's struggle to accept such adoration. There's a gentle plea for them to see themselves through loving eyes, mixed with a touch of exasperation at their self-doubt."
+        "line": "Birds of a feather, we should stick together, I know"
       },
       {
-        "section": "Pre-Chorus/Chorus (Reprise)",
-        "mood": "Reaffirming Love",
-        "description": "The deep emotions return, the initial uncertainty about crying now a clear expression of overwhelming love. The desire to never say goodbye echoes the earlier vows, cementing the commitment."
+        "line": "Say you don't see it, your mind's polluted"
       },
       {
-        "section": "Post-Chorus",
-        "mood": "Inescapable Connection",
-        "description": "A dreamy, almost fated feeling settles in, recognizing a soul-deep bond from another life. It's the ultimate confirmation, closing with a playful demand for the beloved to simply accept this undeniable love."
+        "line": "I knew you in another life\nYou had that same look in your eyes"
       }
     ],
-    "key_lines": [
-      {
-        "line": "If you go, I'm goin' too",
-        "insight": "The absolute conviction that separation is not an option, erasing the self without the other."
-      },
-      {
-        "line": "I said I'd never think I wasn't better alone",
-        "insight": "A profound surrender of deeply held beliefs about solitude, replaced by an undeniable need for connection."
-      },
-      {
-        "line": "Say you wanna quit, don't be stupid",
-        "insight": "A moment of gentle exasperation mixed with fierce protection, refusing to let the loved one's self-doubt sabotage what's real."
-      },
-      {
-        "line": "I knew you in another life",
-        "insight": "The feeling of a predestined connection, a recognition that transcends time and space."
-      }
-    ],
-    "sonic_texture": "Smooth, pulsing pop with a subtle electronic shimmer. The bassline is warm and inviting, carrying a steady, danceable groove. Vocals are intimate and layered, sometimes airy, sometimes direct, sitting comfortably over a clean, understated production that foregrounds the melody and emotion."
+    "texture": "A soft, mid-tempo sway pitched low and close, more bedroom hush than big pop, the kind of groove you rock back and forth to without thinking. The warmth of it never lifts above a murmur, and the words it carries are funeral vows."
   }
 }

@@ -1,253 +1,160 @@
 /**
- * Inline version of SongDetailPanel for the landing page hero.
- * Reuses production PanelHero + PanelContent without fixed positioning.
+ * Landing hero panel: the production SongDetailPanelSurface, embedded in the hero's
+ * right-half layer instead of pinned to the viewport. This is the same read surface the
+ * app renders — the landing no longer keeps its own copy. The only landing-specific
+ * chrome is the prev/next carousel (buttons + horizontal swipe) that cycles featured
+ * songs, which the app gets from its list/keyboard instead. The nav buttons reuse the
+ * exact disc styling of the app panel's close (X) button so they read as the same chrome.
  */
-import { useEffect, useRef, useState } from "react";
-import { PanelHero } from "@/features/liked-songs/components/detail/PanelHero";
-import { LAYOUT } from "@/features/liked-songs/components/detail/panel-constants";
-import type { PanelColors } from "@/features/liked-songs/components/detail/types";
-import { usePanelAnimation } from "@/features/liked-songs/components/detail/usePanelAnimation";
-import type { LikedSong } from "@/features/liked-songs/types";
-import type { AnalysisContent } from "@/lib/domains/enrichment/content-analysis/analysis-content";
-import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import { withAlpha } from "@/lib/utils/color";
-import { LandingPanelContent } from "./LandingPanelContent";
+import { useRef, useState } from "react";
+import { getThemedLightColors } from "@/features/liked-songs/components/detail/themed-light-colors";
+import { SongDetailPanelSurface } from "@/features/liked-songs/components/song-detail-panel/SongDetailPanelSurface";
+import type { SongDetail } from "@/features/liked-songs/components/song-detail-panel/song-detail-types";
+import { themes } from "@/lib/theme/colors";
 
 const SWIPE_MIN_DISTANCE_PX = 44;
-const STACK_META_BREAKPOINT_PX = 760;
+
+type Palette = ReturnType<typeof getThemedLightColors>;
 
 interface LandingPanelProps {
-	song: LikedSong;
-	albumArtUrl?: string;
-	artistImageUrl?: string;
+	song: SongDetail;
 	onPrev: () => void;
 	onNext: () => void;
 }
 
-export function LandingPanel({
-	song,
-	albumArtUrl,
-	artistImageUrl,
-	onPrev,
-	onNext,
-}: LandingPanelProps) {
-	const baseTheme = useTheme();
-	const panelRootRef = useRef<HTMLDivElement>(null);
+function NavArrow({
+	direction,
+	onClick,
+	colors,
+}: {
+	direction: "prev" | "next";
+	onClick: () => void;
+	colors: Palette;
+}) {
+	const [hovered, setHovered] = useState(false);
+	const [pressed, setPressed] = useState(false);
+
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			onMouseEnter={() => setHovered(true)}
+			onMouseLeave={() => {
+				setHovered(false);
+				setPressed(false);
+			}}
+			onMouseDown={() => setPressed(true)}
+			onMouseUp={() => setPressed(false)}
+			aria-label={direction === "prev" ? "Previous song" : "Next song"}
+			title={direction === "prev" ? "Previous" : "Next"}
+			style={{
+				// 40×40 min tap area centered on the visible 32px disc — matches the panel's close button.
+				width: 40,
+				height: 40,
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				padding: 0,
+				border: "none",
+				background: "transparent",
+				cursor: "pointer",
+			}}
+		>
+			<span
+				style={{
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					width: 32,
+					height: 32,
+					borderRadius: 16,
+					border: `1px solid ${colors.border}`,
+					background: `color-mix(in srgb, ${colors.surface} ${
+						hovered ? 92 : 80
+					}%, transparent)`,
+					color: hovered ? colors.text : colors.textMuted,
+					backdropFilter: "blur(6px)",
+					boxShadow:
+						"0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.35)",
+					transform: pressed ? "scale(0.98)" : "scale(1)",
+					transition:
+						"background 150ms ease, color 150ms ease, transform 150ms ease",
+				}}
+			>
+				<svg
+					width="14"
+					height="14"
+					viewBox="0 0 24 24"
+					fill="none"
+					aria-hidden="true"
+				>
+					<path
+						d={direction === "prev" ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"}
+						stroke="currentColor"
+						strokeWidth="1.5"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					/>
+				</svg>
+			</span>
+		</button>
+	);
+}
+
+export function LandingPanel({ song, onPrev, onNext }: LandingPanelProps) {
 	const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
-	// TODO: Replace ResizeObserver layout correction with CSS container queries
-	// to avoid post-mount reflow on first paint. See audit finding #7.
-	const [stackMetaBelowArt, setStackMetaBelowArt] = useState(true);
-
-	useEffect(() => {
-		const panelRoot = panelRootRef.current;
-		if (!panelRoot || typeof ResizeObserver === "undefined") return;
-
-		const observer = new ResizeObserver((entries) => {
-			const entry = entries[0];
-			if (!entry) return;
-			setStackMetaBelowArt(entry.contentRect.width <= STACK_META_BREAKPOINT_PX);
-		});
-
-		observer.observe(panelRoot);
-		return () => observer.disconnect();
-	}, []);
-
-	const panelColors: PanelColors = {
-		bg: baseTheme.bg,
-		bgLight: baseTheme.surface,
-		surface: baseTheme.surface,
-		surfaceHover: baseTheme.surfaceDim,
-		text: baseTheme.text,
-		textMuted: baseTheme.textMuted,
-		textDim: baseTheme.textMuted,
-		separator: baseTheme.border,
-		border: baseTheme.border,
-		accent: baseTheme.primary,
-		accentMuted: baseTheme.primaryHover,
-	};
-
-	const analysis = song.analysis?.analysis as AnalysisContent | undefined;
-	const bgWithAlpha = (alpha: number) => withAlpha(panelColors.bg, alpha);
-
-	const {
-		refs: {
-			scrollRef,
-			headerRef,
-			heroRef,
-			artistImageRef,
-			vignetteRef,
-			bottomFadeRef,
-			genreRef,
-			albumArtRef,
-			textBlockRef,
-			titleRef,
-			metaRef,
-			contentRef,
-			spacerRef,
-			crossfadeContentRef,
-			analysisPhaseRef,
-			sonicTextureRef,
-		},
-		getStaggerRef,
-		isAnalysisOpen,
-		sonicTextureSingleLine,
-		toggleAnalysis,
-		onScroll,
-	} = usePanelAnimation({
-		isExpanded: true,
-		songId: song.track.id,
-		albumArtUrl,
-		artistImageUrl,
-		panelColors,
-		hasHeadline: !!analysis?.headline,
-		sonicTextureText: analysis?.sonic_texture,
-		stackMetaBelowArt,
-	});
-
-	const vignetteGradient = `linear-gradient(to bottom,
-		${bgWithAlpha(0)} 0%,
-		${bgWithAlpha(0.08)} 52%,
-		${bgWithAlpha(0.62)} 78%,
-		${panelColors.bg} 100%)`;
+	const colors = getThemedLightColors(themes[song.theme]);
 
 	const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
 		const touch = event.touches[0];
-		if (!touch) return;
-
-		const scrollContainer = event.currentTarget;
-		const rect = scrollContainer.getBoundingClientRect();
-		const contentY = scrollContainer.scrollTop + (touch.clientY - rect.top);
-		if (contentY > LAYOUT.heroHeight) {
-			swipeStartRef.current = null;
-			return;
-		}
-
-		swipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+		swipeStartRef.current = touch
+			? { x: touch.clientX, y: touch.clientY }
+			: null;
 	};
 
 	const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
 		const start = swipeStartRef.current;
 		swipeStartRef.current = null;
-		if (!start) return;
-
 		const touch = event.changedTouches[0];
-		if (!touch) return;
+		if (!start || !touch) return;
 
 		const deltaX = touch.clientX - start.x;
-		const deltaY = touch.clientY - start.y;
-		const absX = Math.abs(deltaX);
-		const absY = Math.abs(deltaY);
-
-		if (absX < SWIPE_MIN_DISTANCE_PX || absX <= absY) return;
-
-		if (deltaX < 0) {
-			onNext();
+		// Horizontal-only: a swipe that's mostly vertical is a scroll, not a song change.
+		if (
+			Math.abs(deltaX) < SWIPE_MIN_DISTANCE_PX ||
+			Math.abs(deltaX) <= Math.abs(touch.clientY - start.y)
+		) {
 			return;
 		}
-
-		onPrev();
+		(deltaX < 0 ? onNext : onPrev)();
 	};
-
-	const noop = () => {};
 
 	return (
 		<div
-			ref={panelRootRef}
-			className="relative h-full w-full overflow-hidden"
-			style={{ background: panelColors.bg }}
+			className="relative h-full w-full"
+			onTouchStart={handleTouchStart}
+			onTouchEnd={handleTouchEnd}
 		>
-			<style>{`
-				@keyframes landing-panel-hero-enter {
-					from {
-						opacity: 0;
-						transform: translateY(8px) scale(1.015);
-					}
-					to {
-						opacity: 1;
-						transform: translateY(0) scale(1);
-					}
-				}
-
-				.landing-panel-hero-enter {
-					animation: landing-panel-hero-enter
-						240ms var(--ease-out-expo) both;
-					will-change: transform, opacity;
-				}
-
-				@media (prefers-reduced-motion: reduce) {
-					.landing-panel-hero-enter {
-						animation: none;
-						will-change: auto;
-					}
-				}
-			`}</style>
-
-			<div className="h-full" style={{ background: panelColors.bg }}>
-				<div
-					ref={scrollRef}
-					onScroll={onScroll}
-					onTouchStart={handleTouchStart}
-					onTouchEnd={handleTouchEnd}
-					className="h-full overflow-y-auto"
-					style={{ overscrollBehavior: "auto" }}
-				>
-					<div
-						key={`hero-${song.track.id}`}
-						className="landing-panel-hero-enter"
-					>
-						<PanelHero
-							colors={panelColors}
-							colorProps={panelColors}
-							isDark={false}
-							vignetteGradient={vignetteGradient}
-							artistImageUrl={artistImageUrl}
-							albumArtUrl={albumArtUrl}
-							isExpanded={true}
-							isAnalysisOpen={isAnalysisOpen}
-							sonicTextureSingleLine={sonicTextureSingleLine}
-							stackMetaBelowArt={stackMetaBelowArt}
-							song={song}
-							analysis={analysis}
-							baseTheme={baseTheme}
-							heroHeight={
-								artistImageUrl ? LAYOUT.heroHeight : LAYOUT.heroHeightNoImage
-							}
-							onClose={noop}
-							onNext={onNext}
-							onPrevious={onPrev}
-							hasNext={true}
-							hasPrevious={true}
-							refs={{
-								headerRef,
-								heroRef,
-								artistImageRef,
-								vignetteRef,
-								bottomFadeRef,
-								genreRef,
-								albumArtRef,
-								textBlockRef,
-								titleRef,
-								metaRef,
-								sonicTextureRef,
-							}}
-						/>
-					</div>
-					<LandingPanelContent
-						colors={panelColors}
-						colorProps={panelColors}
-						song={song}
-						analysis={analysis}
-						isAnalysisOpen={isAnalysisOpen}
-						toggleAnalysis={toggleAnalysis}
-						getStaggerRef={getStaggerRef}
-						refs={{
-							contentRef,
-							spacerRef,
-							crossfadeContentRef,
-							analysisPhaseRef,
-						}}
-					/>
-				</div>
+			{/* Keyed so the surface's per-song entrance (concept-rise) replays on each change. */}
+			<SongDetailPanelSurface
+				key={song.id}
+				song={song}
+				variant="embedded"
+				colorMode="light"
+			/>
+			<div
+				style={{
+					position: "absolute",
+					top: 12,
+					right: 12,
+					zIndex: 10,
+					display: "flex",
+					alignItems: "center",
+					gap: 4,
+				}}
+			>
+				<NavArrow direction="prev" onClick={onPrev} colors={colors} />
+				<NavArrow direction="next" onClick={onNext} colors={colors} />
 			</div>
 		</div>
 	);

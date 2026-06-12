@@ -8,9 +8,10 @@
  * - 0.00–0.08: Scroll indicator fades out
  * - 0.00–0.65: Logo morph (center large → nav slot small)
  * - 0.00–0.65: Headline morph (center small → left large)
- * - 0.00–0.65: Background shrink (100vw → 50% via clip-path)
+ * - 0.00–0.65: Background shrink (100vw → 50% via clip-path) — the background IS the
+ *              curtain: the right panel sits opaque beneath it, so the moving clip edge
+ *              unveils it directly. No separate panel tween.
  * - 0.40–0.65: Nav button fade in
- * - 0.60–1.00: Right panel reveal (clip-path wipe)
  * - 0.80–1.00: Subtext fade in
  * - 0.85–1.00: CTA fade in
  */
@@ -53,12 +54,8 @@ interface HeroAnimationRefs {
 	logoRef: RefObject<HTMLHeadingElement | null>;
 	/** Headline element that morphs from center to left */
 	headlineRef: RefObject<HTMLHeadingElement | null>;
-	/** Background container that shrinks via clip-path */
+	/** Background container that shrinks via clip-path (doubles as the panel's curtain) */
 	backgroundRef: RefObject<HTMLDivElement | null>;
-	/** Right panel that reveals with clip-path */
-	panelRef: RefObject<HTMLDivElement | null>;
-	/** Curtain overlay for panel reveal */
-	panelCurtainRef: RefObject<HTMLDivElement | null>;
 	/** CTA container */
 	ctaRef: RefObject<HTMLDivElement | null>;
 	/** Subtext container */
@@ -170,8 +167,6 @@ export function useHeroAnimation(
 				logoRef,
 				headlineRef,
 				backgroundRef,
-				panelRef,
-				panelCurtainRef,
 				ctaRef,
 				subtextRef,
 				heartRef,
@@ -220,13 +215,6 @@ export function useHeroAnimation(
 					gsap.set(backgroundRef.current, {
 						clipPath: "inset(0 50% 0 0)",
 					});
-				if (panelRef.current)
-					gsap.set(panelRef.current, { opacity: 1, y: 0, scale: 1 });
-				if (panelCurtainRef.current)
-					gsap.set(panelCurtainRef.current, {
-						x: "100%",
-						transformOrigin: "left center",
-					});
 				if (ctaRef.current) gsap.set(ctaRef.current, { opacity: 1, y: 0 });
 				if (subtextRef.current)
 					gsap.set(subtextRef.current, { opacity: 1, y: 0 });
@@ -258,13 +246,6 @@ export function useHeroAnimation(
 				if (backgroundRef.current)
 					gsap.set(backgroundRef.current, {
 						clipPath: "none",
-					});
-				if (panelRef.current)
-					gsap.set(panelRef.current, { opacity: 1, y: 0, scale: 1 });
-				if (panelCurtainRef.current)
-					gsap.set(panelCurtainRef.current, {
-						x: "100%",
-						transformOrigin: "left center",
 					});
 				if (ctaRef.current) gsap.set(ctaRef.current, { opacity: 1, y: 0 });
 				if (subtextRef.current)
@@ -384,16 +365,6 @@ export function useHeroAnimation(
 					if (backgroundRef.current) {
 						gsap.set(backgroundRef.current, {
 							clipPath: "inset(0 0% 0 0)",
-						});
-					}
-
-					if (panelRef.current) {
-						gsap.set(panelRef.current, { opacity: 0, y: 12, scale: 0.985 });
-					}
-					if (panelCurtainRef.current) {
-						gsap.set(panelCurtainRef.current, {
-							x: "0%",
-							transformOrigin: "left center",
 						});
 					}
 
@@ -603,32 +574,6 @@ export function useHeroAnimation(
 						);
 					}
 
-					// Phase 4: Panel reveal with curtain (60% - 100%)
-					if (panelRef.current) {
-						tl.to(
-							panelRef.current,
-							{
-								opacity: 1,
-								y: 0,
-								scale: 1,
-								duration: 0.4,
-								ease: "none",
-							},
-							0.6,
-						);
-					}
-					if (panelCurtainRef.current) {
-						tl.to(
-							panelCurtainRef.current,
-							{
-								x: "100%",
-								duration: 0.4,
-								ease: "none",
-							},
-							0.6,
-						);
-					}
-
 					// Phase 5: Subtext + heart fade in (80% - 100%)
 					if (subtextRef.current) {
 						tl.to(
@@ -750,8 +695,14 @@ export function useHeroAnimation(
 							);
 							lastAnimationProgress = animationProgress;
 							setTimelineProgress(animationProgress);
+							// Reversible: hasRevealed gates the panel's pointer events, so it must
+							// flip back off when the user scrubs up and the curtain re-covers the
+							// panel — otherwise the panel's inner scroller captures the wheel
+							// mid-animation and the hero choreography stalls.
 							if (animationProgress >= 0.85) {
 								onRevealComplete?.();
+							} else {
+								onRevealReverse?.();
 							}
 						},
 						onLeaveBack: () => {

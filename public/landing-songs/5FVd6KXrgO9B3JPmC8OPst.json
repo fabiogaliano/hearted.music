@@ -17,75 +17,51 @@
     "energy": 0.532,
     "valence": 0.405
   },
-  "analysis": {
-    "headline": "A late-night plea for reassurance, haunted by what-ifs and the ghost of a shared past.",
-    "compound_mood": "Obsessive Yearning",
-    "mood_description": "A slow, grinding groove pulls you into a hazy, late-night atmosphere. You're stuck in a loop, replaying old moments and questioning everything.",
-    "interpretation": "The crushing weight of unreciprocated desire, caught in the endless cycle of 'what if' after a relationship's end. It's the painful realization that moving on feels impossible when every thought, every song, every late night brings them back, fueled by a dangerous cocktail of hope and self-deception.",
-    "themes": [
+  "read": {
+    "image": "that tune on repeat, drinks spilling on the settee",
+    "lens": "an interrogation as a confession",
+    "tension": "Helpless Longing",
+    "take": "Every question he aims at you lands back on him. The blush, the secrets, the aces up your sleeve — he sounds like he's reading you, but he's the one exposed, dreaming of you every night this week and playing that tune until he passes out drinking alone. The questions are cover for a confession he can't make straight. Then he says the real fear out loud: do I wanna know if this feeling flows both ways. He'd rather not know, because an answer could finish him. By the time he's crawling back the cover is gone, and he admits he's too busy being yours to fall for anybody new. And the last thing he asks is whether you even want him crawling back at all.",
+    "contradiction": "He fires off question after question to find out if she still wants him, and builds the whole asking around not wanting the answer.",
+    "arc": [
       {
-        "name": "haunted persistence",
-        "description": "Holding onto a connection that refuses to fade, even when it causes more pain than comfort."
+        "label": "The Cool Inquisition",
+        "mood": "feigned composure",
+        "scene": "He plays it casual and fires the questions like he holds the cards. Have you got colour in your cheeks, are there aces up your sleeve. Underneath, he's the one who's dreamt about you nearly every night and can't shake the tune that makes him think of you."
       },
       {
-        "name": "late-night regret",
-        "description": "The vulnerable confessions and desperate pleas that surface when inhibitions are lowered and memories flood back."
+        "label": "The Admission",
+        "mood": "anxious, exposed",
+        "scene": "The pose slips and the real fear comes out. He was sorta hoping you'd stay. He half-knows the nights were only made for saying things you both take back the next day, and he can't decide if he even wants to know whether it flows both ways."
       },
       {
-        "name": "unreciprocated longing",
-        "description": "The agonizing uncertainty of wanting someone who might not feel the same way, leading to constant questioning."
+        "label": "The Crawl",
+        "mood": "helpless surrender",
+        "scene": "No more disguise now. He's crawling back to you, calling when he's had a few because he always does. He's thought it through and the conclusion is the same one he started with. Too busy being yours to fall for anyone new."
+      },
+      {
+        "label": "The Last Doubt",
+        "mood": "insecure, unresolved",
+        "scene": "Even surrender doesn't settle it. He's coming back regardless, but the final question isn't whether he'll crawl. It's whether you want him to, and he never gets that answer."
       }
     ],
-    "journey": [
+    "lines": [
       {
-        "section": "Opening questions",
-        "mood": "sultry interrogation",
-        "description": "A slinky bassline creeps in, setting a scene of hushed curiosity as veiled questions about a past lover's feelings and secrets begin to surface, hinting at a deep, unsettling preoccupation."
+        "line": "Have you got colour in your cheeks?"
       },
       {
-        "section": "Hesitant confession",
-        "mood": "vulnerable apprehension",
-        "description": "The rhythm picks up slightly, revealing the heart of the matter: a painful question about mutual feelings, admitting a longing for things to have been different, acknowledging the truth in drunk words."
+        "line": "I've dreamt about you nearly every night this week"
       },
       {
-        "section": "Desperate gravitation",
-        "mood": "heavy yearning",
-        "description": "The full force of the obsession hits, a powerful, dragging pull back to someone. It's the admission of always thinking of them, unable to move on, stuck in their orbit."
+        "line": "(Do I wanna know) If this feelin' flows both ways?"
       },
       {
-        "section": "Bold confrontation",
-        "mood": "insistent challenge",
-        "description": "A more direct challenge emerges, probing for any remaining openness in their heart, almost daring them to respond, a raw attempt to bridge the distance with a kiss that might not be wanted."
+        "line": "Simmer down an' pucker up, I'm sorry to interrupt"
       },
       {
-        "section": "Unending pull",
-        "mood": "cyclical desperation",
-        "description": "The central plea returns with renewed intensity, solidifying the pattern of returning to the same emotional place, caught in the endless loop of wanting what might be lost."
-      },
-      {
-        "section": "Fading doubt",
-        "mood": "lingering uncertainty",
-        "description": "The questions echo and slowly dissolve, leaving the fundamental uncertainty hanging in the air, an unresolved yearning that fades but never truly disappears."
+        "line": "Do you want me crawlin' back to you?"
       }
     ],
-    "key_lines": [
-      {
-        "line": "Do you ever get that fear that you can't shift the type That sticks around like summat in your teeth?",
-        "insight": "The nagging, uncomfortable presence of something unwanted, yet impossible to dislodge."
-      },
-      {
-        "line": "I've dreamt about you nearly every night this week How many secrets can you keep?",
-        "insight": "The consuming nature of obsession, where even subconscious thoughts are dominated by another, coupled with a deep suspicion of hidden truths."
-      },
-      {
-        "line": "(Do I wanna know) If this feelin' flows both ways?",
-        "insight": "The terrifying vulnerability of asking the definitive question that could shatter all remaining hope."
-      },
-      {
-        "line": "Too busy bein' yours To fall for somebody new",
-        "insight": "The self-imposed barrier to healing, where devotion to a past connection prevents any future possibilities."
-      }
-    ],
-    "sonic_texture": "A slinky, reverb-drenched guitar riff weaves through a deep, pulsing bassline and laid-back, yet driving drums. The vocals are coolly delivered, bordering on a mumble, carrying a heavy weight of yearning through a hazy, studio-polished sound."
+    "texture": "A slow electric-guitar groove that prowls at a near-resting pulse, all swagger and restraint. The cool of it sits right on top of a man on his knees."
   }
 }

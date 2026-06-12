@@ -17,83 +17,43 @@
     "energy": 0.449,
     "valence": 0.357
   },
-  "analysis": {
-    "headline": "A declaration of self-preservation, navigating fame's treacherous currents with an unshakeable belief in fate.",
-    "compound_mood": "Guarded Confidence",
-    "mood_description": "A defiant bounce carries heavy truths. The beat pulsates with a confident swagger, yet underneath lies a steady awareness of unseen dangers.",
-    "interpretation": "Moving through a world filled with envy and ill-will, accepting the burdens of fame while trusting in a higher purpose. It's about Drake's journey, his struggles, his belief in a pre-ordained path, and his relationship with loyalty, identity, and the constant threats that come with success. Despite the negativity, there's an unwavering conviction that he's exactly where he's meant to be.",
-    "themes": [
+  "read": {
+    "image": "a dead friend's name tatted on the arm",
+    "lens": "a roll call as armor",
+    "tension": "Guarded Gratitude",
+    "take": "Everybody's wishing bad things on him, and the answer he gives back isn't a clapback. It's a list of names. He's moving calm, even though keeping it peaceful is a struggle, and under that calm sits something darker. He doesn't want to die just so the world finally misses him, the way it only learns to love its artists once they're gone. So he counts the people who keep him here instead. His bed and his mama. The broskies. 40 and Oli, without whom there'd be no him. And Fif, gone since the fall, whose name he got tatted on his arm so it outlives them both. The loyalty is the armor. Whatever God's got planned, he can't do it on his own, and he says so plainly while he makes sure the north-side eats.",
+    "contradiction": "He doesn't want to die just for the world to finally miss him, yet he keeps circling back to how going down would let him go down a G-O-D.",
+    "arc": [
       {
-        "name": "divine protection",
-        "description": "Believing in a higher purpose guiding one's path, even amidst challenges."
+        "label": "The Wishing",
+        "mood": "Guarded, watchful",
+        "scene": "He's moving calm and starting nothing, but he can feel the bad things people are wishing on him from every side. The calm is a struggle to hold. Already death is in his mouth — he hopes he's got brothers who outlive him, and he doesn't want to be missed only after he's gone."
       },
       {
-        "name": "loyalty and rivalry",
-        "description": "The stark contrast between those who support and those who wish ill, defining one's inner circle against external threats."
+        "label": "The Answer",
+        "mood": "Defiant, steady",
+        "scene": "God's plan, he says, like that settles it. He holds back, and sometimes he won't. The reply to all that hate isn't aimed back at anyone — it's making sure the north-side eats and that he goes down for something different. And still."
       },
       {
-        "name": "toronto roots",
-        "description": "An unwavering connection to where it all began, feeding identity and purpose despite global fame."
-      },
-      {
-        "name": "legacy and mortality",
-        "description": "A quiet contemplation of one's impact and how one will be remembered, both during life and after."
+        "label": "The Roll Call",
+        "mood": "Tender, grateful",
+        "scene": "When she asks if he loves her, he only loves her partly. His bed and his mama come first, and he's sorry. Then he names the rest of the people holding him up — Fif tatted on his skin, 40 and Oli, the broskies he can't imagine never meeting. He can't do this on his own, and he doesn't pretend he could."
       }
     ],
-    "journey": [
+    "lines": [
       {
-        "section": "Intro",
-        "mood": "Creeping paranoia",
-        "description": "Whispers of ill-will hang in the air, setting a tense stage as unseen forces gather against him."
+        "line": "Hope I got some brothers that outlive me"
       },
       {
-        "section": "Verse 1",
-        "mood": "Protective stance",
-        "description": "Trying to keep the peace while acknowledging the struggle and the constant threats to his well-being, contemplating how he'll be seen if he's gone."
+        "line": "I make sure that north-side eat"
       },
       {
-        "section": "Pre-Chorus",
-        "mood": "Unshakeable self-belief",
-        "description": "Rooting oneself in hometown pride and a sense of divine guidance, accepting flaws but moving forward with purpose and an eye on immortality."
+        "line": "I only love my bed and my mama, I'm sorry"
       },
       {
-        "section": "Chorus",
-        "mood": "Confident declaration",
-        "description": "Acknowledging the negativity surrounding him but standing firm in his path, empowered by his conviction that everything aligns with 'God's plan'."
-      },
-      {
-        "section": "Verse 2",
-        "mood": "Circles of trust",
-        "description": "Revealing the core relationships that make him, from his mother to his essential team, and the powerful alliances that keep him secure in his journey."
-      },
-      {
-        "section": "Outro",
-        "mood": "Resilient affirmation",
-        "description": "The same bad wishes return, met with an unyielding faith in the pre-ordained journey, his confidence echoing as the track fades."
+        "line": "Without 40, Oli, there'd be no me"
       }
     ],
-    "key_lines": [
-      {
-        "line": "I don't wanna die for them to miss me",
-        "insight": "Rejecting posthumous appreciation, demanding recognition and value now, in the present moment."
-      },
-      {
-        "line": "I only love my bed and my mama, I'm sorry",
-        "insight": "A raw admission of deeply personal, unwavering loyalties that eclipse all other relationships."
-      },
-      {
-        "line": "God's plan, God's plan",
-        "insight": "A mantra of destiny, an anchor in the face of chaos, an explanation for everything unfolding around him."
-      },
-      {
-        "line": "Hope I got some brothers that outlive me",
-        "insight": "A quiet, profound wish for his closest circle to endure beyond him, a hope for continuity through loyalty."
-      },
-      {
-        "line": "Without 40, Oli, there'd be no me",
-        "insight": "Humbly acknowledging the essential collaborators who built his world and continue to sustain it."
-      }
-    ],
-    "sonic_texture": "A sparse, booming beat provides the foundation, driven by deep 808s and a subtle, almost melancholic synth melody that loops consistently. The vocals sit front and center, delivered with a casual confidence over a track designed for rhythmic head nods."
+    "texture": "A slow, muted beat at a crawl, low-lit and sparse, the kind of bounce that keeps you nodding without ever brightening. The groove is there to dance to, but the color is drained out of it, the lift carrying more weight than it lets on."
   }
 }

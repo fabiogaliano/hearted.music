@@ -17,83 +17,51 @@
     "energy": 0.472,
     "valence": 0.214
   },
-  "analysis": {
-    "headline": "A blistering declaration of war, rallying a community with danceable defiance against perceived outsiders.",
-    "compound_mood": "Incendiary Confrontation",
-    "mood_description": "An unstoppable beat drives relentless accusations, making you move while the verbal punches land. It's a furious energy that demands a collective response, on the dance floor and beyond.",
-    "interpretation": "This isn't merely a diss track; it's a cultural reclaiming and a territorial statement. It frames the entire conflict as a battle for authenticity and regional identity, specifically from a West Coast perspective. Kendrick positions himself as the fierce guardian of hip-hop's true spirit, accusing his opponent of being a superficial appropriator, and rallying an entire community behind his cause. The highly danceable beat amplifies the sense of collective victory and definitive dismissal.",
-    "themes": [
+  "read": {
+    "image": "a packed floor stepping in time to a guilty verdict",
+    "lens": "a sentencing as a block party",
+    "tension": "Gleeful Contempt",
+    "take": "The kill is the party. Kendrick takes the heaviest charges he can level — pedophile, colonizer, fraud — and sets them to a beat made for a packed floor. That is the move Drake never saw coming. Everyone expected the club-ready diss to come from the other side. Instead the jabs land in flurries, 'wop, wop, wop,' and then he draws the line clean: they not like us. By the third verse it stops being about two rappers at all. Drake becomes the man who runs to Atlanta for a check and a borrowed accent, a colonizer of a culture that was never his. The verdict goes from personal to historical without slowing down. By the end it is pure call-and-response. Step this way, step that way. An execution you can two-step to.",
+    "contradiction": "Every accusation gets harder to deny and easier to chant in the same breath.",
+    "arc": [
       {
-        "name": "cultural appropriation",
-        "description": "Exposing the perceived act of borrowing from various hip-hop scenes without genuine connection or respect."
+        "label": "The Flurry",
+        "mood": "Gleeful, merciless",
+        "scene": "A ghost-story whisper opens it, and then the jabs come fast. He names Drake a free throw, a boogeyman of his own making, a man who likes them young. Each bar lands like a punch thrown before you can lift a hand to block it. No setup, no mercy."
       },
       {
-        "name": "performative authenticity",
-        "description": "Critiquing the illusion of being 'real' or 'street' through associations rather than lived experience."
+        "label": "The Line",
+        "mood": "Cold certainty",
+        "scene": "Three words, over and over. They not like us. The room splits down the middle and the gap between the two sides is the whole point. Everyone in earshot is already standing on one of them."
       },
       {
-        "name": "predatory accusations",
-        "description": "Leveraging grave and unsettling allegations to completely dismantle the opponent's character."
+        "label": "The Widening",
+        "mood": "Righteous fury",
+        "scene": "Once upon a time all of us was in chains. Now the fight is bigger than two rappers trading shots. Drake becomes the tourist who flies into Atlanta for a check and a few dollars of borrowed credibility, a colleague turned colonizer. The insult turns into history."
       },
       {
-        "name": "regional supremacy",
-        "description": "Asserting the West Coast's foundational role and current dominance in hip-hop culture."
+        "label": "The Two-Step",
+        "mood": "Triumphant, dancing",
+        "scene": "By the end the kill is a dance. Are you my friend? Are we locked in? Step this way, step that way. The destruction is total and your feet are moving to it."
       }
     ],
-    "journey": [
+    "lines": [
       {
-        "section": "Intro",
-        "mood": "Sudden escalation",
-        "description": "A creepy, whispered opening quickly gives way to a signature producer tag, setting an immediate, aggressive tone for what's about to unfold."
+        "line": "Tryna strike a chord and it's probably A minor"
       },
       {
-        "section": "Verse 1",
-        "mood": "Unleashed fury",
-        "description": "Rapid-fire disses and serious accusations about character and behavior are hurled, immediately establishing a dominant, confrontational stance."
+        "line": "Certified Lover Boy? Certified pedophiles"
       },
       {
-        "section": "Chorus",
-        "mood": "Unifying rejection",
-        "description": "The repetitive chant creates an undeniable sense of 'us vs. them,' becoming a simple, powerful rallying cry that solidifies community and dismisses the other."
+        "line": "They not like us, they not like us, they not like us"
       },
       {
-        "section": "Verse 2",
-        "mood": "Deepening the cuts",
-        "description": "More specific attacks follow, bringing in deeper allegations and cultural critiques, widening the scope of the assault beyond personal slights."
+        "line": "No, you not a colleague, you a fuckin' colonizer"
       },
       {
-        "section": "Verse 3",
-        "mood": "Historical context",
-        "description": "The conflict is framed within a larger narrative of exploitation and inauthenticity, portraying the opponent as a colonizer of hip-hop culture and community resources."
-      },
-      {
-        "section": "Bridge & Outro",
-        "mood": "Victorious taunt",
-        "description": "The beat shifts, directly encouraging participation in the mockery and solidifying the 'us vs. them' dynamic into a triumphant, communal dance of dismissal."
+        "line": "Then step this way, step that way"
       }
     ],
-    "key_lines": [
-      {
-        "line": "Nail a nigga to the cross, he walk around like Teezo",
-        "insight": "A complete public obliteration, leaving the target exposed and shamed for all to see."
-      },
-      {
-        "line": "Certified Lover Boy? Certified pedophiles",
-        "insight": "Stripping away a carefully crafted public image to reveal a devastating, damning accusation."
-      },
-      {
-        "line": "No, you not a colleague, you a fuckin' colonizer",
-        "insight": "Redefining the relationship from one of peer to one of exploiter, accusing cultural theft rather than partnership."
-      },
-      {
-        "line": "They not like us, they not like us, they not like us",
-        "insight": "A simple, powerful declaration of ultimate otherness, forming an impenetrable barrier against inclusion."
-      },
-      {
-        "line": "Then step this way, step that way",
-        "insight": "Turning the verbal assault into a physical, unifying movement, celebrating the collective victory through dance."
-      }
-    ],
-    "sonic_texture": "A potent, West Coast-infused trap beat with an insistent, thumping bassline and snapping drums. It’s built for immediate, collective movement, yet the lyrical delivery is sharp and direct, creating a confrontational party atmosphere that feels both aggressive and celebratory."
+    "texture": "A spare, bouncing West Coast beat at a walking tempo, low on energy and built entirely for the floor. It sounds like a block party, and that is the trick, because the words riding it read like an indictment."
   }
 }

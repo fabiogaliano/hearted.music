@@ -17,78 +17,51 @@
     "energy": 0.472,
     "valence": 0.0424
   },
-  "analysis": {
-    "headline": "A midnight dance with the ghosts of childhood, desperately trying to outrun the terrifying march of time.",
-    "compound_mood": "Anxious Nostalgia",
-    "mood_description": "A bittersweet electronic hum pulses through the night, a thumping beat that feels like running. There's a desperate energy underneath the hazy, shimmering sound, a plea to hold onto something slipping away.",
-    "interpretation": "The intense fear of growing older and losing the innocence and connections of youth. It's a yearning to rewind time, to reclaim the unburdened mind of a child, even while acknowledging the futility of such a desire. The rhythmic, almost danceable production provides a hypnotic backdrop, making the internal struggle feel like an inescapable, lonely journey through a late-night cityscape.",
-    "themes": [
+  "read": {
+    "image": "reeling through the midnight streets, and never more alone",
+    "lens": "a sleepover as a wake",
+    "tension": "Mounting Dread",
+    "take": "She is grieving her childhood while she is barely out of it, and that is the trick of the whole thing. The setup reads like freedom — a drink spilled, \"Lover's Spit\" left on repeat, her mum and dad letting her stay home. But under every line sits the same low hum: it drives you crazy, getting old. The night out that should feel like a party turns into reeling through the midnight streets with people all around her, and she has never felt more alone. Then the floor opens. I want 'em back, she chants, the minds we had, the thoughts that moved around our heads, mourning a self she has only just lost. So she reaches for the oldest comfort she knows, a friend in the bed beside her like a sleepover, laughing till their ribs get tough. And she already knows the answer before she finishes asking. But that will never be enough.",
+    "contradiction": "She climbs into a child's bed with the only friend she needs and knows in the same breath that the closeness can't keep either of them from getting old.",
+    "arc": [
       {
-        "name": "fear of aging",
-        "description": "The anxiety and dread that accompany the inevitable passage of time and the loss of youth."
+        "label": "The Stolen Night",
+        "mood": "fragile calm",
+        "scene": "Her parents let her stay home and the night is hers. A spilled drink, a song on repeat, the feel of being young and unwatched. But the dread is already in the room. It drives you crazy, getting old."
       },
       {
-        "name": "lost innocence",
-        "description": "Mourning the carefree state of childhood, a time before responsibilities and the weight of self-awareness."
+        "label": "The Dream Sours",
+        "mood": "lonely panic",
+        "scene": "The same night turns. She's reeling through the midnight streets with a crowd around her and can't feel a single one of them. This dream isn't feeling sweet anymore. It feels so scary, getting old."
       },
       {
-        "name": "fading connections",
-        "description": "The struggle to maintain closeness and recreate past bonds in the face of growing loneliness."
+        "label": "The Mourning",
+        "mood": "open grief",
+        "scene": "The dread cracks into full grief. I want 'em back, she repeats, the minds we had, the thoughts that moved around our heads. She is at a funeral for a childhood self who isn't even cold yet, and it's not enough to feel the lack."
       },
       {
-        "name": "futile longing",
-        "description": "A deep desire for what's gone, knowing it can never truly return, leading to a sense of wistful resignation."
+        "label": "The Clinging",
+        "mood": "tender, doomed",
+        "scene": "She reaches for the one thing left. A friend in the bed beside her like little kids, laughing till their ribs get tough. The comfort is real and she holds it close. But that will never be enough, over and over, until the night runs out."
       }
     ],
-    "journey": [
+    "lines": [
       {
-        "section": "Verse 1/Chorus",
-        "mood": "hazy remembrance",
-        "description": "Echoes of a forgotten night. A hazy memory of youth, with a shared drink and a song on repeat, already feeling like a distant dream."
+        "line": "It drives you crazy, getting old"
       },
       {
-        "section": "Verse 2/Chorus",
-        "mood": "lonely disillusionment",
-        "description": "The dream turns sour. A lonely drift through city streets, where the realization of growing old settles in like a cold, isolating fog."
+        "line": "And I've never felt more alone"
       },
       {
-        "section": "Bridge",
-        "mood": "desperate yearning",
-        "description": "A desperate pull backward. A direct, almost frantic plea to retrieve lost thoughts and the unburdened minds of youth."
+        "line": "I want 'em back, I want 'em back\nThe minds we had, the minds we had"
       },
       {
-        "section": "Refrain",
-        "mood": "fragile intimacy",
-        "description": "Clinging to a moment. Recreating childhood intimacy with a friend, laughing to forget, but a quiet voice knows it won't truly last."
+        "line": "Sharing beds like little kids"
       },
       {
-        "section": "Outro",
-        "mood": "resigned acceptance",
-        "description": "The fragile illusion crumbles. The realization that even the most cherished moments are just a temporary shield against the relentless flow of time."
+        "line": "But that will never be enough"
       }
     ],
-    "key_lines": [
-      {
-        "line": "It drives you crazy, getting old",
-        "insight": "The unsettling, almost maddening feeling of time asserting its power over you."
-      },
-      {
-        "line": "And I've never felt more alone",
-        "insight": "The profound isolation that can accompany the shift from childhood ease to adult awareness."
-      },
-      {
-        "line": "I want 'em back, I want 'em backThe minds we had",
-        "insight": "A primal, desperate cry for the return of a past self, unburdened and free."
-      },
-      {
-        "line": "And laughing till our ribs get tough",
-        "insight": "The bittersweet attempt to recapture a specific, visceral joy of childhood closeness."
-      },
-      {
-        "line": "But that will never be enough",
-        "insight": "The heavy, crushing truth that no amount of nostalgia or shared moments can stop the inevitable march forward."
-      }
-    ],
-    "sonic_texture": "Swirling, layered synths create a dreamy, atmospheric haze, grounded by a steady, almost driving electronic beat. Lorde's vocals float ethereally, sometimes doubled, creating a sense of intimacy and distance, as subtle percussive elements add to the melancholic, pulsing groove."
+    "texture": "A hushed, half-acoustic pulse opens it, sparse enough to hear the room, then the voice stacks on itself and swirls into an echo that keeps swelling. The tempo sits up near a dance beat, but the mood underneath is almost without color, so the swell never lifts you. It just circles, a party that keeps spinning and never warms."
   }
 }

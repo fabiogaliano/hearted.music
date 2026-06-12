@@ -64,15 +64,6 @@ export const heroStyles = `
 		will-change: clip-path;
 	}
 
-	.hero-panel {
-		will-change: clip-path, opacity;
-	}
-
-	.hero-panel-curtain {
-		will-change: transform;
-		backface-visibility: hidden;
-	}
-
 	/* ─────────────────────────────────────────────────────────────────
 	   FLUID FONT SIZES (desktop)
 	   ───────────────────────────────────────────────────────────────── */
@@ -102,13 +93,6 @@ export const heroStyles = `
 			will-change: auto;
 		}
 		.hero-background {
-			will-change: auto;
-			clip-path: none !important;
-		}
-		.hero-panel {
-			will-change: auto;
-		}
-		.hero-panel-curtain {
 			will-change: auto;
 		}
 		.hero-nav-btn {
@@ -150,13 +134,6 @@ export const heroStyles = `
 		}
 		.hero-background {
 			clip-path: none !important;
-		}
-		.hero-panel {
-			opacity: 1 !important;
-			clip-path: none !important;
-		}
-		.hero-panel-curtain {
-			transform: translateX(100%) !important;
 		}
 		.hero-subtext,
 		.hero-cta {

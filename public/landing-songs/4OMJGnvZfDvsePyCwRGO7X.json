@@ -17,79 +17,43 @@
     "energy": 0.82,
     "valence": null
   },
-  "analysis": {
-    "headline": "A playful challenge to a new connection, daring them to prove their worth before disappearing into the night.",
-    "compound_mood": "Playful Elusiveness",
-    "mood_description": "A high-stakes dance under flashing lights, daring someone to catch a fleeting glance before it vanishes. Confidence and caution swirl in a playful, charged atmosphere.",
-    "interpretation": "The game of 'Houdini' isn't just about escape; it's a deliberate test, a playful yet firm challenge to a potential partner. It's a way of saying, 'I've left before, but I'm open to being convinced to stay if you're truly exceptional.' The elusiveness is both a boundary and an invitation, a self-protective habit that longs to be broken by genuine connection.",
-    "themes": [
+  "read": {
+    "image": "a kiss blown across the room, already halfway out the door",
+    "lens": "a vanishing act as a dare",
+    "tension": "Daring Hope",
+    "take": "A vanishing act, run as a dare. She tells you up front she comes and goes and isn't here for long, so the disappearing is the terms of the deal and not the tragedy. Catch me or I go Houdini — the threat doubles as the invitation. She keeps raising the bar on you: prove you've got the right to please her, practice what you preach, give her something that'll make her believe. It plays like a woman who can't be held, right up until the post-chorus lets the other thing slip out. Maybe you could cause a girl to change her ways. Maybe you could be the one to make me stay. The whole escape trick was a test someone was supposed to pass.",
+    "contradiction": "She bills herself as the one who always slips the cuffs and spends the entire time hoping you're good enough to make the trick fail.",
+    "arc": [
       {
-        "name": "testing boundaries",
-        "description": "Pushing the limits of a new connection to see its true strength."
+        "label": "The Dare",
+        "mood": "Confident, teasing",
+        "scene": "She lays out the rules like a magician naming the trick before it starts. She comes and she goes, she's not here for long, and the only way to keep her is to catch her. The exit stays open on purpose. She's daring you to be the reason she doesn't take it."
       },
       {
-        "name": "self-aware elusiveness",
-        "description": "Knowing one tends to disappear, but choosing to challenge someone to break the pattern."
+        "label": "The Test",
+        "mood": "Demanding, skeptical",
+        "scene": "Now she's raising the bar. Everything you say sounds sweet, but she wants to know if you practice what you preach. Prove you've got the right to please her. The sweetness isn't enough on its own. She needs something that'll make her believe."
       },
       {
-        "name": "conditional commitment",
-        "description": "Offering a chance at sticking around, but only if the other person meets a high standard."
-      },
-      {
-        "name": "the chase",
-        "description": "Embracing the thrill of being pursued and the power in holding back."
+        "label": "The Tell",
+        "mood": "Hopeful, exposed",
+        "scene": "The game cracks for a second. If you're good enough, you'll find the way, and maybe you could cause a girl to change her ways. Under all the coming and going is the line she almost doesn't want to say out loud. Maybe you could be the one to make me stay."
       }
     ],
-    "journey": [
+    "lines": [
       {
-        "section": "Intro",
-        "mood": "Slightly coy",
-        "description": "A brief, confident arrival, setting a scene of playful mystery, inviting attention."
+        "line": "Catch me or I go Houdini"
       },
       {
-        "section": "Chorus",
-        "mood": "Bold challenge",
-        "description": "Laying down the rules of the game, daring someone to prove their worth before a swift exit, a promise of vanishing."
+        "line": "Prove you got the right to please me"
       },
       {
-        "section": "Verse 1",
-        "mood": "Flirtatious observation",
-        "description": "Watching a potential partner, inviting them closer while still holding back, a quiet moment of assessing the next move."
+        "line": "But do you practise everything that you preach?"
       },
       {
-        "section": "Post-Chorus",
-        "mood": "Hidden longing",
-        "description": "A sudden flicker of vulnerability, admitting a desire to change and be convinced to stay, a momentary break from the game."
-      },
-      {
-        "section": "Verse 2",
-        "mood": "Skeptical demand",
-        "description": "Questioning surface-level charm, pushing for genuine effort and proof before truly believing in the connection."
-      },
-      {
-        "section": "Outro",
-        "mood": "Lasting allure",
-        "description": "The final echo of the challenge, a playful reminder that the chase is still on, leaving the outcome tantalizingly open."
+        "line": "Maybe you could be the one to make me stay"
       }
     ],
-    "key_lines": [
-      {
-        "line": "Catch me or I go Houdini",
-        "insight": "The exhilarating risk of a connection that could vanish at any moment, placing the onus on the other."
-      },
-      {
-        "line": "Time is passin' like a solar eclipse",
-        "insight": "A brief window for connection, a blink-and-you-miss-it opportunity that demands quick action."
-      },
-      {
-        "line": "Maybe you could be the one to make me stay",
-        "insight": "A raw admission of wanting a reason to settle down, despite the impulse to flee from commitment."
-      },
-      {
-        "line": "Do you practise everything that you preach?",
-        "insight": "Cutting through sweet talk to demand substance and real action, seeking truth beyond mere words."
-      }
-    ],
-    "sonic_texture": "A relentless, pulsing synth-bass line anchors a shimmering landscape of layered disco-pop grooves. Crisp drums drive the rhythm, while confident, clear vocals float effortlessly, weaving through the vibrant, electric air."
+    "texture": null
   }
 }

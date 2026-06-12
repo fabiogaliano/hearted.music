@@ -17,79 +17,51 @@
     "energy": 0.735,
     "valence": 0.418
   },
-  "analysis": {
-    "headline": "A smooth, unsettling fantasy of possessive love, where adoration curdles into vengeful desire.",
-    "compound_mood": "Obsessive Yearning",
-    "mood_description": "A dark R&B groove pulls you in, but a chilling narrative unfolds over a deceptively relaxed beat. It feels like a late-night confession, both seductive and deeply disturbing.",
-    "interpretation": "A raw exploration of extreme possessiveness, born from a profound fear of loneliness and abandonment. The silky, almost comforting production style masks a deeply unsettling lyrical journey where heartbreak spirals into homicidal fantasy. It's the desperate rationalization of toxic attachment, where love becomes a justification for control, even if it means destruction.",
-    "themes": [
+  "read": {
+    "image": "the basement, planning a home invasion in a sweet, even voice",
+    "lens": "love as a home invasion",
+    "tension": "Sweet Desperation",
+    "take": "The love she keeps swearing to is the thing breaking into his house. She frames all of it as growth. She's so mature, she got a therapist to remind her there are other men, she's still a fan even though she was salty. None of it takes. What she actually wants is simple and total: if she can't have him, no one should. By the end the jealousy isn't even about him. It's about the alone. She'd rather be in jail than face an empty room, and by the last chorus she'd rather be in Hell. She did it all for love, sober, with no drugs to blame, and she says it smiling.",
+    "contradiction": "She has the therapist telling her there are other men, and she still decides no one else gets to have him.",
+    "arc": [
       {
-        "name": "possessive love",
-        "description": "The intense desire to control the happiness and presence of another, even if it's destructive."
+        "label": "The Mature Mask",
+        "mood": "sweet, simmering",
+        "scene": "She swears she's over it. She's still a fan, she was only a little salty, she's so mature about the whole thing. But she can't stand the sight of him happy with someone else, not while she isn't the one driving."
       },
       {
-        "name": "fear of loneliness",
-        "description": "Isolation as a driving force behind extreme actions, seen as a fate worse than any consequence."
+        "label": "The Plan",
+        "mood": "calm, chilling",
+        "scene": "The mask slips into a plan. She clocks him at the farmer's market with his perfect peach, out of reach. So she heads down to the basement. The text will be evidence and she knows it. Now he's face-down on the floor."
       },
       {
-        "name": "violent fantasy",
-        "description": "Imagining destructive acts as a warped way to cope with rejection and perceived betrayal."
+        "label": "The Justification",
+        "mood": "serene, devoted",
+        "scene": "She wants you to understand she meant it. No drugs, no crime of passion, fully sober. She did it all for love, and she says that like it settles everything."
       },
       {
-        "name": "self-deception",
-        "description": "Claiming maturity and growth while simultaneously planning vengeful, irrational acts."
+        "label": "The Deed Done",
+        "mood": "doomed, content",
+        "scene": "The fantasy turns past tense. She just killed her ex, oops, his girlfriend next, he left her no choice. And she'd still rather be in Hell than spend one night alone."
       }
     ],
-    "journey": [
+    "lines": [
       {
-        "section": "Verse 1",
-        "mood": "simmering resentment",
-        "description": "Lingering bitterness and jealousy come to the surface, watching an ex find happiness with someone new, fueling a growing sense of injustice."
+        "line": "Hate to see you happy if I'm not the one drivin'"
       },
       {
-        "section": "Pre-Chorus",
-        "mood": "fragile composure",
-        "description": "A feigned sense of maturity quickly unravels, revealing a raw, singular desire that overrides any rational thought or therapeutic advice."
+        "line": "His new girlfriend's next, how'd I get here?"
       },
       {
-        "section": "Chorus",
-        "mood": "shocking confession",
-        "description": "The smooth delivery masks a blunt, almost casual admission of violent intent, driven by an enduring love and a profound aversion to being alone."
+        "line": "You was at the farmer's market with your perfect peach"
       },
       {
-        "section": "Verse 2",
-        "mood": "escalating fantasy",
-        "description": "The dark thoughts become more vivid and detailed, building a narrative of betrayal and a twisted justification for the planned actions."
+        "line": "Now you layin' face-down, got me singin' over a beat"
       },
       {
-        "section": "Bridge",
-        "mood": "twisted rationalization",
-        "description": "A disturbing self-justification takes hold, framing the extreme actions as noble sacrifices, done 'for love' and 'for us,' even claiming sobriety as a perverse badge of honor."
-      },
-      {
-        "section": "Final Chorus",
-        "mood": "chilling realization",
-        "description": "The fantasy fully plays out, with a chilling acceptance of the violent acts and an unwavering preference for oblivion over solitude."
+        "line": "I did all of this sober"
       }
     ],
-    "key_lines": [
-      {
-        "line": "Hate to see you happy if I'm not the one drivin'",
-        "insight": "Controlling another's joy as the ultimate expression of ownership."
-      },
-      {
-        "line": "If I can't have you, no one should",
-        "insight": "The absolute demand for singular possession, or total destruction."
-      },
-      {
-        "line": "Rather be in jail than alone",
-        "insight": "Isolation as a fate worse than any consequence, driving desperate choices."
-      },
-      {
-        "line": "I did it all for love",
-        "insight": "Twisting affection into a justification for unforgivable acts."
-      }
-    ],
-    "sonic_texture": "A warm, hazy R&B soundscape, built on a driving, yet relaxed trap beat and deep bass. Vocal layers create an intimate, almost conversational feel, even as the words grow darker. It's a smooth, seductive groove with an unsettling undertow."
+    "texture": "A soft, sing-song R&B melody rides an unbothered mid-tempo trap beat, her voice gentle and a little bored. The sweetness is the trick, carrying a double-murder confession like it weighs nothing."
   }
 }

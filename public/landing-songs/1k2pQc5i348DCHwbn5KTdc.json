@@ -17,79 +17,46 @@
     "energy": 0.65,
     "valence": 0.507
   },
-  "analysis": {
-    "headline": "A defiant dance into self-discovery, trading hometown comfort for the dazzling chaos of chosen family and neon dreams.",
-    "compound_mood": "Liberated Glamour",
-    "mood_description": "Bright synths and a steady beat propel you onto a dancefloor where every move is an act of rebellion and self-celebration. It feels like stepping into your own vibrant spotlight, leaving past worries behind.",
-    "interpretation": "Creating a new life means sometimes breaking old hearts. It’s the thrilling, yet bittersweet, journey of escaping the stifling comfort of expectation to find a glittering, liberating world where true self-expression flourishes. The pull of home remains, a distant echo, but the intoxicating freedom of chosen family and a vibrant queer community offers an undeniable sense of belonging.",
-    "themes": [
+  "read": {
+    "image": "black lights and a mirrored disco ball, a line outside the door",
+    "lens": "a stage as the home she chose",
+    "tension": "Defiant Joy",
+    "take": "Home isn't a place she's returning to here. It's a stage in heels she had to leave Tennessee to find. The pull starts as fantasy, those crazy visions of L.A. she can't ignore, and the cost is named flat: it won't make mama proud, it's gonna cause a scene. Then the night actually arrives. Jaws hit the floor, lovers crowd the bathroom, and every reason to have left it all keeps proving itself right. You can hear the turn in one word. The wicked dreams she was once just having become the wicked dreams she now thanks. And the mother never goes quiet. A thousand miles away her Southern drawl still asks God what have you done, still calls her a pink pony girl like a verdict. The answer isn't an argument. She's just gonna keep on dancing.",
+    "contradiction": "She still loves Tennessee and her mother and carries the drawl with her, and she's never going back.",
+    "arc": [
       {
-        "name": "rebellion and self-discovery",
-        "description": "Breaking away from hometown expectations to live authentically, embracing a new identity in a new place."
+        "label": "The Pull",
+        "mood": "restless yearning",
+        "scene": "Her mother wants her to stay, and she can't ignore the visions of herself in L.A. where boys and girls can all be queens. She already knows what it costs. The scene she'll cause, the scream when mama sees her baby girl, all of it priced and accepted before she's even gone."
       },
       {
-        "name": "queer liberation",
-        "description": "Celebrating queer identity and joy in vibrant, accepting spaces that welcome true self-expression."
+        "label": "The Landing",
+        "mood": "triumphant belonging",
+        "scene": "On the stage in her heels, this is where she belongs. Black lights, a mirrored disco ball, a line out the door, and every night hands her another reason she was right to leave it all. The dream she was only having a year ago is a dream she now thanks out loud."
       },
       {
-        "name": "familial tension",
-        "description": "The persistent ache of disappointing loved ones while pursuing a personal truth that clashes with their desires."
-      },
-      {
-        "name": "chosen family",
-        "description": "Finding a sense of home and profound acceptance within a new community, distinct from one's biological family."
+        "label": "The Drawl",
+        "mood": "tender defiance",
+        "scene": "She hasn't left them behind. Every Saturday she can hear her mother's Southern drawl a thousand miles away, still horrified, still asking what she's done. She loves them and Tennessee and won't soften the answer one inch. She's gonna keep on dancing."
       }
     ],
-    "journey": [
+    "lines": [
       {
-        "section": "Verse 1",
-        "mood": "Yearning escape",
-        "description": "A quiet longing for a different life takes hold, as visions of L.A. pull away from the familiar confines of home."
+        "line": "But I can't ignore the crazy visions of me in L.A."
       },
       {
-        "section": "Refrain/Pre-Chorus",
-        "mood": "Anticipatory defiance",
-        "description": "The internal conflict sharpens, knowing the chosen path will cause a scene, but the magnetic pull of belonging is too strong to resist, building into an inevitable resolve."
+        "line": "Won't make my mama proud, it's gonna cause a scene"
       },
       {
-        "section": "Chorus",
-        "mood": "Euphoric embrace",
-        "description": "The energy explodes into full-blown celebration, a joyous declaration of dancing in the Pink Pony Club, completely immersed in a world of acceptance."
+        "line": "On the stage in my heels, it's where I belong, down at the"
       },
       {
-        "section": "Verse 2",
-        "mood": "Sensory immersion",
-        "description": "Diving deeper into the vibrant, unapologetic chaos of the club, every detail reinforces that the decision to leave was undeniably the right one."
+        "line": "I thank my wicked dreams, a year from Tennessee"
       },
       {
-        "section": "Bridge",
-        "mood": "Lingering tenderness",
-        "description": "A reflective pause brings a moment of soft remembrance, acknowledging love for home and family, even from a thousand miles away, before returning to the present."
-      },
-      {
-        "section": "Outro",
-        "mood": "Enduring freedom",
-        "description": "A final, unwavering commitment to this new, authentic life, as the repeated dancing becomes a continuous, defiant celebration of self."
+        "line": "I can hear your Southern drawl a thousand miles away, saying"
       }
     ],
-    "key_lines": [
-      {
-        "line": "Won't make my mama proud, it's gonna cause a scene",
-        "insight": "The painful cost of choosing yourself over ingrained expectations and the fear of disappointment."
-      },
-      {
-        "line": "On the stage in my heels, it's where I belong",
-        "insight": "Finding profound self-acceptance and a sense of home in unexpected, glamorous, and liberating spaces."
-      },
-      {
-        "line": "Every night's another reason why I left it all",
-        "insight": "Validating a difficult choice with every moment of newfound joy, freedom, and belonging in a new life."
-      },
-      {
-        "line": "Don't think I've left you all behind",
-        "insight": "The lasting connection to roots and loved ones, even when physically and emotionally miles away."
-      }
-    ],
-    "sonic_texture": "Bright, driving synths layer over a pulsing electronic beat, creating an effervescent dancefloor energy. Sparkling melodies float above a solid bassline, while clear, confident vocals command attention, wrapped in a glossy pop finish."
+    "texture": "A mid-tempo synth-pop pulse, bright and built for the floor without ever racing. The valence sits right at the middle, so the euphoria never quite outruns the homesick ache underneath it."
   }
 }

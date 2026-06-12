@@ -13,6 +13,16 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* The landing page scrolls in its own root and wants the hero panel flush with the
+   viewport edge: hide that scroller's bar and drop the viewport's reserved gutter
+   (html never scrolls there at desktop widths — the inner root does). */
+[data-landing-scroll-root] {
+  scrollbar-width: none;
+}
+html:has([data-landing-scroll-root]) {
+  scrollbar-gutter: auto;
+}
+
 body {
   @apply m-0;
   font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
