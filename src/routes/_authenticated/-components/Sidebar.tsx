@@ -83,15 +83,18 @@ export function Sidebar({
 				</ul>
 			</nav>
 
-			<Link
-				to="/settings"
-				hash={showUpgradeCTA ? "settings-section-subscription" : undefined}
-				aria-label={
-					showUpgradeCTA ? "Settings — upgrade your plan" : "Settings"
-				}
+			<div
 				data-active={isSettingsActive || undefined}
 				className="theme-border-color group relative -mx-6 -mb-8 mt-6 flex items-center gap-3 border-t px-6 pt-6 pb-8 transition-colors duration-150 ease motion-reduce:transition-none hover:bg-[color-mix(in_oklch,var(--t-text)_5%,transparent)] data-[active]:bg-[color-mix(in_oklch,var(--t-text)_7%,transparent)]"
 			>
+				{/* Stretched link: the whole strip opens settings at the top.
+				    The Upgrade CTA below sits above it (z-10) as its own target. */}
+				<Link
+					to="/settings"
+					aria-label="Settings"
+					className="absolute inset-0 z-0 rounded-none focus-visible:outline-none"
+				/>
+
 				<UserAvatar name={handle} imageUrl={userImageUrl} />
 				<div className="min-w-0 flex-1">
 					{handle && (
@@ -113,17 +116,20 @@ export function Sidebar({
 						{userPlan}
 					</p>
 					{showUpgradeCTA ? (
-						<p
-							className="theme-text mt-1.5 inline-flex items-baseline gap-1.5 text-base leading-none"
+						<Link
+							to="/settings"
+							hash="settings-section-subscription"
+							aria-label="Upgrade your plan"
+							className="group/cta theme-text relative z-10 mt-1.5 inline-flex w-fit items-baseline gap-1.5 text-base leading-none"
 							style={displayFontStyle}
 						>
 							<em>Upgrade</em>
 							<ArrowRightIcon
 								aria-hidden="true"
 								weight="light"
-								className="size-3.5 -translate-x-0.5 self-center transition-transform duration-200 ease-out group-hover:translate-x-0 group-focus-visible:translate-x-0 motion-reduce:transition-none"
+								className="size-3.5 -translate-x-0.5 self-center transition-transform duration-200 ease-out group-hover:translate-x-0 group-focus-visible/cta:translate-x-0 motion-reduce:transition-none"
 							/>
-						</p>
+						</Link>
 					) : (
 						balanceLabel && (
 							<p
@@ -135,7 +141,7 @@ export function Sidebar({
 						)
 					)}
 				</div>
-			</Link>
+			</div>
 		</aside>
 	);
 }
