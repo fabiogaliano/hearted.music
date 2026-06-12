@@ -213,12 +213,17 @@ async function main() {
 		});
 
 		if (Result.isOk(result)) {
-			if (result.value.cached) {
-				console.log("(cached)");
-				analysisCached++;
+			if ("kind" in result.value && result.value.kind === "retry_candidate") {
+				console.log("(retry candidate — unknown content type)");
 			} else {
-				console.log(`✓ (${result.value.tokensUsed ?? "?"} tokens)`);
-				analysisSucceeded++;
+				const r = result.value as import("@/lib/domains/enrichment/content-analysis/song-analysis").AnalyzeSongResult;
+				if (r.cached) {
+					console.log("(cached)");
+					analysisCached++;
+				} else {
+					console.log(`✓ (${r.tokensUsed ?? "?"} tokens)`);
+					analysisSucceeded++;
+				}
 			}
 		} else {
 			console.log(`✗ ${result.error.message}`);

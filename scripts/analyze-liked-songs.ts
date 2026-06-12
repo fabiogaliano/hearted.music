@@ -186,7 +186,12 @@ async function main() {
 			continue;
 		}
 
-		const tokens = analysisResult.value.tokensUsed || "?";
+		if ("kind" in analysisResult.value && analysisResult.value.kind === "retry_candidate") {
+			console.log(`⏭ retry candidate (unknown content type)`);
+			continue;
+		}
+		const r = analysisResult.value as import("@/lib/domains/enrichment/content-analysis/song-analysis").AnalyzeSongResult;
+		const tokens = r.tokensUsed || "?";
 		console.log(`✓ (${tokens} tokens)`);
 		succeeded++;
 	}

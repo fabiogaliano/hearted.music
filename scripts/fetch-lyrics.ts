@@ -4,7 +4,7 @@
  *
  * Default scope is songs that already have an analysis (the set with a
  * generated compound_mood worth validating against lyrics). Pass --all to
- * cover every song in the library. fetchAndStoreLyrics is cache-first and
+ * cover every song in the library. fetchAndStoreOutcome is idempotent and
  * upserts on (song_id, source), so re-runs skip already-fetched songs.
  *
  *   bun run scripts/fetch-lyrics.ts          # analyzed songs only
@@ -58,7 +58,11 @@ async function main() {
 
 	const results = await Promise.allSettled(
 		targets.map(async (t) => {
-			const r = await service.fetchAndStoreLyrics(t.song_id, t.artist, t.name);
+			const r = await service.fetchAndStoreOutcome({
+				songId: t.song_id,
+				artist: t.artist,
+				song: t.name,
+			});
 			return { t, r };
 		}),
 	);
@@ -70,16 +74,16 @@ async function main() {
 		}
 		const { t, r } = settled.value;
 		if (Result.isOk(r)) {
-			ok++;
-		} else {
-			const kind = r.error.constructor.name;
-			if (kind === "GeniusNotFoundError") {
+			if (r.value.kind === "not_found") {
 				notFound++;
 				misses.push(`${t.artist} - ${t.name}`);
 			} else {
-				failed++;
-				misses.push(`${t.artist} - ${t.name} [${kind}]`);
+				ok++;
 			}
+		} else {
+			const kind = r.error.constructor.name;
+			failed++;
+			misses.push(`${t.artist} - ${t.name} [${kind}]`);
 		}
 	}
 
