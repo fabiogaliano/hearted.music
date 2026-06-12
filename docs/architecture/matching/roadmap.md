@@ -1,15 +1,9 @@
 # Matching System — Consolidated Research & Roadmap
 
 **Date:** 2026-06-10 (consolidates research passes from 2026-06-06 and 2026-06-09; priorities revised same day after a data audit)
-**Status:** Research findings + prioritized plan. **Pre-prod #1 (fusion normalization), #3 (Qwen3 re-embed + instruct-format fix), #6 (decision-log enrichment), #2 (slim replay runner), and #4 (reranker fixes) implemented 2026-06-10** — see the findings below and `reranker-replay-runner.md`. **#5 Phase 1 (genre-pills backend/matching) + #7's genre-substring fix implemented 2026-06-11** (plan: `claudedocs/genre-pills-implementation-plan.md`, execution record: `claudedocs/genre-pills-phase1/`). **#7's dead-field cleanup implemented 2026-06-11** (dropped the `emotion_distribution` column + `emotionEnabled` flag, `MatchingPlaylistProfile.method`, and the unused `ProfileKind.context_v1` variant). The pills UI (Phase 2) remains. **Priorities revised 2026-06-10:** a data audit found `match_decision` holds **10 decisions on 1 playlist from 1 account** — far below what recall@k/MRR/temporal-split can use. So #6 (decision-log enrichment, the time-sensitive item) was pulled to the front (now shipped), #2 is slimmed to a config-diff replay runner, and the full metrics harness is deferred to post-prod, gated on decision volume (see finding #6).
+**Status:** Research findings + prioritized plan. **Pre-prod #1 (fusion normalization), #3 (Qwen3 re-embed + instruct-format fix), #6 (decision-log enrichment), #2 (slim replay runner), and #4 (reranker fixes) implemented 2026-06-10** — see the findings below and `reranker.md`. **#5 Phase 1 (genre-pills backend/matching) + #7's genre-substring fix implemented 2026-06-11** (plan: `claudedocs/genre-pills-implementation-plan.md`, execution record: `claudedocs/genre-pills-phase1/`). **#7's dead-field cleanup implemented 2026-06-11** (dropped the `emotion_distribution` column + `emotionEnabled` flag, `MatchingPlaylistProfile.method`, and the unused `ProfileKind.context_v1` variant). The pills UI (Phase 2) remains. **Priorities revised 2026-06-10:** a data audit found `match_decision` holds **10 decisions on 1 playlist from 1 account** — far below what recall@k/MRR/temporal-split can use. So #6 (decision-log enrichment, the time-sensitive item) was pulled to the front (now shipped), #2 is slimmed to a config-diff replay runner, and the full metrics harness is deferred to post-prod, gated on decision volume (see finding #6).
 **Scope:** Cheap, modern (2025–2026) improvements to the song→playlist matching pipeline, plus the genre-pills feature. Hard constraint: no self-hosted GPU infra, no expensive per-request LLM calls.
 
-This document supersedes `matching-system-improvements.md` (2026-06-06) and
-`matching-deep-analysis-2026-06.md` (2026-06-09). The first was a fan-out web-research pass
-with 3-vote adversarial verification (115 claims extracted, most refuted — the kill list is
-preserved below). The second re-verified it against the actual code, added fresh research
-(fusion practice, embedding/reranker landscape, genre conditioning, cold-start elicitation),
-and corrected one stale priority. Where the two disagreed, the code-verified finding wins.
 
 ---
 
@@ -68,8 +62,8 @@ older references and the completed-work notes still resolve.
 | 1 | ✅ **Batch-matrix score normalization before fusion** (z-score per signal, 3σ-clipped; dropped the 0.5-baseline stretch) — **done 2026-06-10** | ~½ day | Biggest mis-scaling in the system; pure code; makes the weights mean what they say. `minScoreThreshold` now in normalized units (`0.35`) — re-tune via #2. |
 | 3 | ✅ **One combined re-embed:** correct instruct format (`Instruct: …\nQuery: …` queries, no prefix documents) + swap to `Qwen3-Embedding-0.6B` at **512-dim** — **done 2026-06-10** | 1 day + re-embed | Prefix fix + model swap done in one pass. Shipped 512 outright (preprod — dropped 1024, no bakeoff) since #2 doesn't exist yet to measure it; 512 stays a free re-decision later via re-truncation. |
 | 6 | ✅ **Decision-log enrichment:** FK each decision to the immutable `match_snapshot` it was served from + denormalized `served_rank`; completed `match_result` as the served record (`fused_score` + `normalized_factors`) — **done 2026-06-10** | hours | Every decision now reconstructs exactly what the user saw vs. chose. Surfaced (rank set) vs. implicit (rank NULL) negatives are queryable; per-decision factor features resolve via the `match_result` join — nothing is copied onto the decision row. ~5% rank jitter deferred (zero signal pre-traffic; `served_rank` is the future-enabling half). |
-| 2 | ✅ **Slim offline replay runner** over `match_decision`: run the *real* pipeline (fusion + normalization + threshold + reranker, not raw cosine) under a candidate config, diff config A vs B by ranks of added/dismissed — **done 2026-06-10** (see `reranker-replay-runner.md`) | ~½ day | The data-volume-independent core of the harness: a config *regression* tool, not a measurement tool. Lives in `scripts/matching-lab/replay/`. Deviation from the original "exclude MRR" framing: per-variant MRR/nDCG@10 *are* reported as directional secondaries (small-n IR practice), with an explicit directional-only warning in both console and JSON output below 200 trials; temporal split + segmentation stay excluded (post-prod #1). |
-| 4 | ✅ **Reranker fixes:** feed analysis text as the document; verify yes/no-logit scoring; A/B full-rerank vs 70/30 blend via #2 — **done 2026-06-10** (see `reranker-replay-runner.md`) | ~1 day | Found the reranker was **silently dead in prod** (wrong DeepInfra body shape → response validation failed → rerank skipped every call). Contract fixed + pinned by unit tests; document is now flattened analysis prose (shared with embedding text); canonical instruction threaded everywhere; local ONNX Qwen3-Reranker for keyless dev. A/B at n=16 was directional-only — no config promoted; pre-prod blocker: live DeepInfra smoke test (needs key). |
+| 2 | ✅ **Slim offline replay runner** over `match_decision`: run the *real* pipeline (fusion + normalization + threshold + reranker, not raw cosine) under a candidate config, diff config A vs B by ranks of added/dismissed — **done 2026-06-10** (see `reranker.md`) | ~½ day | The data-volume-independent core of the harness: a config *regression* tool, not a measurement tool. Lives in `scripts/matching-lab/replay/`. Deviation from the original "exclude MRR" framing: per-variant MRR/nDCG@10 *are* reported as directional secondaries (small-n IR practice), with an explicit directional-only warning in both console and JSON output below 200 trials; temporal split + segmentation stay excluded (post-prod #1). |
+| 4 | ✅ **Reranker fixes:** feed analysis text as the document; verify yes/no-logit scoring; A/B full-rerank vs 70/30 blend via #2 — **done 2026-06-10** (see `reranker.md`) | ~1 day | Found the reranker was **silently dead in prod** (wrong DeepInfra body shape → response validation failed → rerank skipped every call). Contract fixed + pinned by unit tests; document is now flattened analysis prose (shared with embedding text); canonical instruction threaded everywhere; local ONNX Qwen3-Reranker for keyless dev. A/B at n=16 was directional-only — no config promoted; pre-prod blocker: live DeepInfra smoke test (needs key). |
 | 5 | 🔶 **Genre pills** (design below) — **Phase 1 (backend/matching) done 2026-06-11**; UI (Phase 2) remains | 2–4 days | Strongest cold-start evidence; product-visible; independent of #1–4. |
 | 7 | ✅ **Hygiene:** ~~delete or implement `vetoThreshold`~~ (deleted 2026-06-10 with #1); ~~fix genre substring matching~~ (✅ 2026-06-11 with #5 — canonical exact match + curated directed adjacency table); ~~remove dead fields~~ (✅ 2026-06-11 — `emotion_distribution` column + `emotionEnabled` flag, `MatchingPlaylistProfile.method`, `ProfileKind.context_v1`) | hours | Done. |
 
@@ -149,7 +143,7 @@ calibration in audio features.
 - **`MatchResult`** keeps raw `factors` + new `normalizedFactors` (the fusion inputs).
 
 `song-matching/{normalization,service,config,types}.ts`; 73 tests pass, `tsgo` clean. Full
-rationale + sources in `docs/architecture/score-normalization-direction.md`.
+rationale + sources in `docs/architecture/matching/score-normalization.md`.
 
 ### 2. The E5 instruct prefix is wrong on both sides — fold into the re-embed (vote 3-0) ✅ FIXED 2026-06-10
 
@@ -177,7 +171,7 @@ the system has been computed in a format the model wasn't trained for.
 ### 3. `Qwen3-Embedding-0.6B` is a real drop-in upgrade (vote 3-0) ✅ SHIPPED 2026-06-10
 
 **What shipped:** swapped to `Qwen/Qwen3-Embedding-0.6B`, MRL-truncated to **512-dim**
-client-side (slice first 512 + L2-renormalize — deterministic, provider-independent, and
+client-side (slice first 512 + L2-renormalize — deterministic, provider-independent,
 cost-identical since embeddings are priced per *input* token). Migration drops the old e5
 vectors and narrows `song_embedding`/`playlist_profile` to `vector(512)`; cache auto-invalidates
 via the model-bundle hash (model + dims changed). Production embeds via DeepInfra; the local
@@ -187,7 +181,7 @@ cold-start playlist locally; `tsgo` + 1595 tests green.
 
 **Dimension decision:** shipped 512 outright rather than A/B 1024-vs-512, because (a) #2
 doesn't exist to measure it, (b) we're preprod with no quality data, and (c) at 79 songs /
-brute-force matching the storage/ANN savings are nil — 512's only live effect now is risk, and
+brute-force matching the storage/ANN savings are nil — 512's only live effect now is risk,
 re-deciding later is a free re-truncation, not another re-embed. The directional sanity replay
 (`scripts/matching-lab/eval-embedding-sanity.ts`) over the 10 decisions on 1 cold-start
 playlist was inconclusive (separation ≈ −0.02 — noise at n=10 against a HyDE-only profile), as
@@ -213,7 +207,7 @@ quality (~1–5%).
 
 ### 4. The reranker is starved ✅ FIXED 2026-06-10
 
-**What shipped:** see `docs/architecture/reranker-replay-runner.md` for the full
+**What shipped:** see `docs/architecture/matching/reranker.md` for the full
 write-up. Highlights: the DeepInfra integration had been sending the wrong
 (Cohere/Jina) body shape, so reranking was **silently skipped on every prod
 call** — fixed to the verified pairwise contract and pinned by unit tests; the
@@ -273,7 +267,7 @@ is worse than knowing you're unmeasured. So the remedy splits in three:
    pre-rerank weighted sum, kept because the 70/30 rerank blend replaces `score`). The replay
    runner (#2) consumes this; it doesn't exist yet.
 2. **Slim replay runner (pre-prod #2, ~½ day) — ✅ shipped 2026-06-10** (`scripts/matching-lab/replay/`,
-   documented in `reranker-replay-runner.md`) — the data-volume-independent core: run the
+   documented in `reranker.md`) — the data-volume-independent core: run the
    real pipeline (fusion + normalization + threshold + reranker) over the decision log under
    config A vs config B and diff the ranks of added/dismissed songs.
    `eval-embedding-sanity.ts` only replays raw cosine; the runner replays what users actually
@@ -327,7 +321,7 @@ the free-text description.
 2. **Feed pills into three existing channels:**
    - Append to intent text before embedding: `"{name} — {description}. Genres: indie rock, dream pop"`.
    - Seed `genre_distribution` with pseudo-counts (decaying as real members accumulate,
-     mirroring `computeIntentWeight`'s decay) — makes the genre signal live from song #0 and
+     mirroring `computeIntentWeight`'s decay) — makes the genre signal live from song #0
      replaces guessing in the HyDE path (`expected_genres` becomes user-declared).
    - Optionally bump genre weight from 0.20 to ~0.30 when pills are explicitly set
      (user-declared > inferred), with embedding/audio renormalized.
@@ -410,7 +404,7 @@ pass found nothing that rehabilitates them.
    won on pairwise win rate, 1.0 collapsed, and the document A/B was untestable because the
    test playlists have empty names/descriptions (blank query). No config promoted. Real
    verdict needs ~200+ decisions across playlists with real names — then it's one command
-   (see `reranker-replay-runner.md`).
+   (see `reranker.md`).
 
 ---
 

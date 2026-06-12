@@ -1,6 +1,6 @@
 # Reranker + Offline Replay Runner
 
-Status: implemented 2026-06-10 · Scope: matching-system-roadmap #2 (offline replay harness) + #b (reranker A/B) · Companion: [`reranker-replay-runner-plan.md`](./reranker-replay-runner-plan.md)
+Status: implemented 2026-06-10 · Scope: `roadmap.md` #2 (offline replay harness) + #4 (reranker fixes)
 
 ## Why this exists
 

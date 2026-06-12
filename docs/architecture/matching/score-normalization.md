@@ -1,7 +1,7 @@
 # Score-fusion normalization: which candidate set?
 
 **Date:** 2026-06-10
-**Status:** Implemented (pre-prod #1 from `matching-system-roadmap.md`).
+**Status:** Implemented (pre-prod #1 from `roadmap.md`).
 **Scope:** Per-candidate-set score normalization before fusion in
 `src/lib/domains/taste/song-matching/`.
 
