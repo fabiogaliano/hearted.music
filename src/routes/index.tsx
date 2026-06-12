@@ -40,7 +40,7 @@ function LandingPage() {
 			<Landing
 				initialManifest={manifest}
 				initialDetail={initialDetail}
-				isReleased={import.meta.env.DEV}
+				isReleased={true}
 			/>
 		</div>
 	);
