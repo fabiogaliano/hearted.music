@@ -93,8 +93,8 @@ export function usePlaylistVoices(
 			? (playlistOrInput.song_count ?? 0)
 			: playlistOrInput.songCount;
 	const hasDescription =
-		"description" in playlistOrInput
-			? Boolean(playlistOrInput.description?.trim())
+		"match_intent" in playlistOrInput
+			? Boolean(playlistOrInput.match_intent?.trim())
 			: playlistOrInput.hasDescription;
 
 	return useMemo(

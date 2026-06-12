@@ -1,18 +1,21 @@
 /**
- * Flag Playlists step - select target playlists.
+ * Flag Playlists step - pick a single target playlist.
  * Full-bleed layout with horizontal-scrolling playlist grid.
  *
  * Uses scroll-jacking: vertical scroll → horizontal playlist movement.
  * Playlists stack in max 3 rows, extending horizontally in columns.
+ *
+ * Single-pick: selecting a playlist opens the teaching dialog, which itself
+ * drives advancement — "Continue and save" sets the sole target and moves on,
+ * "Skip for now" advances with no target. Dismissing the dialog deselects and
+ * commits nothing.
  */
 
-import { ArrowRightIcon } from "@phosphor-icons/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
-import { useShortcut } from "@/lib/keyboard/useShortcut";
 import {
 	type OnboardingPlaylist,
 	savePlaylistTargets,
@@ -22,40 +25,20 @@ import { useFlagPlaylistsScroll } from "../hooks/useFlagPlaylistsScroll";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import { OnboardingDescriptionDialog } from "./OnboardingDescriptionDialog";
 
-const DESCRIPTION_DIALOG_SEEN_KEY =
-	"hearted:has-seen-onboarding-description-dialog";
-
-// Per-user lifetime flag. Recoverable via the (!) icon in /playlists right
-// after onboarding, so we don't need server-side persistence here.
-function hasSeenDescriptionDialog(): boolean {
-	if (typeof window === "undefined") return true;
-	try {
-		return window.localStorage.getItem(DESCRIPTION_DIALOG_SEEN_KEY) === "1";
-	} catch {
-		return true;
-	}
-}
-
-function markDescriptionDialogSeen(): void {
-	if (typeof window === "undefined") return;
-	try {
-		window.localStorage.setItem(DESCRIPTION_DIALOG_SEEN_KEY, "1");
-	} catch {
-		// Storage unavailable (private mode, quota) — silently no-op. The dialog
-		// will re-fire next session, which is acceptable for an edge case.
-	}
-}
-
 interface FlagPlaylistsStepProps {
 	playlists: OnboardingPlaylist[];
+	accountId: string;
 }
 
 export function FlagPlaylistsStep({
 	playlists: initialPlaylists,
+	accountId,
 }: FlagPlaylistsStepProps) {
 	const { goToStep } = useOnboardingNavigation();
-	const [selectedIds, setSelectedIds] = useState<Set<string>>(
-		() => new Set(initialPlaylists.filter((p) => p.isTarget).map((p) => p.id)),
+	// Seed from an existing target if the user is revisiting the step; never
+	// auto-open the dialog on mount.
+	const [selectedId, setSelectedId] = useState<string | null>(
+		() => initialPlaylists.find((p) => p.isTarget)?.id ?? null,
 	);
 	const [isSaving, setIsSaving] = useState(false);
 	const [descriptionDialogPlaylist, setDescriptionDialogPlaylist] =
@@ -89,41 +72,14 @@ export function FlagPlaylistsStep({
 		{ isReady: initialPlaylists.length > 0 },
 	);
 
-	// The "should open dialog" decision is computed from current state BEFORE
-	// the setter runs — keeping side effects out of the reducer avoids
-	// double-invocation footguns under React strict mode and makes the
-	// trigger semantics independent of state-update batching.
-	const togglePlaylist = useCallback(
-		(playlist: OnboardingPlaylist) => {
-			const wasSelected = selectedIds.has(playlist.id);
-			const wasEmpty = selectedIds.size === 0;
-
-			setSelectedIds((prev) => {
-				const next = new Set(prev);
-				if (next.has(playlist.id)) {
-					next.delete(playlist.id);
-				} else {
-					next.add(playlist.id);
-				}
-				return next;
-			});
-
-			// Teach on every 0→1 transition within the step. The lifetime "seen"
-			// flag (set on Continue/Skip) gates re-entries, not in-step retries.
-			if (!wasSelected && wasEmpty && !hasSeenDescriptionDialog()) {
-				setDescriptionDialogPlaylist(playlist);
-			}
-		},
-		[selectedIds],
-	);
-
-	// Space toggles selection; Enter continues (separation enables keyboard-only flow)
-	const handlePlaylistSelect = useCallback(
-		(playlist: OnboardingPlaylist) => {
-			togglePlaylist(playlist);
-		},
-		[togglePlaylist],
-	);
+	// Select-and-open: picking a playlist (click or keyboard) sets it as the
+	// single selection and opens the teaching dialog every time. Re-selecting the
+	// already-picked playlist reopens the dialog rather than deselecting — the
+	// dialog is the only path that commits or clears a pick.
+	const selectPlaylist = useCallback((playlist: OnboardingPlaylist) => {
+		setSelectedId(playlist.id);
+		setDescriptionDialogPlaylist(playlist);
+	}, []);
 
 	// Single click handler for all playlist buttons (avoids creating closures in loop)
 	const handlePlaylistClick = useCallback(
@@ -131,18 +87,10 @@ export function FlagPlaylistsStep({
 			const id = e.currentTarget.dataset.playlistId;
 			if (!id) return;
 			const playlist = initialPlaylists.find((p) => p.id === id);
-			if (playlist) togglePlaylist(playlist);
+			if (playlist) selectPlaylist(playlist);
 		},
-		[togglePlaylist, initialPlaylists],
+		[selectPlaylist, initialPlaylists],
 	);
-
-	// Dismiss only closes the dialog; the lifetime "seen" flag is set when the
-	// user leaves the step (Continue / Skip). This lets the dialog re-fire on
-	// later 0→1 transitions within the same onboarding session — e.g. if the
-	// user deselects everything and starts over.
-	const closeDescriptionDialog = useCallback(() => {
-		setDescriptionDialogPlaylist(null);
-	}, []);
 
 	const { getItemProps } = useListNavigation({
 		items: initialPlaylists,
@@ -151,63 +99,52 @@ export function FlagPlaylistsStep({
 		direction: "grid",
 		rows: rowCount, // Column-major grid: down/up = ±1, left/right = ±rows
 		getId: (playlist) => playlist.id,
-		onSelect: handlePlaylistSelect,
+		onSelect: selectPlaylist,
 	});
 
-	const handleContinue = async () => {
-		setIsSaving(true);
-		try {
-			await savePlaylistTargets({
-				data: { playlistIds: Array.from(selectedIds) },
-			});
-			markDescriptionDialogSeen();
-		} catch (error) {
-			console.error("Failed to save playlist targets:", error);
-			toast.error("Failed to save playlist selections. Please try again.");
-			setIsSaving(false);
-			return;
-		}
+	// X / backdrop / Esc: deselect and close, committing nothing.
+	const closeDialog = useCallback(() => {
+		setDescriptionDialogPlaylist(null);
+		setSelectedId(null);
+	}, []);
+
+	// Core advance legs shared by the dialog (throwing contract) — they save
+	// targets and navigate, rejecting on a failed transition so the dialog can
+	// hold itself open and surface the failure.
+	const skipStep = useCallback(async () => {
+		await savePlaylistTargets({ data: { playlistIds: [] } });
 		const result = await goToStep("pick-demo-song");
 		if (result.status === "transition_failed") {
-			setIsSaving(false);
-			toast.error(
-				"Your playlist preferences were saved, but we couldn't continue. Please try again.",
-			);
+			throw new Error("Failed to advance after skipping playlists");
 		}
-	};
+	}, [goToStep]);
 
-	const handleSkip = async () => {
+	const commitAndContinue = useCallback(async () => {
+		// Invariant: the dialog only mounts when a playlist has been selected; a
+		// silent return here would leave the dialog stranded in its "Saving…" state
+		// with no way out. Throw so the dialog's catch surfaces the failure loudly.
+		if (!selectedId) {
+			throw new Error("commitAndContinue called with no selection");
+		}
+		await savePlaylistTargets({ data: { playlistIds: [selectedId] } });
+		const result = await goToStep("pick-demo-song");
+		if (result.status === "transition_failed") {
+			throw new Error("Failed to advance after saving playlist");
+		}
+	}, [goToStep, selectedId]);
+
+	// Footer "Skip for now": same skip, but self-contained error handling since
+	// there's no dialog open to surface a failure.
+	const handleFooterSkip = async () => {
 		setIsSaving(true);
 		try {
-			// Skip: save empty selection so user can configure later
-			await savePlaylistTargets({ data: { playlistIds: [] } });
-			markDescriptionDialogSeen();
+			await skipStep();
 		} catch (error) {
 			console.error("Failed to skip playlists:", error);
 			toast.error("Failed to skip playlists. Please try again.");
 			setIsSaving(false);
-			return;
-		}
-		const result = await goToStep("pick-demo-song");
-		if (result.status === "transition_failed") {
-			setIsSaving(false);
-			toast.error(
-				"Your playlist preferences were saved, but we couldn't continue. Please try again.",
-			);
 		}
 	};
-
-	useShortcut({
-		key: "enter",
-		handler: handleContinue,
-		description: "Continue",
-		scope: "onboarding-playlists",
-		// While the teaching dialog is open, Enter should belong to the modal's
-		// focused control (textarea newline / button activation), not advance the
-		// underlying onboarding step.
-		enabled:
-			!isSaving && selectedIds.size > 0 && descriptionDialogPlaylist === null,
-	});
 
 	return (
 		<section ref={sectionRef} aria-label="Playlist selection">
@@ -217,19 +154,19 @@ export function FlagPlaylistsStep({
 						className="theme-text text-4xl font-extralight leading-tight md:text-6xl"
 						style={{ fontFamily: fonts.display }}
 					>
-						Pick their <em className="font-normal">homes</em>
+						Pick its <em className="font-normal">home</em>
 					</h2>
 
 					<p
 						className="theme-text-muted mt-4 text-lg font-light md:text-xl"
 						style={{ fontFamily: fonts.body }}
 					>
-						Your liked songs will find their way to these playlists.
+						Your liked songs will find their way to this playlist.
 					</p>
 
 					<p className="sr-only">
-						Scroll down to browse playlists horizontally. Select playlists to
-						mark them as targets.
+						Scroll down to browse playlists horizontally. Select a playlist to
+						mark it as your target.
 					</p>
 				</header>
 
@@ -252,7 +189,7 @@ export function FlagPlaylistsStep({
 							}}
 						>
 							{initialPlaylists.map((playlist, index) => {
-								const isSelected = selectedIds.has(playlist.id);
+								const isSelected = selectedId === playlist.id;
 								const itemProps = getItemProps(playlist, index);
 								const isFocused = itemProps["data-focused"];
 
@@ -270,7 +207,7 @@ export function FlagPlaylistsStep({
 										data-playlist-id={playlist.id}
 										onClick={handlePlaylistClick}
 										aria-pressed={isSelected}
-										aria-label={`${isSelected ? "Deselect" : "Select"} playlist ${playlist.name}`}
+										aria-label={`Select playlist ${playlist.name}`}
 										title={playlist.name}
 										className="group relative h-fit min-h-11 min-w-11 cursor-pointer"
 										style={{
@@ -350,49 +287,8 @@ export function FlagPlaylistsStep({
 				<footer className="flex shrink-0 flex-wrap gap-4 px-6 pb-[max(3rem,env(safe-area-inset-bottom))] pt-6 pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] md:px-12 md:pl-[max(3rem,env(safe-area-inset-left))] md:pr-[max(3rem,env(safe-area-inset-right))]">
 					<Button
 						variant="link"
-						onClick={handleContinue}
-						disabled={isSaving || selectedIds.size === 0}
-						style={{ fontFamily: fonts.body }}
-					>
-						<span className="text-lg font-medium tracking-wide tabular-nums">
-							{isSaving ? (
-								"Saving..."
-							) : (
-								<>
-									Continue with{" "}
-									<span
-										className="inline-block text-center"
-										style={{ minWidth: "2ch" }}
-									>
-										{selectedIds.size}
-									</span>{" "}
-									playlists
-								</>
-							)}
-						</span>
-						<ArrowRightIcon
-							size={16}
-							className="theme-text-muted inline-block transition-transform group-hover:translate-x-1"
-						/>
-					</Button>
-
-					<Button
-						variant="link"
 						size="sm"
-						onClick={() =>
-							setSelectedIds(new Set(initialPlaylists.map((p) => p.id)))
-						}
-						disabled={isSaving || selectedIds.size === initialPlaylists.length}
-						className="theme-text-muted min-h-11 text-sm underline"
-						style={{ fontFamily: fonts.body }}
-					>
-						Select all
-					</Button>
-
-					<Button
-						variant="link"
-						size="sm"
-						onClick={handleSkip}
+						onClick={handleFooterSkip}
 						disabled={isSaving}
 						className="theme-text-muted min-h-11 text-sm underline"
 						style={{ fontFamily: fonts.body }}
@@ -412,19 +308,19 @@ export function FlagPlaylistsStep({
 						</div>
 						<div className="flex items-center gap-1.5">
 							<Kbd>Space</Kbd>
-							<span className="text-xs">toggle</span>
-						</div>
-						<div className="flex items-center gap-1.5">
-							<Kbd>⏎</Kbd>
-							<span className="text-xs">continue</span>
+							<span className="text-xs">select</span>
 						</div>
 					</div>
 				</footer>
 			</div>
 			{descriptionDialogPlaylist && (
 				<OnboardingDescriptionDialog
+					key={descriptionDialogPlaylist.id}
 					playlist={descriptionDialogPlaylist}
-					onClose={closeDescriptionDialog}
+					accountId={accountId}
+					onClose={closeDialog}
+					onCommitAndContinue={commitAndContinue}
+					onSkipStep={skipStep}
 				/>
 			)}
 		</section>

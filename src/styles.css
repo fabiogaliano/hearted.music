@@ -400,6 +400,545 @@ code {
   }
 }
 
+/* Genre region fade-up when the playlist writing surface opens to edit. The
+   description and divider carry over from display, so only this region is new —
+   scoping the animation here avoids re-animating content that's already on
+   screen. Self-guarded because the onboarding dialog sits outside the
+   [data-playlist-panel] reduced-motion scope above. */
+@keyframes playlist-surface-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+    filter: blur(4px);
+  }
+}
+.playlist-surface-reveal {
+  animation: playlist-surface-reveal 260ms var(--ease-out-expo) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .playlist-surface-reveal {
+    animation: none;
+  }
+}
+
+/* ── Playlist writing surface + genre engine ──────────────────────────────
+   Ported verbatim from the genre-opt-in exploration (the signed-off design):
+   one card holds the description textarea and the genre picker under a single
+   Save/Cancel. Kept as scoped CSS rather than utilities because the engine
+   leans on stateful pseudo-classes (valid/invalid pill, autocomplete ghost,
+   capacity meter, popover) that read far cleaner here than as inline arbitrary
+   Tailwind values. */
+.playlist-writing-surface {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: 1px solid color-mix(in srgb, var(--t-border) 70%, transparent);
+  border-radius: 14px;
+  background: var(--t-surface);
+  padding: 18px;
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--t-text) 4%, transparent),
+    0 1px 2px color-mix(in srgb, var(--t-text) 5%, transparent),
+    0 6px 16px color-mix(in srgb, var(--t-text) 6%, transparent);
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+/* The whole surface lifts into a primary focus ring when any field inside it is
+   focused — one cue for a card that edits two things. */
+.playlist-writing-surface:focus-within {
+  border-color: color-mix(in srgb, var(--t-primary) 55%, transparent);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--t-primary) 12%, transparent),
+    0 6px 16px color-mix(in srgb, var(--t-text) 6%, transparent);
+}
+/* Embedded variant: the surface is the body of the onboarding combined card, so
+   it drops its own card chrome (border, fill, radius, shadow, focus ring) and
+   keeps only the layout. The parent .dialog-playlist-card supplies the frame and
+   the focus ring. */
+.playlist-writing-surface-embedded {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+}
+/* Hairline that fades at both ends — softer than a hard full-width rule. */
+.pws-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--t-border) 95%, transparent) 8%,
+    color-mix(in srgb, var(--t-border) 95%, transparent) 92%,
+    transparent
+  );
+}
+
+.genre-picker {
+  /* Local fallback: the per-playlist themes don't ship a danger token, and the
+     invalid state is a transient "no match" cue while typing. */
+  --t-invalid: hsl(2, 58%, 47%);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* Label left, 0/5 capacity meter right. */
+.genre-picker .gp-meter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.genre-picker .gp-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--t-text-muted);
+}
+.genre-picker .gp-count {
+  font-size: 11px;
+  color: var(--t-text-muted);
+  font-variant-numeric: tabular-nums;
+  transition: color 150ms ease;
+}
+.genre-picker .gp-count.cap {
+  color: var(--t-primary);
+}
+.genre-picker .gp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.genre-picker .gp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--t-primary);
+  border: 1px solid color-mix(in srgb, var(--t-primary) 32%, transparent);
+  background: color-mix(in srgb, var(--t-primary) 9%, transparent);
+}
+.genre-picker .gp-chip-x {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: -4px;
+  border: 0;
+  padding: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.6;
+  transition:
+    opacity 150ms ease,
+    transform 150ms var(--ease-out-quart);
+}
+/* Extend the 16px glyph to a comfortable tap target without disturbing layout. */
+.genre-picker .gp-chip-x::after {
+  content: "";
+  position: absolute;
+  inset: -12px -8px;
+}
+.genre-picker .gp-chip-x:hover {
+  opacity: 1;
+}
+.genre-picker .gp-chip-x:active {
+  transform: scale(0.9);
+}
+/* The dashed "+ add genre" input pill — resting twin of the display trigger. */
+.genre-picker .gp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 4px 12px;
+  cursor: text;
+  border: 1px dashed var(--t-border);
+  background: transparent;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+.genre-picker .gp-pill.valid {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--t-primary) 42%, transparent);
+  background: color-mix(in srgb, var(--t-primary) 6%, transparent);
+}
+.genre-picker .gp-pill.invalid {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--t-invalid) 58%, transparent);
+  background: color-mix(in srgb, var(--t-invalid) 6%, transparent);
+}
+.genre-picker .gp-pill-prefix {
+  color: var(--t-text-muted);
+  opacity: 0.7;
+  font-size: 12px;
+  line-height: 1;
+}
+.genre-picker .gp-pill.valid .gp-pill-prefix {
+  color: var(--t-primary);
+  opacity: 1;
+}
+.genre-picker .gp-pill-field {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.genre-picker .gp-pill-measure {
+  position: absolute;
+  left: 0;
+  top: 0;
+  visibility: hidden;
+  white-space: pre;
+  font-size: 12px;
+}
+.genre-picker .gp-pill-input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--t-primary);
+  min-width: 2ch;
+  padding: 0;
+}
+.genre-picker .gp-pill.invalid .gp-pill-input {
+  color: var(--t-invalid);
+}
+.genre-picker .gp-pill-input::placeholder {
+  color: var(--t-text-muted);
+}
+/* Inline autocomplete remainder of the top match, behind the caret. */
+.genre-picker .gp-pill-ghost {
+  font-size: 12px;
+  color: var(--t-text-muted);
+  opacity: 0.5;
+  white-space: pre;
+  pointer-events: none;
+}
+.genre-picker .gp-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+.genre-picker .gp-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--t-text-muted);
+  border: 1px solid var(--t-border);
+  background: transparent;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    transform 150ms var(--ease-out-quart);
+}
+.genre-picker .gp-opt:hover {
+  color: var(--t-text);
+  background: color-mix(in srgb, var(--t-text) 7%, transparent);
+}
+.genre-picker .gp-opt:active {
+  transform: scale(0.96);
+}
+.genre-picker .gp-opt:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* Search results popover, anchored below the engine. */
+.genre-picker .gp-pop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 8px;
+  z-index: 30;
+  background: var(--t-surface);
+  border: 1px solid var(--t-border);
+  border-radius: 12px;
+  padding: 5px;
+  max-height: 220px;
+  overflow-y: auto;
+  list-style: none;
+  margin-block: 8px 0;
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--t-text) 5%, transparent),
+    0 2px 4px color-mix(in srgb, var(--t-text) 8%, transparent),
+    0 8px 24px color-mix(in srgb, var(--t-text) 12%, transparent);
+  transform-origin: top center;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.985);
+  pointer-events: none;
+  transition:
+    opacity 160ms var(--ease-out-expo),
+    transform 160ms var(--ease-out-expo);
+}
+.genre-picker .gp-pop.open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.genre-picker .gp-opt-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--t-text);
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: background-color 120ms ease;
+}
+.genre-picker .gp-opt-row:hover,
+.genre-picker .gp-opt-row.active {
+  background: color-mix(in srgb, var(--t-primary) 9%, transparent);
+}
+.genre-picker .gp-opt-row mark {
+  background: transparent;
+  color: var(--t-primary);
+  font-weight: 500;
+}
+.genre-picker .gp-opt-empty {
+  font-size: 13px;
+  color: var(--t-invalid);
+  padding: 8px 10px;
+}
+@keyframes gp-chip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+    filter: blur(4px);
+  }
+}
+.genre-picker .enter {
+  animation: gp-chip-in 220ms var(--ease-out-quart) both;
+}
+@keyframes gp-cap-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+.genre-picker .shake {
+  animation: gp-cap-shake 220ms var(--ease-out-quart);
+}
+@media (prefers-reduced-motion: reduce) {
+  .genre-picker .enter,
+  .genre-picker .shake {
+    animation: none;
+  }
+  .genre-picker .gp-pop {
+    transition: none;
+  }
+}
+
+/* Combined playlist card on the onboarding first-pick dialog: the identity
+   (cover + name) and the description writing surface live in ONE container. A
+   softly-darker header zones off the identity so the description body reads as a
+   distinct surface — without the harsh step a full surface-dim block would give.
+   No overflow:hidden so the genre picker's popover can escape in edit mode; the
+   header rounds its own top corners instead. The whole card lifts into a focus
+   ring when anything inside it is focused. */
+.dialog-playlist-card {
+  position: relative;
+  border: 1px solid color-mix(in srgb, var(--t-border) 70%, transparent);
+  border-radius: 14px;
+  background: var(--t-surface);
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--t-text) 4%, transparent),
+    0 1px 2px color-mix(in srgb, var(--t-text) 5%, transparent),
+    0 6px 16px color-mix(in srgb, var(--t-text) 6%, transparent);
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+.dialog-playlist-card:focus-within {
+  border-color: color-mix(in srgb, var(--t-primary) 55%, transparent);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--t-primary) 12%, transparent),
+    0 6px 16px color-mix(in srgb, var(--t-text) 6%, transparent);
+}
+.dialog-playlist-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--t-surface-dim) 32%, var(--t-surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--t-border) 40%, transparent);
+  /* Inner radius = card radius − border width, so the header fills the rounded
+     top corners cleanly without overflow:hidden clipping the genre popover. */
+  border-top-left-radius: 13px;
+  border-top-right-radius: 13px;
+}
+
+/* Read-only "Examples" inspiration bar on the onboarding first-pick dialog. Kept
+   background-free so the corner legend (which masks the top border) is the same
+   colour as the bar's interior — a fill would stamp a lighter patch behind the
+   legend. Only the genre chips are filled; everything else is outline + text. */
+.desc-examples {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid color-mix(in srgb, var(--t-border) 70%, transparent);
+  border-radius: 12px;
+  padding: 13px 12px 13px 14px;
+  background: transparent;
+}
+.desc-examples-legend {
+  position: absolute;
+  top: -7px;
+  left: 12px;
+  padding: 0 6px;
+  background: var(--t-bg);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--t-text-muted);
+}
+.desc-examples-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: desc-examples-swap 260ms var(--ease-out-quart);
+}
+.desc-examples-quote {
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--t-text);
+}
+.desc-examples-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.desc-examples-chip {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  color: var(--t-primary);
+  border: 1px solid color-mix(in srgb, var(--t-primary) 32%, transparent);
+  background: color-mix(in srgb, var(--t-primary) 9%, transparent);
+}
+.desc-examples-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Primary-tinted so it reads as the action — it fills the genre chips, which use
+   the same accent — while the neutral shuffle stays its secondary pair. */
+.desc-examples-pick {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 13px;
+  border: 1px solid color-mix(in srgb, var(--t-primary) 30%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--t-primary) 7%, transparent);
+  color: var(--t-primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background-color 150ms ease,
+    transform 120ms ease;
+}
+.desc-examples-pick:hover {
+  border-color: color-mix(in srgb, var(--t-primary) 50%, transparent);
+  background: color-mix(in srgb, var(--t-primary) 12%, transparent);
+}
+.desc-examples-pick:active {
+  transform: scale(0.97);
+}
+.desc-examples-shuffle {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--t-border) 80%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--t-text-muted);
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    transform 120ms ease;
+}
+/* Extend the 30px control to a 40px hit target without growing the visual. */
+.desc-examples-shuffle::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+}
+.desc-examples-shuffle:hover {
+  color: var(--t-text);
+  border-color: var(--t-border);
+}
+.desc-examples-shuffle:active {
+  transform: scale(0.96);
+}
+.desc-examples-shuffle svg {
+  transition: transform 400ms var(--ease-out-expo);
+}
+.desc-examples-shuffle:active svg {
+  transform: rotate(180deg);
+}
+@keyframes desc-examples-swap {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .desc-examples-body {
+    animation: none;
+  }
+  .desc-examples-shuffle svg {
+    transition: none;
+  }
+}
+
 /* Accessibility: disable View Transition animations for reduced motion */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),

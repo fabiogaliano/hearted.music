@@ -89,7 +89,7 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 		// searches that could leave a hit hidden in the unfocused column.
 		const matchesQuery = (p: Playlist) => {
 			if (!isSearching) return true;
-			const haystack = `${p.name} ${p.description ?? ""}`.toLowerCase();
+			const haystack = `${p.name} ${p.match_intent ?? ""}`.toLowerCase();
 			return haystack.includes(normalizedQuery);
 		};
 		return {
@@ -457,7 +457,6 @@ export function PlaylistsScreen({ theme, accountId }: PlaylistsScreenProps) {
 							isExpanded={isExpanded}
 							startRect={startRect}
 							expandedRect={expandedRect}
-							extensionStatus={extensionStatus}
 							accountId={accountId}
 							onClose={handleClose}
 							onToggleTarget={handleToggleTarget}

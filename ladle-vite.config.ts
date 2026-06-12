@@ -77,6 +77,18 @@ export default defineConfig({
 					),
 				),
 			},
+			// playlists.functions pulls drizzle/postgres into the graph via its
+			// server-fn handlers. OnboardingDescriptionDialog reaches it through the
+			// genre quick-picks query + pills autosave hook; the stub cuts that chain.
+			{
+				find: /^@\/lib\/server\/playlists\.functions$/,
+				replacement: fileURLToPath(
+					new URL(
+						"./src/__mocks__/playlists.functions.stub.ts",
+						import.meta.url,
+					),
+				),
+			},
 			// ClaimHandleStep's availability/claim RPCs. The stub is controllable so
 			// its stories can drive every availability state (see the stub header).
 			{
@@ -84,18 +96,6 @@ export default defineConfig({
 				replacement: fileURLToPath(
 					new URL(
 						"./src/__mocks__/account-handle.functions.stub.ts",
-						import.meta.url,
-					),
-				),
-			},
-			// OnboardingDescriptionDialog's save path. The real module pulls a server
-			// function (and its drizzle queries) into the bundle via the commit step;
-			// the controllable stub cuts that chain and drives every save outcome.
-			{
-				find: /^@\/lib\/extension\/playlist-description-save$/,
-				replacement: fileURLToPath(
-					new URL(
-						"./src/__mocks__/playlist-description-save.stub.ts",
 						import.meta.url,
 					),
 				),

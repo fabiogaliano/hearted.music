@@ -12,6 +12,7 @@ function createPlaylist(overrides: Partial<Playlist>): Playlist {
 		spotify_id: "spotify-1",
 		name: "Ambient Morning",
 		description: null,
+		match_intent: null,
 		snapshot_id: null,
 		is_public: true,
 		song_count: 42,

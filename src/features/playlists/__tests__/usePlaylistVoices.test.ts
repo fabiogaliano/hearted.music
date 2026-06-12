@@ -14,6 +14,7 @@ function createPlaylist(overrides: Partial<Playlist>): Playlist {
 		spotify_id: "spotify-1",
 		name: "Test Playlist",
 		description: null,
+		match_intent: null,
 		snapshot_id: null,
 		is_public: true,
 		song_count: 0,
@@ -81,19 +82,22 @@ describe("computePlaylistVoices", () => {
 		expect(weights.state).toBe("songs-lead");
 	});
 
-	it("derives hasDescription from a Playlist by trimming whitespace-only descriptions", () => {
+	it("derives hasDescription from a Playlist by trimming whitespace-only match intent", () => {
 		// song_count is non-zero so hasDescription actually influences the curve;
-		// at 0 songs the cold-start branch ignores it.
+		// at 0 songs the cold-start branch ignores it. hasDescription now keys off
+		// match_intent (our own intent text), not the Spotify description.
 		const whitespace = renderHook(() =>
-			usePlaylistVoices(createPlaylist({ song_count: 50, description: "   " })),
+			usePlaylistVoices(
+				createPlaylist({ song_count: 50, match_intent: "   " }),
+			),
 		).result.current;
 		const real = renderHook(() =>
 			usePlaylistVoices(
-				createPlaylist({ song_count: 50, description: "A real one." }),
+				createPlaylist({ song_count: 50, match_intent: "A real one." }),
 			),
 		).result.current;
 		const nullDesc = renderHook(() =>
-			usePlaylistVoices(createPlaylist({ song_count: 50, description: null })),
+			usePlaylistVoices(createPlaylist({ song_count: 50, match_intent: null })),
 		).result.current;
 
 		expect(whitespace.hasDescription).toBe(false);

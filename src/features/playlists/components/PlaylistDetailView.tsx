@@ -1,29 +1,26 @@
 import { XIcon } from "@phosphor-icons/react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type CSSProperties, useCallback, useState } from "react";
+import { toast } from "sonner";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
-import { isExtensionInstalled } from "@/lib/extension/detect";
-import {
-	commitPlaylistDescriptionSave,
-	outcomeFromCommittedPlaylistDescriptionSave,
-	type PreparedPlaylistDescriptionSave,
-	preparePlaylistDescriptionSave,
-	syncPreparedPlaylistMetadata,
-} from "@/lib/extension/playlist-description-save";
-import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
+import {
+	savePlaylistGenrePills,
+	savePlaylistMatchIntent,
+} from "@/lib/server/playlists.functions";
 import { fonts } from "@/lib/theme/fonts";
 import type { ThemeConfig } from "@/lib/theme/types";
-import type { ExtensionAvailability } from "../hooks/useExtensionStatus";
-import { playlistKeys } from "../queries";
-import { DescriptionConflictDialog } from "./DescriptionConflictDialog";
-import { PlaylistDescription } from "./PlaylistDescription";
+import { accountTopGenresQueryOptions, playlistKeys } from "../queries";
 import { PlaylistTrackList } from "./PlaylistTrackList";
 import { PlaylistVoices } from "./PlaylistVoices";
+import { PlaylistWritingSurface } from "./PlaylistWritingSurface";
 
-const EXTENSION_STORE_URL =
-	"https://chromewebstore.google.com/detail/everything-you-ever-heart/ohaaafmgbbfohhjhogonolonpjhhfohk";
+// Pills are an ordered, deduped list, so positional comparison is enough to tell
+// whether the draft differs from what's saved.
+function genresEqual(a: string[], b: string[]): boolean {
+	return a.length === b.length && a.every((genre, index) => genre === b[index]);
+}
 
 type ThemeCssVariables = {
 	"--t-bg": string;
@@ -59,7 +56,6 @@ interface PlaylistDetailViewProps {
 		width: number;
 		height: number;
 	};
-	extensionStatus: ExtensionAvailability;
 	accountId: string;
 	onClose: () => void;
 	onToggleTarget: (id: string, isTarget: boolean) => void;
@@ -69,14 +65,7 @@ interface PlaylistDetailViewProps {
 type DescriptionEditState =
 	| { kind: "idle" }
 	| { kind: "saving" }
-	| {
-			kind: "confirm-overwrite";
-			commit: PreparedPlaylistDescriptionSave;
-			latestDescription: string | null;
-	  }
-	| { kind: "failed" }
-	| { kind: "reconnect-required" }
-	| { kind: "extension-required" };
+	| { kind: "failed" };
 
 export function PlaylistDetailView({
 	theme,
@@ -85,15 +74,23 @@ export function PlaylistDetailView({
 	isExpanded,
 	startRect,
 	expandedRect,
-	extensionStatus,
 	accountId,
 	onClose,
 	onToggleTarget,
 	onMetadataChanged,
 }: PlaylistDetailViewProps) {
 	const queryClient = useQueryClient();
-	const [isEditingDescription, setIsEditingDescription] = useState(false);
+	const [isEditing, setIsEditing] = useState(false);
 	const [draftDescription, setDraftDescription] = useState("");
+	// Genres commit through the same Save as the intent text (no autosave), so
+	// they're held as a draft and a locally-tracked saved set, seeded from the
+	// playlist and re-synced to the server's sanitized pills after each save.
+	const [draftGenres, setDraftGenres] = useState<string[]>(
+		playlist.genre_pills,
+	);
+	const [savedGenres, setSavedGenres] = useState<string[]>(
+		playlist.genre_pills,
+	);
 	const [editState, setEditState] = useState<DescriptionEditState>({
 		kind: "idle",
 	});
@@ -113,106 +110,73 @@ export function PlaylistDetailView({
 		});
 	}, [accountId, queryClient]);
 
-	const commitDescriptionSave = useCallback(
-		async (commit: PreparedPlaylistDescriptionSave) => {
-			setEditState({ kind: "saving" });
+	// Seeds the genre picker's quick-picks from the account's library genres.
+	const { data: topGenres } = useQuery(accountTopGenresQueryOptions(accountId));
 
-			const result = await commitPlaylistDescriptionSave(commit);
-			if (result.ok) {
-				setIsEditingDescription(false);
-				setEditState({ kind: "idle" });
-				onMetadataChanged();
-				invalidatePlaylists();
-				return;
-			}
-
-			const outcome = outcomeFromCommittedPlaylistDescriptionSave(result);
-
-			if (outcome.status === "reconnect-required") {
-				setEditState({ kind: "reconnect-required" });
-				return;
-			}
-
-			if (outcome.status === "extension-unavailable") {
-				const installed = await isExtensionInstalled();
-				if (!installed) {
-					setEditState({ kind: "extension-required" });
-					return;
-				}
-			}
-
-			setEditState({ kind: "failed" });
-		},
-		[invalidatePlaylists, onMetadataChanged],
-	);
-
-	const handleEditDescription = () => {
-		setDraftDescription(playlist.description || "");
-		setIsEditingDescription(true);
+	const handleEdit = () => {
+		setDraftDescription(playlist.match_intent || "");
+		setDraftGenres(savedGenres);
+		setIsEditing(true);
 		setEditState({ kind: "idle" });
 	};
 
-	const handleSaveDescription = async () => {
-		if (extensionStatus !== "available") return;
-		if (draftDescription === (playlist.description ?? "")) {
-			setIsEditingDescription(false);
+	// One Save commits both halves to our own DB — nothing touches Spotify.
+	// Genres are app-local and low-stakes, so they persist first and a genre
+	// failure only toasts; the match_intent leg holds the surface open on failure
+	// so the user can retry.
+	const handleSave = async () => {
+		const nextIntent = draftDescription.trim();
+		const intentChanged = nextIntent !== (playlist.match_intent ?? "");
+		const genresChanged = !genresEqual(draftGenres, savedGenres);
+
+		if (!intentChanged && !genresChanged) {
+			setIsEditing(false);
 			setEditState({ kind: "idle" });
 			return;
 		}
 
 		setEditState({ kind: "saving" });
-		const preparation = await preparePlaylistDescriptionSave({
-			spotifyId: playlist.spotify_id,
-			baselineDescription: playlist.description,
-			nextDescription: draftDescription,
-		});
 
-		if (preparation.status === "ready") {
-			await commitDescriptionSave(preparation.commit);
-			return;
+		if (genresChanged) {
+			try {
+				const result = await savePlaylistGenrePills({
+					data: { playlistId: playlist.id, genres: draftGenres },
+				});
+				setSavedGenres(result.pills);
+				setDraftGenres(result.pills);
+				invalidatePlaylists();
+			} catch (error) {
+				console.error("Failed to save genre pills:", error);
+				toast.error("Couldn't save genres — try again.");
+			}
 		}
 
-		if (preparation.status === "conflict") {
-			const syncResult = await syncPreparedPlaylistMetadata(preparation.commit);
-			if (!syncResult.ok) {
+		if (intentChanged) {
+			try {
+				await savePlaylistMatchIntent({
+					data: {
+						playlistId: playlist.id,
+						matchIntent: nextIntent.length > 0 ? nextIntent : null,
+					},
+				});
+			} catch (error) {
+				console.error("Failed to save match intent:", error);
 				setEditState({ kind: "failed" });
 				return;
 			}
-
 			onMetadataChanged();
-			invalidatePlaylists();
-			setEditState({
-				kind: "confirm-overwrite",
-				commit: preparation.commit,
-				latestDescription: preparation.latestDescription,
-			});
-			return;
 		}
 
-		if (preparation.status === "reconnect-required") {
-			setEditState({ kind: "reconnect-required" });
-			return;
-		}
-
-		if (preparation.status === "extension-required") {
-			setEditState({ kind: "extension-required" });
-			return;
-		}
-
-		setEditState({ kind: "failed" });
-	};
-
-	const handleCancelDescription = () => {
-		setIsEditingDescription(false);
-		setDraftDescription(playlist.description || "");
+		setIsEditing(false);
 		setEditState({ kind: "idle" });
+		invalidatePlaylists();
 	};
 
-	const handleDraftDescriptionChange = (value: string) => {
-		setDraftDescription(value);
-		if (editState.kind === "confirm-overwrite") {
-			setEditState({ kind: "idle" });
-		}
+	const handleCancel = () => {
+		setIsEditing(false);
+		setDraftDescription(playlist.match_intent || "");
+		setDraftGenres(savedGenres);
+		setEditState({ kind: "idle" });
 	};
 
 	const themeVariables: ThemeCssVariables = {
@@ -336,86 +300,46 @@ export function PlaylistDetailView({
 								</h2>
 							)}
 
-							<PlaylistDescription
-								description={playlist.description}
-								trackCount={playlist.song_count ?? 0}
-								isExpanded={isExpanded}
-								isEditing={isEditingDescription}
-								draftDescription={draftDescription}
-								extensionStatus={extensionStatus}
-								onEdit={handleEditDescription}
-								onSave={handleSaveDescription}
-								onCancel={handleCancelDescription}
-								onDraftChange={handleDraftDescriptionChange}
-							/>
-
-							{editState.kind === "confirm-overwrite" && isExpanded && (
-								<DescriptionConflictDialog
-									latestDescription={editState.latestDescription}
-									draftDescription={draftDescription || null}
-									onKeepMine={() => {
-										void commitDescriptionSave(editState.commit);
-									}}
-									onUseSpotifys={() => setEditState({ kind: "idle" })}
-								/>
-							)}
-
-							{editState.kind === "failed" && isExpanded && (
-								<div
-									role="alert"
-									className="mb-4 flex max-w-lg items-center gap-2"
-								>
-									<span
-										aria-hidden="true"
-										className="theme-primary-bg inline-block size-1.5 flex-shrink-0 rounded-full"
-									/>
-									<p
-										className="theme-text-muted text-xs leading-relaxed"
-										style={{ fontFamily: fonts.body }}
-									>
-										Something went sideways saving that. Try again?
-									</p>
-								</div>
-							)}
-
-							{editState.kind === "reconnect-required" && isExpanded && (
-								<div className="mb-4 flex items-center gap-3">
-									<p
-										className="theme-primary text-xs"
-										style={{ fontFamily: fonts.body }}
-									>
-										Reconnect to Spotify, then repeat this edit.
-									</p>
-									<SpotifyReconnectLink />
-								</div>
-							)}
-
-							{editState.kind === "extension-required" && isExpanded && (
-								<div className="mb-4 flex items-center gap-3">
-									<p
-										className="theme-primary text-xs"
-										style={{ fontFamily: fonts.body }}
-									>
-										The extension is required to edit playlists.
-									</p>
-									<a
-										href={EXTENSION_STORE_URL}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="hover-border-brighten inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs tracking-widest uppercase active:scale-[0.98]"
-										style={{ fontFamily: fonts.body }}
-									>
-										Install extension
-										<span className="text-xs" style={{ opacity: 0.45 }}>
-											↗
-										</span>
-									</a>
-								</div>
-							)}
-
 							{isExpanded && (
+								<div className="mt-2 mb-4 max-w-lg">
+									<PlaylistWritingSurface
+										description={playlist.match_intent}
+										genres={savedGenres}
+										isEditing={isEditing}
+										draftDescription={draftDescription}
+										draftGenres={draftGenres}
+										topGenres={topGenres?.genres}
+										isSaving={editState.kind === "saving"}
+										descriptionViewTransitionName="playlist-description"
+										onEditDescription={handleEdit}
+										onEditGenres={handleEdit}
+										onDraftDescriptionChange={setDraftDescription}
+										onDraftGenresChange={setDraftGenres}
+										onSave={handleSave}
+										onCancel={handleCancel}
+										editFooter={
+											editState.kind === "failed" ? (
+												<div role="alert" className="flex items-center gap-2">
+													<span
+														aria-hidden="true"
+														className="theme-primary-bg inline-block size-1.5 flex-shrink-0 rounded-full"
+													/>
+													<p
+														className="theme-text-muted text-xs leading-relaxed"
+														style={{ fontFamily: fonts.body }}
+													>
+														Something went sideways saving that. Try again?
+													</p>
+												</div>
+											) : null
+										}
+									/>
+								</div>
+							)}
+
+							{isExpanded && !isEditing && (
 								<div
-									className="max-w-lg"
+									className="mt-3 max-w-lg"
 									style={{
 										opacity: 1,
 										transition: "opacity 200ms var(--ease-out-expo) 100ms",
@@ -428,9 +352,9 @@ export function PlaylistDetailView({
 
 						{/* Row 2, col 2: self-end pins to the bottom of the row, which is
 						   pinned to the bottom of the cover by the grid's 1fr/auto rows.
-						   Hidden during description editing — Save/Cancel are the only
-						   verbs that should be live in that mode. */}
-						{!isEditingDescription && (
+						   Hidden during editing — Save/Cancel are the only verbs that
+						   should be live in that mode. */}
+						{!isEditing && (
 							<div
 								className="flex min-w-0 flex-wrap items-center gap-3 self-end"
 								style={{
@@ -451,15 +375,6 @@ export function PlaylistDetailView({
 									</span>
 									{isTarget ? "In Matching" : "Add to Matching"}
 								</button>
-
-								{extensionStatus === "unavailable" && isExpanded && (
-									<span
-										className="theme-text-muted text-xs italic"
-										style={{ fontFamily: fonts.body }}
-									>
-										Extension required for edits
-									</span>
-								)}
 							</div>
 						)}
 					</div>

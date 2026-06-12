@@ -29,14 +29,14 @@ vi.mock("@/lib/server/playlists.functions", () => ({
 		.mockResolvedValue({ tracks: [], nextCursor: null }),
 	setPlaylistTargetMutation: vi.fn(),
 	flushPlaylistManagementSession: vi.fn(),
+	getAccountTopGenres: vi.fn().mockResolvedValue({ genres: [] }),
+	savePlaylistGenrePills: vi
+		.fn()
+		.mockResolvedValue({ success: true, pills: [] }),
 }));
 
 vi.mock("@/lib/extension/detect", () => ({
 	isExtensionInstalled: () => mockIsExtensionInstalled(),
-}));
-
-vi.mock("@/lib/extension/playlist-write-acknowledgement", () => ({
-	updatePlaylistAcknowledged: vi.fn(),
 }));
 
 const theme: ThemeConfig = {
@@ -161,11 +161,13 @@ describe("PlaylistsScreen", () => {
 			spotify_id: `sp-${id}`,
 			name,
 			description: null,
+			match_intent: null,
 			snapshot_id: null,
 			is_public: true,
 			song_count: 5,
 			is_target: isTarget,
 			image_url: null,
+			genre_pills: [],
 			created_at: "2026-03-28T00:00:00Z",
 			updated_at: "2026-03-28T00:00:00Z",
 		};
@@ -397,11 +399,13 @@ describe("PlaylistsScreen", () => {
 						spotify_id: "sp1",
 						name: "yilkes!",
 						description: "2!!",
+						match_intent: "2!!",
 						snapshot_id: null,
 						is_public: true,
 						song_count: 3,
 						is_target: false,
 						image_url: null,
+						genre_pills: [],
 						created_at: "2026-03-28T00:00:00Z",
 						updated_at: "2026-03-28T00:00:00Z",
 					},

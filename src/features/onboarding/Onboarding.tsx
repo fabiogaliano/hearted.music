@@ -83,7 +83,9 @@ const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 		),
 	},
 	"flag-playlists": {
-		render: (ctx) => <FlagPlaylistsStep playlists={ctx.playlists} />,
+		render: (ctx) => (
+			<FlagPlaylistsStep playlists={ctx.playlists} accountId={ctx.accountId} />
+		),
 		fullBleed: true,
 	},
 	"pick-demo-song": {

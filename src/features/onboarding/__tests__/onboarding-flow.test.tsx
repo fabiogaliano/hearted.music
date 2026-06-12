@@ -48,6 +48,19 @@ vi.mock("../components/SyncingStep", () => ({
 	),
 }));
 
+// Stub the teaching dialog so the flag-playlists step doesn't pull the real
+// dialog's TanStack Query (genre quick-picks) into this provider-light
+// integration render; selecting a playlist opens it on every pick now.
+vi.mock("../components/OnboardingDescriptionDialog", () => ({
+	OnboardingDescriptionDialog: ({ onClose }: { onClose: () => void }) => (
+		<div data-testid="onboarding-description-dialog">
+			<button type="button" onClick={onClose} data-testid="dialog-close">
+				close
+			</button>
+		</div>
+	),
+}));
+
 vi.mock("@tanstack/react-router", () => ({
 	useLocation: () => mockUseLocation(),
 	useNavigate: () => vi.fn(),

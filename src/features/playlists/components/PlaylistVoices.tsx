@@ -25,8 +25,8 @@ export function PlaylistVoices({
 	const weights = weightsProp ?? derived;
 	const [isHelpOpen, setIsHelpOpen] = useState(false);
 
-	// PlaylistDescription's empty-state CTA already invites the user; layering a
-	// second indicator on top of an absent description doubles the noise.
+	// The writing surface's empty-state CTA already invites the user; layering a
+	// second indicator on top of absent intent text doubles the noise.
 	if (!weights.hasDescription) return null;
 
 	return (
@@ -36,7 +36,7 @@ export function PlaylistVoices({
 				style={{ fontFamily: fonts.body }}
 			>
 				<span>
-					Set the vibe. New songs find their way here from your description.
+					Set the vibe. New songs find their way here from what you write.
 				</span>
 				<HelpButton onClick={() => setIsHelpOpen(true)} />
 			</span>

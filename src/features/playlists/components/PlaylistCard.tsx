@@ -107,7 +107,7 @@ export function PlaylistCard({
 					>
 						{playlist.name}
 					</h3>
-					{playlist.description ? (
+					{playlist.match_intent ? (
 						<p
 							className="theme-text-muted mt-1 truncate text-sm"
 							style={{
@@ -116,9 +116,9 @@ export function PlaylistCard({
 									? "playlist-description"
 									: "none",
 							}}
-							title={playlist.description}
+							title={playlist.match_intent}
 						>
-							{playlist.description}
+							{playlist.match_intent}
 						</p>
 					) : (
 						<p
@@ -202,13 +202,13 @@ export function PlaylistCard({
 				>
 					{playlist.name}
 				</p>
-				{playlist.description && (
+				{playlist.match_intent && (
 					<p
 						className="theme-text-muted truncate text-xs"
 						style={{ fontFamily: fonts.body }}
-						title={playlist.description}
+						title={playlist.match_intent}
 					>
-						{playlist.description}
+						{playlist.match_intent}
 					</p>
 				)}
 			</div>

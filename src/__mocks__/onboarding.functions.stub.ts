@@ -17,10 +17,11 @@ import type { ThemeColor } from "@/lib/theme/types";
 export interface OnboardingPlaylist {
 	id: string;
 	name: string;
-	description: string | null;
+	matchIntent: string | null;
 	imageUrl: string | null;
 	songCount: number | null;
 	isTarget: boolean;
+	genrePills: string[];
 }
 
 export interface SyncStats {
