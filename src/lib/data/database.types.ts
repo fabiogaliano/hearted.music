@@ -1776,7 +1776,9 @@ export type Database = {
 				Row: {
 					content_hash: string;
 					created_at: string;
-					document: Json;
+					document: Json | null;
+					fetch_source: string | null;
+					fetch_status: string;
 					has_annotations: boolean;
 					id: string;
 					schema_version: number;
@@ -1787,7 +1789,9 @@ export type Database = {
 				Insert: {
 					content_hash: string;
 					created_at?: string;
-					document: Json;
+					document?: Json | null;
+					fetch_source?: string | null;
+					fetch_status: string;
 					has_annotations?: boolean;
 					id?: string;
 					schema_version?: number;
@@ -1798,7 +1802,9 @@ export type Database = {
 				Update: {
 					content_hash?: string;
 					created_at?: string;
-					document?: Json;
+					document?: Json | null;
+					fetch_source?: string | null;
+					fetch_status?: string;
 					has_annotations?: boolean;
 					id?: string;
 					schema_version?: number;
@@ -2136,6 +2142,7 @@ export type Database = {
 					audio_energy: number | null;
 					audio_tempo: number | null;
 					audio_valence: number | null;
+					content_fetch_status: string | null;
 					display_state: string | null;
 					has_analysis: boolean | null;
 					has_newness: boolean | null;
@@ -2397,6 +2404,7 @@ export type Database = {
 					audio_energy: number;
 					audio_tempo: number;
 					audio_valence: number;
+					content_fetch_status: string;
 					display_state: string;
 					id: string;
 					liked_at: string;
@@ -2426,6 +2434,7 @@ export type Database = {
 					audio_energy: number;
 					audio_tempo: number;
 					audio_valence: number;
+					content_fetch_status: string;
 					display_state: string;
 					id: string;
 					liked_at: string;
@@ -2458,6 +2467,7 @@ export type Database = {
 					audio_energy: number;
 					audio_tempo: number;
 					audio_valence: number;
+					content_fetch_status: string;
 					display_state: string;
 					id: string;
 					liked_at: string;
