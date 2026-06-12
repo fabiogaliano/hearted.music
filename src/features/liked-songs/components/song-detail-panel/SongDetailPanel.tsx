@@ -23,7 +23,7 @@ import {
 } from "./SongDetailPanelSurface";
 import type { PlaylistsPanel, SongDetail } from "./song-detail-types";
 
-const PANEL_WIDTH = "clamp(440px, 50vw, 760px)";
+export const PANEL_WIDTH = "clamp(440px, 50vw, 760px)";
 
 interface SongDetailPanelProps {
 	song: SongDetail;

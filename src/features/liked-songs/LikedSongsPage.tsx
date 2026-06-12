@@ -11,11 +11,13 @@ import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { useIsomorphicLayoutEffect } from "@/lib/hooks/useIsomorphicLayoutEffect";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { useAuthenticatedTheme } from "@/lib/theme/authenticated-theme";
-import { fonts } from "@/lib/theme/fonts";
 import { LikedSongsHeader } from "./components/LikedSongsHeader";
 import { LikedSongsList } from "./components/LikedSongsList";
 import { SongSelectionBar } from "./components/SongSelectionBar";
-import { SongDetailPanel } from "./components/song-detail-panel/SongDetailPanel";
+import {
+	PANEL_WIDTH,
+	SongDetailPanel,
+} from "./components/song-detail-panel/SongDetailPanel";
 import type { LockedCta } from "./components/song-detail-panel/SongDetailPanelSurface";
 import { likedSongToSongDetail } from "./components/song-detail-panel/song-detail-adapter";
 import { UnlockConfirmDialog } from "./components/UnlockConfirmDialog";
@@ -51,7 +53,6 @@ export function LikedSongsPage({
 }: LikedSongsPageProps) {
 	const queryClient = useQueryClient();
 	const { isEnrichmentRunning } = useActiveJobs(accountId);
-	const [isDarkMode, setIsDarkMode] = useState(true);
 	const walkthroughSong: WalkthroughSong | null =
 		onboardingSession?.status === "song-walkthrough"
 			? onboardingSession.song
@@ -111,14 +112,6 @@ export function LikedSongsPage({
 		confirmUnlock,
 		dismiss: dismissFlow,
 	} = useSongUnlock(accountId);
-
-	useShortcut({
-		key: "mod+d",
-		handler: () => setIsDarkMode((prev) => !prev),
-		description: "Toggle dark mode",
-		scope: "liked-list",
-		category: "actions",
-	});
 
 	const queryFilter = toQueryFilter(filter);
 	const handleFilterChange = useCallback(
@@ -393,7 +386,7 @@ export function LikedSongsPage({
 		<div
 			className="relative min-h-150 transition-[padding-right] duration-300 motion-reduce:transition-none"
 			style={{
-				paddingRight: isExpanded ? "45vw" : "0px",
+				paddingRight: isExpanded ? PANEL_WIDTH : "0px",
 				transitionTimingFunction: "var(--ease-out-quart)",
 			}}
 		>
@@ -483,26 +476,6 @@ export function LikedSongsPage({
 					onCancel={cancelConfirmation}
 					onDismiss={handleFlowDismiss}
 				/>
-			)}
-
-			{!isExpanded && !selectionMode && (
-				<button
-					type="button"
-					className="theme-border-color fixed right-6 bottom-6 z-40 cursor-pointer rounded-full border px-3 py-2 backdrop-blur-md transition-transform hover:scale-105"
-					style={{
-						background: "color-mix(in srgb, var(--t-surface) 93%, transparent)",
-					}}
-					onClick={() => setIsDarkMode((prev) => !prev)}
-					aria-label="Toggle dark mode"
-					title="Toggle dark mode (⌘D)"
-				>
-					<span
-						className="theme-text-muted text-xs tracking-widest uppercase"
-						style={{ fontFamily: fonts.body }}
-					>
-						{isDarkMode ? "Dark" : "Light"}
-					</span>
-				</button>
 			)}
 		</div>
 	);
