@@ -35,6 +35,14 @@ vi.mock(
 	},
 );
 
+// resolveAccountLabel runs a real getAccountById DB query on every recovered
+// ref (it's a log-label helper). Unmocked, it connects to the placeholder
+// DATABASE_URL in CI and hangs past the 5s test timeout; locally a live
+// Supabase masks it. Stub it so these tests stay DB-free and deterministic.
+vi.mock("@/lib/observability/account-label", () => ({
+	resolveAccountLabel: vi.fn(async (accountId: string) => `acct:${accountId}`),
+}));
+
 import { getLatestJobExecutionMeasurement } from "@/lib/platform/jobs/execution-measurements";
 import { findTerminalActiveRefs } from "../queries";
 import { applyLibraryProcessingChange } from "../service";
