@@ -2,10 +2,7 @@ import { Result } from "better-result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
-import {
-	GeniusFetchError,
-	GeniusNotFoundError,
-} from "@/lib/shared/errors/external/genius";
+import { GeniusFetchError } from "@/lib/shared/errors/external/genius";
 import {
 	LlmProviderError,
 	LlmRateLimitError,
@@ -92,10 +89,11 @@ describe("analyzeSongBatch", () => {
 				cached: false,
 			}),
 		);
+		// The prefetch loop calls fetchAndStoreOutcome (returns LyricsOutcome).
 		mockFetchAndStoreLyrics = vi.fn();
 
 		deps = {
-			lyricsService: { fetchAndStoreLyrics: mockFetchAndStoreLyrics } as never,
+			lyricsService: { fetchAndStoreOutcome: mockFetchAndStoreLyrics } as never,
 			songAnalysisService: { analyzeSong: mockAnalyzeSong } as never,
 			concurrency: 5,
 		};
@@ -116,6 +114,8 @@ describe("analyzeSongBatch", () => {
 			skippedUnconfirmedLyrics: [],
 			skippedUnconfirmedAudio: [],
 			skippedUnconfirmedBoth: [],
+			retryCandidateSongIds: [],
+			blockedSkipErrors: new Map(),
 		});
 		expect(mockAnalyzeSong).not.toHaveBeenCalled();
 	});
@@ -125,8 +125,9 @@ describe("analyzeSongBatch", () => {
 			vi.mocked(mockGetAudioFeaturesBatch).mockResolvedValueOnce(
 				Result.ok(new Map<string, AudioFeature>()),
 			);
+			// not_found is a confirmed-missing outcome (no error, outcome kind tells us)
 			mockFetchAndStoreLyrics.mockResolvedValueOnce(
-				Result.err(new GeniusNotFoundError("Artist", "Song s1")),
+				Result.ok({ kind: "not_found" }),
 			);
 
 			const songs = [makeSong("s1")];
@@ -137,6 +138,22 @@ describe("analyzeSongBatch", () => {
 			expect(outcome.failedSongIds).toEqual([]);
 			expect(mockAnalyzeSong).not.toHaveBeenCalled();
 		});
+
+		it("skips songs when Genius page confirms instrumental and audio is missing", async () => {
+			vi.mocked(mockGetAudioFeaturesBatch).mockResolvedValueOnce(
+				Result.ok(new Map<string, AudioFeature>()),
+			);
+			// instrumental is also confirmed-missing for lyrics purposes
+			mockFetchAndStoreLyrics.mockResolvedValueOnce(
+				Result.ok({ kind: "instrumental", source: "genius_page" }),
+			);
+
+			const songs = [makeSong("s1")];
+			const outcome = await analyzeSongBatch(songs, deps);
+
+			expect(outcome.skippedConfirmedInputsMissing).toEqual(["s1"]);
+			expect(mockAnalyzeSong).not.toHaveBeenCalled();
+		});
 	});
 
 	describe("skipped unconfirmed lyrics bucket", () => {
@@ -144,6 +161,7 @@ describe("analyzeSongBatch", () => {
 			vi.mocked(mockGetAudioFeaturesBatch).mockResolvedValueOnce(
 				Result.ok(new Map<string, AudioFeature>()),
 			);
+			// A transient provider error (e.g. network timeout) stays unconfirmed
 			mockFetchAndStoreLyrics.mockResolvedValueOnce(
 				Result.err(new GeniusFetchError("Timeout", 500)),
 			);
@@ -162,8 +180,9 @@ describe("analyzeSongBatch", () => {
 			vi.mocked(mockGetAudioFeaturesBatch).mockResolvedValueOnce(
 				Result.err({ message: "DB unavailable" } as never),
 			);
+			// not_found outcome → confirmed missing lyrics side
 			mockFetchAndStoreLyrics.mockResolvedValueOnce(
-				Result.err(new GeniusNotFoundError("Artist", "Song s1")),
+				Result.ok({ kind: "not_found" }),
 			);
 
 			const songs = [makeSong("s1")];
@@ -250,11 +269,23 @@ describe("analyzeSongBatch", () => {
 			// Songs needing lyrics fetch: s1, s2, s3 (s4 has lyrics)
 			// s1: confirmed missing, s2: found (but also has audio), s3: found
 			mockFetchAndStoreLyrics
+				.mockResolvedValueOnce(Result.ok({ kind: "not_found" }))
 				.mockResolvedValueOnce(
-					Result.err(new GeniusNotFoundError("Artist", "Song s1")),
+					Result.ok({
+						kind: "lyrics",
+						text: "Found lyrics for s2",
+						source: "genius",
+						confidence: 0.9,
+					}),
 				)
-				.mockResolvedValueOnce(Result.ok("Found lyrics for s2"))
-				.mockResolvedValueOnce(Result.ok("Found lyrics for s3"));
+				.mockResolvedValueOnce(
+					Result.ok({
+						kind: "lyrics",
+						text: "Found lyrics for s3",
+						source: "genius",
+						confidence: 0.9,
+					}),
+				);
 
 			mockAnalyzeSong
 				.mockResolvedValueOnce(

@@ -38,10 +38,16 @@ vi.mock("@/lib/domains/enrichment/lyrics/service", async (importOriginal) => {
 	return {
 		...actual,
 		LyricsService: vi.fn().mockImplementation(function () {
-			return { fetchAndStoreLyrics: vi.fn() };
+			return { fetchAndStoreOutcome: vi.fn() };
 		}),
 	};
 });
+
+// Prevent LrclibProvider from making real network calls in pipeline tests.
+vi.mock("@/lib/domains/enrichment/lyrics/providers/lrclib", () => ({
+	createLrclibProvider: vi.fn().mockReturnValue({}),
+	LrclibProvider: vi.fn(),
+}));
 
 // Mock data modules to avoid DB calls
 vi.mock("@/lib/platform/jobs/repository", () => ({
@@ -137,11 +143,11 @@ describe("Pipeline Lyrics Integration", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
-		// Set up the mock lyrics service
+		// Set up the mock lyrics service — pipeline now calls fetchAndStoreOutcome
 		mockFetchAndStoreLyrics = vi.fn();
 		(LyricsService as unknown as ReturnType<typeof vi.fn>).mockImplementation(
 			function () {
-				return { fetchAndStoreLyrics: mockFetchAndStoreLyrics };
+				return { fetchAndStoreOutcome: mockFetchAndStoreLyrics };
 			},
 		);
 
@@ -163,8 +169,22 @@ describe("Pipeline Lyrics Integration", () => {
 	describe("prefetchLyrics behavior", () => {
 		it("fetches lyrics for songs without existing lyrics", async () => {
 			mockFetchAndStoreLyrics
-				.mockResolvedValueOnce(Result.ok("Lyrics for song 1"))
-				.mockResolvedValueOnce(Result.ok("Lyrics for song 2"));
+				.mockResolvedValueOnce(
+					Result.ok({
+						kind: "lyrics",
+						text: "Lyrics for song 1",
+						source: "genius",
+						confidence: 0.9,
+					}),
+				)
+				.mockResolvedValueOnce(
+					Result.ok({
+						kind: "lyrics",
+						text: "Lyrics for song 2",
+						source: "genius",
+						confidence: 0.9,
+					}),
+				);
 
 			const pipeline = await unwrapPipeline();
 
@@ -177,17 +197,22 @@ describe("Pipeline Lyrics Integration", () => {
 
 			// Should have fetched lyrics for both songs
 			expect(mockFetchAndStoreLyrics).toHaveBeenCalledTimes(2);
+			// Pipeline calls fetchAndStoreOutcome with a params object
 			expect(mockFetchAndStoreLyrics).toHaveBeenCalledWith(
-				"1",
-				"Artist 1",
-				"Song 1",
-				expect.objectContaining({ distiller: expect.any(Function) }),
+				expect.objectContaining({
+					songId: "1",
+					artist: "Artist 1",
+					song: "Song 1",
+					distiller: expect.any(Function),
+				}),
 			);
 			expect(mockFetchAndStoreLyrics).toHaveBeenCalledWith(
-				"2",
-				"Artist 2",
-				"Song 2",
-				expect.objectContaining({ distiller: expect.any(Function) }),
+				expect.objectContaining({
+					songId: "2",
+					artist: "Artist 2",
+					song: "Song 2",
+					distiller: expect.any(Function),
+				}),
 			);
 		});
 
@@ -205,7 +230,12 @@ describe("Pipeline Lyrics Integration", () => {
 			];
 
 			mockFetchAndStoreLyrics.mockResolvedValueOnce(
-				Result.ok("Fetched lyrics for song 2"),
+				Result.ok({
+					kind: "lyrics",
+					text: "Fetched lyrics for song 2",
+					source: "genius",
+					confidence: 0.9,
+				}),
 			);
 
 			await pipeline.analyzeSongs("account-123", songs);
@@ -213,20 +243,20 @@ describe("Pipeline Lyrics Integration", () => {
 			// Should only fetch for song without lyrics
 			expect(mockFetchAndStoreLyrics).toHaveBeenCalledTimes(1);
 			expect(mockFetchAndStoreLyrics).toHaveBeenCalledWith(
-				"2",
-				"Artist 2",
-				"Song 2",
-				expect.objectContaining({ distiller: expect.any(Function) }),
+				expect.objectContaining({
+					songId: "2",
+					artist: "Artist 2",
+					song: "Song 2",
+					distiller: expect.any(Function),
+				}),
 			);
 		});
 
 		it("handles lyrics fetch failure gracefully when audio features exist", async () => {
-			const { GeniusNotFoundError } = await import(
-				"@/lib/shared/errors/external/genius"
-			);
-
+			// not_found is a confirmed-missing signal; when audio IS available, the
+			// song is still analysable (audio-only path).
 			mockFetchAndStoreLyrics.mockResolvedValueOnce(
-				Result.err(new GeniusNotFoundError("Artist 1", "Song 1")),
+				Result.ok({ kind: "not_found" }),
 			);
 			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
 				Result.ok(new Map([["1", audioFeatureFor("1")]])),
@@ -289,7 +319,12 @@ describe("Pipeline Lyrics Integration", () => {
 			});
 
 			mockFetchAndStoreLyrics.mockResolvedValueOnce(
-				Result.ok("Prefetched lyrics content"),
+				Result.ok({
+					kind: "lyrics",
+					text: "Prefetched lyrics content",
+					source: "genius",
+					confidence: 0.9,
+				}),
 			);
 
 			const pipeline = await unwrapPipeline();
@@ -358,9 +393,6 @@ describe("Pipeline Lyrics Integration", () => {
 		}
 
 		it("Genius not_found + audio confirmed missing => terminal confirmed missing", async () => {
-			const { GeniusNotFoundError } = await import(
-				"@/lib/shared/errors/external/genius"
-			);
 			const mockAnalyzeSong = vi.fn();
 			const { SongAnalysisService } = await import("../song-analysis");
 			(
@@ -369,8 +401,9 @@ describe("Pipeline Lyrics Integration", () => {
 				return { analyzeSong: mockAnalyzeSong };
 			});
 
+			// not_found outcome is confirmed-missing (no retry needed)
 			mockFetchAndStoreLyrics.mockResolvedValueOnce(
-				Result.err(new GeniusNotFoundError("A", "T")),
+				Result.ok({ kind: "not_found" }),
 			);
 			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
 				Result.ok(new Map()),
@@ -396,7 +429,12 @@ describe("Pipeline Lyrics Integration", () => {
 			const mockAnalyzeSong = await withMockAnalyzer();
 
 			mockFetchAndStoreLyrics.mockResolvedValueOnce(
-				Result.ok("Some lyrics here"),
+				Result.ok({
+					kind: "lyrics",
+					text: "Some lyrics here",
+					source: "genius",
+					confidence: 0.9,
+				}),
 			);
 			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
 				Result.ok(new Map()),
@@ -424,13 +462,11 @@ describe("Pipeline Lyrics Integration", () => {
 		});
 
 		it("analyzes when only audio features are available (no lyrics)", async () => {
-			const { GeniusNotFoundError } = await import(
-				"@/lib/shared/errors/external/genius"
-			);
 			const mockAnalyzeSong = await withMockAnalyzer();
 
+			// not_found → confirmed-missing; song has audio so it is still analysable
 			mockFetchAndStoreLyrics.mockResolvedValueOnce(
-				Result.err(new GeniusNotFoundError("A", "T")),
+				Result.ok({ kind: "not_found" }),
 			);
 			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
 				Result.ok(new Map([["audio-only", audioFeatureFor("audio-only")]])),
@@ -458,9 +494,6 @@ describe("Pipeline Lyrics Integration", () => {
 		});
 
 		it("Genius not_found + audio query errored => unconfirmed_audio (non-terminal)", async () => {
-			const { GeniusNotFoundError } = await import(
-				"@/lib/shared/errors/external/genius"
-			);
 			const { DatabaseError } = await import("@/lib/shared/errors/database");
 			const mockAnalyzeSong = vi.fn();
 			const { SongAnalysisService } = await import("../song-analysis");
@@ -470,8 +503,9 @@ describe("Pipeline Lyrics Integration", () => {
 				return { analyzeSong: mockAnalyzeSong };
 			});
 
+			// not_found = lyrics confirmed-missing; audio DB error = audio unconfirmed
 			mockFetchAndStoreLyrics.mockResolvedValueOnce(
-				Result.err(new GeniusNotFoundError("A", "T")),
+				Result.ok({ kind: "not_found" }),
 			);
 			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
 				Result.err(

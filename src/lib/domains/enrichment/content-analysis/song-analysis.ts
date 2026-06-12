@@ -11,7 +11,9 @@ import type { LlmService } from "@/lib/integrations/llm/service";
 import type { DbError } from "@/lib/shared/errors/database";
 import type { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
 import type { LlmError } from "@/lib/shared/errors/external/llm";
+import type { LyricsOutcome } from "../lyrics/types/lyrics.types";
 import { getLyricsFormatLegend } from "../lyrics/utils/lyrics-formatter";
+import { hasInstrumentalGenre } from "./instrumental-genres";
 import { type RecordLlmUsageInput, recordLlmUsage } from "./llm-usage-queries";
 import {
 	ACTIVE_INSTRUMENTAL_VERSION,
@@ -42,6 +44,15 @@ export interface AnalyzeSongInput {
 	audioFeatures?: AudioFeature | null;
 	genres?: string[];
 	instrumentalness?: number;
+	/**
+	 * Typed outcome from the lyrics fetch (Decision 5). When present, the
+	 * classifier uses it as the highest-precedence signal (step 1 of Decision 3):
+	 *   - kind "instrumental" → classified instrumental regardless of other signals
+	 *   - kind "lyrics"       → classified lyrical when above the word floor
+	 *   - kind "not_found"    → no fetch signal; fall through to genre / instrumentalness
+	 * When absent the classifier falls through directly to genre / instrumentalness.
+	 */
+	fetchOutcome?: LyricsOutcome;
 	// Prebuilt prompt blocks for the v17+ {example} / {annotations} slots. The service NEVER
 	// fetches golds or annotations itself (WP1 safety constraint); a caller assembles these and
 	// passes them in. Both default to "" — older prompt versions have no slot to fill, so the
@@ -57,6 +68,25 @@ export interface AnalyzeSongResult {
 	cached: boolean;
 }
 
+/**
+ * Returned by analyzeSong when the classifier resolves to "unknown" — no
+ * authoritative signal (lyrics, instrumental flag, genre keyword, or
+ * instrumentalness ≥ 0.9) was available. The song is recorded as a retry
+ * candidate: the caller should persist this state without writing an analysis
+ * row, so the song remains selectable once better data arrives.
+ */
+export interface AnalyzeSongRetryCandidate {
+	kind: "retry_candidate";
+	songId: string;
+}
+
+/** Type guard: narrows `AnalyzeSongResult | AnalyzeSongRetryCandidate` to a retry candidate. */
+export function isRetryCandidate(
+	result: AnalyzeSongResult | AnalyzeSongRetryCandidate,
+): result is AnalyzeSongRetryCandidate {
+	return "kind" in result && result.kind === "retry_candidate";
+}
+
 export interface BatchAnalysisResult {
 	succeeded: AnalyzeSongResult[];
 	failed: Array<{
@@ -69,14 +99,29 @@ export interface BatchAnalysisResult {
 
 type SongAnalysisServiceError = DbError | LlmError | AnalysisFailedError;
 
-const INSTRUMENTAL_WORD_THRESHOLD = 50;
+/**
+ * Minimum word count for a lyrics string to be considered "real lyrics" at
+ * precedence step 2. Mirrors the previous detectInstrumental threshold.
+ */
+const LYRICS_WORD_FLOOR = 50;
+
+/**
+ * Minimum Spotify instrumentalness value that counts as a positive instrumental
+ * signal (step 4 of Decision 3). Values below this threshold carry no vote.
+ */
+const INSTRUMENTALNESS_HIGH_THRESHOLD = 0.9;
 
 export class SongAnalysisService {
 	constructor(private readonly llm: LlmService) {}
 
 	async analyzeSong(
 		input: AnalyzeSongInput,
-	): Promise<Result<AnalyzeSongResult, SongAnalysisServiceError>> {
+	): Promise<
+		Result<
+			AnalyzeSongResult | AnalyzeSongRetryCandidate,
+			SongAnalysisServiceError
+		>
+	> {
 		const { songId } = input;
 
 		const existingResult = await getSongAnalysis(songId);
@@ -91,7 +136,16 @@ export class SongAnalysisService {
 			});
 		}
 
-		const isInstrumental = this.detectInstrumental(input);
+		const contentType = this.classifyContentType(input);
+
+		if (contentType === "unknown") {
+			console.info(
+				`[SongAnalysis] song ${songId} (${input.artist} – ${input.title}) classified unknown: no authoritative signal from fetch outcome, genres, or instrumentalness ≥ 0.9. Recording as retry candidate.`,
+			);
+			return Result.ok({ kind: "retry_candidate", songId });
+		}
+
+		const isInstrumental = contentType === "instrumental";
 
 		const prompt = isInstrumental
 			? this.buildInstrumentalPrompt(input)
@@ -249,7 +303,10 @@ export class SongAnalysisService {
 			const result = await this.analyzeSong(input);
 
 			if (Result.isOk(result)) {
-				succeeded.push(result.value);
+				// retry_candidate rows are not stored analyses; skip them here
+				if (!isRetryCandidate(result.value)) {
+					succeeded.push(result.value);
+				}
 			} else {
 				failed.push({
 					songId: input.songId,
@@ -266,21 +323,55 @@ export class SongAnalysisService {
 		return Result.ok({ succeeded, failed });
 	}
 
-	private detectInstrumental(input: AnalyzeSongInput): boolean {
-		// Decide purely on the lyrics we actually have, never on Spotify's
-		// instrumentalness score. That score is unreliable for vocal tracks — it
-		// tagged Lorde's "Ribs" at 0.61 and Hot Chip's "Need You Now" at 0.70,
-		// which sent fully-lyrical songs down the instrumental path and produced a
-		// read the panel can't render ("Quiet one"). A song we hold real lyrics for
-		// gets the lyrical read; only genuinely word-less (or near-word-less) songs
-		// fall through to the instrumental read.
-		const lyrics = input.lyrics?.trim() ?? "";
-		if (lyrics.length === 0) {
-			return true;
+	/**
+	 * Classifies a song's content type using a fixed precedence of trustworthy
+	 * signals (design.md Decision 3). First hit wins:
+	 *
+	 * 1. Confirmed-instrumental fetch outcome (LRCLIB flag or Genius page) → instrumental
+	 * 2. Real lyrics in hand (at or above LYRICS_WORD_FLOOR words) → lyrical
+	 * 3. Genres intersect the curated instrumental keyword set → instrumental
+	 * 4. instrumentalness ≥ INSTRUMENTALNESS_HIGH_THRESHOLD → instrumental
+	 * 5. Otherwise → unknown (no LLM call; recorded as retry candidate)
+	 *
+	 * Instrumentalness below 0.9 carries no vote in either direction.
+	 */
+	classifyContentType(
+		input: AnalyzeSongInput,
+	): "lyrical" | "instrumental" | "unknown" {
+		// Step 1: confirmed-instrumental fetch outcome
+		if (input.fetchOutcome?.kind === "instrumental") {
+			return "instrumental";
 		}
 
-		const wordCount = lyrics.split(/\s+/).length;
-		return wordCount < INSTRUMENTAL_WORD_THRESHOLD;
+		// Step 2: real lyrics in hand (fetch outcome "lyrics" OR lyrics text present)
+		const lyrics = input.lyrics?.trim() ?? "";
+		const wordCount = lyrics.length > 0 ? lyrics.split(/\s+/).length : 0;
+		if (wordCount >= LYRICS_WORD_FLOOR) {
+			return "lyrical";
+		}
+
+		// Step 3: genre keyword match against curated instrumental set
+		if (
+			input.genres &&
+			input.genres.length > 0 &&
+			hasInstrumentalGenre(input.genres)
+		) {
+			return "instrumental";
+		}
+
+		// Step 4: high-extreme instrumentalness only (≥ 0.9)
+		const instrumentalness =
+			input.instrumentalness ??
+			input.audioFeatures?.instrumentalness ??
+			undefined;
+		if (
+			instrumentalness !== undefined &&
+			instrumentalness >= INSTRUMENTALNESS_HIGH_THRESHOLD
+		) {
+			return "instrumental";
+		}
+
+		return "unknown";
 	}
 
 	private buildPrompt(input: AnalyzeSongInput): string {

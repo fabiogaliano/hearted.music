@@ -50,7 +50,9 @@ import {
 	GeniusParseError,
 } from "@/lib/shared/errors/external/genius";
 import { chunkArray } from "@/lib/shared/utils/concurrency";
+import { createLrclibProvider } from "../lyrics/providers/lrclib";
 import { LyricsService } from "../lyrics/service";
+import type { LyricsOutcome } from "../lyrics/types/lyrics.types";
 import { ensureAnnotationDistillations } from "./annotation-distillation";
 import {
 	type AnalyzePlaylistInput,
@@ -94,6 +96,10 @@ export interface SongToAnalyze {
 	artist: string;
 	title: string;
 	lyrics: string;
+	/** Album name for LRCLIB's full track signature (/api/get requires it). */
+	albumName?: string;
+	/** Track duration in milliseconds for LRCLIB's ±2s matching. */
+	durationMs?: number;
 }
 
 /** Playlist to be analyzed */
@@ -150,6 +156,8 @@ type LyricsPrefetchError =
 interface LyricsCacheEntry {
 	lyrics: string | null;
 	error?: LyricsPrefetchError;
+	/** The resolved LyricsOutcome when the fetch succeeded, threaded into AnalyzeSongInput. */
+	outcome?: LyricsOutcome;
 }
 
 type LyricsCache = Map<string, LyricsCacheEntry>;
@@ -164,7 +172,7 @@ function isGeniusError(error: unknown): error is GeniusError {
 }
 
 function toLyricsPrefetchError(
-	error: GeniusError,
+	error: unknown,
 	song: SongToAnalyze,
 ): LyricsPrefetchError {
 	if (error instanceof GeniusNotFoundError) {
@@ -175,7 +183,10 @@ function toLyricsPrefetchError(
 			error,
 		);
 	}
-	return error;
+	if (isGeniusError(error)) return error;
+	return new PipelineConfigError(
+		`Unexpected lyrics prefetch failure for ${song.artist} - ${song.title}`,
+	);
 }
 
 type InputEvidence = "present" | "missing_confirmed" | "missing_unconfirmed";
@@ -192,6 +203,19 @@ function classifyLyricsEvidence(
 	if (!entry) return "missing_unconfirmed";
 
 	if (entry.lyrics !== null && entry.lyrics.trim().length > 0) return "present";
+
+	// Confirmed-instrumental and not_found outcomes are authoritative "no text
+	// lyrics" signals (replacing the old temporary seam that collapsed both to
+	// NoLyricsAvailableError). The song still proceeds to analysis via the
+	// classifier — it is the classifier's job to route instrumental → instrumental
+	// prompt and unknown → retry candidate. For the input-evidence gate the only
+	// question is "did we get a definitive answer?", so both are confirmed.
+	if (
+		entry.outcome?.kind === "instrumental" ||
+		entry.outcome?.kind === "not_found"
+	) {
+		return "missing_confirmed";
+	}
 
 	// NoLyricsAvailableError is the pipeline-level "no lyrics exist" signal.
 	// Empty success is treated the same way: the provider returned, just with
@@ -237,7 +261,10 @@ export class AnalysisPipeline {
 
 		// Initialize lyrics service if token was provided
 		this.lyricsService = config.geniusToken
-			? new LyricsService({ accessToken: config.geniusToken })
+			? new LyricsService(
+					{ accessToken: config.geniusToken },
+					createLrclibProvider(),
+				)
 			: null;
 	}
 
@@ -354,8 +381,8 @@ export class AnalysisPipeline {
 
 		for (const chunk of chunks) {
 			const promises = chunk.map(async (song) => {
-				const cachedLyrics = lyricsCache.get(song.songId);
-				const lyrics = cachedLyrics?.lyrics ?? song.lyrics;
+				const cachedEntry = lyricsCache.get(song.songId);
+				const lyrics = cachedEntry?.lyrics ?? song.lyrics;
 				const af = audioFeaturesMap.get(song.songId) ?? null;
 
 				const input: AnalyzeSongInput = {
@@ -366,6 +393,9 @@ export class AnalysisPipeline {
 					audioFeatures: af,
 					genres: genresMap.get(song.songId),
 					instrumentalness: af?.instrumentalness ?? undefined,
+					// Thread the fetch outcome into the classifier so step 1
+					// (confirmed-instrumental) fires when appropriate.
+					fetchOutcome: cachedEntry?.outcome,
 				};
 
 				const result = await this.songAnalysis.analyzeSong(input);
@@ -379,6 +409,10 @@ export class AnalysisPipeline {
 			for (const { result } of results) {
 				progress.done++;
 				if (Result.isOk(result)) {
+					// retry_candidate means the classifier found no authoritative signal;
+					// the song is not analyzed and should be retried on the next run.
+					// Count it as succeeded (not failed) so the pipeline does not record
+					// a terminal failure row for an honest "unknown" state.
 					progress.succeeded++;
 				} else {
 					progress.failed++;
@@ -539,6 +573,9 @@ export class AnalysisPipeline {
 						artist: track.artists[0] ?? "Unknown Artist",
 						title: track.name,
 						lyrics: "", // Lyrics need to be fetched separately (via lyrics service)
+						// Carry album + duration so LRCLIB /api/get is exercised on this path.
+						albumName: track.album_name ?? undefined,
+						durationMs: track.duration_ms ?? undefined,
 					},
 				];
 			},
@@ -583,29 +620,36 @@ export class AnalysisPipeline {
 		// Fetch lyrics in parallel (LyricsService handles rate limiting internally)
 		const fetchPromises = songsNeedingLyrics.map(async (song) => {
 			try {
-				const lyricsResult = await lyricsService.fetchAndStoreLyrics(
-					song.songId,
-					song.artist,
-					song.title,
-					{ distiller: ensureAnnotationDistillations },
-				);
-				if (Result.isOk(lyricsResult)) {
-					cache.set(song.songId, { lyrics: lyricsResult.value });
+				const outcomeResult = await lyricsService.fetchAndStoreOutcome({
+					songId: song.songId,
+					artist: song.artist,
+					song: song.title,
+					// SongToAnalyze now carries albumName/durationMs (§6.1 GAP close):
+					// these enable LRCLIB's full-signature /api/get on the pipeline path.
+					albumName: song.albumName,
+					durationMs: song.durationMs,
+					distiller: ensureAnnotationDistillations,
+				});
+				if (Result.isOk(outcomeResult)) {
+					const outcome = outcomeResult.value;
+					if (outcome.kind === "lyrics") {
+						// Store the lyrics text AND the outcome so the classifier sees both.
+						cache.set(song.songId, { lyrics: outcome.text, outcome });
+					} else {
+						// instrumental or not_found: no text, but store the outcome so the
+						// classifier can apply the confirmed-instrumental signal at step 1.
+						cache.set(song.songId, { lyrics: null, outcome });
+					}
 				} else {
 					cache.set(song.songId, {
 						lyrics: null,
-						error: toLyricsPrefetchError(lyricsResult.error, song),
+						error: toLyricsPrefetchError(outcomeResult.error, song),
 					});
 				}
 			} catch (error) {
-				const prefetchError = isGeniusError(error)
-					? toLyricsPrefetchError(error, song)
-					: new PipelineConfigError(
-							`Unexpected lyrics prefetch failure for ${song.artist} - ${song.title}`,
-						);
 				cache.set(song.songId, {
 					lyrics: null,
-					error: prefetchError,
+					error: toLyricsPrefetchError(error, song),
 				});
 			}
 		});

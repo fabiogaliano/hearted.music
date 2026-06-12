@@ -8,7 +8,7 @@ import { DatabaseError } from "@/lib/shared/errors/database";
 import { recordLlmUsage } from "../llm-usage-queries";
 import type { SongRead } from "../read-schema";
 import type { AnalyzeSongInput } from "../song-analysis";
-import { SongAnalysisService } from "../song-analysis";
+import { isRetryCandidate, SongAnalysisService } from "../song-analysis";
 import { runAllRules } from "../voice/tier1-rules";
 
 vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
@@ -20,25 +20,39 @@ vi.mock("../llm-usage-queries", () => ({
 }));
 
 const service = new SongAnalysisService({} as any);
-const detect = (input: Partial<AnalyzeSongInput>) =>
-	(service as any).detectInstrumental({
+const classify = (input: Partial<AnalyzeSongInput>) =>
+	service.classifyContentType({
 		songId: "1",
 		artist: "Test",
 		title: "Test",
 		...input,
 	});
 
-describe("detectInstrumental", () => {
-	it("returns true when lyrics are null", () => {
-		expect(detect({ lyrics: null })).toBe(true);
+describe("classifyContentType (replaces detectInstrumental)", () => {
+	it("returns instrumental when lyrics are null", () => {
+		// No lyrics, no genre, no instrumentalness → unknown (not instrumental)
+		// The old detectInstrumental would have said true; now we need more signal.
+		expect(classify({ lyrics: null })).toBe("unknown");
 	});
 
-	it("returns true when lyrics are empty string", () => {
-		expect(detect({ lyrics: "" })).toBe(true);
+	it("returns instrumental when lyrics are empty and genres include 'instrumental'", () => {
+		expect(classify({ lyrics: "", genres: ["instrumental"] })).toBe(
+			"instrumental",
+		);
 	});
 
-	it("returns true when lyrics are whitespace only", () => {
-		expect(detect({ lyrics: "   " })).toBe(true);
+	it("returns instrumental for empty lyrics with instrumentalness ≥ 0.9", () => {
+		expect(classify({ lyrics: "", instrumentalness: 0.95 })).toBe(
+			"instrumental",
+		);
+	});
+
+	it("returns unknown for empty lyrics with no strong signal", () => {
+		expect(classify({ lyrics: "" })).toBe("unknown");
+	});
+
+	it("returns unknown for whitespace-only lyrics with no strong signal", () => {
+		expect(classify({ lyrics: "   " })).toBe("unknown");
 	});
 
 	// Regression: a song we hold real lyrics for must be analyzed lyrically even
@@ -46,28 +60,28 @@ describe("detectInstrumental", () => {
 	// score first and misrouted vocal songs (Lorde's "Ribs" at 0.61, Hot Chip's
 	// "Need You Now" at 0.70) to the instrumental read the panel can't render.
 	it("stays lyrical with full lyrics despite a high instrumentalness score", () => {
-		expect(detect({ lyrics: "word ".repeat(60), instrumentalness: 0.8 })).toBe(
-			false,
-		);
+		expect(
+			classify({ lyrics: "word ".repeat(60), instrumentalness: 0.8 }),
+		).toBe("lyrical");
 	});
 
 	it("stays lyrical with full lyrics despite high audioFeatures.instrumentalness", () => {
 		expect(
-			detect({
+			classify({
 				lyrics: "word ".repeat(60),
 				audioFeatures: { instrumentalness: 0.7 } as any,
 			}),
-		).toBe(false);
+		).toBe("lyrical");
 	});
 
-	it("returns true when lyrics have fewer than 50 words", () => {
-		expect(detect({ lyrics: "word ".repeat(30) })).toBe(true);
+	it("returns unknown (not lyrical) when lyrics have fewer than 50 words and no other signal", () => {
+		expect(classify({ lyrics: "word ".repeat(30) })).toBe("unknown");
 	});
 
-	it("returns false for lyrical song with sufficient words", () => {
-		expect(detect({ lyrics: "word ".repeat(60), instrumentalness: 0.1 })).toBe(
-			false,
-		);
+	it("returns lyrical for song with sufficient words", () => {
+		expect(
+			classify({ lyrics: "word ".repeat(60), instrumentalness: 0.1 }),
+		).toBe("lyrical");
 	});
 });
 
@@ -190,14 +204,20 @@ describe("analyzeSong cleanup pass", () => {
 			.mockResolvedValue(genResult(instrumental, 100));
 		const svc = new SongAnalysisService({ generateObject } as any);
 
+		// Use a confirmed-instrumental fetch outcome so the classifier routes to
+		// the instrumental prompt rather than returning retry_candidate.
 		const res = await svc.analyzeSong({
 			songId: "s2",
 			artist: "A",
 			title: "T",
 			lyrics: null,
+			fetchOutcome: { kind: "instrumental", source: "lrclib" },
 		});
 
 		expect(Result.isOk(res)).toBe(true);
+		if (Result.isOk(res)) {
+			expect(isRetryCandidate(res.value)).toBe(false);
+		}
 		// generation only — the rewrite pass is lyrical-only
 		expect(generateObject).toHaveBeenCalledTimes(1);
 
