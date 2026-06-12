@@ -37,22 +37,35 @@ export function linkPostHogToSentry(posthog: PostHogInterface): void {
 	const projectId = extractSentryProjectId(dsn);
 	if (!projectId) return;
 
-	// `SentryIntegration` is only present on posthog-js ≥1.176 and only when
-	// the Sentry shim is included in the bundle. Older versions or trimmed
-	// builds won't ship it.
-	const SentryIntegration = (
+	// Use the functional `sentryIntegration`, not the legacy `SentryIntegration`
+	// class. The class implements the Sentry v7 `setupOnce(addGlobalEventProcessor)`
+	// API; on Sentry v8+ `setupOnce` is called with no arguments, so it throws
+	// "o is not a function". The functional form returns a `processEvent`-based
+	// integration that's compatible with our @sentry/react v10.
+	const sentryIntegration = (
 		posthog as PostHogInterface & {
-			SentryIntegration?: new (
+			sentryIntegration?: (
 				posthog: PostHogInterface,
-				organization?: string,
-				projectId?: string,
-				prefix?: string,
-				severityAllowList?: Array<string>,
+				options?: {
+					organization?: string;
+					projectId?: number;
+					prefix?: string;
+					severityAllowList?: Array<string> | "*";
+					sendExceptionsToPostHog?: boolean;
+				},
 			) => SentryIntegration;
 		}
-	).SentryIntegration;
+	).sentryIntegration;
 
-	if (!SentryIntegration) return;
+	if (!sentryIntegration) return;
 
-	Sentry.addIntegration(new SentryIntegration(posthog, orgSlug, projectId));
+	Sentry.addIntegration(
+		sentryIntegration(posthog, {
+			organization: orgSlug,
+			// The functional integration types projectId as numeric; the DSN path
+			// segment is always digits, so a safe parse keeps the direct-link URLs
+			// correct.
+			projectId: Number(projectId),
+		}),
+	);
 }
