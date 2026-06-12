@@ -36,7 +36,7 @@ export function PublicHandleComingSoonPage({
 			</h1>
 
 			<p className="theme-text-muted mt-4 max-w-sm text-base leading-relaxed">
-				More public Hearted features are on the way.
+				More public hearted. features are on the way.
 			</p>
 
 			<Link

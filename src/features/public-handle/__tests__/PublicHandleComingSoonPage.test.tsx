@@ -39,7 +39,7 @@ describe("PublicHandleComingSoonPage", () => {
 		expect(screen.getByText("@fabio")).toBeInTheDocument();
 		expect(screen.getByText("Public profile coming soon.")).toBeInTheDocument();
 		expect(
-			screen.getByText("More public Hearted features are on the way."),
+			screen.getByText("More public hearted. features are on the way."),
 		).toBeInTheDocument();
 
 		const cta = screen.getByRole("link", { name: "Back to hearted." });
