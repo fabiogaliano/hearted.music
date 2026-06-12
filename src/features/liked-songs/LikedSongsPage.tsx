@@ -1,6 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import type {
@@ -64,12 +63,6 @@ export function LikedSongsPage({
 		billingState != null &&
 		!hasUnlimitedAccess(billingState) &&
 		billingState.creditBalance > 0;
-
-	const showPaywall =
-		!isWalkthrough &&
-		billingState != null &&
-		!hasUnlimitedAccess(billingState) &&
-		billingState.creditBalance === 0;
 
 	const [selectionMode, setSelectionMode] = useState(false);
 	const [selectedSongIds, setSelectedSongIds] = useState<Set<string>>(
@@ -412,12 +405,6 @@ export function LikedSongsPage({
 						onConfirm={handleUnlockConfirm}
 						onCancel={exitSelectionMode}
 					/>
-				)}
-
-				{showPaywall && billingState && (
-					<div className="theme-surface-dim-bg theme-border-color mb-6 rounded-xl border px-6 py-4">
-						<PaywallCTA billingState={billingState} />
-					</div>
 				)}
 
 				<LikedSongsList
