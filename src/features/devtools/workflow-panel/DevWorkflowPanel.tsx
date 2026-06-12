@@ -1,4 +1,8 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	type QueryClient,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import {
 	useCallback,
@@ -19,6 +23,7 @@ import {
 	type OnboardingStep,
 } from "@/lib/domains/library/accounts/onboarding-steps";
 import { ONBOARDING_SESSION_QUERY_KEY } from "@/lib/platform/auth/query-keys";
+import { claimHandleAndAdvance } from "@/lib/server/account-handle.functions";
 import {
 	getOnboardingSession,
 	markOnboardingComplete,
@@ -27,6 +32,61 @@ import {
 import { errorMessage } from "@/lib/shared/errors/error-message";
 
 const ONBOARDING_PANE_NAME = "Onboarding";
+
+/** Throwaway handle for the dev "jump to complete" shortcut. */
+function devHandle(): string {
+	const suffix = crypto
+		.randomUUID()
+		.replace(/[^a-z0-9]/g, "")
+		.slice(0, 12);
+	return `dev${suffix}`.slice(0, 30);
+}
+
+/**
+ * Dev shortcut prep: drive an arbitrary session to the state where
+ * markOnboardingComplete will fire. The gate only accepts an authoritative
+ * session that derives to `plan-selection`, which needs (a) a claimed handle
+ * and (b) the step column at plan-selection. We force the step, and if the
+ * derived status is still pinned to `claim-handle` (the account has no handle)
+ * we claim a throwaway handle and force the step again. Returns the
+ * authoritative session so the caller can decide whether to proceed.
+ */
+async function reachPlanSelection(
+	queryClient: QueryClient,
+): Promise<OnboardingAuthPayload> {
+	const fetchSession = () =>
+		queryClient.fetchQuery({
+			queryKey: ONBOARDING_SESSION_QUERY_KEY,
+			queryFn: () => getOnboardingSession(),
+		});
+
+	await saveOnboardingStep({ data: { step: "plan-selection" } });
+	let session = await fetchSession();
+
+	// Pinned to claim-handle means the account has no handle yet — the only
+	// genuine prerequisite the completion gate enforces beyond the step column.
+	if (session.session.status === "claim-handle") {
+		let claimed = false;
+		for (let attempt = 0; attempt < 3 && !claimed; attempt++) {
+			const res = await claimHandleAndAdvance({
+				data: { handle: devHandle() },
+			});
+			if (res.status === "claimed" || res.status === "already_owned") {
+				claimed = true;
+			} else if (!(res.status === "unavailable" && res.reason === "taken")) {
+				throw new Error(`Could not claim dev handle: ${res.status}`);
+			}
+		}
+		if (!claimed) {
+			throw new Error("Could not claim a dev handle after retries");
+		}
+		// claim_handle advances the step to flag-playlists; push back to plan-selection.
+		await saveOnboardingStep({ data: { step: "plan-selection" } });
+		session = await fetchSession();
+	}
+
+	return session;
+}
 
 export function DevWorkflowPanel() {
 	const queryClient = useQueryClient();
@@ -96,6 +156,12 @@ export function DevWorkflowPanel() {
 				setLastAction(`Setting step → ${nextStep}…`);
 
 				if (nextStep === "complete") {
+					// One-click complete from any step: satisfy the gate's prerequisites
+					// (handle + plan-selection) before calling it. Skip when already
+					// complete so we never rewrite the step column on a finished row.
+					if (currentStep !== "complete") {
+						await reachPlanSelection(queryClient);
+					}
 					// Completion must go through the structured gate — not saveOnboardingStep.
 					const result = await markOnboardingComplete();
 					// Patch cache with authoritative payload, then navigate via resolver.
