@@ -8,10 +8,7 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
-import {
-	fromSupabaseMaybe,
-	fromSupabaseSingle,
-} from "@/lib/shared/utils/result-wrappers/supabase";
+import { fromSupabaseSingle } from "@/lib/shared/utils/result-wrappers/supabase";
 
 async function hashToken(token: string): Promise<string> {
 	const encoder = new TextEncoder();
@@ -63,6 +60,10 @@ export async function createExtensionApiToken(
  * Validates an API token by hashing and looking up in the database.
  * Updates last_used_at on successful validation.
  * Returns the accountId if valid, null if not found or revoked.
+ *
+ * The lookup + last_used_at stamp are folded into the validate_extension_token
+ * RPC (UPDATE ... RETURNING) so the CF Worker spends one subrequest instead of
+ * a SELECT plus a fire-and-forget UPDATE.
  */
 export async function validateExtensionApiToken(
 	token: string,
@@ -70,26 +71,17 @@ export async function validateExtensionApiToken(
 	const tokenHash = await hashToken(token);
 	const supabase = createAdminSupabaseClient();
 
-	const result = await fromSupabaseMaybe(
-		supabase
-			.from("extension_api_token")
-			.select("id, account_id, revoked_at")
-			.eq("token_hash", tokenHash)
-			.is("revoked_at", null)
-			.single(),
-	);
+	const { data, error } = await supabase.rpc("validate_extension_token", {
+		p_token_hash: tokenHash,
+	});
 
-	if (Result.isError(result)) return result;
-	if (!result.value) return Result.ok(null);
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
 
-	const { id, account_id } = result.value;
-
-	await supabase
-		.from("extension_api_token")
-		.update({ last_used_at: new Date().toISOString() })
-		.eq("id", id);
-
-	return Result.ok(account_id);
+	return Result.ok(data ?? null);
 }
 
 /**

@@ -4,7 +4,11 @@ import type { Job, JobType } from "@/lib/platform/jobs/repository";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { fromSupabaseMaybe } from "@/lib/shared/utils/result-wrappers/supabase";
 
+// Includes the extension_sync parent so getLastCompletedSync/getActiveSync
+// reflect the async pipeline's canonical job, alongside the three phase rows
+// they have always covered.
 const SYNC_JOB_TYPES: JobType[] = [
+	"extension_sync",
 	"sync_liked_songs",
 	"sync_playlists",
 	"sync_playlist_tracks",

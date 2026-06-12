@@ -16,6 +16,12 @@ export const workerConfig = {
 		MAX_WORKER_CONCURRENCY,
 	),
 	pollIntervalMs: Number(process.env.WORKER_POLL_INTERVAL_MS ?? 5_000),
+	// Extension sync is woken primarily by LISTEN/NOTIFY (sub-second), so its
+	// poll loop only needs to be a safety net for NOTIFY's at-most-once delivery
+	// — a much longer interval than the library-processing loop.
+	extensionSyncPollIntervalMs: Number(
+		process.env.WORKER_EXTENSION_SYNC_POLL_INTERVAL_MS ?? 30_000,
+	),
 	heartbeatIntervalMs: Number(
 		process.env.WORKER_HEARTBEAT_INTERVAL_MS ?? 30_000,
 	),

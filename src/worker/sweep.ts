@@ -1,6 +1,12 @@
 import * as Sentry from "@sentry/bun";
 import { Result } from "better-result";
+import { createAdminSupabaseClient } from "@/lib/data/client";
 import { log } from "@/lib/observability/logger";
+import {
+	claimExtensionSyncPayloadCleanup,
+	markDeadExtensionSyncJobs,
+	sweepStaleExtensionSyncJobs,
+} from "@/lib/platform/jobs/extension-sync-jobs";
 import {
 	markDeadLibraryProcessingJobs,
 	sweepStaleLibraryProcessingJobs,
@@ -12,6 +18,8 @@ import {
 } from "@/lib/platform/jobs/walkthrough-preview-queue";
 import type { DbError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
+import { deleteOrphanedSyncPayloads } from "@/lib/workflows/extension-sync/payload-cleanup";
+import { deleteSyncPayload } from "@/lib/workflows/extension-sync/payload-storage";
 import {
 	type DeadLetterRecoveryResult,
 	recoverDeadLetteredLibraryProcessingJobs,
@@ -30,6 +38,16 @@ export type RecoverDeadLetteredFn = (
 
 export type RecoverTerminalRefsFn = () => Promise<TerminalRefRecoveryResult[]>;
 
+export type DeleteOrphanedPayloadsFn = (jobs: Job[]) => Promise<void>;
+
+export type ClaimPayloadCleanupFn = () => Promise<
+	Result<{ jobId: string; accountId: string; payloadPath: string }[], DbError>
+>;
+
+export type DeleteSyncPayloadFn = (
+	path: string,
+) => Promise<Result<void, DbError>>;
+
 export type SweepDeps = {
 	staleThreshold: string;
 	sweepStaleLibraryProcessingJobs: SweepRpc;
@@ -38,6 +56,11 @@ export type SweepDeps = {
 	recoverTerminalLibraryProcessingRefs: RecoverTerminalRefsFn;
 	sweepStaleWalkthroughPreviewJobs: SweepRpc;
 	markDeadWalkthroughPreviewJobs: SweepRpc;
+	sweepStaleExtensionSyncJobs: SweepRpc;
+	markDeadExtensionSyncJobs: SweepRpc;
+	deleteOrphanedSyncPayloads: DeleteOrphanedPayloadsFn;
+	claimExtensionSyncPayloadCleanup: ClaimPayloadCleanupFn;
+	deleteSyncPayload: DeleteSyncPayloadFn;
 };
 
 export function createDefaultSweepDeps(): SweepDeps {
@@ -49,6 +72,12 @@ export function createDefaultSweepDeps(): SweepDeps {
 		recoverTerminalLibraryProcessingRefs,
 		sweepStaleWalkthroughPreviewJobs,
 		markDeadWalkthroughPreviewJobs,
+		sweepStaleExtensionSyncJobs,
+		markDeadExtensionSyncJobs,
+		deleteOrphanedSyncPayloads,
+		claimExtensionSyncPayloadCleanup,
+		deleteSyncPayload: (path) =>
+			deleteSyncPayload(createAdminSupabaseClient(), path),
 	};
 }
 
@@ -169,6 +198,76 @@ export async function runSweepTick(deps: SweepDeps): Promise<void> {
 				jobIds: deadPreview.value.map((j) => j.id),
 			});
 		}
+	});
+
+	await runStep("sweep-stale-extension-sync-jobs", async () => {
+		const swept = await deps.sweepStaleExtensionSyncJobs(deps.staleThreshold);
+		if (Result.isError(swept)) {
+			log.error("extension-sync-sweep-error", { error: swept.error.message });
+		} else if (swept.value.length > 0) {
+			log.info("swept-stale-extension-sync-jobs", {
+				count: swept.value.length,
+				jobIds: swept.value.map((j) => j.id),
+			});
+		}
+	});
+
+	await runStep("mark-dead-extension-sync-jobs", async () => {
+		const dead = await deps.markDeadExtensionSyncJobs(deps.staleThreshold);
+		if (Result.isError(dead)) {
+			log.error("extension-sync-dead-letter-error", {
+				error: dead.error.message,
+			});
+			return;
+		}
+		if (dead.value.length === 0) return;
+
+		log.warn("dead-lettered-extension-sync-jobs", {
+			count: dead.value.length,
+			jobIds: dead.value.map((j) => j.id),
+		});
+		// The SQL dead-letter can't reach Storage; delete each dead job's
+		// now-orphaned payload here using the pointer in its progress.
+		await deps.deleteOrphanedSyncPayloads(dead.value);
+	});
+
+	// Payload-pointer cleanup: covers self-healed parents (whose runner never ran
+	// so the object was never deleted inline), completed jobs whose runner delete
+	// failed, and any other terminal path that left the pointer. Runs after the
+	// dead-letter step so newly-dead-lettered rows are already handled above and
+	// both paths remain correct. SKIP LOCKED in the RPC means concurrent ticks
+	// never double-process. Stripping the pointer atomically is the claim; if the
+	// Storage call fails afterward the object leaks (logged below; acceptable risk).
+	await runStep("cleanup-extension-sync-payloads", async () => {
+		const claimed = await deps.claimExtensionSyncPayloadCleanup();
+		if (Result.isError(claimed)) {
+			log.error("extension-sync-payload-cleanup-error", {
+				error: claimed.error.message,
+			});
+			return;
+		}
+		if (claimed.value.length === 0) return;
+
+		log.info("extension-sync-payload-cleanup", {
+			count: claimed.value.length,
+			jobIds: claimed.value.map((r) => r.jobId),
+		});
+
+		await Promise.all(
+			claimed.value.map(async (r) => {
+				const deleteResult = await deps.deleteSyncPayload(r.payloadPath);
+				if (Result.isError(deleteResult)) {
+					// Pointer already stripped from DB; the object leaks but the quota
+					// impact is bounded and logged for manual recovery if needed.
+					log.warn("extension-sync-payload-cleanup-delete-failed", {
+						jobId: r.jobId,
+						accountId: r.accountId,
+						payloadPath: r.payloadPath,
+						error: deleteResult.error.message,
+					});
+				}
+			}),
+		);
 	});
 }
 

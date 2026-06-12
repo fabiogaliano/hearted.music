@@ -1,0 +1,12 @@
+-- Parent job type for the asynchronous extension sync pipeline.
+--
+-- POST /api/extension/sync becomes a thin ingress that stages the payload in
+-- Storage and enqueues one `extension_sync` parent job; the Bun worker claims
+-- it and drives the three existing sync_* phase jobs (which remain as the
+-- per-phase progress rows the web app and extension already read).
+--
+-- Isolated in its own migration: Postgres forbids using a freshly ADDed enum
+-- value in the same transaction that adds it, and the Supabase migration runner
+-- executes each file in a transaction. The orchestration objects that reference
+-- 'extension_sync' live in the next migration.
+ALTER TYPE job_type ADD VALUE IF NOT EXISTS 'extension_sync';

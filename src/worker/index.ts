@@ -5,7 +5,14 @@ import { startDatabaseBackupScheduler } from "./db-backup";
 import { setWorkerFatalObserver } from "./fatal-handlers";
 import { setShuttingDown, setUnhealthy, startHealthServer } from "./health";
 import { startKeepAlive } from "./keep-alive";
+import { startJobCreatedListener } from "./notify-listener";
 import { getActiveJobCount, startPolling, stopPolling } from "./poll";
+import {
+	claimAndDispatchExtensionSyncJobs,
+	getActiveExtensionSyncJobCount,
+	startExtensionSyncPolling,
+	stopExtensionSyncPolling,
+} from "./poll-extension-sync";
 import {
 	getActiveWalkthroughPreviewJobCount,
 	startWalkthroughPreviewPolling,
@@ -39,6 +46,12 @@ async function main() {
 
 	const sweep = startDefaultSweep();
 
+	// Primary wake-up for extension sync: a job_created NOTIFY drains the queue
+	// immediately; the poll loop is the at-most-once-delivery safety net.
+	const notifyListener = startJobCreatedListener(() => {
+		void claimAndDispatchExtensionSyncJobs();
+	});
+
 	const shutdown = async (signal: string) => {
 		if (draining) return;
 		draining = true;
@@ -47,27 +60,32 @@ async function main() {
 		setShuttingDown();
 		stopPolling();
 		stopWalkthroughPreviewPolling();
+		stopExtensionSyncPolling();
+		await notifyListener.stop();
 		keepAlive.stop();
 		dbBackup.stop();
 		sweep.stop();
 
 		const deadline = Date.now() + workerConfig.drainTimeoutMs;
-		while (
-			(getActiveJobCount() > 0 || getActiveWalkthroughPreviewJobCount() > 0) &&
-			Date.now() < deadline
-		) {
+		const drainPending = () =>
+			getActiveJobCount() > 0 ||
+			getActiveWalkthroughPreviewJobCount() > 0 ||
+			getActiveExtensionSyncJobCount() > 0;
+		while (drainPending() && Date.now() < deadline) {
 			log.info("draining", {
 				activeJobs: getActiveJobCount(),
 				activePreviewJobs: getActiveWalkthroughPreviewJobCount(),
+				activeExtensionSyncJobs: getActiveExtensionSyncJobCount(),
 				remainingMs: deadline - Date.now(),
 			});
 			await Bun.sleep(1000);
 		}
 
-		if (getActiveJobCount() > 0 || getActiveWalkthroughPreviewJobCount() > 0) {
+		if (drainPending()) {
 			log.warn("drain-timeout", {
 				activeJobs: getActiveJobCount(),
 				activePreviewJobs: getActiveWalkthroughPreviewJobCount(),
+				activeExtensionSyncJobs: getActiveExtensionSyncJobCount(),
 			});
 		}
 
@@ -95,8 +113,19 @@ async function main() {
 		},
 	);
 
+	// Extension sync runs its own loop with a dedicated claim RPC so a large
+	// library sync can't starve enrichment / preview work, mirroring the
+	// walkthrough-preview isolation.
+	const extensionSyncLoop = startExtensionSyncPolling().catch((err) => {
+		log.error("extension-sync-poll-loop-error", { error: String(err) });
+		Sentry.captureException(err, {
+			tags: { loop: "extension-sync" },
+		});
+	});
+
 	await startPolling();
 	await walkthroughPreviewLoop;
+	await extensionSyncLoop;
 
 	if (!draining) {
 		log.error("poll-loop-exited-unexpectedly");

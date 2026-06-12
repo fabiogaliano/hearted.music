@@ -56,6 +56,11 @@ function makeDeps(overrides: Partial<SweepDeps> = {}): SweepDeps {
 		recoverTerminalLibraryProcessingRefs: vi.fn().mockResolvedValue([]),
 		sweepStaleWalkthroughPreviewJobs: vi.fn().mockResolvedValue(Result.ok([])),
 		markDeadWalkthroughPreviewJobs: vi.fn().mockResolvedValue(Result.ok([])),
+		sweepStaleExtensionSyncJobs: vi.fn().mockResolvedValue(Result.ok([])),
+		markDeadExtensionSyncJobs: vi.fn().mockResolvedValue(Result.ok([])),
+		deleteOrphanedSyncPayloads: vi.fn().mockResolvedValue(undefined),
+		claimExtensionSyncPayloadCleanup: vi.fn().mockResolvedValue(Result.ok([])),
+		deleteSyncPayload: vi.fn().mockResolvedValue(Result.ok(undefined)),
 		...overrides,
 	};
 }
@@ -508,6 +513,118 @@ describe("runSweepTick", () => {
 		expect(deps.markDeadWalkthroughPreviewJobs).toHaveBeenCalledWith(
 			"5 minutes",
 		);
+	});
+
+	it("calls deleteSyncPayload for each claimed payload path", async () => {
+		const claimed = [
+			{ jobId: "j-1", accountId: "acct-1", payloadPath: "acct-1/a.json" },
+			{ jobId: "j-2", accountId: "acct-2", payloadPath: "acct-2/b.json" },
+		];
+		const deps = makeDeps({
+			claimExtensionSyncPayloadCleanup: vi
+				.fn()
+				.mockResolvedValue(Result.ok(claimed)),
+		});
+
+		await runSweepTick(deps);
+
+		expect(deps.deleteSyncPayload).toHaveBeenCalledWith("acct-1/a.json");
+		expect(deps.deleteSyncPayload).toHaveBeenCalledWith("acct-2/b.json");
+		expect(logMod.log.info).toHaveBeenCalledWith(
+			"extension-sync-payload-cleanup",
+			{ count: 2, jobIds: ["j-1", "j-2"] },
+		);
+	});
+
+	it("does not call deleteSyncPayload when no payloads are claimed", async () => {
+		const deps = makeDeps();
+		await runSweepTick(deps);
+
+		expect(deps.deleteSyncPayload).not.toHaveBeenCalled();
+	});
+
+	it("logs a warning when a payload Storage delete fails after the pointer is stripped", async () => {
+		const claimed = [
+			{ jobId: "j-leak", accountId: "acct-1", payloadPath: "acct-1/leak.json" },
+		];
+		const dbErr = new DatabaseError({
+			code: "storage_delete_failed",
+			message: "bucket gone",
+		});
+		const deps = makeDeps({
+			claimExtensionSyncPayloadCleanup: vi
+				.fn()
+				.mockResolvedValue(Result.ok(claimed)),
+			deleteSyncPayload: vi.fn().mockResolvedValue(Result.err(dbErr)),
+		});
+
+		await runSweepTick(deps);
+
+		expect(logMod.log.warn).toHaveBeenCalledWith(
+			"extension-sync-payload-cleanup-delete-failed",
+			{
+				jobId: "j-leak",
+				accountId: "acct-1",
+				payloadPath: "acct-1/leak.json",
+				error: "bucket gone",
+			},
+		);
+	});
+
+	it("logs an error when claimExtensionSyncPayloadCleanup RPC fails without throwing", async () => {
+		const dbErr = new DatabaseError({
+			code: "500",
+			message: "cleanup rpc failed",
+		});
+		const deps = makeDeps({
+			claimExtensionSyncPayloadCleanup: vi
+				.fn()
+				.mockResolvedValue(Result.err(dbErr)),
+		});
+
+		await runSweepTick(deps);
+
+		expect(logMod.log.error).toHaveBeenCalledWith(
+			"extension-sync-payload-cleanup-error",
+			{ error: "cleanup rpc failed" },
+		);
+		expect(deps.deleteSyncPayload).not.toHaveBeenCalled();
+	});
+
+	it("runs the payload-cleanup step after the dead-letter step", async () => {
+		// The dead-letter step must run before payload-cleanup so dead-lettered rows
+		// can be processed by deleteOrphanedSyncPayloads while they still have the
+		// payload pointer. Verify ordering by checking call sequence.
+		const callOrder: string[] = [];
+		const deadJobs = [
+			makeJob({
+				id: "d-1",
+				type: "extension_sync" as Job["type"],
+				progress: { payload_path: "p" },
+			}),
+		];
+		const deps = makeDeps({
+			markDeadExtensionSyncJobs: vi.fn().mockImplementation(async () => {
+				callOrder.push("mark-dead");
+				return Result.ok(deadJobs);
+			}),
+			deleteOrphanedSyncPayloads: vi.fn().mockImplementation(async () => {
+				callOrder.push("delete-orphaned");
+			}),
+			claimExtensionSyncPayloadCleanup: vi.fn().mockImplementation(async () => {
+				callOrder.push("claim-cleanup");
+				return Result.ok([]);
+			}),
+		});
+
+		await runSweepTick(deps);
+
+		const markDeadIdx = callOrder.indexOf("mark-dead");
+		const deleteOrphanedIdx = callOrder.indexOf("delete-orphaned");
+		const claimCleanupIdx = callOrder.indexOf("claim-cleanup");
+
+		expect(markDeadIdx).toBeLessThan(claimCleanupIdx);
+		expect(deleteOrphanedIdx).toBeLessThan(claimCleanupIdx);
 	});
 });
 

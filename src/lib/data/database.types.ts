@@ -2206,6 +2206,14 @@ export type Database = {
 				};
 				Returns: undefined;
 			};
+			begin_extension_sync: {
+				Args: {
+					p_account_id: string;
+					p_payload_bytes: number;
+					p_payload_path: string;
+				};
+				Returns: Json;
+			};
 			claim_billing_bridge_event: {
 				Args: {
 					p_event_kind: string;
@@ -2223,6 +2231,40 @@ export type Database = {
 				Returns: {
 					owned_handle: string;
 					status: string;
+				}[];
+			};
+			claim_pending_extension_sync_job: {
+				Args: never;
+				Returns: {
+					account_id: string;
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error: string | null;
+					heartbeat_at: string | null;
+					id: string;
+					max_attempts: number;
+					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
+					started_at: string | null;
+					status: Database["public"]["Enums"]["job_status"];
+					type: Database["public"]["Enums"]["job_type"];
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
+			claim_extension_sync_payload_cleanup: {
+				Args: never;
+				Returns: {
+					job_id: string;
+					account_id: string;
+					payload_path: string;
 				}[];
 			};
 			claim_pending_library_processing_job: {
@@ -2551,6 +2593,32 @@ export type Database = {
 				Args: { p_stripe_event_id: string };
 				Returns: undefined;
 			};
+			mark_dead_extension_sync_jobs: {
+				Args: { stale_threshold: string };
+				Returns: {
+					account_id: string;
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error: string | null;
+					heartbeat_at: string | null;
+					id: string;
+					max_attempts: number;
+					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
+					started_at: string | null;
+					status: Database["public"]["Enums"]["job_status"];
+					type: Database["public"]["Enums"]["job_type"];
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 			mark_dead_library_processing_jobs: {
 				Args: { stale_threshold: string };
 				Returns: {
@@ -2754,6 +2822,32 @@ export type Database = {
 				Args: { p_artists: string[]; p_name: string };
 				Returns: string;
 			};
+			sweep_stale_extension_sync_jobs: {
+				Args: { stale_threshold: string };
+				Returns: {
+					account_id: string;
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error: string | null;
+					heartbeat_at: string | null;
+					id: string;
+					max_attempts: number;
+					progress: Json | null;
+					queue_priority: number | null;
+					satisfies_requested_at: string | null;
+					started_at: string | null;
+					status: Database["public"]["Enums"]["job_status"];
+					type: Database["public"]["Enums"]["job_type"];
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 			sweep_stale_library_processing_jobs: {
 				Args: { stale_threshold: string };
 				Returns: {
@@ -2847,6 +2941,10 @@ export type Database = {
 				Returns: undefined;
 			};
 			uuidv7: { Args: never; Returns: string };
+			validate_extension_token: {
+				Args: { p_token_hash: string };
+				Returns: string;
+			};
 		};
 		Enums: {
 			item_type: "song" | "playlist";
@@ -2867,7 +2965,8 @@ export type Database = {
 				| "playlist_lightweight_enrichment"
 				| "target_playlist_match_refresh"
 				| "match_snapshot_refresh"
-				| "walkthrough_match_preview";
+				| "walkthrough_match_preview"
+				| "extension_sync";
 			theme: "blue" | "green" | "rose" | "lavender";
 			walkthrough_preview_status: "pending" | "ready" | "failed";
 		};
@@ -3022,6 +3121,7 @@ export const Constants = {
 				"target_playlist_match_refresh",
 				"match_snapshot_refresh",
 				"walkthrough_match_preview",
+				"extension_sync",
 			],
 			theme: ["blue", "green", "rose", "lavender"],
 			walkthrough_preview_status: ["pending", "ready", "failed"],
