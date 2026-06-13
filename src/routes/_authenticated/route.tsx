@@ -15,8 +15,14 @@
  * queryClient.invalidateQueries().
  */
 
+import { ListIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	Outlet,
+	redirect,
+	useLocation,
+} from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { ConsentBanner } from "@/components/consent/ConsentBanner";
@@ -291,6 +297,26 @@ function AuthenticatedShell({
 }) {
 	const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
+	// Mobile sidebar drawer. Static column at `md` and up, so this only drives
+	// the off-canvas behaviour on small screens.
+	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const { pathname } = useLocation();
+
+	// Close the drawer whenever the route changes (tapping a nav link).
+	useEffect(() => {
+		setSidebarOpen(false);
+	}, [pathname]);
+
+	// Close the drawer on Escape while it's open.
+	useEffect(() => {
+		if (!sidebarOpen) return;
+		function onKeyDown(event: KeyboardEvent) {
+			if (event.key === "Escape") setSidebarOpen(false);
+		}
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [sidebarOpen]);
+
 	// Temporary waitlist greeting. Dismiss is persisted to localStorage (the
 	// feature is short-lived, so we skip a schema migration); the query only
 	// runs for complete users who haven't dismissed it yet.
@@ -325,19 +351,48 @@ function AuthenticatedShell({
 			{banner}
 			<div className="flex flex-1">
 				{showSidebar && (
-					<Sidebar
-						unsortedCount={pendingSuggestions}
-						handle={account?.handle ?? null}
-						userPlan={getPlanLabel(billingState)}
-						userBalance={getDisplayBalance(billingState)}
-						userImageUrl={account?.image_url}
-						showUpgradeCTA={showUpgradeCTA}
-						onUpgradeClick={() => setShowUpgradeDialog(true)}
-					/>
+					<>
+						<Sidebar
+							unsortedCount={pendingSuggestions}
+							handle={account?.handle ?? null}
+							userPlan={getPlanLabel(billingState)}
+							userBalance={getDisplayBalance(billingState)}
+							userImageUrl={account?.image_url}
+							showUpgradeCTA={showUpgradeCTA}
+							onUpgradeClick={() => setShowUpgradeDialog(true)}
+							isOpen={sidebarOpen}
+							onClose={() => setSidebarOpen(false)}
+						/>
+						{sidebarOpen && (
+							<button
+								type="button"
+								aria-label="Close menu"
+								tabIndex={-1}
+								onClick={() => setSidebarOpen(false)}
+								className="fixed inset-0 z-40 bg-black/40 md:hidden"
+							/>
+						)}
+					</>
 				)}
-				<main className="flex-1 p-8">
-					<Outlet />
-				</main>
+				<div className="flex min-w-0 flex-1 flex-col">
+					{showSidebar && (
+						<header className="theme-bg theme-border-color sticky top-0 z-20 flex items-center border-b px-4 py-3 md:hidden">
+							<button
+								type="button"
+								onClick={() => setSidebarOpen(true)}
+								aria-label="Open menu"
+								aria-controls="app-sidebar"
+								aria-expanded={sidebarOpen}
+								className="theme-text-muted -ml-2 cursor-pointer rounded-md p-2 transition-colors duration-150 ease motion-reduce:transition-none hover:text-(--t-text)"
+							>
+								<ListIcon size={24} weight="regular" aria-hidden />
+							</button>
+						</header>
+					)}
+					<main className="flex-1 p-8">
+						<Outlet />
+					</main>
+				</div>
 			</div>
 			{devPanel}
 			{showUpgradeDialog && (
