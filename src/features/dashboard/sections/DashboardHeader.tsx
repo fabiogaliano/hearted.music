@@ -63,7 +63,7 @@ export function DashboardHeader({
 				<span className="tabular-nums">
 					<ClientNumberFlow value={analyzedPercent} suffix="%" continuous />{" "}
 					<span className="tracking-widest uppercase">
-						{isEnrichmentRunning ? "analyzing" : "analyzed"}
+						{isEnrichmentRunning ? "unlocking" : "unlocked"}
 					</span>
 				</span>
 			</div>
