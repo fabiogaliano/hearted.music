@@ -3,7 +3,7 @@
  * Editorial magazine aesthetic with typography-driven design.
  */
 
-import { ArrowUpRightIcon } from "@phosphor-icons/react";
+import { ArrowUpRightIcon, XIcon } from "@phosphor-icons/react";
 import { Link, useMatchRoute } from "@tanstack/react-router";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { fonts } from "@/lib/theme/fonts";
@@ -20,6 +20,13 @@ interface SidebarProps {
 	userImageUrl?: string | null;
 	showUpgradeCTA?: boolean;
 	onUpgradeClick?: () => void;
+	/**
+	 * Whether the mobile drawer is open. Ignored at `md` and up, where the
+	 * sidebar is always visible as a static column.
+	 */
+	isOpen?: boolean;
+	/** Close the mobile drawer (backdrop, close button, navigation, Escape). */
+	onClose?: () => void;
 }
 
 interface NavItemConfig {
@@ -43,6 +50,8 @@ export function Sidebar({
 	userImageUrl,
 	showUpgradeCTA = false,
 	onUpgradeClick,
+	isOpen = false,
+	onClose,
 }: SidebarProps) {
 	const matchRoute = useMatchRoute();
 
@@ -60,15 +69,30 @@ export function Sidebar({
 			: null;
 
 	return (
-		<aside className="theme-bg theme-border-color sticky top-0 z-10 flex h-screen w-64 flex-col border-r px-6 py-8">
-			<Link
-				to="/dashboard"
-				aria-label="Hearted home"
-				className="theme-text inline-block self-start text-4xl font-extralight tracking-tight transition-opacity duration-150 ease motion-reduce:transition-none hover:opacity-75"
-				style={displayFontStyle}
-			>
-				hearted.
-			</Link>
+		<aside
+			id="app-sidebar"
+			className={`theme-bg theme-border-color fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r px-6 py-8 transition-transform duration-300 ease motion-reduce:transition-none md:sticky md:top-0 md:z-10 md:translate-x-0 ${
+				isOpen ? "translate-x-0" : "-translate-x-full"
+			}`}
+		>
+			<div className="flex items-center justify-between">
+				<Link
+					to="/dashboard"
+					aria-label="Hearted home"
+					className="theme-text inline-block text-4xl font-extralight tracking-tight transition-opacity duration-150 ease motion-reduce:transition-none hover:opacity-75"
+					style={displayFontStyle}
+				>
+					hearted.
+				</Link>
+				<button
+					type="button"
+					onClick={onClose}
+					aria-label="Close menu"
+					className="theme-text-muted -mr-2 cursor-pointer rounded-md p-2 transition-colors duration-150 ease motion-reduce:transition-none hover:text-(--t-text) md:hidden"
+				>
+					<XIcon size={22} weight="regular" aria-hidden />
+				</button>
+			</div>
 
 			<nav aria-label="Primary" className="mt-10 flex-1">
 				<ul className="space-y-1">
