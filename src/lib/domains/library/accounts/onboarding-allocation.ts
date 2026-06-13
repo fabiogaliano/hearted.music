@@ -12,11 +12,11 @@ import {
 /**
  * True when the account already has a liked-song access grant row (pending or
  * applied). Row existence — not applied_at — gates the free allocation: the
- * 500-song benefit owns this account's unlocks, so the 10-song free allocation
+ * 500-song benefit owns this account's unlocks, so the baseline free allocation
  * must be skipped even while the grant is still pending, to avoid stacking.
  *
  * Best-effort but fail-closed: on a read error we log and return true so we
- * skip the free allocation. The plan's invariant is "never stack the 10-song
+ * skip the free allocation. The plan's invariant is "never stack the baseline
  * free allocation on top of this benefit", and on uncertainty preserving that
  * invariant is safer than granting extra access.
  */
@@ -73,10 +73,7 @@ export async function completeOnboardingWithAllocations(
 
 	if (Result.isOk(billingResult)) {
 		const billing = billingResult.value;
-		const isFree =
-			billing.plan === "free" &&
-			!hasUnlimitedAccess(billing) &&
-			billing.creditBalance === 0;
+		const isFree = billing.plan === "free" && !hasUnlimitedAccess(billing);
 
 		if (isFree && !(await hasLikedSongAccessGrant(supabase, accountId))) {
 			const allocationResult = await grantFreeAllocation(supabase, accountId);

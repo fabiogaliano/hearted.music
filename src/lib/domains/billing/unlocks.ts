@@ -160,6 +160,30 @@ export async function grantFreeAllocation(
 	supabase: AdminSupabaseClient,
 	accountId: string,
 ): Promise<Result<GrantFreeAllocationResult, UnlockError>> {
+	const { data: activeUnlocks, error: activeUnlocksError } = await supabase
+		.from("account_song_unlock")
+		.select("song_id")
+		.eq("account_id", accountId)
+		.is("revoked_at", null);
+
+	if (activeUnlocksError) {
+		return Result.err({
+			kind: "db_error",
+			cause: new DatabaseError({
+				code: activeUnlocksError.code,
+				message: activeUnlocksError.message,
+			}),
+		});
+	}
+
+	const activeSongIds = new Set(
+		(activeUnlocks ?? []).map((row) => row.song_id),
+	);
+	const missingUnlocks = FREE_ALLOCATION_LIMIT - activeSongIds.size;
+	if (missingUnlocks <= 0) {
+		return Result.ok({ unlockedIds: [] });
+	}
+
 	const { data: likedSongs, error: likedError } = await supabase
 		.from("liked_song")
 		.select("song_id")
@@ -178,7 +202,10 @@ export async function grantFreeAllocation(
 		});
 	}
 
-	const candidateIds = (likedSongs ?? []).map((row) => row.song_id);
+	const candidateIds = (likedSongs ?? [])
+		.map((row) => row.song_id)
+		.filter((songId) => !activeSongIds.has(songId))
+		.slice(0, missingUnlocks);
 
 	if (candidateIds.length === 0) {
 		return Result.ok({ unlockedIds: [] });

@@ -80,7 +80,10 @@ function mockFrom(
 
 		const limitFn = vi.fn().mockResolvedValue(selectResult);
 		const orderFn = vi.fn().mockReturnValue({ limit: limitFn });
-		const isFn = vi.fn().mockReturnValue({ order: orderFn });
+		const terminal = Object.assign(Promise.resolve(selectResult), {
+			order: orderFn,
+		});
+		const isFn = vi.fn().mockReturnValue(terminal);
 		const eqFn = vi.fn().mockReturnValue({ is: isFn });
 		const selectFn = vi.fn().mockReturnValue({ eq: eqFn });
 
@@ -357,6 +360,9 @@ describe("grantFreeAllocation", () => {
 		const unlockedRows = likedSongs.map((s) => ({ song_id: s.song_id }));
 
 		const fromFn = mockFrom({
+			account_song_unlock: {
+				selectResult: { data: [], error: null },
+			},
 			liked_song: {
 				selectResult: { data: likedSongs, error: null },
 			},
@@ -380,13 +386,11 @@ describe("grantFreeAllocation", () => {
 		if (!Result.isOk(result)) return;
 
 		expect(result.value.unlockedIds).toHaveLength(10);
-
 		expect(rpcFn).toHaveBeenCalledWith("insert_song_unlocks_without_charge", {
 			p_account_id: "acc-1",
 			p_song_ids: likedSongs.map((s) => s.song_id),
 			p_source: "free_auto",
 		});
-
 		expect(mockedApplyChange).toHaveBeenCalledWith({
 			kind: "songs_unlocked",
 			accountId: "acc-1",
@@ -396,11 +400,13 @@ describe("grantFreeAllocation", () => {
 
 	it("returns empty when no liked songs", async () => {
 		const fromFn = mockFrom({
+			account_song_unlock: {
+				selectResult: { data: [], error: null },
+			},
 			liked_song: {
 				selectResult: { data: [], error: null },
 			},
 		});
-
 		const rpcFn = vi.fn();
 
 		const client = {
@@ -420,6 +426,9 @@ describe("grantFreeAllocation", () => {
 
 	it("does not emit change when RPC returns no newly unlocked songs", async () => {
 		const fromFn = mockFrom({
+			account_song_unlock: {
+				selectResult: { data: [], error: null },
+			},
 			liked_song: {
 				selectResult: {
 					data: [{ song_id: "s1" }],
@@ -449,33 +458,96 @@ describe("grantFreeAllocation", () => {
 		expect(mockedApplyChange).not.toHaveBeenCalled();
 	});
 
-	it("returns db_error when liked_song query fails", async () => {
-		const fromFn = mockFrom({});
+	it("does not grant more free songs when the account already has 10 active unlocks", async () => {
+		const fromFn = mockFrom({
+			account_song_unlock: {
+				selectResult: {
+					data: Array.from({ length: 10 }, (_, i) => ({ song_id: `u-${i}` })),
+					error: null,
+				},
+			},
+		});
+		const rpcFn = vi.fn();
 
-		fromFn.mockImplementation(() => {
+		const client = {
+			from: fromFn,
+			rpc: rpcFn,
+		} as unknown as AdminSupabaseClient;
+
+		const result = await grantFreeAllocation(client, "acc-1");
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+
+		expect(result.value.unlockedIds).toEqual([]);
+		expect(rpcFn).not.toHaveBeenCalled();
+		expect(mockedApplyChange).not.toHaveBeenCalled();
+	});
+
+	it("returns db_error when active unlock query fails", async () => {
+		const fromFn = mockFrom({
+			account_song_unlock: {
+				selectResult: {
+					data: null,
+					error: { code: "42P01", message: "relation does not exist" },
+				},
+			},
+		});
+
+		const client = { from: fromFn } as unknown as AdminSupabaseClient;
+		const result = await grantFreeAllocation(client, "acc-1");
+
+		expect(Result.isError(result)).toBe(true);
+		if (!Result.isError(result)) return;
+		expect(result.error.kind).toBe("db_error");
+	});
+
+	it("returns db_error when liked_song query fails", async () => {
+		const fromFn = mockFrom({
+			account_song_unlock: {
+				selectResult: { data: [], error: null },
+			},
+		});
+
+		fromFn.mockImplementation((table: string) => {
+			if (table === "account_song_unlock") {
+				const terminal = Promise.resolve({ data: [], error: null });
+				const isFn = vi.fn().mockReturnValue(terminal);
+				const eqFn = vi.fn().mockReturnValue({ is: isFn });
+				const selectFn = vi.fn().mockReturnValue({ eq: eqFn });
+				return { select: selectFn };
+			}
 			const limitFn = vi.fn().mockResolvedValue({
 				data: null,
 				error: { code: "42P01", message: "relation does not exist" },
 			});
 			const orderFn = vi.fn().mockReturnValue({ limit: limitFn });
-			const isFn = vi.fn().mockReturnValue({ order: orderFn });
+			const terminal = Object.assign(
+				Promise.resolve({
+					data: null,
+					error: { code: "42P01", message: "relation does not exist" },
+				}),
+				{ order: orderFn },
+			);
+			const isFn = vi.fn().mockReturnValue(terminal);
 			const eqFn = vi.fn().mockReturnValue({ is: isFn });
 			const selectFn = vi.fn().mockReturnValue({ eq: eqFn });
 			return { select: selectFn };
 		});
 
 		const client = { from: fromFn } as unknown as AdminSupabaseClient;
-
 		const result = await grantFreeAllocation(client, "acc-1");
 
 		expect(Result.isError(result)).toBe(true);
 		if (!Result.isError(result)) return;
-
 		expect(result.error.kind).toBe("db_error");
 	});
 
 	it("returns db_error when RPC fails", async () => {
 		const fromFn = mockFrom({
+			account_song_unlock: {
+				selectResult: { data: [], error: null },
+			},
 			liked_song: {
 				selectResult: {
 					data: [{ song_id: "s1" }],
@@ -500,7 +572,6 @@ describe("grantFreeAllocation", () => {
 
 		expect(Result.isError(result)).toBe(true);
 		if (!Result.isError(result)) return;
-
 		expect(result.error.kind).toBe("db_error");
 	});
 });

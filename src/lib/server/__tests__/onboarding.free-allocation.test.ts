@@ -243,9 +243,12 @@ describe("markOnboardingComplete — free allocation", () => {
 		);
 	});
 
-	it("does not grant free allocation for users with credit balance", async () => {
+	it("grants free allocation for free-plan users even when they already have pack credits", async () => {
 		mockReadBillingState.mockResolvedValue(
 			Result.ok(makeBillingState({ creditBalance: 500 })),
+		);
+		mockGrantFreeAllocation.mockResolvedValue(
+			Result.ok({ unlockedIds: ["s1", "s2"] }),
 		);
 
 		const result = await (markOnboardingComplete as () => Promise<unknown>)();
@@ -254,7 +257,10 @@ describe("markOnboardingComplete — free allocation", () => {
 			status: "completed_now",
 			onboarding: completePayload,
 		});
-		expect(mockGrantFreeAllocation).not.toHaveBeenCalled();
+		expect(mockGrantFreeAllocation).toHaveBeenCalledWith(
+			fakeClient,
+			"acct-free-1",
+		);
 	});
 
 	it("does not grant free allocation for users with unlimited access", async () => {
