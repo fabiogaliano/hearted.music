@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { LikedSong, MatchingStatus } from "@/features/liked-songs/types";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
 import type { AnalysisContent } from "@/lib/domains/enrichment/content-analysis/analysis-content";
+import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import {
 	getBootstrapPagesBySlug,
 	getPageRowBySlug,
@@ -117,11 +118,14 @@ export const getLikedSongsPage = createServerFn({ method: "GET" })
 		const search =
 			trimmedSearch && trimmedSearch.length > 0 ? trimmedSearch : undefined;
 
+		const minScore = await resolveMinMatchScore(session.accountId);
+
 		const result = await getPageWithDetails(session.accountId, {
 			cursor: data.cursor,
 			limit,
 			filter: data.filter,
 			search,
+			minScore,
 		});
 
 		if (Result.isError(result)) {
@@ -139,7 +143,12 @@ export const getLikedSongBySlug = createServerFn({ method: "GET" })
 	.handler(async ({ data, context }): Promise<LikedSong | null> => {
 		const { session } = context;
 
-		const result = await getPageRowBySlug(session.accountId, data.slug);
+		const minScore = await resolveMinMatchScore(session.accountId);
+		const result = await getPageRowBySlug(
+			session.accountId,
+			data.slug,
+			minScore,
+		);
 
 		if (Result.isError(result) || result.value === null) {
 			return null;
@@ -155,9 +164,11 @@ export const getLikedSongsDeepLinkBootstrap = createServerFn({ method: "GET" })
 		async ({ data, context }): Promise<LikedSongsDeepLinkBootstrapResult> => {
 			const { session } = context;
 
+			const minScore = await resolveMinMatchScore(session.accountId);
 			const result = await getBootstrapPagesBySlug(
 				session.accountId,
 				data.slug,
+				minScore,
 			);
 
 			if (Result.isError(result)) {
@@ -199,7 +210,8 @@ export const getLikedSongsStats = createServerFn({ method: "GET" })
 	.handler(async ({ context }): Promise<LikedSongsStatsResult> => {
 		const { session } = context;
 
-		const result = await getStats(session.accountId);
+		const minScore = await resolveMinMatchScore(session.accountId);
+		const result = await getStats(session.accountId, minScore);
 
 		if (Result.isError(result)) {
 			return { success: false, error: "Failed to fetch stats" };

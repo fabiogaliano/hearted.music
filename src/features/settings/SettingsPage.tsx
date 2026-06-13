@@ -7,14 +7,25 @@
  * /settings surface reads as part of the same magazine.
  */
 
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { ArrowLeftIcon } from "@phosphor-icons/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useCallback, useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { dashboardKeys } from "@/features/dashboard/queries";
+import { matchingKeys } from "@/features/matching/queries";
 import type { BillingState } from "@/lib/domains/billing/state";
+import {
+	type MatchStrictness,
+	STRICTNESS_MIN_SCORE,
+} from "@/lib/domains/taste/song-matching/strictness";
 import { signOut } from "@/lib/platform/auth/auth-client";
-import { updateThemePreference } from "@/lib/server/settings.functions";
+import {
+	updateMatchStrictnessPreference,
+	updateThemePreference,
+} from "@/lib/server/settings.functions";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { COLOR_LABELS, THEME_COLORS, type ThemeColor } from "@/lib/theme/types";
@@ -22,13 +33,47 @@ import { BillingSection } from "./components/BillingSection";
 import { ConsentSection } from "./components/ConsentSection";
 import { ExtensionStatusRow } from "./components/ExtensionStatusRow";
 
+interface StrictnessOption {
+	value: MatchStrictness;
+	label: string;
+	description: string;
+}
+
+// The label stays evocative and the description stays plain; the score
+// threshold rides along as a muted caption in the picker so the number grounds
+// the choice (users already see it on every match in /match) without turning
+// the copy into a spec. The caption is derived from STRICTNESS_MIN_SCORE rather
+// than retyped here, so retuning a preset can't make the copy lie. Order is
+// loosest → strictest.
+const STRICTNESS_OPTIONS: StrictnessOption[] = [
+	{
+		value: "open",
+		label: "Room for surprises",
+		description: "Shows every match, even the weak ones.",
+	},
+	{
+		value: "balanced",
+		label: "Might be worth the spot",
+		description: "Hides the weaker matches.",
+	},
+	{
+		value: "strict",
+		label: "The ones pulling ahead",
+		description: "Shows only the strongest.",
+	},
+];
+
 interface SettingsPageProps {
 	handle: string | null;
 	email: string | null;
 	imageUrl: string | null;
 	currentTheme: ThemeColor;
 	onThemeChange: (theme: ThemeColor) => void;
+	currentStrictness: MatchStrictness;
 	billingState: BillingState;
+	// True only when the user arrived via "Adjust strictness" from /match;
+	// drives the round-trip "Back to match" button in the Matching section.
+	cameFromMatch?: boolean;
 }
 
 export function SettingsPage({
@@ -37,11 +82,17 @@ export function SettingsPage({
 	imageUrl,
 	currentTheme,
 	onThemeChange,
+	currentStrictness,
 	billingState,
+	cameFromMatch = false,
 }: SettingsPageProps) {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const { hash } = useLocation();
 	const [isSavingTheme, setIsSavingTheme] = useState(false);
+	const [strictness, setStrictness] =
+		useState<MatchStrictness>(currentStrictness);
+	const [isSavingStrictness, setIsSavingStrictness] = useState(false);
 	const [isSigningOut, setIsSigningOut] = useState(false);
 
 	// Hash-driven anchor: when the sidebar Upgrade CTA links here with
@@ -73,6 +124,30 @@ export function SettingsPage({
 			}
 		},
 		[currentTheme, isSavingTheme, onThemeChange],
+	);
+
+	const handleStrictnessSelect = useCallback(
+		async (next: MatchStrictness) => {
+			if (next === strictness || isSavingStrictness) return;
+
+			const previousStrictness = strictness;
+			setStrictness(next);
+			setIsSavingStrictness(true);
+
+			try {
+				await updateMatchStrictnessPreference({ data: { strictness: next } });
+				// Invalidate both families so the new bar applies without a reload:
+				// the /match queue + dashboard previews/review count read these keys.
+				queryClient.invalidateQueries({ queryKey: matchingKeys.all });
+				queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+			} catch {
+				setStrictness(previousStrictness);
+				toast.error("Something went sideways. Let's try that again.");
+			} finally {
+				setIsSavingStrictness(false);
+			}
+		},
+		[strictness, isSavingStrictness, queryClient],
 	);
 
 	const handleSignOut = useCallback(async () => {
@@ -163,6 +238,45 @@ export function SettingsPage({
 
 			<SettingsSection
 				index={4}
+				title="Matching"
+				description="How sure a song has to be before it shows up at your door."
+				accessory={
+					<span
+						aria-live="polite"
+						className={`theme-text-muted text-xs tracking-widest uppercase transition-opacity duration-200 ${
+							isSavingStrictness ? "opacity-100" : "opacity-0"
+						}`}
+						style={{ fontFamily: fonts.body }}
+					>
+						{isSavingStrictness ? "Saving…" : " "}
+					</span>
+				}
+			>
+				<MatchStrictnessPicker
+					currentStrictness={strictness}
+					onSelect={handleStrictnessSelect}
+					isSaving={isSavingStrictness}
+				/>
+				{cameFromMatch && (
+					<div className="mt-5 flex justify-end">
+						<Link
+							to="/match"
+							className="theme-text group inline-flex items-center gap-2.5 text-sm font-medium tracking-wide transition-transform duration-150 ease-out motion-safe:active:scale-[0.98]"
+							style={{ fontFamily: fonts.body }}
+						>
+							<ArrowLeftIcon
+								size={16}
+								weight="regular"
+								className="theme-text-muted transition-transform duration-200 ease-out motion-safe:group-hover:-translate-x-1"
+							/>
+							Back to match
+						</Link>
+					</div>
+				)}
+			</SettingsSection>
+
+			<SettingsSection
+				index={5}
 				title="Connections"
 				description="How your songs travel from Spotify to here."
 			>
@@ -171,7 +285,7 @@ export function SettingsPage({
 
 			{import.meta.env.PROD && (
 				<SettingsSection
-					index={5}
+					index={6}
 					title="Privacy"
 					description="Review the analytics and replay choice for this account."
 				>
@@ -307,6 +421,83 @@ function ThemeColorPicker({
 							style={{ fontFamily: fonts.body }}
 						>
 							{COLOR_LABELS[colorId]}
+						</span>
+					</label>
+				);
+			})}
+		</fieldset>
+	);
+}
+
+interface MatchStrictnessPickerProps {
+	currentStrictness: MatchStrictness;
+	onSelect: (strictness: MatchStrictness) => void;
+	isSaving: boolean;
+}
+
+function MatchStrictnessPicker({
+	currentStrictness,
+	onSelect,
+	isSaving,
+}: MatchStrictnessPickerProps) {
+	// Same accessibility pattern as ThemeColorPicker: native radios sharing a
+	// name (free roving focus + "radio group" announcement), input hidden and
+	// focus projected onto the card via `peer-focus-visible:`. Each option is a
+	// label + one-line description card instead of a color swatch.
+	const groupName = useId();
+
+	return (
+		<fieldset className="flex flex-col gap-3 border-0 p-0">
+			<legend className="sr-only">Match strictness</legend>
+			{STRICTNESS_OPTIONS.map((option) => {
+				const isSelected = currentStrictness === option.value;
+				return (
+					<label
+						key={option.value}
+						className="group flex cursor-pointer items-start gap-3.5 border p-4 transition-[border-color] duration-200 ease-out peer-focus-visible:outline-2"
+						style={{
+							borderColor: isSelected ? "var(--t-text)" : "var(--t-border)",
+						}}
+					>
+						<input
+							type="radio"
+							name={groupName}
+							value={option.value}
+							checked={isSelected}
+							onChange={() => onSelect(option.value)}
+							disabled={isSaving && !isSelected}
+							className="peer sr-only focus-visible:outline-none"
+						/>
+						<span
+							aria-hidden="true"
+							className="relative mt-0.5 inline-block size-4 shrink-0 rounded-full transition-[box-shadow] duration-200 ease-out peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-(--focus-ring-color)"
+							style={{
+								boxShadow: isSelected
+									? "inset 0 0 0 5px var(--t-text)"
+									: "inset 0 0 0 1px var(--t-border)",
+							}}
+						/>
+						<span className="flex min-w-0 flex-col gap-1">
+							<span
+								className="theme-text-muted text-xs leading-none tabular-nums italic opacity-70"
+								style={{ fontFamily: fonts.body }}
+							>
+								above {Math.round(STRICTNESS_MIN_SCORE[option.value] * 100)}%
+							</span>
+							<span
+								className={`text-base leading-none ${
+									isSelected ? "theme-text font-medium" : "theme-text"
+								}`}
+								style={{ fontFamily: fonts.body }}
+							>
+								{option.label}
+							</span>
+							<span
+								className="theme-text-muted text-sm leading-snug text-pretty"
+								style={{ fontFamily: fonts.body }}
+							>
+								{option.description}
+							</span>
 						</span>
 					</label>
 				);

@@ -21,6 +21,11 @@ import {
 	SAVEABLE_ONBOARDING_STEP_VALUES,
 	type SaveableOnboardingStep,
 } from "@/lib/domains/library/accounts/onboarding-steps";
+import {
+	DEFAULT_MATCH_STRICTNESS,
+	type MatchStrictness,
+	STRICTNESS_MIN_SCORE,
+} from "@/lib/domains/taste/song-matching/strictness";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
@@ -129,6 +134,54 @@ export function updateTheme(
 			)
 			.select()
 			.single(),
+	);
+}
+
+/**
+ * Updates the match-strictness preference for an account.
+ * Creates a preferences record if one doesn't exist. Mirrors updateTheme.
+ *
+ * Stores the preset *name* — the preset→score mapping lives in code
+ * (strictness.ts) so thresholds can be retuned without a data migration.
+ */
+export function updateMatchStrictness(
+	accountId: string,
+	strictness: MatchStrictness,
+): Promise<Result<UserPreferences, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("user_preferences")
+			.upsert(
+				{
+					account_id: accountId,
+					match_strictness: strictness,
+				},
+				{ onConflict: "account_id" },
+			)
+			.select()
+			.single(),
+	);
+}
+
+/**
+ * Resolves the read-time minimum match score for an account from its
+ * match-strictness preset. The single helper every read path calls.
+ *
+ * Falls back to the default preset's score on a missing row or any read error —
+ * a strictness lookup must never block surfacing matches, and the column is
+ * NOT NULL with a 'balanced' default so a present row is always a known preset.
+ */
+export async function resolveMinMatchScore(accountId: string): Promise<number> {
+	const prefs = await getOrCreatePreferences(accountId);
+	if (Result.isError(prefs)) {
+		return STRICTNESS_MIN_SCORE[DEFAULT_MATCH_STRICTNESS];
+	}
+
+	const strictness = prefs.value.match_strictness as MatchStrictness;
+	return (
+		STRICTNESS_MIN_SCORE[strictness] ??
+		STRICTNESS_MIN_SCORE[DEFAULT_MATCH_STRICTNESS]
 	);
 }
 

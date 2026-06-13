@@ -219,6 +219,7 @@ export async function getPageWithDetails(
 		limit?: number;
 		filter?: LikedSongFilter;
 		search?: string;
+		minScore?: number;
 	} = {},
 ): Promise<
 	Result<{ items: LikedSongPageRow[]; nextCursor: string | null }, DbError>
@@ -238,6 +239,7 @@ export async function getPageWithDetails(
 		p_limit: limit,
 		p_filter: options.filter ?? "all",
 		p_search: search,
+		p_min_score: options.minScore ?? 0,
 	});
 
 	if (error) {
@@ -269,11 +271,13 @@ export async function getPageWithDetails(
 export async function getPageRowBySlug(
 	accountId: string,
 	slug: string,
+	minScore = 0,
 ): Promise<Result<LikedSongPageRow | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	const { data, error } = await supabase.rpc("get_liked_song_by_slug", {
 		p_account_id: accountId,
 		p_slug: slug,
+		p_min_score: minScore,
 	});
 
 	if (error) {
@@ -355,6 +359,7 @@ function chunkBootstrapRows(
 export async function getBootstrapPagesBySlug(
 	accountId: string,
 	slug: string,
+	minScore = 0,
 ): Promise<Result<LikedSongsBootstrapPages, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	const { data, error } = await supabase.rpc(
@@ -363,6 +368,7 @@ export async function getBootstrapPagesBySlug(
 			p_account_id: accountId,
 			p_slug: slug,
 			p_trailing_limit: LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS,
+			p_min_score: minScore,
 		},
 	);
 
@@ -376,7 +382,7 @@ export async function getBootstrapPagesBySlug(
 	const matchIndex = rows.findIndex((row) => pageRowMatchesSlug(row, slug));
 
 	if (matchIndex === -1) {
-		return buildCanonicalFirstPage(accountId);
+		return buildCanonicalFirstPage(accountId, minScore);
 	}
 
 	const prefixThroughMatch = rows.slice(0, matchIndex + 1);
@@ -403,10 +409,12 @@ export async function getBootstrapPagesBySlug(
  */
 async function buildCanonicalFirstPage(
 	accountId: string,
+	minScore = 0,
 ): Promise<Result<LikedSongsBootstrapPages, DbError>> {
 	const firstPageResult = await getPageWithDetails(accountId, {
 		filter: "all",
 		limit: LIKED_SONGS_PAGE_SIZE,
+		minScore,
 	});
 	if (Result.isError(firstPageResult)) {
 		return Result.err(firstPageResult.error);
@@ -425,11 +433,15 @@ async function buildCanonicalFirstPage(
  */
 export async function getStats(
 	accountId: string,
+	minScore = 0,
 ): Promise<Result<LikedSongsStatsRow, DbError>> {
 	const supabase = createAdminSupabaseClient();
 
 	const { data, error } = await supabase
-		.rpc("get_liked_songs_stats", { p_account_id: accountId })
+		.rpc("get_liked_songs_stats", {
+			p_account_id: accountId,
+			p_min_score: minScore,
+		})
 		.single();
 
 	if (error) {

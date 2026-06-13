@@ -20,6 +20,7 @@ const {
 	mockGetNewItemIds,
 	mockUpsertMatchDecision,
 	mockUpsertMatchDecisions,
+	mockResolveMinMatchScore,
 	mockRpc,
 	mockSelect,
 	mockFrom,
@@ -42,6 +43,9 @@ const {
 		mockGetNewItemIds: vi.fn(),
 		mockUpsertMatchDecision: vi.fn(),
 		mockUpsertMatchDecisions: vi.fn(),
+		// Default 0 = no read-time bar, so existing entitlement/ordering
+		// expectations are unaffected. clearAllMocks keeps this implementation.
+		mockResolveMinMatchScore: vi.fn().mockResolvedValue(0),
 		mockRpc: vi.fn(),
 		mockSelect,
 		mockFrom,
@@ -106,6 +110,11 @@ vi.mock("@/lib/domains/library/liked-songs/status-queries", () => ({
 	getNewItemIds: (...args: unknown[]) => mockGetNewItemIds(...args),
 }));
 
+vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
+	resolveMinMatchScore: (...args: unknown[]) =>
+		mockResolveMinMatchScore(...args),
+}));
+
 describe("getMatchingSession (billing-aware)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -137,6 +146,7 @@ describe("getMatchingSession (billing-aware)", () => {
 			snapshotId: "snap-1",
 			songIds: ["song-1", "song-3"],
 			totalSongs: 2,
+			hiddenSongCount: 0,
 		});
 		expect(mockRpc).toHaveBeenCalledWith(
 			"select_entitled_data_enriched_liked_song_ids",
@@ -163,6 +173,7 @@ describe("getMatchingSession (billing-aware)", () => {
 			snapshotId: "snap-1",
 			songIds: [],
 			totalSongs: 0,
+			hiddenSongCount: 0,
 		});
 	});
 
@@ -184,6 +195,7 @@ describe("getMatchingSession (billing-aware)", () => {
 			snapshotId: "snap-1",
 			songIds: [],
 			totalSongs: 0,
+			hiddenSongCount: 0,
 		});
 	});
 
@@ -506,11 +518,11 @@ describe("getOrderedUndecidedSongIds", () => {
 			error: null,
 		});
 
-		const ids = await getOrderedUndecidedSongIds("snap-1", "acct-1");
+		const { songIds } = await getOrderedUndecidedSongIds("snap-1", "acct-1");
 
 		// song-locked excluded (not entitled); song-m first (new); then the two
 		// score-90 songs by songId asc (song-a < song-z); then song-low (score 10).
-		expect(ids).toEqual(["song-m", "song-a", "song-z", "song-low"]);
+		expect(songIds).toEqual(["song-m", "song-a", "song-z", "song-low"]);
 	});
 
 	it("returns empty when the newness lookup fails", async () => {
@@ -521,9 +533,9 @@ describe("getOrderedUndecidedSongIds", () => {
 		mockGetNewItemIds.mockResolvedValue(Result.err(new Error("boom")));
 		mockRpc.mockResolvedValue({ data: [{ song_id: "song-a" }], error: null });
 
-		const ids = await getOrderedUndecidedSongIds("snap-1", "acct-1");
+		const { songIds } = await getOrderedUndecidedSongIds("snap-1", "acct-1");
 
-		expect(ids).toEqual([]);
+		expect(songIds).toEqual([]);
 	});
 
 	it("excludes songs whose every pair is already decided", async () => {
@@ -543,9 +555,9 @@ describe("getOrderedUndecidedSongIds", () => {
 			error: null,
 		});
 
-		const ids = await getOrderedUndecidedSongIds("snap-1", "acct-1");
+		const { songIds } = await getOrderedUndecidedSongIds("snap-1", "acct-1");
 
-		expect(ids).toEqual(["song-b"]);
+		expect(songIds).toEqual(["song-b"]);
 	});
 });
 

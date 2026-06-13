@@ -16,6 +16,7 @@ import { Result } from "better-result";
 import type { ActivityItem, MatchPreview } from "@/features/dashboard/types";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { getAnalyzedCountForAccount } from "@/lib/domains/enrichment/content-analysis/queries";
+import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import {
 	getCount as getLikedSongCount,
 	getStats as getLikedSongStats,
@@ -50,6 +51,11 @@ export interface DashboardPageData {
 // ============================================================================
 
 async function fetchDashboardStats(accountId: string): Promise<DashboardStats> {
+	// The review count (`has_suggestions`) must honor the same read-time bar as
+	// the /match queue, so resolve the threshold first and pass it into the stats
+	// RPC. A fast indexed prefs read — cheap relative to the parallel fan-out.
+	const minScore = await resolveMinMatchScore(accountId);
+
 	const [
 		totalResult,
 		analyzedResult,
@@ -60,7 +66,7 @@ async function fetchDashboardStats(accountId: string): Promise<DashboardStats> {
 		getLikedSongCount(accountId),
 		getAnalyzedCountForAccount(accountId),
 		getLastCompletedSync(accountId),
-		getLikedSongStats(accountId),
+		getLikedSongStats(accountId, minScore),
 		getPlaylistCount(accountId),
 	]);
 
@@ -113,11 +119,11 @@ async function fetchMatchPreviews(accountId: string): Promise<MatchPreview[]> {
 
 	// Same ordering authority as the /match walk, so the dashboard's top-3
 	// previews are the queue's first 3 by construction — no duplicated comparator.
-	const orderedSongIds = await getOrderedUndecidedSongIds(
+	const { songIds } = await getOrderedUndecidedSongIds(
 		snapshotResult.value.id,
 		accountId,
 	);
-	const topIds = orderedSongIds.slice(0, 3);
+	const topIds = songIds.slice(0, 3);
 	if (topIds.length === 0) return [];
 
 	const supabase = createAdminSupabaseClient();

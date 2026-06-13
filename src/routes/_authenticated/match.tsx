@@ -100,6 +100,7 @@ function NormalMatchPage() {
 
 	const latestSnapshotId = latestSession?.snapshotId ?? null;
 	const latestTotalSongs = latestSession?.totalSongs ?? 0;
+	const hiddenSongCount = latestSession?.hiddenSongCount ?? 0;
 
 	const hasNewSnapshot =
 		displayedSession != null &&
@@ -120,13 +121,18 @@ function NormalMatchPage() {
 		});
 	}, [latestSession]);
 
-	// No session at all and never had one
+	// No session at all and never had one. When a snapshot exists but the queue
+	// is empty purely because the strictness bar hid every match, steer to the
+	// "filtered" state (links back to settings) instead of "all-decided".
 	if (!displayedSession && (!latestSnapshotId || latestTotalSongs === 0)) {
+		const reason = !latestSnapshotId
+			? "no-context"
+			: hiddenSongCount > 0
+				? "filtered"
+				: "all-decided";
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
-				<MatchingEmptyState
-					reason={!latestSnapshotId ? "no-context" : "all-decided"}
-				/>
+				<MatchingEmptyState reason={reason} hiddenCount={hiddenSongCount} />
 			</div>
 		);
 	}
@@ -135,7 +141,10 @@ function NormalMatchPage() {
 	if (!displayedSession) {
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
-				<MatchingEmptyState reason="all-decided" />
+				<MatchingEmptyState
+					reason={hiddenSongCount > 0 ? "filtered" : "all-decided"}
+					hiddenCount={hiddenSongCount}
+				/>
 			</div>
 		);
 	}

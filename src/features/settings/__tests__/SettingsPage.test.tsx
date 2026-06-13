@@ -16,10 +16,15 @@ vi.mock("@tanstack/react-router", () => ({
 	useLocation: () => ({ hash: "" }),
 }));
 
+vi.mock("@tanstack/react-query", () => ({
+	useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+}));
+
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 
 vi.mock("@/lib/server/settings.functions", () => ({
 	updateThemePreference: vi.fn(),
+	updateMatchStrictnessPreference: vi.fn(),
 }));
 
 vi.mock("@/lib/platform/auth/auth-client", () => ({
@@ -34,6 +39,7 @@ const baseProps = {
 	imageUrl: null,
 	currentTheme: "rose" as const,
 	onThemeChange: vi.fn(),
+	currentStrictness: "balanced" as const,
 	billingState: FREE_BILLING_STATE,
 };
 

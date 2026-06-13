@@ -3,25 +3,55 @@ import { Link } from "@tanstack/react-router";
 
 import { fonts } from "@/lib/theme/fonts";
 
+type Reason = "no-context" | "all-decided" | "filtered";
+
 interface Props {
-	reason: "no-context" | "all-decided";
+	reason: Reason;
+	// Only meaningful for reason="filtered": entitled, undecided songs whose only
+	// matches sit below the user's strictness bar.
+	hiddenCount?: number;
 }
 
-const copy = {
+const staticCopy = {
 	"no-context": {
 		overline: "no suggestions yet",
 		headline: ["Nothing to match", "just yet."],
 		body: "Suggestions appear here once matching has run on your library.",
+		link: { to: "/", hash: undefined, search: undefined, label: "Back home" },
 	},
 	"all-decided": {
 		overline: "all caught up",
 		headline: ["Your songs have", "found their home."],
 		body: "Check back after your next sync for new songs to match.",
+		link: { to: "/", hash: undefined, search: undefined, label: "Back home" },
 	},
 } as const;
 
-export function MatchingEmptyState({ reason }: Props) {
-	const { overline, headline, body } = copy[reason];
+function filteredBody(hiddenCount: number): string {
+	const subject =
+		hiddenCount === 1
+			? "1 song has matches"
+			: `${hiddenCount} songs have matches`;
+	return `${subject} just under your strictness setting. Loosen it up if you're curious.`;
+}
+
+export function MatchingEmptyState({ reason, hiddenCount = 0 }: Props) {
+	const copy =
+		reason === "filtered"
+			? {
+					overline: "quiet in here",
+					headline: ["Some songs are waiting", "below your bar."] as const,
+					body: filteredBody(hiddenCount),
+					link: {
+						to: "/settings",
+						hash: "settings-section-matching",
+						search: { from: "match" as const },
+						label: "Adjust strictness",
+					},
+				}
+			: staticCopy[reason];
+
+	const { overline, headline, body, link } = copy;
 
 	return (
 		<div
@@ -45,11 +75,15 @@ export function MatchingEmptyState({ reason }: Props) {
 
 			<div className="mt-12">
 				<Link
-					to="/"
+					to={link.to}
+					hash={link.hash}
+					search={link.search}
 					className="theme-text group inline-flex items-center gap-3 transition-transform duration-150 ease-out motion-safe:active:scale-[0.98]"
 					style={{ fontFamily: fonts.body }}
 				>
-					<span className="text-base font-medium tracking-wide">Back home</span>
+					<span className="text-base font-medium tracking-wide">
+						{link.label}
+					</span>
 					<ArrowRightIcon
 						size={16}
 						weight="regular"

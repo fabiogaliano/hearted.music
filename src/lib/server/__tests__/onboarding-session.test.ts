@@ -48,6 +48,7 @@ function makePrefs(overrides: Partial<UserPreferences> = {}): UserPreferences {
 		consent_status: null,
 		consent_updated_at: null,
 		consent_version: null,
+		match_strictness: "balanced",
 		...overrides,
 	};
 }

@@ -2034,6 +2034,7 @@ export type Database = {
 					created_at: string;
 					demo_song_id: string | null;
 					id: string;
+					match_strictness: string;
 					onboarding_completed_at: string | null;
 					onboarding_step: string;
 					phase_job_ids: Json | null;
@@ -2048,6 +2049,7 @@ export type Database = {
 					created_at?: string;
 					demo_song_id?: string | null;
 					id?: string;
+					match_strictness?: string;
 					onboarding_completed_at?: string | null;
 					onboarding_step?: string;
 					phase_job_ids?: Json | null;
@@ -2062,6 +2064,7 @@ export type Database = {
 					created_at?: string;
 					demo_song_id?: string | null;
 					id?: string;
+					match_strictness?: string;
 					onboarding_completed_at?: string | null;
 					onboarding_step?: string;
 					phase_job_ids?: Json | null;
@@ -2513,7 +2516,7 @@ export type Database = {
 				Returns: number;
 			};
 			get_liked_song_by_slug: {
-				Args: { p_account_id: string; p_slug: string };
+				Args: { p_account_id: string; p_min_score?: number; p_slug: string };
 				Returns: {
 					analysis_content: Json;
 					analysis_created_at: string;
@@ -2541,6 +2544,7 @@ export type Database = {
 			get_liked_songs_bootstrap_by_slug: {
 				Args: {
 					p_account_id: string;
+					p_min_score?: number;
 					p_slug: string;
 					p_trailing_limit?: number;
 				};
@@ -2575,6 +2579,7 @@ export type Database = {
 					p_cursor_id?: string;
 					p_filter?: string;
 					p_limit?: number;
+					p_min_score?: number;
 					p_search?: string;
 				};
 				Returns: {
@@ -2602,7 +2607,7 @@ export type Database = {
 				}[];
 			};
 			get_liked_songs_stats: {
-				Args: { p_account_id: string };
+				Args: { p_account_id: string; p_min_score?: number };
 				Returns: {
 					analyzed: number;
 					has_suggestions: number;

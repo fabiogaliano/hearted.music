@@ -109,6 +109,10 @@ vi.mock("@/lib/server/matching.functions", () => ({
 		mockGetOrderedUndecidedSongIds(...args),
 }));
 
+vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
+	resolveMinMatchScore: () => Promise.resolve(0),
+}));
+
 describe("getDashboardStats (billing-aware)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -165,7 +169,10 @@ describe("getMatchPreviews (billing-aware)", () => {
 	// tests cover the dashboard's slice-3 + image-mapping contract on top of it.
 	it("builds previews from the first 3 ordered, entitled song ids", async () => {
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
-		mockGetOrderedUndecidedSongIds.mockResolvedValue(["song-1", "song-3"]);
+		mockGetOrderedUndecidedSongIds.mockResolvedValue({
+			songIds: ["song-1", "song-3"],
+			hiddenSongCount: 0,
+		});
 
 		mockIn.mockResolvedValue({
 			data: [
@@ -188,13 +195,10 @@ describe("getMatchPreviews (billing-aware)", () => {
 
 	it("caps previews at the first 3 ids", async () => {
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
-		mockGetOrderedUndecidedSongIds.mockResolvedValue([
-			"song-1",
-			"song-2",
-			"song-3",
-			"song-4",
-			"song-5",
-		]);
+		mockGetOrderedUndecidedSongIds.mockResolvedValue({
+			songIds: ["song-1", "song-2", "song-3", "song-4", "song-5"],
+			hiddenSongCount: 0,
+		});
 
 		mockIn.mockResolvedValue({
 			data: [
@@ -213,7 +217,10 @@ describe("getMatchPreviews (billing-aware)", () => {
 
 	it("returns empty when no songs are undecided/entitled", async () => {
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
-		mockGetOrderedUndecidedSongIds.mockResolvedValue([]);
+		mockGetOrderedUndecidedSongIds.mockResolvedValue({
+			songIds: [],
+			hiddenSongCount: 0,
+		});
 
 		const previews = await getMatchPreviews();
 

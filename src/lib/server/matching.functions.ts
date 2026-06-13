@@ -3,6 +3,7 @@ import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json } from "@/lib/data/database.types";
+import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { isSongOwnedByAccount } from "@/lib/domains/library/liked-songs/queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
 import {
@@ -35,6 +36,9 @@ export interface MatchingSessionResult {
 	// === songIds.length. Kept so the sidebar badge and empty-state guards that
 	// read `totalSongs` need no changes.
 	totalSongs: number;
+	// Entitled, undecided songs hidden purely by the user's strictness bar —
+	// drives the "filtered" empty state. Zero when the bar hides nothing.
+	hiddenSongCount: number;
 }
 
 export interface MatchingSong {
@@ -172,10 +176,19 @@ async function getMatchSnapshotData(
 	};
 }
 
-/** Pure derivation: song IDs with at least one undecided match, plus ordering info. */
-function deriveUndecidedSongs(
+/**
+ * Pure derivation: song IDs with at least one undecided match, plus ordering info.
+ *
+ * `minScore` is the read-time strictness bar: match_result rows below it are
+ * skipped *before* both maxScore and hasUndecided accumulate, so a pair under
+ * the bar contributes neither ordering weight nor "this song still has
+ * suggestions". A song whose only undecided pairs are below the bar therefore
+ * drops out of the result entirely. Pass 0 to consider every stored match.
+ */
+export function deriveUndecidedSongs(
 	matchResults: MatchResultRow[],
 	decisions: MatchDecision[],
+	minScore: number,
 ): Array<{ songId: string; maxScore: number }> {
 	const decidedPairs = new Set(
 		decisions.map((d) => `${d.song_id}:${d.playlist_id}`),
@@ -186,6 +199,7 @@ function deriveUndecidedSongs(
 		{ maxScore: number; hasUndecided: boolean }
 	>();
 	for (const mr of matchResults) {
+		if (mr.score < minScore) continue;
 		const existing = songMap.get(mr.song_id) ?? {
 			maxScore: 0,
 			hasUndecided: false,
@@ -206,6 +220,7 @@ function deriveUndecidedSongs(
 export async function getUndecidedSongs(
 	snapshotId: string,
 	accountId: string,
+	minScore: number,
 ): Promise<Array<{ songId: string; maxScore: number }>> {
 	const snapshotData = await getMatchSnapshotData(snapshotId, accountId);
 	if (!snapshotData) return [];
@@ -213,6 +228,7 @@ export async function getUndecidedSongs(
 	return deriveUndecidedSongs(
 		snapshotData.matchResults,
 		snapshotData.decisions,
+		minScore,
 	);
 }
 
@@ -229,18 +245,20 @@ export async function getUndecidedSongs(
 export async function getOrderedUndecidedSongIds(
 	snapshotId: string,
 	accountId: string,
-): Promise<string[]> {
+): Promise<{ songIds: string[]; hiddenSongCount: number }> {
 	const supabase = createAdminSupabaseClient();
 
-	const [undecided, newSongIds, entitledResult] = await Promise.all([
-		getUndecidedSongs(snapshotId, accountId),
-		getNewItemIds(accountId, "song"),
-		supabase.rpc("select_entitled_data_enriched_liked_song_ids", {
-			p_account_id: accountId,
-		}),
-	]);
+	const [snapshotData, newSongIds, entitledResult, minScore] =
+		await Promise.all([
+			getMatchSnapshotData(snapshotId, accountId),
+			getNewItemIds(accountId, "song"),
+			supabase.rpc("select_entitled_data_enriched_liked_song_ids", {
+				p_account_id: accountId,
+			}),
+			resolveMinMatchScore(accountId),
+		]);
 
-	if (Result.isError(newSongIds)) return [];
+	if (Result.isError(newSongIds)) return { songIds: [], hiddenSongCount: 0 };
 
 	const entitledSet = new Set(
 		(!entitledResult.error && entitledResult.data
@@ -249,9 +267,31 @@ export async function getOrderedUndecidedSongIds(
 		).map((r: { song_id: string }) => r.song_id),
 	);
 
+	// Derive twice from the one in-memory snapshot: unfiltered (minScore 0, every
+	// stored match) and filtered (the user's bar). Diffing their entitled counts
+	// yields exactly the songs hidden purely by strictness — the data never
+	// leaves memory, so the second pass is free.
+	const allUndecided = snapshotData
+		? deriveUndecidedSongs(snapshotData.matchResults, snapshotData.decisions, 0)
+		: [];
+	const visibleUndecided = snapshotData
+		? deriveUndecidedSongs(
+				snapshotData.matchResults,
+				snapshotData.decisions,
+				minScore,
+			)
+		: [];
+
+	const entitledAllCount = allUndecided.filter((s) =>
+		entitledSet.has(s.songId),
+	).length;
+	const entitledVisible = visibleUndecided.filter((s) =>
+		entitledSet.has(s.songId),
+	);
+	const hiddenSongCount = entitledAllCount - entitledVisible.length;
+
 	const newSet = new Set(newSongIds.value);
-	return undecided
-		.filter((s) => entitledSet.has(s.songId))
+	const songIds = entitledVisible
 		.toSorted((a, b) => {
 			const aNew = newSet.has(a.songId) ? 1 : 0;
 			const bNew = newSet.has(b.songId) ? 1 : 0;
@@ -260,6 +300,8 @@ export async function getOrderedUndecidedSongIds(
 			return a.songId.localeCompare(b.songId);
 		})
 		.map((s) => s.songId);
+
+	return { songIds, hiddenSongCount };
 }
 
 // ============================================================================
@@ -279,7 +321,7 @@ export const getMatchingSession = createServerFn({ method: "GET" })
 
 		// The session now carries the *order*, not just the count — the client
 		// freezes this list and indexes its walk into it.
-		const songIds = await getOrderedUndecidedSongIds(
+		const { songIds, hiddenSongCount } = await getOrderedUndecidedSongIds(
 			matchSnapshot.id,
 			session.accountId,
 		);
@@ -288,6 +330,7 @@ export const getMatchingSession = createServerFn({ method: "GET" })
 			snapshotId: matchSnapshot.id,
 			songIds,
 			totalSongs: songIds.length,
+			hiddenSongCount,
 		};
 	});
 
@@ -331,9 +374,10 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 			return null;
 		}
 
-		const [matchResultsResult, decisionsResult] = await Promise.all([
+		const [matchResultsResult, decisionsResult, minScore] = await Promise.all([
 			getMatchResultsForSong(matchSnapshot.id, data.songId),
 			getMatchDecisionsForSongs(session.accountId, [data.songId]),
+			resolveMinMatchScore(session.accountId),
 		]);
 
 		if (Result.isError(matchResultsResult) || Result.isError(decisionsResult))
@@ -344,7 +388,9 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 		);
 
 		const undecidedResults = matchResultsResult.value.filter(
-			(mr) => !decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`),
+			(mr) =>
+				mr.score >= minScore &&
+				!decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`),
 		);
 
 		if (undecidedResults.length === 0) {
@@ -415,24 +461,31 @@ export const getSongMatches = createServerFn({ method: "GET" })
 
 		// One per-song fetch — never the whole snapshot. `getMatchResultDetailsForSong`
 		// carries the heavy factors/rank JSONB for this song alone.
-		const [songRow, analysisRow, audioRow, songDetailsResult, decisionsResult] =
-			await Promise.all([
-				supabase.from("song").select("*").eq("id", data.songId).single(),
-				supabase
-					.from("song_analysis")
-					.select("analysis")
-					.eq("song_id", data.songId)
-					.order("created_at", { ascending: false })
-					.limit(1)
-					.maybeSingle(),
-				supabase
-					.from("song_audio_feature")
-					.select("tempo, energy, valence")
-					.eq("song_id", data.songId)
-					.maybeSingle(),
-				getMatchResultDetailsForSong(data.snapshotId, data.songId),
-				getMatchDecisionsForSongs(session.accountId, [data.songId]),
-			]);
+		const [
+			songRow,
+			analysisRow,
+			audioRow,
+			songDetailsResult,
+			decisionsResult,
+			minScore,
+		] = await Promise.all([
+			supabase.from("song").select("*").eq("id", data.songId).single(),
+			supabase
+				.from("song_analysis")
+				.select("analysis")
+				.eq("song_id", data.songId)
+				.order("created_at", { ascending: false })
+				.limit(1)
+				.maybeSingle(),
+			supabase
+				.from("song_audio_feature")
+				.select("tempo, energy, valence")
+				.eq("song_id", data.songId)
+				.maybeSingle(),
+			getMatchResultDetailsForSong(data.snapshotId, data.songId),
+			getMatchDecisionsForSongs(session.accountId, [data.songId]),
+			resolveMinMatchScore(session.accountId),
+		]);
 
 		if (songRow.error || !songRow.data) return null;
 		if (Result.isError(songDetailsResult) || Result.isError(decisionsResult))
@@ -477,7 +530,9 @@ export const getSongMatches = createServerFn({ method: "GET" })
 		);
 
 		const songMatchResults = songDetailsResult.value.filter(
-			(mr) => !decidedPairs.has(`${data.songId}:${mr.playlist_id}`),
+			(mr) =>
+				mr.score >= minScore &&
+				!decidedPairs.has(`${data.songId}:${mr.playlist_id}`),
 		);
 
 		// With the frozen list, Previous revisits already-decided songs — return the
