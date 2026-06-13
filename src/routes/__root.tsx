@@ -269,7 +269,22 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			...baseHeaders,
 			"Content-Security-Policy": [
 				...cspDirectives,
-				["script-src", "'strict-dynamic'", `'nonce-${nonce}'`].join(" "),
+				// Nonce + 'self'/host allowlist, deliberately WITHOUT 'strict-dynamic'.
+				// The nonce authorizes TanStack Start's inline hydration/streaming
+				// scripts; 'self' authorizes the code-split route chunks the router
+				// pulls in via dynamic import(). iOS Safari (WebKit) does not propagate
+				// 'strict-dynamic' trust to dynamically-imported ES modules, so under
+				// 'strict-dynamic' it blocked every route chunk loaded on client-side
+				// navigation, throwing "Importing a module script failed" on most
+				// routes. Listing 'self' keeps those same-origin chunks loadable.
+				[
+					"script-src",
+					"'self'",
+					`'nonce-${nonce}'`,
+					"https://open.spotify.com",
+					"https://*.spotifycdn.com",
+					"https://cdn.userjot.com",
+				].join(" "),
 				["connect-src", "'self'", "https://*.userjot.com"].join(" "),
 			].join("; "),
 		};
