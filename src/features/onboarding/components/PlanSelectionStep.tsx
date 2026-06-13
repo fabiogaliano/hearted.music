@@ -21,6 +21,7 @@ import {
 	UNLIMITED_QUARTERLY,
 	UNLIMITED_YEARLY,
 } from "@/lib/domains/billing/offers";
+import { formatOfferPrice } from "@/lib/domains/billing/pricing";
 import {
 	type BillingState,
 	hasUnlimitedAccess,
@@ -379,7 +380,7 @@ export function PlanSelectionStep({
 
 				<PlanCard
 					title="Song Pack"
-					price="$5.99"
+					price={formatOfferPrice(SONG_PACK_500)}
 					description="500 songs + 25 Instant Unlocks"
 					buttonLabel={
 						activeCheckout === SONG_PACK_500 ? "Redirecting..." : "Unlock Pack"
@@ -391,7 +392,7 @@ export function PlanSelectionStep({
 
 				<PlanCard
 					title="Backstage Pass"
-					price="$39.99/yr"
+					price={formatOfferPrice(UNLIMITED_YEARLY)}
 					description="Every song, priority queue"
 					buttonLabel={
 						activeCheckout === UNLIMITED_YEARLY
@@ -405,7 +406,7 @@ export function PlanSelectionStep({
 				{quarterlyPlanEnabled && (
 					<PlanCard
 						title="Unlimited Quarterly"
-						price="$14.99/quarter"
+						price={formatOfferPrice(UNLIMITED_QUARTERLY)}
 						description="Every song, standard queue"
 						buttonLabel={
 							activeCheckout === UNLIMITED_QUARTERLY

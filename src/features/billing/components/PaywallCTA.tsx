@@ -6,6 +6,11 @@ import {
 	UNLIMITED_QUARTERLY,
 	UNLIMITED_YEARLY,
 } from "@/lib/domains/billing/offers";
+import {
+	formatOfferPrice,
+	formatPrice,
+	OFFER_PRICING,
+} from "@/lib/domains/billing/pricing";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import {
@@ -23,12 +28,8 @@ interface PaywallCTAProps {
 }
 
 const PACK_CREDITS = 500;
-const YEARLY_PRICE_CENTS = 3999;
-const QUARTERLY_PRICE_CENTS = 1499;
-
-function formatPrice(cents: number): string {
-	return `$${(cents / 100).toFixed(2)}`;
-}
+const YEARLY_PRICE_CENTS = OFFER_PRICING[UNLIMITED_YEARLY].amountCents;
+const QUARTERLY_PRICE_CENTS = OFFER_PRICING[UNLIMITED_QUARTERLY].amountCents;
 
 type ConfigState =
 	| { status: "loading" }
@@ -176,7 +177,9 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 									· 500 songs
 								</span>
 							</span>
-							<span className="theme-text-muted shrink-0 text-xs">$5.99</span>
+							<span className="theme-text-muted shrink-0 text-xs">
+								{formatOfferPrice(SONG_PACK_500)}
+							</span>
 						</div>
 						<ul className="theme-text-muted mt-1.5 flex flex-col gap-0.5">
 							<li className="text-xs">You choose which ones to explore</li>
@@ -203,17 +206,21 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 												className="theme-text-muted"
 												style={{ textDecoration: "line-through", opacity: 0.6 }}
 											>
-												$39.99
+												{formatPrice(YEARLY_PRICE_CENTS)}
 											</span>{" "}
 											<span className="theme-primary font-medium">
 												{formatPrice(
 													Math.max(0, YEARLY_PRICE_CENTS - discountCents),
 												)}
 											</span>
-											<span className="theme-text-muted">/yr</span>
+											<span className="theme-text-muted">
+												{OFFER_PRICING[UNLIMITED_YEARLY].suffix}
+											</span>
 										</>
 									) : (
-										<span className="theme-text-muted">$39.99/yr</span>
+										<span className="theme-text-muted">
+											{formatOfferPrice(UNLIMITED_YEARLY)}
+										</span>
 									)}
 								</span>
 							</div>
@@ -257,7 +264,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 															opacity: 0.6,
 														}}
 													>
-														$14.99
+														{formatPrice(QUARTERLY_PRICE_CENTS)}
 													</span>{" "}
 													<span className="theme-primary font-medium">
 														{formatPrice(
@@ -267,10 +274,14 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 															),
 														)}
 													</span>
-													<span className="theme-text-muted">/quarter</span>
+													<span className="theme-text-muted">
+														{OFFER_PRICING[UNLIMITED_QUARTERLY].suffix}
+													</span>
 												</>
 											) : (
-												<span className="theme-text-muted">$14.99/quarter</span>
+												<span className="theme-text-muted">
+													{formatOfferPrice(UNLIMITED_QUARTERLY)}
+												</span>
 											)}
 										</span>
 										{discountNote && (
