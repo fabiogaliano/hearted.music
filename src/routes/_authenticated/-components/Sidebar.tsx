@@ -3,7 +3,7 @@
  * Editorial magazine aesthetic with typography-driven design.
  */
 
-import { ArrowRightIcon } from "@phosphor-icons/react";
+import { ArrowUpRightIcon } from "@phosphor-icons/react";
 import { Link, useMatchRoute } from "@tanstack/react-router";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { fonts } from "@/lib/theme/fonts";
@@ -19,6 +19,7 @@ interface SidebarProps {
 	userBalance?: number | null;
 	userImageUrl?: string | null;
 	showUpgradeCTA?: boolean;
+	onUpgradeClick?: () => void;
 }
 
 interface NavItemConfig {
@@ -41,6 +42,7 @@ export function Sidebar({
 	userBalance,
 	userImageUrl,
 	showUpgradeCTA = false,
+	onUpgradeClick,
 }: SidebarProps) {
 	const matchRoute = useMatchRoute();
 
@@ -116,20 +118,23 @@ export function Sidebar({
 						{userPlan}
 					</p>
 					{showUpgradeCTA ? (
-						<Link
-							to="/settings"
-							hash="settings-section-subscription"
+						<button
+							type="button"
+							onClick={onUpgradeClick}
 							aria-label="Upgrade your plan"
-							className="group/cta theme-text relative z-10 mt-1.5 inline-flex w-fit items-baseline gap-1.5 text-base leading-none"
+							className="group/cta theme-text relative z-10 mt-1.5 inline-flex w-fit cursor-pointer items-center gap-1 text-base leading-none transition-colors duration-150 ease motion-reduce:transition-none hover:text-(--t-text-muted) focus-visible:text-(--t-text-muted)"
 							style={displayFontStyle}
 						>
 							<em>Upgrade</em>
-							<ArrowRightIcon
-								aria-hidden="true"
-								weight="light"
-								className="size-3.5 -translate-x-0.5 self-center transition-transform duration-200 ease-out group-hover:translate-x-0 group-focus-visible/cta:translate-x-0 motion-reduce:transition-none"
+							{/* Arrow drifts up+right on hover — an "expand" gesture that
+							    previews the paywall dialog blooming open in place. */}
+							<ArrowUpRightIcon
+								size={14}
+								weight="regular"
+								aria-hidden
+								className="transition-transform duration-150 ease-out motion-reduce:transition-none motion-safe:group-hover/cta:-translate-y-0.5 motion-safe:group-hover/cta:translate-x-0.5 motion-safe:group-focus-visible/cta:-translate-y-0.5 motion-safe:group-focus-visible/cta:translate-x-0.5"
 							/>
-						</Link>
+						</button>
 					) : (
 						balanceLabel && (
 							<p

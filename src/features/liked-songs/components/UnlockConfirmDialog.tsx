@@ -5,10 +5,12 @@ import {
 	WarningIcon,
 	XIcon,
 } from "@phosphor-icons/react";
-import { useEffect } from "react";
+import { useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/Button";
 import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
+import { PaywallDialog } from "@/features/billing/components/PaywallDialog";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
@@ -32,16 +34,19 @@ export function UnlockConfirmDialog({
 	onCancel,
 	onDismiss,
 }: UnlockConfirmDialogProps) {
+	const dialogRef = useRef<HTMLDivElement>(null);
+	const titleId = useId();
+	const descriptionId = useId();
 	const isConfirming = flowState.step === "confirming";
 	const isDismissable =
 		flowState.step === "confirming" ||
 		flowState.step === "insufficient_balance" ||
-		flowState.step === "paywall" ||
 		flowState.step === "error";
+	const dismissAction = isConfirming ? onCancel : onDismiss;
 
 	useShortcut({
 		key: "escape",
-		handler: isConfirming ? onCancel : onDismiss,
+		handler: dismissAction,
 		description: isConfirming ? "Cancel unlock" : "Close dialog",
 		scope: "modal",
 		category: "actions",
@@ -64,13 +69,51 @@ export function UnlockConfirmDialog({
 		}
 	}, [flowState.step, onDismiss]);
 
-	if (flowState.step === "idle") return null;
+	useEffect(() => {
+		if (flowState.step === "idle" || flowState.step === "paywall") return;
 
-	return (
-		<div className="dialog-backdrop fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-			<div className="theme-surface-bg theme-border-color dialog-content relative w-full max-w-md border p-6">
+		const previouslyFocused = document.activeElement;
+		dialogRef.current?.focus();
+
+		return () => {
+			if (
+				previouslyFocused instanceof HTMLElement &&
+				previouslyFocused.isConnected
+			) {
+				previouslyFocused.focus();
+			}
+		};
+	}, [flowState.step]);
+
+	if (flowState.step === "idle") return null;
+	if (flowState.step === "paywall") {
+		return <PaywallDialog billingState={billingState} onClose={onDismiss} />;
+	}
+
+	return createPortal(
+		<div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+			<button
+				type="button"
+				aria-label="Close dialog"
+				className="dialog-backdrop absolute inset-0 cursor-default appearance-none border-0 bg-black/50 p-0 backdrop-blur-sm"
+				onClick={() => {
+					if (!isDismissable) return;
+					dismissAction();
+				}}
+			/>
+			<div
+				ref={dialogRef}
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby={titleId}
+				aria-describedby={descriptionId}
+				tabIndex={-1}
+				className="theme-surface-bg theme-border-color dialog-content relative w-full max-w-md border p-6 outline-none"
+			>
 				{flowState.step === "confirming" && (
 					<ConfirmContent
+						titleId={titleId}
+						descriptionId={descriptionId}
 						songCount={flowState.songIds.length}
 						remainingBalance={remainingBalance}
 						onConfirm={onConfirm}
@@ -86,11 +129,15 @@ export function UnlockConfirmDialog({
 							weight="regular"
 						/>
 						<p
+							id={titleId}
 							className="theme-text text-sm"
 							style={{ fontFamily: fonts.body }}
 						>
 							Unlocking {flowState.songIds.length}{" "}
 							{flowState.songIds.length === 1 ? "song" : "songs"}…
+						</p>
+						<p id={descriptionId} className="sr-only">
+							Please wait while your songs unlock.
 						</p>
 					</div>
 				)}
@@ -100,6 +147,7 @@ export function UnlockConfirmDialog({
 						<CheckCircleIcon size={24} className="theme-primary" />
 						<div className="text-center">
 							<p
+								id={titleId}
 								className="theme-text text-sm"
 								style={{ fontFamily: fonts.body }}
 							>
@@ -108,6 +156,7 @@ export function UnlockConfirmDialog({
 								unlocked
 							</p>
 							<p
+								id={descriptionId}
 								className="theme-text-muted mt-1 text-xs"
 								style={{ fontFamily: fonts.body }}
 							>
@@ -122,12 +171,14 @@ export function UnlockConfirmDialog({
 						<WarningIcon size={24} className="theme-primary" weight="regular" />
 						<div className="text-center">
 							<p
+								id={titleId}
 								className="theme-text text-sm"
 								style={{ fontFamily: fonts.body }}
 							>
 								Not enough songs to explore
 							</p>
 							<p
+								id={descriptionId}
 								className="theme-text-muted mt-1 text-xs"
 								style={{ fontFamily: fonts.body }}
 							>
@@ -147,42 +198,18 @@ export function UnlockConfirmDialog({
 					</div>
 				)}
 
-				{flowState.step === "paywall" && (
-					<div className="flex flex-col items-center gap-4 py-2">
-						<div className="text-center">
-							<p
-								className="theme-text text-base"
-								style={{ fontFamily: fonts.display }}
-							>
-								Hear every song
-							</p>
-							<p
-								className="theme-text-muted mt-1 text-xs"
-								style={{ fontFamily: fonts.body }}
-							>
-								Grab a pack to explore the ones you choose, or go unlimited.
-							</p>
-						</div>
-						<PaywallCTA billingState={billingState} compact />
-						<Button
-							variant="ghost"
-							onClick={onDismiss}
-							className="mt-2"
-							style={{ fontFamily: fonts.body }}
-						>
-							Close
-						</Button>
-					</div>
-				)}
-
 				{flowState.step === "error" && (
 					<div className="flex flex-col items-center gap-4 py-4">
 						<WarningIcon size={24} className="theme-primary" weight="regular" />
 						<p
+							id={titleId}
 							className="theme-text text-center text-sm"
 							style={{ fontFamily: fonts.body }}
 						>
 							{flowState.message}
+						</p>
+						<p id={descriptionId} className="sr-only">
+							Dialog actions are available below.
 						</p>
 						<Button
 							onClick={onDismiss}
@@ -194,16 +221,21 @@ export function UnlockConfirmDialog({
 					</div>
 				)}
 			</div>
-		</div>
+		</div>,
+		document.body,
 	);
 }
 
 function ConfirmContent({
+	titleId,
+	descriptionId,
 	songCount,
 	remainingBalance,
 	onConfirm,
 	onCancel,
 }: {
+	titleId: string;
+	descriptionId: string;
 	songCount: number;
 	remainingBalance: number;
 	onConfirm: () => void;
@@ -226,12 +258,14 @@ function ConfirmContent({
 				<LockSimpleIcon size={24} className="theme-primary" weight="regular" />
 				<div className="text-center">
 					<p
+						id={titleId}
 						className="theme-text text-base"
 						style={{ fontFamily: fonts.display }}
 					>
 						See what's inside?
 					</p>
 					<p
+						id={descriptionId}
 						className="theme-text-muted mt-2 text-xs"
 						style={{ fontFamily: fonts.body }}
 					>

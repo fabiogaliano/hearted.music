@@ -21,6 +21,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { ConsentBanner } from "@/components/consent/ConsentBanner";
 import { UnverifiedEmailBanner } from "@/features/auth/UnverifiedEmailBanner";
+import { UpgradeDialog } from "@/features/billing/components/UpgradeDialog";
 import { usePostPurchaseReturn } from "@/features/billing/hooks/usePostPurchaseReturn";
 import { billingKeys } from "@/features/billing/query-keys";
 import { matchingSessionQueryOptions } from "@/features/matching/queries";
@@ -275,6 +276,8 @@ function AuthenticatedShell({
 	showSidebar: boolean;
 	banner: React.ReactNode;
 }) {
+	const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+
 	// "Free" in user terms: no unlimited access and no purchased credits.
 	// Song-Pack users (creditBalance > 0) have already converted, so we don't
 	// nudge them in the sidebar. They can still upgrade from /settings.
@@ -293,6 +296,7 @@ function AuthenticatedShell({
 						userBalance={getDisplayBalance(billingState)}
 						userImageUrl={account?.image_url}
 						showUpgradeCTA={showUpgradeCTA}
+						onUpgradeClick={() => setShowUpgradeDialog(true)}
 					/>
 				)}
 				<main className="flex-1 p-8">
@@ -300,6 +304,12 @@ function AuthenticatedShell({
 				</main>
 			</div>
 			{devPanel}
+			{showUpgradeDialog && (
+				<UpgradeDialog
+					billingState={billingState}
+					onClose={() => setShowUpgradeDialog(false)}
+				/>
+			)}
 		</div>
 	);
 }
