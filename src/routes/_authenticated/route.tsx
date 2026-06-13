@@ -22,6 +22,7 @@ import { Toaster } from "sonner";
 import { ConsentBanner } from "@/components/consent/ConsentBanner";
 import { UnverifiedEmailBanner } from "@/features/auth/UnverifiedEmailBanner";
 import { UpgradeDialog } from "@/features/billing/components/UpgradeDialog";
+import { WaitlistWelcomeDialog } from "@/features/billing/components/WaitlistWelcomeDialog";
 import { usePostPurchaseReturn } from "@/features/billing/hooks/usePostPurchaseReturn";
 import { billingKeys } from "@/features/billing/query-keys";
 import { matchingSessionQueryOptions } from "@/features/matching/queries";
@@ -45,6 +46,7 @@ import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getBillingState } from "@/lib/server/billing.functions";
 import { getInitialConsentState } from "@/lib/server/consent.functions";
 import { getOnboardingSession } from "@/lib/server/onboarding.functions";
+import { getWaitlistWelcome } from "@/lib/server/waitlist-welcome.functions";
 import { AuthenticatedThemeProvider } from "@/lib/theme/authenticated-theme";
 import { DEFAULT_THEME } from "@/lib/theme/types";
 import { Sidebar } from "./-components/Sidebar";
@@ -220,6 +222,7 @@ function AuthenticatedLayout() {
 			>
 				{showShell ? (
 					<AuthenticatedShell
+						accountId={session.accountId}
 						account={account}
 						billingState={billingState}
 						pendingSuggestions={pendingSuggestions}
@@ -261,7 +264,12 @@ function unverifiedBannerKey(email: string) {
 	return `hearted.unverified-banner-dismissed:${email}`;
 }
 
+function waitlistWelcomeKey(accountId: string) {
+	return `hearted.waitlist-welcome-seen:${accountId}`;
+}
+
 function AuthenticatedShell({
+	accountId,
 	account,
 	billingState,
 	pendingSuggestions,
@@ -269,6 +277,7 @@ function AuthenticatedShell({
 	showSidebar,
 	banner,
 }: {
+	accountId: string;
 	account: Awaited<ReturnType<typeof requireAuthSession>>["account"] | null;
 	billingState: BillingState;
 	pendingSuggestions: number;
@@ -277,6 +286,29 @@ function AuthenticatedShell({
 	banner: React.ReactNode;
 }) {
 	const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+
+	// Temporary waitlist greeting. Dismiss is persisted to localStorage (the
+	// feature is short-lived, so we skip a schema migration); the query only
+	// runs for complete users who haven't dismissed it yet.
+	const [welcomeDismissed, setWelcomeDismissed] = useState(() => {
+		if (typeof window === "undefined") return false;
+		return window.localStorage.getItem(waitlistWelcomeKey(accountId)) === "1";
+	});
+	const { data: waitlistWelcome } = useQuery({
+		queryKey: billingKeys.waitlistWelcome,
+		queryFn: () => getWaitlistWelcome(),
+		enabled: showSidebar && !welcomeDismissed,
+		staleTime: Number.POSITIVE_INFINITY,
+	});
+	const showWelcome =
+		showSidebar && !welcomeDismissed && waitlistWelcome?.eligible === true;
+
+	function dismissWelcome() {
+		setWelcomeDismissed(true);
+		if (typeof window !== "undefined") {
+			window.localStorage.setItem(waitlistWelcomeKey(accountId), "1");
+		}
+	}
 
 	// "Free" in user terms: no unlimited access and no purchased credits.
 	// Song-Pack users (creditBalance > 0) have already converted, so we don't
@@ -310,6 +342,7 @@ function AuthenticatedShell({
 					onClose={() => setShowUpgradeDialog(false)}
 				/>
 			)}
+			{showWelcome && <WaitlistWelcomeDialog onClose={dismissWelcome} />}
 		</div>
 	);
 }
