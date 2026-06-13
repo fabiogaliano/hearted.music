@@ -21,7 +21,7 @@ export default function DevToolsShell() {
 
 	return (
 		<TanStackDevtools
-			config={{ position: "bottom-right" }}
+			config={{ position: "top-left", hideUntilHover: true }}
 			plugins={[
 				{ name: "Tanstack Router", render: <TanStackRouterDevtoolsPanel /> },
 				TanStackQueryDevtools,

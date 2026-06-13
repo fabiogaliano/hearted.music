@@ -282,6 +282,9 @@ jobs:
           VITE_APP_TITLE: ${{ vars.VITE_APP_TITLE }}
           VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: ${{ vars.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN }}
           VITE_PUBLIC_POSTHOG_HOST: ${{ vars.VITE_PUBLIC_POSTHOG_HOST }}
+          # Build-time, client-public: Vite inlines this into the bundle. Without
+          # it the feedback widget compiles out entirely (UserJotWidget renders null).
+          VITE_USERJOT_PROJECT_ID: ${{ vars.VITE_USERJOT_PROJECT_ID }}
           # Canonical release: Sentry tag + sourcemap name + PostHog app_release.
           VITE_APP_RELEASE: ${{ github.sha }}
 
