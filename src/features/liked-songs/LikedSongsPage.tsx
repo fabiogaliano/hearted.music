@@ -13,10 +13,7 @@ import { useAuthenticatedTheme } from "@/lib/theme/authenticated-theme";
 import { LikedSongsHeader } from "./components/LikedSongsHeader";
 import { LikedSongsList } from "./components/LikedSongsList";
 import { SongSelectionBar } from "./components/SongSelectionBar";
-import {
-	PANEL_WIDTH,
-	SongDetailPanel,
-} from "./components/song-detail-panel/SongDetailPanel";
+import { SongDetailPanel } from "./components/song-detail-panel/SongDetailPanel";
 import type { LockedCta } from "./components/song-detail-panel/SongDetailPanelSurface";
 import { likedSongToSongDetail } from "./components/song-detail-panel/song-detail-adapter";
 import { UnlockConfirmDialog } from "./components/UnlockConfirmDialog";
@@ -379,7 +376,7 @@ export function LikedSongsPage({
 		<div
 			className="relative min-h-150 transition-[padding-right] duration-300 motion-reduce:transition-none"
 			style={{
-				paddingRight: isExpanded ? PANEL_WIDTH : "0px",
+				paddingRight: isExpanded ? "var(--song-list-gutter)" : "0px",
 				transitionTimingFunction: "var(--ease-out-quart)",
 			}}
 		>
