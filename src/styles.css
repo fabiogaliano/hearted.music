@@ -88,11 +88,25 @@ code {
   --hero-panel-padding-x: clamp(var(--s1), 2vw, var(--s2));
 
   --page-title-size: 2.25rem;
+
+  /* Liked-songs detail panel. Below lg there's no room for a side panel beside
+     the list (the nav column already claims width at md+), so the panel becomes
+     a full-screen overlay and the list reserves no gutter. At lg and up it's a
+     fixed side panel and the list pads itself by the panel's width. */
+  --song-panel-width: 100dvw;
+  --song-list-gutter: 0px;
 }
 
 @media (min-width: 768px) {
   :root {
     --page-title-size: 3rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --song-panel-width: clamp(440px, 50vw, 760px);
+    --song-list-gutter: var(--song-panel-width);
   }
 }
 

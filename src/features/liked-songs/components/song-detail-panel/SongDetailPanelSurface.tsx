@@ -42,7 +42,8 @@ export interface LockedCta {
 
 const PADDING_X = 24;
 // Shared by the fixed surface and the walkthrough scrim so both cover the same box.
-const PANEL_WIDTH = "clamp(440px, 50vw, 760px)";
+// Full-screen overlay on small screens, fixed side panel at lg+ (see styles.css).
+const PANEL_WIDTH = "var(--song-panel-width)";
 const ALBUM_ART_SIZE = 112;
 const ALBUM_ART_BOTTOM = 24; // album art sits fully inside the hero so the hero's borderBottom can run clean
 const SONIC_NUMBERS_HEIGHT = 38; // approx height of the bpm/energy/valence block — lets the genre cluster stack just above it in the hero

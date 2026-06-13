@@ -23,7 +23,8 @@ import {
 } from "./SongDetailPanelSurface";
 import type { PlaylistsPanel, SongDetail } from "./song-detail-types";
 
-export const PANEL_WIDTH = "clamp(440px, 50vw, 760px)";
+// Full-screen overlay on small screens, fixed side panel at lg+ (see --song-panel-width in styles.css).
+export const PANEL_WIDTH = "var(--song-panel-width)";
 
 interface SongDetailPanelProps {
 	song: SongDetail;
