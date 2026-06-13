@@ -255,7 +255,6 @@ export function WalkthroughMatchContent({
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
 				<MatchingHeader currentIndex={0} totalSongs={1} />
-				<div className="theme-border-bg mb-10 h-px" />
 				<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
 					<SongSection
 						songKey={currentSong.id}
