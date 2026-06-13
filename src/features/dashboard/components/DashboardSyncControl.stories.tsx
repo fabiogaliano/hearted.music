@@ -69,7 +69,9 @@ function StoryFor(state: DashboardSyncUiState): Story {
 
 export const Checking = StoryFor({ kind: "checking" });
 export const InstallRequired = StoryFor({ kind: "install-required" });
-export const ReconnectRequired = StoryFor({ kind: "reconnect-required" });
+export const SpotifyReconnectRequired = StoryFor({
+	kind: "spotify-reconnect-required",
+});
 export const ReadyIdle = StoryFor({ kind: "ready", lastSyncAt: Date.now() });
 export const Triggering = StoryFor({ kind: "triggering" });
 
@@ -109,13 +111,6 @@ export const RetryableError = StoryFor({
 	message: "Sync couldn't finish: HTTP 500",
 	retryable: true,
 	action: "retry",
-});
-
-export const ReconnectError = StoryFor({
-	kind: "error",
-	message: "We couldn't reach the extension. Reconnect and try again.",
-	retryable: true,
-	action: "reconnect",
 });
 
 export const SuccessJustSynced = StoryFor({

@@ -49,11 +49,11 @@ describe("DashboardSyncControl", () => {
 		expect(onAction).toHaveBeenCalledTimes(1);
 	});
 
-	it("renders a reconnect CTA for reconnect-required", () => {
-		renderState({ kind: "reconnect-required" });
-		expect(
-			screen.getByRole("button", { name: /reconnect/i }),
-		).toBeInTheDocument();
+	it("renders a Spotify reconnect CTA that delegates to onAction", async () => {
+		const { onAction } = renderState({ kind: "spotify-reconnect-required" });
+		const button = screen.getByRole("button", { name: /reconnect spotify/i });
+		await userEvent.click(button);
+		expect(onAction).toHaveBeenCalledTimes(1);
 	});
 
 	it("renders a Sync CTA when ready and delegates clicks", async () => {
@@ -119,10 +119,9 @@ describe("DashboardSyncControl", () => {
 	it("maps each error cause to the right recovery CTA", () => {
 		const labelByAction: Record<ErrorAction, RegExp> = {
 			retry: /^retry$/i,
-			reconnect: /^reconnect$/i,
 			install: /install extension/i,
 		};
-		for (const action of ["retry", "reconnect", "install"] as ErrorAction[]) {
+		for (const action of ["retry", "install"] as ErrorAction[]) {
 			const { unmount } = renderState({
 				kind: "error",
 				message: "boom",

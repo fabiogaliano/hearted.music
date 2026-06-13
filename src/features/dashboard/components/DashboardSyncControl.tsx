@@ -32,7 +32,6 @@ const SYNC_PHASE_LABELS: Record<ExtensionSyncState["phase"], string> = {
 
 const ERROR_ACTION_LABELS: Record<ErrorAction, string> = {
 	retry: "Retry",
-	reconnect: "Reconnect",
 	install: "Install extension",
 };
 
@@ -94,8 +93,15 @@ export function DashboardSyncControl({
 			return <StatusText pulse>checking…</StatusText>;
 		case "install-required":
 			return <ActionButton onClick={onAction}>Install extension</ActionButton>;
-		case "reconnect-required":
-			return <ActionButton onClick={onAction}>Reconnect</ActionButton>;
+		case "spotify-reconnect-required":
+			return (
+				<ActionButton
+					onClick={onAction}
+					title="Opens Spotify to re-authorize the connection"
+				>
+					Reconnect Spotify
+				</ActionButton>
+			);
 		case "ready":
 			return <ActionButton onClick={onAction}>Sync</ActionButton>;
 		case "triggering":

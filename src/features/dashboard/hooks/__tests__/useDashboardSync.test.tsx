@@ -19,6 +19,7 @@ import { useDashboardSync } from "../useDashboardSync";
 const mockIsExtensionInstalled = vi.fn();
 const mockGetSpotifyConnectionStatus = vi.fn();
 const mockRequestExtensionSync = vi.fn();
+const mockExpectLoginReturn = vi.fn();
 const mockPairExtension = vi.fn();
 const mockUseExtensionSyncStatus = vi.fn();
 
@@ -26,6 +27,7 @@ vi.mock("@/lib/extension/detect", () => ({
 	isExtensionInstalled: () => mockIsExtensionInstalled(),
 	getSpotifyConnectionStatus: () => mockGetSpotifyConnectionStatus(),
 	requestExtensionSync: () => mockRequestExtensionSync(),
+	expectLoginReturn: () => mockExpectLoginReturn(),
 }));
 
 vi.mock("@/lib/extension/connect", () => ({
@@ -74,6 +76,7 @@ describe("useDashboardSync", () => {
 		mockGetSpotifyConnectionStatus.mockResolvedValue(true);
 		mockUseExtensionSyncStatus.mockReturnValue({ sync: null, hasToken: true });
 		mockRequestExtensionSync.mockResolvedValue({ ok: true, count: 10 });
+		mockExpectLoginReturn.mockResolvedValue(true);
 		mockPairExtension.mockResolvedValue({ ok: true });
 	});
 
@@ -91,19 +94,51 @@ describe("useDashboardSync", () => {
 		);
 	});
 
-	it("reports reconnect-required when installed but unpaired", async () => {
-		mockUseExtensionSyncStatus.mockReturnValue({ sync: null, hasToken: false });
+	it("prompts to reconnect Spotify (open Spotify, not re-pair) when the session is gone", async () => {
+		mockGetSpotifyConnectionStatus.mockResolvedValue(false);
+		const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
 		const { result } = renderHook(() => useDashboardSync(ACCOUNT_ID), {
 			wrapper,
 		});
 		await waitFor(() =>
-			expect(result.current.state.kind).toBe("reconnect-required"),
+			expect(result.current.state.kind).toBe("spotify-reconnect-required"),
 		);
 
 		await act(async () => {
 			result.current.onAction();
 		});
-		expect(mockPairExtension).toHaveBeenCalledTimes(1);
+
+		// Opens Spotify so the extension recaptures the token — re-pairing the
+		// hearted apiToken would not restore the expired Spotify session.
+		expect(openSpy).toHaveBeenCalledTimes(1);
+		expect(openSpy.mock.calls[0]?.[0]).toContain("spotify.com");
+		expect(mockPairExtension).not.toHaveBeenCalled();
+	});
+
+	it("routes a failed sync to Spotify reconnect when Spotify is disconnected", async () => {
+		// Ready first (Spotify reported connected), then the post-failure check
+		// finds Spotify gone — so the recovery points at Spotify, not a Retry loop.
+		mockGetSpotifyConnectionStatus
+			.mockResolvedValueOnce(true)
+			.mockResolvedValue(false);
+		mockRequestExtensionSync.mockResolvedValue({
+			ok: false,
+			source: "extension",
+			error: "no spotify token",
+		});
+
+		const { result } = renderHook(() => useDashboardSync(ACCOUNT_ID), {
+			wrapper,
+		});
+		await waitFor(() => expect(result.current.state.kind).toBe("ready"));
+
+		await act(async () => {
+			result.current.onAction();
+		});
+
+		await waitFor(() =>
+			expect(result.current.state.kind).toBe("spotify-reconnect-required"),
+		);
 	});
 
 	it("requests a sync and invalidates dashboard queries exactly once on success", async () => {
@@ -140,8 +175,39 @@ describe("useDashboardSync", () => {
 		await waitFor(() => expect(result.current.state.kind).toBe("error"));
 		const state = result.current.state;
 		if (state.kind !== "error") throw new Error("expected error state");
-		expect(state.action).toBe("reconnect");
+		expect(state.action).toBe("retry");
 		expect(state.retryable).toBe(true);
+	});
+
+	it("silently re-pairs and retries once when the backend rejects auth", async () => {
+		// The apiToken was revoked/cleared: first TRIGGER_SYNC 401s, pairExtension
+		// re-mints it, the retry succeeds. No user-facing reconnect step.
+		mockRequestExtensionSync
+			.mockResolvedValueOnce({
+				ok: false,
+				source: "backend",
+				count: 0,
+				backendFailure: {
+					status: 401,
+					code: "unknown",
+					message: "Unauthorized",
+					retryAfterSeconds: null,
+				},
+			})
+			.mockResolvedValue({ ok: true, count: 10 });
+
+		const { result } = renderHook(() => useDashboardSync(ACCOUNT_ID), {
+			wrapper,
+		});
+		await waitFor(() => expect(result.current.state.kind).toBe("ready"));
+
+		await act(async () => {
+			result.current.onAction();
+		});
+
+		expect(mockPairExtension).toHaveBeenCalledTimes(1);
+		expect(mockRequestExtensionSync).toHaveBeenCalledTimes(2);
+		await waitFor(() => expect(result.current.state.kind).toBe("success"));
 	});
 
 	it("uses the backend retry-after for cooldown instead of inferring from local state", async () => {
