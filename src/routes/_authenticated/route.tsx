@@ -303,6 +303,7 @@ function AuthenticatedShell({
 	const { pathname } = useLocation();
 
 	// Close the drawer whenever the route changes (tapping a nav link).
+	// biome-ignore lint/correctness/useExhaustiveDependencies: pathname isn't read in the body, but its presence in deps is what intentionally re-runs the effect on navigation to close the drawer
 	useEffect(() => {
 		setSidebarOpen(false);
 	}, [pathname]);
