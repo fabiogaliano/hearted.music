@@ -38,7 +38,19 @@ export function initSentry(router: AnyRouter): void {
 		release: clientEnv.VITE_APP_RELEASE,
 		// Same-origin tunnel sidesteps ad-blockers in both dev and prod.
 		tunnel: "/api/sentry-tunnel",
-		integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
+		integrations: [
+			Sentry.tanstackRouterBrowserTracingIntegration(router),
+			// Default lifecycle is "route": browserSessionIntegration sends a fresh
+			// session envelope on every soft navigation, which floods the tunnel for
+			// an active SPA user. "page" keeps release-health (one session per hard
+			// load) without the per-navigation envelope storm — the real cause of
+			// the tunnel 429s.
+			Sentry.browserSessionIntegration({ lifecycle: "page" }),
+		],
+		// Drop errors thrown inside third-party widget bundles (e.g. UserJot's
+		// SDK retrying a failed identify) — they aren't ours to fix and would
+		// otherwise flood the tunnel and our error budget.
+		denyUrls: [/userjot\.com/i],
 		tracesSampleRate: 0.05,
 		// Replay sample rates are honored once the integration is added on
 		// consent; they're inert until then.

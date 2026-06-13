@@ -36,16 +36,16 @@ export function UserJotWidget({ accountId, email }: UserJotWidgetProps) {
 		initUserJotWidget(PROJECT_ID, { position: "right", theme: "light" });
 	}, []);
 
-	// Identify only once the signature query settles — a string when secure mode
-	// is configured, null when it isn't — so we never send an unsigned identity
-	// that a secure-mode workspace would reject.
+	// Identify only with a server-signed HMAC in hand. The signature is null when
+	// USERJOT_IDENTITY_SECRET is absent from the Worker env; a workspace with
+	// "Require Signed Tokens" on rejects an unsigned identity with a 401 and the
+	// SDK retries on a timer, so an unsigned call becomes an error loop. Staying
+	// anonymous (no identify) is harmless — feedback still submits.
 	useEffect(() => {
 		if (!PROJECT_ID || !signatureQuery.isSuccess) return;
-		identifyUserJot({
-			id: accountId,
-			email,
-			signature: signatureQuery.data ?? undefined,
-		});
+		const signature = signatureQuery.data;
+		if (!signature) return;
+		identifyUserJot({ id: accountId, email, signature });
 	}, [accountId, email, signatureQuery.isSuccess, signatureQuery.data]);
 
 	if (!PROJECT_ID) return null;
