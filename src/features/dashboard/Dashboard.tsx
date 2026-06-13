@@ -4,6 +4,7 @@
  */
 import { StaggeredContent } from "@/features/onboarding/components/StaggeredContent";
 import { ActivityFeed } from "./components/ActivityFeed";
+import { DashboardSyncStatus } from "./components/DashboardSyncStatus";
 import { DashboardHeader } from "./sections/DashboardHeader";
 import { MatchReviewCTA } from "./sections/MatchReviewCTA";
 import type { DashboardProps } from "./types";
@@ -22,19 +23,22 @@ export function Dashboard({
 			staggerDelay={0.06}
 			initialDelay={0.05}
 		>
-			<DashboardHeader
-				accountId={accountId}
-				stats={stats}
-				handle={handle}
-				lastSyncText={lastSyncText}
-			/>
+			<DashboardHeader accountId={accountId} stats={stats} handle={handle} />
 
 			<MatchReviewCTA
 				reviewCount={stats.reviewCount}
 				matchPreviews={matchPreviews}
 			/>
 
-			<ActivityFeed activities={recentActivity} />
+			<ActivityFeed
+				activities={recentActivity}
+				trailing={
+					<DashboardSyncStatus
+						accountId={accountId}
+						lastSyncText={lastSyncText}
+					/>
+				}
+			/>
 		</StaggeredContent>
 	);
 }

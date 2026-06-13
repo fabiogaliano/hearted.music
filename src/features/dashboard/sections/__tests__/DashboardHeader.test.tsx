@@ -16,13 +16,6 @@ vi.mock("@/lib/hooks/useActiveJobs", () => ({
 	}),
 }));
 
-vi.mock("@/features/dashboard/hooks/useDashboardSync", () => ({
-	useDashboardSync: () => ({
-		state: { kind: "ready", lastSyncAt: null },
-		onAction: vi.fn(),
-	}),
-}));
-
 // ClientNumberFlow is a client-only component; stub it to avoid SSR issues
 vi.mock("@/features/matching/components/ClientNumberFlow", () => ({
 	ClientNumberFlow: ({ value, suffix }: { value: number; suffix?: string }) => (
@@ -40,49 +33,30 @@ const baseStats = {
 describe("DashboardHeader — handle identity", () => {
 	it("renders @handle as the heading when handle is present", () => {
 		render(
-			<DashboardHeader
-				accountId="acc-1"
-				stats={baseStats}
-				handle="fabio"
-				lastSyncText="2 hours ago"
-			/>,
+			<DashboardHeader accountId="acc-1" stats={baseStats} handle="fabio" />,
 		);
 		expect(screen.getByRole("heading", { name: "@fabio" })).toBeInTheDocument();
 	});
 
 	it("omits the heading entirely when handle is null — non-throwing", () => {
 		render(
-			<DashboardHeader
-				accountId="acc-1"
-				stats={baseStats}
-				handle={null}
-				lastSyncText="2 hours ago"
-			/>,
+			<DashboardHeader accountId="acc-1" stats={baseStats} handle={null} />,
 		);
 		expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
 	});
 
 	it("does not fall back to display_name or email when handle is null", () => {
 		render(
-			<DashboardHeader
-				accountId="acc-1"
-				stats={baseStats}
-				handle={null}
-				lastSyncText="2 hours ago"
-			/>,
+			<DashboardHeader accountId="acc-1" stats={baseStats} handle={null} />,
 		);
 		expect(screen.queryByText(/^@/)).not.toBeInTheDocument();
 	});
 
-	it("still renders stats and sync control when handle is null", () => {
+	it("still renders stats when handle is null", () => {
 		render(
-			<DashboardHeader
-				accountId="acc-1"
-				stats={baseStats}
-				handle={null}
-				lastSyncText="Never"
-			/>,
+			<DashboardHeader accountId="acc-1" stats={baseStats} handle={null} />,
 		);
-		expect(screen.getByText("Never")).toBeInTheDocument();
+		expect(screen.getByText("songs")).toBeInTheDocument();
+		expect(screen.getByText("playlists")).toBeInTheDocument();
 	});
 });

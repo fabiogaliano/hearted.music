@@ -3,26 +3,20 @@
 import { ClientNumberFlow } from "@/features/matching/components/ClientNumberFlow";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { fonts } from "@/lib/theme/fonts";
-import { DashboardSyncControl } from "../components/DashboardSyncControl";
-import { useDashboardSync } from "../hooks/useDashboardSync";
 import type { DashboardStats } from "../types";
 
 interface DashboardHeaderProps {
 	accountId: string;
 	stats: DashboardStats;
 	handle: string | null;
-	lastSyncText: string;
 }
 
 export function DashboardHeader({
 	accountId,
 	stats,
 	handle,
-	lastSyncText,
 }: DashboardHeaderProps) {
 	const { isEnrichmentRunning, enrichmentProgress } = useActiveJobs(accountId);
-	const { state: syncState, onAction: onSyncAction } =
-		useDashboardSync(accountId);
 
 	const analyzedPercent = enrichmentProgress
 		? enrichmentProgress.total > 0
@@ -72,14 +66,6 @@ export function DashboardHeader({
 						{isEnrichmentRunning ? "analyzing" : "analyzed"}
 					</span>
 				</span>
-				<span aria-hidden="true" className="mx-1 opacity-40">
-					|
-				</span>
-				<span className="flex items-center gap-2" aria-live="polite">
-					<span className="theme-text-muted-bg size-1.5 rounded-full" />
-					{lastSyncText}
-				</span>
-				<DashboardSyncControl state={syncState} onAction={onSyncAction} />
 			</div>
 		</div>
 	);
