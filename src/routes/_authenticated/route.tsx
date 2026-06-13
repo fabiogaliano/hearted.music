@@ -25,6 +25,7 @@ import { UpgradeDialog } from "@/features/billing/components/UpgradeDialog";
 import { WaitlistWelcomeDialog } from "@/features/billing/components/WaitlistWelcomeDialog";
 import { usePostPurchaseReturn } from "@/features/billing/hooks/usePostPurchaseReturn";
 import { billingKeys } from "@/features/billing/query-keys";
+import { UserJotWidget } from "@/features/feedback/UserJotWidget";
 import { matchingSessionQueryOptions } from "@/features/matching/queries";
 import {
 	isPathAllowed,
@@ -239,6 +240,9 @@ function AuthenticatedLayout() {
 				)}
 			</AuthenticatedThemeProvider>
 			<Toaster richColors position="top-right" />
+			{isComplete && (
+				<UserJotWidget accountId={session.accountId} email={identity.email} />
+			)}
 		</>
 	);
 

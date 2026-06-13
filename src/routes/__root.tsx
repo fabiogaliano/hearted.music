@@ -208,10 +208,10 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			"base-uri 'self'",
 			"form-action 'self'",
 			"frame-ancestors 'none'",
-			`style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
+			`style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.userjot.com`,
 			"font-src 'self' https://fonts.gstatic.com",
-			`img-src 'self' data: https://i.scdn.co https://*.scdn.co https://*.spotifycdn.com https://*.googleusercontent.com https://*.bcbits.com`,
-			"frame-src https://open.spotify.com",
+			`img-src 'self' data: https://i.scdn.co https://*.scdn.co https://*.spotifycdn.com https://*.googleusercontent.com https://*.bcbits.com https://*.userjot.com`,
+			"frame-src https://open.spotify.com https://*.userjot.com",
 			"object-src 'none'",
 			"upgrade-insecure-requests",
 		];
@@ -230,12 +230,14 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 						"'unsafe-inline'",
 						"https://open.spotify.com",
 						"https://*.spotifycdn.com",
+						"https://cdn.userjot.com",
 						"http://localhost:*",
 						"http://127.0.0.1:*",
 					].join(" "),
 					[
 						"connect-src",
 						"'self'",
+						"https://*.userjot.com",
 						"ws://localhost:*",
 						"ws://127.0.0.1:*",
 						"http://localhost:*",
@@ -255,8 +257,9 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 						"'self'",
 						"https://open.spotify.com",
 						"https://*.spotifycdn.com",
+						"https://cdn.userjot.com",
 					].join(" "),
-					["connect-src", "'self'"].join(" "),
+					["connect-src", "'self'", "https://*.userjot.com"].join(" "),
 				].join("; "),
 			};
 		}
@@ -267,7 +270,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			"Content-Security-Policy": [
 				...cspDirectives,
 				["script-src", "'strict-dynamic'", `'nonce-${nonce}'`].join(" "),
-				["connect-src", "'self'"].join(" "),
+				["connect-src", "'self'", "https://*.userjot.com"].join(" "),
 			].join("; "),
 		};
 	},

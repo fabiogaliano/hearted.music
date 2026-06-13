@@ -53,6 +53,10 @@ export const env = createEnv({
 		BILLING_SERVICE_URL: z.url().optional(),
 		BILLING_SHARED_SECRET: z.string().min(1).optional(),
 		QUARTERLY_PLAN_ENABLED: boolString,
+		// UserJot feedback widget. Secret signs the identify() token (secure mode);
+		// server-only — must never reach the client. Widget degrades to anonymous
+		// when unset.
+		USERJOT_IDENTITY_SECRET: z.string().min(1).optional(),
 	},
 
 	clientPrefix: "VITE_",
@@ -61,6 +65,8 @@ export const env = createEnv({
 		VITE_PUBLIC_APP_ORIGIN: z.url().optional(),
 		VITE_APP_TITLE: z.string().min(1).optional(),
 		VITE_CHROME_EXTENSION_ID: z.string().min(1).optional(),
+		// UserJot project ID for the feedback widget. Public — safe in the bundle.
+		VITE_USERJOT_PROJECT_ID: z.string().min(1).optional(),
 		VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: z.string().min(1).optional(),
 		VITE_PUBLIC_POSTHOG_HOST: z.string().min(1).optional(),
 		// Sentry DSN is bundled at build time. Server-side DSN comes from the
@@ -110,9 +116,11 @@ export const env = createEnv({
 		BILLING_SERVICE_URL: serverEnv.BILLING_SERVICE_URL,
 		BILLING_SHARED_SECRET: serverEnv.BILLING_SHARED_SECRET,
 		QUARTERLY_PLAN_ENABLED: serverEnv.QUARTERLY_PLAN_ENABLED,
+		USERJOT_IDENTITY_SECRET: serverEnv.USERJOT_IDENTITY_SECRET,
 		VITE_PUBLIC_APP_ORIGIN: import.meta.env.VITE_PUBLIC_APP_ORIGIN,
 		VITE_APP_TITLE: import.meta.env.VITE_APP_TITLE,
 		VITE_CHROME_EXTENSION_ID: import.meta.env.VITE_CHROME_EXTENSION_ID,
+		VITE_USERJOT_PROJECT_ID: import.meta.env.VITE_USERJOT_PROJECT_ID,
 		VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: import.meta.env
 			.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN,
 		VITE_PUBLIC_POSTHOG_HOST: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
