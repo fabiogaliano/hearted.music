@@ -78,7 +78,14 @@ describe("completeOnboardingWithAllocations", () => {
 
 	it("does not check the grant or allocate for a non-free account", async () => {
 		mockedReadBilling.mockResolvedValue(
-			Result.ok(freeBillingState({ creditBalance: 50, queueBand: "standard" })),
+			Result.ok(
+				freeBillingState({
+					plan: "yearly",
+					subscriptionStatus: "active",
+					unlimitedAccess: { kind: "subscription" },
+					queueBand: "priority",
+				}),
+			),
 		);
 		const { client, from } = makeSupabase(null);
 
