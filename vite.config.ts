@@ -183,6 +183,22 @@ export default defineConfig(({ command }) => {
 				},
 			],
 		},
+		// Pre-bundle deps Vite would otherwise discover mid-request. The first SSR
+		// request to reference one (e.g. @sentry/cloudflare) triggers an optimizer
+		// re-run, which restarts the @cloudflare/vite-plugin workerd runner and
+		// drops any in-flight request with "Network connection lost". Declaring
+		// them bundles at startup so the runner never restarts under load. `ssr`
+		// covers the workerd SSR environment (the deps_ssr optimizer); the
+		// top-level block covers the client. Add any package named in a
+		// `[optimizer] bundling` dev log.
+		optimizeDeps: {
+			include: ["@sentry/cloudflare", "@sentry/tanstackstart-react"],
+		},
+		ssr: {
+			optimizeDeps: {
+				include: ["@sentry/cloudflare", "@sentry/tanstackstart-react"],
+			},
+		},
 		server: {
 			host: "127.0.0.1",
 			port: 5173,
