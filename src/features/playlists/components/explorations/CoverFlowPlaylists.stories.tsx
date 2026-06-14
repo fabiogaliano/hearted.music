@@ -44,17 +44,29 @@ function Harness({ initial }: { initial: PlaylistSummary[] }) {
 	);
 }
 
+type Scenario = "mixed" | "all-matching" | "none-matching";
+
+function seed(scenario: Scenario): PlaylistSummary[] {
+	if (scenario === "all-matching")
+		return samplePlaylists.map((p) => ({ ...p, isTarget: true }));
+	if (scenario === "none-matching")
+		return samplePlaylists.map((p) => ({ ...p, isTarget: false }));
+	return samplePlaylists;
+}
+
 // The harness seeds its playlist set once on mount, so key the element to the
-// control to force a remount when it flips rather than leaving stale state.
-export const CoverFlow: Story<{ allMatching: boolean }> = ({ allMatching }) => {
-	const initial = allMatching
-		? samplePlaylists.map((p) => ({ ...p, isTarget: true }))
-		: samplePlaylists;
-	return <Harness key={String(allMatching)} initial={initial} />;
+// scenario to force a remount when it changes rather than leaving stale state.
+export const CoverFlow: Story<{ scenario: Scenario }> = ({ scenario }) => (
+	<Harness key={scenario} initial={seed(scenario)} />
+);
+CoverFlow.args = { scenario: "mixed" };
+CoverFlow.argTypes = {
+	scenario: {
+		control: { type: "select" },
+		options: ["mixed", "all-matching", "none-matching"],
+	},
 };
-CoverFlow.args = { allMatching: false };
-CoverFlow.argTypes = { allMatching: { control: { type: "boolean" } } };
 CoverFlow.meta = {
 	description:
-		"Matching candidates cover flow above an editorial Library rail — section titles ride a hairline rule with the count at the far end. Browse by clicking a sleeve, wheel, drag, or ←/→ · h/l keys; Enter opens the centred candidate. Flip allMatching to push every sleeve into the cover flow.",
+		"Matching candidates cover flow above an editorial Library rail — section titles ride a hairline rule with the count at the far end. Browse by clicking a sleeve, wheel, drag, or ←/→ · h/l keys; Enter opens the centred candidate. Scenario: mixed · all-matching (empty Library) · none-matching (empty cover flow).",
 };

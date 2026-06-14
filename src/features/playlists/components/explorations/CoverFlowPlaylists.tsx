@@ -156,7 +156,9 @@ export function CoverFlowPlaylists({
 							className="theme-text-muted py-6 text-[13px]"
 							style={{ fontFamily: fonts.body }}
 						>
-							Nothing here yet.
+							{matching.length > 0
+								? "Every playlist is in matching."
+								: "No playlists yet."}
 						</p>
 					)}
 				</div>
