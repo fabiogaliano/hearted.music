@@ -1,0 +1,93 @@
+import { fonts } from "@/lib/theme/fonts";
+import { Cover } from "./Cover";
+import { type PlaylistSummary, playlistPurpose } from "./types";
+
+interface RailRowProps {
+	playlist: PlaylistSummary;
+	onOpen: (id: string) => void;
+	onAdd: (id: string) => void;
+	onRemove: (id: string) => void;
+}
+
+/**
+ * One rail row: cover, serif name, and what the playlist is for as the subtitle
+ * so it reads at a glance. Count is desktop-only; the row stays a clean
+ * cover/name/action triple on narrow widths. Inline add, hover-revealed remove.
+ */
+export function RailRow({ playlist, onOpen, onAdd, onRemove }: RailRowProps) {
+	const purpose = playlistPurpose(playlist);
+	return (
+		<div className="group/row theme-border-color theme-hover-surface relative -mx-3.5 grid grid-cols-[54px_minmax(0,1fr)_auto] items-center gap-3 border-b px-3.5 py-[13px] md:grid-cols-[54px_minmax(0,1fr)_auto_auto] md:gap-[18px]">
+			{/* Whole-row open affordance as a real <button>, overlaid rather than
+			    wrapping the row so the inline Add/Remove buttons aren't nested inside
+			    another button. z-[1] lifts it over the static cover/name/count;
+			    the action column sits at z-[2] to stay clickable above it. */}
+			<button
+				type="button"
+				aria-label={playlist.name}
+				onClick={() => onOpen(playlist.id)}
+				className="absolute inset-0 z-[1] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--t-primary)/60 focus-visible:ring-inset"
+			/>
+			<Cover src={playlist.imageUrl} size={54} className="flex-none" />
+
+			<div className="min-w-0">
+				<div
+					className="theme-text truncate text-xl leading-tight font-light"
+					style={{ fontFamily: fonts.display }}
+				>
+					{playlist.name}
+				</div>
+				<div
+					className={`mt-0.5 truncate text-[13px] leading-tight ${purpose ? "theme-text-muted" : "theme-text-muted italic opacity-60"}`}
+					style={{ fontFamily: fonts.body }}
+				>
+					{purpose ?? "No description yet"}
+				</div>
+			</div>
+
+			<div
+				className="theme-text-muted hidden text-right text-xs tabular-nums whitespace-nowrap md:block"
+				style={{ fontFamily: fonts.body }}
+			>
+				<span className="theme-text">{playlist.songCount}</span>{" "}
+				{playlist.songCount === 1 ? "song" : "songs"}
+			</div>
+
+			<div className="relative z-[2] flex items-center justify-end gap-3 md:min-w-[132px]">
+				{playlist.isTarget ? (
+					<>
+						<span
+							className="theme-primary hidden text-[10px] tracking-[0.14em] uppercase whitespace-nowrap md:inline"
+							style={{ fontFamily: fonts.body }}
+						>
+							In matching
+						</span>
+						<button
+							type="button"
+							onClick={(event) => {
+								event.stopPropagation();
+								onRemove(playlist.id);
+							}}
+							className="theme-text-muted theme-hover-surface inline-flex flex-none items-center rounded-full border border-transparent px-2.5 py-1.5 text-[11px] tracking-[0.12em] uppercase opacity-0 transition-[color,border-color,background-color,opacity,transform] duration-150 group-focus-within/row:opacity-100 group-hover/row:opacity-100 hover:border-(--t-border) hover:text-(--t-text) active:scale-[0.95]"
+							style={{ fontFamily: fonts.body }}
+						>
+							Remove
+						</button>
+					</>
+				) : (
+					<button
+						type="button"
+						onClick={(event) => {
+							event.stopPropagation();
+							onAdd(playlist.id);
+						}}
+						className="theme-text-muted theme-border-color inline-flex flex-none items-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] tracking-[0.12em] uppercase transition-[color,border-color,background-color,transform] duration-150 hover:border-(--t-primary)/45 hover:text-(--t-primary) active:scale-[0.95]"
+						style={{ fontFamily: fonts.body }}
+					>
+						<span aria-hidden="true">＋</span> Add
+					</button>
+				)}
+			</div>
+		</div>
+	);
+}

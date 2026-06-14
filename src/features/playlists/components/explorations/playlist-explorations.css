@@ -1,0 +1,52 @@
+/* Keyframes + the handful of rules the exploration components can't express
+   inline (keyframed entrances, the over-cap shake). Everything else — tokens,
+   layout, transitions — lives in the TSX via theme-* utilities + inline styles.
+   Imported once from the components that use these class names. */
+
+@keyframes xpl-reveal {
+	from {
+		opacity: 0;
+		transform: translateY(-6px);
+		filter: blur(4px);
+	}
+}
+@keyframes xpl-shake {
+	0%,
+	100% {
+		transform: translateX(0);
+	}
+	25% {
+		transform: translateX(-3px);
+	}
+	75% {
+		transform: translateX(3px);
+	}
+}
+@keyframes xpl-track-enter {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+}
+
+/* The genre editor region animates in on its own when Edit opens — scoped here
+   so the description + divider that carry over from the collapsed view don't. */
+.xpl-reveal {
+	animation: xpl-reveal 260ms var(--ease-out-expo) both;
+}
+/* Over-cap feedback: a short shake when a 6th genre is attempted. */
+.xpl-shake {
+	animation: xpl-shake 220ms var(--ease-out-quart);
+}
+/* Track rows lift + fade in; the caller sets a per-row animation-delay inline. */
+.xpl-track-enter {
+	animation: xpl-track-enter 320ms var(--ease-out-expo) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.xpl-reveal,
+	.xpl-shake,
+	.xpl-track-enter {
+		animation: none;
+	}
+}
