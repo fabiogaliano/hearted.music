@@ -28,6 +28,15 @@
 		transform: translateY(4px);
 	}
 }
+/* The cover-flow caption settles in as a new sleeve centres, so the name/purpose
+   don't hard-cut while the covers glide. Re-triggered by keying the wrapper to the
+   centred playlist id. Short + subtle — it fires on every h/l press. */
+@keyframes xpl-caption-enter {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+}
 
 /* The genre editor region animates in on its own when Edit opens — scoped here
    so the description + divider that carry over from the collapsed view don't. */
@@ -42,11 +51,16 @@
 .xpl-track-enter {
 	animation: xpl-track-enter 320ms var(--ease-out-expo) both;
 }
+/* Cover-flow caption: quick, gentle settle to match the gliding covers. */
+.xpl-caption-enter {
+	animation: xpl-caption-enter 190ms var(--ease-out-quart) both;
+}
 
 @media (prefers-reduced-motion: reduce) {
 	.xpl-reveal,
 	.xpl-shake,
-	.xpl-track-enter {
+	.xpl-track-enter,
+	.xpl-caption-enter {
 		animation: none;
 	}
 }

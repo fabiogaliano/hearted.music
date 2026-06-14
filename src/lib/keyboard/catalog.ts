@@ -48,6 +48,13 @@ export const SHORTCUT_CATALOG: CatalogEntry[] = [
 		description: "Open playlist details",
 	},
 
+	// ── Matching candidates (cover flow) ──────────────────────────────────────
+	{ scope: "matching", key: "h", description: "Previous candidate" },
+	{ scope: "matching", key: "left", description: "Previous candidate" },
+	{ scope: "matching", key: "l", description: "Next candidate" },
+	{ scope: "matching", key: "right", description: "Next candidate" },
+	{ scope: "matching", key: "enter", description: "Open candidate" },
+
 	// ── Playlists detail ──────────────────────────────────────────────────────
 	{ scope: "playlists-detail", key: "escape", description: "Close detail" },
 

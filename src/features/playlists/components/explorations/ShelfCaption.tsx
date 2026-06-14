@@ -1,6 +1,5 @@
-import { ArrowUpRightIcon } from "@phosphor-icons/react";
+import { ArrowUpRightIcon, CheckIcon } from "@phosphor-icons/react";
 import { fonts } from "@/lib/theme/fonts";
-import { TargetToggle } from "./TargetToggle";
 import { type PlaylistSummary, playlistPurpose } from "./types";
 
 interface ShelfCaptionProps {
@@ -14,10 +13,16 @@ interface ShelfCaptionProps {
 }
 
 /**
- * The line under a cover-flow stage. The playlist name IS the open affordance — a
- * serif link whose arrow drifts up-right on hover/focus — followed by its song
- * count + purpose, with the matching toggle on the right. The arrow's hover is
+ * The caption under a cover-flow stage, stacked on the cover's own centre axis:
+ * name, purpose, then the membership pill — so the eye never leaves the centred
+ * column the stage already drew it to. The playlist name IS the open affordance —
+ * a serif link whose arrow drifts up-right on hover/focus. The arrow's hover is
  * shared with the cover via `openActive`, so hovering either reads as one target.
+ *
+ * Membership uses the rail's own quiet pill rather than the heavier TargetToggle:
+ * the shelf only ever holds matching playlists, so "in matching" is redundant here
+ * and the real action is Remove. The pill stays context-aware (Add when a
+ * non-target slips in) so it speaks the same language as a RailRow either way.
  */
 export function ShelfCaption({
 	playlist,
@@ -30,14 +35,14 @@ export function ShelfCaption({
 	const purpose = playlistPurpose(playlist);
 	const open = () => onOpen(playlist.id);
 	return (
-		<>
-			<div className="min-w-0">
+		<div className="flex w-full max-w-full flex-col items-center gap-3.5">
+			<div className="flex max-w-full flex-col items-center">
 				<button
 					type="button"
 					onClick={open}
 					onPointerEnter={() => onOpenHoverChange?.(true)}
 					onPointerLeave={() => onOpenHoverChange?.(false)}
-					className={`group/open flex min-w-0 max-w-full cursor-pointer items-center gap-2 text-left transition-colors duration-150 ease focus-visible:text-(--t-text-muted) motion-reduce:transition-none ${
+					className={`group/open flex max-w-full cursor-pointer items-center gap-2 transition-colors duration-150 ease focus-visible:text-(--t-text-muted) motion-reduce:transition-none ${
 						openActive ? "text-(--t-text-muted)" : "theme-text"
 					}`}
 					style={{ fontFamily: fonts.display }}
@@ -56,29 +61,43 @@ export function ShelfCaption({
 						}`}
 					/>
 				</button>
-				<div
-					className="theme-text-muted mt-1 flex min-w-0 items-center gap-2 text-[13px] tabular-nums"
-					style={{ fontFamily: fonts.body }}
-				>
-					<span className="flex-none">
-						{playlist.songCount} {playlist.songCount === 1 ? "song" : "songs"}
-					</span>
-					{purpose && (
-						<>
-							<span className="size-[3px] flex-none rounded-full bg-current opacity-50" />
-							<span className="truncate">{purpose}</span>
-						</>
-					)}
-				</div>
+				{purpose && (
+					<div
+						className="theme-text-muted mt-1.5 max-w-full truncate text-center text-[13px]"
+						style={{ fontFamily: fonts.body }}
+					>
+						{purpose}
+					</div>
+				)}
 			</div>
-			<div className="flex flex-none items-center gap-2.5">
-				<TargetToggle
-					isTarget={playlist.isTarget}
-					onToggle={() =>
-						playlist.isTarget ? onRemove(playlist.id) : onAdd(playlist.id)
-					}
-				/>
+			<div className="flex justify-center">
+				{playlist.isTarget ? (
+					<button
+						type="button"
+						onClick={() => onRemove(playlist.id)}
+						aria-label="Remove from matching"
+						className="group/match theme-border-color relative inline-flex min-h-10 min-w-[150px] cursor-pointer items-center justify-center rounded-full border bg-(--t-surface) px-4 text-[11px] tracking-[0.14em] text-(--t-text) uppercase transition-[color,border-color,background-color,transform] duration-150 hover:bg-(--t-surface-dim) active:scale-[0.96]"
+						style={{ fontFamily: fonts.body }}
+					>
+						<span className="flex items-center gap-1.5 transition-opacity duration-150 group-hover/match:opacity-0 motion-reduce:transition-none">
+							<CheckIcon size={13} weight="bold" aria-hidden />
+							In matching
+						</span>
+						<span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-150 group-hover/match:opacity-100 motion-reduce:transition-none">
+							Remove
+						</span>
+					</button>
+				) : (
+					<button
+						type="button"
+						onClick={() => onAdd(playlist.id)}
+						className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-full border border-(--t-primary)/50 bg-(--t-surface) px-4 text-[11px] tracking-[0.14em] text-(--t-primary) uppercase transition-[color,border-color,background-color,transform] duration-150 hover:border-(--t-primary) hover:bg-(--t-primary) hover:text-(--t-text-on-primary) active:scale-[0.96]"
+						style={{ fontFamily: fonts.body }}
+					>
+						<span aria-hidden="true">＋</span> Add to matching
+					</button>
+				)}
 			</div>
-		</>
+		</div>
 	);
 }

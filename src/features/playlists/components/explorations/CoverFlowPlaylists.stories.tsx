@@ -6,10 +6,10 @@ import { SpotlightPanel } from "./SpotlightPanel";
 import type { PlaylistSummary } from "./types";
 
 /**
- * The CoverFlow listing wired to the Spotlight panel — the whole flow: browse
- * the shelves, add/remove to matching, click the centered sleeve (or Open) to
- * spotlight a playlist. The harness owns the playlist set so add/remove visibly
- * move sleeves between the Matching and Library shelves.
+ * The CoverFlow listing wired to the Spotlight panel — the whole flow: browse the
+ * matching candidates, add/remove to matching, click the centered sleeve (or Open)
+ * to spotlight a playlist. The harness owns the playlist set so add/remove visibly
+ * move sleeves between the Matching candidates cover flow and the Library rail.
  */
 export default { title: "Playlists/Explorations/Composable" };
 
@@ -56,5 +56,5 @@ CoverFlow.args = { allMatching: false };
 CoverFlow.argTypes = { allMatching: { control: { type: "boolean" } } };
 CoverFlow.meta = {
 	description:
-		"Two stacked shelves — Matching above, Library below. Wheel / drag / ‹ › / arrow keys to browse; ↑/↓ switch shelf, Enter opens. Flip allMatching to push every sleeve into the matching shelf.",
+		"Matching candidates cover flow above an editorial Library rail — section titles ride a hairline rule with the count at the far end. Browse by clicking a sleeve, wheel, drag, or ←/→ · h/l keys; Enter opens the centred candidate. Flip allMatching to push every sleeve into the cover flow.",
 };

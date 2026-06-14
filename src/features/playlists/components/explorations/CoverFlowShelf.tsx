@@ -9,6 +9,7 @@ import { fonts } from "@/lib/theme/fonts";
 import { Cover } from "./Cover";
 import { ShelfCaption } from "./ShelfCaption";
 import type { PlaylistSummary } from "./types";
+import "./playlist-explorations.css";
 
 const prefersReduced = () =>
 	typeof window !== "undefined" &&
@@ -84,6 +85,13 @@ interface CoverFlowShelfProps {
 	onOpen: (id: string) => void;
 	onAdd: (id: string) => void;
 	onRemove: (id: string) => void;
+	/**
+	 * The chrome around the (fixed) stage. `plain` keeps the label left + arrows
+	 * right. `chapter` rides the label on a hairline rule with the count floated to
+	 * its far end (no arrow buttons — sleeves are navigated by click / wheel / drag
+	 * / keys). The sleeve geometry is identical in both.
+	 */
+	chrome?: "plain" | "chapter";
 }
 
 /**
@@ -101,6 +109,7 @@ export function CoverFlowShelf({
 	onOpen,
 	onAdd,
 	onRemove,
+	chrome = "plain",
 }: CoverFlowShelfProps) {
 	const stageRef = useRef<HTMLDivElement>(null);
 	const dragRef = useRef<{ x: number; moved: boolean } | null>(null);
@@ -188,98 +197,133 @@ export function CoverFlowShelf({
 		else onCenterChange(index);
 	};
 
-	return (
-		<section className="mt-6">
-			<div className="flex items-center justify-between px-1">
-				<span
-					className="theme-text-muted flex items-baseline gap-2.5 text-xs tracking-[0.2em] uppercase"
+	const arrowButton = (dir: -1 | 1) => (
+		<button
+			key={dir}
+			type="button"
+			aria-label={dir < 0 ? "Previous" : "Next"}
+			onClick={() => step(dir)}
+			className="theme-text-muted theme-border-color grid size-[34px] place-items-center rounded-full border text-lg leading-none transition-[color,border-color,transform] duration-150 hover:border-(--t-text-muted) hover:text-(--t-text) active:scale-[0.92]"
+		>
+			{dir < 0 ? "‹" : "›"}
+		</button>
+	);
+
+	const arrowPair = (
+		<div className="flex gap-1.5">
+			{arrowButton(-1)}
+			{arrowButton(1)}
+		</div>
+	);
+
+	const labelEl = (
+		<span
+			className="theme-text-muted flex items-baseline gap-2.5 text-xs tracking-[0.2em] uppercase"
+			style={{ fontFamily: fonts.body }}
+		>
+			{label} <span className="tabular-nums">{playlists.length}</span>
+		</span>
+	);
+
+	const stage = (
+		<div
+			ref={stageRef}
+			className="relative mt-3 h-[220px] cursor-grab overflow-x-clip overflow-y-visible active:cursor-grabbing md:h-[268px]"
+			style={{
+				perspective: "1500px",
+				perspectiveOrigin: "50% 46%",
+				touchAction: "pan-y",
+			}}
+		>
+			{playlists.length === 0 ? (
+				<p
+					className="theme-text-muted absolute inset-0 grid place-items-center text-[13px]"
 					style={{ fontFamily: fonts.body }}
 				>
-					{label} <span className="tabular-nums">{playlists.length}</span>
-				</span>
-				<div className="flex gap-1.5">
-					{([-1, 1] as const).map((dir) => (
+					Nothing here yet.
+				</p>
+			) : (
+				playlists.map((playlist, index) => {
+					const offset = index - clamped;
+					const isCenter = offset === 0;
+					return (
 						<button
-							key={dir}
+							key={playlist.id}
 							type="button"
-							aria-label={dir < 0 ? "Previous" : "Next"}
-							onClick={() => step(dir)}
-							className="theme-text-muted theme-border-color grid size-[34px] place-items-center rounded-full border text-lg leading-none transition-[color,border-color,transform] duration-150 hover:border-(--t-text-muted) hover:text-(--t-text) active:scale-[0.92]"
+							tabIndex={-1}
+							aria-label={playlist.name}
+							onClick={() => onSleeveClick(index, playlist.id)}
+							onPointerEnter={isCenter ? () => setOpenHover(true) : undefined}
+							onPointerLeave={isCenter ? () => setOpenHover(false) : undefined}
+							className="group/sleeve absolute top-6 left-1/2 -ml-[84px] block size-[168px] cursor-pointer border-0 bg-transparent p-0 md:-ml-[108px] md:size-[216px]"
+							style={sleeveStyle(offset, reduce)}
 						>
-							{dir < 0 ? "‹" : "›"}
+							<div
+								className="relative h-full w-full transition-transform duration-100 ease-out group-active/sleeve:scale-[0.96] motion-reduce:transition-none"
+								style={{ boxShadow: dropShadow(isCenter) }}
+							>
+								<Cover
+									src={playlist.imageUrl}
+									size="fill"
+									className="text-5xl"
+									style={
+										isCenter
+											? undefined
+											: { filter: "brightness(0.82) saturate(0.9)" }
+									}
+								/>
+							</div>
 						</button>
-					))}
-				</div>
-			</div>
+					);
+				})
+			)}
+		</div>
+	);
 
-			<div
-				ref={stageRef}
-				className="relative mt-3 h-[220px] cursor-grab overflow-x-clip overflow-y-visible active:cursor-grabbing md:h-[268px]"
-				style={{
-					perspective: "1500px",
-					perspectiveOrigin: "50% 46%",
-					touchAction: "pan-y",
-				}}
-			>
-				{playlists.length === 0 ? (
-					<p
-						className="theme-text-muted absolute inset-0 grid place-items-center text-[13px]"
+	return (
+		<section className="mt-8">
+			{chrome === "chapter" ? (
+				<div className="flex items-center gap-4 px-1">
+					<span
+						className="theme-text-muted text-xs tracking-[0.2em] uppercase"
 						style={{ fontFamily: fonts.body }}
 					>
-						Nothing here yet.
-					</p>
-				) : (
-					playlists.map((playlist, index) => {
-						const offset = index - clamped;
-						const isCenter = offset === 0;
-						return (
-							<button
-								key={playlist.id}
-								type="button"
-								tabIndex={-1}
-								aria-label={playlist.name}
-								onClick={() => onSleeveClick(index, playlist.id)}
-								onPointerEnter={isCenter ? () => setOpenHover(true) : undefined}
-								onPointerLeave={
-									isCenter ? () => setOpenHover(false) : undefined
-								}
-								className="absolute top-6 left-1/2 -ml-[84px] block size-[168px] cursor-pointer border-0 bg-transparent p-0 md:-ml-[108px] md:size-[216px]"
-								style={sleeveStyle(offset, reduce)}
-							>
-								<div
-									className="relative h-full w-full"
-									style={{ boxShadow: dropShadow(isCenter) }}
-								>
-									<Cover
-										src={playlist.imageUrl}
-										size="fill"
-										className="text-5xl"
-										style={
-											isCenter
-												? undefined
-												: { filter: "brightness(0.82) saturate(0.9)" }
-										}
-									/>
-								</div>
-							</button>
-						);
-					})
-				)}
-			</div>
+						{label}
+					</span>
+					<div className="theme-border-color h-px flex-1 self-center border-t" />
+					<span
+						className="theme-text-muted text-xs tabular-nums"
+						style={{ fontFamily: fonts.body }}
+					>
+						{playlists.length}
+					</span>
+				</div>
+			) : (
+				<div className="flex items-center justify-between px-1">
+					{labelEl}
+					{arrowPair}
+				</div>
+			)}
+
+			{stage}
 
 			<div
-				className="mt-2.5 flex min-h-[58px] items-center justify-between gap-5 px-1"
+				className="mt-4 flex min-h-[116px] items-center justify-center px-1"
 				aria-live="polite"
 			>
 				{centered ? (
-					<ShelfCaption
-						playlist={centered}
-						onOpen={onOpen}
-						onAdd={onAdd}
-						onRemove={onRemove}
-						openActive={openHover}
-						onOpenHoverChange={setOpenHover}
-					/>
+					// Keyed to the centred id so the settle animation re-fires on each
+					// navigation; the covers' own glide is untouched.
+					<div key={centered.id} className="xpl-caption-enter w-full">
+						<ShelfCaption
+							playlist={centered}
+							onOpen={onOpen}
+							onAdd={onAdd}
+							onRemove={onRemove}
+							openActive={openHover}
+							onOpenHoverChange={setOpenHover}
+						/>
+					</div>
 				) : null}
 			</div>
 		</section>
