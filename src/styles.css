@@ -1,4 +1,10 @@
-@import 'tailwindcss';
+/* `source(".")` pins Tailwind's content base to this file's dir (src/) instead of
+   relying on automatic detection from the Vite root. The app's classes all live in
+   src/, so this is a no-op for the app build — but it's load-bearing for Ladle,
+   whose Vite root sits inside node_modules: auto-detection there scans the wrong
+   tree and silently drops the @theme utilities + breakpoints. With an explicit
+   source, styles.css is a correct single Tailwind root in both. */
+@import 'tailwindcss' source('.');
 
 @import 'tw-animate-css';
 

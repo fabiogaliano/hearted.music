@@ -74,6 +74,13 @@ export const Provider: GlobalProvider = ({ children, globalState }) => {
 						color: theme.text,
 						minHeight: "100vh",
 						padding: 0,
+						// Make the story canvas the containing block for position:fixed
+						// descendants, so drawers/overlays (e.g. SpotlightPanel, the real
+						// SongDetailPanel) stay inside the canvas instead of anchoring to the
+						// window and covering Ladle's own sidebar. `layout` (not `paint`)
+						// avoids clipping so tall stories still scroll, and (not `transform`)
+						// avoids a 3D context that would flatten the cover-flow perspective.
+						contain: "layout",
 					}}
 				>
 					<KeyboardShortcutProvider>

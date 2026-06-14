@@ -1,4 +1,11 @@
-@import "tailwindcss" source("../src/");
-@import "tw-animate-css";
+/* Intentionally minimal. Ladle's global Provider (.ladle/components.tsx) imports
+   `@/styles.css` right after this file, and that IS the app's single Tailwind
+   root — it `@import "tailwindcss"`, declares the full `@theme`, and the Vite
+   plugin scans the project (incl. src/) from the project root.
 
-@custom-variant dark (&:is(.dark *));
+   This file used to ALSO `@import "tailwindcss" source("../src/")`, creating a
+   SECOND Tailwind root. Two roots in one bundle clobbered the theme: the custom
+   `@theme` font-size utilities (text-page-title, text-xxs) were never generated,
+   and the default breakpoints were dropped so `md:` utilities emitted without
+   their `@media` gate and lost to `.hidden`. Keeping a single root (styles.css)
+   makes Ladle render identically to the app. */
