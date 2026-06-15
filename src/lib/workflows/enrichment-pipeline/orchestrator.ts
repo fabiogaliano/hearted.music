@@ -1,6 +1,7 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { grantAnalysisFailureReplacementCredit } from "@/lib/domains/billing/compensation";
+import { getAudioFeatureAvailability } from "@/lib/domains/enrichment/audio-feature-backfill/jobs";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { LlmService } from "@/lib/integrations/llm/service";
@@ -72,7 +73,10 @@ function applyStageSummary(
 	};
 	progress.succeeded += summary.succeeded;
 	progress.failed += summary.failed;
-	progress.done += summary.succeeded + summary.failed;
+	// Deferred songs (e.g. audio-feature backfill in flight) count as handled so a
+	// pure-deferred chunk reports done > 0 and isn't classified as a blocked hot
+	// loop, but they are neither successes nor failures.
+	progress.done += summary.succeeded + summary.failed + summary.deferred;
 }
 
 async function persistProgress(
@@ -157,6 +161,38 @@ async function compensateAnalysisInputsMissing(
 	}
 }
 
+/**
+ * Post-Phase-A gate: the work plan's needAnalysis list was computed before Phase
+ * A, so a song that was `absent` then and got an audio-feature backfill job
+ * enqueued *this chunk* is now `backfill_active` but still on the list. Re-read
+ * availability and drop those so LLM analysis waits for the backfill instead of
+ * running too early. Fails open so an availability read error never stalls
+ * analysis.
+ */
+async function gateAnalysisOnAudioBackfill(
+	songIds: string[],
+): Promise<string[]> {
+	if (songIds.length === 0) return songIds;
+
+	const availabilityResult = await getAudioFeatureAvailability(songIds);
+	if (Result.isError(availabilityResult)) {
+		log.warn("analysis-audio-gate-unavailable", {
+			error: availabilityResult.error.message,
+		});
+		return songIds;
+	}
+
+	const deferred = new Set(
+		availabilityResult.value
+			.filter((a) => a.state === "backfill_active")
+			.map((a) => a.songId),
+	);
+	if (deferred.size === 0) return songIds;
+
+	log.info("analysis-deferred-for-audio-backfill", { count: deferred.size });
+	return songIds.filter((id) => !deferred.has(id));
+}
+
 // --- Song enrichment phases (A-C) ---
 
 async function enrichSongs(
@@ -180,6 +216,7 @@ async function enrichSongs(
 			total: 0,
 			succeeded: 0,
 			failed: 0,
+			deferred: 0,
 		}),
 	);
 
@@ -245,7 +282,10 @@ async function enrichSongs(
 	progress.stages.song_analysis.status = "running";
 	await persistProgress(jobId, progress);
 
-	const analysisSubBatch = filterBatch(batch, workPlan.needAnalysis);
+	const analysisReadySongIds = await gateAnalysisOnAudioBackfill(
+		workPlan.needAnalysis,
+	);
+	const analysisSubBatch = filterBatch(batch, analysisReadySongIds);
 	// Capture analysis_inputs_missing failures so the orchestrator can grant
 	// replacement credits once the accounting layer has durably recorded the
 	// failure rows. A thrown stage yields PROVIDER_TRANSIENT failures (never

@@ -8,9 +8,17 @@ import type { EnrichmentContext } from "../types";
 
 const mockGetAudioFeaturesBatch = vi.fn();
 const mockGetOrFetchFeatures = vi.fn();
+const mockGetAvailability = vi.fn();
+const mockEnqueueSearchJob = vi.fn();
 
 vi.mock("@/lib/domains/enrichment/audio-features/queries", () => ({
 	getBatch: (...args: unknown[]) => mockGetAudioFeaturesBatch(...args),
+}));
+
+vi.mock("@/lib/domains/enrichment/audio-feature-backfill/jobs", () => ({
+	getAudioFeatureAvailability: (...args: unknown[]) =>
+		mockGetAvailability(...args),
+	enqueueSearchJob: (...args: unknown[]) => mockEnqueueSearchJob(...args),
 }));
 
 vi.mock("@/lib/integrations/audio/service", () => ({
@@ -23,15 +31,6 @@ vi.mock("@/lib/integrations/reccobeats/service", () => ({
 	createReccoBeatsService: () => ({}),
 }));
 
-vi.mock("@/lib/platform/jobs/item-failures", () => ({
-	resolveJobStageFailures: vi.fn().mockResolvedValue(Result.ok(0)),
-}));
-
-vi.mock("../record-failure", () => ({
-	recordStageFailure: vi.fn().mockResolvedValue(Result.ok(undefined)),
-}));
-
-import { recordStageFailure } from "../record-failure";
 import {
 	getReadyForAudioFeatures,
 	runAudioFeatures,
@@ -71,13 +70,21 @@ function makeAudioFeature(songId: string): AudioFeature {
 	return { song_id: songId } as AudioFeature;
 }
 
+/** Default availability: every queried song is `absent` (catalog lookup OK). */
+function availabilityAllAbsent() {
+	mockGetAvailability.mockImplementation(async (ids: string[]) =>
+		Result.ok(ids.map((songId) => ({ state: "absent", songId }))),
+	);
+}
+
 beforeEach(() => {
 	vi.clearAllMocks();
-	vi.mocked(recordStageFailure).mockResolvedValue(Result.ok(undefined));
 	mockGetAudioFeaturesBatch.mockResolvedValue(Result.ok(new Map()));
 	mockGetOrFetchFeatures.mockResolvedValue(
 		Result.ok({ features: new Map(), failures: new Map() }),
 	);
+	mockEnqueueSearchJob.mockResolvedValue(Result.ok({ id: "backfill-job-1" }));
+	availabilityAllAbsent();
 });
 
 describe("getReadyForAudioFeatures", () => {
@@ -135,7 +142,7 @@ describe("runAudioFeatures → StageOutcome", () => {
 		expect(outcome.attemptedSongIds).toEqual(["s1", "s2"]);
 	});
 
-	it("converts not_found failures to SOURCE_NOT_FOUND StageFailure descriptors", async () => {
+	it("defers a catalog not_found by enqueueing a backfill job (no failure row)", async () => {
 		const failures = new Map<string, AudioFeaturesFailureKind>([
 			["s1", "not_found"],
 		]);
@@ -148,16 +155,12 @@ describe("runAudioFeatures → StageOutcome", () => {
 		expect(outcome.kind).toBe("attempted");
 		if (outcome.kind !== "attempted") throw new Error("unreachable");
 		expect(outcome.succeededSongIds).toEqual([]);
-		expect(outcome.failures).toEqual([
-			{
-				songId: "s1",
-				failureCode: FAILURE_CODES.SOURCE_NOT_FOUND,
-				message: "Track not in ReccoBeats catalog",
-			},
-		]);
+		expect(outcome.failures).toEqual([]);
+		expect(outcome.deferredSongIds).toEqual(["s1"]);
+		expect(mockEnqueueSearchJob).toHaveBeenCalledWith("s1", "account-1");
 	});
 
-	it("converts transient failures to PROVIDER_TRANSIENT StageFailure descriptors", async () => {
+	it("records a PROVIDER_TRANSIENT failure for a transient catalog error", async () => {
 		const failures = new Map<string, AudioFeaturesFailureKind>([
 			["s2", "transient"],
 		]);
@@ -176,6 +179,7 @@ describe("runAudioFeatures → StageOutcome", () => {
 				message: "Audio features provider transient failure",
 			},
 		]);
+		expect(mockEnqueueSearchJob).not.toHaveBeenCalled();
 	});
 
 	it("defaults unknown failure kinds to PROVIDER_TRANSIENT", async () => {
@@ -196,7 +200,7 @@ describe("runAudioFeatures → StageOutcome", () => {
 		]);
 	});
 
-	it("mixes succeeded and failed songs in the same outcome", async () => {
+	it("mixes succeeded and deferred songs in the same outcome", async () => {
 		const features = new Map([["s1", makeAudioFeature("s1")]]);
 		const failures = new Map<string, AudioFeaturesFailureKind>([
 			["s2", "not_found"],
@@ -208,13 +212,44 @@ describe("runAudioFeatures → StageOutcome", () => {
 		expect(outcome.kind).toBe("attempted");
 		if (outcome.kind !== "attempted") throw new Error("unreachable");
 		expect(outcome.succeededSongIds).toEqual(["s1"]);
-		expect(outcome.failures).toEqual([
-			{
-				songId: "s2",
-				failureCode: FAILURE_CODES.SOURCE_NOT_FOUND,
-				message: "Track not in ReccoBeats catalog",
-			},
-		]);
+		expect(outcome.deferredSongIds).toEqual(["s2"]);
+		expect(outcome.failures).toEqual([]);
+	});
+
+	it("defers a song whose backfill is already active without calling the catalog", async () => {
+		mockGetAvailability.mockResolvedValue(
+			Result.ok([{ state: "backfill_active", songId: "s1", jobId: "j1" }]),
+		);
+
+		const outcome = await runAudioFeatures(makeCtx(), makeBatch(["s1"]));
+
+		expect(outcome.kind).toBe("attempted");
+		if (outcome.kind !== "attempted") throw new Error("unreachable");
+		expect(outcome.deferredSongIds).toEqual(["s1"]);
+		expect(mockGetOrFetchFeatures).not.toHaveBeenCalled();
+		expect(mockEnqueueSearchJob).not.toHaveBeenCalled();
+	});
+
+	it("treats manual_needed / terminal as deferred without re-searching", async () => {
+		mockGetAvailability.mockResolvedValue(
+			Result.ok([
+				{ state: "manual_needed", songId: "s1", jobId: "j1", errorCode: null },
+				{
+					state: "unavailable_terminal",
+					songId: "s2",
+					jobId: "j2",
+					errorCode: null,
+				},
+			]),
+		);
+
+		const outcome = await runAudioFeatures(makeCtx(), makeBatch(["s1", "s2"]));
+
+		expect(outcome.kind).toBe("attempted");
+		if (outcome.kind !== "attempted") throw new Error("unreachable");
+		expect(outcome.deferredSongIds).toEqual(["s1", "s2"]);
+		expect(mockGetOrFetchFeatures).not.toHaveBeenCalled();
+		expect(mockEnqueueSearchJob).not.toHaveBeenCalled();
 	});
 
 	it("excludes cached songs from attemptedSongIds", async () => {
@@ -248,16 +283,14 @@ describe("runAudioFeatures → StageOutcome", () => {
 	});
 
 	it("throws when an audio-feature provider call fails", async () => {
-		mockGetAudioFeaturesBatch.mockResolvedValue(Result.ok(new Map()));
 		mockGetOrFetchFeatures.mockRejectedValue(
 			new Error("ReccoBeats API timeout"),
 		);
 
 		const batch = makeBatch(["s1", "s2", "s3"]);
 
-		// Throwing is the contract the orchestrator relies on: it wraps this runner
-		// in runStageWithAccounting, which catches the throw and expands it to
-		// per-candidate failure rows (covered by orchestrator.test.ts).
+		// Throwing is the contract the orchestrator relies on: runStageWithAccounting
+		// catches the throw and expands it to per-candidate failure rows.
 		await expect(runAudioFeatures(makeCtx(), batch)).rejects.toThrow(
 			"ReccoBeats API timeout",
 		);

@@ -10,6 +10,7 @@ import {
 	SparkleIcon,
 	TerminalWindowIcon,
 	UsersIcon,
+	WaveformIcon,
 } from "@phosphor-icons/react";
 import { type ReactElement, useState } from "react";
 import { useApi } from "./lib/api";
@@ -20,6 +21,7 @@ import {
 	ShowAccountsContext,
 } from "./lib/user-selection";
 import { AccountList } from "./sections/AccountList";
+import { AudioReviewSection } from "./sections/AudioReviewSection";
 import { BillingSection } from "./sections/BillingSection";
 import { EmailSection } from "./sections/EmailSection";
 import { EnrichmentSection } from "./sections/EnrichmentSection";
@@ -79,6 +81,12 @@ const NAV: NavEntry[] = [
 		label: "Operations",
 		icon: TerminalWindowIcon,
 		render: (k) => <OperationsSection refreshKey={k} />,
+	},
+	{
+		key: "audio-review",
+		label: "Audio review",
+		icon: WaveformIcon,
+		render: (k) => <AudioReviewSection refreshKey={k} />,
 	},
 	{
 		key: "email",

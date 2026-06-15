@@ -9,8 +9,21 @@ FROM base
 ENV NODE_ENV=production
 ENV WORKER_HEALTH_PORT=3002
 
+# yt-dlp + ffmpeg/ffprobe live in the image so Coolify/VPS host setup is
+# irrelevant: rebuilding the worker image is enough to ship the audio backfill
+# toolchain. yt-dlp goes in its own venv to avoid colliding with system python.
 RUN apt-get update \
-  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends postgresql-client-17 \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    postgresql-client-17 \
+    ca-certificates \
+    python3 \
+    python3-venv \
+    python3-pip \
+    ffmpeg \
+  && python3 -m venv /opt/yt-dlp \
+  && /opt/yt-dlp/bin/pip install --no-cache-dir --upgrade pip \
+  && /opt/yt-dlp/bin/pip install --no-cache-dir "yt-dlp[default,curl-cffi]" \
+  && ln -s /opt/yt-dlp/bin/yt-dlp /usr/local/bin/yt-dlp \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=deps /app/node_modules ./node_modules

@@ -37,12 +37,21 @@ export type StageOutcome =
 			attemptedSongIds: string[];
 			succeededSongIds: string[];
 			failures: StageFailure[];
+			/**
+			 * Songs handled this pass without a success or failure because work was
+			 * deferred to an out-of-band process (audio-feature backfill). Counted as
+			 * progress (so a pure-deferred chunk isn't a blocked hot loop) but never
+			 * as a success or a failure, and no failure/suppression row is written.
+			 * Optional so stages that never defer don't have to set it.
+			 */
+			deferredSongIds?: string[];
 	  };
 
 export type StageSummary = {
 	total: number;
 	succeeded: number;
 	failed: number;
+	deferred: number;
 };
 
 export type OutcomeValidationError =
@@ -72,6 +81,18 @@ export type OutcomeValidationError =
 	  }
 	| {
 			kind: "duplicate_failed";
+			songIds: string[];
+	  }
+	| {
+			kind: "duplicate_deferred";
+			songIds: string[];
+	  }
+	| {
+			kind: "deferred_not_in_attempted";
+			songIds: string[];
+	  }
+	| {
+			kind: "deferred_overlap";
 			songIds: string[];
 	  };
 
@@ -172,17 +193,44 @@ export function validateOutcome(
 		return { kind: "overlap", songIds: [...new Set(overlapping)] };
 	}
 
+	const deferred = outcome.deferredSongIds ?? [];
+	const duplicateDeferred = findDuplicateSongIds(deferred);
+	if (duplicateDeferred.length > 0) {
+		return { kind: "duplicate_deferred", songIds: duplicateDeferred };
+	}
+
+	const deferredOutsideAttempted = findSongIdsOutsideSet(
+		deferred,
+		attemptedSet,
+	);
+	if (deferredOutsideAttempted.length > 0) {
+		return {
+			kind: "deferred_not_in_attempted",
+			songIds: deferredOutsideAttempted,
+		};
+	}
+
+	const deferredSet = new Set(deferred);
+	const deferredOverlap = [
+		...outcome.succeededSongIds.filter((id) => deferredSet.has(id)),
+		...failureSongIds.filter((id) => deferredSet.has(id)),
+	];
+	if (deferredOverlap.length > 0) {
+		return { kind: "deferred_overlap", songIds: [...new Set(deferredOverlap)] };
+	}
+
 	return null;
 }
 
 export function summarizeOutcome(outcome: StageOutcome): StageSummary {
 	if (outcome.kind === "skipped") {
-		return { total: 0, succeeded: 0, failed: 0 };
+		return { total: 0, succeeded: 0, failed: 0, deferred: 0 };
 	}
 	return {
 		total: outcome.attemptedSongIds.length,
 		succeeded: outcome.succeededSongIds.length,
 		failed: outcome.failures.length,
+		deferred: (outcome.deferredSongIds ?? []).length,
 	};
 }
 

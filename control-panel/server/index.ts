@@ -6,6 +6,13 @@
  * files the supabase-prod skill uses.
  */
 
+import {
+	approveAudioReview,
+	type AudioFeatureReviewRow,
+	listAudioReviews,
+	rejectAudioReview,
+	replaceAudioReviewWithYoutube,
+} from "./audio-feature-reviews";
 import { cached } from "./cache";
 import { prodRef, warm } from "./db";
 import {
@@ -133,6 +140,65 @@ const server = Bun.serve({
 					unknown
 				>;
 				return json(previewStyledEmail(input));
+			}
+
+			if (path === "/api/audio-feature-reviews" && req.method === "GET") {
+				const statusParam = url.searchParams.get("status") ?? "pending";
+				const status: AudioFeatureReviewRow["status"] =
+					statusParam === "approved" || statusParam === "rejected"
+						? statusParam
+						: "pending";
+				return json({ reviews: await listAudioReviews(status) });
+			}
+
+			const approveMatch = path.match(
+				/^\/api\/audio-feature-reviews\/([0-9a-fA-F-]+)\/approve$/,
+			);
+			if (approveMatch && req.method === "POST") {
+				const body = (await req.json().catch(() => ({}))) as {
+					reviewedBy?: string;
+				};
+				return json(
+					await approveAudioReview(
+						approveMatch[1]!,
+						body.reviewedBy ?? "control-panel",
+					),
+				);
+			}
+
+			const rejectMatch = path.match(
+				/^\/api\/audio-feature-reviews\/([0-9a-fA-F-]+)\/reject$/,
+			);
+			if (rejectMatch && req.method === "POST") {
+				const body = (await req.json().catch(() => ({}))) as {
+					reviewedBy?: string;
+					reason?: string;
+				};
+				return json(
+					await rejectAudioReview(
+						rejectMatch[1]!,
+						body.reviewedBy ?? "control-panel",
+						body.reason?.trim() || null,
+					),
+				);
+			}
+
+			const replaceMatch = path.match(
+				/^\/api\/audio-feature-reviews\/([0-9a-fA-F-]+)\/replace-youtube$/,
+			);
+			if (replaceMatch && req.method === "POST") {
+				const body = (await req.json().catch(() => ({}))) as {
+					url?: string;
+					reviewedBy?: string;
+				};
+				if (!body.url) return json({ error: "Missing url" }, 400);
+				return json(
+					await replaceAudioReviewWithYoutube(
+						replaceMatch[1]!,
+						body.url,
+						body.reviewedBy ?? "control-panel",
+					),
+				);
 			}
 
 			if (path === "/api/email/send" && req.method === "POST") {

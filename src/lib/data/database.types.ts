@@ -7,31 +7,6 @@ export type Json =
 	| Json[];
 
 export type Database = {
-	graphql_public: {
-		Tables: {
-			[_ in never]: never;
-		};
-		Views: {
-			[_ in never]: never;
-		};
-		Functions: {
-			graphql: {
-				Args: {
-					extensions?: Json;
-					operationName?: string;
-					query?: string;
-					variables?: Json;
-				};
-				Returns: Json;
-			};
-		};
-		Enums: {
-			[_ in never]: never;
-		};
-		CompositeTypes: {
-			[_ in never]: never;
-		};
-	};
 	public: {
 		Tables: {
 			account: {
@@ -324,6 +299,220 @@ export type Database = {
 					updated_at?: string;
 				};
 				Relationships: [];
+			};
+			audio_feature_backfill_job: {
+				Row: {
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error_code: string | null;
+					error_message: string | null;
+					id: string;
+					lease_expires_at: string | null;
+					locked_at: string | null;
+					locked_by: string | null;
+					max_attempts: number;
+					not_before: string;
+					progress: Json;
+					requested_by_account_id: string | null;
+					song_id: string;
+					source_type: string;
+					source_url: string | null;
+					started_at: string | null;
+					status: string;
+					superseded_by_job_id: string | null;
+					updated_at: string;
+				};
+				Insert: {
+					attempts?: number;
+					completed_at?: string | null;
+					created_at?: string;
+					error_code?: string | null;
+					error_message?: string | null;
+					id?: string;
+					lease_expires_at?: string | null;
+					locked_at?: string | null;
+					locked_by?: string | null;
+					max_attempts?: number;
+					not_before?: string;
+					progress?: Json;
+					requested_by_account_id?: string | null;
+					song_id: string;
+					source_type: string;
+					source_url?: string | null;
+					started_at?: string | null;
+					status?: string;
+					superseded_by_job_id?: string | null;
+					updated_at?: string;
+				};
+				Update: {
+					attempts?: number;
+					completed_at?: string | null;
+					created_at?: string;
+					error_code?: string | null;
+					error_message?: string | null;
+					id?: string;
+					lease_expires_at?: string | null;
+					locked_at?: string | null;
+					locked_by?: string | null;
+					max_attempts?: number;
+					not_before?: string;
+					progress?: Json;
+					requested_by_account_id?: string | null;
+					song_id?: string;
+					source_type?: string;
+					source_url?: string | null;
+					started_at?: string | null;
+					status?: string;
+					superseded_by_job_id?: string | null;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "audio_feature_backfill_job_requested_by_account_id_fkey";
+						columns: ["requested_by_account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "audio_feature_backfill_job_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "audio_feature_backfill_job_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "audio_feature_backfill_job_superseded_by_job_id_fkey";
+						columns: ["superseded_by_job_id"];
+						isOneToOne: false;
+						referencedRelation: "audio_feature_backfill_job";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			audio_feature_source_review: {
+				Row: {
+					aggregation_metadata: Json;
+					audio_feature_id: string | null;
+					averaged_features: Json;
+					backfill_job_id: string | null;
+					candidate_rank: number | null;
+					clip_features: Json;
+					clip_starts_seconds: number[];
+					created_at: string;
+					id: string;
+					match_reasons: Json;
+					match_score: number | null;
+					rejected_candidates: Json;
+					rejection_reason: string | null;
+					reviewed_at: string | null;
+					reviewed_by: string | null;
+					search_query: string | null;
+					song_id: string;
+					source_type: string;
+					status: string;
+					updated_at: string;
+					youtube_channel: string | null;
+					youtube_duration_seconds: number | null;
+					youtube_thumbnail_url: string | null;
+					youtube_title: string | null;
+					youtube_url: string;
+					youtube_video_id: string | null;
+				};
+				Insert: {
+					aggregation_metadata?: Json;
+					audio_feature_id?: string | null;
+					averaged_features: Json;
+					backfill_job_id?: string | null;
+					candidate_rank?: number | null;
+					clip_features: Json;
+					clip_starts_seconds: number[];
+					created_at?: string;
+					id?: string;
+					match_reasons?: Json;
+					match_score?: number | null;
+					rejected_candidates?: Json;
+					rejection_reason?: string | null;
+					reviewed_at?: string | null;
+					reviewed_by?: string | null;
+					search_query?: string | null;
+					song_id: string;
+					source_type: string;
+					status?: string;
+					updated_at?: string;
+					youtube_channel?: string | null;
+					youtube_duration_seconds?: number | null;
+					youtube_thumbnail_url?: string | null;
+					youtube_title?: string | null;
+					youtube_url: string;
+					youtube_video_id?: string | null;
+				};
+				Update: {
+					aggregation_metadata?: Json;
+					audio_feature_id?: string | null;
+					averaged_features?: Json;
+					backfill_job_id?: string | null;
+					candidate_rank?: number | null;
+					clip_features?: Json;
+					clip_starts_seconds?: number[];
+					created_at?: string;
+					id?: string;
+					match_reasons?: Json;
+					match_score?: number | null;
+					rejected_candidates?: Json;
+					rejection_reason?: string | null;
+					reviewed_at?: string | null;
+					reviewed_by?: string | null;
+					search_query?: string | null;
+					song_id?: string;
+					source_type?: string;
+					status?: string;
+					updated_at?: string;
+					youtube_channel?: string | null;
+					youtube_duration_seconds?: number | null;
+					youtube_thumbnail_url?: string | null;
+					youtube_title?: string | null;
+					youtube_url?: string;
+					youtube_video_id?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "audio_feature_source_review_audio_feature_id_fkey";
+						columns: ["audio_feature_id"];
+						isOneToOne: false;
+						referencedRelation: "song_audio_feature";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "audio_feature_source_review_backfill_job_id_fkey";
+						columns: ["backfill_job_id"];
+						isOneToOne: false;
+						referencedRelation: "audio_feature_backfill_job";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "audio_feature_source_review_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "audio_feature_source_review_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+				];
 			};
 			billing_activation: {
 				Row: {
@@ -1492,6 +1681,33 @@ export type Database = {
 					},
 				];
 			};
+			provider_concurrency_lease: {
+				Row: {
+					acquired_at: string | null;
+					holder: string | null;
+					lease_expires_at: string | null;
+					max_concurrency: number;
+					provider: string;
+					updated_at: string;
+				};
+				Insert: {
+					acquired_at?: string | null;
+					holder?: string | null;
+					lease_expires_at?: string | null;
+					max_concurrency?: number;
+					provider: string;
+					updated_at?: string;
+				};
+				Update: {
+					acquired_at?: string | null;
+					holder?: string | null;
+					lease_expires_at?: string | null;
+					max_concurrency?: number;
+					provider?: string;
+					updated_at?: string;
+				};
+				Relationships: [];
+			};
 			rate_limit: {
 				Row: {
 					count: number | null;
@@ -2256,6 +2472,10 @@ export type Database = {
 			};
 		};
 		Functions: {
+			acquire_provider_lease: {
+				Args: { p_holder: string; p_lease_seconds: number; p_provider: string };
+				Returns: boolean;
+			};
 			activate_subscription: {
 				Args: {
 					p_account_id: string;
@@ -2286,6 +2506,7 @@ export type Database = {
 				};
 				Returns: undefined;
 			};
+			audio_feature_state: { Args: { p_song_id: string }; Returns: string };
 			begin_extension_sync: {
 				Args: {
 					p_account_id: string;
@@ -2306,12 +2527,55 @@ export type Database = {
 				Args: { p_lease_ms: number; p_stripe_event_id: string };
 				Returns: string;
 			};
+			claim_extension_sync_payload_cleanup: {
+				Args: never;
+				Returns: {
+					account_id: string;
+					job_id: string;
+					payload_path: string;
+				}[];
+			};
 			claim_handle: {
 				Args: { p_account_id: string; p_handle: string };
 				Returns: {
 					owned_handle: string;
 					status: string;
 				}[];
+			};
+			claim_pending_audio_feature_backfill_job: {
+				Args: {
+					p_lease_seconds?: number;
+					p_limit?: number;
+					p_worker_id: string;
+				};
+				Returns: {
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error_code: string | null;
+					error_message: string | null;
+					id: string;
+					lease_expires_at: string | null;
+					locked_at: string | null;
+					locked_by: string | null;
+					max_attempts: number;
+					not_before: string;
+					progress: Json;
+					requested_by_account_id: string | null;
+					song_id: string;
+					source_type: string;
+					source_url: string | null;
+					started_at: string | null;
+					status: string;
+					superseded_by_job_id: string | null;
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "audio_feature_backfill_job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
 			};
 			claim_pending_extension_sync_job: {
 				Args: never;
@@ -2338,14 +2602,6 @@ export type Database = {
 					isOneToOne: false;
 					isSetofReturn: true;
 				};
-			};
-			claim_extension_sync_payload_cleanup: {
-				Args: never;
-				Returns: {
-					job_id: string;
-					account_id: string;
-					payload_path: string;
-				}[];
 			};
 			claim_pending_library_processing_job: {
 				Args: never;
@@ -2451,6 +2707,37 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
+			complete_audio_feature_backfill_job: {
+				Args: { p_job_id: string; p_worker_id: string };
+				Returns: {
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error_code: string | null;
+					error_message: string | null;
+					id: string;
+					lease_expires_at: string | null;
+					locked_at: string | null;
+					locked_by: string | null;
+					max_attempts: number;
+					not_before: string;
+					progress: Json;
+					requested_by_account_id: string | null;
+					song_id: string;
+					source_type: string;
+					source_url: string | null;
+					started_at: string | null;
+					status: string;
+					superseded_by_job_id: string | null;
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "audio_feature_backfill_job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 			count_analyzed_songs_for_account: {
 				Args: { p_account_id: string };
 				Returns: number;
@@ -2493,6 +2780,145 @@ export type Database = {
 				Args: { p_account_id: string; p_stripe_event_created_at: string };
 				Returns: undefined;
 			};
+			defer_audio_feature_backfill_job: {
+				Args: {
+					p_error_code: string;
+					p_error_message: string;
+					p_job_id: string;
+					p_retry_seconds: number;
+					p_worker_id: string;
+				};
+				Returns: {
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error_code: string | null;
+					error_message: string | null;
+					id: string;
+					lease_expires_at: string | null;
+					locked_at: string | null;
+					locked_by: string | null;
+					max_attempts: number;
+					not_before: string;
+					progress: Json;
+					requested_by_account_id: string | null;
+					song_id: string;
+					source_type: string;
+					source_url: string | null;
+					started_at: string | null;
+					status: string;
+					superseded_by_job_id: string | null;
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "audio_feature_backfill_job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
+			enqueue_audio_feature_backfill_manual: {
+				Args: {
+					p_requested_by_account_id?: string;
+					p_song_id: string;
+					p_source_url: string;
+				};
+				Returns: {
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error_code: string | null;
+					error_message: string | null;
+					id: string;
+					lease_expires_at: string | null;
+					locked_at: string | null;
+					locked_by: string | null;
+					max_attempts: number;
+					not_before: string;
+					progress: Json;
+					requested_by_account_id: string | null;
+					song_id: string;
+					source_type: string;
+					source_url: string | null;
+					started_at: string | null;
+					status: string;
+					superseded_by_job_id: string | null;
+					updated_at: string;
+				};
+				SetofOptions: {
+					from: "*";
+					to: "audio_feature_backfill_job";
+					isOneToOne: true;
+					isSetofReturn: false;
+				};
+			};
+			enqueue_audio_feature_backfill_search: {
+				Args: { p_requested_by_account_id?: string; p_song_id: string };
+				Returns: {
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error_code: string | null;
+					error_message: string | null;
+					id: string;
+					lease_expires_at: string | null;
+					locked_at: string | null;
+					locked_by: string | null;
+					max_attempts: number;
+					not_before: string;
+					progress: Json;
+					requested_by_account_id: string | null;
+					song_id: string;
+					source_type: string;
+					source_url: string | null;
+					started_at: string | null;
+					status: string;
+					superseded_by_job_id: string | null;
+					updated_at: string;
+				};
+				SetofOptions: {
+					from: "*";
+					to: "audio_feature_backfill_job";
+					isOneToOne: true;
+					isSetofReturn: false;
+				};
+			};
+			fail_audio_feature_backfill_job: {
+				Args: {
+					p_error_code: string;
+					p_error_message: string;
+					p_job_id: string;
+					p_worker_id: string;
+				};
+				Returns: {
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error_code: string | null;
+					error_message: string | null;
+					id: string;
+					lease_expires_at: string | null;
+					locked_at: string | null;
+					locked_by: string | null;
+					max_attempts: number;
+					not_before: string;
+					progress: Json;
+					requested_by_account_id: string | null;
+					song_id: string;
+					source_type: string;
+					source_url: string | null;
+					started_at: string | null;
+					status: string;
+					superseded_by_job_id: string | null;
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "audio_feature_backfill_job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 			fulfill_pack_purchase: {
 				Args: {
 					p_account_id: string;
@@ -2509,6 +2935,22 @@ export type Database = {
 				Returns: {
 					genre: string;
 					occurrences: number;
+				}[];
+			};
+			get_audio_feature_availability: {
+				Args: { p_song_ids: string[] };
+				Returns: {
+					audio_feature_id: string;
+					error_code: string;
+					job_id: string;
+					song_id: string;
+					state: string;
+				}[];
+			};
+			get_entitled_likers_of_song: {
+				Args: { p_song_id: string };
+				Returns: {
+					account_id: string;
 				}[];
 			};
 			get_library_artist_count: {
@@ -2667,6 +3109,42 @@ export type Database = {
 			link_subscription_upgrade_checkout: {
 				Args: { p_checkout_session_id: string; p_conversion_id: string };
 				Returns: undefined;
+			};
+			mark_audio_feature_backfill_manual_needed: {
+				Args: {
+					p_error_code: string;
+					p_error_message: string;
+					p_job_id: string;
+					p_worker_id: string;
+				};
+				Returns: {
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error_code: string | null;
+					error_message: string | null;
+					id: string;
+					lease_expires_at: string | null;
+					locked_at: string | null;
+					locked_by: string | null;
+					max_attempts: number;
+					not_before: string;
+					progress: Json;
+					requested_by_account_id: string | null;
+					song_id: string;
+					source_type: string;
+					source_url: string | null;
+					started_at: string | null;
+					status: string;
+					superseded_by_job_id: string | null;
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "audio_feature_backfill_job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
 			};
 			mark_billing_bridge_event_failed: {
 				Args: { p_error_message: string; p_stripe_event_id: string };
@@ -2835,6 +3313,10 @@ export type Database = {
 					discount_cents: number;
 				}[];
 			};
+			release_provider_lease: {
+				Args: { p_holder: string; p_provider: string };
+				Returns: undefined;
+			};
 			release_subscription_upgrade_conversion: {
 				Args: { p_conversion_id: string };
 				Returns: undefined;
@@ -2904,6 +3386,67 @@ export type Database = {
 			song_slug: {
 				Args: { p_artists: string[]; p_name: string };
 				Returns: string;
+			};
+			settle_audio_feature_backfill_job: {
+				Args: {
+					p_aggregation_metadata: Json;
+					p_candidate_rank: number | null;
+					p_clip_features: Json;
+					p_clip_starts_seconds: number[];
+					p_features: Json;
+					p_job_id: string;
+					p_match_reasons: Json;
+					p_match_score: number | null;
+					p_rejected_candidates: Json;
+					p_review_status: string;
+					p_reviewed_by: string | null;
+					p_song_id: string;
+					p_source_type: string;
+					p_worker_id: string;
+					p_youtube_channel: string | null;
+					p_youtube_duration_seconds: number | null;
+					p_youtube_thumbnail_url: string | null;
+					p_youtube_title: string | null;
+					p_youtube_url: string;
+					p_youtube_video_id: string | null;
+				};
+				Returns: {
+					audio_feature_id: string | null;
+					did_skip: boolean;
+					job_id: string;
+					review_id: string | null;
+				}[];
+			};
+			sweep_stale_audio_feature_backfill_jobs: {
+				Args: never;
+				Returns: {
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error_code: string | null;
+					error_message: string | null;
+					id: string;
+					lease_expires_at: string | null;
+					locked_at: string | null;
+					locked_by: string | null;
+					max_attempts: number;
+					not_before: string;
+					progress: Json;
+					requested_by_account_id: string | null;
+					song_id: string;
+					source_type: string;
+					source_url: string | null;
+					started_at: string | null;
+					status: string;
+					superseded_by_job_id: string | null;
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "audio_feature_backfill_job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
 			};
 			sweep_stale_extension_sync_jobs: {
 				Args: { stale_threshold: string };
@@ -3180,9 +3723,6 @@ export type CompositeTypes<
 		: never;
 
 export const Constants = {
-	graphql_public: {
-		Enums: {},
-	},
 	public: {
 		Enums: {
 			item_type: ["song", "playlist"],

@@ -228,7 +228,7 @@ describe("summarizeOutcome", () => {
 				stage: "song_analysis",
 				candidateSongIds: ["a", "b"],
 			}),
-		).toEqual({ total: 0, succeeded: 0, failed: 0 });
+		).toEqual({ total: 0, succeeded: 0, failed: 0, deferred: 0 });
 	});
 
 	it("derives counts from attempted outcome IDs", () => {
@@ -247,7 +247,7 @@ describe("summarizeOutcome", () => {
 					},
 				],
 			}),
-		).toEqual({ total: 3, succeeded: 2, failed: 1 });
+		).toEqual({ total: 3, succeeded: 2, failed: 1, deferred: 0 });
 	});
 });
 
@@ -381,7 +381,12 @@ describe("finalizeStageOutcome", () => {
 
 		expect(Result.isOk(result)).toBe(true);
 		if (Result.isOk(result)) {
-			expect(result.value).toEqual({ total: 3, succeeded: 2, failed: 1 });
+			expect(result.value).toEqual({
+				total: 3,
+				succeeded: 2,
+				failed: 1,
+				deferred: 0,
+			});
 		}
 	});
 
@@ -398,7 +403,12 @@ describe("finalizeStageOutcome", () => {
 
 		expect(Result.isOk(result)).toBe(true);
 		if (Result.isOk(result)) {
-			expect(result.value).toEqual({ total: 0, succeeded: 0, failed: 0 });
+			expect(result.value).toEqual({
+				total: 0,
+				succeeded: 0,
+				failed: 0,
+				deferred: 0,
+			});
 		}
 		expect(mockResolveStageFailures).not.toHaveBeenCalled();
 		expect(mockRecordStageFailure).not.toHaveBeenCalled();
@@ -546,7 +556,12 @@ describe("finalizeStageOutcome", () => {
 
 		expect(Result.isOk(result)).toBe(true);
 		if (Result.isOk(result)) {
-			expect(result.value).toEqual({ total: 3, succeeded: 0, failed: 3 });
+			expect(result.value).toEqual({
+				total: 3,
+				succeeded: 0,
+				failed: 3,
+				deferred: 0,
+			});
 		}
 		expect(mockRecordStageFailure).toHaveBeenCalledTimes(3);
 		const songIds = mockRecordStageFailure.mock.calls.map(([params]) => {

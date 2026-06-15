@@ -88,6 +88,15 @@ vi.mock("@/lib/domains/enrichment/audio-features/queries", () => ({
 	getBatch: vi.fn().mockResolvedValue(Result.ok(new Map())),
 }));
 
+// The analysis gate reads audio availability to defer songs whose backfill is
+// in flight. Default to an empty result (set in beforeEach) so the gate is a
+// no-op for these tests.
+const mockGetAudioFeatureAvailability = vi.fn();
+vi.mock("@/lib/domains/enrichment/audio-feature-backfill/jobs", () => ({
+	getAudioFeatureAvailability: (...args: unknown[]) =>
+		mockGetAudioFeatureAvailability(...args),
+}));
+
 vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
 	get: mockGetAnalysis,
 }));
@@ -252,6 +261,7 @@ beforeEach(() => {
 	mockGetAnalysis.mockResolvedValue(Result.ok(new Map()));
 	mockGetByIds.mockResolvedValue(Result.ok([]));
 	mockGetEntitledDataEnrichedSongIds.mockResolvedValue([]);
+	mockGetAudioFeatureAvailability.mockResolvedValue(Result.ok([]));
 });
 
 describe("executeWorkerChunk sub-batching", () => {

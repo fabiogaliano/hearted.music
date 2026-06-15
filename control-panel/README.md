@@ -50,12 +50,21 @@ Then open http://localhost:4318.
 - `src/` — a standalone Vite + React UI (Linear-dark, Phosphor, NumberFlow). It
   proxies `/api` to the Bun server, so requests are same-origin in dev.
 
-It imports **nothing** from the product (`src/`) — that keeps it isolated and
-avoids dragging the app's `@/env`-bound module graph (which would split reads
-between prod and your local DB). The one deliberate exception is
-`server/email.ts`, which relative-imports the pure `email/templates.ts` (zero
-imports, no `@/env`, no DB) so styled emails share a single source of truth with
-the app instead of a drifting copy.
+It imports from the product (`src/`) only in a few deliberate, documented cases;
+everything else stays isolated to avoid dragging the app's `@/env`-bound module
+graph (which would split reads between prod and your local DB):
+
+- `server/email.ts` relative-imports the pure `email/templates.ts` (zero imports,
+  no `@/env`, no DB) so styled emails share a single source of truth with the app
+  instead of a drifting copy.
+- `server/operations.ts` and `server/audio-feature-reviews.ts` import product
+  `@/lib` helpers on purpose: the liked-song grant and the audio-review
+  reject/replace **wake** must fire the *exact* `songs_unlocked` library-processing
+  side effect the website does (mark enrichment stale + ensure a pending enrichment
+  job per affected account), not a drifting reimplementation in local SQL. Both
+  rely on `server/env-bootstrap.ts` — loaded via `bun --preload` (see the `cp:api`
+  script) — having already pointed `@/env`'s admin client at PROD; without that
+  preload they would target the local dev db.
 
 ## Adding an operation
 

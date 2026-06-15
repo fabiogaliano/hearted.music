@@ -62,3 +62,31 @@ export async function read<T = Record<string, unknown>>(
 	});
 	return rows as unknown as T[];
 }
+
+/** A bound `$1`-style statement runner inside an open read-write transaction. */
+export type TxRun = <T = Record<string, unknown>>(
+	text: string,
+	params?: unknown[],
+) => Promise<T[]>;
+
+/**
+ * Run a deliberate read-WRITE transaction. The default surface of this module is
+ * read-only on purpose; this is the narrow, explicit escape hatch for the
+ * operator review actions (approve/reject/replace), which must atomically delete
+ * the exact feature row and its now-stale downstream artifacts. Unlike `read`,
+ * it does NOT set the transaction read-only, so writes commit. The callback gets
+ * a runner; throw to roll the whole transaction back.
+ */
+export async function tx<T>(fn: (run: TxRun) => Promise<T>): Promise<T> {
+	const sql = getClient();
+	return sql.begin(async (t) => {
+		const run: TxRun = async <R = Record<string, unknown>>(
+			text: string,
+			params: unknown[] = [],
+		) => {
+			const rows = await t.unsafe(text, params as never);
+			return rows as unknown as R[];
+		};
+		return fn(run);
+	}) as Promise<T>;
+}

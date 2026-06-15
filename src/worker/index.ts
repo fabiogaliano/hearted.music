@@ -8,6 +8,13 @@ import { startKeepAlive } from "./keep-alive";
 import { startJobCreatedListener } from "./notify-listener";
 import { getActiveJobCount, startPolling, stopPolling } from "./poll";
 import {
+	getActiveAudioFeatureBackfillJobCount,
+	runAudioFeatureBackfillSweepTick,
+	startAudioFeatureBackfillPolling,
+	startAudioFeatureBackfillSweep,
+	stopAudioFeatureBackfillPolling,
+} from "./poll-audio-feature-backfill";
+import {
 	claimAndDispatchExtensionSyncJobs,
 	getActiveExtensionSyncJobCount,
 	startExtensionSyncPolling,
@@ -43,8 +50,12 @@ async function main() {
 	// the dead job and skip creating fresh work. Doing this before any poll
 	// loop or claim path opens means the next ensure() sees a clean slate.
 	await runDefaultSweepTick();
+	// Reclaim any backfill job whose worker died mid-run before the loop opens,
+	// so an expired lease can't keep the selector wedged in backfill_active.
+	await runAudioFeatureBackfillSweepTick();
 
 	const sweep = startDefaultSweep();
+	const audioBackfillSweep = startAudioFeatureBackfillSweep();
 
 	// Primary wake-up for extension sync: a job_created NOTIFY drains the queue
 	// immediately; the poll loop is the at-most-once-delivery safety net.
@@ -61,21 +72,25 @@ async function main() {
 		stopPolling();
 		stopWalkthroughPreviewPolling();
 		stopExtensionSyncPolling();
+		stopAudioFeatureBackfillPolling();
 		await notifyListener.stop();
 		keepAlive.stop();
 		dbBackup.stop();
 		sweep.stop();
+		audioBackfillSweep.stop();
 
 		const deadline = Date.now() + workerConfig.drainTimeoutMs;
 		const drainPending = () =>
 			getActiveJobCount() > 0 ||
 			getActiveWalkthroughPreviewJobCount() > 0 ||
-			getActiveExtensionSyncJobCount() > 0;
+			getActiveExtensionSyncJobCount() > 0 ||
+			getActiveAudioFeatureBackfillJobCount() > 0;
 		while (drainPending() && Date.now() < deadline) {
 			log.info("draining", {
 				activeJobs: getActiveJobCount(),
 				activePreviewJobs: getActiveWalkthroughPreviewJobCount(),
 				activeExtensionSyncJobs: getActiveExtensionSyncJobCount(),
+				activeAudioBackfillJobs: getActiveAudioFeatureBackfillJobCount(),
 				remainingMs: deadline - Date.now(),
 			});
 			await Bun.sleep(1000);
@@ -86,6 +101,7 @@ async function main() {
 				activeJobs: getActiveJobCount(),
 				activePreviewJobs: getActiveWalkthroughPreviewJobCount(),
 				activeExtensionSyncJobs: getActiveExtensionSyncJobCount(),
+				activeAudioBackfillJobs: getActiveAudioFeatureBackfillJobCount(),
 			});
 		}
 
@@ -123,9 +139,20 @@ async function main() {
 		});
 	});
 
+	// Audio-feature backfill runs its own loop with a dedicated claim RPC,
+	// isolating slow yt-dlp downloads + rate-limited ReccoBeats uploads from the
+	// other workflows.
+	const audioBackfillLoop = startAudioFeatureBackfillPolling().catch((err) => {
+		log.error("audio-backfill-poll-loop-error", { error: String(err) });
+		Sentry.captureException(err, {
+			tags: { loop: "audio-feature-backfill" },
+		});
+	});
+
 	await startPolling();
 	await walkthroughPreviewLoop;
 	await extensionSyncLoop;
+	await audioBackfillLoop;
 
 	if (!draining) {
 		log.error("poll-loop-exited-unexpectedly");
