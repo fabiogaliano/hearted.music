@@ -13,9 +13,7 @@ Automatically fill missing `song_audio_feature` rows when ReccoBeats catalog loo
 - Review center is a safety net:
   - **Approve** means “looks correct; dismiss from pending review”.
   - **Reject** deletes the exact inserted `song_audio_feature` row and records rejection.
-  - Reject flow should allow operator replacement by either:
-    - pasting a YouTube URL, or
-    - uploading/providing an `.mp3` file.
+  - Reject flow should allow operator replacement by pasting a YouTube URL.
 - Prefer existing project patterns:
   - Bun worker.
   - Result/error-as-values style where existing modules use it.
@@ -36,7 +34,7 @@ Useful references:
 
 - yt-dlp repo/docs: https://github.com/yt-dlp/yt-dlp
 - yt-dlp post-processing/audio options in README: `-x`, `--audio-format`, `--embed-metadata`, `--dump-json`, `ytsearch`.
-- ReccoBeats audio file analysis docs: `POST /v1/analysis/audio-features`, multipart `audioFile`, max 5MB, max 30s useful analysis.
+- ReccoBeats audio file analysis docs: `POST /v1/analysis/audio-features`, multipart `audioFile`, max 5MB, max 30s. Audio beyond 30s is truncated; the docs recommend splitting longer audio into multiple files and averaging extracted values.
 
 ## Current repo touchpoints
 
@@ -122,9 +120,9 @@ failures only.
 10. If top candidate passes confidence threshold:
    - download best audio to temp directory,
    - validate with `ffprobe`,
-   - extract 3 × 30s mp3 clips with `ffmpeg`,
-   - upload each clip to ReccoBeats file-analysis endpoint,
-   - average returned features,
+   - extract 1–3 mp3 clips with `ffmpeg` depending on source duration,
+   - upload each generated clip to ReccoBeats file-analysis endpoint,
+   - merge returned features with the feature-aware aggregation algorithm,
    - upsert `song_audio_feature`,
    - create pending review row linked to the exact inserted/updated audio feature.
 11. If confidence is too low:
@@ -140,18 +138,6 @@ failures only.
 3. Worker downloads exactly that URL.
 4. Worker analyzes and upserts features.
 5. Operator chose it, so the review row is created `approved` immediately with `reviewed_by = 'control-panel'`.
-
-### Manual MP3 path
-
-1. Operator uploads/provides an `.mp3` file in control panel.
-2. Control panel stores the file in a private Supabase Storage bucket.
-3. Control panel cancels/obsoletes any active backfill for the song, then
-   enqueues fallback job with `source_type = 'manual_mp3'` and storage path.
-4. Worker downloads the file from Storage.
-5. Worker validates it with `ffprobe`.
-6. Worker extracts clips, calls ReccoBeats, upserts features.
-7. Worker deletes the uploaded source file after success/failure cleanup.
-8. Review row is marked `approved` automatically.
 
 ## Worker container requirements
 
@@ -206,13 +192,15 @@ export const audioFeatureBackfillConfig = {
   clipCount: 3,
   clipSeconds: 30,
   clipBitrateKbps: 128,
+  tempoHalfDoubleTolerance: 0.08,
 } as const;
 ```
 
 `concurrency: 1` is deliberate — ReccoBeats file analysis is rate-limited, so the
-poll loop processes one job at a time. This is per worker process; if Coolify
-scales the worker horizontally, add a database-backed global rate-limit/claim cap
-before increasing replicas. Bump it only after observing headroom.
+poll loop processes one job at a time per worker process. Add a database-backed
+global provider lease/advisory lock around ReccoBeats file-analysis work so
+horizontal worker replicas still share a global concurrency cap. Bump it only
+after observing headroom.
 
 ## Database design
 
@@ -235,11 +223,9 @@ create table public.audio_feature_backfill_job (
   requested_by_account_id uuid references public.account(id) on delete set null,
 
   source_type text not null check (
-    source_type in ('youtube_search', 'youtube_url', 'manual_mp3')
+    source_type in ('youtube_search', 'youtube_url')
   ),
   source_url text,
-  source_storage_bucket text,
-  source_storage_path text,
 
   status text not null default 'pending' check (
     status in (
@@ -329,18 +315,35 @@ Settlement helpers/RPCs should be compare-and-set style:
 
 - enqueue fallback job idempotently; if an active job already exists, return that
   job id and state instead of erroring,
-- for manual replacement, in one transaction mark any active job `obsolete` or
-  `cancelled`, then insert the manual job,
+- for manual URL replacement, in one transaction mark any active job `obsolete`
+  or `cancelled`, then insert the manual URL job,
 - mark completed only when `id`, `status = 'running'`, and `locked_by` match;
   this prevents a cancelled/superseded worker from writing late,
 - mark transient failure by setting `status = 'pending'` with retry/backoff in
   `not_before`, unless `attempts >= max_attempts`,
 - mark low-confidence search as `manual_needed`,
 - mark exhausted/non-recoverable processing as `failed`,
+- never automatically enqueue a new `youtube_search` after `manual_needed` or
+  terminal `failed`; only explicit operator action can create new work,
 - sweep expired `running` leases back to `pending` or terminal `failed` so the
   selector cannot be wedged forever.
 
-### 2. Audio availability state helper
+### 2. Global ReccoBeats provider lease
+
+`audioFeatureBackfillConfig.concurrency` is per worker process, so the database
+must enforce the provider-level cap when multiple worker replicas run. Add a
+small DB-backed provider lease/advisory lock around the ReccoBeats file-analysis
+section, initially with a global limit of 1.
+
+Requirements:
+
+- acquire before uploading the first generated clip;
+- hold through all clip uploads for the job;
+- set a lease expiry so crashes do not wedge the provider lock;
+- release in `finally` after success/failure;
+- fail/retry the job with backoff if the provider lease cannot be acquired.
+
+### 3. Audio availability state helper
 
 Add one shared helper/RPC and use it everywhere pipeline decisions need audio
 state. Suggested return shape:
@@ -365,7 +368,7 @@ SQL priority:
 The selector RPC, audio stage, analysis gate, worker settlement, and control
 panel should not each re-implement this logic.
 
-### 3. Review/provenance table
+### 4. Review/provenance table
 
 Stores provenance for auto-inserted or manually provided features.
 
@@ -377,7 +380,7 @@ create table public.audio_feature_source_review (
   backfill_job_id uuid references public.audio_feature_backfill_job(id) on delete set null,
 
   source_type text not null check (
-    source_type in ('youtube_search', 'youtube_url', 'manual_mp3')
+    source_type in ('youtube_search', 'youtube_url')
   ),
 
   youtube_video_id text,
@@ -386,10 +389,6 @@ create table public.audio_feature_source_review (
   youtube_channel text,
   youtube_duration_seconds integer,
   youtube_thumbnail_url text,
-
-  manual_storage_bucket text,
-  manual_storage_path text,
-  manual_original_filename text,
 
   search_query text,
   candidate_rank integer,
@@ -400,6 +399,7 @@ create table public.audio_feature_source_review (
   clip_starts_seconds real[] not null,
   clip_features jsonb not null,
   averaged_features jsonb not null,
+  aggregation_metadata jsonb not null default '{}'::jsonb,
 
   status text not null default 'pending' check (
     status in ('pending', 'approved', 'rejected')
@@ -412,8 +412,7 @@ create table public.audio_feature_source_review (
   updated_at timestamptz not null default now(),
 
   constraint audio_feature_source_review_youtube_required check (
-    source_type = 'manual_mp3'
-    or youtube_url is not null
+    youtube_url is not null
   )
 );
 
@@ -433,23 +432,8 @@ create unique index audio_feature_source_review_song_video_once
 ```
 
 The table is named generically (`audio_feature_source_review`) because it covers
-YouTube and manual MP3 sources alike. The control-panel UI label is still
-“Audio review”.
-
-### 4. Storage bucket for manual MP3 sources
-
-Add a private Supabase Storage bucket, e.g.:
-
-```text
-audio-feature-manual-sources
-```
-
-Storage policy/access:
-
-- Control panel server uploads using service role.
-- Worker downloads using service role.
-- Do not expose publicly.
-- Delete source object after processing where possible.
+automatic YouTube search and operator-provided YouTube URL sources alike. The
+control-panel UI label is still “Audio review”.
 
 ## Worker modules to add
 
@@ -538,17 +522,21 @@ Validation:
 
 - Must contain at least one audio stream.
 - Duration should be reasonable:
-  - hard minimum: 45s unless manual override; otherwise cannot sample 3 clips well.
+  - no hard minimum; intros/interludes are valid songs, so send whatever audio exists;
   - hard maximum: e.g. 20 minutes to avoid full mixes.
 - Source file size under configured max.
 
 Clip starts:
 
-- Use 3 clips at roughly 25%, 50%, 75% centers.
-- For a 30s clip:
+- ReccoBeats analyzes at most 30 seconds per upload and truncates longer files.
+- Generate 1–3 clips from the source:
+  - if duration is <= 30s, create one clip containing the available audio;
+  - if duration is > 30s, use candidate centers at roughly 25%, 50%, and 75%, clamp to valid start positions, and de-duplicate identical starts caused by short duration.
+- For each generated clip:
 
 ```ts
-start = clamp(duration * fraction - 15, 0, duration - 30)
+clipDuration = Math.min(duration, 30)
+start = clamp(duration * fraction - clipDuration / 2, 0, duration - clipDuration)
 fractions = [0.25, 0.5, 0.75]
 ```
 
@@ -557,7 +545,7 @@ Clip command:
 ```bash
 ffmpeg -v error -y \
   -ss <start> \
-  -t 30 \
+  -t <clipDuration> \
   -i <source> \
   -vn \
   -ac 2 \
@@ -596,7 +584,20 @@ multipart/form-data: audioFile=@clip.mp3
   - retry transient 5xx/network failures,
   - cap retries.
 
-- Average 3 clip responses.
+- Require every generated clip to analyze successfully after per-clip retries. If
+  any clip still fails, fail/retry the job instead of averaging partial data.
+- Merge clip responses with feature-aware aggregation, not one blind arithmetic
+  average:
+  - duration-weighted arithmetic mean for bounded 0–1 features (`acousticness`,
+    `danceability`, `energy`, `instrumentalness`, `liveness`, `speechiness`,
+    `valence`);
+  - duration-weighted loudness in linear power space, then convert back to dB;
+  - tempo via weighted median after normalizing obvious half/double-tempo variants.
+- Store raw `clip_features`, final `averaged_features`, and
+  `aggregation_metadata` with method/version, clip durations, tempo strategy,
+  tempo confidence, and per-feature spread. This matches ReccoBeats'
+  documentation for audio longer than 30 seconds: divide it into multiple files,
+  extract features from each, then compute the average.
 - Set `key`, `mode`, `time_signature` to `null` because the file-analysis endpoint
   does not return them. This is safe: song-matching scoring
   (`src/lib/domains/taste/song-matching/scoring.ts`) only uses the 9 numeric
@@ -690,20 +691,24 @@ Orchestrates one backfill job:
 3. Resolve source:
    - `youtube_search`: search + score.
    - `youtube_url`: hydrate exact URL metadata.
-   - `manual_mp3`: download Storage object.
-4. Download/copy source audio into job temp dir.
+4. Download source audio into job temp dir.
 5. Validate source.
 6. Extract clips.
 7. Analyze clips with ReccoBeats.
 8. Before DB writes, re-check the job fence (`id`, `status = 'running'`,
    `locked_by`). This prevents late writes from cancelled or superseded jobs.
-9. Upsert `song_audio_feature` and return row.
-10. Insert review/provenance row.
-11. Resolve existing `job_item_failure` rows for `audio_features` where applicable.
-12. Mark backfill job completed with the same fence.
-13. Emit/wake enrichment for affected accounts so LLM analysis can run after the
+9. Re-check `song_audio_feature`:
+   - for `youtube_search`, if a feature now exists, skip/obsolete this auto job
+     without overwriting;
+   - for `youtube_url`, overwriting is allowed only because operator replacement
+     cancelled/obsoleted active work before enqueueing the job.
+10. Upsert `song_audio_feature` and return row.
+11. Insert review/provenance row.
+12. Resolve existing `job_item_failure` rows for `audio_features` where applicable.
+13. Mark backfill job completed with the same fence.
+14. Emit/wake enrichment for affected accounts so LLM analysis can run after the
    external backfill settles.
-14. Cleanup temp dir and manual storage object.
+15. Cleanup temp dir.
 
 Expected failures should be structured:
 
@@ -716,7 +721,7 @@ type AudioBackfillErrorCode =
   | "ffmpeg_clip_failed"
   | "reccobeats_rate_limited"
   | "reccobeats_transient"
-  | "manual_source_missing"
+  | "source_missing"
   | "db_write_failed";
 ```
 
@@ -742,10 +747,10 @@ availability helper:
   analysis can use audio features if present, or fall back to lyrics-only / the
   existing input-missing rules if not.
 
-Also handle historical rows: any existing unresolved `source_not_found` audio
-failure rows from the pre-backfill behavior should be resolved or explicitly
-ignored for audio selection, otherwise they can suppress the new backfill path for
-up to 30 days.
+Also handle historical rows: resolve existing unresolved non-terminal
+`source_not_found` audio failure rows from the pre-backfill behavior during the
+migration (`resolved_at = now()`), otherwise they can suppress the new backfill
+path for up to 30 days.
 
 ### Stage outcome plumbing
 
@@ -812,7 +817,8 @@ same chunk that enqueued yt-dlp backfill.
 ### Backfill settlement must wake enrichment
 
 Because the selector hides `backfill_active` songs, the account-level enrichment
-job may legitimately settle while yt-dlp is still running. Therefore every
+job may legitimately settle while yt-dlp is still running. “Wake” here means an
+internal library-processing scheduling signal, not a user notification. Every
 terminal backfill state transition must wake the library-processing system again:
 
 - on `completed`, wake affected accounts so analysis can run with the new audio
@@ -857,12 +863,10 @@ GET  /api/audio-feature-reviews?status=pending|approved|rejected
 POST /api/audio-feature-reviews/:id/approve
 POST /api/audio-feature-reviews/:id/reject
 POST /api/audio-feature-reviews/:id/replace-youtube
-POST /api/audio-feature-reviews/:id/replace-mp3
 POST /api/audio-feature-manual-jobs/youtube-url
-POST /api/audio-feature-manual-jobs/mp3
 ```
 
-The MVP ships these (MP3 endpoints land in Phase 6):
+The MVP ships these:
 
 ```text
 GET  /api/audio-feature-reviews?status=pending
@@ -890,7 +894,7 @@ Return:
 interface AudioFeatureReviewRow {
   id: string;
   status: "pending" | "approved" | "rejected";
-  sourceType: "youtube_search" | "youtube_url" | "manual_mp3";
+  sourceType: "youtube_search" | "youtube_url";
   createdAt: string;
 
   songId: string;
@@ -922,6 +926,7 @@ interface AudioFeatureReviewRow {
   matchScore: number | null;
   matchReasons: string[];
   clipStartsSeconds: number[];
+  aggregationMetadata: Record<string, unknown>;
 }
 ```
 
@@ -936,6 +941,7 @@ Each pending review card/table row should show:
 - Optional embed/thumbnail.
 - Match score and reasons.
 - Extracted feature values.
+- Aggregation metadata, especially low tempo confidence or high per-feature spread.
 
 Actions:
 
@@ -954,11 +960,6 @@ Actions:
     1. reject/delete current feature,
     2. enqueue new `youtube_url` job,
     3. show queued replacement result.
-
-- **Replace with MP3**
-  - file input accepting `.mp3`.
-  - upload file to Storage via control panel server.
-  - enqueue new `manual_mp3` job.
 
 ### Approval SQL
 
@@ -1055,45 +1056,25 @@ Suggested sequence:
 The worker must fence completion by job status/lease so a cancelled automatic job
 cannot write a late feature over the operator-provided replacement.
 
-
-### Replace with MP3
-
-Input validation:
-
-- MIME type best-effort check.
-- File extension `.mp3`.
-- Max upload size, e.g. 25MB or 50MB.
-
-Storage path:
-
-```text
-audio-feature-manual-sources/<reviewId-or-jobId>/<sanitized-filename>.mp3
-```
-
-Job payload:
-
-```text
-source_type = 'manual_mp3'
-source_storage_bucket = 'audio-feature-manual-sources'
-source_storage_path = '<path>'
-```
-
-Worker validates real file type with `ffprobe`; do not trust MIME/extension alone.
-
 ## ReccoBeats analysis details
 
 File endpoint constraints:
 
 - Max upload file size: 5MB.
-- Max useful analysis duration: 30s.
+- Maximum audio length: 30s; ReccoBeats truncates audio beyond 30s.
 - Supported upload formats include MP3.
+- ReccoBeats documents the multi-clip approach for longer audio: divide audio
+  into multiple files, extract features from each, then average the values.
 
 For every source:
 
-1. Extract 3 mp3 clips.
-2. Upload clips sequentially or with very low concurrency.
-3. Average numeric feature fields.
-4. Insert/upsert:
+1. Extract 1–3 mp3 clips depending on source duration.
+2. Upload clips sequentially under the DB-backed global ReccoBeats provider lock.
+3. Require every generated clip to succeed after retries; fail/retry the job on
+   partial clip failure rather than averaging incomplete data.
+4. Merge successful generated clip features with the feature-aware aggregation
+   algorithm below.
+5. Insert/upsert:
 
 ```ts
 {
@@ -1113,10 +1094,58 @@ For every source:
 }
 ```
 
+Aggregation algorithm:
+
+- Treat generated clips as weighted by actual clip duration. With normal 30s
+  clips this collapses to equal weighting, but short tracks and de-duplicated
+  starts still aggregate correctly.
+- For bounded 0–1 features, use duration-weighted arithmetic mean:
+  - `acousticness`
+  - `danceability`
+  - `energy`
+  - `instrumentalness`
+  - `liveness`
+  - `speechiness`
+  - `valence`
+- For `loudness`, do not average dB directly. Convert each dB value to linear
+  power, take the duration-weighted mean, then convert back to dB:
+
+```ts
+linear = 10 ** (loudnessDb / 10)
+averageDb = 10 * Math.log10(weightedMean(linearValues, durations))
+```
+
+- For `tempo`, avoid plain arithmetic mean because half-time/double-time
+  estimates can produce fake tempos. Use weighted median after normalizing each
+  clip tempo to the closest half/double variant of the dominant cluster:
+  - generate candidate variants for each clip tempo: `tempo / 2`, `tempo`,
+    `tempo * 2` within the valid ReccoBeats tempo range;
+  - use the weighted median raw tempo as the initial reference;
+  - map each clip tempo to the variant closest to that reference;
+  - take the weighted median of the normalized tempos;
+  - if normalized tempos still disagree beyond `tempoHalfDoubleTolerance`, keep
+    the weighted median but set `tempoConfidence = "low"` in metadata.
+- Store `aggregation_metadata`, for example:
+
+```ts
+{
+  method: "duration_weighted_feature_aware_v1",
+  clipDurationsSeconds: [30, 30, 30],
+  tempoStrategy: "weighted_median_half_double_normalized",
+  tempoConfidence: "high", // "high" | "low"
+  featureStdDev: {
+    energy: 0.04,
+    valence: 0.09,
+    tempo: 2.1
+  }
+}
+```
+
 Rate limiting:
 
 - On 429, respect `Retry-After` header.
-- Limit global ReccoBeats file-analysis concurrency to 1–2.
+- Limit global ReccoBeats file-analysis concurrency with a DB-backed provider
+  lease/advisory lock, initially capped at 1.
 - Do not analyze many songs in parallel initially.
 
 ## Safety, policy, and security
@@ -1125,8 +1154,7 @@ Rate limiting:
 - Do not use browser cookies in the worker unless explicitly needed later.
 - Do not expose temporary files.
 - Delete temp files in `finally`.
-- Keep manual upload bucket private.
-- Avoid logging full signed URLs or sensitive Storage tokens.
+- Avoid logging sensitive tokens or full URLs that contain secrets.
 - Log YouTube video IDs/URLs only where acceptable for operator review.
 - Treat all yt-dlp output and metadata as untrusted.
 
@@ -1179,7 +1207,10 @@ Use `bun run test`.
   - handles no candidates.
 
 - `file-analysis.ts`
-  - averages features.
+  - aggregates bounded 0–1 features with duration-weighted mean.
+  - aggregates loudness in linear power space, then converts back to dB.
+  - aggregates tempo with weighted median plus half/double normalization.
+  - requires every generated clip to succeed after retries.
   - handles 429 retry-after.
   - rejects malformed response.
 
@@ -1187,7 +1218,8 @@ Use `bun run test`.
   - high-confidence path upserts + review created.
   - low-confidence path does not insert.
   - manual URL path marks approved.
-  - manual MP3 path validates Storage source.
+  - auto-search skips final write if a `song_audio_feature` appeared after the job started.
+  - global provider lock acquisition/release wraps ReccoBeats clip uploads.
   - cleanup happens on failure.
 
 ### Deferred-state integration tests
@@ -1247,8 +1279,8 @@ shared audio availability state across selector, stages, and worker settlement.
 
 - Historical `source_not_found` migration:
   - unresolved audio `source_not_found` failure row exists from old behavior;
-  - new selector/stage can still start the backfill path once migration or
-    explicit ignore is applied.
+  - migration resolves the row with `resolved_at = now()`;
+  - new selector/stage can start the backfill path immediately.
 
 ### Control panel tests
 
@@ -1259,6 +1291,7 @@ If existing control-panel tests are limited, add lightweight server/action tests
 - reject invalidates downstream `song_analysis` / `song_embedding` only when they
   were created after the rejected feature and used audio context.
 - replace YouTube validates host.
+- replace YouTube cancels/obsoletes active auto jobs transactionally.
 - review list maps DB rows to UI shape.
 
 ### External-process tests
@@ -1286,7 +1319,7 @@ scripts/smoke/yt-dlp-audio-feature-backfill.ts
   - audio availability helper/RPC used by selector and stages,
   - claim/settlement RPCs with fenced completion,
   - stale-running sweep support,
-  - private Storage bucket if doing MP3 in same phase.
+  - DB-backed global ReccoBeats provider lease/advisory lock.
 - Add generated database types after migration if workflow requires it.
 
 Acceptance:
@@ -1303,6 +1336,7 @@ Acceptance:
 - Add yt-dlp wrapper.
 - Add ffprobe/ffmpeg wrapper.
 - Add ReccoBeats file-analysis client.
+- Add DB-backed global ReccoBeats provider lease/advisory lock helper.
 - Add scoring.
 - Add backfill job service using fenced settlement.
 - Add affected-account wake/enrichment event helper for backfill settlement.
@@ -1310,15 +1344,18 @@ Acceptance:
 
 Acceptance:
 
-- A mocked high-confidence YouTube candidate produces averaged features and writes review row.
+- A mocked high-confidence YouTube candidate produces feature-aware aggregated features and writes review row.
 - A low-confidence result marks the job `manual_needed` and does not write audio features.
 - A cancelled/superseded job cannot write a late `song_audio_feature` row.
+- An auto-search job skips final write if another feature appeared while it was running.
+- All generated clips must succeed before aggregated features are written.
 
 ### Phase 3 — worker polling loop
 
 - Add `src/worker/poll-audio-feature-backfill.ts`.
 - Wire into `src/worker/index.ts`.
-- Respect `audioFeatureBackfillConfig.concurrency`.
+- Respect `audioFeatureBackfillConfig.concurrency` and the DB-backed global
+  ReccoBeats provider lease/advisory lock.
 - Add stale running-job recovery; this is required, not optional.
 - Emit/wake enrichment when a job settles as `completed`, `manual_needed`, or
   terminal `failed`.
@@ -1328,6 +1365,7 @@ Acceptance:
 - Pending fallback jobs are claimed and processed.
 - Running jobs heartbeat or do not wedge indefinitely.
 - Expired leases are retried or terminalized.
+- ReccoBeats file-analysis work is globally serialized across worker replicas.
 - Backfill settlement schedules follow-up enrichment for affected accounts.
 
 ### Phase 4 — deferred-state pipeline integration
@@ -1339,8 +1377,8 @@ Acceptance:
   - hide `backfill_active` from audio lookup and analysis,
   - prevent automatic retry for `manual_needed` / terminal `failed`,
   - allow analysis again once backfill is no longer active.
-- Resolve or ignore historical unresolved audio `source_not_found` rows so old
-  suppression does not block the new backfill path.
+- Resolve historical unresolved audio `source_not_found` rows in the migration so
+  old suppression does not block the new backfill path.
 - Update `src/lib/workflows/enrichment-pipeline/stages/audio-features.ts`:
   - check availability before ReccoBeats,
   - enqueue `youtube_search` only from `absent` + catalog `not_found`,
@@ -1376,18 +1414,7 @@ Acceptance:
 - Reject deletes exact feature row and marks rejected.
 - Replace with URL enqueues manual URL job.
 
-### Phase 6 — manual MP3 upload
-
-- Add private Storage bucket and upload endpoint.
-- Add `.mp3` input in UI.
-- Worker handles `manual_mp3` jobs.
-- Source object cleanup.
-
-Acceptance:
-
-- Operator can upload MP3 and get approved audio features generated from it.
-
-### Phase 7 — production rollout
+### Phase 6 — production rollout
 
 - Deploy the rebuilt worker image.
 - Verify `yt-dlp`/`ffmpeg`/`ffprobe` binaries in container logs.
@@ -1405,15 +1432,15 @@ Acceptance:
 - Operators can approve/dismiss correct rows.
 - Operators can reject rows, which deletes the exact inserted feature row and invalidates downstream artifacts that used it.
 - Operators can replace rejected/bad rows with a YouTube URL.
-- Operators can replace with manual MP3 after upload phase.
-- Worker cleans up temp files and respects provider rate limits.
+- Worker cleans up temp files and respects provider rate limits with a DB-backed global provider lock.
 - Dockerized worker runs on Ubuntu/Coolify without host-level yt-dlp/ffmpeg install.
-- Tests cover scoring, parsing, averaging, DB write semantics, deferred-state plumbing, and review actions.
+- Tests cover scoring, parsing, feature-aware aggregation, DB write semantics, deferred-state plumbing, and review actions.
 
 ## Resolved decisions
 
-1. **Table name:** `audio_feature_source_review` (general — covers YouTube and
-   manual MP3). UI label stays “Audio review”.
+1. **Table name:** `audio_feature_source_review` (general — covers automatic
+   YouTube search and operator-provided YouTube URL sources). UI label stays
+   “Audio review”.
 2. **Manual URL replacement flow:** reject deletes the exact `song_audio_feature`
    row, cancels/obsoletes active backfill work for the song, then enqueues the
    replacement job. The song has no audio feature until the new job completes —
@@ -1423,15 +1450,37 @@ Acceptance:
    approved/rejected come later.
 5. **Configuration** is a single `audioFeatureBackfillConfig` object constant — no
    env vars, no feature flag. The backfill is always on.
-6. **MP3 upload** is deferred (Phase 6); URL replacement ships in the MVP.
+6. **Manual MP3 upload is out of scope** — replacement is YouTube URL only.
 7. **Catalog miss is deferred work, not a failure** — deferral is represented by
    the active backfill job, not by a `job_item_failure` suppression row.
-8. **One active backfill job per song** — all source types write the same
-   singleton `song_audio_feature` row, so manual replacement cancels/obsoletes
-   any active automatic job before enqueueing the replacement.
+8. **One active backfill job per song** — both automatic search and manual URL
+   jobs write the same singleton `song_audio_feature` row, so manual replacement
+   cancels/obsoletes any active automatic job before enqueueing the replacement.
 9. **LLM analysis waits only while backfill is active** — once backfill completes
    or settles terminal/manual-needed, enrichment is woken and analysis can run
    with the feature if present or the existing no-audio behavior if not.
 10. **Reject invalidates downstream derived artifacts** — rejecting a live auto
    feature also invalidates analysis/embedding rows that were derived from that
    feature, then wakes enrichment.
+11. **Historical audio `source_not_found` rows are resolved in migration** — old
+   unresolved non-terminal catalog-miss rows should get `resolved_at = now()` so
+   they do not suppress the new backfill path.
+12. **Auto-search does not overwrite newly existing features** — before writing,
+   an auto-search job re-checks `song_audio_feature`; if a feature appeared after
+   the job started, it skips/obsoletes itself. Manual URL jobs may overwrite only
+   as an explicit replacement after cancelling active work.
+13. **Terminal/manual-needed states do not auto-retry** — new automatic search is
+   blocked after `manual_needed` or terminal `failed`; only explicit operator
+   action can create new work.
+14. **Stale running jobs use leases** — expired `running` leases are swept back
+   to `pending` while attempts remain, then terminal `failed` when exhausted.
+15. **ReccoBeats file analysis is globally serialized** — use a DB-backed
+   provider lease/advisory lock so worker replicas still respect concurrency 1.
+16. **Clip analysis follows ReccoBeats guidance with feature-aware aggregation**
+   — generate 1–3 clips depending on duration, require all generated clips to
+   succeed after retries, then merge bounded features with duration-weighted
+   means, loudness in linear power space, and tempo with weighted median plus
+   half/double normalization.
+17. **No hard minimum duration** — intros/interludes are valid; create at least
+   one clip with whatever audio exists, subject to ffprobe validity and file-size
+   constraints.

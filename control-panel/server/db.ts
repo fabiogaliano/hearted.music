@@ -18,13 +18,31 @@ function getClient(): ReturnType<typeof postgres> {
 		const { connectionString, ref } = getSqlTarget();
 		connRef = ref;
 		client = postgres(connectionString, {
+			// prepare:false is required for Supabase's transaction pooler — named
+			// prepared statements aren't shared across pooled backends.
 			prepare: false,
-			max: 4,
+			// Kept modest on purpose: the free-tier pooler exposes only ~15-20
+			// backend processes and the panel also uses the PostgREST client for
+			// operations, so we stay well under ~40% of that. Caching + in-flight
+			// de-dup (cache.ts) keep real concurrency low, so this rarely saturates.
+			max: 6,
 			fetch_types: false,
-			idle_timeout: 20,
+			// Hold connections longer so back-to-back interactive use reuses a warm
+			// link instead of paying a fresh TLS handshake to the remote pooler.
+			idle_timeout: 120,
 		});
 	}
 	return client;
+}
+
+/** Open the connection ahead of the first request so the first load isn't cold. */
+export async function warm(): Promise<void> {
+	try {
+		await read("select 1");
+	} catch {
+		// Best-effort: a failed warm-up just means the first real request pays the
+		// connection cost, exactly as before.
+	}
 }
 
 export function prodRef(): string {

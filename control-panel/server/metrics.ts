@@ -28,7 +28,8 @@ export interface UsersMetrics {
 }
 
 export async function usersMetrics(): Promise<UsersMetrics> {
-	const [totals] = await read(`
+	const [[totals], trend] = await Promise.all([
+		read(`
 		select
 			(select count(*) from account) as total_accounts,
 			(select count(*) from account where created_at >= now() - interval '1 day') as signups_1d,
@@ -36,14 +37,14 @@ export async function usersMetrics(): Promise<UsersMetrics> {
 			(select count(*) from account where created_at >= now() - interval '30 days') as signups_30d,
 			(select count(distinct account_id) from liked_song where unliked_at is null) as accounts_with_library,
 			(select count(*) from waitlist) as waitlist_total
-	`);
-
-	const trend = await read(`
+	`),
+		read(`
 		select to_char(date_trunc('day', created_at), 'YYYY-MM-DD') as day, count(*) as count
 		from account
 		where created_at >= now() - interval '14 days'
 		group by 1 order by 1
-	`);
+	`),
+	]);
 
 	const totalAccounts = num(totals?.total_accounts);
 	const accountsWithLibrary = num(totals?.accounts_with_library);
@@ -141,15 +142,15 @@ export interface LibraryMetrics {
 }
 
 export async function libraryMetrics(): Promise<LibraryMetrics> {
-	const [totals] = await read(`
+	const [[totals], [dist], topUsers] = await Promise.all([
+		read(`
 		select
 			(select count(*) from liked_song where unliked_at is null) as active_liked,
 			(select count(distinct song_id) from liked_song where unliked_at is null) as distinct_songs,
 			(select count(*) from playlist) as total_playlists,
 			(select count(*) from song) as total_songs
-	`);
-
-	const [dist] = await read(`
+	`),
+		read(`
 		with per as (
 			select a.id, count(l.id) filter (where l.unliked_at is null) as c
 			from account a left join liked_song l on l.account_id = a.id
@@ -166,9 +167,8 @@ export async function libraryMetrics(): Promise<LibraryMetrics> {
 			count(*) filter (where c between 5001 and 10000) as b7,
 			count(*) filter (where c > 10000) as b8
 		from per
-	`);
-
-	const topUsers = await read(`
+	`),
+		read(`
 		with lk as (
 			select account_id, count(*) as liked
 			from liked_song where unliked_at is null
@@ -185,7 +185,8 @@ export async function libraryMetrics(): Promise<LibraryMetrics> {
 		left join pl on pl.account_id = a.id
 		order by lk.liked desc
 		limit 25
-	`);
+	`),
+	]);
 
 	return {
 		activeLiked: num(totals?.active_liked),
@@ -321,7 +322,8 @@ const PRESENCE_JOINS = `
 `;
 
 export async function enrichmentMetrics(): Promise<EnrichmentMetrics> {
-	const [totals] = await read(`
+	const [[totals], [cost], gapsByUser] = await Promise.all([
+		read(`
 		${ENTITLED_PAIRS},
 		src as (select distinct song_id from ent)
 		select
@@ -332,14 +334,12 @@ export async function enrichmentMetrics(): Promise<EnrichmentMetrics> {
 			count(*) filter (where e.song_id is null) as missing_embedding
 		from src
 		${PRESENCE_JOINS}
-	`);
-
-	const [cost] = await read(`
+	`),
+		read(`
 		select count(*) as analysis_count, coalesce(sum(cost_usd), 0) as cost_usd
 		from song_analysis
-	`);
-
-	const gapsByUser = await read(`
+	`),
+		read(`
 		${ENTITLED_PAIRS},
 		src as (select account_id, song_id from ent)
 		select a.id, a.email, a.handle, a.display_name,
@@ -358,7 +358,8 @@ export async function enrichmentMetrics(): Promise<EnrichmentMetrics> {
 			or count(*) filter (where e.song_id is null) > 0
 		order by missing_analysis desc, entitled_songs desc
 		limit 30
-	`);
+	`),
+	]);
 
 	return {
 		entitledSongs: num(totals?.entitled_songs),
@@ -402,7 +403,8 @@ export interface JobMetrics {
 }
 
 export async function jobMetrics(): Promise<JobMetrics> {
-	const [totals] = await read(`
+	const [[totals], byType, recentFailures, failureCodes] = await Promise.all([
+		read(`
 		select
 			count(*) filter (where status = 'pending') as pending,
 			count(*) filter (where status = 'running') as running,
@@ -412,9 +414,8 @@ export async function jobMetrics(): Promise<JobMetrics> {
 			extract(epoch from (now() - min(created_at) filter (where status = 'pending')))::bigint as oldest_pending_seconds,
 			(select count(*) from job_item_failure where resolved_at is null) as unresolved_failures
 		from job
-	`);
-
-	const byType = await read(`
+	`),
+		read(`
 		select type,
 			count(*) filter (where status = 'pending') as pending,
 			count(*) filter (where status = 'running') as running,
@@ -423,22 +424,21 @@ export async function jobMetrics(): Promise<JobMetrics> {
 		group by type
 		having count(*) filter (where status in ('pending','running','failed')) > 0
 		order by failed desc, pending desc
-	`);
-
-	const recentFailures = await read(`
+	`),
+		read(`
 		select id, type, error, to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') as updated_at
 		from job
 		where status = 'failed'
 		order by updated_at desc
 		limit 15
-	`);
-
-	const failureCodes = await read(`
+	`),
+		read(`
 		select failure_code as code, count(*) as count
 		from job_item_failure
 		where resolved_at is null
 		group by 1 order by 2 desc limit 10
-	`);
+	`),
+	]);
 
 	return {
 		pending: num(totals?.pending),
@@ -542,35 +542,34 @@ export interface BillingMetrics {
 }
 
 export async function billingMetrics(): Promise<BillingMetrics> {
-	const [totals] = await read(`
+	const [[totals], plans, [grantTotals], byOrigin] = await Promise.all([
+		read(`
 		select
 			count(*) filter (where subscription_status not in ('none')) as active_subs,
 			coalesce(sum(credit_balance), 0) as credit_total
 		from account_billing
-	`);
-
-	const plans = await read(`
+	`),
+		read(`
 		select plan, subscription_status as status, count(*) as accounts
 		from account_billing
 		group by 1, 2
 		order by 3 desc
-	`);
-
-	const [grantTotals] = await read(`
+	`),
+		read(`
 		select
 			count(*) as total,
 			count(*) filter (where applied_at is not null) as applied,
 			count(*) filter (where applied_at is null) as pending
 		from account_liked_song_access_grant
-	`);
-
-	const byOrigin = await read(`
+	`),
+		read(`
 		select origin,
 			count(*) filter (where applied_at is not null) as applied,
 			count(*) filter (where applied_at is null) as pending
 		from account_liked_song_access_grant
 		group by 1 order by 1
-	`);
+	`),
+	]);
 
 	return {
 		activeSubscriptions: num(totals?.active_subs),
@@ -715,8 +714,16 @@ export async function userDetail(accountId: string): Promise<UserDetail | null> 
 	);
 	if (!acct) return null;
 
-	const [counts] = await read(
-		`
+	const isUnlimited =
+		acct.unlimited_access_source === "self_hosted" ||
+		(acct.unlimited_access_source === "subscription" &&
+			acct.subscription_status === "active");
+
+	// counts / enrichment / grant / songs are independent — run them together so
+	// the detail view waits on the slowest query, not the sum of all four.
+	const [[counts], [enrich], [grant], songs] = await Promise.all([
+		read(
+			`
 		select
 			(select count(*) from liked_song where account_id = $1 and unliked_at is null) as active_liked,
 			(select count(*) from liked_song where account_id = $1) as total_liked,
@@ -724,18 +731,12 @@ export async function userDetail(accountId: string): Promise<UserDetail | null> 
 			(select count(*) from account_song_unlock where account_id = $1 and revoked_at is null) as active_unlocks,
 			(select count(*) from account_song_unlock where account_id = $1 and revoked_at is not null) as revoked_unlocks
 	`,
-		[accountId],
-	);
-
-	const isUnlimited =
-		acct.unlimited_access_source === "self_hosted" ||
-		(acct.unlimited_access_source === "subscription" &&
-			acct.subscription_status === "active");
-
-	// Entitled songs for THIS account: all active likes if unlimited, else only
-	// actively-unlocked songs. Coverage is measured against this set.
-	const [enrich] = await read(
-		`
+			[accountId],
+		),
+		// Entitled songs for THIS account: all active likes if unlimited, else
+		// only actively-unlocked songs. Coverage is measured against this set.
+		read(
+			`
 		with ent as (
 			select l.song_id
 			from liked_song l
@@ -761,20 +762,18 @@ export async function userDetail(accountId: string): Promise<UserDetail | null> 
 		left join (select distinct song_id from song_analysis) an on an.song_id = src.song_id
 		left join (select distinct song_id from song_embedding) e on e.song_id = src.song_id
 	`,
-		[accountId, isUnlimited],
-	);
-
-	const [grant] = await read(
-		`
+			[accountId, isUnlimited],
+		),
+		read(
+			`
 		select origin, to_char(applied_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') as applied_at,
 			requested_by, note
 		from account_liked_song_access_grant where account_id = $1
 	`,
-		[accountId],
-	);
-
-	const songs = await read(
-		`
+			[accountId],
+		),
+		read(
+			`
 		select l.song_id, s.name, array_to_string(s.artists, ', ') as artist, s.image_url,
 			to_char(l.liked_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') as liked_at,
 			exists (select 1 from account_song_unlock u where u.account_id = $1 and u.song_id = l.song_id and u.revoked_at is null) as unlocked,
@@ -788,8 +787,9 @@ export async function userDetail(accountId: string): Promise<UserDetail | null> 
 		order by l.liked_at desc
 		limit 60
 	`,
-		[accountId],
-	);
+			[accountId],
+		),
+	]);
 
 	return {
 		id: String(acct.id),

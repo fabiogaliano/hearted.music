@@ -6,7 +6,8 @@
  * files the supabase-prod skill uses.
  */
 
-import { prodRef } from "./db";
+import { cached } from "./cache";
+import { prodRef, warm } from "./db";
 import {
 	previewStyledEmail,
 	renderStyledEmail,
@@ -55,6 +56,8 @@ const server = Bun.serve({
 	async fetch(req) {
 		const url = new URL(req.url);
 		const path = url.pathname;
+		// The UI's "Refresh" button appends ?fresh=1 to bypass the read cache.
+		const fresh = url.searchParams.get("fresh") === "1";
 
 		if (req.method === "OPTIONS") {
 			return new Response(null, { status: 204, headers: CORS });
@@ -67,17 +70,20 @@ const server = Bun.serve({
 
 			const metricMatch = path.match(/^\/api\/metrics\/([a-z]+)$/);
 			if (metricMatch && req.method === "GET") {
-				const handler = METRIC_HANDLERS[metricMatch[1]!];
+				const name = metricMatch[1]!;
+				const handler = METRIC_HANDLERS[name];
 				if (!handler) return json({ error: "Unknown metric" }, 404);
-				return json(await handler());
+				return json(await cached(`metric:${name}`, handler, fresh));
 			}
 
 			if (path === "/api/jobs/failures" && req.method === "GET") {
-				return json({ failures: await jobFailures() });
+				return json({
+					failures: await cached("jobs:failures", jobFailures, fresh),
+				});
 			}
 
 			if (path === "/api/users/list" && req.method === "GET") {
-				return json({ users: await usersList() });
+				return json({ users: await cached("users:list", usersList, fresh) });
 			}
 
 			if (path === "/api/accounts/search" && req.method === "GET") {
@@ -89,12 +95,19 @@ const server = Bun.serve({
 				const min = Number(url.searchParams.get("min") ?? "0");
 				const maxRaw = url.searchParams.get("max");
 				const max = maxRaw == null || maxRaw === "" ? null : Number(maxRaw);
-				return json({ accounts: await accountsByLiked(min, max) });
+				return json({
+					accounts: await cached(
+						`accounts:by-liked:${min}:${max}`,
+						() => accountsByLiked(min, max),
+						fresh,
+					),
+				});
 			}
 
 			const userMatch = path.match(/^\/api\/users\/([0-9a-fA-F-]+)$/);
 			if (userMatch && req.method === "GET") {
-				const detail = await userDetail(userMatch[1]!);
+				const id = userMatch[1]!;
+				const detail = await cached(`user:${id}`, () => userDetail(id), fresh);
 				if (!detail) return json({ error: "Account not found" }, 404);
 				return json(detail);
 			}
@@ -149,6 +162,9 @@ const server = Bun.serve({
 console.log(`▶ control-panel API → http://localhost:${server.port}`);
 try {
 	console.log(`  prod ref: ${prodRef()}`);
+	// Open the pooler connection now so the first dashboard load doesn't pay the
+	// cold TLS handshake on top of its queries.
+	void warm();
 } catch (err) {
 	console.error(
 		`  ⚠ prod creds not resolved yet: ${err instanceof Error ? err.message : err}`,
