@@ -17,6 +17,7 @@ import {
 	getMatchResults,
 	getMatchResultsForSong,
 	getServedRanksForSong,
+	isSnapshotOwnedByAccount,
 	type MatchResultRow,
 } from "@/lib/domains/taste/song-matching/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
@@ -90,16 +91,18 @@ export interface SongMatchesResult {
 
 type MatchDecision = { song_id: string; playlist_id: string };
 
+// Accepts any snapshot the account owns — not only the latest. A frozen match
+// session keeps walking the snapshot it started on after a background refresh
+// supersedes it; gating per-song reads on "is latest" blanked the active card
+// (and broke the walk) the moment a new snapshot landed. Entitlement is still
+// enforced per song by the caller, so widening the snapshot gate to "owned"
+// does not widen data access.
 async function doesSnapshotBelongToAccount(
 	snapshotId: string,
 	accountId: string,
 ): Promise<boolean> {
-	const snapshotResult = await getLatestMatchSnapshot(accountId);
-	if (Result.isError(snapshotResult) || !snapshotResult.value) {
-		return false;
-	}
-
-	return snapshotResult.value.id === snapshotId;
+	const owned = await isSnapshotOwnedByAccount(snapshotId, accountId);
+	return Result.isOk(owned) && owned.value;
 }
 
 /**

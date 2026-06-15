@@ -47,6 +47,33 @@ export function getLatestMatchSnapshot(
 	);
 }
 
+/**
+ * Whether a specific snapshot belongs to an account — checked by id, not by "is
+ * it the latest". A frozen match session keeps walking the snapshot it started
+ * on even after a background refresh supersedes it, so per-song reads must
+ * accept any snapshot the account owns (the same rule decision-logging already
+ * follows via getServedRanksForSong). Returns false for a missing or foreign
+ * snapshot.
+ */
+export async function isSnapshotOwnedByAccount(
+	snapshotId: string,
+	accountId: string,
+): Promise<Result<boolean, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const snapshot = await fromSupabaseMaybe(
+		supabase
+			.from("match_snapshot")
+			.select("id")
+			.eq("id", snapshotId)
+			.eq("account_id", accountId)
+			.maybeSingle(),
+	);
+	if (Result.isError(snapshot)) {
+		return Result.err(snapshot.error);
+	}
+	return Result.ok(snapshot.value !== null);
+}
+
 // ============================================================================
 // Match Result Operations
 // ============================================================================

@@ -90,11 +90,12 @@ export function useActiveJobCompletionEffects(
 			queryClient.invalidateQueries({
 				queryKey: dashboardKeys.matchPreviews(accountId),
 			});
+			// Refresh only the session summary — it drives the "new suggestions"
+			// banner and the sidebar badge. Deliberately NOT matchingKeys.all: that
+			// also evicts the active walk's per-song caches, abruptly interrupting an
+			// in-progress session the moment a background snapshot refresh lands.
 			queryClient.invalidateQueries({
 				queryKey: matchingKeys.session(accountId),
-			});
-			queryClient.invalidateQueries({
-				queryKey: matchingKeys.all,
 			});
 			queryClient.invalidateQueries({
 				queryKey: playlistKeys.all,

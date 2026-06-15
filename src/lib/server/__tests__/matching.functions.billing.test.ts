@@ -12,6 +12,7 @@ import {
 const {
 	mockAuthContext,
 	mockGetLatestMatchSnapshot,
+	mockIsSnapshotOwnedByAccount,
 	mockGetMatchResults,
 	mockGetMatchResultDetailsForSong,
 	mockGetMatchResultsForSong,
@@ -35,6 +36,7 @@ const {
 			account: null,
 		},
 		mockGetLatestMatchSnapshot: vi.fn(),
+		mockIsSnapshotOwnedByAccount: vi.fn(),
 		mockGetMatchResults: vi.fn(),
 		mockGetMatchResultDetailsForSong: vi.fn(),
 		mockGetMatchResultsForSong: vi.fn(),
@@ -89,6 +91,8 @@ vi.mock("@/lib/platform/auth/auth.middleware", () => ({
 vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 	getLatestMatchSnapshot: (...args: unknown[]) =>
 		mockGetLatestMatchSnapshot(...args),
+	isSnapshotOwnedByAccount: (...args: unknown[]) =>
+		mockIsSnapshotOwnedByAccount(...args),
 	getMatchResults: (...args: unknown[]) => mockGetMatchResults(...args),
 	getMatchResultDetailsForSong: (...args: unknown[]) =>
 		mockGetMatchResultDetailsForSong(...args),
@@ -305,7 +309,9 @@ describe("getSongSuggestions (billing-aware)", () => {
 describe("getSongMatches (billing-aware)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
+		// Ownership is now by-id (any snapshot the account owns), not "is latest" —
+		// the frozen walk keeps reading its snapshot after a refresh supersedes it.
+		mockIsSnapshotOwnedByAccount.mockResolvedValue(Result.ok(true));
 	});
 
 	// `songId` is now client-supplied, so the handler fetches details for that one
@@ -400,9 +406,7 @@ describe("getSongMatches (billing-aware)", () => {
 	}
 
 	it("returns null when snapshot does not belong to the account", async () => {
-		mockGetLatestMatchSnapshot.mockResolvedValue(
-			Result.ok({ id: "snap-other" }),
-		);
+		mockIsSnapshotOwnedByAccount.mockResolvedValue(Result.ok(false));
 
 		const result = await getSongMatches({
 			data: { snapshotId: "snap-1", songId: "song-1" },
@@ -412,6 +416,29 @@ describe("getSongMatches (billing-aware)", () => {
 		// Bails before any per-song fetch or entitlement check.
 		expect(mockGetMatchResultDetailsForSong).not.toHaveBeenCalled();
 		expect(mockRpc).not.toHaveBeenCalled();
+	});
+
+	it("serves a superseded snapshot the account still owns (frozen walk)", async () => {
+		// A background refresh has made snap-2 the latest, but the active walk is
+		// still on snap-1. Ownership is by-id, so snap-1 keeps serving — a new
+		// snapshot landing never interrupts the in-progress session.
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-2" }));
+		mockRpc.mockResolvedValue({ data: true, error: null });
+		setupSongFetch("song-1");
+
+		const result = await getSongMatches({
+			data: { snapshotId: "snap-1", songId: "song-1" },
+		});
+
+		expect(result).not.toBeNull();
+		expect(result?.song.id).toBe("song-1");
+		expect(result?.matches).toHaveLength(1);
+		// Ownership is decided by id — never by comparing against the latest snapshot.
+		expect(mockGetLatestMatchSnapshot).not.toHaveBeenCalled();
+		expect(mockIsSnapshotOwnedByAccount).toHaveBeenCalledWith(
+			"snap-1",
+			"acct-1",
+		);
 	});
 
 	it("returns null for a song the account is not entitled to", async () => {
