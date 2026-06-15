@@ -1,21 +1,20 @@
 import type { CSSProperties } from "react";
+import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 
 interface CoverProps {
 	src: string | null;
-	/**
-	 * Square edge length in px, or `"fill"` to stretch to the parent's box — size
-	 * it via a sized wrapper (and the placeholder glyph via `className`, e.g.
-	 * `text-5xl`) when filling.
-	 */
+	/** Square edge length in px, or `"fill"` to stretch to the parent's box. */
 	size: number | "fill";
 	className?: string;
 	style?: CSSProperties;
 }
 
 /**
- * A square playlist/album cover: the image when there is one, else a flat
- * placeholder with the house ♫ glyph. `image-outline` carries the 1px inset
- * outline (and auto-flips in dark mode), matching every other cover in the app.
+ * A square playlist/album cover: the image when there is one, else the shared
+ * AlbumPlaceholder. The placeholder is a viewBox SVG, so its ♫ scales with the
+ * box at every size — a big note in the spotlight, a small one in a rail row —
+ * instead of a fixed text glyph that looked tiny at fill sizes. `image-outline`
+ * carries the 1px inset outline (auto-flips in dark mode) like every other cover.
  */
 export function Cover({ src, size, className = "", style }: CoverProps) {
 	const fill = size === "fill";
@@ -35,14 +34,10 @@ export function Cover({ src, size, className = "", style }: CoverProps) {
 	return (
 		<div
 			aria-hidden="true"
-			className={`image-outline theme-surface-dim-bg theme-text-muted grid place-items-center ${box} ${className}`}
-			style={{
-				...dims,
-				fontSize: fill ? undefined : Math.round(size * 0.4),
-				...style,
-			}}
+			className={`image-outline ${box} ${className}`}
+			style={{ ...dims, ...style }}
 		>
-			♫
+			<AlbumPlaceholder />
 		</div>
 	);
 }

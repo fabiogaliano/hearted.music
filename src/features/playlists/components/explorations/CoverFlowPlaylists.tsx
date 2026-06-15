@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
 import { CoverFlowShelf } from "./CoverFlowShelf";
@@ -52,6 +52,17 @@ export function CoverFlowPlaylists({
 	const clampCenter = (next: number) =>
 		setCenter(Math.max(0, Math.min(max, next)));
 
+	// The just-added id, so its sleeve flies in instead of popping. Cleared once the
+	// enter animation has played so a later re-render doesn't re-trigger it.
+	const [enteringId, setEnteringId] = useState<string | null>(null);
+	const enterTimer = useRef<number | null>(null);
+	useEffect(
+		() => () => {
+			if (enterTimer.current) window.clearTimeout(enterTimer.current);
+		},
+		[],
+	);
+
 	// Adding appends the playlist to the end of the matching order and glides the
 	// flow to it — so it always enters at a predictable spot (the end) rather than
 	// reshuffling the existing covers. Its new slot is the current matching count.
@@ -59,6 +70,9 @@ export function CoverFlowPlaylists({
 		onAdd(id);
 		setOrder((prev) => [...prev.filter((x) => x !== id), id]);
 		setCenter(matching.length);
+		setEnteringId(id);
+		if (enterTimer.current) window.clearTimeout(enterTimer.current);
+		enterTimer.current = window.setTimeout(() => setEnteringId(null), 480);
 	};
 
 	// Keyboard nav drives the matching cover flow through the shared shortcut
@@ -146,6 +160,7 @@ export function CoverFlowPlaylists({
 				onOpen={onOpen}
 				onAdd={handleAdd}
 				onRemove={onRemove}
+				enterId={enteringId}
 				chrome="chapter"
 			/>
 

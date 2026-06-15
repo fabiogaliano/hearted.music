@@ -85,6 +85,8 @@ interface CoverFlowShelfProps {
 	onOpen: (id: string) => void;
 	onAdd: (id: string) => void;
 	onRemove: (id: string) => void;
+	/** Id of a just-added playlist whose sleeve should fly in rather than pop. */
+	enterId?: string | null;
 	/**
 	 * The chrome around the (fixed) stage. `plain` keeps the label left + arrows
 	 * right. `chapter` rides the label on a hairline rule with the count floated to
@@ -109,6 +111,7 @@ export function CoverFlowShelf({
 	onOpen,
 	onAdd,
 	onRemove,
+	enterId,
 	chrome = "plain",
 }: CoverFlowShelfProps) {
 	const stageRef = useRef<HTMLDivElement>(null);
@@ -246,6 +249,7 @@ export function CoverFlowShelf({
 				playlists.map((playlist, index) => {
 					const offset = index - clamped;
 					const isCenter = offset === 0;
+					const isEntering = !reduce && playlist.id === enterId;
 					return (
 						<button
 							key={playlist.id}
@@ -262,16 +266,23 @@ export function CoverFlowShelf({
 								className="relative h-full w-full transition-transform duration-100 ease-out group-active/sleeve:scale-[0.96] motion-reduce:transition-none"
 								style={{ boxShadow: dropShadow(isCenter) }}
 							>
-								<Cover
-									src={playlist.imageUrl}
-									size="fill"
-									className="text-5xl"
-									style={
-										isCenter
-											? undefined
-											: { filter: "brightness(0.82) saturate(0.9)" }
+								<div
+									className={
+										isEntering
+											? "xpl-sleeve-enter h-full w-full"
+											: "h-full w-full"
 									}
-								/>
+								>
+									<Cover
+										src={playlist.imageUrl}
+										size="fill"
+										style={
+											isCenter
+												? undefined
+												: { filter: "brightness(0.82) saturate(0.9)" }
+										}
+									/>
+								</div>
 							</div>
 						</button>
 					);
@@ -312,7 +323,7 @@ export function CoverFlowShelf({
 				<div className="mt-3 flex min-h-[220px] flex-col items-center justify-center gap-5 text-center md:min-h-[260px]">
 					<div
 						aria-hidden="true"
-						className="theme-border-color theme-text-muted grid size-[120px] place-items-center border border-dashed text-4xl opacity-50"
+						className="theme-border-color theme-text-muted grid size-[120px] place-items-center border border-dashed text-4xl"
 					>
 						♫
 					</div>

@@ -73,14 +73,53 @@ Existing code that should be reused or extended:
 
 ## High-level architecture
 
+### Audio availability state model
+
+`song_audio_feature` is a materialized song-level artifact, and yt-dlp backfill
+is the asynchronous process that may create it after the normal catalog lookup
+misses. The pipeline models this as first-class audio availability state. Every
+pipeline decision that depends on audio features reads that same state.
+
+Canonical states for a song's audio features:
+
+- `ready` — a `song_audio_feature` row exists.
+- `backfill_active` — one `audio_feature_backfill_job` is `pending` or
+  `running`; no catalog lookup or LLM analysis should be requested while this is
+  true.
+- `manual_needed` — automatic backfill reached a terminal, operator-actionable
+  result such as low-confidence search. Do not auto-search again; surface the
+  song in the control panel.
+- `unavailable_terminal` — automatic/manual backfill exhausted retries or hit a
+  non-recoverable processing error. Treat audio as confirmed unavailable for
+  analysis gating.
+- `absent` — no feature row and no active/terminal backfill state. This is the
+  only state where the audio stage may call ReccoBeats catalog lookup.
+
+Implement this as a small domain query/RPC (for example
+`getAudioFeatureAvailability(songIds)` backed by SQL that checks
+`song_audio_feature` and `audio_feature_backfill_job`). The selector RPC,
+`getReadyForAudioFeatures`, the post-Phase-A analysis gate, and the backfill
+worker settlement path should all use this same state model.
+
+Deferred audio work is represented by the active backfill job, not by a
+`job_item_failure` suppression row. Failure rows remain for real terminal stage
+failures only.
+
 ### Automatic path
 
-1. Normal enrichment tries ReccoBeats catalog lookup.
-2. If catalog returns `not_found`, enqueue a YouTube audio feature fallback job.
-3. Worker claims fallback job.
-4. Worker searches YouTube with `yt-dlp`.
-5. Worker scores candidates.
-6. If top candidate passes confidence threshold:
+1. Normal enrichment resolves audio availability state.
+2. If state is `ready`, audio features are satisfied.
+3. If state is `backfill_active`, the audio stage returns a non-failure deferred
+   outcome and does not call ReccoBeats catalog lookup.
+4. If state is `manual_needed` or `unavailable_terminal`, the audio stage reports
+   confirmed audio unavailability and does not auto-search again.
+5. Only if state is `absent`, the audio stage tries ReccoBeats catalog lookup.
+6. If catalog returns `not_found`, enqueue a YouTube audio feature fallback job
+   and return a deferred outcome.
+7. Worker claims fallback job.
+8. Worker searches YouTube with `yt-dlp`.
+9. Worker scores candidates.
+10. If top candidate passes confidence threshold:
    - download best audio to temp directory,
    - validate with `ffprobe`,
    - extract 3 × 30s mp3 clips with `ffmpeg`,
@@ -88,15 +127,16 @@ Existing code that should be reused or extended:
    - average returned features,
    - upsert `song_audio_feature`,
    - create pending review row linked to the exact inserted/updated audio feature.
-7. If confidence is too low:
+11. If confidence is too low:
    - do not insert,
-   - mark fallback job failed/manual-needed,
+   - mark fallback job `manual_needed`,
    - surface in control panel as needing manual source.
 
 ### Manual YouTube URL path
 
 1. Operator provides a YouTube URL in control panel.
-2. Control panel enqueues a fallback job with `source_type = 'youtube_url'`.
+2. Control panel cancels/obsoletes any active backfill for the song, then
+   enqueues a fallback job with `source_type = 'youtube_url'`.
 3. Worker downloads exactly that URL.
 4. Worker analyzes and upserts features.
 5. Operator chose it, so the review row is created `approved` immediately with `reviewed_by = 'control-panel'`.
@@ -105,7 +145,8 @@ Existing code that should be reused or extended:
 
 1. Operator uploads/provides an `.mp3` file in control panel.
 2. Control panel stores the file in a private Supabase Storage bucket.
-3. Control panel enqueues fallback job with `source_type = 'manual_mp3'` and storage path.
+3. Control panel cancels/obsoletes any active backfill for the song, then
+   enqueues fallback job with `source_type = 'manual_mp3'` and storage path.
 4. Worker downloads the file from Storage.
 5. Worker validates it with `ffprobe`.
 6. Worker extracts clips, calls ReccoBeats, upserts features.
@@ -169,13 +210,21 @@ export const audioFeatureBackfillConfig = {
 ```
 
 `concurrency: 1` is deliberate — ReccoBeats file analysis is rate-limited, so the
-poll loop processes one job at a time. Bump it only after observing headroom.
+poll loop processes one job at a time. This is per worker process; if Coolify
+scales the worker horizontally, add a database-backed global rate-limit/claim cap
+before increasing replicas. Bump it only after observing headroom.
 
 ## Database design
 
 ### 1. Fallback queue table
 
-Prefer a dedicated table instead of overloading the existing `job` enum. This is song-level fallback work and does not need account-level lifecycle semantics.
+Prefer a dedicated table instead of overloading the existing `job` enum. This is
+song-level fallback work and does not need account-level lifecycle semantics.
+
+The table is also the source of truth for deferred audio state. Because
+`song_audio_feature` is one row per song, there must be at most one active
+backfill job per song, regardless of source type. Manual replacement must cancel
+or obsolete any active automatic job before enqueueing the replacement.
 
 Sketch:
 
@@ -193,15 +242,25 @@ create table public.audio_feature_backfill_job (
   source_storage_path text,
 
   status text not null default 'pending' check (
-    status in ('pending', 'running', 'completed', 'failed', 'cancelled')
+    status in (
+      'pending',
+      'running',
+      'completed',
+      'manual_needed',
+      'failed',
+      'cancelled',
+      'obsolete'
+    )
   ),
   attempts integer not null default 0,
   max_attempts integer not null default 3,
   not_before timestamptz not null default now(),
   locked_at timestamptz,
   locked_by text,
+  lease_expires_at timestamptz,
   started_at timestamptz,
   completed_at timestamptz,
+  superseded_by_job_id uuid references public.audio_feature_backfill_job(id),
   error_code text,
   error_message text,
   progress jsonb not null default '{}'::jsonb,
@@ -217,17 +276,23 @@ create index audio_feature_backfill_job_pending_idx
 create index audio_feature_backfill_job_song_idx
   on public.audio_feature_backfill_job (song_id, created_at desc);
 
-create unique index audio_feature_backfill_job_one_pending_per_song_source
-  on public.audio_feature_backfill_job (song_id, source_type)
+create unique index audio_feature_backfill_job_one_active_per_song
+  on public.audio_feature_backfill_job (song_id)
   where status in ('pending', 'running');
 ```
 
-Consider a claim RPC similar to existing worker claim patterns:
+Why one active job per song instead of `(song_id, source_type)`: different
+source types still write the same singleton `song_audio_feature` row. Allowing an
+auto-search job and a manual URL job to run concurrently creates a real race,
+where the slower job can overwrite the operator-approved source.
+
+Claim RPC should lease work and fence writes:
 
 ```sql
 create or replace function public.claim_pending_audio_feature_backfill_job(
   p_worker_id text,
-  p_limit integer default 1
+  p_limit integer default 1,
+  p_lease_seconds integer default 900
 )
 returns setof public.audio_feature_backfill_job
 language plpgsql
@@ -250,6 +315,7 @@ begin
       attempts = attempts + 1,
       locked_at = now(),
       locked_by = p_worker_id,
+      lease_expires_at = now() + make_interval(secs => p_lease_seconds),
       started_at = coalesce(started_at, now()),
       updated_at = now()
   from claimed
@@ -259,14 +325,47 @@ end;
 $$;
 ```
 
-Also add settlement helpers/RPCs or query functions for:
+Settlement helpers/RPCs should be compare-and-set style:
 
-- enqueue fallback job idempotently,
-- mark completed,
-- mark failed with retry/backoff,
-- cancel stale/obsolete jobs.
+- enqueue fallback job idempotently; if an active job already exists, return that
+  job id and state instead of erroring,
+- for manual replacement, in one transaction mark any active job `obsolete` or
+  `cancelled`, then insert the manual job,
+- mark completed only when `id`, `status = 'running'`, and `locked_by` match;
+  this prevents a cancelled/superseded worker from writing late,
+- mark transient failure by setting `status = 'pending'` with retry/backoff in
+  `not_before`, unless `attempts >= max_attempts`,
+- mark low-confidence search as `manual_needed`,
+- mark exhausted/non-recoverable processing as `failed`,
+- sweep expired `running` leases back to `pending` or terminal `failed` so the
+  selector cannot be wedged forever.
 
-### 2. Review/provenance table
+### 2. Audio availability state helper
+
+Add one shared helper/RPC and use it everywhere pipeline decisions need audio
+state. Suggested return shape:
+
+```ts
+type AudioFeatureAvailability =
+  | { state: "ready"; songId: string; audioFeatureId: string }
+  | { state: "backfill_active"; songId: string; jobId: string }
+  | { state: "manual_needed"; songId: string; jobId: string; errorCode: string | null }
+  | { state: "unavailable_terminal"; songId: string; jobId: string; errorCode: string | null }
+  | { state: "absent"; songId: string };
+```
+
+SQL priority:
+
+1. `ready` if `song_audio_feature` exists.
+2. `backfill_active` if latest relevant backfill job is `pending` or `running`.
+3. `manual_needed` if latest relevant job is `manual_needed`.
+4. `unavailable_terminal` if latest relevant job is terminal `failed`.
+5. `absent` otherwise.
+
+The selector RPC, audio stage, analysis gate, worker settlement, and control
+panel should not each re-implement this logic.
+
+### 3. Review/provenance table
 
 Stores provenance for auto-inserted or manually provided features.
 
@@ -337,7 +436,7 @@ The table is named generically (`audio_feature_source_review`) because it covers
 YouTube and manual MP3 sources alike. The control-panel UI label is still
 “Audio review”.
 
-### 3. Storage bucket for manual MP3 sources
+### 4. Storage bucket for manual MP3 sources
 
 Add a private Supabase Storage bucket, e.g.:
 
@@ -585,20 +684,26 @@ type CandidateDecision =
 
 Orchestrates one backfill job:
 
-1. Load song row.
-2. Resolve source:
+1. Load and re-check the claimed job. If it is no longer `running` for this
+   worker lease, stop without writing.
+2. Load song row.
+3. Resolve source:
    - `youtube_search`: search + score.
    - `youtube_url`: hydrate exact URL metadata.
    - `manual_mp3`: download Storage object.
-3. Download/copy source audio into job temp dir.
-4. Validate source.
-5. Extract clips.
-6. Analyze clips with ReccoBeats.
-7. Upsert `song_audio_feature` and return row.
-8. Insert review/provenance row.
-9. Resolve existing `job_item_failure` rows for `audio_features` where applicable.
-10. Mark backfill job completed.
-11. Cleanup temp dir and manual storage object.
+4. Download/copy source audio into job temp dir.
+5. Validate source.
+6. Extract clips.
+7. Analyze clips with ReccoBeats.
+8. Before DB writes, re-check the job fence (`id`, `status = 'running'`,
+   `locked_by`). This prevents late writes from cancelled or superseded jobs.
+9. Upsert `song_audio_feature` and return row.
+10. Insert review/provenance row.
+11. Resolve existing `job_item_failure` rows for `audio_features` where applicable.
+12. Mark backfill job completed with the same fence.
+13. Emit/wake enrichment for affected accounts so LLM analysis can run after the
+   external backfill settles.
+14. Cleanup temp dir and manual storage object.
 
 Expected failures should be structured:
 
@@ -617,38 +722,121 @@ type AudioBackfillErrorCode =
 
 ## Integration with existing audio features stage
 
+The pipeline is state-driven, not retry-window-driven. The audio stage does not
+write a suppression failure for deferred work. It creates or observes an active
+backfill job, then lets the canonical audio availability state control future
+selection.
+
+### Selector rules
+
+Update `select_liked_song_ids_needing_enrichment_work` to use the audio
+availability helper:
+
+- `needs_audio_features = true` only when availability is `absent`.
+- `needs_audio_features = false` when availability is `ready`,
+  `backfill_active`, `manual_needed`, or `unavailable_terminal`.
+- `needs_analysis = false` while availability is `backfill_active`. This is what
+  enforces "wait for yt-dlp in case it succeeds".
+- `needs_analysis` may become true again once availability is `ready`,
+  `manual_needed`, or `unavailable_terminal`. At that point the wait is over:
+  analysis can use audio features if present, or fall back to lyrics-only / the
+  existing input-missing rules if not.
+
+Also handle historical rows: any existing unresolved `source_not_found` audio
+failure rows from the pre-backfill behavior should be resolved or explicitly
+ignored for audio selection, otherwise they can suppress the new backfill path for
+up to 30 days.
+
+### Stage outcome plumbing
+
+Extend stage accounting with a first-class deferred count instead of encoding it
+as failure:
+
+```ts
+type StageOutcome =
+  | { kind: "skipped"; stage: EnrichmentStageName; candidateSongIds: string[] }
+  | {
+      kind: "attempted";
+      stage: EnrichmentStageName;
+      candidateSongIds: string[];
+      attemptedSongIds: string[];
+      succeededSongIds: string[];
+      deferredSongIds: string[];
+      failures: StageFailure[];
+    };
+```
+
+Progress should count deferred songs as handled for the current chunk, but not as
+successes or failures. Add a `deferred` stage status/count if useful for UI; at
+minimum ensure `doneCount === 0 && hasMoreSongs` does not classify a pure
+backfill-deferred chunk as a blocked hot loop.
+
+### Audio stage rules
+
 In `src/lib/workflows/enrichment-pipeline/stages/audio-features.ts`:
 
-- Keep current ReccoBeats catalog lookup first.
-- On `not_found`, enqueue `audio_feature_backfill_job` with `source_type = 'youtube_search'`.
+1. Resolve audio availability for the ready song IDs before any provider call.
+2. `ready` → include in done/succeeded semantics by existing feature row.
+3. `backfill_active` → put in `deferredSongIds`; do not call ReccoBeats catalog.
+4. `manual_needed` / `unavailable_terminal` → do not call ReccoBeats catalog and
+   do not auto-enqueue another YouTube search. These states should normally be
+   filtered out by the selector; if a stale work plan includes them, treat them
+   as terminal audio unavailability for this stage.
+5. `absent` → call ReccoBeats catalog lookup.
+6. Catalog success → upsert `song_audio_feature` as today.
+7. Catalog `not_found` → enqueue `youtube_search` fallback. If enqueue returns an
+   existing active job because another worker won the race, use that job. Either
+   way, put the song in `deferredSongIds` and record no `source_not_found`
+   failure row.
+8. Catalog transient/provider error → keep existing provider failure behavior.
 
-Stage outcome — a catalog miss with backfill always-on is **deferred work, not a
-failure**. The pipeline must wait for the backfill to resolve before deciding the
-song's audio status:
+### Post-Phase-A analysis gate
 
-1. Catalog miss → enqueue fallback job → audio stage reports a non-failure
-   **deferred** state. Do not mark the song's audio stage failed at this point.
-2. When the backfill job completes and upserts `song_audio_feature`, the audio
-   stage is satisfied (feature now exists).
-3. Only if the backfill job **terminally fails** (exhausts retries, or scoring
-   returns low-confidence / manual-needed) does the audio stage resolve to a real
-   failure.
+The current orchestrator computes the work plan once, before Phase A. That means
+Phase B can run from a stale `needAnalysis` list after Phase A just created a
+backfill job. Fix this at the root by adding a fresh gate immediately before
+`runSongAnalysis`:
 
-This means the pipeline needs to model "audio pending external backfill" as a
-distinct, non-error state rather than reusing `source_not_found` as a failure.
+1. Start from `workPlan.needAnalysis`.
+2. Re-read audio availability for those song IDs after audio features and genre
+   tagging finish.
+3. Remove/defer songs whose state is `backfill_active`.
+4. Allow songs whose state is `ready`, `manual_needed`, `unavailable_terminal`,
+   or `absent` to proceed. `absent` should be rare here; if it occurs, the audio
+   stage did not request backfill and the existing analysis input-gate behavior
+   should decide whether lyrics-only analysis is possible.
 
-Failure/status codes:
+This gate is the piece that prevents LLM analysis from running too early in the
+same chunk that enqueued yt-dlp backfill.
 
-- Replace the immediate `source_not_found` failure on catalog miss with a
-  deferred status (e.g. `audio_backfill_deferred`) while a job is pending/running.
-- `audio_backfill_manual_needed` — terminal: low confidence, operator must supply
-  a source.
-- Existing terminal failure only after the backfill job itself gives up.
+### Backfill settlement must wake enrichment
 
-Avoid hot-looping: the partial unique index on `audio_feature_backfill_job`
-(`one_pending_per_song_source`) guarantees at most one in-flight job per song, and
-the deferred status keeps the selector from re-requesting catalog lookup while a
-job is live. Once `song_audio_feature` exists, the selector naturally stops asking.
+Because the selector hides `backfill_active` songs, the account-level enrichment
+job may legitimately settle while yt-dlp is still running. Therefore every
+terminal backfill state transition must wake the library-processing system again:
+
+- on `completed`, wake affected accounts so analysis can run with the new audio
+  features;
+- on `manual_needed` or terminal `failed`, wake affected accounts so analysis can
+  proceed without waiting forever, or surface the existing input-missing/manual
+  source state.
+
+Prefer a small internal library-processing change such as
+`audio_feature_backfill_settled` carrying `songId` and affected account IDs. The
+affected accounts are all accounts that currently like the song and have
+entitlement/unlock for it, not only `requested_by_account_id`, because the audio
+feature row is song-level shared data.
+
+### Hot-loop guarantees
+
+The no-hot-loop guarantee comes from all of these together:
+
+- one active backfill job per song in the database,
+- selector hides `backfill_active` from both audio lookup and analysis,
+- audio stage independently checks availability before provider calls,
+- terminal `manual_needed` / `failed` states suppress automatic re-search,
+- backfill worker fences writes by job lease so superseded jobs cannot overwrite,
+- stale-running sweeps clear or terminalize expired leases.
 
 ## Control panel review center
 
@@ -816,6 +1004,28 @@ commit;
 
 If zero rows are deleted, return an explicit warning/error because the feature may have already been replaced.
 
+### Downstream invalidation on reject
+
+Auto-derived features are live immediately, so a later rejection can mean
+`song_analysis` and `song_embedding` were generated from bad audio features.
+Reject should therefore do more than delete the feature row:
+
+- If `song_analysis.created_at >= audio_feature_source_review.created_at` and the
+  analysis payload includes audio feature context, delete or invalidate that
+  `song_analysis` row.
+- Delete/invalidate the corresponding `song_embedding` because it derives from
+  the analysis text.
+- Wake enrichment for affected accounts so the song can be re-analyzed with the
+  replacement feature or lyrics-only inputs.
+- Keep the delete scoped to the rejected review's song and feature provenance;
+  do not bulk-delete unrelated analysis created before the rejected feature.
+
+Preferred MVP behavior is invalidation + wake. The alternative is to prevent LLM
+analysis from consuming pending-review auto features until review is approved,
+but that contradicts the earlier decision that auto features are live
+immediately. Do not leave this implicit: otherwise rejection leaves stale
+downstream artifacts.
+
 ## Manual replacement semantics
 
 ### Replace with YouTube URL
@@ -838,8 +1048,12 @@ source_url = '<url>'
 Suggested sequence:
 
 1. Reject current review and delete exact feature.
-2. Enqueue replacement job.
-3. UI shows replacement queued.
+2. In the same transaction, cancel/obsolete any active backfill job for the song.
+3. Enqueue the replacement job.
+4. UI shows replacement queued.
+
+The worker must fence completion by job status/lease so a cancelled automatic job
+cannot write a late feature over the operator-provided replacement.
 
 
 ### Replace with MP3
@@ -976,12 +1190,74 @@ Use `bun run test`.
   - manual MP3 path validates Storage source.
   - cleanup happens on failure.
 
+### Deferred-state integration tests
+
+These are the highest-value tests for the plumbing because they verify the
+shared audio availability state across selector, stages, and worker settlement.
+
+- Selector suppresses active backfill:
+  - fixture has entitled liked song, no `song_audio_feature`, and an
+    `audio_feature_backfill_job` with `status = 'pending'` or `running`;
+  - selector returns no `needs_audio_features` for that song;
+  - selector also returns no `needs_analysis` while the backfill is active.
+
+- Audio stage does not re-request catalog while active:
+  - fixture or mocked availability returns `backfill_active`;
+  - `runAudioFeatures` returns the song as deferred;
+  - ReccoBeats catalog lookup mock is not called;
+  - no `source_not_found` / `job_item_failure` row is recorded.
+
+- Catalog miss creates one active job and defers:
+  - ReccoBeats returns `not_found`;
+  - audio stage enqueues exactly one `youtube_search` job;
+  - repeated stage/selector passes observe that job and do not enqueue or lookup
+    again.
+
+- Same-chunk analysis gate:
+  - initial work plan includes `needAudioFeatures` and `needAnalysis` for the
+    same song;
+  - audio stage creates a backfill job;
+  - the post-Phase-A gate removes the song from the analysis sub-batch;
+  - LLM analysis mock is not called and no `song_analysis` row is created.
+
+- Backfill success resumes analysis:
+  - backfill worker marks job `completed` and inserts `song_audio_feature`;
+  - settlement emits/wakes enrichment for affected accounts;
+  - next selector pass allows `needs_analysis`;
+  - analysis receives the new audio features.
+
+- Terminal/manual-needed backfill stops waiting and does not auto-retry:
+  - job settles as `manual_needed` or terminal `failed`;
+  - selector does not return `needs_audio_features`;
+  - selector may return `needs_analysis` if analysis is still missing;
+  - audio stage does not enqueue another `youtube_search` job.
+
+- Manual replacement cancels active auto job:
+  - an auto-search job is `running`;
+  - operator replaces with YouTube URL;
+  - active auto job becomes `obsolete`/`cancelled` and manual job is inserted;
+  - late completion from the superseded worker is fenced and cannot update
+    `song_audio_feature`.
+
+- Stale-running recovery:
+  - a `running` job with expired `lease_expires_at` is swept;
+  - it returns to `pending` when attempts remain or becomes terminal `failed`
+    when attempts are exhausted;
+  - selector is not wedged forever in `backfill_active`.
+
+- Historical `source_not_found` migration:
+  - unresolved audio `source_not_found` failure row exists from old behavior;
+  - new selector/stage can still start the backfill path once migration or
+    explicit ignore is applied.
+
 ### Control panel tests
 
 If existing control-panel tests are limited, add lightweight server/action tests where practical:
 
 - approve endpoint updates status.
 - reject endpoint deletes exact `audio_feature_id` only.
+- reject invalidates downstream `song_analysis` / `song_embedding` only when they
+  were created after the rejected feature and used audio context.
 - replace YouTube validates host.
 - review list maps DB rows to UI shape.
 
@@ -1004,10 +1280,13 @@ scripts/smoke/yt-dlp-audio-feature-backfill.ts
 - Update `Dockerfile.worker` with yt-dlp/ffmpeg/ffprobe.
 - Add `audioFeatureBackfillConfig` object in `src/lib/integrations/youtube-audio/config.ts`.
 - Add DB migration:
-  - `audio_feature_backfill_job`
-  - review/provenance table
-  - private Storage bucket if doing MP3 in same phase
-  - claim/settlement RPCs if preferred
+  - `audio_feature_backfill_job` with one active job per song, lease columns, and
+    terminal statuses (`manual_needed`, `failed`, `cancelled`, `obsolete`),
+  - review/provenance table,
+  - audio availability helper/RPC used by selector and stages,
+  - claim/settlement RPCs with fenced completion,
+  - stale-running sweep support,
+  - private Storage bucket if doing MP3 in same phase.
 - Add generated database types after migration if workflow requires it.
 
 Acceptance:
@@ -1015,6 +1294,9 @@ Acceptance:
 - Worker image builds.
 - `yt-dlp`, `ffmpeg`, `ffprobe` available inside container.
 - Migration applies locally.
+- The database enforces one active backfill job per song.
+- The availability helper returns `ready`, `backfill_active`, `manual_needed`,
+  `unavailable_terminal`, or `absent` for representative fixtures.
 
 ### Phase 2 — core worker services
 
@@ -1022,39 +1304,60 @@ Acceptance:
 - Add ffprobe/ffmpeg wrapper.
 - Add ReccoBeats file-analysis client.
 - Add scoring.
-- Add backfill job service.
+- Add backfill job service using fenced settlement.
+- Add affected-account wake/enrichment event helper for backfill settlement.
 - Add tests.
 
 Acceptance:
 
 - A mocked high-confidence YouTube candidate produces averaged features and writes review row.
-- A low-confidence result does not write audio features.
+- A low-confidence result marks the job `manual_needed` and does not write audio features.
+- A cancelled/superseded job cannot write a late `song_audio_feature` row.
 
 ### Phase 3 — worker polling loop
 
 - Add `src/worker/poll-audio-feature-backfill.ts`.
 - Wire into `src/worker/index.ts`.
 - Respect `audioFeatureBackfillConfig.concurrency`.
-- Add stale running-job recovery if needed.
+- Add stale running-job recovery; this is required, not optional.
+- Emit/wake enrichment when a job settles as `completed`, `manual_needed`, or
+  terminal `failed`.
 
 Acceptance:
 
 - Pending fallback jobs are claimed and processed.
 - Running jobs heartbeat or do not wedge indefinitely.
+- Expired leases are retried or terminalized.
+- Backfill settlement schedules follow-up enrichment for affected accounts.
 
-### Phase 4 — enqueue from audio-features stage
+### Phase 4 — deferred-state pipeline integration
 
-- On ReccoBeats catalog `not_found`, enqueue `youtube_search` fallback and resolve
-  the audio stage to the deferred (non-failure) state.
-- Ensure idempotency (one in-flight job per song via the partial unique index).
-- Resolve to a real failure only when the backfill job terminally fails.
+- Extend stage outcome/accounting/progress to represent deferred songs without
+  writing failure rows.
+- Update `select_liked_song_ids_needing_enrichment_work` to use audio
+  availability state:
+  - hide `backfill_active` from audio lookup and analysis,
+  - prevent automatic retry for `manual_needed` / terminal `failed`,
+  - allow analysis again once backfill is no longer active.
+- Resolve or ignore historical unresolved audio `source_not_found` rows so old
+  suppression does not block the new backfill path.
+- Update `src/lib/workflows/enrichment-pipeline/stages/audio-features.ts`:
+  - check availability before ReccoBeats,
+  - enqueue `youtube_search` only from `absent` + catalog `not_found`,
+  - return deferred for active/enqueued jobs.
+- Add the post-Phase-A analysis gate so a song whose backfill was just enqueued
+  in the same chunk is not sent to LLM analysis.
+- Add the deferred-state integration tests listed above.
 
 Acceptance:
 
-- Catalog miss creates exactly one pending fallback job per song and does not show
-  as a failure while pending/running.
-- Backfill completion makes the feature exist and satisfies the audio stage.
-- Terminal backfill failure surfaces the song as needing a manual source.
+- Catalog miss creates exactly one active fallback job per song and records no
+  `source_not_found` failure.
+- While a job is pending/running, repeated selector/stage passes do not call
+  ReccoBeats catalog lookup and do not run LLM analysis.
+- Backfill completion makes the feature exist and subsequent analysis uses it.
+- Terminal/manual-needed backfill stops waiting, prevents auto-search retry, and
+  allows the analysis/input-missing path to proceed.
 
 ### Phase 5 — control-panel review MVP
 
@@ -1095,28 +1398,40 @@ Acceptance:
 ## Acceptance criteria for the whole feature
 
 - ReccoBeats catalog misses can be automatically backfilled via yt-dlp when confidence is high.
+- Catalog misses create deferred backfill work, not `source_not_found` failure rows.
+- While backfill is active, neither ReccoBeats catalog lookup nor LLM analysis hot-loops for that song.
 - Auto features are live immediately in `song_audio_feature`.
 - Every auto insertion has a review/provenance row with YouTube link and scoring reasons.
 - Operators can approve/dismiss correct rows.
-- Operators can reject rows, which deletes the exact inserted feature row.
+- Operators can reject rows, which deletes the exact inserted feature row and invalidates downstream artifacts that used it.
 - Operators can replace rejected/bad rows with a YouTube URL.
 - Operators can replace with manual MP3 after upload phase.
 - Worker cleans up temp files and respects provider rate limits.
 - Dockerized worker runs on Ubuntu/Coolify without host-level yt-dlp/ffmpeg install.
-- Tests cover scoring, parsing, averaging, DB write semantics, and review actions.
+- Tests cover scoring, parsing, averaging, DB write semantics, deferred-state plumbing, and review actions.
 
 ## Resolved decisions
 
 1. **Table name:** `audio_feature_source_review` (general — covers YouTube and
    manual MP3). UI label stays “Audio review”.
 2. **Manual URL replacement flow:** reject deletes the exact `song_audio_feature`
-   row immediately, then enqueues the replacement job. The song has no audio
-   feature until the new job completes — accepted gap.
+   row, cancels/obsoletes active backfill work for the song, then enqueues the
+   replacement job. The song has no audio feature until the new job completes —
+   accepted gap.
 3. **Manual YouTube URL jobs** create `approved` review rows for provenance.
 4. **Control panel** shows pending only for the MVP; status filters for
    approved/rejected come later.
 5. **Configuration** is a single `audioFeatureBackfillConfig` object constant — no
    env vars, no feature flag. The backfill is always on.
 6. **MP3 upload** is deferred (Phase 6); URL replacement ships in the MVP.
-7. **Catalog miss is deferred work, not a failure** — the audio stage only fails
-   if the backfill job terminally fails.
+7. **Catalog miss is deferred work, not a failure** — deferral is represented by
+   the active backfill job, not by a `job_item_failure` suppression row.
+8. **One active backfill job per song** — all source types write the same
+   singleton `song_audio_feature` row, so manual replacement cancels/obsoletes
+   any active automatic job before enqueueing the replacement.
+9. **LLM analysis waits only while backfill is active** — once backfill completes
+   or settles terminal/manual-needed, enrichment is woken and analysis can run
+   with the feature if present or the existing no-audio behavior if not.
+10. **Reject invalidates downstream derived artifacts** — rejecting a live auto
+   feature also invalidates analysis/embedding rows that were derived from that
+   feature, then wakes enrichment.

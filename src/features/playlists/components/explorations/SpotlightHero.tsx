@@ -47,7 +47,7 @@ export function SpotlightHero({
 					"color-mix(in srgb, var(--t-primary) 12%, var(--t-surface-dim))",
 			}}
 		>
-			<div className="aspect-square w-full max-w-[260px] flex-none md:w-[clamp(150px,16vw,184px)] md:max-w-none">
+			<div className="aspect-square w-full max-w-[260px] mx-auto flex-none md:mx-0 md:w-[clamp(150px,16vw,184px)] md:max-w-none">
 				<Cover
 					src={playlist.imageUrl}
 					size="fill"
@@ -57,9 +57,9 @@ export function SpotlightHero({
 					}}
 				/>
 			</div>
-			<div className="@container flex min-w-0 flex-1 flex-col gap-5 md:max-w-[34rem]">
+			<div className="@container flex w-full min-w-0 flex-1 flex-col items-center gap-5 md:w-auto md:max-w-[34rem] md:items-start">
 				<h2
-					className="theme-text leading-[1.04] font-extralight tracking-tight text-balance break-words"
+					className="theme-text text-center leading-[1.04] font-extralight tracking-tight text-balance break-words md:text-left"
 					style={{
 						fontFamily: fonts.display,
 						fontSize: titleSize(playlist.name),

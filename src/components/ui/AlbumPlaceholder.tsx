@@ -19,20 +19,14 @@ export function AlbumPlaceholder({ className }: AlbumPlaceholderProps) {
 			className={cn("h-full w-full", className)}
 			aria-hidden="true"
 		>
-			<rect
-				width="100"
-				height="100"
-				fill="var(--t-surface-dim)"
-				fillOpacity="0.6"
-			/>
+			<rect width="100" height="100" fill="var(--t-surface-dim)" />
 			<text
 				x="50"
 				y="58"
 				textAnchor="middle"
 				dominantBaseline="middle"
 				fill="var(--t-text-muted)"
-				fillOpacity="0.5"
-				fontSize="32"
+				fontSize="38"
 				className="select-none"
 			>
 				♫

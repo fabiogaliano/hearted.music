@@ -47,6 +47,18 @@
 		transform: translateY(6px);
 	}
 }
+/* A freshly-added cover has no prior slot to glide from (it didn't exist on the
+   shelf until it became matching), so without this it would just pop in at centre
+   while its neighbours glide aside. Scale + fade + de-blur makes it materialise —
+   it "flies in" to meet the covers sliding over to make room. On its own wrapper so
+   it never collides with the sleeve's flow transform or the press-scale. */
+@keyframes xpl-sleeve-enter {
+	from {
+		opacity: 0;
+		transform: scale(0.8);
+		filter: blur(6px);
+	}
+}
 
 /* The genre editor region animates in on its own when Edit opens — scoped here
    so the description + divider that carry over from the collapsed view don't. */
@@ -68,13 +80,19 @@
 .xpl-caption-enter {
 	animation: xpl-caption-enter 190ms var(--ease-out-quart) both;
 }
+/* Newly-added cover flying in — paced just under the 520ms sleeve glide so it
+   settles together with the neighbours making room. */
+.xpl-sleeve-enter {
+	animation: xpl-sleeve-enter 440ms var(--ease-out-expo) both;
+}
 
 @media (prefers-reduced-motion: reduce) {
 	.xpl-reveal,
 	.xpl-chip-enter,
 	.xpl-shake,
 	.xpl-track-enter,
-	.xpl-caption-enter {
+	.xpl-caption-enter,
+	.xpl-sleeve-enter {
 		animation: none;
 	}
 }
