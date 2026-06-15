@@ -189,11 +189,18 @@ export function KeyboardShortcutProvider({
 
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
-			const target = event.target as HTMLElement;
+			// A keystroke inside a shadow-DOM widget (the UserJot feedback panel
+			// renders its UI in a shadow root) is retargeted to the shadow host, so
+			// event.target reads as the host <div> rather than the field being typed
+			// into — and app shortcuts would fire under the open panel. composedPath()
+			// pierces the shadow boundary; its first entry is the real focused node.
+			const source =
+				(event.composedPath()[0] as HTMLElement | null) ??
+				(event.target as HTMLElement | null);
 			const isInputField =
-				target.tagName === "INPUT" ||
-				target.tagName === "TEXTAREA" ||
-				target.isContentEditable;
+				source?.tagName === "INPUT" ||
+				source?.tagName === "TEXTAREA" ||
+				source?.isContentEditable === true;
 
 			if (isInputField && event.key !== "Escape") {
 				return;

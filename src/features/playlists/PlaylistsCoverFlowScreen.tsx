@@ -173,6 +173,7 @@ export function PlaylistsCoverFlowScreen({
 				onOpen={open}
 				onAdd={(id) => void toggleTarget(id, true)}
 				onRemove={(id) => void toggleTarget(id, false)}
+				detailOpen={playlistRef != null}
 			/>
 			<SpotlightPanel
 				playlist={panelPlaylist}

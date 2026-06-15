@@ -11,6 +11,12 @@ interface CoverFlowPlaylistsProps {
 	onOpen?: (id: string) => void;
 	onAdd?: (id: string) => void;
 	onRemove?: (id: string) => void;
+	/**
+	 * The Spotlight detail panel is open (route is /playlists/$playlistRef). The
+	 * cover flow stays mounted behind it, so keyboard nav must stand down — h/l
+	 * would otherwise slide the covers around underneath the open panel.
+	 */
+	detailOpen?: boolean;
 }
 
 /**
@@ -27,6 +33,7 @@ export function CoverFlowPlaylists({
 	onOpen = () => {},
 	onAdd = () => {},
 	onRemove = () => {},
+	detailOpen = false,
 }: CoverFlowPlaylistsProps) {
 	const library = playlists.filter((p) => !p.isTarget);
 
@@ -99,7 +106,10 @@ export function CoverFlowPlaylists({
 		const playlist = matching[Math.min(center, matching.length - 1)];
 		if (playlist) onOpen(playlist.id);
 	};
-	const navEnabled = matching.length > 0 && !isSearching;
+	// Only the bare /playlists list drives the cover flow. While searching, the
+	// shelf is swapped for a flat results rail; with the detail panel open the
+	// covers sit behind it — in both cases h/l/Enter must do nothing here.
+	const navEnabled = matching.length > 0 && !isSearching && !detailOpen;
 	useShortcut({
 		key: "left",
 		handler: goPrev,
