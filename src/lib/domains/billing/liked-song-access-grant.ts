@@ -32,6 +32,10 @@ interface GrantLikedSongAccessArgs {
 	origin: GrantOrigin;
 	requestedBy?: string | null;
 	note?: string | null;
+	// Caps how many top liked songs the RPC unlocks. Omit to use the RPC's
+	// own default (the waitlist/sync paths do); the operator console passes a
+	// clamped value for custom-limit grants.
+	limit?: number;
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -94,6 +98,7 @@ export async function grantLikedSongAccessForAccount(
 		// null/undefined both fall through to the RPC's DEFAULT NULL.
 		...(args.requestedBy ? { p_requested_by: args.requestedBy } : {}),
 		...(args.note ? { p_note: args.note } : {}),
+		...(typeof args.limit === "number" ? { p_limit: args.limit } : {}),
 	});
 
 	if (error) {

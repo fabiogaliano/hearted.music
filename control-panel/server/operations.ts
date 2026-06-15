@@ -4,15 +4,19 @@
  * Each operation is self-describing (id, title, fields) so the UI renders its
  * form generically and adding a new op is a single entry here. v1 wires the
  * liked-song access grant, replicating scripts/ops/grant-liked-song-access.ts:
- * resolve account → preview (dry run) → call the grant_liked_song_access RPC.
+ * resolve account → preview (dry run) → grantLikedSongAccessForAccount.
  *
- * We call the RPC directly instead of importing grantLikedSongAccessForAccount,
- * whose downstream library-processing side effect builds its own client from
- * @/env and would target the LOCAL db. The RPC is the authoritative, atomic
- * grant; the only thing skipped is the best-effort enrichment kickoff for
- * newly-unlocked songs (surfaced in the result note).
+ * We call the shared grantLikedSongAccessForAccount (not the bare RPC) so the
+ * grant fires the exact same library-processing side effect the website does —
+ * the songs_unlocked change that kicks off enrichment for the newly-unlocked
+ * songs. That helper builds its own admin client from @/env, which env-bootstrap
+ * (preloaded before this module) has pointed at PROD; without that preload it
+ * would target the local dev db. See control-panel/server/env-bootstrap.ts.
  */
 
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import { grantLikedSongAccessForAccount } from "@/lib/domains/billing/liked-song-access-grant";
+import { Result } from "better-result";
 import { prodSupabase } from "./supabase";
 
 export interface OperationField {
@@ -209,46 +213,38 @@ async function runGrantLikedAccess(
 		return { ok: true, status: "dry_run", message, details: base };
 	}
 
-	const supabase = prodSupabase();
-	const args: Record<string, unknown> = {
-		p_account_id: account.id,
-		p_origin: "operator_manual",
-		p_limit: limit,
-	};
-	if (input.requestedBy) args.p_requested_by = input.requestedBy;
-	if (input.reason) args.p_note = input.reason;
-
-	const { data, error } = await supabase.rpc(
-		"grant_liked_song_access",
-		args as never,
+	const grantResult = await grantLikedSongAccessForAccount(
+		createAdminSupabaseClient(),
+		{
+			accountId: account.id,
+			origin: "operator_manual",
+			limit,
+			requestedBy: input.requestedBy ?? null,
+			note: input.reason ?? null,
+		},
 	);
-	if (error) throw new Error(`Grant failed: ${error.message}`);
-
-	const payload = (data ?? {}) as {
-		status?: string;
-		candidate_count?: number;
-		newly_unlocked_song_ids?: string[];
-	};
-	const status = payload.status ?? "unknown";
-
-	let message: string;
-	if (status === "applied") {
-		const unlocked = payload.newly_unlocked_song_ids?.length ?? 0;
-		message = `Applied for ${who} — ${payload.candidate_count ?? 0} candidates, ${unlocked} newly unlocked. (Downstream enrichment kickoff is not auto-triggered; the next sync picks it up.)`;
-	} else if (status === "already_applied") {
-		message = `${who} was already granted — nothing changed.`;
-	} else if (status === "pending_no_liked_songs") {
-		message = `Pending created for ${who} — no active liked songs yet; the next sync applies it.`;
-	} else {
-		message = `Grant returned status "${status}".`;
+	if (Result.isError(grantResult)) {
+		throw new Error(`Grant failed: ${grantResult.error.message}`);
 	}
 
-	return {
-		ok: true,
-		status,
-		message,
-		details: { ...base, ...payload },
-	};
+	const payload = grantResult.value;
+	let message: string;
+	let details: Record<string, unknown> = base;
+	if (payload.status === "applied") {
+		const unlocked = payload.newlyUnlockedSongIds.length;
+		message = `Applied for ${who} — ${payload.candidateCount} candidates, ${unlocked} newly unlocked. Enrichment queued (lightweight + full) for the new songs.`;
+		details = {
+			...base,
+			candidateCount: payload.candidateCount,
+			newlyUnlocked: unlocked,
+		};
+	} else if (payload.status === "already_applied") {
+		message = `${who} was already granted — nothing changed.`;
+	} else {
+		message = `Pending created for ${who} — no active liked songs yet; the next sync applies it.`;
+	}
+
+	return { ok: true, status: payload.status, message, details };
 }
 
 export async function runOperation(

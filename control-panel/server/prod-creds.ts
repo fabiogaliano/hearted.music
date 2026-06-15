@@ -19,8 +19,8 @@ const POOLER_URL_FILE = resolve(REPO_ROOT, "supabase/.temp/pooler-url");
 const CLOUD_FILES = [".env.cloud.local", ".env.cloud"];
 const SQL_FILES = [".env.cloud.local", ".env.cloud", ".env"];
 
-/** First-occurrence KEY=VALUE reader across files (authoritative file first). */
-function readEnv(keys: string[], files: string[]): Record<string, string> {
+/** Every KEY=VALUE pair across files (authoritative file first wins per key). */
+function readEnvAll(files: string[]): Record<string, string> {
 	const found: Record<string, string> = {};
 	for (const file of files) {
 		const path = resolve(REPO_ROOT, file);
@@ -31,7 +31,7 @@ function readEnv(keys: string[], files: string[]): Record<string, string> {
 			const eq = line.indexOf("=");
 			if (eq === -1) continue;
 			const key = line.slice(0, eq).trim();
-			if (!keys.includes(key) || key in found) continue;
+			if (key in found) continue;
 			let value = line.slice(eq + 1).trim();
 			if (
 				(value.startsWith('"') && value.endsWith('"')) ||
@@ -41,6 +41,16 @@ function readEnv(keys: string[], files: string[]): Record<string, string> {
 			}
 			found[key] = value;
 		}
+	}
+	return found;
+}
+
+/** First-occurrence KEY=VALUE reader across files (authoritative file first). */
+function readEnv(keys: string[], files: string[]): Record<string, string> {
+	const all = readEnvAll(files);
+	const found: Record<string, string> = {};
+	for (const key of keys) {
+		if (key in all) found[key] = all[key]!;
 	}
 	return found;
 }
@@ -130,4 +140,33 @@ export function getSqlTarget(): SqlTarget {
 	}
 	const ref = target.username.split(".")[1] ?? "(unknown)";
 	return { connectionString, ref };
+}
+
+/**
+ * Overlay the cloud env files onto process.env so modules that read process.env
+ * at import time — notably @/env (t3-env) — resolve PROD values. bun auto-loads
+ * the local .env (127.0.0.1) first; this makes .env.cloud win, the same
+ * precedence getRestCreds/getSqlTarget already apply for their own reads.
+ *
+ * Preloaded (bun --preload) ahead of the control-panel entry so it runs before
+ * the app's env module is evaluated, letting operations reuse the app's
+ * library-processing reconciler against prod. Aborts when no prod URL resolves
+ * or it points at local, so the panel can never silently drive the dev DB.
+ */
+export function loadCloudEnvIntoProcess(): void {
+	const cloud = readEnvAll(CLOUD_FILES);
+	const url = cloud.SUPABASE_URL;
+	if (!url) {
+		throw new Error(
+			"Missing SUPABASE_URL in .env.cloud — the control panel needs prod creds.",
+		);
+	}
+	if (url.includes("127.0.0.1") || url.includes("localhost")) {
+		throw new Error(
+			`Refusing to start: resolved a LOCAL SUPABASE_URL (${url}). Check .env.cloud.`,
+		);
+	}
+	for (const [key, value] of Object.entries(cloud)) {
+		process.env[key] = value;
+	}
 }

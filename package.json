@@ -42,7 +42,7 @@
 		"ext:store:firefox": "bun extensions/scripts/build.ts --target=firefox --store",
 		"ext:lint:firefox": "bunx web-ext lint --source-dir extensions/dist/firefox",
 		"hash:sync": "bun scripts/spotify-hash-sync/sync.ts",
-		"cp:api": "bun --watch control-panel/server/index.ts",
+		"cp:api": "bun --watch --preload ./control-panel/server/env-bootstrap.ts control-panel/server/index.ts",
 		"cp:web": "vite --config control-panel/vite.config.ts",
 		"control-panel": "concurrently -n cp-api,cp-web -c magenta,cyan --kill-others-on-fail \"bun run cp:api\" \"bun run cp:web\"",
 		"ladle": "ladle serve",

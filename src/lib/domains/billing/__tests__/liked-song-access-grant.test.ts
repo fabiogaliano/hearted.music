@@ -209,6 +209,24 @@ describe("grantLikedSongAccessForAccount", () => {
 			p_note: "vip",
 		});
 	});
+
+	it("forwards p_limit when a custom limit is provided", async () => {
+		const { client, rpcFn } = makeClient({
+			rpc: () => ({ data: { status: "pending_no_liked_songs" }, error: null }),
+		});
+
+		await grantLikedSongAccessForAccount(client, {
+			accountId: "a1",
+			origin: "operator_manual",
+			limit: 250,
+		});
+
+		expect(rpcFn).toHaveBeenCalledWith("grant_liked_song_access", {
+			p_account_id: "a1",
+			p_origin: "operator_manual",
+			p_limit: 250,
+		});
+	});
 });
 
 describe("maybeGrantLikedSongAccessAfterSync", () => {
