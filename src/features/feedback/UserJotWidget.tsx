@@ -14,7 +14,7 @@ const PROJECT_ID = env.VITE_USERJOT_PROJECT_ID;
 
 interface UserJotWidgetProps {
 	accountId: string;
-	email: string;
+	handle: string | null;
 }
 
 /**
@@ -23,7 +23,7 @@ interface UserJotWidgetProps {
  * feedback panel. Owning the button keeps it in the light DOM, so it themes with
  * plain Tailwind tokens instead of shadow-root style injection.
  */
-export function UserJotWidget({ accountId, email }: UserJotWidgetProps) {
+export function UserJotWidget({ accountId, handle }: UserJotWidgetProps) {
 	const signatureQuery = useQuery({
 		...userJotSignatureQueryOptions(accountId),
 		enabled: Boolean(PROJECT_ID),
@@ -45,8 +45,16 @@ export function UserJotWidget({ accountId, email }: UserJotWidgetProps) {
 		if (!PROJECT_ID || !signatureQuery.isSuccess) return;
 		const signature = signatureQuery.data;
 		if (!signature) return;
-		identifyUserJot({ id: accountId, email, signature });
-	}, [accountId, email, signatureQuery.isSuccess, signatureQuery.data]);
+		// Send only the public @handle — never the user's real name or email. It's
+		// the same pseudonymous identity hearted shows everywhere; UserJot has no
+		// username field, so it goes in firstName, which renders as the author. A
+		// null handle still identifies by id so the account is linked (just unnamed).
+		identifyUserJot({
+			id: accountId,
+			firstName: handle ? `@${handle}` : undefined,
+			signature,
+		});
+	}, [accountId, handle, signatureQuery.isSuccess, signatureQuery.data]);
 
 	if (!PROJECT_ID) return null;
 

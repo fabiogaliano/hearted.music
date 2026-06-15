@@ -247,7 +247,7 @@ function AuthenticatedLayout() {
 			</AuthenticatedThemeProvider>
 			<Toaster richColors position="top-right" />
 			{isComplete && (
-				<UserJotWidget accountId={session.accountId} email={identity.email} />
+				<UserJotWidget accountId={session.accountId} handle={account.handle} />
 			)}
 		</>
 	);
