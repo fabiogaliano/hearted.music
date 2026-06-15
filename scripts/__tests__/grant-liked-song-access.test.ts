@@ -3,7 +3,7 @@ import {
 	escapeLikePattern,
 	parseArgs,
 	previewDryRunOutcome,
-} from "../grant-liked-song-access";
+} from "../ops/grant-liked-song-access";
 
 function argv(...args: string[]): string[] {
 	return ["bun", "grant-liked-song-access.ts", ...args];

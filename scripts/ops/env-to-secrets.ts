@@ -3,11 +3,11 @@
  * compatible with `wrangler secret bulk`.
  *
  * Usage:
- *   bun scripts/env-to-secrets.ts                          # all secrets (released mode)
- *   bun scripts/env-to-secrets.ts --mode waitlist           # waitlist-only (minimal secrets)
- *   bun scripts/env-to-secrets.ts --mode released           # explicit released mode
- *   bun scripts/env-to-secrets.ts .env.cloud                # custom env file
- *   bun scripts/env-to-secrets.ts .env -o out.json          # custom output path
+ *   bun scripts/ops/env-to-secrets.ts                          # all secrets (released mode)
+ *   bun scripts/ops/env-to-secrets.ts --mode waitlist           # waitlist-only (minimal secrets)
+ *   bun scripts/ops/env-to-secrets.ts --mode released           # explicit released mode
+ *   bun scripts/ops/env-to-secrets.ts .env.cloud                # custom env file
+ *   bun scripts/ops/env-to-secrets.ts .env -o out.json          # custom output path
  *
  * Then: wrangler secret bulk < prod-secrets.json
  * (the file is gitignored and kept on disk so secrets can be re-pushed.)

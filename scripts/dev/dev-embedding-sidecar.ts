@@ -7,7 +7,7 @@
  * Workerd-based dev servers (TanStack Start / Cloudflare Vite plugin)
  * can use local embeddings via HTTP fallback.
  *
- * Usage: bun scripts/dev-embedding-sidecar.ts
+ * Usage: bun scripts/dev/dev-embedding-sidecar.ts
  *        bun run dev:embeddings
  */
 

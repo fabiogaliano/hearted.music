@@ -7,7 +7,7 @@
 		"prepare": "lefthook install",
 		"dev": "ML_PROVIDER=local vite dev",
 		"dev:worker": "bun --preload ./src/worker/instrument.ts src/worker/index.ts",
-		"dev:embeddings": "bun scripts/dev-embedding-sidecar.ts",
+		"dev:embeddings": "bun scripts/dev/dev-embedding-sidecar.ts",
 		"dev:brand": "cd ../v1_hearted_brand && bun run dev",
 		"dev:stripe": "stripe listen --forward-to localhost:3100/webhooks/stripe",
 		"dev:all": "concurrently -n app,worker,ml -c blue,green,magenta --kill-others-on-fail \"bun run dev\" \"bun run dev:worker\" \"bun run dev:embeddings\"",
@@ -29,8 +29,8 @@
 		"fixtures": "bun src/stories/fixtures/build-fixtures.ts",
 		"lyrics:validate": "PARSER_VALIDATION=true vitest run lyrics-service.integration",
 		"voice-audit": "bun scripts/voice-audit/cli.ts",
-		"reset:onboarding": "bun scripts/reset-onboarding.ts",
-		"grant:liked-access": "bun scripts/grant-liked-song-access.ts",
+		"reset:onboarding": "bun scripts/ops/reset-onboarding.ts",
+		"grant:liked-access": "bun scripts/ops/grant-liked-song-access.ts",
 		"prod:sql": "bun scripts/db/prod.ts sql",
 		"prod:rest": "bun scripts/db/prod.ts rest",
 		"ext:build": "bun extensions/scripts/build.ts",
@@ -45,7 +45,7 @@
 		"ladle": "ladle serve",
 		"ladle:build": "ladle build",
 		"deploy": "RELEASE=true bun run build && wrangler deploy",
-		"deploy:secrets": "bun scripts/env-to-secrets.ts .env.cloud --mode released && wrangler secret bulk < prod-secrets.json"
+		"deploy:secrets": "bun scripts/ops/env-to-secrets.ts .env.cloud --mode released && wrangler secret bulk < prod-secrets.json"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^3.0.47",

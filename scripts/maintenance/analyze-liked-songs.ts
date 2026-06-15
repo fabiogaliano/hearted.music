@@ -1,6 +1,6 @@
 /**
  * Script to analyze recent liked songs using LLM.
- * Usage: bun run scripts/analyze-liked-songs.ts [username] [limit] [--dry-run]
+ * Usage: bun run scripts/maintenance/analyze-liked-songs.ts [username] [limit] [--dry-run]
  */
 
 import { Result } from "better-result";

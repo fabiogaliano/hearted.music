@@ -17,7 +17,7 @@
  *   SUPABASE_URL=https://oqrkjtidoodyzifurpmz.supabase.co \
  *   SUPABASE_SERVICE_ROLE_KEY=<prod service_role> \
  *   [DEEPINFRA_API_KEY=<key>] \
- *   bun scripts/seed-demo-enrichment.ts
+ *   bun scripts/landing/seed-demo-enrichment.ts
  */
 
 import { readFileSync } from "node:fs";
@@ -34,7 +34,7 @@ import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { selectProvider } from "@/lib/integrations/providers/factory";
 
 const PROD_REF = "oqrkjtidoodyzifurpmz";
-const LANDING_SONGS_DIR = resolve(import.meta.dirname, "../public/landing-songs");
+const LANDING_SONGS_DIR = resolve(import.meta.dirname, "../../public/landing-songs");
 
 function readManifest(): { spotifyTrackId: string }[] {
 	const m = JSON.parse(

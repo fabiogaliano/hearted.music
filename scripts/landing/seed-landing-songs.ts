@@ -12,7 +12,7 @@
  *
  * Stages that require an account (content_activation, playlist_profiling) are skipped.
  *
- * Usage: bun scripts/seed-landing-songs.ts [--dry-run]
+ * Usage: bun scripts/landing/seed-landing-songs.ts [--dry-run]
  */
 
 import { readFileSync } from "node:fs";
@@ -35,7 +35,7 @@ import type { LandingSongManifest } from "@/lib/content/landing/landing-songs";
 
 const LANDING_SONGS_DIR = resolve(
 	import.meta.dirname,
-	"../public/landing-songs",
+	"../../public/landing-songs",
 );
 const dryRun = process.argv.includes("--dry-run");
 

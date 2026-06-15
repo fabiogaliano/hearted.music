@@ -12,10 +12,10 @@
  * - --clear-api-token  delete extension API token for the account
  *
  * Usage:
- *   bun scripts/reset-onboarding.ts <email>
- *   bun scripts/reset-onboarding.ts --account-id <uuid>
- *   bun scripts/reset-onboarding.ts --spotify-id <spotify-user-id>
- *   bun scripts/reset-onboarding.ts <email> --wipe-library --clear-api-token
+ *   bun scripts/ops/reset-onboarding.ts <email>
+ *   bun scripts/ops/reset-onboarding.ts --account-id <uuid>
+ *   bun scripts/ops/reset-onboarding.ts --spotify-id <spotify-user-id>
+ *   bun scripts/ops/reset-onboarding.ts <email> --wipe-library --clear-api-token
  */
 
 import { errorMessage } from "@/lib/shared/errors/error-message";
@@ -37,10 +37,10 @@ function printUsage(): void {
 ${colors.bold}Reset Onboarding${colors.reset}
 
 ${colors.cyan}Usage:${colors.reset}
-  bun scripts/reset-onboarding.ts <email>
-  bun scripts/reset-onboarding.ts --account-id <uuid>
-  bun scripts/reset-onboarding.ts --spotify-id <spotify-user-id>
-  bun scripts/reset-onboarding.ts <email> --wipe-library --clear-api-token
+  bun scripts/ops/reset-onboarding.ts <email>
+  bun scripts/ops/reset-onboarding.ts --account-id <uuid>
+  bun scripts/ops/reset-onboarding.ts --spotify-id <spotify-user-id>
+  bun scripts/ops/reset-onboarding.ts <email> --wipe-library --clear-api-token
 
 ${colors.cyan}Default reset:${colors.reset}
   - onboarding_step -> welcome

@@ -7,13 +7,13 @@
  * (SongReadSchema), so it is stored as-is. JSONB literals are dollar-quoted to
  * sidestep apostrophes/quotes in lyrics.
  *
- * Usage: bun scripts/gen-demo-songs-sql.ts > /tmp/demo-songs.sql
+ * Usage: bun scripts/landing/gen-demo-songs-sql.ts > /tmp/demo-songs.sql
  */
 
 import { readFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 
-const DIR = resolve(import.meta.dirname, "../public/landing-songs");
+const DIR = resolve(import.meta.dirname, "../../public/landing-songs");
 
 interface ManifestEntry {
 	spotifyTrackId: string;

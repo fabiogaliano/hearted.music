@@ -79,7 +79,7 @@ function embeddingSidecarPlugin(): Plugin {
 						);
 				})
 				.catch(() => {
-					child = spawn("bun", ["scripts/dev-embedding-sidecar.ts"], {
+					child = spawn("bun", ["scripts/dev/dev-embedding-sidecar.ts"], {
 						stdio: "inherit",
 						cwd: process.cwd(),
 					});

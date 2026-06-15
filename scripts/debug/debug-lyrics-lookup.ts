@@ -3,14 +3,14 @@
  * Reproduce the worker's Genius lyrics lookup for a single song, with the
  * service's debug flag on. Uses getLyrics (no persistence) so it's read-only.
  *
- * Usage: DEBUG_LYRICS_SEARCH=true bun run scripts/debug-lyrics-lookup.ts "Artist" "Title"
+ * Usage: DEBUG_LYRICS_SEARCH=true bun run scripts/debug/debug-lyrics-lookup.ts "Artist" "Title"
  */
 import { Result } from "better-result";
 import { LyricsService } from "@/lib/domains/enrichment/lyrics/service";
 
 const [artist, title] = process.argv.slice(2);
 if (!artist || !title) {
-	console.error('Usage: bun run scripts/debug-lyrics-lookup.ts "Artist" "Title"');
+	console.error('Usage: bun run scripts/debug/debug-lyrics-lookup.ts "Artist" "Title"');
 	process.exit(1);
 }
 

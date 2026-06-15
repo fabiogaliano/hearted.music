@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 /**
  * Dumps the raw Genius referents API response for a song to a JSON file.
- * Usage: bun run scripts/fetch-raw-genius-referents.ts "<artist>" "<song title>"
- *   e.g. bun run scripts/fetch-raw-genius-referents.ts "Kendrick Lamar" "Money Trees"
+ * Usage: bun run scripts/debug/fetch-raw-genius-referents.ts "<artist>" "<song title>"
+ *   e.g. bun run scripts/debug/fetch-raw-genius-referents.ts "Kendrick Lamar" "Money Trees"
  */
 
 import { writeFileSync, mkdirSync } from "node:fs";

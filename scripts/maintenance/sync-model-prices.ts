@@ -8,7 +8,7 @@
  * use plus a _synced_at stamp (which becomes each ledger row's price_version) so a
  * key miss or upstream outage can never make a live analysis fail.
  *
- * Run: `bun run scripts/sync-model-prices.ts`. Refresh on a schedule / in CI; the
+ * Run: `bun run scripts/maintenance/sync-model-prices.ts`. Refresh on a schedule / in CI; the
  * cadence of this script is the only accuracy knob on the cost estimate.
  */
 
@@ -16,7 +16,7 @@ const SOURCE_URL =
 	"https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
 
 const OUTPUT_PATH = new URL(
-	"../src/lib/integrations/llm/model-prices.generated.json",
+	"../../src/lib/integrations/llm/model-prices.generated.json",
 	import.meta.url,
 );
 

@@ -7,7 +7,7 @@
  *   gcloud auth application-default login --project=hearted-492606
  *   GOOGLE_VERTEX_PROJECT set in .env (already configured)
  *
- * Run: bun scripts/smoke-vertex.ts
+ * Run: bun scripts/debug/smoke-vertex.ts
  */
 
 import { Result } from "better-result";

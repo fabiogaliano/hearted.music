@@ -7,8 +7,8 @@
  * cover every song in the library. fetchAndStoreOutcome is idempotent and
  * upserts on (song_id, source), so re-runs skip already-fetched songs.
  *
- *   bun run scripts/fetch-lyrics.ts          # analyzed songs only
- *   bun run scripts/fetch-lyrics.ts --all    # entire library
+ *   bun run scripts/maintenance/fetch-lyrics.ts          # analyzed songs only
+ *   bun run scripts/maintenance/fetch-lyrics.ts --all    # entire library
  */
 
 import { Result } from "better-result";

@@ -13,11 +13,11 @@
  *   (the original audit metadata is preserved by the RPC).
  *
  * Usage:
- *   bun scripts/grant-liked-song-access.ts <email>
- *   bun scripts/grant-liked-song-access.ts --account-id <uuid>
- *   bun scripts/grant-liked-song-access.ts --spotify-id <spotify-user-id>
- *   bun scripts/grant-liked-song-access.ts <email> --reason "VIP" --requested-by "ops@hearted"
- *   bun scripts/grant-liked-song-access.ts <email> --dry-run
+ *   bun scripts/ops/grant-liked-song-access.ts <email>
+ *   bun scripts/ops/grant-liked-song-access.ts --account-id <uuid>
+ *   bun scripts/ops/grant-liked-song-access.ts --spotify-id <spotify-user-id>
+ *   bun scripts/ops/grant-liked-song-access.ts <email> --reason "VIP" --requested-by "ops@hearted"
+ *   bun scripts/ops/grant-liked-song-access.ts <email> --dry-run
  */
 
 import { createAdminSupabaseClient } from "@/lib/data/client";
@@ -40,11 +40,11 @@ function printUsage(): void {
 ${colors.bold}Grant Liked-Song Access${colors.reset}
 
 ${colors.cyan}Usage:${colors.reset}
-  bun scripts/grant-liked-song-access.ts <email>
-  bun scripts/grant-liked-song-access.ts --account-id <uuid>
-  bun scripts/grant-liked-song-access.ts --spotify-id <spotify-user-id>
-  bun scripts/grant-liked-song-access.ts <email> --reason "VIP" --requested-by "ops@hearted"
-  bun scripts/grant-liked-song-access.ts <email> --dry-run
+  bun scripts/ops/grant-liked-song-access.ts <email>
+  bun scripts/ops/grant-liked-song-access.ts --account-id <uuid>
+  bun scripts/ops/grant-liked-song-access.ts --spotify-id <spotify-user-id>
+  bun scripts/ops/grant-liked-song-access.ts <email> --reason "VIP" --requested-by "ops@hearted"
+  bun scripts/ops/grant-liked-song-access.ts <email> --dry-run
 
 ${colors.cyan}Flags:${colors.reset}
   --account-id <uuid>        Resolve account by id
@@ -334,7 +334,7 @@ async function main(): Promise<void> {
 }
 
 // Guard so importing this module (e.g. from tests) doesn't run the CLI; only a
-// direct `bun scripts/grant-liked-song-access.ts` invocation executes main().
+// direct `bun scripts/ops/grant-liked-song-access.ts` invocation executes main().
 if (import.meta.main) {
 	main().catch((err: unknown) => {
 		error(`Failed: ${errorMessage(err)}`);

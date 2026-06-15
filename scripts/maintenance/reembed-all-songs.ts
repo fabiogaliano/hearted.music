@@ -4,7 +4,7 @@
  * Run after a model/format/dimension change once the migration has cleared the
  * old vectors (see supabase/migrations/*_qwen3_embeddings_512.sql). Re-profiling
  * playlists afterwards is a separate step:
- *   bun run scripts/reembed-all-songs.ts
+ *   bun run scripts/maintenance/reembed-all-songs.ts
  *   bun run scripts/matching-lab/reprofile-playlists.ts
  *
  * Provider-agnostic: uses whatever EmbeddingService.create() resolves from env

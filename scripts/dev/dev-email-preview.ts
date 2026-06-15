@@ -3,7 +3,7 @@
 /**
  * Dev server for waitlist email preview, copy preview, and asset capture.
  *
- * Usage: bun --hot scripts/dev-email-preview.ts
+ * Usage: bun --hot scripts/dev/dev-email-preview.ts
  *
  * Routes:
  *   /         → Email preview with responsive width toggles
@@ -16,6 +16,7 @@ import { resolve, dirname } from "node:path";
 
 const ROOT = resolve(
 	import.meta.dirname ?? dirname(new URL(import.meta.url).pathname),
+	"..",
 	"..",
 );
 const EMAIL_FILE = resolve(ROOT, "src/lib/email/waitlist-confirmation.ts");

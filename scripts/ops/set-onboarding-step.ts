@@ -3,10 +3,10 @@
  * Move an account's onboarding step forward or backward.
  *
  * Usage:
- *   bun scripts/set-onboarding-step.ts next
- *   bun scripts/set-onboarding-step.ts prev
- *   bun scripts/set-onboarding-step.ts song-walkthrough
- *   bun scripts/set-onboarding-step.ts next --email other@example.com
+ *   bun scripts/ops/set-onboarding-step.ts next
+ *   bun scripts/ops/set-onboarding-step.ts prev
+ *   bun scripts/ops/set-onboarding-step.ts song-walkthrough
+ *   bun scripts/ops/set-onboarding-step.ts next --email other@example.com
  *
  * Default account: sozinhonoroque@gmail.com
  */
@@ -44,8 +44,8 @@ function printUsage(): void {
 ${c.bold}Set Onboarding Step${c.reset}
 
 ${c.cyan}Usage:${c.reset}
-  bun scripts/set-onboarding-step.ts <target>
-  bun scripts/set-onboarding-step.ts <target> --email <email>
+  bun scripts/ops/set-onboarding-step.ts <target>
+  bun scripts/ops/set-onboarding-step.ts <target> --email <email>
 
 ${c.cyan}Target:${c.reset}
   next                  Move one step forward
