@@ -1,3 +1,4 @@
+import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { fonts } from "@/lib/theme/fonts";
 import { Cover } from "./Cover";
 import type { PlaylistTrackVM } from "./types";
@@ -7,11 +8,28 @@ interface TrackListProps {
 	tracks: PlaylistTrackVM[];
 	/** Total count; when it exceeds the loaded rows we show a "+ N more" tail. */
 	songCount: number;
+	/** More pages exist — render a scroll sentinel instead of the "+ N more" tail. */
+	hasMore?: boolean;
+	/** A next page is in flight (drives the sentinel's "Loading more…" copy). */
+	isLoadingMore?: boolean;
+	/** Called when the sentinel scrolls into view; the caller loads the next page. */
+	onLoadMore?: () => void;
 }
 
 /** Presentational track list with a staggered enter. Tracks come in as props so
- *  the panel stays storybook-able (real wiring loads them via a server fn). */
-export function TrackList({ tracks, songCount }: TrackListProps) {
+ *  the panel stays storybook-able; real wiring loads them via a server fn and
+ *  passes hasMore/onLoadMore so the list paginates on scroll. */
+export function TrackList({
+	tracks,
+	songCount,
+	hasMore = false,
+	isLoadingMore = false,
+	onLoadMore,
+}: TrackListProps) {
+	const { sentinelRef } = useInfiniteScroll({
+		onLoadMore: onLoadMore ?? (() => {}),
+		hasMore,
+	});
 	if (!tracks.length) {
 		return (
 			<p
@@ -70,16 +88,26 @@ export function TrackList({ tracks, songCount }: TrackListProps) {
 					)}
 				</div>
 			))}
-			{remaining > 0 && (
-				<div className="theme-border-color flex items-center gap-3.5 border-b py-2.5 opacity-60 last:border-b-0">
-					<span className="w-[18px] flex-none" />
-					<span
-						className="theme-text-muted text-xs"
-						style={{ fontFamily: fonts.body }}
-					>
-						+ {remaining} more…
-					</span>
+			{hasMore ? (
+				<div
+					ref={sentinelRef}
+					className="theme-text-muted py-3 text-center text-xs"
+					style={{ fontFamily: fonts.body }}
+				>
+					{isLoadingMore ? "Loading more…" : null}
 				</div>
+			) : (
+				remaining > 0 && (
+					<div className="theme-border-color flex items-center gap-3.5 border-b py-2.5 opacity-60 last:border-b-0">
+						<span className="w-[18px] flex-none" />
+						<span
+							className="theme-text-muted text-xs"
+							style={{ fontFamily: fonts.body }}
+						>
+							+ {remaining} more…
+						</span>
+					</div>
+				)
 			)}
 		</div>
 	);

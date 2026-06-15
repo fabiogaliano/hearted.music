@@ -1,4 +1,4 @@
-import { InfoIcon } from "@phosphor-icons/react";
+import { InfoIcon, WarningIcon } from "@phosphor-icons/react";
 import {
 	type ReactNode,
 	useCallback,
@@ -9,10 +9,20 @@ import {
 } from "react";
 import { fonts } from "@/lib/theme/fonts";
 
+// Amber, kept in sync with WritingSurface's CAUTION: an unfilled playlist is a
+// "not ready yet" nudge, not an error, so it's warm rather than red.
+const CAUTION = "hsl(36, 72%, 44%)";
+
 interface InfoTipProps {
 	/** Accessible name for the trigger button. */
 	label: string;
 	children: ReactNode;
+	/**
+	 * `info` (default) is the quiet "(i)" for nice-to-know context. `caution`
+	 * swaps in an amber warning icon for a "this isn't ready yet" state — same
+	 * popover, just a louder, status-bearing trigger.
+	 */
+	tone?: "info" | "caution";
 }
 
 // Hover-intent timing: ~400ms to open so a cursor sweeping past doesn't trigger
@@ -30,7 +40,8 @@ const CLOSE_DELAY = 150;
  * own surface so it reads on any background; the gap below the icon is a
  * transparent hoverable bridge so moving onto the card doesn't dismiss it.
  */
-export function InfoTip({ label, children }: InfoTipProps) {
+export function InfoTip({ label, children, tone = "info" }: InfoTipProps) {
+	const caution = tone === "caution";
 	const [open, setOpen] = useState(false);
 	const ref = useRef<HTMLSpanElement>(null);
 	const openTimer = useRef<number | null>(null);
@@ -86,10 +97,20 @@ export function InfoTip({ label, children }: InfoTipProps) {
 				type="button"
 				aria-label={label}
 				aria-describedby={open ? id : undefined}
-				className="grid size-5 cursor-help place-items-center rounded-full text-(--t-text-muted) transition-colors duration-150 hover:text-(--t-text)"
-				style={{ color: open ? "var(--t-text)" : undefined }}
+				className={`grid size-5 cursor-help place-items-center rounded-full transition-colors duration-150 ${
+					caution ? "" : "text-(--t-text-muted) hover:text-(--t-text)"
+				}`}
+				style={
+					caution
+						? { color: CAUTION }
+						: { color: open ? "var(--t-text)" : undefined }
+				}
 			>
-				<InfoIcon size={14} aria-hidden />
+				{caution ? (
+					<WarningIcon size={14} weight="fill" aria-hidden />
+				) : (
+					<InfoIcon size={14} aria-hidden />
+				)}
 			</button>
 			{open && (
 				<div className="absolute top-full left-0 z-40 pt-1.5">

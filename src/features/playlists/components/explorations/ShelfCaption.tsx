@@ -1,6 +1,7 @@
 import { ArrowUpRightIcon, CheckIcon, MinusIcon } from "@phosphor-icons/react";
 import { fonts } from "@/lib/theme/fonts";
-import { type PlaylistSummary, playlistPurpose } from "./types";
+import { InfoTip } from "./InfoTip";
+import { isMatchable, type PlaylistSummary, playlistPurpose } from "./types";
 
 interface ShelfCaptionProps {
 	playlist: PlaylistSummary;
@@ -33,6 +34,10 @@ export function ShelfCaption({
 	onOpenHoverChange,
 }: ShelfCaptionProps) {
 	const purpose = playlistPurpose(playlist);
+	// No intent AND no genres → the matcher has nothing to route by, so teach the
+	// fix here rather than only inside the playlist. Genres-but-no-intent still
+	// matches, so it stays calm (no nag).
+	const unmatchable = !purpose && !isMatchable(playlist);
 	const open = () => onOpen(playlist.id);
 	return (
 		<div className="flex w-full max-w-full flex-col items-center gap-3.5">
@@ -54,19 +59,60 @@ export function ShelfCaption({
 						size={18}
 						weight="regular"
 						aria-hidden
-						className={`shrink-0 transition-transform duration-150 ease-out motion-reduce:transition-none motion-safe:group-focus-visible/open:-translate-y-0.5 motion-safe:group-focus-visible/open:translate-x-0.5 ${
+						className={`shrink-0 transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none group-focus-visible/open:opacity-100 motion-safe:group-focus-visible/open:-translate-y-0.5 motion-safe:group-focus-visible/open:translate-x-0.5 ${
 							openActive
-								? "motion-safe:-translate-y-0.5 motion-safe:translate-x-0.5"
-								: ""
+								? "opacity-100 motion-safe:-translate-y-0.5 motion-safe:translate-x-0.5"
+								: "opacity-0"
 						}`}
 					/>
 				</button>
-				{purpose && (
+				{purpose ? (
 					<div
 						className="theme-text-muted mt-1.5 max-w-full truncate text-center text-[13px]"
 						style={{ fontFamily: fonts.body }}
 					>
 						{purpose}
+					</div>
+				) : unmatchable ? (
+					// Nothing to match by: the fix IS the line, caution badge beside it.
+					// The button mirrors the name's open hover exactly (dim on
+					// openActive, not its own brighten-on-hover) so the two read as one
+					// target moving together rather than in opposite directions.
+					<div className="mt-1.5 flex items-center gap-1.5">
+						<button
+							type="button"
+							onClick={open}
+							onPointerEnter={() => onOpenHoverChange?.(true)}
+							onPointerLeave={() => onOpenHoverChange?.(false)}
+							className={`cursor-pointer text-[13px] transition-colors duration-150 ease focus-visible:text-(--t-text-muted) motion-reduce:transition-none ${
+								openActive ? "text-(--t-text-muted)" : "theme-text"
+							}`}
+							style={{ fontFamily: fonts.body }}
+						>
+							Open to set its intent
+						</button>
+						<InfoTip
+							tone="caution"
+							label="Why this playlist can’t be matched yet"
+						>
+							This playlist can’t be matched yet — give it a matching intent or
+							some genres so songs can find their way here.
+						</InfoTip>
+					</div>
+				) : (
+					<div
+						className="theme-text-muted mt-1.5 text-[13px]"
+						style={{ fontFamily: fonts.body }}
+					>
+						No matching intent yet
+					</div>
+				)}
+				{playlist.genres.length > 0 && (
+					<div
+						className="theme-text-muted mt-1 max-w-full truncate text-center text-[11px] tracking-wide opacity-70"
+						style={{ fontFamily: fonts.body }}
+					>
+						{playlist.genres.join(" · ")}
 					</div>
 				)}
 			</div>

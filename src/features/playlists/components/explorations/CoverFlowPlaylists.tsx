@@ -1,3 +1,4 @@
+import { MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
@@ -28,6 +29,20 @@ export function CoverFlowPlaylists({
 	onRemove = () => {},
 }: CoverFlowPlaylistsProps) {
 	const library = playlists.filter((p) => !p.isTarget);
+
+	// Searching collapses the two-zone layout into one flat rail across the whole
+	// library — the cover flow is a browsing affordance, useless once you know what
+	// you're after. Matching state still reads from each row's add/remove action.
+	const [query, setQuery] = useState("");
+	const searchRef = useRef<HTMLInputElement>(null);
+	const trimmedQuery = query.trim().toLowerCase();
+	const isSearching = trimmedQuery.length > 0;
+	const searchResults = useMemo(() => {
+		if (!isSearching) return [];
+		return playlists.filter((p) =>
+			`${p.name} ${p.intent ?? ""}`.toLowerCase().includes(trimmedQuery),
+		);
+	}, [playlists, isSearching, trimmedQuery]);
 
 	// The matching shelf is ordered by when each playlist was added, not by the
 	// underlying library order — otherwise adding one out of sequence would slot its
@@ -84,7 +99,7 @@ export function CoverFlowPlaylists({
 		const playlist = matching[Math.min(center, matching.length - 1)];
 		if (playlist) onOpen(playlist.id);
 	};
-	const navEnabled = matching.length > 0;
+	const navEnabled = matching.length > 0 && !isSearching;
 	useShortcut({
 		key: "left",
 		handler: goPrev,
@@ -138,72 +153,135 @@ export function CoverFlowPlaylists({
 	});
 
 	return (
-		<div className="mx-auto max-w-[1180px]">
-			<header className="mb-2">
+		<div className="mx-auto max-w-[1180px] pb-24">
+			<header className="mb-2 flex items-end justify-between gap-6">
 				<h1
 					className="theme-text text-page-title leading-[0.95] font-extralight tracking-tight text-balance"
 					style={{ fontFamily: fonts.display }}
 				>
-					Playlists{" "}
-					<span className="theme-text-muted align-[0.32em] text-[0.5em] tabular-nums">
-						{playlists.length}
-					</span>
+					Playlists
 				</h1>
+
+				<label className="relative flex items-center gap-2 pb-2.5">
+					<input
+						ref={searchRef}
+						type="search"
+						value={query}
+						onChange={(event) => setQuery(event.target.value)}
+						placeholder="Search"
+						aria-label="Search playlists"
+						className="peer theme-text w-24 border-0 bg-transparent pl-2 text-sm tracking-wide outline-none transition-[width] duration-200 placeholder:text-(--t-text-muted) placeholder:opacity-70 placeholder:transition-opacity placeholder:duration-200 focus:w-32 focus:placeholder:opacity-100 sm:w-32 sm:focus:w-48 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
+						style={{ fontFamily: fonts.body }}
+					/>
+					<button
+						type="button"
+						onClick={() => {
+							setQuery("");
+							searchRef.current?.focus();
+						}}
+						aria-label="Clear search"
+						aria-hidden={query.length === 0}
+						tabIndex={query.length === 0 ? -1 : 0}
+						className={`theme-text-muted shrink-0 transition-opacity duration-150 ${
+							query.length > 0
+								? "cursor-pointer opacity-70 hover:opacity-100"
+								: "pointer-events-none opacity-0"
+						}`}
+					>
+						<XIcon size={12} weight="regular" />
+					</button>
+					<MagnifyingGlassIcon
+						size={13}
+						weight="regular"
+						className="theme-text-muted shrink-0 transition-[color,transform] duration-200 peer-focus:scale-110 peer-focus:text-(--t-text)"
+					/>
+					<span
+						aria-hidden="true"
+						className="theme-primary-bg pointer-events-none absolute inset-x-0 -bottom-px h-px opacity-0 transition-opacity duration-200 peer-focus:opacity-100"
+					/>
+				</label>
 			</header>
 
-			<CoverFlowShelf
-				label="Matching candidates"
-				playlists={matching}
-				center={center}
-				onCenterChange={clampCenter}
-				onActivate={() => {}}
-				onOpen={onOpen}
-				onAdd={handleAdd}
-				onRemove={onRemove}
-				enterId={enteringId}
-				chrome="chapter"
-			/>
-
-			<section className="mt-8">
-				<div className="flex items-center gap-4 px-1">
-					<span
-						className="theme-text-muted text-xs tracking-[0.2em] uppercase"
-						style={{ fontFamily: fonts.body }}
-					>
-						Library
-					</span>
-					<div className="theme-border-color h-px flex-1 self-center border-t" />
-					<span
-						className="theme-text-muted text-xs tabular-nums"
-						style={{ fontFamily: fonts.body }}
-					>
-						{library.length}
-					</span>
-				</div>
-
-				<div className="mt-4">
-					{library.length > 0 ? (
-						library.map((playlist) => (
-							<RailRow
-								key={playlist.id}
-								playlist={playlist}
-								onOpen={onOpen}
-								onAdd={handleAdd}
-								onRemove={onRemove}
-							/>
-						))
+			{isSearching ? (
+				<section className="mt-8">
+					{searchResults.length > 0 ? (
+						<div className="mt-4">
+							{searchResults.map((playlist) => (
+								<RailRow
+									key={playlist.id}
+									playlist={playlist}
+									onOpen={onOpen}
+									onAdd={handleAdd}
+									onRemove={onRemove}
+								/>
+							))}
+						</div>
 					) : (
 						<p
 							className="theme-text-muted py-6 text-[13px]"
 							style={{ fontFamily: fonts.body }}
 						>
-							{matching.length > 0
-								? "Every playlist is in matching."
-								: "No playlists yet."}
+							No playlists match “{query.trim()}”.
 						</p>
 					)}
-				</div>
-			</section>
+				</section>
+			) : (
+				<>
+					<CoverFlowShelf
+						label="Matching candidates"
+						playlists={matching}
+						center={center}
+						onCenterChange={clampCenter}
+						onActivate={() => {}}
+						onOpen={onOpen}
+						onAdd={handleAdd}
+						onRemove={onRemove}
+						enterId={enteringId}
+						chrome="chapter"
+					/>
+
+					<section className="mt-8">
+						<div className="flex items-center gap-4 px-1">
+							<span
+								className="theme-text-muted text-xs tracking-[0.2em] uppercase"
+								style={{ fontFamily: fonts.body }}
+							>
+								Library
+							</span>
+							<div className="theme-border-color h-px flex-1 self-center border-t" />
+							<span
+								className="theme-text-muted text-xs tabular-nums"
+								style={{ fontFamily: fonts.body }}
+							>
+								{library.length}
+							</span>
+						</div>
+
+						<div className="mt-4">
+							{library.length > 0 ? (
+								library.map((playlist) => (
+									<RailRow
+										key={playlist.id}
+										playlist={playlist}
+										onOpen={onOpen}
+										onAdd={handleAdd}
+										onRemove={onRemove}
+									/>
+								))
+							) : (
+								<p
+									className="theme-text-muted py-6 text-[13px]"
+									style={{ fontFamily: fonts.body }}
+								>
+									{matching.length > 0
+										? "Every playlist is in matching."
+										: "No playlists yet."}
+								</p>
+							)}
+						</div>
+					</section>
+				</>
+			)}
 		</div>
 	);
 }

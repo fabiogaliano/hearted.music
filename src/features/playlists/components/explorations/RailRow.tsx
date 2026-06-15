@@ -1,6 +1,6 @@
 import { fonts } from "@/lib/theme/fonts";
 import { Cover } from "./Cover";
-import { type PlaylistSummary, playlistPurpose } from "./types";
+import type { PlaylistSummary } from "./types";
 
 interface RailRowProps {
 	playlist: PlaylistSummary;
@@ -10,12 +10,11 @@ interface RailRowProps {
 }
 
 /**
- * One rail row: cover, serif name, and what the playlist is for as the subtitle
- * so it reads at a glance. Count is desktop-only; the row stays a clean
- * cover/name/action triple on narrow widths. Inline add, hover-revealed remove.
+ * One rail row: cover, serif name, and song count as the subtitle. Matching
+ * intent is deliberately absent here — it's a property of being *in* matching,
+ * so the library stays a calm staging shelf. Inline add, hover-revealed remove.
  */
 export function RailRow({ playlist, onOpen, onAdd, onRemove }: RailRowProps) {
-	const purpose = playlistPurpose(playlist);
 	return (
 		<div className="group/row theme-border-color theme-hover-surface relative -mx-3.5 grid grid-cols-[54px_minmax(0,1fr)_auto] items-center gap-3 border-b px-3.5 py-[13px] last:border-b-0 md:gap-[18px]">
 			{/* Whole-row open affordance as a real <button>, overlaid rather than
@@ -38,10 +37,10 @@ export function RailRow({ playlist, onOpen, onAdd, onRemove }: RailRowProps) {
 					{playlist.name}
 				</div>
 				<div
-					className={`mt-0.5 truncate text-[13px] leading-tight ${purpose ? "theme-text-muted" : "theme-text-muted italic opacity-60"}`}
+					className="theme-text-muted mt-0.5 truncate text-[13px] leading-tight tabular-nums"
 					style={{ fontFamily: fonts.body }}
 				>
-					{purpose ?? "No matching intent yet"}
+					{playlist.songCount} {playlist.songCount === 1 ? "song" : "songs"}
 				</div>
 			</div>
 

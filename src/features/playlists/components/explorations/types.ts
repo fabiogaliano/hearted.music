@@ -35,3 +35,10 @@ export interface PlaylistTrackVM {
 export function playlistPurpose(p: PlaylistSummary): string | null {
 	return p.intent;
 }
+
+/** Whether the matcher has anything to route songs by — an explicit intent, or
+ * genres to fall back on. Mirrors the "intent OR genres" rule the matching notice
+ * states: a playlist with neither can't be matched yet. */
+export function isMatchable(p: PlaylistSummary): boolean {
+	return Boolean(p.intent) || p.genres.length > 0;
+}

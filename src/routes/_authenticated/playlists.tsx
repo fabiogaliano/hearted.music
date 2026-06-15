@@ -1,8 +1,6 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { PlaylistsScreen } from "@/features/playlists/PlaylistsScreen";
+import { PlaylistsCoverFlowScreen } from "@/features/playlists/PlaylistsCoverFlowScreen";
 import { playlistManagementQueryOptions } from "@/features/playlists/queries";
-import { DEFAULT_THEME } from "@/lib/theme/types";
-import { getTheme } from "@/lib/theme/useTheme";
 
 export const Route = createFileRoute("/_authenticated/playlists")({
 	loader: async ({ context }) => {
@@ -15,12 +13,11 @@ export const Route = createFileRoute("/_authenticated/playlists")({
 });
 
 function PlaylistsPage() {
-	const { theme: themeColor, session } = Route.useRouteContext();
-	const theme = getTheme(themeColor ?? DEFAULT_THEME);
+	const { session } = Route.useRouteContext();
 
 	return (
 		<>
-			<PlaylistsScreen theme={theme} accountId={session.accountId} />
+			<PlaylistsCoverFlowScreen accountId={session.accountId} />
 			<Outlet />
 		</>
 	);

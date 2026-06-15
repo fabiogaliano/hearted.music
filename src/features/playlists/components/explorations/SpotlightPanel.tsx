@@ -12,6 +12,12 @@ interface SpotlightPanelProps {
 	onToggleTarget?: (id: string) => void;
 	onSave?: (id: string, intent: string | null, genres: string[]) => void;
 	topGenres?: readonly string[];
+	/** More track pages exist — TrackList renders a scroll sentinel. */
+	tracksHasMore?: boolean;
+	/** A next track page is loading. */
+	tracksLoadingMore?: boolean;
+	/** Load the next track page (fired as the sentinel scrolls into view). */
+	onLoadMoreTracks?: () => void;
 }
 
 /**
@@ -36,6 +42,9 @@ export function SpotlightPanel({
 	onToggleTarget = () => {},
 	onSave = () => {},
 	topGenres,
+	tracksHasMore = false,
+	tracksLoadingMore = false,
+	onLoadMoreTracks,
 }: SpotlightPanelProps) {
 	const [description, setDescription] = useState<string | null>(
 		playlist?.intent ?? null,
@@ -142,7 +151,13 @@ export function SpotlightPanel({
 										</div>
 									</div>
 
-									<TrackList tracks={tracks} songCount={playlist.songCount} />
+									<TrackList
+										tracks={tracks}
+										songCount={playlist.songCount}
+										hasMore={tracksHasMore}
+										isLoadingMore={tracksLoadingMore}
+										onLoadMore={onLoadMoreTracks}
+									/>
 								</div>
 							</div>
 						</div>

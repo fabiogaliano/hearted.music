@@ -1,0 +1,191 @@
+import {
+	useInfiniteQuery,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
+import { useNavigate, useParams } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import type { Playlist } from "@/lib/domains/library/playlists/queries";
+import {
+	savePlaylistGenrePills,
+	savePlaylistMatchIntent,
+} from "@/lib/server/playlists.functions";
+import { fonts } from "@/lib/theme/fonts";
+import { CoverFlowPlaylists } from "./components/explorations/CoverFlowPlaylists";
+import { SpotlightPanel } from "./components/explorations/SpotlightPanel";
+import type {
+	PlaylistSummary,
+	PlaylistTrackVM,
+} from "./components/explorations/types";
+import { usePlaylistSession } from "./hooks/usePlaylistSession";
+import {
+	buildPlaylistRouteRef,
+	resolvePlaylistIdFromRouteRef,
+} from "./playlistRouteRef";
+import {
+	accountTopGenresQueryOptions,
+	playlistKeys,
+	playlistManagementQueryOptions,
+	playlistTracksInfiniteQueryOptions,
+} from "./queries";
+
+interface PlaylistsCoverFlowScreenProps {
+	accountId: string;
+}
+
+function toSummary(playlist: Playlist, isTarget: boolean): PlaylistSummary {
+	return {
+		id: playlist.id,
+		name: playlist.name,
+		isTarget,
+		songCount: playlist.song_count ?? 0,
+		imageUrl: playlist.image_url,
+		intent: playlist.match_intent,
+		genres: playlist.genre_pills ?? [],
+	};
+}
+
+export function PlaylistsCoverFlowScreen({
+	accountId,
+}: PlaylistsCoverFlowScreenProps) {
+	const navigate = useNavigate();
+	const queryClient = useQueryClient();
+	// strict:false reads the param when the active match is
+	// /playlists/$playlistRef and returns undefined on the bare /playlists list.
+	const { playlistRef } = useParams({ strict: false });
+
+	const { data } = useQuery(playlistManagementQueryOptions(accountId));
+	const { data: topGenresData } = useQuery(
+		accountTopGenresQueryOptions(accountId),
+	);
+	const { optimisticTargets, toggleTarget, markMetadataChanged } =
+		usePlaylistSession(accountId);
+
+	const playlists = useMemo(() => data?.playlists ?? [], [data]);
+
+	// The committed target set folded with in-flight optimistic toggles, so a
+	// cover jumps between matching and library the instant the user acts.
+	const targetIds = useMemo(() => {
+		const ids = new Set(data?.targetPlaylistIds ?? []);
+		for (const [id, isTarget] of optimisticTargets) {
+			if (isTarget) ids.add(id);
+			else ids.delete(id);
+		}
+		return ids;
+	}, [data?.targetPlaylistIds, optimisticTargets]);
+
+	const summaries = useMemo(
+		() => playlists.map((p) => toSummary(p, targetIds.has(p.id))),
+		[playlists, targetIds],
+	);
+
+	const routeRefById = useMemo(
+		() => new Map(playlists.map((p) => [p.id, buildPlaylistRouteRef(p)])),
+		[playlists],
+	);
+
+	const selectedId = useMemo(
+		() => resolvePlaylistIdFromRouteRef(playlists, playlistRef),
+		[playlists, playlistRef],
+	);
+	const selected = useMemo(
+		() => summaries.find((p) => p.id === selectedId) ?? null,
+		[summaries, selectedId],
+	);
+
+	// Keep the last opened playlist mounted through the close slide-out so the
+	// panel animates away with its content instead of blanking instantly.
+	const [lastShown, setLastShown] = useState<PlaylistSummary | null>(null);
+	useEffect(() => {
+		if (selected) setLastShown(selected);
+	}, [selected]);
+	const panelPlaylist = selected ?? lastShown;
+
+	const tracksQuery = useInfiniteQuery(
+		playlistTracksInfiniteQueryOptions(selectedId),
+	);
+	const tracks = useMemo<PlaylistTrackVM[]>(
+		() =>
+			(tracksQuery.data?.pages.flatMap((page) => page.tracks) ?? []).map(
+				(t) => ({
+					position: t.position,
+					name: t.name,
+					artists: t.artists,
+					albumName: t.albumName,
+					imageUrl: t.imageUrl,
+				}),
+			),
+		[tracksQuery.data],
+	);
+	const loadMoreTracks = () => {
+		if (tracksQuery.hasNextPage && !tracksQuery.isFetchingNextPage)
+			void tracksQuery.fetchNextPage();
+	};
+
+	const open = (id: string) => {
+		const ref = routeRefById.get(id);
+		if (ref)
+			void navigate({
+				to: "/playlists/$playlistRef",
+				params: { playlistRef: ref },
+			});
+	};
+	const close = () => void navigate({ to: "/playlists" });
+
+	const handleSave = async (
+		id: string,
+		intent: string | null,
+		genres: string[],
+	) => {
+		try {
+			await Promise.all([
+				savePlaylistMatchIntent({
+					data: { playlistId: id, matchIntent: intent },
+				}),
+				savePlaylistGenrePills({ data: { playlistId: id, genres } }),
+			]);
+			markMetadataChanged();
+			queryClient.invalidateQueries({
+				queryKey: playlistKeys.management(accountId),
+			});
+		} catch (error) {
+			console.warn("Failed to save playlist metadata", { id, error });
+		}
+	};
+
+	if (!data) {
+		return (
+			<div className="mx-auto flex min-h-[40vh] max-w-[1180px] items-center justify-center">
+				<p
+					className="theme-text-muted text-sm"
+					style={{ fontFamily: fonts.body }}
+				>
+					Listening for your playlists…
+				</p>
+			</div>
+		);
+	}
+
+	return (
+		<>
+			<CoverFlowPlaylists
+				playlists={summaries}
+				onOpen={open}
+				onAdd={(id) => void toggleTarget(id, true)}
+				onRemove={(id) => void toggleTarget(id, false)}
+			/>
+			<SpotlightPanel
+				playlist={panelPlaylist}
+				tracks={tracks}
+				open={selected != null}
+				onClose={close}
+				onToggleTarget={(id) => void toggleTarget(id, !targetIds.has(id))}
+				onSave={handleSave}
+				topGenres={topGenresData?.genres}
+				tracksHasMore={tracksQuery.hasNextPage}
+				tracksLoadingMore={tracksQuery.isFetchingNextPage}
+				onLoadMoreTracks={loadMoreTracks}
+			/>
+		</>
+	);
+}

@@ -41,32 +41,50 @@ const SLEEVE = {
 	interactiveWithin: 3,
 } as const;
 
-function sleeveStyle(offset: number, reduce: boolean): CSSProperties {
+// px the centred sleeve travels per one step of drag — equal to the first
+// neighbour's shift, so the centred cover tracks the finger 1:1 while dragging.
+const DRAG_STEP_PX = SLEEVE.shift;
+// Release momentum: project the finger's exit velocity this far ahead before
+// snapping, so a fast flick advances several covers, not just the dragged one.
+const FLICK_PROJECT_MS = 90;
+
+// `offset` may be fractional while a drag is in flight, so x / ry / z interpolate
+// continuously across the first step instead of popping from centre (x=0) to the
+// first neighbour's `shift`. At integer offsets the math reduces to the discrete
+// resting geometry, so a settled flow looks exactly as before.
+function sleeveStyle(
+	offset: number,
+	reduce: boolean,
+	dragging: boolean,
+): CSSProperties {
 	const distance = Math.abs(offset);
 	const sign = Math.sign(offset);
-	const isCenter = offset === 0;
 	const hidden = distance > SLEEVE.cullBeyond;
-	const x = isCenter ? 0 : sign * (SLEEVE.shift + (distance - 1) * SLEEVE.gap);
-	const ry = isCenter || reduce ? 0 : -sign * SLEEVE.rotation;
+	const x =
+		distance <= 1
+			? offset * SLEEVE.shift
+			: sign * (SLEEVE.shift + (distance - 1) * SLEEVE.gap);
+	const ry = reduce ? 0 : -(distance <= 1 ? offset : sign) * SLEEVE.rotation;
 	const tz = reduce ? 0 : -distance * SLEEVE.depth;
-	const scale = isCenter
-		? 1
-		: Math.max(
-				SLEEVE.minScale,
-				1 - distance * (reduce ? SLEEVE.scaleStepReduced : SLEEVE.scaleStep),
-			);
+	const scale = Math.max(
+		SLEEVE.minScale,
+		1 - distance * (reduce ? SLEEVE.scaleStepReduced : SLEEVE.scaleStep),
+	);
 	return {
 		transform: `translateX(${x}px) translateZ(${tz}px) rotateY(${ry}deg) scale(${scale})`,
 		opacity: hidden ? 0 : Math.max(0, 1 - distance * SLEEVE.opacityStep),
 		visibility: hidden ? "hidden" : "visible",
-		zIndex: 100 - distance,
+		zIndex: 100 - Math.round(distance),
 		pointerEvents: distance > SLEEVE.interactiveWithin ? "none" : "auto",
 		transformStyle: "preserve-3d",
 		transformOrigin: "50% 100%",
 		willChange: "transform, opacity",
-		transition: reduce
-			? "none"
-			: "transform 520ms var(--ease-out-expo), opacity 380ms ease",
+		// No transition while the finger drives the covers — they must track 1:1.
+		// Restored on release so the snap to the nearest cover animates.
+		transition:
+			reduce || dragging
+				? "none"
+				: "transform 520ms var(--ease-out-expo), opacity 380ms ease",
 	};
 }
 
@@ -115,14 +133,33 @@ export function CoverFlowShelf({
 	chrome = "plain",
 }: CoverFlowShelfProps) {
 	const stageRef = useRef<HTMLDivElement>(null);
-	const dragRef = useRef<{ x: number; moved: boolean } | null>(null);
+	// `lastX/lastT` and `prevX/prevT` keep the final two pointer samples so release
+	// velocity can be estimated for the flick projection.
+	const dragRef = useRef<{
+		x: number;
+		moved: boolean;
+		lastX: number;
+		lastT: number;
+		prevX: number;
+		prevT: number;
+	} | null>(null);
+	// A drag that moved past the slop threshold sets this so the click it fires on
+	// release doesn't also re-centre/open the sleeve under the finger.
+	const justDraggedRef = useRef(false);
 	const reduce = prefersReduced();
 	// The name is the open link; hovering the centered cover OR the name drifts the
 	// same arrow, so the two — in separate subtrees — share one hover state.
 	const [openHover, setOpenHover] = useState(false);
+	// Fractional centre offset while a drag is live (covers follow the finger), and
+	// whether a drag is in flight (suspends the per-sleeve snap transition).
+	const [dragSteps, setDragSteps] = useState(0);
+	const [dragging, setDragging] = useState(false);
 	const max = Math.max(0, playlists.length - 1);
 	const clamped = Math.max(0, Math.min(center, max));
 	const centered = playlists[clamped];
+	// Fractional centre the geometry renders against: the committed centre shifted
+	// by the live drag, kept within the real range so the ends don't overscroll.
+	const renderCenter = Math.max(0, Math.min(max, clamped + dragSteps));
 
 	// The once-bound listeners below read interaction state through this ref so
 	// they stay fresh without re-subscribing on every render.
@@ -166,20 +203,48 @@ export function CoverFlowShelf({
 		const onMove = (event: PointerEvent) => {
 			const drag = dragRef.current;
 			if (!drag) return;
-			if (Math.abs(event.clientX - drag.x) > 6) drag.moved = true;
+			const dx = event.clientX - drag.x;
+			if (Math.abs(dx) > 6) drag.moved = true;
+			drag.prevX = drag.lastX;
+			drag.prevT = drag.lastT;
+			drag.lastX = event.clientX;
+			drag.lastT = performance.now();
+			// Finger left (dx < 0) advances toward the next cover, so the centre rises.
+			const { clamped, max } = latest.current;
+			const next = -dx / DRAG_STEP_PX;
+			setDragSteps(Math.max(-clamped, Math.min(max - clamped, next)));
 		};
 		const onUp = (event: PointerEvent) => {
 			const drag = dragRef.current;
 			dragRef.current = null;
 			window.removeEventListener("pointermove", onMove);
 			window.removeEventListener("pointerup", onUp);
+			setDragging(false);
+			setDragSteps(0);
 			if (!drag) return;
+			justDraggedRef.current = drag.moved;
 			const dx = event.clientX - drag.x;
-			if (Math.abs(dx) > 44) step(dx < 0 ? 1 : -1);
+			const dt = Math.max(1, drag.lastT - drag.prevT);
+			const velocity = (drag.lastX - drag.prevX) / dt;
+			// Project the exit velocity ahead, then snap to the nearest whole cover —
+			// a long drag or a quick flick both round to multiple steps.
+			const projected = dx + velocity * FLICK_PROJECT_MS;
+			const { clamped, max, onCenterChange } = latest.current;
+			const steps = Math.round(-projected / DRAG_STEP_PX);
+			onCenterChange(Math.max(0, Math.min(max, clamped + steps)));
 		};
 		const onDown = (event: PointerEvent) => {
-			dragRef.current = { x: event.clientX, moved: false };
+			const t = performance.now();
+			dragRef.current = {
+				x: event.clientX,
+				moved: false,
+				lastX: event.clientX,
+				lastT: t,
+				prevX: event.clientX,
+				prevT: t,
+			};
 			latest.current.onActivate();
+			setDragging(true);
 			window.addEventListener("pointermove", onMove);
 			window.addEventListener("pointerup", onUp);
 		};
@@ -194,7 +259,12 @@ export function CoverFlowShelf({
 	}, [step]);
 
 	const onSleeveClick = (index: number, id: string) => {
-		if (dragRef.current?.moved) return;
+		// onUp clears dragRef before this click fires, so the just-dragged flag (not
+		// the now-null ref) is what tells a drag-release apart from a real tap.
+		if (justDraggedRef.current) {
+			justDraggedRef.current = false;
+			return;
+		}
 		onActivate();
 		if (index === clamped) onOpen(id);
 		else onCenterChange(index);
@@ -247,8 +317,11 @@ export function CoverFlowShelf({
 				</p>
 			) : (
 				playlists.map((playlist, index) => {
-					const offset = index - clamped;
-					const isCenter = offset === 0;
+					// Geometry follows the fractional drag centre; the centred-cover
+					// treatment (no dim, hover-linked open) tracks the committed centre so
+					// it doesn't flicker mid-drag.
+					const offset = index - renderCenter;
+					const isCenter = index === clamped;
 					const isEntering = !reduce && playlist.id === enterId;
 					return (
 						<button
@@ -260,7 +333,7 @@ export function CoverFlowShelf({
 							onPointerEnter={isCenter ? () => setOpenHover(true) : undefined}
 							onPointerLeave={isCenter ? () => setOpenHover(false) : undefined}
 							className="group/sleeve absolute top-6 left-1/2 -ml-[84px] block size-[168px] cursor-pointer border-0 bg-transparent p-0 md:-ml-[108px] md:size-[216px]"
-							style={sleeveStyle(offset, reduce)}
+							style={sleeveStyle(offset, reduce, dragging)}
 						>
 							<div
 								className="relative h-full w-full transition-transform duration-100 ease-out group-active/sleeve:scale-[0.96] motion-reduce:transition-none"
