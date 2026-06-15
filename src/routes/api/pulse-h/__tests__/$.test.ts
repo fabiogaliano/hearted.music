@@ -71,7 +71,7 @@ vi.mock("@tanstack/react-router", () => ({
 	createFileRoute: () => (routeConfig: unknown) => routeConfig,
 }));
 
-describe("/api/posthog/$", () => {
+describe("/api/pulse-h/$", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		fetchMock.mockResolvedValue(
@@ -90,7 +90,7 @@ describe("/api/posthog/$", () => {
 
 	it("forwards event ingestion requests to PostHog EU ingest", async () => {
 		const route = await loadRoute(undefined);
-		const request = new Request("https://hearted.test/api/posthog/e/?ip=1", {
+		const request = new Request("https://hearted.test/api/pulse-h/e/?ip=1", {
 			method: "POST",
 			body: JSON.stringify({ event: "pageview" }),
 			headers: { "Content-Type": "application/json" },
@@ -129,7 +129,7 @@ describe("/api/posthog/$", () => {
 		);
 		const route = await loadRoute(undefined);
 		const response = await route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/posthog/e/", {
+			request: new Request("https://hearted.test/api/pulse-h/e/", {
 				method: "POST",
 				body: "{}",
 			}),
@@ -146,7 +146,7 @@ describe("/api/posthog/$", () => {
 		const route = await loadRoute("https://eu.i.posthog.com");
 		const response = await route.server.handlers.GET({
 			request: new Request(
-				"https://hearted.test/api/posthog/array/phc_token/config.js?_=123",
+				"https://hearted.test/api/pulse-h/array/phc_token/config.js?_=123",
 				{ method: "GET" },
 			),
 		});
@@ -161,7 +161,7 @@ describe("/api/posthog/$", () => {
 	it("falls back to the default EU host in non-prod when the configured host is invalid", async () => {
 		const route = await loadRoute("https://us.i.posthog.com");
 		const response = await route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/posthog/e/", {
+			request: new Request("https://hearted.test/api/pulse-h/e/", {
 				method: "POST",
 				body: "{}",
 			}),
@@ -197,7 +197,7 @@ describe("/api/posthog/$", () => {
 		);
 		const route = await loadRoute(undefined);
 		const responsePromise = route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/posthog/e/", {
+			request: new Request("https://hearted.test/api/pulse-h/e/", {
 				method: "POST",
 				body: "{}",
 			}),

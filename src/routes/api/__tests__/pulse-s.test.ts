@@ -64,7 +64,7 @@ async function loadRoute(
 		},
 	}));
 
-	const module = await import("../sentry-tunnel");
+	const module = await import("../pulse-s");
 	if (!isTunnelRoute(module.Route)) {
 		throw new Error("Expected Route to expose a POST handler");
 	}
@@ -86,7 +86,7 @@ vi.mock("@sentry/cloudflare", () => ({
 	captureException: vi.fn(),
 }));
 
-describe("/api/sentry-tunnel", () => {
+describe("/api/pulse-s", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		fetchMock.mockResolvedValue(
@@ -105,7 +105,7 @@ describe("/api/sentry-tunnel", () => {
 
 	it("streams matching envelopes to the configured Sentry ingest URL", async () => {
 		const route = await loadRoute(ALLOWED_DSN);
-		const request = new Request("https://hearted.test/api/sentry-tunnel", {
+		const request = new Request("https://hearted.test/api/pulse-s", {
 			method: "POST",
 			body: createEnvelope(),
 		});
@@ -131,7 +131,7 @@ describe("/api/sentry-tunnel", () => {
 	it("rejects envelopes targeting a different Sentry project", async () => {
 		const route = await loadRoute(ALLOWED_DSN);
 		const response = await route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/sentry-tunnel", {
+			request: new Request("https://hearted.test/api/pulse-s", {
 				method: "POST",
 				body: createEnvelope("https://public@attacker.ingest.sentry.io/999999"),
 			}),
@@ -145,7 +145,7 @@ describe("/api/sentry-tunnel", () => {
 	it("returns 404 when the tunnel is disabled", async () => {
 		const route = await loadRoute(undefined);
 		const response = await route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/sentry-tunnel", {
+			request: new Request("https://hearted.test/api/pulse-s", {
 				method: "POST",
 				body: createEnvelope(),
 			}),
@@ -159,7 +159,7 @@ describe("/api/sentry-tunnel", () => {
 	it("returns 500 when the configured DSN is invalid", async () => {
 		const route = await loadRoute("not-a-valid-dsn");
 		const response = await route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/sentry-tunnel", {
+			request: new Request("https://hearted.test/api/pulse-s", {
 				method: "POST",
 				body: createEnvelope(),
 			}),
@@ -172,13 +172,10 @@ describe("/api/sentry-tunnel", () => {
 
 	it("rejects malformed envelopes before forwarding", async () => {
 		const route = await loadRoute(ALLOWED_DSN);
-		const malformedRequest = new Request(
-			"https://hearted.test/api/sentry-tunnel",
-			{
-				method: "POST",
-				body: "not-an-envelope",
-			},
-		);
+		const malformedRequest = new Request("https://hearted.test/api/pulse-s", {
+			method: "POST",
+			body: "not-an-envelope",
+		});
 		const malformedArrayBufferSpy = vi.spyOn(malformedRequest, "arrayBuffer");
 
 		const malformedResponse = await route.server.handlers.POST({
@@ -193,7 +190,7 @@ describe("/api/sentry-tunnel", () => {
 	it("rejects envelopes with an invalid JSON header before forwarding", async () => {
 		const route = await loadRoute(ALLOWED_DSN);
 		const invalidHeaderRequest = new Request(
-			"https://hearted.test/api/sentry-tunnel",
+			"https://hearted.test/api/pulse-s",
 			{
 				method: "POST",
 				body: "{invalid-json}\npayload",
@@ -217,7 +214,7 @@ describe("/api/sentry-tunnel", () => {
 		const route = await loadRoute(ALLOWED_DSN);
 
 		const missingDsnResponse = await route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/sentry-tunnel", {
+			request: new Request("https://hearted.test/api/pulse-s", {
 				method: "POST",
 				body: `${JSON.stringify({})}\npayload`,
 			}),
@@ -231,7 +228,7 @@ describe("/api/sentry-tunnel", () => {
 		const route = await loadRoute(ALLOWED_DSN);
 
 		const nonStringDsnResponse = await route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/sentry-tunnel", {
+			request: new Request("https://hearted.test/api/pulse-s", {
 				method: "POST",
 				body: `${JSON.stringify({ dsn: 123 })}\npayload`,
 			}),
@@ -251,7 +248,7 @@ describe("/api/sentry-tunnel", () => {
 		});
 		const route = await loadRoute(ALLOWED_DSN);
 		const response = await route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/sentry-tunnel", {
+			request: new Request("https://hearted.test/api/pulse-s", {
 				method: "POST",
 				body: createEnvelope(ALLOWED_DSN, "a".repeat(MAX_ENVELOPE_BYTES)),
 			}),
@@ -284,7 +281,7 @@ describe("/api/sentry-tunnel", () => {
 		);
 		const route = await loadRoute(ALLOWED_DSN);
 		const responsePromise = route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/sentry-tunnel", {
+			request: new Request("https://hearted.test/api/pulse-s", {
 				method: "POST",
 				body: createEnvelope(),
 			}),
@@ -305,7 +302,7 @@ describe("/api/sentry-tunnel", () => {
 
 		const route = await loadRoute(ALLOWED_DSN);
 		const response = await route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/sentry-tunnel", {
+			request: new Request("https://hearted.test/api/pulse-s", {
 				method: "POST",
 				body: createEnvelope(),
 			}),
@@ -319,7 +316,7 @@ describe("/api/sentry-tunnel", () => {
 		fetchMock.mockRejectedValueOnce(new Error("upstream down"));
 		const route = await loadRoute(ALLOWED_DSN);
 		const response = await route.server.handlers.POST({
-			request: new Request("https://hearted.test/api/sentry-tunnel", {
+			request: new Request("https://hearted.test/api/pulse-s", {
 				method: "POST",
 				body: createEnvelope(),
 			}),

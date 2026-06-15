@@ -21,7 +21,7 @@ import { Route as AtChar123handleChar125RouteImport } from './routes/@{$handle}'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
-import { Route as ApiSentryTunnelRouteImport } from './routes/api/sentry-tunnel'
+import { Route as ApiPulseSRouteImport } from './routes/api/pulse-s'
 import { Route as ApiBillingBridgeRouteImport } from './routes/api/billing-bridge'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedPlaylistsRouteImport } from './routes/_authenticated/playlists'
@@ -29,7 +29,7 @@ import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authentic
 import { Route as AuthenticatedMatchRouteImport } from './routes/_authenticated/match'
 import { Route as AuthenticatedLikedSongsRouteImport } from './routes/_authenticated/liked-songs'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as ApiPosthogSplatRouteImport } from './routes/api/posthog/$'
+import { Route as ApiPulseHSplatRouteImport } from './routes/api/pulse-h/$'
 import { Route as ApiExtensionTokenRouteImport } from './routes/api/extension/token'
 import { Route as ApiExtensionSyncRouteImport } from './routes/api/extension/sync'
 import { Route as ApiExtensionStatusRouteImport } from './routes/api/extension/status'
@@ -99,9 +99,9 @@ const AuthLogoutRoute = AuthLogoutRouteImport.update({
   path: '/auth/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSentryTunnelRoute = ApiSentryTunnelRouteImport.update({
-  id: '/api/sentry-tunnel',
-  path: '/api/sentry-tunnel',
+const ApiPulseSRoute = ApiPulseSRouteImport.update({
+  id: '/api/pulse-s',
+  path: '/api/pulse-s',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiBillingBridgeRoute = ApiBillingBridgeRouteImport.update({
@@ -139,9 +139,9 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPosthogSplatRoute = ApiPosthogSplatRouteImport.update({
-  id: '/api/posthog/$',
-  path: '/api/posthog/$',
+const ApiPulseHSplatRoute = ApiPulseHSplatRouteImport.update({
+  id: '/api/pulse-h/$',
+  path: '/api/pulse-h/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiExtensionTokenRoute = ApiExtensionTokenRouteImport.update({
@@ -212,7 +212,7 @@ export interface FileRoutesByFullPath {
   '/playlists': typeof AuthenticatedPlaylistsRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/api/billing-bridge': typeof ApiBillingBridgeRoute
-  '/api/sentry-tunnel': typeof ApiSentryTunnelRoute
+  '/api/pulse-s': typeof ApiPulseSRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
   '/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
@@ -221,7 +221,7 @@ export interface FileRoutesByFullPath {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRouteWithChildren
   '/api/extension/token': typeof ApiExtensionTokenRoute
-  '/api/posthog/$': typeof ApiPosthogSplatRoute
+  '/api/pulse-h/$': typeof ApiPulseHSplatRoute
   '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
   '/api/extension/sync/status': typeof ApiExtensionSyncStatusRoute
 }
@@ -243,7 +243,7 @@ export interface FileRoutesByTo {
   '/playlists': typeof AuthenticatedPlaylistsRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/api/billing-bridge': typeof ApiBillingBridgeRoute
-  '/api/sentry-tunnel': typeof ApiSentryTunnelRoute
+  '/api/pulse-s': typeof ApiPulseSRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
   '/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
@@ -252,7 +252,7 @@ export interface FileRoutesByTo {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRouteWithChildren
   '/api/extension/token': typeof ApiExtensionTokenRoute
-  '/api/posthog/$': typeof ApiPosthogSplatRoute
+  '/api/pulse-h/$': typeof ApiPulseHSplatRoute
   '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
   '/api/extension/sync/status': typeof ApiExtensionSyncStatusRoute
 }
@@ -276,7 +276,7 @@ export interface FileRoutesById {
   '/_authenticated/playlists': typeof AuthenticatedPlaylistsRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/api/billing-bridge': typeof ApiBillingBridgeRoute
-  '/api/sentry-tunnel': typeof ApiSentryTunnelRoute
+  '/api/pulse-s': typeof ApiPulseSRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/_authenticated/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
   '/_authenticated/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
@@ -285,7 +285,7 @@ export interface FileRoutesById {
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRouteWithChildren
   '/api/extension/token': typeof ApiExtensionTokenRoute
-  '/api/posthog/$': typeof ApiPosthogSplatRoute
+  '/api/pulse-h/$': typeof ApiPulseHSplatRoute
   '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
   '/api/extension/sync/status': typeof ApiExtensionSyncStatusRoute
 }
@@ -309,7 +309,7 @@ export interface FileRouteTypes {
     | '/playlists'
     | '/settings'
     | '/api/billing-bridge'
-    | '/api/sentry-tunnel'
+    | '/api/pulse-s'
     | '/auth/logout'
     | '/checkout/cancel'
     | '/checkout/success'
@@ -318,7 +318,7 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
-    | '/api/posthog/$'
+    | '/api/pulse-h/$'
     | '/api/extension/artists/check'
     | '/api/extension/sync/status'
   fileRoutesByTo: FileRoutesByTo
@@ -340,7 +340,7 @@ export interface FileRouteTypes {
     | '/playlists'
     | '/settings'
     | '/api/billing-bridge'
-    | '/api/sentry-tunnel'
+    | '/api/pulse-s'
     | '/auth/logout'
     | '/checkout/cancel'
     | '/checkout/success'
@@ -349,7 +349,7 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
-    | '/api/posthog/$'
+    | '/api/pulse-h/$'
     | '/api/extension/artists/check'
     | '/api/extension/sync/status'
   id:
@@ -372,7 +372,7 @@ export interface FileRouteTypes {
     | '/_authenticated/playlists'
     | '/_authenticated/settings'
     | '/api/billing-bridge'
-    | '/api/sentry-tunnel'
+    | '/api/pulse-s'
     | '/auth/logout'
     | '/_authenticated/checkout/cancel'
     | '/_authenticated/checkout/success'
@@ -381,7 +381,7 @@ export interface FileRouteTypes {
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
-    | '/api/posthog/$'
+    | '/api/pulse-h/$'
     | '/api/extension/artists/check'
     | '/api/extension/sync/status'
   fileRoutesById: FileRoutesById
@@ -399,13 +399,13 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   ApiBillingBridgeRoute: typeof ApiBillingBridgeRoute
-  ApiSentryTunnelRoute: typeof ApiSentryTunnelRoute
+  ApiPulseSRoute: typeof ApiPulseSRoute
   AuthLogoutRoute: typeof AuthLogoutRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiExtensionStatusRoute: typeof ApiExtensionStatusRoute
   ApiExtensionSyncRoute: typeof ApiExtensionSyncRouteWithChildren
   ApiExtensionTokenRoute: typeof ApiExtensionTokenRoute
-  ApiPosthogSplatRoute: typeof ApiPosthogSplatRoute
+  ApiPulseHSplatRoute: typeof ApiPulseHSplatRoute
   ApiExtensionArtistsCheckRoute: typeof ApiExtensionArtistsCheckRoute
 }
 
@@ -495,11 +495,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLogoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/sentry-tunnel': {
-      id: '/api/sentry-tunnel'
-      path: '/api/sentry-tunnel'
-      fullPath: '/api/sentry-tunnel'
-      preLoaderRoute: typeof ApiSentryTunnelRouteImport
+    '/api/pulse-s': {
+      id: '/api/pulse-s'
+      path: '/api/pulse-s'
+      fullPath: '/api/pulse-s'
+      preLoaderRoute: typeof ApiPulseSRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/billing-bridge': {
@@ -551,11 +551,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/posthog/$': {
-      id: '/api/posthog/$'
-      path: '/api/posthog/$'
-      fullPath: '/api/posthog/$'
-      preLoaderRoute: typeof ApiPosthogSplatRouteImport
+    '/api/pulse-h/$': {
+      id: '/api/pulse-h/$'
+      path: '/api/pulse-h/$'
+      fullPath: '/api/pulse-h/$'
+      preLoaderRoute: typeof ApiPulseHSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/extension/token': {
@@ -688,13 +688,13 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   ApiBillingBridgeRoute: ApiBillingBridgeRoute,
-  ApiSentryTunnelRoute: ApiSentryTunnelRoute,
+  ApiPulseSRoute: ApiPulseSRoute,
   AuthLogoutRoute: AuthLogoutRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiExtensionStatusRoute: ApiExtensionStatusRoute,
   ApiExtensionSyncRoute: ApiExtensionSyncRouteWithChildren,
   ApiExtensionTokenRoute: ApiExtensionTokenRoute,
-  ApiPosthogSplatRoute: ApiPosthogSplatRoute,
+  ApiPulseHSplatRoute: ApiPulseHSplatRoute,
   ApiExtensionArtistsCheckRoute: ApiExtensionArtistsCheckRoute,
 }
 export const routeTree = rootRouteImport

@@ -2,7 +2,13 @@ const DEFAULT_POSTHOG_API_HOST = "https://eu.i.posthog.com";
 const DEFAULT_POSTHOG_ASSET_HOST = "https://eu-assets.i.posthog.com";
 const DEFAULT_POSTHOG_UI_HOST = "https://eu.posthog.com";
 
-export const POSTHOG_TUNNEL_PATH = "/api/posthog";
+// Deliberately neutral: a path containing "posthog" is matched by ad/privacy
+// blocker filter lists (EasyPrivacy et al.) by substring, so the reverse proxy
+// gets ERR_BLOCKED_BY_CLIENT even though it's same-origin. "/api/pulse-h" carries
+// no analytics-vendor signal, so the bulk of blocked sessions get through. Sentry
+// rides the sibling "/api/pulse-s" — same neutral family, distinct path, so one
+// blocker rule can't take down analytics and error reporting together.
+export const POSTHOG_TUNNEL_PATH = "/api/pulse-h";
 
 export interface PostHogHosts {
 	apiHost: string;

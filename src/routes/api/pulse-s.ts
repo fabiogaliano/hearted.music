@@ -286,7 +286,7 @@ async function readEnvelopeStream(
 	return { kind: "ok", dsn, body: upstreamBody };
 }
 
-export const Route = createFileRoute("/api/sentry-tunnel")({
+export const Route = createFileRoute("/api/pulse-s")({
 	server: {
 		handlers: {
 			POST: async ({ request }) => {

@@ -212,6 +212,12 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			"font-src 'self' https://fonts.gstatic.com",
 			`img-src 'self' data: https://i.scdn.co https://*.scdn.co https://*.spotifycdn.com https://*.googleusercontent.com https://*.bcbits.com https://*.userjot.com`,
 			"frame-src https://open.spotify.com https://*.userjot.com",
+			// Session replay (Sentry rrweb, and PostHog's recorder) compresses events
+			// in a Web Worker spun up from a blob: URL. Without an explicit worker-src
+			// the browser falls back to script-src — which has no blob: — and blocks
+			// the worker. Scoped here so workers are allowed without letting script-src
+			// execute blob: code.
+			"worker-src 'self' blob:",
 			"object-src 'none'",
 			"upgrade-insecure-requests",
 		];

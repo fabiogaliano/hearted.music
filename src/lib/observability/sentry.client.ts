@@ -36,8 +36,12 @@ export function initSentry(router: AnyRouter): void {
 		environment: clientEnv.VITE_SENTRY_ENVIRONMENT ?? import.meta.env.MODE,
 		// Must match the plugin's sourcemap release or prod traces stay minified.
 		release: clientEnv.VITE_APP_RELEASE,
-		// Same-origin tunnel sidesteps ad-blockers in both dev and prod.
-		tunnel: "/api/sentry-tunnel",
+		// Same-origin tunnel sidesteps ad-blockers in both dev and prod. The path is
+		// deliberately neutral ("pulse-s", not "sentry-tunnel"): blocker filter lists
+		// match "sentry" by substring, so a same-origin proxy named for the vendor
+		// still gets ERR_BLOCKED_BY_CLIENT. Sibling of PostHog's "/api/pulse-h" but a
+		// distinct path, so one filter rule can't blind both analytics and errors.
+		tunnel: "/api/pulse-s",
 		integrations: [
 			Sentry.tanstackRouterBrowserTracingIntegration(router),
 			// Default lifecycle is "route": browserSessionIntegration sends a fresh

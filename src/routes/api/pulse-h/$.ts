@@ -113,7 +113,7 @@ async function forwardRequest(request: Request): Promise<Response> {
 	}
 }
 
-export const Route = createFileRoute("/api/posthog/$")({
+export const Route = createFileRoute("/api/pulse-h/$")({
 	server: {
 		handlers: {
 			GET: async ({ request }) => forwardRequest(request),
