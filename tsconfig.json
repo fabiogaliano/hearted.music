@@ -1,6 +1,6 @@
 {
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["old_app", "node_modules", "extensions", "v1_hearted_brand", "src/worker", "src/routes/dev-*"],
+  "exclude": ["old_app", "node_modules", "extensions", "v1_hearted_brand", "src/worker", "src/routes/dev-*", "control-panel"],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",
@@ -13,6 +13,8 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": false,
     "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsgo/main.tsbuildinfo",
 
     /* Linting */
     "skipLibCheck": true,

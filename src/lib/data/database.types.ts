@@ -2638,6 +2638,7 @@ export type Database = {
 			grant_liked_song_access: {
 				Args: {
 					p_account_id: string;
+					p_limit?: number;
 					p_note?: string;
 					p_origin: string;
 					p_requested_by?: string;
