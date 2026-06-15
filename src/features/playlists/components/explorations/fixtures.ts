@@ -117,8 +117,6 @@ export const samplePlaylists: PlaylistSummary[] = [
 		imageUrl:
 			"https://mosaic.scdn.co/640/ab67616d00001e0213f2466b83507515291acce4ab67616d00001e022f8790ed72296c2614607575ab67616d00001e02bc18bdade69ec5ef0bb25b17ab67616d00001e02c88bae7846e62a8ba59ee0bd",
 		intent: "a bit of insecurity in my mind about relationships",
-		spotifyDescription:
-			"songs that make me feel like the main character in my own movie! slay!!",
 		genres: ["indie pop", "indie rock", "alternative"],
 	},
 	{
@@ -129,7 +127,6 @@ export const samplePlaylists: PlaylistSummary[] = [
 		imageUrl:
 			"https://mosaic.scdn.co/640/ab67616d00001e0203e3be2931712ce7c775b21eab67616d00001e022b89c8de96dcc7d5e05a48edab67616d00001e0237b51b1bfcf7028ef9e11bf1ab67616d00001e0268881375078c577509bb8681",
 		intent: null,
-		spotifyDescription: "AI: house music",
 		genres: ["pop", "art pop", "baroque pop"],
 	},
 	{
@@ -140,7 +137,6 @@ export const samplePlaylists: PlaylistSummary[] = [
 		imageUrl:
 			"https://image-cdn-fa.spotifycdn.com/image/ab67706c0000da84c1975a91a3224aa534fc35ba",
 		intent: null,
-		spotifyDescription: "made with ♫ by @inotbeingf",
 		genres: ["pop rock", "art rock", "rock", "alternative rock"],
 	},
 	{
@@ -151,7 +147,6 @@ export const samplePlaylists: PlaylistSummary[] = [
 		imageUrl:
 			"https://mosaic.scdn.co/640/ab67616d00001e0201dbb413cc80ae630f1e66a3ab67616d00001e02107d051e4c35ac3c8fe3470dab67616d00001e02203f8c1682441cdd02d0fa85ab67616d00001e02d3e8d904b8b9beca4d33583e",
 		intent: null,
-		spotifyDescription: null,
 		genres: [],
 	},
 	{
@@ -161,7 +156,6 @@ export const samplePlaylists: PlaylistSummary[] = [
 		songCount: 0,
 		imageUrl: null,
 		intent: null,
-		spotifyDescription: "my indie rock broken heart playlist",
 		genres: [],
 	},
 	{
@@ -172,7 +166,6 @@ export const samplePlaylists: PlaylistSummary[] = [
 		imageUrl:
 			"https://i.scdn.co/image/ab67616d00001e02382514f0114ba8f4a16d5db4",
 		intent: null,
-		spotifyDescription: "songs i can't skip",
 		genres: [],
 	},
 	{
@@ -182,7 +175,6 @@ export const samplePlaylists: PlaylistSummary[] = [
 		songCount: 0,
 		imageUrl: null,
 		intent: null,
-		spotifyDescription: "AI: songs that just get it",
 		genres: [],
 	},
 	{
@@ -192,7 +184,6 @@ export const samplePlaylists: PlaylistSummary[] = [
 		songCount: 0,
 		imageUrl: null,
 		intent: null,
-		spotifyDescription: "AI: make it make sense bestie",
 		genres: [],
 	},
 ];

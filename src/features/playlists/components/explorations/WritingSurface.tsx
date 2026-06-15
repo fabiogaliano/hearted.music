@@ -1,25 +1,24 @@
-import {
-	type CSSProperties,
-	useCallback,
-	useEffect,
-	useLayoutEffect,
-	useRef,
-} from "react";
+import { PlusIcon, WarningIcon } from "@phosphor-icons/react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
-import { GenrePicker } from "./GenrePicker";
+import { GenrePillsPicker } from "../GenrePillsPicker";
+import { GenreChip } from "./GenreChip";
+import { InfoTip } from "./InfoTip";
 import "./playlist-explorations.css";
 
-const GENRE_HINT = "A little pull, so the right songs know where home is.";
+const GENRE_MAX = 5;
+// Caution accent for the "can't be matched" notice — amber, not red: an unfilled
+// playlist is incomplete, not an error. A fixed status hue across all four themes,
+// distinct from every theme accent so it reads as a warning rather than blending.
+const CAUTION = "hsl(36, 72%, 44%)";
 const EMPTY_DESCRIPTION =
-	"Describe what this playlist is for — a moment, a feeling, a sound. Your liked songs find their way here by what you write.";
+	"Your liked songs find their way here by what you write. Describe what this playlist is for — a moment, a feeling, a sound.";
 
-const selectedChipStyle: CSSProperties = {
-	color: "var(--t-primary)",
-	borderColor: "color-mix(in srgb, var(--t-primary) 32%, transparent)",
-	backgroundColor: "color-mix(in srgb, var(--t-primary) 9%, transparent)",
-	fontFamily: fonts.body,
-};
+// Eyebrows + the Edit affordance: weighted 70% toward full ink so they clear
+// 4.5:1 on the darker masthead band (measured — 55% landed at ~4.0, just under).
+const EYEBROW_COLOR =
+	"color-mix(in srgb, var(--t-text) 70%, var(--t-text-muted))";
 
 interface WritingSurfaceProps {
 	description: string | null;
@@ -29,6 +28,8 @@ interface WritingSurfaceProps {
 	draftGenres: string[];
 	topGenres?: readonly string[];
 	isSaving?: boolean;
+	/** Render the intent in the display serif — the brand's editorial voice. */
+	intentSerif?: boolean;
 	/** Names the collapsed description for a card→panel shared-element morph. */
 	descriptionViewTransitionName?: string;
 	onEditDescription: () => void;
@@ -40,12 +41,12 @@ interface WritingSurfaceProps {
 }
 
 /**
- * Lab-faithful writing surface: collapsed it shows the intent + genre chips
- * (or a "+ Add genres" affordance); one Edit opens the textarea above the genre
- * picker, with one Save/Cancel for both. The round-2 nits are baked in — square
- * corners (no card chrome), the labelled genres/suggestions split lives in
- * GenrePicker, and the hint anchors the action row's left so nothing floats.
- * Presentational: the caller owns draft state, persistence, and edit toggling.
+ * The writing surface, presentational and frame-agnostic. Hierarchy comes from
+ * type + space, not chrome (no card, no border): the intent is the primary body
+ * element — larger, full ink — under a single Intent eyebrow; the genres sit just
+ * below it without their own label, since chosen genres read as part of the intent.
+ * Surrounding zone chrome is owned by the composing panel/hero so this stays
+ * reusable across variants.
  */
 export function WritingSurface({
 	description,
@@ -55,6 +56,7 @@ export function WritingSurface({
 	draftGenres,
 	topGenres,
 	isSaving = false,
+	intentSerif = false,
 	descriptionViewTransitionName,
 	onEditDescription,
 	onEditGenres,
@@ -96,89 +98,135 @@ export function WritingSurface({
 		textarea.setSelectionRange(end, end);
 	}, [isEditing]);
 
+	// The intent leads the body: notably larger than the 11px eyebrow / 12px chips.
+	const intentClass = intentSerif
+		? "text-[22px] leading-snug"
+		: "text-[17px] leading-relaxed";
+	const intentFont = intentSerif ? fonts.display : fonts.body;
+	const genresAtCap = draftGenres.length >= GENRE_MAX;
+
 	if (isEditing) {
 		return (
-			<div className="relative flex flex-col gap-3.5">
-				<textarea
-					ref={textareaRef}
-					value={draftDescription}
-					onChange={(event) => onDraftDescriptionChange(event.target.value)}
-					onInput={autosize}
-					placeholder="What's this playlist about?"
-					rows={1}
-					disabled={isSaving}
-					className="theme-text w-full resize-none overflow-hidden bg-transparent p-0 text-[15px] leading-relaxed outline-none placeholder:text-(--t-text-muted) disabled:opacity-60"
-					style={{ fontFamily: fonts.body }}
-				/>
+			<div className="relative flex flex-col gap-7">
+				<div className="flex flex-col gap-1.5">
+					<Label>Matching intent</Label>
+					<textarea
+						ref={textareaRef}
+						value={draftDescription}
+						onChange={(event) => onDraftDescriptionChange(event.target.value)}
+						onInput={autosize}
+						placeholder="What is this playlist for?"
+						rows={1}
+						disabled={isSaving}
+						className={`theme-text w-full resize-none overflow-hidden bg-transparent p-0 outline-none placeholder:text-(--t-text-muted) disabled:opacity-60 ${intentClass}`}
+						style={{ fontFamily: intentFont }}
+					/>
+				</div>
 
-				<Divider />
-
-				<div className="xpl-reveal flex flex-col gap-3.5">
-					<GenrePicker
+				<div className="xpl-genres xpl-reveal flex flex-col gap-2">
+					<div className="flex items-center justify-between gap-2">
+						<div className="flex items-center gap-1.5">
+							<Label>Genres</Label>
+							<InfoTip label="About genres">
+								Optional, but they help — a gentle pull so the right songs know
+								where home is.
+							</InfoTip>
+						</div>
+						<span
+							className="text-xs tabular-nums"
+							style={{
+								fontFamily: fonts.body,
+								color: genresAtCap ? "var(--t-primary)" : EYEBROW_COLOR,
+							}}
+						>
+							{draftGenres.length}
+							<span className="opacity-60">/{GENRE_MAX}</span>
+						</span>
+					</div>
+					<GenrePillsPicker
 						value={draftGenres}
 						onChange={onDraftGenresChange}
 						topGenres={topGenres}
+						maxPills={GENRE_MAX}
 						disabled={isSaving}
 						autoFocus={focusTargetRef.current === "genres"}
 					/>
 				</div>
 
-				<div className="flex items-center justify-between gap-4">
-					<p
-						className="theme-text-muted m-0 min-w-0 flex-1 text-xs leading-snug text-pretty"
+				<div className="flex items-center justify-end gap-2">
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={onCancel}
+						disabled={isSaving}
 						style={{ fontFamily: fonts.body }}
 					>
-						{GENRE_HINT}
-					</p>
-					<div className="flex flex-none items-center gap-2">
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={onCancel}
-							disabled={isSaving}
-							style={{ fontFamily: fonts.body }}
-						>
-							Cancel
-						</Button>
-						<Button
-							size="sm"
-							onClick={onSave}
-							disabled={isSaving}
-							style={{ fontFamily: fonts.body }}
-						>
-							{isSaving ? "Saving…" : "Save"}
-						</Button>
-					</div>
+						Cancel
+					</Button>
+					<Button
+						size="sm"
+						onClick={onSave}
+						disabled={isSaving}
+						style={{ fontFamily: fonts.body }}
+					>
+						{isSaving ? "Saving…" : "Save"}
+					</Button>
 				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="relative flex flex-col gap-3.5">
+		<div className="relative flex flex-col gap-4">
+			{!description && genres.length === 0 && (
+				<div
+					className="flex items-start gap-2.5 border-l-2 px-3 py-2.5"
+					style={{
+						borderColor: CAUTION,
+						background: `color-mix(in srgb, ${CAUTION} 12%, transparent)`,
+					}}
+				>
+					<WarningIcon
+						size={15}
+						weight="fill"
+						aria-hidden
+						className="mt-px flex-none"
+						style={{ color: CAUTION }}
+					/>
+					<p
+						className="theme-text m-0 text-xs leading-snug text-pretty"
+						style={{ fontFamily: fonts.body }}
+					>
+						This playlist can’t be matched yet — give it a matching intent or
+						some genres so songs can find their way here.
+					</p>
+				</div>
+			)}
+
 			<button
 				type="button"
 				onClick={enterDescription}
-				className="group/desc flex w-full cursor-pointer items-start gap-4 text-left"
+				className="group/desc block w-full cursor-pointer text-left"
 			>
-				<span
-					className={`flex-1 text-[15px] leading-relaxed text-pretty ${description ? "theme-text" : "theme-text-muted"}`}
+				<div className="flex items-baseline justify-between gap-4">
+					<Label>Matching intent</Label>
+					<span
+						className="flex-none text-[11px] tracking-[0.12em] text-[color-mix(in_srgb,var(--t-text)_70%,var(--t-text-muted))] uppercase transition-colors duration-150 group-hover/desc:text-(--t-text)"
+						style={{ fontFamily: fonts.body }}
+					>
+						Edit
+					</span>
+				</div>
+				<p
+					className={`mt-1.5 text-pretty ${intentClass} ${description ? "theme-text" : "theme-text-muted"}`}
 					style={{
-						fontFamily: fonts.body,
+						fontFamily: intentFont,
 						viewTransitionName: descriptionViewTransitionName,
 					}}
 				>
 					{description || EMPTY_DESCRIPTION}
-				</span>
-				<span
-					className="theme-text-muted mt-[3px] flex-none text-[11px] tracking-[0.12em] uppercase transition-colors duration-150 group-hover/desc:text-(--t-text)"
-					style={{ fontFamily: fonts.body }}
-				>
-					Edit
-				</span>
+				</p>
 			</button>
-
-			<Divider />
 
 			{genres.length > 0 ? (
 				<button
@@ -188,25 +236,17 @@ export function WritingSurface({
 					className="flex w-fit cursor-pointer flex-wrap items-center gap-1.5 text-left"
 				>
 					{genres.map((genre) => (
-						<span
-							key={genre}
-							className="rounded-full border px-3 py-1 text-xs"
-							style={selectedChipStyle}
-						>
-							{genre}
-						</span>
+						<GenreChip key={genre}>{genre}</GenreChip>
 					))}
 				</button>
 			) : (
 				<button
 					type="button"
 					onClick={enterGenres}
-					className="theme-border-color theme-text-muted inline-flex w-fit cursor-pointer items-center gap-1 rounded-full border border-dashed px-3 py-1 text-xs transition-[color,border-color,background-color] duration-150 hover:border-(--t-primary)/45 hover:text-(--t-primary)"
+					className="theme-border-color inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-full border bg-(--t-surface) px-3 py-1 text-xs text-(--t-primary) transition-[color,border-color,background-color] duration-150 hover:border-(--t-primary) hover:bg-(--t-primary) hover:text-(--t-text-on-primary)"
 					style={{ fontFamily: fonts.body }}
 				>
-					<span aria-hidden="true" className="opacity-70">
-						+
-					</span>
+					<PlusIcon size={12} weight="bold" aria-hidden />
 					Add genres
 				</button>
 			)}
@@ -214,15 +254,14 @@ export function WritingSurface({
 	);
 }
 
-/** Hairline rule that fades at both ends — the writing surface's section break. */
-function Divider() {
+/** The small uppercase section eyebrow, strong enough to read on the dark band. */
+function Label({ children }: { children: string }) {
 	return (
-		<div
-			className="h-px"
-			style={{
-				background:
-					"linear-gradient(90deg, transparent, color-mix(in srgb, var(--t-border) 95%, transparent) 8%, color-mix(in srgb, var(--t-border) 95%, transparent) 92%, transparent)",
-			}}
-		/>
+		<span
+			className="text-[11px] font-medium tracking-[0.18em] uppercase"
+			style={{ fontFamily: fonts.body, color: EYEBROW_COLOR }}
+		>
+			{children}
+		</span>
 	);
 }

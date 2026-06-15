@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { SpotlightHero } from "./SpotlightHero";
 import { TrackList } from "./TrackList";
 import type { PlaylistSummary, PlaylistTrackVM } from "./types";
-import { VoicesLine } from "./VoicesLine";
 import { WritingSurface } from "./WritingSurface";
 
 interface SpotlightPanelProps {
@@ -111,32 +110,33 @@ export function SpotlightPanel({
 							onToggleTarget={() => onToggleTarget(playlist.id)}
 						/>
 
-						<div className="flex flex-col gap-[22px]">
-							<div className="max-w-[56ch]">
-								<WritingSurface
-									description={description}
-									genres={genres}
-									isEditing={isEditing}
-									draftDescription={draftDescription}
-									draftGenres={draftGenres}
-									topGenres={topGenres}
-									onEditDescription={openEditor}
-									onEditGenres={openEditor}
-									onDraftDescriptionChange={setDraftDescription}
-									onDraftGenresChange={setDraftGenres}
-									onSave={save}
-									onCancel={() => setIsEditing(false)}
-								/>
+						<div className="flex flex-col gap-8">
+							<div
+								className="relative z-20 -mx-5 px-5 pt-1 pb-9 md:-mx-10 md:px-10"
+								style={{
+									background:
+										"color-mix(in srgb, var(--t-primary) 12%, var(--t-surface-dim))",
+								}}
+							>
+								<div className="max-w-[56ch]">
+									<WritingSurface
+										description={description}
+										genres={genres}
+										isEditing={isEditing}
+										draftDescription={draftDescription}
+										draftGenres={draftGenres}
+										topGenres={topGenres}
+										onEditDescription={openEditor}
+										onEditGenres={openEditor}
+										onDraftDescriptionChange={setDraftDescription}
+										onDraftGenresChange={setDraftGenres}
+										onSave={save}
+										onCancel={() => setIsEditing(false)}
+									/>
+								</div>
 							</div>
 
-							<VoicesLine
-								description={description}
-								genreCount={genres.length}
-							/>
-
-							<div className="mt-1.5">
-								<TrackList tracks={tracks} songCount={playlist.songCount} />
-							</div>
+							<TrackList tracks={tracks} songCount={playlist.songCount} />
 						</div>
 					</div>
 				)}

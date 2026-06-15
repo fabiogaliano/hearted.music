@@ -41,7 +41,7 @@ export function RailRow({ playlist, onOpen, onAdd, onRemove }: RailRowProps) {
 					className={`mt-0.5 truncate text-[13px] leading-tight ${purpose ? "theme-text-muted" : "theme-text-muted italic opacity-60"}`}
 					style={{ fontFamily: fonts.body }}
 				>
-					{purpose ?? "No description yet"}
+					{purpose ?? "No matching intent yet"}
 				</div>
 			</div>
 
@@ -73,7 +73,7 @@ export function RailRow({ playlist, onOpen, onAdd, onRemove }: RailRowProps) {
 							event.stopPropagation();
 							onAdd(playlist.id);
 						}}
-						className="inline-flex flex-none cursor-pointer items-center gap-1 rounded-full border border-(--t-primary)/50 bg-(--t-surface) px-2.5 py-1.5 text-[11px] tracking-[0.12em] text-(--t-primary) uppercase transition-[color,border-color,background-color,transform] duration-150 hover:border-(--t-primary) hover:bg-(--t-primary) hover:text-(--t-text-on-primary) active:scale-[0.95]"
+						className="theme-border-color inline-flex flex-none cursor-pointer items-center gap-1 rounded-full border bg-(--t-surface) px-2.5 py-1.5 text-[11px] tracking-[0.12em] text-(--t-primary) uppercase transition-[color,border-color,background-color,transform] duration-150 hover:border-(--t-primary) hover:bg-(--t-primary) hover:text-(--t-text-on-primary) active:scale-[0.95]"
 						style={{ fontFamily: fonts.body }}
 					>
 						<span aria-hidden="true">＋</span> Add

@@ -10,6 +10,16 @@
 		filter: blur(4px);
 	}
 }
+/* A chip settles in as it's added — scale + de-blur, mirroring the prod genre
+   picker's gp-chip-in. Keyed by genre so only the newly-mounted chip animates;
+   the ones already on screen keep their place. */
+@keyframes xpl-chip-enter {
+	from {
+		opacity: 0;
+		transform: scale(0.95);
+		filter: blur(4px);
+	}
+}
 @keyframes xpl-shake {
 	0%,
 	100% {
@@ -43,6 +53,9 @@
 .xpl-reveal {
 	animation: xpl-reveal 260ms var(--ease-out-expo) both;
 }
+.xpl-chip-enter {
+	animation: xpl-chip-enter 220ms var(--ease-out-quart) both;
+}
 /* Over-cap feedback: a short shake when a 6th genre is attempted. */
 .xpl-shake {
 	animation: xpl-shake 220ms var(--ease-out-quart);
@@ -58,9 +71,56 @@
 
 @media (prefers-reduced-motion: reduce) {
 	.xpl-reveal,
+	.xpl-chip-enter,
 	.xpl-shake,
 	.xpl-track-enter,
 	.xpl-caption-enter {
 		animation: none;
 	}
+}
+
+/* The shared GenrePillsPicker is styled for a light surface; on the writing
+   surface's darker band its hairline border, muted labels and tint chips go
+   low-contrast (the same value problem the masthead pass fixed). These overrides
+   are scoped to .xpl-genres so prod styles.css is untouched, and the higher
+   specificity (.xpl-genres .genre-picker …) wins regardless of load order. The
+   popover stays as-is — it's its own --t-surface card and already reads fine. */
+/* The picker's built-in meter is replaced by the writing surface's own Genres
+   header — same <Label> component as Intent (so the two read identically) plus an
+   info affordance — so hide the prod one. */
+.xpl-genres .genre-picker .gp-meter {
+	display: none;
+}
+/* Selected chips go solid, matching the collapsed display's chips so editing and
+   reading show the same chip. */
+.xpl-genres .genre-picker .gp-chip {
+	color: var(--t-text-on-primary);
+	background: var(--t-primary);
+	border-color: transparent;
+}
+/* The "+ add genre" input pill + its prefix/placeholder need a darker edge and
+   readable hint text against the band. */
+.xpl-genres .genre-picker .gp-pill {
+	border-color: color-mix(in srgb, var(--t-text) 60%, transparent);
+}
+.xpl-genres .genre-picker .gp-pill-prefix,
+.xpl-genres .genre-picker .gp-pill-input::placeholder {
+	color: color-mix(in srgb, var(--t-text) 60%, var(--t-text-muted));
+	opacity: 1;
+}
+/* Quick-pick suggestion outlines. */
+.xpl-genres .genre-picker .gp-opt {
+	color: color-mix(in srgb, var(--t-text) 60%, var(--t-text-muted));
+	border-color: color-mix(in srgb, var(--t-text) 35%, transparent);
+}
+.xpl-genres .genre-picker .gp-opt:hover {
+	color: var(--t-text);
+	border-color: var(--t-text-muted);
+}
+/* "No match" is a gentle "keep typing" cue, not an error, so it gets no red at
+   all — point the local invalid token at the neutral muted text token and the
+   invalid pill (border/fill/text) and empty-results message all read as a quiet
+   muted state. The over-cap shake is what signals "can't add". */
+.xpl-genres .genre-picker {
+	--t-invalid: var(--t-text-muted);
 }

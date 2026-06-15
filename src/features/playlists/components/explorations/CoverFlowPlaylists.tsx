@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
 import { CoverFlowShelf } from "./CoverFlowShelf";
@@ -27,13 +27,39 @@ export function CoverFlowPlaylists({
 	onAdd = () => {},
 	onRemove = () => {},
 }: CoverFlowPlaylistsProps) {
-	const matching = playlists.filter((p) => p.isTarget);
 	const library = playlists.filter((p) => !p.isTarget);
+
+	// The matching shelf is ordered by when each playlist was added, not by the
+	// underlying library order — otherwise adding one out of sequence would slot its
+	// cover into the middle and shove the others around. Newly added ids append to
+	// the end; ids already matching at mount keep their original relative order.
+	const [order, setOrder] = useState<string[]>(() =>
+		playlists.filter((p) => p.isTarget).map((p) => p.id),
+	);
+	const matching = useMemo(() => {
+		const rank = new Map(order.map((id, index) => [id, index]));
+		return playlists
+			.filter((p) => p.isTarget)
+			.sort(
+				(a, b) =>
+					(rank.get(a.id) ?? Number.POSITIVE_INFINITY) -
+					(rank.get(b.id) ?? Number.POSITIVE_INFINITY),
+			);
+	}, [playlists, order]);
 
 	const [center, setCenter] = useState(0);
 	const max = Math.max(0, matching.length - 1);
 	const clampCenter = (next: number) =>
 		setCenter(Math.max(0, Math.min(max, next)));
+
+	// Adding appends the playlist to the end of the matching order and glides the
+	// flow to it — so it always enters at a predictable spot (the end) rather than
+	// reshuffling the existing covers. Its new slot is the current matching count.
+	const handleAdd = (id: string) => {
+		onAdd(id);
+		setOrder((prev) => [...prev.filter((x) => x !== id), id]);
+		setCenter(matching.length);
+	};
 
 	// Keyboard nav drives the matching cover flow through the shared shortcut
 	// registry (scope "matching"), so ←/→ and the Vim h/l pair stay in sync with
@@ -118,7 +144,7 @@ export function CoverFlowPlaylists({
 				onCenterChange={clampCenter}
 				onActivate={() => {}}
 				onOpen={onOpen}
-				onAdd={onAdd}
+				onAdd={handleAdd}
 				onRemove={onRemove}
 				chrome="chapter"
 			/>
@@ -147,7 +173,7 @@ export function CoverFlowPlaylists({
 								key={playlist.id}
 								playlist={playlist}
 								onOpen={onOpen}
-								onAdd={onAdd}
+								onAdd={handleAdd}
 								onRemove={onRemove}
 							/>
 						))

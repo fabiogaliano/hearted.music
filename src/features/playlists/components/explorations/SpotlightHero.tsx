@@ -3,15 +3,23 @@ import { Cover } from "./Cover";
 import { TargetToggle } from "./TargetToggle";
 import type { PlaylistSummary } from "./types";
 
-// Tier the serif title down as the name gets longer, so a 90-char mixtape name
-// and a one-word playlist both sit comfortably in the hero.
+// Fluid title sized in container-query units so it tracks the title column's own
+// width, not the viewport (the column lives inside a sub-viewport panel, so vw
+// would compute the wrong size). Each tier's middle term is the slope-intercept
+// line through two anchors — minSize at a ~220px column (panel at its 520 floor)
+// and maxSize at a ~430px column (panel at its 760 ceiling), the column's real
+// travel after the cover, gaps and padding are subtracted. Computing the slope
+// this way (≈12cqi for short names, not a gentle 8) is what makes the title
+// visibly grow with the panel instead of sitting pinned near its min. Longer
+// names step the whole line down so they wrap to a sane height rather than
+// shrinking to nothing.
 function titleSize(name: string): string {
 	const n = name.length;
-	if (n > 90) return "1.7rem";
-	if (n > 60) return "2rem";
-	if (n > 36) return "2.5rem";
-	if (n > 20) return "3.1rem";
-	return "3.5rem";
+	if (n > 90) return "clamp(1.2rem, calc(0.57rem + 4.6cqi), 1.8rem)";
+	if (n > 60) return "clamp(1.35rem, calc(0.56rem + 5.7cqi), 2.1rem)";
+	if (n > 36) return "clamp(1.5rem, calc(0.45rem + 7.6cqi), 2.5rem)";
+	if (n > 20) return "clamp(1.7rem, calc(0.34rem + 9.9cqi), 3rem)";
+	return "clamp(1.9rem, calc(0.22rem + 12.2cqi), 3.5rem)";
 }
 
 interface SpotlightHeroProps {
@@ -20,10 +28,12 @@ interface SpotlightHeroProps {
 }
 
 /**
- * The Spotlight header: a large cover beside the title under a faint theme-hue
- * wash — desaturated and clamped to the active theme, never raw cover color — so
- * the header has presence without the bloom that hurt legibility. The wash and
- * cover bleed to the panel edges via negative margins matching its padding.
+ * The Spotlight masthead: cover beside title on a hue-tinted band a clear tonal step
+ * darker than the panel bg, so it reads as a distinct zone — value, not faint tint,
+ * is what registers in this low-chroma palette. The body sits lighter below, giving
+ * top-to-bottom hierarchy without borders or cards. The redundant membership kicker
+ * is gone (the toggle states it). The band bleeds to the panel edges via negative
+ * margins matching its padding.
  */
 export function SpotlightHero({
 	playlist,
@@ -31,30 +41,25 @@ export function SpotlightHero({
 }: SpotlightHeroProps) {
 	return (
 		<div
-			className="theme-border-color -mx-5 -mt-[30px] mb-7 flex flex-col items-start gap-[18px] border-b px-5 pt-8 pb-7 md:-mx-10 md:-mt-[34px] md:flex-row md:items-end md:gap-7 md:px-10"
+			className="-mx-5 -mt-[30px] mb-0 flex flex-col items-start gap-5 px-5 pt-9 pb-8 md:-mx-10 md:-mt-[34px] md:flex-row md:items-center md:gap-8 md:px-10 md:pr-20"
 			style={{
 				background:
-					"linear-gradient(170deg, color-mix(in srgb, var(--t-primary) 9%, var(--t-bg)), var(--t-bg) 78%)",
+					"color-mix(in srgb, var(--t-primary) 12%, var(--t-surface-dim))",
 			}}
 		>
-			<Cover
-				src={playlist.imageUrl}
-				size={196}
-				className="flex-none"
-				style={{
-					boxShadow:
-						"0 26px 50px -22px color-mix(in srgb, var(--t-text) 60%, transparent), inset 0 0 0 1px rgba(0,0,0,0.08)",
-				}}
-			/>
-			<div className="min-w-0 pb-1">
-				<p
-					className="theme-text-muted text-[11px] tracking-[0.18em] uppercase"
-					style={{ fontFamily: fonts.body }}
-				>
-					{playlist.isTarget ? "In matching" : "In library"}
-				</p>
+			<div className="aspect-square w-full max-w-[260px] flex-none md:w-[clamp(150px,16vw,184px)] md:max-w-none">
+				<Cover
+					src={playlist.imageUrl}
+					size="fill"
+					style={{
+						boxShadow:
+							"0 12px 30px -18px color-mix(in srgb, var(--t-text) 42%, transparent), inset 0 0 0 1px rgba(0,0,0,0.08)",
+					}}
+				/>
+			</div>
+			<div className="@container flex min-w-0 flex-1 flex-col gap-5 md:max-w-[34rem]">
 				<h2
-					className="theme-text mt-3 leading-none font-extralight tracking-tight text-balance"
+					className="theme-text leading-[1.04] font-extralight tracking-tight text-balance break-words"
 					style={{
 						fontFamily: fonts.display,
 						fontSize: titleSize(playlist.name),
@@ -62,15 +67,7 @@ export function SpotlightHero({
 				>
 					{playlist.name}
 				</h2>
-				<div
-					className="theme-text-muted mt-3 flex flex-wrap items-center gap-2 text-[13px]"
-					style={{ fontFamily: fonts.body }}
-				>
-					<span>
-						{playlist.songCount} {playlist.songCount === 1 ? "song" : "songs"}
-					</span>
-				</div>
-				<div className="mt-[18px]">
+				<div>
 					<TargetToggle
 						isTarget={playlist.isTarget}
 						onToggle={onToggleTarget}

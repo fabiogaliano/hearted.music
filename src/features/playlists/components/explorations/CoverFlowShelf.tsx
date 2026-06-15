@@ -324,10 +324,11 @@ export function CoverFlowShelf({
 							No matching candidates yet
 						</p>
 						<p
-							className="theme-text-muted max-w-[34ch] text-[13px]"
+							className="theme-text-muted max-w-[46ch] text-[13px] text-pretty"
 							style={{ fontFamily: fonts.body }}
 						>
-							Add playlists from your library below to start matching.
+							Add playlists from your library below — each one's description is
+							how your liked songs find their homes.
 						</p>
 					</div>
 				</div>

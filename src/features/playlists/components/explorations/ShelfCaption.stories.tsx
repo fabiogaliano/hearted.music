@@ -5,7 +5,7 @@ import { ShelfCaption } from "./ShelfCaption";
 /**
  * The caption under a cover-flow stage. `isTarget` flips the matching control
  * between "Add to matching" and the quiet "In matching" state; `hasPurpose`
- * drops the description so the bare name + count layout can be checked.
+ * drops the intent so the bare name + count layout can be checked.
  */
 export default { title: "Playlists/Explorations/Components" };
 
@@ -18,7 +18,6 @@ export const ShelfCaptionStory: Story<{
 		...base,
 		isTarget,
 		intent: hasPurpose ? base.intent : null,
-		spotifyDescription: hasPurpose ? base.spotifyDescription : null,
 	};
 	return (
 		<div className="theme-bg p-10">
