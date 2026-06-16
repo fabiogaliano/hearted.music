@@ -3,10 +3,15 @@
  * These are hand-curated matches — no DB rows involved.
  */
 
-interface DemoPlaylist {
+export interface DemoPlaylist {
 	id: string;
 	name: string;
+	/** A short "what this playlist is for" blurb. Not shown as a pre-filled intent
+	 * in the flag-playlists preview (playlists start blank there), but kept so
+	 * Phase 4 can reuse these strings as ready-made intent examples. */
 	reason: string;
+	/** Cover served from /public/demo-playlists; omitted → the ♫ placeholder. */
+	imageUrl?: string;
 }
 
 interface DemoSongMatch {
@@ -22,33 +27,48 @@ interface DemoMatchPlaylist {
 	matchScore: number;
 }
 
-const DEMO_PLAYLISTS: readonly DemoPlaylist[] = [
+export const DEMO_PLAYLISTS: readonly DemoPlaylist[] = [
 	{
 		id: "1",
 		name: "crying in the car",
 		reason: "for when you're driving and it hits you",
+		imageUrl: "/demo-playlists/crying-in-the-car.webp",
 	},
-	{ id: "2", name: "sweaty and happy", reason: "movement that feels good" },
+	{
+		id: "2",
+		name: "golden hour bike ride",
+		reason: "movement that feels good",
+		imageUrl: "/demo-playlists/biking-sunset-city.webp",
+	},
 	{
 		id: "3",
 		name: "feeling everything",
 		reason: "songs that meet you where you are",
+		imageUrl: "/demo-playlists/feeling-everything.webp",
 	},
 	{
 		id: "4",
 		name: "main character energy",
 		reason: "when you need to feel like the point",
+		imageUrl: "/demo-playlists/main-character-energy.webp",
 	},
 	{
 		id: "5",
 		name: "3am thoughts",
 		reason: "the spiral, but make it beautiful",
+		imageUrl: "/demo-playlists/3am-thoughts.webp",
 	},
-	{ id: "6", name: "sunday softness", reason: "no urgency, just warmth" },
+	{
+		id: "6",
+		name: "sunday softness",
+		reason: "no urgency, just warmth",
+		imageUrl: "/demo-playlists/sunday-softness.webp",
+	},
 	{
 		id: "7",
 		name: "revenge era",
 		reason: "when done-with-it becomes a superpower",
+		imageUrl: "/demo-playlists/revenge-era.webp",
 	},
 ] as const;
 

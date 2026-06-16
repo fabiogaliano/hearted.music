@@ -17,6 +17,9 @@ interface CoverFlowPlaylistsProps {
 	 * would otherwise slide the covers around underneath the open panel.
 	 */
 	detailOpen?: boolean;
+	/** Hide the search field — the onboarding playlist preview keeps the surface
+	 * focused on flagging and has nothing to search. */
+	showSearch?: boolean;
 }
 
 /**
@@ -34,6 +37,7 @@ export function CoverFlowPlaylists({
 	onAdd = () => {},
 	onRemove = () => {},
 	detailOpen = false,
+	showSearch = true,
 }: CoverFlowPlaylistsProps) {
 	const library = playlists.filter((p) => !p.isTarget);
 
@@ -172,44 +176,46 @@ export function CoverFlowPlaylists({
 					Playlists
 				</h1>
 
-				<label className="relative flex items-center gap-2 pb-2.5">
-					<input
-						ref={searchRef}
-						type="search"
-						value={query}
-						onChange={(event) => setQuery(event.target.value)}
-						placeholder="Search"
-						aria-label="Search playlists"
-						className="peer theme-text w-24 border-0 bg-transparent pl-2 text-sm tracking-wide outline-none transition-[width] duration-200 placeholder:text-(--t-text-muted) placeholder:opacity-70 placeholder:transition-opacity placeholder:duration-200 focus:w-32 focus:placeholder:opacity-100 sm:w-32 sm:focus:w-48 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
-						style={{ fontFamily: fonts.body }}
-					/>
-					<button
-						type="button"
-						onClick={() => {
-							setQuery("");
-							searchRef.current?.focus();
-						}}
-						aria-label="Clear search"
-						aria-hidden={query.length === 0}
-						tabIndex={query.length === 0 ? -1 : 0}
-						className={`theme-text-muted shrink-0 transition-opacity duration-150 ${
-							query.length > 0
-								? "cursor-pointer opacity-70 hover:opacity-100"
-								: "pointer-events-none opacity-0"
-						}`}
-					>
-						<XIcon size={12} weight="regular" />
-					</button>
-					<MagnifyingGlassIcon
-						size={13}
-						weight="regular"
-						className="theme-text-muted shrink-0 transition-[color,transform] duration-200 peer-focus:scale-110 peer-focus:text-(--t-text)"
-					/>
-					<span
-						aria-hidden="true"
-						className="theme-primary-bg pointer-events-none absolute inset-x-0 -bottom-px h-px opacity-0 transition-opacity duration-200 peer-focus:opacity-100"
-					/>
-				</label>
+				{showSearch && (
+					<label className="relative flex items-center gap-2 pb-2.5">
+						<input
+							ref={searchRef}
+							type="search"
+							value={query}
+							onChange={(event) => setQuery(event.target.value)}
+							placeholder="Search"
+							aria-label="Search playlists"
+							className="peer theme-text w-24 border-0 bg-transparent pl-2 text-sm tracking-wide outline-none transition-[width] duration-200 placeholder:text-(--t-text-muted) placeholder:opacity-70 placeholder:transition-opacity placeholder:duration-200 focus:w-32 focus:placeholder:opacity-100 sm:w-32 sm:focus:w-48 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
+							style={{ fontFamily: fonts.body }}
+						/>
+						<button
+							type="button"
+							onClick={() => {
+								setQuery("");
+								searchRef.current?.focus();
+							}}
+							aria-label="Clear search"
+							aria-hidden={query.length === 0}
+							tabIndex={query.length === 0 ? -1 : 0}
+							className={`theme-text-muted shrink-0 transition-opacity duration-150 ${
+								query.length > 0
+									? "cursor-pointer opacity-70 hover:opacity-100"
+									: "pointer-events-none opacity-0"
+							}`}
+						>
+							<XIcon size={12} weight="regular" />
+						</button>
+						<MagnifyingGlassIcon
+							size={13}
+							weight="regular"
+							className="theme-text-muted shrink-0 transition-[color,transform] duration-200 peer-focus:scale-110 peer-focus:text-(--t-text)"
+						/>
+						<span
+							aria-hidden="true"
+							className="theme-primary-bg pointer-events-none absolute inset-x-0 -bottom-px h-px opacity-0 transition-opacity duration-200 peer-focus:opacity-100"
+						/>
+					</label>
+				)}
 			</header>
 
 			{isSearching ? (

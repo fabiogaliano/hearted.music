@@ -11,7 +11,7 @@ executing and you have everything you need. Do **not** read the whole file to do
 
 - [x] **Phase 1 — Reorder steps + handle migration + guard tests** ✅ done 2026-06-16
 - [x] **Phase 2 — Preview-routing skeleton (`flag-playlists` → real `/playlists`)** ✅ done 2026-06-16
-- [ ] Phase 3 — Sandbox data in `/playlists` preview (canned playlists + local actions) · _audited, plan needs revision_
+- [x] **Phase 3 — Sandbox data in `/playlists` preview (canned playlists + local actions)** ✅ done 2026-06-16
 - [ ] Phase 4 — Salvage the intent shuffle into the real writing surface · _audited, **wrong target component** — see corrections_
 - [ ] Phase 5 — Fully-fake match reveal + `/liked-songs` sandbox · _audited 2026-06-16_
 - [ ] Phase 6 — Retire bespoke flag components · _audited, delete-list incomplete_
@@ -315,7 +315,45 @@ branch in the route (`playlists.tsx`), not the screen component.
 
 ---
 
-## Phase 3 — Sandbox data in the `/playlists` preview
+## Phase 3 — Sandbox data in the `/playlists` preview — ✅ DONE (2026-06-16)
+
+> **✅ Completed.** Built the audit's RECOMMENDED REVISION (a parallel sandbox screen, not a `sandbox?`
+> prop). All audit corrections re-verified against live code first; all held. What shipped:
+> - **`demo-matches.ts`:** `export`ed `DEMO_PLAYLISTS` + the `DemoPlaylist` type. The `reason` blurbs are
+>   **kept on the data** (not mapped to intent) so Phase 4 can reuse them as ready-made intent examples —
+>   per the human's note. No copy added.
+> - **New `src/features/playlists/SandboxPlaylistsCoverFlowScreen.tsx`:** drives the already-presentational
+>   `CoverFlowPlaylists` + `SpotlightPanel` from local `useState` — `targetIds: Set`, `metadata: Map<id,{intent,
+>   genres}>`, `selectedId`. Shapes `DEMO_PLAYLISTS → PlaylistSummary` with `imageUrl` from the optional
+>   `DemoPlaylist.imageUrl` (all 7 covers in `/public/demo-playlists/`, **webp q80**, capped at 1000px longest
+>   edge — `crying-in-the-car`, `golden hour bike ride`, `feeling-everything`, `main-character-energy`
+>   (top-cropped), `3am-thoughts` (left-cropped), `sunday-softness`, `revenge-era`; folder ≈304K total),
+>   `songCount: 0` (keeps the
+>   panel's "No tracks yet" honest), `tracks={[]}`. Local open (no route nav) sidesteps the `$playlistRef` loader
+>   that bounces canned ids. (Also renamed demo id "2" `"sweaty and happy"` → `"golden hour bike ride"`.)
+>   Mirrors the production screen's `lastShown` pattern for a clean close slide-out. **Nothing hits the server.**
+> - **`playlists.tsx`:** loader **skips** the production `playlistManagementQueryOptions` fetch when
+>   `onboardingSession.status === "flag-playlists"` (context carries the session, like `match.tsx`). Component
+>   branches to a `PlaylistsPreview` that renders the sandbox screen + a fixed continue bar
+>   (`useStepNavigation().navigateTo("pick-demo-song")`, `disabled` while pending). Continue does **not** persist
+>   targets — it's a rehearsal; local state is discarded. Button label is a `TODO(copy)` placeholder (Phase 7).
+>
+> **Human decisions made this phase (D-Phase3):**
+> - **Initial matching state = NONE flagged.** All 7 start in the Library rail; the Matching cover-flow opens
+>   empty and renders `CoverFlowShelf`'s polished "No matching candidates yet" invitation (existing prod copy).
+>   The user flags playlists into matching themselves — teaches the flag action from a clean slate.
+> - **Intents start BLANK** (`intent: null`), not pre-filled from `reason`. The user writes/picks an intent via
+>   the existing `WritingSurface` edit mode (Phase 4 adds the shuffle to make this one-click).
+>
+> **Carried into Phase 5 (refines D1):** the flagged set is now **local sandbox state that starts empty** — there's
+> no pre-flagged subset to key the match reveal off. If Phase 5 wants "restrict the reveal to flagged ids," that
+> set is whatever the user flagged in this rehearsal (and it doesn't survive the `navigateTo` to pick-demo-song —
+> the sandbox screen unmounts). Most coherent options remain (a) show all 7 or (c) cosmetic canned matches.
+>
+> **Verify:** `bun run typecheck` 0 errors; `biome check` clean (after import-organize); full suite 2274 passed /
+> 8 skipped / 0 failed. No new test file — the sandbox screen is thin local-state glue over already-tested
+> presentational components, and an integration render would need the keyboard/animation provider stack for
+> little signal. Visual confirmation (covers, flag toggle, panel) is an in-app check, not yet run.
 
 > **⚠ Audit corrections (2026-06-16):**
 > - **CONFIRMED** — `DEMO_PLAYLISTS` is 7 entries `{id,name,reason}`, ids `"1"`–`"7"`, not
