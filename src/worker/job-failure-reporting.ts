@@ -1,10 +1,7 @@
 import { captureException } from "@sentry/bun";
 
 interface WorkerJobFailureContext {
-	workflow:
-		| "enrichment"
-		| "match_snapshot_refresh"
-		| "walkthrough_match_preview";
+	workflow: "enrichment" | "match_snapshot_refresh";
 	jobId: string;
 	accountId: string;
 }

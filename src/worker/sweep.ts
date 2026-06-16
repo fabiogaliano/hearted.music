@@ -12,10 +12,6 @@ import {
 	sweepStaleLibraryProcessingJobs,
 } from "@/lib/platform/jobs/library-processing-queue";
 import type { Job } from "@/lib/platform/jobs/repository";
-import {
-	markDeadWalkthroughPreviewJobs,
-	sweepStaleWalkthroughPreviewJobs,
-} from "@/lib/platform/jobs/walkthrough-preview-queue";
 import type { DbError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import { deleteOrphanedSyncPayloads } from "@/lib/workflows/extension-sync/payload-cleanup";
@@ -54,8 +50,6 @@ export type SweepDeps = {
 	markDeadLibraryProcessingJobs: SweepRpc;
 	recoverDeadLetteredLibraryProcessingJobs: RecoverDeadLetteredFn;
 	recoverTerminalLibraryProcessingRefs: RecoverTerminalRefsFn;
-	sweepStaleWalkthroughPreviewJobs: SweepRpc;
-	markDeadWalkthroughPreviewJobs: SweepRpc;
 	sweepStaleExtensionSyncJobs: SweepRpc;
 	markDeadExtensionSyncJobs: SweepRpc;
 	deleteOrphanedSyncPayloads: DeleteOrphanedPayloadsFn;
@@ -70,8 +64,6 @@ export function createDefaultSweepDeps(): SweepDeps {
 		markDeadLibraryProcessingJobs,
 		recoverDeadLetteredLibraryProcessingJobs,
 		recoverTerminalLibraryProcessingRefs,
-		sweepStaleWalkthroughPreviewJobs,
-		markDeadWalkthroughPreviewJobs,
 		sweepStaleExtensionSyncJobs,
 		markDeadExtensionSyncJobs,
 		deleteOrphanedSyncPayloads,
@@ -167,36 +159,6 @@ export async function runSweepTick(deps: SweepDeps): Promise<void> {
 					recoveryStrategy: r.recoveryStrategy,
 				});
 			}
-		}
-	});
-
-	await runStep("sweep-stale-preview-jobs", async () => {
-		const sweptPreview = await deps.sweepStaleWalkthroughPreviewJobs(
-			deps.staleThreshold,
-		);
-		if (Result.isError(sweptPreview)) {
-			log.error("preview-sweep-error", { error: sweptPreview.error.message });
-		} else if (sweptPreview.value.length > 0) {
-			log.info("swept-stale-preview-jobs", {
-				count: sweptPreview.value.length,
-				jobIds: sweptPreview.value.map((j) => j.id),
-			});
-		}
-	});
-
-	await runStep("mark-dead-preview-jobs", async () => {
-		const deadPreview = await deps.markDeadWalkthroughPreviewJobs(
-			deps.staleThreshold,
-		);
-		if (Result.isError(deadPreview)) {
-			log.error("preview-dead-letter-error", {
-				error: deadPreview.error.message,
-			});
-		} else if (deadPreview.value.length > 0) {
-			log.warn("dead-lettered-preview-jobs", {
-				count: deadPreview.value.length,
-				jobIds: deadPreview.value.map((j) => j.id),
-			});
 		}
 	});
 

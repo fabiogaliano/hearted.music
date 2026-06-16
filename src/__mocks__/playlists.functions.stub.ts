@@ -3,9 +3,9 @@
  *
  * The real module is a TanStack server-function file: its handlers pull drizzle /
  * postgres / supabase (node-only) into the module graph, which can't bundle for
- * the browser. The OnboardingDescriptionDialog story reaches this module
- * transitively (genre quick-picks query + the pills autosave hook), so aliasing
- * the whole module here severs that chain.
+ * the browser. The playlist detail stories (genre quick-picks query + the pills
+ * autosave hook) reach this module transitively, so aliasing the whole module
+ * here severs that chain.
  *
  * Only the exports the Ladle graph references are provided. savePlaylistGenrePills
  * is controllable so a story can exercise the autosave error toast; the others

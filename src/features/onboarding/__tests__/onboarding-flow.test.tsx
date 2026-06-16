@@ -15,7 +15,6 @@ import {
 } from "@/test/fixtures";
 import {
 	mockGoToStep,
-	setupFlagPlaylistsScrollMock,
 	setupListNavigationMock,
 	setupOnboardingNavigationMock,
 	setupShortcutMock,
@@ -23,20 +22,15 @@ import {
 import { render, screen, within } from "@/test/utils/render";
 import { Onboarding } from "../Onboarding";
 
-const mockSavePlaylistTargets = vi.fn();
 const mockSaveThemePreference = vi.fn();
 const mockUseLocation = vi.fn(() => ({ state: {} }));
 
 vi.mock("../hooks/useOnboardingNavigation", () =>
 	setupOnboardingNavigationMock(),
 );
-vi.mock("../hooks/useFlagPlaylistsScroll", () =>
-	setupFlagPlaylistsScrollMock(),
-);
 vi.mock("@/lib/keyboard/useListNavigation", () => setupListNavigationMock());
 vi.mock("@/lib/keyboard/useShortcut", () => setupShortcutMock());
 vi.mock("@/lib/server/onboarding.functions", () => ({
-	savePlaylistTargets: (args: unknown) => mockSavePlaylistTargets(args),
 	saveThemePreference: (args: unknown) => mockSaveThemePreference(args),
 }));
 
@@ -44,19 +38,6 @@ vi.mock("../components/SyncingStep", () => ({
 	SyncingStep: ({ phaseJobIds }: { phaseJobIds: unknown }) => (
 		<div data-testid="syncing-step-phase-job-ids">
 			{phaseJobIds === null ? "null" : "non-null"}
-		</div>
-	),
-}));
-
-// Stub the teaching dialog so the flag-playlists step doesn't pull the real
-// dialog's TanStack Query (genre quick-picks) into this provider-light
-// integration render; selecting a playlist opens it on every pick now.
-vi.mock("../components/OnboardingDescriptionDialog", () => ({
-	OnboardingDescriptionDialog: ({ onClose }: { onClose: () => void }) => (
-		<div data-testid="onboarding-description-dialog">
-			<button type="button" onClick={onClose} data-testid="dialog-close">
-				close
-			</button>
 		</div>
 	),
 }));
@@ -102,7 +83,6 @@ describe("Onboarding Flow", () => {
 		vi.clearAllMocks();
 		mockUseLocation.mockReturnValue({ state: {} });
 		mockGoToStep.mockResolvedValue(undefined);
-		mockSavePlaylistTargets.mockResolvedValue(undefined);
 		mockSaveThemePreference.mockResolvedValue(undefined);
 	});
 

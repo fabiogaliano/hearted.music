@@ -1,7 +1,6 @@
 /**
  * Pick demo song step — user selects a song to demonstrate matching.
- * Full-bleed layout with horizontal-scrolling CD case grid,
- * mirroring FlagPlaylistsStep's visual treatment.
+ * Full-bleed layout with a horizontal-scrolling CD case grid.
  */
 
 import { ArrowRightIcon } from "@phosphor-icons/react";

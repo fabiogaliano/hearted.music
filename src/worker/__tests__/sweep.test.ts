@@ -54,8 +54,6 @@ function makeDeps(overrides: Partial<SweepDeps> = {}): SweepDeps {
 		markDeadLibraryProcessingJobs: vi.fn().mockResolvedValue(Result.ok([])),
 		recoverDeadLetteredLibraryProcessingJobs: vi.fn().mockResolvedValue([]),
 		recoverTerminalLibraryProcessingRefs: vi.fn().mockResolvedValue([]),
-		sweepStaleWalkthroughPreviewJobs: vi.fn().mockResolvedValue(Result.ok([])),
-		markDeadWalkthroughPreviewJobs: vi.fn().mockResolvedValue(Result.ok([])),
 		sweepStaleExtensionSyncJobs: vi.fn().mockResolvedValue(Result.ok([])),
 		markDeadExtensionSyncJobs: vi.fn().mockResolvedValue(Result.ok([])),
 		deleteOrphanedSyncPayloads: vi.fn().mockResolvedValue(undefined),
@@ -99,7 +97,7 @@ describe("runSweepTick", () => {
 		logMod = await import("@/lib/observability/logger");
 	});
 
-	it("calls all four RPCs with the stale threshold", async () => {
+	it("calls the library-processing sweep RPCs with the stale threshold", async () => {
 		const deps = makeDeps();
 		await runSweepTick(deps);
 
@@ -107,12 +105,6 @@ describe("runSweepTick", () => {
 			"5 minutes",
 		);
 		expect(deps.markDeadLibraryProcessingJobs).toHaveBeenCalledWith(
-			"5 minutes",
-		);
-		expect(deps.sweepStaleWalkthroughPreviewJobs).toHaveBeenCalledWith(
-			"5 minutes",
-		);
-		expect(deps.markDeadWalkthroughPreviewJobs).toHaveBeenCalledWith(
 			"5 minutes",
 		);
 	});
@@ -144,43 +136,6 @@ describe("runSweepTick", () => {
 		expect(logMod.log.warn).toHaveBeenCalledWith("dead-lettered-jobs", {
 			count: 1,
 			jobIds: ["d-1"],
-		});
-	});
-
-	it("logs swept walkthrough preview jobs", async () => {
-		const jobs = [
-			makeJob({
-				id: "p-1",
-				type: "walkthrough_match_preview" as Job["type"],
-			}),
-		];
-		const deps = makeDeps({
-			sweepStaleWalkthroughPreviewJobs: vi
-				.fn()
-				.mockResolvedValue(Result.ok(jobs)),
-		});
-
-		await runSweepTick(deps);
-
-		expect(logMod.log.info).toHaveBeenCalledWith("swept-stale-preview-jobs", {
-			count: 1,
-			jobIds: ["p-1"],
-		});
-	});
-
-	it("logs dead-lettered walkthrough preview jobs as warnings", async () => {
-		const jobs = [makeJob({ id: "dp-1" })];
-		const deps = makeDeps({
-			markDeadWalkthroughPreviewJobs: vi
-				.fn()
-				.mockResolvedValue(Result.ok(jobs)),
-		});
-
-		await runSweepTick(deps);
-
-		expect(logMod.log.warn).toHaveBeenCalledWith("dead-lettered-preview-jobs", {
-			count: 1,
-			jobIds: ["dp-1"],
 		});
 	});
 
@@ -229,43 +184,7 @@ describe("runSweepTick", () => {
 		});
 	});
 
-	it("logs errors from preview sweep RPC without throwing", async () => {
-		const dbErr = new DatabaseError({
-			code: "500",
-			message: "preview sweep rpc failed",
-		});
-		const deps = makeDeps({
-			sweepStaleWalkthroughPreviewJobs: vi
-				.fn()
-				.mockResolvedValue(Result.err(dbErr)),
-		});
-
-		await runSweepTick(deps);
-
-		expect(logMod.log.error).toHaveBeenCalledWith("preview-sweep-error", {
-			error: "preview sweep rpc failed",
-		});
-	});
-
-	it("logs errors from preview dead-letter RPC without throwing", async () => {
-		const dbErr = new DatabaseError({
-			code: "500",
-			message: "preview dead-letter rpc failed",
-		});
-		const deps = makeDeps({
-			markDeadWalkthroughPreviewJobs: vi
-				.fn()
-				.mockResolvedValue(Result.err(dbErr)),
-		});
-
-		await runSweepTick(deps);
-
-		expect(logMod.log.error).toHaveBeenCalledWith("preview-dead-letter-error", {
-			error: "preview dead-letter rpc failed",
-		});
-	});
-
-	it("continues through all four RPCs even when earlier ones error", async () => {
+	it("continues through the sweep RPCs even when earlier ones error", async () => {
 		const dbErr = new DatabaseError({ code: "500", message: "fail" });
 		const deps = makeDeps({
 			sweepStaleLibraryProcessingJobs: vi
@@ -274,21 +193,13 @@ describe("runSweepTick", () => {
 			markDeadLibraryProcessingJobs: vi
 				.fn()
 				.mockResolvedValue(Result.err(dbErr)),
-			sweepStaleWalkthroughPreviewJobs: vi
-				.fn()
-				.mockResolvedValue(Result.err(dbErr)),
-			markDeadWalkthroughPreviewJobs: vi
-				.fn()
-				.mockResolvedValue(Result.err(dbErr)),
 		});
 
 		await runSweepTick(deps);
 
 		expect(deps.sweepStaleLibraryProcessingJobs).toHaveBeenCalled();
 		expect(deps.markDeadLibraryProcessingJobs).toHaveBeenCalled();
-		expect(deps.sweepStaleWalkthroughPreviewJobs).toHaveBeenCalled();
-		expect(deps.markDeadWalkthroughPreviewJobs).toHaveBeenCalled();
-		expect(logMod.log.error).toHaveBeenCalledTimes(4);
+		expect(logMod.log.error).toHaveBeenCalledTimes(2);
 	});
 
 	it("calls recovery for dead-lettered library-processing jobs", async () => {
@@ -507,12 +418,8 @@ describe("runSweepTick", () => {
 
 		await runSweepTick(deps);
 
-		expect(deps.sweepStaleWalkthroughPreviewJobs).toHaveBeenCalledWith(
-			"5 minutes",
-		);
-		expect(deps.markDeadWalkthroughPreviewJobs).toHaveBeenCalledWith(
-			"5 minutes",
-		);
+		expect(deps.sweepStaleExtensionSyncJobs).toHaveBeenCalledWith("5 minutes");
+		expect(deps.markDeadExtensionSyncJobs).toHaveBeenCalledWith("5 minutes");
 	});
 
 	it("calls deleteSyncPayload for each claimed payload path", async () => {

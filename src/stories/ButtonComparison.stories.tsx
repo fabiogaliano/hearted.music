@@ -793,7 +793,6 @@ export const NotMigrated: Story = () => {
 						>
 							Choose a different plan
 						</button>
-						{/* FlagPlaylistsStep */}
 						<button
 							type="button"
 							className="theme-text-muted min-h-11 cursor-pointer text-sm underline"
@@ -801,7 +800,6 @@ export const NotMigrated: Story = () => {
 						>
 							Select all
 						</button>
-						{/* FlagPlaylistsStep */}
 						<button
 							type="button"
 							className="theme-text-muted min-h-11 cursor-pointer text-sm underline"

@@ -14,7 +14,7 @@ executing and you have everything you need. Do **not** read the whole file to do
 - [x] **Phase 3 — Sandbox data in `/playlists` preview (canned playlists + local actions)** ✅ done 2026-06-16
 - [x] **Phase 4 — Salvage the intent shuffle into the real writing surface** ✅ done 2026-06-16
 - [x] **Phase 5 — Fully-fake match reveal + `/liked-songs` sandbox** ✅ done 2026-06-16
-- [ ] Phase 6 — Retire bespoke flag components · _audited, delete-list incomplete_
+- [x] **Phase 6 — Retire bespoke flag components** ✅ done 2026-06-16 (UI/test core + full server-side teardown incl. DROP migration recreating `job_type`)
 - [ ] Phase 7 — Copy pass (deferred; interactive, not for an agent)
 
 > **Audit note (2026-06-16):** Phases 2–6 were verified against the real code (read-only)
@@ -666,6 +666,78 @@ proceeds to `install-extension`. `bun run test` green.
 ---
 
 ## Phase 6 — Retire bespoke flag components
+
+> **✅ UI/test core done (2026-06-16).** All audit corrections re-verified against live code first; all held except stale line numbers (Phase 2 had already trimmed `onboarding-flow.test.tsx`). What shipped:
+> - **Deleted (git rm):** `FlagPlaylistsStep.tsx`, `OnboardingDescriptionDialog.tsx` + `.stories.tsx`,
+>   `FlagPlaylistsStep.test.tsx`, **and** `PlaylistWritingSurface.tsx` + `.stories.tsx` (orphaned once the
+>   dialog — its only non-story importer — was gone; confirmed no consolidation needed, `explorations/WritingSurface`
+>   is the surviving surface).
+> - **`Onboarding.tsx`:** no edit needed — Phase 2 already nulled the `flag-playlists` render and dropped the import.
+> - **`onboarding-flow.test.tsx` surgery:** the plan's `"renders flag-playlists step"` block (`:150-156`) was
+>   **already removed in Phase 2**; what remained dead and got removed now = the `useFlagPlaylistsScroll` vi.mock
+>   (+ its `setupFlagPlaylistsScrollMock` import), the `OnboardingDescriptionDialog` vi.mock, and the
+>   `savePlaylistTargets` mock refs (var + factory entry + beforeEach reset). Kept `saveThemePreference` and the
+>   generic list-nav/shortcut mocks (still relevant to the surviving welcome/pick-color/syncing tests).
+> - **Stale comments fixed** (to satisfy the grep-clean criterion + the no-dead-reference rule): `PickDemoSongStep.tsx`
+>   header (dropped "mirroring FlagPlaylistsStep"), `ButtonComparison.stories.tsx` (two `{/* FlagPlaylistsStep */}`
+>   labels), `playlists.functions.stub.ts` header, and **`ladle-vite.config.ts:81`** (the `playlists.functions` alias
+>   comment named the deleted dialog — the alias itself stays; `SpotlightPanel`/`WritingSurface` stories still need it).
+> - **Kept — `useFlagPlaylistsScroll.ts`** (`PickDemoSongStep` uses it) **and `setupFlagPlaylistsScrollMock`**
+>   (`src/test/mocks.ts`): now unreferenced, but it mocks a still-live hook, so it's a valid test utility, not dead
+>   product code (unused export ≠ lint error). Left in place.
+> - **Verify:** `grep` for `FlagPlaylistsStep`/`OnboardingDescriptionDialog`/`PlaylistWritingSurface` in `src` → **0
+>   matches**; `bun run typecheck` 0 errors; `biome check` clean on touched files; full suite **2271 passed / 8
+>   skipped** (down exactly 9 = the deleted `FlagPlaylistsStep.test.tsx`'s 9 cases; no regressions).
+>
+> **✅ Server-side dead-code teardown — DONE (2026-06-16; full teardown + DROP migration, per human decision).**
+> Retiring the UI orphaned the whole `walkthrough-match-preview` subsystem (worker poll loop, job queue,
+> sweep/recovery RPCs, a Postgres table + status enum + a `job_type` enum value across 3 migrations) plus two
+> orphaned server fns — all removed. Inventory of what was dead and got removed:
+> - **`savePlaylistTargets`** (server fn, `onboarding.functions.ts:558`) — zero production callers after
+>   `FlagPlaylistsStep`. Contained prune: the fn + local `playlistIdsInputSchema` + the now-unused imports
+>   (`setPlaylistTargets`, `OnboardingChanges`, `applyLibraryProcessingChange` — each used *only* here) + the stub
+>   export (`__mocks__/onboarding.functions.stub.ts:91`). `getOrCreatePreferences` is shared — keep.
+> - **`getDemoSongMatches`** (server fn, `:786`) — no UI caller since Phase 5 (only `onboarding.demo-matches.test.ts`
+>   exercises it). NOTE: `getDemoMatchesForSong` (the *data* helper) is **not** dead — `Landing.tsx:196` uses it.
+> - **The workflow + its triggers:** `lib/workflows/walkthrough-match-preview/` (orchestrator/runner/service/queries
+>   + tests), `lib/platform/jobs/walkthrough-preview-queue.ts`, `worker/poll-walkthrough-preview.ts` + its wiring in
+>   `worker/index.ts`, the sweep entries in `worker/sweep.ts` (+ `worker/__tests__/sweep.test.ts`), and the ensure
+>   helpers in `onboarding.functions.ts` (`awaitWalkthroughPreviewEnsure`/`fireAndForgetWalkthroughPreviewEnsure`/
+>   `logPreviewEnsureOutcome`). After pruning `savePlaylistTargets`, the **last live trigger** is the
+>   `awaitWalkthroughPreviewEnsure` call in `commitDemoSongAndEnterWalkthrough` (`:703`, fired by the live
+>   `PickDemoSongStep`) — killing the workflow means removing that call too.
+> - **DB:** `20260428000001_create_walkthrough_match_preview.sql` (table), `..._walkthrough_preview_recovery.sql`
+>   (RPCs), `..._add_walkthrough_preview_job_type.sql` (enum value). A full teardown needs a new **DROP migration**
+>   (irreversible; enum-value removal in Postgres is awkward). A code-only teardown can leave the empty table/RPCs/enum
+>   in place (fully reversible).
+>
+> **Migration — `20260616150000_drop_walkthrough_match_preview.sql`:** drops the `walkthrough_match_preview` table,
+> the `walkthrough_preview_status` enum, the 3 claim/recovery RPCs, and the walkthrough partial unique index. Removing
+> the `walkthrough_match_preview` value from `job_type` can't be done in place (Postgres), so the type is recreated
+> (rename → create-without-the-value → re-point `job.type` → drop old). A dry-run surfaced that this *also* forces
+> drop+recreate of **9 unrelated `job` partial indexes** whose predicates bind `job_type` literals (sync, enrichment,
+> rematch, match_snapshot_refresh, lightweight-enrichment, target_playlist_match_refresh, extension_sync,
+> library-processing) — flagged to the human, who chose full removal. The migration drops all 10 predicate indexes and
+> recreates the 9 survivors verbatim from their live defs. The **entire** migration was validated end-to-end in a
+> rolled-back transaction before writing the file, then applied to local (`supabase migration up`) and
+> `database.types.ts` regenerated (drops `walkthrough_match_preview` from `JobType`).
+>
+> **TS removed/edited:** deleted the workflow dir (`lib/workflows/walkthrough-match-preview/` + its 4 tests),
+> `lib/platform/jobs/walkthrough-preview-queue.ts`, `worker/poll-walkthrough-preview.ts`, and
+> `lib/server/__tests__/onboarding.demo-matches.test.ts`. Pruned `savePlaylistTargets`, `getDemoSongMatches`,
+> `parsePreviewMatches`, the ensure helpers, the `DemoMatchPlaylist`/`DemoMatchResult` types (+ their stub exports),
+> and the now-unused imports from `onboarding.functions.ts`; removed the `commitDemoSongAndEnterWalkthrough` ensure
+> call; cut the walkthrough wiring from `worker/index.ts`, `worker/sweep.ts` (+ its test), and dropped the
+> `walkthrough_match_preview` member from `worker/job-failure-reporting.ts`; fixed stale comments in
+> `worker/poll-extension-sync.ts` and `onboarding.functions.ts`.
+>
+> **Verify:** `src` grep-clean of every dead-subsystem term; `bun run typecheck` 0 errors; `biome check` clean;
+> full suite **2243 passed / 8 skipped** (215 files; −5 deleted test files, −28 tests, all intentional). DB sanity:
+> `job_type` 16 values, table + status enum dropped, `job` indexes 16 → 15.
+>
+> **Follow-up (not code):** an OpenSpec doc still references the removed jobs —
+> `openspec/specs/background-enrichment-worker/spec.md:349` (and an archived change). Left for the OpenSpec
+> sync/archive workflow rather than hand-edited here.
 
 > **⚠ Audit corrections (2026-06-16):**
 > - **Clarify scope** — Phase 6 removes the bespoke *components*, NOT the `flag-playlists`

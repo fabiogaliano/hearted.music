@@ -52,19 +52,6 @@ export interface OnboardingData extends OnboardingAuthPayload {
 	}>;
 }
 
-export interface DemoMatchPlaylist {
-	id: string;
-	name: string;
-	description: string | null;
-	songCount: number | null;
-	score: number;
-}
-
-export type DemoMatchResult =
-	| { status: "ready"; matches: DemoMatchPlaylist[]; isDemo: boolean }
-	| { status: "pending" }
-	| { status: "unavailable" };
-
 // Re-export shared session types so downstream ladle stories can consume
 // them through this stub without knowing the domain module path.
 export type { OnboardingAuthPayload, OnboardingSession, WalkthroughSong };
@@ -88,12 +75,6 @@ export const saveOnboardingStep = reject as unknown as (opts: {
 	data: { step: string };
 }) => Promise<void>;
 export const markOnboardingComplete = reject as unknown as () => Promise<void>;
-export const savePlaylistTargets = reject as unknown as (opts: {
-	data: { playlistIds: string[] };
-}) => Promise<void>;
-
-export const getDemoSongMatches =
-	reject as unknown as () => Promise<DemoMatchResult>;
 export const saveDemoSongSelection = reject as unknown as (opts: {
 	data: { spotifyTrackId: string };
 }) => Promise<{ success: true }>;

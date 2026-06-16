@@ -8,7 +8,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
-import { getDemoMatchesForSong } from "@/lib/content/landing/demo-matches";
 import type { LandingSongManifest } from "@/lib/content/landing/landing-songs";
 import { getLandingSongsManifest } from "@/lib/content/landing/landing-songs.server";
 import { createAdminSupabaseClient } from "@/lib/data/client";
@@ -38,7 +37,6 @@ import {
 	getPlaylistCount,
 	getPlaylistSongCount,
 	getPlaylists,
-	setPlaylistTargets,
 } from "@/lib/domains/library/playlists/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import {
@@ -51,19 +49,7 @@ import {
 	loadWalkthroughSong,
 } from "@/lib/server/onboarding-session";
 import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
-import { errorMessage } from "@/lib/shared/errors/error-message";
 import { themeSchema } from "@/lib/theme/types";
-import { OnboardingChanges } from "@/lib/workflows/library-processing/changes/onboarding";
-import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
-import {
-	computePreviewFingerprint,
-	getWalkthroughPreview,
-	type WalkthroughPreviewMatch,
-} from "@/lib/workflows/walkthrough-match-preview/queries";
-import {
-	type EnsurePreviewOutcome,
-	ensureWalkthroughPreview,
-} from "@/lib/workflows/walkthrough-match-preview/service";
 
 /** Playlist view model for onboarding UI (camelCase frontend format) */
 export interface OnboardingPlaylist {
@@ -118,58 +104,6 @@ const themeInputSchema = z.object({
 const saveableStepInputSchema = z.object({
 	step: SAVEABLE_ONBOARDING_STEPS,
 });
-
-const playlistIdsInputSchema = z.object({
-	playlistIds: z.array(z.uuid()),
-});
-
-type PreviewEnsureSource =
-	| "save_playlist_targets"
-	| "commit_demo_song"
-	| "get_demo_song_matches";
-
-function logPreviewEnsureOutcome(args: {
-	accountId: string;
-	source: PreviewEnsureSource;
-	outcome: EnsurePreviewOutcome;
-}) {
-	console.info("[onboarding] walkthrough preview ensure outcome", {
-		accountId: args.accountId,
-		source: args.source,
-		outcome: args.outcome,
-	});
-}
-
-async function awaitWalkthroughPreviewEnsure(args: {
-	accountId: string;
-	demoSongId: string;
-	source: PreviewEnsureSource;
-}): Promise<void> {
-	try {
-		const outcome = await ensureWalkthroughPreview({
-			accountId: args.accountId,
-			demoSongId: args.demoSongId,
-		});
-		logPreviewEnsureOutcome({
-			accountId: args.accountId,
-			source: args.source,
-			outcome,
-		});
-	} catch (err) {
-		console.warn(
-			"[onboarding] ensure walkthrough preview failed:",
-			errorMessage(err),
-		);
-	}
-}
-
-function fireAndForgetWalkthroughPreviewEnsure(args: {
-	accountId: string;
-	demoSongId: string;
-	source: PreviewEnsureSource;
-}) {
-	void awaitWalkthroughPreviewEnsure(args);
-}
 
 /**
  * Full page-data loader used by the `/onboarding` route. Supersets the
@@ -550,55 +484,6 @@ export const markOnboardingComplete = createServerFn({
 		};
 	});
 
-/**
- * Saves target playlist selection (batch update).
- * Takes an array of playlist IDs to mark as targets.
- * All other playlists for this account will be unmarked.
- */
-export const savePlaylistTargets = createServerFn({ method: "POST" })
-	.middleware([authMiddleware])
-	.inputValidator(playlistIdsInputSchema)
-	.handler(async ({ data, context }): Promise<{ success: true }> => {
-		const { session } = context;
-
-		const targetsResult = await setPlaylistTargets(
-			session.accountId,
-			data.playlistIds,
-		);
-		if (Result.isError(targetsResult)) {
-			throw new OnboardingError("update_playlist_targets", targetsResult.error);
-		}
-
-		const applyResult = await applyLibraryProcessingChange(
-			OnboardingChanges.targetSelectionConfirmed(session.accountId),
-		);
-		if (Result.isError(applyResult)) {
-			console.error(
-				"[onboarding] library-processing apply failed:",
-				applyResult.error,
-			);
-		}
-
-		// If the user has already chosen a demo song (e.g. they navigated back to
-		// edit targets), invalidate the existing preview by rotating its
-		// fingerprint and ensuring a new background job. The preview row's
-		// `target_playlist_ids` is what we score against, so it must mirror the
-		// user's latest selection.
-		const prefsForPreview = await getOrCreatePreferences(session.accountId);
-		if (
-			Result.isOk(prefsForPreview) &&
-			prefsForPreview.value.demo_song_id !== null
-		) {
-			await awaitWalkthroughPreviewEnsure({
-				accountId: session.accountId,
-				demoSongId: prefsForPreview.value.demo_song_id,
-				source: "save_playlist_targets",
-			});
-		}
-
-		return { success: true };
-	});
-
 const saveDemoSongSelectionInputSchema = z.object({
 	spotifyTrackId: z.string().min(1),
 });
@@ -630,9 +515,8 @@ export const saveDemoSongSelection = createServerFn({ method: "POST" })
 
 		// No ownership check: the demo songs shown in pick-demo-song are a curated
 		// landing manifest, not the user's library, so most won't be in their
-		// liked_song rows. The walkthrough preview enriches and scores any song by
-		// id (see executeWalkthroughPreview), and real ownership is enforced later
-		// where it matters — in addSongToPlaylist/dismissSong post-onboarding.
+		// liked_song rows. Real ownership is enforced later where it matters — in
+		// addSongToPlaylist/dismissSong post-onboarding.
 		const { error: updateError } = await supabase
 			.from("user_preferences")
 			.update({ demo_song_id: song.id })
@@ -700,12 +584,6 @@ export const commitDemoSongAndEnterWalkthrough = createServerFn({
 			console.warn("Failed to clear phase job IDs:", clearResult.error);
 		}
 
-		await awaitWalkthroughPreviewEnsure({
-			accountId: session.accountId,
-			demoSongId: song.id,
-			source: "commit_demo_song",
-		});
-
 		return loadOnboardingSession({
 			accountId: session.accountId,
 			accountHandle: context.account.handle,
@@ -760,189 +638,3 @@ export const getWalkthroughCompanionSongs = createServerFn({ method: "GET" })
 
 		return songs.filter((s): s is WalkthroughSong => s !== null);
 	});
-
-/** Match result for a single playlist in the demo song showcase */
-export interface DemoMatchPlaylist {
-	id: string;
-	name: string;
-	description: string | null;
-	songCount: number | null;
-	score: number;
-}
-
-/** Result of matching the demo song against target playlists */
-export type DemoMatchResult =
-	| { status: "ready"; matches: DemoMatchPlaylist[]; isDemo: boolean }
-	| { status: "pending" }
-	| { status: "unavailable" };
-
-/**
- * Fetches match results for the demo song against the user's target playlists.
- * No-playlists path: returns static demo matches immediately.
- * Real-playlists path: returns live match results from the match snapshot.
- * Returns "pending" if the match snapshot hasn't been published yet,
- * "unavailable" if no demo song is selected, or "ready" with sorted matches.
- */
-export const getDemoSongMatches = createServerFn({ method: "GET" })
-	.middleware([authMiddleware])
-	.handler(async ({ context }): Promise<DemoMatchResult> => {
-		const { session } = context;
-
-		const prefsResult = await getOrCreatePreferences(session.accountId);
-		if (Result.isError(prefsResult)) {
-			return { status: "unavailable" };
-		}
-
-		const demoSongId = prefsResult.value.demo_song_id;
-		if (!demoSongId) {
-			return { status: "unavailable" };
-		}
-
-		// Check if user has target playlists
-		const playlistsResult = await getPlaylists(session.accountId);
-		const hasTargetPlaylists =
-			Result.isOk(playlistsResult) &&
-			playlistsResult.value.some((p) => p.is_target);
-
-		if (!hasTargetPlaylists) {
-			// No-playlists path: look up spotify_id, return static demo matches
-			const supabase = createAdminSupabaseClient();
-			const { data: song } = await supabase
-				.from("song")
-				.select("spotify_id")
-				.eq("id", demoSongId)
-				.single();
-
-			if (!song) {
-				return { status: "unavailable" };
-			}
-
-			const demoMatches = getDemoMatchesForSong(song.spotify_id);
-			const matches: DemoMatchPlaylist[] = demoMatches.map((m) => ({
-				id: m.id,
-				name: m.name,
-				description: m.reason,
-				songCount: null,
-				score: m.matchScore,
-			}));
-
-			return { status: "ready", matches, isDemo: true };
-		}
-
-		// Real-playlists path: read from the dedicated walkthrough preview row.
-		// Deliberately does NOT touch match_snapshot / match_result — production
-		// matching filters by minScoreThreshold and entitled-candidate
-		// membership, which would routinely drop the demo song.
-		const targetPlaylistIds = playlistsResult.value
-			.filter((p) => p.is_target)
-			.map((p) => p.id)
-			.toSorted();
-		const expectedFingerprint = computePreviewFingerprint(
-			demoSongId,
-			targetPlaylistIds,
-		);
-
-		const previewResult = await getWalkthroughPreview(session.accountId);
-		if (Result.isError(previewResult)) {
-			return { status: "pending" };
-		}
-
-		const preview = previewResult.value;
-
-		// `ready` is the only authoritative state. For anything else — missing
-		// row, stale fingerprint, or `pending`/`failed` with no live job — we
-		// fire ensure() and tell the UI to keep polling. ensure() is now
-		// job-aware, so it will not duplicate work when a live job is already
-		// running; it only creates fresh work when state is genuinely stranded.
-		const isReady =
-			preview !== null &&
-			preview.fingerprint === expectedFingerprint &&
-			preview.status === "ready";
-
-		if (!isReady) {
-			fireAndForgetWalkthroughPreviewEnsure({
-				accountId: session.accountId,
-				demoSongId,
-				source: "get_demo_song_matches",
-			});
-			return { status: "pending" };
-		}
-
-		if (!preview) {
-			// Unreachable thanks to isReady, but the type guard helps TypeScript
-			// narrow `preview` for the rest of the handler.
-			return { status: "pending" };
-		}
-
-		const previewMatches = parsePreviewMatches(preview.matches);
-		if (previewMatches.length === 0) {
-			return { status: "pending" };
-		}
-
-		const playlistIds = previewMatches.map((m) => m.playlistId);
-		const supabase = createAdminSupabaseClient();
-		const { data: playlistRows, error: playlistError } = await supabase
-			.from("playlist")
-			.select("id, name, match_intent, song_count")
-			.in("id", playlistIds);
-
-		if (playlistError || !playlistRows) {
-			return { status: "pending" };
-		}
-
-		const playlistMap = new Map(playlistRows.map((p) => [p.id, p]));
-
-		const matches: DemoMatchPlaylist[] = previewMatches
-			.map((m) => {
-				const playlist = playlistMap.get(m.playlistId);
-				if (!playlist) return null;
-				return {
-					id: playlist.id,
-					name: playlist.name,
-					description: playlist.match_intent,
-					songCount: playlist.song_count,
-					score: m.score,
-				};
-			})
-			.filter((m): m is DemoMatchPlaylist => m !== null)
-			.toSorted((a, b) => b.score - a.score);
-
-		return { status: "ready", matches, isDemo: false };
-	});
-
-/**
- * Decode the JSON `matches` column on a preview row into typed entries.
- * The DB column is JSONB so the runtime shape isn't enforced by the type
- * system — defensive parsing keeps the contract self-contained here instead
- * of leaking jsonb-typed shapes into the UI layer.
- */
-function parsePreviewMatches(value: unknown): WalkthroughPreviewMatch[] {
-	if (!Array.isArray(value)) return [];
-	const out: WalkthroughPreviewMatch[] = [];
-	for (const entry of value) {
-		if (
-			entry !== null &&
-			typeof entry === "object" &&
-			"playlistId" in entry &&
-			"score" in entry &&
-			typeof (entry as { playlistId: unknown }).playlistId === "string" &&
-			typeof (entry as { score: unknown }).score === "number"
-		) {
-			const e = entry as {
-				playlistId: string;
-				score: number;
-				factors?: { embedding?: number; audio?: number; genre?: number };
-			};
-			out.push({
-				playlistId: e.playlistId,
-				score: e.score,
-				factors: {
-					embedding: e.factors?.embedding ?? 0,
-					audio: e.factors?.audio ?? 0,
-					genre: e.factors?.genre ?? 0,
-				},
-			});
-		}
-	}
-	return out;
-}

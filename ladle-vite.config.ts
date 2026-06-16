@@ -78,7 +78,7 @@ export default defineConfig({
 				),
 			},
 			// playlists.functions pulls drizzle/postgres into the graph via its
-			// server-fn handlers. OnboardingDescriptionDialog reaches it through the
+			// server-fn handlers. The playlist detail stories reach it through the
 			// genre quick-picks query + pills autosave hook; the stub cuts that chain.
 			{
 				find: /^@\/lib\/server\/playlists\.functions$/,

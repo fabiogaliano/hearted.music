@@ -20,11 +20,6 @@ import {
 	startExtensionSyncPolling,
 	stopExtensionSyncPolling,
 } from "./poll-extension-sync";
-import {
-	getActiveWalkthroughPreviewJobCount,
-	startWalkthroughPreviewPolling,
-	stopWalkthroughPreviewPolling,
-} from "./poll-walkthrough-preview";
 import { shutdownPostHogOtel } from "./posthog-otel";
 import { runDefaultSweepTick, startDefaultSweep } from "./sweep";
 
@@ -44,11 +39,10 @@ async function main() {
 	const keepAlive = startKeepAlive();
 	const dbBackup = startDatabaseBackupScheduler();
 
-	// Awaited startup recovery pass. If the previous worker crashed mid-job,
-	// a stale preview row may still be `running` and holding the unique
-	// active-preview index — `ensureWalkthroughPreview` would then observe
-	// the dead job and skip creating fresh work. Doing this before any poll
-	// loop or claim path opens means the next ensure() sees a clean slate.
+	// Awaited startup recovery pass. If the previous worker crashed mid-job, a
+	// stale row may still be `running` and holding a unique active-job index,
+	// blocking fresh work for that account. Running the sweep before any poll
+	// loop or claim path opens means the loops start from a clean slate.
 	await runDefaultSweepTick();
 	// Reclaim any backfill job whose worker died mid-run before the loop opens,
 	// so an expired lease can't keep the selector wedged in backfill_active.
@@ -70,7 +64,6 @@ async function main() {
 
 		setShuttingDown();
 		stopPolling();
-		stopWalkthroughPreviewPolling();
 		stopExtensionSyncPolling();
 		stopAudioFeatureBackfillPolling();
 		await notifyListener.stop();
@@ -82,13 +75,11 @@ async function main() {
 		const deadline = Date.now() + workerConfig.drainTimeoutMs;
 		const drainPending = () =>
 			getActiveJobCount() > 0 ||
-			getActiveWalkthroughPreviewJobCount() > 0 ||
 			getActiveExtensionSyncJobCount() > 0 ||
 			getActiveAudioFeatureBackfillJobCount() > 0;
 		while (drainPending() && Date.now() < deadline) {
 			log.info("draining", {
 				activeJobs: getActiveJobCount(),
-				activePreviewJobs: getActiveWalkthroughPreviewJobCount(),
 				activeExtensionSyncJobs: getActiveExtensionSyncJobCount(),
 				activeAudioBackfillJobs: getActiveAudioFeatureBackfillJobCount(),
 				remainingMs: deadline - Date.now(),
@@ -99,7 +90,6 @@ async function main() {
 		if (drainPending()) {
 			log.warn("drain-timeout", {
 				activeJobs: getActiveJobCount(),
-				activePreviewJobs: getActiveWalkthroughPreviewJobCount(),
 				activeExtensionSyncJobs: getActiveExtensionSyncJobCount(),
 				activeAudioBackfillJobs: getActiveAudioFeatureBackfillJobCount(),
 			});
@@ -117,21 +107,8 @@ async function main() {
 	process.on("SIGTERM", () => shutdown("SIGTERM"));
 	process.on("SIGINT", () => shutdown("SIGINT"));
 
-	// Run the walkthrough preview poll loop concurrently. It uses a separate
-	// claim RPC, so the two loops never contend for the same row, but it
-	// shares the worker process for deployment simplicity.
-	const walkthroughPreviewLoop = startWalkthroughPreviewPolling().catch(
-		(err) => {
-			log.error("walkthrough-preview-poll-loop-error", { error: String(err) });
-			Sentry.captureException(err, {
-				tags: { loop: "walkthrough-preview" },
-			});
-		},
-	);
-
 	// Extension sync runs its own loop with a dedicated claim RPC so a large
-	// library sync can't starve enrichment / preview work, mirroring the
-	// walkthrough-preview isolation.
+	// library sync can't starve enrichment work.
 	const extensionSyncLoop = startExtensionSyncPolling().catch((err) => {
 		log.error("extension-sync-poll-loop-error", { error: String(err) });
 		Sentry.captureException(err, {
@@ -150,7 +127,6 @@ async function main() {
 	});
 
 	await startPolling();
-	await walkthroughPreviewLoop;
 	await extensionSyncLoop;
 	await audioBackfillLoop;
 

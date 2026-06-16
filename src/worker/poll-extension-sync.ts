@@ -1,9 +1,9 @@
 /**
  * Worker poll loop for extension_sync parent jobs.
  *
- * Sibling to the library-processing and walkthrough-preview loops: runs in the
- * same worker binary but uses a dedicated claim RPC so a long-running library
- * sync can neither starve enrichment nor be starved by it.
+ * Sibling to the library-processing loop: runs in the same worker binary but
+ * uses a dedicated claim RPC so a long-running library sync can neither starve
+ * enrichment nor be starved by it.
  *
  * The claim-and-dispatch cycle is factored out as a standalone function so the
  * LISTEN/NOTIFY listener (src/worker/notify-listener.ts) can drive it on a
