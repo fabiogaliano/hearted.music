@@ -18,6 +18,7 @@ import {
 	type LikedSongsPageResult,
 } from "@/lib/server/liked-songs.functions";
 import { getSongSuggestions } from "@/lib/server/matching.functions";
+import { getWalkthroughCompanionSongs } from "@/lib/server/onboarding.functions";
 import { generateSongSlug } from "@/lib/utils/slug";
 
 export type FilterOption = LikedSongFilter;
@@ -60,6 +61,16 @@ export function likedSongsStatsQueryOptions(accountId: string) {
 		queryKey: likedSongsKeys.stats(accountId),
 		queryFn: () => getLikedSongsStats(),
 		staleTime: 30 * 60_000,
+	});
+}
+
+// Curated companion songs for the song-walkthrough library. Static demo content,
+// identical for every account, so it never goes stale and isn't account-keyed.
+export function walkthroughCompanionsQueryOptions() {
+	return queryOptions({
+		queryKey: ["liked-songs", "walkthrough-companions"] as const,
+		queryFn: () => getWalkthroughCompanionSongs(),
+		staleTime: Number.POSITIVE_INFINITY,
 	});
 }
 

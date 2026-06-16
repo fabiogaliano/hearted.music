@@ -11,6 +11,7 @@ interface UseLikedSongsPageDataOptions {
 	selectedSlug?: string | null;
 	isWalkthrough: boolean;
 	walkthroughSong: WalkthroughSong | null;
+	companionSongs?: readonly WalkthroughSong[];
 	isEnrichmentRunning: boolean;
 }
 
@@ -21,6 +22,7 @@ export function useLikedSongsPageData({
 	selectedSlug,
 	isWalkthrough,
 	walkthroughSong,
+	companionSongs,
 	isEnrichmentRunning,
 }: UseLikedSongsPageDataOptions) {
 	const {
@@ -35,6 +37,7 @@ export function useLikedSongsPageData({
 		search,
 		isWalkthrough,
 		walkthroughSong,
+		companionSongs,
 	});
 
 	const { selectedSongFromUrl, selectedSongIdFromUrl, isSelectedSlugResolved } =

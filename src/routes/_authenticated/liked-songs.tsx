@@ -12,6 +12,7 @@ import {
 	likedSongsInfiniteQueryOptions,
 	resolveLikedSongsDeepLinkBootstrap,
 	seedLikedSongsDeepLinkCaches,
+	walkthroughCompanionsQueryOptions,
 } from "@/features/liked-songs/queries";
 
 type UrlSearchFilter = Exclude<SearchFilter, "all">;
@@ -70,6 +71,15 @@ export const Route = createFileRoute("/_authenticated/liked-songs")({
 	// in `song-walkthrough`, the DU guarantees `session.song` is populated.
 	// Illegal states (walkthrough without song) are unrepresentable.
 	loader: async ({ deps, context }) => {
+		// Song-walkthrough runs pre-sync: prefetch the curated companion songs so
+		// the library renders the full 6-song demo set without a pop-in after the
+		// hero. Static demo data, so this is cached forever after the first load.
+		if (context.onboardingSession.status === "song-walkthrough") {
+			await context.queryClient.ensureQueryData(
+				walkthroughCompanionsQueryOptions(),
+			);
+		}
+
 		// Deep link into the default (unfiltered, no-search) list: bootstrap the
 		// list cache with the contiguous prefix through the selected song so a
 		// cold reload renders it in-list (highlighted, scroll-centered,

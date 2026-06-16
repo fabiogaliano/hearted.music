@@ -11,9 +11,18 @@ interface UseLikedSongsCollectionOptions {
 	search?: string;
 	isWalkthrough: boolean;
 	walkthroughSong: WalkthroughSong | null;
+	/** Curated companion songs shown alongside the hero in the song-walkthrough
+	 * library. Empty outside the walkthrough. */
+	companionSongs?: readonly WalkthroughSong[];
 }
 
 const UNSETTLED_POLL_MS = 5_000;
+
+// The song-walkthrough library shows the hero plus a few curated companions.
+const WALKTHROUGH_LIBRARY_SIZE = 6;
+
+// Stable empty default so the displayedSongs memo identity doesn't churn.
+const NO_COMPANIONS: readonly WalkthroughSong[] = [];
 
 // A row is "unsettled" while its analysis is still in flight: `pending` and
 // `analyzing` are exactly the states that render the live "Listening" UI.
@@ -80,6 +89,7 @@ export function useLikedSongsCollection({
 	search,
 	isWalkthrough,
 	walkthroughSong,
+	companionSongs = NO_COMPANIONS,
 }: UseLikedSongsCollectionOptions) {
 	const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
 		useInfiniteQuery({
@@ -102,21 +112,35 @@ export function useLikedSongsCollection({
 	const displayedSongs = useMemo(() => {
 		if (!isWalkthrough || !walkthroughSong) return songs;
 
-		const realSong = songs.find((song) => song.track.id === walkthroughSong.id);
-		const syntheticSong = buildSyntheticLikedSong(walkthroughSong);
-		const demoSong: LikedSong = realSong
-			? {
-					...realSong,
-					displayState: "analyzed",
-					analysis: realSong.analysis ?? syntheticSong.analysis,
-				}
-			: syntheticSong;
-		const dedupedSongs = songs.filter(
-			(song) => song.track.id !== walkthroughSong.id,
+		// Hero first, then the curated companions, capped at the library size and
+		// deduped by id. Prefer a real synced row when one exists (post-sync), else
+		// the synthetic analyzed row built from the WalkthroughSong.
+		const walkthroughSongs = [walkthroughSong, ...companionSongs];
+		const includedIds = new Set<string>();
+		const walkthroughRows: LikedSong[] = [];
+		for (const ws of walkthroughSongs) {
+			if (includedIds.has(ws.id)) continue;
+			includedIds.add(ws.id);
+			const realSong = songs.find((song) => song.track.id === ws.id);
+			const syntheticSong = buildSyntheticLikedSong(ws);
+			walkthroughRows.push(
+				realSong
+					? {
+							...realSong,
+							displayState: "analyzed",
+							analysis: realSong.analysis ?? syntheticSong.analysis,
+						}
+					: syntheticSong,
+			);
+			if (walkthroughRows.length >= WALKTHROUGH_LIBRARY_SIZE) break;
+		}
+
+		const remainingSongs = songs.filter(
+			(song) => !includedIds.has(song.track.id),
 		);
 
-		return [demoSong, ...dedupedSongs];
-	}, [isWalkthrough, songs, walkthroughSong]);
+		return [...walkthroughRows, ...remainingSongs];
+	}, [isWalkthrough, songs, walkthroughSong, companionSongs]);
 
 	const displayedSongIndexById = useMemo(
 		() => new Map(displayedSongs.map((song, index) => [song.track.id, index])),

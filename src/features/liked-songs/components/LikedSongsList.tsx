@@ -164,11 +164,13 @@ export function LikedSongsList({
 					/>
 				)}
 				{data.visibleSongs.map((song) => {
-					const isDemoSong =
+					const isHeroSong =
 						walkthrough.isActive &&
 						walkthrough.songId !== null &&
 						song.track.id === walkthrough.songId;
-					const isSongEnabled = !walkthrough.isActive || isDemoSong;
+					// Every song is interactive now — in the walkthrough the hero is just
+					// visually spotlighted while the curated companions stay openable.
+					const isSongEnabled = true;
 					const navIndex = isSongEnabled
 						? (navigation.navIndexBySongId.get(song.track.id) ?? -1)
 						: -1;
@@ -197,7 +199,7 @@ export function LikedSongsList({
 							onToggleSelect={selection.onToggleSelect}
 							scrollMarginTop={selection.scrollMarginTop}
 							isEnabled={isSongEnabled}
-							isWalkthroughHighlight={!!isDemoSong && !navigation.isExpanded}
+							isWalkthroughHighlight={!!isHeroSong && !navigation.isExpanded}
 						/>
 					);
 				})}

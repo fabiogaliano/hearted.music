@@ -19,7 +19,10 @@ import {
 	deriveClaimHandleSeed,
 } from "@/lib/domains/library/accounts/claim-handle-seed";
 import { completeOnboardingWithAllocations } from "@/lib/domains/library/accounts/onboarding-allocation";
-import type { OnboardingAuthPayload } from "@/lib/domains/library/accounts/onboarding-session";
+import type {
+	OnboardingAuthPayload,
+	WalkthroughSong,
+} from "@/lib/domains/library/accounts/onboarding-session";
 import { clearsSyncPhaseJobIds } from "@/lib/domains/library/accounts/onboarding-steps";
 import {
 	clearPhaseJobIds,
@@ -45,6 +48,7 @@ import {
 import {
 	deriveAuthPayloadFromPrefs,
 	loadOnboardingSession,
+	loadWalkthroughSong,
 } from "@/lib/server/onboarding-session";
 import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
 import { errorMessage } from "@/lib/shared/errors/error-message";
@@ -706,6 +710,55 @@ export const commitDemoSongAndEnterWalkthrough = createServerFn({
 			accountId: session.accountId,
 			accountHandle: context.account.handle,
 		});
+	});
+
+// Curated demo songs used to populate the song-walkthrough /liked-songs library
+// alongside the user's picked hero song. Spotify track ids from the landing
+// manifest (public/landing-songs/index.json); each has a stored song_analysis,
+// so they render the same analyzed panel as the hero. Over-provisioned past the
+// 6-song target so the collection still fills out if the hero is one of these
+// (deduped client-side) or a row is missing.
+const WALKTHROUGH_COMPANION_SPOTIFY_IDS = [
+	"2MvvoeRt8NcOXWESkxWn3g", // Ribs — Lorde
+	"4OMJGnvZfDvsePyCwRGO7X", // Houdini — Dua Lipa
+	"7DfFc7a6Rwfi3YQMRbDMau", // Thinkin Bout You — Frank Ocean
+	"1Qrg8KqiBpW07V7PNxwwwL", // Kill Bill — SZA
+	"6dOtVTDdiauQNBQEDOtlAB", // BIRDS OF A FEATHER — Billie Eilish
+	"0VjIjW4GlUZAMYd2vXMi3b", // Blinding Lights — The Weeknd
+	"4Dvkj6JhhA12EX05fT7y2e", // As It Was — Harry Styles
+] as const;
+
+/**
+ * Loads the curated companion songs for the song-walkthrough /liked-songs
+ * library so the demo shows a fuller (canned) library instead of a single song.
+ * Returns fully-shaped `WalkthroughSong`s (real stored analyses) — identical in
+ * shape and quality to the hero — so the collection hook can render them through
+ * the same synthetic-row path. No ownership requirement: these are curated demo
+ * songs, not the user's library, and the walkthrough runs before sync.
+ */
+export const getWalkthroughCompanionSongs = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.handler(async (): Promise<WalkthroughSong[]> => {
+		const supabase = createAdminSupabaseClient();
+
+		const { data: rows } = await supabase
+			.from("song")
+			.select("id, spotify_id")
+			.in("spotify_id", [...WALKTHROUGH_COMPANION_SPOTIFY_IDS]);
+
+		if (!rows || rows.length === 0) return [];
+
+		// Preserve the curated order so the library reads the same every run.
+		const idBySpotifyId = new Map(rows.map((r) => [r.spotify_id, r.id]));
+		const orderedSongIds = WALKTHROUGH_COMPANION_SPOTIFY_IDS.map((sid) =>
+			idBySpotifyId.get(sid),
+		).filter((id): id is string => typeof id === "string");
+
+		const songs = await Promise.all(
+			orderedSongIds.map((id) => loadWalkthroughSong(supabase, id)),
+		);
+
+		return songs.filter((s): s is WalkthroughSong => s !== null);
 	});
 
 /** Match result for a single playlist in the demo song showcase */

@@ -13,7 +13,7 @@ executing and you have everything you need. Do **not** read the whole file to do
 - [x] **Phase 2 — Preview-routing skeleton (`flag-playlists` → real `/playlists`)** ✅ done 2026-06-16
 - [x] **Phase 3 — Sandbox data in `/playlists` preview (canned playlists + local actions)** ✅ done 2026-06-16
 - [x] **Phase 4 — Salvage the intent shuffle into the real writing surface** ✅ done 2026-06-16
-- [ ] Phase 5 — Fully-fake match reveal + `/liked-songs` sandbox · _audited 2026-06-16_
+- [x] **Phase 5 — Fully-fake match reveal + `/liked-songs` sandbox** ✅ done 2026-06-16
 - [ ] Phase 6 — Retire bespoke flag components · _audited, delete-list incomplete_
 - [ ] Phase 7 — Copy pass (deferred; interactive, not for an agent)
 
@@ -538,7 +538,64 @@ genres; Save persists (production path). `bun run test` green; move/Update any
 
 ---
 
-## Phase 5 — Fully-fake match reveal + `/liked-songs` sandbox
+## Phase 5 — Fully-fake match reveal + `/liked-songs` sandbox — ✅ DONE (2026-06-16)
+
+> **✅ Completed.** All audit corrections re-verified against live code first; all held. Two human decisions
+> reshaped the phase past its original prose:
+>
+> **Human decisions (2026-06-16):**
+> - **D1 → flagged set drives matching.** The flag-playlists rehearsal now *requires* flagging ≥3 playlists, that
+>   set persists across the demo, and it becomes the match-reveal's targets (not the song's own curated top-3).
+>   Because the hardcoded `DEMO_SONG_MATCHES` only scores each song's own ~3 playlists, a flagged playlist often
+>   has no curated score for the picked song. Per the human ("add scores even if really low, fill all cases"):
+>   **curated score where present, deterministic synthesized weak score (~0.12–0.41) for every gap** — so the
+>   reveal always shows exactly the flagged set, genuinely-tuned matches on top.
+> - **D2 → 6-song `/liked-songs` library.** The song-walkthrough library now shows the picked hero **plus 5
+>   curated companions pulled from the DB** (real `song_analysis`, identical shape/quality to the hero), all
+>   fully interactive (each opens its analyzed panel).
+>
+> **What shipped:**
+> - **`demo-matches.ts`:** new `getDemoMatchesForFlaggedPlaylists(spotifyTrackId, flaggedIds)` + private
+>   `synthesizeWeakMatchScore` (stable per song/playlist pair, band 0.12–0.41). Empty flagged set → falls back to
+>   `getDemoMatchesForSong` so the reveal is never empty (hard-refresh safety).
+> - **New `src/features/onboarding/demoSandboxStore.ts`:** tiny in-memory external store (`useSyncExternalStore`)
+>   for the flagged ids. Survives client-side navigation across the whole demo (flag-playlists → … →
+>   match-walkthrough are separate, remounting routes); resets on hard refresh. SSR-safe (stable empty server
+>   snapshot). Chosen over the session/server because the demo ids ("1"–"7") aren't real rows.
+> - **`SandboxPlaylistsCoverFlowScreen`:** flagged `targetIds` now read/write the store instead of local state
+>   (intents/selection stay local — they don't drive matching).
+> - **`playlists.tsx`:** the preview continue button is gated `disabled` until ≥3 flagged (`REQUIRED_FLAGGED_COUNT`).
+> - **`WalkthroughMatchContent.tsx`:** **stripped to fully-fake** — deleted the `matchReducer`, the 2s/12s
+>   `getDemoSongMatches` poll+timeout, and the dev-pane real/fallback machinery (no test covered it). Now reads
+>   the flagged store and renders `getDemoMatchesForFlaggedPlaylists(...)` synchronously (no loading state). The
+>   `navigateTo("install-extension")` advance and the presentational `MatchingSession` are unchanged.
+> - **D2 server wiring:** exported `loadWalkthroughSong` (`onboarding-session.ts`); new
+>   `getWalkthroughCompanionSongs` server fn (`onboarding.functions.ts`) loads a curated 7-id pool as
+>   `WalkthroughSong[]` (over-provisioned past the 6-song cap for hero-dedup/missing-row resilience);
+>   `walkthroughCompanionsQueryOptions` (`liked-songs/queries.ts`, staleTime ∞, not account-keyed — static).
+> - **D2 client wiring:** `useLikedSongsCollection` gains `companionSongs` → builds `[hero, …companions]`
+>   deduped + capped at 6 (then appends real synced rows, none pre-sync); threaded through
+>   `useLikedSongsPageData` → `LikedSongsPage` (a `useQuery` gated `enabled: isWalkthrough`) → prefetched in the
+>   `/liked-songs` route loader for song-walkthrough. `useLikedSongsListModel` drops the hero-only `navItems`
+>   filter (now spans all 6); `LikedSongsList` enables every walkthrough song (hero still spotlighted via
+>   `isWalkthroughHighlight`). `walkthroughSongId` removed from the list-model contract (+ its test).
+> - **Tests:** new `demo-matches.test.ts` (6 — curated/synth/empty-fallback/sort/filter/blurb); updated
+>   `useLikedSongsListModel.test.tsx` for the dropped param. Full suite **2280 passed / 8 skipped / 0 failed**;
+>   `bun run typecheck` 0 errors; `biome check` clean on all 16 touched files. No WalkthroughMatchContent test
+>   existed to break (the removed poll was untested). Visual/in-app confirmation (flag-3 gate, cross-step
+>   persistence, 6-song library, reveal) not yet run.
+>
+> **Server dead code (Part 4 — note for Phase 6, do NOT delete here):** `getDemoSongMatches` lost its only UI
+> caller; the `walkthrough-match-preview` workflow (worker/queue/service) is now read by nothing, yet is still
+> *fired* by `commitDemoSongAndEnterWalkthrough` (live — `PickDemoSongStep`) and `savePlaylistTargets` (dies with
+> `FlagPlaylistsStep` in Phase 6). Harmless wasted work pre-sync (no targets). Left intact; Phase 6 should prune
+> the now-unread server fn + workflow once `FlagPlaylistsStep`/`savePlaylistTargets` are removed, and may drop the
+> `awaitWalkthroughPreviewEnsure` call from `commitDemoSongAndEnterWalkthrough`. `onboarding.demo-matches.test.ts`
+> still passes (it exercises the untouched `getDemoSongMatches`).
+>
+> **Carried into Phase 6:** the new `demoSandboxStore` + `getDemoMatchesForFlaggedPlaylists` stay (production-path
+> demo infra). One minor cleanliness debt left in `LikedSongsList`: an always-true `isSongEnabled` flag the env's
+> tab-handling blocked me from collapsing cleanly — functionally correct, biome/type clean.
 
 > **⚠ Audit corrections (2026-06-16):**
 > - **CONFIRMED** — `WalkthroughMatchContent.tsx` has the full real-matching path:

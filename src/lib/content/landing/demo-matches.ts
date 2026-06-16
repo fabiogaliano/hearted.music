@@ -225,3 +225,66 @@ export function getDemoMatchesForSong(
 		};
 	});
 }
+
+// Deterministic "weak match" score (~0.12–0.41) for a song/playlist pair the
+// hand-tuned table doesn't cover. The onboarding demo lets the user flag any 3
+// playlists *before* picking a song, so the picked song often has no curated
+// score for a flagged playlist — this fills that gap with a stable, low,
+// plausible number so every flagged playlist still shows a (clearly weaker)
+// match instead of an empty slot. Stable per pair so a re-render never reshuffles
+// the reveal.
+function synthesizeWeakMatchScore(
+	spotifyTrackId: string,
+	playlistId: string,
+): number {
+	const seed = `${spotifyTrackId}:${playlistId}`;
+	let hash = 0;
+	for (let i = 0; i < seed.length; i++) {
+		hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+	}
+	return Math.round((0.12 + (hash % 30) / 100) * 100) / 100;
+}
+
+/**
+ * Match reveal for the onboarding demo: scores the picked song against the
+ * playlists the user flagged in the flag-playlists rehearsal, rather than the
+ * song's own curated top matches. Curated score where the table has one, a
+ * synthesized weak score otherwise — so the reveal always shows exactly the
+ * flagged set (genuinely-tuned matches sort to the top), descending by score.
+ *
+ * Falls back to the song's curated matches when no playlists were flagged
+ * (e.g. a hard refresh dropped the in-memory rehearsal state) so the reveal is
+ * never empty.
+ */
+export function getDemoMatchesForFlaggedPlaylists(
+	spotifyTrackId: string,
+	flaggedPlaylistIds: readonly string[],
+): DemoMatchPlaylist[] {
+	if (flaggedPlaylistIds.length === 0) {
+		return getDemoMatchesForSong(spotifyTrackId);
+	}
+
+	const curated =
+		DEMO_SONG_MATCHES[spotifyTrackId] ??
+		DEMO_SONG_MATCHES[DEFAULT_TRACK_ID] ??
+		[];
+	const curatedScoreById = new Map(curated.map((m) => [m.id, m.matchScore]));
+
+	return flaggedPlaylistIds
+		.map((id): DemoMatchPlaylist | null => {
+			const def = PLAYLIST_BY_ID.get(id);
+			if (!def) return null;
+			const matchScore =
+				curatedScoreById.get(id) ??
+				synthesizeWeakMatchScore(spotifyTrackId, id);
+			return {
+				id: def.id,
+				spotifyId: "",
+				name: def.name,
+				reason: def.reason,
+				matchScore,
+			};
+		})
+		.filter((m): m is DemoMatchPlaylist => m !== null)
+		.toSorted((a, b) => b.matchScore - a.matchScore);
+}

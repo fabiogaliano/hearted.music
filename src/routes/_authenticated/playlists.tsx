@@ -1,9 +1,14 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { Button } from "@/components/ui/Button";
+import { useFlaggedPlaylistIds } from "@/features/onboarding/demoSandboxStore";
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
 import { PlaylistsCoverFlowScreen } from "@/features/playlists/PlaylistsCoverFlowScreen";
 import { playlistManagementQueryOptions } from "@/features/playlists/queries";
 import { SandboxPlaylistsCoverFlowScreen } from "@/features/playlists/SandboxPlaylistsCoverFlowScreen";
+
+// The rehearsal asks the user to flag at least this many playlists into matching
+// before continuing; the flagged set then drives the canned match reveal.
+const REQUIRED_FLAGGED_COUNT = 3;
 
 export const Route = createFileRoute("/_authenticated/playlists")({
 	loader: async ({ context }) => {
@@ -38,6 +43,8 @@ function PlaylistsPage() {
 // sandbox state is discarded on continue.
 function PlaylistsPreview() {
 	const { navigateTo, isPending } = useStepNavigation();
+	const flaggedIds = useFlaggedPlaylistIds();
+	const hasEnoughFlagged = flaggedIds.length >= REQUIRED_FLAGGED_COUNT;
 
 	return (
 		<>
@@ -46,9 +53,10 @@ function PlaylistsPreview() {
 				<Button
 					variant="primary"
 					onClick={() => void navigateTo("pick-demo-song")}
-					disabled={isPending}
+					disabled={isPending || !hasEnoughFlagged}
 				>
-					{/* TODO(copy): continue-to-demo label */}
+					{/* TODO(copy): continue-to-demo label + a hint that 3 playlists must
+					    be flagged before this enables. */}
 					TODO(copy)
 				</Button>
 			</div>

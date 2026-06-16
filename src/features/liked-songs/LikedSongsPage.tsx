@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
@@ -25,7 +25,11 @@ import { useLikedSongsPageData } from "./hooks/useLikedSongsPageData";
 import { useSongExpansion } from "./hooks/useSongExpansion";
 import { useSongPlaylistSuggestions } from "./hooks/useSongPlaylistSuggestions";
 import { useSongUnlock } from "./hooks/useSongUnlock";
-import { clearLikedSongsPageLive, markLikedSongsPageLive } from "./queries";
+import {
+	clearLikedSongsPageLive,
+	markLikedSongsPageLive,
+	walkthroughCompanionsQueryOptions,
+} from "./queries";
 
 const LIST_TOP_GAP_PX = 24;
 const SEARCH_DEBOUNCE_MS = 250;
@@ -54,6 +58,14 @@ export function LikedSongsPage({
 			? onboardingSession.song
 			: null;
 	const isWalkthrough = walkthroughSong !== null;
+
+	// Pre-sync the walkthrough library has no real liked songs, so the picked hero
+	// is shown alongside a few curated companions (canned, analyzed) to make it
+	// read like a real library. Fetched only during the walkthrough.
+	const { data: companionSongs } = useQuery({
+		...walkthroughCompanionsQueryOptions(),
+		enabled: isWalkthrough,
+	});
 
 	const showSelectionUI =
 		!isWalkthrough &&
@@ -140,6 +152,7 @@ export function LikedSongsPage({
 		selectedSlug,
 		isWalkthrough,
 		walkthroughSong,
+		companionSongs,
 		isEnrichmentRunning,
 	});
 
@@ -239,7 +252,6 @@ export function LikedSongsPage({
 		hasNextPage,
 		isFetchingNextPage,
 		isWalkthrough,
-		walkthroughSongId: walkthroughSong?.id ?? null,
 		selectionMode,
 		showSelectionUI,
 		activeFilter: filter,

@@ -139,7 +139,7 @@ function deriveSession(
  * expected to handle the null case (and `deriveSession` encodes what that
  * null means for the session variant).
  */
-async function loadWalkthroughSong(
+export async function loadWalkthroughSong(
 	supabase: AdminSupabaseClient,
 	demoSongId: string | null,
 ): Promise<WalkthroughSong | null> {

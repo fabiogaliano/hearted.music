@@ -1,4 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+	setFlaggedPlaylistIds,
+	useFlaggedPlaylistIds,
+} from "@/features/onboarding/demoSandboxStore";
 import { DEMO_INTENT_EXAMPLES } from "@/lib/content/landing/demo-intent-examples";
 import { DEMO_PLAYLISTS } from "@/lib/content/landing/demo-matches";
 import { CoverFlowPlaylists } from "./components/explorations/CoverFlowPlaylists";
@@ -24,9 +28,13 @@ interface DemoMetadata {
  * route-based open) untouched — none of which a no-rows demo can satisfy.
  */
 export function SandboxPlaylistsCoverFlowScreen() {
-	// None flagged initially — the demo teaches the flag action from a clean
-	// slate (the Matching cover-flow starts empty, all 7 sit in the Library rail).
-	const [targetIds, setTargetIds] = useState<Set<string>>(() => new Set());
+	// Flagged set lives in the cross-step demo store (not local state) so the
+	// playlists the user flags here survive the navigation to /match and drive
+	// the canned match reveal. Starts empty — the demo teaches the flag action
+	// from a clean slate (the Matching cover-flow starts empty, all 7 sit in the
+	// Library rail).
+	const flaggedIds = useFlaggedPlaylistIds();
+	const targetIds = useMemo(() => new Set(flaggedIds), [flaggedIds]);
 	const [metadata, setMetadata] = useState<Map<string, DemoMetadata>>(
 		() => new Map(),
 	);
@@ -54,12 +62,10 @@ export function SandboxPlaylistsCoverFlowScreen() {
 	);
 
 	const toggleTarget = (id: string, isTarget: boolean) => {
-		setTargetIds((prev) => {
-			const next = new Set(prev);
-			if (isTarget) next.add(id);
-			else next.delete(id);
-			return next;
-		});
+		const next = new Set(targetIds);
+		if (isTarget) next.add(id);
+		else next.delete(id);
+		setFlaggedPlaylistIds([...next]);
 	};
 
 	const selected = useMemo(

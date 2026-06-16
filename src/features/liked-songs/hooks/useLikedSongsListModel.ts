@@ -11,7 +11,6 @@ interface UseLikedSongsListModelOptions {
 	hasNextPage: boolean | undefined;
 	isFetchingNextPage: boolean;
 	isWalkthrough: boolean;
-	walkthroughSongId: string | null;
 	selectionMode: boolean;
 	showSelectionUI: boolean;
 	activeFilter: SearchFilter;
@@ -24,7 +23,6 @@ export function useLikedSongsListModel({
 	hasNextPage,
 	isFetchingNextPage,
 	isWalkthrough,
-	walkthroughSongId,
 	selectionMode,
 	showSelectionUI,
 	activeFilter,
@@ -78,13 +76,10 @@ export function useLikedSongsListModel({
 		displayedSongIndexById,
 	});
 
-	const navItems = useMemo(
-		() =>
-			isWalkthrough && walkthroughSongId !== null
-				? displayedSongs.filter((song) => song.track.id === walkthroughSongId)
-				: visibleSongs,
-		[displayedSongs, isWalkthrough, visibleSongs, walkthroughSongId],
-	);
+	// The walkthrough library is fully navigable now that it holds the hero plus
+	// curated companions — keyboard nav and clicks span all of them, same as the
+	// real list. (The hero is still visually spotlighted by the list component.)
+	const navItems = visibleSongs;
 
 	const navIndexBySongId = useMemo(
 		() => new Map(navItems.map((song, index) => [song.track.id, index])),
