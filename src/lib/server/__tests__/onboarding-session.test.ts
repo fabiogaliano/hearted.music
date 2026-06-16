@@ -61,8 +61,11 @@ describe("deriveAuthPayloadFromPrefs — handle-collapse and completion authorit
 		vi.clearAllMocks();
 	});
 
-	// §14.1 / §14.7: handle-less pinning to claim-handle
-	it("pins to claim-handle when handle is null and step is after claim-handle", async () => {
+	// §14.1 / §14.7: handle-less pinning to claim-handle. In the fake-demo-first
+	// order the demo steps (flag-playlists, pick-demo-song, …) run BEFORE
+	// claim-handle, so a handle-less user there is NOT pinned — the demo is meant
+	// to run without a real account/handle.
+	it("does NOT pin when handle is null and step is flag-playlists (pre-claim demo)", async () => {
 		const prefs = makePrefs({ onboarding_step: "flag-playlists" });
 		const payload = await deriveAuthPayloadFromPrefs({
 			accountId: "acct-id",
@@ -70,10 +73,10 @@ describe("deriveAuthPayloadFromPrefs — handle-collapse and completion authorit
 			prefs,
 			supabase: stubSupabase,
 		});
-		expect(payload.session.status).toBe("claim-handle");
+		expect(payload.session.status).toBe("flag-playlists");
 	});
 
-	it("pins to claim-handle when handle is null and step is pick-demo-song", async () => {
+	it("does NOT pin when handle is null and step is pick-demo-song (pre-claim demo)", async () => {
 		const prefs = makePrefs({ onboarding_step: "pick-demo-song" });
 		const payload = await deriveAuthPayloadFromPrefs({
 			accountId: "acct-id",
@@ -81,7 +84,7 @@ describe("deriveAuthPayloadFromPrefs — handle-collapse and completion authorit
 			prefs,
 			supabase: stubSupabase,
 		});
-		expect(payload.session.status).toBe("claim-handle");
+		expect(payload.session.status).toBe("pick-demo-song");
 	});
 
 	it("pins to claim-handle when handle is null and step is plan-selection", async () => {
@@ -123,16 +126,16 @@ describe("deriveAuthPayloadFromPrefs — handle-collapse and completion authorit
 		expect(payload.session.status).toBe("syncing");
 	});
 
-	// With a valid handle, later steps are not pinned back
-	it("does NOT pin to claim-handle when handle is set and step is flag-playlists", async () => {
-		const prefs = makePrefs({ onboarding_step: "flag-playlists" });
+	// With a valid handle, steps at/after claim-handle are not pinned back
+	it("does NOT pin to claim-handle when handle is set and step is plan-selection", async () => {
+		const prefs = makePrefs({ onboarding_step: "plan-selection" });
 		const payload = await deriveAuthPayloadFromPrefs({
 			accountId: "acct-id",
 			accountHandle: "myhandle",
 			prefs,
 			supabase: stubSupabase,
 		});
-		expect(payload.session.status).toBe("flag-playlists");
+		expect(payload.session.status).toBe("plan-selection");
 	});
 
 	// Unknown/invalid step token falls back to welcome (before claim-handle → not pinned)

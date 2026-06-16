@@ -1,6 +1,6 @@
 /**
  * Syncing step - shows real-time progress from the extension during onboarding.
- * Auto-advances to claim-handle when the extension reports a completed sync.
+ * Auto-advances to pick-color when the extension reports a completed sync.
  */
 
 import { ArrowRightIcon } from "@phosphor-icons/react";
@@ -186,7 +186,7 @@ export function SyncingStep({ phaseJobIds: _phaseJobIds }: SyncingStepProps) {
 	const onSyncComplete = useEffectEvent(async () => {
 		// Don't auto-retry if a previous transition attempt already failed.
 		if (transitionFailed) return;
-		const result = await goToStep("claim-handle");
+		const result = await goToStep("pick-color");
 		if (result.status === "transition_failed") {
 			setTransitionFailed(true);
 			toast.error(

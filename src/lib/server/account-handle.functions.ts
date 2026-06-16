@@ -159,7 +159,7 @@ export const checkHandleAvailability = createServerFn({ method: "GET" })
 	);
 
 /**
- * Mutating claim: reserve the handle and advance onboarding to flag-playlists.
+ * Mutating claim: reserve the handle and advance onboarding to plan-selection.
  *
  * Idempotent for the same-handle re-entry path: if the account already owns
  * exactly this handle, reserved/profanity/taken checks are skipped so a stale

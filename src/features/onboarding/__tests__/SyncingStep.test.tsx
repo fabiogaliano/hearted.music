@@ -90,7 +90,7 @@ describe("SyncingStep", () => {
 		});
 	});
 
-	it("auto-advances to claim-handle after sync completion", async () => {
+	it("auto-advances to pick-color after sync completion", async () => {
 		mockGetExtensionStatus.mockResolvedValue({
 			hasToken: true,
 			tokenExpiresAtMs: null,
@@ -113,7 +113,7 @@ describe("SyncingStep", () => {
 		await waitFor(
 			() => {
 				// syncStats no longer threaded through router state — only step target
-				expect(mockGoToStep).toHaveBeenCalledWith("claim-handle");
+				expect(mockGoToStep).toHaveBeenCalledWith("pick-color");
 			},
 			{ timeout: 3_000 },
 		);

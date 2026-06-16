@@ -220,7 +220,7 @@ export function WalkthroughMatchContent({
 
 	const handleWalkthroughAction = useCallback(async () => {
 		if (isPending) return;
-		await navigateTo("plan-selection");
+		await navigateTo("install-extension");
 	}, [isPending, navigateTo]);
 
 	const hasRealPending =

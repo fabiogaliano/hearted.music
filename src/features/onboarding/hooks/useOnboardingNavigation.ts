@@ -15,7 +15,7 @@
  * ### Data Flow
  * ```
  * Happy Path (extension-driven):
- * welcome → pick-color → install-extension → syncing
+ * …demo steps → install-extension → syncing
  *    ↓
  * Extension POSTs to /api/extension/sync → creates phaseJobIds (saved to DB)
  *    ↓

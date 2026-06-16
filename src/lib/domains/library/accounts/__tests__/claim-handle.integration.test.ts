@@ -121,9 +121,9 @@ describeLocal("claim_handle RPC — §14.5 integration", () => {
 			// account.handle written
 			expect(await readHandle(id)).toBe("myfirsthandle");
 
-			// user_preferences.onboarding_step advanced to flag-playlists
+			// user_preferences.onboarding_step advanced to plan-selection
 			const prefs = await readPrefs(id);
-			expect(prefs[0]?.onboarding_step).toBe("flag-playlists");
+			expect(prefs[0]?.onboarding_step).toBe("plan-selection");
 			// phase_job_ids cleared (was null already, still null)
 			expect(prefs[0]?.phase_job_ids).toBeNull();
 		} finally {
@@ -131,13 +131,20 @@ describeLocal("claim_handle RPC — §14.5 integration", () => {
 		}
 	});
 
-	// ── Case 2: not_ready steps (welcome / pick-color / install-extension / syncing) ──
+	// ── Case 2: not_ready for every pre-claim-handle step ────────────────────
+	// In the fake-demo-first order all eight steps before claim-handle (the
+	// welcome hook + demo + connect steps) gate to not_ready. flag-playlists and
+	// pick-demo-song moved from the old "later" allow-set into this set.
 
 	it.each([
 		"welcome",
-		"pick-color",
+		"flag-playlists",
+		"pick-demo-song",
+		"song-walkthrough",
+		"match-walkthrough",
 		"install-extension",
 		"syncing",
+		"pick-color",
 	])("case 2: step '%s' → not_ready", async (step) => {
 		const id = crypto.randomUUID();
 		await seedAccount(id, { step });
@@ -154,12 +161,15 @@ describeLocal("claim_handle RPC — §14.5 integration", () => {
 		}
 	});
 
-	// ── Case 3: pick-demo-song → claimed + rewrite to flag-playlists + clear phase_job_ids ──
+	// ── Case 3: plan-selection (non-claim-handle allow-set step) → claimed + clear phase_job_ids ──
+	// plan-selection is the only allow-set step other than claim-handle/complete;
+	// claiming from it (handle-less edge state) writes the handle, leaves the step
+	// at plan-selection, and clears phase_job_ids.
 
-	it("case 3: pick-demo-song → claimed + step rewritten to flag-playlists + phase_job_ids cleared", async () => {
+	it("case 3: plan-selection → claimed + step stays plan-selection + phase_job_ids cleared", async () => {
 		const id = crypto.randomUUID();
 		await seedAccount(id, {
-			step: "pick-demo-song",
+			step: "plan-selection",
 			phase_job_ids: '{"job": "abc"}',
 		});
 
@@ -171,16 +181,16 @@ describeLocal("claim_handle RPC — §14.5 integration", () => {
 			});
 
 			const prefs = await readPrefs(id);
-			expect(prefs[0]?.onboarding_step).toBe("flag-playlists");
+			expect(prefs[0]?.onboarding_step).toBe("plan-selection");
 			expect(prefs[0]?.phase_job_ids).toBeNull();
 		} finally {
 			await cleanAccount(id);
 		}
 	});
 
-	// ── Case 4: complete-without-timestamp → claimed + rewrite to flag-playlists + clear phase_job_ids ──
+	// ── Case 4: complete-without-timestamp → claimed + rewrite to plan-selection + clear phase_job_ids ──
 
-	it("case 4: complete step + onboarding_completed_at=NULL → claimed + step rewritten to flag-playlists", async () => {
+	it("case 4: complete step + onboarding_completed_at=NULL → claimed + step rewritten to plan-selection", async () => {
 		const id = crypto.randomUUID();
 		await seedAccount(id, {
 			step: "complete",
@@ -196,7 +206,7 @@ describeLocal("claim_handle RPC — §14.5 integration", () => {
 			});
 
 			const prefs = await readPrefs(id);
-			expect(prefs[0]?.onboarding_step).toBe("flag-playlists");
+			expect(prefs[0]?.onboarding_step).toBe("plan-selection");
 			expect(prefs[0]?.phase_job_ids).toBeNull();
 		} finally {
 			await cleanAccount(id);
@@ -221,7 +231,7 @@ describeLocal("claim_handle RPC — §14.5 integration", () => {
 			});
 
 			const prefs = await readPrefs(id);
-			// Step must NOT have been rewritten to flag-playlists
+			// Completion timestamp is authoritative — step must NOT be rewritten
 			expect(prefs[0]?.onboarding_step).toBe("complete");
 			// Timestamp must be preserved (not cleared)
 			expect(prefs[0]?.onboarding_completed_at).not.toBeNull();
@@ -256,51 +266,51 @@ describeLocal("claim_handle RPC — §14.5 integration", () => {
 		await seedAccount(id, { step: "claim-handle" });
 
 		try {
-			// First claim: sets handle, advances step to flag-playlists
+			// First claim: sets handle, advances step to plan-selection
 			const first = await callRpc(id, "idempotenthandle");
 			expect(first[0]).toEqual({
 				status: "claimed",
 				owned_handle: "idempotenthandle",
 			});
 
-			// Second run: same handle, now at flag-playlists — should still return claimed
+			// Second run: same handle, now at plan-selection — should still return claimed
 			const second = await callRpc(id, "idempotenthandle");
 			expect(second[0]).toEqual({
 				status: "claimed",
 				owned_handle: "idempotenthandle",
 			});
 
-			// Step should still be flag-playlists (not regressed)
+			// Step should still be plan-selection (not regressed)
 			const prefs = await readPrefs(id);
-			expect(prefs[0]?.onboarding_step).toBe("flag-playlists");
+			expect(prefs[0]?.onboarding_step).toBe("plan-selection");
 		} finally {
 			await cleanAccount(id);
 		}
 	});
 
-	// ── Case 8: same-handle rerun after pick-demo-song → claimed, step unchanged ──
+	// ── Case 8: same-handle rerun after plan-selection claim → claimed, step unchanged ──
 
-	it("case 8: same-handle rerun after pick-demo-song claim → claimed, step unchanged (flag-playlists)", async () => {
+	it("case 8: same-handle rerun after plan-selection claim → claimed, step unchanged (plan-selection)", async () => {
 		const id = crypto.randomUUID();
 		await seedAccount(id, {
-			step: "pick-demo-song",
+			step: "plan-selection",
 			phase_job_ids: '{"j": 1}',
 		});
 
 		try {
-			// First claim from pick-demo-song: advances to flag-playlists
+			// First claim from plan-selection: writes handle, step stays plan-selection
 			await callRpc(id, "pdshandle");
 
-			// Now at flag-playlists. Re-run same handle.
+			// Still at plan-selection. Re-run same handle.
 			const rerun = await callRpc(id, "pdshandle");
 			expect(rerun[0]).toEqual({
 				status: "claimed",
 				owned_handle: "pdshandle",
 			});
 
-			// Step must remain at flag-playlists (was already advanced)
+			// Step must remain at plan-selection (was already advanced)
 			const prefs = await readPrefs(id);
-			expect(prefs[0]?.onboarding_step).toBe("flag-playlists");
+			expect(prefs[0]?.onboarding_step).toBe("plan-selection");
 		} finally {
 			await cleanAccount(id);
 		}

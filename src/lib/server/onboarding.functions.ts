@@ -415,7 +415,7 @@ export const resetSyncJobs = createServerFn({ method: "POST" })
 
 /**
  * Saves the current onboarding step for resumability.
- * Clears phaseJobIds when the step is claim-handle or later (post-sync).
+ * Clears phaseJobIds when the step is pick-color or later (post-sync).
  * Updates the DB every time the user navigates to a new step.
  *
  * Rejects `complete` at the schema boundary — completion must go through

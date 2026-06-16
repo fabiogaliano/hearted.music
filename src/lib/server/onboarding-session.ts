@@ -58,9 +58,9 @@ function deriveSession(
 		return { status: "complete" };
 	}
 
-	// Handle prerequisite for unfinished onboarding. The pre-claim set is
-	// { welcome, pick-color, install-extension, syncing } — all steps before
-	// claim-handle. If the handle is missing and the persisted step is
+	// Handle prerequisite for unfinished onboarding. Every step before
+	// claim-handle (the welcome hook + the fake-demo + connect steps) runs
+	// without a handle. If the handle is missing and the persisted step is
 	// claim-handle or later (including the inconsistent complete-without-timestamp
 	// case), pin to claim-handle so the user cannot bypass the handle screen.
 	// Using an indexOf comparison rather than a hard-coded set so the ordering

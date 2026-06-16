@@ -35,7 +35,7 @@ describe("isOnboardingStepBefore", () => {
 	});
 
 	it("returns false when step comes after boundary", () => {
-		expect(isOnboardingStepBefore("flag-playlists", "claim-handle")).toBe(
+		expect(isOnboardingStepBefore("plan-selection", "claim-handle")).toBe(
 			false,
 		);
 		expect(isOnboardingStepBefore("complete", "welcome")).toBe(false);
@@ -44,8 +44,8 @@ describe("isOnboardingStepBefore", () => {
 
 describe("getPreviousOnboardingStep", () => {
 	it("returns the step immediately before in the ordered tuple", () => {
-		expect(getPreviousOnboardingStep("pick-color")).toBe("welcome");
-		expect(getPreviousOnboardingStep("claim-handle")).toBe("syncing");
+		expect(getPreviousOnboardingStep("pick-color")).toBe("syncing");
+		expect(getPreviousOnboardingStep("claim-handle")).toBe("pick-color");
 		expect(getPreviousOnboardingStep("complete")).toBe("plan-selection");
 	});
 
@@ -56,8 +56,8 @@ describe("getPreviousOnboardingStep", () => {
 
 describe("getNextOnboardingStep", () => {
 	it("returns the step immediately after in the ordered tuple", () => {
-		expect(getNextOnboardingStep("welcome")).toBe("pick-color");
-		expect(getNextOnboardingStep("syncing")).toBe("claim-handle");
+		expect(getNextOnboardingStep("welcome")).toBe("flag-playlists");
+		expect(getNextOnboardingStep("syncing")).toBe("pick-color");
 	});
 
 	it("returns 'complete' for plan-selection", () => {
@@ -103,17 +103,14 @@ describe("SAVEABLE_ONBOARDING_STEPS (zod schema)", () => {
 });
 
 describe("clearsSyncPhaseJobIds", () => {
-	it("returns true for claim-handle (first post-sync step)", () => {
-		expect(clearsSyncPhaseJobIds("claim-handle")).toBe(true);
+	it("returns true for pick-color (first post-sync step)", () => {
+		expect(clearsSyncPhaseJobIds("pick-color")).toBe(true);
 	});
 
-	it("returns true for all steps at and after claim-handle", () => {
+	it("returns true for all steps at and after pick-color", () => {
 		for (const step of [
+			"pick-color",
 			"claim-handle",
-			"flag-playlists",
-			"pick-demo-song",
-			"song-walkthrough",
-			"match-walkthrough",
 			"plan-selection",
 			"complete",
 		] as const) {
@@ -126,7 +123,10 @@ describe("clearsSyncPhaseJobIds", () => {
 	it("returns false for all pre-sync steps", () => {
 		for (const step of [
 			"welcome",
-			"pick-color",
+			"flag-playlists",
+			"pick-demo-song",
+			"song-walkthrough",
+			"match-walkthrough",
 			"install-extension",
 			"syncing",
 		] as const) {

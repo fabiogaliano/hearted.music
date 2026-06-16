@@ -80,7 +80,8 @@ async function reachPlanSelection(
 		if (!claimed) {
 			throw new Error("Could not claim a dev handle after retries");
 		}
-		// claim_handle advances the step to flag-playlists; push back to plan-selection.
+		// claim_handle advances the step to plan-selection; re-assert it so the
+		// derived session settles there now that the account has a handle.
 		await saveOnboardingStep({ data: { step: "plan-selection" } });
 		session = await fetchSession();
 	}

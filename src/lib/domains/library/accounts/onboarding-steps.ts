@@ -5,14 +5,14 @@
 // onboarding-steps.test.ts has a tripwire that fails when the two drift.
 export const ONBOARDING_STEP_VALUES = [
 	"welcome",
-	"pick-color",
-	"install-extension",
-	"syncing",
-	"claim-handle",
 	"flag-playlists",
 	"pick-demo-song",
 	"song-walkthrough",
 	"match-walkthrough",
+	"install-extension",
+	"syncing",
+	"pick-color",
+	"claim-handle",
 	"plan-selection",
 	"complete",
 ] as const;
@@ -24,14 +24,14 @@ export type OnboardingStep = (typeof ONBOARDING_STEP_VALUES)[number];
 // onboarding_completed_at, not the step column.
 export const SAVEABLE_ONBOARDING_STEP_VALUES = [
 	"welcome",
-	"pick-color",
-	"install-extension",
-	"syncing",
-	"claim-handle",
 	"flag-playlists",
 	"pick-demo-song",
 	"song-walkthrough",
 	"match-walkthrough",
+	"install-extension",
+	"syncing",
+	"pick-color",
+	"claim-handle",
 	"plan-selection",
 ] as const satisfies ReadonlyArray<OnboardingStep>;
 
@@ -84,9 +84,9 @@ export function getNextOnboardingStep(
  * True when saving `step` should also clear phase_job_ids.
  *
  * The sync-phase jobs are only relevant while the user is at or before the
- * `syncing` step. `claim-handle` is the first post-sync step, so it and every
+ * `syncing` step. `pick-color` is the first post-sync step, so it and every
  * step after it clears the job reference.
  */
 export function clearsSyncPhaseJobIds(step: OnboardingStep): boolean {
-	return !isOnboardingStepBefore(step, "claim-handle");
+	return !isOnboardingStepBefore(step, "pick-color");
 }

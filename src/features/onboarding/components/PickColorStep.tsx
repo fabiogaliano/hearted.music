@@ -56,7 +56,7 @@ export function PickColorStep({ currentTheme, setTheme }: PickColorStepProps) {
 			setIsSaving(false);
 			return;
 		}
-		const result = await goToStep("install-extension");
+		const result = await goToStep("claim-handle");
 		if (result.status === "transition_failed") {
 			// Theme is already saved — preserve it, but stay on this step.
 			setIsSaving(false);

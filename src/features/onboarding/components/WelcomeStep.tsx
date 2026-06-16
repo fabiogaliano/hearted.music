@@ -14,7 +14,7 @@ export function WelcomeStep() {
 	const handleContinue = async () => {
 		if (isNavigating) return;
 		setIsNavigating(true);
-		const result = await goToStep("pick-color");
+		const result = await goToStep("flag-playlists");
 		if (result.status === "transition_failed") {
 			setIsNavigating(false);
 			toast.error("Couldn't continue. Please try again.");
